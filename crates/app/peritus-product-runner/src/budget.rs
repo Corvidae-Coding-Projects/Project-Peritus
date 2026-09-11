@@ -6,7 +6,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use peritus_agent::DeveloperLoopOutcome;
+use peritus_agent::{DeveloperAccountingEvent, DeveloperUsage};
 use peritus_types::ProviderProfileId;
 
 use crate::{ProductRunnerError, ProductRunnerErrorKind};
@@ -53,7 +53,7 @@ pub struct ProductRunProgress {
 }
 
 impl ProductRunProgress {
-    /// Provider requests completed or terminally observed.
+    /// Provider attempts admitted, including failed, cancelled and compaction requests.
     #[must_use]
     pub const fn model_requests(self) -> u32 {
         self.model_requests
@@ -148,6 +148,7 @@ pub struct RunAccounting {
     started: Instant,
     max_elapsed: Duration,
     progress: ProductRunProgress,
+    response_usage: DeveloperUsage,
     resources: RunResourceProbe,
     unavailable_providers: BTreeSet<ProviderProfileId>,
 }
@@ -159,31 +160,72 @@ impl RunAccounting {
             started: Instant::now(),
             max_elapsed,
             progress: ProductRunProgress::default(),
+            response_usage: DeveloperUsage::default(),
             resources: RunResourceProbe::new(workspace_root)?,
             unavailable_providers: BTreeSet::new(),
         })
     }
 
-    pub fn record(&mut self, outcome: &DeveloperLoopOutcome) -> Result<(), ProductRunnerError> {
-        let retries = u32::from(outcome.retries);
-        let requests = u32::from(outcome.model_turns)
-            .checked_add(retries)
-            .ok_or_else(|| exhausted("provider request counter overflowed"))?;
-        self.progress.model_requests = add_u32(self.progress.model_requests, requests)?;
-        self.progress.tool_calls = add_u32(self.progress.tool_calls, outcome.tool_calls)?;
-        self.progress.retries = add_u32(self.progress.retries, retries)?;
-        self.progress.compactions =
-            add_u32(self.progress.compactions, u32::from(outcome.compactions))?;
-        let usage = outcome.usage;
-        self.progress.input_tokens = add_u64(self.progress.input_tokens, usage.input_tokens())?;
-        self.progress.cached_input_tokens =
-            add_u64(self.progress.cached_input_tokens, usage.cached_input_tokens())?;
-        self.progress.output_tokens = add_u64(self.progress.output_tokens, usage.output_tokens())?;
-        self.progress.total_tokens = add_u64(self.progress.total_tokens, usage.total_tokens())?;
-        self.progress.provider_cost_microunits =
-            add_u64(self.progress.provider_cost_microunits, usage.provider_cost_microunits())?;
-        self.progress.usage_observations =
-            add_u32(self.progress.usage_observations, usage.observations())?;
+    pub(crate) fn record_event(
+        &mut self,
+        event: DeveloperAccountingEvent,
+    ) -> Result<(), ProductRunnerError> {
+        match event {
+            DeveloperAccountingEvent::ModelRequest { retry } => {
+                self.response_usage = DeveloperUsage::default();
+                self.progress.model_requests = add_u32(self.progress.model_requests, 1)?;
+                self.progress.retries = add_u32(self.progress.retries, u32::from(retry))?;
+            }
+            DeveloperAccountingEvent::ToolCall => {
+                self.progress.tool_calls = add_u32(self.progress.tool_calls, 1)?;
+            }
+            DeveloperAccountingEvent::Compaction => {
+                self.progress.compactions = add_u32(self.progress.compactions, 1)?;
+            }
+            DeveloperAccountingEvent::Usage(counters) => {
+                let mut usage = DeveloperUsage::default();
+                usage.observe(counters).map_err(|_| exhausted("provider usage overflowed"))?;
+                self.record_usage(usage)?;
+            }
+        }
+        // Per-event admission is cheap: do not recursively probe the workspace for every token
+        // or tool. The ordinary role/settlement boundary still samples host resources.
+        self.progress.elapsed_millis = millis(self.started.elapsed());
+        budget_violation(self.progress, self.started.elapsed(), self.max_elapsed)
+            .map_or(Ok(()), |detail| Err(exhausted(detail)))
+    }
+
+    fn record_usage(&mut self, usage: DeveloperUsage) -> Result<(), ProductRunnerError> {
+        let previous = self.response_usage;
+        let mut progress = self.progress;
+        progress.input_tokens =
+            replace_u64(progress.input_tokens, previous.input_tokens(), usage.input_tokens())?;
+        progress.cached_input_tokens = replace_u64(
+            progress.cached_input_tokens,
+            previous.cached_input_tokens(),
+            usage.cached_input_tokens(),
+        )?;
+        progress.output_tokens =
+            replace_u64(progress.output_tokens, previous.output_tokens(), usage.output_tokens())?;
+        progress.total_tokens =
+            replace_u64(progress.total_tokens, previous.total_tokens(), usage.total_tokens())?;
+        progress.provider_cost_microunits = replace_u64(
+            progress.provider_cost_microunits,
+            previous.provider_cost_microunits(),
+            usage.provider_cost_microunits(),
+        )?;
+        progress.usage_observations = progress
+            .usage_observations
+            .checked_sub(previous.observations())
+            .and_then(|value| value.checked_add(usage.observations()))
+            .ok_or_else(|| exhausted("run usage observation counter overflowed"))?;
+        self.progress = progress;
+        self.response_usage = usage;
+        Ok(())
+    }
+
+    pub(crate) fn record_role_retry(&mut self) -> Result<(), ProductRunnerError> {
+        self.progress.retries = add_u32(self.progress.retries, 1)?;
         self.check()
     }
 
@@ -268,8 +310,11 @@ fn add_u32(left: u32, right: u32) -> Result<u32, ProductRunnerError> {
     left.checked_add(right).ok_or_else(|| exhausted("run accounting counter overflowed"))
 }
 
-fn add_u64(left: u64, right: u64) -> Result<u64, ProductRunnerError> {
-    left.checked_add(right).ok_or_else(|| exhausted("run accounting counter overflowed"))
+fn replace_u64(total: u64, previous: u64, current: u64) -> Result<u64, ProductRunnerError> {
+    total
+        .checked_sub(previous)
+        .and_then(|value| value.checked_add(current))
+        .ok_or_else(|| exhausted("run accounting counter overflowed"))
 }
 
 fn millis(duration: Duration) -> u64 {
@@ -289,105 +334,4 @@ fn invalid_horizon(detail: &'static str) -> ProductRunnerError {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn role_outcomes_accumulate_requests_tools_retries_and_compactions() {
-        let temporary = tempfile::tempdir().expect("workspace");
-        let mut accounting =
-            RunAccounting::new(temporary.path(), PRODUCT_RUN_MAX_ELAPSED).expect("accounting");
-        accounting
-            .record(&DeveloperLoopOutcome {
-                text: "done".to_owned(),
-                model_turns: 48,
-                tool_calls: 512,
-                compactions: 2,
-                retries: 3,
-                usage: peritus_agent::DeveloperUsage::default(),
-                messages: Vec::new(),
-            })
-            .expect("record bounded role outcome");
-        let progress = accounting.snapshot().expect("bounded progress");
-
-        assert_eq!(progress.model_requests(), 51);
-        assert_eq!(progress.tool_calls(), 512);
-        assert_eq!(progress.retries(), 3);
-        assert_eq!(progress.compactions(), 2);
-    }
-
-    #[test]
-    fn provider_failovers_are_counted_separately_from_same_provider_retries() {
-        let temporary = tempfile::tempdir().expect("workspace");
-        let mut accounting =
-            RunAccounting::new(temporary.path(), PRODUCT_RUN_MAX_ELAPSED).expect("accounting");
-        accounting.record_provider_failover().expect("record failover");
-        let progress = accounting.snapshot().expect("bounded progress");
-        assert_eq!(progress.provider_failovers(), 1);
-        assert_eq!(progress.retries(), 0);
-    }
-
-    #[test]
-    fn successful_probe_closes_a_run_scoped_provider_circuit() {
-        let temporary = tempfile::tempdir().expect("workspace");
-        let mut accounting =
-            RunAccounting::new(temporary.path(), PRODUCT_RUN_MAX_ELAPSED).expect("accounting");
-        let profile = ProviderProfileId::new([0x51; 16]).expect("profile ID");
-
-        accounting.open_provider_circuit(profile);
-        assert!(accounting.provider_circuit_open(profile));
-        accounting.close_provider_circuit(profile);
-        assert!(!accounting.provider_circuit_open(profile));
-    }
-
-    #[test]
-    fn workspace_growth_and_peak_memory_are_observed_at_effect_boundaries() {
-        let temporary = tempfile::tempdir().expect("workspace");
-        let mut accounting =
-            RunAccounting::new(temporary.path(), PRODUCT_RUN_MAX_ELAPSED).expect("accounting");
-        std::fs::write(temporary.path().join("candidate.bin"), vec![0_u8; 4096])
-            .expect("candidate");
-
-        let progress = accounting.snapshot().expect("resource snapshot");
-
-        assert_eq!(progress.workspace_growth_bytes(), 4096);
-        assert_eq!(progress.workspace_bytes(), 4096);
-        assert!(progress.peak_rss_bytes() > 0);
-    }
-
-    #[test]
-    fn memory_and_workspace_growth_have_distinct_hard_failures() {
-        let memory = ProductRunProgress {
-            peak_rss_bytes: PRODUCT_RUN_MAX_PEAK_RSS_BYTES + 1,
-            ..ProductRunProgress::default()
-        };
-        assert_eq!(
-            budget_violation(memory, Duration::ZERO, PRODUCT_RUN_MAX_ELAPSED),
-            Some("the product-run peak resident-memory budget was exhausted")
-        );
-
-        let workspace = ProductRunProgress {
-            workspace_growth_bytes: PRODUCT_RUN_MAX_WORKSPACE_GROWTH_BYTES + 1,
-            ..ProductRunProgress::default()
-        };
-        assert_eq!(
-            budget_violation(workspace, Duration::ZERO, PRODUCT_RUN_MAX_ELAPSED),
-            Some("the product-run workspace-growth budget was exhausted")
-        );
-    }
-
-    #[test]
-    fn caller_run_horizon_is_bounded_and_drives_elapsed_budget() {
-        assert!(validate_run_horizon(Duration::ZERO).is_err());
-        assert!(validate_run_horizon(PRODUCT_RUN_MAX_ELAPSED + Duration::from_secs(1)).is_err());
-        assert!(validate_run_horizon(Duration::from_mins(1)).is_ok());
-        assert_eq!(
-            budget_violation(
-                ProductRunProgress::default(),
-                Duration::from_secs(61),
-                Duration::from_mins(1),
-            ),
-            Some("the configured run horizon was exhausted")
-        );
-    }
-}
+mod tests;

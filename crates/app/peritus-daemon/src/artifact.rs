@@ -2,6 +2,8 @@
 
 mod client;
 mod publication;
+mod scope;
+pub use scope::ArtifactScope;
 mod service;
 
 pub use client::ArtifactClient;

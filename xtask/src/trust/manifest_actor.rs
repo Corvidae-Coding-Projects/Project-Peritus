@@ -5,10 +5,11 @@ use super::manifest_actor_model::{
 use super::manifest_file;
 use super::manifest_support::{validate_envelope, validate_id, validate_text};
 use crate::error::Diagnostic;
-use base64::Engine as _;
-use sha2::{Digest, Sha256};
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
+
+#[path = "manifest_actor/key.rs"]
+mod key;
 
 const MANIFEST: &str = "verification/actors.toml";
 const PROVENANCE_RECORD: &str = "verification/actor-provenance.json";
@@ -93,6 +94,16 @@ pub(super) fn validate<'document>(
     document: &'document ActorsDocument,
     diagnostics: &mut Vec<Diagnostic>,
 ) -> Option<ActorRegistry<'document>> {
+    let provenance = load_provenance(root, diagnostics)?;
+    Some(validate_documents(document, &provenance, &provenance.raw_sha256, diagnostics))
+}
+
+pub(super) fn validate_documents<'document>(
+    document: &'document ActorsDocument,
+    provenance: &ActorProvenanceDocument,
+    provenance_hash: &str,
+    diagnostics: &mut Vec<Diagnostic>,
+) -> ActorRegistry<'document> {
     let manifest = Path::new(MANIFEST);
     validate_envelope(
         manifest,
@@ -102,7 +113,6 @@ pub(super) fn validate<'document>(
         "peritus.verification.actors",
         diagnostics,
     );
-    let provenance = load_provenance(root, diagnostics)?;
     let mut provenance_entries = BTreeMap::new();
     validate_envelope(
         Path::new(PROVENANCE_RECORD),
@@ -121,7 +131,6 @@ pub(super) fn validate<'document>(
             ));
         }
     }
-    let provenance_hash = provenance.raw_sha256.as_str();
     let mut entries = BTreeMap::new();
     let mut subjects = BTreeSet::new();
     for actor in &document.entries {
@@ -158,7 +167,7 @@ pub(super) fn validate<'document>(
             "register distinct durable actors for both required roles",
         ));
     }
-    Some(ActorRegistry { entries })
+    ActorRegistry { entries }
 }
 
 fn validate_entry(
@@ -294,7 +303,7 @@ fn validate_record_locators(
     let valid = match actor.kind {
         ActorKind::CrosslinkAgent => {
             locators.as_slice() == ["embedded:allowed-signer", "embedded:public-key"]
-                && crosslink_key_matches(actor, provenance)
+                && key::matches(actor, provenance)
         }
         ActorKind::CodexSubagent => {
             provenance.public_key.is_none()
@@ -344,29 +353,6 @@ fn valid_issue_time(value: &str) -> bool {
         && value.ends_with('Z')
         && value.contains('T')
         && !value.bytes().any(|byte| byte.is_ascii_whitespace())
-}
-
-fn crosslink_key_matches(actor: &ActorEntry, provenance: &ActorProvenanceEntry) -> bool {
-    let Some(public_key) = provenance.public_key.as_deref() else { return false };
-    let Some(allowed_signer) = provenance.allowed_signer.as_deref() else { return false };
-    let public: Vec<_> = public_key.split_ascii_whitespace().collect();
-    let signer: Vec<_> = allowed_signer.split_ascii_whitespace().collect();
-    if public.len() != 3
-        || signer.len() != 4
-        || public[0] != "ssh-ed25519"
-        || signer[0] != "6ME5@crosslink"
-        || signer[1] != public[0]
-        || signer[2] != public[1]
-        || signer[3] != public[2]
-    {
-        return false;
-    }
-    let Ok(blob) = base64::engine::general_purpose::STANDARD.decode(public[1]) else {
-        return false;
-    };
-    let digest = Sha256::digest(blob);
-    let encoded = base64::engine::general_purpose::STANDARD_NO_PAD.encode(digest);
-    actor.principal == format!("SHA256:{encoded}")
 }
 
 const fn actor_subject(actor: &ActorEntry) -> (ActorKind, &str) {

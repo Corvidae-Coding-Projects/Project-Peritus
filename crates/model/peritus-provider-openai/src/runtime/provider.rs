@@ -16,7 +16,7 @@ use peritus_provider_core::{
 };
 
 use super::CodexRuntimeConfig;
-use super::output::{DecodeFailure, decode};
+use super::output::{DecodeFailure, decode_with_usage};
 use super::stream::CodexRuntimeStream;
 use failure::{decode_failure, failure};
 
@@ -133,27 +133,34 @@ impl CodexRuntimeProvider {
                     return Ok(OwnedModelStream::new(stream, cancellation));
                 }
             };
-            let decoded = decode(output.stdout(), &runtime.allowed_tools, runtime.max_calls);
-            if !output.exit().success() {
+            let decoded = decode_with_usage(
+                output.process.stdout(),
+                &runtime.allowed_tools,
+                runtime.min_calls..=runtime.max_calls,
+                output.final_message.as_deref().ok(),
+            );
+            if !output.process.exit().success() {
                 return self.failed_process(
                     &request,
-                    &decoded,
-                    !output.stdout().is_empty(),
+                    &decoded.turn,
+                    decoded.usage,
+                    !output.process.stdout().is_empty(),
                     cancellation,
                 );
             }
-            let turn = match decoded {
+            let turn = match decoded.turn.and_then(|turn| output.final_message.map(|_| turn)) {
                 Ok(turn) => turn,
                 Err(reason) => {
                     let stream = decode_failure(
                         request.model().clone(),
                         self.config.profile().provider().clone(),
                         &reason,
+                        decoded.usage,
                     )?;
                     return Ok(OwnedModelStream::new(stream, cancellation));
                 }
             };
-            let stream = CodexRuntimeStream::completed(&request, turn, output.stdout())?;
+            let stream = CodexRuntimeStream::completed(&request, turn, output.process.stdout())?;
             Ok(OwnedModelStream::new(stream, cancellation))
         })
     }
@@ -162,23 +169,11 @@ impl CodexRuntimeProvider {
         &self,
         request: &ModelRequest,
         decoded: &Result<super::output::RuntimeTurn, DecodeFailure>,
+        usage: peritus_model_protocol::UsageCounters,
         had_output: bool,
         cancellation: CancellationToken,
     ) -> Result<OwnedModelStream, ProviderCoreError> {
         let stream = match decoded {
-            Err(
-                reason @ (DecodeFailure::Authentication
-                | DecodeFailure::Safety
-                | DecodeFailure::RateLimited
-                | DecodeFailure::Capacity
-                | DecodeFailure::QuotaExhausted
-                | DecodeFailure::ContextLimit
-                | DecodeFailure::Reported),
-            ) => decode_failure(
-                request.model().clone(),
-                self.config.profile().provider().clone(),
-                reason,
-            )?,
             Err(DecodeFailure::Incomplete) if had_output => CodexRuntimeStream::failed(
                 request.model().clone(),
                 failure(
@@ -193,7 +188,13 @@ impl CodexRuntimeProvider {
                 b"openai-codex-runtime-interrupted",
                 true,
             )?,
-            _ => CodexRuntimeStream::failed(
+            Err(reason) if !matches!(reason, DecodeFailure::Incomplete) => decode_failure(
+                request.model().clone(),
+                self.config.profile().provider().clone(),
+                reason,
+                usage,
+            )?,
+            Ok(_) | Err(_) => CodexRuntimeStream::failed_observed(
                 request.model().clone(),
                 failure(
                     self.config.profile().provider().clone(),
@@ -206,6 +207,7 @@ impl CodexRuntimeProvider {
                 )?,
                 b"openai-codex-runtime-process",
                 false,
+                usage,
             )?,
         };
         Ok(OwnedModelStream::new(stream, cancellation))
@@ -213,6 +215,12 @@ impl CodexRuntimeProvider {
 }
 
 impl ModelProvider for CodexRuntimeProvider {
+    fn supports_reasoning_effort(&self, _effort: peritus_model_protocol::ReasoningEffort) -> bool {
+        self.profile()
+            .capabilities()
+            .supports(peritus_model_protocol::Capability::ReasoningControls)
+    }
+
     fn discover_models<'a>(
         &'a self,
         cancellation: &'a CancellationToken,

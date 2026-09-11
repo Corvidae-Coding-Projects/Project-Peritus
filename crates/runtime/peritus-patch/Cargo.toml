@@ -12,8 +12,8 @@ keywords = ["patch", "filesystem", "transactions", "formal-verification"]
 categories = ["filesystem", "data-structures"]
 
 [dependencies]
-peritus-codec = { version = "=0.0.1", path = "../../foundation/peritus-codec" }
-peritus-types = { version = "=0.0.1", path = "../../foundation/peritus-types" }
+peritus-codec = { version = "=0.0.2", path = "../../foundation/peritus-codec" }
+peritus-types = { version = "=0.0.2", path = "../../foundation/peritus-types" }
 vstd.workspace = true
 
 [dev-dependencies]

@@ -6,6 +6,22 @@ use super::super::{
 
 pub(super) const INTERACTION_TYPES: &[AppTypeDescriptor] = &[
     AppTypeDescriptor {
+        name: "ProductModelUpdate",
+        rust_type: "ProductModelUpdate",
+        fields: &[
+            field("runId", W::Identifier, &[B::NonZero], "RunId", "RunId", J::Identifier, true),
+            field(
+                "models",
+                W::Struct,
+                &[],
+                "ProductRoleModels",
+                "ProductRoleModels",
+                J::Ref("ProductRoleModels"),
+                true,
+            ),
+        ],
+    },
+    AppTypeDescriptor {
         name: "ProductRunRequest",
         rust_type: "ProductRunRequest",
         fields: &[
@@ -37,6 +53,17 @@ pub(super) const INTERACTION_TYPES: &[AppTypeDescriptor] = &[
         fields: &[
             field("id", W::Utf8, &[B::ProductModelBytes], "String", "string", J::String, true),
             field("manual", W::Boolean, &[], "bool", "boolean", J::Boolean, true),
+            // Present for every role only in request tags 26/27 and response tag 17.
+            // Legacy tags retain the exact id/manual pair and imply default effort.
+            field(
+                "effort",
+                W::U16,
+                &[],
+                "ProductModelEffort",
+                "\"default\" | \"minimal\" | \"low\" | \"medium\" | \"high\" | \"xhigh\" | \"max\" | \"ultra\"",
+                J::Enum(&["default", "minimal", "low", "medium", "high", "xhigh", "max", "ultra"]),
+                false,
+            ),
         ],
     },
     AppTypeDescriptor {

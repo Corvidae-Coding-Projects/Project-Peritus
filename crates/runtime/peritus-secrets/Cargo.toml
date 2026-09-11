@@ -12,9 +12,9 @@ keywords = ["secrets", "credentials", "sandbox", "zeroize", "formal-verification
 categories = ["development-tools", "authentication"]
 
 [dependencies]
-peritus-codec = { version = "=0.0.1", path = "../../foundation/peritus-codec" }
-peritus-sandbox = { version = "=0.0.1", path = "../peritus-sandbox" }
-peritus-types = { version = "=0.0.1", path = "../../foundation/peritus-types" }
+peritus-codec = { version = "=0.0.2", path = "../../foundation/peritus-codec" }
+peritus-sandbox = { version = "=0.0.2", path = "../peritus-sandbox" }
+peritus-types = { version = "=0.0.2", path = "../../foundation/peritus-types" }
 vstd.workspace = true
 zeroize.workspace = true
 

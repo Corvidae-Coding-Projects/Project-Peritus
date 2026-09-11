@@ -9,13 +9,14 @@ use peritus_model_protocol::{
 use peritus_provider_core::ProviderCoreError;
 use serde_json::{Map, Value};
 
-const PROMPT_PREFIX: &str = "Peritus is the sole host agent, policy authority, and owner of conversation state. The JSON below is one complete provider request. Do not invoke Codex-native tools. Return only the object required by --output-schema. Entries in host_tools are inert proposals for Peritus to validate and execute; never execute them yourself. max_output_tokens_advisory is a requested ceiling, not a claim that this runtime enforces it.\n\nPERITUS_PROVIDER_REQUEST_JSON:\n";
+const PROMPT_PREFIX: &str = "Peritus is the sole host agent, policy authority, and owner of conversation state. The JSON below is one complete provider request. Continue the assistant at the end of its messages array, using the latest tool results; do not restart the initial user task. A fresh Codex process is only a transport for the next step, not a new Peritus host invocation. Do not invoke Codex-native tools. Return only the object required by --output-schema. Entries in host_tools are inert proposals for Peritus to validate and execute; never execute them yourself. max_output_tokens_advisory is a requested ceiling, not a claim that this runtime enforces it.\n\nPERITUS_PROVIDER_REQUEST_JSON:\n";
 
 pub struct RuntimeRequest {
     pub prompt: Vec<u8>,
     pub schema: Vec<u8>,
     pub allowed_tools: std::collections::BTreeSet<String>,
     pub max_calls: usize,
+    pub min_calls: usize,
     images: Vec<RuntimeImage>,
     effort: &'static str,
 }
@@ -64,6 +65,7 @@ pub fn encode(request: &ModelRequest) -> Result<RuntimeRequest, ProviderCoreErro
         schema: contract.bytes,
         allowed_tools: contract.allowed_tools,
         max_calls: contract.max_calls,
+        min_calls: contract.min_calls,
         images,
         effort,
     })
@@ -94,9 +96,13 @@ const fn reasoning_effort(policy: ReasoningPolicy) -> Result<&'static str, Provi
     match policy {
         ReasoningPolicy::Disabled => Ok("high"),
         ReasoningPolicy::Effort { effort, summary: SummaryPolicy::None } => Ok(match effort {
-            ReasoningEffort::Minimal | ReasoningEffort::Low => "low",
+            ReasoningEffort::Minimal => "minimal",
+            ReasoningEffort::Low => "low",
             ReasoningEffort::Medium => "medium",
             ReasoningEffort::High => "high",
+            ReasoningEffort::XHigh => "xhigh",
+            ReasoningEffort::Max => "max",
+            ReasoningEffort::Ultra => "ultra",
         }),
         ReasoningPolicy::Adaptive { .. } | ReasoningPolicy::Effort { .. } => Err(invalid(
             "Codex runtime requires a concrete reasoning effort without a visible summary",

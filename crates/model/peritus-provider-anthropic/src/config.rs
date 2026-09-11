@@ -37,6 +37,7 @@ impl AnthropicBeta {
 #[derive(Clone)]
 pub struct AnthropicConfig {
     endpoint: Endpoint,
+    exact_operation: bool,
     credential: CredentialReference,
     profile: ProviderProfile,
     betas: Vec<AnthropicBeta>,
@@ -78,7 +79,42 @@ impl AnthropicConfig {
                 "Anthropic beta configuration is duplicate or exceeds its count bound",
             ));
         }
-        Ok(Self { endpoint, credential, profile, betas, http_limits, framing_limits, retry_policy })
+        Ok(Self {
+            endpoint,
+            exact_operation: false,
+            credential,
+            profile,
+            betas,
+            http_limits,
+            framing_limits,
+            retry_policy,
+        })
+    }
+
+    /// Binds the exact documented `OpenCode` Messages operation without replacing its gateway path.
+    ///
+    /// # Errors
+    /// Rejects endpoints outside `OpenCode`'s two approved Messages operations.
+    pub fn with_opencode_gateway(mut self) -> Result<Self, ProviderCoreError> {
+        if !matches!(
+            self.endpoint.as_str(),
+            "https://opencode.ai/zen/v1/messages" | "https://opencode.ai/zen/go/v1/messages"
+        ) {
+            return Err(ProviderCoreError::configuration(
+                "anthropic_config",
+                "unrecognized OpenCode Messages operation",
+            ));
+        }
+        self.exact_operation = true;
+        Ok(self)
+    }
+
+    pub(crate) fn operation_endpoint(&self) -> Result<Endpoint, ProviderCoreError> {
+        if self.exact_operation {
+            Ok(self.endpoint.clone())
+        } else {
+            self.endpoint.with_path("/v1/messages")
+        }
     }
 
     /// Returns the exact immutable provider profile.
@@ -136,6 +172,7 @@ impl fmt::Debug for AnthropicConfig {
         formatter
             .debug_struct("AnthropicConfig")
             .field("endpoint", &self.endpoint)
+            .field("exact_operation", &self.exact_operation)
             .field("credential", &self.credential)
             .field("profile", &self.profile)
             .field("betas", &self.betas)

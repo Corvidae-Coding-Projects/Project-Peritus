@@ -5,8 +5,8 @@ The Debian 13 Dockerfile runs `dpkg-buildpackage` and debhelper; the Fedora 44
 Dockerfile runs the checked-in [RPM spec](../rpm/peritus.spec) with `rpmbuild -ba`.
 Both compile all four Linux product binaries from the same locked source tree,
 with the `system-package` feature, inside a network-disabled container.
-Supported native architectures are x86-64 and ARM64. The selected first release
-version is `0.0.1`; CI signing refuses the `0.0.0` qualification placeholder.
+Supported native architectures are x86-64 and ARM64. Release versions come from
+`workspace.package.version`; CI signing refuses the `0.0.0` qualification placeholder.
 
 ## Build locally
 

@@ -1,0 +1,13 @@
+candidate_commit=a6994ce09a67b6631318d88659cd4df5ed5e81f7
+candidate_tree=0d3c5a78fe8d8e97620378f4f365b63e90ed673b
+source_refs=crates/app/peritus-daemon/src/product_run/workbench/fork.rs:14-217;crates/app/peritus-daemon/src/product_run/workbench/checkpoints.rs:58-84;crates/app/peritus-daemon/src/product_run/workbench/execution.rs:13-115;crates/app/peritus-daemon/src/product_control/storage/library.rs:21-186;crates/app/peritus-daemon/src/product_control/storage/reservations.rs:1-54;crates/app/peritus-product-runner/src/control/record/seed.rs;crates/app/peritus-product-runner/src/control/inputs/transition.rs:10-20;crates/app/peritus-product-runner/src/control/files/ledger.rs:20-64
+exact_candidate_daemon_gate=/tmp/peritus-formal-a6994ce0/gates/017-peritus-daemon-ordinary-test.txt
+exact_candidate_daemon_gate_sha256=e75554d9471da08b68dbba81e83c3968b3d4063d0383cea5d987682228d61f45
+exact_candidate_runner_gate=/tmp/peritus-formal-a6994ce0/gates/063-peritus-product-runner-ordinary-test.txt
+exact_candidate_runner_gate_sha256=924344ec11bde769ea92c1410fef5f182f382a99a2d25683ba3242f4f8756ac6
+reservation_log=/tmp/peritus-child-reservation-test.log
+reservation_log_sha256=fb1f47cc6b6847adcaa8da18edd386e0a07e8f0818fbba6236e05456e898533b
+seed_log=/tmp/peritus-seed-pending-test.log
+seed_log_sha256=654412a92da2f036833b17fe10b599455d5e666e47b612f8afd6d4474bc72956
+regressions=allocated_isolated_fork_preserves_parent_and_starts_as_an_independent_draft;historical_snapshot_preserves_context_but_holds_all_inherited_pending_work;prepared_restore_reserves_child_until_exact_publication_even_after_reopen;read_only_branch_execution_is_exactly_chat_and_governance_shaped;combined_rewind_recovers_completed_files_before_publishing_branch
+result=fixed

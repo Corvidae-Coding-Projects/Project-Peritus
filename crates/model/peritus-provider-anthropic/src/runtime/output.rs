@@ -2,7 +2,9 @@
 
 use std::collections::BTreeSet;
 
-use peritus_model_protocol::UsageCounters;
+use peritus_model_protocol::{
+    CanonicalJson, JsonBounds, ModelEvent, ProtocolLimits, UsageCounters,
+};
 use serde_json::{Map, Value};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -19,6 +21,7 @@ pub(super) struct RuntimeTurn {
     pub content: String,
     pub tool_calls: Vec<RuntimeToolCall>,
     pub usage: UsageCounters,
+    pub repairs: Vec<ModelEvent>,
 }
 
 pub(super) struct RuntimeToolCall {
@@ -31,22 +34,26 @@ pub(super) fn decode(
     allowed_tools: &BTreeSet<String>,
     max_calls: usize,
 ) -> Result<RuntimeTurn, DecodeFailure> {
+    let text = std::str::from_utf8(bytes).map_err(|_| DecodeFailure::Malformed)?;
+    // Validate the runtime transport verbatim, including duplicate keys. Never heal it.
+    CanonicalJson::parse(text, JsonBounds::value(ProtocolLimits::PRODUCTION))
+        .map_err(|_| DecodeFailure::Malformed)?;
     let value: Value = serde_json::from_slice(bytes).map_err(|_| DecodeFailure::Malformed)?;
     let raw = value.as_object().ok_or(DecodeFailure::Malformed)?;
     if optional_bool(raw, "is_error")?.unwrap_or(false) {
         return Err(classify_reported(raw));
     }
+    let mut repairs = Vec::new();
     let turn = raw
         .get("structured_output")
         .or_else(|| raw.get("structuredOutput"))
-        .ok_or(DecodeFailure::Incomplete)?
-        .as_object()
-        .ok_or(DecodeFailure::Malformed)?;
-    let mut content = required_string(turn, "content")?.to_owned();
-    let calls = required_calls(turn)?;
-    let mut tool_calls = decode_calls(calls, allowed_tools, max_calls)?;
+        .ok_or(DecodeFailure::Incomplete)?;
+    let turn = model_object(turn, "claude.turn", &mut repairs)?;
+    let mut content = required_string(&turn, "content")?.to_owned();
+    let calls = required_calls(&turn)?;
+    let mut tool_calls = decode_calls(calls, allowed_tools, max_calls, &mut repairs)?;
     if tool_calls.is_empty()
-        && let Some(embedded) = decode_embedded(&content, allowed_tools, max_calls)?
+        && let Some(embedded) = decode_embedded(&content, allowed_tools, max_calls, &mut repairs)?
     {
         content = embedded.content;
         tool_calls = embedded.tool_calls;
@@ -54,7 +61,7 @@ pub(super) fn decode(
     if content.is_empty() || content.contains('\0') {
         return Err(DecodeFailure::Malformed);
     }
-    Ok(RuntimeTurn { content, tool_calls, usage: usage(raw)? })
+    Ok(RuntimeTurn { content, tool_calls, usage: usage(raw)?, repairs })
 }
 
 fn classify_reported(raw: &Map<String, Value>) -> DecodeFailure {
@@ -93,6 +100,7 @@ fn decode_calls(
     calls: &[Value],
     allowed_tools: &BTreeSet<String>,
     max_calls: usize,
+    repairs: &mut Vec<ModelEvent>,
 ) -> Result<Vec<RuntimeToolCall>, DecodeFailure> {
     if calls.len() > max_calls {
         return Err(DecodeFailure::Malformed);
@@ -104,11 +112,11 @@ fn decode_calls(
         if name.trim() != name || name.is_empty() || !allowed_tools.contains(name) {
             return Err(DecodeFailure::Malformed);
         }
-        let arguments = call
-            .get("arguments")
-            .and_then(Value::as_object)
-            .ok_or(DecodeFailure::Malformed)?
-            .clone();
+        let arguments = model_object(
+            call.get("arguments").ok_or(DecodeFailure::Malformed)?,
+            &format!("claude.tool_calls[{}].arguments", tool_calls.len()),
+            repairs,
+        )?;
         tool_calls.push(RuntimeToolCall { name: name.to_owned(), arguments });
     }
     Ok(tool_calls)
@@ -118,15 +126,24 @@ fn decode_embedded(
     content: &str,
     allowed_tools: &BTreeSet<String>,
     max_calls: usize,
+    repairs: &mut Vec<ModelEvent>,
 ) -> Result<Option<RuntimeTurnContent>, DecodeFailure> {
-    let Ok(Value::Object(mut object)) = serde_json::from_str(content) else {
+    // This is public assistant prose, not the typed structured_output field. Preserve the
+    // existing exact-JSON embedded-call contract; do not turn fenced examples into tool calls.
+    let Ok(value) = CanonicalJson::parse(content, JsonBounds::value(ProtocolLimits::PRODUCTION))
+    else {
+        return Ok(None);
+    };
+    let Value::Object(mut object) =
+        serde_json::from_slice(value.canonical_bytes()).map_err(|_| DecodeFailure::Malformed)?
+    else {
         return Ok(None);
     };
     let Some(calls) = object.remove("tool_calls") else {
         return Ok(None);
     };
     let calls = calls.as_array().ok_or(DecodeFailure::Malformed)?;
-    let tool_calls = decode_calls(calls, allowed_tools, max_calls)?;
+    let tool_calls = decode_calls(calls, allowed_tools, max_calls, repairs)?;
     let content = if object.len() == 1 && object.contains_key("content") {
         object.get("content").and_then(Value::as_str).ok_or(DecodeFailure::Malformed)?.to_owned()
     } else {
@@ -138,6 +155,31 @@ fn decode_embedded(
 struct RuntimeTurnContent {
     content: String,
     tool_calls: Vec<RuntimeToolCall>,
+}
+
+fn model_object(
+    value: &Value,
+    target: &str,
+    repairs: &mut Vec<ModelEvent>,
+) -> Result<Map<String, Value>, DecodeFailure> {
+    if let Some(object) = value.as_object() {
+        return Ok(object.clone());
+    }
+    if !value.is_string() {
+        return Err(DecodeFailure::Malformed);
+    }
+    let text = value.to_string();
+    let (value, audit) =
+        peritus_provider_core::healing::object(&text, target, ProtocolLimits::PRODUCTION)
+            .map_err(|_| DecodeFailure::Malformed)?
+            .into_parts();
+    let Value::Object(object) =
+        serde_json::from_slice(value.canonical_bytes()).map_err(|_| DecodeFailure::Malformed)?
+    else {
+        return Err(DecodeFailure::Malformed);
+    };
+    repairs.extend(audit);
+    Ok(object)
 }
 
 fn usage(raw: &Map<String, Value>) -> Result<UsageCounters, DecodeFailure> {
@@ -200,6 +242,44 @@ mod tests {
         let mut tools = BTreeSet::new();
         tools.insert("workspace_read".to_owned());
         tools
+    }
+
+    #[test]
+    fn fenced_tool_examples_in_public_content_are_not_promoted_by_healing() {
+        let example = "```json\n{tool_calls:[{name:\"workspace_read\",arguments:{path:\"src/lib.rs\"}}]}\n```";
+        let output = Value::from_iter([
+            ("is_error", Value::from(false)),
+            (
+                "structured_output",
+                Value::from_iter([
+                    ("content", Value::from(example)),
+                    ("tool_calls", Value::from(Vec::<Value>::new())),
+                ]),
+            ),
+        ])
+        .to_string();
+        let turn = decode(output.as_bytes(), &allowed(), 1).unwrap();
+        assert_eq!(turn.content, example);
+        assert!(turn.tool_calls.is_empty());
+        assert!(turn.repairs.is_empty());
+    }
+
+    #[test]
+    fn public_json_scalars_and_arrays_remain_ordinary_content() {
+        for content in ["42", "true", "null", "[1,2]", "\"hello\""] {
+            let output = Value::from_iter([(
+                "structured_output",
+                Value::from_iter([
+                    ("content", Value::from(content)),
+                    ("tool_calls", Value::from(Vec::<Value>::new())),
+                ]),
+            )])
+            .to_string();
+            let turn = decode(output.as_bytes(), &allowed(), 1).unwrap();
+            assert_eq!(turn.content, content);
+            assert!(turn.tool_calls.is_empty());
+            assert!(turn.repairs.is_empty());
+        }
     }
 
     #[test]

@@ -18,6 +18,13 @@ impl FolderIdentity {
     pub fn observe(path: &Path) -> Result<Self, std::io::Error> {
         let root = path.canonicalize()?;
         let metadata = root.metadata()?;
+        Self::from_metadata(root, &metadata)
+    }
+
+    pub(crate) fn from_metadata(
+        root: PathBuf,
+        metadata: &std::fs::Metadata,
+    ) -> Result<Self, std::io::Error> {
         if !metadata.is_dir() {
             return Err(std::io::Error::other("workspace path must be a directory"));
         }

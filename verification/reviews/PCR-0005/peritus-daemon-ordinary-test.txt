@@ -1,0 +1,337 @@
+=== PERITUS GATE RECORD ===
+{"argv": ["cargo", "test", "--package", "peritus-daemon", "--all-targets", "--all-features", "--locked"], "command": "cargo test --package peritus-daemon --all-targets --all-features --locked", "command_exit_code": 0, "custody_error": null, "duration_seconds": 37.873423, "finished_at": "2026-09-10T01:48:52.828565Z", "kind": "ordinary-test", "owning_crate": "peritus-daemon", "result": "passed", "schema": "peritus.formal-package-gate-output", "schema_version": 1, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "started_at": "2026-09-10T01:48:15.008790Z", "verification_class": "H"}
+=== STDOUT LOG ===
+=== PERITUS CUSTODY HEADER ===
+{"argv": ["cargo", "test", "--package", "peritus-daemon", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "owning_crate": "peritus-daemon", "schema": "peritus.formal-package-evidence-stream", "schema_version": 1, "sequence": 17, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "stream": "stdout", "verification_class": "H"}
+=== COMMAND OUTPUT ===
+
+running 165 tests
+test authority::owner::orchestrator::children_tests::production_router_registers_both_supported_child_destinations ... ok
+test config::product::tests::failover_defaults_off_and_requires_an_explicit_true_value ... ok
+test authority::owner::orchestrator::children_tests::child_command_and_event_identities_are_restart_stable_and_domain_separated ... ok
+test lifecycle::tests::startup_rejects_repeated_skipped_and_reversed_phases ... ok
+test cli::context::tests::inspection_requires_exact_identity_and_rejects_duplicates_or_unknown_flags ... ok
+test outbox::handlers::tests::durable_handlers_cover_every_non_child_destination_once ... ok
+test config::context::tests::local_is_default_and_legacy_is_explicit_with_strict_bounds ... ok
+test config::context::tests::offline_admission_checks_every_route_and_disallows_automatic_failover ... ok
+test product_control::init::tests::decline_and_prepare_are_no_effects_and_an_intervening_edit_rejects_without_overwrite ... ok
+test component::tools::tests::configured_allowlist_is_canonical_and_exact ... ok
+test product_control::init::tests::existing_instructions_are_discovered_then_applied_exactly_without_running_scripts ... ok
+test component::tools::tests::unsupported_git_merge_is_never_a_production_handler ... ok
+test component::tools::tests::empty_allowlist_exposes_no_router_or_operations ... ok
+test component::tools::tests::duplicates_and_unknown_routes_are_rejected ... ok
+test component::tools::tests::every_registration_has_the_declared_route_name ... ok
+test authority::owner::orchestrator::children_tests::d3::scheduler_stale_fence_does_not_append_or_claim_success ... ok
+test artifact::service::tests::foreign_completion_and_duplicate_object_upload_do_not_destroy_the_owned_transfer ... ok
+test authority::owner::orchestrator_tests::owner_settlement_atomically_acknowledges_e0_and_c0 ... ok
+test authority::owner::orchestrator_tests::stale_fence_rolls_back_before_the_current_claim_can_settle ... ok
+test artifact::service::tests::legacy_artifact_cannot_be_promoted_to_a_scoped_import_by_identifier ... ok
+test authority::owner::orchestrator_tests::owner_restart_retry_resolves_the_same_acknowledgement ... ok
+test artifact::service::tests::scoped_upload_bytes_and_owner_conversation_workspace_binding_survive_restart ... ok
+test product_control::inputs::tests::brief_edits_fence_stale_requests_and_seal_the_exact_revised_requirement_after_restart ... ok
+test product_control::storage::tests::closing_the_store_releases_ownership_even_while_a_duplicated_handle_exists ... ok
+test product_control::storage::tests::context::manifest_metadata_tampering_is_detected_even_with_a_recomputed_artifact_digest ... ok
+test artifact::service::tests::interrupted_claim_cannot_be_adopted_by_legacy_or_foreign_upload_after_restart ... ok
+test authority::owner::prompt_tests::settled_prompt_restores_its_terminal_status_after_restart ... ok
+test authority::owner::orchestrator::children_tests::d3::collaboration_cancel_and_finalize_retry_without_manufacturing_success ... ok
+test product_control::guidance::tests::c0_reopen_retains_tombstone_and_audit_while_future_render_excludes_guidance ... ok
+test authority::owner::orchestrator::children_tests::d3::scheduler_lifecycle_retries_exactly_across_restart ... ok
+test authority::owner::orchestrator::children_tests::review_child_admission_retries_exactly_across_restart ... ok
+test authority::owner::orchestrator_tests::owner_rejects_a_claim_that_is_absent_from_the_target_run_history ... ok
+test authority::owner::orchestrator::children_tests::d3::collaboration_lifecycle_retries_exactly_across_restart ... ok
+test product_control::inputs::tests::public_reply_is_immutable_and_enters_only_a_later_user_turn_after_restart ... ok
+test product_run::conversation::tests::only_user_followups_advance_revision_and_agent_messages_wait_for_a_reply ... ok
+test product_control::storage::tests::control_store_has_one_owner_and_rejects_wrong_store_identity_after_release ... ok
+test product_control::storage::tests::context::sealed_context_is_exact_content_free_read_only_scoped_and_restart_stable ... ok
+test product_control::storage::tests::goal::legacy_tool_identity_fails_closed_without_a_v2_replay_debit ... ok
+test product_control::storage::tests::exact_receipt_survives_later_mutation_and_reopen_without_reapplying_old_state ... ok
+test product_run::deliverable::tests::repeated_user_action_is_idempotent ... ok
+test product_run::interaction::narration::tests::chat_start_does_not_claim_implementation ... ok
+test product_run::interaction::narration::tests::repeated_waits_preserve_the_conversation_and_update_one_notice ... ok
+test product_run::interaction::tool_activity::tests::command_is_visible_before_completion_and_same_entry_gains_real_output ... ok
+[master 1cc40db] peritus: finish the game
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+test product_control::storage::tests::images::preview::failed_preview_publication_leaves_no_image_input_or_receipt ... ok
+test product_run::interaction::tool_activity::tests::rejected_commands_and_background_handles_do_not_claim_completed_success ... ok
+test product_run::permissions::tests::rewind_permissions_distinguish_logical_and_filesystem_effects ... ok
+test product_run::persistence::interaction::tests::missing_efforts_preserves_legacy_default_and_unknown_values_reject ... ok
+test product_run::persistence::interaction::tests::mixed_role_efforts_roundtrip_without_changing_model_provenance_or_activities ... ok
+test product_control::storage::tests::context::context_preferences_change_only_future_request_views_and_survive_restart ... ok
+test product_run::deliverable::tests::export_and_discard_are_limited_to_exact_deliverable_paths ... ok
+test product_run::persistence::settlement::tests::checkpoint_and_settlement_round_trip_without_losing_evidence ... ok
+test product_run::interaction::tool_activity::tests::previews_bound_unicode_and_omit_bodies_and_recognizable_credentials ... ok
+test product_run::persistence::tests::candidate_qualification_is_independent_from_user_disposition ... ok
+test product_run::persistence::tests::legacy_deliverable_without_qualification_migrates_as_qualified ... ok
+test product_run::persistence::tests::durable_finding_state_survives_record_restoration ... ok
+test product_run::progress::tests::live_status_distinguishes_silence_from_failure ... ok
+test product_run::persistence::tests::legacy_run_without_messages_gains_a_resumable_conversation ... ok
+test product_run::deliverable::tests::commit_excludes_an_unrelated_pre_staged_change ... ok
+test product_run::persistence::tests::restart_restores_each_resumable_phase_and_preserves_completed_writer_state ... ok
+test product_run::deliverable::tests::candidate_action_rejects_a_workspace_that_no_longer_matches_its_digest ... ok
+test product_run::deliverable::tests::restart_marks_changed_candidate_evidence_stale ... ok
+test product_control::storage::tests::stale_revision_and_changed_payload_reject_without_receipt_or_state_change ... ok
+test product_run::tests::folder::git_candidate_delivery_is_rejected_before_admitting_a_folder_run ... ok
+test product_control::storage::tests::images::image_import_requires_exact_decoded_bytes_and_replays_with_its_artifact_after_restart ... ok
+test product_control::inputs::tests::exact_request_admission_replays_after_restart_and_never_consumes_a_withdrawn_input ... ok
+test product_control::storage::tests::images::context_reports_original_image_digest_and_distinguishes_sealed_inclusion_from_deselection ... ok
+test product_control::storage::tests::sqlite_full_never_acknowledges_or_publishes_a_partial_control_transition ... ok
+test product_control::storage::tests::files::confirmed_file_round_trips_restart_and_only_exact_included_context_is_admitted ... ok
+test product_control::storage::tests::images::image_selection_and_caption_queue_changes_fence_captured_requests_without_changing_old_bytes ... ok
+test product_control::storage::tests::images::preview::exact_preview_and_image_publish_together_and_replay_after_restart ... ok
+test product_control::storage::tests::request_artifact_disk_full_leaves_inputs_pending_and_publishes_no_archive ... ok
+test product_control::storage::tests::images::request_rejects_omitted_extra_or_changed_images_and_seals_exact_selection ... ok
+test product_control::storage::tests::reservations::prepared_restore_reserves_child_until_exact_publication_even_after_reopen ... ok
+test product_run::tests::folder::greeting_in_a_non_git_home_shaped_folder_needs_no_baseline_or_scan ... ok
+test product_control::storage::tests::goal::tool_sequence_identity_is_scoped_to_role_and_loop_invocation_with_exact_replay ... ok
+test product_run::tests::catalog::discovery_cache_retains_provenance_and_failed_refresh_never_becomes_fresh ... ok
+test product_run::tests::doctor::diagnostics_do_not_consume_provider_responses_or_mutate_files_or_runs ... ok
+test product_run::tests::folder::folder_trust_and_read_only_modes_are_enforced_in_the_daemon ... ok
+test product_control::storage::tests::withdrawal_and_incorporation_cas_have_one_winner_and_replay_preserves_exact_binding ... ok
+test product_run::tests::interaction::planning_and_review_cannot_execute_a_provider_requested_write ... ok
+test product_control::storage::tests::context::compact_preview_confirmation_changes_next_view_but_not_exact_archives ... ok
+test product_control::storage::tests::images::missing_changed_or_separately_published_image_bytes_fail_closed_on_replay ... ok
+test product_run::tests::interaction::public_start_message_is_visible_before_a_stalled_provider_finishes ... ok
+test product_control::storage::tests::images::preview::missing_changed_or_separately_published_consent_fails_closed ... ok
+test product_run::tests::interaction::a_question_finishes_without_design_or_workspace_changes_and_restores_durably ... ok
+test product_run::tests::workbench::admission::failed_run_staging_preserves_the_pending_queue_and_does_not_call_a_provider ... ok
+test product_control::storage::tests::context::context_pagination_and_exclusions_track_exact_revisions_without_incorporation ... ok
+test product_run::tests::folder::pipeline::cancellation_during_folder_review_retains_effects_without_qualification_or_controls ... ok
+test product_run::tests::healing::healed_tool_arguments_keep_schema_validation_and_durable_private_provenance ... ok
+test product_run::tests::folder::requested_edits_land_in_the_original_folder_and_cannot_overwrite_private_state ... ok
+test product_run::tests::folder::pipeline::a_question_about_interrupted_folder_work_preserves_its_continuation_without_running_it ... ok
+test product_run::tests::folder::pipeline::folder_provider_failure_retains_unqualified_effects_and_durable_retry_reuses_the_pipeline ... ok
+test product_run::tests::folder::pipeline::unsupported_folder_checks_do_not_become_success_from_clean_reviewer_prose ... ok
+test product_run::tests::workbench::admission::governed_queue_reaches_real_runner_and_exact_binding_survives_fenced_restart ... ok
+test product_run::tests::workbench::admission::governed_textual_image_mentions_do_not_discover_or_cache_ambient_workspace_images ... ok
+test product_run::tests::folder::requested_command_runs_in_the_original_folder_with_daemon_owned_processes ... ok
+test product_run::tests::folder::pipeline::folder_effort_selection_follows_writer_reviewer_fixer_and_fresh_review ... ok
+test product_run::tests::workbench::init::confirmed_init_preserves_existing_instructions_and_replays_without_scripts_or_reapplication ... ok
+test product_run::tests::workbench::init::initialization_discovery_rechecks_read_permission_before_inspecting_the_folder ... ok
+test product_run::tests::workbench::init::initialization_rechecks_effective_write_policy_before_committing_authority ... ok
+test product_run::tests::folder::pipeline::completed_followup_uses_a_new_in_place_baseline ... ok
+test product_run::tests::workbench::goals::configured_goal_request_budget_stops_before_a_second_provider_call ... ok
+test product_run::tests::model_selection::active_selection_changes_the_next_request_without_restarting_or_losing_context ... ok
+test product_run::tests::workbench::permissions::a_permission_change_cannot_grant_above_the_host_ceiling ... ok
+test product_run::tests::workbench::images::governed_image_reaches_the_real_runner_and_text_only_provider_never_receives_a_request ... ok
+test product_run::tests::workbench::library::allocated_isolated_fork_preserves_parent_and_starts_as_an_independent_draft ... ok
+test product_run::tests::workbench::preview::daemon_preview_evidence_satisfies_only_the_graphical_goal_criterion ... ignored, requires Xvfb, xdotool, ImageMagick import, and Python Tk
+test product_run::tests::workbench::permissions::narrowing_network_blocks_the_actual_provider_boundary_and_survives_restart ... ok
+test product_run::tests::workbench::files::file_snapshot_and_refresh_modes_deliver_the_right_version_through_the_real_runner ... ok
+test product_run::tests::workbench::tetris::v1_image_build_and_controlled_tetris_playtest_preserve_exact_evidence ... ignored, requires Xvfb, xdotool, ImageMagick import, and Python Tk
+test product_run::workbench::checkpoints::recovery::tests::postclassification_requires_unchanged_covered_paths_to_remain_at_checkpoint_bytes ... ok
+test product_run::workbench::execution::tests::read_only_branch_execution_is_exactly_chat_and_governance_shaped ... ok
+test product_run::workbench::launch::evidence::tests::capture_requires_delivered_input_before_pixels_and_a_later_check ... ok
+test product_run::tests::workbench::goals::persistent_goal_starts_real_provider_work_pauses_durably_and_resumes_same_run ... ok
+test prompt::clock::tests::observations_retain_epoch_and_do_not_regress ... ok
+test prompt::clock::tests::zero_epoch_is_rejected ... ok
+test prompt::tests::abandoned_preparation_can_be_retried_exactly ... ok
+test prompt::tests::cancellation_is_inert_until_its_target_settles ... ok
+test prompt::tests::correlation_listing_is_exact_bounded_and_owner_scoped ... ok
+test prompt::tests::durable_registration_preparation_is_inert_and_exact_replay_is_idempotent ... ok
+test prompt::tests::only_terminal_prompts_can_be_retired ... ok
+test prompt::tests::prepared_answer_remains_awaiting_until_durable_settlement ... ok
+test shutdown::tests::bounds_preserve_exact_aggregate_reporting ... ok
+test shutdown::tests::client_shutdown_reports_monotonic_exact_unclean_truth ... ok
+test shutdown::tests::operating_system_shutdown_is_clean_without_synthetic_protocol_identity ... ok
+test startup::plan::tests::checkpoint_prefix_retains_exact_digests_and_next_actions ... ok
+test startup::plan::tests::every_kill_point_preserves_the_exact_restart_prefix ... ok
+test startup::plan::tests::fixed_failpoint_set_tracks_both_boundaries_without_allocation ... ok
+test startup::plan::tests::wrong_completion_is_typed_and_does_not_advance ... ok
+test startup::registry::tests::exact_restart_is_idempotent ... ok
+test product_run::tests::workbench::permissions::narrowing_process_blocks_a_direct_preview_before_receipt_or_launch ... ok
+test product_run::workbench::tests::accepting_an_exact_public_reply_creates_a_user_confirmed_brief_revision ... ok
+test startup::registry::tests::exact_successor_advances_registry ... ok
+test verified::tests::executable_readiness_predicates_match_the_closed_admission_matrix ... ok
+test verified::tests::executable_startup_relation_admits_only_exact_successors ... ok
+test worker::tests::cancellation_retains_and_delivers_the_first_reason ... ok
+test worker::tests::durable_start_acknowledgement_precedes_worker_effect ... ok
+test worker::tests::empty_shutdown_is_clean_and_immediate ... ok
+test worker::tests::panic_is_normalized_to_a_redaction_safe_failure ... ok
+test worker::tests::reap_and_result_draining_preserve_bounds_and_order ... ok
+test worker::tests::rejects_duplicate_dispatch_and_active_task_capacity ... ok
+test startup::registry::tests::fresh_store_installs_configured_registry ... ok
+test startup::registry::tests::non_successor_configuration_is_rejected_as_drift ... ok
+test worker::tests::shutdown_reports_cooperative_cancellation_and_forced_abort_exactly ... ok
+test product_run::tests::cancellation_during_review_keeps_the_candidate_actionable ... ok
+test product_run::tests::workbench::memory::saved_guidance_enters_future_provider_request_and_restart_tombstone_excludes_it ... ok
+test product_run::tests::changed_requirements_continuation_has_a_wire_safe_response_and_retains_the_candidate ... ok
+test product_run::tests::interaction::interactive_build_narrates_stages_without_changing_terminal_contracts ... ok
+test product_run::tests::interaction::chat_hands_off_to_the_existing_pipeline_with_the_selected_independent_reviewer ... ok
+test product_run::tests::candidate_retry_resumes_review_without_repeating_design_or_writing ... ok
+test product_run::tests::candidate_can_continue_through_the_daemon_and_be_accepted ... ok
+test product_run::tests::workbench::images::page::retained_image_pages_cover_more_than_one_page_at_one_exact_revision ... ok
+test product_run::tests::model_selection::active_effort_selection_reaches_next_turn_and_survives_reload_for_each_execution_mode ... ok
+test product_run::tests::workbench::checkpoints::checkpoint_owned_edit_preview_and_restore_round_trip_exact_bytes_and_journal ... ok
+test product_run::tests::workbench::checkpoints::combined_rewind_conflict_never_publishes_a_child ... ok
+test product_run::tests::workbench::checkpoints::independent_user_edit_is_a_conflict_and_preserves_every_current_byte ... ok
+test product_run::tests::workbench::checkpoints::actual_c1_indeterminate_error_remains_prepared_for_authorized_reconciliation ... ok
+test product_run::tests::workbench::checkpoints::combined_rewind_publishes_historical_branch_only_after_files_settle ... ok
+test product_run::tests::workbench::checkpoints::applied_folder_patch_before_settlement_recovers_as_applied_idempotently ... ok
+test product_run::tests::workbench::checkpoints::conversation_rewind_preserves_independent_files_and_works_without_write_permission ... ok
+test product_run::tests::workbench::checkpoints::prepared_restore_before_c1_recovers_as_safe_no_effect_conflict ... ok
+test product_run::tests::workbench::checkpoints::combined_rewind_recovers_completed_files_before_publishing_branch ... ok
+test product_run::tests::workbench::review::review_service_rejects_stale_add_then_projects_and_rebinds_a_persisted_stale_hunk ... ok
+test product_run::tests::workbench::library::search::durable_library_search_and_metadata_navigation_never_invoke_a_provider ... ok
+test product_run::tests::workbench::review::selected_feedback_produces_a_read_only_reply_or_a_new_qualified_candidate ... ok
+
+test result: ok. 163 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out; finished in 14.11s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 19 tests
+test public_coverage_inventory_partitions_the_complete_contract ... ok
+test no_contract_case_remains_blocked_from_the_public_binary ... ok
+test journal_append_plan_dies_cleanly_before_durable_commit ... ok
+test corrupt_referenced_artifact_is_quarantined_and_made_unavailable ... ok
+test patch_commit_recovers_on_both_sides_of_durable_application ... ok
+test artifact_commit_recovers_on_both_sides_of_publication ... ok
+test lease_commit_recovers_on_both_sides_of_durable_projection_install ... ok
+test corrupt_projection_is_replaced_during_fresh_startup ... ok
+test corrupt_acceptance_evidence_is_quarantined_before_reuse ... ok
+test gate_commit_recovers_on_both_sides_of_atomic_checkpoint_install ... ok
+test corrupt_journal_stops_fresh_startup_before_authority_mutation ... ok
+test journal_page_exhaustion_rolls_back_and_allows_fresh_inspection ... ok
+test corrupt_harness_activation_evidence_is_quarantined_without_pointer_mutation ... ok
+test snapshot_manifest_quota_releases_the_unpublished_reference ... ok
+test corrupt_snapshot_reference_is_quarantined_before_reuse ... ok
+test snapshot_commit_recovers_on_both_sides_of_retained_ref_publication ... ok
+test promotion_commit_recovers_on_both_sides_of_atomic_activation ... ok
+test dependency_death_and_retry_exhaustion_reconcile_real_owned_work ... ok
+test every_publicly_reachable_daemon_case_passes_against_peritusd ... ok
+
+test result: ok. 19 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.81s
+
+
+running 1 test
+test second_runtime_cannot_acquire_a_live_state_root ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+
+running 2 tests
+test incompatible_hello_returns_no_session_and_closes_the_connection ... ok
+test malformed_and_oversized_headers_close_without_waiting_for_declared_payloads ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+
+running 2 tests
+test authenticated_shutdown_retains_the_exact_request_and_finishes_cleanly ... ok
+test restart_resumes_the_durable_session_and_replays_the_exact_command_result ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s
+
+
+running 18 tests
+test strict_configuration_rejects_unknown_and_plaintext_authority_fields ... ok
+test doctor::doctor_requires_negotiation_and_reports_missing_prerequisites_without_starting_work ... ok
+test runtime_commits_and_replays_registered_scheduler_commands ... ok
+test runtime_accepts_authenticated_negotiation_and_status ... ok
+test workbench::images::rejections::unnegotiated_image_controls_reject_before_upload_or_preview_dispatch ... ok
+test workbench::images::rejections::forged_preview_and_mismatched_outer_revision_reject_without_consuming_the_image ... ok
+test workbench::images::rejections::corrupt_pixels_wrong_mime_and_foreign_conversation_never_produce_a_preview ... ok
+test workbench::integrated::all_workbench_features_init_and_checkpoint_round_trip_over_authenticated_ipc ... ok
+test workbench::files::external_text_upload_preview_confirm_and_restart_never_reopen_the_source_label ... ok
+test workbench::queue::queue_mutations_are_durable_and_feature_gated_and_never_start_execution ... ok
+test workbench::context_inspection::context_ipc_is_feature_gated_content_free_and_restart_stable_without_execution ... ok
+test workbench::control_negotiation_exact_receipts_and_stale_edits_survive_daemon_restart ... ok
+test workbench::brief::brief_ipc_is_durable_feature_gated_and_retains_exact_held_sources_without_execution ... ok
+test workbench::images::image_upload_preview_confirm_and_exact_receipt_replay_survive_provider_revision_change ... ok
+test workbench::images::rejections::provider_revision_change_invalidates_unconfirmed_preview_but_allows_a_fresh_preview ... ok
+test workbench::files::file_confirmation_restart_replay_and_deselection_remain_local ... ok
+test workbench::images::page::image_inspection_exposes_exact_metadata_and_persistent_selection_without_inference ... ok
+test runtime_streams_uploaded_artifacts_through_the_durable_catalog ... ok
+
+test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.42s
+
+
+=== PERITUS CUSTODY FOOTER ===
+{"command_exit_code": 0, "execution_error": null, "finished_at": "2026-09-10T01:48:52.828565Z"}
+
+=== STDERR LOG ===
+=== PERITUS CUSTODY HEADER ===
+{"argv": ["cargo", "test", "--package", "peritus-daemon", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "owning_crate": "peritus-daemon", "schema": "peritus.formal-package-evidence-stream", "schema_version": 1, "sequence": 17, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "stream": "stderr", "verification_class": "H"}
+=== COMMAND OUTPUT ===
+   Compiling peritus-types v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/foundation/peritus-types)
+   Compiling peritus-codec v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/foundation/peritus-codec)
+   Compiling peritus-policy v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/foundation/peritus-policy)
+   Compiling peritus-spec v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/foundation/peritus-spec)
+   Compiling peritus-budget v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/foundation/peritus-budget)
+   Compiling peritus-artifact-store v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/state/peritus-artifact-store)
+   Compiling peritus-run-settlement v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/orchestration/peritus-run-settlement)
+   Compiling peritus-migrations v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/state/peritus-migrations)
+   Compiling peritus-test-support v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/app/testing/peritus-test-support)
+   Compiling peritus-sandbox v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/runtime/peritus-sandbox)
+   Compiling peritus-git v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/runtime/peritus-git)
+   Compiling peritus-patch v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/runtime/peritus-patch)
+   Compiling peritus-model-protocol v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/model/peritus-model-protocol)
+   Compiling peritus-quality-policy v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/foundation/peritus-quality-policy)
+   Compiling peritus-obligations v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/orchestration/peritus-obligations)
+   Compiling peritus-secrets v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/runtime/peritus-secrets)
+   Compiling peritus-network v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/runtime/peritus-network)
+   Compiling peritus-leases v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/state/peritus-leases)
+   Compiling peritus-approval v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/state/peritus-approval)
+   Compiling peritus-tool-protocol v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/tools/peritus-tool-protocol)
+   Compiling peritus-role v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/orchestration/peritus-role)
+   Compiling peritus-provider-core v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/model/peritus-provider-core)
+   Compiling peritus-run-knowledge v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/orchestration/peritus-run-knowledge)
+   Compiling peritus-memory v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/orchestration/peritus-memory)
+   Compiling peritus-kernel v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/foundation/peritus-kernel)
+   Compiling peritus-context v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/orchestration/peritus-context)
+   Compiling peritus-protocol v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/foundation/peritus-protocol)
+   Compiling peritus-provider-google v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/model/peritus-provider-google)
+   Compiling peritus-provider-anthropic v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/model/peritus-provider-anthropic)
+   Compiling peritus-provider-openai v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/model/peritus-provider-openai)
+   Compiling peritus-provider-compatible v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/model/peritus-provider-compatible)
+   Compiling peritus-journal v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/state/peritus-journal)
+   Compiling peritus-app-protocol v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/app/peritus-app-protocol)
+   Compiling peritus-projection v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/state/peritus-projection)
+   Compiling peritus-workspace v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/runtime/peritus-workspace)
+   Compiling peritus-tool-router v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/tools/peritus-tool-router)
+   Compiling peritus-process v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/runtime/peritus-process)
+   Compiling peritus-evidence v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/state/peritus-evidence)
+   Compiling peritus-trace v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/observe/peritus-trace)
+   Compiling peritus-harness v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/orchestration/peritus-harness)
+   Compiling peritus-tools-fs v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/tools/peritus-tools-fs)
+   Compiling peritus-tools-git v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/tools/peritus-tools-git)
+   Compiling peritus-telemetry v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/observe/peritus-telemetry)
+   Compiling peritus-scheduler v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/orchestration/peritus-scheduler)
+   Compiling peritus-review v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/orchestration/peritus-review)
+   Compiling peritus-agent v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/orchestration/peritus-agent)
+   Compiling peritus-tools-quality v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/tools/peritus-tools-quality)
+   Compiling peritus-sandbox-linux v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/runtime/peritus-sandbox-linux)
+   Compiling peritus-tools-shell v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/tools/peritus-tools-shell)
+   Compiling peritus-gates v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/orchestration/peritus-gates)
+   Compiling peritus-collaboration v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/orchestration/peritus-collaboration)
+   Compiling peritus-eval v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/analysis/peritus-eval)
+   Compiling peritus-orchestrator v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/orchestration/peritus-orchestrator)
+   Compiling peritus-debugger v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/analysis/peritus-debugger)
+   Compiling peritus-product-runner v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/app/peritus-product-runner)
+   Compiling peritus-evolution v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/analysis/peritus-evolution)
+   Compiling peritus-daemon v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/app/peritus-daemon)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 19.28s
+     Running unittests src/lib.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/peritus_daemon-16e667bdb4d13bf0)
+     Running unittests src/bin/peritusd.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/peritusd-3a4e5e59aab372f6)
+     Running tests/daemon_conformance.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/daemon_conformance-3d245a9e8d3b6de6)
+     Running tests/instance_ownership.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/instance_ownership-e419f43c9633fe4a)
+     Running tests/protocol_boundaries.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/protocol_boundaries-65cd06fb7655a3c7)
+application connection terminated: PERITUS-DAEMON-INPUT-001 during read application frame: PRTS frame magic is invalid
+application connection terminated: PERITUS-DAEMON-INPUT-001 during decode application frame: application frame violates the negotiated protocol
+application connection terminated: PERITUS-DAEMON-LIMIT-001 during read application frame: declared PRTS payload exceeds the pre-allocation bound
+     Running tests/recovery_shutdown.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/recovery_shutdown-5f2c13bd895b0b17)
+     Running tests/runtime.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/runtime-edf94ea821754153)
+application connection terminated: PERITUS-DAEMON-IPC-001 during read application frame: authenticated local stream closed or failed
+application connection terminated: PERITUS-DAEMON-IPC-001 during read application frame: authenticated local stream closed or failed
+application connection terminated: PERITUS-DAEMON-IPC-001 during read application frame: authenticated local stream closed or failed
+application connection terminated: PERITUS-DAEMON-IPC-001 during read application frame: authenticated local stream closed or failed
+application connection terminated: PERITUS-DAEMON-IPC-001 during read application frame: authenticated local stream closed or failed
+application connection terminated: PERITUS-DAEMON-IPC-001 during read application frame: authenticated local stream closed or failed
+application connection terminated: PERITUS-DAEMON-IPC-001 during read application frame: authenticated local stream closed or failed
+application connection terminated: PERITUS-DAEMON-IPC-001 during read application frame: authenticated local stream closed or failed
+
+=== PERITUS CUSTODY FOOTER ===
+{"command_exit_code": 0, "execution_error": null, "finished_at": "2026-09-10T01:48:52.828565Z"}

@@ -39,6 +39,8 @@ fn fresh_provider_recovery_requires_new_repository_grounding() {
     assert!(correction.contains("workspace_list"));
     assert!(correction.contains("authoritative inputs"));
     assert!(correction.contains("preserve any useful existing work"));
+    assert!(correction.contains("ground once"));
+    assert!(correction.contains("not repeat this startup sequence"));
 }
 
 #[test]

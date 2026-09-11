@@ -17,6 +17,7 @@ struct RecordingContext {
     batches: usize,
     fail_at: Option<&'static str>,
     source_metadata: Option<CanonicalJson>,
+    ignore_invocation_policy: bool,
 }
 
 impl RecordingContext {
@@ -73,7 +74,14 @@ impl DeveloperContextPort for RecordingContext {
         assert_eq!(request.tools.len(), 1);
         assert!(request.profile.limits().max_input_tokens() > 0);
         assert!(!request.messages.is_empty());
-        Ok(self.view.clone())
+        let mut view = self.view.clone();
+        if !self.ignore_invocation_policy {
+            view[0] = request.invocation_policy.clone();
+        }
+        if let Some(input) = request.governing_input {
+            view.insert(1, input.clone());
+        }
+        Ok(view)
     }
 
     fn checkpoint(&mut self, messages: &[Message]) -> Result<(), DeveloperLoopError> {
@@ -110,49 +118,8 @@ fn provider(responses: VecDeque<VecDeque<EventEnvelope>>) -> ScriptedProvider {
     }
 }
 
-#[test]
-fn failed_invocation_retains_observations_and_a_new_provider_requires_fresh_grounding() {
-    block_on(async {
-        let first = provider(VecDeque::from([tool_response()]));
-        let mut memory = RecordingContext::default();
-        let mut trace = RecordingTrace::default();
-        let result = DeveloperLoop::run_with_context(
-            &first,
-            request("first", 1),
-            &mut RecordingTool::default(),
-            &mut trace,
-            &mut memory,
-        )
-        .await;
-        assert!(matches!(result, Err(DeveloperLoopError::LimitExceeded)));
-        assert_eq!(memory.batches, 1);
-        assert!(memory.raw_outputs[0].contains("answer()"));
-
-        let mut second = provider(VecDeque::from([tool_response(), text_response()]));
-        second.profile = fixtures::caching_profile();
-        let mut tools = GroundingTool::default();
-        DeveloperLoop::run_with_context(
-            &second,
-            request("second", 2),
-            &mut tools,
-            &mut trace,
-            &mut memory,
-        )
-        .await
-        .expect("continued invocation");
-        let requests = second.requests.lock().expect("requests");
-        assert!(matches!(requests[0].tool_choice(), ToolChoice::Specific(_)));
-        assert!(requests[0].messages().iter().any(|message| message.content().iter().any(|block| {
-            matches!(block, ContentBlock::ToolResult(result) if result.output().to_wire_string().contains("answer()"))
-        })));
-        drop(requests);
-        assert_eq!(tools.calls, 1, "only the new provider's call executes");
-        assert_eq!(memory.invocations, ["first", "second"]);
-        assert!(memory.view.last().expect("terminal message").content().iter().any(|block| {
-            matches!(block, ContentBlock::Text(text) if text.expose_for_wire() == "implementation inspected")
-        }));
-    });
-}
+#[path = "local_context_lifecycle.rs"]
+mod lifecycle;
 
 #[test]
 fn open_assembly_and_checkpoint_failures_stop_before_any_provider_request() {

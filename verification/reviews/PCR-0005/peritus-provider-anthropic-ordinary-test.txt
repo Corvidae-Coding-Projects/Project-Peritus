@@ -1,0 +1,78 @@
+=== PERITUS GATE RECORD ===
+{"argv": ["cargo", "test", "--package", "peritus-provider-anthropic", "--all-targets", "--all-features", "--locked"], "command": "cargo test --package peritus-provider-anthropic --all-targets --all-features --locked", "command_exit_code": 0, "custody_error": null, "duration_seconds": 4.895924, "finished_at": "2026-09-10T01:51:21.540785Z", "kind": "ordinary-test", "owning_crate": "peritus-provider-anthropic", "result": "passed", "schema": "peritus.formal-package-gate-output", "schema_version": 1, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "started_at": "2026-09-10T01:51:16.692052Z", "verification_class": "H"}
+=== STDOUT LOG ===
+=== PERITUS CUSTODY HEADER ===
+{"argv": ["cargo", "test", "--package", "peritus-provider-anthropic", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "owning_crate": "peritus-provider-anthropic", "schema": "peritus.formal-package-evidence-stream", "schema_version": 1, "sequence": 71, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "stream": "stdout", "verification_class": "H"}
+=== COMMAND OUTPUT ===
+
+running 33 tests
+test error::tests::maybe_sent_transport_is_ambiguous_and_diagnostics_are_redacted ... ok
+test profile::tests::beta_header_configuration_is_unique_canonical_and_redacted ... ok
+test client::tests::missing_stream_negotiation_fails_before_credentials_or_transport ... ok
+test fixture_tests::fixture_manifest_is_complete_and_sha256_sums_match ... ok
+test error::tests::official_http_statuses_map_to_stable_typed_failures ... ok
+test request::tests::forced_streaming_requires_exact_negotiation ... ok
+test request::tests::minimal_request_matches_the_checked_golden_wire_shape ... ok
+test runtime::output::tests::embedded_undeclared_host_call_still_fails_closed ... ok
+test runtime::output::tests::embedded_host_call_is_promoted_and_application_content_is_preserved ... ok
+test runtime::output::tests::reported_runtime_failures_keep_recovery_relevant_causes ... ok
+test runtime::tests::direct_messages_profile_cannot_be_reused_for_the_runtime ... ok
+test runtime::output::tests::public_json_scalars_and_arrays_remain_ordinary_content ... ok
+test client::tests::http_success_with_a_non_stream_content_type_fails_as_malformed ... ok
+test request::tests::rich_tool_media_schema_and_thinking_replay_project_without_semantic_loss ... ok
+test runtime::output::tests::fenced_tool_examples_in_public_content_are_not_promoted_by_healing ... ok
+test profile::tests::only_the_exact_messages_dialect_and_lifecycle_are_accepted ... ok
+test request::tests::system_instructions_are_projected_outside_messages ... ok
+test client::tests::sends_current_messages_contract_with_immediate_redacted_credentials ... ok
+test runtime::tests::constrained_turn_disables_runtime_authority_and_normalizes_inert_output ... ok
+test runtime::tests::auth_malformed_reported_and_cancelled_paths_are_explicit_terminals ... ok
+test client::tests::explicit_rate_rejection_retries_and_authentication_does_not ... ok
+test stream::tests::byte_fragmented_utf8_text_citations_usage_and_metadata_stay_ordered ... ok
+test stream::tests::fragmented_tool_arguments_and_thinking_signature_replay_are_preserved ... ok
+test stream::tests::corrupt_incomplete_and_unknown_critical_streams_fail_closed ... ok
+test runtime::output::tests::empty_embedded_call_array_is_removed_from_terminal_application_json ... ok
+test stream::tests::ancillary_unknown_is_preserved_but_http_success_error_is_terminal ... ok
+test runtime::tests::selected_effort_reaches_claude_process_exactly_and_unmapped_levels_fail_before_process ... ok
+test stream::tests::empty_headers_do_not_create_metadata ... ok
+test stream::tests::cancellation_discards_buffered_output_and_emits_only_cancellation ... ok
+test runtime::tests::runtime_healing_emits_private_audit_and_exact_arguments_without_extra_inference ... ok
+test client::tests::connect_is_retried_but_ambiguous_transport_is_not ... ok
+test stream::tests::completed_model_arguments_are_healed_but_truncation_is_not ... ok
+test conformance_tests::runner::production_adapter_passes_all_provider_cases_with_fresh_loopback_subjects ... ok
+
+test result: ok. 33 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.49s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 1 test
+test claude_runtime_conformance::runner::claude_runtime_passes_all_cases_through_real_owned_processes ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.33s
+
+
+=== PERITUS CUSTODY FOOTER ===
+{"command_exit_code": 0, "execution_error": null, "finished_at": "2026-09-10T01:51:21.540785Z"}
+
+=== STDERR LOG ===
+=== PERITUS CUSTODY HEADER ===
+{"argv": ["cargo", "test", "--package", "peritus-provider-anthropic", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "owning_crate": "peritus-provider-anthropic", "schema": "peritus.formal-package-evidence-stream", "schema_version": 1, "sequence": 71, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "stream": "stderr", "verification_class": "H"}
+=== COMMAND OUTPUT ===
+   Compiling subtle v2.6.1
+   Compiling rustls v0.23.43
+   Compiling tokio-rustls v0.26.4
+   Compiling rustls-platform-verifier v0.7.0
+   Compiling hyper-rustls v0.27.9
+   Compiling reqwest v0.13.4
+   Compiling peritus-provider-core v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/model/peritus-provider-core)
+   Compiling peritus-provider-anthropic v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/model/peritus-provider-anthropic)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 3.99s
+     Running unittests src/lib.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/peritus_provider_anthropic-890419baaa9c2753)
+     Running unittests src/bin/claude_runtime_fake.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/peritus_anthropic_claude_fake-354ca18a0e468ff2)
+     Running tests/claude_runtime_conformance.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/claude_runtime_conformance-2a873c1b952de71d)
+
+=== PERITUS CUSTODY FOOTER ===
+{"command_exit_code": 0, "execution_error": null, "finished_at": "2026-09-10T01:51:21.540785Z"}

@@ -1,0 +1,46 @@
+name: Windows terminal title
+
+on:
+  push:
+    branches: [develop, main]
+    paths:
+      - .github/workflows/terminal-title.yml
+      - Cargo.lock
+      - crates/app/peritus-launcher/**
+      - crates/app/peritus-provider-onboarding/**
+      - crates/app/peritus-tui/**
+      - crates/model/peritus-provider-core/**
+  pull_request:
+    paths:
+      - .github/workflows/terminal-title.yml
+      - Cargo.lock
+      - crates/app/peritus-launcher/**
+      - crates/app/peritus-provider-onboarding/**
+      - crates/app/peritus-tui/**
+      - crates/model/peritus-provider-core/**
+
+permissions:
+  contents: read
+
+concurrency:
+  group: terminal-title-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  windows-console:
+    name: Native console isolation and title restoration
+    runs-on: windows-2025
+    timeout-minutes: 10
+    env:
+      CARGO_BUILD_JOBS: "2"
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install pinned Rust
+        uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # v1
+        with:
+          toolchain: 1.97.1
+      - name: Test real provider subprocess console isolation
+        run: cargo test --locked --package peritus-provider-onboarding --lib
+      - name: Test title ownership and interactive client
+        run: cargo test --locked --package peritus-tui --lib

@@ -177,7 +177,7 @@ fn rust_job_is_exact(job: &Yaml) -> bool {
             )
         && string(job, "needs") == Some("bootstrap")
         && string(job, "runs-on") == Some("${{ matrix.os }}")
-        && integer(job, "timeout-minutes") == Some(10)
+        && integer(job, "timeout-minutes") == Some(15)
         && rust_matrix(mapping_value(job, "strategy"))
         && mapping_value(job, "steps").and_then(Yaml::as_vec).is_some_and(|steps| {
             steps.len() == 3
@@ -231,7 +231,7 @@ fn verus_job_is_exact(job: &Yaml, tools: &ToolchainPolicy) -> bool {
             == Some("Foundation Verus ${{ matrix.operation }} ${{ matrix.shard }}")
         && string(job, "needs") == Some("bootstrap")
         && string(job, "runs-on") == Some("ubuntu-24.04")
-        && integer(job, "timeout-minutes") == Some(10)
+        && integer(job, "timeout-minutes") == Some(15)
         && verus_matrix(mapping_value(job, "strategy"))
         && mapping_value(job, "steps").and_then(Yaml::as_vec).is_some_and(|steps| {
             steps.len() == 4

@@ -1,0 +1,52 @@
+=== PERITUS GATE RECORD ===
+{"argv": ["cargo", "test", "--package", "peritus-spec", "--all-targets", "--all-features", "--locked"], "command": "cargo test --package peritus-spec --all-targets --all-features --locked", "command_exit_code": 0, "custody_error": null, "duration_seconds": 0.328538, "finished_at": "2026-09-10T01:53:08.602584Z", "kind": "ordinary-test", "owning_crate": "peritus-spec", "result": "passed", "schema": "peritus.formal-package-gate-output", "schema_version": 1, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "started_at": "2026-09-10T01:53:08.313890Z", "verification_class": "V"}
+=== STDOUT LOG ===
+=== PERITUS CUSTODY HEADER ===
+{"argv": ["cargo", "test", "--package", "peritus-spec", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "owning_crate": "peritus-spec", "schema": "peritus.formal-package-evidence-stream", "schema_version": 1, "sequence": 107, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "stream": "stdout", "verification_class": "V"}
+=== COMMAND OUTPUT ===
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 1 test
+test binding_requires_the_tuple_to_name_the_exact_contract ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 5 tests
+test contract_preserves_checked_components ... ok
+test contract_rejects_dangling_and_mistyped_evidence ... ok
+test contract_rejects_duplicate_requirements_exclusions_and_assumptions ... ok
+test contract_rejects_quorum_that_cannot_fit_in_review_cycles ... ok
+test review_and_completion_policies_reject_zero_or_ambiguous_inputs ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 3 tests
+test gate_and_graph_constructors_reject_ambiguous_ordering ... ok
+test graph_rejects_unknown_dependencies_and_cycles ... ok
+test graph_returns_a_deterministic_dependency_order ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+=== PERITUS CUSTODY FOOTER ===
+{"command_exit_code": 0, "execution_error": null, "finished_at": "2026-09-10T01:53:08.602584Z"}
+
+=== STDERR LOG ===
+=== PERITUS CUSTODY HEADER ===
+{"argv": ["cargo", "test", "--package", "peritus-spec", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "owning_crate": "peritus-spec", "schema": "peritus.formal-package-evidence-stream", "schema_version": 1, "sequence": 107, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "stream": "stderr", "verification_class": "V"}
+=== COMMAND OUTPUT ===
+   Compiling peritus-spec v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/foundation/peritus-spec)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.25s
+     Running unittests src/lib.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/peritus_spec-514d8358a8bc5ba4)
+     Running tests/binding.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/binding-1a14d24d4012c0b5)
+     Running tests/contract_validation.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/contract_validation-a67a7b1ce14799af)
+     Running tests/gate_graph.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/gate_graph-5e0976f5340c34cc)
+
+=== PERITUS CUSTODY FOOTER ===
+{"command_exit_code": 0, "execution_error": null, "finished_at": "2026-09-10T01:53:08.602584Z"}

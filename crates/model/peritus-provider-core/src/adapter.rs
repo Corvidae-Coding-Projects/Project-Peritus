@@ -28,6 +28,26 @@ pub trait ModelProvider: Send + Sync {
     /// Returns the exact profile implemented by this provider instance.
     fn profile(&self) -> &ProviderProfile;
 
+    /// Explicit effort bound to this immutable selection; absent retains the caller's default.
+    fn reasoning_effort(&self) -> Option<peritus_model_protocol::ReasoningEffort> {
+        None
+    }
+
+    /// Whether the adapter can encode this effort without substitution.
+    ///
+    /// This is a transport capability, not a guarantee that every model accepts the value.
+    fn supports_reasoning_effort(&self, effort: peritus_model_protocol::ReasoningEffort) -> bool {
+        self.profile()
+            .capabilities()
+            .supports(peritus_model_protocol::Capability::ReasoningControls)
+            && matches!(
+                effort,
+                peritus_model_protocol::ReasoningEffort::Low
+                    | peritus_model_protocol::ReasoningEffort::Medium
+                    | peritus_model_protocol::ReasoningEffort::High
+            )
+    }
+
     /// Queries the configured endpoint or credential-owning runtime, without inference.
     ///
     /// # Errors

@@ -10,14 +10,14 @@ publish = false
 readme = "README.md"
 
 [dependencies]
-peritus-plugin-sdk = { version = "=0.0.1", path = "../peritus-plugin-sdk" }
-peritus-policy = { version = "=0.0.1", path = "../../foundation/peritus-policy" }
+peritus-plugin-sdk = { version = "=0.0.2", path = "../peritus-plugin-sdk" }
+peritus-policy = { version = "=0.0.2", path = "../../foundation/peritus-policy" }
 sha2.workspace = true
 tokio = { workspace = true, features = ["process"] }
 vstd.workspace = true
 
 [dev-dependencies]
-peritus-conformance = { version = "=0.0.1", path = "../../app/testing/peritus-conformance" }
+peritus-conformance = { version = "=0.0.2", path = "../../app/testing/peritus-conformance" }
 serde_json.workspace = true
 tempfile.workspace = true
 

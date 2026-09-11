@@ -19,6 +19,7 @@ impl WorkspaceDeveloperTools {
             grounding: GroundingEvidence::default(),
             ownership,
             mode: WorkspaceToolMode::ReadOnly,
+            in_place_scope: None,
             command_evidence: CommandEvidence::default(),
             command_budget: None,
             receipts: None,
@@ -28,7 +29,10 @@ impl WorkspaceDeveloperTools {
             tools_without_delivery_progress: 0,
             progress_nudges: 0,
             progress_feedback_pending: false,
+            inspection_progress: super::inspection_progress::InspectionProgress::default(),
             checkpoint_observer: None,
+            prepared_mutations: Vec::new(),
+            protection_view: None,
         }
     }
 
@@ -46,6 +50,7 @@ impl WorkspaceDeveloperTools {
             grounding: GroundingEvidence::default(),
             ownership,
             mode: WorkspaceToolMode::ReadWrite,
+            in_place_scope: None,
             command_evidence: CommandEvidence::default(),
             command_budget: Some(CommandBudget::new(command_horizon)),
             receipts: Some(EffectReceiptLedger::new(receipt_path, receipt_scope)),
@@ -55,7 +60,10 @@ impl WorkspaceDeveloperTools {
             tools_without_delivery_progress: 0,
             progress_nudges: 0,
             progress_feedback_pending: false,
+            inspection_progress: super::inspection_progress::InspectionProgress::default(),
             checkpoint_observer: None,
+            prepared_mutations: Vec::new(),
+            protection_view: None,
         }
     }
 }

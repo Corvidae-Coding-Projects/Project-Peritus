@@ -7,12 +7,15 @@ mod action;
 mod client;
 mod entry;
 mod error;
+pub(crate) mod file_import;
+pub(crate) mod image_import;
 mod input;
 mod model;
 mod render;
 mod runtime;
 mod sanitize;
 mod terminal;
+mod title;
 
 pub use entry::run_env;
 pub use error::TuiError;
@@ -20,3 +23,4 @@ pub use runtime::{
     ExitReason, ProductLaunchContext, ProductProviderOption, TuiConfig, TuiState, run,
     run_with_state,
 };
+pub use title::TerminalTitle;

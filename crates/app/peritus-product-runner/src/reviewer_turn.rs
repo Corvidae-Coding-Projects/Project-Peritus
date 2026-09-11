@@ -6,7 +6,6 @@ use peritus_review::ProductReviewSubmission;
 use crate::budget::RunAccounting;
 use crate::developer_tools::{WorkspaceDeveloperTools, read_only_definitions};
 use crate::execution::{ProductRunInput, check_cancelled};
-use crate::local_context::LocalContextHandle;
 use crate::{ProductRunnerError, ProductRunnerErrorKind, review, turn};
 
 const MAX_INVALID_REVIEWS: u8 = 3;
@@ -32,7 +31,7 @@ pub async fn complete(
     let mut providers =
         crate::failover::ProviderCursor::new(&input.providers.reviewer, &input.providers.fallbacks);
     let mut correction = None;
-    let memory = LocalContextHandle::open(input, "reviewer")?;
+    let memory = input.working_memory("reviewer")?;
     let mut invalid_reviews = 0_u8;
     let mut provider_recovery = crate::failover::RoleRecovery::default();
     let mut invocation = 0_u32;
@@ -41,7 +40,7 @@ pub async fn complete(
         crate::failover::bypass_open_circuit(input, "reviewer", cycle, accounting, &mut providers)?;
         invocation = invocation.saturating_add(1);
         let prompt = turn::reviewer_user(&turn::ReviewerPrompt {
-            transcript: evidence.conversation,
+            transcript: &input.conversation.stable_request_context(),
             diff: evidence.diff,
             gates: evidence.gates,
             developer_evidence: evidence.developer_commands,
@@ -57,11 +56,7 @@ pub async fn complete(
             },
             correction: correction.as_deref(),
         });
-        let media = match crate::workspace_media::discover(
-            &input.workspace_root,
-            evidence.conversation,
-            providers.current().profile(),
-        ) {
+        let media = match input.media(evidence.conversation, providers.current().profile()) {
             Ok(media) => media,
             Err(error) if let Some(switch) = providers.advance_for_capability(&error) => {
                 crate::failover::record_switch(input, "reviewer", cycle, accounting, switch)?;
@@ -70,8 +65,10 @@ pub async fn complete(
             Err(error) => return Err(error),
         };
         let (prompt, attachments) = media.into_parts(prompt);
-        let mut tools = WorkspaceDeveloperTools::read_only(input.workspace_root.clone())
-            .with_task_contract(evidence.conversation);
+        let mut tools = input.configure_tools(
+            WorkspaceDeveloperTools::read_only(input.workspace_root.clone())
+                .with_task_contract(evidence.conversation),
+        );
         let result = crate::local_context::run_live_invocation(
             providers.current(),
             DeveloperLoopRequest {
@@ -79,7 +76,8 @@ pub async fn complete(
                     "{}-invocation-{invocation}",
                     turn::request_name(input.run_id, "reviewer", cycle),
                 ),
-                system: turn::reviewer_system(accounting.remaining()),
+                system: turn::reviewer_system(accounting.remaining())
+                    + input.delivery_instructions(),
                 prompt,
                 attachments,
                 tools: read_only_definitions()?,
@@ -87,15 +85,21 @@ pub async fn complete(
                 cancellation: input.provider_cancellation.clone(),
             },
             &mut tools,
-            &input.trace_path,
+            crate::local_context::InvocationAccounting {
+                trace_path: &input.trace_path,
+                accounting,
+            },
             memory.as_ref(),
             input.conversation.interaction(),
+            peritus_agent::DeveloperModelRole::Reviewer,
         )
         .await;
+        accounting.check()?;
         let result = match result {
             Ok(result) => result,
             Err(error) => {
                 if let Some(reason) = provider_recovery.retry(&error) {
+                    accounting.record_role_retry()?;
                     correction = Some(crate::failover::RoleRecovery::correction(reason));
                     continue;
                 }
@@ -109,13 +113,8 @@ pub async fn complete(
             }
         };
         crate::failover::record_provider_success(accounting, &providers, &mut provider_recovery);
-        accounting.record(&result)?;
         check_cancelled(input)?;
-        let submission = tools
-            .grounding()
-            .validate()
-            .map_err(grounding)
-            .and_then(|()| review::parse(&result.text, review_cycle));
+        let submission = grounded_submission(&tools, &result.text, review_cycle);
         match submission {
             Ok(submission) => return Ok(submission),
             Err(error) => {
@@ -127,6 +126,15 @@ pub async fn complete(
             }
         }
     }
+}
+
+fn grounded_submission(
+    tools: &WorkspaceDeveloperTools,
+    text: &str,
+    cycle: u32,
+) -> Result<ProductReviewSubmission, ProductRunnerError> {
+    tools.grounding().validate().map_err(grounding)?;
+    review::parse(text, cycle)
 }
 
 fn correction_prompt(error: &ProductRunnerError) -> String {

@@ -148,8 +148,8 @@ fn write_fixture(fixture: &Fixture, trust_entries: &str) {
       "session": 2,
       "task": "/root",
       "mode": "implementation",
-      "public_key": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEKuTLQN4A79bLYizdWIYCfXTIaDgY2YWxHnZ7j5FftS fixture-owner",
-      "allowed_signer": "6ME5@crosslink ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEKuTLQN4A79bLYizdWIYCfXTIaDgY2YWxHnZ7j5FftS fixture-owner",
+      "public_key": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEKuTLQN4A79bLYizdWIYCfXTIaDgY2YWxHnZ7j5FftS crosslink-agent:6ME5@fixture-machine",
+      "allowed_signer": "6ME5@crosslink ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEKuTLQN4A79bLYizdWIYCfXTIaDgY2YWxHnZ7j5FftS crosslink-agent:6ME5@fixture-machine",
       "record_locators": ["embedded:allowed-signer", "embedded:public-key"]
     },
     {

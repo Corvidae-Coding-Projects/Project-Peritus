@@ -5,7 +5,7 @@
 //! corresponding production implementation.
 
 use std::{
-    path::PathBuf,
+    path::{Path, PathBuf},
     sync::{Arc, atomic::AtomicBool},
     time::Duration,
 };
@@ -14,11 +14,13 @@ use peritus_provider_core::{CancellationToken, ModelProvider};
 use peritus_run_settlement::{CandidateCheckpoint, RunSettlement};
 use peritus_types::{RunId, WorkspaceId};
 
-use crate::ProductRunnerError;
+use crate::{ProductRunnerError, control::HostPermissions};
 
 mod command_runtime;
 mod effect_stubs;
-pub use command_runtime::CommandRuntime;
+mod progress;
+pub use command_runtime::{CommandRuntime, FolderPatchAuthority, FolderPatchAuthorityPlan};
+pub use effect_stubs::checked_protected_file;
 
 /// Maximum wall-clock duration of one uninterrupted product-run attempt.
 pub const PRODUCT_RUN_MAX_ELAPSED: Duration = Duration::from_hours(8);
@@ -53,69 +55,6 @@ pub struct ProductRunProgress {
     workspace_bytes: u64,
     workspace_growth_bytes: u64,
     peak_rss_bytes: u64,
-}
-
-impl ProductRunProgress {
-    /// Provider requests completed or terminally observed.
-    pub const fn model_requests(self) -> u32 {
-        self.model_requests
-    }
-    /// Application tool calls completed.
-    pub const fn tool_calls(self) -> u32 {
-        self.tool_calls
-    }
-    /// Checked provider retries completed.
-    pub const fn retries(self) -> u32 {
-        self.retries
-    }
-    /// Explicit switches to another configured provider.
-    pub const fn provider_failovers(self) -> u32 {
-        self.provider_failovers
-    }
-    /// Deterministic context compactions applied.
-    pub const fn compactions(self) -> u32 {
-        self.compactions
-    }
-    /// Provider-reported input tokens.
-    pub const fn input_tokens(self) -> u64 {
-        self.input_tokens
-    }
-    /// Provider-reported cache-read input tokens.
-    pub const fn cached_input_tokens(self) -> u64 {
-        self.cached_input_tokens
-    }
-    /// Provider-reported output tokens.
-    pub const fn output_tokens(self) -> u64 {
-        self.output_tokens
-    }
-    /// Explicit or conservatively derived aggregate tokens.
-    pub const fn total_tokens(self) -> u64 {
-        self.total_tokens
-    }
-    /// Provider-estimated cost in integer microunits.
-    pub const fn provider_cost_microunits(self) -> u64 {
-        self.provider_cost_microunits
-    }
-    /// Responses that supplied normalized usage.
-    pub const fn usage_observations(self) -> u32 {
-        self.usage_observations
-    }
-    /// Elapsed milliseconds at the latest effect boundary.
-    pub const fn elapsed_millis(self) -> u64 {
-        self.elapsed_millis
-    }
-    /// Current regular-file bytes beneath the workspace, excluding Git object storage.
-    pub const fn workspace_bytes(self) -> u64 {
-        self.workspace_bytes
-    }
-    /// Positive workspace growth since this product-run attempt began.
-    pub const fn workspace_growth_bytes(self) -> u64 {
-        self.workspace_growth_bytes
-    }
-    /// Highest resident-memory observation at a completed effect boundary.
-    pub const fn peak_rss_bytes(self) -> u64 {
-        self.peak_rss_bytes
-    }
 }
 
 /// Concrete product-run phase emitted to the daemon.
@@ -168,10 +107,21 @@ pub struct ProductRunUpdate {
 /// Synchronous observer for a completed effect boundary.
 pub type RunObserver = Arc<dyn Fn(ProductRunUpdate) + Send + Sync>;
 
+/// Exact workspace object kind presented to a host checkpoint boundary before mutation.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum WorkspaceMutationKind {
+    /// A regular file will be created, replaced, or removed.
+    File,
+    /// An already-verified empty directory will be removed.
+    EmptyDirectory,
+}
+
 /// Live daemon-owned conversation supplied to model turns.
 pub trait ConversationView: Send + Sync {
-    // Live provider interaction is an ordinary-build effect, like the developer loop itself.
-    // The verification projection retains only the conversation data needed by composition.
+    /// Whether media is supplied only through the revisioned input port.
+    fn uses_explicit_media(&self) -> bool {
+        false
+    }
     /// Monotonic revision incremented whenever the user adds context.
     fn revision(&self) -> u64;
     /// Latest revision actually incorporated by a model, not merely received.
@@ -180,6 +130,47 @@ pub trait ConversationView: Send + Sync {
     }
     /// Human-readable chronological transcript for the next model turn.
     fn render(&self) -> String;
+    /// Stable context safe to copy into a role's fixed prompt.
+    fn stable_request_context(&self) -> String {
+        self.render()
+    }
+    /// Current hard relative paths narrowed by explicit leave-alone review constraints.
+    fn protected_paths(&self) -> Vec<PathBuf> {
+        Vec::new()
+    }
+    /// Latest host-intersected execution capabilities. Legacy embedders retain their prior
+    /// behavior; governed hosts override this with a live, fail-closed durable snapshot.
+    fn effective_permissions(&self) -> HostPermissions {
+        HostPermissions::all()
+    }
+    /// Whether the currently pending typed review feedback permits an implementation handoff.
+    fn permits_pipeline_handoff(&self) -> bool {
+        true
+    }
+    /// Durably captures one exact workspace-relative target before its first owned mutation.
+    ///
+    /// # Errors
+    /// Returns a redaction-safe reason when the host cannot publish an exact durable before-image.
+    fn checkpoint_before_workspace_mutation(
+        &self,
+        _relative_path: &Path,
+        _kind: WorkspaceMutationKind,
+    ) -> Result<(), String> {
+        Ok(())
+    }
+    /// Durably seals a checkpoint with the exact postimage produced by the owned tool.
+    /// Hosts without rewind support retain the same optional callback as ordinary builds.
+    ///
+    /// # Errors
+    /// Returns a redaction-safe reason when the owned postimage cannot be durably recorded.
+    fn seal_workspace_mutation_checkpoint(
+        &self,
+        _relative_path: &Path,
+        _kind: WorkspaceMutationKind,
+        _owned_postchange: crate::control::CheckpointFileVersion,
+    ) -> Result<(), String> {
+        Ok(())
+    }
 }
 
 /// Explicit provider instances for the three orchestration roles.
@@ -213,6 +204,8 @@ impl ProductDeliveryScope {
 
 /// Fully resolved daemon input for one product run.
 pub struct ProductRunInput {
+    /// Caller-resolved managed or in-place delivery boundary.
+    pub workspace_kind: crate::ProductWorkspaceKind,
     /// Stable run identity.
     pub run_id: RunId,
     /// Stable managed-workspace lineage supplied by the daemon authority boundary.

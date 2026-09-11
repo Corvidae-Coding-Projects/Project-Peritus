@@ -157,7 +157,7 @@ impl CompatibleProfile {
     /// Rejects wrong dialects, discovery-only claims, unknown capabilities, unsupported features,
     /// or provider-side retention/resume/cancellation guarantees.
     pub fn responses(provider: ProviderProfile) -> Result<Self, ProviderCoreError> {
-        validate(&provider, WireDialect::CompatibleResponses)?;
+        validate(&provider, WireDialect::CompatibleResponses, false)?;
         let contract = CompatibleContract::responses(&provider);
         Ok(Self { provider, contract })
     }
@@ -169,7 +169,17 @@ impl CompatibleProfile {
     /// Rejects wrong dialects, discovery-only claims, unknown capabilities, unsupported features,
     /// or provider-side retention/resume/cancellation guarantees.
     pub fn chat_completions(provider: ProviderProfile) -> Result<Self, ProviderCoreError> {
-        validate(&provider, WireDialect::CompatibleChatCompletions)?;
+        validate(&provider, WireDialect::CompatibleChatCompletions, false)?;
+        let contract = CompatibleContract::chat(&provider);
+        Ok(Self { provider, contract })
+    }
+
+    /// Binds a named hosted Chat contract that preserves provider-returned reasoning replay.
+    ///
+    /// # Errors
+    /// Rejects unsupported features; effort controls are not implied by replay support.
+    pub fn hosted_chat_completions(provider: ProviderProfile) -> Result<Self, ProviderCoreError> {
+        validate(&provider, WireDialect::CompatibleChatCompletions, true)?;
         let contract = CompatibleContract::chat(&provider);
         Ok(Self { provider, contract })
     }
@@ -211,7 +221,11 @@ impl CompatibleProfile {
     }
 }
 
-fn validate(profile: &ProviderProfile, dialect: WireDialect) -> Result<(), ProviderCoreError> {
+fn validate(
+    profile: &ProviderProfile,
+    dialect: WireDialect,
+    allow_replay: bool,
+) -> Result<(), ProviderCoreError> {
     if profile.dialect() != dialect
         || profile.provenance() == CapabilityProvenance::Discovered
         || profile.output_limit_enforcement() != OutputLimitEnforcement::ProviderEnforced
@@ -226,7 +240,9 @@ fn validate(profile: &ProviderProfile, dialect: WireDialect) -> Result<(), Provi
     }
     for (capability, state) in profile.capabilities().iter() {
         if state == CapabilityState::Unknown
-            || state == CapabilityState::Supported && !supported_capability(capability)
+            || state == CapabilityState::Supported
+                && !supported_capability(capability)
+                && !(allow_replay && capability == Capability::ReasoningReplay)
         {
             return Err(error::configuration(
                 "compatible profile contains an unknown or unmapped capability",

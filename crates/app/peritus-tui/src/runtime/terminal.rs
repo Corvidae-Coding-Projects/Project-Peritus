@@ -12,62 +12,104 @@ use std::{
 
 use crossterm::{
     cursor::{Hide, Show},
-    event::{self, DisableBracketedPaste, EnableBracketedPaste, Event},
+    event::{
+        self, DisableBracketedPaste, DisableMouseCapture, EnableBracketedPaste, EnableMouseCapture,
+        Event,
+    },
     execute,
     terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
 };
 use ratatui::{Terminal, backend::CrosstermBackend};
 use tokio::sync::mpsc;
 
-use crate::{TuiError, model::AppModel, render};
+use crate::{TerminalTitle, TuiError, model::AppModel, render};
 
 const INPUT_POLL: Duration = Duration::from_millis(100);
 
 pub(super) struct TerminalOwner {
     terminal: Terminal<CrosstermBackend<Stdout>>,
     active: bool,
+    title: TerminalTitle,
 }
 
 impl TerminalOwner {
     pub(super) fn enter() -> Result<Self, TuiError> {
+        let title = TerminalTitle::acquire()?;
         enable_raw_mode()?;
         let mut stdout = io::stdout();
-        if let Err(error) = execute!(stdout, EnterAlternateScreen, EnableBracketedPaste, Hide) {
+        if let Err(error) =
+            execute!(stdout, EnterAlternateScreen, EnableBracketedPaste, EnableMouseCapture, Hide)
+        {
+            let _ = execute!(
+                io::stdout(),
+                Show,
+                DisableMouseCapture,
+                DisableBracketedPaste,
+                LeaveAlternateScreen
+            );
             let _ = disable_raw_mode();
             return Err(TuiError::Io(error));
         }
         match Terminal::new(CrosstermBackend::new(stdout)) {
-            Ok(mut terminal) => {
-                terminal.clear()?;
-                Ok(Self { terminal, active: true })
+            Ok(terminal) => {
+                let mut owner = Self { terminal, active: true, title };
+                owner.terminal.clear()?;
+                Ok(owner)
             }
             Err(error) => {
                 let mut stdout = io::stdout();
-                let _ = execute!(stdout, Show, DisableBracketedPaste, LeaveAlternateScreen);
+                let _ = execute!(
+                    stdout,
+                    Show,
+                    DisableMouseCapture,
+                    DisableBracketedPaste,
+                    LeaveAlternateScreen
+                );
                 let _ = disable_raw_mode();
                 Err(TuiError::Io(error))
             }
         }
     }
 
-    pub(super) fn draw(&mut self, model: &AppModel) -> Result<(), TuiError> {
-        self.terminal.draw(|frame| render::draw(frame, model))?;
+    pub(super) fn draw(&mut self, model: &mut AppModel) -> Result<(), TuiError> {
+        self.terminal.draw(|frame| {
+            model.chat.viewport = Some(frame.area());
+            render::draw(frame, model);
+        })?;
         Ok(())
     }
 
     pub(super) fn suspend(&mut self) -> Result<(), TuiError> {
         self.terminal.show_cursor()?;
-        execute!(self.terminal.backend_mut(), Show, DisableBracketedPaste, LeaveAlternateScreen)?;
+        execute!(
+            self.terminal.backend_mut(),
+            Show,
+            DisableMouseCapture,
+            DisableBracketedPaste,
+            LeaveAlternateScreen
+        )?;
         disable_raw_mode()?;
         self.active = false;
         Ok(())
     }
 
     pub(super) fn resume(&mut self) -> Result<(), TuiError> {
+        self.title.activate()?;
         enable_raw_mode()?;
-        if let Err(error) =
-            execute!(self.terminal.backend_mut(), EnterAlternateScreen, EnableBracketedPaste, Hide)
-        {
+        if let Err(error) = execute!(
+            self.terminal.backend_mut(),
+            EnterAlternateScreen,
+            EnableBracketedPaste,
+            EnableMouseCapture,
+            Hide
+        ) {
+            let _ = execute!(
+                io::stdout(),
+                Show,
+                DisableMouseCapture,
+                DisableBracketedPaste,
+                LeaveAlternateScreen
+            );
             let _ = disable_raw_mode();
             return Err(TuiError::Io(error));
         }
@@ -86,6 +128,7 @@ impl Drop for TerminalOwner {
         let _ = execute!(
             self.terminal.backend_mut(),
             Show,
+            DisableMouseCapture,
             DisableBracketedPaste,
             LeaveAlternateScreen
         );

@@ -32,9 +32,13 @@ pub(super) fn setup(
     terminal.line("Credential captured. Saving it to the operating-system credential store…")?;
     let draft = DirectProviderDraft::new(kind, endpoint, model, protocol, header);
     terminal.line("Discovering available models from this provider…")?;
-    let model = super::models::choose(terminal, draft.discover_models(&credential))?;
-    let profile = draft.with_model(model).store(&credential)?;
-    terminal.line(&format!("{} is configured.", kind.label()))?;
+    let discovered = draft.discover_models(&credential);
+    let (model, protocol) = super::models::choose_direct(terminal, kind, discovered)?;
+    let draft = draft.with_model(model);
+    let draft = if let Some(protocol) = protocol { draft.with_protocol(protocol) } else { draft };
+    let profile = draft.store(&credential)?;
+    terminal.line(&format!("{} is configured. Connection not yet tested.", kind.label()))?;
+    super::connection::offer(terminal, &profile)?;
     Ok(profile)
 }
 
@@ -54,6 +58,7 @@ fn settings(
             None,
         )),
         ProviderKind::CompatibleEndpoint => compatible_settings(terminal),
+        _ if kind.hosted_service().is_some() => Ok((None, String::new(), None, None)),
         _ => Err(LauncherError::Interaction(
             "the selected provider does not use direct credential setup".to_owned(),
         )),
@@ -64,10 +69,10 @@ type DirectSettings = (Option<String>, String, Option<CompatibleProtocol>, Optio
 
 fn compatible_settings(terminal: &mut Terminal<'_>) -> Result<DirectSettings, LauncherError> {
     let endpoint = required(terminal, "Endpoint URL: ")?;
-    terminal.line("Protocol: 1. Responses (default)  2. Chat Completions")?;
+    terminal.line("Protocol: 1. Responses  2. Chat Completions")?;
     let protocol = loop {
-        match terminal.prompt("Protocol [1]: ")?.as_str() {
-            "" | "1" => break CompatibleProtocol::Responses,
+        match terminal.prompt("Protocol: ")?.as_str() {
+            "1" => break CompatibleProtocol::Responses,
             "2" => break CompatibleProtocol::ChatCompletions,
             _ => terminal.line("Choose 1 or 2.")?,
         }

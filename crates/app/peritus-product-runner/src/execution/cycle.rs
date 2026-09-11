@@ -195,6 +195,22 @@ pub(super) fn inspect_gates(
         accounting,
     )?;
     check_cancelled(input)?;
+    let permissions = input.conversation.effective_permissions();
+    if ![
+        crate::control::PermissionCapability::Read,
+        crate::control::PermissionCapability::Write,
+        crate::control::PermissionCapability::Process,
+        crate::control::PermissionCapability::Network,
+    ]
+    .into_iter()
+    .all(|capability| permissions.allows(capability))
+    {
+        return Err(ProductRunnerError::new(
+            ProductRunnerErrorKind::InvalidPrecondition,
+            "run exact-target gates",
+            "execution permissions changed before gate launch; inspect /permissions",
+        ));
+    }
     let conversation = input.conversation.render();
     let effect_requirement = crate::delivery_requirement::ExternalEffectRequirement::from_task(
         input.delivery_scope,
@@ -209,6 +225,9 @@ pub(super) fn inspect_gates(
         &conversation,
     )?;
     let mut gate_output = gate_report.output.clone();
+    if input.workspace_kind.is_in_place() {
+        gate_output.insert_str(0, "In-place verification covers explicitly tracked task files, not a whole-folder inventory or undeclared command effects.\n\n");
+    }
     gate_output.push('\n');
     gate_output.push_str(&obligations.render());
     if input.delivery_scope.allows_external_effects()

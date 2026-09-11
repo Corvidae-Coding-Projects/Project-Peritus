@@ -7,11 +7,29 @@ use super::{
 use crate::{
     MAX_PRODUCT_ACTIVITIES, MAX_PRODUCT_MODELS, ProductActivity, ProductActivityKind,
     ProductInteractionMode, ProductInteractionRequest, ProductInteractionSnapshot,
-    ProductModelCatalog, ProductModelChoice, ProductModelInfo, ProductModelQuery,
-    ProductRoleModels,
+    ProductModelCatalog, ProductModelChoice, ProductModelEffort, ProductModelInfo,
+    ProductModelQuery, ProductRoleModels,
 };
 use peritus_codec::{CanonicalReader, CanonicalWriter, CodecError, CodecErrorKind};
 use peritus_types::ProviderProfileId;
+
+pub(super) fn write_model_update(
+    w: &mut CanonicalWriter,
+    value: &crate::ProductModelUpdate,
+) -> Result<(), CodecError> {
+    write_id(w, value.run_id().as_bytes())?;
+    write_models(w, value.models())
+}
+
+pub(super) fn read_model_update(
+    r: &mut CanonicalReader<'_>,
+    efforts: bool,
+) -> Result<crate::ProductModelUpdate, CodecError> {
+    Ok(crate::ProductModelUpdate::new(
+        read_id(r, peritus_types::RunId::new)?,
+        read_models(r, efforts)?,
+    ))
+}
 
 pub(super) fn write_request(
     w: &mut CanonicalWriter,
@@ -24,10 +42,11 @@ pub(super) fn write_request(
 
 pub(super) fn read_request(
     r: &mut CanonicalReader<'_>,
+    efforts: bool,
 ) -> Result<ProductInteractionRequest, CodecError> {
     let request = product::read_run_request(r)?;
     let mode = read_mode(r)?;
-    Ok(ProductInteractionRequest::new(request, mode, read_models(r)?))
+    Ok(ProductInteractionRequest::new(request, mode, read_models(r, efforts)?))
 }
 
 fn read_mode(r: &mut CanonicalReader<'_>) -> Result<ProductInteractionMode, CodecError> {
@@ -36,26 +55,55 @@ fn read_mode(r: &mut CanonicalReader<'_>) -> Result<ProductInteractionMode, Code
         .ok_or_else(|| CodecError::at(CodecErrorKind::UnknownTag, offset))
 }
 
-fn write_models(w: &mut CanonicalWriter, models: &ProductRoleModels) -> Result<(), CodecError> {
+pub(super) fn write_models(
+    w: &mut CanonicalWriter,
+    models: &ProductRoleModels,
+) -> Result<(), CodecError> {
     for choice in [models.writer(), models.reviewer(), models.fixer()] {
         w.write_str(choice.id())?;
         w.write_option_tag(choice.manual())?;
+        if models.has_effort() {
+            w.write_u16(choice.effort().tag())?;
+        }
     }
     Ok(())
 }
 
-fn read_choice(r: &mut CanonicalReader<'_>) -> Result<ProductModelChoice, CodecError> {
+pub(super) fn read_choice(
+    r: &mut CanonicalReader<'_>,
+    efforts: bool,
+) -> Result<ProductModelChoice, CodecError> {
     let offset = r.offset();
     let id = r.read_str()?.to_owned();
     let manual = r.read_option_tag()?;
-    if id.is_empty() && !manual {
-        return Ok(ProductModelChoice::default());
-    }
-    invalid(offset, ProductModelChoice::new(id, manual))
+    let effort = if efforts {
+        let offset = r.offset();
+        ProductModelEffort::from_tag(r.read_u16()?)
+            .ok_or_else(|| CodecError::at(CodecErrorKind::UnknownTag, offset))?
+    } else {
+        ProductModelEffort::Default
+    };
+    let choice = if id.is_empty() && !manual {
+        ProductModelChoice::default()
+    } else {
+        invalid(offset, ProductModelChoice::new(id, manual))?
+    };
+    Ok(choice.with_effort(effort))
 }
 
-fn read_models(r: &mut CanonicalReader<'_>) -> Result<ProductRoleModels, CodecError> {
-    Ok(ProductRoleModels::new(read_choice(r)?, read_choice(r)?, read_choice(r)?))
+pub(super) fn read_models(
+    r: &mut CanonicalReader<'_>,
+    efforts: bool,
+) -> Result<ProductRoleModels, CodecError> {
+    let models = ProductRoleModels::new(
+        read_choice(r, efforts)?,
+        read_choice(r, efforts)?,
+        read_choice(r, efforts)?,
+    );
+    if efforts && !models.has_effort() {
+        return Err(CodecError::at(CodecErrorKind::InvalidDomainValue, r.offset()));
+    }
+    Ok(models)
 }
 
 pub(super) fn write_model_query(
@@ -102,6 +150,7 @@ pub(super) fn write_snapshot(
 
 pub(super) fn read_snapshot(
     r: &mut CanonicalReader<'_>,
+    efforts: bool,
 ) -> Result<ProductInteractionSnapshot, CodecError> {
     let offset = r.offset();
     let (snapshot, settlement) = if r.read_option_tag()? {
@@ -111,7 +160,7 @@ pub(super) fn read_snapshot(
         (product::read_snapshot(r)?, None)
     };
     let mode = read_mode(r)?;
-    let models = read_models(r)?;
+    let models = read_models(r, efforts)?;
     let received = r.read_u64()?;
     let incorporated = r.read_u64()?;
     let length = bounded_length(r, MAX_PRODUCT_ACTIVITIES)?;

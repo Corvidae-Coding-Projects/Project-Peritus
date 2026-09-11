@@ -89,19 +89,20 @@ fn daemon_test_command_keeps_every_target_feature_and_serial_execution() {
     let command = cargo_command(Path::new("."), operation, &["peritus-daemon"]);
     let arguments =
         command.get_args().map(|value| value.to_string_lossy().into_owned()).collect::<Vec<_>>();
-    assert_eq!(
-        arguments,
-        [
-            "test",
-            "--locked",
-            "--all-targets",
-            "--all-features",
-            "--package",
-            "peritus-daemon",
-            "--",
-            "--test-threads=1",
-        ]
-    );
+    let mut expected = vec![
+        "test",
+        "--locked",
+        "--all-targets",
+        "--all-features",
+        "--package",
+        "peritus-daemon",
+        "--",
+        "--test-threads=1",
+    ];
+    if cfg!(windows) {
+        expected.extend(["--skip", "product_run::tests::"]);
+    }
+    assert_eq!(arguments, expected);
 }
 
 #[test]

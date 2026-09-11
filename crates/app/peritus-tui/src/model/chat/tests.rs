@@ -5,10 +5,18 @@ use crate::{
     runtime::{ProductLaunchContext, ProductProviderOption},
 };
 use crossterm::event::Event;
+use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use peritus_app_protocol::{
     AppMessage, AppProtocolLimits, ProtocolContext, ProtocolId, ProtocolVersion,
 };
 use peritus_types::{ProviderProfileId, SessionId, WorkspaceId};
+
+mod commands;
+mod doctor;
+mod effort;
+mod model_selection;
+mod navigation;
+mod workbench;
 
 fn model() -> AppModel {
     let launch = ProductLaunchContext::new(
@@ -70,7 +78,7 @@ fn enter_selects_every_advertised_model_for_every_role() {
             // A delayed cache reply must not change which row Enter selects.
             model.accept_model_catalog(catalog.clone());
             assert!(key(&mut model, KeyCode::Enter).is_empty());
-            assert!(!model.chat.model_picker);
+            assert!(!model.chat.model_picker());
             let chosen = match role {
                 "reviewer" => model.chat.models.reviewer(),
                 "fixer" => model.chat.models.fixer(),
@@ -140,7 +148,7 @@ fn control_c_exits_idle_chat_with_or_without_a_draft() {
 fn control_c_exits_disconnected_chat_and_the_model_picker() {
     let mut model = model();
     let _ = model.update(Action::Disconnected("lost".to_owned()));
-    model.chat.model_picker = true;
+    model.chat.show_model_picker();
     let effects = model.update(Action::TerminalEvent(Event::Key(KeyEvent::new(
         KeyCode::Char('c'),
         KeyModifiers::CONTROL,
@@ -228,10 +236,49 @@ fn folder_conversation_remains_available_without_git_candidate_commands() {
     let product = model.product.as_mut().expect("product");
     product.launch = product.launch.clone().with_direct_folder(true);
     assert_eq!(model.direct_folder_chat(), Some(true));
-    for command in ["/build create a file", "/commit", "/discard", "/diff"] {
+    for command in ["/build create a file", "/commit", "/discard"] {
         assert!(model.slash_command(command).is_empty());
         assert_eq!(model.chat.mode, ProductInteractionMode::Chat);
     }
     model.paste_chat("Create the requested file here");
     assert!(key(&mut model, KeyCode::Enter).iter().any(|effect| matches!(effect, Effect::Send(AppMessage::Request(request)) if matches!(request.payload(), AppRequestPayload::Interact(value) if value.mode() == ProductInteractionMode::Chat))));
+}
+
+#[test]
+fn folder_diff_opens_observed_scoped_evidence_without_a_git_handoff() {
+    use peritus_app_protocol::{ProductRoleModels, ProductRunPhase, ProductRunSnapshot};
+    let mut model = model();
+    let product = model.product.as_mut().expect("product");
+    product.launch = product.launch.clone().with_direct_folder(true);
+    let run_id = RunId::new([0x42; 16]).expect("run");
+    model.chat.run_id = Some(run_id);
+    let snapshot = ProductRunSnapshot::new(
+        run_id,
+        WorkspaceId::new([4; 16]).expect("workspace"),
+        model.chat_providers().expect("providers"),
+        ProductRunPhase::Complete,
+        1,
+        "Update note.txt".to_owned(),
+        "Complete in place".to_owned(),
+        "--- before/note.txt\n+++ current/note.txt".to_owned(),
+        "PASS".to_owned(),
+        "Reviewed".to_owned(),
+        "Updated".to_owned(),
+    )
+    .expect("snapshot");
+    model.accept_chat(
+        ProductInteractionSnapshot::new(
+            snapshot,
+            ProductInteractionMode::Chat,
+            ProductRoleModels::default(),
+            1,
+            1,
+            Vec::new(),
+            None,
+        )
+        .expect("interaction"),
+    );
+    assert!(model.slash_command("/diff").is_empty());
+    assert_eq!(model.view, View::Diff);
+    assert!(model.slash_command("/discard").is_empty());
 }

@@ -3,7 +3,7 @@
 use std::{
     fs, io,
     os::unix::fs::{FileTypeExt, MetadataExt, PermissionsExt},
-    path::{Path, PathBuf},
+    path::Path,
 };
 
 use peritus_journal::ApplicationPrincipalKind;
@@ -20,14 +20,14 @@ pub(super) fn recover_stale(
     identity: &DaemonIdentity,
 ) -> Result<(), DaemonError> {
     let root = inspect_state_root(state_root)?;
-    let path = state_root.join(format!("{}.sock", identity.endpoint_name()));
-    match fs::symlink_metadata(&path) {
+    let location = prepare_socket_path(state_root, identity, root.uid())?;
+    match fs::symlink_metadata(location.path()) {
         Ok(metadata)
             if metadata.file_type().is_socket()
                 && metadata.uid() == root.uid()
                 && metadata.mode() & 0o777 == SOCKET_MODE =>
         {
-            fs::remove_file(&path).map_err(|error| {
+            fs::remove_file(location.path()).map_err(|error| {
                 DaemonError::with_source(
                     DaemonErrorCode::Transport,
                     DaemonRecovery::Retry,
@@ -55,7 +55,7 @@ pub(super) fn recover_stale(
 /// One Unix listener anchored to the exact socket object created at bind time.
 pub(super) struct PlatformEndpoint {
     listener: UnixListener,
-    path: PathBuf,
+    location: peritus_local_socket::PreparedSocketPath,
     device: u64,
     inode: u64,
     owner_uid: u32,
@@ -75,11 +75,12 @@ impl PlatformEndpoint {
     ) -> Result<(Self, LocalEndpointAddress), DaemonError> {
         let root = inspect_state_root(state_root)?;
         let owner_uid = root.uid();
-        let path = state_root.join(format!("{}.sock", identity.endpoint_name()));
-        refuse_existing_endpoint(&path)?;
+        let location = prepare_socket_path(state_root, identity, owner_uid)?;
+        let path = location.path();
+        refuse_existing_endpoint(path)?;
 
-        let listener = UnixListener::bind(&path).map_err(bind_error)?;
-        let created = match fs::symlink_metadata(&path) {
+        let listener = UnixListener::bind(path).map_err(bind_error)?;
+        let created = match fs::symlink_metadata(path) {
             Ok(metadata) if metadata.file_type().is_socket() && metadata.uid() == owner_uid => {
                 metadata
             }
@@ -103,9 +104,9 @@ impl PlatformEndpoint {
         };
         let device = created.dev();
         let inode = created.ino();
-        if let Err(error) = fs::set_permissions(&path, fs::Permissions::from_mode(SOCKET_MODE)) {
+        if let Err(error) = fs::set_permissions(path, fs::Permissions::from_mode(SOCKET_MODE)) {
             drop(listener);
-            remove_owned_socket(&path, device, inode);
+            remove_owned_socket(path, device, inode);
             return Err(DaemonError::with_source(
                 DaemonErrorCode::Transport,
                 DaemonRecovery::Operator,
@@ -115,7 +116,7 @@ impl PlatformEndpoint {
             ));
         }
 
-        let socket = match fs::symlink_metadata(&path) {
+        let socket = match fs::symlink_metadata(path) {
             Ok(metadata) => metadata,
             Err(error) => {
                 drop(listener);
@@ -135,15 +136,16 @@ impl PlatformEndpoint {
             || socket.ino() != inode
         {
             drop(listener);
-            remove_owned_socket(&path, device, inode);
+            remove_owned_socket(path, device, inode);
             return Err(security_error(
                 "validate Unix endpoint identity",
                 "new Unix endpoint is not a user-owned mode-0600 socket",
             ));
         }
 
-        let endpoint = Self { listener, path: path.clone(), device, inode, owner_uid };
-        Ok((endpoint, LocalEndpointAddress::Unix(path)))
+        let address = LocalEndpointAddress::Unix(path.to_path_buf());
+        let endpoint = Self { listener, location, device, inode, owner_uid };
+        Ok((endpoint, address))
     }
 
     pub(super) async fn accept(&self) -> Result<AuthenticatedConnection, DaemonError> {
@@ -158,8 +160,8 @@ impl PlatformEndpoint {
         })?;
         let credentials = stream.peer_cred().map_err(|error| {
             DaemonError::with_source(
-                DaemonErrorCode::Transport,
-                DaemonRecovery::Retry,
+                DaemonErrorCode::Unauthorized,
+                DaemonRecovery::CorrectRequest,
                 "authenticate Unix peer",
                 "accepted Unix peer credentials are unavailable",
                 error,
@@ -181,7 +183,7 @@ impl PlatformEndpoint {
 
 impl Drop for PlatformEndpoint {
     fn drop(&mut self) {
-        remove_owned_socket(&self.path, self.device, self.inode);
+        remove_owned_socket(self.location.path(), self.device, self.inode);
     }
 }
 
@@ -229,6 +231,23 @@ fn refuse_existing_endpoint(path: &Path) -> Result<(), DaemonError> {
     }
 }
 
+fn prepare_socket_path(
+    state_root: &Path,
+    identity: &DaemonIdentity,
+    owner_uid: u32,
+) -> Result<peritus_local_socket::PreparedSocketPath, DaemonError> {
+    let original = state_root.join(format!("{}.sock", identity.endpoint_name()));
+    peritus_local_socket::PreparedSocketPath::prepare(&original, owner_uid).map_err(|error| {
+        DaemonError::with_source(
+            DaemonErrorCode::Transport,
+            DaemonRecovery::Operator,
+            "prepare Unix endpoint path",
+            format!("protected Unix endpoint location could not be prepared: {error}"),
+            error,
+        )
+    })
+}
+
 fn bind_error(error: io::Error) -> DaemonError {
     if error.kind() == io::ErrorKind::AddrInUse {
         DaemonError::with_source(
@@ -243,7 +262,7 @@ fn bind_error(error: io::Error) -> DaemonError {
             DaemonErrorCode::Transport,
             DaemonRecovery::Operator,
             "bind Unix endpoint",
-            "Unix endpoint could not be created",
+            format!("Unix endpoint could not be created: {error}"),
             error,
         )
     }

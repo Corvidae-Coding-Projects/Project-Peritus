@@ -1,8 +1,6 @@
 //! Bounded content bytes and semantic content classes.
 
 use crate::{ContextError, ContextErrorKind};
-#[cfg(not(verus_only))]
-use peritus_codec::sha256;
 use peritus_types::Sha256Digest;
 use vstd::prelude::*;
 
@@ -173,23 +171,3 @@ impl ContextContent {
 }
 
 } // verus!
-
-/// Validates content bounds and its exact SHA-256 digest.
-///
-/// SHA-256 is the crate's audited H-class boundary; all bounds and metadata validation remain in
-/// Verus code. This is the only public way to construct [`ContextContent`].
-///
-/// # Errors
-///
-/// Returns a typed error for empty, oversized, or digest-mismatched content.
-#[cfg(not(verus_only))]
-pub fn bind_context_content(
-    bytes: Vec<u8>,
-    digest: Sha256Digest,
-    limits: ContextLimits,
-) -> Result<ContextContent, ContextError> {
-    if sha256(bytes.as_slice()) != digest {
-        return Err(ContextError::plain(ContextErrorKind::DigestMismatch));
-    }
-    ContextContent::from_digest_checked(bytes, digest, limits)
-}

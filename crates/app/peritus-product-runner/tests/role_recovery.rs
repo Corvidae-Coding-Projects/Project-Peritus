@@ -90,6 +90,7 @@ mod tests {
 
             let outcome = ProductRunner::run(
                 ProductRunInput {
+                    workspace_kind: peritus_product_runner::ProductWorkspaceKind::Managed,
                     run_id,
                     workspace_id: WorkspaceId::new([0xa4; 16]).expect("workspace ID"),
                     workspace_root: repository.path().to_owned(),

@@ -57,6 +57,18 @@ async fn question_scenario() {
         .query_interaction(ProductRunConversationQuery::new(run_id))
         .expect("chat observation");
     assert_eq!(snapshot.incorporated(), 1);
+    {
+        let requests = writer.requests.lock().expect("observed provider requests");
+        assert!(
+            requests[0].messages().iter().flat_map(peritus_model_protocol::Message::content).any(
+                |block| {
+                    matches!(block, peritus_model_protocol::ContentBlock::Text(text)
+                if text.expose_for_wire().contains("Before your first tool call")
+                    && text.expose_for_wire().contains("final response must still follow"))
+                }
+            )
+        );
+    }
     assert!(
         snapshot
             .activities()
@@ -86,6 +98,151 @@ async fn question_scenario() {
     assert_eq!(restored.activities, snapshot.activities());
     pending_idle_input_is_restarted_without_claiming_prior_incorporation(&service, &writer, run_id)
         .await;
+    service.shutdown(Duration::from_secs(5)).await;
+}
+
+#[test]
+fn public_start_message_is_visible_before_a_stalled_provider_finishes() {
+    block_on(async {
+        let repository = repository();
+        let state = tempfile::tempdir().expect("state");
+        let writer = stalled(0x61, "waiting-writer");
+        let reviewer = scripted(0x62, "review", Vec::new());
+        let fixer = scripted(0x63, "fix", Vec::new());
+        let workspace_id = WorkspaceId::new([0x64; 16]).expect("workspace");
+        let run_id = RunId::new([0x65; 16]).expect("run");
+        let service =
+            service(state.path(), repository.path(), workspace_id, [&writer, &reviewer, &fixer]);
+        let request = ProductRunRequest::new(
+            run_id,
+            workspace_id,
+            ProductProviderSelection::new(
+                writer.profile.profile_id(),
+                reviewer.profile.profile_id(),
+                fixer.profile.profile_id(),
+            ),
+            "Explain this repository".to_owned(),
+        )
+        .expect("request");
+        service
+            .interact(ProductInteractionRequest::new(
+                request,
+                ProductInteractionMode::Chat,
+                ProductRoleModels::default(),
+            ))
+            .await
+            .expect("start");
+        let snapshot = tokio::time::timeout(Duration::from_secs(5), async {
+            loop {
+                let snapshot = service
+                    .query_interaction(ProductRunConversationQuery::new(run_id))
+                    .expect("live snapshot");
+                if snapshot.incorporated() == 1 {
+                    break snapshot;
+                }
+                tokio::task::yield_now().await;
+            }
+        })
+        .await
+        .expect("public receipt before provider completion");
+        assert!(!snapshot.snapshot().phase().terminal());
+        assert!(
+            snapshot
+                .activities()
+                .iter()
+                .any(|activity| activity.text().starts_with("I'm working on your reply."))
+        );
+        assert!(
+            snapshot
+                .activities()
+                .iter()
+                .all(|activity| activity.kind() != ProductActivityKind::Assistant)
+        );
+        service
+            .control(ProductRunControl::new(run_id, ProductRunControlAction::Cancel))
+            .await
+            .expect("stop");
+        assert_eq!(wait_for_terminal(&service, run_id).await.phase(), ProductRunPhase::Cancelled);
+        service.shutdown(Duration::from_secs(5)).await;
+    });
+}
+
+#[test]
+fn interactive_build_narrates_stages_without_changing_terminal_contracts() {
+    block_on(pipeline_scenario(ProductInteractionMode::Build));
+}
+
+#[test]
+fn chat_hands_off_to_the_existing_pipeline_with_the_selected_independent_reviewer() {
+    block_on(pipeline_scenario(ProductInteractionMode::Chat));
+}
+
+async fn pipeline_scenario(mode: ProductInteractionMode) {
+    let repository = repository();
+    let state = tempfile::tempdir().expect("state");
+    let mut responses = Vec::new();
+    if mode == ProductInteractionMode::Chat {
+        responses.push(named_tool_response("run_pipeline", b"{}".to_vec()));
+    }
+    responses.extend(complete_writer(CORRECT));
+    let writer = scripted(0x81, "writer", responses);
+    let reviewer = scripted(0x82, "reviewer", clean_review());
+    let fixer = scripted(0x83, "fixer", Vec::new());
+    let workspace_id = WorkspaceId::new([0x84; 16]).expect("workspace");
+    let run_id = RunId::new([0x85; 16]).expect("run");
+    let service =
+        service(state.path(), repository.path(), workspace_id, [&writer, &reviewer, &fixer]);
+    let request = ProductRunRequest::new(
+        run_id,
+        workspace_id,
+        ProductProviderSelection::new(
+            writer.profile.profile_id(),
+            reviewer.profile.profile_id(),
+            fixer.profile.profile_id(),
+        ),
+        "Add a tested answer function that returns 42.".to_owned(),
+    )
+    .expect("request");
+    service
+        .interact(ProductInteractionRequest::new(request, mode, ProductRoleModels::default()))
+        .await
+        .expect("start build");
+    let terminal = wait_for_terminal(&service, run_id).await;
+    assert_eq!(terminal.phase(), ProductRunPhase::Complete, "{}", terminal.summary());
+    assert_eq!(reviewer.requests.lock().expect("review requests").len(), 3);
+    assert!(fixer.requests.lock().expect("no fixes needed").is_empty());
+    let expected_requests = if mode == ProductInteractionMode::Chat { 12 } else { 11 };
+    assert_eq!(
+        service
+            .inner
+            .records
+            .read()
+            .expect("records")
+            .get(&run_id)
+            .expect("record")
+            .progress
+            .model_requests,
+        expected_requests,
+        "Chat handoff and pipeline must share one accounting total"
+    );
+    assert_eq!(
+        terminal.deliverable().expect("qualified candidate").qualification(),
+        CandidateStage::Qualified
+    );
+    let snapshot =
+        service.query_interaction(ProductRunConversationQuery::new(run_id)).expect("conversation");
+    let public = snapshot
+        .activities()
+        .iter()
+        .map(peritus_app_protocol::ProductActivity::text)
+        .collect::<Vec<_>>();
+    for message in [
+        "I'm moving on to the implementation.",
+        "The changes are ready for checks. I'm verifying them now.",
+        "The candidate is ready for independent review. I'll check it against your request.",
+    ] {
+        assert!(public.contains(&message), "missing stage: {message}; {public:?}");
+    }
     service.shutdown(Duration::from_secs(5)).await;
 }
 

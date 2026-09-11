@@ -28,6 +28,14 @@ struct CheckpointEntry {
 }
 
 impl WorkspaceCheckpoint {
+    pub(crate) fn scoped(root: &Path, paths: Vec<PathBuf>) -> Result<Self, ProductRunnerError> {
+        let entries = paths
+            .into_iter()
+            .map(|path| checkpoint_entry(root, path))
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(Self { head: "in-place-task-files-v1".to_owned(), entries })
+    }
+
     /// Captures HEAD and streams every changed file into a digest without retaining its contents.
     pub fn capture(root: &Path) -> Result<Self, ProductRunnerError> {
         let baseline = CandidateBaseline::capture(root)?;

@@ -1,0 +1,20 @@
+=== PERITUS GATE RECORD ===
+{"argv": ["cargo", "verus", "verify", "--package", "peritus-migrations", "--all-features", "--locked", "--check-toolchain", "--fwd-verus-args-to", "roots", "--", "--no-cheating", "--rlimit", "20"], "command": "cargo verus verify --package peritus-migrations --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20", "command_exit_code": 0, "custody_error": null, "duration_seconds": 0.89783, "finished_at": "2026-09-10T01:50:29.811489Z", "kind": "verus-verify", "owning_crate": "peritus-migrations", "result": "passed", "schema": "peritus.formal-package-gate-output", "schema_version": 1, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "started_at": "2026-09-10T01:50:28.952898Z", "verification_class": "H"}
+=== STDOUT LOG ===
+=== PERITUS CUSTODY HEADER ===
+{"argv": ["cargo", "verus", "verify", "--package", "peritus-migrations", "--all-features", "--locked", "--check-toolchain", "--fwd-verus-args-to", "roots", "--", "--no-cheating", "--rlimit", "20"], "kind": "verus-verify", "owning_crate": "peritus-migrations", "schema": "peritus.formal-package-evidence-stream", "schema_version": 1, "sequence": 44, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "stream": "stdout", "verification_class": "H"}
+=== COMMAND OUTPUT ===
+verification results:: 4 verified, 0 errors
+
+=== PERITUS CUSTODY FOOTER ===
+{"command_exit_code": 0, "execution_error": null, "finished_at": "2026-09-10T01:50:29.811489Z"}
+
+=== STDERR LOG ===
+=== PERITUS CUSTODY HEADER ===
+{"argv": ["cargo", "verus", "verify", "--package", "peritus-migrations", "--all-features", "--locked", "--check-toolchain", "--fwd-verus-args-to", "roots", "--", "--no-cheating", "--rlimit", "20"], "kind": "verus-verify", "owning_crate": "peritus-migrations", "schema": "peritus.formal-package-evidence-stream", "schema_version": 1, "sequence": 44, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "stream": "stderr", "verification_class": "H"}
+=== COMMAND OUTPUT ===
+    Checking peritus-migrations v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/state/peritus-migrations)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.63s
+
+=== PERITUS CUSTODY FOOTER ===
+{"command_exit_code": 0, "execution_error": null, "finished_at": "2026-09-10T01:50:29.811489Z"}

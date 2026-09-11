@@ -98,6 +98,19 @@ pub async fn run_connection(
                                 .await?;
                             return Ok(());
                         }
+                        if request
+                            .payload()
+                            .required_workbench_feature()
+                            .is_some_and(|feature| !context.supports(feature))
+                        {
+                            write_error(
+                                &mut frames,
+                                &request,
+                                AppErrorCode::MissingRequiredFeature,
+                            )
+                            .await?;
+                            continue;
+                        }
                         let shutdown_events = handle_request(
                             &mut frames,
                             &authority,

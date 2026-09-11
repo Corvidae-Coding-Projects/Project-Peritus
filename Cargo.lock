@@ -3,6 +3,12 @@
 version = 4
 
 [[package]]
+name = "adler2"
+version = "2.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "320119579fcad9c21884f5c4861d16174d0e06250625266f50fe6898340abefa"
+
+[[package]]
 name = "aes"
 version = "0.8.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -36,6 +42,12 @@ name = "allocator-api2"
 version = "0.2.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "683d7910e743518b0e34f1186f92494becacb047c7b6bf616c96772180fef923"
+
+[[package]]
+name = "ambient-authority"
+version = "0.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e9d4ee0d472d1cd2e28c97dfa124b3d8d992e10eb0a035f33f5d12e3a177ba3b"
 
 [[package]]
 name = "anes"
@@ -318,16 +330,70 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "64fa3c856b712db6612c019f14756e64e4bcea13337a6b33b696333a9eaa2d06"
 
 [[package]]
+name = "bytemuck"
+version = "1.25.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "95832e849adfb21180ccb6826a99da14e5d266ae5c2e668e1602cf234f153797"
+
+[[package]]
 name = "byteorder"
 version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1fd0f2584146f6f2ef48085050886acf353beff7305ebd1ae69500e27c67f64b"
 
 [[package]]
+name = "byteorder-lite"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8f1fe948ff07f4bd06c30984e69f5b4899c516a3ef74f34df92a2df2ab535495"
+
+[[package]]
 name = "bytes"
 version = "1.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fc652a48c352aef3ea3aed32080501cf3ef6ed5da78602a020c991775b0aff04"
+
+[[package]]
+name = "cap-fs-ext"
+version = "4.0.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "56ff379b70af8e08307a8f65e7040c7301cb4a572538ade16b4984f0da77847f"
+dependencies = [
+ "cap-primitives",
+ "cap-std",
+ "io-lifetimes 3.0.1",
+ "windows-sys 0.61.2",
+]
+
+[[package]]
+name = "cap-primitives"
+version = "4.0.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8b5f74729fd2f44701d1a8eb47e906cdb3ccd9ec0f02baad85a744b791940b18"
+dependencies = [
+ "ambient-authority",
+ "fs-set-times",
+ "io-extras",
+ "io-lifetimes 3.0.1",
+ "ipnet",
+ "maybe-owned",
+ "rustix",
+ "rustix-linux-procfs",
+ "windows-sys 0.61.2",
+ "winx",
+]
+
+[[package]]
+name = "cap-std"
+version = "4.0.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c1ec78e242cfa2cfe276807ac2ecc00315a6c97786977414bcd1c3963b6c91b8"
+dependencies = [
+ "cap-primitives",
+ "io-extras",
+ "io-lifetimes 3.0.1",
+ "rustix",
+]
 
 [[package]]
 name = "cast"
@@ -466,6 +532,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "color_quant"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3d7b894f5411737b7867f4827955924d7c254fc9f4d91a6aad6b097804b1018b"
+
+[[package]]
 name = "combine"
 version = "4.6.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -545,6 +617,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8b2a41393f66f16b0823bb79094d54ac5fbd34ab292ddafb9a0456ac9f87d201"
 dependencies = [
  "libc",
+]
+
+[[package]]
+name = "crc32fast"
+version = "1.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8498c871161e1742aaa9d52551b2d6ebdd4c3d45a3be423e3728f33b955be550"
+dependencies = [
+ "cfg-if",
 ]
 
 [[package]]
@@ -894,6 +975,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "da7c62ceae207dd37ea5b845da6a0696c799f85e97da1ab5b7910be3c1c80223"
 
 [[package]]
+name = "fdeflate"
+version = "0.3.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1e6853b52649d4ac5c0bd02320cddc5ba956bdb407c4b75a2c6b75bf51500f8c"
+dependencies = [
+ "simd-adler32",
+]
+
+[[package]]
 name = "fiat-crypto"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -917,6 +1007,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d45db016d36b838f563236e9193d0ee6ce38f3f68b6c94e914b4929c96bbb890"
 
 [[package]]
+name = "flate2"
+version = "1.1.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6e634e2e0ebac1ee034020da1ca582e17ffe4e0f5e985823721e168928136dcb"
+dependencies = [
+ "crc32fast",
+ "miniz_oxide 0.9.1",
+ "zlib-rs",
+]
+
+[[package]]
 name = "fnv"
 version = "1.0.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -935,6 +1036,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cb4cb245038516f5f85277875cdaa4f7d2c9a0fa0468de06ed190163b1581fcf"
 dependencies = [
  "percent-encoding",
+]
+
+[[package]]
+name = "fs-set-times"
+version = "0.20.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "94e7099f6313ecacbe1256e8ff9d617b75d1bcb16a6fddef94866d225a01a14a"
+dependencies = [
+ "io-lifetimes 2.0.4",
+ "rustix",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -1061,6 +1173,16 @@ dependencies = [
  "r-efi",
  "rand_core",
  "wasm-bindgen",
+]
+
+[[package]]
+name = "gif"
+version = "0.14.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ee8cfcc411d9adbbaba82fb72661cc1bcca13e8bba98b364e62b2dba8f960159"
+dependencies = [
+ "color_quant",
+ "weezl",
 ]
 
 [[package]]
@@ -1387,6 +1509,34 @@ dependencies = [
 ]
 
 [[package]]
+name = "image"
+version = "0.25.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "85ab80394333c02fe689eaf900ab500fbd0c2213da414687ebf995a65d5a6104"
+dependencies = [
+ "bytemuck",
+ "byteorder-lite",
+ "color_quant",
+ "gif",
+ "image-webp",
+ "moxcms",
+ "num-traits",
+ "png",
+ "zune-core",
+ "zune-jpeg",
+]
+
+[[package]]
+name = "image-webp"
+version = "0.2.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "525e9ff3e1a4be2fbea1fdf0e98686a6d98b4d8f937e1bf7402245af1909e8c3"
+dependencies = [
+ "byteorder-lite",
+ "quick-error",
+]
+
+[[package]]
 name = "indexmap"
 version = "2.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1427,6 +1577,28 @@ dependencies = [
  "quote",
  "syn 3.0.3",
 ]
+
+[[package]]
+name = "io-extras"
+version = "0.19.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "20fd6de4ccfcc187e38bc21cfa543cb5a302cb86a8b114eb7f0bf0dc9f8ac00f"
+dependencies = [
+ "io-lifetimes 3.0.1",
+ "windows-sys 0.52.0",
+]
+
+[[package]]
+name = "io-lifetimes"
+version = "2.0.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "06432fb54d3be7964ecd3649233cddf80db2832f47fec34c01f65b3d9d774983"
+
+[[package]]
+name = "io-lifetimes"
+version = "3.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2f0fb0570afe1fed943c5c3d4102d5358592d8625fda6a0007fdbe65a92fba96"
 
 [[package]]
 name = "ipnet"
@@ -1681,6 +1853,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "maybe-owned"
+version = "0.3.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4facc753ae494aeb6e3c22f839b158aebd4f9270f55cd3c79906c45476c47ab4"
+
+[[package]]
 name = "memchr"
 version = "2.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1696,6 +1874,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "miniz_oxide"
+version = "0.8.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1fa76a2c86f704bdb222d66965fb3d63269ce38518b83cb0575fca855ebb6316"
+dependencies = [
+ "adler2",
+ "simd-adler32",
+]
+
+[[package]]
+name = "miniz_oxide"
+version = "0.9.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b63fbc4a50860e98e7b2aa7804ded1db5cbc3aff9193adaff57a6931bf7c4b4c"
+dependencies = [
+ "adler2",
+ "simd-adler32",
+]
+
+[[package]]
 name = "mio"
 version = "1.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1705,6 +1903,16 @@ dependencies = [
  "log",
  "wasi",
  "windows-sys 0.61.2",
+]
+
+[[package]]
+name = "moxcms"
+version = "0.8.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bb85c154ba489f01b25c0d36ae69a87e4a1c73a72631fc6c0eb6dde34a73e44b"
+dependencies = [
+ "num-traits",
+ "pxfm",
 ]
 
 [[package]]
@@ -1933,7 +2141,7 @@ checksum = "9b4f627cb1b25917193a259e49bdad08f671f8d9708acfd5fe0a8c1455d87220"
 
 [[package]]
 name = "peritus-agent"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "peritus-budget",
  "peritus-codec",
@@ -1959,7 +2167,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-app-protocol"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "peritus-codec",
  "peritus-conformance",
@@ -1973,7 +2181,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-approval"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "ed25519-compact",
  "ed25519-dalek",
@@ -1986,7 +2194,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-artifact-store"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "fs4",
  "peritus-test-support",
@@ -1999,7 +2207,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-benchmarks"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "criterion",
  "half",
@@ -2011,7 +2219,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-budget"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "peritus-test-support",
  "peritus-types",
@@ -2020,7 +2228,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-cli"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "base64",
  "peritus-app-protocol",
@@ -2037,7 +2245,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-codec"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "peritus-types",
  "sha2 0.11.0",
@@ -2046,7 +2254,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-collaboration"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "peritus-codec",
  "peritus-evidence",
@@ -2062,11 +2270,11 @@ dependencies = [
 
 [[package]]
 name = "peritus-conformance"
-version = "0.0.1"
+version = "0.0.2"
 
 [[package]]
 name = "peritus-context"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "peritus-codec",
  "peritus-policy",
@@ -2078,10 +2286,11 @@ dependencies = [
 
 [[package]]
 name = "peritus-daemon"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "fs4",
  "futures-util",
+ "image",
  "libc",
  "peritus-agent",
  "peritus-app-protocol",
@@ -2100,6 +2309,7 @@ dependencies = [
  "peritus-journal",
  "peritus-kernel",
  "peritus-leases",
+ "peritus-local-socket",
  "peritus-migrations",
  "peritus-model-protocol",
  "peritus-orchestrator",
@@ -2146,7 +2356,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-debugger"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "peritus-agent",
  "peritus-artifact-store",
@@ -2174,7 +2384,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-eval"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "peritus-artifact-store",
  "peritus-codec",
@@ -2193,7 +2403,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-evidence"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "peritus-artifact-store",
  "peritus-codec",
@@ -2213,7 +2423,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-evolution"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "ed25519-dalek",
  "peritus-approval",
@@ -2236,7 +2446,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-external-benchmarks"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "base64",
  "html5ever",
@@ -2261,7 +2471,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-gates"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "peritus-codec",
  "peritus-evidence",
@@ -2282,7 +2492,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-git"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "peritus-codec",
  "peritus-types",
@@ -2292,7 +2502,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-harness"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "peritus-artifact-store",
  "peritus-codec",
@@ -2310,7 +2520,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-journal"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "peritus-approval",
  "peritus-artifact-store",
@@ -2331,7 +2541,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-kernel"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "peritus-budget",
  "peritus-policy",
@@ -2344,16 +2554,20 @@ dependencies = [
 
 [[package]]
 name = "peritus-launcher"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "crossterm",
  "fs4",
  "futures-util",
  "getrandom 0.4.3",
+ "peritus-app-protocol",
  "peritus-approval",
  "peritus-daemon",
  "peritus-git",
+ "peritus-local-socket",
+ "peritus-model-protocol",
  "peritus-product-state",
+ "peritus-provider-core",
  "peritus-provider-onboarding",
  "peritus-tui",
  "peritus-types",
@@ -2370,7 +2584,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-leases"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "peritus-policy",
  "peritus-test-support",
@@ -2379,8 +2593,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "peritus-local-socket"
+version = "0.0.2"
+dependencies = [
+ "sha2 0.11.0",
+ "tempfile",
+ "vstd",
+]
+
+[[package]]
 name = "peritus-mcp"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "peritus-policy",
  "peritus-tool-protocol",
@@ -2393,7 +2616,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-memory"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "peritus-codec",
  "peritus-policy",
@@ -2404,7 +2627,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-migrations"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "fs4",
  "peritus-journal",
@@ -2417,7 +2640,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-model-protocol"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "peritus-codec",
  "peritus-types",
@@ -2428,7 +2651,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-network"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "base64",
  "nix 0.31.3",
@@ -2442,7 +2665,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-obligations"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "peritus-run-settlement",
  "peritus-spec",
@@ -2453,7 +2676,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-orchestrator"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "peritus-agent",
  "peritus-codec",
@@ -2476,7 +2699,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-patch"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "peritus-codec",
  "peritus-types",
@@ -2486,7 +2709,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-performance-qualification"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "peritus-app-protocol",
  "peritus-approval",
@@ -2511,10 +2734,11 @@ dependencies = [
 
 [[package]]
 name = "peritus-platform-qualification"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "nix 0.31.3",
  "peritus-approval",
+ "peritus-local-socket",
  "peritus-sandbox-linux",
  "peritus-sandbox-macos",
  "peritus-sandbox-windows",
@@ -2531,7 +2755,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-plugin-host"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "peritus-conformance",
  "peritus-plugin-sdk",
@@ -2545,7 +2769,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-plugin-sdk"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "serde",
  "serde_json",
@@ -2556,7 +2780,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-policy"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "peritus-test-support",
  "peritus-types",
@@ -2565,7 +2789,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-process"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "libc",
  "nix 0.31.3",
@@ -2593,8 +2817,10 @@ dependencies = [
 
 [[package]]
 name = "peritus-product-runner"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
+ "getrandom 0.4.3",
+ "image",
  "peritus-agent",
  "peritus-artifact-store",
  "peritus-budget",
@@ -2607,6 +2833,7 @@ dependencies = [
  "peritus-model-protocol",
  "peritus-obligations",
  "peritus-orchestrator",
+ "peritus-patch",
  "peritus-policy",
  "peritus-process",
  "peritus-protocol",
@@ -2626,6 +2853,7 @@ dependencies = [
  "peritus-tool-router",
  "peritus-tools-shell",
  "peritus-types",
+ "peritus-workspace",
  "rusqlite",
  "serde",
  "serde_json",
@@ -2638,7 +2866,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-product-state"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "serde",
  "serde_json",
@@ -2647,7 +2875,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-projection"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "peritus-approval",
  "peritus-artifact-store",
@@ -2669,7 +2897,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-protocol"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "peritus-budget",
  "peritus-codec",
@@ -2684,7 +2912,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-provider-anthropic"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "base64",
  "peritus-codec",
@@ -2702,7 +2930,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-provider-compatible"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "base64",
  "peritus-codec",
@@ -2718,7 +2946,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-provider-core"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "bytes",
  "futures-core",
@@ -2736,7 +2964,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-provider-google"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "base64",
  "peritus-codec",
@@ -2752,7 +2980,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-provider-onboarding"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "getrandom 0.4.3",
  "peritus-product-state",
@@ -2765,11 +2993,12 @@ dependencies = [
  "tempfile",
  "thiserror 2.0.20",
  "tokio",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
 name = "peritus-provider-openai"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "base64",
  "peritus-codec",
@@ -2787,7 +3016,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-quality-policy"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "peritus-spec",
  "peritus-types",
@@ -2796,7 +3025,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-release-artifacts"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "ed25519-dalek",
  "serde",
@@ -2807,7 +3036,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-release-operator"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "peritus-release-artifacts",
  "serde",
@@ -2819,7 +3048,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-release-policy"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "peritus-types",
  "vstd",
@@ -2827,7 +3056,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-release-qualification"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "ed25519-dalek",
  "peritus-model-protocol",
@@ -2846,7 +3075,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-resilience"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "libc",
  "nix 0.31.3",
@@ -2860,7 +3089,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-resilience-qualification"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "nix 0.31.3",
  "peritus-approval",
@@ -2879,7 +3108,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-review"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "peritus-codec",
  "peritus-context",
@@ -2897,7 +3126,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-role"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "peritus-policy",
  "peritus-spec",
@@ -2906,7 +3135,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-run-knowledge"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "peritus-role",
  "peritus-run-settlement",
@@ -2916,7 +3145,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-run-settlement"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "peritus-types",
  "vstd",
@@ -2924,7 +3153,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-sandbox"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "peritus-codec",
  "peritus-conformance",
@@ -2934,7 +3163,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-sandbox-linux"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "landlock",
  "nix 0.31.3",
@@ -2953,7 +3182,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-sandbox-macos"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "libc",
  "peritus-codec",
@@ -2970,7 +3199,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-sandbox-windows"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "peritus-codec",
  "peritus-conformance",
@@ -2987,7 +3216,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-scheduler"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "peritus-codec",
  "peritus-evidence",
@@ -3001,7 +3230,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-secrets"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "keyring",
  "peritus-codec",
@@ -3014,7 +3243,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-security-policy"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "peritus-types",
  "vstd",
@@ -3022,7 +3251,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-security-qualification"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "find-msvc-tools",
  "nix 0.31.3",
@@ -3039,7 +3268,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-spec"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "peritus-types",
  "vstd",
@@ -3047,14 +3276,14 @@ dependencies = [
 
 [[package]]
 name = "peritus-tcb"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "vstd",
 ]
 
 [[package]]
 name = "peritus-telemetry"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "peritus-codec",
  "peritus-trace",
@@ -3065,7 +3294,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-test-support"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "peritus-types",
  "serde",
@@ -3075,7 +3304,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-tool-protocol"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "peritus-codec",
  "peritus-policy",
@@ -3086,7 +3315,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-tool-router"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "peritus-approval",
  "peritus-budget",
@@ -3107,7 +3336,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-tools-fs"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "base64",
  "peritus-budget",
@@ -3130,7 +3359,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-tools-git"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "base64",
  "peritus-artifact-store",
@@ -3154,7 +3383,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-tools-quality"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "peritus-artifact-store",
  "peritus-codec",
@@ -3176,7 +3405,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-tools-shell"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "peritus-artifact-store",
  "peritus-budget",
@@ -3199,7 +3428,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-trace"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "peritus-artifact-store",
  "peritus-codec",
@@ -3213,10 +3442,11 @@ dependencies = [
 
 [[package]]
 name = "peritus-tui"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "base64",
  "crossterm",
+ "libc",
  "peritus-app-protocol",
  "peritus-codec",
  "peritus-product-runner",
@@ -3229,19 +3459,23 @@ dependencies = [
  "tempfile",
  "thiserror 2.0.20",
  "tokio",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
 name = "peritus-types"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "vstd",
 ]
 
 [[package]]
 name = "peritus-workspace"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
+ "cap-fs-ext",
+ "cap-std",
+ "nix 0.31.3",
  "peritus-artifact-store",
  "peritus-budget",
  "peritus-codec",
@@ -3321,6 +3555,19 @@ name = "pkg-config"
 version = "0.3.34"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f6b464fbc74e149a392436b17d523f769e057cb6877f6a5c4618bc6f11800548"
+
+[[package]]
+name = "png"
+version = "0.18.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "60769b8b31b2a9f263dae2776c37b1b28ae246943cf719eb6946a1db05128a61"
+dependencies = [
+ "bitflags 2.13.1",
+ "crc32fast",
+ "fdeflate",
+ "flate2",
+ "miniz_oxide 0.8.9",
+]
 
 [[package]]
 name = "polling"
@@ -3412,6 +3659,18 @@ dependencies = [
  "nix 0.31.3",
  "windows",
 ]
+
+[[package]]
+name = "pxfm"
+version = "0.1.30"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d55d956fa96f5ec02be2e13af0e20391a5aa83d6a074e3ad368959d0fab299ea"
+
+[[package]]
+name = "quick-error"
+version = "2.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a993555f31e5a609f617c12db6250dedcac1b0a85076912c436e6fc9b2c8e6a3"
 
 [[package]]
 name = "quinn"
@@ -3707,6 +3966,16 @@ dependencies = [
  "libc",
  "linux-raw-sys",
  "windows-sys 0.61.2",
+]
+
+[[package]]
+name = "rustix-linux-procfs"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2fc84bf7e9aa16c4f2c758f27412dc9841341e16aa682d9c7ac308fe3ee12056"
+dependencies = [
+ "once_cell",
+ "rustix",
 ]
 
 [[package]]
@@ -4033,6 +4302,12 @@ name = "signature"
 version = "3.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "28d567dcbaf0049cb8ac2608a76cd95ff9e4412e1899d389ee400918ca7537f5"
+
+[[package]]
+name = "simd-adler32"
+version = "0.3.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3a219298ac11a56ea9a6d2120044824d6f01aeb034955e7af7bc16858527deea"
 
 [[package]]
 name = "simd_cesu8"
@@ -4779,6 +5054,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "weezl"
+version = "0.1.12"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a28ac98ddc8b9274cb41bb4d9d4d5c425b6020c50c46f25559911905610b4a88"
+
+[[package]]
 name = "winapi"
 version = "0.3.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5033,6 +5314,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "winx"
+version = "0.36.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3f3fd376f71958b862e7afb20cfe5a22830e1963462f3a17f49d82a6c1d1f42d"
+dependencies = [
+ "bitflags 2.13.1",
+ "windows-sys 0.52.0",
+]
+
+[[package]]
 name = "writeable"
 version = "0.6.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5050,7 +5341,7 @@ dependencies = [
 
 [[package]]
 name = "xtask"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "base64",
  "serde",
@@ -5235,10 +5526,31 @@ dependencies = [
 ]
 
 [[package]]
+name = "zlib-rs"
+version = "0.6.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "34b31d188d9d685a4f9c7b46d6e36631b07058d2cfe190267adce54dc230bf12"
+
+[[package]]
 name = "zmij"
 version = "1.0.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "29666d0abbfad1e3dc4dcf6144730dd3a3ab225bbbdac83319345b1b44ccfc1b"
+
+[[package]]
+name = "zune-core"
+version = "0.5.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d56377fd46368984a170bc5aac5567e52ca5da874caa60bea39fcbca78fb658b"
+
+[[package]]
+name = "zune-jpeg"
+version = "0.5.15"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "27bc9d5b815bc103f142aa054f561d9187d191692ec7c2d1e2b4737f8dbd7296"
+dependencies = [
+ "zune-core",
+]
 
 [[package]]
 name = "zvariant"

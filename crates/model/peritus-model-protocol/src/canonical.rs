@@ -8,21 +8,41 @@ use crate::{
     StructuredOutput, SummaryPolicy, ToolChoice, WireDialect,
 };
 
+mod values;
+use values::{
+    boolean, bytes, collection, option_tag, optional_digest, optional_i64, optional_text,
+    optional_u32, optional_u64, text, u8_value, u16_value, u32_value, u64_value, write_fixed,
+};
+
 const CANONICAL_MAGIC: &[u8; 4] = b"P5MR";
 
 pub fn request_bytes(request: &ModelRequest) -> Result<Vec<u8>, ProtocolError> {
+    request_bytes_bounded(request, 512 * 1024 * 1024)
+}
+
+pub fn request_bytes_bounded(
+    request: &ModelRequest,
+    maximum_bytes: usize,
+) -> Result<Vec<u8>, ProtocolError> {
+    if maximum_bytes == 0 || maximum_bytes > 512 * 1024 * 1024 {
+        return Err(ProtocolError::at(
+            ProtocolErrorKind::InvalidLimit,
+            "canonical_request",
+            "canonical byte ceiling must be positive and within the protocol maximum",
+        ));
+    }
     let mut writer = CanonicalWriter::new(CodecLimits::new(
-        512 * 1024 * 1024,
-        512 * 1024 * 1024,
+        maximum_bytes,
+        maximum_bytes,
         1_100_000,
         32 * 1024 * 1024,
         256 * 1024 * 1024,
         128,
     ));
-    write(&mut writer, CANONICAL_MAGIC)?;
+    write_fixed(&mut writer, CANONICAL_MAGIC)?;
     u16_value(&mut writer, request.protocol().major())?;
     u16_value(&mut writer, request.protocol().minor())?;
-    write(&mut writer, request.profile_id().as_bytes())?;
+    write_fixed(&mut writer, request.profile_id().as_bytes())?;
     u64_value(&mut writer, request.profile_revision())?;
     text(&mut writer, request.provider().as_str())?;
     u8_value(&mut writer, dialect(request.dialect()))?;
@@ -167,8 +187,8 @@ fn media_value(
         optional_digest(writer, media.digest())?;
     } else if let Some((artifact_id, digest)) = media.artifact_reference() {
         u8_value(writer, 3)?;
-        write(writer, artifact_id.as_bytes())?;
-        write(writer, digest.as_bytes())?;
+        write_fixed(writer, artifact_id.as_bytes())?;
+        write_fixed(writer, digest.as_bytes())?;
     } else {
         return Err(ProtocolError::at(
             ProtocolErrorKind::InvalidRequest,
@@ -240,6 +260,9 @@ fn reasoning_policy(
                     ReasoningEffort::Low => 2,
                     ReasoningEffort::Medium => 3,
                     ReasoningEffort::High => 4,
+                    ReasoningEffort::XHigh => 5,
+                    ReasoningEffort::Max => 6,
+                    ReasoningEffort::Ultra => 7,
                 },
             )?;
             u8_value(writer, summary_policy(summary))
@@ -291,95 +314,4 @@ const fn summary_policy(value: SummaryPolicy) -> u8 {
         SummaryPolicy::Concise => 3,
         SummaryPolicy::Detailed => 4,
     }
-}
-
-fn optional_text(writer: &mut CanonicalWriter, value: Option<&str>) -> Result<(), ProtocolError> {
-    option_tag(writer, value.is_some())?;
-    if let Some(value) = value {
-        text(writer, value)?;
-    }
-    Ok(())
-}
-
-fn optional_digest(
-    writer: &mut CanonicalWriter,
-    value: Option<peritus_types::Sha256Digest>,
-) -> Result<(), ProtocolError> {
-    option_tag(writer, value.is_some())?;
-    if let Some(value) = value {
-        write(writer, value.as_bytes())?;
-    }
-    Ok(())
-}
-
-fn optional_u64(writer: &mut CanonicalWriter, value: Option<u64>) -> Result<(), ProtocolError> {
-    option_tag(writer, value.is_some())?;
-    if let Some(value) = value {
-        u64_value(writer, value)?;
-    }
-    Ok(())
-}
-
-fn optional_i64(writer: &mut CanonicalWriter, value: Option<i64>) -> Result<(), ProtocolError> {
-    option_tag(writer, value.is_some())?;
-    if let Some(value) = value {
-        write(writer, &value.to_be_bytes())?;
-    }
-    Ok(())
-}
-
-fn optional_u32(writer: &mut CanonicalWriter, value: Option<u32>) -> Result<(), ProtocolError> {
-    option_tag(writer, value.is_some())?;
-    if let Some(value) = value {
-        u32_value(writer, value)?;
-    }
-    Ok(())
-}
-
-fn collection(writer: &mut CanonicalWriter, value: usize) -> Result<(), ProtocolError> {
-    writer.write_collection_len(value).map_err(codec)
-}
-
-fn text(writer: &mut CanonicalWriter, value: &str) -> Result<(), ProtocolError> {
-    writer.write_str(value).map_err(codec)
-}
-
-fn bytes(writer: &mut CanonicalWriter, value: &[u8]) -> Result<(), ProtocolError> {
-    writer.write_bytes(value).map_err(codec)
-}
-
-fn write(writer: &mut CanonicalWriter, value: &[u8]) -> Result<(), ProtocolError> {
-    writer.write_fixed(value).map_err(codec)
-}
-
-fn boolean(writer: &mut CanonicalWriter, value: bool) -> Result<(), ProtocolError> {
-    writer.write_bool(value).map_err(codec)
-}
-
-fn option_tag(writer: &mut CanonicalWriter, present: bool) -> Result<(), ProtocolError> {
-    writer.write_option_tag(present).map_err(codec)
-}
-
-fn u8_value(writer: &mut CanonicalWriter, value: u8) -> Result<(), ProtocolError> {
-    writer.write_u8(value).map_err(codec)
-}
-
-fn u16_value(writer: &mut CanonicalWriter, value: u16) -> Result<(), ProtocolError> {
-    writer.write_u16(value).map_err(codec)
-}
-
-fn u32_value(writer: &mut CanonicalWriter, value: u32) -> Result<(), ProtocolError> {
-    writer.write_u32(value).map_err(codec)
-}
-
-fn u64_value(writer: &mut CanonicalWriter, value: u64) -> Result<(), ProtocolError> {
-    writer.write_u64(value).map_err(codec)
-}
-
-fn codec(_: peritus_codec::CodecError) -> ProtocolError {
-    ProtocolError::at(
-        ProtocolErrorKind::InvalidLimit,
-        "canonical_request",
-        "canonical request encoding exceeded an internal bound",
-    )
 }

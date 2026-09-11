@@ -1,0 +1,41 @@
+=== PERITUS GATE RECORD ===
+{"argv": ["cargo", "test", "--package", "peritus-run-knowledge", "--all-targets", "--all-features", "--locked"], "command": "cargo test --package peritus-run-knowledge --all-targets --all-features --locked", "command_exit_code": 0, "custody_error": null, "duration_seconds": 0.30079, "finished_at": "2026-09-10T01:51:43.571800Z", "kind": "ordinary-test", "owning_crate": "peritus-run-knowledge", "result": "passed", "schema": "peritus.formal-package-gate-output", "schema_version": 1, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "started_at": "2026-09-10T01:51:43.309302Z", "verification_class": "V"}
+=== STDOUT LOG ===
+=== PERITUS CUSTODY HEADER ===
+{"argv": ["cargo", "test", "--package", "peritus-run-knowledge", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "owning_crate": "peritus-run-knowledge", "schema": "peritus.formal-package-evidence-stream", "schema_version": 1, "sequence": 89, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "stream": "stdout", "verification_class": "V"}
+=== COMMAND OUTPUT ===
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 10 tests
+test clarification_invalidates_named_requirements_design_and_candidate_dependents ... ok
+test candidate_revision_invalidates_only_candidate_dependent_knowledge ... ok
+test conversation_delta_invalidates_conversation_and_candidate_dependent_knowledge ... ok
+test one_changed_source_invalidates_its_observations_and_dependents ... ok
+test delta_entries_remain_in_canonical_render_order ... ok
+test oversized_inventory_and_invalid_clarification_targets_fail_closed ... ok
+test provider_failure_invalidates_no_repository_or_candidate_fact ... ok
+test role_views_cannot_be_reused_across_writer_and_reviewer ... ok
+test same_revision_reuses_every_authoritative_section_deterministically ... ok
+test summaries_are_navigation_only_and_never_authoritative_evidence ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+=== PERITUS CUSTODY FOOTER ===
+{"command_exit_code": 0, "execution_error": null, "finished_at": "2026-09-10T01:51:43.571800Z"}
+
+=== STDERR LOG ===
+=== PERITUS CUSTODY HEADER ===
+{"argv": ["cargo", "test", "--package", "peritus-run-knowledge", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "owning_crate": "peritus-run-knowledge", "schema": "peritus.formal-package-evidence-stream", "schema_version": 1, "sequence": 89, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "stream": "stderr", "verification_class": "V"}
+=== COMMAND OUTPUT ===
+   Compiling peritus-run-knowledge v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/orchestration/peritus-run-knowledge)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.23s
+     Running unittests src/lib.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/peritus_run_knowledge-a9d0b16a0b8e137e)
+     Running tests/knowledge_matrix.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/knowledge_matrix-7fcd18eeff97bc7c)
+
+=== PERITUS CUSTODY FOOTER ===
+{"command_exit_code": 0, "execution_error": null, "finished_at": "2026-09-10T01:51:43.571800Z"}

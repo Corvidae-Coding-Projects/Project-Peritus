@@ -172,11 +172,18 @@ pub fn redaction_request(profile: &ProviderProfile, canary: &str) -> ModelReques
     .expect("redaction request")
 }
 
+pub fn realistic_request(profile: &ProviderProfile) -> ModelRequest {
+    realistic_request_with_effort(profile, ReasoningEffort::High)
+}
+
 #[allow(
     clippy::too_many_lines,
     reason = "the realistic golden fixture visibly binds every supported request family"
 )]
-pub fn realistic_request(profile: &ProviderProfile) -> ModelRequest {
+pub fn realistic_request_with_effort(
+    profile: &ProviderProfile,
+    effort: ReasoningEffort,
+) -> ModelRequest {
     let selected = [
         Capability::Streaming,
         Capability::ToolCalls,
@@ -281,7 +288,7 @@ pub fn realistic_request(profile: &ProviderProfile) -> ModelRequest {
             ),
             strict: true,
         },
-        ReasoningPolicy::Effort { effort: ReasoningEffort::High, summary: SummaryPolicy::Concise },
+        ReasoningPolicy::Effort { effort, summary: SummaryPolicy::Concise },
         GenerationConfig::new(256, Vec::new(), None, Some(200_000), Some(900_000))
             .expect("generation"),
         CachePolicy::Ephemeral { ttl_seconds: 1_800 },

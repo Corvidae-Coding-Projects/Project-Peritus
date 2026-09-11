@@ -1,0 +1,36 @@
+=== PERITUS GATE RECORD ===
+{"argv": ["cargo", "test", "--package", "peritus-mcp", "--all-targets", "--all-features", "--locked"], "command": "cargo test --package peritus-mcp --all-targets --all-features --locked", "command_exit_code": 0, "custody_error": null, "duration_seconds": 0.994312, "finished_at": "2026-09-10T01:50:22.055603Z", "kind": "ordinary-test", "owning_crate": "peritus-mcp", "result": "passed", "schema": "peritus.formal-package-gate-output", "schema_version": 1, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "started_at": "2026-09-10T01:50:21.099426Z", "verification_class": "H"}
+=== STDOUT LOG ===
+=== PERITUS CUSTODY HEADER ===
+{"argv": ["cargo", "test", "--package", "peritus-mcp", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "owning_crate": "peritus-mcp", "schema": "peritus.formal-package-evidence-stream", "schema_version": 1, "sequence": 39, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "stream": "stdout", "verification_class": "H"}
+=== COMMAND OUTPUT ===
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 3 tests
+test malformed_framing_is_reported_after_owned_tasks_are_joined ... ok
+test cancellation_remains_responsive_while_a_call_is_active ... ok
+test lifecycle_pagination_tool_resource_and_prompt_methods_work ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+=== PERITUS CUSTODY FOOTER ===
+{"command_exit_code": 0, "execution_error": null, "finished_at": "2026-09-10T01:50:22.055603Z"}
+
+=== STDERR LOG ===
+=== PERITUS CUSTODY HEADER ===
+{"argv": ["cargo", "test", "--package", "peritus-mcp", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "owning_crate": "peritus-mcp", "schema": "peritus.formal-package-evidence-stream", "schema_version": 1, "sequence": 39, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "stream": "stderr", "verification_class": "H"}
+=== COMMAND OUTPUT ===
+   Compiling serde v1.0.229
+   Compiling peritus-tool-protocol v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/tools/peritus-tool-protocol)
+   Compiling peritus-mcp v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/extensions/peritus-mcp)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.92s
+     Running unittests src/lib.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/peritus_mcp-b98bc992d13b221e)
+     Running tests/server.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/server-362319ecdf38a59f)
+
+=== PERITUS CUSTODY FOOTER ===
+{"command_exit_code": 0, "execution_error": null, "finished_at": "2026-09-10T01:50:22.055603Z"}

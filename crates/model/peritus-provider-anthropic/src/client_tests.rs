@@ -165,3 +165,35 @@ fn http_success_with_a_non_stream_content_type_fails_as_malformed() {
     assert_eq!(failure.category(), FailureCategory::MalformedPayload);
     assert_eq!(state.captures().len(), 1);
 }
+
+#[test]
+fn opencode_messages_uses_exact_gateway_operation_and_native_stream() {
+    for endpoint in
+        ["https://opencode.ai/zen/v1/messages", "https://opencode.ai/zen/go/v1/messages"]
+    {
+        let state = TransportState::with_responses(vec![Ok(response(
+            200,
+            &[("content-type", "text/event-stream")],
+            vec![crate::test_support::fixture("text.sse")],
+        ))]);
+        let config = crate::test_support::config_at(endpoint, 1, Vec::new())
+            .with_opencode_gateway()
+            .expect("gateway");
+        let client = AnthropicClient::with_transport(
+            config,
+            Box::new(TestCredentials::default()),
+            Box::new(TestTransport(std::sync::Arc::clone(&state))),
+        );
+        assert!(matches!(
+            block_on(terminal_event(&client, request(&profile(), true))),
+            ModelEvent::ResponseCompleted
+        ));
+        let captures = state.captures();
+        assert_eq!(captures[0].endpoint, endpoint);
+        let wire: serde_json::Value = serde_json::from_slice(&captures[0].body).expect("wire");
+        assert_eq!(wire["stream"], true);
+        assert!(wire.get("max_tokens").is_some());
+        assert!(captures[0].headers.iter().any(|header| header.0 == "x-api-key" && header.1));
+    }
+    assert!(config(1, Vec::new()).with_opencode_gateway().is_err());
+}

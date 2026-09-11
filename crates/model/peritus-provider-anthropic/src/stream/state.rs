@@ -25,7 +25,7 @@ pub(super) enum ActiveBlock {
     Tool {
         item_id: peritus_model_protocol::ItemId,
         call_id: peritus_model_protocol::ToolCallId,
-        arguments: Vec<u8>,
+        arguments: peritus_provider_core::healing::ToolArgumentBuffer,
     },
     Thinking {
         item_id: peritus_model_protocol::ItemId,

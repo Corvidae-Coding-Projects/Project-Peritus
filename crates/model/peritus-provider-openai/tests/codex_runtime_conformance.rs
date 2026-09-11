@@ -2,6 +2,7 @@
 #![cfg(feature = "test-runtime-fake")]
 
 mod codex_runtime_conformance {
+    mod hardening;
     mod observations;
     mod redaction;
     mod runner;

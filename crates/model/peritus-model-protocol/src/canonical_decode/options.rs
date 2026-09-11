@@ -76,6 +76,9 @@ fn reasoning_effort(reader: &mut CanonicalReader<'_>) -> Result<ReasoningEffort,
         2 => Ok(ReasoningEffort::Low),
         3 => Ok(ReasoningEffort::Medium),
         4 => Ok(ReasoningEffort::High),
+        5 => Ok(ReasoningEffort::XHigh),
+        6 => Ok(ReasoningEffort::Max),
+        7 => Ok(ReasoningEffort::Ultra),
         _ => Err(unknown_tag("reasoning_effort")),
     }
 }

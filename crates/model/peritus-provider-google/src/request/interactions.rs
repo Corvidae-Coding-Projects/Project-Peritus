@@ -190,6 +190,11 @@ fn thinking(
                 ReasoningEffort::Low => "low",
                 ReasoningEffort::Medium => "medium",
                 ReasoningEffort::High => "high",
+                ReasoningEffort::XHigh | ReasoningEffort::Max | ReasoningEffort::Ultra => {
+                    return Err(invalid(
+                        "Google does not map xhigh, max, or ultra reasoning effort",
+                    ));
+                }
             };
             Ok((Some(level), summary_value(summary)?))
         }

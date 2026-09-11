@@ -1,17 +1,22 @@
 //! Daemon-owned product-run registry, persistence, and execution admission.
 
 mod catalog;
+mod construction;
 mod continuation;
 mod conversation;
 mod deliverable;
+mod doctor;
 mod error;
 mod execution;
 mod interaction;
+mod library;
 mod lifecycle;
+mod permissions;
 mod persistence;
 mod progress;
 mod recovery;
 mod snapshot;
+mod workbench;
 
 #[cfg(test)]
 mod tests;
@@ -24,12 +29,13 @@ use std::{
 };
 
 use peritus_app_protocol::{
-    AppResponsePayload, ProductConversationMessage, ProductConversationRole,
+    AppResponsePayload, ControlOperationId, ProductConversationMessage, ProductConversationRole,
     ProductProviderSelection, ProductRunControl, ProductRunControlAction, ProductRunConversation,
     ProductRunConversationQuery, ProductRunQuery, ProductRunRequest, ProductRunSnapshot,
+    WorkbenchResultPage,
 };
 use peritus_process::ProcessStore;
-use peritus_product_runner::{ProductRunResume, RoleProviders};
+use peritus_product_runner::{CommandRuntime, PreviewLaunch, ProductRunResume, RoleProviders};
 use peritus_provider_core::{CancellationToken, ModelProvider};
 use peritus_run_settlement::{CandidateCheckpoint, RunSettlement};
 use peritus_types::{ProviderProfileId, RunId, WorkspaceId};
@@ -54,6 +60,8 @@ pub struct ProductRunService {
 }
 
 struct Inner {
+    controls: std::sync::Mutex<Option<crate::product_control::ControlStore>>,
+    control_store: peritus_journal::StoreId,
     directory: PathBuf,
     records: RwLock<BTreeMap<RunId, RunRecord>>,
     providers: BTreeMap<ProviderProfileId, Arc<dyn ModelProvider>>,
@@ -64,6 +72,37 @@ struct Inner {
     processes: ProcessStore,
     tasks: Mutex<Vec<JoinHandle<()>>>,
     model_catalogs: Mutex<BTreeMap<ProviderProfileId, peritus_app_protocol::ProductModelCatalog>>,
+    image_decodes: Arc<tokio::sync::Semaphore>,
+    host_permissions: permissions::HostPermissionCatalog,
+    preview_processes: std::sync::Mutex<BTreeMap<ControlOperationId, PreviewProcess>>,
+    preview_capture: PreviewCaptureHost,
+}
+
+#[derive(Clone)]
+struct PreviewProcess {
+    runtime: CommandRuntime,
+    launch: PreviewLaunch,
+}
+
+#[derive(Clone)]
+struct PreviewCaptureHost {
+    display: Option<String>,
+    program: Option<PathBuf>,
+}
+
+#[derive(Clone, Default)]
+struct PreviewAggregate {
+    page: Option<WorkbenchResultPage>,
+    operations: BTreeMap<ControlOperationId, PreviewOperationRecord>,
+    outputs: BTreeMap<ControlOperationId, String>,
+}
+
+#[derive(Clone, Copy)]
+struct PreviewOperationRecord {
+    fingerprint: peritus_types::Sha256Digest,
+    accepted_revision: u64,
+    result_sequence: u64,
+    completed_sequence: u64,
 }
 
 struct RunRecord {
@@ -81,49 +120,10 @@ struct RunRecord {
     remaining_work: Vec<String>,
     interruption_cause: String,
     candidate_actionable: bool,
+    preview: PreviewAggregate,
 }
 
 impl ProductRunService {
-    pub(super) fn open(
-        state_root: &Path,
-        components: &DaemonComponents,
-        workspaces: &WorkspaceCatalog,
-        automatic_provider_failover: bool,
-        local_context: peritus_product_runner::LocalContextConfig,
-        processes: ProcessStore,
-    ) -> Result<Self, DaemonError> {
-        let directory = state_root.join("product-runs");
-        fs::create_dir_all(&directory).map_err(filesystem)?;
-        let mut providers = BTreeMap::new();
-        for key in components.providers().keys() {
-            if providers.contains_key(&key.profile_id()) {
-                return Err(invalid("product provider identity has multiple configured revisions"));
-            }
-            let provider = components
-                .providers()
-                .provider(key.profile_id(), key.revision())
-                .ok_or_else(|| invalid("configured product provider could not be resolved"))?;
-            providers.insert(key.profile_id(), provider);
-        }
-        let mut records = load_records(&directory)?;
-        let workspace_roots = workspaces.roots();
-        reconcile_restored_candidates(&directory, &mut records, &workspace_roots)?;
-        Ok(Self {
-            inner: Arc::new(Inner {
-                directory,
-                records: RwLock::new(records),
-                providers,
-                automatic_provider_failover,
-                local_context,
-                workspaces: workspace_roots,
-                folders: workspaces.folders().clone(),
-                processes,
-                tasks: Mutex::new(Vec::new()),
-                model_catalogs: Mutex::new(BTreeMap::new()),
-            }),
-        })
-    }
-
     pub(super) async fn start(
         &self,
         request: ProductRunRequest,
@@ -168,8 +168,22 @@ impl ProductRunService {
         {
             let mut records =
                 self.inner.records.write().map_err(|_| ProductRunServiceError::Unavailable)?;
-            if records.contains_key(&request.run_id()) {
-                return Err(ProductRunServiceError::Duplicate);
+            if let Some(staged) = records.get(&request.run_id()) {
+                let proposed = interaction.as_ref().and_then(|options| options.workbench.as_ref());
+                let existing =
+                    staged.interaction.as_ref().and_then(|options| options.workbench.as_ref());
+                let replace_staged = proposed.is_some()
+                    && proposed == existing
+                    && staged.snapshot.phase()
+                        == peritus_app_protocol::ProductRunPhase::RecoveryRequired
+                    && self
+                        .with_controls(false, |store| {
+                            store.resolve(proposed.expect("checked proposed binding"))
+                        })?
+                        .is_none();
+                if !replace_staged {
+                    return Err(ProductRunServiceError::Duplicate);
+                }
             }
             if workspace_has_active_run(&records, request.workspace_id(), None) {
                 return Err(ProductRunServiceError::InvalidState);
@@ -191,6 +205,7 @@ impl ProductRunService {
                     remaining_work: Vec::new(),
                     interruption_cause: String::new(),
                     candidate_actionable: false,
+                    preview: PreviewAggregate::default(),
                 },
             );
             if let Err(error) = persist_record(
@@ -199,6 +214,18 @@ impl ProductRunService {
             ) {
                 records.remove(&request.run_id());
                 return Err(error);
+            }
+            let start = records
+                .get(&request.run_id())
+                .and_then(|record| record.interaction.as_ref())
+                .and_then(|options| options.workbench.as_ref());
+            if let Some(operation) = start
+                && let Err(error) = self.with_controls(false, |store| store.accept(operation))
+            {
+                // The staged record is in the fenced generation and cannot run without its C0
+                // binding. Retain it on disk for diagnosis/recovery, but never spawn on failure.
+                records.remove(&request.run_id());
+                return Err(error.into());
             }
         }
         self.spawn(
@@ -235,6 +262,11 @@ impl ProductRunService {
         &self,
         control: ProductRunControl,
     ) -> Result<ProductRunSnapshot, ProductRunServiceError> {
+        if self.governed_run(control.run_id())? {
+            return Err(ProductRunServiceError::Control(
+                peritus_product_runner::control::ControlError::UnsupportedSchema,
+            ));
+        }
         match control.action() {
             ProductRunControlAction::Cancel => self.cancel(control.run_id()),
             ProductRunControlAction::Retry => self.retry(control.run_id()).await,
@@ -245,6 +277,13 @@ impl ProductRunService {
                 self.control_deliverable(control.run_id(), control.action())
             }
         }
+    }
+
+    pub(super) fn governed_run(&self, run: RunId) -> Result<bool, ProductRunServiceError> {
+        let records = self.inner.records.read().map_err(|_| ProductRunServiceError::Unavailable)?;
+        Ok(records.get(&run).is_some_and(|record| {
+            record.interaction.as_ref().is_some_and(|options| options.workbench.is_some())
+        }))
     }
 
     pub(super) fn query(

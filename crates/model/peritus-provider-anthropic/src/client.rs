@@ -67,7 +67,7 @@ impl AnthropicClient {
         Box::pin(async move {
             validate_request_profile(self.config.profile(), &request)?;
             let body = crate::request::encode(&request, &self.config)?;
-            let endpoint = self.config.endpoint().with_path("/v1/messages")?;
+            let endpoint = self.config.operation_endpoint()?;
             let started = Instant::now();
             let mut attempt = 1_u32;
             let mut cumulative_bytes = 0_u64;
@@ -196,6 +196,17 @@ impl AnthropicClient {
 }
 
 impl ModelProvider for AnthropicClient {
+    fn supports_reasoning_effort(&self, effort: peritus_model_protocol::ReasoningEffort) -> bool {
+        self.profile()
+            .capabilities()
+            .supports(peritus_model_protocol::Capability::ReasoningControls)
+            && !matches!(
+                effort,
+                peritus_model_protocol::ReasoningEffort::Minimal
+                    | peritus_model_protocol::ReasoningEffort::Ultra
+            )
+    }
+
     fn discover_models<'a>(
         &'a self,
         cancellation: &'a CancellationToken,

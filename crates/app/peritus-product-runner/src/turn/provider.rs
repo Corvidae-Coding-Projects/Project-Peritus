@@ -31,13 +31,17 @@ pub(super) fn resolve(
         }
         Err(error) => error,
     };
-    let current = WorkspaceCheckpoint::capture(&input.workspace_root)?;
-    if current != *checkpoint {
-        *checkpoint = current;
-        recovery.reset();
-        return Ok(ProviderResolution::Retry(None));
+    if RoleRecovery::may_continue_after_progress(&error) {
+        let current = input.checkpoint()?;
+        if current != *checkpoint {
+            *checkpoint = current;
+            recovery.reset();
+            accounting.record_role_retry()?;
+            return Ok(ProviderResolution::Retry(None));
+        }
     }
     if let Some(reason) = recovery.retry(&error) {
+        accounting.record_role_retry()?;
         return Ok(ProviderResolution::Retry(Some(reason)));
     }
     if let Some(switch) = providers.advance(&error) {
@@ -66,15 +70,5 @@ pub(super) fn apply(
             (*correction, *pending_question) = (None, None);
             None
         }
-    }
-}
-
-pub(super) fn record_accounting(
-    result: &Result<DeveloperLoopOutcome, DeveloperLoopError>,
-    accounting: &mut RunAccounting,
-) -> Result<(), ProductRunnerError> {
-    match result {
-        Ok(outcome) => accounting.record(outcome),
-        Err(_) => accounting.check(),
     }
 }

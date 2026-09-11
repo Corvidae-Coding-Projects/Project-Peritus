@@ -1,0 +1,66 @@
+=== PERITUS GATE RECORD ===
+{"argv": ["cargo", "test", "--package", "peritus-collaboration", "--all-targets", "--all-features", "--locked"], "command": "cargo test --package peritus-collaboration --all-targets --all-features --locked", "command_exit_code": 0, "custody_error": null, "duration_seconds": 2.370447, "finished_at": "2026-09-10T01:48:05.260616Z", "kind": "ordinary-test", "owning_crate": "peritus-collaboration", "result": "passed", "schema": "peritus.formal-package-gate-output", "schema_version": 1, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "started_at": "2026-09-10T01:48:02.929178Z", "verification_class": "H"}
+=== STDOUT LOG ===
+=== PERITUS CUSTODY HEADER ===
+{"argv": ["cargo", "test", "--package", "peritus-collaboration", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "owning_crate": "peritus-collaboration", "schema": "peritus.formal-package-evidence-stream", "schema_version": 1, "sequence": 13, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "stream": "stdout", "verification_class": "H"}
+=== COMMAND OUTPUT ===
+
+running 1 test
+test wire::fixture_tests::canonical_corpus_is_exact_and_rejects_tag_and_trailing_corruption ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 2 tests
+test pause_blocks_only_new_delegation_and_resume_restores_it ... ok
+test cancellation_propagates_canonically_and_cannot_resurrect_success ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 4 tests
+test identities_limits_and_causal_message_shape_are_checked ... ok
+test any_required_needs_one_declared_success_and_optional_failure_does_not_manufacture_it ... ok
+test missing_required_child_wrong_owner_and_stale_reservation_are_rejected_without_transition ... ok
+test all_required_lifecycle_message_handoff_and_finalization_are_exact ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 2 tests
+test reused_command_identity_with_different_bytes_is_a_conflict ... ok
+test exact_transition_survives_restart_and_resolves_idempotently ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+
+running 1 test
+test replay_is_exact_and_rejects_empty_duplicate_and_reordered_streams ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+=== PERITUS CUSTODY FOOTER ===
+{"command_exit_code": 0, "execution_error": null, "finished_at": "2026-09-10T01:48:05.260616Z"}
+
+=== STDERR LOG ===
+=== PERITUS CUSTODY HEADER ===
+{"argv": ["cargo", "test", "--package", "peritus-collaboration", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "owning_crate": "peritus-collaboration", "schema": "peritus.formal-package-evidence-stream", "schema_version": 1, "sequence": 13, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "stream": "stderr", "verification_class": "H"}
+=== COMMAND OUTPUT ===
+   Compiling peritus-artifact-store v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/state/peritus-artifact-store)
+   Compiling peritus-leases v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/state/peritus-leases)
+   Compiling peritus-role v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/orchestration/peritus-role)
+   Compiling peritus-journal v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/state/peritus-journal)
+   Compiling peritus-projection v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/state/peritus-projection)
+   Compiling peritus-evidence v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/state/peritus-evidence)
+   Compiling peritus-scheduler v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/orchestration/peritus-scheduler)
+   Compiling peritus-collaboration v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/orchestration/peritus-collaboration)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 2.28s
+     Running unittests src/lib.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/peritus_collaboration-aa3636ad0a164621)
+     Running tests/cancellation_causality.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/cancellation_causality-d81c9d9d3663b2ad)
+     Running tests/domain_lifecycle.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/domain_lifecycle-bcb3946b18419c73)
+     Running tests/durability_restart.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/durability_restart-bfe6ad16c62c96ef)
+     Running tests/replay_semantics.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/replay_semantics-4eb950ce72f1e50c)
+
+=== PERITUS CUSTODY FOOTER ===
+{"command_exit_code": 0, "execution_error": null, "finished_at": "2026-09-10T01:48:05.260616Z"}

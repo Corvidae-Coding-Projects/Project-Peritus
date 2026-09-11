@@ -1,0 +1,60 @@
+=== PERITUS GATE RECORD ===
+{"argv": ["cargo", "test", "--package", "peritus-patch", "--all-targets", "--all-features", "--locked"], "command": "cargo test --package peritus-patch --all-targets --all-features --locked", "command_exit_code": 0, "custody_error": null, "duration_seconds": 2.418018, "finished_at": "2026-09-10T01:50:43.647565Z", "kind": "ordinary-test", "owning_crate": "peritus-patch", "result": "passed", "schema": "peritus.formal-package-gate-output", "schema_version": 1, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "started_at": "2026-09-10T01:50:41.267746Z", "verification_class": "H"}
+=== STDOUT LOG ===
+=== PERITUS CUSTODY HEADER ===
+{"argv": ["cargo", "test", "--package", "peritus-patch", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "owning_crate": "peritus-patch", "schema": "peritus.formal-package-evidence-stream", "schema_version": 1, "sequence": 53, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "stream": "stdout", "verification_class": "H"}
+=== COMMAND OUTPUT ===
+
+running 14 tests
+test path::tests::accepts_normal_unicode_and_leading_dash_paths ... ok
+test path::tests::rejects_traversal_aliases_devices_and_metadata ... ok
+test set::tests::canonical_identity_does_not_depend_on_input_order ... ok
+test transaction::tests::corrupt_manifest_is_quarantined_and_never_success ... ok
+test transaction::tests::binding_mismatch_is_reported_without_effects ... ok
+test transaction::tests::failure_after_directory_creation_restores_absence ... ok
+test transaction::tests::nonempty_created_directory_is_indeterminate_not_restored ... ok
+test transaction::tests::failure_after_first_install_rolls_back_all_targets ... ok
+test transaction::tests::parseable_same_length_manifest_tamper_is_quarantined_without_workspace_effect ... ok
+test transaction::tests::prepared_transaction_recovers_without_touching_workspace ... ok
+test transaction::tests::restart_removes_directory_created_before_first_target_effect ... ok
+test transaction::tests::restart_recovers_a_partial_install_to_all_preimages ... ok
+test transaction::tests::restart_recognizes_a_fully_installed_transaction ... ok
+test transaction::tests::oversized_observation_never_matches_a_forged_empty_digest ... ok
+
+test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+
+running 4 tests
+test line_endings_are_explicit_and_part_of_final_identity ... ok
+test duplicate_and_ancestor_targets_are_rejected ... ok
+test stale_workspace_tuple_never_produces_a_plan ... ok
+test rejects_recovery_manifest_directory_overflow_during_planning ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.89s
+
+
+running 5 tests
+test rejects_one_bad_preimage_before_any_target_changes ... ok
+test rejects_symlink_targets_without_following_them ... ok
+test rejects_targets_inside_a_nested_git_worktree ... ok
+test applies_create_replace_and_delete_as_one_real_transaction ... ok
+test rejects_oversized_preimage_before_application ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+
+=== PERITUS CUSTODY FOOTER ===
+{"command_exit_code": 0, "execution_error": null, "finished_at": "2026-09-10T01:50:43.647565Z"}
+
+=== STDERR LOG ===
+=== PERITUS CUSTODY HEADER ===
+{"argv": ["cargo", "test", "--package", "peritus-patch", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "owning_crate": "peritus-patch", "schema": "peritus.formal-package-evidence-stream", "schema_version": 1, "sequence": 53, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "stream": "stderr", "verification_class": "H"}
+=== COMMAND OUTPUT ===
+   Compiling peritus-patch v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/runtime/peritus-patch)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.44s
+     Running unittests src/lib.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/peritus_patch-b94ba32135acee0e)
+     Running tests/model.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/model-69fcf2745f9f5507)
+     Running tests/transaction.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/transaction-b384ba23e7b4d285)
+
+=== PERITUS CUSTODY FOOTER ===
+{"command_exit_code": 0, "execution_error": null, "finished_at": "2026-09-10T01:50:43.647565Z"}

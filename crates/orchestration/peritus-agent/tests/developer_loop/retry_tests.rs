@@ -9,6 +9,51 @@ use fixtures::{
 
 use super::*;
 
+#[path = "retry_tests/cancellation.rs"]
+mod cancellation;
+
+#[test]
+fn interrupted_stream_recovers_automatically_without_repeating_completed_tools() {
+    block_on(async {
+        let mut interrupted = text_response();
+        interrupted.pop_back();
+        let provider = ScriptedProvider {
+            profile: profile(),
+            responses: Mutex::new(VecDeque::from([tool_response(), interrupted, text_response()])),
+            requests: Mutex::new(Vec::new()),
+        };
+        let cancellation = CancellationToken::new();
+        let mut tools = RecordingTool::default();
+        let mut trace = RecordingTrace::default();
+        let outcome = DeveloperLoop::run(
+            &provider,
+            DeveloperLoopRequest {
+                request_prefix: "interrupted-stream".to_owned(),
+                system: "Complete the task.".to_owned(),
+                prompt: "Inspect and return the result.".to_owned(),
+                attachments: Vec::new(),
+                tools: vec![read_tool()],
+                limits: DeveloperLoopLimits::new(4, 4).expect("limits"),
+                cancellation: cancellation.clone(),
+            },
+            &mut tools,
+            &mut trace,
+        )
+        .await
+        .expect("stream interruption must retry automatically");
+        assert_eq!(outcome.text, "implementation inspected");
+        assert_eq!(outcome.retries, 1);
+        assert_eq!(tools.calls, 1);
+        assert!(!cancellation.is_cancelled());
+        assert_eq!(trace.retries.len(), 1);
+        assert_eq!(trace.retries[0].reason(), peritus_agent::DeveloperRetryReason::MalformedStream,);
+        let requests = provider.requests.lock().expect("requests");
+        assert_eq!(requests.len(), 3);
+        assert_eq!(requests[1].messages(), requests[2].messages());
+        drop(requests);
+    });
+}
+
 #[test]
 fn developer_loop_retries_a_recoverable_malformed_provider_turn() {
     block_on(async {
@@ -43,7 +88,14 @@ fn developer_loop_retries_a_recoverable_malformed_provider_turn() {
         assert_eq!(outcome.text, "implementation inspected");
         assert_eq!(outcome.model_turns, 1);
         assert_eq!(outcome.retries, 2);
-        assert_eq!(provider.requests.lock().expect("requests").len(), 3);
+        let requests = provider.requests.lock().expect("requests");
+        assert_eq!(requests.len(), 3);
+        assert!(requests.windows(2).all(|pair| pair[0].messages() == pair[1].messages()));
+        let ContentBlock::Text(policy) = &requests[0].messages()[0].content()[0] else {
+            panic!("missing current policy");
+        };
+        assert!(policy.expose_for_wire().contains("provider_step=1; required_tool=none"));
+        drop(requests);
         assert_eq!(trace.retries.len(), 2);
         assert_eq!(
             trace.retries[0].reason(),

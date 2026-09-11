@@ -1,0 +1,13 @@
+schema = 1
+surface = "app-protocol"
+surface_version = "v1"
+case = "realistic-workbench-goal-start"
+kind = "realistic"
+
+[[files]]
+path = "expectation.toml"
+sha256 = "9bfec43ae16414cb30f096371819e7785ea0460cc576310813b3ac2e7208039c"
+
+[[files]]
+path = "payload.hex"
+sha256 = "40eb4a28e91bd5442a58bb8cf2bf5150d87f7d672f4b94e2be9b6ca6afb33be1"

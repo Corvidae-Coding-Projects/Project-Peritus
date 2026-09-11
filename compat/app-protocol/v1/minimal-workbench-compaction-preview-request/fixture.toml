@@ -1,0 +1,13 @@
+schema = 1
+surface = "app-protocol"
+surface_version = "v1"
+case = "minimal-workbench-compaction-preview-request"
+kind = "minimal"
+
+[[files]]
+path = "expectation.toml"
+sha256 = "9bfec43ae16414cb30f096371819e7785ea0460cc576310813b3ac2e7208039c"
+
+[[files]]
+path = "payload.hex"
+sha256 = "0b46d45016e967d2191663af516d48c58fc862e49940ef6780af3ed4de70d69f"

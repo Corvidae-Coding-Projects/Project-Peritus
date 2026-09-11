@@ -99,6 +99,12 @@ const fn classify(
             Retryability::Never,
             "compatible.http.authentication",
         ),
+        402 => (
+            FailureCategory::QuotaExhausted,
+            OutcomeCertainty::DefinitelyNotAccepted,
+            Retryability::Never,
+            "compatible.http.quota_exhausted",
+        ),
         403 => (
             FailureCategory::Permission,
             OutcomeCertainty::DefinitelyNotAccepted,
@@ -121,6 +127,12 @@ const fn classify(
             FailureCategory::RateLimited,
             OutcomeCertainty::DefinitelyNotAccepted,
             Retryability::SafeNewRequest,
+            "compatible.http.rate_limited",
+        ),
+        429 => (
+            FailureCategory::RateLimited,
+            OutcomeCertainty::DefinitelyNotAccepted,
+            Retryability::Never,
             "compatible.http.rate_limited",
         ),
         500..=599 if retry.server_errors() => (

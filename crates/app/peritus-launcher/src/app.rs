@@ -11,6 +11,8 @@ use crate::{
     update, workspace_setup,
 };
 
+mod diagnostics;
+
 /// Prepares local state, starts or reuses the daemon, and runs the interactive application.
 ///
 /// # Errors
@@ -30,6 +32,7 @@ pub async fn launch_interactive() -> Result<ExitReason, LauncherError> {
 pub async fn launch_interactive_at(
     repository: Option<PathBuf>,
 ) -> Result<ExitReason, LauncherError> {
+    let _title = crate::terminal::product_title()?;
     let layout = AppLayout::discover()?.prepare()?;
     if update::offer_on_startup(&layout).await? {
         return Ok(ExitReason::UserQuit);
@@ -40,6 +43,8 @@ pub async fn launch_interactive_at(
     let binaries = SiblingBinaries::discover()?;
     let supervisor = DaemonSupervisor::new(Duration::from_secs(30));
     let product = product_context(&prepared)?;
+    let report = diagnostics::launcher_report(&prepared, &binaries, product.workspace_id())?;
+    let product = product.with_launcher_report(report).map_err(LauncherError::Tui)?;
     let mut tui_state = peritus_tui::TuiState::default();
     loop {
         supervisor.ensure_ready(&prepared, &binaries).await?;
@@ -123,14 +128,7 @@ fn product_context(
 }
 
 const fn provider_id(kind: ProviderKind) -> [u8; 16] {
-    match kind {
-        ProviderKind::CodexAccount => [0xa1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-        ProviderKind::ClaudeAccount => [0xa2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2],
-        ProviderKind::OpenAiApi => [0xa3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3],
-        ProviderKind::AnthropicApi => [0xa4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4],
-        ProviderKind::GoogleGeminiApi => [0xa5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5],
-        ProviderKind::CompatibleEndpoint => [0xa6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6],
-    }
+    kind.profile_identity()
 }
 
 fn decode_id(value: &str) -> Result<[u8; 16], LauncherError> {
@@ -157,6 +155,7 @@ fn decode_id(value: &str) -> Result<[u8; 16], LauncherError> {
 ///
 /// Returns an actionable bootstrap, interaction, provider, or configuration failure.
 pub fn configure_providers_interactive() -> Result<(), LauncherError> {
+    let _title = crate::terminal::product_title()?;
     let layout = AppLayout::discover()?.prepare()?;
     let prepared = ProductBootstrap::new(layout).prepare()?;
     let _configured = provider_setup::configure(&prepared)?;

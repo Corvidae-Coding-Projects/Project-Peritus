@@ -17,23 +17,23 @@ qualification = ["dep:ed25519-dalek"]
 
 [dependencies]
 ed25519-dalek = { workspace = true, optional = true }
-peritus-approval = { version = "=0.0.1", path = "../../state/peritus-approval" }
-peritus-artifact-store = { version = "=0.0.1", path = "../../state/peritus-artifact-store" }
-peritus-codec = { version = "=0.0.1", path = "../../foundation/peritus-codec" }
-peritus-debugger = { version = "=0.0.1", path = "../peritus-debugger" }
-peritus-eval = { version = "=0.0.1", path = "../peritus-eval" }
-peritus-evidence = { version = "=0.0.1", path = "../../state/peritus-evidence" }
-peritus-harness = { version = "=0.0.1", path = "../../orchestration/peritus-harness" }
-peritus-journal = { version = "=0.0.1", path = "../../state/peritus-journal" }
-peritus-kernel = { version = "=0.0.1", path = "../../foundation/peritus-kernel" }
-peritus-policy = { version = "=0.0.1", path = "../../foundation/peritus-policy" }
-peritus-review = { version = "=0.0.1", path = "../../orchestration/peritus-review" }
-peritus-types = { version = "=0.0.1", path = "../../foundation/peritus-types" }
+peritus-approval = { version = "=0.0.2", path = "../../state/peritus-approval" }
+peritus-artifact-store = { version = "=0.0.2", path = "../../state/peritus-artifact-store" }
+peritus-codec = { version = "=0.0.2", path = "../../foundation/peritus-codec" }
+peritus-debugger = { version = "=0.0.2", path = "../peritus-debugger" }
+peritus-eval = { version = "=0.0.2", path = "../peritus-eval" }
+peritus-evidence = { version = "=0.0.2", path = "../../state/peritus-evidence" }
+peritus-harness = { version = "=0.0.2", path = "../../orchestration/peritus-harness" }
+peritus-journal = { version = "=0.0.2", path = "../../state/peritus-journal" }
+peritus-kernel = { version = "=0.0.2", path = "../../foundation/peritus-kernel" }
+peritus-policy = { version = "=0.0.2", path = "../../foundation/peritus-policy" }
+peritus-review = { version = "=0.0.2", path = "../../orchestration/peritus-review" }
+peritus-types = { version = "=0.0.2", path = "../../foundation/peritus-types" }
 vstd.workspace = true
 
 [dev-dependencies]
-peritus-conformance = { version = "=0.0.1", path = "../../app/testing/peritus-conformance" }
-peritus-test-support = { version = "=0.0.1", path = "../../app/testing/peritus-test-support" }
+peritus-conformance = { version = "=0.0.2", path = "../../app/testing/peritus-conformance" }
+peritus-test-support = { version = "=0.0.2", path = "../../app/testing/peritus-test-support" }
 tempfile.workspace = true
 
 [package.metadata.peritus]

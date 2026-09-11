@@ -13,13 +13,13 @@ categories = ["database", "development-tools"]
 
 [dependencies]
 fs4.workspace = true
-peritus-types = { version = "=0.0.1", path = "../../foundation/peritus-types" }
+peritus-types = { version = "=0.0.2", path = "../../foundation/peritus-types" }
 rusqlite.workspace = true
 sha2.workspace = true
 vstd.workspace = true
 
 [dev-dependencies]
-peritus-journal = { version = "=0.0.1", path = "../peritus-journal" }
+peritus-journal = { version = "=0.0.2", path = "../peritus-journal" }
 tempfile.workspace = true
 
 [lints]

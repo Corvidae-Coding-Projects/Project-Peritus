@@ -7,6 +7,28 @@ const TOOL: &str = "{\"type\":\"thread.started\",\"thread_id\":\"fake-thread\"}\
 const ORDERED: &str = "{\"type\":\"thread.started\",\"thread_id\":\"fake-thread\"}\n{\"type\":\"item.started\",\"item\":{\"type\":\"reasoning\"}}\n{\"type\":\"item.started\",\"item\":{\"type\":\"reasoning\"}}\n{\"type\":\"item.completed\",\"item\":{\"type\":\"agent_message\",\"text\":\"{\\\"content\\\":\\\"ordered\\\",\\\"tool_calls\\\":[]}\"}}\n{\"type\":\"turn.completed\",\"usage\":{\"input_tokens\":3,\"output_tokens\":2,\"total_tokens\":5}}\n";
 
 pub(super) fn output(model: &str, invocation: u64) -> (&'static str, i32) {
+    if model.contains("commentary") {
+        return (
+            r#"{"type":"thread.started","thread_id":"fake-thread"}
+{"type":"turn.started"}
+{"type":"item.completed","item":{"id":"progress","type":"agent_message","text":"I will inspect the requested workspace."}}
+{"type":"item.updated","item":{"id":"reasoning","type":"reasoning"}}
+{"type":"item.completed","item":{"id":"final","type":"agent_message","text":"{\"content\":\"routed\",\"tool_calls\":[]}"}}
+{"type":"turn.completed","usage":{"input_tokens":12,"output_tokens":5,"total_tokens":17}}
+"#,
+            0,
+        );
+    }
+    if model.contains("bad-arguments") {
+        return (
+            r#"{"type":"thread.started","thread_id":"fake-thread"}
+{"type":"turn.started"}
+{"type":"item.completed","item":{"type":"agent_message","text":"{\"content\":\"\",\"tool_calls\":[{\"name\":\"lookup\",\"arguments_json\":\"{invalid}\"}]}"}}
+{"type":"turn.completed","usage":{"input_tokens":12,"output_tokens":5,"total_tokens":17}}
+"#,
+            0,
+        );
+    }
     if model.contains("malformed") {
         return ("{not-json}\n", 0);
     }

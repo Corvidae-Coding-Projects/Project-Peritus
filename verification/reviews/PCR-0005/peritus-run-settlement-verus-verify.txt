@@ -1,0 +1,35 @@
+=== PERITUS GATE RECORD ===
+{"argv": ["cargo", "verus", "verify", "--package", "peritus-run-settlement", "--all-features", "--locked", "--check-toolchain", "--fwd-verus-args-to", "roots", "--", "--no-cheating", "--rlimit", "20"], "command": "cargo verus verify --package peritus-run-settlement --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20", "command_exit_code": 0, "custody_error": null, "duration_seconds": 0.37831, "finished_at": "2026-09-10T01:51:44.716250Z", "kind": "verus-verify", "owning_crate": "peritus-run-settlement", "result": "passed", "schema": "peritus.formal-package-gate-output", "schema_version": 1, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "started_at": "2026-09-10T01:51:44.377219Z", "verification_class": "V"}
+=== STDOUT LOG ===
+=== PERITUS CUSTODY HEADER ===
+{"argv": ["cargo", "verus", "verify", "--package", "peritus-run-settlement", "--all-features", "--locked", "--check-toolchain", "--fwd-verus-args-to", "roots", "--", "--no-cheating", "--rlimit", "20"], "kind": "verus-verify", "owning_crate": "peritus-run-settlement", "schema": "peritus.formal-package-evidence-stream", "schema_version": 1, "sequence": 92, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "stream": "stdout", "verification_class": "V"}
+=== COMMAND OUTPUT ===
+
+=== PERITUS CUSTODY FOOTER ===
+{"command_exit_code": 0, "execution_error": null, "finished_at": "2026-09-10T01:51:44.716250Z"}
+
+=== STDERR LOG ===
+=== PERITUS CUSTODY HEADER ===
+{"argv": ["cargo", "verus", "verify", "--package", "peritus-run-settlement", "--all-features", "--locked", "--check-toolchain", "--fwd-verus-args-to", "roots", "--", "--no-cheating", "--rlimit", "20"], "kind": "verus-verify", "owning_crate": "peritus-run-settlement", "schema": "peritus.formal-package-evidence-stream", "schema_version": 1, "sequence": 92, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "stream": "stderr", "verification_class": "V"}
+=== COMMAND OUTPUT ===
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+  --> crates/orchestration/peritus-run-settlement/src/evidence.rs:45:10
+   |
+45 | #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+   |          ^^^^^
+   |
+   = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: autoderive Clone impl does not take the form Verus expects; continuing, but without adding a specification for the derived Clone impl
+  --> crates/orchestration/peritus-run-settlement/src/evidence.rs:68:10
+   |
+68 | #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+   |          ^^^^^
+   |
+   = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: `peritus-run-settlement` (lib) generated 2 warnings
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.12s
+
+=== PERITUS CUSTODY FOOTER ===
+{"command_exit_code": 0, "execution_error": null, "finished_at": "2026-09-10T01:51:44.716250Z"}

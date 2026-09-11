@@ -17,6 +17,7 @@ pub(super) struct GenerateState {
     next_item: u32,
     structured: bool,
     saw_tool: bool,
+    json: peritus_provider_core::healing::ToolArgumentBuffer,
 }
 
 impl GenerateState {
@@ -28,6 +29,7 @@ impl GenerateState {
             next_item: 0,
             structured,
             saw_tool: false,
+            json: peritus_provider_core::healing::ToolArgumentBuffer::new(),
         }
     }
 
@@ -230,6 +232,9 @@ impl GenerateState {
                         item_id: item,
                         fragment: fragment(text.as_bytes().to_vec())?,
                     }
+                } else if kind == ItemKind::StructuredOutput {
+                    self.json.append(text.as_bytes(), ProtocolLimits::PRODUCTION)?;
+                    ModelEvent::Heartbeat
                 } else {
                     ModelEvent::TextDelta {
                         item_id: item,
@@ -307,9 +312,6 @@ impl GenerateState {
         let arguments = call
             .get("args")
             .ok_or_else(|| invalid("Generate Content function arguments are missing"))?;
-        if !arguments.is_object() {
-            return Err(invalid("Generate Content function arguments are not an object"));
-        }
         let item = self.ensure_item(owner, ItemKind::ToolCall, digest, event_id)?;
         let call_id = call_id(&id)?;
         owner.emit(
@@ -323,11 +325,13 @@ impl GenerateState {
         )?;
         let bytes = serde_json::to_vec(arguments)
             .map_err(|_| invalid("Generate Content function arguments could not be serialized"))?;
-        owner.emit(
-            ModelEvent::ToolArgumentDelta { call_id, fragment: fragment(bytes)? },
-            digest,
-            event_id,
-        )?;
+        for event in peritus_provider_core::healing::tool_arguments(
+            &bytes,
+            &call_id,
+            ProtocolLimits::PRODUCTION,
+        )? {
+            owner.emit(event, digest, event_id)?;
+        }
         self.close_active(owner, digest, event_id)?;
         self.saw_tool = true;
         Ok(())
@@ -339,7 +343,17 @@ impl GenerateState {
         digest: peritus_types::Sha256Digest,
         event_id: Option<&str>,
     ) -> Result<(), ProviderCoreError> {
-        if let Some((item, _kind)) = self.active.take() {
+        if let Some((item, kind)) = self.active.take() {
+            if kind == ItemKind::StructuredOutput {
+                for event in peritus_provider_core::healing::structured_output(
+                    self.json.as_bytes(),
+                    &item,
+                    ProtocolLimits::PRODUCTION,
+                )? {
+                    owner.emit(event, digest, event_id)?;
+                }
+                self.json = peritus_provider_core::healing::ToolArgumentBuffer::new();
+            }
             owner.emit(ModelEvent::ItemCompleted(item), digest, event_id)?;
         }
         Ok(())

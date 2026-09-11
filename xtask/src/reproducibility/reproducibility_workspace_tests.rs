@@ -26,7 +26,7 @@ fn lint_deletion_weakening_and_unreviewed_cfg_are_rejected() {
 #[test]
 fn resolver_metadata_and_profiles_cannot_drift() {
     for (altered, expected) in [
-        (changed("version = \"0.0.1\"", "version = \"0.0.2\""), "package metadata"),
+        (changed("version = \"0.0.2\"", "version = \"0.0.3\""), "package metadata"),
         (changed("resolver = \"3\"", "resolver = \"2\""), "workspace resolver"),
         (changed("architecture-policy = \"architecture.toml\"\n", ""), "Peritus policy metadata"),
         (changed("overflow-checks = true", "overflow-checks = false"), "development profile"),

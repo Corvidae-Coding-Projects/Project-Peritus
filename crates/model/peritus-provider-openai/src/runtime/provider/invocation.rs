@@ -1,7 +1,7 @@
 //! Hardened authentication and isolated one-turn process projections.
 
 use std::fs::OpenOptions;
-use std::io::Write as _;
+use std::io::{Read as _, Write as _};
 use std::path::Path;
 use std::time::Duration;
 
@@ -12,7 +12,16 @@ use peritus_provider_core::{
 };
 
 use super::super::CodexRuntimeConfig;
+use super::super::output::DecodeFailure;
 use super::super::request::RuntimeRequest;
+
+#[cfg(test)]
+mod tests;
+
+pub(super) struct TurnOutput {
+    pub(super) process: peritus_provider_core::ProcessOutput,
+    pub(super) final_message: Result<String, DecodeFailure>,
+}
 
 const DISABLED_NATIVE_FEATURES: &[&str] = &[
     "shell_tool",
@@ -60,7 +69,7 @@ pub(super) async fn run_turn(
     request: &ModelRequest,
     runtime: &RuntimeRequest,
     cancellation: &CancellationToken,
-) -> Result<peritus_provider_core::ProcessOutput, ProviderCoreError> {
+) -> Result<TurnOutput, ProviderCoreError> {
     let directory = tempfile::tempdir().map_err(|_| temporary_failure())?;
     let mut schema =
         tempfile::NamedTempFile::new_in(directory.path()).map_err(|_| temporary_failure())?;
@@ -68,21 +77,49 @@ pub(super) async fn run_turn(
     schema.flush().map_err(|_| temporary_failure())?;
     let schema_path = path_argument(schema.path())?;
     let image_paths = write_images(directory.path(), runtime.images())?;
+    let final_path = directory.path().join("final-response.json");
     let process = ProcessRequest::new(
         config.executable().process_executable().clone(),
-        arguments(request.model().as_str(), runtime.reasoning_effort(), schema_path, &image_paths),
+        arguments(
+            request.model().as_str(),
+            runtime.reasoning_effort(),
+            schema_path,
+            path_argument(&final_path)?,
+            &image_paths,
+        ),
         runtime.prompt.clone(),
         Some(directory.path().to_path_buf()),
         isolated_environment()?,
         config.process_limits(),
     )?;
-    transport.run(process, cancellation).await
+    let process = transport.run(process, cancellation).await?;
+    let final_message = read_final(&final_path);
+    Ok(TurnOutput { process, final_message })
+}
+
+fn read_final(path: &Path) -> Result<String, DecodeFailure> {
+    let metadata = std::fs::symlink_metadata(path).map_err(|_| DecodeFailure::InvalidEnvelope)?;
+    let maximum = peritus_model_protocol::ProtocolLimits::PRODUCTION.max_text_bytes();
+    if !metadata.is_file() || metadata.len() > maximum as u64 {
+        return Err(DecodeFailure::OutputLimit);
+    }
+    let mut bytes = Vec::new();
+    std::fs::File::open(path)
+        .map_err(|_| DecodeFailure::InvalidEnvelope)?
+        .take(maximum as u64 + 1)
+        .read_to_end(&mut bytes)
+        .map_err(|_| DecodeFailure::InvalidEnvelope)?;
+    if bytes.len() > maximum {
+        return Err(DecodeFailure::OutputLimit);
+    }
+    String::from_utf8(bytes).map_err(|_| DecodeFailure::InvalidEnvelope)
 }
 
 fn arguments(
     model: &str,
     reasoning_effort: &str,
     schema_path: String,
+    final_path: String,
     image_paths: &[String],
 ) -> Vec<String> {
     let mut values = vec![
@@ -111,6 +148,8 @@ fn arguments(
     }
     values.push("--output-schema".to_owned());
     values.push(schema_path);
+    values.push("--output-last-message".to_owned());
+    values.push(final_path);
     values.push("-".to_owned());
     values
 }

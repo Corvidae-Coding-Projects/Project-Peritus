@@ -1,6 +1,7 @@
 //! Fail-closed validation and private wire projection for both compatible dialects.
 
 mod chat;
+mod hosted;
 mod responses;
 mod validation;
 mod value;
@@ -16,7 +17,15 @@ pub fn validate(
     profile: &CompatibleProfile,
     request: &ModelRequest,
 ) -> Result<(), ProviderCoreError> {
-    validation::validate(profile, request)?;
+    validate_for_service(profile, request, None)
+}
+
+pub fn validate_for_service(
+    profile: &CompatibleProfile,
+    request: &ModelRequest,
+    service: Option<peritus_provider_core::hosted::HostedService>,
+) -> Result<(), ProviderCoreError> {
+    validation::validate(profile, request, service)?;
     match profile.provider_profile().dialect() {
         WireDialect::CompatibleResponses => {
             if request.options().generation().seed().is_some()
@@ -51,7 +60,14 @@ pub fn http_request(
     request: &ModelRequest,
     credential: Credential,
 ) -> Result<HttpRequest, ProviderCoreError> {
-    let body = encode(profile, request)?;
+    let body = if profile.provider_profile().dialect() == WireDialect::CompatibleChatCompletions
+        && config.hosted_service().is_some()
+    {
+        validate_for_service(profile, request, config.hosted_service())?;
+        chat::encode_hosted(request, config.hosted_service())?
+    } else {
+        encode(profile, request)?
+    };
     let mut values = vec![
         config.auth().project(credential)?,
         Header::new(HeaderName::new("content-type".to_owned())?, b"application/json".to_vec())?,

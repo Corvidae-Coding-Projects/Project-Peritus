@@ -97,6 +97,16 @@ Ordinary conversation does not automatically start a build. The composer stays a
 Peritus works; follow-up messages can correct or redirect it. The status distinguishes input
 received by the daemon from input incorporated into a model request.
 
+When you ask Chat to implement or fix something, it hands the request to the existing design,
+writer, exact-target checks, independent reviewer, and fixer pipeline. Questions, diagnosis,
+planning, and read-only review remain conversational; they do not authorize edits.
+
+The conversation shows your messages and the model's replies, with one `*working (40s)` indicator
+while work is active. Harness status messages and tool activity stay behind `/details`; failures
+remain visible. The timer measures elapsed time since this client observed the current busy period,
+not evidence of model progress.
+The account-backed Codex adapter delivers complete messages, not token-by-token text.
+
 Type `/` to discover commands; Tab completes them.
 
 | Command | Action |
@@ -104,12 +114,18 @@ Type `/` to discover commands; Tab completes them.
 | `/plan` or `/review` | Discuss a plan or perform an independent review with read-only tools. |
 | `/build <request>` | Start checked writer, reviewer, and fixer delivery. |
 | `/model` | Discover provider models; arrows and Enter select, Tab switches roles. |
+| `/effort` | Select per-role reasoning effort; also press `e` in the model picker. |
 | `/new` | Start another conversation without deleting prior work. |
 | `/status`, `/diff`, `/details` | Inspect progress, changes, and public tool summaries. |
 | `/stop` | Stop the current work and preserve effects already completed. |
 | `/runs` | Open the run and candidate dashboard. |
 
 Use Shift+Enter for a new line and PageUp/PageDown to scroll.
+In the message composer, Ctrl+Left/Right moves by word. Hold Shift with Left/Right,
+Ctrl+Left/Right, or Home/End to select text; typing, pasting, Backspace, and Delete
+replace or remove the selection. Escape clears it. Click to position the cursor,
+or drag or Shift-click to select. Mouse input requires terminal mouse reporting;
+use your terminal’s selection override (usually Shift-drag) to copy screen text.
 Diff and check reports also support PageUp/PageDown; Home returns to the start.
 Ctrl+C closes the interface when idle. During active work it requests a stop; press it again to
 close without waiting. Ctrl+Q closes the interface without cancelling
@@ -117,8 +133,11 @@ daemon-owned work. Conversations and task state remain available between session
 
 Plain folders do not need `git init` or an initial commit. You can chat and inspect files before
 trusting the folder. After trust, ask for changes or commands in `/chat`; edits happen in that folder.
+The same pipeline checks individually tracked task files without a whole-folder snapshot. Missing
+verification coverage or an interrupted review leaves effects in place but not verified complete.
 Commands run with your local user permissions. There is no automatic rollback of in-place changes.
-`/build` and candidate actions such as `/commit`, `/diff`, and `/discard` use the managed Git workflow.
+`/diff` shows the available comparison evidence. `/build` and candidate actions such as `/commit`
+and `/discard` require the managed Git workflow; they are not offered for in-place delivery.
 
 In `/runs`, select a task before using these dashboard keys:
 
@@ -149,6 +168,13 @@ peritus workspaces
 
 Use `peritus providers` to add a provider, change a provider, or repair a login.
 Use `peritus workspaces` to select a repository or repair its managed copy.
+
+Direct API choices include OpenAI, Anthropic, Google Gemini, OpenCode Zen and Go, OpenRouter,
+Groq, Together AI, Fireworks AI, DeepSeek, and an explicitly configured compatible endpoint.
+In provider settings, press `t` on an existing direct provider to test generation, tool calling,
+and a tool-result round trip. The optional test makes up to three small requests and may use
+paid tokens; saving a key or listing models does not run it. See [provider contracts](docs/provider-contracts.md)
+for API sources, discovery behavior, and test limits.
 
 Setup and `/model` query provider-advertised model catalogs. No built-in model list is substituted
 when discovery fails; `/model manual MODEL_ID` is an explicit, unverified fallback.
@@ -184,6 +210,8 @@ peritus update --enable-checks
   selected models, and unsent chat text stay in the interface while daemon readiness is restored.
 - If a provider login fails, run `peritus providers`.
 - If a workspace needs repair, run `peritus workspaces`.
+- Interrupted provider responses retry automatically within the task's limits. After a daemon
+  restart, interrupted tasks continue from preserved work. Tasks you explicitly cancel stay stopped.
 - If a task stops, read its remaining work. Send a message to continue it, or select it in `/runs` and press `r` to retry.
 
 Do not delete the state directory to repair a task. It contains task history and managed repository copies.

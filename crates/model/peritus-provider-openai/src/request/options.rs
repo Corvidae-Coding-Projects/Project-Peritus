@@ -122,6 +122,9 @@ const fn effort_name(effort: ReasoningEffort) -> &'static str {
         ReasoningEffort::Low => "low",
         ReasoningEffort::Medium => "medium",
         ReasoningEffort::High => "high",
+        ReasoningEffort::XHigh => "xhigh",
+        ReasoningEffort::Max => "max",
+        ReasoningEffort::Ultra => "ultra",
     }
 }
 

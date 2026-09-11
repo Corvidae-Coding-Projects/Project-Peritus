@@ -19,14 +19,18 @@ crossterm.workspace = true
 fs4.workspace = true
 futures-util.workspace = true
 getrandom.workspace = true
-peritus-approval = { version = "=0.0.1", path = "../../state/peritus-approval" }
-peritus-daemon = { version = "=0.0.1", path = "../peritus-daemon" }
-peritus-git = { version = "=0.0.1", path = "../../runtime/peritus-git" }
-peritus-provider-onboarding = { version = "=0.0.1", path = "../peritus-provider-onboarding" }
-peritus-product-state = { version = "=0.0.1", path = "../peritus-product-state" }
-peritus-tui = { version = "=0.0.1", path = "../peritus-tui" }
-peritus-types = { version = "=0.0.1", path = "../../foundation/peritus-types" }
-peritus-workspace = { version = "=0.0.1", path = "../../runtime/peritus-workspace" }
+peritus-approval = { version = "=0.0.2", path = "../../state/peritus-approval" }
+peritus-app-protocol = { version = "=0.0.2", path = "../peritus-app-protocol" }
+peritus-daemon = { version = "=0.0.2", path = "../peritus-daemon" }
+peritus-git = { version = "=0.0.2", path = "../../runtime/peritus-git" }
+peritus-local-socket = { version = "=0.0.2", path = "../../runtime/peritus-local-socket" }
+peritus-model-protocol = { version = "=0.0.2", path = "../../model/peritus-model-protocol" }
+peritus-provider-core = { version = "=0.0.2", path = "../../model/peritus-provider-core" }
+peritus-provider-onboarding = { version = "=0.0.2", path = "../peritus-provider-onboarding" }
+peritus-product-state = { version = "=0.0.2", path = "../peritus-product-state" }
+peritus-tui = { version = "=0.0.2", path = "../peritus-tui" }
+peritus-types = { version = "=0.0.2", path = "../../foundation/peritus-types" }
+peritus-workspace = { version = "=0.0.2", path = "../../runtime/peritus-workspace" }
 reqwest.workspace = true
 serde_json.workspace = true
 sha2.workspace = true

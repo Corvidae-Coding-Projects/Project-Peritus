@@ -23,7 +23,11 @@ pub struct DeveloperUsage {
 }
 
 impl DeveloperUsage {
-    pub(crate) fn observe(&mut self, counters: UsageCounters) -> Result<(), DeveloperLoopError> {
+    /// Adds one response's normalized high-water counters without counting reasoning twice.
+    ///
+    /// # Errors
+    /// Returns a limit failure if an aggregate counter overflows.
+    pub fn observe(&mut self, counters: UsageCounters) -> Result<(), DeveloperLoopError> {
         let values = [
             counters.input_tokens(),
             counters.cached_input_tokens(),

@@ -1,0 +1,50 @@
+=== PERITUS GATE RECORD ===
+{"argv": ["cargo", "test", "--package", "peritus-provider-google", "--all-targets", "--all-features", "--locked"], "command": "cargo test --package peritus-provider-google --all-targets --all-features --locked", "command_exit_code": 0, "custody_error": null, "duration_seconds": 1.583214, "finished_at": "2026-09-10T01:51:32.304493Z", "kind": "ordinary-test", "owning_crate": "peritus-provider-google", "result": "passed", "schema": "peritus.formal-package-gate-output", "schema_version": 1, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "started_at": "2026-09-10T01:51:30.760466Z", "verification_class": "H"}
+=== STDOUT LOG ===
+=== PERITUS CUSTODY HEADER ===
+{"argv": ["cargo", "test", "--package", "peritus-provider-google", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "owning_crate": "peritus-provider-google", "schema": "peritus.formal-package-evidence-stream", "schema_version": 1, "sequence": 77, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "stream": "stdout", "verification_class": "H"}
+=== COMMAND OUTPUT ===
+
+running 25 tests
+test error::tests::rate_quota_auth_and_transient_statuses_remain_distinct ... ok
+test profile::tests::unsupported_exact_resume_is_rejected_by_the_profile ... ok
+test fixture_tests::manifest_is_stable_v1_only_and_covers_failure_contracts ... ok
+test request::tests::forced_streaming_requires_exact_negotiation ... ok
+test profile::tests::accepts_both_explicit_stable_v1_dialects ... ok
+test client::tests::missing_streaming_stops_before_credentials_and_transport ... ok
+test client::tests::successful_non_sse_shape_is_malformed ... ok
+test client::tests::generate_numeric_error_envelope_remains_rate_limited_without_quota_evidence ... ok
+test request::tests::minimal_requests_match_both_checked_golden_shapes ... ok
+test fixture_tests::every_manifest_artifact_has_an_exact_sha256_inventory_entry ... ok
+test client::tests::sends_header_auth_and_exact_stable_v1_routes_for_both_dialects ... ok
+test stream::tests::cancellation_discards_buffered_provider_output ... ok
+test request::tests::rich_tools_media_schema_cache_and_thought_replay_are_exact ... ok
+test stream::tests::ancillary_unknown_is_preserved_and_sse_error_is_terminal ... ok
+test stream::tests::fragmented_interactions_text_usage_cache_and_metadata_are_ordered ... ok
+test stream::tests::generate_content_unwraps_audited_string_encoded_tool_arguments ... ok
+test stream::tests::corrupt_incomplete_and_unknown_critical_fail_closed ... ok
+test request::tests::system_audio_and_document_inputs_follow_each_dialect_shape ... ok
+test stream::tests::generate_text_tool_thinking_signature_and_final_usage_normalize ... ok
+test stream::tests::both_google_dialects_heal_structured_output_but_leave_public_prose_untouched ... ok
+test stream::tests::interactions_heals_completed_arguments_with_audit_and_rejects_truncation ... ok
+test stream::tests::tool_argument_fragments_close_only_after_complete_json ... ok
+test client::tests::connect_retries_but_maybe_sent_transport_does_not ... ok
+test client::tests::explicit_rate_rejection_retries_but_authentication_does_not ... ok
+test conformance_tests::runner::production_google_passes_all_cases_with_fresh_subjects ... ok
+
+test result: ok. 25 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.46s
+
+
+=== PERITUS CUSTODY FOOTER ===
+{"command_exit_code": 0, "execution_error": null, "finished_at": "2026-09-10T01:51:32.304493Z"}
+
+=== STDERR LOG ===
+=== PERITUS CUSTODY HEADER ===
+{"argv": ["cargo", "test", "--package", "peritus-provider-google", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "owning_crate": "peritus-provider-google", "schema": "peritus.formal-package-evidence-stream", "schema_version": 1, "sequence": 77, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "stream": "stderr", "verification_class": "H"}
+=== COMMAND OUTPUT ===
+   Compiling peritus-provider-google v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/model/peritus-provider-google)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.04s
+     Running unittests src/lib.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/peritus_provider_google-6d013767c1106b52)
+
+=== PERITUS CUSTODY FOOTER ===
+{"command_exit_code": 0, "execution_error": null, "finished_at": "2026-09-10T01:51:32.304493Z"}

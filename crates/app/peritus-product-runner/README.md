@@ -55,6 +55,13 @@ or control with the existing C4/C2 owner; it does not promise to recreate an arb
 after a daemon process restart. Startup recovery separately reconciles durable C2 process state and
 the durable product run remains explicitly recoverable.
 
+New shell and local-compactor commands reserve a durable per-run ordinal before creating process
+authority. Reopening the runtime, a failed start, and concurrent runtime instances cannot reuse a
+reserved identity. The transactional SQLite allocator also skips existing authority and compactor
+paths from older versions. Failed starts consume an ordinal; an unreadable or exhausted allocator
+stops execution rather than resetting it. Effect receipts still determine whether an earlier
+request may replay a result or requires reconciliation.
+
 When the launcher supplied explicit automatic-failover consent, every designer, writer, reviewer,
 and fixer invocation owns a deterministic provider cursor. The selected provider keeps its normal
 bounded recovery first. Only then may the role advance to another configured tool-capable route;
@@ -62,8 +69,29 @@ media capability is checked against the current task. Safety, refusal, cancellat
 transport, and normalized ambiguous acceptance never trigger a switch. Each accepted transition is
 written to the append-only trace before its progress counter advances.
 
-Writable tool receipts bind deterministic role/invocation/effect identity, provider call ID, and
-canonical request digest to `Started`, `Completed`, or `Ambiguous` state. Exact completed calls
+Workspace grounding belongs to a host invocation, not to each provider request. Recovery prompts
+apply their startup sequence once; later steps receive current executor prerequisite state alongside
+the original host policy. Writable roles also detect unchanged inspection cycles using a bounded
+16-entry history of tool-name, argument, and result digests. Three consecutive repeated observations
+produce a specific warning; six stop with `inspection-no-progress` after the complete batch is
+retained. New inspection evidence or a different tool strategy resets the cycle. Command polling
+is not inspection repetition, and read-only reviewer/design tools do not use this delivery guard.
+This stop is nonretryable, so earlier file writes cannot turn it into another recovery loop.
+
+Recovery progress is a content change, not a larger inspection scope: enrolling an unchanged or
+absent path does not replenish retry allowances. Policy, cancellation, integrity, and ambiguous
+terminals cannot be restarted merely because an earlier call changed a file. Malformed-response
+recovery supplies explicit format guidance without replaying effects. Model requests, completed
+tool calls, compactions, and accepted usage snapshots update shared accounting as they occur, so
+later failures or cancellation cannot erase observed work; repeated usage snapshots are not added
+twice. Workspace tool arguments must match the published closed schema before scope enrollment,
+receipts, or execution. Missing-file reads return greenfield-aware corrective guidance.
+
+Writable tool receipts bind a fresh host invocation identity, its ordered effect number, provider
+call ID, and canonical request digest to `Started`, `Completed`, or `Ambiguous` state. The invocation
+identity is shared with the model requests and retained before effects; a resumed writer or fixer
+gets a new identity even at the same conversation revision, independently of local-memory mode.
+Exact completed calls within the original identity
 replay their bounded result. A command left in `Started` across restart is never launched again;
 Peritus returns an explicit ambiguous observation so the agent or user can reconcile its effects.
 

@@ -69,7 +69,31 @@ termination and await reaping before returning. Tests exercise the public fake s
 Tokio transport with a portable Rust helper, including argv/stdin/cwd/environment removal,
 output bounds, cancellation, and process ownership on Windows and Unix.
 
+On Windows, both runtime transport and model-catalog discovery launch without a console. Piped
+output alone is insufficient: a provider can otherwise rename the caller's shared console through
+native APIs. Claude catalog discovery also disables its automatic title updates.
+
 ## Failure and compatibility notes
+
+### Native response healing
+
+The shared `healing` module normalizes complete model-authored tool arguments and requested
+structured responses locally, without extra inference or network calls. It handles trailing commas,
+ASCII identifier keys missing quotes, one surrounding JSON code fence, an unambiguous explanatory
+prefix ending in a colon, and one redundant JSON-string encoding of an expected tool object.
+Malformed repair inputs are capped at 64 KiB; valid inputs retain the existing protocol limits.
+
+Streaming adapters buffer arguments until their close event. Valid argument fragments are replayed
+with their original bytes and boundaries. Raw terminal/delta consistency checks run before repair.
+Ordinary prose, transport frames, runtime lifecycle events, names and IDs are never healed. Missing
+delimiters or values, duplicate keys, multiple JSON candidates and unsupported syntax still fail.
+The C5 canonical parser, tool schemas, permissions and effect admission remain unchanged.
+
+Each repair emits a bounded `peritus.response_healing` event with policy `syntax-only-v1`, its
+target, original input and repaired JSON. These sensitive values belong to the private durable
+provider trace, not diagnostic logs or public chat. The daemon emits only a safe repair status.
+No setting or third-party plugin is needed. Syntax repair does not certify a tool's meaning or
+success, and cannot improve a model's reasoning or finish a truncated response.
 
 Errors contain a stable `ProviderCoreErrorKind`, code, static operation, and static redaction-safe
 detail. Transport-library error strings are not propagated because URLs and provider-controlled

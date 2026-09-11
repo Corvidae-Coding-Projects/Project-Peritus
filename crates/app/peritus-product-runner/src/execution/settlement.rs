@@ -47,6 +47,13 @@ pub(super) fn from_initial_error(
     let cause = cause_from_error(error, false);
     let mut reducer = SettlementReducer::new();
     let candidate = if let Some(resume) = input.resume.as_ref() {
+        if resume.baseline().scope() != input.in_place_scope().as_ref() {
+            return Err(ProductRunnerError::new(
+                ProductRunnerErrorKind::InvalidPrecondition,
+                "restore workspace delivery",
+                "refusing a resume from another delivery scope",
+            ));
+        }
         reducer.observe(*resume.checkpoint()).map_err(invariant)?;
         Some(ProductRunOutput {
             design_path: resume.design_path().clone(),

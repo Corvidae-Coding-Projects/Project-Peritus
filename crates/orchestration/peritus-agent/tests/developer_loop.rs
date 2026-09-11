@@ -1,5 +1,7 @@
 //! Production D0 developer-loop integration with a scripted provider and concrete tool port.
 
+#[path = "developer_loop/accounting_tests.rs"]
+mod accounting_tests;
 #[path = "developer_loop/context_tests.rs"]
 mod context_tests;
 #[path = "developer_loop/fixtures.rs"]
@@ -8,6 +10,8 @@ mod fixtures;
 mod interaction_tests;
 #[path = "developer_loop/local_context_tests.rs"]
 mod local_context_tests;
+#[path = "developer_loop/reasoning_tests.rs"]
+mod reasoning_tests;
 #[path = "developer_loop/retry_tests.rs"]
 mod retry_tests;
 
@@ -175,6 +179,7 @@ impl DeveloperToolExecutor for RecordingTool {
 
 #[derive(Default)]
 struct RecordingTrace {
+    accounting: Vec<peritus_agent::DeveloperAccountingEvent>,
     envelopes: u32,
     observations: u32,
     observation_bytes: Vec<usize>,
@@ -183,6 +188,13 @@ struct RecordingTrace {
 }
 
 impl DeveloperTrace for RecordingTrace {
+    fn account(
+        &mut self,
+        event: peritus_agent::DeveloperAccountingEvent,
+    ) -> Result<(), peritus_agent::DeveloperLoopError> {
+        self.accounting.push(event);
+        Ok(())
+    }
     fn record(
         &mut self,
         event: DeveloperTraceEvent<'_>,
@@ -338,59 +350,5 @@ fn developer_loop_uses_the_negotiated_parallel_tool_width() {
     });
 }
 
-#[test]
-fn developer_loop_continues_an_early_terminal_in_the_same_grounding_session() {
-    block_on(async {
-        let provider = ScriptedProvider {
-            profile: profile(),
-            responses: Mutex::new(VecDeque::from([
-                text_response(),
-                tool_response(),
-                text_response(),
-            ])),
-            requests: Mutex::new(Vec::new()),
-        };
-        let mut tools = GroundingTool::default();
-        let mut trace = RecordingTrace::default();
-        let outcome = DeveloperLoop::run(
-            &provider,
-            DeveloperLoopRequest {
-                request_prefix: "grounding-recovery-test".to_owned(),
-                system: "Inspect before completing.".to_owned(),
-                prompt: "Read src/lib.rs and report.".to_owned(),
-                attachments: Vec::new(),
-                tools: vec![read_tool()],
-                limits: DeveloperLoopLimits::new(4, 4).expect("limits"),
-                cancellation: CancellationToken::new(),
-            },
-            &mut tools,
-            &mut trace,
-        )
-        .await
-        .expect("early terminal recovers");
-
-        assert_eq!(outcome.text, "implementation inspected");
-        assert_eq!(outcome.model_turns, 3);
-        assert_eq!(outcome.tool_calls, 1);
-        assert_eq!(tools.calls, 1);
-        let requests = provider.requests.lock().expect("requests");
-        assert_eq!(requests.len(), 3);
-        assert!(matches!(
-            requests[0].tool_choice(),
-            ToolChoice::Specific(name) if name.as_str() == "workspace_read"
-        ));
-        assert_eq!(requests[0].parallel_tool_policy(), ParallelToolPolicy::Disabled);
-        assert!(matches!(
-            requests[1].tool_choice(),
-            ToolChoice::Specific(name) if name.as_str() == "workspace_read"
-        ));
-        assert!(matches!(requests[2].tool_choice(), ToolChoice::Auto));
-        assert!(requests[1].messages().iter().any(|message| {
-            message.role() == Role::User
-                && message.content().iter().any(|block| {
-                    matches!(block, ContentBlock::Text(text) if text.expose_for_wire().contains("cannot accept that terminal response yet"))
-                })
-        }));
-        drop(requests);
-    });
-}
+#[path = "developer_loop/grounding_tests.rs"]
+mod grounding_tests;

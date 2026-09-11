@@ -104,7 +104,7 @@ fn structured_commands_time_out_without_freezing_the_agent() {
     let executable = std::env::current_exe().expect("current test executable");
     let program = serde_json::to_string(&executable).expect("program path");
     let arguments = format!(
-        r#"{{"args":["--exact","developer_tools::executor::tests::command::command_timeout_fixture","--nocapture"],"cwd":".","program":{program},"timeout_seconds":1}}"#
+        r#"{{"args":["--exact","developer_tools::executor::tests::command::command_timeout_fixture","--nocapture"],"cwd":".","program":{program},"purpose":"verification","timeout_seconds":1}}"#
     );
 
     let started = Instant::now();
@@ -134,7 +134,7 @@ fn structured_commands_shrink_to_preserve_the_product_completion_reserve() {
     let executable = std::env::current_exe().expect("current test executable");
     let program = serde_json::to_string(&executable).expect("program path");
     let arguments = format!(
-        r#"{{"args":["--exact","developer_tools::executor::tests::command::command_timeout_fixture","--nocapture"],"cwd":".","program":{program},"timeout_seconds":10}}"#
+        r#"{{"args":["--exact","developer_tools::executor::tests::command::command_timeout_fixture","--nocapture"],"cwd":".","program":{program},"purpose":"verification","timeout_seconds":10}}"#
     );
 
     let command = execute(&mut tools, "run_command", &arguments);
@@ -197,8 +197,11 @@ fn commands_accept_a_workspace_reached_through_a_filesystem_alias() {
     let mut tools = writable_tools(&alias);
     let _ = execute(&mut tools, "workspace_list", r#"{"depth":1,"path":""}"#);
 
-    let command =
-        execute(&mut tools, "run_command", r#"{"args":["--version"],"cwd":".","program":"rustc"}"#);
+    let command = execute(
+        &mut tools,
+        "run_command",
+        r#"{"args":["--version"],"cwd":".","program":"rustc","purpose":"verification"}"#,
+    );
 
     assert!(!command.is_error, "{}", wire(&command));
     assert!(wire(&command).contains(r#""success":true"#));
@@ -213,7 +216,7 @@ fn structured_commands_drain_and_bound_both_output_streams() {
     let executable = std::env::current_exe().expect("current test executable");
     let program = serde_json::to_string(&executable).expect("program path");
     let arguments = format!(
-        r#"{{"args":["--exact","developer_tools::executor::tests::command::command_output_fixture","--nocapture"],"cwd":".","program":{program},"timeout_seconds":10}}"#
+        r#"{{"args":["--exact","developer_tools::executor::tests::command::command_output_fixture","--nocapture"],"cwd":".","program":{program},"purpose":"verification","timeout_seconds":10}}"#
     );
 
     let command = execute(&mut tools, "run_command", &arguments);
@@ -267,7 +270,7 @@ fn command_created_files_can_be_removed_without_owning_unrelated_late_files() {
     let executable = std::env::current_exe().expect("current test executable");
     let program = serde_json::to_string(&executable).expect("program path");
     let arguments = format!(
-        r#"{{"args":["--exact","developer_tools::executor::tests::command::command_created_file_fixture","--nocapture"],"cwd":".","program":{program},"timeout_seconds":10}}"#
+        r#"{{"args":["--exact","developer_tools::executor::tests::command::command_created_file_fixture","--nocapture"],"cwd":".","program":{program},"purpose":"verification","timeout_seconds":10}}"#
     );
 
     let command = execute(&mut tools, "run_command", &arguments);

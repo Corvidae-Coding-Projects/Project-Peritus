@@ -109,7 +109,17 @@ impl EndpointExpectation {
         let endpoint_name = store.endpoint_name();
         let address = match platform {
             Platform::Linux | Platform::Macos => {
-                EndpointAddress::Unix(state_root.join(platform, &format!("{endpoint_name}.sock"))?)
+                let original = state_root.join(platform, &format!("{endpoint_name}.sock"))?;
+                let limit = if platform == Platform::Linux { 107 } else { 103 };
+                let path = peritus_local_socket::bounded_path(
+                    std::path::Path::new(original.as_str()),
+                    limit,
+                )
+                .map_err(|_| transport_error("Unix endpoint path cannot be represented"))?;
+                let path = path
+                    .to_str()
+                    .ok_or_else(|| transport_error("Unix endpoint path is not UTF-8"))?;
+                EndpointAddress::Unix(InstallPath::new(platform, path)?)
             }
             Platform::Windows => {
                 EndpointAddress::WindowsNamedPipe(format!(r"\\.\pipe\{endpoint_name}"))

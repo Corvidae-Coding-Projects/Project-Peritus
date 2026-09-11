@@ -1,5 +1,7 @@
 //! Direct-folder behavior through the actual daemon-owned conversation service.
 
+mod pipeline;
+
 use super::interaction::block_on;
 use super::support::{named_tool_response, text_response};
 use super::*;
@@ -8,7 +10,49 @@ use peritus_app_protocol::{
     ProductRunConversationQuery,
 };
 
-fn folder_service(
+fn pipeline_prefix() -> Vec<std::collections::VecDeque<peritus_model_protocol::EventEnvelope>> {
+    vec![
+        named_tool_response("run_pipeline", b"{}".to_vec()),
+        named_tool_response("workspace_list", br#"{"path":"","depth":1}"#.to_vec()),
+        named_tool_response("workspace_read", br#"{"path":"note.txt"}"#.to_vec()),
+        text_response(br"# In-place requested file operation
+
+## Objective and acceptance criteria
+Perform only the user's requested operation in this original directory. Preserve unrelated files and private daemon state. Inspect the source and resulting contents independently before accepting completion.
+
+## Workspace findings
+The source is note.txt in an ordinary directory, not a managed Git candidate. No Git setup, whole-directory snapshot, or rollback operation is appropriate.
+
+## Implementation
+Read note.txt, declare any additional command output before running the command, and change only the requested output. Keep all effects within the literal request.
+
+## Verification and review
+Use the existing exact-target checks and independent reviewer. Compare actual file contents to the user's requested text or copy operation. Report missing checks as unverified, never complete.
+
+## Risks and non-goals
+Do not touch private-peritus-state or unrelated.txt. Do not create a parallel workflow or assume an unsuccessful command worked.
+"),
+        named_tool_response("workspace_list", br#"{"path":"","depth":1}"#.to_vec()),
+        named_tool_response("workspace_read", br#"{"path":"note.txt"}"#.to_vec()),
+    ]
+}
+
+fn pipeline_review(
+    path: &str,
+) -> Vec<std::collections::VecDeque<peritus_model_protocol::EventEnvelope>> {
+    vec![
+        named_tool_response("workspace_list", br#"{"path":"","depth":1}"#.to_vec()),
+        named_tool_response("workspace_read", serde_json::to_vec(&serde_json::json!({"path":path})).expect("arguments")),
+        text_response(br#"{"findings":[],"summary":"The actual requested file contents match the request; exact-target checks passed."}"#),
+    ]
+}
+
+fn artifact_contract(root: &std::path::Path) {
+    fs::write(root.join("peritus-workspace.toml"), "schema_version = 1\nkind = \"artifact\"\n")
+        .expect("pre-existing artifact verification contract");
+}
+
+pub(super) fn folder_service(
     root: &std::path::Path,
     writer: &Arc<ScriptedProvider>,
     writable: bool,
@@ -92,12 +136,11 @@ fn requested_edits_land_in_the_original_folder_and_cannot_overwrite_private_stat
         let root = tempfile::tempdir().expect("folder");
         fs::write(root.path().join("note.txt"), "original").expect("original file");
         fs::write(root.path().join("unrelated.txt"), "leave alone").expect("unrelated file");
+        artifact_contract(root.path());
         let writer = scripted(
             0x62,
             "folder-edit",
-            vec![
-                named_tool_response("workspace_list", br#"{"path":"","depth":1}"#.to_vec()),
-                named_tool_response("workspace_read", br#"{"path":"note.txt"}"#.to_vec()),
+            pipeline_prefix().into_iter().chain([
                 named_tool_response(
                     "workspace_write",
                     br#"{"path":"note.txt","content":"requested text"}"#.to_vec(),
@@ -107,8 +150,8 @@ fn requested_edits_land_in_the_original_folder_and_cannot_overwrite_private_stat
                     br#"{"path":"private-peritus-state/private.txt","content":"must not write"}"#
                         .to_vec(),
                 ),
-                text_response(b"Requested edit completed in place."),
-            ],
+                text_response(br#"{"kind":"complete","run_instructions":"cat note.txt","summary":"Requested edit completed in place."}"#),
+            ]).chain(pipeline_review("note.txt")).collect(),
         );
         let (service, request) = folder_service(root.path(), &writer, true);
         let id = request.run_id();
@@ -121,7 +164,19 @@ fn requested_edits_land_in_the_original_folder_and_cannot_overwrite_private_stat
             .await
             .expect("start");
         let result = wait_for_terminal(&service, id).await;
-        assert_eq!(result.phase(), ProductRunPhase::WaitingForUser, "{}", result.summary());
+        assert_eq!(result.phase(), ProductRunPhase::Complete, "{}", result.summary());
+        assert!(result.gates().contains("Exact-target acceptance: PASS"));
+        assert!(!result.review().is_empty());
+        assert!(
+            !service
+                .inner
+                .records
+                .read()
+                .expect("records")
+                .get(&id)
+                .expect("record")
+                .candidate_actionable
+        );
         assert_eq!(
             fs::read_to_string(root.path().join("note.txt")).expect("edited file"),
             "requested text"
@@ -151,6 +206,7 @@ fn folder_trust_and_read_only_modes_are_enforced_in_the_daemon() {
                 0x63,
                 "restricted-folder",
                 vec![
+                    named_tool_response("run_pipeline", b"{}".to_vec()),
                     named_tool_response(
                         "workspace_write",
                         br#"{"path":"note.txt","content":"forbidden"}"#.to_vec(),
@@ -205,11 +261,12 @@ fn requested_command_runs_in_the_original_folder_with_daemon_owned_processes() {
     block_on(async {
         let root = tempfile::tempdir().expect("folder");
         fs::write(root.path().join("note.txt"), "requested").expect("source file");
-        let writer = scripted(0x67, "folder-command", vec![
-            named_tool_response("workspace_list", br#"{"path":"","depth":1}"#.to_vec()),
+        artifact_contract(root.path());
+        let writer = scripted(0x67, "folder-command", pipeline_prefix().into_iter().chain([
+            named_tool_response("workspace_scope", br#"{"paths":["command-result.txt"]}"#.to_vec()),
             named_tool_response("run_command", br#"{"program":"/bin/cp","args":["note.txt","command-result.txt"],"cwd":".","purpose":"external_effect","timeout_seconds":10}"#.to_vec()),
-            text_response(b"Requested command finished in the original folder."),
-        ]);
+            text_response(br#"{"kind":"complete","run_instructions":"cat command-result.txt","summary":"Requested command finished in the original folder."}"#),
+        ]).chain(pipeline_review("command-result.txt")).collect());
         let (service, request) = folder_service(root.path(), &writer, true);
         let id = request.run_id();
         let request = ProductRunRequest::new(
@@ -228,10 +285,32 @@ fn requested_command_runs_in_the_original_folder_with_daemon_owned_processes() {
             .await
             .expect("start");
         let result = wait_for_terminal(&service, id).await;
-        assert_eq!(result.phase(), ProductRunPhase::WaitingForUser, "{}", result.summary());
+        assert_eq!(result.phase(), ProductRunPhase::Complete, "{}", result.summary());
         let snapshot =
             service.query_interaction(ProductRunConversationQuery::new(id)).expect("snapshot");
         assert!(root.path().join("command-result.txt").exists(), "{snapshot:?}");
+        let command = snapshot
+            .activities()
+            .iter()
+            .find(|activity| {
+                activity.kind() == peritus_app_protocol::ProductActivityKind::Tool
+                    && activity.text().starts_with("Ran /bin/cp note.txt command-result.txt")
+            })
+            .expect("actual command is visible in the conversation");
+        assert!(command.detail().contains("Exit code: 0"));
+        assert!(
+            !snapshot
+                .activities()
+                .iter()
+                .any(|activity| activity.text().starts_with("Calling /bin/cp")),
+            "completion updates the original entry"
+        );
+        let restored = super::super::persistence::load_records(&service.inner.directory)
+            .expect("durable activities");
+        assert_eq!(
+            restored.get(&id).unwrap().interaction.as_ref().unwrap().activities,
+            snapshot.activities()
+        );
         assert_eq!(
             fs::read_to_string(root.path().join("command-result.txt")).expect("command effect"),
             "requested"

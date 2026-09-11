@@ -26,6 +26,12 @@ pub struct LocalContextHandle {
 }
 
 impl LocalContextHandle {
+    pub(in crate::local_context) fn effective_permissions(
+        &self,
+    ) -> crate::control::HostPermissions {
+        self.conversation.effective_permissions()
+    }
+
     pub(crate) fn open(
         input: &ProductRunInput,
         role: &str,
@@ -184,7 +190,12 @@ impl DeveloperContextPort for LocalContextHandle {
         &mut self,
         request: DeveloperContextAssembly<'_>,
     ) -> Result<Vec<Message>, DeveloperLoopError> {
-        self.lock()?.prepare_view(request.profile, request.tools)
+        self.lock()?.prepare_view_with_governing(
+            request.profile,
+            request.tools,
+            Some(request.invocation_policy),
+            request.governing_input,
+        )
     }
     fn checkpoint(&mut self, messages: &[Message]) -> Result<(), DeveloperLoopError> {
         self.lock()?.publish(messages)

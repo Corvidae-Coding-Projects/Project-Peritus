@@ -96,6 +96,14 @@ pub fn runtime_profile() -> ProviderProfile {
 }
 
 pub fn runtime_request(profile: &ProviderProfile, with_tools: bool) -> ModelRequest {
+    runtime_request_with_effort(profile, with_tools, ReasoningEffort::High)
+}
+
+pub fn runtime_request_with_effort(
+    profile: &ProviderProfile,
+    with_tools: bool,
+    effort: ReasoningEffort,
+) -> ModelRequest {
     let mut required =
         vec![Capability::PromptCaching, Capability::ReasoningControls, Capability::UsageDetail];
     if with_tools {
@@ -150,7 +158,7 @@ pub fn runtime_request(profile: &ProviderProfile, with_tools: bool) -> ModelRequ
         if with_tools { ParallelToolPolicy::Allowed(2) } else { ParallelToolPolicy::Disabled },
         RequestOptions::new(
             StructuredOutput::Text,
-            ReasoningPolicy::Effort { effort: ReasoningEffort::High, summary: SummaryPolicy::None },
+            ReasoningPolicy::Effort { effort, summary: SummaryPolicy::None },
             GenerationConfig::new(128, Vec::new(), None, None, None).expect("generation"),
             CachePolicy::Automatic,
             PersistencePolicy::LOCAL_FIRST,

@@ -25,96 +25,98 @@ pub(super) fn decode_failure(
     model: ModelName,
     provider: ProviderName,
     reason: &DecodeFailure,
+    usage: peritus_model_protocol::UsageCounters,
 ) -> Result<CodexRuntimeStream, ProviderCoreError> {
-    let (category, phase, certainty, retryability, code, retry_after, partial) = match reason {
+    let (category, retryability, code) = match reason {
         DecodeFailure::Authentication => (
             FailureCategory::Authentication,
-            TransportPhase::Completed,
-            OutcomeCertainty::Terminal,
             Retryability::Never,
             "openai.codex_runtime.authentication",
-            None,
-            false,
         ),
-        DecodeFailure::Safety => (
-            FailureCategory::Safety,
-            TransportPhase::Completed,
-            OutcomeCertainty::Terminal,
-            Retryability::Never,
-            "openai.codex_runtime.safety",
-            None,
-            false,
-        ),
+        DecodeFailure::Safety => {
+            (FailureCategory::Safety, Retryability::Never, "openai.codex_runtime.safety")
+        }
         DecodeFailure::RateLimited => (
             FailureCategory::RateLimited,
-            TransportPhase::Completed,
-            OutcomeCertainty::DefinitelyNotAccepted,
             Retryability::SafeNewRequest,
             "openai.codex_runtime.rate_limited",
-            None,
-            false,
         ),
         DecodeFailure::Capacity => (
             FailureCategory::TransientProvider,
-            TransportPhase::Completed,
-            OutcomeCertainty::DefinitelyNotAccepted,
             Retryability::SafeNewRequest,
             "openai.codex_runtime.capacity",
-            None,
-            false,
         ),
         DecodeFailure::QuotaExhausted => (
             FailureCategory::QuotaExhausted,
-            TransportPhase::Completed,
-            OutcomeCertainty::Terminal,
             Retryability::Never,
             "openai.codex_runtime.quota_exhausted",
-            None,
-            false,
         ),
         DecodeFailure::ContextLimit => (
             FailureCategory::InvalidRequest,
-            TransportPhase::Completed,
-            OutcomeCertainty::DefinitelyNotAccepted,
             Retryability::Never,
             "openai.codex_runtime.context_limit",
-            None,
-            false,
         ),
-        DecodeFailure::Reported => (
-            FailureCategory::Provider,
-            TransportPhase::Completed,
-            OutcomeCertainty::Terminal,
-            Retryability::Never,
-            "openai.codex_runtime.reported",
-            None,
-            false,
-        ),
+        DecodeFailure::Reported => {
+            (FailureCategory::Provider, Retryability::Never, "openai.codex_runtime.reported")
+        }
         DecodeFailure::Incomplete => (
             FailureCategory::IncompleteStream,
-            TransportPhase::StreamObserved,
-            OutcomeCertainty::AcceptedPartial,
             Retryability::Never,
             "openai.codex_runtime.incomplete",
-            None,
-            true,
         ),
-        DecodeFailure::Malformed | DecodeFailure::NativeTool => (
-            FailureCategory::MalformedPayload,
-            TransportPhase::ReadingBody,
-            OutcomeCertainty::MaybeAccepted,
-            Retryability::CallerDecision,
-            "openai.codex_runtime.malformed",
-            None,
-            false,
-        ),
+        DecodeFailure::NativeTool => {
+            (FailureCategory::Safety, Retryability::Never, decoding_code(reason))
+        }
+        DecodeFailure::Malformed
+        | DecodeFailure::InvalidLifecycle
+        | DecodeFailure::InvalidEnvelope
+        | DecodeFailure::InvalidToolArguments
+        | DecodeFailure::InvalidToolChoice
+        | DecodeFailure::OutputLimit
+        | DecodeFailure::InvalidUsage
+        | DecodeFailure::MultipleMessages
+        | DecodeFailure::UnsupportedEvent => {
+            (FailureCategory::MalformedPayload, Retryability::CallerDecision, decoding_code(reason))
+        }
     };
-    CodexRuntimeStream::failed(
+    let (phase, certainty, partial) = match (reason, category) {
+        (DecodeFailure::NativeTool, _) | (_, FailureCategory::MalformedPayload) => {
+            (TransportPhase::ReadingBody, OutcomeCertainty::MaybeAccepted, false)
+        }
+        (_, FailureCategory::IncompleteStream) => {
+            (TransportPhase::StreamObserved, OutcomeCertainty::AcceptedPartial, true)
+        }
+        (
+            _,
+            FailureCategory::RateLimited
+            | FailureCategory::TransientProvider
+            | FailureCategory::InvalidRequest,
+        ) => (TransportPhase::Completed, OutcomeCertainty::DefinitelyNotAccepted, false),
+        _ => (TransportPhase::Completed, OutcomeCertainty::Terminal, false),
+    };
+    CodexRuntimeStream::failed_observed(
         model,
-        failure(provider, category, phase, certainty, retryability, code, retry_after)?,
+        failure(provider, category, phase, certainty, retryability, code, None)?,
         b"openai-codex-runtime-decoding",
         partial,
+        usage,
     )
+}
+
+const fn decoding_code(reason: &DecodeFailure) -> &'static str {
+    match reason {
+        DecodeFailure::Malformed => "openai.codex_runtime.invalid_jsonl",
+        DecodeFailure::InvalidLifecycle => "openai.codex_runtime.invalid_lifecycle",
+        DecodeFailure::InvalidEnvelope => "openai.codex_runtime.invalid_envelope",
+        DecodeFailure::InvalidToolArguments => "openai.codex_runtime.invalid_tool_arguments",
+        DecodeFailure::InvalidToolChoice => "openai.codex_runtime.invalid_tool_choice",
+        DecodeFailure::OutputLimit => "openai.codex_runtime.output_limit",
+        DecodeFailure::InvalidUsage => "openai.codex_runtime.invalid_usage",
+        DecodeFailure::MultipleMessages => "openai.codex_runtime.multiple_messages",
+        DecodeFailure::UnsupportedEvent => "openai.codex_runtime.unsupported_event",
+        DecodeFailure::NativeTool => "openai.codex_runtime.native_tool",
+        _ => "openai.codex_runtime.malformed",
+    }
 }
 
 pub(super) fn failure(

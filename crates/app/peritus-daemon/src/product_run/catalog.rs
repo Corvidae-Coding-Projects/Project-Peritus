@@ -2,9 +2,10 @@
 
 use super::{ProductRunService, ProductRunServiceError, interaction::InteractionOptions};
 use peritus_app_protocol::{
-    ProductModelCatalog, ProductModelChoice, ProductModelInfo, ProductModelQuery,
-    ProductProviderSelection,
+    ProductModelCatalog, ProductModelChoice, ProductModelEffort, ProductModelInfo,
+    ProductModelQuery, ProductProviderSelection,
 };
+use peritus_model_protocol::ReasoningEffort as Effort;
 use peritus_product_runner::RoleProviders;
 use peritus_provider_core::{CancellationToken, ModelProvider};
 use peritus_types::ProviderProfileId;
@@ -120,7 +121,7 @@ impl ProductRunService {
         })
     }
 
-    fn select_provider(
+    pub(super) fn select_provider(
         &self,
         profile: ProviderProfileId,
         choice: &ProductModelChoice,
@@ -130,12 +131,27 @@ impl ProductRunService {
             .providers
             .get(&profile)
             .ok_or(ProductRunServiceError::ProviderUnavailable)?;
-        if choice.id().is_empty() || choice.id() == provider.profile().model().as_str() {
-            return Ok(Arc::clone(provider));
-        }
-        let model = peritus_model_protocol::ModelName::new(choice.id().to_owned())
-            .map_err(|_| ProductRunServiceError::InvalidMessage)?;
-        provider.select_model(model).map_err(|_| ProductRunServiceError::ProviderUnavailable)
+        let selected = if choice.id().is_empty()
+            || choice.id() == provider.profile().model().as_str()
+        {
+            Arc::clone(provider)
+        } else {
+            let model = peritus_model_protocol::ModelName::new(choice.id().to_owned())
+                .map_err(|_| ProductRunServiceError::InvalidMessage)?;
+            provider.select_model(model).map_err(|_| ProductRunServiceError::ProviderUnavailable)?
+        };
+        let effort = match choice.effort() {
+            ProductModelEffort::Default => return Ok(selected),
+            ProductModelEffort::Minimal => Effort::Minimal,
+            ProductModelEffort::Low => Effort::Low,
+            ProductModelEffort::Medium => Effort::Medium,
+            ProductModelEffort::High => Effort::High,
+            ProductModelEffort::XHigh => Effort::XHigh,
+            ProductModelEffort::Max => Effort::Max,
+            ProductModelEffort::Ultra => Effort::Ultra,
+        };
+        peritus_provider_core::select_reasoning_effort(selected, effort)
+            .map_err(|_| ProductRunServiceError::EffortUnsupported)
     }
 }
 

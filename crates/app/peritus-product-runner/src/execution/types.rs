@@ -1,7 +1,7 @@
 //! Public run contracts and internal completed-turn values.
 
 use std::{
-    path::PathBuf,
+    path::{Path, PathBuf},
     sync::{Arc, atomic::AtomicBool},
     time::Duration,
 };
@@ -10,7 +10,11 @@ use peritus_provider_core::{CancellationToken, ModelProvider};
 use peritus_run_settlement::{CandidateCheckpoint, RunSettlement};
 use peritus_types::{RunId, WorkspaceId};
 
-use crate::{ProductRunProgress, execution::resume::ProductRunResume};
+use crate::{
+    ProductRunProgress,
+    control::{CheckpointFileVersion, HostPermissions},
+    execution::resume::ProductRunResume,
+};
 
 /// Stateless product-run entry point using the D0/D1/D2/E0 production composition.
 pub struct ProductRunner;
@@ -66,8 +70,22 @@ pub struct ProductRunUpdate {
 /// Observer invoked synchronously after each daemon-visible boundary.
 pub type RunObserver = Arc<dyn Fn(ProductRunUpdate) + Send + Sync>;
 
+/// Exact workspace object kind presented to a host checkpoint boundary before mutation.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum WorkspaceMutationKind {
+    /// A regular file will be created, replaced, or removed.
+    File,
+    /// An already-verified empty directory will be removed.
+    EmptyDirectory,
+}
+
 /// Live daemon-owned conversation supplied to every model turn.
 pub trait ConversationView: Send + Sync {
+    /// Whether media is supplied only through the revisioned input port. Governed conversations
+    /// must not discover or cache image bytes in immutable role scaffolding.
+    fn uses_explicit_media(&self) -> bool {
+        false
+    }
     /// Optional daemon-owned live input and public activity port.
     fn interaction(&self) -> Option<&dyn peritus_agent::DeveloperInteraction> {
         None
@@ -80,6 +98,57 @@ pub trait ConversationView: Send + Sync {
     }
     /// Human-readable chronological transcript for the next model turn.
     fn render(&self) -> String;
+    /// Stable context safe to copy into a role's fixed prompt. Governed hosts exclude mutable
+    /// pending inputs here and supply their current exact view through the D0 interaction port.
+    fn stable_request_context(&self) -> String {
+        self.render()
+    }
+    /// Current hard relative paths narrowed by explicit leave-alone review constraints.
+    /// Implementations must fail closed when durable state cannot be read.
+    fn protected_paths(&self) -> Vec<PathBuf> {
+        Vec::new()
+    }
+    /// Latest host-intersected execution capabilities. Legacy embedders retain their prior
+    /// behavior; governed hosts override this with a live, fail-closed durable snapshot.
+    fn effective_permissions(&self) -> HostPermissions {
+        HostPermissions::all()
+    }
+    /// Whether the currently pending typed review feedback permits an implementation handoff.
+    /// This is only a narrowing signal; ordinary user intent and every existing gate still apply.
+    fn permits_pipeline_handoff(&self) -> bool {
+        true
+    }
+    /// Durably captures one exact workspace-relative target before its first owned mutation.
+    ///
+    /// Hosts without user rewind checkpoints may keep the default no-op. A host that enables
+    /// checkpointing must return only after the before-image is durable; an error aborts the
+    /// pending workspace effect.
+    ///
+    /// # Errors
+    /// Returns a redaction-safe reason when the host cannot publish an exact durable before-image.
+    fn checkpoint_before_workspace_mutation(
+        &self,
+        _relative_path: &Path,
+        _kind: WorkspaceMutationKind,
+    ) -> Result<(), String> {
+        Ok(())
+    }
+    /// Durably seals an automatic checkpoint with the exact postimage produced by an owned tool.
+    ///
+    /// Hosts without user rewind checkpoints may keep the default no-op. The version is supplied
+    /// by the admitted effect or its completed receipt; hosts must not replace it with a later
+    /// arbitrary workspace observation.
+    ///
+    /// # Errors
+    /// Returns a redaction-safe reason when the owned postimage cannot be durably recorded.
+    fn seal_workspace_mutation_checkpoint(
+        &self,
+        _relative_path: &Path,
+        _kind: WorkspaceMutationKind,
+        _owned_postchange: CheckpointFileVersion,
+    ) -> Result<(), String> {
+        Ok(())
+    }
 }
 
 /// Explicit writer, reviewer, and fixer provider instances.
@@ -113,6 +182,8 @@ impl ProductDeliveryScope {
 
 /// Fully resolved input supplied by the daemon authority boundary.
 pub struct ProductRunInput {
+    /// Caller-resolved delivery adapter; interaction mode cannot widen this authority.
+    pub workspace_kind: crate::ProductWorkspaceKind,
     /// Stable run identity.
     pub run_id: RunId,
     /// Stable managed-workspace lineage supplied by the daemon authority boundary.

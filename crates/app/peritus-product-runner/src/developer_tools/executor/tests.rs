@@ -1,4 +1,5 @@
 use super::*;
+mod inspection;
 use peritus_model_protocol::{CanonicalJson, JsonBounds, ProtocolLimits, ToolCallId, ToolName};
 use std::{
     path::{Path, PathBuf},
@@ -7,6 +8,8 @@ use std::{
 };
 
 mod access;
+mod admission;
+mod checkpoint;
 mod command;
 
 static NEXT_CALL_ID: AtomicU64 = AtomicU64::new(1);
@@ -70,8 +73,11 @@ fn workspace_tools_inspect_edit_search_and_execute_without_a_shell() {
         })
     }));
 
-    let command =
-        execute(&mut tools, "run_command", r#"{"args":["--version"],"cwd":".","program":"rustc"}"#);
+    let command = execute(
+        &mut tools,
+        "run_command",
+        r#"{"args":["--version"],"cwd":".","program":"rustc","purpose":"verification"}"#,
+    );
     assert!(!command.is_error);
     assert!(wire(&command).contains(r#""success":true"#));
     assert!(wire(&command).contains(r#""timed_out":false"#));
@@ -82,7 +88,7 @@ fn workspace_tools_inspect_edit_search_and_execute_without_a_shell() {
     let failed = execute(
         &mut tools,
         "run_command",
-        r#"{"args":["--definitely-invalid"],"cwd":"","program":"rustc"}"#,
+        r#"{"args":["--definitely-invalid"],"cwd":"","program":"rustc","purpose":"verification"}"#,
     );
     assert!(failed.is_error);
     assert!(wire(&failed).contains(r#""success":false"#));
@@ -134,11 +140,11 @@ fn long_inspection_sequence_returns_one_concrete_delivery_nudge() {
         "workspace_read",
         r#"{"end_line":10,"path":"README.md","start_line":1}"#,
     );
-    for _ in 0..10 {
+    for index in 0..10 {
         let result = execute(
             &mut tools,
             "workspace_search",
-            r#"{"max_results":5,"path":".","query":"not-present"}"#,
+            &format!(r#"{{"max_results":5,"path":".","query":"not-present-{index}"}}"#),
         );
         assert!(!result.is_error);
     }
@@ -264,7 +270,7 @@ fn exact_remove_preserves_late_external_evidence_and_blocks_shell_deletion() {
     let shell_delete = execute(
         &mut tools,
         "run_command",
-        r#"{"args":["api_access.log"],"cwd":".","program":"rm"}"#,
+        r#"{"args":["api_access.log"],"cwd":".","program":"rm","purpose":"external_effect"}"#,
     );
     assert!(shell_delete.is_error);
     assert!(wire(&shell_delete).contains("workspace_remove"));

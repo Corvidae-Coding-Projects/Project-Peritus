@@ -1,0 +1,144 @@
+=== PERITUS GATE RECORD ===
+{"argv": ["cargo", "test", "--package", "peritus-eval", "--all-targets", "--all-features", "--locked"], "command": "cargo test --package peritus-eval --all-targets --all-features --locked", "command_exit_code": 0, "custody_error": null, "duration_seconds": 4.288837, "finished_at": "2026-09-10T01:49:50.015596Z", "kind": "ordinary-test", "owning_crate": "peritus-eval", "result": "passed", "schema": "peritus.formal-package-gate-output", "schema_version": 1, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "started_at": "2026-09-10T01:49:45.764267Z", "verification_class": "H"}
+=== STDOUT LOG ===
+=== PERITUS CUSTODY HEADER ===
+{"argv": ["cargo", "test", "--package", "peritus-eval", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "owning_crate": "peritus-eval", "schema": "peritus.formal-package-evidence-stream", "schema_version": 1, "sequence": 21, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "stream": "stdout", "verification_class": "H"}
+=== COMMAND OUTPUT ===
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 2 tests
+test exact_duplicates_are_idempotent_and_conflicting_terminals_quarantine ... ok
+test ledger_conserves_every_expected_rollout_and_retains_attempts ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 1 test
+test cancellation_waits_for_each_external_rollout_before_terminal_completion ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 3 tests
+test cross_corpus_candidate_evaluator_collision_is_rejected ... ok
+test canonical_dataset_is_reproducible_and_keeps_evaluator_roots_sealed ... ok
+test frozen_profile_and_plan_inputs_are_stable ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 1 test
+test cancellation_settlement_atomically_acknowledges_the_existing_effect_and_restarts ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+
+running 1 test
+test genesis_commit_is_idempotent_and_restart_replay_matches_checkpoint ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+
+running 3 tests
+test candidate_failure_is_infrastructure_and_skips_evaluator ... ok
+test evaluator_outage_never_masquerades_as_task_failure ... ok
+test evaluator_runs_only_after_finalized_candidate_output ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 2 tests
+test planned_rollout_builds_exact_d3_coordination_work ... ok
+test complete_plan_is_deterministic_and_pair_seeds_match ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 1 test
+test production_evaluation_satisfies_the_complete_a2_catalog ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+
+running 1 test
+test complete_campaign_publishes_evidence_and_replays_without_duplicate_effects ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+
+
+running 2 tests
+test frozen_wire_corpus_is_byte_exact_and_malformed_frames_reject ... ok
+test families_85_86_and_87_round_trip_through_semantic_checks ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 2 tests
+test incomplete_ledger_cannot_begin_analysis ... ok
+test complete_ledger_produces_deterministic_non_authoritative_report ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 3 tests
+test pass_at_k_matches_exact_combinatorial_edges ... ok
+test wilson_distribution_and_stability_retain_raw_inputs ... ok
+test paired_bootstrap_and_sign_diagnostic_are_reproducible ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 2 tests
+test accounting_and_statistical_preconditions_match_runtime_boundaries ... ok
+test frozen_ledger_transition_replay_and_non_authority_roots_are_exact_conjunctions ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+=== PERITUS CUSTODY FOOTER ===
+{"command_exit_code": 0, "execution_error": null, "finished_at": "2026-09-10T01:49:50.015596Z"}
+
+=== STDERR LOG ===
+=== PERITUS CUSTODY HEADER ===
+{"argv": ["cargo", "test", "--package", "peritus-eval", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "owning_crate": "peritus-eval", "schema": "peritus.formal-package-evidence-stream", "schema_version": 1, "sequence": 21, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "stream": "stderr", "verification_class": "H"}
+=== COMMAND OUTPUT ===
+   Compiling syn v3.0.3
+   Compiling tempfile v3.27.0
+   Compiling peritus-artifact-store v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/state/peritus-artifact-store)
+   Compiling peritus-patch v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/runtime/peritus-patch)
+   Compiling peritus-git v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/runtime/peritus-git)
+   Compiling peritus-journal v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/state/peritus-journal)
+   Compiling peritus-projection v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/state/peritus-projection)
+   Compiling peritus-workspace v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/runtime/peritus-workspace)
+   Compiling peritus-evidence v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/state/peritus-evidence)
+   Compiling serde_derive v1.0.229
+   Compiling tokio-macros v2.7.2
+   Compiling tokio v1.53.1
+   Compiling peritus-scheduler v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/orchestration/peritus-scheduler)
+   Compiling serde v1.0.229
+   Compiling peritus-model-protocol v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/model/peritus-model-protocol)
+   Compiling peritus-harness v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/orchestration/peritus-harness)
+   Compiling peritus-test-support v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/app/testing/peritus-test-support)
+   Compiling peritus-eval v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/analysis/peritus-eval)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 4.07s
+     Running unittests src/lib.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/peritus_eval-9b92154c52960edf)
+     Running tests/accounting_properties.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/accounting_properties-8cd6e649346328c8)
+     Running tests/cancellation.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/cancellation-e0ed1227d21d796e)
+     Running tests/dataset_profile.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/dataset_profile-2208af5bc7a0aa87)
+     Running tests/durability_effects.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/durability_effects-33d3b40ccf812412)
+     Running tests/durability_restart.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/durability_restart-bebc675c60b80be2)
+     Running tests/execution_isolation.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/execution_isolation-88c50b830e129ceb)
+     Running tests/planning_scheduling.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/planning_scheduling-2f0da9f8c7724294)
+     Running tests/production_conformance.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/production_conformance-0765b69b2b15c08d)
+     Running tests/publication_integration.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/publication_integration-cc8f0d47a3d926be)
+     Running tests/replay_wire.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/replay_wire-c046625e0c0a503b)
+     Running tests/report_analysis.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/report_analysis-c9c315e937ac2eb5)
+     Running tests/statistics_vectors.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/statistics_vectors-f51e2be6bce7d139)
+     Running tests/verified_refinement.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/verified_refinement-08ce10b9afdaa652)
+
+=== PERITUS CUSTODY FOOTER ===
+{"command_exit_code": 0, "execution_error": null, "finished_at": "2026-09-10T01:49:50.015596Z"}

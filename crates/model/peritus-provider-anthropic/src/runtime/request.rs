@@ -122,9 +122,17 @@ const fn reasoning_effort(policy: ReasoningPolicy) -> Result<&'static str, Provi
     match policy {
         ReasoningPolicy::Disabled => Ok("high"),
         ReasoningPolicy::Effort { effort, summary: SummaryPolicy::None } => Ok(match effort {
-            ReasoningEffort::Minimal | ReasoningEffort::Low => "low",
+            ReasoningEffort::Minimal => {
+                return Err(invalid("Claude runtime does not map minimal reasoning effort"));
+            }
+            ReasoningEffort::Low => "low",
             ReasoningEffort::Medium => "medium",
             ReasoningEffort::High => "high",
+            ReasoningEffort::XHigh => "xhigh",
+            ReasoningEffort::Max => "max",
+            ReasoningEffort::Ultra => {
+                return Err(invalid("Claude runtime does not map ultra reasoning effort"));
+            }
         }),
         ReasoningPolicy::Adaptive { .. } | ReasoningPolicy::Effort { .. } => Err(invalid(
             "Claude runtime requires a concrete reasoning effort without a visible summary",

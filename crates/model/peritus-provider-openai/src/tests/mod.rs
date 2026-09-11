@@ -8,6 +8,6 @@ mod fixtures;
 mod request;
 mod retry;
 mod runtime;
-mod runtime_support;
+pub mod runtime_support;
 mod stream;
 mod support;

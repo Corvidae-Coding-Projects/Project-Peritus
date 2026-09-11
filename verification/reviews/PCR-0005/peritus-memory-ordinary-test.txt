@@ -1,0 +1,104 @@
+=== PERITUS GATE RECORD ===
+{"argv": ["cargo", "test", "--package", "peritus-memory", "--all-targets", "--all-features", "--locked"], "command": "cargo test --package peritus-memory --all-targets --all-features --locked", "command_exit_code": 0, "custody_error": null, "duration_seconds": 0.641368, "finished_at": "2026-09-10T01:50:26.402387Z", "kind": "ordinary-test", "owning_crate": "peritus-memory", "result": "passed", "schema": "peritus.formal-package-gate-output", "schema_version": 1, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "started_at": "2026-09-10T01:50:25.798346Z", "verification_class": "H"}
+=== STDOUT LOG ===
+=== PERITUS CUSTODY HEADER ===
+{"argv": ["cargo", "test", "--package", "peritus-memory", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "owning_crate": "peritus-memory", "schema": "peritus.formal-package-evidence-stream", "schema_version": 1, "sequence": 41, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "stream": "stdout", "verification_class": "H"}
+=== COMMAND OUTPUT ===
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 10 tests
+test feature_and_claim_sets_require_canonical_order ... ok
+test scope_compatibility_is_exact_or_explicitly_broader ... ok
+test bounded_scores_reject_invalid_values ... ok
+test stable_identifiers_reject_zero_and_preserve_bytes ... ok
+test source_events_are_nonempty_bounded_and_canonical ... ok
+test foundation_identifiers_still_reject_zero_before_memory_construction ... ok
+test evidence_sets_are_canonical_and_cannot_conflict ... ok
+test scopes_require_durable_and_kind_specific_dimensions ... ok
+test material_checks_content_digest_and_token_bounds ... ok
+test timing_rejects_review_or_expiry_before_creation ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 10 tests
+test latest_inactive_revision_is_absent_from_active_index ... ok
+test rebuild_selects_latest_active_revision ... ok
+test index_retrieval_matches_full_scan_of_canonical_active_view ... ok
+test replay_rejects_noncanonical_and_duplicate_revisions ... ok
+test tombstone_dominates_records_at_or_below_its_revision ... ok
+test record_newer_than_tombstone_survives_replay ... ok
+test replay_rejects_noncanonical_tombstones_and_digest_conflicts ... ok
+test identical_canonical_rebuilds_have_identical_real_sha256_digests ... ok
+test posting_lists_are_canonical_and_derived_only_from_active_records ... ok
+test active_or_tombstone_changes_alter_index_digest ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 7 tests
+test forgetting_produces_content_free_dominant_tombstone ... ok
+test review_does_not_implicitly_release_quarantine ... ok
+test quarantine_release_requires_a_later_review_and_revision ... ok
+test active_may_expire_or_be_superseded_but_states_do_not_reopen ... ok
+test review_returns_a_new_advanced_revision_without_mutating_original ... ok
+test stale_revisions_and_observations_are_rejected ... ok
+test forgetting_is_available_from_every_retained_state ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 2 tests
+test reviewer_policy_excludes_poisoned_memory_without_parsing_text ... ok
+test instruction_like_payloads_retain_source_and_quote_boundary ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 3 tests
+test permutations_produce_identical_plans_and_explanations ... ok
+test state_enum_has_no_forgotten_content_variant ... ok
+test future_observations_and_duplicate_candidates_fail_closed ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 11 tests
+test accepted_claim_policy_filters_before_ranking ... ok
+test exact_and_explicit_broader_scope_policies_differ ... ok
+test role_policy_filters_memory_before_ranking ... ok
+test ranking_is_feature_sensitive_and_stable_id_breaks_ties ... ok
+test stale_review_is_excluded_under_explicit_policy ... ok
+test selected_candidate_is_scored_bounded_and_mandatorily_quoted ... ok
+test confidence_claim_support_and_feature_filters_are_typed ... ok
+test explicit_and_observed_lifecycle_filters_are_typed ... ok
+test budget_and_result_limits_explain_every_unselected_candidate ... ok
+test negative_feedback_and_contradiction_trigger_explicit_policy_quarantine ... ok
+test tombstone_dominance_precedes_ranking_and_checks_digest_binding ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+=== PERITUS CUSTODY FOOTER ===
+{"command_exit_code": 0, "execution_error": null, "finished_at": "2026-09-10T01:50:26.402387Z"}
+
+=== STDERR LOG ===
+=== PERITUS CUSTODY HEADER ===
+{"argv": ["cargo", "test", "--package", "peritus-memory", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "owning_crate": "peritus-memory", "schema": "peritus.formal-package-evidence-stream", "schema_version": 1, "sequence": 41, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "stream": "stderr", "verification_class": "H"}
+=== COMMAND OUTPUT ===
+   Compiling peritus-memory v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/orchestration/peritus-memory)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.56s
+     Running unittests src/lib.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/peritus_memory-c7628278e76ea59d)
+     Running tests/construction_matrix.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/construction_matrix-91f952df682f298b)
+     Running tests/index_rebuild.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/index_rebuild-c352f6386047111a)
+     Running tests/lifecycle_matrix.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/lifecycle_matrix-d50d2e7d0881569c)
+     Running tests/poisoning.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/poisoning-7f1a0aaf398bc99e)
+     Running tests/retrieval_determinism.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/retrieval_determinism-84d566cca065f521)
+     Running tests/retrieval_matrix.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/retrieval_matrix-78b84636503266e0)
+
+=== PERITUS CUSTODY FOOTER ===
+{"command_exit_code": 0, "execution_error": null, "finished_at": "2026-09-10T01:50:26.402387Z"}

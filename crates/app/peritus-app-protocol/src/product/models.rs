@@ -1,16 +1,23 @@
 //! Explicit model choices and provider-catalog observations for interactive clients.
 
-use super::{ProductRunMessageError, bounded_text};
+use super::{ProductModelEffort, ProductRunMessageError, bounded_text};
 use peritus_types::ProviderProfileId;
 
 /// Maximum model entries returned by one provider catalog.
 pub const MAX_PRODUCT_MODELS: usize = 4096;
 
 /// Exact model choice, optionally entered explicitly when discovery is unavailable.
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ProductModelChoice {
     id: String,
     manual: bool,
+    effort: ProductModelEffort,
+}
+
+impl Default for ProductModelChoice {
+    fn default() -> Self {
+        Self { id: String::new(), manual: false, effort: ProductModelEffort::Default }
+    }
 }
 
 impl ProductModelChoice {
@@ -23,7 +30,7 @@ impl ProductModelChoice {
         if id.chars().any(char::is_control) || id.trim() != id {
             return Err(ProductRunMessageError::InvalidSettlement);
         }
-        Ok(Self { id, manual })
+        Ok(Self { id, manual, effort: ProductModelEffort::Default })
     }
     /// Empty means retain the exact configured provider model, not a built-in fallback.
     #[must_use]
@@ -34,6 +41,19 @@ impl ProductModelChoice {
     #[must_use]
     pub const fn manual(&self) -> bool {
         self.manual
+    }
+
+    /// Requested effort, separate from model identity and catalog provenance.
+    #[must_use]
+    pub const fn effort(&self) -> ProductModelEffort {
+        self.effort
+    }
+
+    /// Retains the model selection and sets its requested effort.
+    #[must_use]
+    pub const fn with_effort(mut self, effort: ProductModelEffort) -> Self {
+        self.effort = effort;
+        self
     }
 }
 
@@ -46,6 +66,13 @@ pub struct ProductRoleModels {
 }
 
 impl ProductRoleModels {
+    /// Whether the selection requires the additive effort-bearing wire payload.
+    #[must_use]
+    pub fn has_effort(&self) -> bool {
+        [self.writer(), self.reviewer(), self.fixer()]
+            .iter()
+            .any(|choice| choice.effort() != ProductModelEffort::Default)
+    }
     /// Creates explicit role selections; defaults retain the configured model.
     #[must_use]
     pub const fn new(

@@ -21,6 +21,32 @@ const REJECTED: [&str; 5] = [
 ];
 
 #[test]
+fn host_bounded_encoding_preserves_exact_bytes_and_rejects_instead_of_truncating() {
+    let profile = support::profile();
+    for request in [
+        support::minimal_request(&profile),
+        support::realistic_request(&profile),
+        support::boundary_request(&profile),
+    ] {
+        let expected = request.canonical_bytes().expect("canonical");
+        assert_eq!(request.canonical_bytes_bounded(expected.len()).expect("exact fit"), expected);
+        assert_eq!(
+            request.canonical_bytes_bounded(expected.len() + 1).expect("larger ceiling"),
+            expected
+        );
+        assert_eq!(
+            request
+                .canonical_bytes_bounded(expected.len() - 1)
+                .expect_err("one byte too small")
+                .kind(),
+            ProtocolErrorKind::InvalidLimit
+        );
+        assert!(request.canonical_bytes_bounded(0).is_err());
+        assert!(request.canonical_bytes_bounded(512 * 1024 * 1024 + 1).is_err());
+    }
+}
+
+#[test]
 fn profile_independent_message_archives_retain_mixed_content_and_reject_corruption() {
     use peritus_model_protocol::{decode_messages, encode_messages};
     let profile = support::profile();

@@ -1,6 +1,9 @@
 //! Serialized transfer registry co-owned with the journal and artifact catalog.
 
 mod error;
+mod scoped;
+#[cfg(test)]
+mod tests;
 
 use std::collections::BTreeMap;
 
@@ -15,7 +18,7 @@ use peritus_artifact_store::{
 use peritus_journal::{ApplicationArtifactState, NewApplicationArtifact, SqliteJournal};
 use peritus_types::{ActorId, SessionId};
 
-use super::publication;
+use super::{ArtifactScope, publication, scope};
 use crate::DaemonError;
 
 use error::{
@@ -79,6 +82,12 @@ impl ArtifactAuthority {
             .application_artifact(artifact_id)
             .map_err(journal_error)?
             .ok_or_else(|| invalid("application artifact does not exist"))?;
+        if let Some(scope) = scope::claimed_scope(journal, artifact_id)? {
+            if scope.actor() != actor_id {
+                return Err(scope::unauthorized());
+            }
+            scope::authorize(journal, scope, &catalog)?;
+        }
         if catalog.state() != ApplicationArtifactState::Available {
             return Err(invalid("application artifact is not available"));
         }
@@ -121,12 +130,36 @@ impl ArtifactAuthority {
         metadata: ArtifactMetadata,
         maximum_chunk_bytes: usize,
     ) -> Result<(), DaemonError> {
+        self.begin_upload_inner(journal, actor_id, session_id, metadata, maximum_chunk_bytes, None)
+    }
+
+    fn begin_upload_inner(
+        &mut self,
+        journal: &mut SqliteJournal,
+        actor_id: ActorId,
+        session_id: SessionId,
+        metadata: ArtifactMetadata,
+        maximum_chunk_bytes: usize,
+        scope: Option<ArtifactScope>,
+    ) -> Result<(), DaemonError> {
         self.ensure_capacity(metadata.transfer_id())?;
         if metadata.byte_size() > self.maximum_artifact_bytes {
             return Err(resource_limit("artifact exceeds the configured per-object limit"));
         }
         let state = ArtifactTransferState::new(metadata.clone(), maximum_chunk_bytes)
             .map_err(transfer_error)?;
+        if self.transfers.values().any(|transfer| matches!(transfer,
+            ActiveTransfer::Upload(upload) if upload.state.metadata().artifact_id() == metadata.artifact_id())) {
+            return Err(invalid("artifact already has an active upload"));
+        }
+        if let Some(scope) = scope {
+            if scope.actor() != actor_id {
+                return Err(scope::unauthorized());
+            }
+            scope::claim(journal, scope, &metadata)?;
+        } else if scope::claimed_scope(journal, metadata.artifact_id())?.is_some() {
+            return Err(scope::unauthorized());
+        }
         let catalog = NewApplicationArtifact::new(
             metadata.artifact_id(),
             metadata.digest(),
@@ -180,6 +213,8 @@ impl ArtifactAuthority {
         completion: ArtifactCompletion,
     ) -> Result<(), DaemonError> {
         let transfer_id = completion.transfer_id();
+        // Check ownership before removing the transfer. A foreign completion must not cancel it.
+        self.upload_mut(transfer_id, actor_id, session_id)?;
         let mut upload = match self.transfers.remove(&transfer_id) {
             Some(ActiveTransfer::Upload(upload)) => upload,
             Some(other) => {

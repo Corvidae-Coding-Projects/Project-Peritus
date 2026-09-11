@@ -151,8 +151,19 @@ jobs:
           - { os: ubuntu-24.04, operation: test-daemon, shard: app-shell }
           - { os: macos-15, operation: test-daemon, shard: app-shell }
           - { os: windows-2025, operation: test-daemon, shard: app-shell }
+          - { os: windows-2025, operation: test-daemon-product, shard: app-shell }
+          - { os: windows-2025, operation: test-daemon-cancellation, shard: app-shell }
+          - { os: windows-2025, operation: test-daemon-continuation, shard: app-shell }
+          - { os: windows-2025, operation: test-daemon-interaction, shard: app-shell }
+          - { os: windows-2025, operation: test-daemon-folder, shard: app-shell }
+          - { os: windows-2025, operation: test-daemon-workbench, shard: app-shell }
+          - { os: windows-2025, operation: test-daemon-checkpoints, shard: app-shell }
+          - { os: windows-2025, operation: test-daemon-models, shard: app-shell }
+          - { os: windows-2025, operation: test-daemon-library, shard: app-shell }
+          - { os: windows-2025, operation: test-daemon-review, shard: app-shell }
+          - { os: windows-2025, operation: test-daemon-rewinds, shard: app-shell }
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - name: Check out candidate revision
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -279,7 +290,7 @@ jobs:
         operation: [verus-verify, verus-verify-strict, verus-build, verus-build-strict]
         shard: [foundation-state, runtime-tools, model-orchestration, app-runner, app-shell, edge]
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - name: Check out candidate revision
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

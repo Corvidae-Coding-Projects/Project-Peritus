@@ -1,6 +1,8 @@
 //! Orderly terminal ownership and asynchronous application runtime.
 
 mod candidate;
+mod files;
+mod images;
 mod product;
 mod state;
 mod terminal;
@@ -28,6 +30,12 @@ pub use state::TuiState;
 
 const UI_TICK: Duration = Duration::from_millis(250);
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(8);
+
+#[derive(Default)]
+struct LocalReads {
+    files: files::FileReads,
+    images: images::ImageReads,
+}
 
 /// Runtime configuration for one interactive client process.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -112,13 +120,14 @@ pub async fn run_with_state(
     let (client_events_tx, mut client_events_rx) = mpsc::channel(512);
     let mut model = state.take_model(&config, seed);
     let mut client = None;
+    let mut reads = LocalReads::default();
     let mut connection_generation = 0_u64;
     connect(&config, &mut model, &mut client, &client_events_tx, &mut connection_generation).await;
 
     let mut tick = tokio::time::interval(UI_TICK);
     tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
     let result = loop {
-        terminal.draw(&model)?;
+        terminal.draw(&mut model)?;
         let action = tokio::select! {
             input = input_rx.recv() => match input {
                 Some(event) => Action::TerminalEvent(event),
@@ -131,7 +140,9 @@ pub async fn run_with_state(
                 Some(ClientEvent::Disconnected(error)) => Action::Disconnected(error),
                 None => Action::Disconnected("all daemon client tasks stopped".to_owned()),
             },
-            _ = tick.tick() => Action::Tick,
+            _ = tick.tick() => Action::Tick(std::time::Instant::now()),
+            file = reads.files.next(), if reads.files.active() => file,
+            image = reads.images.next(), if reads.images.active() => image,
         };
         let effects = model.update(action);
         match apply_effects(
@@ -141,6 +152,7 @@ pub async fn run_with_state(
             &mut client,
             &client_events_tx,
             &mut connection_generation,
+            &mut reads,
         )
         .await
         {
@@ -188,9 +200,30 @@ async fn apply_effects(
     client: &mut Option<ClientSession>,
     events: &mpsc::Sender<ClientEvent>,
     generation: &mut u64,
+    reads: &mut LocalReads,
 ) -> Result<ControlFlow, TuiError> {
     for effect in effects {
         match effect {
+            Effect::ReadFile { operation, path, range } => {
+                if !reads.files.start(operation, path, range) {
+                    let _ = model.update(Action::FileRead {
+                        operation,
+                        result: Err(
+                            "Another explicit text read is still finishing; try again shortly.",
+                        ),
+                    });
+                }
+            }
+            Effect::ReadImage { operation, path } => {
+                if !reads.images.start(operation, path) {
+                    let _ = model.update(Action::ImageRead {
+                        operation,
+                        result: Err(
+                            "Another explicit file read is still finishing; try again shortly.",
+                        ),
+                    });
+                }
+            }
             Effect::Send(message) => {
                 if let Some(session) = client {
                     if let Err(error) = session.send(message).await {
@@ -246,12 +279,16 @@ async fn connect(
         Ok(Ok(session)) => {
             let established = session.established().clone();
             *client = Some(session);
-            let effects = model.update(Action::Connected {
+            let mut effects = model.update(Action::Connected {
                 context: established.context,
                 limits: established.limits,
                 server: established.server,
                 downgraded: established.downgraded,
             });
+            effects.extend(model.update(Action::NegotiatedFeatures {
+                context: established.context,
+                features: established.features,
+            }));
             for effect in effects {
                 if let Effect::Send(message) = effect
                     && let Some(session) = client

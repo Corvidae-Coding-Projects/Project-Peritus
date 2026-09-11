@@ -25,6 +25,7 @@ impl AccountProvider {
         run(async {
             discover_account_models(self.executable(), kind, &CancellationToken::new()).await
         })
+        .map(|models| models.into_iter().map(|model| model.id.as_str().to_owned()).collect())
     }
 }
 
@@ -33,7 +34,7 @@ pub fn direct(
     endpoint: Option<&str>,
     header: Option<&str>,
     credential: &peritus_secrets::SecretMaterial,
-) -> Result<Vec<String>, OnboardingError> {
+) -> Result<Vec<DiscoveredModel>, OnboardingError> {
     let (endpoint, dialect, name, prefix) = match kind {
         ProviderKind::OpenAiApi => (
             "https://api.openai.com/v1/models".to_owned(),
@@ -72,7 +73,18 @@ pub fn direct(
                 if header.is_none() { Some("Bearer ") } else { None },
             )
         }
-        _ => return Err(OnboardingError::UnsupportedProvider),
+        _ => {
+            let service = kind
+                .hosted_service()
+                .and_then(peritus_provider_core::hosted::HostedService::parse)
+                .ok_or(OnboardingError::UnsupportedProvider)?;
+            (
+                service.models_endpoint().to_owned(),
+                CatalogDialect::OpenAi,
+                "authorization",
+                Some("Bearer "),
+            )
+        }
     };
     run(async {
         let endpoint = Endpoint::new(endpoint)?;
@@ -89,6 +101,18 @@ pub fn direct(
             }
             HttpHeaders::new(headers, HttpLimits::PRODUCTION)
         };
+        if let Some(service) =
+            kind.hosted_service().and_then(peritus_provider_core::hosted::HostedService::parse)
+        {
+            return peritus_provider_core::hosted::discover_hosted_models(
+                service,
+                &transport,
+                &headers,
+                HttpLimits::PRODUCTION,
+                &CancellationToken::new(),
+            )
+            .await;
+        }
         discover_http_models(
             &transport,
             &endpoint,
@@ -104,7 +128,7 @@ pub fn direct(
 fn run(
     future: impl Future<Output = Result<Vec<DiscoveredModel>, peritus_provider_core::ProviderCoreError>>
     + Send,
-) -> Result<Vec<String>, OnboardingError> {
+) -> Result<Vec<DiscoveredModel>, OnboardingError> {
     std::thread::scope(|scope| {
         scope
             .spawn(move || {
@@ -112,12 +136,7 @@ fn run(
                     .enable_all()
                     .build()
                     .map_err(|_| OnboardingError::ModelCatalog)?;
-                runtime
-                    .block_on(future)
-                    .map(|models| {
-                        models.into_iter().map(|model| model.id.as_str().to_owned()).collect()
-                    })
-                    .map_err(|_| OnboardingError::ModelCatalog)
+                runtime.block_on(future).map_err(OnboardingError::ModelDiscovery)
             })
             .join()
             .map_err(|_| OnboardingError::ModelCatalog)?

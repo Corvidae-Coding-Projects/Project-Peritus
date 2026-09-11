@@ -2,11 +2,8 @@
 
 #[cfg(not(verus_only))]
 use super::persistence::persist_record;
-use super::{
-    ProductRunService, ProductRunServiceError, SharedConversation, snapshot::live_snapshot,
-};
-#[cfg(not(verus_only))]
-use peritus_agent::{DeveloperActivity, DeveloperInput, DeveloperInteraction, DeveloperLoopError};
+use super::{ProductRunService, ProductRunServiceError, snapshot::live_snapshot};
+use peritus_agent::DeveloperInput;
 use peritus_app_protocol::{
     MAX_PRODUCT_ACTIVITIES, MAX_PRODUCT_ACTIVITY_BYTES, ProductActivity, ProductActivityKind,
     ProductInteractionMode, ProductInteractionRequest, ProductInteractionSnapshot,
@@ -16,8 +13,15 @@ use peritus_product_runner::ConversationView;
 use peritus_types::RunId;
 use std::sync::Arc;
 
+mod live;
+use live::LiveConversation;
+mod models;
+mod narration;
+mod tool_activity;
+
 #[derive(Clone)]
 pub(super) struct InteractionOptions {
+    pub(super) workbench: Option<peritus_product_runner::control::ControlOperation>,
     pub(super) persistence_failed: Arc<std::sync::atomic::AtomicBool>,
     pub(super) mode: ProductInteractionMode,
     pub(super) models: ProductRoleModels,
@@ -26,11 +30,13 @@ pub(super) struct InteractionOptions {
     pub(super) next_sequence: u64,
     pub(super) pending_utf8: Vec<u8>,
     pub(super) streaming_text: bool,
+    pending_tool: Option<tool_activity::PendingTool>,
 }
 
 impl InteractionOptions {
     pub(super) fn new(mode: ProductInteractionMode, models: ProductRoleModels) -> Self {
         Self {
+            workbench: None,
             persistence_failed: Arc::new(std::sync::atomic::AtomicBool::new(false)),
             mode,
             models,
@@ -39,6 +45,7 @@ impl InteractionOptions {
             next_sequence: 1,
             pending_utf8: Vec::new(),
             streaming_text: false,
+            pending_tool: None,
         }
     }
 
@@ -123,7 +130,7 @@ impl ProductRunService {
                     record.snapshot.phase() == peritus_app_protocol::ProductRunPhase::WaitingForUser
                         && !record.cancelled.load(std::sync::atomic::Ordering::Acquire)
                         && record.interaction.as_ref().is_some_and(|options| {
-                            record.conversation.revision() > options.incorporated
+                            self.pending_record_input(record).unwrap_or(false)
                                 && !options
                                     .persistence_failed
                                     .load(std::sync::atomic::Ordering::Acquire)
@@ -179,132 +186,73 @@ impl ProductRunService {
             live_snapshot(record)?,
             options.mode,
             options.models.clone(),
-            record.conversation.revision(),
+            self.record_input_revision(record)?,
             options.incorporated,
             options.activities.clone(),
-            record.settlement,
+            super::snapshot::delivery_settlement(record),
         )
         .map_err(|_| ProductRunServiceError::InvalidMessage)
     }
 
-    pub(super) fn live_conversation(
-        &self,
-        run_id: RunId,
-        conversation: Arc<SharedConversation>,
-    ) -> Arc<dyn ConversationView> {
-        Arc::new(LiveConversation { service: self.clone(), run_id, conversation })
+    pub(super) fn live_conversation(&self, run_id: RunId) -> Arc<dyn ConversationView> {
+        Arc::new(LiveConversation { service: self.clone(), run_id })
     }
-}
 
-struct LiveConversation {
-    service: ProductRunService,
-    run_id: RunId,
-    conversation: Arc<SharedConversation>,
-}
-impl ConversationView for LiveConversation {
-    fn incorporated_revision(&self) -> u64 {
-        self.service
-            .inner
-            .records
-            .read()
-            .ok()
-            .and_then(|records| {
-                records
-                    .get(&self.run_id)
-                    .and_then(|record| record.interaction.as_ref())
-                    .map(|options| options.incorporated)
-            })
-            .unwrap_or(0)
+    pub(super) fn record_input_revision(
+        &self,
+        record: &super::RunRecord,
+    ) -> Result<u64, ProductRunServiceError> {
+        if let Some(start) =
+            record.interaction.as_ref().and_then(|options| options.workbench.as_ref())
+        {
+            return self
+                .with_controls(false, |store| store.capture_execution(start))
+                .map(|capture| capture.inputs().generation())
+                .map_err(Into::into);
+        }
+        Ok(record.conversation.revision())
     }
-    fn revision(&self) -> u64 {
-        self.conversation.revision()
+
+    pub(super) fn pending_record_input(
+        &self,
+        record: &super::RunRecord,
+    ) -> Result<bool, ProductRunServiceError> {
+        if let Some(start) =
+            record.interaction.as_ref().and_then(|options| options.workbench.as_ref())
+        {
+            return self
+                .with_controls(false, |store| store.capture_execution(start))
+                .map(|capture| !capture.inputs().pending().is_empty())
+                .map_err(Into::into);
+        }
+        Ok(record
+            .interaction
+            .as_ref()
+            .is_some_and(|options| record.conversation.revision() > options.incorporated))
     }
-    fn render(&self) -> String {
-        self.conversation.render()
-    }
-    #[cfg(not(verus_only))]
-    fn interaction(&self) -> Option<&dyn DeveloperInteraction> {
-        Some(self)
-    }
-}
-#[cfg(not(verus_only))]
-impl DeveloperInteraction for LiveConversation {
-    fn input(&self) -> Result<DeveloperInput, DeveloperLoopError> {
-        // Admission holds the write lock until persistence succeeds. A model cannot observe an
-        // input revision halfway through its durable receive transaction.
-        let records = self.service.inner.records.read().map_err(|_| port_error())?;
-        let record = records.get(&self.run_id).ok_or_else(port_error)?;
-        if record.interaction.as_ref().is_some_and(|options| {
-            options.persistence_failed.load(std::sync::atomic::Ordering::Acquire)
-        }) {
-            return Err(port_error());
+
+    fn record_input(
+        &self,
+        record: &super::RunRecord,
+    ) -> Result<DeveloperInput, ProductRunServiceError> {
+        if let Some(start) =
+            record.interaction.as_ref().and_then(|options| options.workbench.as_ref())
+        {
+            let captured = self.with_controls(false, |store| store.capture_execution(start))?;
+            return Ok(DeveloperInput {
+                revision: captured.inputs().generation(),
+                conversation: captured.conversation_with_guidance()?,
+                images: captured.images().to_vec(),
+            });
         }
         Ok(DeveloperInput {
             revision: record.conversation.revision(),
             conversation: record.conversation.render(),
-        })
-    }
-    fn applied(&self, revision: u64) -> Result<(), DeveloperLoopError> {
-        self.update(|options| {
-            options.incorporated = options.incorporated.max(revision);
-            options.append(
-                ProductActivityKind::Status,
-                &format!("Input {revision} incorporated into model request"),
-                "",
-            )
-        })
-    }
-    fn observe(&self, activity: DeveloperActivity<'_>) -> Result<(), DeveloperLoopError> {
-        self.update(|options| match activity {
-            DeveloperActivity::Text(bytes) => options.text(bytes),
-            DeveloperActivity::ModelStarted => {
-                options.append(ProductActivityKind::Status, "Model responding", "")
-            }
-            DeveloperActivity::ToolStarted { name, arguments } => {
-                options.append(ProductActivityKind::Tool, &format!("Running {name}"),
-                    &format!("{} argument bytes. Raw arguments remain in the trace, not this public activity projection.", arguments.len()))
-            }
-            DeveloperActivity::ToolFinished { name, output, is_error } => options.append(
-                ProductActivityKind::Tool,
-                &format!("{} {name}", if is_error { "Failed" } else { "Finished" }),
-                &format!("{} output bytes. Raw tool output remains in the trace, not this public activity projection.", output.len()),
-            ),
-            DeveloperActivity::ToolSkipped { name } => options.append(
-                ProductActivityKind::Status,
-                &format!("Skipped {name}: newer user input received"),
-                "",
-            ),
+            images: Vec::new(),
         })
     }
 }
-#[cfg(not(verus_only))]
-impl LiveConversation {
-    fn update(
-        &self,
-        change: impl FnOnce(&mut InteractionOptions) -> Result<(), ProductRunServiceError>,
-    ) -> Result<(), DeveloperLoopError> {
-        let mut records = self.service.inner.records.write().map_err(|_| port_error())?;
-        let record = records.get_mut(&self.run_id).ok_or_else(port_error)?;
-        let options = record.interaction.as_mut().ok_or_else(port_error)?;
-        change(options).map_err(|_| port_error())?;
-        if options.mode != ProductInteractionMode::Build
-            && record.snapshot.phase() == peritus_app_protocol::ProductRunPhase::Queued
-        {
-            record.snapshot = super::replace_snapshot(
-                &record.snapshot,
-                peritus_app_protocol::ProductRunPhase::Writing,
-                "Responding to the conversation",
-                record.snapshot.summary(),
-            )
-            .map_err(|_| port_error())?;
-        }
-        persist_record(&self.service.inner.directory, record).map_err(|_| port_error())
-    }
-}
-#[cfg(not(verus_only))]
-fn port_error() -> DeveloperLoopError {
-    DeveloperLoopError::Trace("durable conversation activity unavailable".to_owned())
-}
+
 pub(super) fn terminal_activity(record: &mut super::RunRecord) {
     use peritus_app_protocol::ProductRunPhase;
     if let Some(options) = record.interaction.as_mut() {

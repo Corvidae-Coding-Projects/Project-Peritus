@@ -75,7 +75,7 @@ fn resolve_base(
     Ok(Some(base))
 }
 
-fn load_base_manifest(
+pub(super) fn load_base_manifest(
     root: &Path,
     base: &str,
     diagnostics: &mut Vec<Diagnostic>,
@@ -264,7 +264,7 @@ fn git(root: &Path, arguments: &[&str]) -> Result<Output, XtaskError> {
         .map_err(|error| XtaskError::io("execute Git from", root, error))
 }
 
-fn full_commit(value: &str) -> bool {
+pub(super) fn full_commit(value: &str) -> bool {
     value.len() == 40
         && value.bytes().all(|byte| byte.is_ascii_digit() || matches!(byte, b'a'..=b'f'))
         && value.bytes().any(|byte| byte != b'0')

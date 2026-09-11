@@ -1,0 +1,22 @@
+=== PERITUS GATE RECORD ===
+{"argv": ["cargo", "verus", "verify", "--package", "peritus-network", "--all-features", "--locked", "--check-toolchain", "--fwd-verus-args-to", "roots", "--", "--no-cheating", "--rlimit", "20"], "command": "cargo verus verify --package peritus-network --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20", "command_exit_code": 0, "custody_error": null, "duration_seconds": 1.788534, "finished_at": "2026-09-10T01:50:38.025635Z", "kind": "verus-verify", "owning_crate": "peritus-network", "result": "passed", "schema": "peritus.formal-package-gate-output", "schema_version": 1, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "started_at": "2026-09-10T01:50:36.275630Z", "verification_class": "H"}
+=== STDOUT LOG ===
+=== PERITUS CUSTODY HEADER ===
+{"argv": ["cargo", "verus", "verify", "--package", "peritus-network", "--all-features", "--locked", "--check-toolchain", "--fwd-verus-args-to", "roots", "--", "--no-cheating", "--rlimit", "20"], "kind": "verus-verify", "owning_crate": "peritus-network", "schema": "peritus.formal-package-evidence-stream", "schema_version": 1, "sequence": 48, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "stream": "stdout", "verification_class": "H"}
+=== COMMAND OUTPUT ===
+verification results:: 3 verified, 0 errors
+
+=== PERITUS CUSTODY FOOTER ===
+{"command_exit_code": 0, "execution_error": null, "finished_at": "2026-09-10T01:50:38.025635Z"}
+
+=== STDERR LOG ===
+=== PERITUS CUSTODY HEADER ===
+{"argv": ["cargo", "verus", "verify", "--package", "peritus-network", "--all-features", "--locked", "--check-toolchain", "--fwd-verus-args-to", "roots", "--", "--no-cheating", "--rlimit", "20"], "kind": "verus-verify", "owning_crate": "peritus-network", "schema": "peritus.formal-package-evidence-stream", "schema_version": 1, "sequence": 48, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "stream": "stderr", "verification_class": "H"}
+=== COMMAND OUTPUT ===
+    Checking bitflags v2.13.1
+   Compiling nix v0.31.3
+    Checking peritus-network v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/runtime/peritus-network)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.52s
+
+=== PERITUS CUSTODY FOOTER ===
+{"command_exit_code": 0, "execution_error": null, "finished_at": "2026-09-10T01:50:38.025635Z"}

@@ -22,7 +22,9 @@ ignore = []
 [licenses]
 confidence-threshold = 0.93
 allow = ["Apache-2.0", "BSD-3-Clause", "ISC", "MIT", "MIT-0", "Unicode-3.0", "Zlib"]
-exceptions = []
+exceptions = [
+    { crate = "winx@0.36.4", allow = ["Apache-2.0 WITH LLVM-exception"] },
+]
 
 [licenses.private]
 ignore = false
@@ -37,6 +39,9 @@ external-default-features = "allow"
 allow = []
 deny = []
 skip = [
+    { crate = "io-lifetimes@2.0.4", reason = "Reviewed cap-std 4.0.3 closure: mandatory fs-set-times 0.20.3 retains io-lifetimes 2 while cap-primitives and io-extras use 3; these locked handle helpers remain private to C1's implementation." },
+    { crate = "windows-sys@0.52.0", reason = "Reviewed cap-std 4.0.3 Windows backend: winx 0.36.4 and fs-set-times 0.20.3 require windows-sys below 0.60 while existing workspace backends use 0.61; both are locked and no Windows binding types cross the C1 API." },
+    { crate = "miniz_oxide@0.8.9", reason = "Reviewed image 0.25.10 PNG decoder closure: png 0.18.1 directly retains miniz_oxide 0.8 while its flate2 1.1.10 dependency uses 0.9; both are locked private compression implementations and no miniz types cross Peritus APIs." },
     { crate = "bitflags@1.3.2", reason = "Pinned portable-pty 0.9 requires bitflags 1 for its Windows backend while current platform and state dependencies use bitflags 2; both are locked implementation-only types." },
     { crate = "block-buffer@0.10.4", reason = "Pinned keyring 4.1.6 reaches the Secret Service crypto stack through sha2 0.10 while Peritus uses sha2 0.11; this locked implementation-only buffer type does not cross a Peritus API." },
     { crate = "cfg_aliases@0.1.1", reason = "Pinned portable-pty 0.9 requires nix 0.28 and its cfg_aliases 0.1 build helper while the process owner uses current nix 0.31 and cfg_aliases 0.2; both helpers are locked and build-time-only." },
@@ -119,6 +124,23 @@ mod tests {
             validate_contents(&altered, Path::new("deny.toml"), &mut diagnostics)
                 .expect("valid altered TOML must parse");
             assert!(!diagnostics.is_empty(), "accepted weakened cargo-deny policy");
+        }
+    }
+
+    #[test]
+    fn new_dependency_exceptions_reject_scope_and_reason_near_misses() {
+        for altered in [
+            REVIEWED_POLICY.replace("winx@0.36.4", "winx"),
+            REVIEWED_POLICY.replace("io-lifetimes@2.0.4", "io-lifetimes"),
+            REVIEWED_POLICY.replace("windows-sys@0.52.0", "windows-sys"),
+            REVIEWED_POLICY.replace("miniz_oxide@0.8.9", "miniz_oxide"),
+            REVIEWED_POLICY
+                .replace("Reviewed image 0.25.10 PNG decoder closure", "Temporary duplicate"),
+        ] {
+            let mut diagnostics = Vec::new();
+            validate_contents(&altered, Path::new("deny.toml"), &mut diagnostics)
+                .expect("valid altered TOML must parse");
+            assert!(!diagnostics.is_empty(), "accepted broadened or unreasoned exception");
         }
     }
 }

@@ -14,7 +14,7 @@ pub(super) fn project_snapshot(
     record: &RunRecord,
     snapshot: ProductRunSnapshot,
 ) -> Result<AppResponsePayload, ProductRunServiceError> {
-    match record.settlement {
+    match delivery_settlement(record) {
         Some(settlement) => ProductRunSettlementSnapshot::new(snapshot, settlement)
             .map(AppResponsePayload::ProductRunSettled)
             .map_err(|_| ProductRunServiceError::InvalidState),
@@ -31,7 +31,7 @@ pub(super) fn project_collection(
         .map(|snapshot| {
             records
                 .get(&snapshot.run_id())
-                .and_then(|record| record.settlement)
+                .and_then(delivery_settlement)
                 .map(|settlement| ProductRunSettlementSnapshot::new(snapshot.clone(), settlement))
                 .transpose()
         })
@@ -42,6 +42,17 @@ pub(super) fn project_collection(
     } else {
         Ok(AppResponsePayload::ProductRuns(snapshots))
     }
+}
+
+/// The legacy settlement wire shape requires a managed deliverable for every checkpoint.
+/// In-place execution retains that checkpoint internally but publishes its phase and evidence
+/// through the ordinary snapshot, without inventing a Git handoff or changing the wire contract.
+pub(super) fn delivery_settlement(
+    record: &RunRecord,
+) -> Option<peritus_run_settlement::RunSettlement> {
+    record.settlement.filter(|settlement| {
+        settlement.checkpoint().is_none() || record.snapshot.deliverable().is_some()
+    })
 }
 
 pub(super) fn live_snapshot(

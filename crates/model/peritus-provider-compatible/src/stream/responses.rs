@@ -1,4 +1,5 @@
 mod terminal;
+mod tools;
 use peritus_model_protocol::{
     EventId, ItemId, ItemKind, ModelEvent, ModelName, ProtocolLimits, ProviderName, ResponseId,
     StreamFragment, ToolCallId, ToolName,
@@ -176,7 +177,7 @@ impl ResponsesDecoder {
                 index,
                 kind,
                 call_id,
-                bytes: Vec::new(),
+                bytes: peritus_provider_core::healing::ToolArgumentBuffer::default(),
                 value_done: false,
                 completed: false,
             },
@@ -240,6 +241,9 @@ impl ResponsesDecoder {
             return Err(error::malformed("Responses-compatible delta targeted wrong part"));
         }
         append(&mut part.bytes, bytes, self.limits.max_output_bytes())?;
+        if part.kind == ItemKind::StructuredOutput {
+            return Ok(Vec::new());
+        }
         let fragment = StreamFragment::new(bytes.to_vec(), self.limits)
             .map_err(|_| error::limit("compatible content fragment exceeded bounds"))?;
         Ok(vec![if refusal {
@@ -268,6 +272,13 @@ impl ResponsesDecoder {
             return Err(error::malformed("Responses-compatible completed content changed"));
         }
         part.value_done = true;
+        if part.kind == ItemKind::StructuredOutput {
+            return peritus_provider_core::healing::structured_output(
+                &part.bytes,
+                &part.normalized,
+                self.limits,
+            );
+        }
         Ok(Vec::new())
     }
 
@@ -281,48 +292,6 @@ impl ResponsesDecoder {
         }
         part.completed = true;
         Ok(vec![ModelEvent::ItemCompleted(part.normalized.clone())])
-    }
-
-    fn tool_delta(&mut self, value: &Value) -> Result<Vec<ModelEvent>, ProviderCoreError> {
-        let id = string(value, "item_id")?;
-        let index = index(value, "output_index")?;
-        let bytes = string(value, "delta")?.as_bytes();
-        let item = self
-            .state
-            .item_mut(id)
-            .ok_or_else(|| error::malformed("Responses-compatible tool delta preceded its item"))?;
-        if item.kind != ItemKind::ToolCall
-            || item.index != index
-            || item.value_done
-            || item.completed
-        {
-            return Err(error::malformed("Responses-compatible tool delta targeted wrong item"));
-        }
-        append(&mut item.bytes, bytes, self.limits.max_tool_argument_bytes())?;
-        let call_id = item.call_id.clone().ok_or_else(|| {
-            error::malformed("Responses-compatible tool item omitted call identity")
-        })?;
-        let fragment = StreamFragment::new(bytes.to_vec(), self.limits)
-            .map_err(|_| error::limit("compatible tool fragment exceeded bounds"))?;
-        Ok(vec![ModelEvent::ToolArgumentDelta { call_id, fragment }])
-    }
-
-    fn tool_done(&mut self, value: &Value) -> Result<Vec<ModelEvent>, ProviderCoreError> {
-        let id = string(value, "item_id")?;
-        let index = index(value, "output_index")?;
-        let complete = string(value, "arguments")?.as_bytes();
-        let item = self.state.item_mut(id).ok_or_else(|| {
-            error::malformed("Responses-compatible tool terminal preceded its item")
-        })?;
-        if item.kind != ItemKind::ToolCall
-            || item.index != index
-            || item.value_done
-            || item.bytes != complete
-        {
-            return Err(error::malformed("Responses-compatible completed tool input changed"));
-        }
-        item.value_done = true;
-        Ok(Vec::new())
     }
 
     fn item_done(&mut self, value: &Value) -> Result<Vec<ModelEvent>, ProviderCoreError> {

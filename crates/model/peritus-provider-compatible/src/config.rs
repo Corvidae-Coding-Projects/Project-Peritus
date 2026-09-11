@@ -160,6 +160,7 @@ impl fmt::Debug for CompatibleHeader {
 #[derive(Clone)]
 pub struct CompatibleConfig {
     endpoint: Endpoint,
+    hosted_service: Option<peritus_provider_core::hosted::HostedService>,
     auth: CompatibleAuth,
     fixed_headers: Vec<CompatibleHeader>,
     response_headers: CompatibleResponseHeaders,
@@ -187,6 +188,7 @@ impl CompatibleConfig {
         }
         Ok(Self {
             endpoint,
+            hosted_service: None,
             auth,
             fixed_headers: Vec::new(),
             response_headers: CompatibleResponseHeaders::none(),
@@ -205,6 +207,36 @@ impl CompatibleConfig {
             framing_limits: FramingLimits::PRODUCTION,
             protocol_limits: ProtocolLimits::PRODUCTION,
         })
+    }
+
+    /// Binds a reviewed hosted service's request and stream extensions to its exact endpoint.
+    ///
+    /// # Errors
+    /// Rejects URLs outside this service's documented compatible operations.
+    pub fn with_hosted_service(
+        mut self,
+        service: peritus_provider_core::hosted::HostedService,
+    ) -> Result<Self, ProviderCoreError> {
+        if ![
+            peritus_model_protocol::WireDialect::CompatibleChatCompletions,
+            peritus_model_protocol::WireDialect::CompatibleResponses,
+        ]
+        .into_iter()
+        .any(|dialect| {
+            service.route(dialect).is_ok_and(|route| route.endpoint == self.endpoint.as_str())
+        }) {
+            return Err(error::configuration(
+                "hosted service does not own this compatible endpoint",
+            ));
+        }
+        self.hosted_service = Some(service);
+        Ok(self)
+    }
+
+    pub(crate) const fn hosted_service(
+        &self,
+    ) -> Option<peritus_provider_core::hosted::HostedService> {
+        self.hosted_service
     }
 
     /// Installs an exact bounded set of nonsensitive fixed headers.
@@ -309,6 +341,7 @@ impl fmt::Debug for CompatibleConfig {
         formatter
             .debug_struct("CompatibleConfig")
             .field("endpoint", &self.endpoint)
+            .field("hosted_service", &self.hosted_service)
             .field("auth", &self.auth)
             .field("fixed_headers", &self.fixed_headers)
             .field("response_headers", &self.response_headers)

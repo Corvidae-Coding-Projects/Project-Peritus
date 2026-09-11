@@ -1,12 +1,18 @@
 //! Persistent conversational composer, explicit slash commands, and provider catalog selection.
 
+mod catalog;
 mod commands;
+mod doctor;
+mod keys;
 mod models;
+mod navigation;
+mod picker;
 #[cfg(test)]
 mod tests;
+mod workbench;
+mod working;
 
 use super::{AppModel, Effect, NoticeLevel, PendingRequest};
-use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use peritus_app_protocol::{
     AppRequestPayload, ProductInteractionMode, ProductInteractionRequest,
     ProductInteractionSnapshot, ProductModelCatalog, ProductRoleModels, ProductRunControlAction,
@@ -14,42 +20,58 @@ use peritus_app_protocol::{
 };
 use peritus_types::RunId;
 
-pub use commands::COMMANDS;
+pub use working::WorkingIndicator;
 
 #[derive(Debug)]
 pub struct ChatUi {
     pub(crate) buffer: String,
     pub(crate) cursor: usize,
+    pub(crate) selection_anchor: Option<usize>,
+    pub(crate) viewport: Option<ratatui::layout::Rect>,
+    mouse_anchor: Option<usize>,
     pub(crate) run_id: Option<RunId>,
     pub(crate) snapshot: Option<ProductInteractionSnapshot>,
     pub(crate) mode: ProductInteractionMode,
     pub(crate) models: ProductRoleModels,
     pub(crate) scroll: usize,
     pub(crate) expanded: bool,
+    pub(crate) working: WorkingIndicator,
     pub(crate) command_selection: usize,
     pub(crate) catalog: Option<ProductModelCatalog>,
-    pub(crate) model_picker: bool,
+    picker: Option<picker::Picker>,
+    pub(crate) effort_selection: usize,
     pub(crate) model_selection: usize,
     pub(crate) model_role: models::ModelRole,
+    pub(crate) doctor: Option<doctor::DoctorPanel>,
+    pub(crate) workbench: workbench::WorkbenchUi,
     interrupt_requested: bool,
+    pasted_command: bool,
 }
 impl Default for ChatUi {
     fn default() -> Self {
         Self {
             buffer: String::new(),
             cursor: 0,
+            selection_anchor: None,
+            viewport: None,
+            mouse_anchor: None,
             run_id: None,
             snapshot: None,
             mode: ProductInteractionMode::Chat,
             models: ProductRoleModels::default(),
             scroll: 0,
             expanded: false,
+            working: WorkingIndicator::default(),
             command_selection: 0,
             catalog: None,
-            model_picker: false,
+            picker: None,
+            effort_selection: 0,
             model_selection: 0,
             model_role: models::ModelRole::Writer,
+            doctor: None,
+            workbench: workbench::WorkbenchUi::default(),
             interrupt_requested: false,
+            pasted_command: false,
         }
     }
 }
@@ -70,11 +92,8 @@ impl ChatUi {
     pub(crate) fn active(&self) -> bool {
         self.snapshot.as_ref().is_some_and(|snapshot| !snapshot.snapshot().phase().terminal())
     }
-    pub(crate) fn matching_commands(&self) -> Vec<(&'static str, &'static str)> {
-        if !self.buffer.starts_with('/') || self.buffer.contains(char::is_whitespace) {
-            return Vec::new();
-        }
-        COMMANDS.iter().copied().filter(|(name, _)| name.starts_with(&self.buffer)).collect()
+    pub(crate) fn matching_commands(&self) -> Vec<(String, &'static str)> {
+        catalog::completions(&self.buffer)
     }
 }
 impl AppModel {
@@ -96,91 +115,21 @@ impl AppModel {
         .into_iter()
         .collect()
     }
-    pub(super) fn paste_chat(&mut self, text: &str) {
-        self.chat.interrupt_requested = false;
-        let text: String =
-            text.chars().filter(|ch| !ch.is_control() || *ch == '\n' || *ch == '\t').collect();
-        if self.chat.buffer.len().saturating_add(text.len())
-            > peritus_app_protocol::MAX_PRODUCT_TASK_BYTES
-        {
-            self.notice(NoticeLevel::Warning, "Message is too large; paste a smaller selection");
-            return;
-        }
-        self.chat.buffer.insert_str(self.chat.cursor, &text);
-        self.chat.cursor += text.len();
-    }
-    pub(super) fn handle_chat_key(&mut self, key: KeyEvent) -> Vec<Effect> {
-        if !(key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('c')) {
-            self.chat.interrupt_requested = false;
-        }
-        if key.modifiers.contains(KeyModifiers::CONTROL) {
-            match key.code {
-                KeyCode::Char('q') => {
-                    self.quitting = true;
-                    return vec![Effect::Quit];
-                }
-                KeyCode::Char('c') => {
-                    if self.chat_work_active() && !self.chat.interrupt_requested {
-                        self.chat.interrupt_requested = true;
-                        let effects = self.chat_control(ProductRunControlAction::Cancel);
-                        self.notice(NoticeLevel::Info, if effects.is_empty() {
-                            "Stop could not be sent. Press Ctrl+C again to close; daemon work may continue."
-                        } else {
-                            "Stop requested. Press Ctrl+C again to close without waiting."
-                        });
-                        return effects;
-                    }
-                    self.quitting = true;
-                    return vec![Effect::Quit];
-                }
-                _ => {}
-            }
-        }
-        if self.chat.model_picker {
-            return self.model_picker_key(key);
-        }
-        let commands = self.chat.matching_commands();
-        match key.code {
-            KeyCode::Enter if key.modifiers.contains(KeyModifiers::SHIFT) => self.paste_chat("\n"),
-            KeyCode::Enter => return self.submit_chat(),
-            KeyCode::Tab if !commands.is_empty() => {
-                self.chat.buffer =
-                    format!("{} ", commands[self.chat.command_selection.min(commands.len() - 1)].0);
-                self.chat.cursor = self.chat.buffer.len();
-                self.chat.command_selection = 0;
-            }
-            KeyCode::Up if !commands.is_empty() => {
-                self.chat.command_selection = self.chat.command_selection.saturating_sub(1);
-            }
-            KeyCode::Down if !commands.is_empty() => {
-                self.chat.command_selection =
-                    (self.chat.command_selection + 1).min(commands.len() - 1);
-            }
-            KeyCode::PageUp => self.chat.scroll = self.chat.scroll.saturating_add(12),
-            KeyCode::PageDown => self.chat.scroll = self.chat.scroll.saturating_sub(12),
-            KeyCode::End if self.chat.buffer.is_empty() => self.chat.scroll = 0,
-            KeyCode::Esc => {
-                self.chat.expanded = false;
-                self.chat.command_selection = 0;
-            }
-            _ => {
-                if self.chat.buffer.len() < peritus_app_protocol::MAX_PRODUCT_TASK_BYTES
-                    || !matches!(key.code, KeyCode::Char(_))
-                {
-                    let _ =
-                        crate::input::edit_text(&mut self.chat.buffer, &mut self.chat.cursor, key);
-                }
-            }
-        }
-        Vec::new()
-    }
     fn submit_chat(&mut self) -> Vec<Effect> {
         let text = self.chat.buffer.trim().to_owned();
         if text.is_empty() {
             return Vec::new();
         }
         if text.starts_with('/') {
+            if self.chat.pasted_command {
+                self.notice(NoticeLevel::Warning,
+                    "Pasted commands do not execute. Type the command or select it with Tab; draft retained.");
+                return Vec::new();
+            }
             return self.slash_command(&text);
+        }
+        if let Some(path) = text.strip_prefix('@') {
+            return self.file_command(path);
         }
         self.send_chat_message(text)
     }
@@ -232,6 +181,8 @@ impl AppModel {
             self.chat.run_id = Some(run_id);
             self.chat.buffer.clear();
             self.chat.cursor = 0;
+            self.chat.selection_anchor = None;
+            self.chat.mouse_anchor = None;
             self.chat.scroll = 0;
             self.notice(NoticeLevel::Info, "Sending input; durable receipt not yet confirmed");
         }
@@ -258,6 +209,18 @@ impl AppModel {
         if self.chat.run_id != Some(snapshot.snapshot().run_id()) {
             return;
         }
+        // Model updates append a durable activity. A delayed pre-selection poll must not
+        // overwrite a newer acknowledgement, including after a reconnect.
+        if self.chat.snapshot.as_ref().is_some_and(|current| {
+            snapshot.activities().last().map_or(0, peritus_app_protocol::ProductActivity::sequence)
+                < current
+                    .activities()
+                    .last()
+                    .map_or(0, peritus_app_protocol::ProductActivity::sequence)
+        }) {
+            return;
+        }
+        self.chat.models = snapshot.models().clone();
         self.accept_product_run(snapshot.snapshot().clone());
         if let Some(settlement) = snapshot.settlement()
             && let Some(product) = &mut self.product
@@ -273,6 +236,8 @@ impl AppModel {
             format!("{text}\n{}", self.chat.buffer)
         };
         self.chat.cursor = self.chat.buffer.len();
+        self.chat.selection_anchor = None;
+        self.chat.mouse_anchor = None;
     }
     pub(super) fn recover_chat_drafts(&mut self) {
         let messages = self
@@ -318,7 +283,12 @@ impl AppModel {
         })
     }
     pub(super) fn chat_submission_pending(&self) -> bool {
-        self.pending.values().any(|pending| matches!(pending, PendingRequest::ChatSubmit { .. }))
+        self.pending.values().any(|pending| {
+            matches!(
+                pending,
+                PendingRequest::ChatSubmit { .. } | PendingRequest::ModelUpdate { .. }
+            )
+        })
     }
     pub(crate) fn chat_providers(&self) -> Option<peritus_app_protocol::ProductProviderSelection> {
         self.chat

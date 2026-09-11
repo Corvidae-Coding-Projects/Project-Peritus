@@ -1,0 +1,58 @@
+=== PERITUS GATE RECORD ===
+{"argv": ["cargo", "test", "--package", "peritus-migrations", "--all-targets", "--all-features", "--locked"], "command": "cargo test --package peritus-migrations --all-targets --all-features --locked", "command_exit_code": 0, "custody_error": null, "duration_seconds": 0.621957, "finished_at": "2026-09-10T01:50:28.875263Z", "kind": "ordinary-test", "owning_crate": "peritus-migrations", "result": "passed", "schema": "peritus.formal-package-gate-output", "schema_version": 1, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "started_at": "2026-09-10T01:50:28.291618Z", "verification_class": "H"}
+=== STDOUT LOG ===
+=== PERITUS CUSTODY HEADER ===
+{"argv": ["cargo", "test", "--package", "peritus-migrations", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "owning_crate": "peritus-migrations", "schema": "peritus.formal-package-evidence-stream", "schema_version": 1, "sequence": 43, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "stream": "stdout", "verification_class": "H"}
+=== COMMAND OUTPUT ===
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 9 tests
+test pre_backup_failure_is_restart_visible_without_schema_progress ... ok
+test migration_owner_lock_rejects_concurrent_engine ... ok
+test successful_risky_apply_creates_backup_and_records_version ... ok
+test corrupted_durable_backup_blocks_schema_apply ... ok
+test abandoned_backup_temporary_is_replaced_on_retry ... ok
+test apply_failure_requires_and_supports_explicit_backup_restore ... ok
+test completed_backup_survives_interrupted_apply_start ... ok
+test landed_ambiguous_commit_remains_applying_and_reconciles_applied_after_restart ... ok
+test applied_history_digest_drift_is_terminal ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+
+running 2 tests
+test fresh_schema_is_complete_and_adopted_once_without_upgrade_or_backup ... ok
+test initial_schema_accepts_all_release_aggregate_families_and_shared_history ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+
+running 4 tests
+test planning_rejects_reverse_ranges_and_checked_capacity_overflow ... ok
+test planning_rejects_insufficient_space_and_reverse_or_incompatible_ranges ... ok
+test source_digest_drift_and_registry_gaps_are_rejected ... ok
+test production_registry_contains_only_the_initial_release_schema ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+=== PERITUS CUSTODY FOOTER ===
+{"command_exit_code": 0, "execution_error": null, "finished_at": "2026-09-10T01:50:28.875263Z"}
+
+=== STDERR LOG ===
+=== PERITUS CUSTODY HEADER ===
+{"argv": ["cargo", "test", "--package", "peritus-migrations", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "owning_crate": "peritus-migrations", "schema": "peritus.formal-package-evidence-stream", "schema_version": 1, "sequence": 43, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "stream": "stderr", "verification_class": "H"}
+=== COMMAND OUTPUT ===
+   Compiling peritus-migrations v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/state/peritus-migrations)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.52s
+     Running unittests src/lib.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/peritus_migrations-814d2ed4c416de3a)
+     Running tests/apply_recovery.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/apply_recovery-d8b7db8177fc7e9b)
+     Running tests/initial_install.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/initial_install-d81cd9dc590339a0)
+     Running tests/planning.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/planning-623009b75713ee49)
+
+=== PERITUS CUSTODY FOOTER ===
+{"command_exit_code": 0, "execution_error": null, "finished_at": "2026-09-10T01:50:28.875263Z"}

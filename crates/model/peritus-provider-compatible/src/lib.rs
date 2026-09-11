@@ -6,6 +6,7 @@
 mod client;
 mod config;
 mod error;
+mod hosted_reasoning;
 mod profile;
 mod request;
 mod stream;

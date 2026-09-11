@@ -1,0 +1,123 @@
+=== PERITUS GATE RECORD ===
+{"argv": ["cargo", "test", "--package", "peritus-context", "--all-targets", "--all-features", "--locked"], "command": "cargo test --package peritus-context --all-targets --all-features --locked", "command_exit_code": 0, "custody_error": null, "duration_seconds": 0.868126, "finished_at": "2026-09-10T01:48:12.371231Z", "kind": "ordinary-test", "owning_crate": "peritus-context", "result": "passed", "schema": "peritus.formal-package-gate-output", "schema_version": 1, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "started_at": "2026-09-10T01:48:11.544127Z", "verification_class": "H"}
+=== STDOUT LOG ===
+=== PERITUS CUSTODY HEADER ===
+{"argv": ["cargo", "test", "--package", "peritus-context", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "owning_crate": "peritus-context", "schema": "peritus.formal-package-evidence-stream", "schema_version": 1, "sequence": 15, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "stream": "stdout", "verification_class": "H"}
+=== COMMAND OUTPUT ===
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 9 tests
+test ranges_and_proposals_reject_empty_overlap_duplicate_and_noncanonical_inputs ... ok
+test hidden_source_is_rejected_even_with_a_plan_from_another_graph ... ok
+test protected_and_mixed_context_sources_are_rejected ... ok
+test replacement_rejects_required_sources_and_graph_drift ... ok
+test trust_is_preserved_only_for_all_trusted_inputs_and_an_explicit_policy ... ok
+test replacement_separates_lineage_and_rewrites_live_dependencies ... ok
+test validation_rejects_missing_digest_range_selection_and_savings_failures ... ok
+test validation_rejects_policy_identity_existing_output_and_self_lineage ... ok
+test successful_compaction_retains_provenance_ranges_dependencies_and_savings ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 6 tests
+test dependency_metadata_rejects_self_duplicate_and_noncanonical_edges ... ok
+test graph_rejects_cycles_and_accepts_a_canonical_dag ... ok
+test visibility_requires_nonempty_canonical_unique_roles ... ok
+test identifiers_content_and_limits_are_checked ... ok
+test graph_rejects_empty_duplicate_unordered_and_missing_nodes ... ok
+test node_metadata_rejects_zero_and_security_mismatches ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 2 tests
+test instruction_like_payloads_from_every_non_authoritative_source_stay_evidence ... ok
+test render_order_preserves_precedence_and_every_metadata_field ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 2 tests
+test deterministic_selection_retains_full_provenance_and_packet_order ... ok
+test changed_source_requires_new_digest_bound_context_before_selection ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 7 tests
+test hidden_required_root_and_dependency_fail_transactionally ... ok
+test optional_closure_is_omitted_atomically_and_explained ... ok
+test identical_inputs_produce_byte_for_byte_equal_plans ... ok
+test required_budget_node_and_byte_failures_name_the_root ... ok
+test token_budget_checks_boundaries_and_reports_each_component ... ok
+test required_root_selects_complete_dependency_closure ... ok
+test ranking_uses_authority_requirement_priority_recency_then_id ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 6 tests
+test reviewer_projection_omits_even_required_derived_entries_and_rejects_other_roles ... ok
+test identical_inputs_reduce_to_identical_state_and_noop_refresh_is_idempotent ... ok
+test source_capacity_exhaustion_keeps_the_existing_prefix ... ok
+test duplicate_unordered_and_host_status_proposals_are_rejected ... ok
+test stale_evidence_must_postdate_repeated_environment_invalidation ... ok
+test state_rechecks_proposals_built_with_wider_limits ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 6 tests
+test canonical_observation_version_one_fixture_is_stable ... ok
+test replay_never_skips_a_bad_event_or_redispatches_any_operation ... ok
+test unknown_versions_scope_and_wider_snapshot_limits_fail_closed ... ok
+test snapshot_plus_committed_suffix_matches_uninterrupted_execution ... ok
+test snapshot_preserves_sticky_staleness_and_superseded_evidence ... ok
+test all_truncated_prefixes_and_trailing_bytes_are_rejected ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 11 tests
+test malformed_ranges_limits_and_reference_order_are_rejected ... ok
+test dependency_cycles_include_supersession_edges ... ok
+test file_changes_invalidate_transitively_but_unrelated_edits_do_not ... ok
+test model_status_never_confers_authority_and_counterevidence_survives ... ok
+test observations_are_contiguous_exact_and_idempotent ... ok
+test revision_and_conversation_rebinding_are_monotonic ... ok
+test stale_reactivation_requires_evidence_after_the_invalidation_boundary ... ok
+test uncertain_or_missing_file_dependencies_cannot_be_asserted_current ... ok
+test every_scope_dimension_is_checked_before_read_or_write ... ok
+test supersession_retains_sources_and_invalidates_dependents ... ok
+test missing_sources_and_dependencies_reject_the_entire_batch ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+=== PERITUS CUSTODY FOOTER ===
+{"command_exit_code": 0, "execution_error": null, "finished_at": "2026-09-10T01:48:12.371231Z"}
+
+=== STDERR LOG ===
+=== PERITUS CUSTODY HEADER ===
+{"argv": ["cargo", "test", "--package", "peritus-context", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "owning_crate": "peritus-context", "schema": "peritus.formal-package-evidence-stream", "schema_version": 1, "sequence": 15, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "stream": "stderr", "verification_class": "H"}
+=== COMMAND OUTPUT ===
+   Compiling peritus-run-knowledge v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/orchestration/peritus-run-knowledge)
+   Compiling peritus-context v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/orchestration/peritus-context)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.78s
+     Running unittests src/lib.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/peritus_context-765bebd45a52ff48)
+     Running tests/compaction_matrix.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/compaction_matrix-65b8dbca56457559)
+     Running tests/graph_matrix.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/graph_matrix-7a542604cdd88cb8)
+     Running tests/poisoning.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/poisoning-88c05ecf3b823c9e)
+     Running tests/reuse_matrix.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/reuse_matrix-ab59b125b80c5e88)
+     Running tests/selection_matrix.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/selection_matrix-7cf6fbd3a0f69322)
+     Running tests/working_bounds.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/working_bounds-74713b139a8efba9)
+     Running tests/working_replay.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/working_replay-4ae9a912a11293e9)
+     Running tests/working_state.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/working_state-70708c396e2e791e)
+
+=== PERITUS CUSTODY FOOTER ===
+{"command_exit_code": 0, "execution_error": null, "finished_at": "2026-09-10T01:48:12.371231Z"}

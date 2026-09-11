@@ -1,0 +1,57 @@
+=== PERITUS GATE RECORD ===
+{"argv": ["cargo", "test", "--package", "peritus-sandbox", "--all-targets", "--all-features", "--locked"], "command": "cargo test --package peritus-sandbox --all-targets --all-features --locked", "command_exit_code": 0, "custody_error": null, "duration_seconds": 0.40711, "finished_at": "2026-09-10T01:51:45.167592Z", "kind": "ordinary-test", "owning_crate": "peritus-sandbox", "result": "passed", "schema": "peritus.formal-package-gate-output", "schema_version": 1, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "started_at": "2026-09-10T01:51:44.794558Z", "verification_class": "H"}
+=== STDOUT LOG ===
+=== PERITUS CUSTODY HEADER ===
+{"argv": ["cargo", "test", "--package", "peritus-sandbox", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "owning_crate": "peritus-sandbox", "schema": "peritus.formal-package-evidence-stream", "schema_version": 1, "sequence": 93, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "stream": "stdout", "verification_class": "H"}
+=== COMMAND OUTPUT ===
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 6 tests
+test admission_requires_default_filesystem_and_descendant_denial_controls ... ok
+test admission_is_fail_closed_and_bound_to_backend_identity ... ok
+test first_cancellation_reason_overrides_later_terminal_classification ... ok
+test reference_backend_exercises_all_domains_and_complete_teardown ... ok
+test preparation_detects_cross_plan_admission_and_faults_are_deterministic ... ok
+test observation_capacity_drops_optional_events_but_retains_teardown ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 7 tests
+test compile_rejects_operation_class_or_requirement_broadening ... ok
+test ip_prefixes_clear_host_bits_before_identity_and_evaluation ... ok
+test filesystem_and_network_are_default_deny_with_deny_precedence ... ok
+test domain_values_reject_ambiguous_or_nonportable_input ... ok
+test terminal_bound_fields_change_canonical_plan_identity ... ok
+test canonical_plan_digest_ignores_input_permutation_and_binds_target ... ok
+test terminal_bounds_validate_and_reject_each_one_over_requirement ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 1 test
+test production_reference_adapter_passes_the_complete_a2_sandbox_suite ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+=== PERITUS CUSTODY FOOTER ===
+{"command_exit_code": 0, "execution_error": null, "finished_at": "2026-09-10T01:51:45.167592Z"}
+
+=== STDERR LOG ===
+=== PERITUS CUSTODY HEADER ===
+{"argv": ["cargo", "test", "--package", "peritus-sandbox", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "owning_crate": "peritus-sandbox", "schema": "peritus.formal-package-evidence-stream", "schema_version": 1, "sequence": 93, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "stream": "stderr", "verification_class": "H"}
+=== COMMAND OUTPUT ===
+   Compiling peritus-sandbox v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/runtime/peritus-sandbox)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.34s
+     Running unittests src/lib.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/peritus_sandbox-f7b379d758671c97)
+     Running tests/backend_reference.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/backend_reference-f943c16827ce271e)
+     Running tests/contracts.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/contracts-7776afb10ffe6931)
+     Running tests/production_conformance.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/production_conformance-23657c4bdd00bcdb)
+
+=== PERITUS CUSTODY FOOTER ===
+{"command_exit_code": 0, "execution_error": null, "finished_at": "2026-09-10T01:51:45.167592Z"}

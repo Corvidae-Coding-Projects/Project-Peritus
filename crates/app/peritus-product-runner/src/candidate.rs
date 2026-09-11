@@ -13,6 +13,7 @@ use crate::{ProductRunnerError, ProductRunnerErrorKind};
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct CandidateBaseline {
     head: String,
+    in_place: Option<crate::workspace_delivery::scope::ScopedBaseline>,
 }
 
 impl CandidateBaseline {
@@ -38,7 +39,7 @@ impl CandidateBaseline {
                 "managed workspace has no committed HEAD",
             ));
         }
-        Ok(Self { head })
+        Ok(Self { head, in_place: None })
     }
 
     pub(crate) fn restored(head: String) -> Result<Self, ProductRunnerError> {
@@ -48,7 +49,7 @@ impl CandidateBaseline {
                 "durable candidate base is not a Git object identifier",
             ));
         }
-        Ok(Self { head })
+        Ok(Self { head, in_place: None })
     }
 
     /// Returns every tracked modification/deletion and nonignored untracked file against the
@@ -57,6 +58,9 @@ impl CandidateBaseline {
     /// Comparing the current tree with the captured commit retains changes that the coding task
     /// legitimately committed, merged, or carried across a branch switch.
     pub fn changed_paths(&self, root: &Path) -> Result<Vec<PathBuf>, ProductRunnerError> {
+        if let Some(scope) = &self.in_place {
+            return scope.changed_paths(root);
+        }
         let mut paths = BTreeSet::new();
         let tracked = Command::new("git")
             .args(["diff", "--no-ext-diff", "--name-only", "-z"])
@@ -90,6 +94,24 @@ impl CandidateBaseline {
 
     pub(crate) fn head(&self) -> &str {
         &self.head
+    }
+
+    pub(crate) const fn in_place(scope: crate::workspace_delivery::scope::ScopedBaseline) -> Self {
+        Self { head: String::new(), in_place: Some(scope) }
+    }
+
+    pub(crate) const fn scope(&self) -> Option<&crate::workspace_delivery::scope::ScopedBaseline> {
+        self.in_place.as_ref()
+    }
+
+    pub(crate) fn checkpoint(
+        &self,
+        root: &Path,
+    ) -> Result<crate::progress::WorkspaceCheckpoint, ProductRunnerError> {
+        match &self.in_place {
+            Some(scope) => crate::progress::WorkspaceCheckpoint::scoped(root, scope.paths()?),
+            None => crate::progress::WorkspaceCheckpoint::capture(root),
+        }
     }
 }
 

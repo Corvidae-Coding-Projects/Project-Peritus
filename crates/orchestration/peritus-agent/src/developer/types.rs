@@ -122,45 +122,6 @@ pub struct DeveloperToolObservation {
     pub is_error: bool,
 }
 
-/// Executes already parsed provider tool calls against one explicitly supplied workspace.
-pub trait DeveloperToolExecutor: Send {
-    /// Executes one call and returns a model-safe observation.
-    ///
-    /// # Errors
-    /// Returns a structural dispatch failure. Ordinary command failures should be represented as
-    /// `DeveloperToolObservation { is_error: true, .. }` so the model can inspect and retry.
-    fn execute(
-        &mut self,
-        call: &CompletedToolCall,
-    ) -> Result<DeveloperToolObservation, DeveloperLoopError>;
-
-    /// Explains why a text-only model response cannot yet complete this tool session.
-    ///
-    /// The developer loop feeds this reason back into the same conversation and keeps the
-    /// executor alive, preserving partial inspection evidence across the correction. Executors
-    /// without a completion precondition use the default ready state.
-    fn completion_blocker(&self) -> Option<String> {
-        None
-    }
-
-    /// Names the one declared tool that must run before other work can make progress.
-    ///
-    /// The developer loop projects this as a provider-level specific tool choice. This lets an
-    /// executor enforce deterministic prerequisites such as repository grounding without relying
-    /// on a model to infer the next protocol step from corrective prose.
-    fn required_tool_name(&self) -> Option<&str> {
-        None
-    }
-
-    /// Returns and clears a deterministic correction after an unproductive tool sequence.
-    ///
-    /// The developer loop appends this as a user message after the current tool batch. Executors
-    /// without application-specific progress evidence use the default no-feedback behavior.
-    fn take_progress_feedback(&mut self) -> Option<String> {
-        None
-    }
-}
-
 /// Durable evidence for one semantic or deterministic transcript compaction.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct DeveloperContextCompaction {
@@ -348,6 +309,18 @@ pub enum DeveloperTraceEvent<'a> {
 
 /// Durable trace boundary owned by the production host.
 pub trait DeveloperTrace: Send {
+    /// Records observed work independently of success, before the next fallible boundary.
+    /// Existing trace-only hosts may ignore accounting; product hosts enforce shared budgets here.
+    ///
+    /// # Errors
+    /// Returns a host accounting or budget failure, stopping further work.
+    fn account(
+        &mut self,
+        _event: super::DeveloperAccountingEvent,
+    ) -> Result<(), DeveloperLoopError> {
+        Ok(())
+    }
+
     /// Commits one exact event before the loop advances.
     ///
     /// # Errors

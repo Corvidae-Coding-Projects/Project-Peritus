@@ -18,6 +18,12 @@ pub struct RoleRecovery {
 }
 
 impl RoleRecovery {
+    /// Whether material progress may start another segment under the shared run budget.
+    pub const fn may_continue_after_progress(error: &DeveloperLoopError) -> bool {
+        matches!(error, DeveloperLoopError::LimitExceeded)
+            || same_provider_retry_reason(error).is_some()
+    }
+
     /// Returns a stable reason when the role may start another grounded invocation.
     pub fn retry(&mut self, error: &DeveloperLoopError) -> Option<&'static str> {
         let reason = same_provider_retry_reason(error)?;
@@ -32,8 +38,13 @@ impl RoleRecovery {
 
     /// Builds the correction that starts a fresh repository-grounded invocation.
     pub fn correction(reason: &str) -> String {
+        let repair = if matches!(reason, "malformed_payload" | "malformed_stream") {
+            " The provider output contract was not satisfied. Return one valid response using only the declared host tools and their exact argument schemas. If the adapter requires a structured envelope, put role-specific text or JSON inside its content field, put calls in tool_calls, and encode arguments_json exactly once; do not use native tools, Markdown fences, undeclared fields, or a second structured result. Do not replay prior side effects: inspect the existing results and recover any retained command handle first."
+        } else {
+            ""
+        };
         format!(
-            "The preceding provider invocation ended with recoverable `{reason}` after its bounded in-turn retries. Start a fresh invocation from the exact current workspace: call `workspace_list`, read the authoritative inputs and current targets, preserve any useful existing work, and continue to the required terminal result."
+            "The preceding provider invocation ended with recoverable `{reason}` after its bounded in-turn retries. At entry to this new host invocation, ground once from the exact current workspace: call `workspace_list`, read the authoritative inputs and current targets, preserve any useful existing work, and continue to the required terminal result. Later provider steps in this same invocation must continue from completed work, not repeat this startup sequence.{repair}"
         )
     }
 }
@@ -242,6 +253,39 @@ mod tests {
     use super::*;
 
     #[test]
+    fn progress_continues_bounded_segments_but_never_overrides_integrity_or_policy() {
+        assert!(RoleRecovery::may_continue_after_progress(&DeveloperLoopError::LimitExceeded));
+        assert!(RoleRecovery::may_continue_after_progress(&DeveloperLoopError::EmptyResponse));
+        for error in [
+            DeveloperLoopError::Cancelled,
+            DeveloperLoopError::Refused,
+            DeveloperLoopError::Trace("fixture".to_owned()),
+            DeveloperLoopError::Tool("fixture".to_owned()),
+            DeveloperLoopError::Tool("inspection-no-progress".to_owned()),
+            DeveloperLoopError::Context("fixture".to_owned()),
+        ] {
+            assert!(!RoleRecovery::may_continue_after_progress(&error));
+        }
+        for category in [
+            FailureCategory::Safety,
+            FailureCategory::Refusal,
+            FailureCategory::Cancellation,
+            FailureCategory::AmbiguousAcceptance,
+            FailureCategory::Permission,
+            FailureCategory::Authentication,
+        ] {
+            assert!(!RoleRecovery::may_continue_after_progress(
+                &DeveloperLoopError::ProviderTerminal {
+                    provider: "fixture".to_owned(),
+                    category,
+                    diagnostic_code: "fixture.stop".to_owned(),
+                    http_status: None,
+                }
+            ));
+        }
+    }
+
+    #[test]
     fn transient_terminals_allow_failover_but_policy_terminals_do_not() {
         assert_eq!(terminal_reason(FailureCategory::RateLimited), Some("rate_limited"));
         assert_eq!(terminal_reason(FailureCategory::QuotaExhausted), Some("quota_exhausted"));
@@ -272,6 +316,7 @@ mod tests {
             provider: "fixture".to_owned(),
             category: FailureCategory::IncompleteStream,
             diagnostic_code: "fixture.interrupted".to_owned(),
+            http_status: None,
         };
         assert_eq!(recovery.retry(&interrupted), Some("incomplete_stream"));
         assert_eq!(recovery.retry(&interrupted), Some("incomplete_stream"));
@@ -283,6 +328,7 @@ mod tests {
                 provider: "fixture".to_owned(),
                 category: FailureCategory::Safety,
                 diagnostic_code: "fixture.safety".to_owned(),
+                http_status: None,
             }),
             None
         );
@@ -291,6 +337,7 @@ mod tests {
                 provider: "fixture".to_owned(),
                 category: FailureCategory::Timeout,
                 diagnostic_code: "fixture.timeout".to_owned(),
+                http_status: None,
             }),
             Some("timeout")
         );
@@ -300,6 +347,7 @@ mod tests {
                 provider: "fixture".to_owned(),
                 category: FailureCategory::AmbiguousAcceptance,
                 diagnostic_code: "fixture.ambiguous".to_owned(),
+                http_status: None,
             }),
             None
         );

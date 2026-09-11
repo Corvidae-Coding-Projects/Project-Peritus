@@ -1,0 +1,20 @@
+=== PERITUS GATE RECORD ===
+{"argv": ["cargo", "verus", "verify", "--package", "peritus-model-protocol", "--all-features", "--locked", "--check-toolchain", "--fwd-verus-args-to", "roots", "--", "--no-cheating", "--rlimit", "20"], "command": "cargo verus verify --package peritus-model-protocol --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20", "command_exit_code": 0, "custody_error": null, "duration_seconds": 1.164498, "finished_at": "2026-09-10T01:50:32.115153Z", "kind": "verus-verify", "owning_crate": "peritus-model-protocol", "result": "passed", "schema": "peritus.formal-package-gate-output", "schema_version": 1, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "started_at": "2026-09-10T01:50:30.989204Z", "verification_class": "H"}
+=== STDOUT LOG ===
+=== PERITUS CUSTODY HEADER ===
+{"argv": ["cargo", "verus", "verify", "--package", "peritus-model-protocol", "--all-features", "--locked", "--check-toolchain", "--fwd-verus-args-to", "roots", "--", "--no-cheating", "--rlimit", "20"], "kind": "verus-verify", "owning_crate": "peritus-model-protocol", "schema": "peritus.formal-package-evidence-stream", "schema_version": 1, "sequence": 46, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "stream": "stdout", "verification_class": "H"}
+=== COMMAND OUTPUT ===
+verification results:: 13 verified, 0 errors
+
+=== PERITUS CUSTODY FOOTER ===
+{"command_exit_code": 0, "execution_error": null, "finished_at": "2026-09-10T01:50:32.115153Z"}
+
+=== STDERR LOG ===
+=== PERITUS CUSTODY HEADER ===
+{"argv": ["cargo", "verus", "verify", "--package", "peritus-model-protocol", "--all-features", "--locked", "--check-toolchain", "--fwd-verus-args-to", "roots", "--", "--no-cheating", "--rlimit", "20"], "kind": "verus-verify", "owning_crate": "peritus-model-protocol", "schema": "peritus.formal-package-evidence-stream", "schema_version": 1, "sequence": 46, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "stream": "stderr", "verification_class": "H"}
+=== COMMAND OUTPUT ===
+    Checking peritus-model-protocol v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/model/peritus-model-protocol)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.90s
+
+=== PERITUS CUSTODY FOOTER ===
+{"command_exit_code": 0, "execution_error": null, "finished_at": "2026-09-10T01:50:32.115153Z"}

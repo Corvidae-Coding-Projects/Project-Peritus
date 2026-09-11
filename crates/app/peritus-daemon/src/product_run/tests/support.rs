@@ -46,20 +46,25 @@ impl ModelStream for ScriptedStream {
 pub(super) struct ScriptedProvider {
     pub(super) profile: ProviderProfile,
     pub(super) responses: Mutex<VecDeque<VecDeque<EventEnvelope>>>,
-    stalled: bool,
+    pub(super) requests: Mutex<Vec<ModelRequest>>,
+    stalls: Mutex<VecDeque<bool>>,
 }
 
 impl ModelProvider for ScriptedProvider {
+    fn supports_reasoning_effort(&self, _effort: peritus_model_protocol::ReasoningEffort) -> bool {
+        self.profile.capabilities().supports(Capability::ReasoningControls)
+    }
     fn profile(&self) -> &ProviderProfile {
         &self.profile
     }
 
     fn start(
         &self,
-        _request: ModelRequest,
+        request: ModelRequest,
         cancellation: CancellationToken,
     ) -> BoxFuture<'_, Result<OwnedModelStream, ProviderCoreError>> {
         Box::pin(async move {
+            self.requests.lock().expect("request observations").push(request);
             let events = self
                 .responses
                 .lock()
@@ -68,10 +73,13 @@ impl ModelProvider for ScriptedProvider {
                 .ok_or_else(|| {
                     ProviderCoreError::configuration("scripted_provider", "script exhausted")
                 })?;
-            Ok(OwnedModelStream::new(
-                ScriptedStream { events, stall_on_empty: self.stalled },
-                cancellation,
-            ))
+            let stall_on_empty = self
+                .stalls
+                .lock()
+                .map_err(|_| ProviderCoreError::configuration("scripted_provider", "lock failed"))?
+                .pop_front()
+                .unwrap_or(false);
+            Ok(OwnedModelStream::new(ScriptedStream { events, stall_on_empty }, cancellation))
         })
     }
 }
@@ -84,7 +92,8 @@ pub(super) fn scripted(
     Arc::new(ScriptedProvider {
         profile: profile([id; 16], name),
         responses: Mutex::new(responses.into()),
-        stalled: false,
+        requests: Mutex::new(Vec::new()),
+        stalls: Mutex::new(VecDeque::new()),
     })
 }
 
@@ -95,8 +104,68 @@ pub(super) fn stalled(id: u8, name: &str) -> Arc<ScriptedProvider> {
             response_id: None,
             model: None,
         }])])),
-        stalled: true,
+        stalls: Mutex::new(VecDeque::from([true])),
+        requests: Mutex::new(Vec::new()),
     })
+}
+
+pub(super) fn stalled_after(
+    id: u8,
+    name: &str,
+    prefix: Vec<VecDeque<EventEnvelope>>,
+) -> Arc<ScriptedProvider> {
+    let mut provider = stalled(id, name);
+    let fixture = Arc::get_mut(&mut provider).expect("exclusive fixture");
+    let count = prefix.len();
+    let responses = fixture.responses.get_mut().expect("scripts");
+    let mut ordered = VecDeque::from(prefix);
+    ordered.append(responses);
+    *responses = ordered;
+    let stalls = fixture.stalls.get_mut().expect("stalls");
+    let mut ordered_stalls = VecDeque::from(vec![false; count]);
+    ordered_stalls.append(stalls);
+    *stalls = ordered_stalls;
+    provider
+}
+
+pub(super) fn stalled_then(
+    id: u8,
+    name: &str,
+    responses: Vec<VecDeque<EventEnvelope>>,
+) -> Arc<ScriptedProvider> {
+    let mut all = VecDeque::from([response([ModelEvent::ResponseStarted {
+        response_id: None,
+        model: None,
+    }])]);
+    all.extend(responses);
+    Arc::new(ScriptedProvider {
+        profile: profile([id; 16], name),
+        responses: Mutex::new(all),
+        requests: Mutex::new(Vec::new()),
+        stalls: Mutex::new(VecDeque::from([true])),
+    })
+}
+
+pub(super) fn scripted_reasoning(
+    id: u8,
+    name: &str,
+    responses: Vec<VecDeque<EventEnvelope>>,
+) -> Arc<ScriptedProvider> {
+    let mut provider = scripted(id, name, responses);
+    Arc::get_mut(&mut provider).expect("exclusive fixture").profile =
+        profile_with_reasoning([id; 16], name, true);
+    provider
+}
+
+pub(super) fn scripted_images(
+    id: u8,
+    name: &str,
+    responses: Vec<VecDeque<EventEnvelope>>,
+) -> Arc<ScriptedProvider> {
+    let mut provider = scripted(id, name, responses);
+    Arc::get_mut(&mut provider).expect("exclusive fixture").profile =
+        profile_with_capabilities([id; 16], name, &[Capability::ToolCalls, Capability::ImageInput]);
+    provider
 }
 
 pub(super) fn complete_writer(source: &str) -> Vec<VecDeque<EventEnvelope>> {
@@ -143,15 +212,32 @@ pub(super) fn repository() -> tempfile::TempDir {
 }
 
 fn profile(id: [u8; 16], name: &str) -> ProviderProfile {
+    profile_with_reasoning(id, name, false)
+}
+
+fn profile_with_reasoning(id: [u8; 16], name: &str, reasoning: bool) -> ProviderProfile {
+    let capabilities: &[Capability] = if reasoning {
+        &[Capability::ToolCalls, Capability::ReasoningControls]
+    } else {
+        &[Capability::ToolCalls]
+    };
+    profile_with_capabilities(id, name, capabilities)
+}
+
+fn profile_with_capabilities(
+    id: [u8; 16],
+    name: &str,
+    capabilities: &[Capability],
+) -> ProviderProfile {
     ProviderProfile::new(
         ProviderProfileId::new(id).expect("profile ID"),
         1,
         ProviderName::new(format!("scripted-{name}")).expect("provider"),
         ModelName::new(format!("scripted-{name}")).expect("model"),
         WireDialect::CompatibleResponses,
-        CapabilityMatrix::new(&[Capability::ToolCalls], &[]).expect("capabilities"),
+        CapabilityMatrix::new(capabilities, &[]).expect("capabilities"),
         CapabilityProvenance::Probed,
-        ModelLimits::new(32_768, 4_096, 16, 1, 512 * 1024).expect("limits"),
+        ModelLimits::new(32_768, 4_096, 32, 1, 512 * 1024).expect("limits"),
         OutputLimitEnforcement::ProviderEnforced,
         StateMode::StatelessReplay,
         ResumeKind::Unsupported,

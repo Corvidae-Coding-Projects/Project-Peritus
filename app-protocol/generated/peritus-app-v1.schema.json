@@ -8,7 +8,7 @@
   "properties": {
     "family": { "enum": [94, 95, 96, 97, 98, 99] },
     "schemaVersion": { "const": 1 },
-    "payloadKind": { "enum": ["client-hello", "compatible", "downgraded", "incompatible", "submit-command", "subscribe", "open-artifact", "cancel-artifact", "answer-prompt", "cancel-prompt", "attach-terminal", "terminal-input", "terminal-resize", "detach-terminal", "cancel-terminal", "daemon-status", "shutdown", "begin-artifact-upload", "upload-artifact-chunk", "complete-artifact-upload", "start-product-run", "control-product-run", "query-product-runs", "continue-product-run", "query-product-run-conversation", "interact", "query-interaction", "query-models", "command-result", "subscription-started", "artifact-opened", "prompt-accepted", "terminal-attached", "acknowledged", "daemon-status", "shutdown-accepted", "error", "product-run-accepted", "product-runs", "product-run-conversation", "product-run-settled", "product-run-settlements", "interaction", "models", "domain-event", "subscription-gap", "backpressure", "artifact-metadata", "artifact-chunk", "artifact-complete", "prompt-requested", "terminal-output", "terminal-exited", "readiness-changed", "diagnostic", "heartbeat", "shutdown-progress", "shutdown-complete", "acknowledge", "cancel-subscription", "cancel-artifact", "cancel-prompt", "cancel-terminal", "subscription", "heartbeat-reply"] },
+    "payloadKind": { "enum": ["client-hello", "compatible", "downgraded", "incompatible", "submit-command", "subscribe", "open-artifact", "cancel-artifact", "answer-prompt", "cancel-prompt", "attach-terminal", "terminal-input", "terminal-resize", "detach-terminal", "cancel-terminal", "daemon-status", "shutdown", "begin-artifact-upload", "upload-artifact-chunk", "complete-artifact-upload", "start-product-run", "control-product-run", "query-product-runs", "continue-product-run", "query-product-run-conversation", "interact", "query-interaction", "query-models", "update-models", "interact-with-effort", "update-models-with-effort", "doctor", "workbench-command", "query-workbench", "query-workbench-receipt", "query-workbench-queue", "query-workbench-context", "query-workbench-brief", "begin-workbench-image-upload", "preview-workbench-image", "query-workbench-images", "preview-workbench-file", "query-workbench-files", "begin-workbench-file-upload", "preview-workbench-file-import", "preview-workbench-compaction", "query-workbench-goal", "query-workbench-review", "query-workbench-result", "preview-workbench-rewind", "inspect-workbench-checkpoint", "query-conversation-library", "query-workbench-permissions", "query-workbench-memory", "discover-init", "command-result", "subscription-started", "artifact-opened", "prompt-accepted", "terminal-attached", "acknowledged", "daemon-status", "shutdown-accepted", "error", "product-run-accepted", "product-runs", "product-run-conversation", "product-run-settled", "product-run-settlements", "interaction", "models", "interaction-with-effort", "doctor-report", "workbench-snapshot", "workbench-receipt", "workbench-queue", "workbench-context", "workbench-brief", "workbench-image-preview", "workbench-images", "workbench-file-preview", "workbench-files", "workbench-file-import-preview", "workbench-compaction-preview", "workbench-goal", "workbench-review", "workbench-result", "workbench-checkpoint", "workbench-rewind-preview", "workbench-restore", "conversation-library", "workbench-permissions", "workbench-memory", "init-proposal", "domain-event", "subscription-gap", "backpressure", "artifact-metadata", "artifact-chunk", "artifact-complete", "prompt-requested", "terminal-output", "terminal-exited", "readiness-changed", "diagnostic", "heartbeat", "shutdown-progress", "shutdown-complete", "acknowledge", "cancel-subscription", "cancel-artifact", "cancel-prompt", "cancel-terminal", "subscription", "heartbeat-reply"] },
     "payload": { "type": "string", "contentEncoding": "base64", "description": "Exact canonical semantic payload bytes" }
   },
   "$defs": {
@@ -658,6 +658,1912 @@
       },
       "required": ["heartbeatId", "sequence"]
     },
+    "DoctorQuery": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "DoctorQuery",
+      "properties": {
+        "workspace": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "WorkspaceId", "x-bounds": ["nonzero"] },
+        "provider": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "option+value", "x-rust-type": "Option<ProviderProfileId>", "x-bounds": ["nonzero"] }
+      },
+      "required": ["workspace"]
+    },
+    "DoctorFinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "DoctorFinding",
+      "properties": {
+        "check": { "type": "string", "x-canonical-wire": "len+utf8", "x-rust-type": "String", "x-bounds": ["doctor.max-check-bytes (64)"] },
+        "status": { "type": "string", "enum": ["healthy", "warning", "blocked", "unsupported"], "x-canonical-wire": "u16-be", "x-rust-type": "DoctorStatus" },
+        "observation": { "type": "string", "x-canonical-wire": "len+utf8", "x-rust-type": "String", "x-bounds": ["doctor.max-text-bytes (1024)"] },
+        "action": { "type": "string", "x-canonical-wire": "len+utf8", "x-rust-type": "String", "x-bounds": ["doctor.max-text-bytes (1024)"] }
+      },
+      "required": ["check", "status", "observation", "action"]
+    },
+    "DoctorReport": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "DoctorReport",
+      "properties": {
+        "query": { "$ref": "#/$defs/DoctorQuery", "x-canonical-wire": "ordered-fields", "x-rust-type": "DoctorQuery" },
+        "findings": { "type": "array", "items": { "$ref": "#/$defs/DoctorFinding" }, "x-canonical-wire": "len+items", "x-rust-type": "Vec<DoctorFinding>", "x-bounds": ["doctor.max-findings (32)"] }
+      },
+      "required": ["query", "findings"]
+    },
+    "WorkbenchReviewRange": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchReviewRange",
+      "properties": {
+        "oldStart": { "type": "integer", "minimum": 0, "maximum": 4294967295, "x-canonical-wire": "u32-be", "x-rust-type": "u32" },
+        "oldLines": { "type": "integer", "minimum": 0, "maximum": 4294967295, "x-canonical-wire": "u32-be", "x-rust-type": "u32" },
+        "newStart": { "type": "integer", "minimum": 0, "maximum": 4294967295, "x-canonical-wire": "u32-be", "x-rust-type": "u32" },
+        "newLines": { "type": "integer", "minimum": 0, "maximum": 4294967295, "x-canonical-wire": "u32-be", "x-rust-type": "u32" }
+      },
+      "required": ["oldStart", "oldLines", "newStart", "newLines"]
+    },
+    "WorkbenchReviewAnchor": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchReviewAnchor",
+      "properties": {
+        "run": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "RunId", "x-bounds": ["nonzero"] },
+        "workspace": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "WorkspaceId", "x-bounds": ["nonzero"] },
+        "candidateDigest": { "type": "string", "pattern": "^[0-9a-f]{64}$", "x-canonical-wire": "fixed[32]", "x-rust-type": "Sha256Digest" },
+        "diffDigest": { "type": "string", "pattern": "^[0-9a-f]{64}$", "x-canonical-wire": "fixed[32]", "x-rust-type": "Sha256Digest" },
+        "beforeBlobDigest": { "type": "string", "pattern": "^[0-9a-f]{64}$", "x-canonical-wire": "fixed[32]", "x-rust-type": "Sha256Digest" },
+        "afterBlobDigest": { "type": "string", "pattern": "^[0-9a-f]{64}$", "x-canonical-wire": "fixed[32]", "x-rust-type": "Sha256Digest" },
+        "contextDigest": { "type": "string", "pattern": "^[0-9a-f]{64}$", "x-canonical-wire": "fixed[32]", "x-rust-type": "Sha256Digest" },
+        "path": { "type": "string", "x-canonical-wire": "len+utf8", "x-rust-type": "String", "x-bounds": ["workbench.max-file-path-bytes (4096)"] },
+        "target": { "type": "string", "enum": ["file", "hunk"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchReviewTarget" },
+        "range": { "$ref": "#/$defs/WorkbenchReviewRange", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchReviewRange" }
+      },
+      "required": ["run", "workspace", "candidateDigest", "diffDigest", "beforeBlobDigest", "afterBlobDigest", "contextDigest", "path", "target", "range"]
+    },
+    "WorkbenchAddReviewIntent": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchIntent",
+      "properties": {
+        "kind": { "type": "string", "enum": ["addReview"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchIntent" },
+        "anchor": { "$ref": "#/$defs/WorkbenchReviewAnchor", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchReviewAnchor" },
+        "feedback": { "type": "string", "enum": ["explain", "requestRevision", "keepBehavior", "leaveAlone"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchReviewFeedback" },
+        "message": { "type": "string", "x-canonical-wire": "len+utf8", "x-rust-type": "WorkbenchInputText", "x-bounds": ["workbench.max-input-bytes (8192)"] }
+      },
+      "required": ["kind", "anchor", "feedback", "message"]
+    },
+    "WorkbenchRebindReviewIntent": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchIntent",
+      "properties": {
+        "kind": { "type": "string", "enum": ["rebindReview"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchIntent" },
+        "comment": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "ControlOperationId", "x-bounds": ["nonzero"] },
+        "anchor": { "$ref": "#/$defs/WorkbenchReviewAnchor", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchReviewAnchor" }
+      },
+      "required": ["kind", "comment", "anchor"]
+    },
+    "WorkbenchDismissReviewIntent": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchIntent",
+      "properties": {
+        "kind": { "type": "string", "enum": ["dismissReview"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchIntent" },
+        "comment": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "ControlOperationId", "x-bounds": ["nonzero"] }
+      },
+      "required": ["kind", "comment"]
+    },
+    "WorkbenchExecutionSettings": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchExecutionSettings",
+      "properties": {
+        "run": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "RunId", "x-bounds": ["nonzero"] },
+        "providers": { "$ref": "#/$defs/ProductProviderSelection", "x-canonical-wire": "ordered-fields", "x-rust-type": "ProductProviderSelection" },
+        "mode": { "type": "string", "enum": ["chat", "plan", "review", "build"], "x-canonical-wire": "u16-be", "x-rust-type": "ProductInteractionMode" },
+        "hasEffort": { "type": "boolean", "x-canonical-wire": "bool/u8", "x-rust-type": "bool" },
+        "models": { "$ref": "#/$defs/ProductRoleModels", "x-canonical-wire": "ordered-fields", "x-rust-type": "ProductRoleModels" }
+      },
+      "required": ["run", "providers", "mode", "hasEffort", "models"]
+    },
+    "WorkbenchStartIntent": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchIntent",
+      "properties": {
+        "kind": { "type": "string", "enum": ["startExecution"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchIntent" },
+        "settings": { "$ref": "#/$defs/WorkbenchExecutionSettings", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchExecutionSettings" }
+      },
+      "required": ["kind", "settings"]
+    },
+    "WorkbenchQuery": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchQuery",
+      "properties": {
+        "conversation": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "ConversationId", "x-bounds": ["nonzero"] },
+        "workspace": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "WorkspaceId", "x-bounds": ["nonzero"] }
+      },
+      "required": ["conversation", "workspace"]
+    },
+    "WorkbenchTitleIntent": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchIntent",
+      "properties": {
+        "kind": { "type": "string", "enum": ["createConversation", "renameConversation"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchIntent" },
+        "title": { "type": "string", "x-canonical-wire": "len+utf8", "x-rust-type": "ConversationTitle", "x-bounds": ["workbench.max-title-bytes (256)"] }
+      },
+      "required": ["kind", "title"]
+    },
+    "WorkbenchFlagIntent": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchIntent",
+      "properties": {
+        "kind": { "type": "string", "enum": ["pinConversation", "archiveConversation"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchIntent" },
+        "value": { "type": "boolean", "x-canonical-wire": "bool/u8", "x-rust-type": "bool" }
+      },
+      "required": ["kind", "value"]
+    },
+    "WorkbenchCommand": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchCommand",
+      "properties": {
+        "operation": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "ControlOperationId", "x-bounds": ["nonzero"] },
+        "query": { "$ref": "#/$defs/WorkbenchQuery", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchQuery" },
+        "expectedRevision": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64" },
+        "intent": { "oneOf": [{ "$ref": "#/$defs/WorkbenchTitleIntent" }, { "$ref": "#/$defs/WorkbenchFlagIntent" }, { "$ref": "#/$defs/WorkbenchForkIntent" }, { "$ref": "#/$defs/WorkbenchQueueControlIntent" }, { "$ref": "#/$defs/WorkbenchStartIntent" }, { "$ref": "#/$defs/WorkbenchBriefIntent" }, { "$ref": "#/$defs/WorkbenchBriefAcceptIntent" }, { "$ref": "#/$defs/WorkbenchSetContextIntent" }, { "$ref": "#/$defs/WorkbenchCreateCheckpointIntent" }, { "$ref": "#/$defs/WorkbenchApplyRewindIntent" }, { "$ref": "#/$defs/WorkbenchApplyCompactionIntent" }, { "$ref": "#/$defs/WorkbenchAttachImageIntent" }, { "$ref": "#/$defs/WorkbenchSelectImageIntent" }, { "$ref": "#/$defs/WorkbenchAttachFileIntent" }, { "$ref": "#/$defs/WorkbenchAttachFileImportIntent" }, { "$ref": "#/$defs/WorkbenchSelectFileIntent" }, { "$ref": "#/$defs/WorkbenchStartGoalIntent" }, { "$ref": "#/$defs/WorkbenchPauseGoalIntent" }, { "$ref": "#/$defs/WorkbenchResumeOrClearGoalIntent" }, { "$ref": "#/$defs/WorkbenchUpdateGoalBudgetIntent" }, { "$ref": "#/$defs/WorkbenchAddReviewIntent" }, { "$ref": "#/$defs/WorkbenchRebindReviewIntent" }, { "$ref": "#/$defs/WorkbenchDismissReviewIntent" }, { "$ref": "#/$defs/WorkbenchStartPreviewIntent" }, { "$ref": "#/$defs/WorkbenchInteractPreviewIntent" }, { "$ref": "#/$defs/WorkbenchCapturePreviewIntent" }, { "$ref": "#/$defs/WorkbenchStopPreviewIntent" }, { "$ref": "#/$defs/WorkbenchCheckPreviewIntent" }, { "$ref": "#/$defs/WorkbenchArtifactFeedbackIntent" }, { "$ref": "#/$defs/WorkbenchPermissionIntent" }, { "$ref": "#/$defs/WorkbenchSaveGuidanceIntent" }, { "$ref": "#/$defs/WorkbenchReviseGuidanceIntent" }, { "$ref": "#/$defs/WorkbenchPinGuidanceIntent" }, { "$ref": "#/$defs/WorkbenchScopeGuidanceIntent" }, { "$ref": "#/$defs/WorkbenchForgetGuidanceIntent" }, { "$ref": "#/$defs/WorkbenchInitApplyIntent" }], "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchIntent" }
+      },
+      "required": ["operation", "query", "expectedRevision", "intent"]
+    },
+    "WorkbenchSnapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchSnapshot",
+      "properties": {
+        "query": { "$ref": "#/$defs/WorkbenchQuery", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchQuery" },
+        "revision": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64", "x-bounds": ["nonzero"] },
+        "title": { "type": "string", "x-canonical-wire": "len+utf8", "x-rust-type": "ConversationTitle", "x-bounds": ["workbench.max-title-bytes (256)"] },
+        "pinned": { "type": "boolean", "x-canonical-wire": "bool/u8", "x-rust-type": "bool" },
+        "archived": { "type": "boolean", "x-canonical-wire": "bool/u8", "x-rust-type": "bool" }
+      },
+      "required": ["query", "revision", "title", "pinned", "archived"]
+    },
+    "WorkbenchReceipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchReceipt",
+      "properties": {
+        "operation": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "ControlOperationId", "x-bounds": ["nonzero"] },
+        "query": { "$ref": "#/$defs/WorkbenchQuery", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchQuery" },
+        "acceptedRevision": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64", "x-bounds": ["nonzero"] },
+        "payloadDigest": { "type": "string", "pattern": "^[0-9a-f]{64}$", "x-canonical-wire": "fixed[32]", "x-rust-type": "Sha256Digest" }
+      },
+      "required": ["operation", "query", "acceptedRevision", "payloadDigest"]
+    },
+    "WorkbenchResultQuery": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchResultQuery",
+      "properties": {
+        "query": { "$ref": "#/$defs/WorkbenchQuery", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchQuery" },
+        "run": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "RunId", "x-bounds": ["nonzero"] }
+      },
+      "required": ["query", "run"]
+    },
+    "WorkbenchLaunchSource": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchLaunchSource",
+      "properties": {
+        "kind": { "type": "string", "enum": ["managedCandidate", "plainFolderFile"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchLaunchSourceKind" },
+        "path": { "type": "string", "x-canonical-wire": "len+utf8", "x-rust-type": "WorkbenchLaunchText", "x-bounds": ["workbench.max-launch-text-bytes (4096)"] },
+        "digest": { "type": "string", "pattern": "^[0-9a-f]{64}$", "x-canonical-wire": "fixed[32]", "x-rust-type": "Sha256Digest" }
+      },
+      "required": ["kind", "path", "digest"]
+    },
+    "WorkbenchBuildIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchBuildIdentity",
+      "properties": {
+        "path": { "type": "string", "x-canonical-wire": "len+utf8", "x-rust-type": "WorkbenchLaunchText", "x-bounds": ["workbench.max-launch-text-bytes (4096)"] },
+        "digest": { "type": "string", "pattern": "^[0-9a-f]{64}$", "x-canonical-wire": "fixed[32]", "x-rust-type": "Sha256Digest" }
+      },
+      "required": ["path", "digest"]
+    },
+    "WorkbenchLaunchProfile": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchLaunchProfile",
+      "properties": {
+        "run": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "RunId", "x-bounds": ["nonzero"] },
+        "executable": { "type": "string", "x-canonical-wire": "len+utf8", "x-rust-type": "WorkbenchLaunchText", "x-bounds": ["workbench.max-launch-text-bytes (4096)"] },
+        "arguments": { "type": "array", "items": { "type": "string" }, "x-canonical-wire": "len+items", "x-rust-type": "Vec<WorkbenchLaunchText>", "x-bounds": ["workbench.max-launch-arguments (256)", "workbench.max-launch-text-bytes (4096)"] },
+        "workingDirectory": { "type": "string", "x-canonical-wire": "len+utf8", "x-rust-type": "WorkbenchLaunchText", "x-bounds": ["workbench.max-launch-text-bytes (4096)"] },
+        "environment": { "type": "array", "items": { "type": "string" }, "x-canonical-wire": "len+items", "x-rust-type": "Vec<WorkbenchLaunchText>", "x-bounds": ["workbench.max-launch-environment (64)", "workbench.max-launch-text-bytes (4096)", "strictly-sorted-unique"] },
+        "source": { "$ref": "#/$defs/WorkbenchLaunchSource", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchLaunchSource" },
+        "build": { "$ref": "#/$defs/WorkbenchBuildIdentity", "x-canonical-wire": "option+value", "x-rust-type": "Option<WorkbenchBuildIdentity>" },
+        "readinessMillis": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64", "x-bounds": ["nonzero", "workbench.max-launch-wall-millis (600000)"] },
+        "wallMillis": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64", "x-bounds": ["nonzero", "workbench.max-launch-wall-millis (600000)"] },
+        "interactive": { "type": "boolean", "x-canonical-wire": "bool/u8", "x-rust-type": "bool" },
+        "network": { "type": "string", "enum": ["inheritedHost"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchPreviewNetwork" },
+        "stopPolicy": { "type": "string", "enum": ["terminateOwnedTree"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchPreviewStopPolicy" }
+      },
+      "required": ["run", "executable", "arguments", "workingDirectory", "environment", "source", "readinessMillis", "wallMillis", "interactive", "network", "stopPolicy"]
+    },
+    "WorkbenchCaptureTarget": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchCaptureTarget",
+      "properties": {
+        "kind": { "type": "string", "enum": ["x11Window"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchCaptureTarget" },
+        "window": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64", "x-bounds": ["nonzero"] }
+      },
+      "required": ["kind", "window"]
+    },
+    "WorkbenchCaptureRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchCaptureRequest",
+      "properties": {
+        "launch": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "ControlOperationId", "x-bounds": ["nonzero"] },
+        "target": { "$ref": "#/$defs/WorkbenchCaptureTarget", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchCaptureTarget" },
+        "consent": { "type": "string", "enum": ["granted", "denied"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchCaptureConsent" }
+      },
+      "required": ["launch", "target", "consent"]
+    },
+    "WorkbenchArtifactRegion": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchArtifactRegion",
+      "properties": {
+        "x": { "type": "integer", "minimum": 0, "maximum": 4294967295, "x-canonical-wire": "u32-be", "x-rust-type": "u32" },
+        "y": { "type": "integer", "minimum": 0, "maximum": 4294967295, "x-canonical-wire": "u32-be", "x-rust-type": "u32" },
+        "width": { "type": "integer", "minimum": 0, "maximum": 4294967295, "x-canonical-wire": "u32-be", "x-rust-type": "u32", "x-bounds": ["nonzero"] },
+        "height": { "type": "integer", "minimum": 0, "maximum": 4294967295, "x-canonical-wire": "u32-be", "x-rust-type": "u32", "x-bounds": ["nonzero"] }
+      },
+      "required": ["x", "y", "width", "height"]
+    },
+    "WorkbenchStartPreviewIntent": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchIntent",
+      "properties": {
+        "kind": { "type": "string", "enum": ["startPreview"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchIntent" },
+        "profile": { "$ref": "#/$defs/WorkbenchLaunchProfile", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchLaunchProfile" }
+      },
+      "required": ["kind", "profile"]
+    },
+    "WorkbenchInteractPreviewIntent": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchIntent",
+      "properties": {
+        "kind": { "type": "string", "enum": ["interactPreview"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchIntent" },
+        "launch": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "ControlOperationId", "x-bounds": ["nonzero"] },
+        "input": { "type": "string", "contentEncoding": "base64", "x-canonical-wire": "len+bytes", "x-rust-type": "WorkbenchPreviewInput", "x-bounds": ["workbench.max-preview-input-bytes (65536)"] }
+      },
+      "required": ["kind", "launch", "input"]
+    },
+    "WorkbenchCapturePreviewIntent": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchIntent",
+      "properties": {
+        "kind": { "type": "string", "enum": ["capturePreview"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchIntent" },
+        "request": { "$ref": "#/$defs/WorkbenchCaptureRequest", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchCaptureRequest" }
+      },
+      "required": ["kind", "request"]
+    },
+    "WorkbenchStopPreviewIntent": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchIntent",
+      "properties": {
+        "kind": { "type": "string", "enum": ["stopPreview"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchIntent" },
+        "launch": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "ControlOperationId", "x-bounds": ["nonzero"] }
+      },
+      "required": ["kind", "launch"]
+    },
+    "WorkbenchCheckPreviewIntent": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchIntent",
+      "properties": {
+        "kind": { "type": "string", "enum": ["checkPreviewBehavior"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchIntent" },
+        "launch": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "ControlOperationId", "x-bounds": ["nonzero"] },
+        "observed": { "type": "string", "x-canonical-wire": "len+utf8", "x-rust-type": "WorkbenchLaunchText", "x-bounds": ["workbench.max-launch-text-bytes (4096)"] },
+        "note": { "type": "string", "x-canonical-wire": "len+utf8", "x-rust-type": "WorkbenchInputText", "x-bounds": ["workbench.max-input-bytes (8192)"] }
+      },
+      "required": ["kind", "launch", "observed", "note"]
+    },
+    "WorkbenchArtifactFeedbackIntent": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchIntent",
+      "properties": {
+        "kind": { "type": "string", "enum": ["addArtifactFeedback"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchIntent" },
+        "capture": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "ControlOperationId", "x-bounds": ["nonzero"] },
+        "feedback": { "type": "string", "enum": ["explain", "requestRevision", "keepBehavior", "leaveAlone"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchReviewFeedback" },
+        "message": { "type": "string", "x-canonical-wire": "len+utf8", "x-rust-type": "WorkbenchInputText", "x-bounds": ["workbench.max-input-bytes (8192)"] },
+        "region": { "$ref": "#/$defs/WorkbenchArtifactRegion", "x-canonical-wire": "option+value", "x-rust-type": "Option<WorkbenchArtifactRegion>" }
+      },
+      "required": ["kind", "capture", "feedback", "message"]
+    },
+    "WorkbenchInteractionReceipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchInteractionReceipt",
+      "properties": {
+        "operation": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "ControlOperationId", "x-bounds": ["nonzero"] },
+        "digest": { "type": "string", "pattern": "^[0-9a-f]{64}$", "x-canonical-wire": "fixed[32]", "x-rust-type": "Sha256Digest" },
+        "observed": { "type": "boolean", "x-canonical-wire": "bool/u8", "x-rust-type": "bool" }
+      },
+      "required": ["operation", "digest", "observed"]
+    },
+    "WorkbenchCaptureReceipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchCaptureReceipt",
+      "properties": {
+        "operation": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "ControlOperationId", "x-bounds": ["nonzero"] },
+        "state": { "type": "string", "enum": ["denied", "unavailable", "failed", "captured"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchCaptureState" },
+        "target": { "$ref": "#/$defs/WorkbenchCaptureTarget", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchCaptureTarget" },
+        "artifact": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "option+value", "x-rust-type": "Option<ArtifactId>" },
+        "imageDigest": { "type": "string", "pattern": "^[0-9a-f]{64}$", "x-canonical-wire": "option+value", "x-rust-type": "Option<Sha256Digest>" },
+        "width": { "type": "integer", "minimum": 0, "maximum": 4294967295, "x-canonical-wire": "option+value", "x-rust-type": "Option<u32>", "x-bounds": ["nonzero"] },
+        "height": { "type": "integer", "minimum": 0, "maximum": 4294967295, "x-canonical-wire": "option+value", "x-rust-type": "Option<u32>", "x-bounds": ["nonzero"] },
+        "capturedUnixMillis": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "option+value", "x-rust-type": "Option<u64>" },
+        "detail": { "type": "string", "x-canonical-wire": "len+utf8", "x-rust-type": "WorkbenchLaunchText", "x-bounds": ["workbench.max-launch-text-bytes (4096)"] }
+      },
+      "required": ["operation", "state", "target", "detail"]
+    },
+    "WorkbenchArtifactFeedback": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchArtifactFeedback",
+      "properties": {
+        "operation": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "ControlOperationId", "x-bounds": ["nonzero"] },
+        "capture": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "ControlOperationId", "x-bounds": ["nonzero"] },
+        "feedback": { "type": "string", "enum": ["explain", "requestRevision", "keepBehavior", "leaveAlone"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchReviewFeedback" },
+        "message": { "type": "string", "x-canonical-wire": "len+utf8", "x-rust-type": "WorkbenchInputText", "x-bounds": ["workbench.max-input-bytes (8192)"] },
+        "region": { "$ref": "#/$defs/WorkbenchArtifactRegion", "x-canonical-wire": "option+value", "x-rust-type": "Option<WorkbenchArtifactRegion>" }
+      },
+      "required": ["operation", "capture", "feedback", "message"]
+    },
+    "WorkbenchCaptureAvailable": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchCaptureCapability",
+      "properties": {
+        "kind": { "type": "string", "enum": ["x11SelectedWindow"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchCaptureCapability" }
+      },
+      "required": ["kind"]
+    },
+    "WorkbenchCaptureUnavailable": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchCaptureCapability",
+      "properties": {
+        "kind": { "type": "string", "enum": ["unavailable"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchCaptureCapability" },
+        "reason": { "type": "string", "x-canonical-wire": "len+utf8", "x-rust-type": "WorkbenchLaunchText", "x-bounds": ["workbench.max-launch-text-bytes (4096)"] }
+      },
+      "required": ["kind", "reason"]
+    },
+    "WorkbenchLaunchResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchLaunchResult",
+      "properties": {
+        "launch": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "ControlOperationId", "x-bounds": ["nonzero"] },
+        "profile": { "$ref": "#/$defs/WorkbenchLaunchProfile", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchLaunchProfile" },
+        "process": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "option+value", "x-rust-type": "Option<ProcessId>" },
+        "state": { "type": "string", "enum": ["accepted", "running", "stopped", "exited", "failed"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchLaunchState" },
+        "ready": { "type": "boolean", "x-canonical-wire": "bool/u8", "x-rust-type": "bool" },
+        "interactions": { "type": "array", "items": { "$ref": "#/$defs/WorkbenchInteractionReceipt" }, "x-canonical-wire": "len+items", "x-rust-type": "Vec<WorkbenchInteractionReceipt>", "x-bounds": ["workbench.max-preview-interactions (256)"] },
+        "captures": { "type": "array", "items": { "$ref": "#/$defs/WorkbenchCaptureReceipt" }, "x-canonical-wire": "len+items", "x-rust-type": "Vec<WorkbenchCaptureReceipt>", "x-bounds": ["workbench.max-preview-captures (64)"] },
+        "feedback": { "type": "array", "items": { "$ref": "#/$defs/WorkbenchArtifactFeedback" }, "x-canonical-wire": "len+items", "x-rust-type": "Vec<WorkbenchArtifactFeedback>", "x-bounds": ["workbench.max-artifact-feedback (256)"] },
+        "behaviorChecks": { "type": "integer", "minimum": 0, "maximum": 4294967295, "x-canonical-wire": "u32-be", "x-rust-type": "u32" },
+        "stdoutDigest": { "type": "string", "pattern": "^[0-9a-f]{64}$", "x-canonical-wire": "option+value", "x-rust-type": "Option<Sha256Digest>" },
+        "exitCode": { "type": "integer", "minimum": 0, "maximum": 4294967295, "x-canonical-wire": "option+value", "x-rust-type": "Option<u32>" }
+      },
+      "required": ["launch", "profile", "state", "ready", "interactions", "captures", "feedback", "behaviorChecks"]
+    },
+    "WorkbenchResultPage": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchResultPage",
+      "properties": {
+        "query": { "$ref": "#/$defs/WorkbenchResultQuery", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchResultQuery" },
+        "controlRevision": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64", "x-bounds": ["nonzero"] },
+        "resultRevision": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64" },
+        "capability": { "oneOf": [{ "$ref": "#/$defs/WorkbenchCaptureAvailable" }, { "$ref": "#/$defs/WorkbenchCaptureUnavailable" }], "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchCaptureCapability" },
+        "launches": { "type": "array", "items": { "$ref": "#/$defs/WorkbenchLaunchResult" }, "x-canonical-wire": "len+items", "x-rust-type": "Vec<WorkbenchLaunchResult>", "x-bounds": ["workbench.max-launches (16)"] }
+      },
+      "required": ["query", "controlRevision", "resultRevision", "capability", "launches"]
+    },
+    "WorkbenchPermissionChange": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchPermissionChange",
+      "properties": {
+        "expectedAuthorityRevision": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64" },
+        "capability": { "type": "string", "enum": ["read", "write", "process", "network"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchPermissionCapability" },
+        "allowed": { "type": "boolean", "x-canonical-wire": "bool/u8", "x-rust-type": "bool" }
+      },
+      "required": ["expectedAuthorityRevision", "capability", "allowed"]
+    },
+    "WorkbenchPermissionIntent": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchIntent",
+      "properties": {
+        "kind": { "type": "string", "enum": ["setPermissions"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchIntent" },
+        "change": { "$ref": "#/$defs/WorkbenchPermissionChange", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchPermissionChange" }
+      },
+      "required": ["kind", "change"]
+    },
+    "WorkbenchPermissionEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchPermissionEntry",
+      "properties": {
+        "capability": { "type": "string", "enum": ["read", "write", "process", "network"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchPermissionCapability" },
+        "hostAllowed": { "type": "boolean", "x-canonical-wire": "bool/u8", "x-rust-type": "bool" },
+        "effectiveAllowed": { "type": "boolean", "x-canonical-wire": "bool/u8", "x-rust-type": "bool" },
+        "provenance": { "type": "string", "enum": ["workspaceHostPolicy", "toolHostPolicy", "providerHostPolicy", "userRestriction"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchPermissionProvenance" },
+        "explicitApprovalStillRequired": { "type": "boolean", "x-canonical-wire": "bool/u8", "x-rust-type": "bool" }
+      },
+      "required": ["capability", "hostAllowed", "effectiveAllowed", "provenance", "explicitApprovalStillRequired"]
+    },
+    "WorkbenchPermissions": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchPermissions",
+      "properties": {
+        "query": { "$ref": "#/$defs/WorkbenchQuery", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchQuery" },
+        "conversationRevision": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64", "x-bounds": ["nonzero"] },
+        "authorityRevision": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64" },
+        "trust": { "type": "string", "enum": ["managed", "directReadOnly", "directWritable"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchWorkspaceTrust" },
+        "entries": { "type": "array", "items": { "$ref": "#/$defs/WorkbenchPermissionEntry" }, "x-canonical-wire": "len+items", "x-rust-type": "[WorkbenchPermissionEntry; 4]", "x-bounds": ["codec.max-collection-items"] }
+      },
+      "required": ["query", "conversationRevision", "authorityRevision", "trust", "entries"]
+    },
+    "InitDiscoveryRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "InitDiscoveryRequest",
+      "properties": {
+        "query": { "$ref": "#/$defs/WorkbenchQuery", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchQuery" },
+        "revision": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64", "x-bounds": ["nonzero"] }
+      },
+      "required": ["query", "revision"]
+    },
+    "InitSourceObservation": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "InitSourceObservation",
+      "properties": {
+        "path": { "type": "string", "x-canonical-wire": "len+utf8", "x-rust-type": "String", "x-bounds": ["workbench.max-file-path-bytes (4096)"] },
+        "kind": { "type": "string", "enum": ["manifest", "documentation", "instructions", "commandConfig"], "x-canonical-wire": "u16-be", "x-rust-type": "InitSourceKind" },
+        "digest": { "type": "string", "pattern": "^[0-9a-f]{64}$", "x-canonical-wire": "fixed[32]", "x-rust-type": "Sha256Digest" },
+        "bytes": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64", "x-bounds": ["codec.max-string-bytes"] }
+      },
+      "required": ["path", "kind", "digest", "bytes"]
+    },
+    "InitInstructionPatch": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "InitInstructionPatch",
+      "properties": {
+        "path": { "type": "string", "x-canonical-wire": "len+utf8", "x-rust-type": "String", "x-bounds": ["workbench.max-file-path-bytes (4096)"] },
+        "hasOriginal": { "type": "boolean", "x-canonical-wire": "bool/u8", "x-rust-type": "bool" },
+        "originalContent": { "type": "string", "x-canonical-wire": "len+utf8", "x-rust-type": "Option<String>", "x-bounds": ["codec.max-string-bytes"] },
+        "hasPreconditionDigest": { "type": "boolean", "x-canonical-wire": "bool/u8", "x-rust-type": "bool" },
+        "preconditionDigest": { "type": "string", "pattern": "^[0-9a-f]{64}$", "x-canonical-wire": "fixed[32]", "x-rust-type": "Option<Sha256Digest>" },
+        "preconditionBytes": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64", "x-bounds": ["codec.max-string-bytes"] },
+        "mode": { "type": "string", "enum": ["regular", "executable"], "x-canonical-wire": "u16-be", "x-rust-type": "InitFileMode" },
+        "proposedContent": { "type": "string", "x-canonical-wire": "len+utf8", "x-rust-type": "String", "x-bounds": ["codec.max-string-bytes"] },
+        "diff": { "type": "string", "x-canonical-wire": "len+utf8", "x-rust-type": "String", "x-bounds": ["codec.max-string-bytes"] }
+      },
+      "required": ["path", "hasOriginal", "hasPreconditionDigest", "preconditionBytes", "mode", "proposedContent", "diff"]
+    },
+    "InitCommand": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "InitCommand",
+      "properties": {
+        "kind": { "type": "string", "enum": ["build", "test", "lint", "launch"], "x-canonical-wire": "u16-be", "x-rust-type": "InitCommandKind" },
+        "source": { "type": "string", "x-canonical-wire": "len+utf8", "x-rust-type": "String", "x-bounds": ["workbench.max-file-path-bytes (4096)"] },
+        "executable": { "type": "string", "x-canonical-wire": "len+utf8", "x-rust-type": "String", "x-bounds": ["codec.max-string-bytes"] },
+        "arguments": { "type": "array", "items": { "type": "string" }, "x-canonical-wire": "len+items", "x-rust-type": "Vec<String>", "x-bounds": ["codec.max-collection-items", "codec.max-string-bytes"] },
+        "verification": { "type": "string", "enum": ["unverified"], "x-canonical-wire": "u16-be", "x-rust-type": "InitCommandVerification" }
+      },
+      "required": ["kind", "source", "executable", "arguments", "verification"]
+    },
+    "InitProposal": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "InitProposal",
+      "properties": {
+        "query": { "$ref": "#/$defs/WorkbenchQuery", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchQuery" },
+        "revision": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64", "x-bounds": ["nonzero"] },
+        "folderDigest": { "type": "string", "pattern": "^[0-9a-f]{64}$", "x-canonical-wire": "fixed[32]", "x-rust-type": "Sha256Digest" },
+        "sources": { "type": "array", "items": { "$ref": "#/$defs/InitSourceObservation" }, "x-canonical-wire": "len+items", "x-rust-type": "Vec<InitSourceObservation>", "x-bounds": ["codec.max-collection-items", "strictly-sorted-unique"] },
+        "patch": { "$ref": "#/$defs/InitInstructionPatch", "x-canonical-wire": "ordered-fields", "x-rust-type": "InitInstructionPatch" },
+        "commands": { "type": "array", "items": { "$ref": "#/$defs/InitCommand" }, "x-canonical-wire": "len+items", "x-rust-type": "Vec<InitCommand>", "x-bounds": ["codec.max-collection-items", "strictly-sorted-unique"] }
+      },
+      "required": ["query", "revision", "folderDigest", "sources", "patch", "commands"]
+    },
+    "WorkbenchInitApplyIntent": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchIntent",
+      "properties": {
+        "kind": { "type": "string", "enum": ["applyInitDiff"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchIntent" },
+        "proposal": { "$ref": "#/$defs/InitProposal", "x-canonical-wire": "ordered-fields", "x-rust-type": "InitProposal" }
+      },
+      "required": ["kind", "proposal"]
+    },
+    "WorkbenchGuidanceProjectScope": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchGuidanceScope",
+      "properties": {
+        "kind": { "type": "string", "enum": ["project"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchGuidanceScope" }
+      },
+      "required": ["kind"]
+    },
+    "WorkbenchGuidanceConversationScope": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchGuidanceScope",
+      "properties": {
+        "kind": { "type": "string", "enum": ["conversation"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchGuidanceScope" },
+        "conversation": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "ConversationId", "x-bounds": ["nonzero"] }
+      },
+      "required": ["kind", "conversation"]
+    },
+    "WorkbenchGuidanceUserSource": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchGuidanceSource",
+      "properties": {
+        "kind": { "type": "string", "enum": ["userAuthored"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchGuidanceSource" }
+      },
+      "required": ["kind"]
+    },
+    "WorkbenchGuidanceReplySource": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchGuidanceSource",
+      "properties": {
+        "kind": { "type": "string", "enum": ["acceptedPublicReply"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchGuidanceSource" },
+        "operation": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "ControlOperationId", "x-bounds": ["nonzero"] },
+        "invocation": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "WorkbenchInvocationId", "x-bounds": ["nonzero"] },
+        "digest": { "type": "string", "pattern": "^[0-9a-f]{64}$", "x-canonical-wire": "fixed[32]", "x-rust-type": "Sha256Digest" }
+      },
+      "required": ["kind", "operation", "invocation", "digest"]
+    },
+    "WorkbenchGuidanceContent": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchGuidanceContent",
+      "properties": {
+        "text": { "type": "string", "x-canonical-wire": "len+utf8", "x-rust-type": "WorkbenchGuidanceText", "x-bounds": ["codec.max-string-bytes"] },
+        "source": { "oneOf": [{ "$ref": "#/$defs/WorkbenchGuidanceUserSource" }, { "$ref": "#/$defs/WorkbenchGuidanceReplySource" }], "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchGuidanceSource" },
+        "scope": { "oneOf": [{ "$ref": "#/$defs/WorkbenchGuidanceProjectScope" }, { "$ref": "#/$defs/WorkbenchGuidanceConversationScope" }], "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchGuidanceScope" }
+      },
+      "required": ["text", "source", "scope"]
+    },
+    "WorkbenchGuidanceIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchGuidanceIdentity",
+      "properties": {
+        "id": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "ControlOperationId", "x-bounds": ["nonzero"] },
+        "workspace": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "WorkspaceId", "x-bounds": ["nonzero"] }
+      },
+      "required": ["id", "workspace"]
+    },
+    "WorkbenchGuidanceVersion": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchGuidanceVersion",
+      "properties": {
+        "record": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64", "x-bounds": ["nonzero"] },
+        "dependency": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64", "x-bounds": ["nonzero"] }
+      },
+      "required": ["record", "dependency"]
+    },
+    "WorkbenchGuidanceValidation": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchGuidanceValidation",
+      "properties": {
+        "operation": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "ControlOperationId", "x-bounds": ["nonzero"] },
+        "contentDigest": { "type": "string", "pattern": "^[0-9a-f]{64}$", "x-canonical-wire": "fixed[32]", "x-rust-type": "Sha256Digest" }
+      },
+      "required": ["operation", "contentDigest"]
+    },
+    "WorkbenchGuidanceRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchGuidanceRecord",
+      "properties": {
+        "identity": { "$ref": "#/$defs/WorkbenchGuidanceIdentity", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchGuidanceIdentity" },
+        "version": { "$ref": "#/$defs/WorkbenchGuidanceVersion", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchGuidanceVersion" },
+        "content": { "$ref": "#/$defs/WorkbenchGuidanceContent", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchGuidanceContent" },
+        "pinned": { "type": "boolean", "x-canonical-wire": "bool/u8", "x-rust-type": "bool" },
+        "lastValidation": { "$ref": "#/$defs/WorkbenchGuidanceValidation", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchGuidanceValidation" }
+      },
+      "required": ["identity", "version", "content", "pinned", "lastValidation"]
+    },
+    "WorkbenchGuidancePrior": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchGuidancePrior",
+      "properties": {
+        "revision": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64", "x-bounds": ["nonzero"] },
+        "digest": { "type": "string", "pattern": "^[0-9a-f]{64}$", "x-canonical-wire": "fixed[32]", "x-rust-type": "Sha256Digest" },
+        "scope": { "oneOf": [{ "$ref": "#/$defs/WorkbenchGuidanceProjectScope" }, { "$ref": "#/$defs/WorkbenchGuidanceConversationScope" }], "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchGuidanceScope" },
+        "pinned": { "type": "boolean", "x-canonical-wire": "bool/u8", "x-rust-type": "bool" }
+      },
+      "required": ["revision", "digest", "scope", "pinned"]
+    },
+    "WorkbenchGuidanceTombstone": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchGuidanceTombstone",
+      "properties": {
+        "identity": { "$ref": "#/$defs/WorkbenchGuidanceIdentity", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchGuidanceIdentity" },
+        "prior": { "$ref": "#/$defs/WorkbenchGuidancePrior", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchGuidancePrior" },
+        "forgottenBy": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "ControlOperationId", "x-bounds": ["nonzero"] },
+        "reason": { "type": "string", "x-canonical-wire": "len+utf8", "x-rust-type": "WorkbenchGuidanceReason", "x-bounds": ["codec.max-string-bytes"] },
+        "dependencyRevision": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64", "x-bounds": ["nonzero"] }
+      },
+      "required": ["identity", "prior", "forgottenBy", "reason", "dependencyRevision"]
+    },
+    "WorkbenchGuidanceSelection": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchGuidanceSelection",
+      "properties": {
+        "id": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "ControlOperationId", "x-bounds": ["nonzero"] },
+        "expectedRevision": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64", "x-bounds": ["nonzero"] }
+      },
+      "required": ["id", "expectedRevision"]
+    },
+    "WorkbenchSaveGuidanceIntent": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchIntent",
+      "properties": {
+        "kind": { "type": "string", "enum": ["saveGuidance"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchIntent" },
+        "expectedDependencyRevision": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64" },
+        "content": { "$ref": "#/$defs/WorkbenchGuidanceContent", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchGuidanceContent" },
+        "pinned": { "type": "boolean", "x-canonical-wire": "bool/u8", "x-rust-type": "bool" }
+      },
+      "required": ["kind", "expectedDependencyRevision", "content", "pinned"]
+    },
+    "WorkbenchReviseGuidanceIntent": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchIntent",
+      "properties": {
+        "kind": { "type": "string", "enum": ["reviseGuidance"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchIntent" },
+        "selection": { "$ref": "#/$defs/WorkbenchGuidanceSelection", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchGuidanceSelection" },
+        "expectedDependencyRevision": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64" },
+        "content": { "$ref": "#/$defs/WorkbenchGuidanceContent", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchGuidanceContent" }
+      },
+      "required": ["kind", "selection", "expectedDependencyRevision", "content"]
+    },
+    "WorkbenchPinGuidanceIntent": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchIntent",
+      "properties": {
+        "kind": { "type": "string", "enum": ["pinGuidance"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchIntent" },
+        "selection": { "$ref": "#/$defs/WorkbenchGuidanceSelection", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchGuidanceSelection" },
+        "expectedDependencyRevision": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64" },
+        "pinned": { "type": "boolean", "x-canonical-wire": "bool/u8", "x-rust-type": "bool" }
+      },
+      "required": ["kind", "selection", "expectedDependencyRevision", "pinned"]
+    },
+    "WorkbenchScopeGuidanceIntent": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchIntent",
+      "properties": {
+        "kind": { "type": "string", "enum": ["scopeGuidance"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchIntent" },
+        "selection": { "$ref": "#/$defs/WorkbenchGuidanceSelection", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchGuidanceSelection" },
+        "expectedDependencyRevision": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64" },
+        "scope": { "oneOf": [{ "$ref": "#/$defs/WorkbenchGuidanceProjectScope" }, { "$ref": "#/$defs/WorkbenchGuidanceConversationScope" }], "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchGuidanceScope" }
+      },
+      "required": ["kind", "selection", "expectedDependencyRevision", "scope"]
+    },
+    "WorkbenchForgetGuidanceIntent": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchIntent",
+      "properties": {
+        "kind": { "type": "string", "enum": ["forgetGuidance"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchIntent" },
+        "selection": { "$ref": "#/$defs/WorkbenchGuidanceSelection", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchGuidanceSelection" },
+        "expectedDependencyRevision": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64" },
+        "reason": { "type": "string", "x-canonical-wire": "len+utf8", "x-rust-type": "WorkbenchGuidanceReason", "x-bounds": ["codec.max-string-bytes"] }
+      },
+      "required": ["kind", "selection", "expectedDependencyRevision", "reason"]
+    },
+    "WorkbenchMemoryQuery": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchMemoryQuery",
+      "properties": {
+        "query": { "$ref": "#/$defs/WorkbenchQuery", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchQuery" },
+        "dependencyRevision": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64" },
+        "offset": { "type": "integer", "minimum": 0, "maximum": 4294967295, "x-canonical-wire": "u32-be", "x-rust-type": "u32" },
+        "includeForgotten": { "type": "boolean", "x-canonical-wire": "bool/u8", "x-rust-type": "bool" }
+      },
+      "required": ["query", "dependencyRevision", "offset", "includeForgotten"]
+    },
+    "WorkbenchMemoryActiveRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchMemoryRow",
+      "properties": {
+        "kind": { "type": "string", "enum": ["active"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchMemoryRow" },
+        "record": { "$ref": "#/$defs/WorkbenchGuidanceRecord", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchGuidanceRecord" }
+      },
+      "required": ["kind", "record"]
+    },
+    "WorkbenchMemoryForgottenRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchMemoryRow",
+      "properties": {
+        "kind": { "type": "string", "enum": ["forgotten"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchMemoryRow" },
+        "tombstone": { "$ref": "#/$defs/WorkbenchGuidanceTombstone", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchGuidanceTombstone" }
+      },
+      "required": ["kind", "tombstone"]
+    },
+    "WorkbenchMemory": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchMemory",
+      "properties": {
+        "query": { "$ref": "#/$defs/WorkbenchMemoryQuery", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchMemoryQuery" },
+        "dependencyRevision": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64" },
+        "total": { "type": "integer", "minimum": 0, "maximum": 4294967295, "x-canonical-wire": "u32-be", "x-rust-type": "u32" },
+        "rows": { "type": "array", "items": { "oneOf": [{ "$ref": "#/$defs/WorkbenchMemoryActiveRow" }, { "$ref": "#/$defs/WorkbenchMemoryForgottenRow" }] }, "x-canonical-wire": "len+items", "x-rust-type": "Vec<WorkbenchMemoryRow>", "x-bounds": ["codec.max-collection-items"] }
+      },
+      "required": ["query", "dependencyRevision", "total", "rows"]
+    },
+    "WorkbenchInputSelection": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchInputSelection",
+      "properties": {
+        "id": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "WorkbenchInputId", "x-bounds": ["nonzero"] },
+        "revision": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64", "x-bounds": ["nonzero"] }
+      },
+      "required": ["id", "revision"]
+    },
+    "WorkbenchNewInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchNewInput",
+      "properties": {
+        "id": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "WorkbenchInputId", "x-bounds": ["nonzero"] },
+        "text": { "type": "string", "x-canonical-wire": "len+utf8", "x-rust-type": "WorkbenchInputText", "x-bounds": ["workbench.max-input-bytes (8192)"] },
+        "dependencies": { "type": "array", "items": { "type": "string", "pattern": "^[0-9a-f]{32}$" }, "x-canonical-wire": "len+items", "x-rust-type": "WorkbenchInputOrder", "x-bounds": ["workbench.max-input-dependencies (32)"] }
+      },
+      "required": ["id", "text", "dependencies"]
+    },
+    "WorkbenchEnqueueIntent": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchQueueIntent",
+      "properties": {
+        "kind": { "type": "string", "enum": ["enqueue"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchQueueIntent" },
+        "input": { "$ref": "#/$defs/WorkbenchNewInput", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchNewInput" }
+      },
+      "required": ["kind", "input"]
+    },
+    "WorkbenchEditInputIntent": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchQueueIntent",
+      "properties": {
+        "kind": { "type": "string", "enum": ["edit"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchQueueIntent" },
+        "selected": { "$ref": "#/$defs/WorkbenchInputSelection", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchInputSelection" },
+        "text": { "type": "string", "x-canonical-wire": "len+utf8", "x-rust-type": "WorkbenchInputText", "x-bounds": ["workbench.max-input-bytes (8192)"] }
+      },
+      "required": ["kind", "selected", "text"]
+    },
+    "WorkbenchCorrectInputIntent": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchQueueIntent",
+      "properties": {
+        "kind": { "type": "string", "enum": ["correct"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchQueueIntent" },
+        "original": { "$ref": "#/$defs/WorkbenchInputSelection", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchInputSelection" },
+        "id": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "WorkbenchInputId", "x-bounds": ["nonzero"] },
+        "text": { "type": "string", "x-canonical-wire": "len+utf8", "x-rust-type": "WorkbenchInputText", "x-bounds": ["workbench.max-input-bytes (8192)"] }
+      },
+      "required": ["kind", "original", "id", "text"]
+    },
+    "WorkbenchHoldInputIntent": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchQueueIntent",
+      "properties": {
+        "kind": { "type": "string", "enum": ["hold"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchQueueIntent" },
+        "selected": { "$ref": "#/$defs/WorkbenchInputSelection", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchInputSelection" },
+        "held": { "type": "boolean", "x-canonical-wire": "bool/u8", "x-rust-type": "bool" }
+      },
+      "required": ["kind", "selected", "held"]
+    },
+    "WorkbenchWithdrawInputIntent": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchQueueIntent",
+      "properties": {
+        "kind": { "type": "string", "enum": ["withdraw"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchQueueIntent" },
+        "selected": { "$ref": "#/$defs/WorkbenchInputSelection", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchInputSelection" }
+      },
+      "required": ["kind", "selected"]
+    },
+    "WorkbenchReorderInputIntent": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchQueueIntent",
+      "properties": {
+        "kind": { "type": "string", "enum": ["reorder"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchQueueIntent" },
+        "order": { "type": "array", "items": { "type": "string", "pattern": "^[0-9a-f]{32}$" }, "x-canonical-wire": "len+items", "x-rust-type": "WorkbenchInputOrder", "x-bounds": ["workbench.max-inputs (1024)"] }
+      },
+      "required": ["kind", "order"]
+    },
+    "WorkbenchQueueControlIntent": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchIntent",
+      "properties": {
+        "kind": { "type": "string", "enum": ["queue"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchIntent" },
+        "queue": { "oneOf": [{ "$ref": "#/$defs/WorkbenchEnqueueIntent" }, { "$ref": "#/$defs/WorkbenchEditInputIntent" }, { "$ref": "#/$defs/WorkbenchCorrectInputIntent" }, { "$ref": "#/$defs/WorkbenchHoldInputIntent" }, { "$ref": "#/$defs/WorkbenchWithdrawInputIntent" }, { "$ref": "#/$defs/WorkbenchReorderInputIntent" }], "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchQueueIntent" }
+      },
+      "required": ["kind", "queue"]
+    },
+    "WorkbenchInputRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchInputRow",
+      "properties": {
+        "selected": { "$ref": "#/$defs/WorkbenchInputSelection", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchInputSelection" },
+        "text": { "type": "string", "x-canonical-wire": "len+utf8", "x-rust-type": "WorkbenchInputText", "x-bounds": ["workbench.max-input-bytes (8192)"] },
+        "state": { "type": "string", "enum": ["queued", "held", "incorporated", "superseded", "withdrawn"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchInputState" },
+        "dependencies": { "type": "array", "items": { "type": "string", "pattern": "^[0-9a-f]{32}$" }, "x-canonical-wire": "len+items", "x-rust-type": "WorkbenchInputOrder", "x-bounds": ["workbench.max-input-dependencies (32)"] }
+      },
+      "required": ["selected", "text", "state", "dependencies"]
+    },
+    "WorkbenchQueueQuery": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchQueueQuery",
+      "properties": {
+        "query": { "$ref": "#/$defs/WorkbenchQuery", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchQuery" },
+        "revision": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64" },
+        "offset": { "type": "integer", "minimum": 0, "maximum": 4294967295, "x-canonical-wire": "u32-be", "x-rust-type": "u32", "x-bounds": ["workbench.max-inputs (1024)"] },
+        "history": { "type": "boolean", "x-canonical-wire": "bool/u8", "x-rust-type": "bool" }
+      },
+      "required": ["query", "revision", "offset", "history"]
+    },
+    "WorkbenchQueuePage": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchQueuePage",
+      "properties": {
+        "query": { "$ref": "#/$defs/WorkbenchQueueQuery", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchQueueQuery" },
+        "total": { "type": "integer", "minimum": 0, "maximum": 4294967295, "x-canonical-wire": "u32-be", "x-rust-type": "u32", "x-bounds": ["workbench.max-inputs (1024)"] },
+        "rows": { "type": "array", "items": { "$ref": "#/$defs/WorkbenchInputRow" }, "x-canonical-wire": "len+items", "x-rust-type": "Vec<WorkbenchInputRow>", "x-bounds": ["workbench.max-input-page (32)"] }
+      },
+      "required": ["query", "total", "rows"]
+    },
+    "WorkbenchContextNextView": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchContextView",
+      "properties": {
+        "kind": { "type": "string", "enum": ["next", "history"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchContextView" }
+      },
+      "required": ["kind"]
+    },
+    "WorkbenchContextInvocationView": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchContextView",
+      "properties": {
+        "kind": { "type": "string", "enum": ["invocation"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchContextView" },
+        "invocation": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "WorkbenchInvocationId", "x-bounds": ["nonzero"] }
+      },
+      "required": ["kind", "invocation"]
+    },
+    "WorkbenchContextQuery": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchContextQuery",
+      "properties": {
+        "query": { "$ref": "#/$defs/WorkbenchQuery", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchQuery" },
+        "revision": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64" },
+        "offset": { "type": "integer", "minimum": 0, "maximum": 4294967295, "x-canonical-wire": "u32-be", "x-rust-type": "u32", "x-bounds": ["workbench.max-context-rows (8192)"] },
+        "view": { "oneOf": [{ "$ref": "#/$defs/WorkbenchContextNextView" }, { "$ref": "#/$defs/WorkbenchContextInvocationView" }], "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchContextView" }
+      },
+      "required": ["query", "revision", "offset", "view"]
+    },
+    "WorkbenchContextInputSource": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchContextSource",
+      "properties": {
+        "kind": { "type": "string", "enum": ["input"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchContextSource" },
+        "selected": { "$ref": "#/$defs/WorkbenchInputSelection", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchInputSelection" }
+      },
+      "required": ["kind", "selected"]
+    },
+    "WorkbenchContextReplySource": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchContextSource",
+      "properties": {
+        "kind": { "type": "string", "enum": ["publicReply"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchContextSource" },
+        "invocation": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "WorkbenchInvocationId", "x-bounds": ["nonzero"] }
+      },
+      "required": ["kind", "invocation"]
+    },
+    "WorkbenchContextMessageSource": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchContextSource",
+      "properties": {
+        "kind": { "type": "string", "enum": ["message"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchContextSource" },
+        "ordinal": { "type": "integer", "minimum": 0, "maximum": 4294967295, "x-canonical-wire": "u32-be", "x-rust-type": "u32" },
+        "role": { "type": "string", "enum": ["system", "developer", "user", "assistant", "tool"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchMessageRole" }
+      },
+      "required": ["kind", "ordinal", "role"]
+    },
+    "WorkbenchContextInvocationSource": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchContextSource",
+      "properties": {
+        "kind": { "type": "string", "enum": ["invocation"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchContextSource" },
+        "invocation": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "WorkbenchInvocationId", "x-bounds": ["nonzero"] },
+        "manifestDigest": { "type": "string", "pattern": "^[0-9a-f]{64}$", "x-canonical-wire": "fixed[32]", "x-rust-type": "Sha256Digest" }
+      },
+      "required": ["kind", "invocation", "manifestDigest"]
+    },
+    "WorkbenchContextRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchContextRow",
+      "properties": {
+        "source": { "oneOf": [{ "$ref": "#/$defs/WorkbenchContextInputSource" }, { "$ref": "#/$defs/WorkbenchContextReplySource" }, { "$ref": "#/$defs/WorkbenchContextMessageSource" }, { "$ref": "#/$defs/WorkbenchContextInvocationSource" }, { "$ref": "#/$defs/WorkbenchContextImageSource" }, { "$ref": "#/$defs/WorkbenchContextFileSource" }], "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchContextSource" },
+        "digest": { "type": "string", "pattern": "^[0-9a-f]{64}$", "x-canonical-wire": "fixed[32]", "x-rust-type": "Sha256Digest" },
+        "bytes": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64", "x-bounds": ["workbench.max-context-source-bytes (67108864)"] },
+        "disposition": { "type": "string", "enum": ["eligible", "included", "held", "withdrawn", "superseded", "dependencyBlocked", "awaitingLaterInput", "deselected", "userExcluded"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchContextDisposition" },
+        "hasPreference": { "type": "boolean", "x-canonical-wire": "bool/u8", "x-rust-type": "bool" },
+        "preference": { "type": "string", "enum": ["pinned", "excluded"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchContextPreference" }
+      },
+      "required": ["source", "digest", "bytes", "disposition", "hasPreference"]
+    },
+    "WorkbenchSetContextIntent": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchIntent",
+      "properties": {
+        "kind": { "type": "string", "enum": ["setContext"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchIntent" },
+        "source": { "oneOf": [{ "$ref": "#/$defs/WorkbenchContextInputSource" }, { "$ref": "#/$defs/WorkbenchContextReplySource" }, { "$ref": "#/$defs/WorkbenchContextImageSource" }, { "$ref": "#/$defs/WorkbenchContextFileSource" }], "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchContextSource" },
+        "hasPreference": { "type": "boolean", "x-canonical-wire": "bool/u8", "x-rust-type": "bool" },
+        "preference": { "type": "string", "enum": ["pinned", "excluded"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchContextPreference" }
+      },
+      "required": ["kind", "source", "hasPreference"]
+    },
+    "WorkbenchContextImageSource": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchContextSource",
+      "properties": {
+        "kind": { "type": "string", "enum": ["image"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchContextSource" },
+        "operation": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "ControlOperationId", "x-bounds": ["nonzero"] },
+        "input": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "WorkbenchInputId", "x-bounds": ["nonzero"] },
+        "artifact": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "ArtifactId", "x-bounds": ["nonzero"] }
+      },
+      "required": ["kind", "operation", "input", "artifact"]
+    },
+    "WorkbenchContextSeal": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchContextSeal",
+      "properties": {
+        "invocation": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "WorkbenchInvocationId", "x-bounds": ["nonzero"] },
+        "requestDigest": { "type": "string", "pattern": "^[0-9a-f]{64}$", "x-canonical-wire": "fixed[32]", "x-rust-type": "Sha256Digest" },
+        "manifestDigest": { "type": "string", "pattern": "^[0-9a-f]{64}$", "x-canonical-wire": "fixed[32]", "x-rust-type": "Sha256Digest" },
+        "generation": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64" }
+      },
+      "required": ["invocation", "requestDigest", "manifestDigest", "generation"]
+    },
+    "WorkbenchContextPage": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchContextPage",
+      "properties": {
+        "query": { "$ref": "#/$defs/WorkbenchContextQuery", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchContextQuery" },
+        "total": { "type": "integer", "minimum": 0, "maximum": 4294967295, "x-canonical-wire": "u32-be", "x-rust-type": "u32", "x-bounds": ["workbench.max-context-rows (8192)"] },
+        "hasSeal": { "type": "boolean", "x-canonical-wire": "bool/u8", "x-rust-type": "bool" },
+        "seal": { "$ref": "#/$defs/WorkbenchContextSeal", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchContextSeal" },
+        "rows": { "type": "array", "items": { "$ref": "#/$defs/WorkbenchContextRow" }, "x-canonical-wire": "len+items", "x-rust-type": "Vec<WorkbenchContextRow>", "x-bounds": ["workbench.max-context-page (32)"] }
+      },
+      "required": ["query", "total", "hasSeal", "rows"]
+    },
+    "WorkbenchCheckpointAbsentVersion": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchCheckpointVersion",
+      "properties": {
+        "kind": { "type": "string", "enum": ["absent"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchCheckpointVersion" }
+      },
+      "required": ["kind"]
+    },
+    "WorkbenchCheckpointPresentVersion": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchCheckpointVersion",
+      "properties": {
+        "kind": { "type": "string", "enum": ["present"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchCheckpointVersion" },
+        "digest": { "type": "string", "pattern": "^[0-9a-f]{64}$", "x-canonical-wire": "fixed[32]", "x-rust-type": "Sha256Digest" },
+        "bytes": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64" },
+        "mode": { "type": "string", "enum": ["regular", "executable"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchCheckpointFileMode" }
+      },
+      "required": ["kind", "digest", "bytes", "mode"]
+    },
+    "WorkbenchCheckpointReferences": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchCheckpointReferences",
+      "properties": {
+        "sourceConversationRevision": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64", "x-bounds": ["nonzero"] },
+        "contextGeneration": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64" },
+        "briefRevision": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64" },
+        "hasGoalRevision": { "type": "boolean", "x-canonical-wire": "bool/u8", "x-rust-type": "bool" },
+        "goalRevision": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64", "x-bounds": ["nonzero"] }
+      },
+      "required": ["sourceConversationRevision", "contextGeneration", "briefRevision", "hasGoalRevision"]
+    },
+    "WorkbenchCheckpointPath": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchCheckpointPath",
+      "properties": {
+        "path": { "type": "string", "x-canonical-wire": "len+utf8", "x-rust-type": "String", "x-bounds": ["workbench.max-file-path-bytes (4096)"] },
+        "checkpoint": { "oneOf": [{ "$ref": "#/$defs/WorkbenchCheckpointAbsentVersion" }, { "$ref": "#/$defs/WorkbenchCheckpointPresentVersion" }], "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchCheckpointVersion" },
+        "hasExpectedCurrent": { "type": "boolean", "x-canonical-wire": "bool/u8", "x-rust-type": "bool" },
+        "expectedCurrent": { "oneOf": [{ "$ref": "#/$defs/WorkbenchCheckpointAbsentVersion" }, { "$ref": "#/$defs/WorkbenchCheckpointPresentVersion" }], "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchCheckpointVersion" }
+      },
+      "required": ["path", "checkpoint", "hasExpectedCurrent"]
+    },
+    "WorkbenchCheckpointReceipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchCheckpointReceipt",
+      "properties": {
+        "checkpoint": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "ControlOperationId", "x-bounds": ["nonzero"] },
+        "query": { "$ref": "#/$defs/WorkbenchQuery", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchQuery" },
+        "acceptedRevision": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64", "x-bounds": ["nonzero"] },
+        "name": { "type": "string", "x-canonical-wire": "len+utf8", "x-rust-type": "WorkbenchCheckpointName", "x-bounds": ["workbench.max-checkpoint-name-bytes (256)"] },
+        "references": { "$ref": "#/$defs/WorkbenchCheckpointReferences", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchCheckpointReferences" },
+        "paths": { "type": "array", "items": { "$ref": "#/$defs/WorkbenchCheckpointPath" }, "x-canonical-wire": "len+items", "x-rust-type": "Vec<WorkbenchCheckpointPath>", "x-bounds": ["workbench.max-checkpoint-paths (64)", "strictly-sorted-unique"] },
+        "exclusions": { "type": "array", "items": { "type": "string" }, "x-canonical-wire": "len+items", "x-rust-type": "Vec<String>", "x-bounds": ["workbench.max-checkpoint-paths (64)", "workbench.max-checkpoint-text-bytes (512)"] },
+        "externalEffects": { "type": "array", "items": { "type": "string" }, "x-canonical-wire": "len+items", "x-rust-type": "Vec<String>", "x-bounds": ["workbench.max-checkpoint-paths (64)", "workbench.max-checkpoint-text-bytes (512)"] }
+      },
+      "required": ["checkpoint", "query", "acceptedRevision", "name", "references", "paths", "exclusions", "externalEffects"]
+    },
+    "WorkbenchRewindRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchRewindRequest",
+      "properties": {
+        "query": { "$ref": "#/$defs/WorkbenchQuery", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchQuery" },
+        "revision": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64", "x-bounds": ["nonzero"] },
+        "checkpoint": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "ControlOperationId", "x-bounds": ["nonzero"] },
+        "mode": { "type": "string", "enum": ["files_only", "conversation_only", "combined"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchRewindMode" },
+        "child": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "Option<ConversationId>", "x-bounds": ["nonzero"] },
+        "allocation": { "$ref": "#/$defs/WorkbenchForkBudget", "x-canonical-wire": "option+value", "x-rust-type": "Option<WorkbenchForkBudget>" }
+      },
+      "required": ["query", "revision", "checkpoint", "mode"]
+    },
+    "WorkbenchRewindPath": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchRewindPath",
+      "properties": {
+        "path": { "type": "string", "x-canonical-wire": "len+utf8", "x-rust-type": "String", "x-bounds": ["workbench.max-file-path-bytes (4096)"] },
+        "checkpoint": { "oneOf": [{ "$ref": "#/$defs/WorkbenchCheckpointAbsentVersion" }, { "$ref": "#/$defs/WorkbenchCheckpointPresentVersion" }], "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchCheckpointVersion" },
+        "hasExpectedCurrent": { "type": "boolean", "x-canonical-wire": "bool/u8", "x-rust-type": "bool" },
+        "expectedCurrent": { "oneOf": [{ "$ref": "#/$defs/WorkbenchCheckpointAbsentVersion" }, { "$ref": "#/$defs/WorkbenchCheckpointPresentVersion" }], "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchCheckpointVersion" },
+        "observedCurrent": { "oneOf": [{ "$ref": "#/$defs/WorkbenchCheckpointAbsentVersion" }, { "$ref": "#/$defs/WorkbenchCheckpointPresentVersion" }], "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchCheckpointVersion" },
+        "disposition": { "type": "string", "enum": ["restore", "unchanged", "conflict", "unsealed"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchRewindDisposition" }
+      },
+      "required": ["path", "checkpoint", "hasExpectedCurrent", "observedCurrent", "disposition"]
+    },
+    "WorkbenchRewindPreview": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchRewindPreview",
+      "properties": {
+        "request": { "$ref": "#/$defs/WorkbenchRewindRequest", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchRewindRequest" },
+        "previewDigest": { "type": "string", "pattern": "^[0-9a-f]{64}$", "x-canonical-wire": "fixed[32]", "x-rust-type": "Sha256Digest" },
+        "paths": { "type": "array", "items": { "$ref": "#/$defs/WorkbenchRewindPath" }, "x-canonical-wire": "len+items", "x-rust-type": "Vec<WorkbenchRewindPath>", "x-bounds": ["workbench.max-checkpoint-paths (64)", "strictly-sorted-unique"] },
+        "exclusions": { "type": "array", "items": { "type": "string" }, "x-canonical-wire": "len+items", "x-rust-type": "Vec<String>", "x-bounds": ["workbench.max-checkpoint-paths (64)", "workbench.max-checkpoint-text-bytes (512)"] },
+        "externalEffects": { "type": "array", "items": { "type": "string" }, "x-canonical-wire": "len+items", "x-rust-type": "Vec<String>", "x-bounds": ["workbench.max-checkpoint-paths (64)", "workbench.max-checkpoint-text-bytes (512)"] },
+        "conversationHistoryPreserved": { "type": "boolean", "x-canonical-wire": "bool/u8", "x-rust-type": "bool" },
+        "accountingPreserved": { "type": "boolean", "x-canonical-wire": "bool/u8", "x-rust-type": "bool" }
+      },
+      "required": ["request", "previewDigest", "paths", "exclusions", "externalEffects", "conversationHistoryPreserved", "accountingPreserved"]
+    },
+    "WorkbenchCreateCheckpointIntent": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchIntent",
+      "properties": {
+        "kind": { "type": "string", "enum": ["createCheckpoint"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchIntent" },
+        "name": { "type": "string", "x-canonical-wire": "len+utf8", "x-rust-type": "WorkbenchCheckpointName", "x-bounds": ["workbench.max-checkpoint-name-bytes (256)"] }
+      },
+      "required": ["kind", "name"]
+    },
+    "WorkbenchApplyRewindIntent": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchIntent",
+      "properties": {
+        "kind": { "type": "string", "enum": ["applyRewind"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchIntent" },
+        "preview": { "$ref": "#/$defs/WorkbenchRewindPreview", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchRewindPreview" }
+      },
+      "required": ["kind", "preview"]
+    },
+    "WorkbenchRestoreReceipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchRestoreReceipt",
+      "properties": {
+        "restore": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "ControlOperationId", "x-bounds": ["nonzero"] },
+        "checkpoint": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "ControlOperationId", "x-bounds": ["nonzero"] },
+        "recoveryCheckpoint": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "ControlOperationId", "x-bounds": ["nonzero"] },
+        "query": { "$ref": "#/$defs/WorkbenchQuery", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchQuery" },
+        "acceptedRevision": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64", "x-bounds": ["nonzero"] },
+        "status": { "type": "string", "enum": ["applied", "conflict", "recoveryRequired"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchRestoreStatus" },
+        "restored": { "type": "array", "items": { "type": "string" }, "x-canonical-wire": "len+items", "x-rust-type": "Vec<String>", "x-bounds": ["workbench.max-checkpoint-paths (64)", "workbench.max-restore-text-bytes (4096)"] },
+        "conflicts": { "type": "array", "items": { "type": "string" }, "x-canonical-wire": "len+items", "x-rust-type": "Vec<String>", "x-bounds": ["workbench.max-checkpoint-paths (64)", "workbench.max-restore-text-bytes (4096)"] },
+        "externalEffects": { "type": "array", "items": { "type": "string" }, "x-canonical-wire": "len+items", "x-rust-type": "Vec<String>", "x-bounds": ["workbench.max-checkpoint-paths (64)", "workbench.max-restore-text-bytes (4096)"] }
+      },
+      "required": ["restore", "checkpoint", "recoveryCheckpoint", "query", "acceptedRevision", "status", "restored", "conflicts", "externalEffects"]
+    },
+    "WorkbenchCompactionRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchCompactionRequest",
+      "properties": {
+        "query": { "$ref": "#/$defs/WorkbenchQuery", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchQuery" },
+        "revision": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64", "x-bounds": ["nonzero"] },
+        "hasFocus": { "type": "boolean", "x-canonical-wire": "bool/u8", "x-rust-type": "bool" },
+        "focus": { "type": "string", "x-canonical-wire": "len+utf8", "x-rust-type": "WorkbenchCompactionFocus", "x-bounds": ["workbench.max-compaction-focus-bytes (1024)"] }
+      },
+      "required": ["query", "revision", "hasFocus"]
+    },
+    "WorkbenchCompactionEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchCompactionEntry",
+      "properties": {
+        "invocation": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "WorkbenchInvocationId", "x-bounds": ["nonzero"] },
+        "sourceDigest": { "type": "string", "pattern": "^[0-9a-f]{64}$", "x-canonical-wire": "fixed[32]", "x-rust-type": "Sha256Digest" },
+        "sourceBytes": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64" },
+        "replacementDigest": { "type": "string", "pattern": "^[0-9a-f]{64}$", "x-canonical-wire": "fixed[32]", "x-rust-type": "Sha256Digest" },
+        "replacementBytes": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64" }
+      },
+      "required": ["invocation", "sourceDigest", "sourceBytes", "replacementDigest", "replacementBytes"]
+    },
+    "WorkbenchCompactionPreview": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchCompactionPreview",
+      "properties": {
+        "request": { "$ref": "#/$defs/WorkbenchCompactionRequest", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchCompactionRequest" },
+        "generation": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64", "x-bounds": ["nonzero"] },
+        "recentPreserved": { "type": "integer", "minimum": 0, "maximum": 4294967295, "x-canonical-wire": "u32-be", "x-rust-type": "u32", "x-bounds": ["workbench.max-compaction-entries (1024)"] },
+        "pinnedPreserved": { "type": "integer", "minimum": 0, "maximum": 4294967295, "x-canonical-wire": "u32-be", "x-rust-type": "u32", "x-bounds": ["workbench.max-compaction-entries (1024)"] },
+        "unresolvedPreserved": { "type": "integer", "minimum": 0, "maximum": 4294967295, "x-canonical-wire": "u32-be", "x-rust-type": "u32", "x-bounds": ["workbench.max-compaction-entries (1024)"] },
+        "unsavablePreserved": { "type": "integer", "minimum": 0, "maximum": 4294967295, "x-canonical-wire": "u32-be", "x-rust-type": "u32", "x-bounds": ["workbench.max-compaction-entries (1024)"] },
+        "entries": { "type": "array", "items": { "$ref": "#/$defs/WorkbenchCompactionEntry" }, "x-canonical-wire": "len+items", "x-rust-type": "Vec<WorkbenchCompactionEntry>", "x-bounds": ["workbench.max-compaction-entries (1024)", "strictly-sorted-unique"] }
+      },
+      "required": ["request", "generation", "recentPreserved", "pinnedPreserved", "unresolvedPreserved", "unsavablePreserved", "entries"]
+    },
+    "WorkbenchApplyCompactionIntent": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchIntent",
+      "properties": {
+        "kind": { "type": "string", "enum": ["applyCompaction"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchIntent" },
+        "preview": { "$ref": "#/$defs/WorkbenchCompactionPreview", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchCompactionPreview" }
+      },
+      "required": ["kind", "preview"]
+    },
+    "WorkbenchBriefIntent": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchIntent",
+      "properties": {
+        "kind": { "type": "string", "enum": ["setBrief"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchIntent" },
+        "field": { "type": "string", "enum": ["objective", "acceptance", "constraints", "assumptions"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchBriefField" },
+        "text": { "type": "string", "x-canonical-wire": "len+utf8", "x-rust-type": "WorkbenchInputText", "x-bounds": ["workbench.max-input-bytes (8192)"] }
+      },
+      "required": ["kind", "field", "text"]
+    },
+    "WorkbenchBriefAcceptIntent": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchIntent",
+      "properties": {
+        "kind": { "type": "string", "enum": ["acceptBriefProposal"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchIntent" },
+        "field": { "type": "string", "enum": ["objective", "acceptance", "constraints", "assumptions"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchBriefField" },
+        "proposal": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "ControlOperationId", "x-bounds": ["nonzero"] },
+        "digest": { "type": "string", "pattern": "^[0-9a-f]{64}$", "x-canonical-wire": "fixed[32]", "x-rust-type": "Sha256Digest" }
+      },
+      "required": ["kind", "field", "proposal", "digest"]
+    },
+    "WorkbenchBriefEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchBriefEntry",
+      "properties": {
+        "field": { "type": "string", "enum": ["objective", "acceptance", "constraints", "assumptions"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchBriefField" },
+        "source": { "$ref": "#/$defs/WorkbenchInputRow", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchInputRow" }
+      },
+      "required": ["field", "source"]
+    },
+    "WorkbenchBriefProposal": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchBriefProposal",
+      "properties": {
+        "operation": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "ControlOperationId", "x-bounds": ["nonzero"] },
+        "invocation": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "WorkbenchInvocationId", "x-bounds": ["nonzero"] },
+        "digest": { "type": "string", "pattern": "^[0-9a-f]{64}$", "x-canonical-wire": "fixed[32]", "x-rust-type": "Sha256Digest" },
+        "text": { "type": "string", "x-canonical-wire": "len+utf8", "x-rust-type": "WorkbenchInputText", "x-bounds": ["workbench.max-input-bytes (8192)"] }
+      },
+      "required": ["operation", "invocation", "digest", "text"]
+    },
+    "WorkbenchBriefObservation": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchBriefObservation",
+      "properties": {
+        "kind": { "type": "string", "enum": ["image", "file"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchBriefObservationKind" },
+        "operation": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "ControlOperationId", "x-bounds": ["nonzero"] },
+        "hasVersion": { "type": "boolean", "x-canonical-wire": "bool/u8", "x-rust-type": "bool" },
+        "version": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "ControlOperationId", "x-bounds": ["nonzero"] },
+        "label": { "type": "string", "x-canonical-wire": "len+utf8", "x-rust-type": "String", "x-bounds": ["workbench.max-file-path-bytes (4096)"] },
+        "digest": { "type": "string", "pattern": "^[0-9a-f]{64}$", "x-canonical-wire": "fixed[32]", "x-rust-type": "Sha256Digest" },
+        "bytes": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64", "x-bounds": ["workbench.max-context-source-bytes (67108864)"] },
+        "selected": { "type": "boolean", "x-canonical-wire": "bool/u8", "x-rust-type": "bool" }
+      },
+      "required": ["kind", "operation", "hasVersion", "label", "digest", "bytes", "selected"]
+    },
+    "WorkbenchBrief": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchBrief",
+      "properties": {
+        "query": { "$ref": "#/$defs/WorkbenchQuery", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchQuery" },
+        "revision": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64", "x-bounds": ["nonzero"] },
+        "entries": { "type": "array", "items": { "$ref": "#/$defs/WorkbenchBriefEntry" }, "x-canonical-wire": "len+items", "x-rust-type": "Vec<WorkbenchBriefEntry>", "x-bounds": ["workbench.max-brief-fields (4)"] },
+        "proposals": { "type": "array", "items": { "$ref": "#/$defs/WorkbenchBriefProposal" }, "x-canonical-wire": "len+items", "x-rust-type": "Vec<WorkbenchBriefProposal>", "x-bounds": ["workbench.max-brief-proposals (8)", "strictly-sorted-unique"] },
+        "observations": { "type": "array", "items": { "$ref": "#/$defs/WorkbenchBriefObservation" }, "x-canonical-wire": "len+items", "x-rust-type": "Vec<WorkbenchBriefObservation>", "x-bounds": ["workbench.max-brief-observations (32)", "strictly-sorted-unique"] },
+        "excludedProposals": { "type": "integer", "minimum": 0, "maximum": 4294967295, "x-canonical-wire": "u32-be", "x-rust-type": "u32" }
+      },
+      "required": ["query", "revision", "entries", "proposals", "observations", "excludedProposals"]
+    },
+    "WorkbenchImageUpload": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchImageUpload",
+      "properties": {
+        "query": { "$ref": "#/$defs/WorkbenchQuery", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchQuery" },
+        "revision": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64", "x-bounds": ["nonzero"] },
+        "metadata": { "$ref": "#/$defs/ArtifactMetadata", "x-canonical-wire": "ordered-fields", "x-rust-type": "ArtifactMetadata" }
+      },
+      "required": ["query", "revision", "metadata"]
+    },
+    "WorkbenchImageModel": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "ProductModelChoice",
+      "properties": {
+        "id": { "type": "string", "x-canonical-wire": "len+utf8", "x-rust-type": "String", "x-bounds": ["product.max-model-bytes (512)"] },
+        "manual": { "type": "boolean", "x-canonical-wire": "bool/u8", "x-rust-type": "bool" },
+        "effort": { "type": "string", "enum": ["default", "minimal", "low", "medium", "high", "xhigh", "max", "ultra"], "x-canonical-wire": "u16-be", "x-rust-type": "ProductModelEffort" }
+      },
+      "required": ["id", "manual", "effort"]
+    },
+    "WorkbenchImageRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchImageRequest",
+      "properties": {
+        "query": { "$ref": "#/$defs/WorkbenchQuery", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchQuery" },
+        "revision": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64", "x-bounds": ["nonzero"] },
+        "artifact": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "ArtifactId", "x-bounds": ["nonzero"] },
+        "provider": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "ProviderProfileId", "x-bounds": ["nonzero"] },
+        "model": { "$ref": "#/$defs/WorkbenchImageModel", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchImageModel" },
+        "label": { "type": "string", "x-canonical-wire": "len+utf8", "x-rust-type": "WorkbenchImageLabel", "x-bounds": ["workbench.max-image-label-bytes (1024)"] }
+      },
+      "required": ["query", "revision", "artifact", "provider", "model", "label"]
+    },
+    "WorkbenchImageMetadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchImageMetadata",
+      "properties": {
+        "digest": { "type": "string", "pattern": "^[0-9a-f]{64}$", "x-canonical-wire": "fixed[32]", "x-rust-type": "Sha256Digest" },
+        "bytes": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64", "x-bounds": ["nonzero", "workbench.max-image-bytes (4194304)"] },
+        "format": { "type": "string", "enum": ["png", "jpeg", "gif", "webp"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchImageFormat" },
+        "width": { "type": "integer", "minimum": 0, "maximum": 4294967295, "x-canonical-wire": "u32-be", "x-rust-type": "u32", "x-bounds": ["nonzero", "workbench.max-image-side (8192)"] },
+        "height": { "type": "integer", "minimum": 0, "maximum": 4294967295, "x-canonical-wire": "u32-be", "x-rust-type": "u32", "x-bounds": ["nonzero", "workbench.max-image-side (8192)"] },
+        "frames": { "type": "integer", "minimum": 0, "maximum": 4294967295, "x-canonical-wire": "u32-be", "x-rust-type": "u32", "x-bounds": ["nonzero", "workbench.max-image-frames (64)"] }
+      },
+      "required": ["digest", "bytes", "format", "width", "height", "frames"]
+    },
+    "WorkbenchImagePreview": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchImagePreview",
+      "properties": {
+        "request": { "$ref": "#/$defs/WorkbenchImageRequest", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchImageRequest" },
+        "image": { "$ref": "#/$defs/WorkbenchImageMetadata", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchImageMetadata" },
+        "providerRevision": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64", "x-bounds": ["nonzero"] },
+        "resolvedModel": { "type": "string", "x-canonical-wire": "len+utf8", "x-rust-type": "String", "x-bounds": ["product.max-model-bytes (512)"] }
+      },
+      "required": ["request", "image", "providerRevision", "resolvedModel"]
+    },
+    "WorkbenchAttachImageIntent": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchIntent",
+      "properties": {
+        "kind": { "type": "string", "enum": ["attachImage"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchIntent" },
+        "preview": { "$ref": "#/$defs/WorkbenchImagePreview", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchImagePreview" },
+        "text": { "type": "string", "x-canonical-wire": "len+utf8", "x-rust-type": "WorkbenchInputText", "x-bounds": ["workbench.max-input-bytes (8192)"] }
+      },
+      "required": ["kind", "preview", "text"]
+    },
+    "WorkbenchSelectImageIntent": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchIntent",
+      "properties": {
+        "kind": { "type": "string", "enum": ["selectImage"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchIntent" },
+        "attachment": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "ControlOperationId", "x-bounds": ["nonzero"] },
+        "selected": { "type": "boolean", "x-canonical-wire": "bool/u8", "x-rust-type": "bool" }
+      },
+      "required": ["kind", "attachment", "selected"]
+    },
+    "WorkbenchImageQuery": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchImageQuery",
+      "properties": {
+        "query": { "$ref": "#/$defs/WorkbenchQuery", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchQuery" },
+        "revision": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64" },
+        "offset": { "type": "integer", "minimum": 0, "maximum": 4294967295, "x-canonical-wire": "u32-be", "x-rust-type": "u32" }
+      },
+      "required": ["query", "revision", "offset"]
+    },
+    "WorkbenchImageRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchImageRow",
+      "properties": {
+        "operation": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "ControlOperationId", "x-bounds": ["nonzero"] },
+        "artifact": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "ArtifactId", "x-bounds": ["nonzero"] },
+        "label": { "type": "string", "x-canonical-wire": "len+utf8", "x-rust-type": "WorkbenchImageLabel", "x-bounds": ["workbench.max-image-label-bytes (1024)"] },
+        "image": { "$ref": "#/$defs/WorkbenchImageMetadata", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchImageMetadata" },
+        "source": { "$ref": "#/$defs/WorkbenchInputRow", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchInputRow" },
+        "selected": { "type": "boolean", "x-canonical-wire": "bool/u8", "x-rust-type": "bool" },
+        "eligible": { "type": "boolean", "x-canonical-wire": "bool/u8", "x-rust-type": "bool" }
+      },
+      "required": ["operation", "artifact", "label", "image", "source", "selected", "eligible"]
+    },
+    "WorkbenchImagePage": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchImagePage",
+      "properties": {
+        "query": { "$ref": "#/$defs/WorkbenchImageQuery", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchImageQuery" },
+        "total": { "type": "integer", "minimum": 0, "maximum": 4294967295, "x-canonical-wire": "u32-be", "x-rust-type": "u32" },
+        "rows": { "type": "array", "items": { "$ref": "#/$defs/WorkbenchImageRow" }, "x-canonical-wire": "len+items", "x-rust-type": "Vec<WorkbenchImageRow>", "x-bounds": ["workbench.max-image-page (32)"] }
+      },
+      "required": ["query", "total", "rows"]
+    },
+    "WorkbenchFileUpload": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchFileUpload",
+      "properties": {
+        "query": { "$ref": "#/$defs/WorkbenchQuery", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchQuery" },
+        "revision": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64", "x-bounds": ["nonzero"] },
+        "metadata": { "$ref": "#/$defs/ArtifactMetadata", "x-canonical-wire": "ordered-fields", "x-rust-type": "ArtifactMetadata" }
+      },
+      "required": ["query", "revision", "metadata"]
+    },
+    "WorkbenchFileRangeAll": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchFileRange",
+      "properties": {
+        "kind": { "type": "string", "enum": ["all"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchFileRange" }
+      },
+      "required": ["kind"]
+    },
+    "WorkbenchFileRangeBytes": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchFileRange",
+      "properties": {
+        "kind": { "type": "string", "enum": ["bytes"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchFileRange" },
+        "start": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64" },
+        "end": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64" }
+      },
+      "required": ["kind", "start", "end"]
+    },
+    "WorkbenchFileRangeLines": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchFileRange",
+      "properties": {
+        "kind": { "type": "string", "enum": ["lines"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchFileRange" },
+        "first": { "type": "integer", "minimum": 0, "maximum": 4294967295, "x-canonical-wire": "u32-be", "x-rust-type": "u32", "x-bounds": ["nonzero"] },
+        "last": { "type": "integer", "minimum": 0, "maximum": 4294967295, "x-canonical-wire": "u32-be", "x-rust-type": "u32", "x-bounds": ["nonzero"] }
+      },
+      "required": ["kind", "first", "last"]
+    },
+    "WorkbenchFileRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchFileRequest",
+      "properties": {
+        "query": { "$ref": "#/$defs/WorkbenchQuery", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchQuery" },
+        "revision": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64", "x-bounds": ["nonzero"] },
+        "path": { "type": "string", "x-canonical-wire": "len+utf8", "x-rust-type": "String", "x-bounds": ["workbench.max-file-path-bytes (4096)"] },
+        "range": { "oneOf": [{ "$ref": "#/$defs/WorkbenchFileRangeAll" }, { "$ref": "#/$defs/WorkbenchFileRangeBytes" }, { "$ref": "#/$defs/WorkbenchFileRangeLines" }], "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchFileRange" },
+        "mode": { "type": "string", "enum": ["snapshot", "refreshOnRequest"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchFileMode" },
+        "provider": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "ProviderProfileId", "x-bounds": ["nonzero"] },
+        "model": { "$ref": "#/$defs/WorkbenchImageModel", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchImageModel" }
+      },
+      "required": ["query", "revision", "path", "range", "mode", "provider", "model"]
+    },
+    "WorkbenchFileMetadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchFileMetadata",
+      "properties": {
+        "sourceDigest": { "type": "string", "pattern": "^[0-9a-f]{64}$", "x-canonical-wire": "fixed[32]", "x-rust-type": "Sha256Digest" },
+        "sourceBytes": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64", "x-bounds": ["workbench.max-context-source-bytes (67108864)"] },
+        "rangeStart": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64" },
+        "rangeEnd": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64" },
+        "digest": { "type": "string", "pattern": "^[0-9a-f]{64}$", "x-canonical-wire": "fixed[32]", "x-rust-type": "Sha256Digest" }
+      },
+      "required": ["sourceDigest", "sourceBytes", "rangeStart", "rangeEnd", "digest"]
+    },
+    "WorkbenchFilePreview": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchFilePreview",
+      "properties": {
+        "request": { "$ref": "#/$defs/WorkbenchFileRequest", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchFileRequest" },
+        "folder": { "type": "string", "pattern": "^[0-9a-f]{64}$", "x-canonical-wire": "fixed[32]", "x-rust-type": "Sha256Digest" },
+        "file": { "$ref": "#/$defs/WorkbenchFileMetadata", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchFileMetadata" },
+        "providerRevision": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64", "x-bounds": ["nonzero"] },
+        "resolvedModel": { "type": "string", "x-canonical-wire": "len+utf8", "x-rust-type": "String", "x-bounds": ["product.max-model-bytes (512)"] }
+      },
+      "required": ["request", "folder", "file", "providerRevision", "resolvedModel"]
+    },
+    "WorkbenchFileImportRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchFileImportRequest",
+      "properties": {
+        "selection": { "$ref": "#/$defs/WorkbenchFileRequest", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchFileRequest" },
+        "artifact": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "ArtifactId", "x-bounds": ["nonzero"] },
+        "file": { "$ref": "#/$defs/WorkbenchFileMetadata", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchFileMetadata" }
+      },
+      "required": ["selection", "artifact", "file"]
+    },
+    "WorkbenchFileImportPreview": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchFileImportPreview",
+      "properties": {
+        "request": { "$ref": "#/$defs/WorkbenchFileImportRequest", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchFileImportRequest" },
+        "providerRevision": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64", "x-bounds": ["nonzero"] },
+        "resolvedModel": { "type": "string", "x-canonical-wire": "len+utf8", "x-rust-type": "String", "x-bounds": ["product.max-model-bytes (512)"] }
+      },
+      "required": ["request", "providerRevision", "resolvedModel"]
+    },
+    "WorkbenchFileQuery": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchFileQuery",
+      "properties": {
+        "query": { "$ref": "#/$defs/WorkbenchQuery", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchQuery" },
+        "revision": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64", "x-bounds": ["nonzero"] },
+        "offset": { "type": "integer", "minimum": 0, "maximum": 4294967295, "x-canonical-wire": "u32-be", "x-rust-type": "u32", "x-bounds": ["workbench.max-file-history (256)"] }
+      },
+      "required": ["query", "revision", "offset"]
+    },
+    "WorkbenchFileRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchFileRow",
+      "properties": {
+        "attachment": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "ControlOperationId", "x-bounds": ["nonzero"] },
+        "version": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "ControlOperationId", "x-bounds": ["nonzero"] },
+        "label": { "type": "string", "x-canonical-wire": "len+utf8", "x-rust-type": "String", "x-bounds": ["workbench.max-file-path-bytes (4096)"] },
+        "mode": { "type": "string", "enum": ["snapshot", "refreshOnRequest"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchFileMode" },
+        "file": { "$ref": "#/$defs/WorkbenchFileMetadata", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchFileMetadata" },
+        "selected": { "type": "boolean", "x-canonical-wire": "bool/u8", "x-rust-type": "bool" },
+        "eligible": { "type": "boolean", "x-canonical-wire": "bool/u8", "x-rust-type": "bool" }
+      },
+      "required": ["attachment", "version", "label", "mode", "file", "selected", "eligible"]
+    },
+    "WorkbenchFilePage": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchFilePage",
+      "properties": {
+        "query": { "$ref": "#/$defs/WorkbenchFileQuery", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchFileQuery" },
+        "total": { "type": "integer", "minimum": 0, "maximum": 4294967295, "x-canonical-wire": "u32-be", "x-rust-type": "u32", "x-bounds": ["workbench.max-file-history (256)"] },
+        "rows": { "type": "array", "items": { "$ref": "#/$defs/WorkbenchFileRow" }, "x-canonical-wire": "len+items", "x-rust-type": "Vec<WorkbenchFileRow>", "x-bounds": ["workbench.max-file-page (32)"] }
+      },
+      "required": ["query", "total", "rows"]
+    },
+    "WorkbenchAttachFileIntent": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchIntent",
+      "properties": {
+        "kind": { "type": "string", "enum": ["attachFile"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchIntent" },
+        "preview": { "$ref": "#/$defs/WorkbenchFilePreview", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchFilePreview" },
+        "text": { "type": "string", "x-canonical-wire": "len+utf8", "x-rust-type": "WorkbenchInputText", "x-bounds": ["workbench.max-input-bytes (8192)"] }
+      },
+      "required": ["kind", "preview", "text"]
+    },
+    "WorkbenchSelectFileIntent": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchIntent",
+      "properties": {
+        "kind": { "type": "string", "enum": ["selectFile"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchIntent" },
+        "attachment": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "ControlOperationId", "x-bounds": ["nonzero"] },
+        "selected": { "type": "boolean", "x-canonical-wire": "bool/u8", "x-rust-type": "bool" }
+      },
+      "required": ["kind", "attachment", "selected"]
+    },
+    "WorkbenchAttachFileImportIntent": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchIntent",
+      "properties": {
+        "kind": { "type": "string", "enum": ["attachFileImport"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchIntent" },
+        "preview": { "$ref": "#/$defs/WorkbenchFileImportPreview", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchFileImportPreview" },
+        "text": { "type": "string", "x-canonical-wire": "len+utf8", "x-rust-type": "WorkbenchInputText", "x-bounds": ["workbench.max-input-bytes (8192)"] }
+      },
+      "required": ["kind", "preview", "text"]
+    },
+    "WorkbenchContextFileSource": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchContextSource",
+      "properties": {
+        "kind": { "type": "string", "enum": ["file"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchContextSource" },
+        "attachment": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "ControlOperationId", "x-bounds": ["nonzero"] },
+        "version": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "ControlOperationId", "x-bounds": ["nonzero"] }
+      },
+      "required": ["kind", "attachment", "version"]
+    },
+    "WorkbenchGoalBudget": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchGoalBudget",
+      "properties": {
+        "maxActiveMillis": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "option+value", "x-rust-type": "Option<u64>", "x-bounds": ["nonzero"] },
+        "maxRequests": { "type": "integer", "minimum": 0, "maximum": 4294967295, "x-canonical-wire": "option+value", "x-rust-type": "Option<u32>", "x-bounds": ["nonzero"] },
+        "maxToolCalls": { "type": "integer", "minimum": 0, "maximum": 4294967295, "x-canonical-wire": "option+value", "x-rust-type": "Option<u32>", "x-bounds": ["nonzero"] },
+        "maxTotalTokens": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "option+value", "x-rust-type": "Option<u64>", "x-bounds": ["nonzero"] }
+      }
+    },
+    "WorkbenchGoalCriterionDefinition": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchGoalCriterionDefinition",
+      "properties": {
+        "kind": { "type": "string", "enum": ["runnerAcceptance", "graphicalPlaytest", "humanValidation"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchGoalCriterionKind" },
+        "description": { "type": "string", "x-canonical-wire": "len+utf8", "x-rust-type": "WorkbenchInputText", "x-bounds": ["workbench.max-input-bytes (8192)"] },
+        "mandatory": { "type": "boolean", "x-canonical-wire": "bool/u8", "x-rust-type": "bool" }
+      },
+      "required": ["kind", "description", "mandatory"]
+    },
+    "WorkbenchGoalDefinition": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchGoalDefinition",
+      "properties": {
+        "objective": { "type": "string", "x-canonical-wire": "len+utf8", "x-rust-type": "WorkbenchInputText", "x-bounds": ["workbench.max-input-bytes (8192)"] },
+        "criteria": { "type": "array", "items": { "$ref": "#/$defs/WorkbenchGoalCriterionDefinition" }, "x-canonical-wire": "len+items", "x-rust-type": "Vec<WorkbenchGoalCriterionDefinition>", "x-bounds": ["workbench.max-goal-criteria (16)"] },
+        "budget": { "$ref": "#/$defs/WorkbenchGoalBudget", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchGoalBudget" }
+      },
+      "required": ["objective", "criteria", "budget"]
+    },
+    "WorkbenchStartGoalIntent": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchIntent",
+      "properties": {
+        "kind": { "type": "string", "enum": ["startGoal"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchIntent" },
+        "definition": { "$ref": "#/$defs/WorkbenchGoalDefinition", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchGoalDefinition" },
+        "settings": { "$ref": "#/$defs/WorkbenchExecutionSettings", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchExecutionSettings" }
+      },
+      "required": ["kind", "definition", "settings"]
+    },
+    "WorkbenchPauseGoalIntent": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchIntent",
+      "properties": {
+        "kind": { "type": "string", "enum": ["pauseGoal"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchIntent" },
+        "goal": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "ControlOperationId", "x-bounds": ["nonzero"] },
+        "mode": { "type": "string", "enum": ["now", "afterOperation", "beforeEdit"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchGoalPauseMode" }
+      },
+      "required": ["kind", "goal", "mode"]
+    },
+    "WorkbenchResumeOrClearGoalIntent": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchIntent",
+      "properties": {
+        "kind": { "type": "string", "enum": ["resumeGoal", "clearGoal"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchIntent" },
+        "goal": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "ControlOperationId", "x-bounds": ["nonzero"] }
+      },
+      "required": ["kind", "goal"]
+    },
+    "WorkbenchUpdateGoalBudgetIntent": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchIntent",
+      "properties": {
+        "kind": { "type": "string", "enum": ["updateGoalBudget"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchIntent" },
+        "goal": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "ControlOperationId", "x-bounds": ["nonzero"] },
+        "budget": { "$ref": "#/$defs/WorkbenchGoalBudget", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchGoalBudget" }
+      },
+      "required": ["kind", "goal", "budget"]
+    },
+    "WorkbenchGoalCriterion": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchGoalCriterion",
+      "properties": {
+        "definition": { "$ref": "#/$defs/WorkbenchGoalCriterionDefinition", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchGoalCriterionDefinition" },
+        "state": { "type": "string", "enum": ["pending", "satisfied", "unavailable", "stale"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchGoalCriterionState" },
+        "evidenceRevision": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "option+value", "x-rust-type": "Option<u64>" }
+      },
+      "required": ["definition", "state"]
+    },
+    "WorkbenchGoalRoleUsage": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchGoalRoleUsage",
+      "properties": {
+        "role": { "type": "string", "enum": ["writer", "reviewer", "fixer"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchGoalRole" },
+        "requests": { "type": "integer", "minimum": 0, "maximum": 4294967295, "x-canonical-wire": "u32-be", "x-rust-type": "u32" },
+        "completedRequests": { "type": "integer", "minimum": 0, "maximum": 4294967295, "x-canonical-wire": "u32-be", "x-rust-type": "u32" },
+        "toolCalls": { "type": "integer", "minimum": 0, "maximum": 4294967295, "x-canonical-wire": "u32-be", "x-rust-type": "u32" },
+        "totalTokens": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "option+value", "x-rust-type": "Option<u64>" },
+        "providerCostMicrounits": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "option+value", "x-rust-type": "Option<u64>" }
+      },
+      "required": ["role", "requests", "completedRequests", "toolCalls"]
+    },
+    "WorkbenchGoalUsage": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchGoalUsage",
+      "properties": {
+        "roles": { "type": "array", "items": { "$ref": "#/$defs/WorkbenchGoalRoleUsage" }, "x-canonical-wire": "ordered-fields", "x-rust-type": "[WorkbenchGoalRoleUsage; 3]", "x-bounds": ["workbench.goal-roles (3)"] },
+        "activeMillis": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64" },
+        "wallMillis": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64" },
+        "retries": { "type": "integer", "minimum": 0, "maximum": 4294967295, "x-canonical-wire": "u32-be", "x-rust-type": "u32" },
+        "providerFailovers": { "type": "integer", "minimum": 0, "maximum": 4294967295, "x-canonical-wire": "u32-be", "x-rust-type": "u32" },
+        "compactions": { "type": "integer", "minimum": 0, "maximum": 4294967295, "x-canonical-wire": "u32-be", "x-rust-type": "u32" },
+        "workspaceBytes": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64" },
+        "workspaceGrowthBytes": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64" },
+        "peakRssBytes": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64" }
+      },
+      "required": ["roles", "activeMillis", "wallMillis", "retries", "providerFailovers", "compactions", "workspaceBytes", "workspaceGrowthBytes", "peakRssBytes"]
+    },
+    "WorkbenchGoalSnapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchGoalSnapshot",
+      "properties": {
+        "query": { "$ref": "#/$defs/WorkbenchQuery", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchQuery" },
+        "aggregateRevision": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64", "x-bounds": ["nonzero"] },
+        "goal": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "ControlOperationId", "x-bounds": ["nonzero"] },
+        "run": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "RunId", "x-bounds": ["nonzero"] },
+        "objective": { "type": "string", "x-canonical-wire": "len+utf8", "x-rust-type": "WorkbenchInputText", "x-bounds": ["workbench.max-input-bytes (8192)"] },
+        "state": { "type": "string", "enum": ["active", "waitingForUser", "pausing", "paused", "blocked", "budgetReached", "achieved", "cancelled"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchGoalState" },
+        "reason": { "type": "string", "x-canonical-wire": "len+utf8", "x-rust-type": "String", "x-bounds": ["workbench.max-goal-reason-bytes (512)"] },
+        "userRevision": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64", "x-bounds": ["nonzero"] },
+        "attempt": { "type": "integer", "minimum": 0, "maximum": 4294967295, "x-canonical-wire": "u32-be", "x-rust-type": "u32", "x-bounds": ["nonzero"] },
+        "restartEligible": { "type": "boolean", "x-canonical-wire": "bool/u8", "x-rust-type": "bool" },
+        "pauseMode": { "type": "string", "enum": ["now", "afterOperation", "beforeEdit"], "x-canonical-wire": "option+value", "x-rust-type": "Option<WorkbenchGoalPauseMode>" },
+        "criteria": { "type": "array", "items": { "$ref": "#/$defs/WorkbenchGoalCriterion" }, "x-canonical-wire": "len+items", "x-rust-type": "Vec<WorkbenchGoalCriterion>", "x-bounds": ["workbench.max-goal-criteria (16)"] },
+        "budget": { "$ref": "#/$defs/WorkbenchGoalBudget", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchGoalBudget" },
+        "usage": { "$ref": "#/$defs/WorkbenchGoalUsage", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchGoalUsage" }
+      },
+      "required": ["query", "aggregateRevision", "goal", "run", "objective", "state", "reason", "userRevision", "attempt", "restartEligible", "criteria", "budget", "usage"]
+    },
+    "ConversationLibraryQuery": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "ConversationLibraryQuery",
+      "properties": {
+        "workspace": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "WorkspaceId", "x-bounds": ["nonzero"] },
+        "literal": { "type": "string", "x-canonical-wire": "option+value", "x-rust-type": "Option<ConversationSearchText>", "x-bounds": ["workbench.max-conversation-search-bytes (256)"] },
+        "includeArchived": { "type": "boolean", "x-canonical-wire": "bool/u8", "x-rust-type": "bool" },
+        "offset": { "type": "integer", "minimum": 0, "maximum": 4294967295, "x-canonical-wire": "u32-be", "x-rust-type": "u32" },
+        "limit": { "type": "integer", "minimum": 0, "maximum": 65535, "x-canonical-wire": "u16-be", "x-rust-type": "u16", "x-bounds": ["nonzero", "workbench.max-conversation-library-page (64)"] }
+      },
+      "required": ["workspace", "includeArchived", "offset", "limit"]
+    },
+    "WorkbenchForkBudget": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchForkBudget",
+      "properties": {
+        "activeMillis": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64", "x-bounds": ["nonzero"] },
+        "requests": { "type": "integer", "minimum": 0, "maximum": 4294967295, "x-canonical-wire": "u32-be", "x-rust-type": "u32", "x-bounds": ["nonzero"] },
+        "toolCalls": { "type": "integer", "minimum": 0, "maximum": 4294967295, "x-canonical-wire": "u32-be", "x-rust-type": "u32", "x-bounds": ["nonzero"] },
+        "totalTokens": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64", "x-bounds": ["nonzero"] }
+      },
+      "required": ["activeMillis", "requests", "toolCalls", "totalTokens"]
+    },
+    "WorkbenchForkRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchForkRequest",
+      "properties": {
+        "child": { "$ref": "#/$defs/WorkbenchQuery", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchQuery" },
+        "title": { "type": "string", "x-canonical-wire": "len+utf8", "x-rust-type": "ConversationTitle", "x-bounds": ["workbench.max-title-bytes (256)"] },
+        "checkpoint": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "ControlOperationId", "x-bounds": ["nonzero"] },
+        "sourceRevision": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64" },
+        "contextGeneration": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64" },
+        "briefRevision": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64" },
+        "goalRevision": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64" },
+        "mode": { "type": "string", "enum": ["readOnlyCurrentWorkspace", "isolatedWritableWorkspace"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchForkMode" },
+        "allocation": { "$ref": "#/$defs/WorkbenchForkBudget", "x-canonical-wire": "option+value", "x-rust-type": "Option<WorkbenchForkBudget>" }
+      },
+      "required": ["child", "title", "checkpoint", "sourceRevision", "contextGeneration", "briefRevision", "goalRevision", "mode"]
+    },
+    "WorkbenchForkIntent": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchIntent",
+      "properties": {
+        "kind": { "type": "string", "enum": ["forkConversation"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchIntent" },
+        "fork": { "$ref": "#/$defs/WorkbenchForkRequest", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchForkRequest" }
+      },
+      "required": ["kind", "fork"]
+    },
+    "ConversationInputSource": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "ConversationMessageSource",
+      "properties": {
+        "kind": { "type": "string", "enum": ["input"], "x-canonical-wire": "u16-be", "x-rust-type": "ConversationMessageSource" },
+        "conversation": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "ConversationId", "x-bounds": ["nonzero"] },
+        "input": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "WorkbenchInputId", "x-bounds": ["nonzero"] },
+        "revision": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64" }
+      },
+      "required": ["kind", "conversation", "input", "revision"]
+    },
+    "ConversationReplySource": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "ConversationMessageSource",
+      "properties": {
+        "kind": { "type": "string", "enum": ["reply"], "x-canonical-wire": "u16-be", "x-rust-type": "ConversationMessageSource" },
+        "conversation": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "ConversationId", "x-bounds": ["nonzero"] },
+        "operation": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "ControlOperationId", "x-bounds": ["nonzero"] }
+      },
+      "required": ["kind", "conversation", "operation"]
+    },
+    "ConversationLegacySource": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "ConversationMessageSource",
+      "properties": {
+        "kind": { "type": "string", "enum": ["legacy"], "x-canonical-wire": "u16-be", "x-rust-type": "ConversationMessageSource" },
+        "run": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "RunId", "x-bounds": ["nonzero"] },
+        "index": { "type": "integer", "minimum": 0, "maximum": 4294967295, "x-canonical-wire": "u32-be", "x-rust-type": "u32" }
+      },
+      "required": ["kind", "run", "index"]
+    },
+    "ConversationSearchSnippet": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "ConversationSearchSnippet",
+      "properties": {
+        "source": { "oneOf": [{ "$ref": "#/$defs/ConversationInputSource" }, { "$ref": "#/$defs/ConversationReplySource" }, { "$ref": "#/$defs/ConversationLegacySource" }], "x-canonical-wire": "ordered-fields", "x-rust-type": "ConversationMessageSource" },
+        "text": { "type": "string", "x-canonical-wire": "len+utf8", "x-rust-type": "String", "x-bounds": ["workbench.max-conversation-snippet-bytes (512)"] }
+      },
+      "required": ["source", "text"]
+    },
+    "WorkbenchBranchLineage": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchBranchLineage",
+      "properties": {
+        "parent": { "$ref": "#/$defs/WorkbenchQuery", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchQuery" },
+        "checkpoint": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "ControlOperationId", "x-bounds": ["nonzero"] },
+        "sourceRevision": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64" },
+        "contextGeneration": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64" },
+        "briefRevision": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64" },
+        "goalRevision": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64" },
+        "mode": { "type": "string", "enum": ["readOnlyCurrentWorkspace", "isolatedWritableWorkspace"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchForkMode" },
+        "allocation": { "$ref": "#/$defs/WorkbenchForkBudget", "x-canonical-wire": "option+value", "x-rust-type": "Option<WorkbenchForkBudget>" }
+      },
+      "required": ["parent", "checkpoint", "sourceRevision", "contextGeneration", "briefRevision", "goalRevision", "mode"]
+    },
+    "ConversationLibraryItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "ConversationLibraryItem",
+      "properties": {
+        "query": { "$ref": "#/$defs/WorkbenchQuery", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchQuery" },
+        "title": { "type": "string", "x-canonical-wire": "len+utf8", "x-rust-type": "ConversationTitle", "x-bounds": ["workbench.max-title-bytes (256)"] },
+        "pinned": { "type": "boolean", "x-canonical-wire": "bool/u8", "x-rust-type": "bool" },
+        "archived": { "type": "boolean", "x-canonical-wire": "bool/u8", "x-rust-type": "bool" },
+        "activityRevision": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64", "x-bounds": ["nonzero"] },
+        "legacyRun": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "option+value", "x-rust-type": "Option<RunId>", "x-bounds": ["nonzero"] },
+        "goalState": { "type": "string", "enum": ["active", "waitingForUser", "pausing", "paused", "blocked", "budgetReached", "achieved", "cancelled"], "x-canonical-wire": "option+value", "x-rust-type": "Option<WorkbenchGoalState>" },
+        "goalDraft": { "type": "boolean", "x-canonical-wire": "bool/u8", "x-rust-type": "bool" },
+        "handoff": { "type": "string", "x-canonical-wire": "len+utf8", "x-rust-type": "String", "x-bounds": ["workbench.max-conversation-handoff-bytes (1024)"] },
+        "snippet": { "$ref": "#/$defs/ConversationSearchSnippet", "x-canonical-wire": "option+value", "x-rust-type": "Option<ConversationSearchSnippet>" },
+        "branch": { "$ref": "#/$defs/WorkbenchBranchLineage", "x-canonical-wire": "option+value", "x-rust-type": "Option<WorkbenchBranchLineage>" }
+      },
+      "required": ["query", "title", "pinned", "archived", "activityRevision", "goalDraft", "handoff"]
+    },
+    "ConversationLibraryPage": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "ConversationLibraryPage",
+      "properties": {
+        "query": { "$ref": "#/$defs/ConversationLibraryQuery", "x-canonical-wire": "ordered-fields", "x-rust-type": "ConversationLibraryQuery" },
+        "total": { "type": "integer", "minimum": 0, "maximum": 4294967295, "x-canonical-wire": "u32-be", "x-rust-type": "u32" },
+        "nextOffset": { "type": "integer", "minimum": 0, "maximum": 4294967295, "x-canonical-wire": "option+value", "x-rust-type": "Option<u32>" },
+        "items": { "type": "array", "items": { "$ref": "#/$defs/ConversationLibraryItem" }, "x-canonical-wire": "len+items", "x-rust-type": "Vec<ConversationLibraryItem>", "x-bounds": ["workbench.max-conversation-library-page (64)"] }
+      },
+      "required": ["query", "total", "items"]
+    },
     "ProductProviderSelection": {
       "type": "object",
       "additionalProperties": false,
@@ -772,6 +2678,16 @@
       },
       "required": ["snapshot", "settlement"]
     },
+    "ProductModelUpdate": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "ProductModelUpdate",
+      "properties": {
+        "runId": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "RunId", "x-bounds": ["nonzero"] },
+        "models": { "$ref": "#/$defs/ProductRoleModels", "x-canonical-wire": "ordered-fields", "x-rust-type": "ProductRoleModels" }
+      },
+      "required": ["runId", "models"]
+    },
     "ProductRunRequest": {
       "type": "object",
       "additionalProperties": false,
@@ -790,7 +2706,8 @@
       "x-rust-type": "ProductModelChoice",
       "properties": {
         "id": { "type": "string", "x-canonical-wire": "len+utf8", "x-rust-type": "String", "x-bounds": ["product.max-model-bytes (512)"] },
-        "manual": { "type": "boolean", "x-canonical-wire": "bool/u8", "x-rust-type": "bool" }
+        "manual": { "type": "boolean", "x-canonical-wire": "bool/u8", "x-rust-type": "bool" },
+        "effort": { "type": "string", "enum": ["default", "minimal", "low", "medium", "high", "xhigh", "max", "ultra"], "x-canonical-wire": "u16-be", "x-rust-type": "ProductModelEffort" }
       },
       "required": ["id", "manual"]
     },

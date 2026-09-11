@@ -9,7 +9,7 @@ publish = false
 readme = "README.md"
 
 [dependencies]
-peritus-types = { version = "=0.0.1", path = "../../../foundation/peritus-types" }
+peritus-types = { version = "=0.0.2", path = "../../../foundation/peritus-types" }
 serde.workspace = true
 sha2.workspace = true
 toml.workspace = true

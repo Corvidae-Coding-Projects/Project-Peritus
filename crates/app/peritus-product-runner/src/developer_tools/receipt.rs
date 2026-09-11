@@ -1,6 +1,7 @@
 //! Durable receipts around mutating developer-tool effects.
 
 mod codec;
+mod replay;
 
 use std::{
     collections::BTreeMap,

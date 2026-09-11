@@ -25,7 +25,7 @@ pub fn definitions() -> Result<Vec<ToolDefinition>, ProductRunnerError> {
         ),
         (
             "workspace_write",
-            "Create or completely replace one workspace-relative text file after current-turn workspace_list and workspace_read grounding. An existing target must itself have been read first. The result reports changed=false when the requested content already matches; move on instead of repeating that write.",
+            "Create or completely replace one workspace-relative text file after current-host-invocation workspace_list and workspace_read grounding. An existing target must itself have been read first. The result reports changed=false when the requested content already matches; move on instead of repeating that write.",
             r#"{"additionalProperties":false,"properties":{"content":{"type":"string"},"path":{"type":"string"}},"required":["content","path"],"type":"object"}"#,
         ),
         (
@@ -40,7 +40,7 @@ pub fn definitions() -> Result<Vec<ToolDefinition>, ProductRunnerError> {
         ),
         (
             "run_command",
-            "Run a non-destructive structured executable and argv to completion through the harness-owned C4 router and C2 process lifecycle after current-turn workspace_list and workspace_read grounding; use it to build, test, lint, inspect Git, apply caller-authorized external effects, and observe failures. Keep build/test worker counts at or below workspace_list.execution_resources.recommended_parallelism. The harness supplies cross-language concurrency defaults and rejects recognized explicit build fan-out above that observed ceiling with a retryable diagnostic. If a required executable is absent, verify its path and inspect available package or runtime managers; in an authorized disposable software or system task, install the ordinary prerequisite and retry the real command instead of fabricating a stand-in deliverable. Before inspecting a large binary, log, database, or generated file, prefer purpose-built filters, bounded ranges, or summary modes so only decision-relevant output enters model context. For binary, deleted, damaged, or truncated data, search for the strongest contract-supplied stable fragment and inspect a bounded neighboring byte or record window before speculative transforms or broad parameter searches; validate the reconstructed whole value against every declared constraint. When a command queries an API or parses structured data, print only the fields needed for the current decision; if the shape is unknown, begin with keys, counts, or a bounded sample instead of dumping nested metadata. Before transferring a whole remote repository, archive, or dataset, inspect an immutable manifest, index, tree, content length, or object-size summary and prefer targeted pinned records. After a bulk transfer times out, do not retry the same collection through a different bulk wrapper without new evidence that it fits the available command budget. The hard output cap is a fallback, not a target. When output still exceeds that cap, the result preserves both its opening context and final diagnostics while omitting the noisy middle. Label each command as external_effect when it performs the requested action or verification when it freshly inspects the completed outcome. Commands default to a 120-second deadline; request 1 through 600 seconds for a known longer build or test. Each request is also clamped to the live shared product deadline while preserving a completion reserve; results report the requested timeout, actual allowance, remaining product seconds, and whether the deadline limited the command. A timeout kills the owned process tree and returns captured output plus recovery guidance so the run can choose a materially bounded strategy. Harness-owned peritus-internal gates are unavailable here and run independently after the turn. Use workspace_remove for intentional file deletion.",
+            "Run a non-destructive structured executable and argv to completion through the harness-owned C4 router and C2 process lifecycle after current-host-invocation workspace_list and workspace_read grounding; use it to build, test, lint, inspect Git, apply caller-authorized external effects, and observe failures. Keep build/test worker counts at or below workspace_list.execution_resources.recommended_parallelism. The harness supplies cross-language concurrency defaults and rejects recognized explicit build fan-out above that observed ceiling with a retryable diagnostic. If a required executable is absent, verify its path and inspect available package or runtime managers; in an authorized disposable software or system task, install the ordinary prerequisite and retry the real command instead of fabricating a stand-in deliverable. Before inspecting a large binary, log, database, or generated file, prefer purpose-built filters, bounded ranges, or summary modes so only decision-relevant output enters model context. For binary, deleted, damaged, or truncated data, search for the strongest contract-supplied stable fragment and inspect a bounded neighboring byte or record window before speculative transforms or broad parameter searches; validate the reconstructed whole value against every declared constraint. When a command queries an API or parses structured data, print only the fields needed for the current decision; if the shape is unknown, begin with keys, counts, or a bounded sample instead of dumping nested metadata. Before transferring a whole remote repository, archive, or dataset, inspect an immutable manifest, index, tree, content length, or object-size summary and prefer targeted pinned records. After a bulk transfer times out, do not retry the same collection through a different bulk wrapper without new evidence that it fits the available command budget. The hard output cap is a fallback, not a target. When output still exceeds that cap, the result preserves both its opening context and final diagnostics while omitting the noisy middle. Label each command as external_effect when it performs the requested action or verification when it freshly inspects the completed outcome. Commands default to a 120-second deadline; request 1 through 600 seconds for a known longer build or test. Each request is also clamped to the live shared product deadline while preserving a completion reserve; results report the requested timeout, actual allowance, remaining product seconds, and whether the deadline limited the command. A timeout kills the owned process tree and returns captured output plus recovery guidance so the run can choose a materially bounded strategy. Harness-owned peritus-internal gates are unavailable here and run independently after the turn. Use workspace_remove for intentional file deletion.",
             r#"{"additionalProperties":false,"properties":{"args":{"items":{"type":"string"},"type":"array"},"cwd":{"type":"string"},"program":{"type":"string"},"purpose":{"enum":["external_effect","verification"],"type":"string"},"timeout_seconds":{"default":120,"maximum":600,"minimum":1,"type":"integer"}},"required":["args","program","purpose"],"type":"object"}"#,
         ),
         (
@@ -102,6 +102,14 @@ pub fn read_only_definitions() -> Result<Vec<ToolDefinition>, ProductRunnerError
     ])
 }
 
+pub fn in_place_definition() -> Result<ToolDefinition, ProductRunnerError> {
+    definition(
+        "workspace_scope",
+        "Declare additional exact workspace-relative task files BEFORE a command creates or modifies them in an in-place folder. File reads/writes are enrolled automatically. This records comparison evidence, not permission; preserve unrelated/private files. Do not declare a whole home directory or build-cache tree.",
+        r#"{"type":"object","additionalProperties":false,"properties":{"paths":{"type":"array","items":{"type":"string"},"minItems":1,"maxItems":256}},"required":["paths"]}"#,
+    )
+}
+
 fn definitions_from(
     definitions: &[(&str, &str, &str)],
 ) -> Result<Vec<ToolDefinition>, ProductRunnerError> {
@@ -123,7 +131,9 @@ fn definition(
         Some(BoundedText::new(description.to_owned(), limits).map_err(|error| protocol(&error))?),
         JsonSchema::parse(schema, SchemaDialect::Draft202012, JsonBounds::schema(limits))
             .map_err(|error| protocol(&error))?,
-        true,
+        // These portable schemas contain optional fields. Provider strict decoding is a
+        // separate model-specific feature; the host still validates tool arguments and access.
+        false,
     ))
 }
 

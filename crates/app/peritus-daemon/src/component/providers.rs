@@ -59,6 +59,8 @@ impl Default for ProviderRegistryLimits {
 /// Concrete C5 adapter selected for one registry entry.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ProviderAdapterKind {
+    /// Named hosted service using its selected wire protocol.
+    Hosted,
     /// First-party `OpenAI` Responses HTTP adapter.
     OpenAi,
     /// First-party Anthropic Messages HTTP adapter.
@@ -203,6 +205,11 @@ fn instantiate(
         })
     };
     match declaration {
+        ProviderDeclaration::Hosted { service, credential, profile } => {
+            let provider =
+                super::hosted::HostedProvider::new(service, credential, profile, direct_broker()?)?;
+            Ok((ProviderAdapterKind::Hosted, Arc::new(provider)))
+        }
         ProviderDeclaration::OpenAi { config, profile } => {
             let provider = OpenAiProvider::new(config, profile, direct_broker()?)?;
             Ok((ProviderAdapterKind::OpenAi, Arc::new(provider)))
@@ -230,7 +237,7 @@ fn instantiate(
     }
 }
 
-struct SharedCredentialSource(Arc<dyn CredentialSource>);
+pub(super) struct SharedCredentialSource(pub(super) Arc<dyn CredentialSource>);
 
 impl CredentialSource for SharedCredentialSource {
     fn resolve(&self, reference: &CredentialReference) -> Result<Credential, ProviderCoreError> {

@@ -159,8 +159,10 @@ fn h2_preparation_is_once_per_native_target_with_every_scenario_retained() {
     for (index, shard) in shards.iter().enumerate() {
         assert_eq!(shard.as_i64(), Some(i64::try_from(index).expect("index")));
     }
-    for job in ["bootstrap", "build-h2-binary", "prepare-h2", "h2"] {
-        assert_eq!(document["jobs"][job]["timeout-minutes"].as_i64(), Some(10));
+    for (job, timeout) in
+        [("bootstrap", 10), ("build-h2-binary", 15), ("prepare-h2", 10), ("h2", 10)]
+    {
+        assert_eq!(document["jobs"][job]["timeout-minutes"].as_i64(), Some(timeout));
         assert_eq!(document["jobs"][job]["strategy"]["fail-fast"].as_bool(), Some(false));
     }
 }

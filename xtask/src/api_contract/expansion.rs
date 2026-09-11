@@ -7,6 +7,8 @@ use crate::source::reference_lexer::{Token, TokenKind};
 mod attributes;
 #[path = "expansion/environment.rs"]
 mod environment;
+#[path = "expansion/external.rs"]
+mod external;
 
 const MODELED_MACROS: &[&str] = &[
     "assert",
@@ -16,11 +18,14 @@ const MODELED_MACROS: &[&str] = &[
     "include",
     "matches",
     "panic",
+    "println",
     "params",
     "proof",
     "vec",
     "verus",
+    "unreachable",
     "write",
+    "writeln",
 ];
 const FORBIDDEN_EXPANSION_NAMES: &[&str] = &["state_machine", "tokenized_state_machine"];
 
@@ -42,6 +47,11 @@ pub(super) fn violations(tokens: &[Token]) -> Vec<Violation> {
         if identifier_is(&tokens[cursor], "use") {
             inspect_use(tokens, cursor, &local_modules, &mut violations);
         }
+        if identifier_is(&tokens[cursor], "extern")
+            && tokens.get(cursor + 1).is_some_and(|token| identifier_is(token, "crate"))
+        {
+            inspect_use(tokens, cursor + 1, &local_modules, &mut violations);
+        }
         if punctuation_is(&tokens[cursor], '#') {
             let mut open = cursor + 1;
             if tokens.get(open).is_some_and(|token| punctuation_is(token, '!')) {
@@ -57,13 +67,14 @@ pub(super) fn violations(tokens: &[Token]) -> Vec<Violation> {
                     tokens[cursor].line,
                     deserialize_imported,
                     serialize_imported,
+                    !local_modules.contains(&"tokio"),
                     &mut violations,
                 );
                 cursor = end;
                 continue;
             }
         }
-        inspect_macro(tokens, cursor, params_imported, &mut violations);
+        inspect_macro(tokens, cursor, params_imported, &local_modules, &mut violations);
         cursor += 1;
     }
     violations
@@ -83,6 +94,7 @@ fn inspect_macro(
     tokens: &[Token],
     cursor: usize,
     params_imported: bool,
+    local_modules: &[&str],
     violations: &mut Vec<Violation>,
 ) {
     let TokenKind::Identifier(name, raw) = &tokens[cursor].kind else { return };
@@ -101,7 +113,9 @@ fn inspect_macro(
         && punctuation_is(&tokens[cursor - 1], ':');
     let modeled = MODELED_MACROS.contains(&name.as_str())
         || name == "env" && environment::audited_cargo_env(tokens, cursor);
-    if *raw || qualified || !modeled || name == "params" && !params_imported {
+    let audited_external = external::audited_macro(tokens, cursor, local_modules);
+    if *raw || !audited_external && (qualified || !modeled || name == "params" && !params_imported)
+    {
         violations.push(Violation {
             line: tokens[cursor].line,
             function: if qualified { format!("qualified::{name}!") } else { format!("{name}!") },
@@ -191,13 +205,18 @@ fn inspect_use(
     let expansion_names = imported_expansion_names(declaration);
     let imports_only_audited_expansion = expansion_names == ["params"]
         && audited_params_declaration(declaration)
-        || expansion_names == ["Deserialize"]
-            && attributes::audited_deserialize_declaration(declaration)
-        || expansion_names == ["Serialize"]
-            && attributes::audited_serialize_declaration(declaration);
-    let imports_modeled_macro = expansion_names
-        .iter()
-        .any(|name| MODELED_MACROS.contains(name) || FORBIDDEN_EXPANSION_NAMES.contains(name));
+        || !expansion_names.is_empty()
+            && expansion_names.iter().all(|name| match *name {
+                "Deserialize" => attributes::audited_deserialize_declaration(declaration),
+                "Serialize" => attributes::audited_serialize_declaration(declaration),
+                "json" => external::audited_json_declaration(declaration),
+                _ => false,
+            });
+    let imports_modeled_macro = expansion_names.iter().any(|name| {
+        MODELED_MACROS.contains(name)
+            || FORBIDDEN_EXPANSION_NAMES.contains(name)
+            || external::is_expansion_name(name)
+    });
     let unaudited_expansion_import = !imports_only_audited_expansion
         && (imports_modeled_macro || !trusted_namespace && !expansion_names.is_empty());
     if expansion_alias || unaudited_expansion_import || !trusted_namespace && glob {
@@ -294,6 +313,7 @@ fn is_expansion_name(name: &str) -> bool {
     attributes::is_expansion_name(name)
         || MODELED_MACROS.contains(&name)
         || FORBIDDEN_EXPANSION_NAMES.contains(&name)
+        || external::is_expansion_name(name)
 }
 
 fn matching_group(tokens: &[Token], open: usize, opening: char, closing: char) -> Option<usize> {

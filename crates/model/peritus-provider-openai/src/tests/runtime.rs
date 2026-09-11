@@ -1,5 +1,8 @@
 //! Direct Codex runtime projection, decoder, process, and cancellation tests.
 
+#[path = "runtime_output.rs"]
+mod output;
+
 use std::collections::BTreeSet;
 
 use peritus_model_protocol::{Capability, RequestedCapabilities, negotiate};
@@ -23,6 +26,8 @@ fn profile_and_projection_are_exact_and_minimum_safe() {
     assert!(prompt.contains("PERITUS_PROVIDER_REQUEST_JSON"));
     assert!(prompt.contains("host_tools"));
     assert!(prompt.contains("max_output_tokens_advisory"));
+    assert!(prompt.contains("Continue the assistant at the end of its messages array"));
+    assert!(prompt.contains("not a new Peritus host invocation"));
     assert_eq!(encoded.reasoning_effort(), "high");
     assert_eq!(
         schema.pointer("/properties/tool_calls/items/properties/name/enum/0"),
@@ -62,14 +67,16 @@ fn inline_image_is_staged_outside_the_prompt_with_a_digest_descriptor() {
 #[test]
 fn decoder_accepts_current_lifecycle_and_exact_duplicates() {
     let allowed = BTreeSet::from(["lookup".to_owned()]);
-    let success = decode(&fixture("runtime-success.jsonl"), &allowed, 2).expect("success");
+    let success =
+        decode(&fixture("runtime-success.jsonl"), &allowed, 0..=2, None).expect("success");
     assert_eq!(success.content, "fixture response");
     assert_eq!(success.usage.input_tokens(), Some(12));
-    let ordered = decode(&fixture("runtime-ordered-duplicate.jsonl"), &allowed, 2)
+    let ordered = decode(&fixture("runtime-ordered-duplicate.jsonl"), &allowed, 0..=2, None)
         .expect("ordered transcript");
     assert_eq!(ordered.raw_events, 5);
     assert_eq!(ordered.duplicates, 1);
-    let tool = decode(&fixture("runtime-tool.jsonl"), &allowed, 2).expect("tool transcript");
+    let tool =
+        decode(&fixture("runtime-tool.jsonl"), &allowed, 0..=2, None).expect("tool transcript");
     assert_eq!(tool.tool_calls.len(), 1);
     assert_eq!(tool.tool_calls[0].name, "lookup");
 }
@@ -78,19 +85,19 @@ fn decoder_accepts_current_lifecycle_and_exact_duplicates() {
 fn decoder_rejects_corruption_incompletion_and_native_execution() {
     let allowed = BTreeSet::new();
     assert!(matches!(
-        decode(&fixture("runtime-malformed.jsonl"), &allowed, 0),
+        decode(&fixture("runtime-malformed.jsonl"), &allowed, 0..=0, None),
         Err(DecodeFailure::Malformed)
     ));
     assert!(matches!(
-        decode(&fixture("runtime-incomplete.jsonl"), &allowed, 0),
+        decode(&fixture("runtime-incomplete.jsonl"), &allowed, 0..=0, None),
         Err(DecodeFailure::Incomplete)
     ));
     assert!(matches!(
-        decode(&fixture("runtime-native-tool.jsonl"), &allowed, 0),
+        decode(&fixture("runtime-native-tool.jsonl"), &allowed, 0..=0, None),
         Err(DecodeFailure::NativeTool)
     ));
     assert!(matches!(
-        decode(&fixture("runtime-auth-error.jsonl"), &allowed, 0),
+        decode(&fixture("runtime-auth-error.jsonl"), &allowed, 0..=0, None),
         Err(DecodeFailure::Authentication)
     ));
 }
@@ -131,7 +138,9 @@ fn decoder_classifies_common_runtime_failures_without_retaining_provider_text() 
         ),
     ];
     for (transcript, expected) in cases {
-        assert!(matches!(decode(transcript, &allowed, 0), Err(actual) if actual == expected));
+        assert!(
+            matches!(decode(transcript, &allowed, 0..=0, None), Err(actual) if actual == expected)
+        );
     }
 }
 

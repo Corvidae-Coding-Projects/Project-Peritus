@@ -13,9 +13,13 @@ use peritus_app_protocol::{
 use peritus_daemon::{AppFrameStream, DaemonConfig, DaemonRuntime, LocalEndpointAddress};
 use tokio::{net::UnixStream, runtime::Builder};
 
+#[path = "runtime/doctor.rs"]
+mod doctor;
 #[path = "runtime/scheduler.rs"]
 mod scheduler;
 mod support;
+#[path = "runtime/workbench.rs"]
+mod workbench;
 
 fn client_hello() -> ClientHello {
     ClientHello::new(

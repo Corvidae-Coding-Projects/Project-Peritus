@@ -9,6 +9,10 @@ Downloads require HTTPS and have time and size limits. Installation does not sig
 provider authority. Discovery checks PATH and the vendor's standard native directory; callers pass
 the resulting canonical executable path to the daemon without changing the process environment.
 
+Windows account-status probes run without an attached console, so provider startup cannot rename
+the user's terminal even when standard output is captured. Claude subprocesses also receive its
+documented title-update opt-out. Interactive login retains terminal access.
+
 The crate observes only bounded status facts and process exit status. It does not grant provider,
 tool, workspace, or approval authority; validated selections are persisted by
 `peritus-product-state` and instantiated by G0/C5.

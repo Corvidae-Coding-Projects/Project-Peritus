@@ -12,9 +12,9 @@ keywords = ["telemetry", "opentelemetry", "metrics", "formal-verification"]
 categories = ["development-tools::profiling", "data-structures"]
 
 [dependencies]
-peritus-codec = { version = "=0.0.1", path = "../../foundation/peritus-codec" }
-peritus-trace = { version = "=0.0.1", path = "../peritus-trace" }
-peritus-types = { version = "=0.0.1", path = "../../foundation/peritus-types" }
+peritus-codec = { version = "=0.0.2", path = "../../foundation/peritus-codec" }
+peritus-trace = { version = "=0.0.2", path = "../peritus-trace" }
+peritus-types = { version = "=0.0.2", path = "../../foundation/peritus-types" }
 vstd.workspace = true
 
 [dev-dependencies]

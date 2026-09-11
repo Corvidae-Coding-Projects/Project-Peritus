@@ -53,6 +53,11 @@ impl OpenAiProvider {
         credentials: Arc<dyn CredentialSource>,
     ) -> Result<Self, ProviderCoreError> {
         crate::profile::validate(&profile)?;
+        if config.is_gateway() && profile.state_mode() != StateMode::StatelessReplay {
+            return Err(error::invalid(
+                "OpenCode gateway supports only stateless replay in this adapter",
+            ));
+        }
         let transport = ReqwestTransport::new(config.http_limits())?;
         Ok(Self::compose(config, profile, credentials, Arc::new(transport)))
     }
@@ -112,6 +117,10 @@ impl OpenAiProvider {
 }
 
 impl ModelProvider for OpenAiProvider {
+    fn supports_reasoning_effort(&self, _effort: peritus_model_protocol::ReasoningEffort) -> bool {
+        self.profile().capabilities().supports(Capability::ReasoningControls)
+    }
+
     fn discover_models<'a>(
         &'a self,
         cancellation: &'a CancellationToken,

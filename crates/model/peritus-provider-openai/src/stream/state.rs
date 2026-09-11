@@ -20,7 +20,7 @@ pub(super) struct ItemState {
     pub kind: ItemKind,
     pub call_id: Option<ToolCallId>,
     pub call_name: Option<ToolName>,
-    pub arguments: Vec<u8>,
+    pub arguments: peritus_provider_core::healing::ToolArgumentBuffer,
     pub arguments_done: bool,
     pub completed: bool,
 }

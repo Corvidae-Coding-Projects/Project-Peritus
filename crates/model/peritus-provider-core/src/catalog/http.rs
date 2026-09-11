@@ -21,6 +21,10 @@ const MAX_TOTAL_BYTES: usize = 16 * 1024 * 1024;
 pub enum CatalogDialect {
     /// OpenAI-style `data` array, also used by compatible endpoints.
     OpenAi,
+    /// Fireworks management catalog with model names and token pagination.
+    Fireworks,
+    /// Together AI exposes a top-level model array.
+    Together,
     /// Anthropic `data`, `has_more`, and `last_id` pagination.
     Anthropic,
     /// Google `models` and `nextPageToken` pagination.
@@ -94,15 +98,31 @@ async fn discover(
         }
         let page: Value = serde_json::from_slice(&bytes)
             .map_err(|_| unavailable("provider returned an invalid model catalog"))?;
-        let values = page
-            .get(if dialect == CatalogDialect::Google { "models" } else { "data" })
-            .and_then(Value::as_array)
-            .ok_or_else(|| unavailable("provider catalog is missing its model array"))?;
+        let values = if dialect == CatalogDialect::Together {
+            Some(&page)
+        } else {
+            page.get(if matches!(dialect, CatalogDialect::Google | CatalogDialect::Fireworks) {
+                "models"
+            } else {
+                "data"
+            })
+        }
+        .and_then(Value::as_array)
+        .ok_or_else(|| unavailable("provider catalog is missing its model array"))?;
         if values.len() > MAX_CATALOG_MODELS {
             return Err(unavailable("model catalog exceeds its entry bound"));
         }
         for value in values {
-            let model = parse::model(value, dialect == CatalogDialect::Google)?;
+            if dialect == CatalogDialect::Fireworks
+                && (value.get("supportsServerless").and_then(Value::as_bool) == Some(false)
+                    || !value.get("conversationConfig").is_some_and(Value::is_object))
+            {
+                continue;
+            }
+            let model = parse::model(
+                value,
+                matches!(dialect, CatalogDialect::Google | CatalogDialect::Fireworks),
+            )?;
             if let Some(prior) = models.insert(model.id.as_str().to_owned(), model.clone())
                 && prior != model
             {
@@ -112,7 +132,7 @@ async fn discover(
                 return Err(unavailable("model catalog exceeds its entry bound"));
             }
         }
-        let cursor = if dialect == CatalogDialect::Google {
+        let cursor = if matches!(dialect, CatalogDialect::Google | CatalogDialect::Fireworks) {
             page.get("nextPageToken").and_then(Value::as_str).filter(|value| !value.is_empty())
         } else if page.get("has_more").and_then(Value::as_bool) == Some(true) {
             Some(
@@ -132,11 +152,20 @@ async fn discover(
         if cursor.len() > 4096 || !cursors.insert(cursor.to_owned()) {
             return Err(unavailable("model catalog pagination cursor is repeated or oversized"));
         }
-        next = endpoint.url().clone();
-        next.query_pairs_mut().append_pair(
-            if dialect == CatalogDialect::Google { "pageToken" } else { "after_id" },
-            cursor,
-        );
+        next = next_page(endpoint, dialect, cursor);
     }
     Err(unavailable("model catalog exceeds its page bound; no partial catalog was substituted"))
+}
+
+fn next_page(endpoint: &Endpoint, dialect: CatalogDialect, cursor: &str) -> url::Url {
+    let mut next = endpoint.url().clone();
+    next.query_pairs_mut().append_pair(
+        if matches!(dialect, CatalogDialect::Google | CatalogDialect::Fireworks) {
+            "pageToken"
+        } else {
+            "after_id"
+        },
+        cursor,
+    );
+    next
 }

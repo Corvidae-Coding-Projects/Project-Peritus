@@ -1,0 +1,88 @@
+=== PERITUS GATE RECORD ===
+{"argv": ["cargo", "test", "--package", "peritus-review", "--all-targets", "--all-features", "--locked"], "command": "cargo test --package peritus-review --all-targets --all-features --locked", "command_exit_code": 0, "custody_error": null, "duration_seconds": 1.091569, "finished_at": "2026-09-10T01:51:41.196795Z", "kind": "ordinary-test", "owning_crate": "peritus-review", "result": "passed", "schema": "peritus.formal-package-gate-output", "schema_version": 1, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "started_at": "2026-09-10T01:51:40.145698Z", "verification_class": "H"}
+=== STDOUT LOG ===
+=== PERITUS CUSTODY HEADER ===
+{"argv": ["cargo", "test", "--package", "peritus-review", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "owning_crate": "peritus-review", "schema": "peritus.formal-package-evidence-stream", "schema_version": 1, "sequence": 85, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "stream": "stdout", "verification_class": "H"}
+=== COMMAND OUTPUT ===
+
+running 10 tests
+test product::finding::tests::stable_title_identity_ignores_updated_location_evidence ... ok
+test product::finding::tests::advisory_is_nonblocking_in_every_category ... ok
+test product::finding::tests::policy_still_blocks_material_findings ... ok
+test product::ledger::tests::conserved_advisory_does_not_block_acceptance ... ok
+test product::ledger::tests::omission_cannot_close_finding_until_fixer_and_fresh_review ... ok
+test product::ledger::tests::clean_reviews_restore_without_permitting_findings_outside_the_ledger_cycle ... ok
+test product::ledger::tests::repeated_finding_updates_location_without_forking_identity ... ok
+test wire::command::codec_tests::codec_command_and_event_round_trip_with_closed_tags ... ok
+test product::ledger::tests::restore_coalesces_pre_v2_location_duplicates_fail_closed ... ok
+test wire::fixture_tests::canonical_binary_corpus_is_exact_and_rejects_closed_tag_or_trailing_corruption ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 1 test
+test semantic_finding_digest_ignores_identity_provenance_and_confidence ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 6 tests
+test checked_bounds_and_context_plan_binding_reject_invalid_input ... ok
+test cancellation_budget_exhaustion_and_failure_never_become_completion ... ok
+test each_independence_fact_stays_visible_in_the_report ... ok
+test fixer_evidence_needs_independent_current_reviewer_confirmation ... ok
+test independent_quorum_dimensions_and_truthful_completion ... ok
+test external_waiver_is_consumed_exactly_and_revision_advance_resets_current_truth ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 1 test
+test every_revision_tuple_component_is_an_independent_freshness_fence ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 5 tests
+test dispute_invalidation_and_cycle_cancellation_follow_first_legal_transition ... ok
+test worsening_maximum_severity_is_reported_as_regression ... ok
+test repeated_fingerprint_and_cycle_exhaustion_finalize_needs_human ... ok
+test proposed_supersession_needs_exact_independent_confirmation ... ok
+test reconciliation_retains_all_sources_evidence_and_history ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 3 tests
+test pause_resume_is_canonical_durable_idempotent_and_authority_neutral ... ok
+test durability_restart_idempotency_conflict_and_checkpoint_corruption ... ok
+test absent_ahead_and_behind_checkpoints_fail_closed ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+
+running 1 test
+test replay_of_an_absent_review_aggregate_is_explicitly_empty ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+=== PERITUS CUSTODY FOOTER ===
+{"command_exit_code": 0, "execution_error": null, "finished_at": "2026-09-10T01:51:41.196795Z"}
+
+=== STDERR LOG ===
+=== PERITUS CUSTODY HEADER ===
+{"argv": ["cargo", "test", "--package", "peritus-review", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "owning_crate": "peritus-review", "schema": "peritus.formal-package-evidence-stream", "schema_version": 1, "sequence": 85, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "stream": "stderr", "verification_class": "H"}
+=== COMMAND OUTPUT ===
+   Compiling peritus-review v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/orchestration/peritus-review)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.98s
+     Running unittests src/lib.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/peritus_review-27b360fd4a7040de)
+     Running tests/codec_digests.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/codec_digests-673f924e18a2cb35)
+     Running tests/domain_engine.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/domain_engine-b4e57a038540cef5)
+     Running tests/domain_freshness.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/domain_freshness-91238d3fc682102a)
+     Running tests/domain_transitions.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/domain_transitions-bf0030a3ad3d3875)
+     Running tests/durability_restart.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/durability_restart-5bd5be23d8f99fda)
+     Running tests/replay_empty.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/replay_empty-37c6414224e8bc12)
+
+=== PERITUS CUSTODY FOOTER ===
+{"command_exit_code": 0, "execution_error": null, "finished_at": "2026-09-10T01:51:41.196795Z"}

@@ -20,12 +20,12 @@ verification-class = "H"
 verify = true
 
 [dependencies]
-peritus-codec = { version = "=0.0.1", path = "../../foundation/peritus-codec" }
-peritus-network = { version = "=0.0.1", path = "../peritus-network" }
-peritus-process = { version = "=0.0.1", path = "../peritus-process" }
-peritus-sandbox = { version = "=0.0.1", path = "../peritus-sandbox" }
-peritus-secrets = { version = "=0.0.1", path = "../peritus-secrets" }
-peritus-types = { version = "=0.0.1", path = "../../foundation/peritus-types" }
+peritus-codec = { version = "=0.0.2", path = "../../foundation/peritus-codec" }
+peritus-network = { version = "=0.0.2", path = "../peritus-network" }
+peritus-process = { version = "=0.0.2", path = "../peritus-process" }
+peritus-sandbox = { version = "=0.0.2", path = "../peritus-sandbox" }
+peritus-secrets = { version = "=0.0.2", path = "../peritus-secrets" }
+peritus-types = { version = "=0.0.2", path = "../../foundation/peritus-types" }
 vstd.workspace = true
 zeroize.workspace = true
 
@@ -35,7 +35,7 @@ nix = { workspace = true, features = ["fs", "resource"] }
 seccompiler = { version = "=0.5.0", default-features = false, features = ["json"] }
 
 [dev-dependencies]
-peritus-conformance = { version = "=0.0.1", path = "../../app/testing/peritus-conformance" }
+peritus-conformance = { version = "=0.0.2", path = "../../app/testing/peritus-conformance" }
 tempfile.workspace = true
 
 [[bin]]

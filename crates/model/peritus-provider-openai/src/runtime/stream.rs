@@ -32,6 +32,9 @@ impl CodexRuntimeStream {
             response_id: None,
             model: Some(request.model().clone()),
         })?;
+        for repair in turn.repairs {
+            builder.push(repair)?;
+        }
         if !turn.content.is_empty() {
             let message_id = item_id(&prefix, "message", 0)?;
             builder.push(ModelEvent::ItemStarted {
@@ -83,6 +86,23 @@ impl CodexRuntimeStream {
         partial: bool,
     ) -> Result<Self, ProviderCoreError> {
         Self::terminal(model, ModelEvent::ResponseFailed(failure), digest_source, partial)
+    }
+
+    pub(super) fn failed_observed(
+        model: ModelName,
+        failure: ModelFailure,
+        digest_source: &'static [u8],
+        partial: bool,
+        usage: peritus_model_protocol::UsageCounters,
+    ) -> Result<Self, ProviderCoreError> {
+        if !has_usage(usage) {
+            return Self::failed(model, failure, digest_source, partial);
+        }
+        let mut builder = Builder::new(peritus_codec::sha256(digest_source));
+        builder.push(ModelEvent::ResponseStarted { response_id: None, model: Some(model) })?;
+        builder.push(ModelEvent::Usage(UsageObservation::new(UsageScope::Final, usage, None)))?;
+        builder.push(ModelEvent::ResponseFailed(failure))?;
+        Ok(Self { pending: builder.pending })
     }
 
     pub(super) fn cancelled(model: ModelName) -> Result<Self, ProviderCoreError> {

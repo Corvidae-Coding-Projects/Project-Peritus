@@ -23,8 +23,22 @@ const RUNNER_ENTRIES: [(&str, &str); 6] = [
     ("windows-2025", "test-runner-product"),
 ];
 
-const DAEMON_ENTRIES: [(&str, &str); 3] =
-    [("ubuntu-24.04", "test-daemon"), ("macos-15", "test-daemon"), ("windows-2025", "test-daemon")];
+const DAEMON_ENTRIES: [(&str, &str); 14] = [
+    ("ubuntu-24.04", "test-daemon"),
+    ("macos-15", "test-daemon"),
+    ("windows-2025", "test-daemon"),
+    ("windows-2025", "test-daemon-product"),
+    ("windows-2025", "test-daemon-cancellation"),
+    ("windows-2025", "test-daemon-continuation"),
+    ("windows-2025", "test-daemon-interaction"),
+    ("windows-2025", "test-daemon-folder"),
+    ("windows-2025", "test-daemon-workbench"),
+    ("windows-2025", "test-daemon-checkpoints"),
+    ("windows-2025", "test-daemon-models"),
+    ("windows-2025", "test-daemon-library"),
+    ("windows-2025", "test-daemon-review"),
+    ("windows-2025", "test-daemon-rewinds"),
+];
 
 pub(super) fn has_exact_test_includes(value: Option<&Yaml>) -> bool {
     let Some(entries) = value.and_then(Yaml::as_vec) else { return false };

@@ -1,0 +1,71 @@
+=== PERITUS GATE RECORD ===
+{"argv": ["cargo", "test", "--package", "peritus-workspace", "--all-targets", "--all-features", "--locked"], "command": "cargo test --package peritus-workspace --all-targets --all-features --locked", "command_exit_code": 0, "custody_error": null, "duration_seconds": 1.794635, "finished_at": "2026-09-10T01:53:29.615172Z", "kind": "ordinary-test", "owning_crate": "peritus-workspace", "result": "passed", "schema": "peritus.formal-package-gate-output", "schema_version": 1, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "started_at": "2026-09-10T01:53:27.859267Z", "verification_class": "H"}
+=== STDOUT LOG ===
+=== PERITUS CUSTODY HEADER ===
+{"argv": ["cargo", "test", "--package", "peritus-workspace", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "owning_crate": "peritus-workspace", "schema": "peritus.formal-package-evidence-stream", "schema_version": 1, "sequence": 129, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "stream": "stdout", "verification_class": "H"}
+=== COMMAND OUTPUT ===
+
+running 12 tests
+test scoped_inspection::read::tests::range_scanning_is_chunk_independent_and_preserves_original_line_terminators ... ok
+test scoped_inspection::read::tests::nonexistent_last_line_and_oversized_selected_lines_reject_without_partial_result ... ok
+test reconcile::tests::post_fence_classification_never_guesses_safety ... ok
+test verified::tests::authority_gate_rejects_every_missing_fact ... ok
+test scoped_inspection::read::tests::replaced_file_identity_and_changed_same_length_content_invalidate_the_observation ... ok
+test scoped_inspection::tests::symlinks_at_every_component_and_replaced_roots_cannot_read_an_outside_file ... ok
+test verified::tests::resource_identity_rejects_each_independent_mismatch ... ok
+test scoped_inspection::tests::races::an_open_capability_rejects_a_replaced_root_before_publishing_source_bytes ... ok
+test scoped_inspection::tests::exact_bytes_ranges_and_full_source_digests_are_independent_and_never_truncated ... ok
+test scoped_inspection::tests::races::fifo_socket_and_directory_reject_as_non_regular_files_without_waiting_for_a_writer ... ok
+test scoped_inspection::tests::races::concurrent_intermediate_symlink_swaps_never_publish_outside_bytes ... ok
+test scoped_inspection::tests::empty_files_large_ranged_files_and_invalid_bounds_have_explicit_results ... ok
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.17s
+
+
+running 13 tests
+test namespace_safety::reconciliation_observes_unrelated_namespace_child_without_quarantining_it ... ok
+test clean_open_rejects_a_worktree_that_differs_from_the_current_snapshot_tree ... ok
+test namespace_safety::open_rejects_a_transaction_root_that_contains_the_managed_worktree ... ok
+test folder::recovery_requires_the_exact_consumed_canonical_action_before_classifying_cleaned_state ... ok
+test folder::registered_folder_applies_exact_bytes_with_committed_authority_and_rejects_replay ... ok
+test folder::intervening_edit_conflicts_without_overwrite ... ok
+test folder::committed_authority_must_match_the_folder_owners_full_revision_tuple ... ok
+test exact_committed_receipts_are_required_before_real_patch_effect ... ok
+test durable_action_marker_rejects_receipt_replay_after_full_reopen ... ok
+test snapshot_publication::candidate_quota_failure_releases_the_unpublished_snapshot ... ok
+test caller_binding::distinct_tool_parent_binding_is_committed_and_swaps_have_no_effect ... ok
+test rollback_stays_dirty_when_manifest_finalization_fails_after_restore ... ok
+test gateway_runs_candidate_rollback_and_clean_reconciliation_with_real_effects ... ok
+
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.50s
+
+
+running 1 test
+test production_workspace_passes_a2_git_patch_snapshot_and_recovery_suite ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.52s
+
+
+running 2 tests
+test registration_rejects_malformed_bytes_and_read_only_worktrees ... ok
+test workspace_registration_round_trips_exact_reopen_inputs ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+
+=== PERITUS CUSTODY FOOTER ===
+{"command_exit_code": 0, "execution_error": null, "finished_at": "2026-09-10T01:53:29.615172Z"}
+
+=== STDERR LOG ===
+=== PERITUS CUSTODY HEADER ===
+{"argv": ["cargo", "test", "--package", "peritus-workspace", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "owning_crate": "peritus-workspace", "schema": "peritus.formal-package-evidence-stream", "schema_version": 1, "sequence": 129, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "stream": "stderr", "verification_class": "H"}
+=== COMMAND OUTPUT ===
+   Compiling peritus-workspace v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/runtime/peritus-workspace)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.49s
+     Running unittests src/lib.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/peritus_workspace-11b61d32941b804e)
+     Running tests/authorized_gateway.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/authorized_gateway-e19d23785f935d1e)
+     Running tests/production_conformance.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/production_conformance-3b7bfefb39bef29d)
+     Running tests/workspace_registration.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/workspace_registration-16552c3979644373)
+
+=== PERITUS CUSTODY FOOTER ===
+{"command_exit_code": 0, "execution_error": null, "finished_at": "2026-09-10T01:53:29.615172Z"}

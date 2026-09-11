@@ -37,7 +37,23 @@ caching receive `CachePolicy::Automatic`; unsupported profiles remain explicitly
 Recoverable empty, malformed, interrupted, and transport turns use the shared checked exponential
 retry planner. Each wait has stable bounded jitter, honors a bounded provider `Retry-After`, remains
 promptly cancellable, and records its reason, attempt, elapsed time, and selected delay before
-sleeping.
+sleeping. Each provider attempt owns a separate cancellation token: stream cleanup cannot cancel
+the caller or prevent its next retry. Caller cancellation and dropping the loop still stop the
+pending attempt, including a provider connection that has not returned a stream yet.
+
+Every provider step carries one replacement system-policy projection with its current host
+invocation step and live executor prerequisite. Transport retries and local context reconstruction
+do not reset grounding or replay invocation-entry recovery instructions. Local context ports must
+retain that exact current projection before budgeting and checkpoint publication; stale projections
+fail before provider dispatch. An executor's terminal continuation blocker is checked only after
+the complete tool batch has been recorded and handed to local context, and is a nonretryable tool
+failure rather than a new provider-recovery segment.
+
+The optional `DeveloperTrace::account` callback reports admitted model attempts, completed tool
+observations, compactions, and accepted per-response usage high-water snapshots immediately.
+Hosts can retain accounting even when a later error or cancellation prevents a successful loop
+outcome. Usage events replace the preceding snapshot for that request; they are not additive.
+The default callback is inert for existing trace implementations and does not change trace bytes.
 
 Model output is never tool authority, and D0 completion is never run acceptance. B0/B1/C0/C4 own
 the receipts that authorize effects; later D1/D2/E0 components own gates, review, orchestration,

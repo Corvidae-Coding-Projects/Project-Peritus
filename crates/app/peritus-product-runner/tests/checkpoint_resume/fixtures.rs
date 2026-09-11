@@ -39,6 +39,7 @@ pub fn input(
 ) -> ProductRunInput {
     let run_id = RunId::new([run; 16]).expect("run ID");
     ProductRunInput {
+        workspace_kind: peritus_product_runner::ProductWorkspaceKind::Managed,
         run_id,
         workspace_id: WorkspaceId::new([workspace; 16]).expect("workspace ID"),
         workspace_root: repository.path().to_owned(),
