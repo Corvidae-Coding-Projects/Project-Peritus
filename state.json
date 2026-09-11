@@ -1,6 +1,6 @@
 {
   "next_display_id": 74,
-  "next_comment_id": 1562,
+  "next_comment_id": 1563,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -8794,7 +8794,7 @@
       "priority": "high",
       "created_by": "krvx",
       "created_at": "2026-09-11T01:21:57.901312921Z",
-      "updated_at": "2026-09-11T08:19:34.879902384Z",
+      "updated_at": "2026-09-11T08:54:14.433704698Z",
       "labels": [
         "release"
       ],
@@ -8843,6 +8843,15 @@
           "kind": "result",
           "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAGwizOi6V4yR//w2dCelGGEs5AC7mY7fCCXcSAMbk/wZBwCZjsFzU7+Tr8fZ3NgqQZVvY8N+apN6vYWt0mFXaCA=="
+        },
+        "b2197118-fd64-4d94-b14c-f9ab614ed63a": {
+          "display_id": 1562,
+          "author": "krvx",
+          "content": "Tagged release run 34578347793 remains successful so far. Same-SHA main Native product run 34578285895 has one failure: Windows ARM64 H2 shard7 cli-status job103204129453. Retained observations say CLI status/shutdown passed and cleanup remaining_resources=0; final harness failed bounded Job Object process-list completeness at process_tree.rs:210. Original job log, artifact and failure JSON retained under /home/doll/.cache/peritus-release-0.0.2-main-h2-windows-arm-7*. Root cause not established; no source/gate changes. One targeted rerun requested but GitHub currently rejects it while workflow remains active; retry after completion. Publication still pending required qualification and fresh-asset verification.",
+          "created_at": "2026-09-11T08:54:14.411420022Z",
+          "kind": "result",
+          "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAujRL85aMvpJDKdwPFH3ljriFU+DzLzEza8WQLMfIkPQAu1kCCRxh/85MDL6SE7PaBeebH6MBSXG3YwuIjSYpBA=="
         },
         "bbfdedc8-a469-4079-a919-496d9505e26d": {
           "display_id": 1561,
@@ -15309,8 +15318,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-11T08:19:34.879902384Z",
+    "timestamp": "2026-09-11T08:54:14.433704698Z",
     "agent_id": "krvx",
-    "agent_seq": 240
+    "agent_seq": 241
   }
 }
