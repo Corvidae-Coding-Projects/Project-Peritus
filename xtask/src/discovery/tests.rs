@@ -99,12 +99,26 @@ fn bounded_child_failure_is_not_reported_as_success() {
 #[ignore = "subprocess fixture; invoked by scratch_blocks_parent_git_discovery"]
 fn git_ceiling_child_fixture() {
     let workspace = Fixture::new();
+    fs::create_dir(workspace.0.join("src")).expect("fixture source directory");
+    fs::write(
+        workspace.0.join("Cargo.toml"),
+        "[package]\nname = \"isolated-scratch\"\nversion = \"0.0.0\"\nedition = \"2024\"\n",
+    )
+    .expect("fixture manifest");
+    fs::write(workspace.0.join("src/lib.rs"), "pub const ISOLATED: bool = true;\n")
+        .expect("fixture source");
     let status = Command::new("git")
         .args(["rev-parse", "--show-toplevel"])
         .current_dir(&workspace.0)
         .status()
         .expect("inspect ambient repository");
     assert!(!status.success(), "owned scratch inherited an ancestor repository");
+    let cargo = Command::new("cargo")
+        .args(["metadata", "--offline", "--no-deps", "--format-version", "1"])
+        .current_dir(&workspace.0)
+        .status()
+        .expect("inspect ambient Cargo workspace");
+    assert!(cargo.success(), "owned scratch inherited an ancestor Cargo workspace");
 }
 
 #[test]
@@ -117,6 +131,8 @@ fn scratch_blocks_parent_git_discovery() {
         .expect("git init");
     assert!(status.success());
     fs::write(repository.0.join(".gitignore"), "/target/\n").expect("ignore target");
+    fs::write(repository.0.join("Cargo.toml"), "[workspace]\nmembers = []\n")
+        .expect("parent workspace manifest");
     let evidence = repository.0.join("target/discovery");
     fs::create_dir_all(&evidence).expect("evidence directory");
     let mut command = Command::new(std::env::current_exe().expect("test executable"));
