@@ -1,6 +1,6 @@
 {
   "next_display_id": 74,
-  "next_comment_id": 1556,
+  "next_comment_id": 1557,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -8794,7 +8794,7 @@
       "priority": "high",
       "created_by": "krvx",
       "created_at": "2026-09-11T01:21:57.901312921Z",
-      "updated_at": "2026-09-11T01:26:27.244297488Z",
+      "updated_at": "2026-09-11T01:34:59.518581052Z",
       "labels": [
         "release"
       ],
@@ -8807,6 +8807,15 @@
           "kind": "note",
           "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA8EfD109TnBlIVNc2Bhi1BWCw1PGECBK0tIz9mBPC8x8xJsx5eNAH6wA5TibBSwjQ0Ju3U1G+Cy2Y7++GRFv7Aw=="
+        },
+        "a6cd1f5f-8ab0-4082-8ec3-d350c74a94ca": {
+          "display_id": 1556,
+          "author": "krvx",
+          "content": "Committed signed release preparation d0cdd21d: chore(release): prepare v0.0.2. All 83 workspace packages/internal pins synchronized; 432 external lock entries unchanged. Passed 363 xtask tests, 44 distribution-tooling regressions, 62 CLI/launcher/migration all-feature tests, 46 default CLI/launcher tests, workspace strict Clippy/fmt, policy against the actual main base, and actual peritus --version = 0.0.2. Exactly 81 reviewed files staged; unrelated provider/tracking files preserved. Preparing develop-to-main PR, with publication authorized after user merge.",
+          "created_at": "2026-09-11T01:34:59.507000247Z",
+          "kind": "result",
+          "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAGwizOi6V4yR//w2dCelGGEs5AC7mY7fCCXcSAMbk/wZBwCZjsFzU7+Tr8fZ3NgqQZVvY8N+apN6vYWt0mFXaCA=="
         }
       }
     },
@@ -15255,8 +15264,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-11T01:26:27.244297488Z",
+    "timestamp": "2026-09-11T01:34:59.518581052Z",
     "agent_id": "krvx",
-    "agent_seq": 232
+    "agent_seq": 233
   }
 }
