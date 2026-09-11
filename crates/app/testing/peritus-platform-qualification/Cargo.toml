@@ -12,9 +12,9 @@ keywords = ["packaging", "qualification", "cross-platform", "release"]
 categories = ["development-tools::testing"]
 
 [dependencies]
-peritus-approval = { version = "=0.0.1", path = "../../../state/peritus-approval" }
-peritus-local-socket = { version = "=0.0.1", path = "../../../runtime/peritus-local-socket" }
-peritus-types = { version = "=0.0.1", path = "../../../foundation/peritus-types" }
+peritus-approval = { version = "=0.0.2", path = "../../../state/peritus-approval" }
+peritus-local-socket = { version = "=0.0.2", path = "../../../runtime/peritus-local-socket" }
+peritus-types = { version = "=0.0.2", path = "../../../foundation/peritus-types" }
 portable-pty.workspace = true
 serde.workspace = true
 serde_json.workspace = true
@@ -27,13 +27,13 @@ toml.workspace = true
 nix.workspace = true
 
 [target.'cfg(target_os = "linux")'.dependencies]
-peritus-sandbox-linux = { version = "=0.0.1", path = "../../../runtime/peritus-sandbox-linux" }
+peritus-sandbox-linux = { version = "=0.0.2", path = "../../../runtime/peritus-sandbox-linux" }
 
 [target.'cfg(target_os = "macos")'.dependencies]
-peritus-sandbox-macos = { version = "=0.0.1", path = "../../../runtime/peritus-sandbox-macos" }
+peritus-sandbox-macos = { version = "=0.0.2", path = "../../../runtime/peritus-sandbox-macos" }
 
 [target.'cfg(target_os = "windows")'.dependencies]
-peritus-sandbox-windows = { version = "=0.0.1", path = "../../../runtime/peritus-sandbox-windows" }
+peritus-sandbox-windows = { version = "=0.0.2", path = "../../../runtime/peritus-sandbox-windows" }
 windows-sys = { workspace = true, features = [
     "Win32_Foundation",
     "Win32_Security",

@@ -1,10 +1,28 @@
 # Changelog
 
-## 0.0.1
+## 0.0.2
+
+- Run authorized repository and folder work through the checked writer, reviewer, and fixer
+  pipeline, with durable checkpoints and useful partial results retained across interruptions.
+- Add interactive workbench controls for reviewing tasks, checkpoints, artifacts, terminals,
+  and previews.
+- Discover available models from configured providers, improve provider setup and connection
+  repair, and retain separate model and reasoning-effort selections for each role.
+- Show observed tool activity and results in chat, keep elapsed work and usage visible, and stop
+  repeated inspection loops that make no progress.
+- Recover interrupted writer work automatically without reusing earlier effect identities or
+  turning a recoverable provider failure into cancellation. Explicitly cancelled work stays stopped.
+- Reserve command identities durably before execution so runtime reopening and failed starts
+  cannot collide with previous commands. Preserve existing journals and serialize concurrent starts.
+- Improve message-editor navigation and keep the Peritus terminal title stable during provider
+  discovery and login on Windows.
 
 - Start reliably with long Unix state paths by selecting a short, owner-protected runtime socket
   location. Preserve asynchronous clients and keep serving after early client disconnects, with
   bounded backoff for retryable listener errors.
+
+## 0.0.1
+
 - Prepare the first versioned release with native Linux, macOS, and Windows
   archives for x86-64 and ARM64.
 - Add genuine Debian and RPM source, binary, and debug packages built offline

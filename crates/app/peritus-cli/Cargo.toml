@@ -15,13 +15,13 @@ system-package = ["peritus-launcher/system-package"]
 
 [dependencies]
 base64.workspace = true
-peritus-app-protocol = { version = "=0.0.1", path = "../peritus-app-protocol" }
-peritus-codec = { version = "=0.0.1", path = "../../foundation/peritus-codec" }
-peritus-launcher = { version = "=0.0.1", path = "../peritus-launcher" }
-peritus-product-runner = { version = "=0.0.1", path = "../peritus-product-runner" }
-peritus-run-settlement = { version = "=0.0.1", path = "../../orchestration/peritus-run-settlement" }
-peritus-tools-shell = { version = "=0.0.1", path = "../../tools/peritus-tools-shell" }
-peritus-types = { version = "=0.0.1", path = "../../foundation/peritus-types" }
+peritus-app-protocol = { version = "=0.0.2", path = "../peritus-app-protocol" }
+peritus-codec = { version = "=0.0.2", path = "../../foundation/peritus-codec" }
+peritus-launcher = { version = "=0.0.2", path = "../peritus-launcher" }
+peritus-product-runner = { version = "=0.0.2", path = "../peritus-product-runner" }
+peritus-run-settlement = { version = "=0.0.2", path = "../../orchestration/peritus-run-settlement" }
+peritus-tools-shell = { version = "=0.0.2", path = "../../tools/peritus-tools-shell" }
+peritus-types = { version = "=0.0.2", path = "../../foundation/peritus-types" }
 serde_json.workspace = true
 sha2.workspace = true
 tokio.workspace = true

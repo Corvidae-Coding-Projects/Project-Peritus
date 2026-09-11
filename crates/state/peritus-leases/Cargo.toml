@@ -12,12 +12,12 @@ keywords = ["leases", "formal-verification", "concurrency", "rust"]
 categories = ["concurrency", "data-structures"]
 
 [dependencies]
-peritus-policy = { version = "=0.0.1", path = "../../foundation/peritus-policy" }
-peritus-types = { version = "=0.0.1", path = "../../foundation/peritus-types" }
+peritus-policy = { version = "=0.0.2", path = "../../foundation/peritus-policy" }
+peritus-types = { version = "=0.0.2", path = "../../foundation/peritus-types" }
 vstd.workspace = true
 
 [dev-dependencies]
-peritus-test-support = { version = "=0.0.1", path = "../../app/testing/peritus-test-support" }
+peritus-test-support = { version = "=0.0.2", path = "../../app/testing/peritus-test-support" }
 
 [lints]
 workspace = true

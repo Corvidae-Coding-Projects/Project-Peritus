@@ -12,9 +12,9 @@ keywords = ["resilience", "qualification", "release", "recovery"]
 categories = ["development-tools::testing"]
 
 [dependencies]
-peritus-approval = { version = "=0.0.1", path = "../../../state/peritus-approval" }
-peritus-resilience = { version = "=0.0.1", path = "../peritus-resilience" }
-peritus-types = { version = "=0.0.1", path = "../../../foundation/peritus-types" }
+peritus-approval = { version = "=0.0.2", path = "../../../state/peritus-approval" }
+peritus-resilience = { version = "=0.0.2", path = "../peritus-resilience" }
+peritus-types = { version = "=0.0.2", path = "../../../foundation/peritus-types" }
 rusqlite.workspace = true
 serde.workspace = true
 serde_json.workspace = true
@@ -23,9 +23,9 @@ tempfile.workspace = true
 tokio.workspace = true
 
 [dev-dependencies]
-peritus-obligations = { version = "=0.0.1", path = "../../../orchestration/peritus-obligations" }
-peritus-run-settlement = { version = "=0.0.1", path = "../../../orchestration/peritus-run-settlement" }
-peritus-spec = { version = "=0.0.1", path = "../../../foundation/peritus-spec" }
+peritus-obligations = { version = "=0.0.2", path = "../../../orchestration/peritus-obligations" }
+peritus-run-settlement = { version = "=0.0.2", path = "../../../orchestration/peritus-run-settlement" }
+peritus-spec = { version = "=0.0.2", path = "../../../foundation/peritus-spec" }
 
 [target.'cfg(unix)'.dev-dependencies]
 nix.workspace = true

@@ -10,8 +10,8 @@ publish = false
 readme = "README.md"
 
 [dependencies]
-peritus-codec = { version = "=0.0.1", path = "../../foundation/peritus-codec" }
-peritus-types = { version = "=0.0.1", path = "../../foundation/peritus-types" }
+peritus-codec = { version = "=0.0.2", path = "../../foundation/peritus-codec" }
+peritus-types = { version = "=0.0.2", path = "../../foundation/peritus-types" }
 serde.workspace = true
 serde_json.workspace = true
 vstd.workspace = true

@@ -10,9 +10,9 @@ publish = false
 readme = "README.md"
 
 [dependencies]
-peritus-policy = { version = "=0.0.1", path = "../../foundation/peritus-policy" }
-peritus-tool-protocol = { version = "=0.0.1", path = "../../tools/peritus-tool-protocol" }
-peritus-types = { version = "=0.0.1", path = "../../foundation/peritus-types" }
+peritus-policy = { version = "=0.0.2", path = "../../foundation/peritus-policy" }
+peritus-tool-protocol = { version = "=0.0.2", path = "../../tools/peritus-tool-protocol" }
+peritus-types = { version = "=0.0.2", path = "../../foundation/peritus-types" }
 serde.workspace = true
 serde_json.workspace = true
 tokio.workspace = true

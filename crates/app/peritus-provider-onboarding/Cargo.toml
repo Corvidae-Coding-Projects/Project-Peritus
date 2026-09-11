@@ -12,14 +12,14 @@ keywords = ["agents", "authentication", "onboarding"]
 categories = ["authentication", "command-line-utilities"]
 
 [dependencies]
-peritus-provider-core = { version = "=0.0.1", path = "../../model/peritus-provider-core" }
+peritus-provider-core = { version = "=0.0.2", path = "../../model/peritus-provider-core" }
 tokio.workspace = true
 getrandom.workspace = true
-peritus-product-state = { version = "=0.0.1", path = "../peritus-product-state" }
-peritus-provider-anthropic = { version = "=0.0.1", path = "../../model/peritus-provider-anthropic" }
-peritus-provider-openai = { version = "=0.0.1", path = "../../model/peritus-provider-openai" }
-peritus-secrets = { version = "=0.0.1", path = "../../runtime/peritus-secrets" }
-peritus-types = { version = "=0.0.1", path = "../../foundation/peritus-types" }
+peritus-product-state = { version = "=0.0.2", path = "../peritus-product-state" }
+peritus-provider-anthropic = { version = "=0.0.2", path = "../../model/peritus-provider-anthropic" }
+peritus-provider-openai = { version = "=0.0.2", path = "../../model/peritus-provider-openai" }
+peritus-secrets = { version = "=0.0.2", path = "../../runtime/peritus-secrets" }
+peritus-types = { version = "=0.0.2", path = "../../foundation/peritus-types" }
 serde_json.workspace = true
 tempfile.workspace = true
 thiserror.workspace = true

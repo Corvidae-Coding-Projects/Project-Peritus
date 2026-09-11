@@ -135,7 +135,6 @@ Debian and RPM installations use the system package manager instead, as describe
 Releases also provide signed Debian 13 and Fedora 44 packages for x86-64 and ARM64.
 These distribution packages have their own distribution-native library requirements;
 the glibc baseline above applies to the portable Linux archive.
-No package is publicly available until the first release is published.
 
 Download `peritus-deb-<architecture>.tar.gz` or `peritus-rpm-<architecture>.tar.gz`,
 its `.asc` signature, and `peritus-release.asc` from the same release. Before

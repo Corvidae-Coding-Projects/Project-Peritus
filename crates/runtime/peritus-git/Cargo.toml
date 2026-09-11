@@ -12,8 +12,8 @@ keywords = ["git", "worktree", "snapshots", "formal-verification"]
 categories = ["development-tools", "filesystem"]
 
 [dependencies]
-peritus-codec = { path = "../../foundation/peritus-codec", version = "=0.0.1" }
-peritus-types = { path = "../../foundation/peritus-types", version = "=0.0.1" }
+peritus-codec = { path = "../../foundation/peritus-codec", version = "=0.0.2" }
+peritus-types = { path = "../../foundation/peritus-types", version = "=0.0.2" }
 vstd.workspace = true
 
 [dev-dependencies]

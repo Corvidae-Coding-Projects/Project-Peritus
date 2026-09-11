@@ -10,7 +10,7 @@ publish = false
 readme = "README.md"
 
 [dependencies]
-peritus-types = { version = "=0.0.1", path = "../peritus-types" }
+peritus-types = { version = "=0.0.2", path = "../peritus-types" }
 vstd.workspace = true
 
 [package.metadata.peritus]

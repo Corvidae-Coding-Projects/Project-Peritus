@@ -14,34 +14,34 @@ categories = ["development-tools"]
 [dependencies]
 getrandom.workspace = true
 image.workspace = true
-peritus-agent = { version = "=0.0.1", path = "../../orchestration/peritus-agent" }
-peritus-artifact-store = { version = "=0.0.1", path = "../../state/peritus-artifact-store" }
-peritus-budget = { version = "=0.0.1", path = "../../foundation/peritus-budget" }
-peritus-codec = { version = "=0.0.1", path = "../../foundation/peritus-codec" }
-peritus-context = { version = "=0.0.1", path = "../../orchestration/peritus-context" }
-peritus-gates = { version = "=0.0.1", path = "../../orchestration/peritus-gates" }
-peritus-journal = { version = "=0.0.1", path = "../../state/peritus-journal" }
-peritus-kernel = { version = "=0.0.1", path = "../../foundation/peritus-kernel" }
-peritus-leases = { version = "=0.0.1", path = "../../state/peritus-leases" }
-peritus-model-protocol = { version = "=0.0.1", path = "../../model/peritus-model-protocol" }
-peritus-orchestrator = { version = "=0.0.1", path = "../../orchestration/peritus-orchestrator" }
-peritus-obligations = { version = "=0.0.1", path = "../../orchestration/peritus-obligations" }
-peritus-patch = { version = "=0.0.1", path = "../../runtime/peritus-patch" }
-peritus-policy = { version = "=0.0.1", path = "../../foundation/peritus-policy" }
-peritus-process = { version = "=0.0.1", path = "../../runtime/peritus-process" }
-peritus-protocol = { version = "=0.0.1", path = "../../foundation/peritus-protocol" }
-peritus-provider-core = { version = "=0.0.1", path = "../../model/peritus-provider-core" }
-peritus-review = { version = "=0.0.1", path = "../../orchestration/peritus-review" }
-peritus-role = { version = "=0.0.1", path = "../../orchestration/peritus-role" }
-peritus-run-knowledge = { version = "=0.0.1", path = "../../orchestration/peritus-run-knowledge" }
-peritus-run-settlement = { version = "=0.0.1", path = "../../orchestration/peritus-run-settlement" }
-peritus-sandbox = { version = "=0.0.1", path = "../../runtime/peritus-sandbox" }
-peritus-spec = { version = "=0.0.1", path = "../../foundation/peritus-spec" }
-peritus-tool-protocol = { version = "=0.0.1", path = "../../tools/peritus-tool-protocol" }
-peritus-tool-router = { version = "=0.0.1", path = "../../tools/peritus-tool-router" }
-peritus-tools-shell = { version = "=0.0.1", path = "../../tools/peritus-tools-shell" }
-peritus-types = { version = "=0.0.1", path = "../../foundation/peritus-types" }
-peritus-workspace = { version = "=0.0.1", path = "../../runtime/peritus-workspace" }
+peritus-agent = { version = "=0.0.2", path = "../../orchestration/peritus-agent" }
+peritus-artifact-store = { version = "=0.0.2", path = "../../state/peritus-artifact-store" }
+peritus-budget = { version = "=0.0.2", path = "../../foundation/peritus-budget" }
+peritus-codec = { version = "=0.0.2", path = "../../foundation/peritus-codec" }
+peritus-context = { version = "=0.0.2", path = "../../orchestration/peritus-context" }
+peritus-gates = { version = "=0.0.2", path = "../../orchestration/peritus-gates" }
+peritus-journal = { version = "=0.0.2", path = "../../state/peritus-journal" }
+peritus-kernel = { version = "=0.0.2", path = "../../foundation/peritus-kernel" }
+peritus-leases = { version = "=0.0.2", path = "../../state/peritus-leases" }
+peritus-model-protocol = { version = "=0.0.2", path = "../../model/peritus-model-protocol" }
+peritus-orchestrator = { version = "=0.0.2", path = "../../orchestration/peritus-orchestrator" }
+peritus-obligations = { version = "=0.0.2", path = "../../orchestration/peritus-obligations" }
+peritus-patch = { version = "=0.0.2", path = "../../runtime/peritus-patch" }
+peritus-policy = { version = "=0.0.2", path = "../../foundation/peritus-policy" }
+peritus-process = { version = "=0.0.2", path = "../../runtime/peritus-process" }
+peritus-protocol = { version = "=0.0.2", path = "../../foundation/peritus-protocol" }
+peritus-provider-core = { version = "=0.0.2", path = "../../model/peritus-provider-core" }
+peritus-review = { version = "=0.0.2", path = "../../orchestration/peritus-review" }
+peritus-role = { version = "=0.0.2", path = "../../orchestration/peritus-role" }
+peritus-run-knowledge = { version = "=0.0.2", path = "../../orchestration/peritus-run-knowledge" }
+peritus-run-settlement = { version = "=0.0.2", path = "../../orchestration/peritus-run-settlement" }
+peritus-sandbox = { version = "=0.0.2", path = "../../runtime/peritus-sandbox" }
+peritus-spec = { version = "=0.0.2", path = "../../foundation/peritus-spec" }
+peritus-tool-protocol = { version = "=0.0.2", path = "../../tools/peritus-tool-protocol" }
+peritus-tool-router = { version = "=0.0.2", path = "../../tools/peritus-tool-router" }
+peritus-tools-shell = { version = "=0.0.2", path = "../../tools/peritus-tools-shell" }
+peritus-types = { version = "=0.0.2", path = "../../foundation/peritus-types" }
+peritus-workspace = { version = "=0.0.2", path = "../../runtime/peritus-workspace" }
 rusqlite.workspace = true
 serde.workspace = true
 serde_json.workspace = true
@@ -51,18 +51,18 @@ toml.workspace = true
 yaml-rust2.workspace = true
 
 [dev-dependencies]
-peritus-provider-anthropic = { version = "=0.0.1", path = "../../model/peritus-provider-anthropic" }
-peritus-provider-openai = { version = "=0.0.1", path = "../../model/peritus-provider-openai" }
+peritus-provider-anthropic = { version = "=0.0.2", path = "../../model/peritus-provider-anthropic" }
+peritus-provider-openai = { version = "=0.0.2", path = "../../model/peritus-provider-openai" }
 tempfile.workspace = true
 
 [target.'cfg(target_os = "linux")'.dependencies]
-peritus-sandbox-linux = { version = "=0.0.1", path = "../../runtime/peritus-sandbox-linux" }
+peritus-sandbox-linux = { version = "=0.0.2", path = "../../runtime/peritus-sandbox-linux" }
 
 [target.'cfg(target_os = "macos")'.dependencies]
-peritus-sandbox-macos = { version = "=0.0.1", path = "../../runtime/peritus-sandbox-macos" }
+peritus-sandbox-macos = { version = "=0.0.2", path = "../../runtime/peritus-sandbox-macos" }
 
 [target.'cfg(target_os = "windows")'.dependencies]
-peritus-sandbox-windows = { version = "=0.0.1", path = "../../runtime/peritus-sandbox-windows" }
+peritus-sandbox-windows = { version = "=0.0.2", path = "../../runtime/peritus-sandbox-windows" }
 
 [[example]]
 name = "live-account-product-run"

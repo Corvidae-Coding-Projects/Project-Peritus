@@ -2141,7 +2141,7 @@ checksum = "9b4f627cb1b25917193a259e49bdad08f671f8d9708acfd5fe0a8c1455d87220"
 
 [[package]]
 name = "peritus-agent"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "peritus-budget",
  "peritus-codec",
@@ -2167,7 +2167,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-app-protocol"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "peritus-codec",
  "peritus-conformance",
@@ -2181,7 +2181,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-approval"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "ed25519-compact",
  "ed25519-dalek",
@@ -2194,7 +2194,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-artifact-store"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "fs4",
  "peritus-test-support",
@@ -2207,7 +2207,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-benchmarks"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "criterion",
  "half",
@@ -2219,7 +2219,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-budget"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "peritus-test-support",
  "peritus-types",
@@ -2228,7 +2228,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-cli"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "base64",
  "peritus-app-protocol",
@@ -2245,7 +2245,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-codec"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "peritus-types",
  "sha2 0.11.0",
@@ -2254,7 +2254,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-collaboration"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "peritus-codec",
  "peritus-evidence",
@@ -2270,11 +2270,11 @@ dependencies = [
 
 [[package]]
 name = "peritus-conformance"
-version = "0.0.1"
+version = "0.0.2"
 
 [[package]]
 name = "peritus-context"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "peritus-codec",
  "peritus-policy",
@@ -2286,7 +2286,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-daemon"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "fs4",
  "futures-util",
@@ -2356,7 +2356,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-debugger"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "peritus-agent",
  "peritus-artifact-store",
@@ -2384,7 +2384,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-eval"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "peritus-artifact-store",
  "peritus-codec",
@@ -2403,7 +2403,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-evidence"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "peritus-artifact-store",
  "peritus-codec",
@@ -2423,7 +2423,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-evolution"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "ed25519-dalek",
  "peritus-approval",
@@ -2446,7 +2446,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-external-benchmarks"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "base64",
  "html5ever",
@@ -2471,7 +2471,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-gates"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "peritus-codec",
  "peritus-evidence",
@@ -2492,7 +2492,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-git"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "peritus-codec",
  "peritus-types",
@@ -2502,7 +2502,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-harness"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "peritus-artifact-store",
  "peritus-codec",
@@ -2520,7 +2520,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-journal"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "peritus-approval",
  "peritus-artifact-store",
@@ -2541,7 +2541,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-kernel"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "peritus-budget",
  "peritus-policy",
@@ -2554,7 +2554,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-launcher"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "crossterm",
  "fs4",
@@ -2584,7 +2584,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-leases"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "peritus-policy",
  "peritus-test-support",
@@ -2594,7 +2594,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-local-socket"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "sha2 0.11.0",
  "tempfile",
@@ -2603,7 +2603,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-mcp"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "peritus-policy",
  "peritus-tool-protocol",
@@ -2616,7 +2616,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-memory"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "peritus-codec",
  "peritus-policy",
@@ -2627,7 +2627,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-migrations"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "fs4",
  "peritus-journal",
@@ -2640,7 +2640,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-model-protocol"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "peritus-codec",
  "peritus-types",
@@ -2651,7 +2651,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-network"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "base64",
  "nix 0.31.3",
@@ -2665,7 +2665,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-obligations"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "peritus-run-settlement",
  "peritus-spec",
@@ -2676,7 +2676,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-orchestrator"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "peritus-agent",
  "peritus-codec",
@@ -2699,7 +2699,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-patch"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "peritus-codec",
  "peritus-types",
@@ -2709,7 +2709,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-performance-qualification"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "peritus-app-protocol",
  "peritus-approval",
@@ -2734,7 +2734,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-platform-qualification"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "nix 0.31.3",
  "peritus-approval",
@@ -2755,7 +2755,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-plugin-host"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "peritus-conformance",
  "peritus-plugin-sdk",
@@ -2769,7 +2769,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-plugin-sdk"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "serde",
  "serde_json",
@@ -2780,7 +2780,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-policy"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "peritus-test-support",
  "peritus-types",
@@ -2789,7 +2789,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-process"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "libc",
  "nix 0.31.3",
@@ -2817,7 +2817,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-product-runner"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "getrandom 0.4.3",
  "image",
@@ -2866,7 +2866,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-product-state"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "serde",
  "serde_json",
@@ -2875,7 +2875,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-projection"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "peritus-approval",
  "peritus-artifact-store",
@@ -2897,7 +2897,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-protocol"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "peritus-budget",
  "peritus-codec",
@@ -2912,7 +2912,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-provider-anthropic"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "base64",
  "peritus-codec",
@@ -2930,7 +2930,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-provider-compatible"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "base64",
  "peritus-codec",
@@ -2946,7 +2946,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-provider-core"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "bytes",
  "futures-core",
@@ -2964,7 +2964,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-provider-google"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "base64",
  "peritus-codec",
@@ -2980,7 +2980,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-provider-onboarding"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "getrandom 0.4.3",
  "peritus-product-state",
@@ -2998,7 +2998,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-provider-openai"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "base64",
  "peritus-codec",
@@ -3016,7 +3016,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-quality-policy"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "peritus-spec",
  "peritus-types",
@@ -3025,7 +3025,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-release-artifacts"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "ed25519-dalek",
  "serde",
@@ -3036,7 +3036,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-release-operator"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "peritus-release-artifacts",
  "serde",
@@ -3048,7 +3048,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-release-policy"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "peritus-types",
  "vstd",
@@ -3056,7 +3056,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-release-qualification"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "ed25519-dalek",
  "peritus-model-protocol",
@@ -3075,7 +3075,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-resilience"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "libc",
  "nix 0.31.3",
@@ -3089,7 +3089,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-resilience-qualification"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "nix 0.31.3",
  "peritus-approval",
@@ -3108,7 +3108,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-review"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "peritus-codec",
  "peritus-context",
@@ -3126,7 +3126,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-role"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "peritus-policy",
  "peritus-spec",
@@ -3135,7 +3135,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-run-knowledge"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "peritus-role",
  "peritus-run-settlement",
@@ -3145,7 +3145,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-run-settlement"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "peritus-types",
  "vstd",
@@ -3153,7 +3153,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-sandbox"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "peritus-codec",
  "peritus-conformance",
@@ -3163,7 +3163,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-sandbox-linux"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "landlock",
  "nix 0.31.3",
@@ -3182,7 +3182,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-sandbox-macos"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "libc",
  "peritus-codec",
@@ -3199,7 +3199,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-sandbox-windows"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "peritus-codec",
  "peritus-conformance",
@@ -3216,7 +3216,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-scheduler"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "peritus-codec",
  "peritus-evidence",
@@ -3230,7 +3230,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-secrets"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "keyring",
  "peritus-codec",
@@ -3243,7 +3243,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-security-policy"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "peritus-types",
  "vstd",
@@ -3251,7 +3251,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-security-qualification"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "find-msvc-tools",
  "nix 0.31.3",
@@ -3268,7 +3268,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-spec"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "peritus-types",
  "vstd",
@@ -3276,14 +3276,14 @@ dependencies = [
 
 [[package]]
 name = "peritus-tcb"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "vstd",
 ]
 
 [[package]]
 name = "peritus-telemetry"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "peritus-codec",
  "peritus-trace",
@@ -3294,7 +3294,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-test-support"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "peritus-types",
  "serde",
@@ -3304,7 +3304,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-tool-protocol"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "peritus-codec",
  "peritus-policy",
@@ -3315,7 +3315,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-tool-router"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "peritus-approval",
  "peritus-budget",
@@ -3336,7 +3336,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-tools-fs"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "base64",
  "peritus-budget",
@@ -3359,7 +3359,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-tools-git"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "base64",
  "peritus-artifact-store",
@@ -3383,7 +3383,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-tools-quality"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "peritus-artifact-store",
  "peritus-codec",
@@ -3405,7 +3405,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-tools-shell"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "peritus-artifact-store",
  "peritus-budget",
@@ -3428,7 +3428,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-trace"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "peritus-artifact-store",
  "peritus-codec",
@@ -3442,7 +3442,7 @@ dependencies = [
 
 [[package]]
 name = "peritus-tui"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "base64",
  "crossterm",
@@ -3464,14 +3464,14 @@ dependencies = [
 
 [[package]]
 name = "peritus-types"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "vstd",
 ]
 
 [[package]]
 name = "peritus-workspace"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "cap-fs-ext",
  "cap-std",
@@ -5341,7 +5341,7 @@ dependencies = [
 
 [[package]]
 name = "xtask"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "base64",
  "serde",
