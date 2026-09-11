@@ -45,7 +45,7 @@ fn configure_unix(
             )
         }
         Err(error) if error.kind() == std::io::ErrorKind::PermissionDenied => {
-            campaign.args(["--", "--skip", SOCKET_TEST]);
+            append_socket_skip(campaign);
             write_json(
                 &evidence.join("mutation-environment.json"),
                 &json!({
@@ -56,5 +56,25 @@ fn configure_unix(
             )
         }
         Err(error) => Err(XtaskError::io("probe Unix socket capability", &path, error)),
+    }
+}
+
+#[cfg(unix)]
+fn append_socket_skip(campaign: &mut Command) {
+    // cargo-mutants consumes the first separator; Cargo consumes the second.
+    campaign.args(["--", "--", "--skip", SOCKET_TEST]);
+}
+
+#[cfg(all(test, unix))]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn socket_skip_reaches_the_test_harness() {
+        let mut command = Command::new("cargo");
+        command.arg("mutants");
+        append_socket_skip(&mut command);
+        let arguments: Vec<_> = command.get_args().collect();
+        assert_eq!(arguments, ["mutants", "--", "--", "--skip", SOCKET_TEST]);
     }
 }
