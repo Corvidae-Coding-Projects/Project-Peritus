@@ -7,8 +7,7 @@ use std::path::Path;
 use std::process::Command;
 
 #[cfg(unix)]
-const SOCKET_TEST: &str =
-    "ipc::server::tests::delayed_accept_remains_cancellable_without_consuming_the_queued_client";
+const LIFECYCLE_TEST_FILTER: &str = "product_run::";
 
 pub(super) fn configure(
     campaign: &mut Command,
@@ -45,13 +44,13 @@ fn configure_unix(
             )
         }
         Err(error) if error.kind() == std::io::ErrorKind::PermissionDenied => {
-            append_socket_skip(campaign);
+            append_lifecycle_filter(campaign);
             write_json(
                 &evidence.join("mutation-environment.json"),
                 &json!({
                     "unix_socket_bind": "permission_denied",
-                    "excluded_tests": [SOCKET_TEST],
-                    "reason": "host sandbox denied a direct AF_UNIX bind probe; target lifecycle tests remain enabled",
+                    "cargo_test_filter": LIFECYCLE_TEST_FILTER,
+                    "reason": "host sandbox denied a direct AF_UNIX bind probe; the target lifecycle namespace remains enabled while socket-dependent integration tests are filtered",
                 }),
             )
         }
@@ -60,9 +59,9 @@ fn configure_unix(
 }
 
 #[cfg(unix)]
-fn append_socket_skip(campaign: &mut Command) {
-    // cargo-mutants consumes the first separator; Cargo consumes the second.
-    campaign.args(["--", "--", "--skip", SOCKET_TEST]);
+fn append_lifecycle_filter(campaign: &mut Command) {
+    // cargo-mutants consumes the separator and forwards the filter to Cargo.
+    campaign.args(["--", LIFECYCLE_TEST_FILTER]);
 }
 
 #[cfg(all(test, unix))]
@@ -70,11 +69,11 @@ mod tests {
     use super::*;
 
     #[test]
-    fn socket_skip_reaches_the_test_harness() {
+    fn lifecycle_filter_reaches_cargo_test() {
         let mut command = Command::new("cargo");
         command.arg("mutants");
-        append_socket_skip(&mut command);
+        append_lifecycle_filter(&mut command);
         let arguments: Vec<_> = command.get_args().collect();
-        assert_eq!(arguments, ["mutants", "--", "--", "--skip", SOCKET_TEST]);
+        assert_eq!(arguments, ["mutants", "--", LIFECYCLE_TEST_FILTER]);
     }
 }
