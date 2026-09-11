@@ -1,5 +1,5 @@
 {
-  "next_display_id": 73,
+  "next_display_id": 74,
   "next_comment_id": 1555,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
@@ -23,6 +23,7 @@
     "39341321-25d6-4cd4-8e10-ad806ddefb0d": 48,
     "3b238879-13c9-48ae-9b8e-1009717114b8": 2,
     "3bef48a1-7556-4245-8dc8-a4326deff3ea": 16,
+    "3c6c1470-29de-42a2-b988-e50c1a5b5725": 73,
     "3cc3f0d8-ec40-44e7-9c99-9b245adaea3e": 22,
     "479f4b75-2aaf-4b40-ae45-e4261eae544e": 60,
     "47cec64d-270a-4ee4-8aea-3dd626c1447e": 40,
@@ -8780,6 +8781,17 @@
         }
       }
     },
+    "3c6c1470-29de-42a2-b988-e50c1a5b5725": {
+      "uuid": "3c6c1470-29de-42a2-b988-e50c1a5b5725",
+      "display_id": 73,
+      "title": "Prepare develop promotion and next native release",
+      "description": "Pull develop, prepare version and changelog, open develop-to-main PR, then tag, build, verify and publish the next release after the user merges it. Preserve the signed native/distribution artifact pipeline and honest qualification limits; no merge authorization was requested.",
+      "status": "open",
+      "priority": "high",
+      "created_by": "krvx",
+      "created_at": "2026-09-11T01:21:57.901312921Z",
+      "updated_at": "2026-09-11T01:21:57.901312921Z"
+    },
     "3cc3f0d8-ec40-44e7-9c99-9b245adaea3e": {
       "uuid": "3cc3f0d8-ec40-44e7-9c99-9b245adaea3e",
       "display_id": 22,
@@ -15225,8 +15237,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-10T23:53:38.649888708Z",
+    "timestamp": "2026-09-11T01:21:57.901312921Z",
     "agent_id": "krvx",
-    "agent_seq": 228
+    "agent_seq": 229
   }
 }
