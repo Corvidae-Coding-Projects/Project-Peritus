@@ -1,6 +1,6 @@
 {
   "next_display_id": 74,
-  "next_comment_id": 1566,
+  "next_comment_id": 1567,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -8794,11 +8794,20 @@
       "priority": "high",
       "created_by": "krvx",
       "created_at": "2026-09-11T01:21:57.901312921Z",
-      "updated_at": "2026-09-11T10:36:19.645349667Z",
+      "updated_at": "2026-09-11T10:48:39.830247617Z",
       "labels": [
         "release"
       ],
       "comments": {
+        "0c5d4e46-a6e5-4922-9929-f3b9879cc200": {
+          "display_id": 1566,
+          "author": "krvx",
+          "content": "Published Peritus v0.0.2 as latest: https://github.com/Corvidae-Coding-Projects/Project-Peritus/releases/tag/v0.0.2 at 2026-09-11T10:46:44Z. Signed tag targets main commit 79f79faaccce4e90bdf72649cc1ece8f4e3b8c5c. All 75 assets verified locally: GitHub digests, source bindings, 12 native Sigstore attestations, four OpenPGP-signed distribution bundles and signed metadata, standalone package byte equality, and both tag-bound installers. The public installer download matches verified bytes. Main CI passed 575 jobs; tagged release CI passed 231 jobs with only the intentional optional previous-staging comparison skipped. Windows ARM64 H2 and RPM upload-timeout failures each passed one targeted retry; original logs and retry results are retained. All four distribution packages passed native signature, tamper rejection, install and removal checks. Develop was fast-forwarded and pushed to the exact released main commit, preserving existing untracked files. H3/H4 limitations remain explicit in release notes. Full local release state and verification reports: /home/doll/.cache/peritus-release-0.0.2-*.",
+          "created_at": "2026-09-11T10:48:39.817249615Z",
+          "kind": "result",
+          "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAtr0+N2hahz+1azlWdq7ndd6k11RJupOHYa8MQwlO+UzQS2ZehNNcmeYlMqGbdvFVRXLow7jtLbGg6zKBHjB/DQ=="
+        },
         "168712c3-e2f0-4d28-a3cf-e7fcd9cf21ab": {
           "display_id": 1555,
           "author": "krvx",
@@ -15345,8 +15354,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-11T10:36:19.645349667Z",
+    "timestamp": "2026-09-11T10:48:39.830247617Z",
     "agent_id": "krvx",
-    "agent_seq": 244
+    "agent_seq": 245
   }
 }
