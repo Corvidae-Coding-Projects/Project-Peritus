@@ -22,6 +22,8 @@ pub(super) struct PersistedRecord {
     pub(super) review: String,
     pub(super) summary: String,
     #[serde(default)]
+    pub(super) user_cancelled: bool,
+    #[serde(default)]
     pub(super) finding_state: String,
     #[serde(default)]
     pub(super) deliverable: Option<PersistedDeliverable>,

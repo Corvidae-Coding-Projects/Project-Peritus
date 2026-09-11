@@ -16,6 +16,9 @@ use super::{ProductRunService, ProductRunServiceError, RunProgress};
 use super::{persistence::persist_record, snapshot::initial_snapshot};
 use super::{snapshot::replace_snapshot, snapshot::workspace_has_active_run};
 
+const RESTART_NOTICE: &str =
+    "The daemon restarted; I am continuing this goal from its preserved workspace.";
+
 impl ProductRunService {
     pub(crate) async fn shutdown(&self, timeout: Duration) {
         let mut interrupted = Vec::new();
@@ -90,12 +93,21 @@ impl ProductRunService {
             if let Ok(mut records) = self.inner.records.write()
                 && let Some(record) = records.get_mut(&run_id)
             {
-                let _ = record.conversation.append(
-                    ProductConversationRole::Agent,
-                    "The daemon restarted; I am continuing this goal from its preserved workspace."
-                        .to_owned(),
-                );
-                let _ = persist_record(&self.inner.directory, record);
+                let already_notified = record
+                    .conversation
+                    .messages()
+                    .ok()
+                    .and_then(|messages| messages.last().cloned())
+                    .is_some_and(|message| {
+                        message.role() == ProductConversationRole::Agent
+                            && message.content() == RESTART_NOTICE
+                    });
+                if !already_notified {
+                    let _ = record
+                        .conversation
+                        .append(ProductConversationRole::Agent, RESTART_NOTICE.to_owned());
+                    let _ = persist_record(&self.inner.directory, record);
+                }
             }
             let _ = self.retry(run_id).await;
         }

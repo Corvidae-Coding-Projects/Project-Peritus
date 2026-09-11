@@ -173,6 +173,7 @@ fn restart_restores_each_resumable_phase_and_preserves_completed_writer_state() 
             gates: String::new(),
             review: String::new(),
             summary: "writer state retained".to_owned(),
+            user_cancelled: false,
             finding_state: String::new(),
             deliverable: Some(PersistedDeliverable {
                 workspace_path: "/managed/tetris".to_owned(),

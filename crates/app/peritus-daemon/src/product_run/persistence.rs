@@ -156,6 +156,7 @@ impl PersistedRecord {
             gates: snapshot.gates().to_owned(),
             review: snapshot.review().to_owned(),
             summary: snapshot.summary().to_owned(),
+            user_cancelled: record.user_cancelled,
             finding_state: record.finding_state.clone(),
             deliverable: snapshot.deliverable().map(PersistedDeliverable::from_deliverable),
             messages,
@@ -252,7 +253,9 @@ impl PersistedRecord {
             .map_err(|_| ProductRunServiceError::InvalidMessage)?;
         let loaded_phase =
             ProductRunPhase::from_tag(phase_tag).ok_or(ProductRunServiceError::InvalidMessage)?;
-        let (phase, status) = if loaded_phase.terminal() {
+        let (phase, status) = if self.user_cancelled {
+            (ProductRunPhase::Cancelled, "Run cancelled".to_owned())
+        } else if loaded_phase.terminal() {
             (loaded_phase, self.status)
         } else {
             (
@@ -330,7 +333,7 @@ impl PersistedRecord {
             request,
             snapshot,
             cancelled: Arc::new(AtomicBool::new(false)),
-            user_cancelled: false,
+            user_cancelled: self.user_cancelled,
             provider_cancellation: CancellationToken::new(),
             conversation,
             finding_state: self.finding_state,

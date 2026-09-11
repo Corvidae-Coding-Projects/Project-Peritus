@@ -385,6 +385,98 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "subprocess fixture; invoked by process_termination_preserves_receipt_decisions"]
+    fn receipt_process_child_fixture() {
+        let Ok(mode) = std::env::var("PERITUS_RECEIPT_CRASH_MODE") else { return };
+        let path = PathBuf::from(std::env::var("PERITUS_RECEIPT_CRASH_LEDGER").expect("ledger"));
+        let effects =
+            PathBuf::from(std::env::var("PERITUS_RECEIPT_CRASH_EFFECTS").expect("effects"));
+        let barrier =
+            PathBuf::from(std::env::var("PERITUS_RECEIPT_CRASH_BARRIER").expect("barrier"));
+        let (tool_name, arguments) = match mode.as_str() {
+            "started" => ("run_command", r#"{"args":[],"program":"example"}"#),
+            "completed" => ("workspace_write", r#"{"content":"one","path":"a"}"#),
+            _ => panic!("unknown receipt crash mode"),
+        };
+        let call = call("call-1", tool_name, arguments);
+        let mut ledger = EffectReceiptLedger::new(path, "writer-1".to_owned());
+        assert!(matches!(ledger.begin(&call).expect("start effect"), ReceiptDecision::Execute));
+        let mut effect_file =
+            OpenOptions::new().create(true).append(true).open(effects).expect("effect counter");
+        effect_file.write_all(b"effect\n").expect("record effect");
+        effect_file.sync_data().expect("persist effect counter");
+        if mode == "completed" {
+            ledger.complete(&Value::Bool(true), false).expect("complete receipt");
+        }
+        fs::write(barrier, format!("{mode}-reached\n")).expect("publish receipt barrier");
+        loop {
+            std::thread::park();
+        }
+    }
+
+    #[test]
+    fn process_termination_preserves_receipt_decisions() {
+        struct OwnedChild(std::process::Child);
+        impl Drop for OwnedChild {
+            fn drop(&mut self) {
+                let _ = self.0.kill();
+                let _ = self.0.wait();
+            }
+        }
+
+        let executable = std::env::current_exe().expect("current test executable");
+        for mode in ["started", "completed"] {
+            let directory = tempfile::tempdir().expect("state");
+            let ledger_path = directory.path().join("effects.bin");
+            let effects_path = directory.path().join("effect-count.txt");
+            let barrier_path = directory.path().join("receipt.barrier");
+            let child = std::process::Command::new(&executable)
+                .args([
+                    "--exact",
+                    "developer_tools::receipt::tests::receipt_process_child_fixture",
+                    "--ignored",
+                    "--nocapture",
+                ])
+                .env("PERITUS_RECEIPT_CRASH_MODE", mode)
+                .env("PERITUS_RECEIPT_CRASH_LEDGER", &ledger_path)
+                .env("PERITUS_RECEIPT_CRASH_EFFECTS", &effects_path)
+                .env("PERITUS_RECEIPT_CRASH_BARRIER", &barrier_path)
+                .stdin(std::process::Stdio::null())
+                .stdout(std::process::Stdio::null())
+                .stderr(std::process::Stdio::null())
+                .spawn()
+                .expect("spawn owned receipt fixture");
+            let mut child = OwnedChild(child);
+            let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
+            while !barrier_path.exists() {
+                assert!(std::time::Instant::now() < deadline, "receipt fixture timed out");
+                assert!(
+                    child.0.try_wait().expect("inspect child").is_none(),
+                    "fixture exited early"
+                );
+                std::thread::sleep(std::time::Duration::from_millis(10));
+            }
+            child.0.kill().expect("terminate exact owned receipt fixture");
+            assert!(!child.0.wait().expect("reap receipt fixture").success());
+
+            let (tool_name, arguments) = if mode == "started" {
+                ("run_command", r#"{"args":[],"program":"example"}"#)
+            } else {
+                ("workspace_write", r#"{"content":"one","path":"a"}"#)
+            };
+            let call = call("call-1", tool_name, arguments);
+            let mut recovered = EffectReceiptLedger::new(ledger_path, "writer-1".to_owned());
+            let decision = recovered.begin(&call).expect("recover receipt");
+            if mode == "started" {
+                assert!(matches!(decision, ReceiptDecision::Refuse { ambiguous: true, .. }));
+            } else {
+                assert!(matches!(decision, ReceiptDecision::Replay { is_error: false, .. }));
+            }
+            assert_eq!(fs::read_to_string(effects_path).expect("effect counter"), "effect\n");
+        }
+    }
+
+    #[test]
     fn append_after_truncated_tail_remains_replayable_after_another_restart() {
         let directory = tempfile::tempdir().expect("state");
         let path = directory.path().join("effects.bin");
