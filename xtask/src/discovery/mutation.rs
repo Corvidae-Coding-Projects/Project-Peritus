@@ -222,8 +222,6 @@ fn run_campaign(
         "--baseline",
         "run",
         "--no-shuffle",
-        "--jobs",
-        "1",
         "--build-timeout",
         "180",
         "--timeout",
@@ -233,6 +231,13 @@ fn run_campaign(
     campaign.arg(evidence);
     let outcome = runner::run(repository, evidence, "mutation", campaign, Duration::from_mins(8))?;
     let path = evidence.join("mutants.out/outcomes.json");
+    if !path.is_file() {
+        return Err(XtaskError::metadata(format!(
+            "mutation engine exited {} without an outcome report; inspect {}",
+            outcome.status,
+            evidence.display()
+        )));
+    }
     let outcomes =
         fs::read(&path).map_err(|error| XtaskError::io("read mutation outcomes", &path, error))?;
     let outcomes: Value = serde_json::from_slice(&outcomes).map_err(XtaskError::metadata_decode)?;
