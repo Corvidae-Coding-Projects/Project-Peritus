@@ -1,6 +1,6 @@
 {
   "next_display_id": 74,
-  "next_comment_id": 1565,
+  "next_comment_id": 1566,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -8794,7 +8794,7 @@
       "priority": "high",
       "created_by": "krvx",
       "created_at": "2026-09-11T01:21:57.901312921Z",
-      "updated_at": "2026-09-11T10:17:24.542461575Z",
+      "updated_at": "2026-09-11T10:36:19.645349667Z",
       "labels": [
         "release"
       ],
@@ -8888,6 +8888,15 @@
           "kind": "handoff",
           "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA70XdRpYTlv7DVEOdToDAFFBW8Q/Gq5DhwpHF6IPchqSDjohgTUtZDS84qmBjkpNODkUZOuFG7q7Vn6u20qaoBA=="
+        },
+        "d5956b38-693b-461f-a61d-e6f1590bb67b": {
+          "display_id": 1565,
+          "author": "krvx",
+          "content": "[action] All main CI575jobs PASS after one targeted WindowsARM64H2retry (job103227997898). All6taggednativearchive bytecomparisons,H2/bootstrap,attestations PASS. All48native release assets downloaded and locally verified with12Sigstorechecks; LinuxactualCLI/daemon version0.0.2smokePASS. TaggedRPMuploadtimeout resolved by one targeted retry job103230711737 (7m44,total recipe/tests/uploadPASS). Approved exactrun34578347793 attempt2 release-signing env21373377289 under userreleaseauthorization. Four native distribution signing/install/tampercheckjobs nowstarting; needdownloadfreshsignedbundles,full75assetverification,finalstagePASS,thenpublishlatest,reconciledevelop,closeissue73. State/scripts/receipts /home/doll/.cache/peritus-release-0.0.2-*; source/tagunchanged79f79faa.",
+          "created_at": "2026-09-11T10:36:19.635177488Z",
+          "kind": "note",
+          "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAxMmOHnXEvYAeYWpMM7moBFk3izsxqhBzpN15eER6Cibtjq/P1idB+HJwEHSKr21lT5PPrVJvcENL2K2Z/71cDA=="
         }
       }
     },
@@ -15336,8 +15345,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-11T10:17:24.542461575Z",
+    "timestamp": "2026-09-11T10:36:19.645349667Z",
     "agent_id": "krvx",
-    "agent_seq": 243
+    "agent_seq": 244
   }
 }
