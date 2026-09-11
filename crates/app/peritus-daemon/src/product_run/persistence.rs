@@ -42,6 +42,40 @@ use types::{
 const MAX_PREVIEW_OPERATIONS: usize = 16_384;
 const MAX_PREVIEW_OUTPUT_BYTES: usize = 4 * 1_024 * 1_024;
 
+#[cfg(test)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum PersistenceFaultPoint {
+    BeforeWrite,
+    BeforeFileSync,
+    BeforeRename,
+    AfterRename,
+    BeforeDirectorySync,
+}
+
+#[cfg(test)]
+static PERSISTENCE_FAULTS: std::sync::Mutex<Vec<([u8; 16], PersistenceFaultPoint)>> =
+    std::sync::Mutex::new(Vec::new());
+
+#[cfg(test)]
+pub fn inject_persistence_fault(run_id: RunId, point: PersistenceFaultPoint) {
+    PERSISTENCE_FAULTS.lock().expect("persistence fault lock").push((run_id.into_bytes(), point));
+}
+
+#[cfg(test)]
+fn check_persistence_fault(
+    run_id: RunId,
+    point: PersistenceFaultPoint,
+) -> Result<(), ProductRunServiceError> {
+    let mut faults = PERSISTENCE_FAULTS.lock().map_err(|_| ProductRunServiceError::Unavailable)?;
+    if let Some(index) =
+        faults.iter().position(|candidate| candidate == &(run_id.into_bytes(), point))
+    {
+        faults.remove(index);
+        return Err(ProductRunServiceError::Unavailable);
+    }
+    Ok(())
+}
+
 pub(super) fn persist_record(
     directory: &Path,
     record: &RunRecord,
@@ -79,14 +113,28 @@ fn write_record(directory: &Path, record: &RunRecord) -> Result<(), ProductRunSe
     let path = directory.join(format!("{}.json", persisted.run_id));
     let temporary = path.with_extension("json.new");
     let mut file = fs::File::create(&temporary).map_err(|_| ProductRunServiceError::Unavailable)?;
-    file.write_all(&bytes)
-        .and_then(|()| file.sync_all())
-        .map_err(|_| ProductRunServiceError::Unavailable)?;
+    #[cfg(test)]
+    check_persistence_fault(record.request.run_id(), PersistenceFaultPoint::BeforeWrite)?;
+    file.write_all(&bytes).map_err(|_| ProductRunServiceError::Unavailable)?;
+    #[cfg(test)]
+    check_persistence_fault(record.request.run_id(), PersistenceFaultPoint::BeforeFileSync)?;
+    file.sync_all().map_err(|_| ProductRunServiceError::Unavailable)?;
+    #[cfg(test)]
+    check_persistence_fault(record.request.run_id(), PersistenceFaultPoint::BeforeRename)?;
     fs::rename(temporary, path).map_err(|_| ProductRunServiceError::Unavailable)?;
+    #[cfg(test)]
+    check_persistence_fault(record.request.run_id(), PersistenceFaultPoint::AfterRename)?;
     #[cfg(unix)]
-    fs::File::open(directory)
-        .and_then(|file| file.sync_all())
-        .map_err(|_| ProductRunServiceError::Unavailable)?;
+    {
+        #[cfg(test)]
+        check_persistence_fault(
+            record.request.run_id(),
+            PersistenceFaultPoint::BeforeDirectorySync,
+        )?;
+        fs::File::open(directory)
+            .and_then(|file| file.sync_all())
+            .map_err(|_| ProductRunServiceError::Unavailable)?;
+    }
     Ok(())
 }
 

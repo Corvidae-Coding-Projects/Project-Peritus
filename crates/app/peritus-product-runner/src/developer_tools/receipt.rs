@@ -374,6 +374,7 @@ mod tests {
         let mut first = EffectReceiptLedger::new(path.clone(), "writer-1".to_owned());
         assert!(matches!(first.begin(&call).expect("start"), ReceiptDecision::Execute));
 
+        let mut stable_length = None;
         for _ in 0..2 {
             let mut recovered = EffectReceiptLedger::new(path.clone(), "writer-1".to_owned());
             assert!(matches!(
@@ -381,6 +382,104 @@ mod tests {
                 ReceiptDecision::Refuse { detail, ambiguous: true }
                     if detail.contains("ambiguous prior command outcome")
             ));
+            let length = fs::metadata(&path).expect("ledger metadata").len();
+            if let Some(expected) = stable_length {
+                assert_eq!(length, expected, "persisted ambiguity must be restart-stable");
+            } else {
+                stable_length = Some(length);
+            }
+        }
+    }
+
+    #[test]
+    fn interrupted_non_command_effect_remains_executable() {
+        let directory = tempfile::tempdir().expect("state");
+        let path = directory.path().join("effects.bin");
+        let call = call("call-1", "workspace_write", r#"{"content":"one","path":"a"}"#);
+        let mut first = EffectReceiptLedger::new(path.clone(), "writer-1".to_owned());
+        assert!(matches!(first.begin(&call).expect("start"), ReceiptDecision::Execute));
+
+        let mut recovered = EffectReceiptLedger::new(path, "writer-1".to_owned());
+        assert!(matches!(recovered.begin(&call).expect("recover"), ReceiptDecision::Execute));
+    }
+
+    #[test]
+    fn reused_provider_call_id_conflicts_on_each_identity_dimension() {
+        for conflicting in [
+            call("call-1", "workspace_delete", r#"{"path":"a"}"#),
+            call("call-1", "workspace_write", r#"{"content":"two","path":"a"}"#),
+        ] {
+            let directory = tempfile::tempdir().expect("state");
+            let path = directory.path().join("effects.bin");
+            let original = call("call-1", "workspace_write", r#"{"content":"one","path":"a"}"#);
+            let mut ledger = EffectReceiptLedger::new(path.clone(), "writer-1".to_owned());
+            assert!(matches!(ledger.begin(&original).expect("first"), ReceiptDecision::Execute));
+            ledger.complete(&Value::Bool(true), false).expect("complete first");
+
+            let mut recovered = EffectReceiptLedger::new(path, "writer-1".to_owned());
+            assert!(matches!(
+                recovered.begin(&original).expect("replay first"),
+                ReceiptDecision::Replay { .. }
+            ));
+            assert!(matches!(
+                recovered.begin(&conflicting).expect("reject reused call ID"),
+                ReceiptDecision::Refuse { detail, ambiguous: false }
+                    if detail.contains("provider reused one tool-call ID")
+            ));
+        }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn receipt_read_errors_are_not_treated_as_an_empty_ledger() {
+        let directory = tempfile::tempdir().expect("state");
+        let mut ledger =
+            EffectReceiptLedger::new(directory.path().to_path_buf(), "writer-1".to_owned());
+        let call = call("call-1", "workspace_write", r#"{"content":"one","path":"a"}"#);
+        let Err(error) = ledger.begin(&call) else {
+            panic!("reading a directory must fail closed");
+        };
+        assert!(error.to_string().contains("read effect receipts"));
+    }
+
+    #[test]
+    fn ledger_byte_bound_accepts_exact_limit_and_rejects_one_byte_over() {
+        let directory = tempfile::tempdir().expect("state");
+        let call = call("call-1", "workspace_write", r#"{"content":"one","path":"a"}"#);
+        for (length, expected) in [
+            (MAX_LEDGER_BYTES as u64, "decode effect receipt"),
+            (MAX_LEDGER_BYTES as u64 + 1, "effect receipt ledger exceeds its byte bound"),
+        ] {
+            let path = directory.path().join(format!("ledger-{length}.bin"));
+            let file = fs::File::create(&path).expect("create bounded sparse ledger");
+            file.set_len(length).expect("size bounded sparse ledger");
+            drop(file);
+            let mut ledger = EffectReceiptLedger::new(path, "writer-1".to_owned());
+            let Err(error) = ledger.begin(&call) else {
+                panic!("synthetic ledger must fail closed");
+            };
+            assert!(error.to_string().contains(expected), "{error}");
+        }
+    }
+
+    #[test]
+    fn record_byte_bound_accepts_exact_limit_and_rejects_one_byte_over() {
+        let directory = tempfile::tempdir().expect("state");
+        let call = call("call-1", "workspace_write", r#"{"content":"one","path":"a"}"#);
+        for (length, expected) in [
+            (MAX_RECORD_BYTES as u64, "decode effect receipt"),
+            (MAX_RECORD_BYTES as u64 + 1, "effect receipt record exceeds its byte bound"),
+        ] {
+            let path = directory.path().join(format!("record-{length}.bin"));
+            let mut file = fs::File::create(&path).expect("create bounded record ledger");
+            file.write_all(&length.to_le_bytes()).expect("record length");
+            file.set_len(length + 8).expect("size bounded sparse record");
+            drop(file);
+            let mut ledger = EffectReceiptLedger::new(path, "writer-1".to_owned());
+            let Err(error) = ledger.begin(&call) else {
+                panic!("synthetic record must fail closed");
+            };
+            assert!(error.to_string().contains(expected), "{error}");
         }
     }
 

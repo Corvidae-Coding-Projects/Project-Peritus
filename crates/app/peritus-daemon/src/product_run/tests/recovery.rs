@@ -190,6 +190,93 @@ fn repeated_failed_recovery_admission_does_not_duplicate_restart_narration() {
 }
 
 #[test]
+fn product_record_fault_boundaries_preserve_an_old_or_complete_new_record() {
+    interaction::block_on(async {
+        use super::super::persistence::{PersistenceFaultPoint, inject_persistence_fault};
+        use super::super::{ProductRunServiceError, persist_record, replace_snapshot};
+
+        let mut points = vec![
+            (PersistenceFaultPoint::BeforeWrite, false),
+            (PersistenceFaultPoint::BeforeFileSync, false),
+            (PersistenceFaultPoint::BeforeRename, false),
+            (PersistenceFaultPoint::AfterRename, true),
+        ];
+        #[cfg(unix)]
+        points.push((PersistenceFaultPoint::BeforeDirectorySync, true));
+
+        for (index, (point, new_record_visible)) in points.into_iter().enumerate() {
+            let repository = repository();
+            let state = tempfile::tempdir().expect("state");
+            let seed = u8::try_from(index).expect("fault index");
+            let writer = stalled(0xb1 + seed, "writer");
+            let reviewer = scripted(0xc1 + seed, "reviewer", clean_review());
+            let fixer = scripted(0xd1 + seed, "fixer", Vec::new());
+            let run_id = RunId::new([0xb8 + seed; 16]).expect("run");
+            let workspace_id = WorkspaceId::new([0xc8 + seed; 16]).expect("workspace");
+            let service = service(
+                state.path(),
+                repository.path(),
+                workspace_id,
+                [&writer, &reviewer, &fixer],
+            );
+            let request = ProductRunRequest::new(
+                run_id,
+                workspace_id,
+                ProductProviderSelection::new(
+                    writer.profile.profile_id(),
+                    reviewer.profile.profile_id(),
+                    fixer.profile.profile_id(),
+                ),
+                "Exercise one product-record persistence boundary.".to_owned(),
+            )
+            .expect("request");
+            service.start(request).await.expect("persist baseline");
+            tokio::time::timeout(Duration::from_secs(5), async {
+                while writer.requests.lock().expect("writer requests").is_empty() {
+                    tokio::task::yield_now().await;
+                }
+            })
+            .await
+            .expect("provider boundary");
+
+            let run_hex = run_id.as_bytes().iter().fold(String::new(), |mut value, byte| {
+                use core::fmt::Write as _;
+                let _ = write!(value, "{byte:02x}");
+                value
+            });
+            let record_path = service.inner.directory.join(format!("{run_hex}.json"));
+            let baseline: serde_json::Value =
+                serde_json::from_slice(&fs::read(&record_path).expect("baseline bytes"))
+                    .expect("baseline record");
+            let baseline_status = baseline["status"].as_str().expect("baseline status").to_owned();
+            {
+                let mut records = service.inner.records.write().expect("records");
+                let record = records.get_mut(&run_id).expect("run");
+                record.snapshot = replace_snapshot(
+                    &record.snapshot,
+                    record.snapshot.phase(),
+                    "fault-boundary-new-status",
+                    record.snapshot.summary(),
+                )
+                .expect("replacement snapshot");
+                inject_persistence_fault(run_id, point);
+                assert!(matches!(
+                    persist_record(&service.inner.directory, record),
+                    Err(ProductRunServiceError::Unavailable)
+                ));
+            }
+            let observed: serde_json::Value =
+                serde_json::from_slice(&fs::read(&record_path).expect("canonical record bytes"))
+                    .expect("canonical record stays complete JSON");
+            let expected =
+                if new_record_visible { "fault-boundary-new-status" } else { &baseline_status };
+            assert_eq!(observed["status"].as_str(), Some(expected), "fault point {point:?}");
+            service.shutdown(Duration::from_secs(5)).await;
+        }
+    });
+}
+
+#[test]
 fn explicit_cancel_racing_shutdown_remains_cancelled_in_durable_state() {
     interaction::block_on(async {
         let repository = repository();
