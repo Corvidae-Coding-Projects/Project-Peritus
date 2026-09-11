@@ -44,15 +44,13 @@ fn accepted_result_stays_complete_when_shutdown_follows_late_cancellation() {
         });
         tokio::time::timeout(Duration::from_secs(5), async {
             loop {
-                let stopping = running
-                    .inner
-                    .records
-                    .read()
-                    .expect("run records")
-                    .get(&run_id)
-                    .is_some_and(|record| {
-                        record.snapshot.status() == "Stopping safely after the current effect boundary"
-                    });
+                let stopping =
+                    running.inner.records.read().expect("run records").get(&run_id).is_some_and(
+                        |record| {
+                            record.snapshot.status()
+                                == "Stopping safely after the current effect boundary"
+                        },
+                    );
                 if stopping {
                     break;
                 }
