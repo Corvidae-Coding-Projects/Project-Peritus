@@ -44,9 +44,13 @@ impl CommandRuntime {
         let ordinal = {
             let mut state =
                 self.inner.state.lock().map_err(|_| "local compactor command owner poisoned")?;
-            state.next_ordinal =
-                state.next_ordinal.checked_add(1).ok_or("local compactor ordinal overflow")?;
-            state.next_ordinal
+            let ordinal = super::ordinal::reserve(
+                &self.inner.state_root,
+                self.inner.run_id,
+                state.next_ordinal,
+            )?;
+            state.next_ordinal = ordinal;
+            ordinal
         };
         let contract = contract::command_contract(self.inner.run_id, ordinal)?;
         let ids = identity::CommandIds::new(self.inner.run_id, ordinal, &contract)?;

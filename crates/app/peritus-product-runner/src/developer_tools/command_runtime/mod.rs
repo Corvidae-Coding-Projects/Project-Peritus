@@ -10,6 +10,7 @@ mod identity;
 mod journal;
 mod kernel;
 mod lease;
+mod ordinal;
 mod plan;
 mod preview;
 mod result;
@@ -155,11 +156,10 @@ impl CommandRuntime {
         let timeout_millis =
             u64::try_from(request.timeout.as_millis()).unwrap_or(u64::MAX).clamp(1, 600_000);
         let mut state = self.inner.state.lock().map_err(|_| tool("command runtime is poisoned"))?;
-        state.next_ordinal = state
-            .next_ordinal
-            .checked_add(1)
-            .ok_or_else(|| tool("command runtime action ordinal overflowed"))?;
-        let ordinal = state.next_ordinal;
+        let ordinal =
+            ordinal::reserve(&self.inner.state_root, self.inner.run_id, state.next_ordinal)
+                .map_err(tool)?;
+        state.next_ordinal = ordinal;
         let contract = contract::command_contract(self.inner.run_id, ordinal).map_err(tool)?;
         let ids = identity::CommandIds::new(self.inner.run_id, ordinal, &contract).map_err(tool)?;
         let command = plan::compile(

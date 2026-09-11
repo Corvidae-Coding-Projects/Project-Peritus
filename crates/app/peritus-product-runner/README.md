@@ -55,6 +55,13 @@ or control with the existing C4/C2 owner; it does not promise to recreate an arb
 after a daemon process restart. Startup recovery separately reconciles durable C2 process state and
 the durable product run remains explicitly recoverable.
 
+New shell and local-compactor commands reserve a durable per-run ordinal before creating process
+authority. Reopening the runtime, a failed start, and concurrent runtime instances cannot reuse a
+reserved identity. The transactional SQLite allocator also skips existing authority and compactor
+paths from older versions. Failed starts consume an ordinal; an unreadable or exhausted allocator
+stops execution rather than resetting it. Effect receipts still determine whether an earlier
+request may replay a result or requires reconciliation.
+
 When the launcher supplied explicit automatic-failover consent, every designer, writer, reviewer,
 and fixer invocation owns a deterministic provider cursor. The selected provider keeps its normal
 bounded recovery first. Only then may the role advance to another configured tool-capable route;
