@@ -29,18 +29,19 @@ pub fn sse(bytes: &[u8]) {
             items.extend(chunked.finish()?);
             Ok(items)
         });
-    let expected = expected.map_err(|error| error.kind());
-    let observed = observed.map_err(|error| error.kind());
-    assert_eq!(observed, expected, "SSE result changed across chunk partition");
-    if expected.is_ok() {
-        assert_eq!(
-            chunked.finish().expect_err("terminal is single-use").kind(),
-            ProviderCoreErrorKind::MalformedStream
-        );
-        assert_eq!(
-            chunked.push(b"data: late\n\n").expect_err("closed stream rejects input").kind(),
-            ProviderCoreErrorKind::MalformedStream
-        );
+    match expected {
+        Ok(expected) => {
+            assert_eq!(observed.expect("valid SSE survives chunk partition"), expected);
+            assert_eq!(
+                chunked.finish().expect_err("terminal is single-use").kind(),
+                ProviderCoreErrorKind::MalformedStream
+            );
+            assert_eq!(
+                chunked.push(b"data: late\n\n").expect_err("closed stream rejects input").kind(),
+                ProviderCoreErrorKind::MalformedStream
+            );
+        }
+        Err(_) => assert!(observed.is_err(), "chunk partition admitted invalid SSE"),
     }
 }
 
@@ -64,18 +65,19 @@ pub fn ndjson(bytes: &[u8]) {
             items.extend(chunked.finish()?);
             Ok(items)
         });
-    let expected = expected.map_err(|error| error.kind());
-    let observed = observed.map_err(|error| error.kind());
-    assert_eq!(observed, expected, "NDJSON result changed across chunk partition");
-    if expected.is_ok() {
-        assert_eq!(
-            chunked.finish().expect_err("terminal is single-use").kind(),
-            ProviderCoreErrorKind::MalformedStream
-        );
-        assert_eq!(
-            chunked.push(b"{}\n").expect_err("closed stream rejects input").kind(),
-            ProviderCoreErrorKind::MalformedStream
-        );
+    match expected {
+        Ok(expected) => {
+            assert_eq!(observed.expect("valid NDJSON survives chunk partition"), expected);
+            assert_eq!(
+                chunked.finish().expect_err("terminal is single-use").kind(),
+                ProviderCoreErrorKind::MalformedStream
+            );
+            assert_eq!(
+                chunked.push(b"{}\n").expect_err("closed stream rejects input").kind(),
+                ProviderCoreErrorKind::MalformedStream
+            );
+        }
+        Err(_) => assert!(observed.is_err(), "chunk partition admitted invalid NDJSON"),
     }
 }
 
