@@ -38,4 +38,4 @@ pub use wire::{WorkingCodecError, decode_working_event, decode_working_state, en
 #[cfg(not(verus_only))]
 mod selection;
 #[cfg(not(verus_only))]
-pub use selection::{WorkingRenderView, render_working_state};
+pub use selection::{WorkingRenderView, render_working_state, render_working_state_with_headroom};

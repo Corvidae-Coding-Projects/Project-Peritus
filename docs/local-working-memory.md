@@ -32,8 +32,12 @@ checkpoint_every_completed_batch = true
 Set `enabled = false` to select the previous developer-loop compaction path explicitly.
 Local storage/validation failures stop progress; they never silently enable legacy or remote
 compaction. Bounds are validated before opening the store. Working-state allocations adapt to
-the selected provider's input capacity, including tool schemas and framing. If protected
-instructions or required evidence closure cannot fit, assembly reports a capacity error.
+the selected provider's input capacity, including tool schemas and framing.
+`working_state_max_tokens` caps optional working detail and is the preferred allocation for the
+whole working view. Required roots and their complete dependencies may exceed it using only the
+additional headroom they need. This also applies when reopening existing memory after a restart.
+If protected instructions or required evidence closure cannot fit the provider's actual input
+capacity, assembly reports a capacity error; it never drops those entries to continue.
 
 `fully_offline = true` additionally requires every configured route to be a compatible provider
 with a literal loopback endpoint and disables automatic provider failover. DNS names (including
