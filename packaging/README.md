@@ -213,6 +213,11 @@ Removal keeps configuration, credentials, task state, logs, and managed reposito
 It also keeps system dependencies and the standard Unix user-bin path setting.
 For an older installation without a saved uninstaller, use the uninstaller from its downloaded package.
 
+On Windows, installation and removal stop processes belonging to the selected installation,
+including a daemon started directly by the launcher. Other installations are left running.
+Removal reports an error if a remaining file lock or access denial prevents deletion; release
+that lock and retry. It does not report success or remove the user PATH entry while files remain.
+
 ## Install from source
 
 Install the Rust toolchain specified in `rust-toolchain.toml`.

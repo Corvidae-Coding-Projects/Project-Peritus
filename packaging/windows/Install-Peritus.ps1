@@ -87,8 +87,19 @@ if ($LASTEXITCODE -ne 0) { throw 'Git does not run.' }
 & (Join-Path $bundle 'bin\peritus.exe') --version | Out-Null
 if ($LASTEXITCODE -ne 0) { throw 'The package cannot run. Check the Visual C++ runtime and Windows version.' }
 
+& (Join-Path $bundle 'Uninstall-Peritus.ps1') -InstallRoot $programRoot -StopOnly
+
 New-Item -ItemType Directory -Path $binRoot, $helperRoot, $shareRoot -Force | Out-Null
-function Publish-PackageFile { param([string]$Source, [string]$Target); $temporary = "$Target.new.$PID"; Copy-Item -LiteralPath $Source -Destination $temporary -Force; Move-Item -LiteralPath $temporary -Destination $Target -Force }
+function Publish-PackageFile {
+    param([string]$Source, [string]$Target)
+    $temporary = "$Target.new.$PID"
+    try {
+        Copy-Item -LiteralPath $Source -Destination $temporary -Force
+        Move-Item -LiteralPath $temporary -Destination $Target -Force
+    } finally {
+        if (Test-Path -LiteralPath $temporary) { Remove-Item -LiteralPath $temporary -Force -ErrorAction Stop }
+    }
+}
 Publish-PackageFile (Join-Path $bundle 'bin\peritusd.exe') (Join-Path $binRoot 'peritusd.exe')
 Publish-PackageFile (Join-Path $bundle 'bin\peritus.exe') (Join-Path $binRoot 'peritus.exe')
 Publish-PackageFile (Join-Path $bundle 'bin\peritus-tui.exe') (Join-Path $binRoot 'peritus-tui.exe')
