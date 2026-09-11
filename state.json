@@ -13131,8 +13131,9 @@
       "priority": "high",
       "created_by": "p0bJ",
       "created_at": "2026-09-11T21:25:49.383315814Z",
-      "updated_at": "2026-09-11T21:25:54.428953454Z",
+      "updated_at": "2026-09-11T21:25:59.683000940Z",
       "labels": [
+        "reliability",
         "testing"
       ]
     },
@@ -15366,8 +15367,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-11T21:25:54.428953454Z",
+    "timestamp": "2026-09-11T21:25:59.683000940Z",
     "agent_id": "p0bJ",
-    "agent_seq": 2
+    "agent_seq": 3
   }
 }
