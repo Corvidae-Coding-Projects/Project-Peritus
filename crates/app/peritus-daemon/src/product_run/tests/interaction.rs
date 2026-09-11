@@ -312,6 +312,28 @@ async fn pipeline_scenario(mode: ProductInteractionMode) {
     ] {
         assert!(public.contains(&message), "missing stage: {message}; {public:?}");
     }
+    if mode == ProductInteractionMode::Chat {
+        let requests_before = writer.requests.lock().expect("requests").len();
+        {
+            let mut records = service.inner.records.write().expect("run records");
+            let record = records.get_mut(&run_id).expect("complete chat record");
+            record
+                .conversation
+                .append(
+                    peritus_app_protocol::ProductConversationRole::User,
+                    "Durable input awaiting explicit continuation".to_owned(),
+                )
+                .expect("append recovery-shaped pending input");
+        }
+        assert!(
+            matches!(
+                service.retry(run_id).await,
+                Err(crate::product_run::ProductRunServiceError::InvalidState)
+            ),
+            "generic retry must not reopen a complete chat with pending input",
+        );
+        assert_eq!(writer.requests.lock().expect("requests").len(), requests_before);
+    }
     service.shutdown(Duration::from_secs(5)).await;
 }
 
