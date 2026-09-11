@@ -262,7 +262,7 @@ fn fuzz(root: &Path, evidence: &Path, index: usize) -> Result<(), XtaskError> {
     })?;
     write_json(
         &evidence.join("fuzz-summary.json"),
-        &json!({"target": target, "runs": runs, "engine_seconds": seconds, "seed": 881, "corpus": corpus, "max_len": 8192, "rss_limit_mb": 2048, "input_timeout_seconds": 30}),
+        &json!({"target": target, "runs": runs, "engine_seconds": seconds, "seed": 881, "corpus": corpus, "max_len": 8192, "rss_limit_mb": 2048, "input_timeout_seconds": 30, "address_sanitizer": "enabled", "leak_detection": "disabled_for_traced_child_compatibility"}),
     )
 }
 
@@ -288,6 +288,7 @@ fn fuzz_command(target: &str) -> Command {
     command.args([&format!("+{NIGHTLY}"), "fuzz", "run", target]);
     command.env_remove("CUSTOM_LIBFUZZER_PATH");
     command.env_remove("CUSTOM_LIBFUZZER_STD_CXX");
+    command.env("ASAN_OPTIONS", "detect_leaks=0");
     command
 }
 

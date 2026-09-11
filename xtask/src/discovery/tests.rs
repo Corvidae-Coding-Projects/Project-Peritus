@@ -191,6 +191,10 @@ fn fuzz_command_excludes_ambient_custom_libfuzzer_inputs() {
             "{name} must be removed from the fuzz build environment",
         );
     }
+    assert!(command.get_envs().any(|(name, value)| {
+        name == "ASAN_OPTIONS"
+            && value.is_some_and(|value| value == std::ffi::OsStr::new("detect_leaks=0"))
+    }));
 }
 
 #[test]

@@ -55,7 +55,7 @@ cargo xtask discovery-mutation-receipt
 cargo xtask discovery-mutation-cancellation
 ```
 
-Each fuzz campaign copies the corpus into its evidence directory, uses seed 881, an 8192-byte maximum input, 2048 MiB RSS limit, 30-second per-input timeout and 120-second engine budget. The complete build/run process has an eight-minute bound. A success exit also requires the engine's completion log to demonstrate nonzero executions and its full allotted budget. Build failure, absent completion evidence, timeout and oracle failure cannot become successful campaigns.
+Each fuzz campaign copies the corpus into its evidence directory, uses seed 881, an 8192-byte maximum input, 2048 MiB RSS limit, 30-second per-input timeout and 120-second engine budget. AddressSanitizer and the semantic oracles remain active; leak detection is disabled because traced child environments make LeakSanitizer abort after otherwise successful Rust campaigns. The complete build/run process has an eight-minute bound. A success exit also requires the engine's completion log to demonstrate nonzero executions and its full allotted budget. Build failure, absent completion evidence, timeout and oracle failure cannot become successful campaigns.
 
 The POSIX lifecycle campaign accepts only `docker` or `podman`, pulls the exact reviewed Alpine 3.22 manifest digest, and runs every scenario with networking disabled and strict prerequisite enforcement. Set `PERITUS_CONTAINER_ENGINE=podman` for a local Podman run; scheduled CI uses Docker by default. A missing engine, failed pull, skipped scenario or zero executed scenarios fails the operation.
 
