@@ -1,6 +1,6 @@
 {
   "next_display_id": 74,
-  "next_comment_id": 1561,
+  "next_comment_id": 1562,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -8794,7 +8794,7 @@
       "priority": "high",
       "created_by": "krvx",
       "created_at": "2026-09-11T01:21:57.901312921Z",
-      "updated_at": "2026-09-11T08:17:07.685386386Z",
+      "updated_at": "2026-09-11T08:19:34.879902384Z",
       "labels": [
         "release"
       ],
@@ -8843,6 +8843,15 @@
           "kind": "result",
           "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAGwizOi6V4yR//w2dCelGGEs5AC7mY7fCCXcSAMbk/wZBwCZjsFzU7+Tr8fZ3NgqQZVvY8N+apN6vYWt0mFXaCA=="
+        },
+        "bbfdedc8-a469-4079-a919-496d9505e26d": {
+          "display_id": 1561,
+          "author": "krvx",
+          "content": "[action] PR69 merged and signed v0.0.2 tag pushed at exact reviewed main merge 79f79faaccce4e90bdf72649cc1ece8f4e3b8c5c. Release run 34578347793 is queued/running alongside same-SHA main checks. User has authorized complete release execution and publication. Continue monitoring, approve exact-tag protected signing when ready, verify every fresh asset and signature after required gates, publish latest, reconcile develop and finish issue73. Release state/evidence/public notes in /home/doll/.cache/peritus-release-0.0.2-*; isolated release worktree exists. No publication yet.",
+          "created_at": "2026-09-11T08:19:34.869579014Z",
+          "kind": "note",
+          "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAuSRK8p84UA17ub60YmHyFMzU3dU1GGhL+IHPR9UleqKyhlD7f0ra/DnR9nlYAMwVZqMIzOfy5TvSCKJA7ZpzCw=="
         },
         "c633c2d3-50b5-4df5-b536-7ddc22593d7b": {
           "display_id": 1559,
@@ -15300,8 +15309,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-11T08:17:07.685386386Z",
+    "timestamp": "2026-09-11T08:19:34.879902384Z",
     "agent_id": "krvx",
-    "agent_seq": 239
+    "agent_seq": 240
   }
 }
