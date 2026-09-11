@@ -16,7 +16,7 @@ use crate::{
     RecoveryDisposition, StopTrigger, StreamAccounting, TerminalDisposition, TerminalRecovery,
     TerminalResult, WorkspaceAccess,
     recovery::manifest::ExecutionManifest,
-    registry_storage::{persist_claim, write_manifest},
+    registry_storage::{StorageFaultPoint, fault_control, persist_claim, write_manifest},
 };
 
 #[test]
@@ -100,6 +100,65 @@ fn completed_manifest_replacement_discards_stale_previous() {
 
     assert!(current.exists());
     assert!(!previous.exists());
+}
+
+#[test]
+fn manifest_storage_faults_are_reached_truthful_and_recoverable() {
+    use std::io::ErrorKind;
+
+    let cases = [
+        (StorageFaultPoint::StagingWrite, ErrorKind::PermissionDenied),
+        (StorageFaultPoint::StagingSync, ErrorKind::StorageFull),
+        (StorageFaultPoint::PreserveRename, ErrorKind::PermissionDenied),
+        (StorageFaultPoint::PublishRename, ErrorKind::PermissionDenied),
+        (StorageFaultPoint::DirectorySync, ErrorKind::StorageFull),
+        (StorageFaultPoint::BackupDelete, ErrorKind::PermissionDenied),
+    ];
+    for (point, kind) in cases {
+        for reproduction in 1..=3 {
+            let registry = TestRegistry::new();
+            let identity = identity();
+            let process_id = identity.process_id();
+            prepare_closed_manifest(&registry, &identity, digest(31));
+            let manifests = registry.registry().join("manifests-v1");
+            let current = manifests
+                .join(format!("{}.manifest", crate::registry_storage::hex(process_id.as_bytes())));
+            let manifest = ExecutionManifest::decode(
+                &std::fs::read(&current).expect("current manifest bytes"),
+            )
+            .expect("decode owner manifest");
+            fault_control::schedule(point, 1, kind);
+
+            let error = write_manifest(&manifests, &manifest)
+                .expect_err("scheduled storage fault must remain visible");
+
+            fault_control::verify_hit();
+            assert_eq!(error.code(), ErrorCode::Persistence);
+            let store = ProcessStore::open(registry.registry(), registry.workspace())
+                .expect("recover faulted replacement");
+            let report = store.reconcile(&mut NoProbe).expect("reconcile recovered manifest");
+            assert_eq!(report.entries().len(), 1, "{point:?} reproduction {reproduction}");
+            assert_eq!(report.entries()[0].process_id(), process_id);
+        }
+    }
+}
+
+#[test]
+fn unmatched_storage_fault_occurrence_is_a_negative_control() {
+    let registry = TestRegistry::new();
+    let identity = identity();
+    let process_id = identity.process_id();
+    prepare_closed_manifest(&registry, &identity, digest(31));
+    let manifests = registry.registry().join("manifests-v1");
+    let current =
+        manifests.join(format!("{}.manifest", crate::registry_storage::hex(process_id.as_bytes())));
+    let manifest = ExecutionManifest::decode(&std::fs::read(current).expect("manifest bytes"))
+        .expect("decode manifest");
+    fault_control::schedule(StorageFaultPoint::StagingWrite, 2, std::io::ErrorKind::Other);
+
+    write_manifest(&manifests, &manifest).expect("unmatched occurrence must not inject");
+
+    fault_control::verify_missed();
 }
 
 #[test]

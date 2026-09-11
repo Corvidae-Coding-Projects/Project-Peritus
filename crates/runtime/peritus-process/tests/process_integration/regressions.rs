@@ -103,6 +103,75 @@ fn output_limit_terminates_and_reaps_the_owned_process() {
 }
 
 #[test]
+fn output_limit_reaps_a_descendant_holding_the_stream_open() {
+    let root = TestRoot::new();
+    let ids = Ids::new(141);
+    let mut options = control_options(IoMode::Pipes);
+    options.arguments = vec!["output-tree".to_owned()];
+    options.stdin = StdinPolicy::Closed;
+    options.output_limit = 4;
+    options.process_count = 2;
+    options.descendants = 1;
+    let execution = plan(&root, &ids, options).expect("output-tree plan");
+    let began = Instant::now();
+    let (owned, store) = launch(&root, &ids, execution);
+
+    let terminal = owned.wait().expect("bounded descendant terminal");
+
+    assert!(began.elapsed() < Duration::from_secs(10));
+    assert_eq!(terminal.disposition(), TerminalDisposition::OutputLimit);
+    assert_eq!(
+        terminal.first_trigger().map(peritus_process::StopTrigger::reason),
+        Some(CancellationReason::OutputLimit)
+    );
+    assert!(terminal.tree_cleanup_complete());
+    assert!(terminal.support_tasks_joined());
+    assert_eq!(store.terminal_result(ids.process).expect("persisted terminal"), terminal);
+}
+
+#[test]
+fn cancellation_after_output_preserves_first_reason_and_accounting() {
+    let root = TestRoot::new();
+    let ids = Ids::new(144);
+    let mut options = control_options(IoMode::Pipes);
+    options.arguments = vec!["output-control".to_owned()];
+    options.stdin = StdinPolicy::Closed;
+    let execution = plan(&root, &ids, options).expect("output-control plan");
+    let (owned, store) = launch(&root, &ids, execution);
+    let control = owned.control();
+    for _ in 0..200 {
+        if control.retained_stream_output(peritus_process::OutputStream::Stdout) == b"ready" {
+            break;
+        }
+        std::thread::sleep(Duration::from_millis(5));
+    }
+    assert_eq!(
+        control.retained_stream_output(peritus_process::OutputStream::Stdout),
+        b"ready",
+        "output barrier was not reached"
+    );
+
+    control.cancel(CancellationReason::User).expect("cancel after output barrier");
+    let terminal = owned.wait().expect("cancelled output terminal");
+
+    assert_eq!(terminal.disposition(), TerminalDisposition::Cancelled);
+    assert_eq!(
+        terminal.first_trigger().map(peritus_process::StopTrigger::reason),
+        Some(CancellationReason::User)
+    );
+    let stdout = terminal
+        .output()
+        .streams()
+        .iter()
+        .find(|stream| stream.stream() == peritus_process::OutputStream::Stdout)
+        .expect("stdout accounting");
+    assert_eq!((stdout.observed(), stdout.retained(), stdout.dropped()), (5, 5, 0));
+    assert!(terminal.tree_cleanup_complete());
+    assert!(terminal.support_tasks_joined());
+    assert_eq!(store.terminal_result(ids.process).expect("persisted terminal"), terminal);
+}
+
+#[test]
 fn resize_authority_rejects_pipe_and_denied_pty_without_stopping_owner() {
     let root = TestRoot::new();
     let pipe_ids = Ids::new(143);

@@ -6,10 +6,19 @@ import unittest
 
 
 ROOT = Path(__file__).resolve().parent.parent
+CONTAINER_IMAGE = "docker.io/library/alpine:3.22"
 
 
 class PosixUninstallFailureTests(unittest.TestCase):
     def setUp(self):
+        if shutil.which("podman") is None:
+            self.skipTest("rootless podman is required for disposable natural-profile isolation")
+        if subprocess.run(
+            ["podman", "image", "exists", CONTAINER_IMAGE],
+            check=False,
+            timeout=10,
+        ).returncode != 0:
+            self.skipTest(f"preloaded {CONTAINER_IMAGE} is required; tests never pull images")
         self.temporary = tempfile.TemporaryDirectory(prefix="peritus-posix-lifecycle-")
         self.root = Path(self.temporary.name)
         self.home = self.root / "profile"
@@ -33,18 +42,32 @@ class PosixUninstallFailureTests(unittest.TestCase):
         path.chmod(0o755)
 
     def _run(self, script: Path, *, fault: str) -> subprocess.CompletedProcess[str]:
-        environment = {
-            "HOME": str(self.home),
-            "PATH": f"{self.commands}:/usr/bin:/bin",
-            "PERITUS_TEST_CALLS": str(self.calls),
-            "PERITUS_TEST_FAULT": fault,
-        }
+        relative_script = script.relative_to(ROOT)
         return subprocess.run(
-            ["/bin/sh", str(script)],
-            env=environment,
+            [
+                "podman",
+                "run",
+                "--rm",
+                "--network=none",
+                "--read-only",
+                "--security-opt=label=disable",
+                "--pids-limit=32",
+                "--memory=256m",
+                "--tmpfs=/tmp:rw,size=32m",
+                f"--volume={ROOT}:/repo:ro",
+                f"--volume={self.home}:/root:rw",
+                f"--volume={self.commands}:/commands:ro",
+                f"--volume={self.root}:/campaign:rw",
+                "--env=PATH=/commands:/usr/bin:/bin",
+                "--env=PERITUS_TEST_CALLS=/campaign/calls",
+                f"--env=PERITUS_TEST_FAULT={fault}",
+                CONTAINER_IMAGE,
+                "/bin/sh",
+                f"/repo/{relative_script}",
+            ],
             text=True,
             capture_output=True,
-            timeout=10,
+            timeout=30,
             check=False,
         )
 
@@ -123,7 +146,7 @@ class PosixUninstallFailureTests(unittest.TestCase):
 
     def test_linux_reload_failure_retries_controller_reconciliation(self):
         unit, binary = self._linux_fixture()
-        marker = self.root / "reload-failed"
+        marker = "/campaign/reload-failed"
         self._command(
             "systemctl",
             'printf "%s\\n" "$*" >> "$PERITUS_TEST_CALLS"\n'

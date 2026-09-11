@@ -17,6 +17,8 @@ pub fn run() {
         Some("pipe") => pipe(),
         Some("pty") => pty(),
         Some("output") => output(),
+        Some("output-tree") => output_tree(),
+        Some("output-control") => output_control(),
         Some("dual-output") => dual_output(),
         Some("control") => control(),
         Some("tree") => tree(arguments.get(2)),
@@ -83,6 +85,22 @@ fn output() {
     output.flush().expect("flush bounded output");
     drop(output);
     thread::sleep(Duration::from_secs(5));
+}
+
+fn output_tree() {
+    let executable = env::current_exe().expect("fixture executable");
+    let mut child =
+        Command::new(executable).arg("hold-open").spawn().expect("fixture output descendant");
+    let _reaper = thread::spawn(move || child.wait());
+    std::io::stdout().write_all(b"abcdefgh").expect("fixture bounded output");
+    std::io::stdout().flush().expect("flush bounded output");
+    thread::sleep(Duration::from_secs(30));
+}
+
+fn output_control() {
+    std::io::stdout().write_all(b"ready").expect("fixture readiness output");
+    std::io::stdout().flush().expect("flush readiness output");
+    control();
 }
 
 fn dual_output() {

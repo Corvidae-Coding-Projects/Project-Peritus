@@ -3,7 +3,7 @@
 - Source base: `f75f5dee3976b1c72b85e78fa1d6c50475d5d8fa`
 - Host: Fedora Linux, x86_64
 - Boundary: Linux `systemctl --user` and macOS `launchctl` uninstall routing
-- Execution: deterministic fake supervisor commands in a temporary synthetic child profile
+- Execution: deterministic fake supervisor commands in a rootless disposable container
 - Native coverage: Linux/macOS supervisor integration was not run
 
 ## Invariant and oracle
@@ -12,7 +12,7 @@ An installed supervisor definition means uninstall must stop or prove absence of
 
 The independent oracle checks subprocess status and directly reads the registration and installed binary after the injected failure. A sibling canary outside the disposable profile must retain its exact bytes. Each accepted baseline failure is reproduced from three newly populated fixtures, and a successful retry must then remove the owned files. Controller state is varied independently from registration-file state: loaded registrations without files must still be stopped, and a retry after daemon-reload failure must reconcile controller state again.
 
-The harness supplies a temporary fixture profile as the child process's `HOME` environment entry. It does not change the test runner's environment or the operator's natural `HOME`; subprocesses receive a new explicit environment mapping containing only the fixture profile, fake-command `PATH`, and synthetic fault controls.
+The harness uses rootless Podman with no network, a read-only container root, 32-process and 256 MiB limits, and a 32 MiB temporary filesystem. The image's unchanged natural `/root` home is backed by a fresh mounted profile. The harness never sets `HOME`, changes the test runner environment, or maps the operator's profile. Repository input is read-only; fake commands and the campaign root are the only other mounts.
 
 ## Pre-fix reproduction
 

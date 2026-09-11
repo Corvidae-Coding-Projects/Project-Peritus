@@ -9,4 +9,6 @@ Two deterministic schedules exercise real filesystem state under a temporary reg
 
 Focused commands for both schedules passed. These tests intentionally remain inside the owner crate because the manifest codec is private; no public production API was added solely for testing.
 
-Injected write, sync, rename, delete, permission, and quota failures remain uncovered. They require a narrow owner-internal filesystem fault seam or a disposable filesystem with controllable faults; host-wide quota or disk exhaustion is prohibited.
+An owner-internal, test-only thread-local seam schedules a named point and occurrence. Six cases inject permission or storage-full errors at staging write, staging sync, prior rename, publish rename, directory sync, and backup delete. Every schedule verifies its exact hit, returns a persistence error, reopens from actual filesystem state, and reconciles the original process identity. Each case ran three times from a fresh registry. A second-occurrence negative control verifies that a missed schedule does not inject and is reported as missed by the harness.
+
+These are deterministic adapter-level errors, including quota classification through `StorageFull`; no host filesystem was exhausted. Native kernel ENOSPC, permission, and power-loss behavior remain unsupported in this local campaign.
