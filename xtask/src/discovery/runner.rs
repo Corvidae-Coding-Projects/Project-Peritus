@@ -66,6 +66,7 @@ pub(super) fn run(
         .env("TMPDIR", &scratch)
         .env("TMP", &scratch)
         .env("TEMP", &scratch)
+        .env("GIT_CEILING_DIRECTORIES", &scratch)
         .current_dir(root)
         .env("CARGO_BUILD_JOBS", "2")
         .stdin(Stdio::null())

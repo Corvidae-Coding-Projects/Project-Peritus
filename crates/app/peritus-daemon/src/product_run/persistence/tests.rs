@@ -32,6 +32,32 @@ fn legacy_run_without_messages_gains_a_resumable_conversation() {
 }
 
 #[test]
+fn cancelled_recovery_record_does_not_become_automatically_resumable() {
+    let json = r#"{
+        "run_id":"01010101010101010101010101010101",
+        "workspace_id":"02020202020202020202020202020202",
+        "writer":"03030303030303030303030303030303",
+        "reviewer":"04040404040404040404040404040404",
+        "fixer":"05050505050505050505050505050505",
+        "phase":10,
+        "cycle":1,
+        "task":"build tetris",
+        "status":"recovery required",
+        "diff":"",
+        "gates":"",
+        "review":"",
+        "summary":"interrupted",
+        "user_cancelled":true
+    }"#;
+    let persisted: PersistedRecord = serde_json::from_str(json).expect("recovery record");
+
+    let record = persisted.into_record().expect("restored cancelled record");
+
+    assert_eq!(record.snapshot.phase(), ProductRunPhase::Cancelled);
+    assert!(record.user_cancelled);
+}
+
+#[test]
 fn durable_finding_state_survives_record_restoration() {
     let json = r#"{
         "run_id":"11111111111111111111111111111111",

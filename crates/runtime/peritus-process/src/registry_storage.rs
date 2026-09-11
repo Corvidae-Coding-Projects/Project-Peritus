@@ -298,7 +298,11 @@ const fn store_error(detail: &'static str) -> ProcessError {
 #[cfg(test)]
 pub(crate) mod fault_control {
     use super::StorageFaultPoint;
-    use std::{cell::RefCell, io};
+    use std::{
+        io,
+        sync::Mutex,
+        thread::{self, ThreadId},
+    };
 
     struct ScheduledFault {
         point: StorageFaultPoint,
@@ -308,41 +312,60 @@ pub(crate) mod fault_control {
         kind: io::ErrorKind,
     }
 
-    thread_local! { static FAULT: RefCell<Option<ScheduledFault>> = const { RefCell::new(None) }; }
+    static FAULTS: Mutex<Vec<(ThreadId, ScheduledFault)>> = Mutex::new(Vec::new());
 
     pub(crate) fn schedule(point: StorageFaultPoint, occurrence: u64, kind: io::ErrorKind) {
-        FAULT.with(|fault| {
-            *fault.borrow_mut() =
-                Some(ScheduledFault { point, occurrence, calls: 0, hit: false, kind });
-        });
+        let thread = thread::current().id();
+        let mut faults = FAULTS.lock().expect("storage fault lock");
+        assert!(
+            !faults.iter().any(|(candidate, _)| *candidate == thread),
+            "storage fault already scheduled on this test thread",
+        );
+        faults.push((thread, ScheduledFault { point, occurrence, calls: 0, hit: false, kind }));
     }
 
     pub(super) fn check(point: StorageFaultPoint) -> io::Result<()> {
-        FAULT.with(|fault| {
-            let mut fault = fault.borrow_mut();
-            let Some(scheduled) = fault.as_mut() else { return Ok(()) };
-            if scheduled.point == point {
-                scheduled.calls = scheduled.calls.checked_add(1).expect("fault call count");
-                if scheduled.calls == scheduled.occurrence {
-                    scheduled.hit = true;
-                    return Err(io::Error::from(scheduled.kind));
-                }
-            }
-            Ok(())
-        })
+        let thread = thread::current().id();
+        let triggered =
+            trigger(FAULTS.lock().expect("storage fault lock").as_mut_slice(), thread, point);
+        if let Some(kind) = triggered {
+            return Err(io::Error::from(kind));
+        }
+        Ok(())
+    }
+
+    fn trigger(
+        faults: &mut [(ThreadId, ScheduledFault)],
+        thread: ThreadId,
+        point: StorageFaultPoint,
+    ) -> Option<io::ErrorKind> {
+        let (_, scheduled) = faults.iter_mut().find(|(candidate, _)| *candidate == thread)?;
+        if scheduled.point != point {
+            return None;
+        }
+        scheduled.calls = scheduled.calls.checked_add(1).expect("fault call count");
+        if scheduled.calls != scheduled.occurrence {
+            return None;
+        }
+        scheduled.hit = true;
+        Some(scheduled.kind)
     }
 
     pub(crate) fn verify_hit() {
-        FAULT.with(|fault| {
-            let scheduled = fault.borrow_mut().take().expect("scheduled storage fault");
-            assert!(scheduled.hit, "scheduled storage fault was not reached");
-        });
+        assert!(take_scheduled().hit, "scheduled storage fault was not reached");
     }
 
     pub(crate) fn verify_missed() {
-        FAULT.with(|fault| {
-            let scheduled = fault.borrow_mut().take().expect("scheduled storage fault");
-            assert!(!scheduled.hit, "storage fault unexpectedly triggered");
-        });
+        assert!(!take_scheduled().hit, "storage fault unexpectedly triggered");
+    }
+
+    fn take_scheduled() -> ScheduledFault {
+        let thread = thread::current().id();
+        let mut faults = FAULTS.lock().expect("storage fault lock");
+        let index = faults
+            .iter()
+            .position(|(candidate, _)| *candidate == thread)
+            .expect("scheduled storage fault");
+        faults.swap_remove(index).1
     }
 }

@@ -24,11 +24,11 @@ pub(super) fn validate(workflow: &Hash, diagnostics: &mut Vec<Diagnostic>) {
         && get(workflow, "concurrency")["cancel-in-progress"].as_bool() == Some(true)
         && get(workflow, "concurrency")["group"].as_str()
             == Some("discovery-${{ github.workflow }}-${{ github.ref }}")
-        && keys(jobs.as_hash(), &["replay", "fuzz", "mutation"]);
+        && keys(jobs.as_hash(), &["replay", "context-canary", "fuzz", "mutation"]);
     if !controls {
         violation("discovery root controls or complete job inventory changed", diagnostics);
     }
-    for name in ["replay", "fuzz", "mutation"] {
+    for name in ["replay", "context-canary", "fuzz", "mutation"] {
         if !valid_job(&jobs[name], name) {
             violation(
                 &format!(
@@ -41,10 +41,10 @@ pub(super) fn validate(workflow: &Hash, diagnostics: &mut Vec<Diagnostic>) {
 }
 
 fn valid_job(job: &Yaml, name: &str) -> bool {
-    let key_names: &[&str] = if name == "replay" {
-        &["runs-on", "timeout-minutes", "steps"]
-    } else {
-        &["if", "runs-on", "timeout-minutes", "strategy", "steps"]
+    let key_names: &[&str] = match name {
+        "replay" => &["runs-on", "timeout-minutes", "steps"],
+        "context-canary" => &["if", "runs-on", "timeout-minutes", "steps"],
+        _ => &["if", "runs-on", "timeout-minutes", "strategy", "steps"],
     };
     if !keys(job.as_hash(), key_names)
         || job["runs-on"].as_str() != Some("ubuntu-24.04")
@@ -65,13 +65,21 @@ fn valid_job(job: &Yaml, name: &str) -> bool {
             "cargo xtask discovery-setup-mutation",
             "cargo xtask discovery-mutation-${{ matrix.slice }}-${{ matrix.shard }}",
         ],
-        _ => vec![PREFLIGHT, "cargo fetch --locked", "cargo xtask discovery-replay"],
+        "context-canary" => {
+            vec![PREFLIGHT, "cargo fetch --locked", "cargo xtask discovery-mutation-context-canary"]
+        }
+        _ => vec![
+            PREFLIGHT,
+            "cargo fetch --locked",
+            "cargo xtask discovery-posix-lifecycle",
+            "cargo xtask discovery-replay",
+        ],
     };
-    if name != "replay" {
+    if matches!(name, "fuzz" | "mutation") {
         let (dimension, expected) = if name == "fuzz" {
             ("target", &["sse", "ndjson", "working-state", "provider-sequence"][..])
         } else {
-            ("slice", &["context", "receipt", "cancellation"][..])
+            ("slice", &["receipt", "cancellation"][..])
         };
         let actual = job["strategy"]["matrix"][dimension]
             .as_vec()
@@ -83,6 +91,8 @@ fn valid_job(job: &Yaml, name: &str) -> bool {
         {
             return false;
         }
+    } else if name == "context-canary" && job["if"].as_str() != Some(SCHEDULE_ONLY) {
+        return false;
     }
     let Some(steps) = job["steps"].as_vec() else { return false };
     if steps.len() != commands.len() + 3 {
@@ -140,6 +150,7 @@ fn valid_upload(step: &Yaml, name: &str) -> bool {
     let artifact = match name {
         "fuzz" => "discovery-fuzz-${{ matrix.target }}",
         "mutation" => "discovery-mutation-${{ matrix.slice }}-${{ matrix.shard }}",
+        "context-canary" => "discovery-context-canary",
         _ => "discovery-replay",
     };
     keys(step.as_hash(), &["name", "if", "uses", "with"])
@@ -196,9 +207,14 @@ mod tests {
             ("if-no-files-found: error", "if-no-files-found: warn"),
             ("${{ always() }}", "${{ success() }}"),
             ("github.event_name != 'pull_request'", "github.event_name == 'pull_request'"),
-            ("[context, receipt, cancellation]", "[receipt, cancellation]"),
+            ("[receipt, cancellation]", "[receipt]"),
             ("[0, 1, 2, 3, 4, 5, 6, 7]", "[0, 1, 2]"),
             ("cargo fetch --locked", "cargo fetch --locked\n        continue-on-error: true"),
+            (
+                "cargo xtask discovery-mutation-context-canary",
+                "cargo xtask discovery-mutation-context",
+            ),
+            ("cargo xtask discovery-posix-lifecycle", "cargo xtask discovery-replay"),
         ] {
             assert!(!check(&source.replace(before, after)).is_empty(), "accepted {after}");
         }

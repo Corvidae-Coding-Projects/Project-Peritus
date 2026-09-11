@@ -1,24 +1,41 @@
 from pathlib import Path
+import os
 import shutil
 import subprocess
+import sys
 import tempfile
 import unittest
 
 
 ROOT = Path(__file__).resolve().parent.parent
-CONTAINER_IMAGE = "docker.io/library/alpine:3.22"
+CONTAINER_IMAGE = os.environ.get(
+    "PERITUS_POSIX_LIFECYCLE_IMAGE", "docker.io/library/alpine:3.22"
+)
+CONTAINER_ENGINE = os.environ.get("PERITUS_CONTAINER_ENGINE", "podman")
+REQUIRE_PREREQUISITES = os.environ.get("PERITUS_REQUIRE_POSIX_LIFECYCLE") == "1"
 
 
 class PosixUninstallFailureTests(unittest.TestCase):
     def setUp(self):
-        if shutil.which("podman") is None:
-            self.skipTest("rootless podman is required for disposable natural-profile isolation")
+        if CONTAINER_ENGINE not in ("docker", "podman"):
+            self.fail("PERITUS_CONTAINER_ENGINE must be docker or podman")
+        if shutil.which(CONTAINER_ENGINE) is None:
+            self._unavailable(
+                f"{CONTAINER_ENGINE} is required for disposable natural-profile isolation"
+            )
+        image_check = (
+            [CONTAINER_ENGINE, "image", "exists", CONTAINER_IMAGE]
+            if CONTAINER_ENGINE == "podman"
+            else [CONTAINER_ENGINE, "image", "inspect", CONTAINER_IMAGE]
+        )
         if subprocess.run(
-            ["podman", "image", "exists", CONTAINER_IMAGE],
+            image_check,
             check=False,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
             timeout=10,
         ).returncode != 0:
-            self.skipTest(f"preloaded {CONTAINER_IMAGE} is required; tests never pull images")
+            self._unavailable(f"preloaded {CONTAINER_IMAGE} is required; tests never pull images")
         self.temporary = tempfile.TemporaryDirectory(prefix="peritus-posix-lifecycle-")
         self.root = Path(self.temporary.name)
         self.home = self.root / "profile"
@@ -27,6 +44,11 @@ class PosixUninstallFailureTests(unittest.TestCase):
         self.commands.mkdir()
         self.sibling = self.root / "sibling-canary"
         self.sibling.write_text("unrelated installation\n", encoding="utf-8")
+
+    def _unavailable(self, reason: str) -> None:
+        if REQUIRE_PREREQUISITES:
+            self.fail(reason)
+        self.skipTest(reason)
 
     def tearDown(self):
         self.assertEqual(
@@ -43,28 +65,30 @@ class PosixUninstallFailureTests(unittest.TestCase):
 
     def _run(self, script: Path, *, fault: str) -> subprocess.CompletedProcess[str]:
         relative_script = script.relative_to(ROOT)
+        command = [
+            CONTAINER_ENGINE,
+            "run",
+            "--rm",
+            "--network=none",
+            "--read-only",
+            "--pids-limit=32",
+            "--memory=256m",
+            "--tmpfs=/tmp:rw,size=32m",
+            f"--volume={ROOT}:/repo:ro",
+            f"--volume={self.home}:/root:rw",
+            f"--volume={self.commands}:/commands:ro",
+            f"--volume={self.root}:/campaign:rw",
+            "--env=PATH=/commands:/usr/bin:/bin",
+            "--env=PERITUS_TEST_CALLS=/campaign/calls",
+            f"--env=PERITUS_TEST_FAULT={fault}",
+            CONTAINER_IMAGE,
+            "/bin/sh",
+            f"/repo/{relative_script}",
+        ]
+        if CONTAINER_ENGINE == "podman":
+            command[5:5] = ["--security-opt=label=disable"]
         return subprocess.run(
-            [
-                "podman",
-                "run",
-                "--rm",
-                "--network=none",
-                "--read-only",
-                "--security-opt=label=disable",
-                "--pids-limit=32",
-                "--memory=256m",
-                "--tmpfs=/tmp:rw,size=32m",
-                f"--volume={ROOT}:/repo:ro",
-                f"--volume={self.home}:/root:rw",
-                f"--volume={self.commands}:/commands:ro",
-                f"--volume={self.root}:/campaign:rw",
-                "--env=PATH=/commands:/usr/bin:/bin",
-                "--env=PERITUS_TEST_CALLS=/campaign/calls",
-                f"--env=PERITUS_TEST_FAULT={fault}",
-                CONTAINER_IMAGE,
-                "/bin/sh",
-                f"/repo/{relative_script}",
-            ],
+            command,
             text=True,
             capture_output=True,
             timeout=30,
@@ -121,6 +145,30 @@ class PosixUninstallFailureTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertFalse(binary.exists())
 
+    def test_linux_missing_controller_without_registration_removes_package(self):
+        binary = self.home / ".local/bin/peritus"
+        binary.parent.mkdir(parents=True)
+        binary.write_text("fixture binary\n", encoding="utf-8")
+
+        result = self._run(ROOT / "packaging/linux/Uninstall-Peritus.sh", fault="none")
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertFalse(binary.exists())
+
+    def test_linux_missing_controller_preserves_registration_and_package(self):
+        unit = self.home / ".config/systemd/user/peritus.service"
+        binary = self.home / ".local/bin/peritus"
+        unit.parent.mkdir(parents=True)
+        binary.parent.mkdir(parents=True)
+        unit.write_text("fixture unit\n", encoding="utf-8")
+        binary.write_text("fixture binary\n", encoding="utf-8")
+
+        result = self._run(ROOT / "packaging/linux/Uninstall-Peritus.sh", fault="none")
+
+        self.assertEqual(result.returncode, 127)
+        self.assertTrue(unit.exists())
+        self.assertTrue(binary.exists())
+
     def test_linux_loaded_registration_without_unit_file_is_reconciled(self):
         binary = self.home / ".local/bin/peritus"
         binary.parent.mkdir(parents=True)
@@ -165,7 +213,7 @@ class PosixUninstallFailureTests(unittest.TestCase):
 
     def test_macos_controller_access_failure_is_truthful_and_retryable(self):
         if shutil.which("id") is None:
-            self.skipTest("id is required by the macOS lifecycle script")
+            self._unavailable("id is required by the macOS lifecycle script")
         script = ROOT / "packaging/macos/Uninstall-Peritus.sh"
         agent = self.home / "Library/LaunchAgents/com.corvidae.peritus.plist"
         binary = self.home / "Library/Application Support/Peritus/bin/peritus"
@@ -209,6 +257,30 @@ class PosixUninstallFailureTests(unittest.TestCase):
         self.assertEqual(len(calls), 3)
         self.assertTrue(calls[2].startswith("bootout gui/"))
 
+    def test_macos_missing_controller_without_registration_removes_package(self):
+        binary = self.home / "Library/Application Support/Peritus/bin/peritus"
+        binary.parent.mkdir(parents=True)
+        binary.write_text("fixture binary\n", encoding="utf-8")
+
+        result = self._run(ROOT / "packaging/macos/Uninstall-Peritus.sh", fault="none")
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertFalse(binary.exists())
+
+    def test_macos_missing_controller_preserves_registration_and_package(self):
+        agent = self.home / "Library/LaunchAgents/com.corvidae.peritus.plist"
+        binary = self.home / "Library/Application Support/Peritus/bin/peritus"
+        agent.parent.mkdir(parents=True)
+        binary.parent.mkdir(parents=True)
+        agent.write_text("fixture agent\n", encoding="utf-8")
+        binary.write_text("fixture binary\n", encoding="utf-8")
+
+        result = self._run(ROOT / "packaging/macos/Uninstall-Peritus.sh", fault="none")
+
+        self.assertEqual(result.returncode, 127)
+        self.assertTrue(agent.exists())
+        self.assertTrue(binary.exists())
+
     def test_macos_generic_job_query_failure_is_not_absence(self):
         binary = self.home / "Library/Application Support/Peritus/bin/peritus"
         binary.parent.mkdir(parents=True)
@@ -226,4 +298,8 @@ class PosixUninstallFailureTests(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    unittest.main()
+    suite = unittest.defaultTestLoader.loadTestsFromTestCase(PosixUninstallFailureTests)
+    result = unittest.TextTestRunner(verbosity=2).run(suite)
+    executed = result.testsRun - len(result.skipped)
+    strict_failure = REQUIRE_PREREQUISITES and (executed == 0 or bool(result.skipped))
+    sys.exit(0 if result.wasSuccessful() and not strict_failure else 1)

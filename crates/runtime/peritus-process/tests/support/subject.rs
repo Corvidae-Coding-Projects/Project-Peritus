@@ -126,6 +126,10 @@ fn wait_for_tree_ready(
                     .windows(TREE_READY.len())
                     .any(|window| window == TREE_READY)
             {
+                // Readiness proves that the deepest child exists. Let the bounded owner loop
+                // record a post-readiness resource sample before cancellation tears down the
+                // tree, so descendant accounting does not depend on scheduler timing.
+                std::thread::sleep(Duration::from_millis(50));
                 return Ok(());
             }
         }

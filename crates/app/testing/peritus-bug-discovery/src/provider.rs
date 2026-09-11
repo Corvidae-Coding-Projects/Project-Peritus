@@ -8,9 +8,14 @@ use peritus_model_protocol::{
 };
 
 const EVENT_LIMIT: usize = 32;
+const EVENT_BYTES: usize = 6;
 
 /// Checks ordering, identity, item, tool, usage, terminal, and EOF behavior.
 pub fn check(bytes: &[u8]) {
+    let _ = reduce(bytes);
+}
+
+fn reduce(bytes: &[u8]) -> ResponseReducer {
     let limits = limits();
     let provider = ProviderName::new("discovery-provider".to_owned()).expect("provider name");
     let mut first = ResponseReducer::new(provider.clone(), limits);
@@ -55,82 +60,127 @@ pub fn check(bytes: &[u8]) {
         );
         assert_observations_equal(&first, &second);
     }
+    first
 }
 
 fn events(bytes: &[u8], limits: ProtocolLimits) -> Vec<EventEnvelope> {
-    let count = usize::from(bytes.first().copied().unwrap_or(0)) % EVENT_LIMIT + 1;
+    let count = usize::from(bytes.first().copied().unwrap_or(0) & 0x1f) % EVENT_LIMIT + 1;
     let mut events: Vec<EventEnvelope> = Vec::with_capacity(count);
     for index in 0..count {
-        let index_byte = u8::try_from(index).expect("event limit fits u8");
-        let selector = bytes.get(index + 1).copied().unwrap_or(index_byte);
-        if selector & 0x80 != 0
+        let encoded = EncodedEvent::read(bytes, index);
+        if encoded.control & 0x80 != 0
             && let Some(previous) = events.last()
         {
             events.push(previous.clone());
             continue;
         }
-        events.push(envelope(index, selector, limits));
+        events.push(envelope(index, encoded, limits));
     }
     events
 }
 
-fn envelope(index: usize, selector: u8, limits: ProtocolLimits) -> EventEnvelope {
+#[derive(Clone, Copy)]
+struct EncodedEvent {
+    control: u8,
+    kind: u8,
+    identities: u8,
+    output_index: u8,
+    ordering: u8,
+    payload: u8,
+}
+
+impl EncodedEvent {
+    fn read(bytes: &[u8], index: usize) -> Self {
+        let base = 1 + index * EVENT_BYTES;
+        let value = |offset| {
+            bytes
+                .get(base + offset)
+                .copied()
+                .unwrap_or_else(|| u8::try_from(index + offset).expect("event limit fits u8"))
+        };
+        Self {
+            control: value(0),
+            kind: value(1),
+            identities: value(2),
+            output_index: value(3),
+            ordering: value(4),
+            payload: value(5),
+        }
+    }
+}
+
+fn envelope(index: usize, encoded: EncodedEvent, limits: ProtocolLimits) -> EventEnvelope {
     let ordinary_sequence = u64::try_from(index + 1).expect("event limit fits u64");
-    let sequence = match selector & 0x03 {
+    let sequence = match encoded.ordering & 0x03 {
         1 => ordinary_sequence.saturating_add(1),
         2 => ordinary_sequence.saturating_sub(1).max(1),
         _ => ordinary_sequence,
     };
-    let provider_sequence = match selector & 0x0c {
+    let provider_sequence = match (encoded.ordering >> 2) & 0x03 {
         0 => None,
-        4 => Some(ordinary_sequence),
-        8 => Some(ordinary_sequence.saturating_add(1)),
+        1 => Some(ordinary_sequence),
+        2 => Some(ordinary_sequence.saturating_add(1)),
         _ => Some(ordinary_sequence.saturating_sub(1).max(1)),
     };
-    let provider_event_id = match selector & 0x30 {
+    let provider_event_id = match encoded.control & 0x03 {
         0 => None,
-        0x10 => Some(event_id(&format!("event-{index}"))),
-        _ => Some(event_id(&format!("event-{}", selector % 4))),
+        1 => Some(event_id(&format!("event-{index}"))),
+        2 => Some(event_id(&format!("event-{}", encoded.control >> 2 & 0x03))),
+        _ => Some(event_id(&format!("event-{}", index.saturating_sub(1)))),
     };
+    let index_byte = u8::try_from(index).expect("event limit fits u8");
     EventEnvelope::new(
         sequence,
         provider_sequence,
         provider_event_id,
-        sha256(&[selector, u8::try_from(index).expect("event limit fits u8")]),
-        model_event(index, selector, limits),
+        sha256(&[
+            encoded.control,
+            encoded.kind,
+            encoded.identities,
+            encoded.output_index,
+            encoded.ordering,
+            encoded.payload,
+            index_byte,
+        ]),
+        model_event(index, encoded, limits),
     )
     .expect("generated sequence numbers are nonzero")
 }
 
-fn model_event(index: usize, selector: u8, limits: ProtocolLimits) -> ModelEvent {
-    let item = item_id(selector);
-    let call = call_id(selector);
-    match selector % 12 {
+fn model_event(index: usize, encoded: EncodedEvent, limits: ProtocolLimits) -> ModelEvent {
+    let item = item_id(encoded.identities & 0x03);
+    let call = call_id((encoded.identities >> 2) & 0x03);
+    match encoded.kind % 12 {
         0 => ModelEvent::ResponseStarted { response_id: None, model: None },
         1 => ModelEvent::Heartbeat,
         2 => ModelEvent::ItemStarted {
             item_id: item,
-            index: u32::from(selector % 4),
+            index: u32::from(encoded.output_index % 4),
             kind: ItemKind::Message,
         },
-        3 => ModelEvent::TextDelta { item_id: item, fragment: fragment(selector, limits) },
+        3 => ModelEvent::TextDelta { item_id: item, fragment: fragment(encoded.payload, limits) },
         4 => ModelEvent::ItemCompleted(item),
         5 => ModelEvent::ItemStarted {
             item_id: item,
-            index: u32::from(selector % 4),
+            index: u32::from(encoded.output_index % 4),
             kind: ItemKind::ToolCall,
         },
         6 => ModelEvent::ToolCallStarted {
             item_id: item,
             call_id: call,
-            name: ToolName::new(format!("tool-{}", selector % 3)).expect("tool name"),
+            name: ToolName::new(format!("tool-{}", encoded.payload % 3)).expect("tool name"),
         },
         7 => ModelEvent::ToolArgumentDelta {
             call_id: call,
-            fragment: StreamFragment::new(b"{}".to_vec(), limits).expect("bounded JSON fragment"),
+            fragment: tool_fragment(encoded.payload, limits),
         },
-        8 => ModelEvent::Usage(usage(index, selector)),
-        9 => ModelEvent::Finish(FinishReason::Stop),
+        8 => ModelEvent::Usage(usage(index, encoded.payload)),
+        9 => ModelEvent::Finish(match encoded.payload % 4 {
+            0 => FinishReason::Stop,
+            1 => FinishReason::ToolCalls,
+            2 => FinishReason::Cancelled,
+            _ => FinishReason::Length,
+        }),
         10 => ModelEvent::ResponseCompleted,
         _ => ModelEvent::ResponseCancelled,
     }
@@ -151,8 +201,18 @@ fn usage(index: usize, selector: u8) -> UsageObservation {
 }
 
 fn fragment(selector: u8, limits: ProtocolLimits) -> StreamFragment {
-    let bytes = if selector & 0x40 == 0 { vec![selector] } else { vec![0xf0, 0x9f] };
+    let bytes = if selector & 0x80 == 0 { vec![b'a' + selector % 26] } else { vec![0xf0, 0x9f] };
     StreamFragment::new(bytes, limits).expect("bounded nonempty fragment")
+}
+
+fn tool_fragment(selector: u8, limits: ProtocolLimits) -> StreamFragment {
+    let bytes = match selector % 4 {
+        0 => b"{}".to_vec(),
+        1 => b"{\"value\":".to_vec(),
+        2 => b"1}".to_vec(),
+        _ => b"[]".to_vec(),
+    };
+    StreamFragment::new(bytes, limits).expect("bounded JSON fragment")
 }
 
 fn item_id(selector: u8) -> ItemId {
@@ -202,6 +262,40 @@ fn assert_usage_monotonic(before: UsageCounters, after: UsageCounters) {
     ] {
         if let Some(old) = old {
             assert!(new.is_some_and(|new| new >= old), "usage high-water regressed or disappeared");
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use peritus_model_protocol::{ReducedItem, TerminalOutcome};
+
+    #[test]
+    fn checked_seeds_reach_complete_message_and_tool_lifecycles() {
+        let message = reduce(include_bytes!("../corpus/provider_sequence/message-lifecycle"));
+        assert!(matches!(message.terminal(), Some(TerminalOutcome::Succeeded { .. })));
+        match message.completed_items() {
+            [ReducedItem::Text { index, text, .. }] => {
+                assert_eq!((*index, text.expose_for_wire()), (0, "a"));
+            }
+            items => panic!("message lifecycle did not complete exactly once: {items:?}"),
+        }
+
+        let tool = reduce(include_bytes!("../corpus/provider_sequence/tool-lifecycle"));
+        assert!(
+            matches!(tool.terminal(), Some(TerminalOutcome::RequiresAction { .. })),
+            "unexpected tool terminal: {:?}; items: {:?}",
+            tool.terminal(),
+            tool.completed_items(),
+        );
+        match tool.completed_items() {
+            [ReducedItem::ToolCall { index, call, .. }] => {
+                assert_eq!(*index, 3);
+                assert_eq!(call.name().as_str(), "tool-0");
+                assert_eq!(call.arguments().canonical_bytes(), b"{}");
+            }
+            items => panic!("tool lifecycle did not complete exactly once: {items:?}"),
         }
     }
 }

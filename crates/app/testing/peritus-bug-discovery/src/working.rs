@@ -1,11 +1,13 @@
 //! Structure-aware working-state checks use public construction and codec boundaries.
 
+use std::collections::BTreeSet;
+
 use peritus_codec::sha256;
 use peritus_context::working::{
     ObservationId, ObservationKind, ObservationSource, WorkingBinding, WorkingDelta, WorkingEntry,
-    WorkingEntryKind, WorkingEnvironment, WorkingLimits, WorkingLinks, WorkingState,
-    WorkingValidity, apply_working_delta, decode_working_state, encode_working_state,
-    ingest_working_observation, render_working_state_with_headroom,
+    WorkingEntryKind, WorkingEntryStatus, WorkingEnvironment, WorkingLimits, WorkingLinks,
+    WorkingRenderView, WorkingState, WorkingValidity, apply_working_delta, decode_working_state,
+    encode_working_state, ingest_working_observation, render_working_state_with_headroom,
 };
 use peritus_context::{ContextLimits, ContextNodeId, bind_context_content};
 use peritus_role::HarnessRole;
@@ -135,10 +137,62 @@ fn check_render(bytes: &[u8], state: &WorkingState, binding: WorkingBinding, cou
     let original = state.clone();
     let low = render_working_state_with_headroom(state, binding, preferred, available);
     let high = render_working_state_with_headroom(state, binding, preferred, available + 1);
-    if low.is_ok() {
+    if let Ok(view) = &low {
         assert!(high.is_ok(), "one more available token made a feasible required closure fail");
+        assert_render_oracle(state, binding, view, preferred, available);
     }
     assert_eq!(state, &original, "working-state rendering mutated retained state");
+}
+
+fn assert_render_oracle(
+    state: &WorkingState,
+    binding: WorkingBinding,
+    view: &WorkingRenderView,
+    preferred: u64,
+    available: u64,
+) {
+    let entries = state.entries(binding).expect("matching working binding");
+    let selected: BTreeSet<_> = view
+        .plan()
+        .into_iter()
+        .flat_map(peritus_context::RenderPlan::segments)
+        .map(peritus_context::RenderSegment::source_id)
+        .collect();
+    let mut required: BTreeSet<_> = entries
+        .iter()
+        .filter(|entry| {
+            entry.status() != WorkingEntryStatus::Superseded
+                && (entry.status() == WorkingEntryStatus::Contradicted
+                    || !entry.links().contradicts().is_empty()
+                    || matches!(
+                        entry.kind(),
+                        WorkingEntryKind::FailedApproach | WorkingEntryKind::Plan
+                    ) && entry.status() != WorkingEntryStatus::Resolved)
+        })
+        .map(WorkingEntry::id)
+        .collect();
+    loop {
+        let before = required.len();
+        let dependencies: Vec<_> = entries
+            .iter()
+            .filter(|entry| required.contains(&entry.id()))
+            .flat_map(|entry| entry.links().depends_on().iter().copied())
+            .collect();
+        required.extend(dependencies);
+        if required.len() == before {
+            break;
+        }
+    }
+    assert!(required.is_subset(&selected), "successful plan omitted a required dependency closure");
+    let expected_omitted: Vec<_> =
+        entries.iter().map(WorkingEntry::id).filter(|id| !selected.contains(id)).collect();
+    assert_eq!(view.omitted(), expected_omitted);
+    if let Some(plan) = view.plan() {
+        let accounting = plan.accounting();
+        assert!(accounting.used_input() <= accounting.usable_input());
+        assert!(accounting.context_window() <= available);
+        assert!(accounting.context_window() >= preferred.min(available));
+    }
 }
 
 fn node_id(index: usize) -> ContextNodeId {

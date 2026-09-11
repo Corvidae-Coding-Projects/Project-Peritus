@@ -17,6 +17,14 @@ fn seed_corpora_replay() {
             DiscoveryTarget::ProviderSequence,
             include_bytes!("../corpus/provider_sequence/basic").as_slice(),
         ),
+        (
+            DiscoveryTarget::ProviderSequence,
+            include_bytes!("../corpus/provider_sequence/message-lifecycle").as_slice(),
+        ),
+        (
+            DiscoveryTarget::ProviderSequence,
+            include_bytes!("../corpus/provider_sequence/tool-lifecycle").as_slice(),
+        ),
     ] {
         check_input(target, corpus);
     }

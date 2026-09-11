@@ -113,6 +113,20 @@ impl WorkspaceOwnership {
 }
 
 fn untracked_files(root: &Path) -> Option<BTreeSet<PathBuf>> {
+    let workspace = root.canonicalize().ok()?;
+    let repository = Command::new("git")
+        .args(["rev-parse", "--show-toplevel"])
+        .current_dir(root)
+        .output()
+        .ok()?;
+    if !repository.status.success() {
+        return None;
+    }
+    let repository = std::str::from_utf8(&repository.stdout).ok()?;
+    let repository = Path::new(repository.trim_end_matches(['\r', '\n'])).canonicalize().ok()?;
+    if repository != workspace {
+        return None;
+    }
     let output = Command::new("git")
         .args(["ls-files", "--others", "--exclude-standard", "-z"])
         .current_dir(root)
@@ -166,6 +180,15 @@ fn regular_files(root: &Path) -> BTreeSet<PathBuf> {
 mod tests {
     use super::*;
 
+    fn initialize_repository(root: &Path) {
+        let status = Command::new("git")
+            .args(["init", "--quiet"])
+            .current_dir(root)
+            .status()
+            .expect("git init");
+        assert!(status.success());
+    }
+
     #[test]
     fn late_external_file_is_not_owned_by_the_product_run() {
         let workspace = tempfile::tempdir().expect("workspace");
@@ -193,5 +216,25 @@ mod tests {
         assert!(ownership.source_layout_applies(&direct));
         assert!(!ownership.source_layout_applies(&external));
         assert!(!ownership.source_layout_applies(&command_output));
+    }
+
+    #[test]
+    fn ignored_folder_does_not_inherit_parent_repository_ownership() {
+        let parent = tempfile::tempdir().expect("parent repository");
+        initialize_repository(parent.path());
+        fs::write(parent.path().join(".gitignore"), "workspace/\n").expect("ignore workspace");
+        let workspace = parent.path().join("workspace");
+        fs::create_dir(&workspace).expect("workspace");
+
+        let mut ownership = WorkspaceOwnership::capture(&workspace);
+        let external = workspace.join("late-external.log");
+        fs::write(&external, "preserve\n").expect("external evidence");
+        let unowned_before = ownership.unowned_files(&workspace);
+        let command_output = workspace.join("generated-report.txt");
+        fs::write(&command_output, "result\n").expect("command output");
+        ownership.record_command_creations(&workspace, &unowned_before);
+
+        assert!(ownership.ensure_removable(&command_output).is_ok());
+        assert!(ownership.ensure_removable(&external).is_err());
     }
 }

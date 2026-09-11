@@ -86,7 +86,8 @@ procedural-macro target; only these exact package identities are admitted:
   `aws-lc-sys@0.44.0`, `crossbeam-utils@0.8.22`, `curve25519-dalek@5.0.0`,
   `crunchy@0.2.4`, `generic-array@0.14.7`, `getrandom@0.4.3`, `httparse@1.10.1`,
   `icu_normalizer_data@2.3.0`, `icu_properties_data@2.3.0`, `jni@0.22.4`,
-  `jni-macros@0.22.4`, `libc@0.2.189`, `libsqlite3-sys@0.38.2`, `memoffset@0.9.1`,
+  `jni-macros@0.22.4`, `libc@0.2.189`, `libfuzzer-sys@0.4.13`,
+  `libsqlite3-sys@0.38.2`, `memoffset@0.9.1`,
   `nix@0.28.0`, `nix@0.31.3`, `num-traits@0.2.19`, `proc-macro2@1.0.107`,
   `quote@1.0.47`, `quinn@0.11.11`, `quinn-udp@0.5.15`, `ring@0.17.14`,
   `rustix@1.1.4`, `rustls@0.23.43`, `rustversion@1.0.23`, `serde@1.0.229`,
@@ -161,6 +162,15 @@ It performs no child-process, network, repository, or ambient-file access. H3 di
 `half@2.4.1` with only `std` so Criterion's CBOR dependency does not add the later zerocopy build
 script and derive-macro execution surface. These are benchmark/dev dependencies, not product
 runtime code, but their exact executable identities and locked closures remain Gate A inputs.
+
+For the isolated bug-discovery harness, the reviewed `libfuzzer-sys@0.4.13` build script compiles
+the package's 26 fixed `libfuzzer/*.cpp` inputs as C++17 through `cc@1.4.4` and links the resulting
+static archive. Its executable build closure is `cc -> jobserver, libc, find-msvc-tools, shlex`;
+Cargo.lock pins every registry identity and checksum. The upstream script also supports ambient
+`CUSTOM_LIBFUZZER_PATH` and `CUSTOM_LIBFUZZER_STD_CXX` overrides, so the repository's fuzz entry
+point explicitly removes both variables before compilation. Campaigns therefore use packaged
+sources and the selected Cargo C++ toolchain without build-time network or repository access. This
+testing-only dependency does not enter product runtime or formal semantics.
 
 The executable identity is Cargo's complete package ID: registry or immutable Git source, package
 name, and exact version—not just the readable labels above. A same-name/same-version package from

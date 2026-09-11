@@ -49,12 +49,15 @@ cargo xtask discovery-fuzz-sse
 cargo xtask discovery-fuzz-ndjson
 cargo xtask discovery-fuzz-working-state
 cargo xtask discovery-fuzz-provider-sequence
+cargo xtask discovery-posix-lifecycle
 cargo xtask discovery-mutation-context
 cargo xtask discovery-mutation-receipt
 cargo xtask discovery-mutation-cancellation
 ```
 
 Each fuzz campaign copies the corpus into its evidence directory, uses seed 881, an 8192-byte maximum input, 2048 MiB RSS limit, 30-second per-input timeout and 120-second engine budget. The complete build/run process has an eight-minute bound. A success exit also requires the engine's completion log to demonstrate nonzero executions and its full allotted budget. Build failure, absent completion evidence, timeout and oracle failure cannot become successful campaigns.
+
+The POSIX lifecycle campaign accepts only `docker` or `podman`, pulls the exact reviewed Alpine 3.22 manifest digest, and runs every scenario with networking disabled and strict prerequisite enforcement. Set `PERITUS_CONTAINER_ENGINE=podman` for a local Podman run; scheduled CI uses Docker by default. A missing engine, failed pull, skipped scenario or zero executed scenarios fails the operation.
 
 Cargo-fuzz 0.13.2 has no locked-input forwarding switch. The wrapper first resolves metadata with `--locked --offline`, disables Cargo network access during fuzzing and compares the complete lockfile before and after execution. A changed lockfile invalidates the campaign and remains visible for investigation. Checked-in corpora are never modified by the engine.
 

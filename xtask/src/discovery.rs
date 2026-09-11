@@ -3,6 +3,7 @@
 use crate::error::XtaskError;
 use base64::Engine;
 use serde_json::json;
+use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -18,13 +19,16 @@ pub(crate) const TARGETS: [&str; 4] = ["sse", "ndjson", "working_state", "provid
 pub(crate) const NIGHTLY: &str = "nightly-2026-08-09";
 const FUZZ_VERSION: &str = "cargo-fuzz 0.13.2";
 const MUTANTS_VERSION: &str = "cargo-mutants 27.1.0";
+const POSIX_LIFECYCLE_IMAGE: &str = "docker.io/library/alpine:3.22@sha256:14358309a308569c32bdc37e2e0e9694be33a9d99e68afb0f5ff33cc1f695dce";
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum Operation {
     Replay,
+    PosixLifecycle,
     SetupFuzz,
     SetupMutation,
     Fuzz(usize),
+    ContextCanary,
     Mutation { index: usize, shard: Option<usize> },
 }
 
@@ -46,12 +50,14 @@ impl Operation {
         }
         match name {
             "discovery-replay" => Some(Self::Replay),
+            "discovery-posix-lifecycle" => Some(Self::PosixLifecycle),
             "discovery-setup-fuzz" => Some(Self::SetupFuzz),
             "discovery-setup-mutation" => Some(Self::SetupMutation),
             "discovery-fuzz-sse" => Some(Self::Fuzz(0)),
             "discovery-fuzz-ndjson" => Some(Self::Fuzz(1)),
             "discovery-fuzz-working-state" => Some(Self::Fuzz(2)),
             "discovery-fuzz-provider-sequence" => Some(Self::Fuzz(3)),
+            "discovery-mutation-context-canary" => Some(Self::ContextCanary),
             "discovery-mutation-context" => Some(Self::Mutation { index: 0, shard: None }),
             "discovery-mutation-receipt" => Some(Self::Mutation { index: 1, shard: None }),
             "discovery-mutation-cancellation" => Some(Self::Mutation { index: 2, shard: None }),
@@ -110,7 +116,7 @@ fn new_evidence(root: &Path, operation: Operation) -> Result<PathBuf, XtaskError
         &evidence.join("source.json"),
         &json!({
             "schema_version": 1, "source_sha": sha.trim(), "working_tree_changes": dirty,
-            "rustc": rust, "os": std::env::consts::OS, "architecture": std::env::consts::ARCH,
+            "rustc": rust, "os": env::consts::OS, "architecture": env::consts::ARCH,
             "build_jobs": 2, "operation": format!("{operation:?}"),
             "evidence_directory": evidence,
         }),
@@ -142,6 +148,7 @@ fn execute(root: &Path, operation: Operation, evidence: &Path) -> Result<(), Xta
             }
             Ok(())
         }
+        Operation::PosixLifecycle => posix_lifecycle(root, evidence),
         Operation::SetupFuzz => {
             let mut nightly = Command::new("rustup");
             nightly.args([
@@ -158,11 +165,41 @@ fn execute(root: &Path, operation: Operation, evidence: &Path) -> Result<(), Xta
         }
         Operation::SetupMutation => install(root, evidence, "cargo-mutants", "27.1.0"),
         Operation::Fuzz(index) => fuzz(root, evidence, index),
+        Operation::ContextCanary => mutation::context_canary(root, evidence),
         Operation::Mutation { index, shard } => {
             require_version(root, evidence, "mutants", MUTANTS_VERSION)?;
             mutation::run(root, evidence, index, shard)
         }
     }
+}
+
+fn posix_lifecycle(root: &Path, evidence: &Path) -> Result<(), XtaskError> {
+    let engine = env::var("PERITUS_CONTAINER_ENGINE").unwrap_or_else(|_| "docker".to_owned());
+    if !matches!(engine.as_str(), "docker" | "podman") {
+        return Err(XtaskError::invocation(
+            "PERITUS_CONTAINER_ENGINE must be exactly docker or podman",
+        ));
+    }
+    let mut pull = Command::new(&engine);
+    pull.args(["pull", POSIX_LIFECYCLE_IMAGE]);
+    runner::checked(root, evidence, "posix-image", pull, 180)?;
+
+    let mut command = Command::new("python3");
+    command
+        .arg("packaging/test_posix_lifecycle.py")
+        .env("PERITUS_CONTAINER_ENGINE", &engine)
+        .env("PERITUS_REQUIRE_POSIX_LIFECYCLE", "1")
+        .env("PERITUS_POSIX_LIFECYCLE_IMAGE", POSIX_LIFECYCLE_IMAGE);
+    runner::checked(root, evidence, "posix-lifecycle", command, 420)?;
+    write_json(
+        &evidence.join("posix-lifecycle-summary.json"),
+        &json!({
+            "container_engine": engine,
+            "container_image": POSIX_LIFECYCLE_IMAGE,
+            "network_during_scenarios": "none",
+            "status": "completed",
+        }),
+    )
 }
 
 fn install(root: &Path, evidence: &Path, tool: &str, version: &str) -> Result<(), XtaskError> {
@@ -249,6 +286,8 @@ fn fuzz_completion(log: &str) -> Option<(u64, u64)> {
 fn fuzz_command(target: &str) -> Command {
     let mut command = Command::new("cargo");
     command.args([&format!("+{NIGHTLY}"), "fuzz", "run", target]);
+    command.env_remove("CUSTOM_LIBFUZZER_PATH");
+    command.env_remove("CUSTOM_LIBFUZZER_STD_CXX");
     command
 }
 

@@ -95,6 +95,42 @@ fn bounded_child_failure_is_not_reported_as_success() {
     assert_eq!(report["exit_code"], 7);
 }
 
+#[test]
+#[ignore = "subprocess fixture; invoked by scratch_blocks_parent_git_discovery"]
+fn git_ceiling_child_fixture() {
+    let workspace = Fixture::new();
+    let status = Command::new("git")
+        .args(["rev-parse", "--show-toplevel"])
+        .current_dir(&workspace.0)
+        .status()
+        .expect("inspect ambient repository");
+    assert!(!status.success(), "owned scratch inherited an ancestor repository");
+}
+
+#[test]
+fn scratch_blocks_parent_git_discovery() {
+    let repository = Fixture::new();
+    let status = Command::new("git")
+        .args(["init", "--quiet"])
+        .current_dir(&repository.0)
+        .status()
+        .expect("git init");
+    assert!(status.success());
+    fs::write(repository.0.join(".gitignore"), "/target/\n").expect("ignore target");
+    let evidence = repository.0.join("target/discovery");
+    fs::create_dir_all(&evidence).expect("evidence directory");
+    let mut command = Command::new(std::env::current_exe().expect("test executable"));
+    command.args([
+        "--exact",
+        "discovery::tests::git_ceiling_child_fixture",
+        "--ignored",
+        "--nocapture",
+    ]);
+
+    runner::checked(&repository.0, &evidence, "git-ceiling", command, 10)
+        .expect("scratch isolation");
+}
+
 #[cfg(target_os = "linux")]
 #[test]
 fn timeout_contains_owned_descendant_and_preserves_sibling() {
@@ -131,7 +167,26 @@ fn engine_must_reach_nonzero_runs_and_finish_its_budget() {
 }
 
 #[test]
+fn fuzz_command_excludes_ambient_custom_libfuzzer_inputs() {
+    let command = super::fuzz_command("sse");
+    for name in ["CUSTOM_LIBFUZZER_PATH", "CUSTOM_LIBFUZZER_STD_CXX"] {
+        assert!(
+            command.get_envs().any(|(candidate, value)| candidate == name && value.is_none()),
+            "{name} must be removed from the fuzz build environment",
+        );
+    }
+}
+
+#[test]
 fn mutation_shards_are_explicit_and_bounded() {
+    assert_eq!(
+        super::Operation::parse("discovery-posix-lifecycle"),
+        Some(super::Operation::PosixLifecycle)
+    );
+    assert_eq!(
+        super::Operation::parse("discovery-mutation-context-canary"),
+        Some(super::Operation::ContextCanary)
+    );
     for shard in 0..8 {
         assert_eq!(
             super::Operation::parse(&format!("discovery-mutation-receipt-{shard}")),

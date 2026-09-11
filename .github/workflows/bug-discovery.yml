@@ -31,12 +31,37 @@ jobs:
         with:
           toolchain: ${{ env.RUST_VERSION }}
       - run: cargo fetch --locked
+      - name: Qualify POSIX uninstall failure handling without successful skips
+        run: cargo xtask discovery-posix-lifecycle
       - run: cargo xtask discovery-replay
       - name: Retain replay evidence even after interruption
         if: ${{ always() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: discovery-replay
+          path: target/discovery/**
+          if-no-files-found: error
+          retention-days: 14
+  context-canary:
+    if: ${{ github.event_name != 'pull_request' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Verify reviewed pre-Cargo policy
+        run: git diff --no-ext-diff --no-textconv --exit-code 6ca5f56d2ab12e93f155d684b33f4a86c2f877b8 -- .cargo/config.toml .gitattributes
+      - uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # v1
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+      - run: cargo fetch --locked
+      - run: cargo xtask discovery-mutation-context-canary
+      - name: Retain the baseline, mutant and behavioral detection evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: discovery-context-canary
           path: target/discovery/**
           if-no-files-found: error
           retention-days: 14
@@ -76,7 +101,7 @@ jobs:
       fail-fast: false
       max-parallel: 2
       matrix:
-        slice: [context, receipt, cancellation]
+        slice: [receipt, cancellation]
         shard: [0, 1, 2, 3, 4, 5, 6, 7]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

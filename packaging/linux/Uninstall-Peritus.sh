@@ -13,11 +13,16 @@ helper_root="$peritus_home/.local/libexec/peritus"
 unit_file="$config_root/systemd/user/peritus.service"
 share_file="$peritus_home/.local/share/peritus/peritus.service"
 
-load_state=$(systemctl --user show peritus.service --property=LoadState --value)
 had_registration=0
-if [ "$load_state" != "not-found" ]; then
-    had_registration=1
-    systemctl --user disable --now peritus.service
+if command -v systemctl >/dev/null 2>&1; then
+    load_state=$(systemctl --user show peritus.service --property=LoadState --value)
+    if [ "$load_state" != "not-found" ]; then
+        had_registration=1
+        systemctl --user disable --now peritus.service
+    fi
+elif [ -f "$unit_file" ]; then
+    echo "systemctl is unavailable; preserving the registered service and package files" >&2
+    exit 127
 fi
 rm -f -- "$unit_file"
 if [ "$had_registration" -eq 1 ]; then

@@ -22,6 +22,127 @@ const SLICES: [(&str, &str, Option<&str>); 3] = [
     ),
 ];
 
+const CONTEXT_SOURCE: &str = "crates/orchestration/peritus-context/src/working/selection.rs";
+const CONTEXT_TEST: &str =
+    "headroom_preserves_required_roots_and_shared_dependencies_without_optional_expansion";
+const CONTEXT_CHECK: &str =
+    "if needed <= allocation || needed > available_tokens { return Err(WorkingError::Capacity); }";
+const CONTEXT_MUTANT: &str = "if needed <= allocation { return Err(WorkingError::Capacity); }";
+
+pub(super) fn context_canary(root: &Path, evidence: &Path) -> Result<(), XtaskError> {
+    require_clean_tracked_source(root)?;
+    let repository = evidence.join("context-canary-repository");
+    let result = context_canary_inner(root, evidence, &repository);
+    let cleanup = if repository.exists() {
+        fs::remove_dir_all(&repository)
+            .map_err(|error| XtaskError::io("remove owned canary repository", &repository, error))
+    } else {
+        Ok(())
+    };
+    result?;
+    cleanup
+}
+
+fn context_canary_inner(root: &Path, evidence: &Path, repository: &Path) -> Result<(), XtaskError> {
+    let mut clone = Command::new("git");
+    clone.args(["clone", "--quiet", "--no-local", "--no-hardlinks"]).arg(root).arg(repository);
+    runner::checked(root, evidence, "context-canary-clone", clone, 60)?;
+
+    runner::checked(repository, evidence, "context-canary-baseline", context_test_command(), 180)?;
+    let source = repository.join(CONTEXT_SOURCE);
+    let original = fs::read_to_string(&source)
+        .map_err(|error| XtaskError::io("read context canary source", &source, error))?;
+    if original.match_indices(CONTEXT_CHECK).count() != 1 {
+        return Err(XtaskError::metadata(
+            "context canary source did not contain exactly one reviewed capacity check",
+        ));
+    }
+    fs::write(&source, original.replace(CONTEXT_CHECK, CONTEXT_MUTANT))
+        .map_err(|error| XtaskError::io("write context canary mutant", &source, error))?;
+    let diff = git_output(repository, &["diff", "--binary", "--", CONTEXT_SOURCE])?;
+    fs::write(evidence.join("context-canary.patch"), diff)
+        .map_err(|error| XtaskError::io("write context canary patch", evidence, error))?;
+
+    let outcome = runner::run(
+        repository,
+        evidence,
+        "context-canary-mutant",
+        context_test_command(),
+        Duration::from_mins(3),
+    )?;
+    let stdout = fs::read_to_string(evidence.join("context-canary-mutant.stdout"))
+        .map_err(|error| XtaskError::io("read context canary result", evidence, error))?;
+    let detected = !outcome.timed_out
+        && outcome.status.code() == Some(101)
+        && stdout.contains(&format!("test {CONTEXT_TEST} ... FAILED"))
+        && stdout.contains("test result: FAILED. 0 passed; 1 failed;");
+    write_json(
+        &evidence.join("context-canary-summary.json"),
+        &json!({
+            "status": if detected { "completed" } else { "failed_or_incomplete" },
+            "baseline": "passed",
+            "mutant": "remove hard available-token ceiling from required-closure growth",
+            "test": CONTEXT_TEST,
+            "behavioral_detection_demonstrated": detected,
+            "mutant_exit_code": outcome.status.code(),
+            "mutant_timed_out": outcome.timed_out,
+        }),
+    )?;
+    if !detected {
+        return Err(XtaskError::metadata(
+            "context canary was not rejected by the exact owning test",
+        ));
+    }
+    Ok(())
+}
+
+fn context_test_command() -> Command {
+    let mut command = Command::new("cargo");
+    command.args([
+        "test",
+        "--locked",
+        "--offline",
+        "--package",
+        "peritus-context",
+        "--test",
+        "working_headroom",
+        CONTEXT_TEST,
+        "--",
+        "--exact",
+    ]);
+    command
+}
+
+fn require_clean_tracked_source(root: &Path) -> Result<(), XtaskError> {
+    for arguments in
+        [&["diff", "--quiet", "HEAD"][..], &["diff", "--cached", "--quiet", "HEAD"][..]]
+    {
+        let status = Command::new("git")
+            .args(arguments)
+            .current_dir(root)
+            .status()
+            .map_err(|error| XtaskError::io("inspect context canary source", root, error))?;
+        if !status.success() {
+            return Err(XtaskError::metadata(
+                "context canary requires committed tracked source so its disposable clone is exact",
+            ));
+        }
+    }
+    Ok(())
+}
+
+fn git_output(root: &Path, arguments: &[&str]) -> Result<Vec<u8>, XtaskError> {
+    let output = Command::new("git")
+        .args(arguments)
+        .current_dir(root)
+        .output()
+        .map_err(|error| XtaskError::io("capture context canary diff", root, error))?;
+    if !output.status.success() {
+        return Err(XtaskError::metadata("git could not capture context canary diff"));
+    }
+    Ok(output.stdout)
+}
+
 pub(super) fn run(
     root: &Path,
     evidence: &Path,
