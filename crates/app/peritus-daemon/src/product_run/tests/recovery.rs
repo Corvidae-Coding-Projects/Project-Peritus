@@ -8,7 +8,7 @@ mod persistence_faults;
 mod restart;
 
 #[test]
-fn accepted_result_stays_complete_when_reloaded_after_late_cancellation() {
+fn accepted_result_stays_complete_when_shutdown_follows_late_cancellation() {
     interaction::block_on(async {
         let repository = repository();
         let state = tempfile::tempdir().expect("state");
@@ -38,7 +38,31 @@ fn accepted_result_stays_complete_when_reloaded_after_late_cancellation() {
             .expect("runner reached finalization barrier");
         let cancelling = running.cancel(run_id).expect("request late cancellation");
         assert!(!cancelling.phase().terminal());
+        let shutdown_service = running.clone();
+        let shutdown = tokio::spawn(async move {
+            shutdown_service.shutdown(Duration::from_secs(5)).await;
+        });
+        tokio::time::timeout(Duration::from_secs(5), async {
+            loop {
+                let stopping = running
+                    .inner
+                    .records
+                    .read()
+                    .expect("run records")
+                    .get(&run_id)
+                    .is_some_and(|record| {
+                        record.snapshot.status() == "Stopping safely after the current effect boundary"
+                    });
+                if stopping {
+                    break;
+                }
+                tokio::task::yield_now().await;
+            }
+        })
+        .await
+        .expect("shutdown reached its task-drain boundary");
         barrier.release();
+        shutdown.await.expect("shutdown task");
 
         let live = wait_for_terminal(&running, run_id).await;
         assert_eq!(live.phase(), ProductRunPhase::Complete);
@@ -48,7 +72,6 @@ fn accepted_result_stays_complete_when_reloaded_after_late_cancellation() {
             live.phase(),
             "a persisted terminal result must not change when reopened",
         );
-        running.shutdown(Duration::from_secs(5)).await;
     });
 }
 
