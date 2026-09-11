@@ -71,6 +71,38 @@ fn root_exit_cleans_descendant_before_waiting_for_pipe_eof() {
 }
 
 #[test]
+fn output_limit_terminates_and_reaps_the_owned_process() {
+    let root = TestRoot::new();
+    let ids = Ids::new(138);
+    let mut options = control_options(IoMode::Pipes);
+    options.arguments = vec!["output".to_owned()];
+    options.stdin = StdinPolicy::Closed;
+    options.output_limit = 4;
+    let execution = plan(&root, &ids, options).expect("output-limit plan");
+    let (owned, store) = launch(&root, &ids, execution);
+
+    let terminal = owned.wait().expect("bounded output terminal");
+
+    assert_eq!(terminal.disposition(), TerminalDisposition::OutputLimit);
+    assert_eq!(
+        terminal.first_trigger().map(peritus_process::StopTrigger::reason),
+        Some(CancellationReason::OutputLimit)
+    );
+    assert!(terminal.tree_cleanup_complete());
+    assert!(terminal.support_tasks_joined());
+    let stdout = terminal
+        .output()
+        .streams()
+        .iter()
+        .find(|stream| stream.stream() == peritus_process::OutputStream::Stdout)
+        .expect("stdout observation");
+    assert_eq!(stdout.observed(), 8);
+    assert_eq!(stdout.retained(), 4);
+    assert_eq!(stdout.dropped(), 4);
+    assert_eq!(store.terminal_result(ids.process).expect("persisted terminal"), terminal);
+}
+
+#[test]
 fn resize_authority_rejects_pipe_and_denied_pty_without_stopping_owner() {
     let root = TestRoot::new();
     let pipe_ids = Ids::new(143);

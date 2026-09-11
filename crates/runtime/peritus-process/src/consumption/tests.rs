@@ -58,6 +58,51 @@ fn quarantined_process_records_remain_visible_after_reopen() {
 }
 
 #[test]
+fn interrupted_manifest_replacement_restores_previous_and_removes_staging() {
+    let registry = TestRegistry::new();
+    let identity = identity();
+    let process_id = identity.process_id();
+    prepare_closed_manifest(&registry, &identity, digest(31));
+    let manifests = registry.registry().join("manifests-v1");
+    let stem = crate::registry_storage::hex(process_id.as_bytes());
+    let current = manifests.join(format!("{stem}.manifest"));
+    let previous = manifests.join(format!("{stem}.previous"));
+    let staging = manifests.join(format!("{stem}.staging"));
+    let expected = std::fs::read(&current).expect("current manifest bytes");
+    std::fs::rename(&current, &previous).expect("simulate preserved prior manifest");
+    std::fs::write(&staging, b"interrupted replacement").expect("simulate staging file");
+
+    let store = ProcessStore::open(registry.registry(), registry.workspace())
+        .expect("recover interrupted manifest replacement");
+
+    assert_eq!(std::fs::read(&current).expect("restored manifest"), expected);
+    assert!(!previous.exists());
+    assert!(!staging.exists());
+    let report = store.reconcile(&mut NoProbe).expect("reconcile restored manifest");
+    assert_eq!(report.entries().len(), 1);
+    assert_eq!(report.entries()[0].process_id(), process_id);
+}
+
+#[test]
+fn completed_manifest_replacement_discards_stale_previous() {
+    let registry = TestRegistry::new();
+    let identity = identity();
+    let process_id = identity.process_id();
+    prepare_closed_manifest(&registry, &identity, digest(31));
+    let manifests = registry.registry().join("manifests-v1");
+    let stem = crate::registry_storage::hex(process_id.as_bytes());
+    let current = manifests.join(format!("{stem}.manifest"));
+    let previous = manifests.join(format!("{stem}.previous"));
+    std::fs::copy(&current, &previous).expect("simulate stale prior manifest");
+
+    ProcessStore::open(registry.registry(), registry.workspace())
+        .expect("clean completed manifest replacement");
+
+    assert!(current.exists());
+    assert!(!previous.exists());
+}
+
+#[test]
 fn claim_manifest_digest_mismatch_blocks_probe_and_terminal_classification() {
     let registry = TestRegistry::new();
     let identity = identity();

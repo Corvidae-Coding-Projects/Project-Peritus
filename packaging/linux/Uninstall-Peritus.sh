@@ -13,9 +13,16 @@ helper_root="$peritus_home/.local/libexec/peritus"
 unit_file="$config_root/systemd/user/peritus.service"
 share_file="$peritus_home/.local/share/peritus/peritus.service"
 
-systemctl --user disable --now peritus.service 2>/dev/null || true
+load_state=$(systemctl --user show peritus.service --property=LoadState --value)
+had_registration=0
+if [ "$load_state" != "not-found" ]; then
+    had_registration=1
+    systemctl --user disable --now peritus.service
+fi
 rm -f -- "$unit_file"
-systemctl --user daemon-reload 2>/dev/null || true
+if [ "$had_registration" -eq 1 ]; then
+    systemctl --user daemon-reload
+fi
 rm -f -- "$bin_root/peritusd" "$bin_root/peritus" "$bin_root/peritus-tui"
 rm -f -- "$helper_root/peritus-linux-sandbox-helper"
 rm -f -- "$share_file"
