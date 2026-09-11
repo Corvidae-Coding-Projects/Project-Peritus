@@ -3,6 +3,7 @@
 use super::runner;
 use crate::error::XtaskError;
 use std::fs;
+use std::hash::{DefaultHasher, Hash as _, Hasher as _};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -30,11 +31,12 @@ impl MutationRepository {
                 "mutation temporary root must be outside the Cargo workspace",
             ));
         }
-        let parent = temporary.join(format!(
-            "pm-{}-{}",
-            std::process::id(),
-            NEXT_REPOSITORY.fetch_add(1, Ordering::Relaxed)
-        ));
+        let mut identity = DefaultHasher::new();
+        evidence.hash(&mut identity);
+        root.hash(&mut identity);
+        std::process::id().hash(&mut identity);
+        NEXT_REPOSITORY.fetch_add(1, Ordering::Relaxed).hash(&mut identity);
+        let parent = temporary.join(format!("pm-{:016x}", identity.finish()));
         fs::create_dir(&parent)
             .map_err(|error| XtaskError::io("create mutation temporary root", &parent, error))?;
         protect(&parent)?;
