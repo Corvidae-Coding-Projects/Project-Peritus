@@ -94,6 +94,7 @@ impl ProductRunService {
                 let cancelled = Arc::new(AtomicBool::new(false));
                 let token = CancellationToken::new();
                 record.cancelled = Arc::clone(&cancelled);
+                record.user_cancelled = false;
                 record.provider_cancellation = token.clone();
                 // A follow-up changes the governing conversation revision, so the prior
                 // deliverable and its qualification cannot be projected as current while the

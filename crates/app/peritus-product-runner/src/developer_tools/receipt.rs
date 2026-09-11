@@ -236,6 +236,17 @@ impl EffectReceiptLedger {
             self.accept_loaded(record)?;
             offset = end;
         }
+        if offset != bytes.len() {
+            let file = OpenOptions::new().write(true).open(&self.path).map_err(|error| {
+                tool(format!("open effect receipts for tail recovery: {error}"))
+            })?;
+            file.set_len(
+                u64::try_from(offset)
+                    .map_err(|_| tool("effect receipt recovery offset exceeds this platform"))?,
+            )
+            .and_then(|()| file.sync_data())
+            .map_err(|error| tool(format!("recover truncated effect receipt tail: {error}")))?;
+        }
         self.loaded = true;
         Ok(())
     }
@@ -341,6 +352,12 @@ mod tests {
             replay.begin(&original).expect("replay"),
             ReceiptDecision::Replay { is_error: false, .. }
         ));
+        let reassigned = call("call-2", "workspace_write", r#"{"content":"one","path":"a"}"#);
+        let mut reassigned_replay = EffectReceiptLedger::new(path.clone(), "writer-1".to_owned());
+        assert!(matches!(
+            reassigned_replay.begin(&reassigned).expect("replay with new provider ID"),
+            ReceiptDecision::Replay { is_error: false, .. }
+        ));
         let conflicting = call("call-2", "workspace_write", r#"{"content":"two","path":"a"}"#);
         let mut conflict = EffectReceiptLedger::new(path, "writer-1".to_owned());
         assert!(matches!(
@@ -365,6 +382,72 @@ mod tests {
                     if detail.contains("ambiguous prior command outcome")
             ));
         }
+    }
+
+    #[test]
+    fn append_after_truncated_tail_remains_replayable_after_another_restart() {
+        let directory = tempfile::tempdir().expect("state");
+        let path = directory.path().join("effects.bin");
+        let first_call = call("call-1", "workspace_write", r#"{"content":"one","path":"a"}"#);
+        let second_call = call("call-2", "workspace_write", r#"{"content":"two","path":"b"}"#);
+        let output = Value::Bool(true);
+
+        let mut first = EffectReceiptLedger::new(path.clone(), "writer-1".to_owned());
+        assert!(matches!(first.begin(&first_call).expect("start first"), ReceiptDecision::Execute));
+        first.complete(&output, false).expect("complete first");
+        let clean_length = fs::metadata(&path).expect("clean ledger metadata").len();
+        let mut interrupted = OpenOptions::new().append(true).open(&path).expect("open ledger");
+        interrupted.write_all(&64_u64.to_le_bytes()).expect("partial frame length");
+        interrupted.write_all(b"{").expect("partial frame payload");
+        interrupted.sync_data().expect("persist simulated crash tail");
+        drop(interrupted);
+
+        let mut recovered = EffectReceiptLedger::new(path.clone(), "writer-1".to_owned());
+        assert!(matches!(
+            recovered.begin(&first_call).expect("replay first"),
+            ReceiptDecision::Replay { is_error: false, .. }
+        ));
+        assert_eq!(
+            fs::metadata(&path).expect("recovered ledger metadata").len(),
+            clean_length,
+            "recovery removes only the incomplete tail before accepting another effect",
+        );
+        assert!(matches!(
+            recovered.begin(&second_call).expect("start second"),
+            ReceiptDecision::Execute
+        ));
+        recovered.complete(&output, false).expect("complete second");
+
+        let mut restarted = EffectReceiptLedger::new(path, "writer-1".to_owned());
+        assert!(matches!(
+            restarted.begin(&first_call).expect("replay first after restart"),
+            ReceiptDecision::Replay { is_error: false, .. }
+        ));
+        assert!(matches!(
+            restarted.begin(&second_call).expect("replay second after restart"),
+            ReceiptDecision::Replay { is_error: false, .. }
+        ));
+    }
+
+    #[test]
+    fn complete_corrupt_frame_fails_closed_without_truncation() {
+        let directory = tempfile::tempdir().expect("state");
+        let path = directory.path().join("effects.bin");
+        let payload = b"not-json";
+        let mut file = OpenOptions::new().create(true).append(true).open(&path).expect("ledger");
+        let length = u64::try_from(payload.len()).expect("payload length");
+        file.write_all(&length.to_le_bytes()).expect("frame length");
+        file.write_all(payload).expect("complete corrupt payload");
+        file.sync_data().expect("persist corrupt frame");
+        let corrupt_length = fs::metadata(&path).expect("corrupt ledger metadata").len();
+
+        let call = call("call-1", "workspace_write", r#"{"content":"one","path":"a"}"#);
+        let mut recovered = EffectReceiptLedger::new(path.clone(), "writer-1".to_owned());
+        let Err(error) = recovered.begin(&call) else {
+            panic!("complete corrupt frame must fail closed");
+        };
+        assert!(error.to_string().contains("decode effect receipt"));
+        assert_eq!(fs::metadata(path).expect("retained corrupt ledger").len(), corrupt_length);
     }
 
     fn call(id: &str, name: &str, arguments: &str) -> CompletedToolCall {

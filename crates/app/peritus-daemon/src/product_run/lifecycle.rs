@@ -22,7 +22,7 @@ impl ProductRunService {
         if let Ok(mut records) = self.inner.records.write() {
             for (run_id, record) in records.iter_mut() {
                 if !record.snapshot.phase().terminal() {
-                    interrupted.push(*run_id);
+                    interrupted.push((*run_id, record.user_cancelled));
                     if let Ok(snapshot) = replace_snapshot(
                         &record.snapshot,
                         record.snapshot.phase(),
@@ -42,9 +42,20 @@ impl ProductRunService {
             let _ = tokio::time::timeout(timeout, task).await;
         }
         if let Ok(mut records) = self.inner.records.write() {
-            for run_id in interrupted {
+            for (run_id, user_cancelled) in interrupted {
                 let Some(record) = records.get_mut(&run_id) else { continue };
-                if record.snapshot.phase() != ProductRunPhase::Complete
+                if user_cancelled && !record.snapshot.phase().terminal() {
+                    if let Ok(snapshot) = replace_snapshot(
+                        &record.snapshot,
+                        ProductRunPhase::Cancelled,
+                        "Run cancelled",
+                        "Cancelled before daemon shutdown completed",
+                    ) {
+                        record.snapshot = snapshot;
+                        let _ = persist_record(&self.inner.directory, record);
+                    }
+                } else if !user_cancelled
+                    && record.snapshot.phase() != ProductRunPhase::Complete
                     && let Ok(snapshot) = replace_snapshot(
                         &record.snapshot,
                         ProductRunPhase::RecoveryRequired,
@@ -115,6 +126,7 @@ impl ProductRunService {
             return Err(ProductRunServiceError::InvalidState);
         }
         record.cancelled.store(true, Ordering::Release);
+        record.user_cancelled = true;
         let _ = record.provider_cancellation.cancel();
         record.snapshot = replace_snapshot(
             &record.snapshot,
@@ -171,6 +183,7 @@ impl ProductRunService {
             let cancelled = Arc::new(AtomicBool::new(false));
             let token = CancellationToken::new();
             record.cancelled = Arc::clone(&cancelled);
+            record.user_cancelled = false;
             record.provider_cancellation = token.clone();
             record.snapshot = initial_snapshot(&record.request)?;
             record.progress = RunProgress::default();

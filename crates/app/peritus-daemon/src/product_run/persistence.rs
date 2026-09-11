@@ -330,6 +330,7 @@ impl PersistedRecord {
             request,
             snapshot,
             cancelled: Arc::new(AtomicBool::new(false)),
+            user_cancelled: false,
             provider_cancellation: CancellationToken::new(),
             conversation,
             finding_state: self.finding_state,
