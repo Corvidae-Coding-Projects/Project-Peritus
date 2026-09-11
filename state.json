@@ -13131,7 +13131,10 @@
       "priority": "high",
       "created_by": "p0bJ",
       "created_at": "2026-09-11T21:25:49.383315814Z",
-      "updated_at": "2026-09-11T21:25:49.383315814Z"
+      "updated_at": "2026-09-11T21:25:54.428953454Z",
+      "labels": [
+        "testing"
+      ]
     },
     "cc972bf7-aa67-423d-babd-1ab1068a0f90": {
       "uuid": "cc972bf7-aa67-423d-babd-1ab1068a0f90",
@@ -15363,8 +15366,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-11T21:25:49.383315814Z",
+    "timestamp": "2026-09-11T21:25:54.428953454Z",
     "agent_id": "p0bJ",
-    "agent_seq": 1
+    "agent_seq": 2
   }
 }
