@@ -10,6 +10,7 @@ use std::time::Duration;
 
 use self::repository::MutationRepository;
 
+mod environment;
 mod repository;
 
 const SLICES: [(&str, &str, Option<&str>); 3] = [
@@ -229,6 +230,7 @@ fn run_campaign(
         "--output",
     ]);
     campaign.arg(evidence);
+    environment::configure(&mut campaign, repository, evidence)?;
     let outcome = runner::run(repository, evidence, "mutation", campaign, Duration::from_mins(8))?;
     let path = evidence.join("mutants.out/outcomes.json");
     if !path.is_file() {
