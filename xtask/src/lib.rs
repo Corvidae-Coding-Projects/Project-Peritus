@@ -8,6 +8,7 @@ pub(crate) mod api_contract;
 pub(crate) mod architecture;
 pub(crate) mod ci_shard;
 pub(crate) mod cli;
+pub(crate) mod discovery;
 pub(crate) mod distro;
 pub(crate) mod documentation;
 pub(crate) mod error;
