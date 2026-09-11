@@ -129,12 +129,7 @@ impl EffectReceiptLedger {
                             | "command_cancel"
                     ) =>
                 {
-                    let record = ReceiptRecord {
-                        state: ReceiptState::Ambiguous,
-                        output: None,
-                        is_error: None,
-                        ..existing
-                    };
+                    let record = ReceiptRecord { state: ReceiptState::Ambiguous, ..existing };
                     self.append(&record)?;
                     self.entries.insert(ordinal, record.clone());
                     Ok(ReceiptDecision::Refuse {
@@ -145,12 +140,9 @@ impl EffectReceiptLedger {
                 ReceiptState::Started => Ok(ReceiptDecision::Execute),
             };
         }
-        if self.entries.values().any(|record| {
-            record.call_id == call.id().expose_for_wire()
-                && (record.tool != call.name().as_str() || record.request_sha256 != digest)
-        }) {
+        if self.entries.values().any(|record| record.call_id == call.id().expose_for_wire()) {
             return Ok(ReceiptDecision::Refuse {
-                detail: "provider reused one tool-call ID for conflicting effect requests"
+                detail: "provider reused one tool-call ID for more than one effect request"
                     .to_owned(),
                 ambiguous: false,
             });
@@ -254,6 +246,15 @@ impl EffectReceiptLedger {
     fn accept_loaded(&mut self, record: ReceiptRecord) -> Result<(), DeveloperLoopError> {
         if record.version != FORMAT_VERSION || record.scope != self.scope {
             return Ok(());
+        }
+        let fields_are_consistent = match &record.state {
+            ReceiptState::Started | ReceiptState::Ambiguous => {
+                record.output.is_none() && record.is_error.is_none()
+            }
+            ReceiptState::Completed => record.output.is_some() && record.is_error.is_some(),
+        };
+        if !fields_are_consistent {
+            return Err(tool("effect receipt state fields are inconsistent"));
         }
         if let Some(previous) = self.entries.get(&record.ordinal)
             && (previous.tool != record.tool

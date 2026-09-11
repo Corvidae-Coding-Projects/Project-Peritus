@@ -97,6 +97,52 @@ fn reused_provider_call_id_conflicts_on_each_identity_dimension() {
     }
 }
 
+#[test]
+fn repeated_provider_call_id_never_executes_a_second_effect() {
+    let directory = tempfile::tempdir().expect("state");
+    let path = directory.path().join("effects.bin");
+    let original = call("call-1", "workspace_write", r#"{"content":"one","path":"a"}"#);
+    let mut ledger = EffectReceiptLedger::new(path, "writer-1".to_owned());
+    assert!(matches!(ledger.begin(&original).expect("first"), ReceiptDecision::Execute));
+    ledger.complete(&Value::Bool(true), false).expect("complete first");
+
+    assert!(matches!(
+        ledger.begin(&original).expect("reject repeated provider ID"),
+        ReceiptDecision::Refuse { detail, ambiguous: false }
+            if detail.contains("more than one effect request")
+    ));
+}
+
+#[test]
+fn durable_receipt_state_rejects_inconsistent_result_fields() {
+    let directory = tempfile::tempdir().expect("state");
+    let path = directory.path().join("effects.bin");
+    let record = serde_json::json!({
+        "version": FORMAT_VERSION,
+        "scope": "writer-1",
+        "ordinal": 1,
+        "call_id": "call-1",
+        "tool": "workspace_write",
+        "request_sha256": "00",
+        "state": "started",
+        "output": true,
+        "is_error": false,
+    });
+    let payload = serde_json::to_vec(&record).expect("encode malformed receipt");
+    let mut file = fs::File::create(&path).expect("create malformed ledger");
+    file.write_all(&u64::try_from(payload.len()).expect("payload length").to_le_bytes())
+        .expect("frame length");
+    file.write_all(&payload).expect("frame payload");
+    file.sync_data().expect("persist malformed receipt");
+
+    let call = call("call-1", "workspace_write", r#"{"content":"one","path":"a"}"#);
+    let mut ledger = EffectReceiptLedger::new(path, "writer-1".to_owned());
+    let Err(error) = ledger.begin(&call) else {
+        panic!("inconsistent receipt state must fail closed");
+    };
+    assert!(error.to_string().contains("state fields are inconsistent"));
+}
+
 #[cfg(unix)]
 #[test]
 fn receipt_read_errors_are_not_treated_as_an_empty_ledger() {
