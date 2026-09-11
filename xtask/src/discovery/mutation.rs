@@ -8,6 +8,10 @@ use std::path::Path;
 use std::process::Command;
 use std::time::Duration;
 
+use self::repository::MutationRepository;
+
+mod repository;
+
 const SLICES: [(&str, &str, Option<&str>); 3] = [
     ("peritus-context", "crates/orchestration/peritus-context/src/working/selection.rs", None),
     (
@@ -124,7 +128,7 @@ fn require_clean_tracked_source(root: &Path) -> Result<(), XtaskError> {
             .map_err(|error| XtaskError::io("inspect context canary source", root, error))?;
         if !status.success() {
             return Err(XtaskError::metadata(
-                "context canary requires committed tracked source so its disposable clone is exact",
+                "discovery campaign requires committed tracked source so its disposable clone is exact",
             ));
         }
     }
@@ -149,6 +153,7 @@ pub(super) fn run(
     index: usize,
     shard: Option<usize>,
 ) -> Result<(), XtaskError> {
+    require_clean_tracked_source(root)?;
     let mut inventory = command(index)?;
     inventory.args(["--list", "--json"]);
     runner::checked(root, evidence, "inventory", inventory, 30)?;
@@ -192,11 +197,28 @@ pub(super) fn run(
     if selected_count == 0 {
         return Err(XtaskError::metadata("empty mutation shard; no executed campaign"));
     }
+    let mut repository = MutationRepository::clone(root, evidence)?;
+    let result = run_campaign(repository.path()?, evidence, index, shard, &selected);
+    let cleanup = repository.remove();
+    match result {
+        Err(error) => Err(error),
+        Ok(()) => cleanup,
+    }
+}
+
+fn run_campaign(
+    repository: &Path,
+    evidence: &Path,
+    index: usize,
+    shard: Option<usize>,
+    selected: &Value,
+) -> Result<(), XtaskError> {
     let mut campaign = command(index)?;
     if let Some(shard) = shard {
         campaign.args(["--shard", &format!("{shard}/8")]);
     }
     campaign.args([
+        "--in-place",
         "--baseline",
         "run",
         "--no-shuffle",
@@ -209,12 +231,12 @@ pub(super) fn run(
         "--output",
     ]);
     campaign.arg(evidence);
-    let outcome = runner::run(root, evidence, "mutation", campaign, Duration::from_mins(8))?;
+    let outcome = runner::run(repository, evidence, "mutation", campaign, Duration::from_mins(8))?;
     let path = evidence.join("mutants.out/outcomes.json");
     let outcomes =
         fs::read(&path).map_err(|error| XtaskError::io("read mutation outcomes", &path, error))?;
     let outcomes: Value = serde_json::from_slice(&outcomes).map_err(XtaskError::metadata_decode)?;
-    let summary = summarize(&selected, &outcomes)?;
+    let summary = summarize(selected, &outcomes)?;
     let complete = summary["status"] == "completed";
     write_json(&evidence.join("mutation-summary.json"), &summary)?;
     if !complete || outcome.timed_out || !outcome.status.success() {

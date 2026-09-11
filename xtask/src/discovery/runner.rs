@@ -8,6 +8,7 @@ use std::env;
 use std::fs::{self, File};
 use std::path::{Path, PathBuf};
 use std::process::{self, Command, ExitStatus, Stdio};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::thread;
 use std::time::{Duration, Instant};
 
@@ -20,6 +21,8 @@ struct OwnedChild(Option<Box<dyn ChildWrapper>>);
 
 struct OwnedScratch(Option<PathBuf>);
 
+static NEXT_SCRATCH: AtomicU64 = AtomicU64::new(0);
+
 impl Drop for OwnedChild {
     fn drop(&mut self) {
         if let Some(child) = self.0.as_mut() {
@@ -30,7 +33,7 @@ impl Drop for OwnedChild {
 }
 
 impl OwnedScratch {
-    fn create(root: &Path, evidence: &Path, label: &str) -> Result<Self, XtaskError> {
+    fn create(root: &Path) -> Result<Self, XtaskError> {
         let temporary_root = env::temp_dir();
         let canonical_root = root
             .canonicalize()
@@ -43,12 +46,11 @@ impl OwnedScratch {
                 "discovery temporary directory must be outside the Cargo workspace",
             ));
         }
-        let evidence_name = evidence
-            .file_name()
-            .and_then(|name| name.to_str())
-            .ok_or_else(|| XtaskError::metadata("discovery evidence name is not portable UTF-8"))?;
-        let path = canonical_temporary
-            .join(format!("peritus-discovery-{}-{evidence_name}-{label}", process::id()));
+        let path = canonical_temporary.join(format!(
+            "pd-{}-{}",
+            process::id(),
+            NEXT_SCRATCH.fetch_add(1, Ordering::Relaxed)
+        ));
         fs::create_dir(&path)
             .map_err(|error| XtaskError::io("create isolated temporary directory", &path, error))?;
         Ok(Self(Some(path)))
@@ -134,7 +136,7 @@ pub(super) fn run(
     fs::create_dir_all(&object_cache)
         .and_then(|()| fs::create_dir_all(&object_temp))
         .map_err(|error| XtaskError::io("create owned compiler cache", &compiler_state, error))?;
-    let mut scratch = OwnedScratch::create(root, evidence, label)?;
+    let mut scratch = OwnedScratch::create(root)?;
     command
         .env("TMPDIR", scratch.path()?)
         .env("TMP", scratch.path()?)
