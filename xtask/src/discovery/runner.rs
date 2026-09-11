@@ -61,10 +61,29 @@ impl OwnedScratch {
     fn remove(&mut self) -> Result<(), XtaskError> {
         let path = self
             .0
-            .take()
+            .as_ref()
             .ok_or_else(|| XtaskError::metadata("discovery temporary ownership lost"))?;
-        fs::remove_dir_all(&path)
-            .map_err(|error| XtaskError::io("remove isolated temporary directory", &path, error))
+        let deadline = Instant::now() + Duration::from_secs(5);
+        loop {
+            match fs::remove_dir_all(path) {
+                Ok(()) => {
+                    self.0 = None;
+                    return Ok(());
+                }
+                Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+                    self.0 = None;
+                    return Ok(());
+                }
+                Err(_) if Instant::now() < deadline => thread::sleep(Duration::from_millis(20)),
+                Err(error) => {
+                    return Err(XtaskError::io(
+                        "remove quiescent isolated temporary directory",
+                        path,
+                        error,
+                    ));
+                }
+            }
+        }
     }
 }
 
