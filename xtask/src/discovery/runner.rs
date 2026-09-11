@@ -4,7 +4,7 @@ use super::write_json;
 use crate::error::XtaskError;
 use process_wrap::std::{ChildWrapper, CommandWrap};
 use serde_json::json;
-use std::fs::File;
+use std::fs::{self, File};
 use std::path::Path;
 use std::process::{Command, ExitStatus, Stdio};
 use std::thread;
@@ -60,12 +60,17 @@ pub(super) fn run(
     let stderr = File::create(&stderr_path)
         .map_err(|error| XtaskError::io("create log", &stderr_path, error))?;
     let scratch = evidence.join("scratch");
-    std::fs::create_dir_all(&scratch)
+    let ccache = scratch.join("ccache");
+    let ccache_tmp = scratch.join("ccache-tmp");
+    fs::create_dir_all(&ccache)
+        .and_then(|()| fs::create_dir_all(&ccache_tmp))
         .map_err(|error| XtaskError::io("create owned scratch", &scratch, error))?;
     command
         .env("TMPDIR", &scratch)
         .env("TMP", &scratch)
         .env("TEMP", &scratch)
+        .env("CCACHE_DIR", &ccache)
+        .env("CCACHE_TEMPDIR", &ccache_tmp)
         .env("GIT_CEILING_DIRECTORIES", &scratch)
         .current_dir(root)
         .env("CARGO_BUILD_JOBS", "2")
