@@ -78,14 +78,18 @@ fn product_record_fault_boundaries_preserve_an_old_or_complete_new_record() {
         use super::super::super::persistence::{PersistenceFaultPoint, inject_persistence_fault};
         use super::super::super::{ProductRunServiceError, persist_record, replace_snapshot};
 
-        let mut points = vec![
+        let points = vec![
             (PersistenceFaultPoint::BeforeWrite, false),
             (PersistenceFaultPoint::BeforeFileSync, false),
             (PersistenceFaultPoint::BeforeRename, false),
             (PersistenceFaultPoint::AfterRename, true),
         ];
         #[cfg(unix)]
-        points.push((PersistenceFaultPoint::BeforeDirectorySync, true));
+        let points = {
+            let mut points = points;
+            points.push((PersistenceFaultPoint::BeforeDirectorySync, true));
+            points
+        };
 
         for (index, (point, new_record_visible)) in points.into_iter().enumerate() {
             let repository = repository();

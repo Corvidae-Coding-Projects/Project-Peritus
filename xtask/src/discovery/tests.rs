@@ -200,7 +200,7 @@ fn detached_pipe_holder_cannot_block_campaign_completion() {
 
     let fixture = Fixture::new();
     let mut command = Command::new("sh");
-    command.args(["-c", "setsid sh -c 'sleep 1; printf late' & echo $! > escaped-pid"]);
+    command.args(["-c", "setsid -f sh -c 'echo $$ > escaped-pid; sleep 1; printf late'"]);
     let started = std::time::Instant::now();
     let result = runner::run_with_limits(
         &fixture.0,
@@ -212,11 +212,17 @@ fn detached_pipe_holder_cannot_block_campaign_completion() {
         Duration::from_millis(200),
     );
     let Err(error) = result else { panic!("escaped pipe must leave the campaign incomplete") };
-    let pid = fs::read_to_string(fixture.0.join("escaped-pid"))
-        .expect("escaped process ID")
-        .trim()
-        .parse::<u32>()
-        .expect("numeric process ID");
+    let pid_path = fixture.0.join("escaped-pid");
+    let pid_deadline = std::time::Instant::now() + Duration::from_secs(1);
+    let pid = loop {
+        if let Some(pid) =
+            fs::read_to_string(&pid_path).ok().and_then(|value| value.trim().parse::<u32>().ok())
+        {
+            break pid;
+        }
+        assert!(std::time::Instant::now() < pid_deadline, "escaped process ID was not published");
+        std::thread::sleep(Duration::from_millis(10));
+    };
     let _escaped = EscapedProcess(pid);
 
     assert!(started.elapsed() < Duration::from_secs(2));
