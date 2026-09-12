@@ -39,6 +39,7 @@ pub(super) fn configure(
     )
 }
 
+#[cfg(unix)]
 fn configure_unix(
     campaign: &mut Command,
     repository: &Path,
