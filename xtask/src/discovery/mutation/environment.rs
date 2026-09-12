@@ -5,6 +5,8 @@ use crate::error::XtaskError;
 use serde_json::json;
 use std::path::Path;
 use std::process::Command;
+#[cfg(unix)]
+use std::sync::atomic::{AtomicU64, Ordering};
 
 const LIFECYCLE_TEST_FILTER: &str = "product_run::";
 
@@ -47,10 +49,20 @@ pub(super) fn configure(
 }
 
 #[cfg(unix)]
-fn configure_unix(repository: &Path, evidence: &Path) -> Result<(), XtaskError> {
+fn configure_unix(_repository: &Path, evidence: &Path) -> Result<(), XtaskError> {
     use std::os::unix::net::UnixListener;
 
-    let path = repository.join(".peritus-discovery-socket-probe");
+    static NEXT_PROBE: AtomicU64 = AtomicU64::new(0);
+
+    let timestamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_nanos();
+    let path = std::env::temp_dir().join(format!(
+        "p-{}-{}-{timestamp:x}.sock",
+        std::process::id(),
+        NEXT_PROBE.fetch_add(1, Ordering::Relaxed)
+    ));
     match UnixListener::bind(&path) {
         Ok(listener) => {
             drop(listener);

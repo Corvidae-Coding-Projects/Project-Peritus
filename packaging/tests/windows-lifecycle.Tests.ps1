@@ -21,6 +21,22 @@ function Assert-That {
     if (-not $Condition) { throw $Message }
 }
 
+function Get-FixtureSha256Hex {
+    param([Parameter(Mandatory = $true)][string]$Path)
+
+    $algorithm = [Security.Cryptography.SHA256]::Create()
+    try {
+        $stream = [IO.File]::OpenRead($Path)
+        try {
+            return [BitConverter]::ToString($algorithm.ComputeHash($stream)).Replace('-', '')
+        } finally {
+            $stream.Dispose()
+        }
+    } finally {
+        $algorithm.Dispose()
+    }
+}
+
 function Start-FixtureProcess {
     param([string]$Executable)
     $ready = Join-Path $temporary ([guid]::NewGuid().ToString('N') + '.ready')
@@ -108,7 +124,7 @@ public static class Fixture {
     [IO.File]::WriteAllText((Join-Path $bundle 'manifest.toml'), 'schema = 1')
     $checksums = @(Get-ChildItem -LiteralPath $bundle -Recurse -File | ForEach-Object {
         $relative = $_.FullName.Substring($bundle.Length + 1).Replace('\', '/')
-        (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash + '  ' + $relative
+        (Get-FixtureSha256Hex -Path $_.FullName) + '  ' + $relative
     })
     [IO.File]::WriteAllLines((Join-Path $bundle 'SHA256SUMS'), $checksums)
     [IO.File]::WriteAllText((Join-Path $data 'state.json'), 'preserved user state')
@@ -142,7 +158,7 @@ public static class Fixture {
                     $action = if ($scenario -eq 'running-upgrade') { Join-Path $bundle 'Upgrade-Peritus.ps1' } else { $install }
                     & $action -BundleRoot $bundle -InstallRoot $program
                     foreach ($child in $running) { Assert-That $child.HasExited 'Reinstall left an installed process running.' }
-                    Assert-That ((Get-FileHash (Join-Path $program 'bin/peritusd.exe')).Hash -eq (Get-FileHash (Join-Path $bundle 'bin/peritusd.exe')).Hash) 'Reinstall published different bytes.'
+                    Assert-That ((Get-FixtureSha256Hex -Path (Join-Path $program 'bin/peritusd.exe')) -eq (Get-FixtureSha256Hex -Path (Join-Path $bundle 'bin/peritusd.exe'))) 'Reinstall published different bytes.'
                 }
             }
             & $uninstall -InstallRoot $program -DataRoot $data

@@ -207,20 +207,21 @@ class PosixUninstallFailureTests(unittest.TestCase):
             "timed-out scenario container survived exact-name cleanup",
         )
 
-    def test_linux_absent_registration_is_idempotent(self):
+    def test_linux_fileless_unowned_registration_does_not_require_controller(self):
         binary = self.home / ".local/bin/peritus"
         binary.parent.mkdir(parents=True)
         binary.write_text("fixture binary\n", encoding="utf-8")
         self._command(
             "systemctl",
-            'if [ "$1 $2" = "--user show" ]; then printf "%s\\n" not-found; exit 0; fi\n'
-            'exit 72\n',
+            'printf "%s\\n" "$*" >> "$PERITUS_TEST_CALLS"\n'
+            'if [ "$1 $2" = "--user show" ]; then printf "%s\\n" loaded; fi\n',
         )
 
         result = self._run(ROOT / "packaging/linux/Uninstall-Peritus.sh", fault="none")
 
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertFalse(binary.exists())
+        self.assertFalse(self.calls.exists(), "unowned fileless job was queried")
 
     def test_linux_missing_controller_without_registration_removes_package(self):
         binary = self.home / ".local/bin/peritus"
@@ -246,10 +247,12 @@ class PosixUninstallFailureTests(unittest.TestCase):
         self.assertTrue(unit.exists())
         self.assertTrue(binary.exists())
 
-    def test_linux_loaded_registration_without_unit_file_is_reconciled(self):
+    def test_linux_pending_cleanup_without_unit_file_is_reconciled(self):
         binary = self.home / ".local/bin/peritus"
         binary.parent.mkdir(parents=True)
         binary.write_text("fixture binary\n", encoding="utf-8")
+        pending = self.home / ".config/systemd/user/.peritus.service-removal-pending"
+        pending.mkdir(parents=True)
         self._command(
             "systemctl",
             'printf "%s\\n" "$*" >> "$PERITUS_TEST_CALLS"\n'
@@ -260,6 +263,7 @@ class PosixUninstallFailureTests(unittest.TestCase):
 
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertFalse(binary.exists())
+        self.assertFalse(pending.exists())
         self.assertEqual(
             self.calls.read_text(encoding="utf-8").splitlines(),
             [
@@ -271,6 +275,7 @@ class PosixUninstallFailureTests(unittest.TestCase):
 
     def test_linux_reload_failure_retries_controller_reconciliation(self):
         unit, binary = self._linux_fixture()
+        pending = self.home / ".config/systemd/user/.peritus.service-removal-pending"
         marker = "/campaign/reload-failed"
         self._command(
             "systemctl",
@@ -282,11 +287,13 @@ class PosixUninstallFailureTests(unittest.TestCase):
         failed = self._run(ROOT / "packaging/linux/Uninstall-Peritus.sh", fault="none")
         self.assertNotEqual(failed.returncode, 0)
         self.assertFalse(unit.exists(), "reload failure occurs after unit removal")
+        self.assertTrue(pending.is_dir(), "reload failure lost owned cleanup evidence")
         self.assertTrue(binary.exists(), "reload failure must stop package deletion")
 
         recovered = self._run(ROOT / "packaging/linux/Uninstall-Peritus.sh", fault="none")
         self.assertEqual(recovered.returncode, 0, recovered.stderr)
         self.assertFalse(binary.exists())
+        self.assertFalse(pending.exists())
 
     def test_macos_controller_access_failure_is_truthful_and_retryable(self):
         if shutil.which("id") is None:

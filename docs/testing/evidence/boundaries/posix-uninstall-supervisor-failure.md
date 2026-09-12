@@ -9,9 +9,9 @@
 
 ## Invariant and oracle
 
-An installed supervisor definition means uninstall must stop or prove absence of the owned job before deleting package files. A supervisor access or stop failure must remain visible and retryable. An absent registration remains an idempotent uninstall.
+An installed supervisor definition or retained pending-cleanup marker means uninstall must stop or prove absence of the owned job before deleting package files. A supervisor access or stop failure must remain visible and retryable. A package without either piece of ownership evidence remains an idempotent uninstall and does not inspect unrelated fileless jobs.
 
-The independent oracle checks subprocess status and directly reads the registration and installed binary after the injected failure. A sibling canary outside the disposable profile must retain its exact bytes. Each accepted baseline failure is reproduced from three newly populated fixtures, and a successful retry must then remove the owned files. Controller state is varied independently from registration-file state: loaded registrations without files must still be stopped, and a retry after daemon-reload failure must reconcile controller state again.
+The independent oracle checks subprocess status and directly reads the registration and installed binary after the injected failure. A sibling canary outside the disposable profile must retain its exact bytes. Each accepted baseline failure is reproduced from three newly populated fixtures, and a successful retry must then remove the owned files. Controller state is varied independently from registration-file state: a pending marker retains ownership after unit removal, and a retry after daemon-reload failure must reconcile controller state again.
 
 The harness uses rootless Podman or Docker with no scenario network, a read-only container root,
 32-process and 256 MiB limits, and a 32 MiB temporary filesystem. The exact image manifest is
@@ -36,10 +36,10 @@ Result after the controller/file mismatch and containment expansions: 12 tests p
 seconds. A controlled five-second hang reached its marker, timed out, and proved the exact named
 container was absent after cleanup. Linux and
 macOS controller failures each reproduced at the intended fault boundary three times, retained
-package state, and succeeded on retry. The Linux absent-registration negative control passed from
-an explicit controller `not-found` result. Loaded controller registrations without unit/plist files
-were reconciled. A Linux daemon-reload failure stopped package deletion and the next invocation
-repeated controller reconciliation. A generic macOS job-query failure was rejected rather than
+package state, and succeeded on retry. The Linux no-owned-registration negative control passed
+without querying the controller. A retained Linux pending-cleanup marker without a unit file was
+reconciled. A Linux daemon-reload failure stopped package deletion, retained that marker, and the
+next invocation repeated controller reconciliation. A generic macOS job-query failure was rejected rather than
 treated as absence. The teardown census removed the temporary root and confirmed the sibling canary
 before removal.
 
