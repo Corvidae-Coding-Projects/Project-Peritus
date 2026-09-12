@@ -242,7 +242,8 @@ impl ChatDecoder {
                 return Err(error::malformed("Chat-compatible delta field was unmapped"));
             }
         }
-        if let Some(role) = delta.get("role")
+        // Some Chat providers explicitly emit null for an absent role on tool deltas.
+        if let Some(role) = delta.get("role").filter(|value| !value.is_null())
             && role.as_str() != Some("assistant")
         {
             return Err(error::malformed("Chat-compatible delta role was not assistant"));
@@ -283,7 +284,7 @@ impl ChatDecoder {
                 .map_err(|_| error::limit("Chat-compatible refusal fragment exceeded bounds"))?;
             events.push(ModelEvent::RefusalDelta { item_id: item, fragment });
         }
-        if let Some(tools) = delta.get("tool_calls") {
+        if let Some(tools) = delta.get("tool_calls").filter(|value| !value.is_null()) {
             if !self.allow_tools {
                 return Err(error::malformed(
                     "Chat-compatible tools were not declared by the profile",

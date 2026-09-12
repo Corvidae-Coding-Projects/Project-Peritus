@@ -48,10 +48,16 @@ request provider strict decoding. Host argument, permission, and grounding check
 Google accepts the portable object schemas through its JSON-schema fields and returns each
 function result with the original call's name and ID.
 
-Streams accept empty initial content as a heartbeat. OpenRouter's content-free final usage
+Streams accept empty initial content as a heartbeat. Chat deltas may omit the optional role
+or set it to null; a non-null role must still be `assistant`. A null `tool_calls` field means
+no calls and does not require tool capability; non-null values still require valid tool arrays.
+OpenRouter's content-free final usage
 choice may repeat the preceding finish reason exactly once; it cannot introduce output or change
 the finish. Chat-compatible usage snapshots remain cumulative while the stream is open; the last
 snapshot becomes final only at the mapped `[DONE]` boundary. Counter regressions still fail closed.
+The developer loop negotiates usage reporting when the profile supports it, just as the setup
+canary does. Chat wire requests set `stream_options.include_usage` from that negotiation; they
+must not request usage that their own stream decoder would reject.
 OpenRouter's HTTP-200 error events remain failures, including an error as the first event. Groq's
 `x_groq` accounting is retained. Named routes may resolve a requested model alias to a stable
 returned model ID; the returned ID cannot change during the stream.
@@ -60,6 +66,10 @@ Documented reasoning fields are preserved as bounded provider-specific replay da
 OpenRouter `reasoning_details` and DeepSeek/Fireworks `reasoning_content`. The developer loop keeps
 that data in subsequent assistant/tool transcripts. No unsupported reasoning effort is inferred
 from a model name. Unknown stream fields and inconsistent identities still fail explicitly.
+Local context archives preserve bounded assistant reasoning with the exact transcript and tool
+exchange, including recovery. Opaque replay is not promoted to user instructions or derived
+working entries, and it is not replayed into a new host invocation. Other opaque provider
+extensions remain rejected by local memory.
 
 ## Connection qualification and evidence
 
@@ -71,9 +81,23 @@ the test. The UI identifies the failing stage, preserves safe HTTP/diagnostic de
 configuration/discovery distinct from live qualification. Results are not saved as permanent
 readiness claims. Error details remain visible in the normal conversation view.
 
-Automated tests use synthetic, account-free fixtures derived from the documented shapes. They
-are contract tests, not recordings of paid vendor sessions. A user's key, billing, deployment
-permissions, and currently selected model require the explicit live connection check.
+Provider setup, connection tests, and daemon requests open the same persisted OS credential
+namespace. Opaque references do not encode a namespace, so a separate daemon namespace cannot
+resolve credentials saved by setup.
+
+Most automated tests use synthetic, account-free fixtures derived from the documented shapes.
+The `zen-deepseek-live-{1,2,3}.sse` fixtures are sanitized recordings of the bounded connection
+test against OpenCode Zen / `deepseek-v4-flash` on **2026-09-12**. Response IDs, tool-call IDs,
+and timestamps are replaced; the synthetic canary content, nullable fields, reasoning replay,
+tool-argument fragments, cumulative usage, and terminal ordering are preserved. No headers or
+credentials were recorded. Their offline replay exercises all three connection stages through
+the production decoder and reducer. The same live test passed after allowing null tool-delta
+roles. This establishes that model/route at that time, not every provider or model. A user's
+key, billing, deployment permissions, and currently selected model still require a live check.
+The ordinary interactive daemon chat was also verified to complete after aligning usage
+negotiation, accepting null tool-call fields, and retaining assistant reasoning in local context.
+The final installed build completed a read-only `workspace_list` call through the interactive
+app, consumed its result with normal local-context replay, and returned the requested test token.
 
 ## Official sources
 

@@ -164,6 +164,8 @@ fn validate_with_mode(
     let actionlint_install = workflow_actionlint::is_reviewed_install(&parsed);
     let config_preflight = parsed.is_reviewed_config_preflight();
     let ubuntu_sandbox_install = parsed.is_reviewed_ubuntu_sandbox_install();
+    let rust_setup_backoff = path == Path::new(".github/actions/setup-rust/action.yml")
+        && matches!(script.trim(), "sleep 10" | "sleep 20");
     if !parsed.is_failure_propagating()
         && !parsed.is_reviewed_archive_install()
         && !actionlint_install
@@ -189,6 +191,7 @@ fn validate_with_mode(
             && !AUDITED_EXECUTABLES.contains(&executable)
             && !(actionlint_install && executable == "tar")
             && !(config_preflight && executable == "git")
+            && !(rust_setup_backoff && executable == "sleep")
             && !(ubuntu_sandbox_install
                 && matches!(executable, "sudo" | "apt-get" | "apparmor_parser" | "bwrap"))
         {
@@ -233,6 +236,41 @@ fn validate_with_mode(
                 format!("`{location}` uses a non-canonical cargo-verus invocation"),
                 "use an exact full-workspace TCB-aware command or its paired V/H no-cheating command with pinned solver-resource flags",
             ));
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn rust_setup_backoff_is_bounded_literal_and_scoped_to_the_reviewed_action() {
+        let action = Path::new(".github/actions/setup-rust/action.yml");
+        for script in ["sleep 10", "sleep 20\n"] {
+            let mut diagnostics = Vec::new();
+            validate(
+                script,
+                action,
+                "runs.steps[1].run",
+                CommandPolicy::new(true),
+                &mut diagnostics,
+            );
+            assert!(diagnostics.is_empty(), "{script}: {diagnostics:?}");
+        }
+        for (path, script) in [
+            (action, "sleep 300"),
+            (action, "sleep infinity"),
+            (action, "sleep $DELAY"),
+            (action, "sleep 10; sleep 20"),
+            (action, "sleep 10 || true"),
+            (action, "sleep 10 &"),
+            (action, "sleep 10\nsleep 20"),
+            (Path::new(".github/workflows/ci.yml"), "sleep 10"),
+        ] {
+            let mut diagnostics = Vec::new();
+            validate(script, path, "run", CommandPolicy::new(true), &mut diagnostics);
+            assert!(!diagnostics.is_empty(), "unexpectedly permitted {path:?}: {script}");
         }
     }
 }

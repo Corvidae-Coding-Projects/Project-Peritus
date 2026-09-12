@@ -5,6 +5,7 @@ mod capacity;
 mod folder;
 mod inspection;
 mod invocation;
+mod reasoning;
 mod recovery;
 mod retrieval;
 mod reviewer;
