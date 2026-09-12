@@ -38,6 +38,7 @@ registries, unknown Git sources, wildcard requirements, duplicate versions, unap
 and known advisories under the checked-in policy. The reviewed license set is Apache-2.0,
 BSD-3-Clause, ISC, MIT, MIT-0, Unicode-3.0, and Zlib; ISC and MIT-0 cover the pinned
 Rustls/AWS-LC cryptography closure introduced by C5 rather than a package-specific exception.
+NCSA is admitted only for the exact testing-only `libfuzzer-sys@0.4.13` package.
 
 Path dependencies are accepted only when they resolve without symbolic links to registered
 workspace packages inside this repository. External and unregistered in-repository path crates are

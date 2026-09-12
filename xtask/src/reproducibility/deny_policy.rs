@@ -24,6 +24,7 @@ confidence-threshold = 0.93
 allow = ["Apache-2.0", "BSD-3-Clause", "ISC", "MIT", "MIT-0", "Unicode-3.0", "Zlib"]
 exceptions = [
     { crate = "winx@0.36.4", allow = ["Apache-2.0 WITH LLVM-exception"] },
+    { crate = "libfuzzer-sys@0.4.13", allow = ["NCSA"] },
 ]
 
 [licenses.private]
@@ -131,6 +132,7 @@ mod tests {
     fn new_dependency_exceptions_reject_scope_and_reason_near_misses() {
         for altered in [
             REVIEWED_POLICY.replace("winx@0.36.4", "winx"),
+            REVIEWED_POLICY.replace("libfuzzer-sys@0.4.13", "libfuzzer-sys"),
             REVIEWED_POLICY.replace("io-lifetimes@2.0.4", "io-lifetimes"),
             REVIEWED_POLICY.replace("windows-sys@0.52.0", "windows-sys"),
             REVIEWED_POLICY.replace("miniz_oxide@0.8.9", "miniz_oxide"),

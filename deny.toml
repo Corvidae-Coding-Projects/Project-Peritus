@@ -32,6 +32,9 @@ exceptions = [
     # Reviewed cap-std 4.0.3 Windows handle-relative filesystem backend; the
     # published winx LICENSE includes Apache 2.0 and its LLVM extra permissions.
     { crate = "winx@0.36.4", allow = ["Apache-2.0 WITH LLVM-exception"] },
+    # Reviewed libfuzzer-sys 0.4.13 testing-only wrapper; its packaged LLVM
+    # libFuzzer C++ runtime is NCSA licensed and does not enter product binaries.
+    { crate = "libfuzzer-sys@0.4.13", allow = ["NCSA"] },
 ]
 
 [licenses.private]
