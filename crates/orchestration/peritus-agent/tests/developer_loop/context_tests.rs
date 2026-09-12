@@ -7,6 +7,9 @@ use super::fixtures::{
 use super::*;
 use peritus_model_protocol::{CachePolicy, MediaInput, MediaKind, MediaType};
 
+#[path = "context_framing.rs"]
+mod framing;
+
 #[derive(Default)]
 struct VerboseTool {
     calls: u32,

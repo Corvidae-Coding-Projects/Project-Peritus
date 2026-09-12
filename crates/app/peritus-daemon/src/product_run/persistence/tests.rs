@@ -32,6 +32,94 @@ fn legacy_run_without_messages_gains_a_resumable_conversation() {
 }
 
 #[test]
+fn cancelled_recovery_record_does_not_become_automatically_resumable() {
+    let json = r#"{
+        "run_id":"01010101010101010101010101010101",
+        "workspace_id":"02020202020202020202020202020202",
+        "writer":"03030303030303030303030303030303",
+        "reviewer":"04040404040404040404040404040404",
+        "fixer":"05050505050505050505050505050505",
+        "phase":10,
+        "cycle":1,
+        "task":"build tetris",
+        "status":"recovery required",
+        "diff":"",
+        "gates":"",
+        "review":"",
+        "summary":"interrupted",
+        "user_cancelled":true
+    }"#;
+    let persisted: PersistedRecord = serde_json::from_str(json).expect("recovery record");
+
+    let record = persisted.into_record().expect("restored cancelled record");
+
+    assert_eq!(record.snapshot.phase(), ProductRunPhase::Cancelled);
+    assert!(record.user_cancelled);
+}
+
+#[test]
+fn cancelled_record_can_be_transformed_for_safe_legacy_downgrade() {
+    fn record(phase: u16, status: &str, interactive: bool) -> serde_json::Value {
+        let mut value = serde_json::json!({
+            "run_id":"01010101010101010101010101010101",
+            "workspace_id":"02020202020202020202020202020202",
+            "writer":"03030303030303030303030303030303",
+            "reviewer":"04040404040404040404040404040404",
+            "fixer":"05050505050505050505050505050505",
+            "phase": phase, "cycle":1, "task":"build tetris", "status":status,
+            "diff":"", "gates":"", "review":"", "summary":"interrupted",
+            "user_cancelled":true
+        });
+        if interactive {
+            value["interaction"] = serde_json::json!({
+                "mode": 1, "models": [["", false], ["", false], ["", false]],
+                "incorporated": 0, "next_sequence": 1, "activities": []
+            });
+        }
+        value
+    }
+
+    fn downgrade(mut value: serde_json::Value) -> serde_json::Value {
+        let object = value.as_object_mut().expect("record object");
+        let raw = u16::try_from(object["phase"].as_u64().expect("phase")).expect("u16 phase");
+        let offset = if let Some(interaction) = object.get("interaction") {
+            if interaction.get("workbench").is_some() { 200 } else { 100 }
+        } else {
+            0
+        };
+        let phase = raw
+            .checked_sub(offset)
+            .and_then(ProductRunPhase::from_tag)
+            .expect("known phase and interaction offset");
+        if !phase.terminal() || phase == ProductRunPhase::RecoveryRequired {
+            object.insert(
+                "phase".to_owned(),
+                serde_json::Value::from(offset + ProductRunPhase::Cancelled.tag()),
+            );
+            object.insert("status".to_owned(), serde_json::Value::from("Run cancelled"));
+        }
+        object.remove("user_cancelled");
+        value
+    }
+
+    for (raw_phase, status, interactive, expected_phase, expected_status) in [
+        (10, "recovery required", false, ProductRunPhase::Cancelled, "Run cancelled"),
+        (9, "Run cancelled", false, ProductRunPhase::Cancelled, "Run cancelled"),
+        (7, "Complete", false, ProductRunPhase::Complete, "Complete"),
+        (110, "recovery required", true, ProductRunPhase::Cancelled, "Run cancelled"),
+    ] {
+        let value = downgrade(record(raw_phase, status, interactive));
+        assert!(value.get("user_cancelled").is_none());
+        assert_eq!(value["status"], expected_status);
+        let persisted: PersistedRecord =
+            serde_json::from_value(value).expect("legacy-shape record");
+        let restored = persisted.into_record().expect("downgraded terminal record");
+        assert_eq!(restored.snapshot.phase(), expected_phase);
+        assert!(!restored.user_cancelled);
+    }
+}
+
+#[test]
 fn durable_finding_state_survives_record_restoration() {
     let json = r#"{
         "run_id":"11111111111111111111111111111111",
@@ -173,6 +261,7 @@ fn restart_restores_each_resumable_phase_and_preserves_completed_writer_state() 
             gates: String::new(),
             review: String::new(),
             summary: "writer state retained".to_owned(),
+            user_cancelled: false,
             finding_state: String::new(),
             deliverable: Some(PersistedDeliverable {
                 workspace_path: "/managed/tetris".to_owned(),

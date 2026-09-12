@@ -1,0 +1,71 @@
+[package]
+name = "peritus-bug-discovery"
+description = "Bounded fuzz targets and stable regression corpus replay for Peritus"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+readme = "README.md"
+
+[features]
+fuzzing = ["dep:libfuzzer-sys"]
+
+[dependencies]
+peritus-codec = { version = "=0.0.2", path = "../../../foundation/peritus-codec" }
+peritus-context = { version = "=0.0.2", path = "../../../orchestration/peritus-context" }
+peritus-model-protocol = { version = "=0.0.2", path = "../../../model/peritus-model-protocol" }
+peritus-provider-core = { version = "=0.0.2", path = "../../../model/peritus-provider-core" }
+peritus-role = { version = "=0.0.2", path = "../../../orchestration/peritus-role" }
+peritus-types = { version = "=0.0.2", path = "../../../foundation/peritus-types" }
+
+[target.'cfg(not(windows))'.dependencies]
+libfuzzer-sys = { workspace = true, optional = true }
+
+[package.metadata.peritus]
+owner = "H1"
+layer = "testing"
+verification-class = "C"
+
+[package.metadata]
+cargo-fuzz = true
+
+[[bin]]
+name = "discovery-replay"
+path = "src/bin/replay.rs"
+
+[[bin]]
+name = "sse"
+path = "src/bin/sse.rs"
+required-features = ["fuzzing"]
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "ndjson"
+path = "src/bin/ndjson.rs"
+required-features = ["fuzzing"]
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "working_state"
+path = "src/bin/working_state.rs"
+required-features = ["fuzzing"]
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "provider_sequence"
+path = "src/bin/provider_sequence.rs"
+required-features = ["fuzzing"]
+test = false
+doc = false
+bench = false
+
+[lints]
+workspace = true

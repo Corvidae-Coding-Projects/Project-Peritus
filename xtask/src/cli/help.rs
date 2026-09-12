@@ -52,5 +52,18 @@ Commands:
   distro-verify          Verify package signatures and disposable install/remove lifecycle
   distro-upload          Upload a verified package set to the exact existing release draft
   distro-test            Run distribution package tooling regression tests
+  discovery-replay       Replay every registered discovery corpus on stable Rust
+  discovery-posix-lifecycle Qualify strict disposable POSIX uninstall failure handling
+  discovery-setup-fuzz    Install exact harness-only nightly and cargo-fuzz pins
+  discovery-setup-mutation Install the exact cargo-mutants pin
+  discovery-mutation-SLICE-N Run fixed shard N (receipt/context 0-7; cancellation 0-11)
+  discovery-mutation-context Inventory required-context mutations; zero reachability fails
+  discovery-mutation-context-canary Prove the required-context capacity test rejects its curated mutant
+  discovery-mutation-receipt Inventory and test effect-receipt mutations
+  discovery-mutation-cancellation Inventory and test product lifecycle mutations
+  discovery-fuzz-sse      Run bounded SSE fuzzing and retain completion evidence
+  discovery-fuzz-ndjson   Run bounded NDJSON fuzzing and retain completion evidence
+  discovery-fuzz-provider-sequence Run bounded structured provider-event fuzzing
+  discovery-fuzz-working-state Run bounded structured working-state fuzzing
   help                   Print this help
 ";

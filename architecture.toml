@@ -674,6 +674,13 @@ layer = "testing"
 verification_class = "C"
 
 [[packages]]
+name = "peritus-bug-discovery"
+path = "crates/app/testing/peritus-bug-discovery"
+owner = "H1"
+layer = "testing"
+verification_class = "C"
+
+[[packages]]
 name = "peritus-telemetry"
 path = "crates/observe/peritus-telemetry"
 owner = "C7"

@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "id": "product-cancellation-intent-lost-on-process-death",
+  "classification": "product_defect",
+  "invariant": "An acknowledged explicit cancellation remains terminal after abrupt daemon process death.",
+  "original": {
+    "revision": "16d5fa8701536180595f80dd631478b4827ee11d",
+    "platform": "linux-x86_64",
+    "finding_source": "bounded Daybreak abrupt-recovery expansion",
+    "independent_reproducer": "primary campaign controller with a freshly created child and state directory per run",
+    "fresh_fixture_repetitions": 3,
+    "command": "CARGO_BUILD_JOBS=2 cargo test --locked --offline -p peritus-daemon product_run::tests::recovery::abrupt_cancel_survives_process_termination -- --exact --nocapture",
+    "exit_code": 101,
+    "failure_signature": "restart restored acknowledged cancellation as RecoveryRequired instead of Cancelled"
+  },
+  "reproducer": {
+    "path": "crates/app/peritus-daemon/src/product_run/tests/recovery.rs",
+    "test": "abrupt_cancel_survives_process_termination",
+    "fault_schedule": ["child waits for provider request", "child persists explicit cancellation", "child publishes cancel-persisted barrier", "controller kills and reaps exact child", "fresh service restores record"],
+    "required_reachability": ["provider request observed", "cancel-persisted barrier observed", "owned child killed and reaped"],
+    "oracle": "decoded durable phase and zero provider requests after recovery",
+    "minimization": "one child, one acknowledged cancellation barrier, one forced death, and one fresh restore; every step is required to observe lost durable intent"
+  },
+  "fix": {
+    "revision": "6dd8059b9ef189b1d8f954b415d83ee252148e8c",
+    "owner": "ProductRunService persistence",
+    "root_cause": "user-cancellation intent existed only in live memory and was absent from the durable record"
+  },
+  "fixed_replay": {
+    "command": "CARGO_BUILD_JOBS=2 cargo test --locked --offline -p peritus-daemon product_run::tests::recovery::abrupt_cancel_survives_process_termination -- --exact --nocapture",
+    "expected": "exit 0; restored phase Cancelled; no provider redispatch"
+  },
+  "negative_control": "a shutdown-interrupted non-user-cancelled record restores as RecoveryRequired",
+  "cleanup": "controller kills and waits for its exact child; every run uses a new temporary state directory",
+  "limitations": ["process crash only", "no power-loss or storage-controller claim"]
+}

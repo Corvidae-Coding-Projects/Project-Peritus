@@ -18,6 +18,7 @@ use help::HELP;
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum Command {
     All,
+    Discovery { operation: crate::discovery::Operation },
     Architecture,
     Documentation,
     Formatting,
@@ -120,6 +121,7 @@ pub(crate) fn execute(
     }
 
     match command {
+        Command::Discovery { operation } => crate::discovery::run(root, operation)?,
         Command::All => execute_all(root, output)?,
         Command::Architecture => {
             let policy = metadata::architecture_policy(root)?;
@@ -265,6 +267,9 @@ fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Command, XtaskError
     let name = first.as_deref().and_then(|value| value.to_str());
     if let Some(operation) = name.and_then(crate::release::rebuild::Operation::parse) {
         return Ok(Command::ReleaseRebuild { operation });
+    }
+    if let Some(operation) = name.and_then(crate::discovery::Operation::parse) {
+        return Ok(Command::Discovery { operation });
     }
     match name {
         Some("all") => Ok(Command::All),

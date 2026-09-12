@@ -3,7 +3,7 @@ use crate::model::CargoMetadata;
 use std::collections::BTreeSet;
 use std::path::Path;
 
-const REVIEWED_BUILD_SCRIPT_PACKAGES: [&str; 65] = [
+const REVIEWED_BUILD_SCRIPT_PACKAGES: [&str; 66] = [
     "registry+https://github.com/rust-lang/crates.io-index#alloca@0.4.0",
     "registry+https://github.com/rust-lang/crates.io-index#anyhow@1.0.104",
     "registry+https://github.com/rust-lang/crates.io-index#async-io@2.6.0",
@@ -28,6 +28,7 @@ const REVIEWED_BUILD_SCRIPT_PACKAGES: [&str; 65] = [
     "registry+https://github.com/rust-lang/crates.io-index#jni@0.22.4",
     "registry+https://github.com/rust-lang/crates.io-index#jni-macros@0.22.4",
     "registry+https://github.com/rust-lang/crates.io-index#libc@0.2.189",
+    "registry+https://github.com/rust-lang/crates.io-index#libfuzzer-sys@0.4.13",
     "registry+https://github.com/rust-lang/crates.io-index#libm@0.2.16",
     "registry+https://github.com/rust-lang/crates.io-index#libsqlite3-sys@0.38.2",
     "registry+https://github.com/rust-lang/crates.io-index#memoffset@0.9.1",

@@ -1,5 +1,6 @@
 use super::workflow_ci;
 use super::workflow_command_policy::CommandPolicy;
+use super::workflow_discovery;
 use super::workflow_files::{DocumentKind, action_files, workflow_files};
 use super::workflow_governance;
 use super::workflow_local::{LocalUseKind, validate_local_reference};
@@ -39,6 +40,13 @@ pub(super) fn validate(
             WORKFLOW_DIRECTORY,
             "the required Gate A status workflow is missing",
             "restore the canonical workflow that emits the repository ruleset's required Gate A check",
+        ));
+    }
+    if !files.iter().any(|(path, _)| relative(root, path) == Path::new(workflow_discovery::PATH)) {
+        diagnostics.push(Diagnostic::at(
+            WORKFLOW_DIRECTORY,
+            "required discovery workflow is missing",
+            "restore bounded corpus replay and scheduled discovery",
         ));
     }
     files.extend(action_files(root)?);
@@ -94,6 +102,9 @@ pub(super) fn validate_document(
     };
 
     validate_pin_occurrences(document, relative, tools, diagnostics);
+    if relative == Path::new(workflow_discovery::PATH) {
+        workflow_discovery::validate(mapping, diagnostics);
+    }
     if relative == Path::new(CI_WORKFLOW) || relative == Path::new(CI_WORKFLOW_ALTERNATE) {
         validate_required_ci_pins(mapping, relative, tools, diagnostics);
         workflow_ci::validate(mapping, relative, tools, command_policy, diagnostics);

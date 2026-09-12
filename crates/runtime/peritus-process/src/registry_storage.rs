@@ -17,6 +17,17 @@ use crate::{
     recovery::{claim::ConsumptionClaim, manifest::ExecutionManifest},
 };
 
+#[cfg(test)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum StorageFaultPoint {
+    StagingWrite,
+    StagingSync,
+    PreserveRename,
+    PublishRename,
+    DirectorySync,
+    BackupDelete,
+}
+
 pub(crate) fn load_claims(
     claims: &Path,
     quarantine: &Path,
@@ -149,22 +160,40 @@ pub(crate) fn write_manifest(
         .truncate(true)
         .open(&staging)
         .map_err(|_| store_error("manifest staging file cannot be opened"))?;
-    file.write_all(&bytes)
-        .and_then(|()| file.sync_all())
+    #[cfg(test)]
+    fault_control::check(StorageFaultPoint::StagingWrite)
+        .map_err(|_| store_error("manifest staging file cannot be written"))?;
+    file.write_all(&bytes).map_err(|_| store_error("manifest staging file cannot be written"))?;
+    #[cfg(test)]
+    fault_control::check(StorageFaultPoint::StagingSync)
         .map_err(|_| store_error("manifest staging file cannot be synchronized"))?;
+    file.sync_all().map_err(|_| store_error("manifest staging file cannot be synchronized"))?;
     if target.exists() {
         let _ = fs::remove_file(&backup);
+        #[cfg(test)]
+        fault_control::check(StorageFaultPoint::PreserveRename)
+            .map_err(|_| store_error("prior manifest cannot be preserved for replacement"))?;
         fs::rename(&target, &backup)
             .map_err(|_| store_error("prior manifest cannot be preserved for replacement"))?;
     }
-    if fs::rename(&staging, &target).is_err() {
+    #[cfg(test)]
+    let publish_fault = fault_control::check(StorageFaultPoint::PublishRename).is_err();
+    #[cfg(not(test))]
+    let publish_fault = false;
+    if publish_fault || fs::rename(&staging, &target).is_err() {
         if backup.exists() {
             let _ = fs::rename(&backup, &target);
         }
         return Err(store_error("manifest replacement failed"));
     }
+    #[cfg(test)]
+    fault_control::check(StorageFaultPoint::DirectorySync)
+        .map_err(|_| store_error("registry directory cannot be synchronized"))?;
     sync_directory(directory)?;
     if backup.exists() {
+        #[cfg(test)]
+        fault_control::check(StorageFaultPoint::BackupDelete)
+            .map_err(|_| store_error("manifest backup cannot be removed"))?;
         fs::remove_file(&backup).map_err(|_| store_error("manifest backup cannot be removed"))?;
         sync_directory(directory)?;
     }
@@ -264,4 +293,79 @@ const fn store_error(detail: &'static str) -> ProcessError {
         RecoveryClass::ReopenAndReconcile,
         detail,
     )
+}
+
+#[cfg(test)]
+pub(crate) mod fault_control {
+    use super::StorageFaultPoint;
+    use std::{
+        io,
+        sync::Mutex,
+        thread::{self, ThreadId},
+    };
+
+    struct ScheduledFault {
+        point: StorageFaultPoint,
+        occurrence: u64,
+        calls: u64,
+        hit: bool,
+        kind: io::ErrorKind,
+    }
+
+    static FAULTS: Mutex<Vec<(ThreadId, ScheduledFault)>> = Mutex::new(Vec::new());
+
+    pub(crate) fn schedule(point: StorageFaultPoint, occurrence: u64, kind: io::ErrorKind) {
+        let thread = thread::current().id();
+        let mut faults = FAULTS.lock().expect("storage fault lock");
+        assert!(
+            !faults.iter().any(|(candidate, _)| *candidate == thread),
+            "storage fault already scheduled on this test thread",
+        );
+        faults.push((thread, ScheduledFault { point, occurrence, calls: 0, hit: false, kind }));
+    }
+
+    pub(super) fn check(point: StorageFaultPoint) -> io::Result<()> {
+        let thread = thread::current().id();
+        let triggered =
+            trigger(FAULTS.lock().expect("storage fault lock").as_mut_slice(), thread, point);
+        if let Some(kind) = triggered {
+            return Err(io::Error::from(kind));
+        }
+        Ok(())
+    }
+
+    fn trigger(
+        faults: &mut [(ThreadId, ScheduledFault)],
+        thread: ThreadId,
+        point: StorageFaultPoint,
+    ) -> Option<io::ErrorKind> {
+        let (_, scheduled) = faults.iter_mut().find(|(candidate, _)| *candidate == thread)?;
+        if scheduled.point != point {
+            return None;
+        }
+        scheduled.calls = scheduled.calls.checked_add(1).expect("fault call count");
+        if scheduled.calls != scheduled.occurrence {
+            return None;
+        }
+        scheduled.hit = true;
+        Some(scheduled.kind)
+    }
+
+    pub(crate) fn verify_hit() {
+        assert!(take_scheduled().hit, "scheduled storage fault was not reached");
+    }
+
+    pub(crate) fn verify_missed() {
+        assert!(!take_scheduled().hit, "storage fault unexpectedly triggered");
+    }
+
+    fn take_scheduled() -> ScheduledFault {
+        let thread = thread::current().id();
+        let mut faults = FAULTS.lock().expect("storage fault lock");
+        let index = faults
+            .iter()
+            .position(|(candidate, _)| *candidate == thread)
+            .expect("scheduled storage fault");
+        faults.swap_remove(index).1
+    }
 }

@@ -45,6 +45,7 @@ mod workflow_command_contracts;
 mod workflow_command_policy;
 mod workflow_command_syntax;
 mod workflow_commands;
+mod workflow_discovery;
 mod workflow_files;
 mod workflow_governance;
 mod workflow_governance_jobs;

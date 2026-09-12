@@ -281,6 +281,12 @@ fn exact_provider_duplicate_is_recorded_without_reapplying_semantics() {
         driver.drive_model_once(&mut journal, identity(56)).await.expect("terminal");
         assert_eq!(driver.state().model().cursor(), 3);
         assert_eq!(driver.state().counters().provider_events(), 4);
+        let restored =
+            AgentDriver::restore(&journal, binding(), limits(64), CodecLimits::PRODUCTION)
+                .expect("restore duplicate stream");
+        assert_eq!(restored.state(), driver.state());
+        assert_eq!(restored.state().model().cursor(), 3);
+        assert_eq!(restored.state().counters().provider_events(), 4);
     });
 }
 
@@ -342,6 +348,11 @@ fn out_of_order_provider_stream_becomes_explicit_protocol_failure() {
             )
             .expect("failure");
         assert_eq!(driver.state().terminal_kind(), Some(TerminalKind::Failed));
+        let restored =
+            AgentDriver::restore(&journal, binding(), limits(64), CodecLimits::PRODUCTION)
+                .expect("restore explicit protocol failure");
+        assert_eq!(restored.state(), driver.state());
+        assert_eq!(restored.state().model().cursor(), 1);
     });
 }
 
@@ -540,19 +551,43 @@ fn crash_after_tool_dispatch_is_classified_indeterminate_without_redispatch() {
         AgentDriver::restore(&journal, binding(), limits(64), CodecLimits::PRODUCTION)
             .expect("restore");
     assert_eq!(restored.recovery_report().tool_ordinals(), &[ToolOrdinal::new(0)]);
+    let before = load_agent_replay(&journal, binding().turn_id())
+        .expect("pre-classification replay")
+        .events()
+        .len();
     restored
         .classify_lost_tool_once(&mut journal, identity(38), ToolOrdinal::new(0))
         .expect("classify");
     let slot = &restored.state().tools().expect("tools").slots()[0];
     assert_eq!(slot.result().expect("result").status(), ToolResultStatus::Indeterminate);
     assert!(restored.recovery_report().is_clean());
+    assert_eq!(
+        load_agent_replay(&journal, binding().turn_id()).expect("classified replay").events().len(),
+        before + 1
+    );
+    drop(restored);
+    let mut restored =
+        AgentDriver::restore(&journal, binding(), limits(64), CodecLimits::PRODUCTION)
+            .expect("restore classified lost dispatch");
+    let classified_count = load_agent_replay(&journal, binding().turn_id())
+        .expect("classified event count")
+        .events()
+        .len();
+    assert!(
+        restored.classify_lost_tool_once(&mut journal, identity(41), ToolOrdinal::new(0)).is_err(),
+        "a terminal lost dispatch cannot be classified or redispatched again"
+    );
+    assert_eq!(
+        load_agent_replay(&journal, binding().turn_id()).expect("unchanged replay").events().len(),
+        classified_count
+    );
     restored
-        .drive_once(&mut journal, identity(39), AgentCommandKind::ResultRecordingStarted)
+        .drive_once(&mut journal, identity(42), AgentCommandKind::ResultRecordingStarted)
         .expect("recording");
     restored
         .drive_once(
             &mut journal,
-            identity(40),
+            identity(43),
             AgentCommandKind::ResultsRecorded { transcript_digest: digest(87) },
         )
         .expect("results");

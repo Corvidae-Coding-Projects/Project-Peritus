@@ -14,6 +14,8 @@ use super::snapshot::replace_snapshot;
 use super::{ProductRunService, ProductRunServiceError};
 mod goal;
 mod launch;
+#[cfg(test)]
+pub use launch::inject_finish_barrier;
 
 impl ProductRunService {
     fn observe(&self, run_id: RunId, update: peritus_product_runner::ProductRunUpdate) {

@@ -11,11 +11,33 @@ config_root="$peritus_home/.config"
 bin_root="$peritus_home/.local/bin"
 helper_root="$peritus_home/.local/libexec/peritus"
 unit_file="$config_root/systemd/user/peritus.service"
+pending_cleanup="$config_root/systemd/user/.peritus.service-removal-pending"
 share_file="$peritus_home/.local/share/peritus/peritus.service"
 
-systemctl --user disable --now peritus.service 2>/dev/null || true
+had_registration=0
+if [ -f "$unit_file" ] || [ -d "$pending_cleanup" ]; then
+    if ! command -v systemctl >/dev/null 2>&1; then
+        echo "systemctl is unavailable; preserving the registered service and package files" >&2
+        exit 127
+    fi
+    load_state=$(systemctl --user show peritus.service --property=LoadState --value)
+    if [ "$load_state" != "not-found" ]; then
+        had_registration=1
+        systemctl --user disable --now peritus.service
+    fi
+fi
+if [ "$had_registration" -eq 1 ]; then
+    if [ ! -d "$pending_cleanup" ]; then
+        (umask 077 && mkdir -- "$pending_cleanup")
+    fi
+fi
 rm -f -- "$unit_file"
-systemctl --user daemon-reload 2>/dev/null || true
+if [ "$had_registration" -eq 1 ]; then
+    systemctl --user daemon-reload
+fi
+if [ -d "$pending_cleanup" ]; then
+    rmdir -- "$pending_cleanup"
+fi
 rm -f -- "$bin_root/peritusd" "$bin_root/peritus" "$bin_root/peritus-tui"
 rm -f -- "$helper_root/peritus-linux-sandbox-helper"
 rm -f -- "$share_file"

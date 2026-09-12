@@ -88,6 +88,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "arbitrary"
+version = "1.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c3d036a3c4ab069c7b410a2ce876bd74808d2d0888a82667669f8e783a898bf1"
+
+[[package]]
 name = "arraydeque"
 version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1756,6 +1762,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3eaf3ede3fee6db1a4c2ee091bf8a8b4dccdc6d17f656fb07896ee72867612f2"
 
 [[package]]
+name = "libfuzzer-sys"
+version = "0.4.13"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a9fd2f41a1cba099f79a0b6b6c35656cf7c03351a7bae8ff0f28f25270f929d2"
+dependencies = [
+ "arbitrary",
+ "cc",
+]
+
+[[package]]
 name = "libm"
 version = "0.2.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2224,6 +2240,19 @@ dependencies = [
  "peritus-test-support",
  "peritus-types",
  "vstd",
+]
+
+[[package]]
+name = "peritus-bug-discovery"
+version = "0.0.2"
+dependencies = [
+ "libfuzzer-sys",
+ "peritus-codec",
+ "peritus-context",
+ "peritus-model-protocol",
+ "peritus-provider-core",
+ "peritus-role",
+ "peritus-types",
 ]
 
 [[package]]
@@ -5344,6 +5373,7 @@ name = "xtask"
 version = "0.0.2"
 dependencies = [
  "base64",
+ "process-wrap",
  "serde",
  "serde_json",
  "sha2 0.11.0",
