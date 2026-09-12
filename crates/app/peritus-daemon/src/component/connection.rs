@@ -17,8 +17,7 @@ pub async fn test_provider_connection(
 ) -> Result<ConnectionReport, DaemonError> {
     let declaration = route.declaration()?;
     let id = declaration.profile().profile_id();
-    let broker = PlatformCredentialSource::new("org.corvidae-coding.peritus.providers")
-        .map_err(connection_error)?;
+    let broker = PlatformCredentialSource::providers();
     let registry = ProviderRegistry::build(
         vec![declaration],
         ProviderRegistryLimits::PRODUCTION,

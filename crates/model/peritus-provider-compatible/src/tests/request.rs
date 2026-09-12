@@ -23,6 +23,22 @@ fn both_dialects_have_distinct_stable_golden_requests() {
 }
 
 #[test]
+fn chat_usage_projection_matches_request_negotiation() {
+    let provider = chat_profile(&[Capability::Streaming, Capability::UsageDetail]);
+    let profile = CompatibleProfile::chat_completions(provider.clone()).expect("profile");
+    for usage in [false, true] {
+        let mut capabilities = vec![Capability::Streaming];
+        if usage {
+            capabilities.push(Capability::UsageDetail);
+        }
+        let request = request_with_capabilities(&provider, &capabilities);
+        let encoded = crate::request::encode(&profile, &request).expect("Chat request");
+        let json: serde_json::Value = serde_json::from_slice(&encoded).expect("request JSON");
+        assert_eq!(json["stream_options"]["include_usage"], usage);
+    }
+}
+
+#[test]
 fn streaming_is_rejected_before_wire_projection_when_not_negotiated() {
     let provider = responses_profile(&[Capability::Streaming]);
     let profile = CompatibleProfile::responses(provider.clone()).expect("profile");

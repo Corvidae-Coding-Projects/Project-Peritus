@@ -1,4 +1,6 @@
-//! Synthetic SDK/API contract fixtures; provenance: docs/provider-contracts.md (2026-09-10).
+//! Synthetic contracts and sanitized live Zen replay; provenance: docs/provider-contracts.md.
+
+mod openrouter;
 
 use super::support::{StaticCredential, block_on, chat_profile, credential_reference};
 use crate::{CompatibleAuth, CompatibleClient, CompatibleConfig, CompatibleProfile};
@@ -19,6 +21,7 @@ struct ContractTransport {
     service: HostedService,
     requests: Mutex<Vec<Value>>,
     fail_at: Option<usize>,
+    response: fn(HostedService, usize) -> Vec<u8>,
 }
 
 impl HttpTransport for ContractTransport {
@@ -72,7 +75,7 @@ impl HttpTransport for ContractTransport {
                 br#"{"error":{"message":"secret-provider-body","code":"insufficient_quota"}}"#
                     .to_vec()
             } else {
-                success(self.service, step)
+                (self.response)(self.service, step)
             };
             let limits = HttpLimits::PRODUCTION;
             HttpResponse::new(
@@ -174,8 +177,20 @@ fn client(
     service: HostedService,
     fail_at: Option<usize>,
 ) -> (CompatibleClient, Arc<ContractTransport>) {
-    let transport =
-        Arc::new(ContractTransport { service, fail_at, requests: Mutex::new(Vec::new()) });
+    client_with_responses(service, fail_at, success)
+}
+
+fn client_with_responses(
+    service: HostedService,
+    fail_at: Option<usize>,
+    response: fn(HostedService, usize) -> Vec<u8>,
+) -> (CompatibleClient, Arc<ContractTransport>) {
+    let transport = Arc::new(ContractTransport {
+        service,
+        fail_at,
+        response,
+        requests: Mutex::new(Vec::new()),
+    });
     let config = CompatibleConfig::new(
         Endpoint::new(
             service
@@ -206,6 +221,28 @@ fn client(
         ),
         transport,
     )
+}
+
+#[test]
+fn live_zen_deepseek_replay_completes_connection_with_nullable_tool_roles() {
+    block_on(async {
+        let (client, transport) =
+            client_with_responses(HostedService::OpenCodeZen, None, |_, step| {
+                super::support::fixture(&format!("zen-deepseek-live-{step}.sse"))
+            });
+        let report = verify_provider_connection(&client, CancellationToken::new())
+            .await
+            .expect("recorded Zen generation, tool call, and tool-result replay");
+        assert_eq!(
+            report.completed,
+            [
+                ConnectionStage::Generation,
+                ConnectionStage::ToolCalling,
+                ConnectionStage::ToolResult
+            ]
+        );
+        assert_eq!(transport.requests.lock().expect("requests").len(), 3);
+    });
 }
 
 #[test]
@@ -250,99 +287,6 @@ fn hosted_contract_cannot_be_attached_to_an_unrelated_endpoint() {
     )
     .expect("config");
     assert!(config.with_hosted_service(HostedService::OpenRouter).is_err());
-}
-
-#[test]
-fn openrouter_error_with_http_200_never_qualifies_a_connection() {
-    block_on(async {
-        let body = MemoryByteStream::new(
-            vec![
-                b"data: {\"error\":{\"code\":402,\"message\":\"secret-provider-body\"}}\n\n"
-                    .to_vec(),
-            ],
-            HttpLimits::PRODUCTION,
-        )
-        .expect("body");
-        let profile = chat_profile(&[Capability::Streaming]);
-        let stream = crate::stream::CompatibleStream::new(
-            Box::new(body),
-            peritus_provider_core::FramingLimits::PRODUCTION,
-            profile.provider().clone(),
-            profile.model().clone(),
-            WireDialect::CompatibleChatCompletions,
-            false,
-            false,
-            false,
-            ProtocolLimits::PRODUCTION,
-            Vec::new(),
-        )
-        .expect("stream")
-        .with_hosted_service(Some(HostedService::OpenRouter));
-        let mut stream =
-            peritus_provider_core::OwnedModelStream::new(stream, CancellationToken::new());
-        let event = stream.pull().await.expect("pull").expect("failure");
-        assert!(
-            matches!(event.event(), ModelEvent::ResponseFailed(failure) if failure.category() == peritus_model_protocol::FailureCategory::QuotaExhausted)
-        );
-        assert!(!format!("{event:?}").contains("secret-provider-body"));
-        assert!(stream.pull().await.expect("end").is_none());
-    });
-}
-
-#[test]
-fn openrouter_accounting_cannot_carry_output_unknown_fields_or_repeated_finishes() {
-    block_on(async {
-        for mutation in 0..5 {
-            let mut accounting =
-                chunk(1, serde_json::json!({"content":""}), serde_json::json!("stop"));
-            accounting["usage"] =
-                serde_json::json!({"prompt_tokens":2,"completion_tokens":3,"total_tokens":5});
-            match mutation {
-                0 => {
-                    accounting["choices"][0]["delta"]["content"] = serde_json::json!("late output");
-                }
-                1 => accounting["choices"][0]["finish_reason"] = serde_json::json!("length"),
-                2 => accounting["choices"][0]["unmapped"] = serde_json::json!(true),
-                3 => accounting["choices"][0]["delta"]["tool_calls"] = serde_json::json!([]),
-                _ => {}
-            }
-            let mut bytes = format!(
-                "data: {}\n\ndata: {}\n\ndata: {accounting}\n\n",
-                chunk(1, serde_json::json!({"content":"ok"}), Value::Null),
-                chunk(1, serde_json::json!({}), serde_json::json!("stop"))
-            );
-            if mutation == 4 {
-                writeln!(bytes, "data: {accounting}\n").expect("fixture formatting");
-            }
-            bytes.push_str("data: [DONE]\n\n");
-            let profile = chat_profile(&[Capability::Streaming, Capability::UsageDetail]);
-            let stream = crate::stream::CompatibleStream::new(
-                Box::new(
-                    MemoryByteStream::new(vec![bytes.into_bytes()], HttpLimits::PRODUCTION)
-                        .expect("body"),
-                ),
-                peritus_provider_core::FramingLimits::PRODUCTION,
-                profile.provider().clone(),
-                profile.model().clone(),
-                WireDialect::CompatibleChatCompletions,
-                false,
-                false,
-                true,
-                ProtocolLimits::PRODUCTION,
-                Vec::new(),
-            )
-            .expect("stream")
-            .with_hosted_service(Some(HostedService::OpenRouter));
-            let mut stream =
-                peritus_provider_core::OwnedModelStream::new(stream, CancellationToken::new());
-            let mut failed = false;
-            while let Some(event) = stream.pull().await.expect("pull") {
-                assert!(!matches!(event.event(), ModelEvent::ResponseCompleted));
-                failed |= matches!(event.event(), ModelEvent::ResponseFailed(_));
-            }
-            assert!(failed, "mutation {mutation}");
-        }
-    });
 }
 
 #[test]

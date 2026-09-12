@@ -66,6 +66,7 @@ impl DeveloperLoop {
                 &required_capabilities,
                 &[
                     Capability::Streaming,
+                    Capability::UsageDetail,
                     Capability::ParallelToolCalls,
                     Capability::ReasoningControls,
                     Capability::ReasoningReplay,

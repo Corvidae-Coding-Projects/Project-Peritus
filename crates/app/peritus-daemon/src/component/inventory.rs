@@ -27,7 +27,7 @@ impl DaemonComponents {
     pub fn build(config: &DaemonConfig) -> Result<Self, DaemonError> {
         let direct =
             config.providers().iter().any(crate::ProviderRoute::requires_credential_broker);
-        let credential_source = PlatformCredentialSource::new("peritus").map_err(provider_error)?;
+        let credential_source = PlatformCredentialSource::providers();
         if direct && !credential_source.available() {
             return Err(DaemonError::new(
                 DaemonErrorCode::RecoveryRequired,
@@ -107,16 +107,6 @@ fn tool_error(error: ToolComponentError) -> DaemonError {
         DaemonErrorCode::InvalidInput,
         DaemonRecovery::CorrectRequest,
         "construct tool registry",
-        error.to_string(),
-        error,
-    )
-}
-
-fn provider_error(error: peritus_provider_core::ProviderCoreError) -> DaemonError {
-    DaemonError::with_source(
-        DaemonErrorCode::InvalidInput,
-        DaemonRecovery::CorrectRequest,
-        "construct credential broker",
         error.to_string(),
         error,
     )
