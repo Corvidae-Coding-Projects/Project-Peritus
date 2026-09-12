@@ -39,6 +39,7 @@ impl MutationRepository {
         let parent = temporary.join(format!("pm-{:016x}", identity.finish()));
         fs::create_dir(&parent)
             .map_err(|error| XtaskError::io("create mutation temporary root", &parent, error))?;
+        #[cfg(unix)]
         protect(&parent)?;
         let repository = parent.join("r");
         let mut clone = Command::new("git");
@@ -100,9 +101,4 @@ fn protect(path: &Path) -> Result<(), XtaskError> {
     use std::os::unix::fs::PermissionsExt as _;
     fs::set_permissions(path, fs::Permissions::from_mode(0o700))
         .map_err(|error| XtaskError::io("protect mutation temporary root", path, error))
-}
-
-#[cfg(windows)]
-fn protect(_path: &Path) -> Result<(), XtaskError> {
-    Ok(())
 }
