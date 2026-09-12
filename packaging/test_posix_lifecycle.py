@@ -4,6 +4,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 
 
@@ -112,8 +113,12 @@ class PosixUninstallFailureTests(unittest.TestCase):
             timed_out = True
             raise
         finally:
+            cleanup_command = [CONTAINER_ENGINE, "rm", "--force"]
+            if CONTAINER_ENGINE == "podman":
+                cleanup_command.extend(["--time", "0"])
+            cleanup_command.append(container_name)
             cleanup = subprocess.run(
-                [CONTAINER_ENGINE, "rm", "--force", container_name],
+                cleanup_command,
                 text=True,
                 capture_output=True,
                 timeout=10,
@@ -125,6 +130,8 @@ class PosixUninstallFailureTests(unittest.TestCase):
                 self.fail(
                     f"failed to remove owned container {container_name}: {cleanup.stderr}"
                 )
+            if cleanup.returncode == 0 and not self._wait_for_container_absent(container_name):
+                self.fail(f"owned container {container_name} remained after forced cleanup")
 
     def _container_exists(self, name: str) -> bool:
         return (
@@ -137,6 +144,14 @@ class PosixUninstallFailureTests(unittest.TestCase):
             ).returncode
             == 0
         )
+
+    def _wait_for_container_absent(self, name: str) -> bool:
+        deadline = time.monotonic() + 5
+        while self._container_exists(name):
+            if time.monotonic() >= deadline:
+                return False
+            time.sleep(0.05)
+        return True
 
     def _linux_fixture(self) -> tuple[Path, Path]:
         unit = self.home / ".config/systemd/user/peritus.service"
