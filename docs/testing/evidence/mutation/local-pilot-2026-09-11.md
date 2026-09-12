@@ -10,6 +10,11 @@
 | Receipt ledger, eight shards | 32 | 31 | 1 | 0 | 0 | 0 |
 | Cancellation lifecycle, eight shards | 23 | 18 | 5 | 0 | 0 | 0 |
 
+After the slice-filter correction, receipt shard 0 was replayed from
+`5d6f37ac0730d20e92a716fe49cf7161623dfd10`. Its environment record contained
+`excluded_tests=[]` and `unix_socket_bind=not_required`; the real baseline passed, three mutants
+were caught, one was unviable, and none were missed, timed out, or left untested.
+
 The receipt campaign exposed an actual product defect: a provider could reuse a call identifier at
 a later ordinal and cause the runner to execute the same effect twice. The ledger now rejects an
 identifier reused by any later effect request. Recovery loading also rejects inconsistent
