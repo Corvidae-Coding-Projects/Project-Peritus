@@ -138,6 +138,13 @@ fn success(service: HostedService, step: usize) -> Vec<u8> {
             Value::Null,
         ));
     }
+    if service == HostedService::OpenCodeZen {
+        // Zen may stream more than one cumulative usage snapshot before its terminal accounting.
+        let mut usage = chunk(step, serde_json::json!({}), Value::Null);
+        usage["usage"] =
+            serde_json::json!({"prompt_tokens":1,"completion_tokens":1,"total_tokens":2});
+        chunks.push(usage);
+    }
     let reason = if step == 2 { "tool_calls" } else { "stop" };
     let mut last = chunk(step, serde_json::json!({}), serde_json::json!(reason));
     let usage = serde_json::json!({"prompt_tokens":2,"completion_tokens":3,"total_tokens":5});
@@ -202,7 +209,7 @@ fn client(
 }
 
 #[test]
-fn every_named_chat_contract_completes_generation_tools_and_reasoning_replay() {
+fn every_named_chat_contract_completes_generation_tools_usage_and_reasoning_replay() {
     block_on(async {
         for service in HostedService::ALL {
             let (client, transport) = client(service, None);

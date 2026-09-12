@@ -7,7 +7,7 @@ use std::collections::BTreeMap;
 
 use peritus_model_protocol::{
     EventId, FinishReason, ItemId, ItemKind, ModelEvent, ModelName, ProtocolLimits, ProviderName,
-    ResponseId, StreamFragment,
+    ResponseId, StreamFragment, UsageCounters, UsageObservation, UsageScope,
 };
 use peritus_provider_core::{ProviderCoreError, SseFrame};
 use serde_json::{Map, Value};
@@ -34,6 +34,7 @@ pub(super) struct ChatDecoder {
     refusal_bytes: Vec<u8>,
     tools: BTreeMap<u32, ToolState>,
     finish: Option<hosted::CompletedChoice>,
+    usage: Option<Box<UsageCounters>>,
 }
 
 impl ChatDecoder {
@@ -63,6 +64,7 @@ impl ChatDecoder {
             refusal_bytes: Vec::new(),
             tools: BTreeMap::new(),
             finish: None,
+            usage: None,
         }
     }
 
@@ -138,7 +140,7 @@ impl ChatDecoder {
                     "Chat-compatible usage was not declared by the profile",
                 ));
             }
-            events.push(ModelEvent::Usage(fields::usage(usage)?));
+            self.observe_usage(usage, &mut events)?;
         }
         if value.get("provider_metadata").is_some() {
             let metadata = value
@@ -152,7 +154,7 @@ impl ChatDecoder {
             if let Some(usage) = metadata.get("usage").filter(|value| !value.is_null())
                 && self.allow_usage
             {
-                events.push(ModelEvent::Usage(fields::usage(usage)?));
+                self.observe_usage(usage, &mut events)?;
             }
             events.push(super::ancillary::event(
                 &serde_json::json!({"x_groq":metadata}),
@@ -180,7 +182,28 @@ impl ChatDecoder {
         {
             return Err(error::malformed("Chat-compatible DONE preceded a mapped finish"));
         }
-        Ok(vec![ModelEvent::ResponseCompleted])
+        let mut events = Vec::with_capacity(usize::from(self.usage.is_some()) + 1);
+        if let Some(usage) = self.usage.as_deref() {
+            events.push(ModelEvent::Usage(UsageObservation::new(UsageScope::Final, *usage, None)));
+        }
+        events.push(ModelEvent::ResponseCompleted);
+        Ok(events)
+    }
+
+    fn observe_usage(
+        &mut self,
+        value: &Value,
+        events: &mut Vec<ModelEvent>,
+    ) -> Result<(), ProviderCoreError> {
+        let observation = fields::usage(value)?;
+        let counters = observation.counters();
+        if let Some(usage) = self.usage.as_deref_mut() {
+            *usage = counters;
+        } else {
+            self.usage = Some(Box::new(counters));
+        }
+        events.push(ModelEvent::Usage(observation));
+        Ok(())
     }
 
     fn choice(
