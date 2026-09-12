@@ -50,9 +50,11 @@ function result with the original call's name and ID.
 
 Streams accept empty initial content as a heartbeat. OpenRouter's content-free final usage
 choice may repeat the preceding finish reason exactly once; it cannot introduce output or change
-the finish. Its HTTP-200 error events remain failures, including an error as the first event.
-Groq's `x_groq` accounting is retained. Named routes may resolve a requested model alias to a
-stable returned model ID; the returned ID cannot change during the stream.
+the finish. Chat-compatible usage snapshots remain cumulative while the stream is open; the last
+snapshot becomes final only at the mapped `[DONE]` boundary. Counter regressions still fail closed.
+OpenRouter's HTTP-200 error events remain failures, including an error as the first event. Groq's
+`x_groq` accounting is retained. Named routes may resolve a requested model alias to a stable
+returned model ID; the returned ID cannot change during the stream.
 
 Documented reasoning fields are preserved as bounded provider-specific replay data, including
 OpenRouter `reasoning_details` and DeepSeek/Fireworks `reasoning_content`. The developer loop keeps
