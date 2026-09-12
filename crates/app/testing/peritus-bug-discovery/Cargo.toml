@@ -13,13 +13,15 @@ readme = "README.md"
 fuzzing = ["dep:libfuzzer-sys"]
 
 [dependencies]
-libfuzzer-sys = { workspace = true, optional = true }
 peritus-codec = { version = "=0.0.2", path = "../../../foundation/peritus-codec" }
 peritus-context = { version = "=0.0.2", path = "../../../orchestration/peritus-context" }
 peritus-model-protocol = { version = "=0.0.2", path = "../../../model/peritus-model-protocol" }
 peritus-provider-core = { version = "=0.0.2", path = "../../../model/peritus-provider-core" }
 peritus-role = { version = "=0.0.2", path = "../../../orchestration/peritus-role" }
 peritus-types = { version = "=0.0.2", path = "../../../foundation/peritus-types" }
+
+[target.'cfg(not(windows))'.dependencies]
+libfuzzer-sys = { workspace = true, optional = true }
 
 [package.metadata.peritus]
 owner = "H1"
