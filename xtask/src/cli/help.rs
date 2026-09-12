@@ -56,7 +56,7 @@ Commands:
   discovery-posix-lifecycle Qualify strict disposable POSIX uninstall failure handling
   discovery-setup-fuzz    Install exact harness-only nightly and cargo-fuzz pins
   discovery-setup-mutation Install the exact cargo-mutants pin
-  discovery-mutation-SLICE-N Run fixed mutation shard N (0 through 7)
+  discovery-mutation-SLICE-N Run fixed shard N (receipt/context 0-7; cancellation 0-11)
   discovery-mutation-context Inventory required-context mutations; zero reachability fails
   discovery-mutation-context-canary Prove the required-context capacity test rejects its curated mutant
   discovery-mutation-receipt Inventory and test effect-receipt mutations

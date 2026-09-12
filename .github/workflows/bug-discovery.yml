@@ -102,7 +102,12 @@ jobs:
       max-parallel: 2
       matrix:
         slice: [receipt, cancellation]
-        shard: [0, 1, 2, 3, 4, 5, 6, 7]
+        shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+        exclude:
+          - {slice: receipt, shard: 8}
+          - {slice: receipt, shard: 9}
+          - {slice: receipt, shard: 10}
+          - {slice: receipt, shard: 11}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

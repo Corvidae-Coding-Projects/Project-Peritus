@@ -28,6 +28,10 @@ const SLICES: [(&str, &str, Option<&str>); 3] = [
 ];
 const CANCELLATION_SLICE_INDEX: usize = 2;
 
+pub(super) const fn shard_count(index: usize) -> usize {
+    if index == CANCELLATION_SLICE_INDEX { 12 } else { 8 }
+}
+
 const CONTEXT_SOURCE: &str = "crates/orchestration/peritus-context/src/working/selection.rs";
 const CONTEXT_TEST: &str =
     "headroom_preserves_required_roots_and_shared_dependencies_without_optional_expansion";
@@ -177,7 +181,7 @@ pub(super) fn run(
     }
     let selected = if let Some(shard) = shard {
         let mut listing = command(index)?;
-        listing.args(["--list", "--json", "--shard", &format!("{shard}/8")]);
+        listing.args(["--list", "--json", "--shard", &format!("{shard}/{}", shard_count(index))]);
         runner::checked(root, evidence, "selected-inventory", listing, 30)?;
         let bytes = fs::read(evidence.join("selected-inventory.stdout"))
             .map_err(|error| XtaskError::io("read selected inventory", evidence, error))?;
@@ -194,7 +198,7 @@ pub(super) fn run(
     })?;
     write_json(
         &evidence.join("selection.json"),
-        &json!({"discovered": discovered, "selected": selected_count, "outside_this_shard": outside, "shard": shard, "shard_count": if shard.is_some() { 8 } else { 1 }}),
+        &json!({"discovered": discovered, "selected": selected_count, "outside_this_shard": outside, "shard": shard, "shard_count": if shard.is_some() { shard_count(index) } else { 1 }}),
     )?;
     if selected_count == 0 {
         return Err(XtaskError::metadata("empty mutation shard; no executed campaign"));
@@ -218,7 +222,7 @@ fn run_campaign(
     let test_timeout = test_timeout(index);
     let mut campaign = command(index)?;
     if let Some(shard) = shard {
-        campaign.args(["--shard", &format!("{shard}/8")]);
+        campaign.args(["--shard", &format!("{shard}/{}", shard_count(index))]);
     }
     campaign.args([
         "--in-place",

@@ -36,7 +36,6 @@ impl Operation {
     pub(crate) fn parse(name: &str) -> Option<Self> {
         if let Some((base, suffix)) = name.rsplit_once('-')
             && let Ok(shard) = suffix.parse::<usize>()
-            && shard < 8
         {
             let index = match base {
                 "discovery-mutation-context" => Some(0),
@@ -44,7 +43,9 @@ impl Operation {
                 "discovery-mutation-cancellation" => Some(2),
                 _ => None,
             };
-            if let Some(index) = index {
+            if let Some(index) = index
+                && shard < mutation::shard_count(index)
+            {
                 return Some(Self::Mutation { index, shard: Some(shard) });
             }
         }

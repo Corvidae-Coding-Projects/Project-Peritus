@@ -121,13 +121,23 @@ fn valid_strategy(job: &Yaml, name: &str, dimension: &str) -> bool {
         return keys(job["strategy"].as_hash(), &["fail-fast", "matrix"])
             && keys(job["strategy"]["matrix"].as_hash(), &[dimension]);
     }
-    let shards = job["strategy"]["matrix"]["shard"]
+    let matrix = &job["strategy"]["matrix"];
+    let shards = matrix["shard"]
         .as_vec()
-        .map(|items| items.iter().filter_map(Yaml::as_i64).collect::<Vec<_>>());
+        .and_then(|items| items.iter().map(Yaml::as_i64).collect::<Option<Vec<_>>>());
+    let exclusions = matrix["exclude"].as_vec().is_some_and(|items| {
+        items.len() == 4
+            && items.iter().zip(8..12).all(|(item, shard)| {
+                keys(item.as_hash(), &["slice", "shard"])
+                    && item["slice"].as_str() == Some("receipt")
+                    && item["shard"].as_i64() == Some(shard)
+            })
+    });
     keys(job["strategy"].as_hash(), &["fail-fast", "max-parallel", "matrix"])
-        && keys(job["strategy"]["matrix"].as_hash(), &[dimension, "shard"])
+        && keys(matrix.as_hash(), &[dimension, "shard", "exclude"])
         && job["strategy"]["max-parallel"].as_i64() == Some(2)
-        && shards == Some((0..8).collect())
+        && shards == Some((0..12).collect())
+        && exclusions
 }
 
 fn valid_checkout(step: &Yaml) -> bool {
@@ -209,7 +219,7 @@ mod tests {
             ("retention-days: 30", "retention-days: 14"),
             ("github.event_name != 'pull_request'", "github.event_name == 'pull_request'"),
             ("[receipt, cancellation]", "[receipt]"),
-            ("[0, 1, 2, 3, 4, 5, 6, 7]", "[0, 1, 2]"),
+            ("[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]", "[0, 1, 2]"),
             ("cargo fetch --locked", "cargo fetch --locked\n        continue-on-error: true"),
             (
                 "cargo xtask discovery-mutation-context-canary",
@@ -217,6 +227,22 @@ mod tests {
             ),
             ("cargo xtask discovery-posix-lifecycle", "cargo xtask discovery-replay"),
         ] {
+            assert!(!check(&source.replace(before, after)).is_empty(), "accepted {after}");
+        }
+    }
+
+    #[test]
+    fn mutation_exclusions_preserve_every_nonempty_slice_shard() {
+        let source = include_str!("../../../.github/workflows/bug-discovery.yml");
+        for (before, after) in [
+            ("          - {slice: receipt, shard: 8}\n", ""),
+            ("{slice: receipt, shard: 8}", "{slice: cancellation, shard: 8}"),
+            ("{slice: receipt, shard: 8}", "{slice: receipt, shard: 7}"),
+            ("{slice: receipt, shard: 9}", "{slice: receipt, shard: 8}"),
+            ("{slice: receipt, shard: 11}", "{slice: receipt, shard: 11, extra: true}"),
+            ("        exclude:", "        include:"),
+        ] {
+            assert!(source.contains(before), "missing fixture {before}");
             assert!(!check(&source.replace(before, after)).is_empty(), "accepted {after}");
         }
     }

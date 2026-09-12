@@ -354,11 +354,15 @@ fn mutation_shards_are_explicit_and_bounded() {
         super::Operation::parse("discovery-mutation-context-canary"),
         Some(super::Operation::ContextCanary)
     );
-    for shard in 0..8 {
-        assert_eq!(
-            super::Operation::parse(&format!("discovery-mutation-receipt-{shard}")),
-            Some(super::Operation::Mutation { index: 1, shard: Some(shard) })
-        );
+    for (index, slice, count) in [(0, "context", 8), (1, "receipt", 8), (2, "cancellation", 12)] {
+        assert_eq!(mutation::shard_count(index), count);
+        for shard in 0..count {
+            assert_eq!(
+                super::Operation::parse(&format!("discovery-mutation-{slice}-{shard}")),
+                Some(super::Operation::Mutation { index, shard: Some(shard) })
+            );
+        }
+        assert_eq!(super::Operation::parse(&format!("discovery-mutation-{slice}-{count}")), None);
     }
     for invalid in
         ["discovery-mutation-receipt-8", "discovery-mutation-receipt-0-1", "discovery-fuzz-sse-0"]
