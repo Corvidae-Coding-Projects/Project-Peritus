@@ -106,7 +106,7 @@ fn accepted_failure_manifests_are_schema_versioned_and_replayable() {
             );
         }
     }
-    assert_eq!(manifests, 8, "accepted defect inventory changed without a reviewed manifest");
+    assert_eq!(manifests, 9, "accepted defect inventory changed without a reviewed manifest");
 }
 
 #[test]
