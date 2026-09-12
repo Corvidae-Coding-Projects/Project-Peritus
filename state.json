@@ -2,6 +2,11 @@
   "checkpoint_schema_version": 2,
   "frontier": {
     "agents": {
+      "4jyS": {
+        "sequence": 1,
+        "tip_oid": "db3d33acb8385832dfcbd7978a376d9522ae6440",
+        "prefix_sha256": "bb8efa2ac822308a93aa8029f24a389ea86c03317ac61ea32c7ca701227367b8"
+      },
       "6ME5": {
         "sequence": 1485,
         "tip_oid": "2bc2a7d8af7a7e6d5a872b365a6bbc1344cb57dc",
@@ -29,7 +34,7 @@
       }
     }
   },
-  "next_display_id": 75,
+  "next_display_id": 76,
   "next_comment_id": 1570,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
@@ -98,6 +103,7 @@
     "dfab9d3d-33b2-4c87-aa21-5e886054ba62": 7,
     "e24f4c6e-7a1c-4075-8361-151abdd789f0": 56,
     "e6cc067a-83c2-4e9c-a1f9-17ff1faa9e11": 72,
+    "eb5c64d1-b12e-4ec5-8bae-6c66adc80c81": 75,
     "ec4c6d0c-2cbb-40b9-8be2-4ac69e7fc750": 32,
     "ef6ed3ab-52cd-436a-aa6e-d5d098c89f6c": 8,
     "f27888a7-5366-4703-a68a-9f17b1adad81": 20,
@@ -14645,6 +14651,17 @@
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABABaPQ7Q5kmf/iCAuaJPQbvAdnfBjpq8gl8rXTK8n9yXjkhMry2GzalGiHySRlHTVyuM/wzollEG0V2TZP4DeGBA=="
         }
       }
+    },
+    "eb5c64d1-b12e-4ec5-8bae-6c66adc80c81": {
+      "uuid": "eb5c64d1-b12e-4ec5-8bae-6c66adc80c81",
+      "display_id": 75,
+      "title": "Complete production Verus coverage and trusted CI enforcement",
+      "description": "Execute the full user goal: audit every obligation and production correspondence; complete feasible proofs and precise reviewed boundaries; restore authentic source-bound evidence and independently reviewed discharge; enforce proof scope, drift and review against trusted CI authority, with negative tests and all final runners passing. Worktree feature/formal-coverage starts at 1aa9282f and preserves PR73. Active work record: docs/formal-coverage-audit.md.",
+      "status": "open",
+      "priority": "high",
+      "created_by": "4jyS",
+      "created_at": "2026-09-12T15:27:42.848160186Z",
+      "updated_at": "2026-09-12T15:27:42.848160186Z"
     },
     "ec4c6d0c-2cbb-40b9-8be2-4ac69e7fc750": {
       "uuid": "ec4c6d0c-2cbb-40b9-8be2-4ac69e7fc750",
