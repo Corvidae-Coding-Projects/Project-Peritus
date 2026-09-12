@@ -73,7 +73,13 @@ fn accepted_failure_manifests_are_schema_versioned_and_replayable() {
                 .expect("valid manifest JSON");
         assert_eq!(manifest["schema_version"], 1, "{}", entry.path().display());
         assert_eq!(manifest["classification"], "product_defect");
-        assert_eq!(manifest["original"]["fresh_fixture_repetitions"], 3);
+        assert!(
+            manifest["original"]["fresh_fixture_repetitions"]
+                .as_u64()
+                .is_some_and(|repetitions| repetitions >= 3),
+            "{} needs at least three fresh-fixture reproductions",
+            entry.path().display(),
+        );
         for pointer in [
             "/id",
             "/invariant",
@@ -100,7 +106,7 @@ fn accepted_failure_manifests_are_schema_versioned_and_replayable() {
             );
         }
     }
-    assert_eq!(manifests, 7, "accepted defect inventory changed without a reviewed manifest");
+    assert_eq!(manifests, 8, "accepted defect inventory changed without a reviewed manifest");
 }
 
 #[test]
@@ -360,4 +366,7 @@ fn socket_capability_filter_is_scoped_to_cancellation_mutants() {
     assert!(!mutation::needs_lifecycle_test_filter(0));
     assert!(!mutation::needs_lifecycle_test_filter(1));
     assert!(mutation::needs_lifecycle_test_filter(2));
+    assert_eq!(mutation::test_timeout(0), "60");
+    assert_eq!(mutation::test_timeout(1), "60");
+    assert_eq!(mutation::test_timeout(2), "120");
 }

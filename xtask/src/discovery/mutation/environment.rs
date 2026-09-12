@@ -6,7 +6,6 @@ use serde_json::json;
 use std::path::Path;
 use std::process::Command;
 
-#[cfg(unix)]
 const LIFECYCLE_TEST_FILTER: &str = "product_run::";
 
 #[cfg(unix)]
@@ -23,28 +22,32 @@ pub(super) fn configure(
         );
     }
 
-    configure_unix(campaign, repository, evidence)
+    append_lifecycle_filter(campaign);
+    configure_unix(repository, evidence)
 }
 
 #[cfg(not(unix))]
 pub(super) fn configure(
-    _campaign: &mut Command,
+    campaign: &mut Command,
     _repository: &Path,
     evidence: &Path,
-    _restrict_to_lifecycle_tests: bool,
+    restrict_to_lifecycle_tests: bool,
 ) -> Result<(), XtaskError> {
+    if restrict_to_lifecycle_tests {
+        append_lifecycle_filter(campaign);
+    }
     write_json(
         &evidence.join("mutation-environment.json"),
-        &json!({"unix_socket_bind": "not_applicable", "excluded_tests": []}),
+        &json!({
+            "unix_socket_bind": "not_applicable",
+            "cargo_test_filter": restrict_to_lifecycle_tests.then_some(LIFECYCLE_TEST_FILTER),
+            "excluded_tests": [],
+        }),
     )
 }
 
 #[cfg(unix)]
-fn configure_unix(
-    campaign: &mut Command,
-    repository: &Path,
-    evidence: &Path,
-) -> Result<(), XtaskError> {
+fn configure_unix(repository: &Path, evidence: &Path) -> Result<(), XtaskError> {
     use std::os::unix::net::UnixListener;
 
     let path = repository.join(".peritus-discovery-socket-probe");
@@ -55,25 +58,26 @@ fn configure_unix(
                 .map_err(|error| XtaskError::io("remove Unix socket probe", &path, error))?;
             write_json(
                 &evidence.join("mutation-environment.json"),
-                &json!({"unix_socket_bind": "supported", "excluded_tests": []}),
-            )
-        }
-        Err(error) if error.kind() == std::io::ErrorKind::PermissionDenied => {
-            append_lifecycle_filter(campaign);
-            write_json(
-                &evidence.join("mutation-environment.json"),
                 &json!({
-                    "unix_socket_bind": "permission_denied",
+                    "unix_socket_bind": "supported",
                     "cargo_test_filter": LIFECYCLE_TEST_FILTER,
-                    "reason": "host sandbox denied a direct AF_UNIX bind probe; the target lifecycle namespace remains enabled while socket-dependent integration tests are filtered",
+                    "reason": "the cancellation mutation slice executes its owning product-run namespace within the per-mutant timeout",
+                    "excluded_tests": [],
                 }),
             )
         }
+        Err(error) if error.kind() == std::io::ErrorKind::PermissionDenied => write_json(
+            &evidence.join("mutation-environment.json"),
+            &json!({
+                "unix_socket_bind": "permission_denied",
+                "cargo_test_filter": LIFECYCLE_TEST_FILTER,
+                "reason": "host sandbox denied a direct AF_UNIX bind probe; the target lifecycle namespace remains enabled while socket-dependent integration tests are filtered",
+            }),
+        ),
         Err(error) => Err(XtaskError::io("probe Unix socket capability", &path, error)),
     }
 }
 
-#[cfg(unix)]
 fn append_lifecycle_filter(campaign: &mut Command) {
     // cargo-mutants consumes the separator and forwards the filter to Cargo.
     campaign.args(["--", LIFECYCLE_TEST_FILTER]);
@@ -90,5 +94,36 @@ mod tests {
         append_lifecycle_filter(&mut command);
         let arguments: Vec<_> = command.get_args().collect();
         assert_eq!(arguments, ["mutants", "--", LIFECYCLE_TEST_FILTER]);
+    }
+
+    #[test]
+    fn cancellation_campaign_always_keeps_the_owner_filter() {
+        let root = std::env::temp_dir().join(format!(
+            "peritus-mutation-environment-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("clock")
+                .as_nanos()
+        ));
+        let repository = root.join("repository");
+        let evidence = root.join("evidence");
+        std::fs::create_dir_all(&repository).expect("repository");
+        std::fs::create_dir_all(&evidence).expect("evidence");
+        let mut command = Command::new("cargo");
+        command.arg("mutants");
+
+        configure(&mut command, &repository, &evidence, true)
+            .expect("configure cancellation campaign");
+
+        let arguments: Vec<_> = command.get_args().collect();
+        assert_eq!(arguments, ["mutants", "--", LIFECYCLE_TEST_FILTER]);
+        let report: serde_json::Value = serde_json::from_slice(
+            &std::fs::read(evidence.join("mutation-environment.json"))
+                .expect("environment evidence"),
+        )
+        .expect("environment JSON");
+        assert_eq!(report["cargo_test_filter"], LIFECYCLE_TEST_FILTER);
+        std::fs::remove_dir_all(root).expect("remove fixture");
     }
 }

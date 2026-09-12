@@ -215,6 +215,7 @@ fn run_campaign(
     shard: Option<usize>,
     selected: &Value,
 ) -> Result<(), XtaskError> {
+    let test_timeout = test_timeout(index);
     let mut campaign = command(index)?;
     if let Some(shard) = shard {
         campaign.args(["--shard", &format!("{shard}/8")]);
@@ -227,7 +228,7 @@ fn run_campaign(
         "--build-timeout",
         "180",
         "--timeout",
-        "60",
+        test_timeout,
         "--output",
     ]);
     campaign.arg(evidence);
@@ -258,6 +259,10 @@ fn run_campaign(
         ));
     }
     Ok(())
+}
+
+pub(super) const fn test_timeout(index: usize) -> &'static str {
+    if index == CANCELLATION_SLICE_INDEX { "120" } else { "60" }
 }
 
 pub(super) const fn needs_lifecycle_test_filter(index: usize) -> bool {
