@@ -5,6 +5,7 @@ use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
 use std::sync::atomic::{AtomicU64, Ordering};
+#[cfg(target_os = "linux")]
 use std::time::Duration;
 
 static NEXT: AtomicU64 = AtomicU64::new(0);
@@ -218,4 +219,11 @@ fn mutation_shards_are_explicit_and_bounded() {
     {
         assert_eq!(super::Operation::parse(invalid), None);
     }
+}
+
+#[test]
+fn socket_capability_filter_is_scoped_to_cancellation_mutants() {
+    assert!(!mutation::needs_lifecycle_test_filter(0));
+    assert!(!mutation::needs_lifecycle_test_filter(1));
+    assert!(mutation::needs_lifecycle_test_filter(2));
 }

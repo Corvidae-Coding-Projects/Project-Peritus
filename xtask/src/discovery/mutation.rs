@@ -26,6 +26,7 @@ const SLICES: [(&str, &str, Option<&str>); 3] = [
         Some("ProductRunService::(shutdown|resume_interrupted|cancel|retry)"),
     ),
 ];
+const CANCELLATION_SLICE_INDEX: usize = 2;
 
 const CONTEXT_SOURCE: &str = "crates/orchestration/peritus-context/src/working/selection.rs";
 const CONTEXT_TEST: &str =
@@ -230,7 +231,12 @@ fn run_campaign(
         "--output",
     ]);
     campaign.arg(evidence);
-    environment::configure(&mut campaign, repository, evidence)?;
+    environment::configure(
+        &mut campaign,
+        repository,
+        evidence,
+        needs_lifecycle_test_filter(index),
+    )?;
     let outcome = runner::run(repository, evidence, "mutation", campaign, Duration::from_mins(8))?;
     let path = evidence.join("mutants.out/outcomes.json");
     if !path.is_file() {
@@ -252,6 +258,10 @@ fn run_campaign(
         ));
     }
     Ok(())
+}
+
+pub(super) const fn needs_lifecycle_test_filter(index: usize) -> bool {
+    index == CANCELLATION_SLICE_INDEX
 }
 
 fn command(index: usize) -> Result<Command, XtaskError> {

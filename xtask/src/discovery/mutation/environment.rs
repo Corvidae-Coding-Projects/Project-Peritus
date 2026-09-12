@@ -9,22 +9,36 @@ use std::process::Command;
 #[cfg(unix)]
 const LIFECYCLE_TEST_FILTER: &str = "product_run::";
 
+#[cfg(unix)]
 pub(super) fn configure(
     campaign: &mut Command,
     repository: &Path,
     evidence: &Path,
+    restrict_to_lifecycle_tests: bool,
 ) -> Result<(), XtaskError> {
-    #[cfg(unix)]
-    return configure_unix(campaign, repository, evidence);
+    if !restrict_to_lifecycle_tests {
+        return write_json(
+            &evidence.join("mutation-environment.json"),
+            &json!({"unix_socket_bind": "not_required", "excluded_tests": []}),
+        );
+    }
 
-    #[cfg(windows)]
+    configure_unix(campaign, repository, evidence)
+}
+
+#[cfg(not(unix))]
+pub(super) fn configure(
+    _campaign: &mut Command,
+    _repository: &Path,
+    evidence: &Path,
+    _restrict_to_lifecycle_tests: bool,
+) -> Result<(), XtaskError> {
     write_json(
         &evidence.join("mutation-environment.json"),
         &json!({"unix_socket_bind": "not_applicable", "excluded_tests": []}),
     )
 }
 
-#[cfg(unix)]
 fn configure_unix(
     campaign: &mut Command,
     repository: &Path,

@@ -44,6 +44,8 @@ class PosixUninstallFailureTests(unittest.TestCase):
         self.commands.mkdir()
         self.sibling = self.root / "sibling-canary"
         self.sibling.write_text("unrelated installation\n", encoding="utf-8")
+        self.container_sequence = 0
+        self.last_container_name = None
 
     def _unavailable(self, reason: str) -> None:
         if REQUIRE_PREREQUISITES:
@@ -63,12 +65,15 @@ class PosixUninstallFailureTests(unittest.TestCase):
         path.write_text("#!/bin/sh\nset -eu\n" + body, encoding="utf-8")
         path.chmod(0o755)
 
-    def _run(self, script: Path, *, fault: str) -> subprocess.CompletedProcess[str]:
+    def _run(
+        self, script: Path, *, fault: str, timeout: float = 30
+    ) -> subprocess.CompletedProcess[str]:
         relative_script = script.relative_to(ROOT)
-        command = [
-            CONTAINER_ENGINE,
-            "run",
-            "--rm",
+        self.container_sequence += 1
+        container_name = f"{self.root.name}-{self.container_sequence}"
+        self.last_container_name = container_name
+        options = [
+            f"--name={container_name}",
             "--network=none",
             "--read-only",
             "--pids-limit=32",
@@ -81,18 +86,56 @@ class PosixUninstallFailureTests(unittest.TestCase):
             "--env=PATH=/commands:/usr/bin:/bin",
             "--env=PERITUS_TEST_CALLS=/campaign/calls",
             f"--env=PERITUS_TEST_FAULT={fault}",
+        ]
+        if CONTAINER_ENGINE == "podman":
+            options.insert(1, "--security-opt=label=disable")
+        command = [
+            CONTAINER_ENGINE,
+            "run",
+            *options,
             CONTAINER_IMAGE,
             "/bin/sh",
             f"/repo/{relative_script}",
         ]
-        if CONTAINER_ENGINE == "podman":
-            command[5:5] = ["--security-opt=label=disable"]
-        return subprocess.run(
-            command,
-            text=True,
-            capture_output=True,
-            timeout=30,
-            check=False,
+        completed = None
+        timed_out = False
+        try:
+            completed = subprocess.run(
+                command,
+                text=True,
+                capture_output=True,
+                timeout=timeout,
+                check=False,
+            )
+            return completed
+        except subprocess.TimeoutExpired:
+            timed_out = True
+            raise
+        finally:
+            cleanup = subprocess.run(
+                [CONTAINER_ENGINE, "rm", "--force", container_name],
+                text=True,
+                capture_output=True,
+                timeout=10,
+                check=False,
+            )
+            if cleanup.returncode != 0 and (
+                timed_out or completed is None or completed.returncode != 125
+            ):
+                self.fail(
+                    f"failed to remove owned container {container_name}: {cleanup.stderr}"
+                )
+
+    def _container_exists(self, name: str) -> bool:
+        return (
+            subprocess.run(
+                [CONTAINER_ENGINE, "container", "inspect", name],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                timeout=10,
+                check=False,
+            ).returncode
+            == 0
         )
 
     def _linux_fixture(self) -> tuple[Path, Path]:
@@ -129,6 +172,25 @@ class PosixUninstallFailureTests(unittest.TestCase):
         self.assertEqual(calls.count("--user show peritus.service --property=LoadState --value"), 6)
         self.assertEqual(calls.count("--user disable --now peritus.service"), 3)
         self.assertEqual(calls.count("--user daemon-reload"), 3)
+
+    def test_timed_out_scenario_force_removes_its_exact_container(self):
+        script = ROOT / "packaging/linux/Uninstall-Peritus.sh"
+        self._linux_fixture()
+        marker = self.root / "hang-reached"
+        self._command(
+            "systemctl",
+            "touch /campaign/hang-reached\nexec sleep 300\n",
+        )
+
+        with self.assertRaises(subprocess.TimeoutExpired):
+            self._run(script, fault="none", timeout=5)
+
+        self.assertTrue(marker.exists(), "controlled hang did not reach the fault boundary")
+        self.assertIsNotNone(self.last_container_name)
+        self.assertFalse(
+            self._container_exists(self.last_container_name),
+            "timed-out scenario container survived exact-name cleanup",
+        )
 
     def test_linux_absent_registration_is_idempotent(self):
         binary = self.home / ".local/bin/peritus"
