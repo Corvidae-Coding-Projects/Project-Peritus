@@ -30,12 +30,7 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Install pinned Rust
-        uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # v1
-        env:
-          RUSTUP_MAX_RETRIES: "10"
-        with:
-          toolchain: ${{ env.RUST_VERSION }}
-          components: clippy,rustfmt
+        uses: ./.github/actions/setup-rust
       - name: Install Linux native sandbox prerequisite
         if: ${{ runner.os == 'Linux' }}
         run: |
@@ -108,12 +103,7 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Install pinned Rust
-        uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # v1
-        env:
-          RUSTUP_MAX_RETRIES: "10"
-        with:
-          toolchain: ${{ env.RUST_VERSION }}
-          components: clippy,rustfmt
+        uses: ./.github/actions/setup-rust
       - name: Build one native binary
         run: >-
           cargo build --locked --package ${{ matrix.package }} --bin ${{ matrix.binary }}
@@ -138,12 +128,7 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Install pinned Rust
-        uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # v1
-        env:
-          RUSTUP_MAX_RETRIES: "10"
-        with:
-          toolchain: ${{ env.RUST_VERSION }}
-          components: clippy,rustfmt
+        uses: ./.github/actions/setup-rust
       - name: Retrieve this platform's same-run binaries
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
@@ -174,12 +159,7 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Install pinned Rust
-        uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # v1
-        env:
-          RUSTUP_MAX_RETRIES: "10"
-        with:
-          toolchain: ${{ env.RUST_VERSION }}
-          components: clippy,rustfmt
+        uses: ./.github/actions/setup-rust
       - name: Retrieve this platform's same-run H2 package
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
