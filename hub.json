@@ -1,5 +1,13 @@
 {
+  "genesis_checkpoint_commit": "9055140501482b04a349e761bd60654ca413a05b",
   "hub_version": 3,
+  "migrated_at": "2026-08-21T17:11:23.148599019Z",
   "migrated_from_commit": "genesis",
-  "migrated_at": "2026-08-21T17:11:23.148599019Z"
+  "seed_agent_tips": {
+    "6ME5": "2bc2a7d8af7a7e6d5a872b365a6bbc1344cb57dc",
+    "NWAR": "e855a71364514cddbc39a0e1837a040e0057e4a8",
+    "QWDj": "eefee33cb00632ffab74ce65d642a0e8424069bb",
+    "krvx": "79fdb27c3c0cca7ac2e10293a955eccc7b26134e",
+    "p0bJ": "51306b2e56f7d69ce59f5b879a4a003cd012315d"
+  }
 }
