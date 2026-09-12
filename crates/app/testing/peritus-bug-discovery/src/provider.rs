@@ -1,4 +1,4 @@
-//! Structured normalized-event generation with deterministic twin-reducer oracles.
+//! Structured normalized-event generation with invariants and a twin-reducer determinism check.
 
 use peritus_codec::sha256;
 use peritus_model_protocol::{
@@ -33,6 +33,15 @@ fn reduce(bytes: &[u8]) -> ResponseReducer {
             right.as_ref().map_err(peritus_model_protocol::ProtocolError::kind),
             "identical reducers disagreed on a generated event",
         );
+        // Owner contract: reducer_matrix::refusal_and_cancellation_are_explicit_non_success_terminals.
+        // A second reducer can repeat the same bug, so check terminal stability directly.
+        if terminal_before.is_some() {
+            assert_eq!(
+                left.as_ref().expect_err("event after terminal").kind(),
+                peritus_model_protocol::ProtocolErrorKind::InvalidEvent,
+            );
+            assert_eq!(first.terminal(), terminal_before.as_ref());
+        }
         if matches!(left, Ok(ReducerTransition::DuplicateIgnored)) {
             assert_eq!(first.completed_items(), completed_before);
             assert_eq!(first.usage_high_water(), usage_before);
@@ -267,35 +276,4 @@ fn assert_usage_monotonic(before: UsageCounters, after: UsageCounters) {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use peritus_model_protocol::{ReducedItem, TerminalOutcome};
-
-    #[test]
-    fn checked_seeds_reach_complete_message_and_tool_lifecycles() {
-        let message = reduce(include_bytes!("../corpus/provider_sequence/message-lifecycle"));
-        assert!(matches!(message.terminal(), Some(TerminalOutcome::Succeeded { .. })));
-        match message.completed_items() {
-            [ReducedItem::Text { index, text, .. }] => {
-                assert_eq!((*index, text.expose_for_wire()), (0, "a"));
-            }
-            items => panic!("message lifecycle did not complete exactly once: {items:?}"),
-        }
-
-        let tool = reduce(include_bytes!("../corpus/provider_sequence/tool-lifecycle"));
-        assert!(
-            matches!(tool.terminal(), Some(TerminalOutcome::RequiresAction { .. })),
-            "unexpected tool terminal: {:?}; items: {:?}",
-            tool.terminal(),
-            tool.completed_items(),
-        );
-        match tool.completed_items() {
-            [ReducedItem::ToolCall { index, call, .. }] => {
-                assert_eq!(*index, 3);
-                assert_eq!(call.name().as_str(), "tool-0");
-                assert_eq!(call.arguments().canonical_bytes(), b"{}");
-            }
-            items => panic!("tool lifecycle did not complete exactly once: {items:?}"),
-        }
-    }
-}
+mod tests;

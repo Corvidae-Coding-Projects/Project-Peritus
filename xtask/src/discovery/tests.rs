@@ -1,11 +1,11 @@
-use super::{HARNESS, TARGETS, mutation, runner, validate_corpora};
+use super::{HARNESS, TARGETS, bundle, mutation, runner, validate_corpora};
 use serde_json::json;
 use std::fmt::Write;
 use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
 use std::sync::atomic::{AtomicU64, Ordering};
-#[cfg(target_os = "linux")]
+#[cfg(unix)]
 use std::time::Duration;
 
 static NEXT: AtomicU64 = AtomicU64::new(0);
@@ -56,6 +56,54 @@ fn missing_target_and_empty_corpus_cannot_pass() {
 }
 
 #[test]
+fn accepted_failure_manifests_are_schema_versioned_and_replayable() {
+    let directory = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../docs/testing/reproducers")
+        .canonicalize()
+        .expect("reproducer manifest directory");
+    let mut manifests = 0;
+    for entry in fs::read_dir(directory).expect("reproducer manifests") {
+        let entry = entry.expect("manifest entry");
+        if entry.path().extension().and_then(|extension| extension.to_str()) != Some("json") {
+            continue;
+        }
+        manifests += 1;
+        let manifest: serde_json::Value =
+            serde_json::from_slice(&fs::read(entry.path()).expect("manifest bytes"))
+                .expect("valid manifest JSON");
+        assert_eq!(manifest["schema_version"], 1, "{}", entry.path().display());
+        assert_eq!(manifest["classification"], "product_defect");
+        assert_eq!(manifest["original"]["fresh_fixture_repetitions"], 3);
+        for pointer in [
+            "/id",
+            "/invariant",
+            "/original/revision",
+            "/original/command",
+            "/original/failure_signature",
+            "/reproducer/path",
+            "/reproducer/minimization",
+            "/reproducer/oracle",
+            "/fix/revision",
+            "/fix/root_cause",
+            "/fixed_replay/command",
+            "/fixed_replay/expected",
+            "/negative_control",
+            "/cleanup",
+        ] {
+            assert!(
+                manifest
+                    .pointer(pointer)
+                    .and_then(serde_json::Value::as_str)
+                    .is_some_and(|value| !value.trim().is_empty()),
+                "{} is missing {pointer}",
+                entry.path().display(),
+            );
+        }
+    }
+    assert_eq!(manifests, 7, "accepted defect inventory changed without a reviewed manifest");
+}
+
+#[test]
 fn mutation_summary_distinguishes_behavior_build_failure_and_unexplored() {
     let inventory = json!([{"name":"caught","diff":"patch"}, {"name":"unviable"}, {"name":"missed"}, {"name":"timeout"}, {"name":"untested"}]);
     let report = json!({"outcomes":[
@@ -94,6 +142,92 @@ fn bounded_child_failure_is_not_reported_as_success() {
             .expect("JSON");
     assert_eq!(report["status"], "command_failed");
     assert_eq!(report["exit_code"], 7);
+}
+
+#[cfg(unix)]
+#[test]
+fn child_logs_are_drained_and_retain_bounded_prefixes_and_tails() {
+    let fixture = Fixture::new();
+    let mut command = Command::new("sh");
+    command.args(["-c", "printf 0123456789; printf abcdefghij >&2"]);
+    let outcome = runner::run_with_log_limit(
+        &fixture.0,
+        &fixture.0,
+        "bounded-log",
+        command,
+        Duration::from_secs(1),
+        8,
+    )
+    .expect("bounded command");
+    assert!(outcome.status.success());
+    assert_eq!(fs::read(fixture.0.join("bounded-log.stdout")).expect("stdout"), b"01236789");
+    assert_eq!(fs::read(fixture.0.join("bounded-log.stderr")).expect("stderr"), b"abcdghij");
+    let report: serde_json::Value =
+        serde_json::from_slice(&fs::read(fixture.0.join("bounded-log.json")).expect("report"))
+            .expect("JSON");
+    for stream in ["stdout", "stderr"] {
+        assert_eq!(report[stream]["limit_bytes"], 8);
+        assert_eq!(report[stream]["observed_bytes"], 10);
+        assert_eq!(report[stream]["retained_bytes"], 8);
+        assert_eq!(report[stream]["truncated"], true);
+        assert_eq!(report[stream]["retention"], "prefix_and_tail");
+    }
+}
+
+mod evidence;
+
+#[cfg(target_os = "linux")]
+#[test]
+fn detached_pipe_holder_cannot_block_campaign_completion() {
+    struct EscapedProcess(u32);
+    impl Drop for EscapedProcess {
+        fn drop(&mut self) {
+            let _ = Command::new("kill").args(["-KILL", &self.0.to_string()]).status();
+            let deadline = std::time::Instant::now() + Duration::from_secs(2);
+            while PathBuf::from(format!("/proc/{}", self.0)).exists()
+                && std::time::Instant::now() < deadline
+            {
+                std::thread::sleep(Duration::from_millis(20));
+            }
+        }
+    }
+
+    let fixture = Fixture::new();
+    let mut command = Command::new("sh");
+    command.args(["-c", "setsid sh -c 'sleep 1; printf late' & echo $! > escaped-pid"]);
+    let started = std::time::Instant::now();
+    let result = runner::run_with_limits(
+        &fixture.0,
+        &fixture.0,
+        "detached-pipe",
+        command,
+        Duration::from_secs(1),
+        64,
+        Duration::from_millis(200),
+    );
+    let Err(error) = result else { panic!("escaped pipe must leave the campaign incomplete") };
+    let pid = fs::read_to_string(fixture.0.join("escaped-pid"))
+        .expect("escaped process ID")
+        .trim()
+        .parse::<u32>()
+        .expect("numeric process ID");
+    let _escaped = EscapedProcess(pid);
+
+    assert!(started.elapsed() < Duration::from_secs(2));
+    assert!(error.render().contains("pipe remained open after owned process cleanup"));
+    let stdout = fixture.0.join("detached-pipe.stdout");
+    let finalized_bytes = fs::read(&stdout).expect("bounded bytes at finalization");
+    std::thread::sleep(Duration::from_millis(1_200));
+    assert_eq!(
+        fs::read(stdout).expect("capture after escaped process exit"),
+        finalized_bytes,
+        "a cancelled capture cannot mutate already-finalized evidence",
+    );
+    let report: serde_json::Value = serde_json::from_slice(
+        &fs::read(fixture.0.join("detached-pipe.json")).expect("incomplete report"),
+    )
+    .expect("JSON");
+    assert_eq!(report["status"], "incomplete");
 }
 
 #[test]

@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "id": "product-repeated-recovery-narration",
+  "classification": "product_defect",
+  "invariant": "Repeated failed recovery admission does not append the same restart notice twice.",
+  "original": {
+    "revision": "777297f92dc09244ddab1ce8fe54a54b49554c28",
+    "platform": "linux-x86_64",
+    "finding_source": "bounded Daybreak abrupt-recovery expansion",
+    "independent_reproducer": "primary campaign controller with three fresh records and missing workspaces",
+    "fresh_fixture_repetitions": 3,
+    "command": "CARGO_BUILD_JOBS=2 cargo test --locked --offline -p peritus-daemon repeated_failed_recovery_admission_does_not_duplicate_restart_narration -- --nocapture",
+    "exit_code": 101,
+    "failure_signature": "restart notice count left 2, right 1"
+  },
+  "reproducer": {
+    "path": "crates/app/peritus-daemon/src/product_run/tests/recovery/persistence_faults.rs",
+    "test": "repeated_failed_recovery_admission_does_not_duplicate_restart_narration",
+    "fault_schedule": ["restore RecoveryRequired record whose workspace is absent", "invoke startup recovery", "invoke startup recovery again"],
+    "required_reachability": ["recovery admission attempted twice", "provider request count remains at original one"],
+    "oracle": "exact count of consecutive durable restart messages",
+    "minimization": "one RecoveryRequired record, one missing workspace, and two startup-recovery calls; one call cannot expose duplicate narration"
+  },
+  "fix": {
+    "revision": "b899728713b5240d9a7b073e4f2072ede9cb41b7",
+    "owner": "ProductRunService recovery narration",
+    "root_cause": "every failed startup recovery appended an identical durable notice without checking the prior message"
+  },
+  "fixed_replay": {
+    "command": "CARGO_BUILD_JOBS=2 cargo test --locked --offline -p peritus-daemon repeated_failed_recovery_admission_does_not_duplicate_restart_narration -- --nocapture",
+    "expected": "exit 0; one consecutive restart notice; provider not redispatched"
+  },
+  "negative_control": "intervening run activity permits a later interruption notice",
+  "cleanup": "fresh temporary state and repository removed after every run",
+  "limitations": ["startup admission failure only"]
+}

@@ -10,6 +10,21 @@
 | Receipt ledger, eight shards | 32 | 31 | 1 | 0 | 0 | 0 |
 | Cancellation lifecycle, eight shards | 23 | 18 | 5 | 0 | 0 | 0 |
 
+## Pilot invariant to mutation mapping
+
+| Pilot invariant | Reviewed semantic mutation | Designated behavioral test | Result |
+| --- | --- | --- | --- |
+| Required context closure may use available headroom but never exceed the hard token capacity | Remove `needed > available_tokens` from the capacity guard | `headroom_preserves_required_roots_and_shared_dependencies_without_optional_expansion` | Curated canary rejected the mutant with exit 101; automatic inventory remains explicitly unreachable |
+| A completed receipt cannot be rebound to a different tool or canonical request | At receipt line 99, replace either identity `!=` with `==`, or replace the joining `||` with `&&` | `reused_provider_call_id_conflicts_on_each_identity_dimension` | All three reviewed mutants were `CaughtMutant`; the baseline passed |
+| A result that becomes `Complete` while shutdown drains remains `Complete` despite a late cancel | In `ProductRunService::shutdown`, replace the phase/cancellation `&&` guard with `||` | `accepted_result_stays_complete_when_shutdown_follows_late_cancellation` | `CaughtMutant`; the test failed on the terminal-phase assertion |
+| Generic retry cannot reopen a terminal complete chat merely because durable input is pending | Delete either negation in the retry admission guard | `chat_hands_off_to_the_existing_pipeline_with_the_selected_independent_reviewer` | Both reviewed mutants were `CaughtMutant`; the exact failure was `generic retry must not reopen a complete chat with pending input` |
+
+The receipt identity review also led to the later-ordinal provider-call-ID defect. Reverting the
+global identity check at `310db7e7` is a semantic canary: the checked-in
+`reused_provider_call_id_cannot_dispatch_a_second_external_effect` regression dispatches two real
+child effects and fails with an independently synced two-line counter. Its three-run old-revision
+record is in [`../../reproducers/reused-provider-call-id.json`](../../reproducers/reused-provider-call-id.json).
+
 After the slice-filter correction, receipt shard 0 was replayed from
 `5d6f37ac0730d20e92a716fe49cf7161623dfd10`. Its environment record contained
 `excluded_tests=[]` and `unix_socket_bind=not_required`; the real baseline passed, three mutants

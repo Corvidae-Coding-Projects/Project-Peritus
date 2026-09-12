@@ -18,10 +18,20 @@ The restart oracle decodes the persisted product record, requires `Cancelled`, i
 
 Compatibility repair: `user_cancelled` is a default-false persisted JSON field. Old records retain their prior recovery behavior; records written after explicit cancellation restore directly as `Cancelled`. The earlier live flag alone covered graceful shutdown but could not carry intent across process death.
 
+The regression was applied without the repair to revision
+`16d5fa8701536180595f80dd631478b4827ee11d`. Three fresh test processes each created a new
+repository, state directory, owned child, and cancellation barrier. All three exited 101 with the
+same persisted-state signature: `left: RecoveryRequired`, `right: Cancelled`. The first fixing
+revision is `6dd8059b9ef189b1d8f954b415d83ee252148e8c`.
+
 ```text
 timeout 90s env CARGO_BUILD_JOBS=2 cargo test -p peritus-daemon abrupt_cancel_survives_process_termination -- --nocapture
 1 passed; 0 failed
 ```
+
+The separately reviewed forward-migration and safe-downgrade procedure is recorded in
+[`cancellation-record-compatibility.md`](cancellation-record-compatibility.md). A direct downgrade
+while a `user_cancelled = true` recovery record exists is unsafe.
 
 ## Receipt Started and Completed process termination
 

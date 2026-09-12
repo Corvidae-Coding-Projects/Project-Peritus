@@ -41,7 +41,7 @@ jobs:
           name: discovery-replay
           path: target/discovery/**
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 30
   context-canary:
     if: ${{ github.event_name != 'pull_request' }}
     runs-on: ubuntu-24.04
@@ -64,7 +64,7 @@ jobs:
           name: discovery-context-canary
           path: target/discovery/**
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 30
   fuzz:
     if: ${{ github.event_name != 'pull_request' }}
     runs-on: ubuntu-24.04
@@ -92,7 +92,7 @@ jobs:
           name: discovery-fuzz-${{ matrix.target }}
           path: target/discovery/**
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 30
   mutation:
     if: ${{ github.event_name != 'pull_request' }}
     runs-on: ubuntu-24.04
@@ -122,4 +122,4 @@ jobs:
           name: discovery-mutation-${{ matrix.slice }}-${{ matrix.shard }}
           path: target/discovery/**
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 30

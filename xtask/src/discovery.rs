@@ -1,14 +1,14 @@
 //! Fixed, bounded discovery operations; production inputs and toolchains stay unchanged.
 
 use crate::error::XtaskError;
-use base64::Engine;
 use serde_json::json;
 use std::env;
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::process::Command;
-use std::time::{SystemTime, UNIX_EPOCH};
 
+mod bundle;
+mod evidence;
 mod mutation;
 mod runner;
 #[cfg(test)]
@@ -67,62 +67,40 @@ impl Operation {
 }
 
 pub(crate) fn run(root: &Path, operation: Operation) -> Result<(), XtaskError> {
-    let evidence = new_evidence(root, operation)?;
-    let result = execute(root, operation, &evidence);
-    let status = json!({
-        "schema_version": 1,
-        "status": if result.is_ok() { "completed" } else { "failed_or_incomplete" },
-        "error": result.as_ref().err().map(XtaskError::render),
-    });
-    write_json(&evidence.join("completion.json"), &status)?;
+    let evidence = evidence::new(root, operation)?;
+    let mut result = execute(root, operation, &evidence);
+    if let Err(census_error) = evidence::verify_workspace_unchanged(root, &evidence) {
+        result = match result {
+            Ok(()) => Err(census_error),
+            Err(execution_error) => Err(XtaskError::metadata(format!(
+                "{}; post-campaign filesystem census also failed: {}",
+                execution_error.render(),
+                census_error.render()
+            ))),
+        };
+    }
+    write_json(&evidence.join("completion.json"), &completion_status(&result))?;
+    if let Err(bundle_error) = bundle::finalize(&evidence) {
+        result = match result {
+            Ok(()) => Err(bundle_error),
+            Err(execution_error) => Err(XtaskError::metadata(format!(
+                "{}; evidence finalization also failed: {}",
+                execution_error.render(),
+                bundle_error.render()
+            ))),
+        };
+        write_json(&evidence.join("completion.json"), &completion_status(&result))?;
+    }
     result
 }
 
-fn new_evidence(root: &Path, operation: Operation) -> Result<PathBuf, XtaskError> {
-    let timestamp = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map_err(|error| XtaskError::metadata(format!("discovery clock: {error}")))?
-        .as_nanos();
-    let label: String = format!("{operation:?}")
-        .chars()
-        .map(|character| if character.is_ascii_alphanumeric() { character } else { '-' })
-        .collect();
-    let evidence = root.join("target/discovery").join(format!("{label}-{timestamp}"));
-    fs::create_dir_all(&evidence).map_err(|error| XtaskError::io("create", &evidence, error))?;
-    write_json(
-        &evidence.join("completion.json"),
-        &json!({
-            "schema_version": 1, "status": "incomplete", "operation": format!("{operation:?}"),
-        }),
-    )?;
-    let sha = capture(root, "git", &["rev-parse", "HEAD"])?;
-    let dirty = capture(root, "git", &["status", "--porcelain", "--untracked-files=normal"])?;
-    let rust = capture(root, "rustc", &["--version", "--verbose"])?;
-    let source_changes =
-        capture(root, "git", &["diff", "--binary", "--no-ext-diff", "--no-textconv", "HEAD"])?;
-    fs::write(evidence.join("working-tree.patch"), source_changes)
-        .map_err(|error| XtaskError::io("write source patch", &evidence, error))?;
-    let untracked = capture(root, "git", &["ls-files", "--others", "--exclude-standard", "-z"])?;
-    let mut hashes = Vec::new();
-    for name in untracked.split('\0').filter(|name| !name.is_empty()) {
-        use sha2::{Digest, Sha256};
-        let path = root.join(name);
-        let bytes = fs::read(&path)
-            .map_err(|error| XtaskError::io("read untracked source", &path, error))?;
-        hashes.push(json!({"path": name, "sha256_base64": base64::engine::general_purpose::STANDARD.encode(Sha256::digest(bytes))}));
-    }
-    write_json(&evidence.join("untracked-source.json"), &json!(hashes))?;
-    write_json(
-        &evidence.join("source.json"),
-        &json!({
-            "schema_version": 1, "source_sha": sha.trim(), "working_tree_changes": dirty,
-            "rustc": rust, "os": env::consts::OS, "architecture": env::consts::ARCH,
-            "build_jobs": 2, "operation": format!("{operation:?}"),
-            "evidence_directory": evidence,
-        }),
-    )?;
-    println!("discovery evidence: {}", evidence.display());
-    Ok(evidence)
+fn completion_status(result: &Result<(), XtaskError>) -> serde_json::Value {
+    json!({
+        "schema_version": 1,
+        "status": if result.is_ok() { "completed" } else { "failed_or_incomplete" },
+        "error": result.as_ref().err().map(XtaskError::render),
+        "bundle_manifest": "bundle.json",
+    })
 }
 
 fn execute(root: &Path, operation: Operation, evidence: &Path) -> Result<(), XtaskError> {

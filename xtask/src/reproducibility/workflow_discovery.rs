@@ -161,7 +161,7 @@ fn valid_upload(step: &Yaml, name: &str) -> bool {
         && step["with"]["name"].as_str() == Some(artifact)
         && step["with"]["path"].as_str() == Some("target/discovery/**")
         && step["with"]["if-no-files-found"].as_str() == Some("error")
-        && step["with"]["retention-days"].as_i64() == Some(14)
+        && step["with"]["retention-days"].as_i64() == Some(30)
 }
 
 fn keys(mapping: Option<&Hash>, expected: &[&str]) -> bool {
@@ -206,6 +206,7 @@ mod tests {
             ("cargo xtask discovery-replay", "cargo xtask help"),
             ("if-no-files-found: error", "if-no-files-found: warn"),
             ("${{ always() }}", "${{ success() }}"),
+            ("retention-days: 30", "retention-days: 14"),
             ("github.event_name != 'pull_request'", "github.event_name == 'pull_request'"),
             ("[receipt, cancellation]", "[receipt]"),
             ("[0, 1, 2, 3, 4, 5, 6, 7]", "[0, 1, 2]"),

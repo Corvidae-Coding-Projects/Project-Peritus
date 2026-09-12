@@ -25,4 +25,4 @@ generated chunking must produce identical output. Working-state inputs generate 
 exercise dependency closure and capacity monotonicity, and mutate canonical checkpoint bytes
 without bypassing the production decoder's integrity or binding checks. Provider-sequence inputs
 generate normalized response, item, tool, usage, duplicate-identity, ordering, terminal, and EOF
-events and compare two independent reducers after every transition.
+events, check owner-contract invariants, and compare twin reducers for deterministic transitions.
