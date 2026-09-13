@@ -1,0 +1,84 @@
+   Compiling proc-macro2 v1.0.107
+   Compiling quote v1.0.47
+   Compiling unicode-ident v1.0.24
+   Compiling syn v2.0.119
+   Compiling verus_syn v0.0.0-2026-08-02-0125 (https://github.com/verus-lang/verus.git?rev=92f466f247f45128c630d1c843fd6e27d2115587#92f466f2)
+   Compiling verus_prettyplease v0.0.0-2026-08-09-0044 (https://github.com/verus-lang/verus.git?rev=92f466f247f45128c630d1c843fd6e27d2115587#92f466f2)
+   Compiling equivalent v1.0.2
+   Compiling hashbrown v0.17.1
+   Compiling indexmap v2.14.0
+   Compiling synstructure v0.13.2
+   Compiling convert_case v0.4.0
+   Compiling vstd v0.0.0-2026-08-09-0044 (https://github.com/verus-lang/verus.git?rev=92f466f247f45128c630d1c843fd6e27d2115587#92f466f2)
+   Compiling verus_builtin_macros v0.0.0-2026-08-09-0044 (https://github.com/verus-lang/verus.git?rev=92f466f247f45128c630d1c843fd6e27d2115587#92f466f2)
+   Compiling verus_state_machines_macros v0.0.0-2026-08-02-0125 (https://github.com/verus-lang/verus.git?rev=92f466f247f45128c630d1c843fd6e27d2115587#92f466f2)
+   Compiling verus_builtin v0.0.0-2026-08-09-0044 (https://github.com/verus-lang/verus.git?rev=92f466f247f45128c630d1c843fd6e27d2115587#92f466f2)
+   Compiling typenum v1.20.1
+   Compiling hybrid-array v0.4.14
+   Compiling peritus-types v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/target/sol-scheduler-perf-aggregate-probe-source-001/crates/foundation/peritus-types)
+   Compiling cfg-if v1.0.4
+   Compiling block-buffer v0.12.1
+   Compiling crypto-common v0.2.2
+   Compiling digest v0.11.3
+   Compiling cpufeatures v0.3.0
+   Compiling shlex v2.0.1
+   Compiling find-msvc-tools v0.1.11
+   Compiling semver v1.0.28
+   Compiling rustc_version v0.4.1
+   Compiling cc v1.4.4
+   Compiling sha2 v0.11.0
+   Compiling pkg-config v0.3.34
+   Compiling vcpkg v0.2.15
+   Compiling rustix v1.1.4
+   Compiling bitflags v2.13.1
+   Compiling libsqlite3-sys v0.38.2
+   Compiling curve25519-dalek v5.0.0
+   Compiling peritus-policy v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/target/sol-scheduler-perf-aggregate-probe-source-001/crates/foundation/peritus-policy)
+   Compiling linux-raw-sys v0.12.1
+   Compiling peritus-spec v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/target/sol-scheduler-perf-aggregate-probe-source-001/crates/foundation/peritus-spec)
+   Compiling curve25519-dalek-derive v0.1.1
+   Compiling subtle v2.6.1
+   Compiling signature v3.0.0
+   Compiling ed25519 v3.0.0
+   Compiling peritus-quality-policy v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/target/sol-scheduler-perf-aggregate-probe-source-001/crates/foundation/peritus-quality-policy)
+   Compiling peritus-budget v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/target/sol-scheduler-perf-aggregate-probe-source-001/crates/foundation/peritus-budget)
+   Compiling fallible-streaming-iterator v0.1.9
+   Compiling fallible-iterator v0.3.0
+   Compiling smallvec v1.15.2
+   Compiling rusqlite v0.40.2
+   Compiling peritus-kernel v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/target/sol-scheduler-perf-aggregate-probe-source-001/crates/foundation/peritus-kernel)
+   Compiling ed25519-dalek v3.0.0
+   Compiling fs4 v1.1.0
+   Compiling peritus-codec v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/target/sol-scheduler-perf-aggregate-probe-source-001/crates/foundation/peritus-codec)
+   Compiling libc v0.2.189
+   Compiling peritus-protocol v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/target/sol-scheduler-perf-aggregate-probe-source-001/crates/foundation/peritus-protocol)
+   Compiling peritus-artifact-store v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/target/sol-scheduler-perf-aggregate-probe-source-001/crates/state/peritus-artifact-store)
+   Compiling peritus-approval v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/target/sol-scheduler-perf-aggregate-probe-source-001/crates/state/peritus-approval)
+   Compiling peritus-leases v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/target/sol-scheduler-perf-aggregate-probe-source-001/crates/state/peritus-leases)
+   Compiling getrandom v0.4.3
+   Compiling peritus-journal v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/target/sol-scheduler-perf-aggregate-probe-source-001/crates/state/peritus-journal)
+   Compiling peritus-projection v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/target/sol-scheduler-perf-aggregate-probe-source-001/crates/state/peritus-projection)
+   Compiling once_cell v1.21.4
+   Compiling fastrand v2.5.0
+   Compiling tempfile v3.27.0
+   Compiling peritus-evidence v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/target/sol-scheduler-perf-aggregate-probe-source-001/crates/state/peritus-evidence)
+   Compiling peritus-scheduler v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/target/sol-scheduler-perf-aggregate-probe-source-001/crates/orchestration/peritus-scheduler)
+    Finished `release` profile [optimized] target(s) in 1m 49s
+     Running unittests src/lib.rs (/home/doll/Project-Peritus/.worktrees/formal-coverage/target/sol-scheduler-perf-aggregate-release/release/deps/peritus_scheduler-9469d5ca2a851999)
+
+running 1 test
+test selection::performance_probe::dense_public_selection_and_dispatch_timings ... scheduler_perf phase=setup reservations=1024 dimensions=256 elapsed_ns=23060709
+scheduler_perf phase=select_next sample=0 reservations=1024 dimensions=256 elapsed_ns=686494
+scheduler_perf phase=select_next sample=1 reservations=1024 dimensions=256 elapsed_ns=678800
+scheduler_perf phase=select_next sample=2 reservations=1024 dimensions=256 elapsed_ns=665020
+scheduler_perf phase=select_next sample=3 reservations=1024 dimensions=256 elapsed_ns=670372
+scheduler_perf phase=select_next sample=4 reservations=1024 dimensions=256 elapsed_ns=665240
+scheduler_perf phase=select_next sample=5 reservations=1024 dimensions=256 elapsed_ns=681015
+scheduler_perf phase=select_next sample=6 reservations=1024 dimensions=256 elapsed_ns=668940
+scheduler_perf phase=dispatch_next sample=0 reservations=1024 dimensions=256 elapsed_ns=10361333
+scheduler_perf phase=dispatch_next sample=1 reservations=1024 dimensions=256 elapsed_ns=9865272
+scheduler_perf phase=dispatch_next sample=2 reservations=1024 dimensions=256 elapsed_ns=9932867
+ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.07s
+

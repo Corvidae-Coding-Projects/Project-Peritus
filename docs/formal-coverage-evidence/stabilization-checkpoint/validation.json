@@ -1,0 +1,193 @@
+[
+  {
+    "label": "tests-default",
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "--package",
+      "peritus-obligations",
+      "--package",
+      "peritus-scheduler"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 9.54
+  },
+  {
+    "label": "tests-no-default",
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "--package",
+      "peritus-obligations",
+      "--package",
+      "peritus-scheduler",
+      "--no-default-features"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 1.23
+  },
+  {
+    "label": "tests-all",
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "--package",
+      "peritus-obligations",
+      "--package",
+      "peritus-scheduler",
+      "--all-targets",
+      "--all-features"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.38
+  },
+  {
+    "label": "runner-lib",
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "--package",
+      "peritus-product-runner",
+      "--all-features",
+      "--lib",
+      "--",
+      "--test-threads=1"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 34.28
+  },
+  {
+    "label": "daemon-scheduler",
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "--package",
+      "peritus-daemon",
+      "--all-features",
+      "--lib",
+      "scheduler_"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 47.44
+  },
+  {
+    "label": "daemon-replay",
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "--package",
+      "peritus-daemon",
+      "--all-features",
+      "--test",
+      "runtime",
+      "runtime_commits_and_replays_registered_scheduler_commands"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 22.16
+  },
+  {
+    "label": "daemon-restart",
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "--package",
+      "peritus-daemon",
+      "--all-features",
+      "--test",
+      "recovery_shutdown",
+      "restart_resumes_the_durable_session_and_replays_the_exact_command_result"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 2.09
+  },
+  {
+    "label": "clippy",
+    "command": [
+      "cargo",
+      "clippy",
+      "--locked",
+      "--package",
+      "peritus-obligations",
+      "--package",
+      "peritus-scheduler",
+      "--package",
+      "peritus-product-runner",
+      "--all-targets",
+      "--all-features",
+      "--",
+      "-D",
+      "warnings"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 44.52
+  },
+  {
+    "label": "fmt",
+    "command": [
+      "cargo",
+      "fmt",
+      "--all",
+      "--",
+      "--check"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 5.88
+  },
+  {
+    "label": "xtask-tests",
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "--package",
+      "xtask",
+      "--lib"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 10.8
+  },
+  {
+    "label": "xtask-all",
+    "command": [
+      "/home/doll/Project-Peritus/.worktrees/formal-coverage/target/debug/xtask",
+      "all"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 45.42
+  },
+  {
+    "label": "layout",
+    "command": [
+      "/home/doll/Project-Peritus/.worktrees/formal-coverage/target/debug/xtask",
+      "source-layout-check"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 2.67
+  },
+  {
+    "label": "inventory",
+    "command": [
+      "/home/doll/Project-Peritus/.worktrees/formal-coverage/target/debug/xtask",
+      "formal-inventory"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 38.1
+  },
+  {
+    "label": "diff",
+    "command": [
+      "git",
+      "diff",
+      "--check"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.05
+  }
+]

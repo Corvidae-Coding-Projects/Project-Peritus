@@ -1,0 +1,37 @@
+{
+  "schema": "peritus.formal-coverage.increment-review",
+  "schema_version": 1,
+  "status": "reviewed-bounded-theorem-not-obligation-discharge",
+  "recorded_at": "2026-09-12T19:23:20.364599+00:00",
+  "base_commit": "1aa9282ff2cfcbf8fac325f11f157f408d33ee30",
+  "implementation": "/root",
+  "reviewer": "/root/sol_runtime_phase",
+  "reviewer_model": "gpt-5.6-sol",
+  "reviewer_reasoning_effort": "xhigh",
+  "review_provenance": "Independent read-only source review received through Codex collaboration in thread 01a08ab8-4887-7c63-8c75-7b8541cbbe4c; not an external signature or protected proof-impact authorization.",
+  "reviewed_source_manifest_sha256": "33e944280e4b81e71ce95c7294ae5acd4d5afbdc7b547f700c2af48fdfc197cf",
+  "reviewer_verdict": "PASS for conditional all-five-dimension consumption propagation along every finite actual pre-ledger parent path, composed into the production public transition contract. Runtime behavior and executable preconditions unchanged.",
+  "remaining_limits": [
+    "Pre-ledger paths only; no theorem constructing a root path for each account.",
+    "Accounted consumption deltas, not complete charging of external overrun reports.",
+    "No journal commit, adapter authenticity, external usage or durable recovery theorem.",
+    "Source checkpoint is not a complete compiler-input attestation or clean final commit."
+  ],
+  "results": {
+    "isolated_strict_verified": 449,
+    "integrated_strict_verified": 449,
+    "proof_errors": 0,
+    "ordinary_tests_passed": 27,
+    "clippy": "passed",
+    "format": "passed"
+  },
+  "artifacts": {
+    "audit.md": "c279d744aec4449595e552e8ad1b1f3e9bf93e4d53938b9cb8ecd1de6a9dd64f",
+    "clippy.txt": "df0718b49c516df545861df51e41f23c8ac4b2eea0c0bf811e7125e6458d0589",
+    "commands.txt": "2f8b18e480234ca21bd8de7b0da1aa3f7f777f6c4e8a267ab9c22898fb62d08a",
+    "ordinary-tests.txt": "757d97c71c60b395b92f082a126f8583dbc8431df53b481d7a52ddef5fad8130",
+    "source-sha256.txt": "33e944280e4b81e71ce95c7294ae5acd4d5afbdc7b547f700c2af48fdfc197cf",
+    "verus-integrated.txt": "167beff6efde2ac99f0d4fb54d6e0562ed83bc9c5172ab5d3c4232a1e000b9bb",
+    "verus-isolated.txt": "04607bc5260e6990e98513efa099e88ee447070be0d575ae6bc0af3d0383d3bf"
+  }
+}

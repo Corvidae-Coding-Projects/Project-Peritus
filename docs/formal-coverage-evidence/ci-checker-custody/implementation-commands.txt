@@ -1,0 +1,40 @@
+WORKDIR=/home/doll/Project-Peritus/.worktrees/formal-coverage
+HEAD=1aa9282ff2cfcbf8fac325f11f157f408d33ee30
+TARGET=target/sol-ci-custody
+
+PASS focused authority tests (7 passed, 0 failed):
+CARGO_BUILD_JOBS=2 CCACHE_DISABLE=1 CARGO_TARGET_DIR=target/sol-ci-custody cargo test --locked --package xtask workflow_authority_tests
+
+PASS xtask library tests before final fixture separation (422 passed, 0 failed, 1 ignored):
+CARGO_BUILD_JOBS=2 CCACHE_DISABLE=1 CARGO_TARGET_DIR=target/sol-ci-custody cargo test --locked --package xtask --lib
+
+PASS strict package Clippy after final fixture separation:
+CARGO_BUILD_JOBS=2 CCACHE_DISABLE=1 CARGO_TARGET_DIR=target/sol-ci-custody cargo clippy --locked --package xtask --all-targets --all-features -- -D warnings
+
+PASS package rustfmt after final fixture separation:
+cargo fmt --check --package xtask
+
+PASS reproducibility checker (140 immutable action references):
+CARGO_BUILD_JOBS=2 CCACHE_DISABLE=1 CARGO_TARGET_DIR=target/sol-ci-custody cargo run --locked --package xtask -- reproducibility-check
+
+PASS documentation checker (189 documentation files):
+CARGO_BUILD_JOBS=2 CCACHE_DISABLE=1 CARGO_TARGET_DIR=target/sol-ci-custody cargo run --locked --package xtask -- docs-check
+
+PASS source-layout checker (4328 source files):
+CARGO_BUILD_JOBS=2 CCACHE_DISABLE=1 CARGO_TARGET_DIR=target/sol-ci-custody cargo run --locked --package xtask -- source-layout-check
+
+PASS release checker build:
+CARGO_BUILD_JOBS=2 CCACHE_DISABLE=1 CARGO_TARGET_DIR=target/sol-ci-custody cargo build --locked --release --package xtask --bin xtask
+
+PASS workflow syntax:
+actionlint .github/workflows/formal-authority.yml
+
+PASS scoped whitespace:
+git diff --check -- .github/workflows/formal-authority.yml xtask/src/reproducibility/workflow_authority.rs xtask/src/reproducibility/workflow_authority_tests.rs docs/foundation-toolchain.md docs/github-governance.md xtask/README.md
+
+PASS isolated retry of unrelated timing test (1 passed, 0 failed):
+CARGO_BUILD_JOBS=2 CCACHE_DISABLE=1 CARGO_TARGET_DIR=target/sol-ci-custody cargo test --locked --package xtask discovery::tests::timeout_contains_owned_descendant_and_preserves_sibling -- --exact
+
+PENDING full xtask package integration at frozen source:
+CARGO_BUILD_JOBS=2 CCACHE_DISABLE=1 CARGO_TARGET_DIR=target/sol-ci-custody cargo test --locked --package xtask
+The library phase passed 422/0 with 1 ignored; tests/cli.rs then failed because concurrent scheduler source used unsupported cfg_attr at crates/orchestration/peritus-scheduler/src/work.rs:209 (PERITUS-XTASK-API-001). Parent owns that unrelated policy correction and will rerun at stable final source. An immediately preceding package attempt also hit the unrelated timeout test once; the isolated retry and subsequent package library phase both passed it.

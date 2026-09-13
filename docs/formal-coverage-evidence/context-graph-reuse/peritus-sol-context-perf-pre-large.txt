@@ -1,0 +1,3 @@
+shape=ascending-chain repeats=3
+n=2048 min_ns=14150810 median_ns=14187887 mean_ns=14185136 max_ns=14216711
+n=4096 min_ns=57381065 median_ns=57382212 mean_ns=57400172 max_ns=57437239

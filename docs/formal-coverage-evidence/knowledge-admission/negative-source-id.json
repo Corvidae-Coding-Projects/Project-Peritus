@@ -1,0 +1,26 @@
+{
+  "mutation": "Actual source validator reports the previous source identity for a descending pair instead of the rejected current identity. Specifications unchanged.",
+  "path": "crates/orchestration/peritus-run-knowledge/src/source/validation.rs",
+  "original_sha256": "c4118c1d7d828ba0d2660ef9ab21e8e5bd3f34a90e18789745f5986661a5a1fb",
+  "mutant_sha256": "7ea18ba0cdd9447223fc661fd8b631b26d73b50140e80444ef833cc2b590fb2e",
+  "exit_code": 101,
+  "command": [
+    "cargo",
+    "verus",
+    "verify",
+    "--package",
+    "peritus-run-knowledge",
+    "--all-features",
+    "--locked",
+    "--check-toolchain",
+    "--fwd-verus-args-to",
+    "roots",
+    "--",
+    "--no-cheating",
+    "--rlimit",
+    "20"
+  ],
+  "cwd": "/tmp/peritus-parent-obligations-proof.6ib_z8mo",
+  "log": "/tmp/peritus-parent-knowledge-admission-negative-source-id.log",
+  "restored": true
+}

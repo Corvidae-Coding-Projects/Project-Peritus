@@ -1,0 +1,7 @@
+# cwd: /home/doll/Project-Peritus/.worktrees/formal-coverage
+export CARGO_BUILD_JOBS=2 CCACHE_DISABLE=1 CARGO_TARGET_DIR=target/formal-api-parent
+cargo test --locked --package xtask workflow_authority
+cargo run --locked --package xtask -- reproducibility-check
+# Unmodified guard scripts tested against the exact frozen workflow; repository source hash is in guard-smoke.json.
+python3 docs/formal-coverage-evidence/ci-main-develop/guard-smoke.py .github/workflows/formal-authority.yml
+# No hosted workflow or external App/bootstrap executed.

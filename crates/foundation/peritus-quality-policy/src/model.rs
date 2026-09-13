@@ -6,6 +6,33 @@ use crate::{GateObservation, GateOutcome, ReviewObservation};
 use peritus_types::RevisionTuple;
 use vstd::prelude::*;
 
+mod artifacts;
+pub mod approvals;
+pub mod authority;
+mod gates;
+mod reviews;
+
+pub use reviews::ReviewIndependenceDimension;
+#[cfg(verus_only)]
+pub use reviews::{
+    categories_declared, category_present, current_category_covered, current_review_categories_declared,
+    current_review_count_prefix, current_review_pair, current_reviews_attest_producer_independence,
+    digests_match, duplicate_reviewer_actor, duplicate_reviewer_fact, required_review_categories_covered,
+    required_reviews_complete, review_categories_match, review_independence_complete,
+    reviewer_actors_match, reviewer_fact, saturated_review_count,
+};
+
+#[cfg(verus_only)]
+pub use artifacts::{
+    artifact_declared, current_artifact_present, current_artifacts_declared,
+    evidence_requirement_matches, required_artifacts_complete, required_artifacts_present,
+};
+#[cfg(verus_only)]
+pub use gates::{
+    current_gate_matches, current_gates_declared, first_current_gate, first_current_gate_passed,
+    gate_declared, gate_ids_match, required_gates_complete, required_gates_passed,
+};
+
 verus! {
 
 /// INV-003 freshness: evidence is current exactly when its complete tuple equals the request.
@@ -41,9 +68,8 @@ pub open spec fn revision_fresh(
 
 /// Logical aggregation of evaluator phase statuses.
 ///
-/// This predicate deliberately does not claim a refinement to contract collections whose
-/// specification views are not exported by `peritus-spec`. Concrete predicates below refine the
-/// exact-revision and completion-limit checks over typed observations.
+/// This predicate only aggregates phase statuses. Each evaluator phase separately refines its
+/// status against the contract, requested revision, and admitted evidence.
 pub open spec fn acceptance_complete(
     contract_bound: bool,
     observations_fresh: bool,

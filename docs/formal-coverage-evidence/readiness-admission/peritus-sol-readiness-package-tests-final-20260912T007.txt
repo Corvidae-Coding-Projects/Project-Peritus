@@ -1,0 +1,282 @@
+   Compiling peritus-release-policy v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/foundation/peritus-release-policy)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.40s
+     Running unittests src/lib.rs (/tmp/peritus-sol-readiness-test-final-target/debug/deps/peritus_release_policy-74ec423914b69dd3)
+
+running 3 tests
+test catalog::tests::stable_catalog_ids_are_contiguous ... ok
+test error::tests::every_error_kind_has_a_stable_h4_code ... ok
+test catalog::tests::criterion_twenty_four_requires_every_release_artifact_class ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/acceptance.rs (/tmp/peritus-sol-readiness-test-final-target/debug/deps/acceptance-525337dcbec09bd8)
+
+running 4 tests
+test complete_exact_evidence_is_ready_without_publication_authority ... ok
+test decision_is_bound_to_the_exact_candidate_and_time ... ok
+test every_final_qualification_check_is_required_for_admission ... ok
+test every_required_artifact_fails_closed_when_removed ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/catalog.rs (/tmp/peritus-sol-readiness-test-final-target/debug/deps/catalog-adf41b6338b67876)
+
+running 3 tests
+test every_criterion_has_at_least_one_required_artifact ... ok
+test evidence_catalog_has_stable_unique_ids_and_sources ... ok
+test production_catalog_is_exactly_twenty_five_stable_items ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/construction.rs (/tmp/peritus-sol-readiness-test-final-target/debug/deps/construction-f3e73ea8611e48e3)
+
+running 4 tests
+test platform_slots_are_nominal_not_positional_guesswork ... ok
+test invalid_time_and_source_revision_bindings_are_rejected ... ok
+test zero_nominal_identities_are_rejected ... ok
+test evidence_collection_bound_is_enforced ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/fail_closed.rs (/tmp/peritus-sol-readiness-test-final-target/debug/deps/fail_closed-606bceee39a136ad)
+
+running 4 tests
+test mismatched_candidate_evidence_is_diagnosed_and_excluded ... ok
+test wrong_source_unreviewed_unsigned_and_conflict_are_distinct ... ok
+test stale_evidence_is_diagnosed_and_cannot_contribute ... ok
+test every_complete_candidate_identity_component_is_checked ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/permutation.rs (/tmp/peritus-sol-readiness-test-final-target/debug/deps/permutation-8c9f69ed105af5d8)
+
+running 1 test
+test evidence_permutations_preserve_verdict_digest_and_diagnostics ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/qualifications.rs (/tmp/peritus-sol-readiness-test-final-target/debug/deps/qualifications-de4910653fd5e270)
+
+running 4 tests
+test explicit_not_ready_qualification_blocks_release ... ok
+test conflicting_current_qualification_reports_block_release ... ok
+test stale_and_unreviewed_qualifications_never_count_as_ready ... ok
+test every_h_slice_is_required ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/reviews_and_findings.rs (/tmp/peritus-sol-readiness-test-final-target/debug/deps/reviews_and_findings-9f17decdbc31ef65)
+
+running 5 tests
+test independent_review_quorum_is_mandatory ... ok
+test self_review_changes_required_and_shared_context_each_block ... ok
+test independent_waiver_can_resolve_a_nonblocking_finding ... ok
+test unresolved_release_blocker_cannot_be_waived ... ok
+test ignored_and_quarantined_findings_are_never_release_ready ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (/tmp/peritus-sol-readiness-test-final-target/debug/deps/peritus_release_qualification-05671129f2dc81a4)
+
+running 8 tests
+test criteria::tests::catalog_is_exactly_twenty_five_and_stably_numbered ... ok
+test criteria::tests::empty_mapping_set_fails_closed ... ok
+test operator::args::tests::envelope_requires_the_complete_closed_argument_set ... ok
+test operator::args::tests::verify_requires_public_material ... ok
+test operator::files::tests::exact_material_accepts_raw_and_lowercase_hex ... ok
+test verified_policy::tests::digest_drift_never_reaches_verified_policy ... ok
+test verified_policy::tests::exact_composition_reaches_verified_policy_and_remains_not_ready_without_evidence ... ok
+test operator::plan::tests::checked_operator_template_matches_the_strict_plan_and_remains_not_satisfied ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/bin/peritus_h4.rs (/tmp/peritus-sol-readiness-test-final-target/debug/deps/peritus_h4-bf1fde2b502bc618)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/evidence_operator.rs (/tmp/peritus-sol-readiness-test-final-target/debug/deps/evidence_operator-1dd4f40c6485f822)
+
+running 2 tests
+test operator_rejects_payload_substitution_after_signing ... ok
+test operator_prepares_exact_envelope_and_admits_only_matching_signature ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s
+
+     Running tests/fail_closed.rs (/tmp/peritus-sol-readiness-test-final-target/debug/deps/fail_closed-f89d649ad5947bb1)
+
+running 2 tests
+test missing_inputs_are_not_ready_and_policy_is_not_called ... ok
+test provisioning_failure_is_retained_for_every_required_campaign ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/finalize_operator.rs (/tmp/peritus-sol-readiness-test-final-target/debug/deps/finalize_operator-6ca52cbc76e13531)
+
+running 2 tests
+test finalizer_rejects_unsigned_cleanup_substitution ... ok
+test finalizer_emits_one_ready_no_overwrite_bundle ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.78s
+
+     Running unittests src/lib.rs (/tmp/peritus-sol-readiness-test-final-target/debug/deps/peritus_security_policy-f4c47afff9f8a71e)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/policy.rs (/tmp/peritus-sol-readiness-test-final-target/debug/deps/policy-56612cc05488f427)
+
+running 7 tests
+test any_candidate_mutation_invalidates_prior_security_evidence ... ok
+test unresolved_high_finding_blocks_readiness ... ok
+test complete_exact_candidate_is_security_ready_without_release_authority ... ok
+test every_native_probe_outcome_is_required_for_final_admission ... ok
+test resolved_high_finding_requires_remediation_and_retest_evidence ... ok
+test missing_independent_review_is_not_ready ... ok
+test every_required_security_dimension_fails_closed_when_removed ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (/tmp/peritus-sol-readiness-test-final-target/debug/deps/peritus_security_qualification-cdaa8163962deb60)
+
+running 7 tests
+test controller::plan::tests::every_catalog_probe_has_a_nonempty_closed_plan ... ok
+test operator::tests::linux_warmup_and_parallel_queue_cover_every_work_unit_once ... ok
+test operator::tests::work_units_alternate_between_catalog_edges ... ok
+test controller::plan::tests::only_the_serial_compiler_probe_uses_four_build_jobs ... ok
+test operator::tests::only_linux_serializes_the_workspace_compiler_probe ... ok
+test operator::tests::concurrent_workers_claim_every_linux_probe_exactly_once ... ok
+test controller::inventory::tests::every_reviewed_source_inventory_reconciles_the_checked_in_candidate ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.67s
+
+     Running unittests src/bin/peritus-h0.rs (/tmp/peritus-sol-readiness-test-final-target/debug/deps/peritus_h0-f9aa335e81ae02b9)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/bin/peritus-h0-aggregate.rs (/tmp/peritus-sol-readiness-test-final-target/debug/deps/peritus_h0_aggregate-4049115b3a6e7011)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/bin/peritus-h0-controller.rs (/tmp/peritus-sol-readiness-test-final-target/debug/deps/peritus_h0_controller-73f29251df66dd37)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/bin/peritus-h0-prepare.rs (/tmp/peritus-sol-readiness-test-final-target/debug/deps/peritus_h0_prepare-9a6ddfedcd1e7118)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/aggregate_operator.rs (/tmp/peritus-sol-readiness-test-final-target/debug/deps/aggregate_operator-faa1615685883c3c)
+
+running 1 test
+test aggregate_operator_publishes_one_ready_candidate_bound_report ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+     Running tests/catalog.rs (/tmp/peritus-sol-readiness-test-final-target/debug/deps/catalog-9ad7b83e397a0deb)
+
+running 2 tests
+test production_catalog_covers_every_literal_requirement_and_criterion ... ok
+test security_catalogs_and_schemas_are_packaged ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/native_controller.rs (/tmp/peritus-sol-readiness-test-final-target/debug/deps/native_controller-6d4c82100b137cbf)
+
+running 2 tests
+test controller_rejects_a_source_digest_substitution_before_assertions ... ok
+test controller_reconciles_a_candidate_bound_threat_inventory ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests/native_process.rs (/tmp/peritus-sol-readiness-test-final-target/debug/deps/native_process-320c51a4d0a99106)
+
+running 4 tests
+test cancellation_kills_the_complete_native_process_group ... ok
+test response_for_another_request_is_rejected_and_subject_still_cleans ... ok
+test response_with_a_false_artifact_digest_is_rejected_and_retained ... ok
+test native_executor_runs_every_case_in_a_fresh_cleaned_subject ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.89s
+
+     Running tests/operator.rs (/tmp/peritus-sol-readiness-test-final-target/debug/deps/operator-b6d6eff6b909c9ee)
+
+running 2 tests
+test failed_native_operator_still_publishes_a_diagnostic_shard ... ok
+test native_operator_publishes_one_parseable_linux_shard_without_overwrite ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.27s
+
+     Running tests/preparation.rs (/tmp/peritus-sol-readiness-test-final-target/debug/deps/preparation-d496cce5f872b2b2)
+
+running 1 test
+test preparation_binds_committed_source_and_refuses_dirty_or_overwritten_outputs ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.12s
+
+     Running tests/qualification.rs (/tmp/peritus-sol-readiness-test-final-target/debug/deps/qualification-bb4e2e7f0154f995)
+
+running 7 tests
+test cancelled_campaign_records_every_remaining_case_as_non_success ... ok
+test unresolved_external_high_finding_is_not_ready ... ok
+test full_native_campaign_and_independent_review_can_reach_h0_ready ... ok
+test absent_external_review_cannot_be_fabricated_into_success ... ok
+test stale_native_observation_fails_the_exact_candidate ... ok
+test canonical_manifest_bytes_and_digest_are_reproducible ... ok
+test every_canonical_probe_outcome_is_required_for_final_admission ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.21s
+
+     Running tests/review_interchange.rs (/tmp/peritus-sol-readiness-test-final-target/debug/deps/review_interchange-9b1156430b8b5655)
+
+running 3 tests
+test complete_independent_review_parses_for_the_exact_candidate ... ok
+test claimed_independence_must_match_the_review_identities ... ok
+test finding_lifecycle_requires_its_exact_evidence_shape ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/shards.rs (/tmp/peritus-sol-readiness-test-final-target/debug/deps/shards-45465ae3d8cdaee4)
+
+running 3 tests
+test aggregation_rejects_missing_platform_and_candidate_drift ... ok
+test canonical_three_host_shards_cover_every_probe_exactly_once ... ok
+test shard_json_round_trips_exact_evidence_and_rejects_failed_or_cross_host_tampering ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+   Doc-tests peritus_release_policy
+
+running 1 test
+test crates/foundation/peritus-release-policy/src/decision.rs - decision::ReleaseDecision (line 155) - compile fail ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+   Doc-tests peritus_release_qualification
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests peritus_security_policy
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests peritus_security_qualification
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

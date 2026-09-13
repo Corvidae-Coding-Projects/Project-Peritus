@@ -1,0 +1,97 @@
+# Bounded independent review: obligation extraction ledger patch
+
+Date: 2026-09-13
+
+Verdict: **PASS — no source correctness blocker found.**
+
+## Exact reviewed objects
+
+- Worktree: `/home/doll/Project-Peritus/.worktrees/formal-coverage`
+- Dirty-tree HEAD observed during review: `8e8cbb1bcf0de9787d86c7be3d6fc1f2079f3493`
+- Frozen pre-integration package: `target/formal-stabilization/ledger-before`
+- Frozen final package: `target/formal-paused/20260913T043001Z/ledger`
+- Saved patch: `target/formal-paused/20260913T043001Z/evidence/peritus-sol-obligations-extraction-001.patch`
+- Saved patch SHA-256: `32c0de094c22327d9ee871be6ae23cbf19f0107a676016d763a5bec5a78e06fc`
+
+The frozen pre-integration package passed the complete 56-file baseline manifest
+`peritus-sol-obligations-extraction-baseline-001.sha256` (manifest SHA-256
+`8ddb79f941cd40e851bdc0db2d46816de68bbc587396040e6ab8aa0b716cefe5`). The frozen
+final package passed the complete 57-file final manifest
+`peritus-sol-obligations-extraction-full-source-001.sha256` (manifest SHA-256
+`c6d881e025f6a20afd4dd90cf4194884890f72db8313c854e8ce3636ec1b1d15`). The six
+final delta files also passed `peritus-sol-obligations-extraction-delta-source-001.sha256`
+(manifest SHA-256 `eeef50420415a235b8f6ee4c086ff26be860e2cc046923ea578df14e0a5cf5fa`).
+
+The only baseline-to-final differences are these six paths:
+
+| Path | Baseline SHA-256 | Final SHA-256 |
+|---|---|---|
+| `src/ledger.rs` | `7611b6f52a407cf071d14c0ec52dcf4e07e244a8a788f3fb9b1fff5718a9d711` | `7f33ed5e8bc7b870a03f8ae25a736acf361442a30d03303191796fb0ce85ac0a` |
+| `src/ledger/admission.rs` | absent | `c439684efd62c576b3daad88450b92ff95c3da59fd10f428295073232372a926` |
+| `src/ledger/validation.rs` | `0f0b99577edb738e0f8de93eb4654997bf2d4497fd5923d347daf36f748bd1d8` | `f0ee05e930075d7411b37bf0c7080c4914e81f6c42d89976c533b13b4fb4ccd1` |
+| `src/path.rs` | `ebd021b2103e4fd78787bd34f6d31bfcd5d0590d3e041f2a7747095c4af2c42c` | `255e137d4dfe52ab161eee6412d75d28a651c907e0c6dc679b0d0b63b8cbd9f9` |
+| `src/path/validation.rs` | `f9531787b91bcd82920541e39e5f5faaa0cc3524968ea1bd794b706621fec720` | `8e204d3de7837f87c5aef0a4aa386005faa78b46620e68e1395833cac158b637` |
+| `tests/foundation_semantics.rs` | `e659f2320e535f569f15c4affbc5e7fcceb747aebaea88dc7360bfdf06399bdd` | `5c59aed7a0e2d399360b08d4a4c1c8203e970399b6736653ea0107b4fa37be90` |
+
+After normalizing only the recorded source-root path prefixes and Git blob abbreviation width,
+the saved patch and a fresh no-index diff from `ledger-before` to the frozen ledger had the same
+SHA-256: `afd3530cf31c6e4a6aa132f51df5f64399bdd0504d3179113979979f1d7612db`.
+The current shared `peritus-obligations` package also passed the complete frozen final manifest and
+had no byte difference from the frozen final package when checked after integration.
+
+## Correctness findings
+
+1. `RequirementLedger::extract_preimage` now binds every `Err` to an input-defined
+   `extraction_error` predicate. The predicate encodes the executable order exactly: empty or
+   oversized collection first; then, for each draft, the adjacent identity pair before that
+   draft's span, ordinal, typed shape, and paths; alternative topology last.
+2. Prefix predicates select the earliest failing draft and earliest bad path pair. An earlier valid
+   prefix is required before a witness can describe the first error, so a later failure cannot
+   satisfy the contract in place of the actual earlier one.
+3. Every modeled error fixes all four stored `ObligationError` fields. Collection and path bounds
+   bind exact `expected` and `actual` values with no requirement identity. Requirement pair, span,
+   and ordinal errors bind the current requirement identity with no numeric values. Shape, path
+   order, and alternative errors are exact plain errors with no hidden identity or numeric payload.
+4. `ObligationSpec::validate` has exactly the modeled plain `RequirementShapeMismatch` error for
+   request/response schema direction disagreement. `PathMention::spec_validation_error` exposes
+   the already verified size-first and first-pair contract so ledger admission can use it.
+5. The ordinary public `RequirementLedger::extract` is unchanged and calls `extract_preimage`
+   before canonical encoding and SHA-256. An extraction error is propagated unchanged; hashing runs
+   only after success. The post-validation builder is proved infallible under the validated input
+   predicate.
+6. Ordinary executable behavior is preserved. The only runtime-shaped rewrite replaces two `?`
+   expressions returning `Result<(), ObligationError>` with explicit `if let Err(error)` returns;
+   the success values are unit and the functions have no side effects. Other source changes are
+   specifications, proof assertions, visibility needed for specification unfolding, or tests.
+7. Focused public tests appropriately exercise collection-first handling, interleaved earlier-draft
+   versus later-pair handling, pair-before-current-span behavior, span/shape/path/alternative order,
+   path-size-before-order behavior, successful canonical and empty path collections, and the
+   relevant error payload fields. No stub, TODO, unsafe block, assumption, admit, external body, or
+   new lint escape appears in the patch.
+
+## Evidence and limitations
+
+The evidence bundle matched its recorded checksums. I inspected rather than reran the saved heavy
+checks, as required by this bounded review. The exact frozen source logs report:
+
+- focused `foundation_semantics`: 6 passed, 0 failed;
+- strict Verus at the recorded root-limit 20: 361 verified, 0 errors;
+- a forced fresh strict Verus run at root-limit 10: 361 verified, 0 errors;
+- all package tests: 34 passed, 0 failed;
+- all-target/all-feature Clippy with warnings denied: passed;
+- the selected product-runner production caller: 1 passed, 0 failed, 280 filtered.
+
+The Verus logs retain two pre-existing `peritus-run-settlement` Clone diagnostics; they are outside
+this patch. Current combined-tree validation is owned by the parent integration lane and is not a
+result of this independent review.
+
+The public ordinary wrapper is excluded under `cfg(verus_only)`, so the wrapper-to-kernel error
+binding is supported by direct source composition and public runtime regressions rather than a
+Verus theorem on the wrapper itself. Ordinary SHA-256 authenticity is unchanged and remains outside
+the extraction-error proof. The product runner converts `ObligationError` through its display text,
+so downstream preservation of optional identity and numeric fields is outside this slice.
+
+The saved patch records absolute/provenance-specific left and temporary right path roots, so it is
+not directly portable to repo-root `git apply` without path-header normalization. Its content is
+nevertheless exact: the normalized patch equals the frozen baseline-to-final diff, and the parent
+integrated the six exact frozen final files.

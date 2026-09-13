@@ -1,0 +1,87 @@
+{
+  "source": "/tmp/peritus-sol-scheduler-command-final-source-002",
+  "destination": "/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/orchestration/peritus-scheduler",
+  "prior_files": 75,
+  "final_files": 95,
+  "changed_files": [
+    "src/binding.rs",
+    "src/command/kind/clone_impl.rs",
+    "src/command/kind.rs",
+    "src/command.rs",
+    "src/identity.rs",
+    "src/reducer/apply/control.rs",
+    "src/reducer/apply/worker_control.rs",
+    "src/reducer/apply.rs",
+    "src/state/clone_impl.rs",
+    "src/state/lookup.rs",
+    "src/state/mutation/acknowledge_start.rs",
+    "src/state/mutation/entity_insertion.rs",
+    "src/state/mutation/reservation_command.rs",
+    "src/state/mutation/reservation_remove.rs",
+    "src/state/mutation/reservation_update.rs",
+    "src/state/mutation/reserve/prepare.rs",
+    "src/state/mutation/reserve/proof/readiness.rs",
+    "src/state/mutation/reserve.rs",
+    "src/state/mutation/scheduler_phase.rs",
+    "src/state/mutation/work_command.rs",
+    "src/state/mutation/work_update/attempt.rs",
+    "src/state/mutation/work_update/release.rs",
+    "src/state/mutation/work_update/wrappers.rs",
+    "src/state/mutation/work_update.rs",
+    "src/state/mutation/worker_update.rs",
+    "src/state/mutation.rs",
+    "src/state.rs",
+    "src/verified/reservation_transitions.rs",
+    "src/verified/reservations/entity_insertion.rs",
+    "src/verified/reservations/preservation.rs",
+    "src/verified/reservations/readiness/clone.rs",
+    "src/verified/reservations/readiness/insertion.rs",
+    "src/verified/reservations/readiness/phase.rs",
+    "src/verified/reservations/readiness/release.rs",
+    "src/verified/reservations/readiness/start.rs",
+    "src/verified/reservations/readiness/update.rs",
+    "src/verified/reservations/readiness.rs",
+    "src/verified/reservations.rs",
+    "src/verified.rs",
+    "src/work/record.rs",
+    "src/worker/clone_impl.rs",
+    "src/worker.rs",
+    "tests/reservation_preservation.rs"
+  ],
+  "verified_manifests": [
+    {
+      "manifest": "/tmp/peritus-parent-scheduler244-complete-source.sha256",
+      "sha256": "812d4eabac5f6b131baa156cc970eee34a7c45a40a79c36433cdb65493e84f40",
+      "entries": 75
+    },
+    {
+      "manifest": "/tmp/peritus-sol-scheduler-command-final-source-002-relative.sha256",
+      "sha256": "0222f43c477c81025f9517b133a2bf805bf27de85a61695d670edd5ec6e4f837",
+      "entries": 95
+    },
+    {
+      "manifest": "/tmp/peritus-sol-scheduler-command-final-evidence-001.sha256",
+      "sha256": "e0184daf099ce05ca1433734a7bce25743c7fcefd05521fda612c7f4df2db5f3",
+      "entries": 26
+    },
+    {
+      "manifest": "/tmp/peritus-sol-scheduler-worker-lookup-evidence-002.sha256",
+      "sha256": "5425288ec9bb892ac9fcb378651f3b0d967461db96654ead1f17e982fc7d611a",
+      "entries": 16
+    },
+    {
+      "manifest": "/tmp/peritus-sol-scheduler316-independent-source-review-evidence-20260912T001.sha256",
+      "sha256": "7a730a5d704fe87967e0d578cfb72c54f983fe60a1eec7aa9fe0f60f7766234d",
+      "entries": 15
+    },
+    {
+      "manifest": "/tmp/peritus-sol-scheduler-worker-lookup-independent-review-evidence-20260912T001.sha256",
+      "sha256": "0111572f8f3367cb00c19a12af6280c13bc3b580f2aa6694fda44038e54a8a09",
+      "entries": 12
+    }
+  ],
+  "qualification": "Worker exact source gates passed; parent combined resource/runtime qualification still pending",
+  "remaining": "Resource/selection performance repair; full original goal closure; current records and final hosted CI",
+  "integrated_manifest_sha256": "b38d72d727aa93ecd586373c33db44e5681160df62fc4a137f2f490d95c20b29",
+  "combined_patch_sha256": "dd11c2b458fc767c2b8bbe050a9ee030c78eb6ef82b3e3288f41eb6010355524"
+}

@@ -1,0 +1,58 @@
+# Independent source review: frozen peritus-context 481 checkpoint
+
+Date: 2026-09-13 UTC
+
+Verdict: **CHANGES REQUIRED for shipping the exact frozen checkpoint.** The formal correspondence increment is logically sound within the scopes below, but the production cycle traversal introduces a severe, reproducible performance regression on valid sparse chains. This verdict applies only to the exact 67-file frozen package. The separately developed repair is not part of this independent review.
+
+## Source and evidence identities
+
+- Reviewed source: `/tmp/peritus-sol-context-source-final-20260913T004133Z/peritus-context`
+- Full 67-file manifest: `/tmp/peritus-sol-context-final-full-package-20260913T004133Z.sha256`, SHA-256 `fa6acc10d9389133df32011675c1c4c1d907286854ccd35ad0f17e7a89aeefc6`
+- Prior 55-file source: `/tmp/peritus-sol-context-preimage-20260913T004133Z/peritus-context`
+- Prior manifest: `/tmp/peritus-sol-context-preimage-full-package-20260913T004133Z.sha256`, SHA-256 `1cfe9105489a6b024578ad00b687ac88e81863ccae6e8f2025b3d38d8b37576c`
+- Changed 20-file manifest: `/tmp/peritus-sol-context-final-changed-source-20260913T004133Z.sha256`, SHA-256 `91e2adc6dc2b8946ea13036a7c017f29316bfb13dd01cb429a838f3fe28c252f`
+- Exact patch: `/tmp/peritus-sol-context-final-20260913T004133Z.patch`, SHA-256 `8ee827e2debb133f39784354275c9deb5b8f2fc99f074173a9d0ba64809c7453`
+- Worker handoff: `/tmp/peritus-sol-context-implementation-handoff-20260913T004133Z.md`, SHA-256 `b583341e42301f827ab5a2cddbffce0df8cafc0bed83d1239e934bd534f8f068`
+- Worker evidence manifest: `/tmp/peritus-sol-context-final-evidence-20260913T004133Z.sha256`, SHA-256 `2c534cf611e9a391024f2dc29b6809e6f35336b4bb536a9806ff402b13b810e5`
+
+I independently checked all 67 final source hashes, all 20 changed-source hashes, and all 26 supplied evidence hashes. Check logs are `/tmp/peritus-sol-context-final-source-verify-20260913T001.log`, `/tmp/peritus-sol-context-final-changed-source-verify-20260913T001.log`, and `/tmp/peritus-sol-context-final-evidence-verify-20260913T002.log`. I read every changed source and test file and inspected the complete 67-file package and the actual graph/reuse callers. The reviewed path list is `/tmp/peritus-sol-context-original481-review-filelist.txt`, SHA-256 `5007c5c519e5067427390910281f6a4671a2a3312ba1c758affff37228b9e32f`.
+
+## Bounded formal correspondence verdict
+
+The exact source supports the following guarantees:
+
+- `ContextError` constructors and getters expose exact kinds and payloads.
+- `ContextNodeId`, `ContextLimits`, `ContextContent`, `RoleVisibility`, `ContextNodeMetadata`, and `ContextNode` expose the admission, field, ordering, and semantic clone facts consumed by graph and reuse validation.
+- `ContextGraph::new` has exact successful admission over nonempty and bounded storage, canonical node identities, existing dependencies, and semantic acyclicity. Its failures retain the production priority: empty, oversized, first node-order error, first missing dependency, then the first residual node selected by the production traversal.
+- The finite sink-elimination model proves soundness and completeness for semantic acyclicity. The production reduction retains legacy node-order tie breaking and residual diagnostic identity, including the fact that the reported residual node can be in a dependent tail rather than a simple directed cycle.
+- `build_reusable_context_selections` binds the actual graph, snapshot, packet, and links. It checks candidate identity including checkpoint sequence, role, link count/order/uniqueness, first section/link/node matches, all 32 digest bytes, actor visibility, role-policy context-class visibility, delivery, and authority. Successful output preserves packet order, node and delivery fields, and the complete cloned `KnowledgeSection` provenance. Failure contracts retain the production check order and payloads.
+
+I found no assumptions, admits, axioms, `external_body`, verifier-only substitute implementation, new public executable precondition, or lint/checker escape in the 20-file increment. The supplied qualification is consistent with the source: strict Verus 481 verified/0 errors, 55 default tests, 55 all-feature tests, strict Clippy, fmt, source layout, and ordinary API checks. Those compiler/test results are supplied worker evidence; I did not independently rerun them for this read-only review.
+
+## Confirmed production performance defect
+
+The new `first_removable` examines candidate nodes and, for each candidate, `first_remaining_dependent` scans every source node and its dependency list. The elimination loop repeats that nested search once per removed node. A valid sparse ascending chain with canonical IDs and node `i` depending on `i-1` makes the highest remaining ID removable first and repeatedly drives the costly scan.
+
+I reproduced the defect using `/tmp/peritus-sol-context-chain-probe.rs` (SHA-256 `1bb9471714555906f07e2cb5eb3dd3c4d5a763c4e05ac276d9c93cdd24adcc4d`). Node construction and the input `Vec` clone occur outside the timer; the timer covers only the actual `ContextGraph::new`. Each series has one warm-up. Exact prior and frozen source manifests were checked before the runs, and the release builds used separate never-used disk targets.
+
+Median nanoseconds:
+
+| nodes | prior55 | frozen481 | regression |
+|---:|---:|---:|---:|
+| 64 | 17,966 | 362,466 | 20.18x |
+| 128 | 69,865 | 2,720,550 | 38.94x |
+| 256 | 275,454 | 17,503,230 | 63.54x |
+| 512 | 1,094,272 | 137,086,391 | 125.28x |
+| 1024 | 3,589,992 | 1,113,008,751 | 310.03x |
+
+At 2048 nodes, frozen481 took 8,942,616,019 ns for the measured post-warm-up sample. Raw logs are `/tmp/peritus-sol-context-perf-pre-003.log`, `/tmp/peritus-sol-context-perf-final-001.log`, `/tmp/peritus-sol-context-perf-pre-1024.log`, `/tmp/peritus-sol-context-perf-final-1024.log`, and `/tmp/peritus-sol-context-perf-final-2048.log`. This is bounded wall-clock evidence on one machine and fixture. The ratios and source shape support the repeated nested-scan diagnosis; they are not an asymptotic theorem.
+
+## Precise open work
+
+Selection remains open for constructor/getter/clone correspondence, transitive dependency closure and its ordering/errors, exact visibility, hidden/delta/admit mutations, optional ranking/render ordering, and the complete `select_context` Result semantics including error priority, mandatory closure, atomic optional selection, partition/accounting, and output fields.
+
+Compaction remains open for source range/policy/proposal/validated constructors, getters, and clones; complete validation admission and error priority; range/protection/trust/savings facts; replacement lookup/drift/rewiring/removal/insertion/canonicality; output/error/frame contracts; and render/digest authenticity.
+
+Working-state remains open for binding/limits/environment/validity/entry/link/evidence/protocol constructors, errors, getters, and clones; state and lookup invariants; ingest/refresh/delta/protocol/apply/replay error and frame correspondence; idempotence and rollback; transitive invalidation fixed point; render projection, selection, and accounting; and wire canonical bytes, round-trip, errors, and invariant preservation.
+
+`bind_context_content` calls `peritus_codec::sha256`; this checkpoint does not prove SHA-256 itself, input authenticity, snapshot/checkpoint provenance, repository/provider I/O, delivery observation truth, or end-to-end system admission. Dependency semantics are pinned to the exact reviewed role-policy and run-knowledge source identities rather than reproved here.

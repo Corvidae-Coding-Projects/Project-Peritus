@@ -1,0 +1,248 @@
+{
+  "suites": {
+    "dense_1024x256": {
+      "dimensions": 256,
+      "logs": {
+        "A_git_base": "/tmp/peritus-sol-scheduler-perf-A-base-20260913T002.log",
+        "B_frozen244": "/tmp/peritus-sol-scheduler-perf-B-frozen244-20260913T002.log",
+        "C_frozen258": "/tmp/peritus-sol-scheduler-perf-C-final-20260913T006.log",
+        "D_aggregate": "/tmp/peritus-sol-scheduler-perf-D-aggregate-20260913T001.log"
+      },
+      "phases": {
+        "dispatch_next": {
+          "A_git_base": {
+            "count": 3,
+            "max_ns": 10840070,
+            "median_ns": 10787751,
+            "min_ns": 10741716,
+            "samples_ns": [
+              10840070,
+              10741716,
+              10787751
+            ]
+          },
+          "B_frozen244": {
+            "count": 3,
+            "max_ns": 53407149,
+            "median_ns": 53332818,
+            "min_ns": 53204239,
+            "samples_ns": [
+              53204239,
+              53332818,
+              53407149
+            ]
+          },
+          "C_frozen258": {
+            "count": 3,
+            "max_ns": 19049967,
+            "median_ns": 18481651,
+            "min_ns": 18417510,
+            "samples_ns": [
+              19049967,
+              18481651,
+              18417510
+            ]
+          },
+          "D_aggregate": {
+            "count": 3,
+            "max_ns": 10361333,
+            "median_ns": 9932867,
+            "min_ns": 9865272,
+            "samples_ns": [
+              10361333,
+              9865272,
+              9932867
+            ]
+          },
+          "median_ratios": {
+            "aggregate_over_frozen244": 0.1862430558235269,
+            "aggregate_over_frozen258": 0.5374447878060244,
+            "aggregate_over_git_base": 0.9207541961248457,
+            "aggregate_reduction_from_frozen244_percent": 81.37569441764731
+          }
+        },
+        "select_next": {
+          "A_git_base": {
+            "count": 7,
+            "max_ns": 770665,
+            "median_ns": 699595,
+            "min_ns": 680329,
+            "samples_ns": [
+              770665,
+              699595,
+              680329,
+              700716,
+              689006,
+              689497,
+              699921
+            ]
+          },
+          "B_frozen244": {
+            "count": 7,
+            "max_ns": 33412604,
+            "median_ns": 24102984,
+            "min_ns": 23137391,
+            "samples_ns": [
+              23210415,
+              23292992,
+              23137391,
+              24102984,
+              25202259,
+              24977520,
+              33412604
+            ]
+          },
+          "C_frozen258": {
+            "count": 7,
+            "max_ns": 5140439,
+            "median_ns": 5104049,
+            "min_ns": 5076717,
+            "samples_ns": [
+              5104049,
+              5140439,
+              5082036,
+              5097667,
+              5104372,
+              5114591,
+              5076717
+            ]
+          },
+          "D_aggregate": {
+            "count": 7,
+            "max_ns": 686494,
+            "median_ns": 670372,
+            "min_ns": 665020,
+            "samples_ns": [
+              686494,
+              678800,
+              665020,
+              670372,
+              665240,
+              681015,
+              668940
+            ]
+          },
+          "median_ratios": {
+            "aggregate_over_frozen244": 0.027812821848116398,
+            "aggregate_over_frozen258": 0.13134121557218592,
+            "aggregate_over_git_base": 0.9582286894560424,
+            "aggregate_reduction_from_frozen244_percent": 97.21871781518836
+          }
+        }
+      },
+      "reservations": 1024
+    },
+    "dense_3072x256": {
+      "dimensions": 256,
+      "logs": {
+        "A_git_base": "/tmp/peritus-sol-scheduler-perf-A-base-highvalid-20260913T005.log",
+        "B_frozen244": "/tmp/peritus-sol-scheduler-perf-B-frozen244-highvalid-20260913T005.log",
+        "C_frozen258": "/tmp/peritus-sol-scheduler-perf-C-final-highvalid-20260913T006.log",
+        "D_aggregate": "/tmp/peritus-sol-scheduler-perf-D-aggregate-highvalid-20260913T001.log"
+      },
+      "phases": {
+        "dispatch_next": {
+          "A_git_base": {
+            "count": 2,
+            "max_ns": 34459981,
+            "median_ns": 34113858.0,
+            "min_ns": 33767735,
+            "samples_ns": [
+              34459981,
+              33767735
+            ]
+          },
+          "B_frozen244": {
+            "count": 2,
+            "max_ns": 218004405,
+            "median_ns": 211055888.5,
+            "min_ns": 204107372,
+            "samples_ns": [
+              204107372,
+              218004405
+            ]
+          },
+          "C_frozen258": {
+            "count": 2,
+            "max_ns": 63451002,
+            "median_ns": 63263289.0,
+            "min_ns": 63075576,
+            "samples_ns": [
+              63451002,
+              63075576
+            ]
+          },
+          "D_aggregate": {
+            "count": 2,
+            "max_ns": 32159122,
+            "median_ns": 31939457.5,
+            "min_ns": 31719793,
+            "samples_ns": [
+              32159122,
+              31719793
+            ]
+          },
+          "median_ratios": {
+            "aggregate_over_frozen244": 0.15133175258457668,
+            "aggregate_over_frozen258": 0.5048655864224827,
+            "aggregate_over_git_base": 0.9362604927299633,
+            "aggregate_reduction_from_frozen244_percent": 84.86682474154233
+          }
+        },
+        "select_next": {
+          "A_git_base": {
+            "count": 3,
+            "max_ns": 3238066,
+            "median_ns": 2995514,
+            "min_ns": 2937583,
+            "samples_ns": [
+              3238066,
+              2995514,
+              2937583
+            ]
+          },
+          "B_frozen244": {
+            "count": 3,
+            "max_ns": 91234630,
+            "median_ns": 84704761,
+            "min_ns": 84221436,
+            "samples_ns": [
+              91234630,
+              84704761,
+              84221436
+            ]
+          },
+          "C_frozen258": {
+            "count": 3,
+            "max_ns": 20305286,
+            "median_ns": 20134914,
+            "min_ns": 20013091,
+            "samples_ns": [
+              20134914,
+              20305286,
+              20013091
+            ]
+          },
+          "D_aggregate": {
+            "count": 3,
+            "max_ns": 2075067,
+            "median_ns": 2047449,
+            "min_ns": 2006282,
+            "samples_ns": [
+              2006282,
+              2047449,
+              2075067
+            ]
+          },
+          "median_ratios": {
+            "aggregate_over_frozen244": 0.024171592904913573,
+            "aggregate_over_frozen258": 0.10168650335432275,
+            "aggregate_over_git_base": 0.6835050679115504,
+            "aggregate_reduction_from_frozen244_percent": 97.58284070950864
+          }
+        }
+      },
+      "reservations": 3072
+    }
+  }
+}

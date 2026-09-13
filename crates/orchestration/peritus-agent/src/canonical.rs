@@ -7,7 +7,9 @@ use crate::{
 use peritus_policy::ActorRole;
 use peritus_types::{RevisionTuple, Sha256Digest};
 
+#[cfg(feature = "protocol-bridge")]
 mod event_wire;
+#[cfg(feature = "protocol-bridge")]
 pub use event_wire::{decode_command_kind, encode_command_kind};
 
 pub fn state_bytes(state: &AgentTurnState) -> Vec<u8> {

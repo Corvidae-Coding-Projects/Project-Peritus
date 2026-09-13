@@ -1,0 +1,48 @@
+{
+  "schema": "peritus.reconciliation-review-provenance",
+  "schema_version": 1,
+  "status": "audit-only",
+  "actors_registered": [],
+  "final_candidate_approval": false,
+  "reviews": [
+    {
+      "task": "/root/impact_authorization_audit",
+      "assigned_model": "gpt-5.6-sol",
+      "assigned_reasoning_effort": "xhigh",
+      "assignment_source": "parent collaboration spawn metadata",
+      "mode": "independent read-only audit",
+      "report": "authorization-audit.md",
+      "sha256": "0a5fd6bcc7128c981d46696e85d5395a688b3c1f82124602ca1759e52d6298db",
+      "snapshot_commit": "d0e4f0cf0943c7194adaaeabcb11fc70badc3fe8",
+      "protected_base_commit": "8e8cbb1bcf0de9787d86c7be3d6fc1f2079f3493",
+      "pcr_approval": false,
+      "obligation_discharge": false
+    },
+    {
+      "task": "/root/impact_evidence_audit",
+      "assigned_model": "gpt-5.6-sol",
+      "assigned_reasoning_effort": "xhigh",
+      "assignment_source": "parent collaboration spawn metadata",
+      "mode": "independent read-only audit",
+      "report": "evidence-audit.md",
+      "sha256": "9e5574378697f1b397dbd87054fa45540976649db899b1880c899b61f75da6d9",
+      "snapshot_commit": "d0e4f0cf0943c7194adaaeabcb11fc70badc3fe8",
+      "protected_base_commit": "8e8cbb1bcf0de9787d86c7be3d6fc1f2079f3493",
+      "pcr_approval": false,
+      "obligation_discharge": false
+    },
+    {
+      "task": "/root/impact_evidence_audit",
+      "assigned_model": "gpt-5.6-sol",
+      "assigned_reasoning_effort": "xhigh",
+      "assignment_source": "parent collaboration followup metadata; same live audit agent",
+      "mode": "independent source review of audit exporter and reconciliation script",
+      "report": "reconciler-review.md",
+      "sha256": "51ea151724a9859c5a7fdcb39564e9bf0b8a7f80c83674ce8dc83a7e195505f5",
+      "source_identities": "exact hashes within the retained report and validation.json",
+      "verdict": "pass with explicit operational limits",
+      "pcr_approval": false,
+      "obligation_discharge": false
+    }
+  ]
+}

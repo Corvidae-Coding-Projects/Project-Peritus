@@ -2890,6 +2890,7 @@ dependencies = [
  "tempfile",
  "tokio",
  "toml",
+ "vstd",
  "yaml-rust2",
 ]
 

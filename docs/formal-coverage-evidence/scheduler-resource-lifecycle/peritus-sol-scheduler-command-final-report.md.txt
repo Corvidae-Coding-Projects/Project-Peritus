@@ -1,0 +1,128 @@
+# Scheduler post-244 command-preservation delivery
+
+## Status and source identity
+
+This is a code-ready isolated scheduler increment. It is not integrated into the shared
+formal-coverage worktree. The shared scheduler package still matches the corrected frozen244
+preimage byte for byte.
+
+- Corrected frozen244 package: `/tmp/peritus-parent-scheduler244-complete-source`
+- Corrected frozen244 manifest: `/tmp/peritus-parent-scheduler244-complete-source.sha256`
+  (`812d4eabac5f6b131baa156cc970eee34a7c45a40a79c36433cdb65493e84f40`)
+- Final package snapshot: `/tmp/peritus-sol-scheduler-command-final-source-001` (95 files)
+- Portable final manifest: `/tmp/peritus-sol-scheduler-command-final-source-001-relative.sha256`
+  (`2930562b537b2c81eea3f2d1861032837402679d6836f837d68d1b5ea1687c1c`)
+- Absolute final manifest: `/tmp/peritus-sol-scheduler-command-final-source-001-absolute.sha256`
+  (`6b04dc2f36d44bb93230f3d4697601a4713b2ac985fb722379da13e7d3aa9827`)
+- Frozen244-to-final inventory: `/tmp/peritus-sol-scheduler244-to-command-final-001.inventory.txt`
+  (`ca5b853f8890271e64cc8f09d0a6bef83829927e4fbbb2c165cfb813c95e86c4`)
+- Frozen244-to-final patch: `/tmp/peritus-sol-scheduler244-to-command-final-001.patch`
+  (`67f8fe38ad3506f801d273ab8ca913ddec253d01d865ae343a0836fa187619fe`)
+- Parent restoration record: `/tmp/peritus-parent-scheduler244-restoration.json`
+  (`236d8fa4631b3fd74ac3b04ed4a3f81f8a62fad1b9af88bf54b93235ba6584d3`)
+
+The snapshot manifest verifies all 95 files, and a separately generated manifest of the active
+isolated package is byte-identical. The scheduler package manifest, workspace manifest, and
+`Cargo.lock` were not changed.
+
+## Completed production guarantees
+
+- The actual reservation capacity and ownership invariant remains connected to the production
+  scheduler state, selected feasibility, actual reservation insertion, and all five release
+  outcomes established at frozen244.
+- Reservation readiness is strengthened to a bidirectional lifecycle relation: every live
+  reservation names active work, and Reserved, Running, or Cancelling work retains its matching
+  reservation with the expected started state. The production start acknowledgement and release
+  mutations preserve those relations.
+- Actual worker and work insertion functions preserve the reservation invariant under exact
+  identity-absence and inactive-work conditions. This is a mutation theorem; admission caller
+  closure remains listed below.
+- `SchedulerCommandKind` is the actual command declaration under Verus, with an exact semantic
+  `Clone` over every variant. Its private leaf has the narrow ghost-only `missing_docs` annotation
+  required by the pinned projection generator; ordinary Rust documentation checking remains on.
+- `SchedulerBinding`, `SchedulerState`, `WorkRecord`, and worker state use semantic clone
+  implementations covering every authoritative field, including terminal state.
+- Production reducer routing uses verified deterministic cores for Pause, Resume, Drain,
+  RetryWork, ExhaustWork, AcknowledgeStart, CompleteWork, FailWork,
+  AcknowledgeCancellation, and AbandonDispatch. These cores preserve reservation readiness and
+  the proved binding, scheduler-phase, worker, live-reservation, and used-dispatch frames for
+  their applicable outcomes.
+- Regression coverage exercises all five release paths, retry then re-reserve, cancellation
+  acknowledgement, dispatch abandonment, rejection rollback/error precedence, terminal payloads,
+  and deterministic replay of those traces.
+- Verified binary-search lookups prove that every returned `Some` value has the requested actual
+  identity. The converse for `None` is not claimed.
+
+These guarantees are a bounded reservation and command-kernel slice. They do not establish full
+reducer, replay, effect, or system termination.
+
+## Required gaps still open
+
+1. Prove canonical sorting plus lookup `None` completeness, then bind actual RegisterWorker and
+   AdmitWork admission checks to the insertion preservation theorems.
+2. Compose actual CancelWork and CancelWorkTree traversal with reservation readiness.
+3. Compose the actual LoseWorker loop across every affected reservation and work record.
+4. Prove the exact DispatchNext `Result`, rejection/error precedence, and output/event mapping,
+   beyond the current successful reservation admission theorem.
+5. Compose FinalizeScheduler with its terminal evaluation and exact output.
+6. Prove complete production `apply`, `decide`, and `replay` correspondence, including event
+   sequence, cursor/digest, rollback, and every `SchedulerError` mapping. The current `String`/boxed
+   error envelope remains outside the verified vocabulary, although the listed deterministic
+   production cores are directly called.
+7. Prove OBL-0150 and the remaining reducer/replay/effect termination obligations.
+
+Selector-wide minimum, first-worker, `None` iff, and fairness theorems are stronger follow-on
+work. They are not part of this frozen increment.
+
+## Exact qualification
+
+All commands ran from `/tmp/peritus-sol-scheduler-post244-source-001` with disk-backed Cargo
+targets, `CARGO_BUILD_JOBS=1`, and `CCACHE_DISABLE=1`.
+
+Strict Verus:
+
+```text
+CARGO_TARGET_DIR=/home/doll/Project-Peritus/.worktrees/formal-coverage/target/integration/peritus-sol-scheduler-post244-verus02 \
+cargo verus verify --package peritus-scheduler --all-features --locked --check-toolchain \
+  --fwd-verus-args-to roots -- \
+  --no-cheating --rlimit 20 --multiple-errors 10 --num-threads 2
+```
+
+Result: 316 verified, 0 errors, exit 0. Log:
+`/tmp/peritus-sol-scheduler-post244-verus-90.log`.
+
+Strict Clippy:
+
+```text
+CARGO_TARGET_DIR=/home/doll/Project-Peritus/.worktrees/formal-coverage/target/integration/peritus-sol-scheduler-post244-gates02 \
+cargo clippy --locked -p peritus-scheduler --all-targets --all-features -- -D warnings
+```
+
+Result: exit 0. Log: `/tmp/peritus-sol-scheduler-post244-clippy-final4.log`.
+
+Package tests, each using the same `gates02` target:
+
+```text
+cargo test --locked -p peritus-scheduler
+cargo test --locked -p peritus-scheduler --no-default-features
+cargo test --locked -p peritus-scheduler --all-features
+```
+
+Result: 25 passed, 0 failed in each profile. Logs:
+`/tmp/peritus-sol-scheduler-post244-tests-default-final2.log`,
+`/tmp/peritus-sol-scheduler-post244-tests-no-default-final2.log`, and
+`/tmp/peritus-sol-scheduler-post244-tests-all-final2.log`.
+
+Lightweight repository checks:
+
+```text
+cargo fmt -p peritus-scheduler -- --check
+/home/doll/Project-Peritus/.worktrees/formal-coverage/target/debug/xtask ordinary-api-check
+/home/doll/Project-Peritus/.worktrees/formal-coverage/target/debug/xtask source-layout-check
+```
+
+Results: formatting exit 0; ordinary API passed 3,532 formal-boundary files and 14,697
+ordinary-safe entry points; source layout passed 4,433 files. Logs:
+`/tmp/peritus-sol-scheduler-post244-fmt-final.log`,
+`/tmp/peritus-sol-scheduler-post244-ordinary-api-final.log`, and
+`/tmp/peritus-sol-scheduler-post244-source-layout-final.log`.

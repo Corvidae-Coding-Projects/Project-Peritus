@@ -1,0 +1,44 @@
+# Independent source review: obligation extraction, qualification, and encoding
+
+Verdict: PASS for this bounded production-correspondence increment. Reviewer `/root` is independent of implementer `/root/sol_acceptance_completion`. This is not an obligation-register discharge or final-head CI approval.
+
+## Exact reviewed source
+
+The parent reviewed the 16-file logical increment from retained225 to frozen325, held integration for a reproduced performance regression, then reviewed all 12 changed files from325 to356, including the complete new encoder/model/test and surrounding lookup, ledger, and qualification contracts. The final combined225-to356 change has21 changed paths,15 new files, and51 total package files. All36 retained225 files were checked against both the frozen preimage and shared integration tree; all51 final identities were checked against the final snapshot, with no extra package files.
+
+- Retained225 manifest: `/tmp/peritus-parent-obligations-foundations-full-package.sha256`, SHA256 `1f079cae7458024bcfcd08468cdd3f663c1bb1dd5f1c9adaa2883da6b07690fc`.
+- Intermediate325 manifest: `/tmp/peritus-sol-obligations-ledger-source-final.sha256`, SHA256 `45a52ed7e88c80f6e8b9d77a2285e3126166dbe7739838c1d6310d7ba211309e`.
+- Final356 root: `/tmp/peritus-sol-obligations-performance-source-01`.
+- Final356 full manifest: `/tmp/peritus-sol-obligations-performance-full-package.sha256`, SHA256 `0ca196662727368857d6dfbd0386b2edf97da307db9e3e536240192fd4f13fec`.
+- Combined changed-source manifest: `/tmp/peritus-parent-obligations225-to-356-changed.sha256`, SHA256 `0e3e35b44ada9596bb5119ac5ef6fc05e2919b752672a3a09b9eb296a7d32050`.
+- Combined exact patch: `/tmp/peritus-parent-obligations225-to-356.patch`, SHA256 `ee0886d2f9a3fd9ee8207ceeb2e83cdcc1037d446b14d07f3db626bb2a6e2951`.
+
+## Source findings
+
+The actual extraction kernel validates supplied source/drafts/bounds, preserves the original ordering of runtime rejection checks, copies each exact public byte span, and connects every retained entry field and topology condition to the supplied draft. Canonical identities, source spans, ordinals, typed details, path order, and alternative topology are actual runtime checks. Draft, entry, ledger, and report cloning preserve complete semantic content. The ordinary public extraction wrapper calls this kernel and then the verified encoder before the unchanged SHA-256 boundary.
+
+Qualification's public entry point has no executable precondition. Its validation establishes the canonical condition/evidence assumptions used by private evaluators, including evidence bounds and known requirement identities. The successful report has exact input-defined recursive counts and ordered diagnostic sequences. Missing evidence, stale full bindings, missing required candidate paths, and incompatible/unsatisfied typed evidence retain their actual precedence. Inactive conditions and examples retain their prior semantics. The alternative model requires an actual matching branch-entry witness for group completion, so its universally quantified branch-member predicate cannot create a vacuous complete group.
+
+All three binary searches use `[low, high)`, the overflow-safe midpoint `low + (high - low) / 2`, and strictly decreasing interval width. The verified comparator examines all32 identity bytes. Canonical ordering and transitivity eliminate the discarded prefix/suffix; exact canonical uniqueness connects the executable index with the input model's chosen index. Empty intervals establish absence. The public ledger lookup obtains its canonicality from the actual type invariant; callers are not assigned new obligations.
+
+The alternative traversal records already evaluated incomplete branches in a fresh vector for each group. Every recorded branch has an earlier same-group origin. Exact32-byte branch equality and immutable inputs transfer the incomplete result to repeated members. This avoids repeatedly scanning a branch for every one of its members without mixing identically named branches across groups. Distinct-branch/group scans remain bounded but have no verified asymptotic complexity theorem.
+
+The canonical encoder is the production implementation, with ordinary SHA-256 isolated after it. The byte model and actual code agree on the30-byte domain separator, source digest, conversation revision, entry count, every entry identity/clause/provenance field, all11 obligation variants, all5 path roles, both schema directions, all6 performance statistics, all4 performance expectation forms, and every ordered path/schema field and exact byte string. Integer bytes remain big-endian; the verified little-endian helper is reversed explicitly. The model covers the existing preimage format, which does not serialize the stored digest itself or the operational limits value. It does not assert injectivity or authenticity.
+
+The replacement usize-to-u64 cast has the same value as the old checked conversion for32/64-bit pointer widths; no claim is made for hypothetical wider pointer widths. The retained ordinary golden fixture exercises every obligation variant, both schema directions, all path roles, binary clause/field bytes, and nontrivial numeric data. The legacy encoder produced digest `73ee3a1d6b4f33166b98bde48cf37f7faf90f3cffae776e9ed4f929ba206b8a4`; the final public-extraction fixture asserts that same digest. Runtime fixtures do not exhaust every enum/numeric combination; all cases were inspected in source and the encoder's exact-byte contracts verified.
+
+No added assumption, admitted body, trusted escape, verification-only executable replacement, broad suppression, checker relaxation, or public executable requires was found in the combined increment. Ghost modules/imports contain specifications and proofs, while production extraction and qualification call the verified executable implementations.
+
+## Independent qualification and regression evidence
+
+Parent commands in `/tmp/peritus-parent-obligations356-qualification-independent.json` completed with strict pinned Verus356 verified/0 errors (`--no-cheating --rlimit 20`) and all30 all-features tests passing. The two non-Copy Clone warnings are existing dependency warnings in peritus-run-settlement; neither supplies an obligations proof assumption. The implementer's frozen evidence manifest was checked in full; supplied no-default-features/all-features tests, Clippy, formatting, API and layout checks are distinguished from parent-produced runs.
+
+The parent negative control changed only the actual encoder's Hard tag from1 to2, leaving the model unchanged. Strict verification failed at the encoder postcondition with355 verified/1 error. All51 package hashes were restored and strict verification then returned356/0. The command, mutation hashes, raw failure/restoration logs and reproduction script are retained under `/tmp/peritus-parent-obligations356-negative-canonical*`.
+
+Fresh independent performance A/B/C runs used the original late-failure two-branch fixture, all direct evidence satisfied except the last member of each branch, three repetitions, and never-used target directories for each exact source variant. Total elapsed milliseconds for256/512 entries were foundation0.271219/0.581399, frozen325194.290728/1444.791167, final3560.308100/0.647488. These establish the bounded regression and recovery; they are not an asymptotic theorem. An earlier fast325 result remains unexplained, with source/build-cache interaction only a possibility. The implementer's unsupported different-early-exit explanation and erroneous no-evidence fixture description are explicitly withdrawn in the retained correction note.
+
+## Remaining scope
+
+The exact public Err variant/payload/first-error postconditions for extraction and qualification remain feasible follow-up: current top-level contracts prove complete admission iff and successful output correspondence but deliberately leave `Err(_) => true`. The separate direct universal characterization of overall qualified=true from all active ordinary requirements plus complete alternative groups remains feasible follow-up beyond the exact recursive report model.
+
+SHA-256 implementation/collision properties, source/evidence observation truth, and the ordinary wrapper's whole-function contract remain outside this checkpoint. The actual gate bridge and product-runner callers were inspected: the gate bridge consumes qualified(); the product runner currently supplies Hard clauses and a direct satisfied value derived from gates and review. This proof does not establish that those supplied booleans prove task completion or typed extraction correctness. Allocation failure, platform behavior, general worst-case complexity, global source/trust/register reconciliation, and final-head hosted runners remain unqualified here.

@@ -1,0 +1,9 @@
+# Combined scheduler public-path performance commands
+# Working directory:
+# /home/doll/Project-Peritus/.worktrees/formal-coverage/target/sol-scheduler-perf-aggregate-probe-source-001
+
+CARGO_TARGET_DIR=/home/doll/Project-Peritus/.worktrees/formal-coverage/target/sol-scheduler-perf-aggregate-release CARGO_BUILD_JOBS=1 CCACHE_DISABLE=1 PERITUS_PERF_RESERVATIONS=1024 PERITUS_PERF_DIMENSIONS=256 PERITUS_PERF_SELECTION_REPEATS=7 PERITUS_PERF_DISPATCH_REPEATS=3 cargo test --release --package peritus-scheduler --lib dense_public_selection_and_dispatch_timings --locked -- --ignored --nocapture --test-threads=1
+result=PASS exit=0 samples_select=7 samples_dispatch=3 log=/tmp/peritus-sol-scheduler-combined-perf-1024x256-20260913T001.log
+
+CARGO_TARGET_DIR=/home/doll/Project-Peritus/.worktrees/formal-coverage/target/sol-scheduler-perf-aggregate-release CARGO_BUILD_JOBS=1 CCACHE_DISABLE=1 PERITUS_PERF_RESERVATIONS=3072 PERITUS_PERF_DIMENSIONS=256 PERITUS_PERF_SELECTION_REPEATS=3 PERITUS_PERF_DISPATCH_REPEATS=2 cargo test --release --package peritus-scheduler --lib dense_public_selection_and_dispatch_timings --locked -- --ignored --nocapture --test-threads=1
+result=PASS exit=0 samples_select=3 samples_dispatch=2 log=/tmp/peritus-sol-scheduler-combined-perf-3072x256-20260913T001.log

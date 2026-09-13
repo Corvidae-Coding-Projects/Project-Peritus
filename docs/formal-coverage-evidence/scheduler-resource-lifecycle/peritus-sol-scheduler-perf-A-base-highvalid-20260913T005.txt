@@ -1,0 +1,12 @@
+
+running 1 test
+test selection::performance_probe::dense_public_selection_and_dispatch_timings ... scheduler_perf phase=setup reservations=3072 dimensions=256 elapsed_ns=85311033
+scheduler_perf phase=select_next sample=0 reservations=3072 dimensions=256 elapsed_ns=3238066
+scheduler_perf phase=select_next sample=1 reservations=3072 dimensions=256 elapsed_ns=2995514
+scheduler_perf phase=select_next sample=2 reservations=3072 dimensions=256 elapsed_ns=2937583
+scheduler_perf phase=dispatch_next sample=0 reservations=3072 dimensions=256 elapsed_ns=34459981
+scheduler_perf phase=dispatch_next sample=1 reservations=3072 dimensions=256 elapsed_ns=33767735
+ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.22s
+

@@ -1,0 +1,37 @@
+   Compiling xtask v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/xtask)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 14.17s
+     Running unittests src/lib.rs (target/debug/deps/xtask-88f979add953e9b2)
+
+running 3 tests
+test trust::manifest_tests::method_owners::methods_resolve_the_type_definition_instead_of_the_impl_file ... FAILED
+test trust::manifest_tests::method_owners::imports_are_scoped_and_do_not_redirect_other_same_named_methods ... FAILED
+test trust::manifest_tests::method_owners::missing_ambiguous_and_unsupported_type_owners_fail_closed ... FAILED
+
+failures:
+
+---- trust::manifest_tests::method_owners::methods_resolve_the_type_definition_instead_of_the_impl_file stdout ----
+
+thread 'trust::manifest_tests::method_owners::methods_resolve_the_type_definition_instead_of_the_impl_file' (625284) panicked at xtask/src/trust/manifest_tests/method_owners.rs:40:9:
+use super::{OtherState, AccountingState}; impl AccountingState
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- trust::manifest_tests::method_owners::imports_are_scoped_and_do_not_redirect_other_same_named_methods stdout ----
+
+thread 'trust::manifest_tests::method_owners::imports_are_scoped_and_do_not_redirect_other_same_named_methods' (625283) panicked at xtask/src/trust/manifest_tests/method_owners.rs:76:5:
+assertion failed: accepts(&source,
+    "peritus_product_runner::accounting::AccountingState::apply_usage")
+
+---- trust::manifest_tests::method_owners::missing_ambiguous_and_unsupported_type_owners_fail_closed stdout ----
+
+thread 'trust::manifest_tests::method_owners::missing_ambiguous_and_unsupported_type_owners_fail_closed' (625285) panicked at xtask/src/trust/manifest_tests/method_owners.rs:63:13:
+accepted impl AccountingState as accounting::usage::AccountingState
+
+
+failures:
+    trust::manifest_tests::method_owners::imports_are_scoped_and_do_not_redirect_other_same_named_methods
+    trust::manifest_tests::method_owners::methods_resolve_the_type_definition_instead_of_the_impl_file
+    trust::manifest_tests::method_owners::missing_ambiguous_and_unsupported_type_owners_fail_closed
+
+test result: FAILED. 0 passed; 3 failed; 0 ignored; 0 measured; 434 filtered out; finished in 0.00s
+
+error: test failed, to rerun pass `-p xtask --lib`

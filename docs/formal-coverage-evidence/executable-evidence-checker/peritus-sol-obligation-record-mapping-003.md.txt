@@ -1,0 +1,69 @@
+# Proposed missing owning-obligation records
+
+This is a read-only registration draft. No repository file was changed. The corrected proposed append is `/tmp/peritus-sol-obligation-record-draft-003.toml`; every entry is `in-progress`, uses the open repository-local Crosslink issue `#75`, and names the existing owner `ACTOR-0001`. It does not name a reviewer or claim discharge.
+
+`#75` here is the Crosslink project identifier, not a GitHub issue number. A read-only observation of `.crosslink/issues.db` returned issue `75`, UUID `eb5c64d1-b12e-4ec5-8bae-6c66adc80c81`, title `Complete production Verus coverage and trusted CI enforcement`, status `open`, created by `4jyS` at `2026-09-12T15:27:42.848160186+00:00`. The exact extracted row is `/tmp/peritus-sol-crosslink-issue75-local-row-001.json`, SHA-256 `25b8de8c78c23e8d069db8b794657c8759cb863605b69f7dacf1db019294c6b6`; the corresponding CLI observation is `/tmp/peritus-sol-crosslink-issue75-local-record-001.txt`, SHA-256 `d31fa17a990ab88fc4a97982fe708ed792b62e7b2f6ab5fc36290412a29d0740`. The live database is mutable and is excluded from the frozen input manifest. GitHub issue `Corvidae-Coding-Projects/Project-Peritus#75` does not exist and is not the locator used by this draft.
+
+The current register ends at `OBL-0208`; the proposed IDs `OBL-0209` through `OBL-0224` were unused when this draft was made. TOML parsing, unique-ID checks, exact source-line checks, and the existence of all 40 evidence symbols passed locally. The evidence arrays are source locators under the manifest schema; they do not turn the entries into discharged obligations.
+
+Revision 003 makes exactly two record corrections over 002: OBL-0220 now includes the initially empty reducer's unconditional first-checkpoint admission, and the mutable live Crosslink database is no longer a frozen input. No other obligation statement, status, dependency, evidence locator, source symbol, or caller claim changed.
+
+`ObligationEntry` does not accept a `source_line` field. Exact reviewed line locators therefore remain in this mapping only:
+
+| ID | Exact source locator |
+|---|---|
+| OBL-0209 | `crates/foundation/peritus-types/src/ids/base.rs:31` |
+| OBL-0210 | `crates/foundation/peritus-types/src/capability.rs:198` |
+| OBL-0211 | `crates/foundation/peritus-types/src/resource.rs:84` |
+| OBL-0212 | `crates/foundation/peritus-types/src/revision.rs:64` |
+| OBL-0213 | `crates/orchestration/peritus-obligations/src/ledger.rs:178` |
+| OBL-0214 | `crates/orchestration/peritus-obligations/src/canonical/encode.rs:254` |
+| OBL-0215 | `crates/orchestration/peritus-obligations/src/qualification.rs:202` |
+| OBL-0216 | `crates/orchestration/peritus-run-knowledge/src/snapshot.rs:138` |
+| OBL-0217 | `crates/orchestration/peritus-run-knowledge/src/plan.rs:267` |
+| OBL-0218 | `crates/orchestration/peritus-run-knowledge/src/delta.rs:24` |
+| OBL-0219 | `crates/orchestration/peritus-run-settlement/src/checkpoint.rs:118` |
+| OBL-0220 | `crates/orchestration/peritus-run-settlement/src/reducer.rs:47` |
+| OBL-0221 | `crates/orchestration/peritus-run-settlement/src/reducer.rs:72` |
+| OBL-0222 | `crates/app/peritus-product-runner/src/accounting/usage.rs:127` |
+| OBL-0223 | `crates/orchestration/peritus-agent/src/usage.rs:150` |
+| OBL-0224 | `crates/app/peritus-product-runner/src/accounting/work.rs:95` |
+
+## Source and production-caller mapping
+
+| Proposed IDs | Proof-bearing production boundary | Actual caller connection |
+|---|---|---|
+| OBL-0209 | `OpaqueIdentifier::new` is the common constructor behind the nominal ID wrappers. | Production decoders and inputs call the wrappers, including scheduler/gates/review/collaboration wire readers, journal capsule decoding, CLI product arguments, and product-run qualification. |
+| OBL-0210 | `CapabilityName::new` defines the exact name grammar. | Tool catalogs and protocol decoders call it in `peritus-tools-{shell,quality,git,fs}`, `peritus-protocol`, and the workspace folder-mutation binding. |
+| OBL-0211 | `ResourceQuantity::checked_add` specifies exact sum or overflow. | The production sandbox resource accumulator calls it in `crates/runtime/peritus-sandbox/src/resource.rs`. This entry deliberately does not claim subtraction. |
+| OBL-0212 | `RevisionTuple::new` retains the seven-component authority identity. | Production wire decoders and binding code call it in scheduler, gates, review, collaboration, orchestrator, journal, evidence, approval, context, harness, and product-run command identity paths. |
+| OBL-0213, OBL-0214 | `RequirementLedger::extract_preimage` establishes successful extraction correspondence; `ledger_bytes` emits the modeled canonical preimage. | `RequirementLedger::extract` calls both before ordinary SHA-256. `peritus-gates/src/obligation.rs` and `peritus-product-runner/src/execution/obligations.rs` call the public extraction boundary. |
+| OBL-0215 | `peritus_obligations::qualify` binds exact input admission, report accounting, alternative completion, and error precedence/payload. | `peritus-gates/src/obligation.rs` and product-runner obligation/review phases call it; product review consumes the resulting `qualified()` decision. |
+| OBL-0216 | `RunKnowledgeSnapshot::new` enforces canonical, role-specific, dependency-ordered snapshot admission. | Product-runner resume knowledge constructs writer/reviewer/fixer snapshots through this boundary. |
+| OBL-0217 | `plan_invalidation` returns exact per-section decisions, accounting, and transitive invalidation closure. | `ProductRunResume::plan` calls it for the writer and active phase snapshot to select the resumed phase. |
+| OBL-0218 | `plan_delta_packet` binds exact packet content, delivery class, counts, and errors. | No non-test production caller was found in the current tree. Current callers are the run-knowledge and peritus-context test matrices. Registration is valid as an in-progress public-kernel obligation, but production binding remains open. |
+| OBL-0219 | `CandidateCheckpoint::new` validates exact candidate/evidence/stage input. | Product-runner checkpoint/resume/settlement code, daemon recovery/persistence, app-protocol wire decoding, and external settlement qualification call it. |
+| OBL-0220, OBL-0221 | `SettlementReducer::observe` and `SettlementReducer::settle` specify initial checkpoint admission, monotonic successor admission, exact rejection rollback, and exactly-once terminal selection. | Product-runner checkpoint/settlement paths, daemon recovery and settlement persistence, app-protocol wire decoding, and external settlement qualification call both methods. |
+| OBL-0222, OBL-0224 | Product accounting `apply_usage` atomically replaces response high-water usage; `apply_work` atomically applies one work event. | `RunAccounting::record_usage` and `record_work` call these kernels; `record_event` routes actual `DeveloperAccountingEvent` variants into them before ceiling checks. |
+| OBL-0223 | Agent `DeveloperUsage::apply_observation` atomically accumulates a normalized provider observation. | Public `DeveloperUsage::observe` adapts `UsageCounters` to it, and `developer/execution/provider_turn.rs` invokes that wrapper on provider-session high-water observations. |
+
+## Retained evidence used
+
+- Peritus obligations: durable `obligations-ledger-qualification` and `obligations-qualification-contracts` audits, review records, strict integrated logs, and all-feature test logs. The current qualification log reports 361 verified, 0 errors; the prior ledger qualification checkpoint reports 356 verified, 0 errors.
+- Run knowledge: durable `knowledge-admission`, `knowledge-plan`, `knowledge-delta`, and `knowledge-planner-errors` audits/reviews. Retained strict results include 216/0 admission, 214/0 delta, and 220/0 planner-error verification, with the package test matrices passing.
+- Run settlement: durable `settlement-domain` audit/review, isolated 71/0 proof, integrated proof chain, and 9/0 package tests.
+- Product accounting: `/tmp/peritus-product-accounting-verus-final.log`, `/tmp/peritus-independent-product-accounting-tests.log`, and `/tmp/peritus-product-accounting-final-hashes.txt`; the log contains the product-runner 34/0 proof result and the independent focused suite passed 16/0.
+- Agent usage: `/tmp/peritus-independent-usage-review-tests.log` passed the four usage regressions, and `/tmp/peritus-usage-regression-before.log` retains the failing pre-fix atomicity reproduction.
+- Peritus types: current source contracts and property tests were inspected. No dedicated retained independent-review bundle for these proposed type entries was found, so the entries remain in-progress and their full-package proof/test commands must be rerun and independently reviewed before discharge.
+
+All exact corrected-draft input identities are in `/tmp/peritus-sol-obligation-record-inputs-003.sha256`; its path list is `/tmp/peritus-sol-obligation-record-input-paths-003.txt`.
+
+## Boundaries and missing evidence
+
+- OBL-0213 claims exact success admission and success-state extraction correspondence only. Current shared `extract_preimage` still leaves `Err(_) => true`; it does not prove extraction error payload/precedence. The public SHA-256 call remains an ordinary cryptographic boundary.
+- OBL-0211 covers checked addition only. `ResourceQuantity::checked_sub`, one-based counter construction/increment, and exact digest-byte retention are valid additional peritus-types registration work; this draft does not imply they are absent from source proof or already registered.
+- OBL-0218 has no current production caller, so the proof does not establish that live product execution emits delta packets.
+- Settlement proofs cover the pure checkpoint/terminal reducer. They do not prove daemon transactions, persistence atomicity, wire authenticity, or full product-run liveness.
+- Product and agent atomicity proofs cover their named in-memory kernels and caller routing. They do not prove provider truthfulness, host-resource observation, durable persistence, or complete product-run budget enforcement.
+- The standalone agent usage Verus attempt in `/tmp/peritus-usage-verus-standalone.log` is not used as evidence because compiling the leaf outside its crate changed module visibility. The proposed package-wide command is the required proof locator.
+- Fresh independent reviewer provenance and the final registry integration/checker run are parent-owned follow-up. No approval or reviewer identity is fabricated here.

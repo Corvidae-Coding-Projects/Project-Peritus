@@ -1,0 +1,1555 @@
+diff -ruN /tmp/peritus-parent-role-policy-preimage/src/capability_view/validation.rs /tmp/peritus-parent-role-policy-source-02/src/capability_view/validation.rs
+--- /tmp/peritus-parent-role-policy-preimage/src/capability_view/validation.rs	1969-12-31 18:00:00.000000000 -0600
++++ /tmp/peritus-parent-role-policy-source-02/src/capability_view/validation.rs	2026-09-12 18:48:05.902940439 -0500
+@@ -0,0 +1,39 @@
++//! Per-position validation used by the production capability constructor.
++use super::operation_rank;
++#[cfg(verus_only)]
++use super::CapabilityView;
++use crate::{RoleError, RoleErrorKind};
++use peritus_policy::{ActorRole, OperationClass};
++use vstd::prelude::*;
++
++verus! {
++
++pub(super) fn validate_operation_at(
++    role: ActorRole,
++    operations: &[OperationClass],
++    index: usize,
++) -> (result: Result<(), RoleError>)
++    requires index < operations.len(),
++    ensures
++        result.is_ok() == CapabilityView::spec_operation_valid(role, operations@, index as int),
++        match result {
++            Err(error) => CapabilityView::spec_error_at(role, operations@, index as int, error),
++            Ok(()) => true,
++        },
++{
++    let operation = operations[index];
++    if !role.permits_operation(operation) {
++        return Err(RoleError::operation(RoleErrorKind::OperationNotPermitted, operation));
++    }
++    if index > 0 {
++        if operation_rank(operations[index - 1]) == operation_rank(operation) {
++            return Err(RoleError::operation(RoleErrorKind::DuplicateValue, operation));
++        }
++        if operation_rank(operations[index - 1]) > operation_rank(operation) {
++            return Err(RoleError::operation(RoleErrorKind::NonCanonicalOrder, operation));
++        }
++    }
++    Ok(())
++}
++
++} // verus!
+diff -ruN /tmp/peritus-parent-role-policy-preimage/src/capability_view.rs /tmp/peritus-parent-role-policy-source-02/src/capability_view.rs
+--- /tmp/peritus-parent-role-policy-preimage/src/capability_view.rs	2026-09-12 10:26:31.587518453 -0500
++++ /tmp/peritus-parent-role-policy-source-02/src/capability_view.rs	2026-09-12 18:51:25.988342906 -0500
+@@ -1,19 +1,84 @@
+ //! Read-only operation views that can only narrow B1 role permissions.
+ 
+-use crate::{RoleError, RoleErrorKind};
++use crate::RoleError;
++#[cfg(verus_only)]
++use crate::RoleErrorKind;
+ use peritus_policy::{ActorRole, OperationClass};
+ use vstd::prelude::*;
+ 
++mod validation;
++
+ verus! {
+ 
+ /// Canonically ordered operation classes exposed to one role profile.
+-#[derive(Clone, Debug, Eq, PartialEq)]
++#[derive(Debug, Eq, PartialEq)]
+ pub struct CapabilityView {
+     role: ActorRole,
+     operations: Vec<OperationClass>,
+ }
+ 
+ impl CapabilityView {
++    /// Complete input admission over exact permissions and canonical operation order.
++    pub open spec fn spec_valid(role: ActorRole, operations: Seq<OperationClass>) -> bool {
++        operations.len() > 0 && Self::spec_valid_through(role, operations, operations.len() as int)
++    }
++    /// One supplied operation is permitted and follows its predecessor canonically.
++    pub open spec fn spec_operation_valid(
++        role: ActorRole, operations: Seq<OperationClass>, index: int,
++    ) -> bool {
++        role.spec_permits_operation(operations[index])
++            && (index > 0 ==> operation_rank_spec(operations[index - 1])
++                < operation_rank_spec(operations[index]))
++    }
++    /// Every admitted operation and adjacent pair in a supplied input prefix.
++    pub open spec fn spec_valid_through(
++        role: ActorRole, operations: Seq<OperationClass>, end: int,
++    ) -> bool {
++        0 <= end <= operations.len()
++            && forall |index: int| 0 <= index < end ==>
++                Self::spec_operation_valid(role, operations, index)
++    }
++    /// Exact error at a supplied position, with permission checked before canonicality.
++    pub open spec fn spec_error_at(
++        role: ActorRole, operations: Seq<OperationClass>, index: int, error: RoleError,
++    ) -> bool {
++        if !role.spec_permits_operation(operations[index]) {
++            error.spec_operation_error(RoleErrorKind::OperationNotPermitted, operations[index])
++        } else {
++            index > 0 && if operations[index - 1] == operations[index] {
++                error.spec_operation_error(RoleErrorKind::DuplicateValue, operations[index])
++            } else {
++                operation_rank_spec(operations[index - 1]) > operation_rank_spec(operations[index])
++                    && error.spec_operation_error(RoleErrorKind::NonCanonicalOrder, operations[index])
++            }
++        }
++    }
++    /// Exact first input error and all optional error payload fields.
++    pub open spec fn spec_error(
++        role: ActorRole, operations: Seq<OperationClass>, error: RoleError,
++    ) -> bool {
++        if operations.len() == 0 {
++            error.spec_plain(RoleErrorKind::EmptyCollection)
++        } else {
++            exists |index: int| 0 <= index < operations.len()
++                && Self::spec_valid_through(role, operations, index)
++                && Self::spec_error_at(role, operations, index, error)
++        }
++    }
++    /// Exact ordered operation projection for each canonical security role.
++    pub open spec fn spec_role_operations(role: ActorRole) -> Seq<OperationClass> {
++        match role {
++            ActorRole::Writer | ActorRole::Fixer => [OperationClass::Inspection, OperationClass::WorkspaceMutation, OperationClass::Execution, OperationClass::Network, OperationClass::DependencyEnvironment, OperationClass::RepositoryHistoryMutation, OperationClass::SecretUse, OperationClass::ExternalSideEffect]@,
++            ActorRole::Reviewer | ActorRole::Plugin | ActorRole::HumanAuthority | ActorRole::ProviderToolWorker => Seq::empty().push(OperationClass::Inspection),
++            ActorRole::Evaluator | ActorRole::GateRunner | ActorRole::Orchestrator | ActorRole::DaemonService => [OperationClass::Inspection, OperationClass::Execution]@,
++            ActorRole::EvolutionAgent => [OperationClass::Inspection, OperationClass::WorkspaceMutation, OperationClass::Execution, OperationClass::Network, OperationClass::DependencyEnvironment]@,
++        }
++    }
++    /// Complete semantic equality of stored capability projections.
++    pub open spec fn clone_equivalent(left: &Self, right: &Self) -> bool {
++        left.spec_role() == right.spec_role() && left.spec_operations() == right.spec_operations()
++    }
++
+     /// Returns the exact ordered operation sequence used by specifications.
+     pub closed spec fn spec_operations(&self) -> Seq<OperationClass> { self.operations@ }
+ 
+@@ -36,6 +101,8 @@
+         operations: Vec<OperationClass>,
+     ) -> (result: Result<Self, RoleError>)
+         ensures
++            result.is_ok() == Self::spec_valid(role, operations@),
++            match result { Err(error) => Self::spec_error(role, operations@, error), Ok(_) => true },
+             result.is_ok() ==> result.unwrap().spec_is_narrow(),
+             result.is_ok() ==> result.unwrap().spec_role() == role,
+             result.is_ok() ==> result.unwrap().spec_operations() == operations@,
+@@ -47,31 +114,30 @@
+         while index < operations.len()
+             invariant
+                 index <= operations.len(),
+-                forall |prior: int| 0 <= prior < index ==>
+-                    role.spec_permits_operation(#[trigger] operations@[prior]),
++                Self::spec_valid_through(role, operations@, index as int),
+             decreases operations.len() - index,
+         {
+-            let operation = operations[index];
+-            if !role.permits_operation(operation) {
+-                return Err(RoleError::operation(RoleErrorKind::OperationNotPermitted, operation));
+-            }
+-            if index > 0 {
+-                if operations[index - 1] == operation {
+-                    return Err(RoleError::operation(RoleErrorKind::DuplicateValue, operation));
+-                }
+-                if operation_rank(operations[index - 1]) > operation_rank(operation) {
+-                    return Err(RoleError::operation(RoleErrorKind::NonCanonicalOrder, operation));
++            if let Err(error) = validation::validate_operation_at(role, operations.as_slice(), index) {
++                assert(Self::spec_error(role, operations@, error)) by {
++                    let first = index as int;
+                 }
++                return Err(error);
+             }
++            assert(Self::spec_valid_through(role, operations@, index as int + 1));
+             index += 1;
+         }
++        assert forall |prior: int| 0 <= prior < operations.len() implies
++            role.spec_permits_operation(#[trigger] operations@[prior]) by {
++            assert(Self::spec_operation_valid(role, operations@, prior));
++        }
+         let view = Self { role, operations };
+         reveal(CapabilityView::spec_operations);
+         Ok(view)
+     }
+ 
+     pub(crate) fn for_role(role: ActorRole) -> (result: Self)
+-        ensures result.spec_is_narrow(),
++        ensures result.spec_is_narrow(), result.spec_role() == role,
++            result.spec_operations() == Self::spec_role_operations(role),
+     {
+         let operations = match role {
+             ActorRole::Writer | ActorRole::Fixer => vec![
+@@ -184,7 +250,7 @@
+     }
+ }
+ 
+-spec fn operation_rank_spec(operation: OperationClass) -> u8 {
++pub open spec fn operation_rank_spec(operation: OperationClass) -> u8 {
+     match operation {
+         OperationClass::Inspection => 0,
+         OperationClass::WorkspaceMutation => 1,
+@@ -224,4 +290,10 @@
+     }
+ }
+ 
++impl Clone for CapabilityView {
++    fn clone(&self) -> (result: Self)
++        ensures Self::clone_equivalent(self, &result),
++    { Self { role: self.role, operations: self.operations.clone() } }
++}
++
+ } // verus!
+diff -ruN /tmp/peritus-parent-role-policy-preimage/src/context_class.rs /tmp/peritus-parent-role-policy-source-02/src/context_class.rs
+--- /tmp/peritus-parent-role-policy-preimage/src/context_class.rs	2026-09-12 10:14:53.602525103 -0500
++++ /tmp/peritus-parent-role-policy-source-02/src/context_class.rs	2026-09-12 18:42:14.603150615 -0500
+@@ -39,7 +39,29 @@
+ }
+ 
+ impl ContextClass {
+-    pub(crate) const fn rank(self) -> u8 {
++    /// Canonical ordinal of every semantic context class.
++    pub open spec fn spec_rank(self) -> u8 {
++        match self {
++            Self::ImmutablePolicy => 0,
++            Self::AcceptanceSpecification => 1,
++            Self::ActiveUserRequest => 2,
++            Self::RepositoryInstructions => 3,
++            Self::RepositorySource => 4,
++            Self::CandidateDiff => 5,
++            Self::WorkspaceState => 6,
++            Self::GateEvidence => 7,
++            Self::ToolObservation => 8,
++            Self::MemoryEvidence => 9,
++            Self::PriorFinding => 10,
++            Self::FindingResolution => 11,
++            Self::AgentProgress => 12,
++            Self::HiddenReasoning => 13,
++        }
++    }
++
++    pub(crate) const fn rank(self) -> (rank: u8)
++        ensures rank == self.spec_rank(),
++    {
+         match self {
+             Self::ImmutablePolicy => 0,
+             Self::AcceptanceSpecification => 1,
+@@ -60,59 +82,114 @@
+ }
+ 
+ /// Nonempty canonical set of context classes.
+-#[derive(Clone, Debug, Eq, PartialEq)]
++#[derive(Debug, Eq, PartialEq)]
+ pub struct ContextClassSet {
+     values: Vec<ContextClass>,
+ }
+ 
+ impl ContextClassSet {
++    /// Exact ordered class sequence stored by this set.
++    pub closed spec fn spec_values(&self) -> Seq<ContextClass> { self.values@ }
++
++    /// Canonical admission predicate over the supplied sequence.
++    pub open spec fn spec_valid(values: Seq<ContextClass>) -> bool {
++        values.len() > 0 && forall |index: int| 0 < index < values.len() ==>
++            #[trigger] values[index - 1].spec_rank() < #[trigger] values[index].spec_rank()
++    }
++
++    /// Exact first invalid pair, including the rejected current class.
++    pub open spec fn spec_error(values: Seq<ContextClass>, error: RoleError) -> bool {
++        if values.len() == 0 {
++            error.spec_plain(RoleErrorKind::EmptyCollection)
++        } else {
++            exists |index: int| #![trigger values[index].spec_rank()]
++                0 < index < values.len()
++                && (forall |prior: int| 0 < prior < index ==>
++                    #[trigger] values[prior - 1].spec_rank() < #[trigger] values[prior].spec_rank())
++                && if values[index - 1] == values[index] {
++                    error.spec_class_error(RoleErrorKind::DuplicateValue, values[index])
++                } else {
++                    values[index - 1].spec_rank() > values[index].spec_rank()
++                        && error.spec_class_error(RoleErrorKind::NonCanonicalOrder, values[index])
++                }
++        }
++    }
++
+     /// Validates a nonempty, strictly increasing class sequence.
+     ///
+     /// # Errors
+     ///
+     /// Returns a typed error for an empty, duplicate, or noncanonical sequence.
+-    pub fn new(values: Vec<ContextClass>) -> Result<Self, RoleError> {
++    pub fn new(values: Vec<ContextClass>) -> (result: Result<Self, RoleError>)
++        ensures
++            result.is_ok() == Self::spec_valid(values@),
++            match result {
++                Ok(set) => set.spec_values() == values@,
++                Err(error) => Self::spec_error(values@, error),
++            },
++    {
+         if values.is_empty() {
+             return Err(RoleError::empty_collection());
+         }
+         let mut index = 1;
+         while index < values.len()
+-            invariant 1 <= index <= values.len(),
++            invariant
++                1 <= index <= values.len(),
++                forall |prior: int| 0 < prior < index ==>
++                    #[trigger] values@[prior - 1].spec_rank() < #[trigger] values@[prior].spec_rank(),
+             decreases values.len() - index,
+         {
+-            if values[index - 1] == values[index] {
+-                return Err(RoleError::context_class(RoleErrorKind::DuplicateValue, values[index]));
++            if values[index - 1].rank() == values[index].rank() {
++                let error = RoleError::context_class(RoleErrorKind::DuplicateValue, values[index]);
++                assert(Self::spec_error(values@, error)) by {
++                    let first = index as int;
++                    assert(values@[first - 1] == values@[first]);
++                }
++                return Err(error);
+             }
+             if values[index - 1].rank() > values[index].rank() {
+-                return Err(RoleError::context_class(
++                let error = RoleError::context_class(
+                     RoleErrorKind::NonCanonicalOrder,
+                     values[index],
+-                ));
++                );
++                assert(Self::spec_error(values@, error)) by {
++                    let first = index as int;
++                    assert(values@[first - 1].spec_rank() > values@[first].spec_rank());
++                }
++                return Err(error);
+             }
+             index += 1;
+         }
+         Ok(Self { values })
+     }
+ 
+-    pub(crate) const fn from_canonical(values: Vec<ContextClass>) -> Self {
++    pub(crate) const fn from_canonical(values: Vec<ContextClass>) -> (set: Self)
++        ensures set.spec_values() == values@,
++    {
+         Self { values }
+     }
+ 
+     /// Returns the classes in canonical order.
+     #[must_use]
+-    pub const fn values(&self) -> &[ContextClass] {
++    pub const fn values(&self) -> (values: &[ContextClass])
++        ensures values@ == self.spec_values(),
++    {
+         self.values.as_slice()
+     }
+ 
+     /// Returns whether the set contains `class`.
+     #[must_use]
+-    pub fn contains(&self, class: ContextClass) -> bool {
++    pub fn contains(&self, class: ContextClass) -> (contains: bool)
++        ensures contains == self.spec_values().contains(class),
++    {
+         let mut index = 0;
+         while index < self.values.len()
+-            invariant index <= self.values.len(),
++            invariant
++                index <= self.values.len(),
++                forall |prior: int| 0 <= prior < index ==> self.values@[prior] != class,
+             decreases self.values.len() - index,
+         {
+-            if self.values[index] == class {
++            if self.values[index].rank() == class.rank() {
+                 return true;
+             }
+             index += 1;
+@@ -121,4 +198,10 @@
+     }
+ }
+ 
++impl Clone for ContextClassSet {
++    fn clone(&self) -> (result: Self)
++        ensures result.spec_values() == self.spec_values(),
++    { Self { values: self.values.clone() } }
++}
++
+ } // verus!
+diff -ruN /tmp/peritus-parent-role-policy-preimage/src/context_policy/model.rs /tmp/peritus-parent-role-policy-source-02/src/context_policy/model.rs
+--- /tmp/peritus-parent-role-policy-preimage/src/context_policy/model.rs	1969-12-31 18:00:00.000000000 -0600
++++ /tmp/peritus-parent-role-policy-source-02/src/context_policy/model.rs	2026-09-12 18:51:25.988486713 -0500
+@@ -0,0 +1,52 @@
++//! Input-defined complete role policy tables.
++use super::{ContextClass, PresentationStyle};
++use peritus_policy::ActorRole;
++use vstd::prelude::*;
++
++verus! {
++/// Exact canonical visible class sequence for a supplied role.
++pub open spec fn visible(role: ActorRole) -> Seq<ContextClass> {
++    match role {
++        ActorRole::Writer | ActorRole::Fixer | ActorRole::EvolutionAgent => [ContextClass::ImmutablePolicy, ContextClass::AcceptanceSpecification, ContextClass::ActiveUserRequest, ContextClass::RepositoryInstructions, ContextClass::RepositorySource, ContextClass::CandidateDiff, ContextClass::WorkspaceState, ContextClass::GateEvidence, ContextClass::ToolObservation, ContextClass::MemoryEvidence, ContextClass::PriorFinding, ContextClass::FindingResolution, ContextClass::AgentProgress, ContextClass::HiddenReasoning]@,
++        ActorRole::Reviewer => [ContextClass::ImmutablePolicy, ContextClass::AcceptanceSpecification, ContextClass::ActiveUserRequest, ContextClass::RepositoryInstructions, ContextClass::RepositorySource, ContextClass::CandidateDiff, ContextClass::WorkspaceState, ContextClass::GateEvidence, ContextClass::ToolObservation, ContextClass::PriorFinding, ContextClass::FindingResolution, ContextClass::AgentProgress]@,
++        ActorRole::Evaluator => [ContextClass::ImmutablePolicy, ContextClass::AcceptanceSpecification, ContextClass::ActiveUserRequest, ContextClass::RepositorySource, ContextClass::CandidateDiff, ContextClass::WorkspaceState, ContextClass::GateEvidence, ContextClass::ToolObservation, ContextClass::MemoryEvidence, ContextClass::PriorFinding, ContextClass::FindingResolution, ContextClass::AgentProgress]@,
++        ActorRole::GateRunner => [ContextClass::ImmutablePolicy, ContextClass::AcceptanceSpecification, ContextClass::WorkspaceState, ContextClass::GateEvidence, ContextClass::ToolObservation, ContextClass::AgentProgress]@,
++        _ => [ContextClass::ImmutablePolicy, ContextClass::WorkspaceState, ContextClass::AgentProgress]@,
++    }
++}
++
++/// Exact canonical required class sequence for a supplied role.
++pub open spec fn required(role: ActorRole) -> Seq<ContextClass> {
++    match role {
++        ActorRole::Writer | ActorRole::EvolutionAgent => [ContextClass::ImmutablePolicy, ContextClass::AcceptanceSpecification, ContextClass::ActiveUserRequest, ContextClass::RepositorySource, ContextClass::WorkspaceState]@,
++        ActorRole::Fixer => [ContextClass::ImmutablePolicy, ContextClass::AcceptanceSpecification, ContextClass::ActiveUserRequest, ContextClass::RepositorySource, ContextClass::WorkspaceState, ContextClass::PriorFinding]@,
++        ActorRole::Reviewer => [ContextClass::ImmutablePolicy, ContextClass::AcceptanceSpecification, ContextClass::ActiveUserRequest, ContextClass::RepositorySource, ContextClass::CandidateDiff, ContextClass::GateEvidence]@,
++        ActorRole::Evaluator => [ContextClass::ImmutablePolicy, ContextClass::AcceptanceSpecification, ContextClass::ActiveUserRequest, ContextClass::RepositorySource, ContextClass::CandidateDiff, ContextClass::WorkspaceState, ContextClass::GateEvidence]@,
++        ActorRole::GateRunner => [ContextClass::ImmutablePolicy, ContextClass::AcceptanceSpecification, ContextClass::WorkspaceState, ContextClass::GateEvidence]@,
++        _ => [ContextClass::ImmutablePolicy, ContextClass::WorkspaceState]@,
++    }
++}
++
++/// Exact canonical contributable class sequence for a supplied role.
++pub open spec fn contributable(role: ActorRole) -> Seq<ContextClass> {
++    match role {
++        ActorRole::Writer | ActorRole::Fixer => [ContextClass::RepositorySource, ContextClass::CandidateDiff, ContextClass::WorkspaceState, ContextClass::GateEvidence, ContextClass::ToolObservation, ContextClass::AgentProgress, ContextClass::HiddenReasoning]@,
++        ActorRole::Reviewer => [ContextClass::ToolObservation, ContextClass::PriorFinding, ContextClass::AgentProgress]@,
++        ActorRole::Evaluator => [ContextClass::GateEvidence, ContextClass::ToolObservation, ContextClass::AgentProgress]@,
++        ActorRole::EvolutionAgent => [ContextClass::RepositorySource, ContextClass::CandidateDiff, ContextClass::WorkspaceState, ContextClass::GateEvidence, ContextClass::ToolObservation, ContextClass::MemoryEvidence, ContextClass::PriorFinding, ContextClass::FindingResolution, ContextClass::AgentProgress, ContextClass::HiddenReasoning]@,
++        _ => Seq::empty().push(ContextClass::AgentProgress),
++    }
++}
++
++/// Exact presentation style selected by role.
++pub open spec fn style(role: ActorRole) -> PresentationStyle {
++    match role {
++        ActorRole::Writer => PresentationStyle::Implementation,
++        ActorRole::Reviewer => PresentationStyle::AdversarialReview,
++        ActorRole::Fixer => PresentationStyle::FindingResolution,
++        ActorRole::Evaluator => PresentationStyle::IsolatedEvaluation,
++        ActorRole::EvolutionAgent => PresentationStyle::HarnessEvolution,
++        _ => PresentationStyle::Restricted,
++    }
++}
++} // verus!
+diff -ruN /tmp/peritus-parent-role-policy-preimage/src/context_policy/tables.rs /tmp/peritus-parent-role-policy-source-02/src/context_policy/tables.rs
+--- /tmp/peritus-parent-role-policy-preimage/src/context_policy/tables.rs	1969-12-31 18:00:00.000000000 -0600
++++ /tmp/peritus-parent-role-policy-source-02/src/context_policy/tables.rs	2026-09-12 18:49:20.210379969 -0500
+@@ -0,0 +1,259 @@
++//! Production context-policy constructors and canonical tables.
++use super::{ContextPolicy, ContextClassSet, ContextClass, MemoryVisibility,
++    ReasoningVisibility, PresentationProfile, PresentationStyle};
++use peritus_policy::ActorRole;
++#[cfg(verus_only)]
++use super::model;
++use vstd::prelude::*;
++
++verus! {
++pub(super) fn policy_for(role: ActorRole) -> (policy: ContextPolicy)
++    ensures policy.spec_for_role(role),
++{
++    match role {
++        ActorRole::Writer => writer_policy(),
++        ActorRole::Reviewer => reviewer_policy(),
++        ActorRole::Fixer => fixer_policy(),
++        ActorRole::Evaluator => evaluator_policy(),
++        ActorRole::EvolutionAgent => evolver_policy(),
++        _ => restricted_policy(role),
++    }
++}
++
++fn writer_policy() -> (policy: ContextPolicy)
++    ensures policy.spec_for_role(ActorRole::Writer),
++{
++    ContextPolicy {
++        visible: ContextClassSet::from_canonical(all_classes()),
++        contributable: ContextClassSet::from_canonical(vec![
++            ContextClass::RepositorySource,
++            ContextClass::CandidateDiff,
++            ContextClass::WorkspaceState,
++            ContextClass::GateEvidence,
++            ContextClass::ToolObservation,
++            ContextClass::AgentProgress,
++            ContextClass::HiddenReasoning,
++        ]),
++        required: base_required(),
++        fresh_context: false,
++        memory_visibility: MemoryVisibility::EvidenceBacked,
++        reasoning_visibility: ReasoningVisibility::SameLineageOnly,
++        allow_producer_ancestry: true,
++        presentation: PresentationProfile::new(PresentationStyle::Implementation),
++    }
++}
++
++fn reviewer_policy() -> (policy: ContextPolicy)
++    ensures policy.spec_for_role(ActorRole::Reviewer),
++{
++    ContextPolicy {
++        visible: ContextClassSet::from_canonical(vec![
++            ContextClass::ImmutablePolicy,
++            ContextClass::AcceptanceSpecification,
++            ContextClass::ActiveUserRequest,
++            ContextClass::RepositoryInstructions,
++            ContextClass::RepositorySource,
++            ContextClass::CandidateDiff,
++            ContextClass::WorkspaceState,
++            ContextClass::GateEvidence,
++            ContextClass::ToolObservation,
++            ContextClass::PriorFinding,
++            ContextClass::FindingResolution,
++            ContextClass::AgentProgress,
++        ]),
++        contributable: ContextClassSet::from_canonical(vec![
++            ContextClass::ToolObservation,
++            ContextClass::PriorFinding,
++            ContextClass::AgentProgress,
++        ]),
++        required: ContextClassSet::from_canonical(vec![
++            ContextClass::ImmutablePolicy,
++            ContextClass::AcceptanceSpecification,
++            ContextClass::ActiveUserRequest,
++            ContextClass::RepositorySource,
++            ContextClass::CandidateDiff,
++            ContextClass::GateEvidence,
++        ]),
++        fresh_context: true,
++        memory_visibility: MemoryVisibility::Excluded,
++        reasoning_visibility: ReasoningVisibility::Excluded,
++        allow_producer_ancestry: false,
++        presentation: PresentationProfile::new(PresentationStyle::AdversarialReview),
++    }
++}
++
++fn fixer_policy() -> (policy: ContextPolicy)
++    ensures policy.spec_for_role(ActorRole::Fixer),
++{
++    let mut policy = writer_policy();
++    policy.required = ContextClassSet::from_canonical(vec![
++        ContextClass::ImmutablePolicy,
++        ContextClass::AcceptanceSpecification,
++        ContextClass::ActiveUserRequest,
++        ContextClass::RepositorySource,
++        ContextClass::WorkspaceState,
++        ContextClass::PriorFinding,
++    ]);
++    policy.presentation = PresentationProfile::new(PresentationStyle::FindingResolution);
++    policy
++}
++
++fn evaluator_policy() -> (policy: ContextPolicy)
++    ensures policy.spec_for_role(ActorRole::Evaluator),
++{
++    ContextPolicy {
++        visible: ContextClassSet::from_canonical(vec![
++            ContextClass::ImmutablePolicy,
++            ContextClass::AcceptanceSpecification,
++            ContextClass::ActiveUserRequest,
++            ContextClass::RepositorySource,
++            ContextClass::CandidateDiff,
++            ContextClass::WorkspaceState,
++            ContextClass::GateEvidence,
++            ContextClass::ToolObservation,
++            ContextClass::MemoryEvidence,
++            ContextClass::PriorFinding,
++            ContextClass::FindingResolution,
++            ContextClass::AgentProgress,
++        ]),
++        contributable: ContextClassSet::from_canonical(vec![
++            ContextClass::GateEvidence,
++            ContextClass::ToolObservation,
++            ContextClass::AgentProgress,
++        ]),
++        required: ContextClassSet::from_canonical(vec![
++            ContextClass::ImmutablePolicy,
++            ContextClass::AcceptanceSpecification,
++            ContextClass::ActiveUserRequest,
++            ContextClass::RepositorySource,
++            ContextClass::CandidateDiff,
++            ContextClass::WorkspaceState,
++            ContextClass::GateEvidence,
++        ]),
++        fresh_context: true,
++        memory_visibility: MemoryVisibility::EvidenceBacked,
++        reasoning_visibility: ReasoningVisibility::Excluded,
++        allow_producer_ancestry: false,
++        presentation: PresentationProfile::new(PresentationStyle::IsolatedEvaluation),
++    }
++}
++
++fn evolver_policy() -> (policy: ContextPolicy)
++    ensures policy.spec_for_role(ActorRole::EvolutionAgent),
++{
++    ContextPolicy {
++        visible: ContextClassSet::from_canonical(all_classes()),
++        contributable: ContextClassSet::from_canonical(vec![
++            ContextClass::RepositorySource,
++            ContextClass::CandidateDiff,
++            ContextClass::WorkspaceState,
++            ContextClass::GateEvidence,
++            ContextClass::ToolObservation,
++            ContextClass::MemoryEvidence,
++            ContextClass::PriorFinding,
++            ContextClass::FindingResolution,
++            ContextClass::AgentProgress,
++            ContextClass::HiddenReasoning,
++        ]),
++        required: base_required(),
++        fresh_context: true,
++        memory_visibility: MemoryVisibility::EvidenceBacked,
++        reasoning_visibility: ReasoningVisibility::SameLineageOnly,
++        allow_producer_ancestry: true,
++        presentation: PresentationProfile::new(PresentationStyle::HarnessEvolution),
++    }
++}
++
++fn restricted_policy(role: ActorRole) -> (policy: ContextPolicy)
++    ensures !matches!(role, ActorRole::Writer | ActorRole::Reviewer | ActorRole::Fixer
++        | ActorRole::Evaluator | ActorRole::EvolutionAgent) ==> policy.spec_for_role(role),
++{
++    let visible = match role {
++        ActorRole::GateRunner => vec![
++            ContextClass::ImmutablePolicy,
++            ContextClass::AcceptanceSpecification,
++            ContextClass::WorkspaceState,
++            ContextClass::GateEvidence,
++            ContextClass::ToolObservation,
++            ContextClass::AgentProgress,
++        ],
++        _ => vec![
++            ContextClass::ImmutablePolicy,
++            ContextClass::WorkspaceState,
++            ContextClass::AgentProgress,
++        ],
++    };
++    assert(!matches!(role, ActorRole::Writer | ActorRole::Reviewer | ActorRole::Fixer
++        | ActorRole::Evaluator | ActorRole::EvolutionAgent) ==> visible@ == model::visible(role));
++    let required = match role {
++        ActorRole::GateRunner => vec![
++            ContextClass::ImmutablePolicy,
++            ContextClass::AcceptanceSpecification,
++            ContextClass::WorkspaceState,
++            ContextClass::GateEvidence,
++        ],
++        _ => vec![ContextClass::ImmutablePolicy, ContextClass::WorkspaceState],
++    };
++    assert(!matches!(role, ActorRole::Writer | ActorRole::Reviewer | ActorRole::Fixer
++        | ActorRole::Evaluator | ActorRole::EvolutionAgent) ==> required@ == model::required(role));
++    let policy = ContextPolicy {
++        required: ContextClassSet::from_canonical(required),
++        visible: ContextClassSet::from_canonical(visible),
++        contributable: ContextClassSet::from_canonical(vec![ContextClass::AgentProgress]),
++        fresh_context: true,
++        memory_visibility: MemoryVisibility::Excluded,
++        reasoning_visibility: ReasoningVisibility::Excluded,
++        allow_producer_ancestry: false,
++        presentation: PresentationProfile::new(PresentationStyle::Restricted),
++    };
++    proof {
++        if !matches!(role, ActorRole::Writer | ActorRole::Reviewer | ActorRole::Fixer
++            | ActorRole::Evaluator | ActorRole::EvolutionAgent) {
++            assert(policy.spec_visible().spec_values() == model::visible(role));
++            assert(policy.spec_required().spec_values() == model::required(role));
++            assert(policy.spec_contributable().spec_values() == model::contributable(role));
++            assert(policy.spec_fresh_context());
++            assert(policy.spec_memory_visibility() == MemoryVisibility::Excluded);
++            assert(policy.spec_reasoning_visibility() == ReasoningVisibility::Excluded);
++            assert(!policy.spec_allow_producer_ancestry());
++            assert(policy.spec_presentation().spec_for_style(model::style(role)));
++            assert(policy.spec_for_role(role));
++        }
++    }
++    policy
++}
++
++fn base_required() -> (set: ContextClassSet)
++    ensures set.spec_values() == model::required(ActorRole::Writer),
++{
++    ContextClassSet::from_canonical(vec![
++        ContextClass::ImmutablePolicy,
++        ContextClass::AcceptanceSpecification,
++        ContextClass::ActiveUserRequest,
++        ContextClass::RepositorySource,
++        ContextClass::WorkspaceState,
++    ])
++}
++
++fn all_classes() -> (classes: Vec<ContextClass>)
++    ensures classes@ == model::visible(ActorRole::Writer),
++{
++    vec![
++        ContextClass::ImmutablePolicy,
++        ContextClass::AcceptanceSpecification,
++        ContextClass::ActiveUserRequest,
++        ContextClass::RepositoryInstructions,
++        ContextClass::RepositorySource,
++        ContextClass::CandidateDiff,
++        ContextClass::WorkspaceState,
++        ContextClass::GateEvidence,
++        ContextClass::ToolObservation,
++        ContextClass::MemoryEvidence,
++        ContextClass::PriorFinding,
++        ContextClass::FindingResolution,
++        ContextClass::AgentProgress,
++        ContextClass::HiddenReasoning,
++    ]
++}
++
++} // verus!
+diff -ruN /tmp/peritus-parent-role-policy-preimage/src/context_policy.rs /tmp/peritus-parent-role-policy-source-02/src/context_policy.rs
+--- /tmp/peritus-parent-role-policy-preimage/src/context_policy.rs	2026-09-12 10:14:53.602525103 -0500
++++ /tmp/peritus-parent-role-policy-source-02/src/context_policy.rs	2026-09-12 18:39:58.331447282 -0500
+@@ -7,6 +7,11 @@
+ use peritus_policy::ActorRole;
+ use vstd::prelude::*;
+ 
++#[cfg(verus_only)]
++mod model;
++mod tables;
++use tables::policy_for;
++
+ verus! {
+ 
+ /// Whether scoped derived memory may be selected for the role.
+@@ -28,7 +33,7 @@
+ }
+ 
+ /// Complete immutable context policy for a B1 role.
+-#[derive(Clone, Debug, Eq, PartialEq)]
++#[derive(Debug, Eq, PartialEq)]
+ pub struct ContextPolicy {
+     visible: ContextClassSet,
+     contributable: ContextClassSet,
+@@ -41,41 +46,102 @@
+ }
+ 
+ impl ContextPolicy {
++    /// Exact stored visible.
++    pub closed spec fn spec_visible(&self) -> ContextClassSet { self.visible }
++    /// Exact stored contributable.
++    pub closed spec fn spec_contributable(&self) -> ContextClassSet { self.contributable }
++    /// Exact stored required.
++    pub closed spec fn spec_required(&self) -> ContextClassSet { self.required }
++    /// Exact stored fresh context.
++    pub closed spec fn spec_fresh_context(&self) -> bool { self.fresh_context }
++    /// Exact stored memory visibility.
++    pub closed spec fn spec_memory_visibility(&self) -> MemoryVisibility { self.memory_visibility }
++    /// Exact stored reasoning visibility.
++    pub closed spec fn spec_reasoning_visibility(&self) -> ReasoningVisibility { self.reasoning_visibility }
++    /// Exact stored allow producer ancestry.
++    pub closed spec fn spec_allow_producer_ancestry(&self) -> bool { self.allow_producer_ancestry }
++    /// Exact stored presentation.
++    pub closed spec fn spec_presentation(&self) -> PresentationProfile { self.presentation }
++    /// Complete deterministic context policy for a supplied canonical role.
++    pub open spec fn spec_for_role(&self, role: ActorRole) -> bool {
++        &&& self.spec_visible().spec_values() == model::visible(role)
++        &&& self.spec_contributable().spec_values() == model::contributable(role)
++        &&& self.spec_required().spec_values() == model::required(role)
++        &&& self.spec_fresh_context() == !matches!(role, ActorRole::Writer | ActorRole::Fixer)
++        &&& self.spec_memory_visibility() == if matches!(role,
++            ActorRole::Writer | ActorRole::Fixer | ActorRole::Evaluator | ActorRole::EvolutionAgent) {
++            MemoryVisibility::EvidenceBacked } else { MemoryVisibility::Excluded }
++        &&& self.spec_reasoning_visibility() == if matches!(role,
++            ActorRole::Writer | ActorRole::Fixer | ActorRole::EvolutionAgent) {
++            ReasoningVisibility::SameLineageOnly } else { ReasoningVisibility::Excluded }
++        &&& self.spec_allow_producer_ancestry() == matches!(role,
++            ActorRole::Writer | ActorRole::Fixer | ActorRole::EvolutionAgent)
++        &&& self.spec_presentation().spec_for_style(model::style(role))
++    }
++
++    /// Complete semantic equality of context-policy fields.
++    pub open spec fn clone_equivalent(left: &Self, right: &Self) -> bool {
++        &&& left.spec_visible().spec_values() == right.spec_visible().spec_values()
++        &&& left.spec_contributable().spec_values() == right.spec_contributable().spec_values()
++        &&& left.spec_required().spec_values() == right.spec_required().spec_values()
++        &&& left.spec_fresh_context() == right.spec_fresh_context()
++        &&& left.spec_memory_visibility() == right.spec_memory_visibility()
++        &&& left.spec_reasoning_visibility() == right.spec_reasoning_visibility()
++        &&& left.spec_allow_producer_ancestry() == right.spec_allow_producer_ancestry()
++        &&& left.spec_presentation() == right.spec_presentation()
++    }
++
+     /// Returns visible context classes.
+     #[must_use]
+-    pub const fn visible(&self) -> &ContextClassSet { &self.visible }
++    pub const fn visible(&self) -> (value: &ContextClassSet)
++        ensures *value == self.spec_visible(),
++    { &self.visible }
+ 
+     /// Returns context classes the role may contribute as non-authoritative data.
+     #[must_use]
+-    pub const fn contributable(&self) -> &ContextClassSet { &self.contributable }
++    pub const fn contributable(&self) -> (value: &ContextClassSet)
++        ensures *value == self.spec_contributable(),
++    { &self.contributable }
+ 
+     /// Returns classes that a complete role context requires.
+     #[must_use]
+-    pub const fn required(&self) -> &ContextClassSet { &self.required }
++    pub const fn required(&self) -> (value: &ContextClassSet)
++        ensures *value == self.spec_required(),
++    { &self.required }
+ 
+     /// Whether the context must start without inherited model conversation state.
+     #[must_use]
+-    pub const fn requires_fresh_context(&self) -> bool { self.fresh_context }
++    pub const fn requires_fresh_context(&self) -> (value: bool)
++        ensures value == self.spec_fresh_context(),
++    { self.fresh_context }
+ 
+     /// Returns the memory visibility rule.
+     #[must_use]
+-    pub const fn memory_visibility(&self) -> MemoryVisibility { self.memory_visibility }
++    pub const fn memory_visibility(&self) -> (value: MemoryVisibility)
++        ensures value == self.spec_memory_visibility(),
++    { self.memory_visibility }
+ 
+     /// Returns the hidden-reasoning visibility rule.
+     #[must_use]
+-    pub const fn reasoning_visibility(&self) -> ReasoningVisibility { self.reasoning_visibility }
++    pub const fn reasoning_visibility(&self) -> (value: ReasoningVisibility)
++        ensures value == self.spec_reasoning_visibility(),
++    { self.reasoning_visibility }
+ 
+     /// Whether causal ancestry from the producing context may be included.
+     #[must_use]
+-    pub const fn allows_producer_ancestry(&self) -> bool { self.allow_producer_ancestry }
++    pub const fn allows_producer_ancestry(&self) -> (value: bool)
++        ensures value == self.spec_allow_producer_ancestry(),
++    { self.allow_producer_ancestry }
+ 
+     /// Returns provider-neutral presentation policy.
+     #[must_use]
+-    pub const fn presentation(&self) -> PresentationProfile { self.presentation }
++    pub const fn presentation(&self) -> (value: PresentationProfile)
++        ensures value == self.spec_presentation(),
++    { self.presentation }
+ }
+ 
+ /// One canonical B1 role with its complete C6 context and capability projections.
+-#[derive(Clone, Debug, Eq, PartialEq)]
++#[derive(Debug, Eq, PartialEq)]
+ pub struct RoleProfile {
+     actor_role: ActorRole,
+     harness_role: Option<HarnessRole>,
+@@ -84,12 +150,37 @@
+ }
+ 
+ impl RoleProfile {
++    /// Exact role identity stored in the profile.
++    pub closed spec fn spec_actor_role(&self) -> ActorRole { self.actor_role }
++    /// Exact optional agent-loop role identity.
++    pub closed spec fn spec_harness_role(&self) -> Option<HarnessRole> { self.harness_role }
++    /// Exact stored context policy.
++    pub closed spec fn spec_context(&self) -> ContextPolicy { self.context }
++    /// Complete deterministic profile for a supplied canonical role.
++    pub open spec fn spec_for_role(&self, role: ActorRole) -> bool {
++        self.spec_actor_role() == role
++            && self.spec_harness_role() == HarnessRole::spec_from_actor_role(role)
++            && self.spec_context().spec_for_role(role)
++            && self.spec_capabilities().spec_role() == role
++            && self.spec_capabilities().spec_operations() == CapabilityView::spec_role_operations(role)
++            && self.spec_capabilities().spec_is_narrow()
++    }
++    /// Complete semantic equality of every role-profile field.
++    pub open spec fn clone_equivalent(left: &Self, right: &Self) -> bool {
++        left.spec_actor_role() == right.spec_actor_role()
++            && left.spec_harness_role() == right.spec_harness_role()
++            && ContextPolicy::clone_equivalent(&left.spec_context(), &right.spec_context())
++            && CapabilityView::clone_equivalent(&left.spec_capabilities(), &right.spec_capabilities())
++    }
++
+     /// Returns the exact capability view used by specifications.
+     pub closed spec fn spec_capabilities(&self) -> CapabilityView { self.capabilities }
+ 
+     /// Builds the deterministic profile for any canonical B1 role.
+     #[must_use]
+-    pub fn for_actor_role(actor_role: ActorRole) -> Self {
++    pub fn for_actor_role(actor_role: ActorRole) -> (profile: Self)
++        ensures profile.spec_for_role(actor_role),
++    {
+         let harness_role = HarnessRole::from_actor_role(actor_role);
+         let context = policy_for(actor_role);
+         let capabilities = CapabilityView::for_role(actor_role);
+@@ -98,236 +189,66 @@
+ 
+     /// Builds the deterministic profile for a harness role.
+     #[must_use]
+-    pub fn for_harness_role(role: HarnessRole) -> Self {
++    pub fn for_harness_role(role: HarnessRole) -> (profile: Self)
++        ensures profile.spec_for_role(role.spec_actor_role()), profile.spec_harness_role() == Some(role),
++    {
+         Self::for_actor_role(role.actor_role())
+     }
+ 
+     /// Returns the canonical B1 role.
+     #[must_use]
+-    pub const fn actor_role(&self) -> ActorRole { self.actor_role }
++    pub const fn actor_role(&self) -> (value: ActorRole)
++        ensures value == self.spec_actor_role(),
++    { self.actor_role }
+ 
+     /// Returns the direct harness role, if this is an agent-loop profile.
+     #[must_use]
+-    pub const fn harness_role(&self) -> Option<HarnessRole> { self.harness_role }
++    pub const fn harness_role(&self) -> (value: Option<HarnessRole>)
++        ensures value == self.spec_harness_role(),
++    { self.harness_role }
+ 
+     /// Returns the immutable context policy.
+     #[must_use]
+-    pub const fn context(&self) -> &ContextPolicy { &self.context }
++    pub const fn context(&self) -> (value: &ContextPolicy)
++        ensures *value == self.spec_context(),
++    { &self.context }
+ 
+     /// Returns the non-widening capability view.
+     #[must_use]
+-    pub const fn capabilities(&self) -> &CapabilityView { &self.capabilities }
+-}
+-
+-fn policy_for(role: ActorRole) -> ContextPolicy {
+-    match role {
+-        ActorRole::Writer => writer_policy(),
+-        ActorRole::Reviewer => reviewer_policy(),
+-        ActorRole::Fixer => fixer_policy(),
+-        ActorRole::Evaluator => evaluator_policy(),
+-        ActorRole::EvolutionAgent => evolver_policy(),
+-        _ => restricted_policy(role),
+-    }
+-}
+-
+-fn writer_policy() -> ContextPolicy {
+-    ContextPolicy {
+-        visible: ContextClassSet::from_canonical(all_classes()),
+-        contributable: ContextClassSet::from_canonical(vec![
+-            ContextClass::RepositorySource,
+-            ContextClass::CandidateDiff,
+-            ContextClass::WorkspaceState,
+-            ContextClass::GateEvidence,
+-            ContextClass::ToolObservation,
+-            ContextClass::AgentProgress,
+-            ContextClass::HiddenReasoning,
+-        ]),
+-        required: base_required(),
+-        fresh_context: false,
+-        memory_visibility: MemoryVisibility::EvidenceBacked,
+-        reasoning_visibility: ReasoningVisibility::SameLineageOnly,
+-        allow_producer_ancestry: true,
+-        presentation: PresentationProfile::new(PresentationStyle::Implementation),
+-    }
++    pub const fn capabilities(&self) -> (value: &CapabilityView)
++        ensures *value == self.spec_capabilities(),
++    { &self.capabilities }
+ }
+ 
+-fn reviewer_policy() -> ContextPolicy {
+-    ContextPolicy {
+-        visible: ContextClassSet::from_canonical(vec![
+-            ContextClass::ImmutablePolicy,
+-            ContextClass::AcceptanceSpecification,
+-            ContextClass::ActiveUserRequest,
+-            ContextClass::RepositoryInstructions,
+-            ContextClass::RepositorySource,
+-            ContextClass::CandidateDiff,
+-            ContextClass::WorkspaceState,
+-            ContextClass::GateEvidence,
+-            ContextClass::ToolObservation,
+-            ContextClass::PriorFinding,
+-            ContextClass::FindingResolution,
+-            ContextClass::AgentProgress,
+-        ]),
+-        contributable: ContextClassSet::from_canonical(vec![
+-            ContextClass::ToolObservation,
+-            ContextClass::PriorFinding,
+-            ContextClass::AgentProgress,
+-        ]),
+-        required: ContextClassSet::from_canonical(vec![
+-            ContextClass::ImmutablePolicy,
+-            ContextClass::AcceptanceSpecification,
+-            ContextClass::ActiveUserRequest,
+-            ContextClass::RepositorySource,
+-            ContextClass::CandidateDiff,
+-            ContextClass::GateEvidence,
+-        ]),
+-        fresh_context: true,
+-        memory_visibility: MemoryVisibility::Excluded,
+-        reasoning_visibility: ReasoningVisibility::Excluded,
+-        allow_producer_ancestry: false,
+-        presentation: PresentationProfile::new(PresentationStyle::AdversarialReview),
+-    }
+-}
+-
+-fn fixer_policy() -> ContextPolicy {
+-    let mut policy = writer_policy();
+-    policy.required = ContextClassSet::from_canonical(vec![
+-        ContextClass::ImmutablePolicy,
+-        ContextClass::AcceptanceSpecification,
+-        ContextClass::ActiveUserRequest,
+-        ContextClass::RepositorySource,
+-        ContextClass::WorkspaceState,
+-        ContextClass::PriorFinding,
+-    ]);
+-    policy.presentation = PresentationProfile::new(PresentationStyle::FindingResolution);
+-    policy
+-}
+ 
+-fn evaluator_policy() -> ContextPolicy {
+-    ContextPolicy {
+-        visible: ContextClassSet::from_canonical(vec![
+-            ContextClass::ImmutablePolicy,
+-            ContextClass::AcceptanceSpecification,
+-            ContextClass::ActiveUserRequest,
+-            ContextClass::RepositorySource,
+-            ContextClass::CandidateDiff,
+-            ContextClass::WorkspaceState,
+-            ContextClass::GateEvidence,
+-            ContextClass::ToolObservation,
+-            ContextClass::MemoryEvidence,
+-            ContextClass::PriorFinding,
+-            ContextClass::FindingResolution,
+-            ContextClass::AgentProgress,
+-        ]),
+-        contributable: ContextClassSet::from_canonical(vec![
+-            ContextClass::GateEvidence,
+-            ContextClass::ToolObservation,
+-            ContextClass::AgentProgress,
+-        ]),
+-        required: ContextClassSet::from_canonical(vec![
+-            ContextClass::ImmutablePolicy,
+-            ContextClass::AcceptanceSpecification,
+-            ContextClass::ActiveUserRequest,
+-            ContextClass::RepositorySource,
+-            ContextClass::CandidateDiff,
+-            ContextClass::WorkspaceState,
+-            ContextClass::GateEvidence,
+-        ]),
+-        fresh_context: true,
+-        memory_visibility: MemoryVisibility::EvidenceBacked,
+-        reasoning_visibility: ReasoningVisibility::Excluded,
+-        allow_producer_ancestry: false,
+-        presentation: PresentationProfile::new(PresentationStyle::IsolatedEvaluation),
++impl Clone for ContextPolicy {
++    fn clone(&self) -> (result: Self)
++        ensures Self::clone_equivalent(self, &result),
++    {
++        Self {
++            visible: self.visible.clone(),
++            contributable: self.contributable.clone(),
++            required: self.required.clone(),
++            fresh_context: self.fresh_context,
++            memory_visibility: self.memory_visibility,
++            reasoning_visibility: self.reasoning_visibility,
++            allow_producer_ancestry: self.allow_producer_ancestry,
++            presentation: self.presentation,
++        }
+     }
+ }
+ 
+-fn evolver_policy() -> ContextPolicy {
+-    ContextPolicy {
+-        visible: ContextClassSet::from_canonical(all_classes()),
+-        contributable: ContextClassSet::from_canonical(vec![
+-            ContextClass::RepositorySource,
+-            ContextClass::CandidateDiff,
+-            ContextClass::WorkspaceState,
+-            ContextClass::GateEvidence,
+-            ContextClass::ToolObservation,
+-            ContextClass::MemoryEvidence,
+-            ContextClass::PriorFinding,
+-            ContextClass::FindingResolution,
+-            ContextClass::AgentProgress,
+-            ContextClass::HiddenReasoning,
+-        ]),
+-        required: base_required(),
+-        fresh_context: true,
+-        memory_visibility: MemoryVisibility::EvidenceBacked,
+-        reasoning_visibility: ReasoningVisibility::SameLineageOnly,
+-        allow_producer_ancestry: true,
+-        presentation: PresentationProfile::new(PresentationStyle::HarnessEvolution),
++impl Clone for RoleProfile {
++    fn clone(&self) -> (result: Self)
++        ensures Self::clone_equivalent(self, &result),
++    {
++        Self {
++            actor_role: self.actor_role,
++            harness_role: self.harness_role,
++            context: self.context.clone(),
++            capabilities: self.capabilities.clone(),
++        }
+     }
+ }
+ 
+-fn restricted_policy(role: ActorRole) -> ContextPolicy {
+-    let visible = match role {
+-        ActorRole::GateRunner => vec![
+-            ContextClass::ImmutablePolicy,
+-            ContextClass::AcceptanceSpecification,
+-            ContextClass::WorkspaceState,
+-            ContextClass::GateEvidence,
+-            ContextClass::ToolObservation,
+-            ContextClass::AgentProgress,
+-        ],
+-        _ => vec![
+-            ContextClass::ImmutablePolicy,
+-            ContextClass::WorkspaceState,
+-            ContextClass::AgentProgress,
+-        ],
+-    };
+-    let required = match role {
+-        ActorRole::GateRunner => vec![
+-            ContextClass::ImmutablePolicy,
+-            ContextClass::AcceptanceSpecification,
+-            ContextClass::WorkspaceState,
+-            ContextClass::GateEvidence,
+-        ],
+-        _ => vec![ContextClass::ImmutablePolicy, ContextClass::WorkspaceState],
+-    };
+-    ContextPolicy {
+-        required: ContextClassSet::from_canonical(required),
+-        visible: ContextClassSet::from_canonical(visible),
+-        contributable: ContextClassSet::from_canonical(vec![ContextClass::AgentProgress]),
+-        fresh_context: true,
+-        memory_visibility: MemoryVisibility::Excluded,
+-        reasoning_visibility: ReasoningVisibility::Excluded,
+-        allow_producer_ancestry: false,
+-        presentation: PresentationProfile::new(PresentationStyle::Restricted),
+-    }
+-}
+-
+-fn base_required() -> ContextClassSet {
+-    ContextClassSet::from_canonical(vec![
+-        ContextClass::ImmutablePolicy,
+-        ContextClass::AcceptanceSpecification,
+-        ContextClass::ActiveUserRequest,
+-        ContextClass::RepositorySource,
+-        ContextClass::WorkspaceState,
+-    ])
+-}
+-
+-fn all_classes() -> Vec<ContextClass> {
+-    vec![
+-        ContextClass::ImmutablePolicy,
+-        ContextClass::AcceptanceSpecification,
+-        ContextClass::ActiveUserRequest,
+-        ContextClass::RepositoryInstructions,
+-        ContextClass::RepositorySource,
+-        ContextClass::CandidateDiff,
+-        ContextClass::WorkspaceState,
+-        ContextClass::GateEvidence,
+-        ContextClass::ToolObservation,
+-        ContextClass::MemoryEvidence,
+-        ContextClass::PriorFinding,
+-        ContextClass::FindingResolution,
+-        ContextClass::AgentProgress,
+-        ContextClass::HiddenReasoning,
+-    ]
+-}
+-
+ } // verus!
+diff -ruN /tmp/peritus-parent-role-policy-preimage/src/error.rs /tmp/peritus-parent-role-policy-source-02/src/error.rs
+--- /tmp/peritus-parent-role-policy-preimage/src/error.rs	2026-09-12 10:14:53.602525103 -0500
++++ /tmp/peritus-parent-role-policy-source-02/src/error.rs	2026-09-12 18:32:56.227788825 -0500
+@@ -28,29 +28,63 @@
+ }
+ 
+ impl RoleError {
+-    pub(crate) const fn empty_collection() -> Self {
++    /// Complete stored failure category.
++    pub closed spec fn spec_kind(&self) -> RoleErrorKind { self.kind }
++    /// Complete optional context-class payload.
++    pub closed spec fn spec_context_class(&self) -> Option<ContextClass> { self.context_class }
++    /// Complete optional operation payload.
++    pub closed spec fn spec_operation(&self) -> Option<OperationClass> { self.operation }
++    /// Exact error with no contextual payload.
++    pub open spec fn spec_plain(&self, kind: RoleErrorKind) -> bool {
++        self.spec_kind() == kind && self.spec_context_class().is_none()
++            && self.spec_operation().is_none()
++    }
++    /// Exact error concerning a context class and no operation.
++    pub open spec fn spec_class_error(&self, kind: RoleErrorKind, class: ContextClass) -> bool {
++        self.spec_kind() == kind && self.spec_context_class() == Some(class)
++            && self.spec_operation().is_none()
++    }
++    /// Exact error concerning an operation and no context class.
++    pub open spec fn spec_operation_error(&self, kind: RoleErrorKind, operation: OperationClass) -> bool {
++        self.spec_kind() == kind && self.spec_context_class().is_none()
++            && self.spec_operation() == Some(operation)
++    }
++
++    pub(crate) const fn empty_collection() -> (error: Self)
++        ensures error.spec_plain(RoleErrorKind::EmptyCollection),
++    {
+         Self { kind: RoleErrorKind::EmptyCollection, context_class: None, operation: None }
+     }
+ 
+-    pub(crate) const fn context_class(kind: RoleErrorKind, context_class: ContextClass) -> Self {
++    pub(crate) const fn context_class(kind: RoleErrorKind, context_class: ContextClass) -> (error: Self)
++        ensures error.spec_class_error(kind, context_class),
++    {
+         Self { kind, context_class: Some(context_class), operation: None }
+     }
+ 
+-    pub(crate) const fn operation(kind: RoleErrorKind, operation: OperationClass) -> Self {
++    pub(crate) const fn operation(kind: RoleErrorKind, operation: OperationClass) -> (error: Self)
++        ensures error.spec_operation_error(kind, operation),
++    {
+         Self { kind, context_class: None, operation: Some(operation) }
+     }
+ 
+     /// Returns the stable failure category.
+     #[must_use]
+-    pub const fn kind(&self) -> RoleErrorKind { self.kind }
++    pub const fn kind(&self) -> (value: RoleErrorKind)
++        ensures value == self.spec_kind(),
++    { self.kind }
+ 
+     /// Returns the offending context class, when the failure concerns one.
+     #[must_use]
+-    pub const fn context_class_value(&self) -> Option<ContextClass> { self.context_class }
++    pub const fn context_class_value(&self) -> (value: Option<ContextClass>)
++        ensures value == self.spec_context_class(),
++    { self.context_class }
+ 
+     /// Returns the offending operation, when the failure concerns one.
+     #[must_use]
+-    pub const fn operation_value(&self) -> Option<OperationClass> { self.operation }
++    pub const fn operation_value(&self) -> (value: Option<OperationClass>)
++        ensures value == self.spec_operation(),
++    { self.operation }
+ }
+ 
+ } // verus!
+diff -ruN /tmp/peritus-parent-role-policy-preimage/src/harness_role.rs /tmp/peritus-parent-role-policy-source-02/src/harness_role.rs
+--- /tmp/peritus-parent-role-policy-preimage/src/harness_role.rs	2026-09-12 10:14:53.602525103 -0500
++++ /tmp/peritus-parent-role-policy-source-02/src/harness_role.rs	2026-09-12 18:32:56.227585073 -0500
+@@ -21,9 +21,34 @@
+ }
+ 
+ impl HarnessRole {
++    /// Exact canonical security role for each harness role.
++    pub open spec fn spec_actor_role(self) -> ActorRole {
++        match self {
++            Self::Writer => ActorRole::Writer,
++            Self::Reviewer => ActorRole::Reviewer,
++            Self::Fixer => ActorRole::Fixer,
++            Self::Evaluator => ActorRole::Evaluator,
++            Self::Evolver => ActorRole::EvolutionAgent,
++        }
++    }
++
++    /// Exact partial inverse for every canonical security role.
++    pub open spec fn spec_from_actor_role(role: ActorRole) -> Option<Self> {
++        match role {
++            ActorRole::Writer => Some(Self::Writer),
++            ActorRole::Reviewer => Some(Self::Reviewer),
++            ActorRole::Fixer => Some(Self::Fixer),
++            ActorRole::Evaluator => Some(Self::Evaluator),
++            ActorRole::EvolutionAgent => Some(Self::Evolver),
++            _ => None,
++        }
++    }
++
+     /// Returns the canonical B1 security role. This mapping cannot widen authority.
+     #[must_use]
+-    pub const fn actor_role(self) -> ActorRole {
++    pub const fn actor_role(self) -> (role: ActorRole)
++        ensures role == self.spec_actor_role(),
++    {
+         match self {
+             Self::Writer => ActorRole::Writer,
+             Self::Reviewer => ActorRole::Reviewer,
+@@ -35,7 +60,9 @@
+ 
+     /// Returns the harness role represented by a canonical B1 role, when applicable.
+     #[must_use]
+-    pub const fn from_actor_role(role: ActorRole) -> Option<Self> {
++    pub const fn from_actor_role(role: ActorRole) -> (result: Option<Self>)
++        ensures result == Self::spec_from_actor_role(role),
++    {
+         match role {
+             ActorRole::Writer => Some(Self::Writer),
+             ActorRole::Reviewer => Some(Self::Reviewer),
+diff -ruN /tmp/peritus-parent-role-policy-preimage/src/independence.rs /tmp/peritus-parent-role-policy-source-02/src/independence.rs
+--- /tmp/peritus-parent-role-policy-preimage/src/independence.rs	2026-09-12 10:14:53.602525103 -0500
++++ /tmp/peritus-parent-role-policy-source-02/src/independence.rs	2026-09-12 18:43:32.444390550 -0500
+@@ -19,9 +19,33 @@
+ }
+ 
+ impl ReviewIndependenceView {
++    /// Exact stored distinct reviewers.
++    pub closed spec fn spec_distinct_reviewers(&self) -> bool { self.distinct_reviewers }
++    /// Exact stored independent from producer.
++    pub closed spec fn spec_independent_from_producer(&self) -> bool { self.independent_from_producer }
++    /// Exact stored distinct contexts.
++    pub closed spec fn spec_distinct_contexts(&self) -> bool { self.distinct_contexts }
++    /// Exact stored distinct model families.
++    pub closed spec fn spec_distinct_model_families(&self) -> bool { self.distinct_model_families }
++    /// Exact stored distinct providers.
++    pub closed spec fn spec_distinct_providers(&self) -> bool { self.distinct_providers }
++    /// Exact stored no shared ancestry.
++    pub closed spec fn spec_no_shared_ancestry(&self) -> bool { self.no_shared_ancestry }
++    /// Exact stored fresh context.
++    pub closed spec fn spec_fresh_context(&self) -> bool { self.fresh_context }
++
+     /// Copies every B2 requirement and adds C6's mandatory fresh-context rule.
+     #[must_use]
+-    pub const fn from_contract(requirements: ReviewerIndependence) -> Self {
++    pub const fn from_contract(requirements: ReviewerIndependence) -> (result: Self)
++        ensures
++            result.spec_distinct_reviewers() == requirements.spec_distinct_reviewers(),
++            result.spec_independent_from_producer() == requirements.spec_independent_from_producer(),
++            result.spec_distinct_contexts() == requirements.spec_distinct_contexts(),
++            result.spec_distinct_model_families() == requirements.spec_distinct_model_families(),
++            result.spec_distinct_providers() == requirements.spec_distinct_providers(),
++            result.spec_no_shared_ancestry() == requirements.spec_no_shared_ancestry(),
++            result.spec_fresh_context(),
++    {
+         Self {
+             distinct_reviewers: requirements.requires_distinct_reviewers(),
+             independent_from_producer: requirements.requires_independence_from_producer(),
+@@ -35,25 +59,39 @@
+ 
+     /// Whether identities must be distinct.
+     #[must_use]
+-    pub const fn distinct_reviewers(&self) -> bool { self.distinct_reviewers }
++    pub const fn distinct_reviewers(&self) -> (value: bool)
++        ensures value == self.spec_distinct_reviewers(),
++    { self.distinct_reviewers }
+     /// Whether the producer is excluded.
+     #[must_use]
+-    pub const fn independent_from_producer(&self) -> bool { self.independent_from_producer }
++    pub const fn independent_from_producer(&self) -> (value: bool)
++        ensures value == self.spec_independent_from_producer(),
++    { self.independent_from_producer }
+     /// Whether contexts must be distinct.
+     #[must_use]
+-    pub const fn distinct_contexts(&self) -> bool { self.distinct_contexts }
++    pub const fn distinct_contexts(&self) -> (value: bool)
++        ensures value == self.spec_distinct_contexts(),
++    { self.distinct_contexts }
+     /// Whether model families must be distinct.
+     #[must_use]
+-    pub const fn distinct_model_families(&self) -> bool { self.distinct_model_families }
++    pub const fn distinct_model_families(&self) -> (value: bool)
++        ensures value == self.spec_distinct_model_families(),
++    { self.distinct_model_families }
+     /// Whether providers must be distinct.
+     #[must_use]
+-    pub const fn distinct_providers(&self) -> bool { self.distinct_providers }
++    pub const fn distinct_providers(&self) -> (value: bool)
++        ensures value == self.spec_distinct_providers(),
++    { self.distinct_providers }
+     /// Whether shared ancestry is forbidden.
+     #[must_use]
+-    pub const fn no_shared_ancestry(&self) -> bool { self.no_shared_ancestry }
++    pub const fn no_shared_ancestry(&self) -> (value: bool)
++        ensures value == self.spec_no_shared_ancestry(),
++    { self.no_shared_ancestry }
+     /// Whether every reviewer starts from a fresh model context.
+     #[must_use]
+-    pub const fn fresh_context(&self) -> bool { self.fresh_context }
++    pub const fn fresh_context(&self) -> (value: bool)
++        ensures value == self.spec_fresh_context(),
++    { self.fresh_context }
+ }
+ 
+ } // verus!
+diff -ruN /tmp/peritus-parent-role-policy-preimage/src/presentation.rs /tmp/peritus-parent-role-policy-source-02/src/presentation.rs
+--- /tmp/peritus-parent-role-policy-preimage/src/presentation.rs	2026-09-12 10:14:53.602525103 -0500
++++ /tmp/peritus-parent-role-policy-source-02/src/presentation.rs	2026-09-12 18:32:56.228403945 -0500
+@@ -31,7 +31,23 @@
+ }
+ 
+ impl PresentationProfile {
+-    pub(crate) const fn new(style: PresentationStyle) -> Self {
++    /// Exact stored style.
++    pub closed spec fn spec_style(&self) -> PresentationStyle { self.style }
++    /// Exact stored separate provenance segments.
++    pub closed spec fn spec_separate_provenance_segments(&self) -> bool { self.separate_provenance_segments }
++    /// Exact stored include selection reasons.
++    pub closed spec fn spec_include_selection_reasons(&self) -> bool { self.include_selection_reasons }
++    /// Exact stored include token accounting.
++    pub closed spec fn spec_include_token_accounting(&self) -> bool { self.include_token_accounting }
++    /// Exact provider-neutral profile for a chosen style.
++    pub open spec fn spec_for_style(&self, style: PresentationStyle) -> bool {
++        self.spec_style() == style && self.spec_separate_provenance_segments()
++            && self.spec_include_selection_reasons() && self.spec_include_token_accounting()
++    }
++
++    pub(crate) const fn new(style: PresentationStyle) -> (profile: Self)
++        ensures profile.spec_for_style(style),
++    {
+         Self {
+             style,
+             separate_provenance_segments: true,
+@@ -42,21 +58,29 @@
+ 
+     /// Returns the organization style.
+     #[must_use]
+-    pub const fn style(&self) -> PresentationStyle { self.style }
++    pub const fn style(&self) -> (value: PresentationStyle)
++        ensures value == self.spec_style(),
++    { self.style }
+ 
+     /// Whether provenance boundaries must remain separate model segments.
+     #[must_use]
+-    pub const fn separate_provenance_segments(&self) -> bool {
++    pub const fn separate_provenance_segments(&self) -> (value: bool)
++        ensures value == self.spec_separate_provenance_segments(),
++    {
+         self.separate_provenance_segments
+     }
+ 
+     /// Whether omission and ranking reasons are retained for inspection.
+     #[must_use]
+-    pub const fn include_selection_reasons(&self) -> bool { self.include_selection_reasons }
++    pub const fn include_selection_reasons(&self) -> (value: bool)
++        ensures value == self.spec_include_selection_reasons(),
++    { self.include_selection_reasons }
+ 
+     /// Whether exact token accounting is attached to the render plan.
+     #[must_use]
+-    pub const fn include_token_accounting(&self) -> bool { self.include_token_accounting }
++    pub const fn include_token_accounting(&self) -> (value: bool)
++        ensures value == self.spec_include_token_accounting(),
++    { self.include_token_accounting }
+ }
+ 
+ } // verus!
+diff -ruN /tmp/peritus-parent-role-policy-preimage/src/verified.rs /tmp/peritus-parent-role-policy-source-02/src/verified.rs
+--- /tmp/peritus-parent-role-policy-preimage/src/verified.rs	2026-09-12 10:14:53.602525103 -0500
++++ /tmp/peritus-parent-role-policy-source-02/src/verified.rs	2026-09-12 18:43:32.444433388 -0500
+@@ -9,14 +9,22 @@
+ /// Returns whether every operation in the role projection remains B1-permitted.
+ #[must_use]
+ pub fn capability_view_is_narrow(profile: &RoleProfile) -> (result: bool)
++    ensures result == profile.spec_capabilities().spec_is_narrow(),
+ {
+     profile.capabilities().is_narrow()
+ }
+ 
+ /// Returns whether the canonical reviewer context satisfies the C6 freshness boundary.
+ #[must_use]
+-pub fn reviewer_context_is_fresh(profile: &RoleProfile) -> bool {
+-    profile.actor_role() == peritus_policy::ActorRole::Reviewer
++pub fn reviewer_context_is_fresh(profile: &RoleProfile) -> (fresh: bool)
++    ensures fresh == (profile.spec_actor_role() == peritus_policy::ActorRole::Reviewer
++        && profile.spec_context().spec_fresh_context()
++        && !profile.spec_context().spec_allow_producer_ancestry()
++        && !profile.spec_capabilities().spec_operations().contains(OperationClass::WorkspaceMutation)),
++        profile.spec_for_role(profile.spec_actor_role()) ==>
++            fresh == (profile.spec_actor_role() == peritus_policy::ActorRole::Reviewer),
++{
++    matches!(profile.actor_role(), peritus_policy::ActorRole::Reviewer)
+         && profile.context().requires_fresh_context()
+         && !profile.context().allows_producer_ancestry()
+         && !profile.capabilities().permits(OperationClass::WorkspaceMutation)
+diff -ruN /tmp/peritus-parent-role-policy-preimage/tests/policy_boundaries.rs /tmp/peritus-parent-role-policy-source-02/tests/policy_boundaries.rs
+--- /tmp/peritus-parent-role-policy-preimage/tests/policy_boundaries.rs	1969-12-31 18:00:00.000000000 -0600
++++ /tmp/peritus-parent-role-policy-source-02/tests/policy_boundaries.rs	2026-09-12 18:46:55.839511060 -0500
+@@ -0,0 +1,105 @@
++//! Public first-error and complete role projection regressions.
++use peritus_policy::{ActorRole, OperationClass};
++use peritus_role::{
++    CapabilityView, ContextClass, ContextClassSet, ReviewIndependenceView, RoleErrorKind,
++    RoleProfile,
++};
++use peritus_spec::ReviewerIndependence;
++
++#[test]
++fn context_errors_retain_first_pair_and_complete_payload() {
++    let duplicate = ContextClassSet::new(vec![
++        ContextClass::RepositorySource,
++        ContextClass::RepositorySource,
++        ContextClass::ImmutablePolicy,
++    ])
++    .unwrap_err();
++    assert_eq!(duplicate.kind(), RoleErrorKind::DuplicateValue);
++    assert_eq!(duplicate.context_class_value(), Some(ContextClass::RepositorySource));
++    assert_eq!(duplicate.operation_value(), None);
++    let descending = ContextClassSet::new(vec![
++        ContextClass::WorkspaceState,
++        ContextClass::RepositorySource,
++        ContextClass::RepositorySource,
++    ])
++    .unwrap_err();
++    assert_eq!(descending.kind(), RoleErrorKind::NonCanonicalOrder);
++    assert_eq!(descending.context_class_value(), Some(ContextClass::RepositorySource));
++    assert_eq!(descending.operation_value(), None);
++    let empty = ContextClassSet::new(Vec::new()).unwrap_err();
++    assert_eq!(empty.kind(), RoleErrorKind::EmptyCollection);
++    assert_eq!(empty.context_class_value(), None);
++    assert_eq!(empty.operation_value(), None);
++}
++
++#[test]
++fn operation_permission_and_pair_errors_preserve_input_order() {
++    let denied = CapabilityView::new(
++        ActorRole::Reviewer,
++        vec![OperationClass::Inspection, OperationClass::Execution, OperationClass::Execution],
++    )
++    .unwrap_err();
++    assert_eq!(denied.kind(), RoleErrorKind::OperationNotPermitted);
++    assert_eq!(denied.operation_value(), Some(OperationClass::Execution));
++    assert_eq!(denied.context_class_value(), None);
++    let duplicate = CapabilityView::new(
++        ActorRole::Reviewer,
++        vec![OperationClass::Inspection, OperationClass::Inspection, OperationClass::Execution],
++    )
++    .unwrap_err();
++    assert_eq!(duplicate.kind(), RoleErrorKind::DuplicateValue);
++    assert_eq!(duplicate.operation_value(), Some(OperationClass::Inspection));
++    assert_eq!(duplicate.context_class_value(), None);
++    let descending = CapabilityView::new(
++        ActorRole::Writer,
++        vec![OperationClass::Execution, OperationClass::Inspection, OperationClass::Acceptance],
++    )
++    .unwrap_err();
++    assert_eq!(descending.kind(), RoleErrorKind::NonCanonicalOrder);
++    assert_eq!(descending.operation_value(), Some(OperationClass::Inspection));
++    assert_eq!(descending.context_class_value(), None);
++}
++
++#[test]
++fn cloned_review_context_keeps_private_and_mutating_material_excluded() {
++    let original = RoleProfile::for_actor_role(ActorRole::Reviewer);
++    let cloned = original.clone();
++    drop(original);
++    assert_eq!(cloned.actor_role(), ActorRole::Reviewer);
++    assert!(cloned.context().requires_fresh_context());
++    assert!(!cloned.context().allows_producer_ancestry());
++    assert!(!cloned.context().visible().contains(ContextClass::HiddenReasoning));
++    assert!(!cloned.context().visible().contains(ContextClass::MemoryEvidence));
++    assert!(cloned.context().visible().contains(ContextClass::CandidateDiff));
++    assert!(!cloned.capabilities().permits(OperationClass::WorkspaceMutation));
++    assert!(!cloned.capabilities().permits(OperationClass::Execution));
++}
++
++#[test]
++fn independence_projection_keeps_all_combinations_distinct() {
++    for mask in 0u8..64 {
++        let flags = [
++            mask & 1 != 0,
++            mask & 2 != 0,
++            mask & 4 != 0,
++            mask & 8 != 0,
++            mask & 16 != 0,
++            mask & 32 != 0,
++        ];
++        let requirements =
++            ReviewerIndependence::new(flags[0], flags[1], flags[2], flags[3], flags[4], flags[5]);
++        let view = ReviewIndependenceView::from_contract(requirements);
++        assert_eq!(
++            [
++                view.distinct_reviewers(),
++                view.independent_from_producer(),
++                view.distinct_contexts(),
++                view.distinct_model_families(),
++                view.distinct_providers(),
++                view.no_shared_ancestry()
++            ],
++            flags
++        );
++        assert!(view.fresh_context());
++    }
++}

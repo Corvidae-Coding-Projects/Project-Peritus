@@ -1,0 +1,12 @@
+    Checking peritus-quality-policy v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/foundation/peritus-quality-policy)
+    Checking peritus-budget v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/foundation/peritus-budget)
+    Checking peritus-kernel v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/foundation/peritus-kernel)
+    Checking peritus-protocol v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/foundation/peritus-protocol)
+    Checking peritus-artifact-store v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/state/peritus-artifact-store)
+    Checking peritus-approval v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/state/peritus-approval)
+    Checking peritus-leases v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/state/peritus-leases)
+    Checking peritus-journal v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/state/peritus-journal)
+    Checking peritus-projection v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/state/peritus-projection)
+    Checking peritus-evidence v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/state/peritus-evidence)
+    Checking peritus-scheduler v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/orchestration/peritus-scheduler)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 11.91s

@@ -1,0 +1,86 @@
+import hashlib
+import json
+import os
+from pathlib import Path
+import shutil
+import subprocess
+
+root = Path('/tmp/peritus-parent-release-api-contracts-workspace-01')
+package = root / 'crates/foundation/peritus-release-policy'
+env = dict(os.environ, CARGO_BUILD_JOBS='2', CCACHE_DISABLE='1',
+           CARGO_TARGET_DIR='/home/doll/Project-Peritus/.worktrees/formal-coverage/target/formal-release-api-parent')
+prefix = Path('/tmp/peritus-parent-release-api')
+sha = lambda p: hashlib.sha256(p.read_bytes()).hexdigest()
+sources = {str(p.relative_to(root)): sha(p) for p in package.rglob('*') if p.is_file()}
+assert len(sources) == 65
+Path(str(prefix) + '-full-package.sha256').write_text(
+    ''.join(f'{sources[name]}  {name}\n' for name in sorted(sources)))
+record = {'cwd': str(root), 'environment': {k: env[k] for k in
+          ['CARGO_BUILD_JOBS', 'CCACHE_DISABLE', 'CARGO_TARGET_DIR']}, 'source_files': 65, 'commands': []}
+command = ['cargo', 'verus', 'verify', '--package', 'peritus-release-policy', '--all-features',
+           '--locked', '--check-toolchain', '--fwd-verus-args-to', 'roots']
+strict = ['--', '--no-cheating', '--rlimit', '20']
+
+def check():
+    found = {str(p.relative_to(root)) for p in package.rglob('*') if p.is_file()}
+    assert found == set(sources), (found - set(sources), set(sources) - found)
+    for name, digest in sources.items():
+        assert sha(root / name) == digest, name
+
+def run(label, args):
+    log = Path(str(prefix) + '-' + label + '.log')
+    print('START ' + label, flush=True)
+    with log.open('w') as output:
+        result = subprocess.run(args, cwd=root, env=env, stdout=output,
+                                stderr=subprocess.STDOUT, timeout=600)
+    record['commands'].append({'label': label, 'command': args, 'log': str(log),
+                               'exit_code': result.returncode})
+    Path(str(prefix) + '-qualification.json').write_text(json.dumps(record, indent=2) + '\n')
+    print(label + ' exit=' + str(result.returncode), flush=True)
+    return result.returncode, log.read_text()
+
+probe = package / 'examples/proof_api_probe.rs'
+assert not probe.exists()
+check()
+probe.parent.mkdir(exist_ok=True)
+try:
+    shutil.copyfile('/tmp/peritus-parent-release-api-probe.rs', probe)
+    code, text = run('client', command + ['--example', 'proof_api_probe'] + strict)
+finally:
+    probe.unlink()
+    check()
+assert code == 0, text[-6000:]
+
+error = package / 'src/error.rs'
+original = error.read_bytes()
+needle = b'ConstructionErrorKind::ZeroRevision => "H4_INPUT_ZERO_REVISION",'
+assert original.count(needle) == 1
+mutant = original.replace(needle,
+    b'ConstructionErrorKind::ZeroRevision => "H4_INPUT_ZERO_DIGEST",', 1)
+record['negative'] = {'mutation': 'Wrong runtime ZeroRevision diagnostic literal; specification unchanged.',
+                      'preimage_sha256': hashlib.sha256(original).hexdigest(),
+                      'mutant_sha256': hashlib.sha256(mutant).hexdigest()}
+try:
+    error.write_bytes(mutant)
+    code, text = run('negative-runtime-code', command + strict)
+finally:
+    error.write_bytes(original)
+    check()
+assert code != 0 and 'postcondition not satisfied' in text and 'src/error.rs' in text, text[-6000:]
+
+for label, args in [
+    ('restored-verus', command + strict),
+    ('tests', ['cargo', 'test', '--package', 'peritus-release-policy', '--all-features', '--locked']),
+    ('clippy', ['cargo', 'clippy', '--package', 'peritus-release-policy', '--all-features',
+                '--all-targets', '--locked', '--', '-D', 'warnings']),
+    ('fmt', ['cargo', 'fmt', '--package', 'peritus-release-policy', '--', '--check']),
+    ('api', ['/home/doll/Project-Peritus/.worktrees/formal-coverage/target/debug/xtask', 'ordinary-api-check']),
+    ('layout', ['/home/doll/Project-Peritus/.worktrees/formal-coverage/target/debug/xtask', 'source-layout-check']),
+]:
+    check()
+    code, text = run(label, args)
+    check()
+    assert code == 0, text[-6000:]
+record['final_files_checked'] = len(sources)
+Path(str(prefix) + '-qualification.json').write_text(json.dumps(record, indent=2) + '\n')
+print('Production65 restored, client/negative/strict/ordinary gates completed.', flush=True)

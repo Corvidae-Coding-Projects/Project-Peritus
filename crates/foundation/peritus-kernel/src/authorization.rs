@@ -10,7 +10,7 @@ use vstd::prelude::*;
 verus! {
 
 /// Non-authorizing record that B1 checked one exact action-bound capability use.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq)]
 pub struct ActionAuthorizationWitness {
     transition_digest: Sha256Digest,
     resource_id: ResourceId,
@@ -18,6 +18,14 @@ pub struct ActionAuthorizationWitness {
 }
 
 impl ActionAuthorizationWitness {
+    /// Exact semantic fields preserved when an authorization witness is cloned.
+    pub closed spec fn clone_equivalent(left: &Self, right: &Self) -> bool {
+        left.transition_digest == right.transition_digest
+            && left.resource_id == right.resource_id
+            && left.capability_name.spec_value() == right.capability_name.spec_value()
+            && left.capability_name.spec_bytes() == right.capability_name.spec_bytes()
+    }
+
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn from_transition(
         action_id: ActionId,
@@ -54,6 +62,18 @@ impl ActionAuthorizationWitness {
     /// Returns the authorized capability name.
     #[must_use]
     pub const fn capability_name(&self) -> &CapabilityName { &self.capability_name }
+}
+
+impl Clone for ActionAuthorizationWitness {
+    fn clone(&self) -> (result: Self)
+        ensures Self::clone_equivalent(self, &result),
+    {
+        Self {
+            transition_digest: self.transition_digest,
+            resource_id: self.resource_id,
+            capability_name: self.capability_name.clone(),
+        }
+    }
 }
 
 } // verus!

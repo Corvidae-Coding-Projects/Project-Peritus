@@ -72,6 +72,41 @@ evidence in [GitHub governance](github-governance.md). GitHub Team cannot pin a 
 an immutable reviewed revision, so the current status-check system remains candidate-controlled;
 the stronger Enterprise authority is an explicit future upgrade rather than a current claim.
 
+The checked `.github/workflows/formal-authority.yml` adds a narrower default-branch validation for
+pull requests targeting `main` or `develop`. GitHub loads `pull_request_target` workflow code from
+default `main`; the job binds `github.workflow_sha` as the checker revision and binds the PR's exact
+base and head as separate comparison and candidate revisions. It rejects symlinks, submodules,
+alternate Cargo configuration, and alternate Rust selectors in all three trees. Before candidate
+Cargo metadata, it requires exact equality for the root Cargo manifest and lockfile, the complete
+`xtask` manifest/source/default-build-script surface, and every current repository file embedded
+into the checker binary, alongside the root Cargo configuration, line-ending policy, and toolchain
+selector. Both checker-to-base and base-to-candidate comparisons must pass.
+
+The job builds `xtask` from the exact workflow/checker revision into runner temporary storage,
+primes only that revision's locked dependency metadata, and runs that binary from the candidate
+directory with an offline Cargo home and a PATH reconstructed from the resolved runner Cargo and Git
+directories plus fixed system binary directories. The trusted executable runs both `all` and
+`verify-trust`; it never builds a candidate package, build script, procedural macro, action, or
+repository script. `verify-trust` receives the exact PR base as its proof-impact comparison base,
+not the checker revision.
+
+The root manifest and lockfile custody means dependency changes fail before candidate metadata.
+Other offline candidate metadata deliberately admits only dependencies already primed by the
+trusted checker revision. A dependency or authority-checker change therefore requires the
+externally controlled, exact-head bootstrap described in
+[GitHub governance](github-governance.md); candidate-committed records cannot authorize it. The
+bootstrap must establish identical protected inputs on `main` and `develop` before ordinary develop
+validation resumes. The workflow does not retry candidate metadata online. Its ordinary GitHub
+Actions result is useful evidence, but it is not an exclusive merge authority: a separately
+configured source-bound GitHub App producer remains required before this result can replace the
+candidate-controlled required status.
+
+The default-branch-built checker also embeds the exact authority-workflow bytes. A PR base or
+candidate that changes those bytes or any repository-controlled checker build input is rejected even
+if it changes review or policy files at the same time. A legitimate authority update therefore needs
+the independently reviewed exact-head bootstrap documented in
+[GitHub governance](github-governance.md); candidate files cannot authorize the update.
+
 ## Compilation-input trust discovery
 
 A0 seeds trust scanning from every workspace Cargo target, follows direct literal `include!` and

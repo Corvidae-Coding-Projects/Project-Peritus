@@ -1,0 +1,27 @@
+{
+  "source_root": "/tmp/peritus-sol-xtask-evidence-final-source-001",
+  "source_manifest_sha256": "7cd89b94c3a77785a316256fc9c36b712bf4e09d4d3e6930b7f9f82f08252173",
+  "baseline_files": 188,
+  "final_files": 191,
+  "changed_paths": [
+    "verification/README.md",
+    "xtask/src/api_contract/declaration.rs",
+    "xtask/src/api_contract/declaration_tests.rs",
+    "xtask/src/api_contract/scanner.rs",
+    "xtask/src/api_contract/signature.rs",
+    "xtask/src/api_contract.rs",
+    "xtask/src/ci_shard/proof_scope/report/tests.rs",
+    "xtask/src/ci_shard/proof_scope/report.rs",
+    "xtask/src/ci_shard/proof_scope.rs",
+    "xtask/src/trust/manifest_evidence.rs",
+    "xtask/src/trust/manifest_symbol.rs",
+    "xtask/src/trust/manifest_tests/adversarial.rs",
+    "xtask/src/trust/manifest_tests/evidence.rs",
+    "xtask/src/trust/manifest_tests.rs",
+    "xtask/src/trust.rs",
+    "xtask/src/trust_lexer.rs"
+  ],
+  "independent_review_sha256": "e42fb13b5fb23e8a6127764ad6522f21851d95b1145c78ba4543fb110a2d88c9",
+  "parent_full_tests": "433 passed; 0 failed; 1 ignored; 0 filtered",
+  "parent_seven_additional_gates": "passed"
+}

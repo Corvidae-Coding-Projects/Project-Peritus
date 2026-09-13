@@ -33,7 +33,7 @@ impl ActionPhase {
 }
 
 /// Current state of one exact action.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq)]
 pub struct ActionState {
     id: ActionId,
     turn_id: TurnId,
@@ -46,6 +46,55 @@ pub struct ActionState {
 }
 
 impl ActionState {
+    /// Exact semantic fields preserved when an action state is cloned.
+    pub closed spec fn clone_equivalent(left: &Self, right: &Self) -> bool {
+        left.id == right.id
+            && left.turn_id == right.turn_id
+            && left.digest == right.digest
+            && left.actor_id == right.actor_id
+            && left.role == right.role
+            && left.environment_id == right.environment_id
+            && left.phase == right.phase
+            && match (&left.authorization, &right.authorization) {
+                (Some(left), Some(right)) =>
+                    ActionAuthorizationWitness::clone_equivalent(left, right),
+                (None, None) => true,
+                _ => false,
+            }
+    }
+
+    pub(crate) closed spec fn sequence_clone_equivalent(
+        left: Seq<ActionState>,
+        right: Seq<ActionState>,
+    ) -> bool {
+        left.len() == right.len()
+            && forall |index: int| #![auto]
+                0 <= index < left.len()
+                    ==> Self::clone_equivalent(&left[index], &right[index])
+    }
+
+    pub(crate) fn clone_sequence(actions: &[Self]) -> (result: Vec<Self>)
+        ensures Self::sequence_clone_equivalent(actions@, result@),
+    {
+        let mut result = Vec::with_capacity(actions.len());
+        let mut index = 0;
+        while index < actions.len()
+            invariant
+                index <= actions.len(),
+                result@.len() == index,
+                forall |prior: int| #![auto]
+                    0 <= prior < index ==> Self::clone_equivalent(
+                        &actions@[prior],
+                        &result@[prior],
+                    ),
+            decreases actions.len() - index,
+        {
+            result.push(actions[index].clone());
+            index += 1;
+        }
+        result
+    }
+
     pub(crate) const fn proposed(
         id: ActionId,
         turn_id: TurnId,
@@ -96,6 +145,35 @@ impl ActionState {
         self.phase = ActionPhase::Authorized;
     }
     pub(crate) const fn set_phase(&mut self, phase: ActionPhase) { self.phase = phase; }
+}
+
+impl Clone for ActionState {
+    fn clone(&self) -> (result: Self)
+        ensures Self::clone_equivalent(self, &result),
+    {
+        if let Some(witness) = &self.authorization {
+            return Self {
+                id: self.id,
+                turn_id: self.turn_id,
+                digest: self.digest,
+                actor_id: self.actor_id,
+                role: self.role,
+                environment_id: self.environment_id,
+                phase: self.phase,
+                authorization: Some(witness.clone()),
+            };
+        }
+        Self {
+            id: self.id,
+            turn_id: self.turn_id,
+            digest: self.digest,
+            actor_id: self.actor_id,
+            role: self.role,
+            environment_id: self.environment_id,
+            phase: self.phase,
+            authorization: None,
+        }
+    }
 }
 
 } // verus!

@@ -5,6 +5,9 @@ use crate::{
     CompletionProposal, ContextRecord, ModelCallId, SafeText, TerminalKind, ToolBatch,
 };
 use peritus_types::{EventId, EventSequence, RevisionNumber, Sha256Digest};
+use vstd::prelude::*;
+
+verus! {
 
 /// Stable failure category retained in terminal state.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -18,11 +21,21 @@ pub enum AgentFailureKind {
 }
 
 /// Bounded terminal failure record.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq)]
 pub struct AgentFailure {
     kind: AgentFailureKind,
     detail: SafeText,
 }
+
+impl Clone for AgentFailure {
+    fn clone(&self) -> (result: Self)
+        ensures result == *self,
+    {
+        Self { kind: self.kind, detail: self.detail.clone() }
+    }
+}
+
+} // verus!
 
 impl AgentFailure {
     #[must_use]

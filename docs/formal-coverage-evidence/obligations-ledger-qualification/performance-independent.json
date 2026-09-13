@@ -1,0 +1,85 @@
+{
+  "results": [
+    {
+      "name": "foundation",
+      "source": "/tmp/peritus-parent-obligations-foundations-source/crates/orchestration/peritus-obligations",
+      "manifest": "/tmp/peritus-parent-obligations-foundations-full-package.sha256",
+      "manifest_sha256": "1f079cae7458024bcfcd08468cdd3f663c1bb1dd5f1c9adaa2883da6b07690fc",
+      "command": [
+        "cargo",
+        "test",
+        "--release",
+        "--package",
+        "peritus-obligations",
+        "--locked",
+        "--test",
+        "review_scaling_probe",
+        "--",
+        "--nocapture"
+      ],
+      "cwd": "/tmp/peritus-parent-obligations-proof.6ib_z8mo",
+      "target": "/home/doll/Project-Peritus/.worktrees/formal-coverage/target/formal-obligations-scaling-parent-v3-foundation",
+      "log": "/tmp/peritus-parent-obligations-scaling-independent3-foundation.log",
+      "exit_code": 0,
+      "measurements": [
+        "SCALING n=256 repeats=3 elapsed_ns=271219",
+        "SCALING n=512 repeats=3 elapsed_ns=581399"
+      ]
+    },
+    {
+      "name": "candidate325",
+      "source": "/tmp/peritus-sol-obligations-ledger-source-01/crates/orchestration/peritus-obligations",
+      "manifest": "/tmp/peritus-sol-obligations-ledger-source-final.sha256",
+      "manifest_sha256": "45a52ed7e88c80f6e8b9d77a2285e3126166dbe7739838c1d6310d7ba211309e",
+      "command": [
+        "cargo",
+        "test",
+        "--release",
+        "--package",
+        "peritus-obligations",
+        "--locked",
+        "--test",
+        "review_scaling_probe",
+        "--",
+        "--nocapture"
+      ],
+      "cwd": "/tmp/peritus-parent-obligations-proof.6ib_z8mo",
+      "target": "/home/doll/Project-Peritus/.worktrees/formal-coverage/target/formal-obligations-scaling-parent-v3-candidate325",
+      "log": "/tmp/peritus-parent-obligations-scaling-independent3-candidate325.log",
+      "exit_code": 0,
+      "measurements": [
+        "SCALING n=256 repeats=3 elapsed_ns=194290728",
+        "SCALING n=512 repeats=3 elapsed_ns=1444791167"
+      ]
+    },
+    {
+      "name": "fixed356",
+      "source": "/tmp/peritus-sol-obligations-performance-source-01/crates/orchestration/peritus-obligations",
+      "manifest": "/tmp/peritus-sol-obligations-performance-full-package.sha256",
+      "manifest_sha256": "0ca196662727368857d6dfbd0386b2edf97da307db9e3e536240192fd4f13fec",
+      "command": [
+        "cargo",
+        "test",
+        "--release",
+        "--package",
+        "peritus-obligations",
+        "--locked",
+        "--test",
+        "review_scaling_probe",
+        "--",
+        "--nocapture"
+      ],
+      "cwd": "/tmp/peritus-parent-obligations-proof.6ib_z8mo",
+      "target": "/home/doll/Project-Peritus/.worktrees/formal-coverage/target/formal-obligations-scaling-parent-v3-fixed356",
+      "log": "/tmp/peritus-parent-obligations-scaling-independent3-fixed356.log",
+      "exit_code": 0,
+      "measurements": [
+        "SCALING n=256 repeats=3 elapsed_ns=308100",
+        "SCALING n=512 repeats=3 elapsed_ns=647488"
+      ]
+    }
+  ],
+  "restored_original_package_hashes": true,
+  "fixture_sha256": "5b67215a600d971f37175f2883c6c280eb75b71345cd810bf0c8ef865c09f7e1",
+  "fixture": "original parent late-failure two-branch fixture,3 repeats,256/512; fresh per-variant Cargo targets"
+}

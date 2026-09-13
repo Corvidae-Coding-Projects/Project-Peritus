@@ -1,0 +1,19 @@
+    Finished `release` profile [optimized] target(s) in 0.20s
+     Running unittests src/lib.rs (/home/doll/Project-Peritus/.worktrees/formal-coverage/target/sol-scheduler-perf-build-base-001/release/deps/peritus_scheduler-9469d5ca2a851999)
+
+running 1 test
+scheduler_perf phase=setup reservations=1024 dimensions=256 elapsed_ns=23653370
+scheduler_perf phase=select_next sample=0 reservations=1024 dimensions=256 elapsed_ns=770665
+scheduler_perf phase=select_next sample=1 reservations=1024 dimensions=256 elapsed_ns=699595
+scheduler_perf phase=select_next sample=2 reservations=1024 dimensions=256 elapsed_ns=680329
+scheduler_perf phase=select_next sample=3 reservations=1024 dimensions=256 elapsed_ns=700716
+scheduler_perf phase=select_next sample=4 reservations=1024 dimensions=256 elapsed_ns=689006
+scheduler_perf phase=select_next sample=5 reservations=1024 dimensions=256 elapsed_ns=689497
+scheduler_perf phase=select_next sample=6 reservations=1024 dimensions=256 elapsed_ns=699921
+scheduler_perf phase=dispatch_next sample=0 reservations=1024 dimensions=256 elapsed_ns=10840070
+scheduler_perf phase=dispatch_next sample=1 reservations=1024 dimensions=256 elapsed_ns=10741716
+scheduler_perf phase=dispatch_next sample=2 reservations=1024 dimensions=256 elapsed_ns=10787751
+test selection::performance_probe::dense_public_selection_and_dispatch_timings ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.08s
+

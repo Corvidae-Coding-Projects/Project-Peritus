@@ -104,7 +104,7 @@ fn every_command_variant_roundtrips() {
 
     assert_eq!(commands.len(), 35);
     for (index, command) in commands.into_iter().enumerate() {
-        let value = KernelCommandDto::from(command.clone());
+        let value = KernelCommandDto::from(command);
         let encoded = encode_message(&value, LIMITS).expect("encode command");
         assert_eq!(
             u16::from_be_bytes([encoded[16], encoded[17]]),

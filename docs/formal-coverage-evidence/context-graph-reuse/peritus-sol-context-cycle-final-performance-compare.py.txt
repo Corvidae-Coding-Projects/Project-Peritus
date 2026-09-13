@@ -1,0 +1,65 @@
+#!/usr/bin/env python3
+import json
+import re
+from pathlib import Path
+
+ROW = re.compile(r"n=(\d+) .*?median_ns=(\d+)")
+
+
+def rows(*paths: str) -> dict[int, int]:
+    values: dict[int, int] = {}
+    for path in paths:
+        for line in Path(path).read_text().splitlines():
+            if match := ROW.search(line):
+                values[int(match.group(1))] = int(match.group(2))
+    return values
+
+
+prior = rows(
+    "/tmp/peritus-sol-context-perf-pre-003.log",
+    "/tmp/peritus-sol-context-perf-pre-1024.log",
+    "/tmp/peritus-sol-context-perf-pre-large.log",
+)
+frozen = rows(
+    "/tmp/peritus-sol-context-perf-final-001.log",
+    "/tmp/peritus-sol-context-perf-final-1024.log",
+    "/tmp/peritus-sol-context-perf-final-2048.log",
+)
+optimized = rows("/tmp/peritus-sol-context-perf-optimized-final3.log")
+
+sizes = sorted(set(prior) & set(frozen) & set(optimized))
+output = {
+    "fixture": "canonical ascending chain; node i depends on i-1",
+    "timed_region": "actual ContextGraph::new only; node construction and Vec clone excluded",
+    "warmup": "one untimed ContextGraph::new before each size",
+    "qualification": "bounded wall-clock measurements, not an asymptotic theorem",
+    "source_identity": {
+        "prior55_check": "/tmp/peritus-sol-context-perf-pre-source-check.log",
+        "frozen481_check": "/tmp/peritus-sol-context-perf-final-source-check.log",
+        "optimized524_check": "/tmp/peritus-sol-context-perf-optimized-final3-source-check.log",
+    },
+    "rows": [
+        {
+            "nodes": size,
+            "prior55_median_ns": prior[size],
+            "frozen481_median_ns": frozen[size],
+            "optimized524_median_ns": optimized[size],
+            "frozen_over_prior": frozen[size] / prior[size],
+            "optimized_over_prior": optimized[size] / prior[size],
+            "frozen_over_optimized": frozen[size] / optimized[size],
+        }
+        for size in sizes
+    ],
+    "prior_optimized_without_frozen": [
+        {
+            "nodes": size,
+            "prior55_median_ns": prior[size],
+            "optimized524_median_ns": optimized[size],
+            "optimized_over_prior": optimized[size] / prior[size],
+        }
+        for size in sorted((set(optimized) & set(prior)) - set(sizes))
+    ],
+}
+Path("/tmp/peritus-sol-context-cycle-final-performance-comparison.json").write_text(
+    json.dumps(output, indent=2) + "\n"
+)

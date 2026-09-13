@@ -1,0 +1,110 @@
+import datetime
+import difflib
+import hashlib
+import json
+from pathlib import Path
+import shutil
+
+root = Path('/tmp/peritus-parent-obligations-proof.6ib_z8mo')
+baseline = Path('/tmp/peritus-sol-obligations-performance-source-01')
+shared = Path('/home/doll/Project-Peritus/.worktrees/formal-coverage')
+frozen = Path('/tmp/peritus-parent-obligations-contracts-source-01')
+package = Path('crates/orchestration/peritus-obligations')
+prefix = '/tmp/peritus-parent-obligations-contracts'
+sha = lambda path: hashlib.sha256(path.read_bytes()).hexdigest()
+
+def entries(path):
+    result = {}
+    for line in path.read_text().splitlines():
+        digest, name = line.split('  ', 1)
+        assert name not in result
+        result[name] = digest
+    return result
+
+preimage = Path('/tmp/peritus-sol-obligations-performance-full-package.sha256')
+manifest = Path(prefix + '-full-package.sha256')
+assert sha(preimage) == '0ca196662727368857d6dfbd0386b2edf97da307db9e3e536240192fd4f13fec'
+assert sha(manifest) == '548fbb7cf5485c65354c41152cb10fc365d419a77c7740dc566ad0bb00f6dd17'
+before, after = entries(preimage), entries(manifest)
+assert len(before) == 51 and len(after) == 56 and before.keys() <= after.keys()
+for source_root, expected in [(baseline, before), (shared, before), (root, after)]:
+    found = {str(p.relative_to(source_root)) for p in (source_root / package).rglob('*') if p.is_file()}
+    assert found == expected.keys(), str(source_root)
+    for name, digest in expected.items():
+        assert sha(source_root / name) == digest, (str(source_root), name)
+changed = sorted(name for name in after if before.get(name) != after[name])
+assert len(changed) == 8
+assert not frozen.exists()
+for name in after:
+    dest = frozen / name
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(root / name, dest)
+    assert sha(dest) == after[name]
+changed_manifest = Path(prefix + '-changed-source.sha256')
+changed_manifest.write_text(''.join(f'{after[name]}  {name}\n' for name in changed))
+patch = Path(prefix + '-source.patch')
+patch.write_text(''.join(''.join(difflib.unified_diff(
+    (baseline / name).read_text().splitlines(keepends=True) if name in before else [],
+    (frozen / name).read_text().splitlines(keepends=True),
+    fromfile='a/' + name if name in before else '/dev/null', tofile='b/' + name)) for name in changed))
+
+dependencies = {}
+for dependency in ['crates/foundation/peritus-spec', 'crates/foundation/peritus-types',
+                   'crates/orchestration/peritus-run-settlement']:
+    names = {str(p.relative_to(root)) for p in (root / dependency).rglob('*') if p.is_file()}
+    assert names == {str(p.relative_to(shared)) for p in (shared / dependency).rglob('*') if p.is_file()}
+    for name in sorted(names):
+        dependencies[name] = sha(root / name)
+        assert sha(shared / name) == dependencies[name]
+dependency_manifest = Path(prefix + '-direct-dependencies.sha256')
+dependency_manifest.write_text(''.join(f'{digest}  {name}\n' for name, digest in sorted(dependencies.items())))
+
+qualification = Path(prefix + '-qualification.json')
+record = json.loads(qualification.read_text())
+assert record['final_source_files_checked'] == 56
+assert len(record['commands']) == 10
+assert all(c['exit_code'] == (101 if c['label'].startswith('negative-') else 0) for c in record['commands'])
+old = entries(Path(prefix + '-pre-const-full-package.sha256'))
+assert [name for name in after if old[name] != after[name]] == [str(package / 'tests/qualification_contracts.rs')]
+
+report = Path(prefix + '-implementation-review.md')
+report.write_text(f'''# Obligation qualification: complete errors and universal verdict
+
+Status: implemented, locally qualified, frozen for independent source review. Author: `/root`. Recorded: {datetime.datetime.now(datetime.timezone.utc).isoformat()}.
+
+## Exact source and scope
+
+The 51-file reviewed 356 baseline manifest SHA256 is `{sha(preimage)}`. The new full 56 manifest is `{sha(manifest)}` at `{frozen}`. Eight paths differ: three existing production boundary/validation/export files, four new verification-only model/proof modules, and one new ordinary regression test module. All baseline source identities match both the frozen prior root and current shared integration; all new identities match the frozen final root, with no extra files. The full patch and changed-path manifest are retained. The 59 direct dependency source files (spec 21 / types 24 / settlement 14) match the current shared tree exactly and have a separate source manifest.
+
+## Contracts connected to actual execution
+
+The public `qualify` now returns an exact input-defined error contract, including every optional stored payload. Condition checking precedes all evidence errors. Its first non-increasing adjacent condition pair returns InvalidCondition on equality or NonCanonicalOrder on descent, with no identity/numeric fields. Evidence bounds precede pair ordering, and pair ordering precedes unknown-identity lookup. Oversize errors retain the exact existing u64-cast bound and length. Duplicate/descending evidence errors are plain; the first unknown requirement retains exactly its actual ID and no numeric fields. Quantified prefix predicates specify first-error precedence. Existing Ok-iff-admission guarantees remain unchanged.
+
+Successful `QualificationReport::spec_refines` now also connects the actual stored verdict directly to `qualification_satisfied`. This is a universal predicate over actual ledger entries and supplied candidate-bound evidence, with no report counters: every active ordinary entry has a Satisfied evidence verdict; every condition actually consulted by an ordinary entry is resolved; each represented alternative group has an existing branch whose every member has Satisfied current evidence. Examples remain informative, DoesNotHold conditions remain inactive, unresolved conditions remain fail closed, and branch members cannot be mixed across incomplete branches.
+
+New induction proofs connect exact ordinary count partitions, unresolved-condition lists, complete/incomplete group counts, and first-seen group enumeration to those universal semantics. The actual public qualify body calls the real evaluator and then the erased report-verdict proof. Runtime validation order and evaluator algorithms are unchanged. The only executable expression restructuring names the existing evaluator result before returning it. There are no new loops, allocations, runtime guards, executable preconditions, assumed facts, verification substitutes, or trust/lint/checker exceptions. All new proof helpers are confined to cfg(verus_only) modules. The public specification predicates are exported under the same condition for downstream proof use.
+
+## Qualification and limits
+
+Strict pinned library verification passed 361/0 over the exact final production/proof bytes. The later change was only making the new ordinary test's `details` helper const for strict Clippy. The final successful verifier command reused already-produced library metadata (its raw log has no new 361 summary); the separate pre-const restored proof log retains the 361/0 result, and all production/proof hashes are unchanged. This is explicit cache attribution, not a claim of a fresh compiler proof after a test-only edit.
+
+Default and all-feature suites each passed 32 executable tests. The two new tests include 256 combinations of hard/conditional evidence, four condition states, and all 16 evidence patterns over two two-member alternative branches, plus complete first-error/payload precedence cases. Strict all-target/all-feature Clippy, formatting, ordinary API scanning (3412 files/14627 entries), and global source layout (4298 files) passed in the isolated workspace. Those global scan counts reflect its older unrelated source snapshot; this is not final shared-tree qualification. An actual external client imported the new root predicates, called public qualify and the real qualified accessor without requires, and passed 2/0 using dependency metadata.
+
+An isolated real runtime mutation discarded the UnknownRequirement payload; strict verification failed its new postcondition at 360/1. A second mutation removed the resolved-condition conjunct from the universal input predicate. Its proof was rejected at the pinned rlimit, also 360/1, rather than producing an explicit postcondition counterexample. The first driver deliberately stopped on that distinction; its raw record and logs are retained. It demonstrates bounded refusal to certify that mutation, not a solver counterexample. The runtime matrix separately exercises unresolved conditions with otherwise satisfied ordinary/alternative evidence. Every mutation was exactly restored across all 56 source identities, and the restored library proof returned 361/0. A later Clippy-only const correction and successful rerun are separately documented, with the failed lint log retained.
+
+All earlier qualification commands used jobs 2 before the user's memory instruction. Future integration/review runs must use CARGO_BUILD_JOBS=1 and Verus --num-threads 2, preserve no-cheating/rlimit20, use disk-backed targets and coordinate the single heavy-run slot.
+
+Complete ledger extraction error contracts still need a separate feasible increment. This work does not establish truth of supplied observations, cryptographic digest authenticity, effect execution, all caller policies, final global obligation/trust records, or hosted CI enforcement. No registered obligation is discharged by this frozen checkpoint alone. Independent review and shared integration remain required.
+''')
+artifacts = [report, manifest, preimage, changed_manifest, patch, dependency_manifest, qualification,
+             Path(prefix + '-qualification.py'), Path(prefix + '-complete-qualification.py'),
+             Path(prefix + '-final-qualification.py'), Path(prefix + '-qualification-attempt-01.json'),
+             Path(prefix + '-qualification-attempt-02.json'), Path(prefix + '-pre-const-full-package.sha256'),
+             Path(prefix + '-restored-verus-pre-const.log'), Path(prefix + '-clippy-pre-const.log'),
+             Path(prefix + '-verus-04.log'), Path(prefix + '-probe.rs'), Path(__file__)]
+artifacts += [Path(command['log']) for command in record['commands']]
+evidence = Path(prefix + '-evidence.sha256')
+evidence.write_text(''.join(f'{sha(path)}  {path}\n' for path in artifacts))
+print(json.dumps({'frozen': str(frozen), 'manifest': sha(manifest), 'changed': sha(changed_manifest),
+                  'patch': sha(patch), 'report': sha(report), 'evidence': sha(evidence),
+                  'dependency_files': len(dependencies), 'artifacts': len(artifacts)}, indent=2))

@@ -1,0 +1,2 @@
+    Checking peritus-scheduler v0.0.2 (/tmp/peritus-sol-scheduler-post244-source-001/crates/orchestration/peritus-scheduler)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 3.75s

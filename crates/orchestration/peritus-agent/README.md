@@ -4,6 +4,10 @@
 role, revision, provider, and limit bindings; reduces one causally fenced command to one event and
 successor state; and reconstructs exactly the same state by replaying canonical events.
 
+The default `protocol-bridge` feature enables canonical protocol records, journal persistence,
+and the durable `AgentDriver`. Disabling default features retains the pure reducer,
+`DeveloperLoop`, and independent context, model, budget, and tool adapters.
+
 Its ordinary runtime modules compose that reducer with existing Peritus boundaries without taking
 over their authority:
 
@@ -73,7 +77,9 @@ Focused qualification:
 
 ```text
 CARGO_BUILD_JOBS=2 cargo test -p peritus-agent --all-targets --all-features --locked
+CARGO_BUILD_JOBS=2 cargo test -p peritus-agent --all-targets --no-default-features --locked
 CARGO_BUILD_JOBS=2 cargo clippy -p peritus-agent --all-targets --all-features --locked -- -D warnings
+CARGO_BUILD_JOBS=2 cargo clippy -p peritus-agent --all-targets --no-default-features --locked -- -D warnings
 CARGO_BUILD_JOBS=2 RUSTDOCFLAGS='-D warnings' cargo doc -p peritus-agent --all-features --no-deps --locked
 ```
 

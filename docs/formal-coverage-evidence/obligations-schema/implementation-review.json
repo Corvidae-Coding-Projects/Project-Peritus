@@ -1,0 +1,42 @@
+{
+  "verdict": "PASS",
+  "source_checkpoint": "/tmp/peritus-sol-obligations-schema-source-01",
+  "source_manifest": {
+    "path": "/tmp/peritus-sol-obligations-schema-source-01.sha256",
+    "sha256": "afc016d0b7cbf6812c767c7a6836a1feabcb678a0dba3b875735a19322b19fa2",
+    "files": 8
+  },
+  "preimage": {
+    "path": "/tmp/peritus-sol-obligations-schema-preimage-01",
+    "manifest": "/tmp/peritus-sol-obligations-schema-preimage-01.sha256"
+  },
+  "exact_diff": {
+    "path": "/tmp/peritus-sol-obligations-schema-diff-01.patch",
+    "sha256": "a2db15851786a34661c393b9415dd6291f15298259414fff85289e25aa627d3c"
+  },
+  "proved": [
+    "SchemaField::new succeeds iff the supplied exact name is nonempty and within the caller bound, and success retains the exact field identity and every name byte.",
+    "SchemaRequirement::new succeeds iff the supplied field sequence is nonempty, within the configured limit, and strictly ordered by every field-identity byte; success retains the exact direction and field sequence.",
+    "SchemaEvidence::new succeeds iff the observed identity sequence is within the configured limit and strictly ordered by every identity byte; success retains the exact binding, direction, and observed sequence.",
+    "Successful requirement and evidence construction establishes canonical global identity uniqueness from strict full-byte ordering.",
+    "SchemaEvidence::covers returns true iff its stored direction equals the requirement direction and every required field identity occurs in the observed identities. The implementation remains a linear two-cursor scan.",
+    "SchemaField, SchemaRequirement, SchemaEvidence, and every RequirementEvidence variant have verified actual Clone implementations preserving complete semantic content."
+  ],
+  "tested": [
+    "Empty, exact-bound, and oversized schema field names, including binary name bytes.",
+    "Requirement and evidence size-before-order failure priority, adjacent duplicate identity rejection, descending identity rejection, and last-byte identity ordering.",
+    "Empty schema observations, observed supersets, missing middle and terminal required fields, direction mismatch, schema and RequirementEvidence clone equality.",
+    "Requirement ledger rejection when RequestSchema or ResponseSchema wraps the opposite stored direction."
+  ],
+  "ordinary_correspondence": [
+    "RequirementEntry::new calls ObligationSpec::validate before path validation; the new ledger regression exercises both directional mismatch cases.",
+    "qualification::evidence_verdict calls the proved SchemaEvidence::covers for both RequestSchema and ResponseSchema after existing current-binding and required-path checks."
+  ],
+  "limits": [
+    "Constructor failure categories and precedence are regression-tested but the public constructor postconditions specify exact admission iff and successful field retention, not an exact ghost model for each ObligationError value.",
+    "The qualification reducer itself is not given a new end-to-end formal theorem in this slice; correspondence to covers is by direct production-call inspection plus integration tests.",
+    "The five remaining peritus-obligations Verus Clone warnings are pre-existing PathMention, provenance, ObligationSpec, and RequirementEntry gaps outside this schema slice.",
+    "The two peritus-run-settlement Clone warnings are dependency warnings outside this package."
+  ],
+  "forbidden_construct_audit": "No assume, admit, axiom, external_body, verifier allow, or new lint suppression was added. The two file-level missing_docs allowances in schema.rs and evidence.rs predate this slice."
+}

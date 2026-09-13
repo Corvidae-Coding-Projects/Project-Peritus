@@ -1,0 +1,118 @@
+{
+  "integrated_files": 8,
+  "prior_files_checked": 51,
+  "final_files_checked": 56,
+  "cwd": "/home/doll/Project-Peritus/.worktrees/formal-coverage",
+  "environment": {
+    "CARGO_BUILD_JOBS": "1",
+    "CCACHE_DISABLE": "1",
+    "CARGO_TARGET_DIR": "/home/doll/Project-Peritus/.worktrees/formal-coverage/target"
+  },
+  "commands": [
+    {
+      "command": [
+        "cargo",
+        "verus",
+        "verify",
+        "--package",
+        "peritus-obligations",
+        "--all-features",
+        "--locked",
+        "--check-toolchain",
+        "--fwd-verus-args-to",
+        "roots",
+        "--",
+        "--no-cheating",
+        "--rlimit",
+        "20",
+        "--num-threads",
+        "2"
+      ],
+      "log": "/tmp/peritus-parent-obligations-contracts-verus-integrated.log",
+      "exit_code": 0
+    },
+    {
+      "command": [
+        "cargo",
+        "test",
+        "--package",
+        "peritus-obligations",
+        "--all-features",
+        "--locked"
+      ],
+      "log": "/tmp/peritus-parent-obligations-contracts-tests-all-integrated.log",
+      "exit_code": 0
+    },
+    {
+      "command": [
+        "cargo",
+        "test",
+        "--package",
+        "peritus-obligations",
+        "--locked"
+      ],
+      "log": "/tmp/peritus-parent-obligations-contracts-tests-default-integrated.log",
+      "exit_code": 0
+    },
+    {
+      "command": [
+        "cargo",
+        "clippy",
+        "--package",
+        "peritus-obligations",
+        "--all-features",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "log": "/tmp/peritus-parent-obligations-contracts-clippy-integrated.log",
+      "exit_code": 0
+    },
+    {
+      "command": [
+        "cargo",
+        "fmt",
+        "--package",
+        "peritus-obligations",
+        "--",
+        "--check"
+      ],
+      "log": "/tmp/peritus-parent-obligations-contracts-fmt-integrated.log",
+      "exit_code": 0
+    },
+    {
+      "command": [
+        "cargo",
+        "test",
+        "--package",
+        "peritus-gates",
+        "--package",
+        "peritus-product-runner",
+        "--all-features",
+        "--lib",
+        "--locked",
+        "obligation"
+      ],
+      "log": "/tmp/peritus-parent-obligations-contracts-caller-tests-integrated.log",
+      "exit_code": 0
+    },
+    {
+      "command": [
+        "/home/doll/Project-Peritus/.worktrees/formal-coverage/target/debug/xtask",
+        "ordinary-api-check"
+      ],
+      "log": "/tmp/peritus-parent-obligations-contracts-api-integrated.log",
+      "exit_code": 0
+    },
+    {
+      "command": [
+        "/home/doll/Project-Peritus/.worktrees/formal-coverage/target/debug/xtask",
+        "source-layout-check"
+      ],
+      "log": "/tmp/peritus-parent-obligations-contracts-layout-integrated.log",
+      "exit_code": 0
+    }
+  ]
+}

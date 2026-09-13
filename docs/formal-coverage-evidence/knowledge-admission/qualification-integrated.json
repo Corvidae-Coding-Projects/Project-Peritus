@@ -1,0 +1,69 @@
+[
+  {
+    "name": "verus-integrated",
+    "command": [
+      "cargo",
+      "verus",
+      "verify",
+      "--package",
+      "peritus-run-knowledge",
+      "--all-features",
+      "--locked",
+      "--check-toolchain",
+      "--fwd-verus-args-to",
+      "roots",
+      "--",
+      "--no-cheating",
+      "--rlimit",
+      "20"
+    ],
+    "cwd": "/home/doll/Project-Peritus/.worktrees/formal-coverage",
+    "environment": {
+      "CARGO_BUILD_JOBS": "2",
+      "CCACHE_DISABLE": "1",
+      "CARGO_TARGET_DIR": "/home/doll/Project-Peritus/.worktrees/formal-coverage/target/formal-knowledge-integrated"
+    },
+    "exit_code": 0,
+    "log": "/tmp/peritus-parent-knowledge-admission-verus-integrated.log"
+  },
+  {
+    "name": "tests-integrated",
+    "command": [
+      "cargo",
+      "test",
+      "--package",
+      "peritus-run-knowledge",
+      "--all-features",
+      "--locked"
+    ],
+    "cwd": "/home/doll/Project-Peritus/.worktrees/formal-coverage",
+    "environment": {
+      "CARGO_BUILD_JOBS": "2",
+      "CCACHE_DISABLE": "1",
+      "CARGO_TARGET_DIR": "/home/doll/Project-Peritus/.worktrees/formal-coverage/target/formal-knowledge-integrated"
+    },
+    "exit_code": 0,
+    "log": "/tmp/peritus-parent-knowledge-admission-tests-integrated.log"
+  },
+  {
+    "name": "context-integrated",
+    "command": [
+      "cargo",
+      "test",
+      "--package",
+      "peritus-context",
+      "--all-features",
+      "--locked",
+      "--test",
+      "reuse_matrix"
+    ],
+    "cwd": "/home/doll/Project-Peritus/.worktrees/formal-coverage",
+    "environment": {
+      "CARGO_BUILD_JOBS": "2",
+      "CCACHE_DISABLE": "1",
+      "CARGO_TARGET_DIR": "/home/doll/Project-Peritus/.worktrees/formal-coverage/target/formal-knowledge-integrated"
+    },
+    "exit_code": 0,
+    "log": "/tmp/peritus-parent-knowledge-admission-context-integrated.log"
+  }
+]

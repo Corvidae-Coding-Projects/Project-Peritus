@@ -1,0 +1,128 @@
+{
+  "schema": "peritus.proof-impact-reconciliation-validation",
+  "schema_version": 1,
+  "authority": "audit-only",
+  "source_candidate": "d0e4f0cf0943c7194adaaeabcb11fc70badc3fe8",
+  "protected_base": "8e8cbb1bcf0de9787d86c7be3d6fc1f2079f3493",
+  "audit_tool_source_sha256": {
+    "xtask/src/cli.rs": "9b8379591a22cb51d61e51d6c534fcb746b254816e62862c84518ee97b0509f9",
+    "xtask/src/cli/help.rs": "a131001cf60f52e4a106cde537af6e73aecfd1b7eccfb674d64832a542aeb58a",
+    "xtask/src/trust.rs": "ef8eb1cd0704573fe4659d39d9d5f800993f188d2e1f5d9802d4fcd782726267",
+    "xtask/src/trust/manifest_impact.rs": "461f12cb2cc1cfc9893813e3e1345d85812dd2c94a8156fc8c05b8e2d668a036",
+    "xtask/src/trust/manifest_impact/snapshot.rs": "84878f82e7cb8311dcb29aeb3121213c7e2745167237efcf561e54cc55ab219b",
+    "xtask/tests/cli.rs": "9208b82787a382d5534e1df4ce3962e5c68cabffd726bd6bb84e44a8c3f80b3c",
+    "docs/formal-coverage-evidence/proof-impact-reconciliation/reconcile.py": "3f1a8f4105781475721cff2fdd4c0dad3150a5ed35b85c770f8e604495b84dc0",
+    "docs/formal-coverage-evidence/proof-impact-reconciliation/reconcile_tests.py": "032a7cc4dc9c8b43b5f3f36250f8b298b33dc6564ee00635dde627aa41edf230"
+  },
+  "commands": [
+    {
+      "command": [
+        "cargo",
+        "test",
+        "--package",
+        "xtask",
+        "--all-targets",
+        "--all-features",
+        "--locked"
+      ],
+      "environment": {
+        "CARGO_BUILD_JOBS": "1",
+        "CCACHE_DISABLE": "1"
+      },
+      "exit_code": 0,
+      "result": "455 passed; one existing ignored",
+      "output": "xtask-tests.log",
+      "sha256": "3c28c4a4c6b3ef3b75302b9d5361f72351140a08a8f85cb22dabc29d20379c06"
+    },
+    {
+      "command": [
+        "cargo",
+        "clippy",
+        "--package",
+        "xtask",
+        "--all-targets",
+        "--all-features",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "environment": {
+        "CARGO_BUILD_JOBS": "1",
+        "CCACHE_DISABLE": "1"
+      },
+      "exit_code": 0,
+      "result": "passed",
+      "output": "clippy.log",
+      "sha256": "2903102bc90c9bcb6dbdbde6442ad0166691b3058dfbaca7a192c1e5f2e15818"
+    },
+    {
+      "command": [
+        "python3",
+        "docs/formal-coverage-evidence/proof-impact-reconciliation/reconcile_tests.py"
+      ],
+      "environment": {},
+      "exit_code": 0,
+      "result": "five disposable Git probes passed",
+      "output": "reconcile-tests.log",
+      "sha256": "e1c3dd888dfa55d006c395daa261cd054364c25390ebd076e100e2cc3d52489a"
+    },
+    {
+      "command": [
+        "target/debug/xtask",
+        "verify-trust"
+      ],
+      "environment": {
+        "PERITUS_PROOF_IMPACT_BASE": "8e8cbb1bcf0de9787d86c7be3d6fc1f2079f3493"
+      },
+      "exit_code": 1,
+      "result": "failed: missing protected inventory source; authorization incomplete",
+      "output": "protected-trust.log",
+      "sha256": "59e175c4076cf4cd5bfe75ba041ec98d370462b55beb63d2b4aa9285acf0ad63"
+    },
+    {
+      "command": [
+        "python3",
+        "docs/formal-coverage-evidence/proof-impact-reconciliation/reconcile.py",
+        "--base",
+        "8e8cbb1bcf0de9787d86c7be3d6fc1f2079f3493",
+        "--candidate",
+        "d0e4f0cf0943c7194adaaeabcb11fc70badc3fe8",
+        "--xtask",
+        "target/debug/xtask",
+        "--output",
+        "/tmp/peritus-impact-reconciled-v3"
+      ],
+      "environment": {},
+      "exit_code": 0,
+      "result": "generated pending audit-only records",
+      "output": "reconcile.log",
+      "sha256": "9501da4874855ee571b45f5b656d380147079a6ff30c80a9083a57745ae3d35a"
+    },
+    {
+      "command": [
+        "target/debug/xtask",
+        "docs-check"
+      ],
+      "environment": {},
+      "exit_code": 0,
+      "result": "235 documentation files passed",
+      "output": "docs-check.log",
+      "sha256": "1baf9a3e4204d0c5a15e0cbef6fe797e75545bc1cd7bebf06a5cc71119af0945"
+    }
+  ],
+  "two_regenerations_byte_identical": true,
+  "working_checkout_matches_candidate_impact_inputs": 3640,
+  "all_obligation_and_evidence_sources_match_candidate": true,
+  "approval_and_actor_artifacts_unchanged": true,
+  "protected_trust_passed": false,
+  "pcr_approved": false,
+  "obligations_discharged": 0,
+  "final_package_gates_run_in_this_pass": 0,
+  "workspace_format_check_passed": true,
+  "tracked_diff_whitespace_check_passed": true,
+  "remote_refs_rechecked": {
+    "develop": "8e8cbb1bcf0de9787d86c7be3d6fc1f2079f3493",
+    "feature/formal-coverage": "d0e4f0cf0943c7194adaaeabcb11fc70badc3fe8"
+  }
+}

@@ -1,0 +1,633 @@
+--- a/crates/orchestration/peritus-obligations/src/ledger.rs
++++ b/crates/orchestration/peritus-obligations/src/ledger.rs
+@@ -1,5 +1,7 @@
+ //! Deterministic extraction of typed requirements from exact public source spans.
+ 
++#[cfg(verus_only)]
++mod admission;
+ mod extraction;
+ #[cfg(verus_only)]
+ mod model;
+@@ -128,6 +130,16 @@
+         model::extraction_inputs_valid(source, drafts, limits)
+     }
+ 
++    /// Complete first extraction error over the supplied source, drafts, and bounds.
++    pub open spec fn extraction_error(
++        source: &crate::PublicTaskSource,
++        drafts: Seq<RequirementDraft>,
++        limits: ObligationLimits,
++        error: &ObligationError,
++    ) -> bool {
++        admission::extraction_error(source, drafts, limits, error)
++    }
++
+     /// Exact supplied public-source digest.
+     pub closed spec fn spec_source_digest(&self) -> Sha256Digest { self.source_digest }
+     /// Exact public conversation revision.
+@@ -184,7 +196,7 @@
+             result.is_ok() == Self::extraction_inputs_valid(source, drafts@, limits),
+             match result {
+                 Ok(ledger) => ledger.spec_refines_extraction(source, drafts@, limits),
+-                Err(_) => true,
++                Err(error) => Self::extraction_error(source, drafts@, limits, &error),
+             },
+     {
+         validation::validate_drafts(source, drafts, limits)?;
+--- /dev/null
++++ b/crates/orchestration/peritus-obligations/src/ledger/admission.rs
+@@ -0,0 +1,95 @@
++//! Exact extraction error precedence over the supplied draft sequence.
++
++use super::{RequirementDraft, model};
++use crate::{
++    ObligationError, ObligationErrorKind, ObligationLimits, PathMention, PublicTaskSource,
++};
++use core::cmp::Ordering;
++use vstd::prelude::*;
++
++verus! {
++
++/// The current identity is strictly above its predecessor, or is the first identity.
++pub open spec fn pair_valid(drafts: Seq<RequirementDraft>, index: int) -> bool {
++    0 <= index < drafts.len() && (index == 0 || crate::order::byte_order(
++        model::draft_keys(drafts)[index - 1], model::draft_keys(drafts)[index]) == Ordering::Less)
++}
++
++/// Complete payload of one duplicate or descending adjacent requirement identity.
++pub open spec fn pair_error(
++    drafts: Seq<RequirementDraft>, index: int, error: &ObligationError,
++) -> bool {
++    1 <= index < drafts.len() && match crate::order::byte_order(
++        model::draft_keys(drafts)[index - 1], model::draft_keys(drafts)[index]) {
++        Ordering::Equal => error.spec_requirement(ObligationErrorKind::DuplicateValue, drafts[index].spec_id()),
++        Ordering::Greater => error.spec_requirement(ObligationErrorKind::NonCanonicalOrder, drafts[index].spec_id()),
++        Ordering::Less => false,
++    }
++}
++
++/// Complete single-draft error: span, ordinal, typed shape, then bounded canonical paths.
++pub open spec fn draft_error(
++    source: &PublicTaskSource,
++    draft: &RequirementDraft,
++    index: int,
++    limits: ObligationLimits,
++    error: &ObligationError,
++) -> bool {
++    if !model::span_valid(source, draft, limits) {
++        error.spec_requirement(ObligationErrorKind::InvalidClauseSpan, draft.spec_id())
++    } else if index > u32::MAX as int {
++        error.spec_requirement(ObligationErrorKind::LimitExceeded, draft.spec_id())
++    } else if !draft.spec_specification().spec_valid() {
++        error.spec_plain(ObligationErrorKind::RequirementShapeMismatch)
++    } else {
++        PathMention::spec_validation_error(draft.spec_paths(), limits.spec_max_paths(), *error)
++    }
++}
++
++/// Every earlier draft passed both its adjacent-identity and intrinsic validation.
++pub open spec fn valid_prefix(
++    source: &PublicTaskSource,
++    drafts: Seq<RequirementDraft>,
++    end: int,
++    limits: ObligationLimits,
++) -> bool {
++    0 <= end <= drafts.len() && forall |index: int| #![trigger drafts[index]] 0 <= index < end ==>
++        pair_valid(drafts, index) && model::draft_valid(source, &drafts[index], index, limits)
++}
++
++/// First draft rejected by the interleaved production identity-and-content traversal.
++pub open spec fn first_draft_error(
++    source: &PublicTaskSource,
++    drafts: Seq<RequirementDraft>,
++    index: int,
++    limits: ObligationLimits,
++    error: &ObligationError,
++) -> bool {
++    &&& 0 <= index < drafts.len()
++    &&& valid_prefix(source, drafts, index, limits)
++    &&& if !pair_valid(drafts, index) {
++        pair_error(drafts, index, error)
++    } else {
++        draft_error(source, &drafts[index], index, limits, error)
++    }
++}
++
++/// Complete extraction rejection, including all stored error fields and check precedence.
++pub open spec fn extraction_error(
++    source: &PublicTaskSource,
++    drafts: Seq<RequirementDraft>,
++    limits: ObligationLimits,
++    error: &ObligationError,
++) -> bool {
++    if drafts.len() == 0 || drafts.len() > limits.spec_max_requirements() {
++        error.spec_numbers(ObligationErrorKind::LimitExceeded,
++            limits.spec_max_requirements() as u64, drafts.len() as u64)
++    } else if !valid_prefix(source, drafts, drafts.len() as int, limits) {
++        exists |index: int| #[trigger] first_draft_error(source, drafts, index, limits, error)
++    } else {
++        !model::draft_alternatives_valid(drafts)
++            && error.spec_plain(ObligationErrorKind::InvalidAlternative)
++    }
++}
++
++} // verus!
+--- a/crates/orchestration/peritus-obligations/src/ledger/validation.rs
++++ b/crates/orchestration/peritus-obligations/src/ledger/validation.rs
+@@ -2,7 +2,7 @@
+ 
+ use super::RequirementDraft;
+ #[cfg(verus_only)]
+-use super::model;
++use super::{admission, model};
+ use crate::{ObligationError, ObligationErrorKind, ObligationLimits, PublicTaskSource};
+ use core::cmp::Ordering;
+ use vstd::prelude::*;
+@@ -22,6 +22,10 @@
+             model::draft_keys(drafts@)[index as int],
+         ) == Ordering::Less),
+         result.is_err() ==> !model::extraction_inputs_valid(_source, drafts@, _limits),
++        match result {
++            Ok(()) => true,
++            Err(error) => admission::pair_error(drafts@, index as int, &error),
++        },
+ {
+     let order = crate::order::compare(
+         drafts[index - 1].id().digest().as_bytes(),
+@@ -72,6 +76,10 @@
+     ensures
+         result.is_ok() == model::draft_valid(source, &drafts@[index as int], index as int, limits),
+         result.is_err() ==> !model::extraction_inputs_valid(source, drafts@, limits),
++        match result {
++            Ok(()) => true,
++            Err(error) => admission::draft_error(source, &drafts@[index as int], index as int, limits, &error),
++        },
+ {
+     let draft = &drafts[index];
+     let clause_length = draft.byte_end().saturating_sub(draft.byte_start());
+@@ -100,7 +108,12 @@
+     drafts: &[RequirementDraft],
+     limits: ObligationLimits,
+ ) -> (result: Result<(), ObligationError>)
+-    ensures result.is_ok() == model::extraction_inputs_valid(source, drafts@, limits),
++    ensures
++        result.is_ok() == model::extraction_inputs_valid(source, drafts@, limits),
++        match result {
++            Ok(()) => true,
++            Err(error) => admission::extraction_error(source, drafts@, limits, &error),
++        },
+ {
+     if drafts.is_empty() || drafts.len() > limits.max_requirements() {
+         assert(!model::extraction_inputs_valid(source, drafts@, limits));
+@@ -115,6 +128,7 @@
+         invariant
+             0 < drafts@.len() <= limits.spec_max_requirements(),
+             index <= drafts@.len(),
++            admission::valid_prefix(source, drafts@, index as int, limits),
+             forall |prior: int| 0 <= prior < index ==>
+                 model::draft_valid(source, &drafts@[prior], prior, limits),
+             forall |prior: int| 1 <= prior < index ==>
+@@ -125,13 +139,19 @@
+         decreases drafts.len() - index,
+     {
+         if index > 0 {
+-            validate_pair(source, drafts, index, limits)?;
++            if let Err(error) = validate_pair(source, drafts, index, limits) {
++                assert(admission::first_draft_error(source, drafts@, index as int, limits, &error));
++                return Err(error);
++            }
+             assert(crate::order::byte_order(
+                 model::draft_keys(drafts@)[index as int - 1],
+                 model::draft_keys(drafts@)[index as int],
+             ) == Ordering::Less);
+         }
+-        validate_draft(source, drafts, index, limits)?;
++        if let Err(error) = validate_draft(source, drafts, index, limits) {
++            assert(admission::first_draft_error(source, drafts@, index as int, limits, &error));
++            return Err(error);
++        }
+         assert(model::draft_valid(source, &drafts@[index as int], index as int, limits));
+         index += 1;
+     }
+@@ -144,7 +164,12 @@
+ fn validate_alternatives(
+     drafts: &[RequirementDraft],
+ ) -> (result: Result<(), ObligationError>)
+-    ensures result.is_ok() == model::draft_alternatives_valid(drafts@),
++    ensures
++        result.is_ok() == model::draft_alternatives_valid(drafts@),
++        match result {
++            Ok(()) => true,
++            Err(error) => error.spec_plain(ObligationErrorKind::InvalidAlternative),
++        },
+ {
+     let mut index = 0;
+     while index < drafts.len()
+--- a/crates/orchestration/peritus-obligations/src/path.rs
++++ b/crates/orchestration/peritus-obligations/src/path.rs
+@@ -49,7 +49,7 @@
+ 
+ impl PathMention {
+     /// Exact size-first, then earliest noncanonical adjacent-pair error.
+-    pub closed spec fn spec_validation_error(
++    pub open spec fn spec_validation_error(
+         paths: Seq<Self>, maximum: usize, error: ObligationError,
+     ) -> bool { validation::validation_error(paths, maximum, error) }
+ 
+--- a/crates/orchestration/peritus-obligations/src/path/validation.rs
++++ b/crates/orchestration/peritus-obligations/src/path/validation.rs
+@@ -7,13 +7,15 @@
+ 
+ verus! {
+ 
+-pub(super) open spec fn ordered_through(paths: Seq<PathMention>, end: nat) -> bool {
++/// Every adjacent path identity in the checked prefix is strictly increasing.
++pub open spec fn ordered_through(paths: Seq<PathMention>, end: nat) -> bool {
+     end <= paths.len() && forall |index: int| 1 <= index < end ==>
+         crate::order::byte_order(#[trigger] PathMention::keys(paths)[index - 1],
+             #[trigger] PathMention::keys(paths)[index]) == Ordering::Less
+ }
+ 
+-pub(super) open spec fn first_bad_pair(
++/// Exact plain error for the first noncanonical adjacent path identity pair.
++pub open spec fn first_bad_pair(
+     paths: Seq<PathMention>, index: int, error: ObligationError,
+ ) -> bool {
+     1 <= index < paths.len() && ordered_through(paths, index as nat)
+@@ -25,7 +27,8 @@
+         }
+ }
+ 
+-pub(super) open spec fn validation_error(
++/// The size error or first ordering error, with every stored payload specified.
++pub open spec fn validation_error(
+     paths: Seq<PathMention>, maximum: usize, error: ObligationError,
+ ) -> bool {
+     if paths.len() > maximum {
+--- a/crates/orchestration/peritus-obligations/tests/foundation_semantics.rs
++++ b/crates/orchestration/peritus-obligations/tests/foundation_semantics.rs
+@@ -3,9 +3,10 @@
+ mod support;
+ 
+ use peritus_obligations::{
+-    ConditionObservation, ConditionState, ObligationError, ObligationErrorKind, ObligationLimits,
+-    ObligationSpec, PathId, PathMention, PathRole, PublicTaskSource, RequirementDraft,
+-    RequirementLedger,
++    AlternativeBranchId, AlternativeGroupId, ConditionObservation, ConditionState, ObligationError,
++    ObligationErrorKind, ObligationLimits, ObligationSpec, PathId, PathMention, PathRole,
++    PublicTaskSource, RequirementDraft, RequirementLedger, SchemaDirection, SchemaField,
++    SchemaFieldId, SchemaRequirement,
+ };
+ use peritus_types::Sha256Digest;
+ use support::{digest, requirement_id};
+@@ -27,6 +28,158 @@
+         vec![RequirementDraft::new(requirement_id(1), 0, 12, ObligationSpec::Hard, paths)],
+         limits,
+     )
++}
++
++fn assert_error(
++    error: ObligationError,
++    kind: ObligationErrorKind,
++    requirement_id: Option<peritus_spec::RequirementId>,
++    expected: Option<u64>,
++    actual: Option<u64>,
++) {
++    assert_eq!(error.kind(), kind);
++    assert_eq!(error.requirement_id(), requirement_id);
++    assert_eq!(error.expected(), expected);
++    assert_eq!(error.actual(), actual);
++}
++
++const fn draft(
++    identity: u8,
++    byte_start: usize,
++    byte_end: usize,
++    specification: ObligationSpec,
++    paths: Vec<PathMention>,
++) -> RequirementDraft {
++    RequirementDraft::new(requirement_id(identity), byte_start, byte_end, specification, paths)
++}
++
++#[test]
++fn public_extraction_retains_collection_and_interleaved_draft_error_priority() {
++    let limits = ObligationLimits::new(8, 8, 1, 3, 2, 2).expect("focused limits");
++    let source = PublicTaskSource::new(b"abcdefgh".to_vec(), 1, limits).expect("source");
++
++    let empty = RequirementLedger::extract(&source, Vec::new(), limits)
++        .expect_err("an empty draft collection is rejected before traversal");
++    assert_error(empty, ObligationErrorKind::LimitExceeded, None, Some(1), Some(0));
++
++    let oversized = RequirementLedger::extract(
++        &source,
++        vec![
++            draft(2, 4, 4, ObligationSpec::Hard, Vec::new()),
++            draft(1, 7, 6, ObligationSpec::Hard, Vec::new()),
++        ],
++        limits,
++    )
++    .expect_err("collection size precedes ordering and span validation");
++    assert_error(oversized, ObligationErrorKind::LimitExceeded, None, Some(1), Some(2));
++
++    let traversal_limits = ObligationLimits::new(8, 8, 3, 3, 2, 2).expect("traversal limits");
++    let invalid_first = RequirementLedger::extract(
++        &source,
++        vec![
++            draft(1, 4, 4, ObligationSpec::Hard, Vec::new()),
++            draft(1, 0, 1, ObligationSpec::Hard, Vec::new()),
++        ],
++        traversal_limits,
++    )
++    .expect_err("the first draft fails before a later duplicate pair is inspected");
++    assert_error(
++        invalid_first,
++        ObligationErrorKind::InvalidClauseSpan,
++        Some(requirement_id(1)),
++        None,
++        None,
++    );
++
++    let duplicate = RequirementLedger::extract(
++        &source,
++        vec![
++            draft(2, 0, 1, ObligationSpec::Hard, Vec::new()),
++            draft(2, 4, 4, ObligationSpec::Hard, Vec::new()),
++        ],
++        traversal_limits,
++    )
++    .expect_err("a duplicate pair precedes the current draft span");
++    assert_error(
++        duplicate,
++        ObligationErrorKind::DuplicateValue,
++        Some(requirement_id(2)),
++        None,
++        None,
++    );
++
++    let descending = RequirementLedger::extract(
++        &source,
++        vec![
++            draft(2, 0, 1, ObligationSpec::Hard, Vec::new()),
++            draft(1, 4, 4, ObligationSpec::Hard, Vec::new()),
++        ],
++        traversal_limits,
++    )
++    .expect_err("a descending pair precedes the current draft span");
++    assert_error(
++        descending,
++        ObligationErrorKind::NonCanonicalOrder,
++        Some(requirement_id(1)),
++        None,
++        None,
++    );
++}
++
++#[test]
++fn public_extraction_retains_span_shape_path_and_alternative_error_priority() {
++    let limits = ObligationLimits::new(8, 8, 3, 2, 2, 2).expect("focused limits");
++    let source = PublicTaskSource::new(b"abcdefgh".to_vec(), 1, limits).expect("source");
++    let response_field = SchemaField::new(
++        SchemaFieldId::new(digest(1)),
++        b"field".to_vec(),
++        limits.max_clause_bytes(),
++    )
++    .expect("field");
++    let response = SchemaRequirement::new(SchemaDirection::Response, vec![response_field], limits)
++        .expect("response schema");
++    let wrong_shape = ObligationSpec::RequestSchema(response);
++    let noncanonical_paths = vec![
++        path(3, PathRole::RequiredOutput),
++        path(2, PathRole::RequiredOutput),
++        path(1, PathRole::RequiredOutput),
++    ];
++
++    let span = RequirementLedger::extract(
++        &source,
++        vec![draft(1, 3, 3, wrong_shape.clone(), noncanonical_paths.clone())],
++        limits,
++    )
++    .expect_err("span validation precedes requirement shape and paths");
++    assert_error(span, ObligationErrorKind::InvalidClauseSpan, Some(requirement_id(1)), None, None);
++
++    let shape = RequirementLedger::extract(
++        &source,
++        vec![draft(1, 0, 1, wrong_shape, noncanonical_paths.clone())],
++        limits,
++    )
++    .expect_err("shape validation precedes path validation");
++    assert_error(shape, ObligationErrorKind::RequirementShapeMismatch, None, None, None);
++
++    let paths = RequirementLedger::extract(
++        &source,
++        vec![draft(1, 0, 1, ObligationSpec::Hard, noncanonical_paths)],
++        limits,
++    )
++    .expect_err("path size precedes path ordering");
++    assert_error(paths, ObligationErrorKind::LimitExceeded, None, Some(2), Some(3));
++
++    let invalid_alternative = ObligationSpec::Alternative {
++        group_id: AlternativeGroupId::new(digest(4)),
++        branch_id: AlternativeBranchId::new(digest(5)),
++    };
++    let alternative = RequirementLedger::extract(
++        &source,
++        vec![draft(1, 0, 1, invalid_alternative, Vec::new())],
++        limits,
++    )
++    .expect_err("alternative topology is checked after every draft");
++    assert_error(alternative, ObligationErrorKind::InvalidAlternative, None, None, None);
+ }
+ 
+ #[test]
+--- a/crates/orchestration/peritus-scheduler/src/resource/addition/merge.rs
++++ b/crates/orchestration/peritus-scheduler/src/resource/addition/merge.rs
+@@ -8,6 +8,8 @@
+ 
+ #[cfg(verus_only)]
+ use crate::ResourceKind;
++
++mod advance_proofs;
+ 
+ verus! {
+ 
+@@ -186,20 +188,27 @@
+             < _left_entries@.len() + right_entries@.len() - cursor.left - cursor.right,
+ {
+     reveal(cursor_valid);
+-    let ghost left_prefix = _left_entries@.take(cursor.left as int);
+-    let ghost right_prefix = right_entries@.take(cursor.right as int);
++    let ghost before_entries = cursor.entries@;
++    let ghost before_left = cursor.left;
++    let ghost before_right = cursor.right;
+     let entry = right_entries[cursor.right];
+     proof {
+-        super::proofs::ordered_take(right_entries@, cursor.right as int);
+-        super::proofs::prefix_before(right_entries@, cursor.right as int);
+-        super::proofs::appended_quantities(right_prefix, entry);
+-        super::proofs::added_entries_push_right(left_prefix, right_prefix, entry);
+-        assert(right_entries@.take(cursor.right as int + 1) == right_prefix.push(entry));
+-        super::proofs::ordered_push(cursor.entries@, entry);
+-        super::proofs::appended_quantities(cursor.entries@, entry);
++        advance_proofs::advance_right_parts(
++            before_entries,
++            before_left as nat,
++            before_right as nat,
++            _left_entries@,
++            right_entries@,
++        );
+     }
+     cursor.right += 1;
+     cursor.entries.push(entry);
++    proof {
++        assert(cursor.entries@ == before_entries.push(entry));
++        assert(cursor.left == before_left);
++        assert(cursor.right == before_right + 1);
++        assert(cursor_valid(&cursor, _left_entries@, right_entries@));
++    }
+     cursor
+ }
+ 
+--- /dev/null
++++ b/crates/orchestration/peritus-scheduler/src/resource/addition/merge/advance_proofs.rs
+@@ -0,0 +1,141 @@
++//! Solver-bounded proof step for appending one right-hand merge entry.
++
++use vstd::prelude::*;
++
++#[cfg(verus_only)]
++use crate::{ResourceEntry, ResourceKind};
++
++#[cfg(verus_only)]
++use super::super::{added_entries, entries_ordered};
++
++verus! {
++
++pub(super) proof fn advance_right_parts(
++    entries: Seq<ResourceEntry>,
++    left: nat,
++    right: nat,
++    left_entries: Seq<ResourceEntry>,
++    right_entries: Seq<ResourceEntry>,
++)
++    requires
++        left <= left_entries.len(),
++        right < right_entries.len(),
++        crate::resource::capacity::entries_canonical(left_entries),
++        crate::resource::capacity::entries_canonical(right_entries),
++        entries_ordered(entries),
++        entries.len() <= left + right,
++        entries == added_entries(
++            left_entries.take(left as int), right_entries.take(right as int)),
++        forall |kind: ResourceKind| #![auto]
++            crate::resource::capacity::entries_quantity(entries, kind)
++                == crate::resource::capacity::entries_quantity(
++                    left_entries.take(left as int), kind)
++                    + crate::resource::capacity::entries_quantity(
++                        right_entries.take(right as int), kind),
++        left < left_entries.len() ==> forall |index: int| #![trigger entries[index]]
++            0 <= index < entries.len() ==>
++                entries[index].spec_kind().spec_tag()
++                    < left_entries[left as int].spec_kind().spec_tag(),
++        forall |index: int| #![trigger entries[index]]
++            0 <= index < entries.len() ==>
++                entries[index].spec_kind().spec_tag()
++                    < right_entries[right as int].spec_kind().spec_tag(),
++        left < left_entries.len() && right > 0 ==>
++            right_entries[right as int - 1].spec_kind().spec_tag()
++                < left_entries[left as int].spec_kind().spec_tag(),
++        left > 0 ==> left_entries[left as int - 1].spec_kind().spec_tag()
++            < right_entries[right as int].spec_kind().spec_tag(),
++        left >= left_entries.len()
++            || right_entries[right as int].spec_kind().spec_tag()
++                < left_entries[left as int].spec_kind().spec_tag(),
++    ensures
++        left <= left_entries.len(),
++        right + 1 <= right_entries.len(),
++        crate::resource::capacity::entries_canonical(left_entries),
++        crate::resource::capacity::entries_canonical(right_entries),
++        entries_ordered(entries.push(right_entries[right as int])),
++        entries.push(right_entries[right as int]).len() <= left + right + 1,
++        entries.push(right_entries[right as int]) == added_entries(
++            left_entries.take(left as int), right_entries.take(right as int + 1)),
++        forall |kind: ResourceKind| #![auto]
++            crate::resource::capacity::entries_quantity(
++                entries.push(right_entries[right as int]), kind)
++                == crate::resource::capacity::entries_quantity(
++                    left_entries.take(left as int), kind)
++                    + crate::resource::capacity::entries_quantity(
++                        right_entries.take(right as int + 1), kind),
++        left < left_entries.len() ==> forall |index: int|
++            #![trigger entries.push(right_entries[right as int])[index]]
++            0 <= index < entries.push(right_entries[right as int]).len() ==>
++                entries.push(right_entries[right as int])[index].spec_kind().spec_tag()
++                    < left_entries[left as int].spec_kind().spec_tag(),
++        right + 1 < right_entries.len() ==> forall |index: int|
++            #![trigger entries.push(right_entries[right as int])[index]]
++            0 <= index < entries.push(right_entries[right as int]).len() ==>
++                entries.push(right_entries[right as int])[index].spec_kind().spec_tag()
++                    < right_entries[(right + 1) as int].spec_kind().spec_tag(),
++        left < left_entries.len() ==> right_entries[right as int].spec_kind().spec_tag()
++            < left_entries[left as int].spec_kind().spec_tag(),
++        right + 1 < right_entries.len() && left > 0 ==>
++            left_entries[left as int - 1].spec_kind().spec_tag()
++                < right_entries[(right + 1) as int].spec_kind().spec_tag(),
++{
++    let left_prefix = left_entries.take(left as int);
++    let right_prefix = right_entries.take(right as int);
++    let entry = right_entries[right as int];
++
++    super::super::proofs::ordered_take(right_entries, right as int);
++    super::super::proofs::prefix_before(right_entries, right as int);
++    super::super::proofs::appended_quantities(right_prefix, entry);
++    super::super::proofs::added_entries_push_right(left_prefix, right_prefix, entry);
++    assert(right_entries.take(right as int + 1) == right_prefix.push(entry));
++    super::super::proofs::ordered_push(entries, entry);
++    super::super::proofs::appended_quantities(entries, entry);
++    assert(entries.push(entry).len() == entries.len() + 1);
++    assert(entries.push(entry) == added_entries(
++        left_entries.take(left as int), right_entries.take(right as int + 1)));
++
++    assert forall |kind: ResourceKind| #![auto]
++        crate::resource::capacity::entries_quantity(entries.push(entry), kind)
++            == crate::resource::capacity::entries_quantity(left_prefix, kind)
++                + crate::resource::capacity::entries_quantity(
++                    right_entries.take(right as int + 1), kind) by {
++    }
++    if left < left_entries.len() {
++        assert(entry.spec_kind().spec_tag()
++            < left_entries[left as int].spec_kind().spec_tag());
++        assert forall |index: int|
++            #![trigger entries.push(entry)[index]]
++            0 <= index < entries.push(entry).len() implies
++                entries.push(entry)[index].spec_kind().spec_tag()
++                    < left_entries[left as int].spec_kind().spec_tag() by {
++            if index < entries.len() {
++                assert(entries.push(entry)[index] == entries[index]);
++            } else {
++                assert(index == entries.len());
++                assert(entries.push(entry)[index] == entry);
++            }
++        }
++    }
++    if right + 1 < right_entries.len() {
++        crate::resource::capacity::earlier_tag_is_less(
++            right_entries,
++            right as int,
++            right as int + 1,
++        );
++        assert forall |index: int|
++            #![trigger entries.push(entry)[index]]
++            0 <= index < entries.push(entry).len() implies
++                entries.push(entry)[index].spec_kind().spec_tag()
++                    < right_entries[(right + 1) as int].spec_kind().spec_tag() by {
++            if index < entries.len() {
++                assert(entries.push(entry)[index] == entries[index]);
++            } else {
++                assert(index == entries.len());
++                assert(entries.push(entry)[index] == entry);
++            }
++        }
++    }
++}
++
++} // verus!

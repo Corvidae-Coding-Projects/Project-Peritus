@@ -43,6 +43,7 @@ fn missing_inputs_are_not_ready_and_policy_is_not_called() {
     let report = QualificationReport::evaluate(&QualificationInputs::new(binding()), &policy)
         .expect("fail-closed report");
     assert_eq!(report.verdict(), QualificationVerdict::NotReady);
+    assert!(!report.is_ready());
     assert!(!report.blockers().is_empty());
     assert_eq!(policy.calls.get(), 0);
     assert!(report.policy_decision().is_none());

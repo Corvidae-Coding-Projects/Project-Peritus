@@ -12,12 +12,21 @@ mod completeness;
 mod diagnostic;
 mod digest;
 mod finding;
+mod review;
 
 pub use self::assessment::{CriterionAssessment, EvidenceAssessment, QualificationAssessment};
 pub use self::diagnostic::Diagnostic;
 pub use self::finding::FindingAssessment;
+pub use self::review::ReviewAssessment;
 
 use self::completeness::{criteria_complete, evidence_complete, qualifications_complete};
+#[cfg(verus_only)]
+pub(crate) use self::completeness::{
+    evaluation_components_ready, spec_criteria_complete, spec_evidence_complete,
+    spec_qualifications_complete,
+};
+#[cfg(verus_only)]
+pub(crate) use self::digest::expected_decision_digest;
 use self::digest::decision_digest;
 
 /// Explicit fail-closed H4 verdict.
@@ -37,109 +46,18 @@ pub enum ReleaseVerdict {
 pub struct DecisionDigest([u8; 32]);
 
 impl DecisionDigest {
-    pub(crate) const fn new(bytes: [u8; 32]) -> Self { Self(bytes) }
+    pub(crate) const fn new(bytes: [u8; 32]) -> (digest: Self)
+        ensures digest.spec_bytes() == bytes
+    { Self(bytes) }
+
+    /// Logical view of every fingerprint byte.
+    pub closed spec fn spec_bytes(&self) -> [u8; 32] { self.0 }
 
     /// Returns the exact fingerprint bytes.
     #[must_use]
-    pub const fn as_bytes(&self) -> &[u8; 32] { &self.0 }
-}
-
-/// Aggregated independent-review state.
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-#[allow(clippy::struct_excessive_bools, reason = "review independence dimensions must remain explicit")]
-pub struct ReviewAssessment {
-    satisfied: bool,
-    approved_count: u16,
-    stale_count: u16,
-    mismatched_count: u16,
-    changes_required_count: u16,
-    self_review_count: u16,
-    non_independent_count: u16,
-    duplicate_reviewer: bool,
-    shared_context: bool,
-    conflicting_review: bool,
-}
-
-impl ReviewAssessment {
-    #[allow(
-        clippy::fn_params_excessive_bools,
-        clippy::too_many_arguments,
-        reason = "review independence dimensions remain explicit"
-    )]
-    pub(crate) const fn new(
-        satisfied: bool,
-        approved_count: u16,
-        stale_count: u16,
-        mismatched_count: u16,
-        changes_required_count: u16,
-        self_review_count: u16,
-        non_independent_count: u16,
-        duplicate_reviewer: bool,
-        shared_context: bool,
-        conflicting_review: bool,
-    ) -> Self {
-        Self {
-            satisfied,
-            approved_count,
-            stale_count,
-            mismatched_count,
-            changes_required_count,
-            self_review_count,
-            non_independent_count,
-            duplicate_reviewer,
-            shared_context,
-            conflicting_review,
-        }
-    }
-
-    /// Returns whether the independent-review quorum is clean and complete.
-    #[must_use]
-    pub const fn is_satisfied(&self) -> (satisfied: bool)
-        ensures satisfied == self.spec_is_satisfied()
-    {
-        self.satisfied
-    }
-
-    /// Logical view of whether the independent-review quorum is clean and complete.
-    pub closed spec fn spec_is_satisfied(&self) -> bool {
-        self.satisfied
-    }
-
-    /// Returns the saturated approved-review count.
-    #[must_use]
-    pub const fn approved_count(&self) -> u16 { self.approved_count }
-
-    /// Returns the saturated stale-review count.
-    #[must_use]
-    pub const fn stale_count(&self) -> u16 { self.stale_count }
-
-    /// Returns the saturated mismatched-review count.
-    #[must_use]
-    pub const fn mismatched_count(&self) -> u16 { self.mismatched_count }
-
-    /// Returns the saturated changes-required count.
-    #[must_use]
-    pub const fn changes_required_count(&self) -> u16 { self.changes_required_count }
-
-    /// Returns the saturated self-review count.
-    #[must_use]
-    pub const fn self_review_count(&self) -> u16 { self.self_review_count }
-
-    /// Returns the saturated non-independent-review count.
-    #[must_use]
-    pub const fn non_independent_count(&self) -> u16 { self.non_independent_count }
-
-    /// Returns whether current reviews reused a reviewer identity.
-    #[must_use]
-    pub const fn has_duplicate_reviewer(&self) -> bool { self.duplicate_reviewer }
-
-    /// Returns whether current reviews reused a fresh-context digest.
-    #[must_use]
-    pub const fn has_shared_context(&self) -> bool { self.shared_context }
-
-    /// Returns whether observations with one review identity disagreed.
-    #[must_use]
-    pub const fn has_conflicting_review(&self) -> bool { self.conflicting_review }
+    pub const fn as_bytes(&self) -> (bytes: &[u8; 32])
+        ensures *bytes == self.spec_bytes()
+    { &self.0 }
 }
 
 /// Pure H4 decision for one exact release candidate.
@@ -171,7 +89,7 @@ impl ReleaseDecision {
         clippy::too_many_arguments,
         reason = "the evaluator transfers owned immutable decision components exactly once"
     )]
-    pub(crate) fn from_evaluation(
+    pub(crate) const fn from_evaluation(
         candidate: ReleaseCandidate,
         evaluated_at: u64,
         criteria: [CriterionAssessment; 25],
@@ -180,7 +98,48 @@ impl ReleaseDecision {
         reviews: ReviewAssessment,
         findings: FindingAssessment,
         diagnostics: Vec<Diagnostic>,
-    ) -> Self {
+    ) -> (decision: Self)
+        ensures
+            decision.spec_candidate() == candidate,
+            decision.spec_evaluated_at() == evaluated_at,
+            decision.spec_all_criteria_satisfied() == spec_criteria_complete(&criteria),
+            decision.spec_required_artifacts_complete() == spec_evidence_complete(&evidence),
+            decision.spec_all_qualifications_ready()
+                == spec_qualifications_complete(&qualifications),
+            decision.spec_reviews_complete() == reviews.spec_is_satisfied(),
+            decision.spec_blockers_absent() == findings.spec_is_satisfied(),
+            decision.spec_criteria() == criteria@,
+            decision.spec_evidence() == evidence@,
+            decision.spec_qualifications() == qualifications@,
+            decision.spec_reviews() == reviews,
+            decision.spec_findings() == findings,
+            decision.spec_diagnostics() == diagnostics@,
+            decision.spec_digest().spec_bytes()@ == expected_decision_digest(
+                candidate.spec_manifest_digest(),
+                decision.spec_verdict(),
+                evidence@,
+                qualifications@,
+                reviews,
+                findings,
+            ),
+            (decision.spec_verdict() == ReleaseVerdict::Ready)
+                == evaluation_components_ready(
+                    &criteria,
+                    &evidence,
+                    &qualifications,
+                    reviews,
+                    findings,
+                    diagnostics@,
+                ),
+            decision.spec_is_ready() == evaluation_components_ready(
+                &criteria,
+                &evidence,
+                &qualifications,
+                reviews,
+                findings,
+                diagnostics@,
+            ),
+    {
         let complete = criteria_complete(&criteria)
             && evidence_complete(&evidence)
             && qualifications_complete(&qualifications)
@@ -200,7 +159,7 @@ impl ReleaseDecision {
             reviews,
             findings,
         );
-        Self {
+        let decision = Self {
             candidate,
             evaluated_at,
             verdict,
@@ -211,20 +170,54 @@ impl ReleaseDecision {
             reviews,
             findings,
             diagnostics,
+        };
+        proof {
+            reveal(ReleaseDecision::spec_candidate);
+            reveal(ReleaseDecision::spec_evaluated_at);
+            reveal(ReleaseDecision::spec_verdict);
+            reveal(ReleaseDecision::spec_is_ready);
+            reveal(ReleaseDecision::spec_all_criteria_satisfied);
+            reveal(ReleaseDecision::spec_required_artifacts_complete);
+            reveal(ReleaseDecision::spec_all_qualifications_ready);
+            reveal(ReleaseDecision::spec_reviews_complete);
+            reveal(ReleaseDecision::spec_blockers_absent);
+            reveal(ReleaseDecision::spec_criteria);
+            reveal(ReleaseDecision::spec_evidence);
+            reveal(ReleaseDecision::spec_qualifications);
+            reveal(ReleaseDecision::spec_reviews);
+            reveal(ReleaseDecision::spec_findings);
+            reveal(ReleaseDecision::spec_diagnostics);
+            reveal(evaluation_components_ready);
+            reveal(spec_criteria_complete);
+            reveal(spec_evidence_complete);
+            reveal(spec_qualifications_complete);
         }
+        decision
     }
 
     /// Returns the exact evaluated candidate.
     #[must_use]
-    pub const fn candidate(&self) -> ReleaseCandidate { self.candidate }
+    pub const fn candidate(&self) -> (candidate: ReleaseCandidate)
+        ensures candidate == self.spec_candidate()
+    {
+        self.candidate
+    }
 
     /// Returns the monotonic policy-evaluation tick.
     #[must_use]
-    pub const fn evaluated_at(&self) -> u64 { self.evaluated_at }
+    pub const fn evaluated_at(&self) -> (evaluated_at: u64)
+        ensures evaluated_at == self.spec_evaluated_at()
+    {
+        self.evaluated_at
+    }
 
     /// Returns the explicit fail-closed verdict.
     #[must_use]
-    pub const fn verdict(&self) -> ReleaseVerdict { self.verdict }
+    pub const fn verdict(&self) -> (verdict: ReleaseVerdict)
+        ensures verdict == self.spec_verdict()
+    {
+        self.verdict
+    }
 
     /// Returns `true` exactly for [`ReleaseVerdict::Ready`].
     #[must_use]
@@ -252,33 +245,76 @@ impl ReleaseDecision {
 
     /// Returns the stable deterministic decision fingerprint.
     #[must_use]
-    pub const fn digest(&self) -> DecisionDigest { self.digest }
+    pub const fn digest(&self) -> (digest: DecisionDigest)
+        ensures digest == self.spec_digest()
+    { self.digest }
 
     /// Returns all criterion assessments in stable ID order.
     #[must_use]
-    pub const fn criteria(&self) -> &[CriterionAssessment; 25] { &self.criteria }
+    pub const fn criteria(&self) -> (criteria: &[CriterionAssessment; 25])
+        ensures criteria@ == self.spec_criteria()
+    { &self.criteria }
 
     /// Returns all evidence assessments in stable requirement order.
     #[must_use]
-    pub const fn evidence(&self) -> &[EvidenceAssessment; 44] { &self.evidence }
+    pub const fn evidence(&self) -> (evidence: &[EvidenceAssessment; 44])
+        ensures evidence@ == self.spec_evidence()
+    { &self.evidence }
 
     /// Returns H0-H3 assessments in canonical order.
     #[must_use]
-    pub const fn qualifications(&self) -> &[QualificationAssessment; 4] {
+    pub const fn qualifications(&self) -> (qualifications: &[QualificationAssessment; 4])
+        ensures qualifications@ == self.spec_qualifications()
+    {
         &self.qualifications
     }
 
     /// Returns the independent-review assessment.
     #[must_use]
-    pub const fn reviews(&self) -> ReviewAssessment { self.reviews }
+    pub const fn reviews(&self) -> (reviews: ReviewAssessment)
+        ensures reviews == self.spec_reviews()
+    { self.reviews }
 
     /// Returns the finding and waiver assessment.
     #[must_use]
-    pub const fn findings(&self) -> FindingAssessment { self.findings }
+    pub const fn findings(&self) -> (findings: FindingAssessment)
+        ensures findings == self.spec_findings()
+    { self.findings }
 
     /// Returns diagnostics in canonical policy order.
     #[must_use]
-    pub const fn diagnostics(&self) -> &[Diagnostic] { self.diagnostics.as_slice() }
+    pub const fn diagnostics(&self) -> (diagnostics: &[Diagnostic])
+        ensures diagnostics@ == self.spec_diagnostics()
+    { self.diagnostics.as_slice() }
+
+    /// Specification view of the exact evaluated candidate.
+    pub closed spec fn spec_candidate(&self) -> ReleaseCandidate { self.candidate }
+
+    /// Specification view of the monotonic evaluation tick.
+    pub closed spec fn spec_evaluated_at(&self) -> u64 { self.evaluated_at }
+
+    /// Specification view of the raw fail-closed verdict stored by the evaluator.
+    pub closed spec fn spec_verdict(&self) -> ReleaseVerdict { self.verdict }
+
+    /// Specification view of the deterministic decision fingerprint.
+    pub closed spec fn spec_digest(&self) -> DecisionDigest { self.digest }
+
+    /// Specification view of all criterion assessments in stable order.
+    pub closed spec fn spec_criteria(&self) -> Seq<CriterionAssessment> { self.criteria@ }
+
+    /// Specification view of all evidence assessments in stable order.
+    pub closed spec fn spec_evidence(&self) -> Seq<EvidenceAssessment> { self.evidence@ }
+
+    /// Specification view of H0-H3 assessments in stable order.
+    pub closed spec fn spec_qualifications(&self) -> Seq<QualificationAssessment> {
+        self.qualifications@
+    }
+
+    /// Specification view of the independent-review assessment.
+    pub closed spec fn spec_reviews(&self) -> ReviewAssessment { self.reviews }
+
+    /// Specification view of the finding and waiver assessment.
+    pub closed spec fn spec_findings(&self) -> FindingAssessment { self.findings }
 
     /// Specification view of the final ready verdict.
     pub closed spec fn spec_is_ready(&self) -> bool {
@@ -293,53 +329,17 @@ impl ReleaseDecision {
 
     /// Specification view of all twenty-five criterion assessments.
     pub closed spec fn spec_all_criteria_satisfied(&self) -> bool {
-        self.criteria[0].spec_is_satisfied() && self.criteria[1].spec_is_satisfied()
-            && self.criteria[2].spec_is_satisfied() && self.criteria[3].spec_is_satisfied()
-            && self.criteria[4].spec_is_satisfied() && self.criteria[5].spec_is_satisfied()
-            && self.criteria[6].spec_is_satisfied() && self.criteria[7].spec_is_satisfied()
-            && self.criteria[8].spec_is_satisfied() && self.criteria[9].spec_is_satisfied()
-            && self.criteria[10].spec_is_satisfied() && self.criteria[11].spec_is_satisfied()
-            && self.criteria[12].spec_is_satisfied() && self.criteria[13].spec_is_satisfied()
-            && self.criteria[14].spec_is_satisfied() && self.criteria[15].spec_is_satisfied()
-            && self.criteria[16].spec_is_satisfied() && self.criteria[17].spec_is_satisfied()
-            && self.criteria[18].spec_is_satisfied() && self.criteria[19].spec_is_satisfied()
-            && self.criteria[20].spec_is_satisfied() && self.criteria[21].spec_is_satisfied()
-            && self.criteria[22].spec_is_satisfied() && self.criteria[23].spec_is_satisfied()
-            && self.criteria[24].spec_is_satisfied()
+        spec_criteria_complete(&self.criteria)
     }
 
     /// Specification view of exact-ready H0-H3 inputs.
     pub closed spec fn spec_all_qualifications_ready(&self) -> bool {
-        self.qualifications[0].spec_is_satisfied()
-            && self.qualifications[1].spec_is_satisfied()
-            && self.qualifications[2].spec_is_satisfied()
-            && self.qualifications[3].spec_is_satisfied()
+        spec_qualifications_complete(&self.qualifications)
     }
 
     /// Specification view of required artifact completeness.
     pub closed spec fn spec_required_artifacts_complete(&self) -> bool {
-        self.evidence[0].spec_is_satisfied() && self.evidence[1].spec_is_satisfied()
-            && self.evidence[2].spec_is_satisfied() && self.evidence[3].spec_is_satisfied()
-            && self.evidence[4].spec_is_satisfied() && self.evidence[5].spec_is_satisfied()
-            && self.evidence[6].spec_is_satisfied() && self.evidence[7].spec_is_satisfied()
-            && self.evidence[8].spec_is_satisfied() && self.evidence[9].spec_is_satisfied()
-            && self.evidence[10].spec_is_satisfied() && self.evidence[11].spec_is_satisfied()
-            && self.evidence[12].spec_is_satisfied() && self.evidence[13].spec_is_satisfied()
-            && self.evidence[14].spec_is_satisfied() && self.evidence[15].spec_is_satisfied()
-            && self.evidence[16].spec_is_satisfied() && self.evidence[17].spec_is_satisfied()
-            && self.evidence[18].spec_is_satisfied() && self.evidence[19].spec_is_satisfied()
-            && self.evidence[20].spec_is_satisfied() && self.evidence[21].spec_is_satisfied()
-            && self.evidence[22].spec_is_satisfied() && self.evidence[23].spec_is_satisfied()
-            && self.evidence[24].spec_is_satisfied() && self.evidence[25].spec_is_satisfied()
-            && self.evidence[26].spec_is_satisfied() && self.evidence[27].spec_is_satisfied()
-            && self.evidence[28].spec_is_satisfied() && self.evidence[29].spec_is_satisfied()
-            && self.evidence[30].spec_is_satisfied() && self.evidence[31].spec_is_satisfied()
-            && self.evidence[32].spec_is_satisfied() && self.evidence[33].spec_is_satisfied()
-            && self.evidence[34].spec_is_satisfied() && self.evidence[35].spec_is_satisfied()
-            && self.evidence[36].spec_is_satisfied() && self.evidence[37].spec_is_satisfied()
-            && self.evidence[38].spec_is_satisfied() && self.evidence[39].spec_is_satisfied()
-            && self.evidence[40].spec_is_satisfied() && self.evidence[41].spec_is_satisfied()
-            && self.evidence[42].spec_is_satisfied() && self.evidence[43].spec_is_satisfied()
+        spec_evidence_complete(&self.evidence)
     }
 
     /// Specification view of independent-review completeness.

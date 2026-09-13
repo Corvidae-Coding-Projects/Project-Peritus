@@ -1,0 +1,143 @@
+{
+  "cwd": "/tmp/peritus-parent-release-api-contracts-workspace-01",
+  "environment": {
+    "CARGO_BUILD_JOBS": "2",
+    "CCACHE_DISABLE": "1",
+    "CARGO_TARGET_DIR": "/home/doll/Project-Peritus/.worktrees/formal-coverage/target/formal-release-api-parent"
+  },
+  "source_files": 65,
+  "commands": [
+    {
+      "label": "client",
+      "command": [
+        "cargo",
+        "verus",
+        "verify",
+        "--package",
+        "peritus-release-policy",
+        "--all-features",
+        "--locked",
+        "--check-toolchain",
+        "--fwd-verus-args-to",
+        "roots",
+        "--example",
+        "proof_api_probe",
+        "--",
+        "--no-cheating",
+        "--rlimit",
+        "20"
+      ],
+      "log": "/tmp/peritus-parent-release-api-client.log",
+      "exit_code": 0
+    },
+    {
+      "label": "negative-runtime-code",
+      "command": [
+        "cargo",
+        "verus",
+        "verify",
+        "--package",
+        "peritus-release-policy",
+        "--all-features",
+        "--locked",
+        "--check-toolchain",
+        "--fwd-verus-args-to",
+        "roots",
+        "--",
+        "--no-cheating",
+        "--rlimit",
+        "20"
+      ],
+      "log": "/tmp/peritus-parent-release-api-negative-runtime-code.log",
+      "exit_code": 101
+    },
+    {
+      "label": "restored-verus",
+      "command": [
+        "cargo",
+        "verus",
+        "verify",
+        "--package",
+        "peritus-release-policy",
+        "--all-features",
+        "--locked",
+        "--check-toolchain",
+        "--fwd-verus-args-to",
+        "roots",
+        "--",
+        "--no-cheating",
+        "--rlimit",
+        "20"
+      ],
+      "log": "/tmp/peritus-parent-release-api-restored-verus.log",
+      "exit_code": 0
+    },
+    {
+      "label": "tests",
+      "command": [
+        "cargo",
+        "test",
+        "--package",
+        "peritus-release-policy",
+        "--all-features",
+        "--locked"
+      ],
+      "log": "/tmp/peritus-parent-release-api-tests.log",
+      "exit_code": 0
+    },
+    {
+      "label": "clippy",
+      "command": [
+        "cargo",
+        "clippy",
+        "--package",
+        "peritus-release-policy",
+        "--all-features",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "log": "/tmp/peritus-parent-release-api-clippy.log",
+      "exit_code": 0
+    },
+    {
+      "label": "fmt",
+      "command": [
+        "cargo",
+        "fmt",
+        "--package",
+        "peritus-release-policy",
+        "--",
+        "--check"
+      ],
+      "log": "/tmp/peritus-parent-release-api-fmt.log",
+      "exit_code": 0
+    },
+    {
+      "label": "api",
+      "command": [
+        "/home/doll/Project-Peritus/.worktrees/formal-coverage/target/debug/xtask",
+        "ordinary-api-check"
+      ],
+      "log": "/tmp/peritus-parent-release-api-api.log",
+      "exit_code": 0
+    },
+    {
+      "label": "layout",
+      "command": [
+        "/home/doll/Project-Peritus/.worktrees/formal-coverage/target/debug/xtask",
+        "source-layout-check"
+      ],
+      "log": "/tmp/peritus-parent-release-api-layout.log",
+      "exit_code": 0
+    }
+  ],
+  "negative": {
+    "mutation": "Wrong runtime ZeroRevision diagnostic literal; specification unchanged.",
+    "preimage_sha256": "b570a1d9e815d51a49ee58e4ecc2dbcbbba2c2784910f5284353ff5a38accaed",
+    "mutant_sha256": "b2077d9e70ef1fd235642b8bca0eeb417d48bd439fca42e0c6a3a30e1ec69a18"
+  },
+  "final_files_checked": 65
+}
