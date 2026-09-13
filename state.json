@@ -3,9 +3,9 @@
   "frontier": {
     "agents": {
       "4jyS": {
-        "sequence": 4,
-        "tip_oid": "dcf159093cefa2935cf4da38761277484b1e0041",
-        "prefix_sha256": "32bc259453bbd19dbf4ad2639ac14c9d09e7604445a69def07ecf6cfa35714d9"
+        "sequence": 5,
+        "tip_oid": "6a15ffb203adb84c0eb4e67eb70c40880c96759d",
+        "prefix_sha256": "af85bfcfd13d6d7a68b5b53c5dd0cb8aee6b7448ad7d02456ee2a4864433d7d5"
       },
       "6ME5": {
         "sequence": 1485,
@@ -35,7 +35,7 @@
     }
   },
   "next_display_id": 76,
-  "next_comment_id": 1571,
+  "next_comment_id": 1572,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -14661,8 +14661,17 @@
       "priority": "high",
       "created_by": "4jyS",
       "created_at": "2026-09-12T15:27:42.848160186Z",
-      "updated_at": "2026-09-13T11:52:47.364702367Z",
+      "updated_at": "2026-09-13T11:54:05.891626309Z",
       "comments": {
+        "9b3dbe2b-a2e1-45e6-ae90-9965b35d3e52": {
+          "display_id": 1571,
+          "author": "4jyS",
+          "content": "Completed scoped stabilization checkpoint bb2f1ccdcc7a: ledger and scheduler patches integrated/reviewed; combined local tests, lint and policy pass. Remaining scope-symbol and protected-record gate failures plus full original gaps are explicit in docs/formal-coverage-checkpoint.md. Local commit only; await user direction before further work.",
+          "created_at": "2026-09-13T11:54:05.885782918Z",
+          "kind": "handoff",
+          "signed_by": "SHA256:F4pa6Img4SKcIhtZ3zyHSwUehhPFSMjlvpf7eTU6qsE",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAge6D6FO+sYKpnSAKFLUH9UJDB0DalEbmiGhqILuP+evwAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA2Z/mFLkc9I8wcXMP+d5jZJnYX3u9/S5MgNTr+NVlKwLDg6cb3WeD/M6BVZXPLjJFt0oFy+dy+3+SNG8yFPt2Dg=="
+        },
         "d0c45b08-1d77-498e-bd65-22be851637ea": {
           "display_id": 1570,
           "author": "4jyS",
