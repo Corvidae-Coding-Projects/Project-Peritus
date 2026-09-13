@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1485,
-        "tip_oid": "2bc2a7d8af7a7e6d5a872b365a6bbc1344cb57dc",
-        "prefix_sha256": "27bcacad10963b65a9434b8a4faf697dfbcf596d01fad30fb3f3da334c67de16"
+        "sequence": 1486,
+        "tip_oid": "f99536a9712d6a20edf9cc60052826bffb023038",
+        "prefix_sha256": "e6a772e814f629b0f8260ec3899cdcd4177daee22ab72617369968e3722de22a"
       },
       "NWAR": {
         "sequence": 39,
@@ -35,7 +35,7 @@
     }
   },
   "next_display_id": 77,
-  "next_comment_id": 1581,
+  "next_comment_id": 1582,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -11322,7 +11322,7 @@
       "parent_uuid": "eb5c64d1-b12e-4ec5-8bae-6c66adc80c81",
       "created_by": "4jyS",
       "created_at": "2026-09-13T16:14:31.488687806Z",
-      "updated_at": "2026-09-13T16:16:33.368609134Z",
+      "updated_at": "2026-09-13T17:47:39.236255513Z",
       "comments": {
         "0606283c-fa81-4d40-add9-5a8da66e7ee2": {
           "display_id": 1580,
@@ -11332,6 +11332,15 @@
           "kind": "note",
           "signed_by": "SHA256:F4pa6Img4SKcIhtZ3zyHSwUehhPFSMjlvpf7eTU6qsE",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAge6D6FO+sYKpnSAKFLUH9UJDB0DalEbmiGhqILuP+evwAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAg+t2+ki4fMe8Ul1RyVnvzCTC/HRfdC52Rh2j9j3xR34ANplgFscxh009mSAkKI6CiU23s2o6BBv+9mA+QxKhBA=="
+        },
+        "dc0194ab-c8e7-4d8f-a50c-32e9c9644377": {
+          "display_id": 1581,
+          "author": "6ME5",
+          "content": "GAP-02 completed. Authorization PR75 landed first at d2730e3544035f03b25a43b19b8ab370b800939e; application PR76 merged after all final CI succeeded, producing develop merge a41113d1389c3d8fc77a00cc562cb9a5bcb7adc8. Native Git checks confirmed parents d2730e3544035f03b25a43b19b8ab370b800939e and 41e77e5c4817bf66a0dc6ed0192b347031aa06bb, exact reviewed application tree 2902edba7095a6ebd53b02bbf6f19005193d6deb, and preserved C3 ancestry. Final exact-head CI: all seven workflows succeeded; 576 checks passed, three expected non-PR skips, no failures. Gate A 214/214, Foundation 193/193, Native product 162/162. The 132 source-bound package commands remain 66 ordinary plus 66 full Verus passes, retained in landed PCR6; historical approvals preserved. Fresh cargo xtask verify-trust on actual merged HEAD with PERITUS_PROOF_IMPACT_BASE=d2730e3544035f03b25a43b19b8ab370b800939e passed, scanning 4476 source files; log SHA256 775ce0fbdab1ebe46458a3894c584fe172c25f70df3cb688190e09eb83573480. Applied manifest remains e47304af30f22b39a1bc1a02bcab86104ad7df2624834e51f99d04c5246f1e06. Durable local completion evidence, final CI logs, snapshots, merged Git identity, independent review, and final trust output are under /home/doll/Project-Peritus/.worktrees/formal-coverage-application-75/target/proof-impact-gates/41e77e5c4817bf66a0dc6ed0192b347031aa06bb/completion/. All 153 obligations remain in-progress; production-proof gaps and GAP07 hosted authority remain open. Develop has no applicable GitHub protection rule; no settings or maintainer self-merge permissions were changed. Parent75 and the broader paused goal remain open. Main unrelated worktree was not modified. Native git, gh, cargo, jq, and standard shell tools were used for completion.",
+          "created_at": "2026-09-13T17:47:39.220573210Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA7IonR1efWAS+lEmVgohXmuP2t26735A0YnvHDII7CSZvMNwxE1E1+Y3QwxQpkYNZYd+J11qyQmZyl2Xm5waBDg=="
         }
       }
     },
