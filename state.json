@@ -3,9 +3,9 @@
   "frontier": {
     "agents": {
       "4jyS": {
-        "sequence": 13,
-        "tip_oid": "0f614d42a164fd9919d3fa4b2514d6e4016402a7",
-        "prefix_sha256": "c4cce8c6c5a4c9ae141b79c2243b602ba199615585165bc37e511f56c9bd4c60"
+        "sequence": 14,
+        "tip_oid": "facdac432619f6078be2f0687f683628881604e4",
+        "prefix_sha256": "3058121ec809efcf90ff763a0be6719690956f41dcf724d662e6decbc960a209"
       },
       "6ME5": {
         "sequence": 1485,
@@ -35,7 +35,7 @@
     }
   },
   "next_display_id": 76,
-  "next_comment_id": 1577,
+  "next_comment_id": 1578,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -14665,7 +14665,7 @@
       "priority": "high",
       "created_by": "4jyS",
       "created_at": "2026-09-12T15:27:42.848160186Z",
-      "updated_at": "2026-09-13T14:21:16.966325214Z",
+      "updated_at": "2026-09-13T14:41:53.761578427Z",
       "comments": {
         "22915443-e685-4d35-af01-b64a63201909": {
           "display_id": 1573,
@@ -14675,6 +14675,15 @@
           "kind": "result",
           "signed_by": "SHA256:F4pa6Img4SKcIhtZ3zyHSwUehhPFSMjlvpf7eTU6qsE",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAge6D6FO+sYKpnSAKFLUH9UJDB0DalEbmiGhqILuP+evwAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAF9KJajd9LABuoHiW+qz0msDlW429xjsPJ/F/Ljn266ocvln6TKPUjFchRWfHURgzb5qJmKaIdmNSdROZ6nj4AQ=="
+        },
+        "9247433c-0f51-480a-8e4a-13d01e83bf9b": {
+          "display_id": 1577,
+          "author": "4jyS",
+          "content": "Commit 08f2b7a3 fixes the real macOS native-controller cleanup double-wait race and preserves late output-limit diagnostics. Both forced-order regressions fail against old source; final reorganized source passes all 23 resilience tests, strict Clippy, formatting, 4476-file source layout, and independent focused review. Previous freeze5cbd qualification was abandoned after17 passes; its raw output and hosted cancellation record are retained. New candidate08f2b7a3 will rerun all132 package gates before final approval and staged authorization/application.",
+          "created_at": "2026-09-13T14:41:53.755458288Z",
+          "kind": "result",
+          "signed_by": "SHA256:F4pa6Img4SKcIhtZ3zyHSwUehhPFSMjlvpf7eTU6qsE",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAge6D6FO+sYKpnSAKFLUH9UJDB0DalEbmiGhqILuP+evwAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABANszk3k+UCCTFzANocFGEzHWpquoudgX/Ir2yFUqXv10PW2itftkOLZCCLBKmM46nS+Z4i0CicJ9G3nw+OsZvAQ=="
         },
         "93b76722-b459-443e-8344-4c0e696657c7": {
           "display_id": 1576,
