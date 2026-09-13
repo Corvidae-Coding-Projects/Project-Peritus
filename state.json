@@ -3,9 +3,9 @@
   "frontier": {
     "agents": {
       "4jyS": {
-        "sequence": 14,
-        "tip_oid": "facdac432619f6078be2f0687f683628881604e4",
-        "prefix_sha256": "3058121ec809efcf90ff763a0be6719690956f41dcf724d662e6decbc960a209"
+        "sequence": 15,
+        "tip_oid": "515e4a7b420986631bc2c4d146f0205933979411",
+        "prefix_sha256": "4db7afbcea6b51b712d2d27c0a652f2a3c5731d085961dae289e2e6e4a04eee4"
       },
       "6ME5": {
         "sequence": 1485,
@@ -35,7 +35,7 @@
     }
   },
   "next_display_id": 76,
-  "next_comment_id": 1578,
+  "next_comment_id": 1579,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -14665,8 +14665,17 @@
       "priority": "high",
       "created_by": "4jyS",
       "created_at": "2026-09-12T15:27:42.848160186Z",
-      "updated_at": "2026-09-13T14:41:53.761578427Z",
+      "updated_at": "2026-09-13T15:16:48.769079363Z",
       "comments": {
+        "12be7ca9-e686-4528-9d3e-4818c6663945": {
+          "display_id": 1578,
+          "author": "4jyS",
+          "content": "65f16e2933b70305de865750931bb05fe9afb64d fixes canonical Windows trust-path keys and restart fixture line framing. Exact old fixture fails; fixed focused and full product-runner tests plus strict Clippy pass. Combined xtask: 461 Rust tests, 68 Python tests, fmt, strict Clippy, and all checks pass. Historical source observations retained; current inventory fields match. C2 qualification failed at65 and all67 remaining diagnostic commands passed; none qualify C3. New full132 qualification and independent review remain pending.",
+          "created_at": "2026-09-13T15:16:48.763099821Z",
+          "kind": "result",
+          "signed_by": "SHA256:F4pa6Img4SKcIhtZ3zyHSwUehhPFSMjlvpf7eTU6qsE",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAge6D6FO+sYKpnSAKFLUH9UJDB0DalEbmiGhqILuP+evwAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAydCRhy+zvs7zZGpAm2MHDdJcaPI1u0FcE1gJ1KKSNfTvV7WVoAQgLPNhfxCc1+SWWRyo/TdTZ+nOAHrH2lRZCQ=="
+        },
         "22915443-e685-4d35-af01-b64a63201909": {
           "display_id": 1573,
           "author": "4jyS",
