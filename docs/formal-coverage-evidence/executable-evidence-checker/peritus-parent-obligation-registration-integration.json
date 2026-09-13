@@ -1,0 +1,16 @@
+{
+  "prior_entries": 137,
+  "added_entries": 16,
+  "final_entries": 153,
+  "old_register_sha256": "3c88ec6bc9fecc22d92bf0ecb2524f729f7d4219c60d2573789a89f1fa7db229",
+  "new_register_sha256": "d048a2c0fd50e64d2838885d6992aaa38e8930e1537f6a3f2b958f7876faed04",
+  "source_review": {
+    "/tmp/peritus-sol-obligation-record-draft-003.toml": "9db46cd550b30489f091d5eb44ad50da5c1bdb4e81b066d99a6fffaaf9b308d3",
+    "/tmp/peritus-sol-obligation-record-mapping-003.md": "8b9f4627b661d1e0c331bcce8ab2cf4094ee1e99f394db8551ffef95a25e190b",
+    "/tmp/peritus-sol-obligation-record-inputs-003.sha256": "1f9603b8f642bd13e2a464c0ed46bfdc6f7f5c587f2470cdc2c3d5f3828a3534",
+    "/tmp/peritus-sol-obligation-record-evidence-003.sha256": "d0f409269d483f2ce26c2a8e298ad5d92459a15650b01e7964288e17755a55ac",
+    "/tmp/peritus-sol-obligation-record-draft-001-independent-review-20260912T001.md": "565a43f943a6e93400c04efb5d026af0518f5c0dfcf156802b302f5fabcc29cc"
+  },
+  "correction_review": "Parent checked exact sole OBL-0220 statement delta and current SettlementReducer initial/advance semantics; removed unsupported fields and mutable DB identity; all retained source/evidence inputs verified.",
+  "status": "153 entries accepted by integrated actual formal-inventory; all 16 additions remain in-progress"
+}

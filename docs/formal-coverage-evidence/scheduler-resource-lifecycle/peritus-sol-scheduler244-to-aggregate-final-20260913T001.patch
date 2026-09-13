@@ -1,0 +1,2808 @@
+diff -ruN /tmp/peritus-parent-scheduler244-complete-source/src/resource/addition/merge.rs /tmp/peritus-sol-scheduler-perf-aggregate-final-source-20260913T001/src/resource/addition/merge.rs
+--- /tmp/peritus-parent-scheduler244-complete-source/src/resource/addition/merge.rs	1969-12-31 18:00:00.000000000 -0600
++++ /tmp/peritus-sol-scheduler-perf-aggregate-final-source-20260913T001/src/resource/addition/merge.rs	2026-09-12 22:18:08.489762724 -0500
+@@ -0,0 +1,358 @@
++//! Executable merge state for exact canonical resource addition.
++
++use vstd::prelude::*;
++
++use std::cmp::Ordering;
++
++use crate::{ResourceEntry, ResourceVector};
++
++#[cfg(verus_only)]
++use crate::ResourceKind;
++
++verus! {
++
++pub(super) enum MergeOutcome {
++    Value(Vec<ResourceEntry>),
++    Overflow,
++}
++
++struct MergeCursor {
++    entries: Vec<ResourceEntry>,
++    left: usize,
++    right: usize,
++}
++
++enum MergeAdvance {
++    Value(MergeCursor),
++    Overflow,
++}
++
++closed spec fn cursor_valid(
++    cursor: &MergeCursor,
++    left_entries: Seq<ResourceEntry>,
++    right_entries: Seq<ResourceEntry>,
++) -> bool {
++    &&& cursor.left <= left_entries.len()
++    &&& cursor.right <= right_entries.len()
++    &&& crate::resource::capacity::entries_canonical(left_entries)
++    &&& crate::resource::capacity::entries_canonical(right_entries)
++    &&& super::entries_ordered(cursor.entries@)
++    &&& cursor.entries@.len() <= cursor.left + cursor.right
++    &&& cursor.entries@ == super::added_entries(
++        left_entries.take(cursor.left as int), right_entries.take(cursor.right as int))
++    &&& forall |kind: ResourceKind| #![auto]
++        crate::resource::capacity::entries_quantity(cursor.entries@, kind)
++            == crate::resource::capacity::entries_quantity(
++                left_entries.take(cursor.left as int), kind)
++                + crate::resource::capacity::entries_quantity(
++                    right_entries.take(cursor.right as int), kind)
++    &&& cursor.left < left_entries.len() ==> forall |index: int|
++        #![trigger cursor.entries@[index]]
++        0 <= index < cursor.entries@.len() ==>
++        cursor.entries@[index].spec_kind().spec_tag()
++            < left_entries[cursor.left as int].spec_kind().spec_tag()
++    &&& cursor.right < right_entries.len() ==> forall |index: int|
++        #![trigger cursor.entries@[index]]
++        0 <= index < cursor.entries@.len() ==>
++        cursor.entries@[index].spec_kind().spec_tag()
++            < right_entries[cursor.right as int].spec_kind().spec_tag()
++    &&& cursor.left < left_entries.len() && cursor.right > 0 ==>
++        right_entries[cursor.right as int - 1].spec_kind().spec_tag()
++            < left_entries[cursor.left as int].spec_kind().spec_tag()
++    &&& cursor.right < right_entries.len() && cursor.left > 0 ==>
++        left_entries[cursor.left as int - 1].spec_kind().spec_tag()
++            < right_entries[cursor.right as int].spec_kind().spec_tag()
++}
++
++fn advance_equal(
++    mut cursor: MergeCursor,
++    left_entries: &[ResourceEntry],
++    right_entries: &[ResourceEntry],
++) -> (outcome: MergeAdvance)
++    requires
++        cursor_valid(&cursor, left_entries@, right_entries@),
++        cursor.left < left_entries@.len(),
++        cursor.right < right_entries@.len(),
++        left_entries@[cursor.left as int].spec_kind()
++            == right_entries@[cursor.right as int].spec_kind(),
++    ensures match outcome {
++        MergeAdvance::Value(next) => {
++            &&& cursor_valid(&next, left_entries@, right_entries@)
++            &&& left_entries@.len() + right_entries@.len() - next.left - next.right
++                < left_entries@.len() + right_entries@.len() - cursor.left - cursor.right
++        }
++        MergeAdvance::Overflow => super::addition_overflows(left_entries@, right_entries@),
++    },
++{
++    reveal(cursor_valid);
++    let ghost left_prefix = left_entries@.take(cursor.left as int);
++    let ghost right_prefix = right_entries@.take(cursor.right as int);
++    let left = &left_entries[cursor.left];
++    let right = &right_entries[cursor.right];
++    let Some(next) = super::combined_entry(left, right) else {
++        assert(super::addition_overflows(left_entries@, right_entries@)) by {
++            let left_index = cursor.left as int;
++            let right_index = cursor.right as int;
++            assert(left_entries@[left_index] == *left);
++            assert(right_entries@[right_index] == *right);
++            reveal(super::addition_overflows);
++            let pair = (left_index, right_index);
++            assert(0 <= pair.0 < left_entries@.len());
++            assert(0 <= pair.1 < right_entries@.len());
++            assert(exists |witness: (int, int)|
++                #![trigger left_entries@[witness.0], right_entries@[witness.1]]
++                0 <= witness.0 < left_entries@.len()
++                    && 0 <= witness.1 < right_entries@.len()
++                    && left_entries@[witness.0].spec_kind()
++                        == right_entries@[witness.1].spec_kind()
++                    && left_entries@[witness.0].spec_quantity().spec_value() as int
++                        + right_entries@[witness.1].spec_quantity().spec_value() as int
++                        > u64::MAX as int) by {
++                assert(left_entries@[pair.0].spec_kind()
++                    == right_entries@[pair.1].spec_kind());
++            }
++        }
++        return MergeAdvance::Overflow;
++    };
++    proof {
++        super::proofs::equal_quantities_advance(
++            cursor.entries@,
++            left_entries@,
++            right_entries@,
++            cursor.left as int,
++            cursor.right as int,
++            next,
++        );
++        super::added_entries_push_both(left_prefix, right_prefix, *left, *right);
++        assert(left_entries@.take(cursor.left as int + 1) == left_prefix.push(*left));
++        assert(right_entries@.take(cursor.right as int + 1) == right_prefix.push(*right));
++        super::proofs::ordered_push(cursor.entries@, next);
++        super::proofs::appended_quantities(cursor.entries@, next);
++    }
++    cursor.left += 1;
++    cursor.right += 1;
++    cursor.entries.push(next);
++    MergeAdvance::Value(cursor)
++}
++
++fn advance_left(
++    mut cursor: MergeCursor,
++    left_entries: &[ResourceEntry],
++    _right_entries: &[ResourceEntry],
++) -> (next: MergeCursor)
++    requires
++        cursor_valid(&cursor, left_entries@, _right_entries@),
++        cursor.left < left_entries@.len(),
++        cursor.right >= _right_entries@.len()
++            || left_entries@[cursor.left as int].spec_kind().spec_tag()
++                < _right_entries@[cursor.right as int].spec_kind().spec_tag(),
++    ensures
++        cursor_valid(&next, left_entries@, _right_entries@),
++        left_entries@.len() + _right_entries@.len() - next.left - next.right
++            < left_entries@.len() + _right_entries@.len() - cursor.left - cursor.right,
++{
++    reveal(cursor_valid);
++    let ghost left_prefix = left_entries@.take(cursor.left as int);
++    let ghost right_prefix = _right_entries@.take(cursor.right as int);
++    let entry = left_entries[cursor.left];
++    proof {
++        super::proofs::ordered_take(left_entries@, cursor.left as int);
++        super::proofs::prefix_before(left_entries@, cursor.left as int);
++        super::proofs::appended_quantities(left_prefix, entry);
++        super::proofs::added_entries_push_left(left_prefix, right_prefix, entry);
++        assert(left_entries@.take(cursor.left as int + 1) == left_prefix.push(entry));
++        super::proofs::ordered_push(cursor.entries@, entry);
++        super::proofs::appended_quantities(cursor.entries@, entry);
++    }
++    cursor.left += 1;
++    cursor.entries.push(entry);
++    cursor
++}
++
++fn advance_right(
++    mut cursor: MergeCursor,
++    _left_entries: &[ResourceEntry],
++    right_entries: &[ResourceEntry],
++) -> (next: MergeCursor)
++    requires
++        cursor_valid(&cursor, _left_entries@, right_entries@),
++        cursor.right < right_entries@.len(),
++        cursor.left >= _left_entries@.len()
++            || right_entries@[cursor.right as int].spec_kind().spec_tag()
++                < _left_entries@[cursor.left as int].spec_kind().spec_tag(),
++    ensures
++        cursor_valid(&next, _left_entries@, right_entries@),
++        _left_entries@.len() + right_entries@.len() - next.left - next.right
++            < _left_entries@.len() + right_entries@.len() - cursor.left - cursor.right,
++{
++    reveal(cursor_valid);
++    let ghost left_prefix = _left_entries@.take(cursor.left as int);
++    let ghost right_prefix = right_entries@.take(cursor.right as int);
++    let entry = right_entries[cursor.right];
++    proof {
++        super::proofs::ordered_take(right_entries@, cursor.right as int);
++        super::proofs::prefix_before(right_entries@, cursor.right as int);
++        super::proofs::appended_quantities(right_prefix, entry);
++        super::proofs::added_entries_push_right(left_prefix, right_prefix, entry);
++        assert(right_entries@.take(cursor.right as int + 1) == right_prefix.push(entry));
++        super::proofs::ordered_push(cursor.entries@, entry);
++        super::proofs::appended_quantities(cursor.entries@, entry);
++    }
++    cursor.right += 1;
++    cursor.entries.push(entry);
++    cursor
++}
++
++fn advance(
++    cursor: MergeCursor,
++    left_entries: &[ResourceEntry],
++    right_entries: &[ResourceEntry],
++) -> (outcome: MergeAdvance)
++    requires
++        cursor_valid(&cursor, left_entries@, right_entries@),
++        cursor.left < left_entries@.len() || cursor.right < right_entries@.len(),
++    ensures match outcome {
++        MergeAdvance::Value(next) => {
++            &&& cursor_valid(&next, left_entries@, right_entries@)
++            &&& left_entries@.len() + right_entries@.len() - next.left - next.right
++                < left_entries@.len() + right_entries@.len() - cursor.left - cursor.right
++        }
++        MergeAdvance::Overflow => super::addition_overflows(left_entries@, right_entries@),
++    },
++{
++    if cursor.left >= left_entries.len() {
++        MergeAdvance::Value(advance_right(cursor, left_entries, right_entries))
++    } else if cursor.right >= right_entries.len() {
++        MergeAdvance::Value(advance_left(cursor, left_entries, right_entries))
++    } else {
++        let left_tag = left_entries[cursor.left].kind().tag();
++        let right_tag = right_entries[cursor.right].kind().tag();
++        match left_tag.cmp(&right_tag) {
++            Ordering::Equal => {
++                assert(left_tag == right_tag);
++                advance_equal(cursor, left_entries, right_entries)
++            }
++            Ordering::Less => {
++                assert(left_tag < right_tag);
++                MergeAdvance::Value(advance_left(cursor, left_entries, right_entries))
++            }
++            Ordering::Greater => {
++                assert(left_tag > right_tag);
++                MergeAdvance::Value(advance_right(cursor, left_entries, right_entries))
++            }
++        }
++    }
++}
++
++pub(super) fn merge_entries(
++    left_vector: &ResourceVector,
++    right_vector: &ResourceVector,
++) -> (outcome: MergeOutcome)
++    ensures match outcome {
++        MergeOutcome::Value(entries) => {
++            &&& !super::addition_overflows(
++                left_vector.spec_entries(), right_vector.spec_entries())
++            &&& entries@ == super::added_entries(
++                left_vector.spec_entries(), right_vector.spec_entries())
++            &&& forall |kind: ResourceKind| #![auto]
++                crate::resource::capacity::entries_quantity(entries@, kind)
++                    == left_vector.spec_quantity(kind) + right_vector.spec_quantity(kind)
++            &&& entries@.len() == super::union_dimensions(
++                left_vector.spec_entries(), right_vector.spec_entries())
++            &&& entries@.len() > 0
++            &&& super::entries_ordered(entries@)
++        }
++        MergeOutcome::Overflow => super::addition_overflows(
++            left_vector.spec_entries(), right_vector.spec_entries()),
++    },
++{
++    proof {
++        use_type_invariant(left_vector);
++        use_type_invariant(right_vector);
++    }
++    let left_entries = left_vector.entries();
++    let right_entries = right_vector.entries();
++    let mut cursor = MergeCursor {
++        entries: Vec::with_capacity(left_entries.len().saturating_add(right_entries.len())),
++        left: 0,
++        right: 0,
++    };
++    proof {
++        reveal(cursor_valid);
++        reveal(super::added_entries);
++        assert(cursor.entries@ =~= Seq::<ResourceEntry>::empty());
++        assert(left_entries@.take(0).len() == 0);
++        assert(right_entries@.take(0).len() == 0);
++        assert(left_entries@.take(0) =~= Seq::<ResourceEntry>::empty());
++        assert(right_entries@.take(0) =~= Seq::<ResourceEntry>::empty());
++        assert(super::entries_ordered(cursor.entries@)) by {
++            assert forall |index: int| #![trigger cursor.entries@[index]]
++                1 <= index < cursor.entries@.len() implies
++                cursor.entries@[index - 1].spec_kind().spec_tag()
++                    < cursor.entries@[index].spec_kind().spec_tag() by {
++                assert(false);
++            }
++        }
++        assert forall |kind: ResourceKind| #![auto]
++            crate::resource::capacity::entries_quantity(cursor.entries@, kind)
++                == crate::resource::capacity::entries_quantity(
++                    left_entries@.take(0), kind)
++                    + crate::resource::capacity::entries_quantity(
++                        right_entries@.take(0), kind) by {
++            reveal(crate::resource::capacity::entries_quantity);
++        }
++        if left_entries@.len() > 0 {
++            assert forall |index: int| #![trigger cursor.entries@[index]]
++                0 <= index < cursor.entries@.len() implies
++                cursor.entries@[index].spec_kind().spec_tag()
++                    < left_entries@[0].spec_kind().spec_tag() by {
++                assert(false);
++            }
++        }
++        if right_entries@.len() > 0 {
++            assert forall |index: int| #![trigger cursor.entries@[index]]
++                0 <= index < cursor.entries@.len() implies
++                cursor.entries@[index].spec_kind().spec_tag()
++                    < right_entries@[0].spec_kind().spec_tag() by {
++                assert(false);
++            }
++        }
++        assert(cursor_valid(&cursor, left_entries@, right_entries@));
++    }
++    while cursor.left < left_entries.len() || cursor.right < right_entries.len()
++        invariant
++            left_entries@ == left_vector.spec_entries(),
++            right_entries@ == right_vector.spec_entries(),
++            cursor_valid(&cursor, left_entries@, right_entries@),
++        decreases left_entries@.len() + right_entries@.len() - cursor.left - cursor.right,
++    {
++        cursor = match advance(cursor, left_entries, right_entries) {
++            MergeAdvance::Value(next) => next,
++            MergeAdvance::Overflow => return MergeOutcome::Overflow,
++        };
++    }
++    reveal(cursor_valid);
++    assert(cursor.left == left_entries@.len());
++    assert(cursor.right == right_entries@.len());
++    assert(left_entries@.take(cursor.left as int) =~= left_entries@);
++    assert(right_entries@.take(cursor.right as int) =~= right_entries@);
++    assert(cursor.entries@ == super::added_entries(left_entries@, right_entries@));
++    assert(cursor.entries@.len() == super::union_dimensions(left_entries@, right_entries@));
++    assert(cursor.entries@.len() > 0);
++    assert(super::entries_ordered(cursor.entries@));
++    assert forall |kind: ResourceKind| #![auto]
++        crate::resource::capacity::entries_quantity(cursor.entries@, kind)
++            == left_vector.spec_quantity(kind) + right_vector.spec_quantity(kind) by {
++        left_vector.quantity_matches_entries(kind);
++        right_vector.quantity_matches_entries(kind);
++    }
++    proof {
++        super::proofs::quantities_exclude_overflow(
++            cursor.entries@, left_entries@, right_entries@);
++    }
++    assert(!super::addition_overflows(
++        left_vector.spec_entries(), right_vector.spec_entries()));
++    MergeOutcome::Value(cursor.entries)
++}
++
++} // verus!
+diff -ruN /tmp/peritus-parent-scheduler244-complete-source/src/resource/addition/proofs.rs /tmp/peritus-sol-scheduler-perf-aggregate-final-source-20260913T001/src/resource/addition/proofs.rs
+--- /tmp/peritus-parent-scheduler244-complete-source/src/resource/addition/proofs.rs	1969-12-31 18:00:00.000000000 -0600
++++ /tmp/peritus-sol-scheduler-perf-aggregate-final-source-20260913T001/src/resource/addition/proofs.rs	2026-09-12 22:15:25.159233596 -0500
+@@ -0,0 +1,301 @@
++//! Sequence lemmas for the canonical resource-vector merge.
++
++use vstd::prelude::*;
++
++#[cfg(verus_only)]
++use crate::{ResourceEntry, ResourceKind};
++
++#[cfg(verus_only)]
++use super::{added_entries, entries_ordered};
++
++verus! {
++
++pub(super) proof fn ordered_take(entries: Seq<ResourceEntry>, end: int)
++    requires
++        crate::resource::capacity::entries_canonical(entries),
++        0 <= end <= entries.len(),
++    ensures entries_ordered(entries.take(end)),
++{
++    assert forall |index: int| #![trigger entries.take(end)[index]]
++        1 <= index < entries.take(end).len() implies
++        entries.take(end)[index - 1].spec_kind().spec_tag()
++            < entries.take(end)[index].spec_kind().spec_tag() by {
++        assert(entries.take(end)[index - 1] == entries[index - 1]);
++        assert(entries.take(end)[index] == entries[index]);
++    }
++}
++
++pub(super) proof fn prefix_before(entries: Seq<ResourceEntry>, end: int)
++    requires
++        crate::resource::capacity::entries_canonical(entries),
++        0 <= end < entries.len(),
++    ensures
++        forall |index: int| #![trigger entries.take(end)[index]]
++            0 <= index < entries.take(end).len() ==>
++            entries.take(end)[index].spec_kind().spec_tag()
++                < entries[end].spec_kind().spec_tag(),
++{
++    assert forall |index: int| #![trigger entries.take(end)[index]]
++        0 <= index < entries.take(end).len() implies
++        entries.take(end)[index].spec_kind().spec_tag()
++            < entries[end].spec_kind().spec_tag() by {
++        assert(entries.take(end)[index] == entries[index]);
++        crate::resource::capacity::earlier_tag_is_less(entries, index, end);
++    }
++}
++
++proof fn entries_quantity_bounded(entries: Seq<ResourceEntry>, kind: ResourceKind)
++    ensures
++        0 <= crate::resource::capacity::entries_quantity(entries, kind)
++            <= u64::MAX as int,
++    decreases entries.len(),
++{
++    reveal(crate::resource::capacity::entries_quantity);
++    if entries.len() > 0 && entries.first().spec_kind() != kind {
++        entries_quantity_bounded(entries.drop_first(), kind);
++    }
++}
++
++pub(super) proof fn quantities_exclude_overflow(
++    result: Seq<ResourceEntry>,
++    left: Seq<ResourceEntry>,
++    right: Seq<ResourceEntry>,
++)
++    requires
++        crate::resource::capacity::entries_canonical(left),
++        crate::resource::capacity::entries_canonical(right),
++        forall |kind: ResourceKind| #![auto]
++            crate::resource::capacity::entries_quantity(result, kind)
++                == crate::resource::capacity::entries_quantity(left, kind)
++                    + crate::resource::capacity::entries_quantity(right, kind),
++    ensures !super::addition_overflows(left, right),
++{
++    if super::addition_overflows(left, right) {
++        reveal(super::addition_overflows);
++        let pair = choose |pair: (int, int)| #![trigger left[pair.0], right[pair.1]]
++            0 <= pair.0 < left.len()
++                && 0 <= pair.1 < right.len()
++                && left[pair.0].spec_kind() == right[pair.1].spec_kind()
++                && left[pair.0].spec_quantity().spec_value() as int
++                    + right[pair.1].spec_quantity().spec_value() as int
++                    > u64::MAX as int;
++        let left_index = pair.0;
++        let right_index = pair.1;
++        let kind = left[left_index].spec_kind();
++        crate::resource::capacity::exact_quantity_at(left, left_index, kind);
++        crate::resource::capacity::exact_quantity_at(right, right_index, kind);
++        entries_quantity_bounded(result, kind);
++    }
++}
++
++pub(super) proof fn equal_quantities_advance(
++    result: Seq<ResourceEntry>,
++    left: Seq<ResourceEntry>,
++    right: Seq<ResourceEntry>,
++    left_index: int,
++    right_index: int,
++    next: ResourceEntry,
++)
++    requires
++        crate::resource::capacity::entries_canonical(left),
++        crate::resource::capacity::entries_canonical(right),
++        0 <= left_index < left.len(),
++        0 <= right_index < right.len(),
++        left[left_index].spec_kind() == right[right_index].spec_kind(),
++        next.spec_kind() == left[left_index].spec_kind(),
++        next.spec_quantity().spec_value() as int
++            == left[left_index].spec_quantity().spec_value() as int
++                + right[right_index].spec_quantity().spec_value() as int,
++        entries_ordered(result),
++        forall |index: int| #![trigger result[index]] 0 <= index < result.len() ==>
++            result[index].spec_kind().spec_tag()
++                < next.spec_kind().spec_tag(),
++        forall |kind: ResourceKind| #![auto]
++            crate::resource::capacity::entries_quantity(result, kind)
++                == crate::resource::capacity::entries_quantity(
++                    left.take(left_index), kind)
++                    + crate::resource::capacity::entries_quantity(
++                        right.take(right_index), kind),
++    ensures
++        forall |kind: ResourceKind| #![auto]
++            crate::resource::capacity::entries_quantity(result.push(next), kind)
++                == crate::resource::capacity::entries_quantity(
++                    left.take(left_index + 1), kind)
++                    + crate::resource::capacity::entries_quantity(
++                        right.take(right_index + 1), kind),
++{
++    let left_prefix = left.take(left_index);
++    let right_prefix = right.take(right_index);
++    ordered_take(left, left_index);
++    prefix_before(left, left_index);
++    appended_quantities(left_prefix, left[left_index]);
++    ordered_take(right, right_index);
++    prefix_before(right, right_index);
++    appended_quantities(right_prefix, right[right_index]);
++    appended_quantities(result, next);
++    assert(left.take(left_index + 1) == left_prefix.push(left[left_index]));
++    assert(right.take(right_index + 1) == right_prefix.push(right[right_index]));
++}
++
++proof fn append_quantity(
++    entries: Seq<ResourceEntry>,
++    entry: ResourceEntry,
++    kind: ResourceKind,
++)
++    requires
++        entries_ordered(entries),
++        forall |index: int| #![trigger entries[index]] 0 <= index < entries.len() ==>
++            entries[index].spec_kind().spec_tag() < entry.spec_kind().spec_tag(),
++    ensures
++        crate::resource::capacity::entries_quantity(entries.push(entry), kind)
++            == crate::resource::capacity::entries_quantity(entries, kind)
++                + if entry.spec_kind() == kind {
++                    entry.spec_quantity().spec_value() as int
++                } else {
++                    0int
++                },
++    decreases entries.len(),
++{
++    reveal(crate::resource::capacity::entries_quantity);
++    if entries.len() == 0 {
++        assert(entries.push(entry).len() == 1);
++        assert(entries.push(entry).first() == entry);
++        assert(entries.push(entry).drop_first().len() == 0);
++        assert(entries.push(entry).drop_first() =~= entries);
++        assert(entries.push(entry).drop_first() == entries);
++        reveal_with_fuel(crate::resource::capacity::entries_quantity, 2);
++        if entry.spec_kind() == kind {
++            assert(crate::resource::capacity::entries_quantity(
++                entries.push(entry), kind)
++                    == entry.spec_quantity().spec_value() as int);
++        } else {
++            assert(crate::resource::capacity::entries_quantity(
++                entries.push(entry), kind) == 0);
++        }
++        assert(crate::resource::capacity::entries_quantity(entries, kind) == 0);
++    } else {
++        assert(entries.push(entry).first() == entries.first());
++        assert(entries.push(entry).drop_first() =~= entries.drop_first().push(entry));
++        assert(entries.first().spec_kind() != entry.spec_kind());
++        assert forall |index: int| #![trigger entries.drop_first()[index]]
++            0 <= index < entries.drop_first().len() implies
++            entries.drop_first()[index].spec_kind().spec_tag()
++                < entry.spec_kind().spec_tag() by {
++            assert(entries.drop_first()[index] == entries[index + 1]);
++        }
++        assert(entries_ordered(entries.drop_first())) by {
++            assert forall |index: int| #![trigger entries.drop_first()[index]]
++                1 <= index < entries.drop_first().len() implies
++                entries.drop_first()[index - 1].spec_kind().spec_tag()
++                    < entries.drop_first()[index].spec_kind().spec_tag() by {
++                assert(entries.drop_first()[index - 1] == entries[index]);
++                assert(entries.drop_first()[index] == entries[index + 1]);
++            }
++        }
++        if entries.first().spec_kind() != kind {
++            append_quantity(entries.drop_first(), entry, kind);
++            reveal(crate::resource::capacity::entries_quantity);
++            assert(crate::resource::capacity::entries_quantity(
++                entries.push(entry), kind)
++                    == crate::resource::capacity::entries_quantity(
++                        entries.drop_first().push(entry), kind));
++            assert(crate::resource::capacity::entries_quantity(entries, kind)
++                == crate::resource::capacity::entries_quantity(entries.drop_first(), kind));
++        } else {
++            assert(entry.spec_kind() != kind);
++            reveal(crate::resource::capacity::entries_quantity);
++            assert(crate::resource::capacity::entries_quantity(
++                entries.push(entry), kind)
++                    == entries.first().spec_quantity().spec_value() as int);
++            assert(crate::resource::capacity::entries_quantity(entries, kind)
++                == entries.first().spec_quantity().spec_value() as int);
++        }
++    }
++}
++
++pub(super) proof fn ordered_push(entries: Seq<ResourceEntry>, entry: ResourceEntry)
++    requires
++        entries_ordered(entries),
++        forall |index: int| #![trigger entries[index]] 0 <= index < entries.len() ==>
++            entries[index].spec_kind().spec_tag() < entry.spec_kind().spec_tag(),
++    ensures entries_ordered(entries.push(entry)),
++{
++    assert forall |index: int| #![trigger entries.push(entry)[index]]
++        1 <= index < entries.push(entry).len() implies
++        entries.push(entry)[index - 1].spec_kind().spec_tag()
++            < entries.push(entry)[index].spec_kind().spec_tag() by {
++        if index < entries.len() {
++            assert(entries.push(entry)[index - 1] == entries[index - 1]);
++            assert(entries.push(entry)[index] == entries[index]);
++        } else {
++            assert(index == entries.len());
++        }
++    }
++}
++
++pub(super) proof fn appended_quantities(entries: Seq<ResourceEntry>, entry: ResourceEntry)
++    requires
++        entries_ordered(entries),
++        forall |index: int| #![trigger entries[index]] 0 <= index < entries.len() ==>
++            entries[index].spec_kind().spec_tag() < entry.spec_kind().spec_tag(),
++    ensures
++        forall |kind: ResourceKind| #![auto]
++            crate::resource::capacity::entries_quantity(entries.push(entry), kind)
++                == crate::resource::capacity::entries_quantity(entries, kind)
++                    + if entry.spec_kind() == kind {
++                        entry.spec_quantity().spec_value() as int
++                    } else {
++                        0int
++                    },
++{
++    assert forall |kind: ResourceKind| #![auto]
++        crate::resource::capacity::entries_quantity(entries.push(entry), kind)
++            == crate::resource::capacity::entries_quantity(entries, kind)
++                + if entry.spec_kind() == kind {
++                    entry.spec_quantity().spec_value() as int
++                } else {
++                    0int
++                } by {
++        append_quantity(entries, entry, kind);
++    }
++}
++
++pub(super) proof fn added_entries_push_left(
++    left: Seq<ResourceEntry>,
++    right: Seq<ResourceEntry>,
++    entry: ResourceEntry,
++)
++    requires
++        left.len() == 0 || left.last().spec_kind().spec_tag() < entry.spec_kind().spec_tag(),
++        right.len() == 0 || right.last().spec_kind().spec_tag() < entry.spec_kind().spec_tag(),
++    ensures
++        added_entries(left.push(entry), right) == added_entries(left, right).push(entry),
++{
++    assert(left.push(entry).last() == entry);
++    assert(left.push(entry).drop_last() =~= left);
++    if right.len() > 0 {
++        assert(entry.spec_kind().spec_tag() > right.last().spec_kind().spec_tag());
++    }
++    reveal(added_entries);
++}
++
++pub(super) proof fn added_entries_push_right(
++    left: Seq<ResourceEntry>,
++    right: Seq<ResourceEntry>,
++    entry: ResourceEntry,
++)
++    requires
++        left.len() == 0 || left.last().spec_kind().spec_tag() < entry.spec_kind().spec_tag(),
++        right.len() == 0 || right.last().spec_kind().spec_tag() < entry.spec_kind().spec_tag(),
++    ensures
++        added_entries(left, right.push(entry)) == added_entries(left, right).push(entry),
++{
++    assert(right.push(entry).last() == entry);
++    assert(right.push(entry).drop_last() =~= right);
++    if left.len() > 0 {
++        assert(entry.spec_kind().spec_tag() > left.last().spec_kind().spec_tag());
++    }
++    reveal(added_entries);
++}
++
++} // verus!
+diff -ruN /tmp/peritus-parent-scheduler244-complete-source/src/resource/addition.rs /tmp/peritus-sol-scheduler-perf-aggregate-final-source-20260913T001/src/resource/addition.rs
+--- /tmp/peritus-parent-scheduler244-complete-source/src/resource/addition.rs	1969-12-31 18:00:00.000000000 -0600
++++ /tmp/peritus-sol-scheduler-perf-aggregate-final-source-20260913T001/src/resource/addition.rs	2026-09-12 22:17:12.996582949 -0500
+@@ -0,0 +1,239 @@
++//! Verified canonical resource addition used by public arithmetic and capacity aggregation.
++
++use vstd::prelude::*;
++
++#[cfg(verus_only)]
++use super::ResourceKind;
++use super::{ResourceEntry, ResourceQuantity, ResourceVector, VectorAddition};
++
++mod merge;
++mod proofs;
++
++verus! {
++
++/// Some shared dimension overflows the stored quantity width.
++pub(super) open spec fn addition_overflows(
++    left: Seq<ResourceEntry>,
++    right: Seq<ResourceEntry>,
++) -> bool {
++    exists |pair: (int, int)| #![trigger left[pair.0], right[pair.1]]
++        0 <= pair.0 < left.len()
++            && 0 <= pair.1 < right.len()
++            && left[pair.0].spec_kind() == right[pair.1].spec_kind()
++            && left[pair.0].spec_quantity().spec_value() as int
++                + right[pair.1].spec_quantity().spec_value() as int
++                > u64::MAX as int
++}
++
++/// Exact canonical merge produced by addition, including explicit zero quantities.
++pub(super) open spec fn added_entries(
++    left: Seq<ResourceEntry>,
++    right: Seq<ResourceEntry>,
++) -> Seq<ResourceEntry>
++    decreases left.len() + right.len(),
++{
++    if left.len() == 0 {
++        right
++    } else if right.len() == 0 {
++        left
++    } else if left.last().spec_kind().spec_tag() == right.last().spec_kind().spec_tag() {
++        let quantity = left.last().spec_quantity().spec_value() as int
++            + right.last().spec_quantity().spec_value() as int;
++        added_entries(left.drop_last(), right.drop_last()).push(ResourceEntry {
++            kind: left.last().spec_kind(),
++            quantity: ResourceQuantity(if quantity <= u64::MAX as int {
++                quantity as u64
++            } else {
++                0
++            }),
++        })
++    } else if left.last().spec_kind().spec_tag() > right.last().spec_kind().spec_tag() {
++        added_entries(left.drop_last(), right).push(left.last())
++    } else {
++        added_entries(left, right.drop_last()).push(right.last())
++    }
++}
++
++/// Number of distinct dimensions in two canonical sequences.
++pub(super) open spec fn union_dimensions(
++    left: Seq<ResourceEntry>,
++    right: Seq<ResourceEntry>,
++) -> nat {
++    added_entries(left, right).len()
++}
++
++/// Exact public addition admission.
++pub(super) open spec fn addition_admissible(
++    left: Seq<ResourceEntry>,
++    right: Seq<ResourceEntry>,
++    maximum_dimensions: u16,
++) -> bool {
++    !addition_overflows(left, right)
++        && union_dimensions(left, right) <= maximum_dimensions as int
++}
++
++/// Strict kind ordering for a possibly empty intermediate merge.
++pub(super) open spec fn entries_ordered(entries: Seq<ResourceEntry>) -> bool {
++    forall |index: int| #![trigger entries[index]] 1 <= index < entries.len() ==>
++        entries[index - 1].spec_kind().spec_tag() < entries[index].spec_kind().spec_tag()
++}
++
++/// Exact canonical entries represented by a successful addition.
++pub(super) open spec fn addition_result(
++    result: &ResourceVector,
++    left: &ResourceVector,
++    right: &ResourceVector,
++) -> bool {
++    result.spec_entries() == added_entries(left.spec_entries(), right.spec_entries())
++}
++
++/// Exact quantity sum represented by a successful addition.
++pub(super) open spec fn addition_quantities(
++    result: &ResourceVector,
++    left: &ResourceVector,
++    right: &ResourceVector,
++) -> bool {
++    forall |kind: ResourceKind| #![auto]
++        result.spec_quantity(kind)
++            == left.spec_quantity(kind) + right.spec_quantity(kind)
++}
++
++fn combined_entry(
++    left: &ResourceEntry,
++    right: &ResourceEntry,
++) -> (result: Option<ResourceEntry>)
++    requires left.spec_kind() == right.spec_kind(),
++    ensures match result {
++        Some(entry) => {
++            &&& left.spec_quantity().spec_value() as int
++                + right.spec_quantity().spec_value() as int <= u64::MAX as int
++            &&& entry == ResourceEntry {
++                kind: left.spec_kind(),
++                quantity: ResourceQuantity(
++                    (left.spec_quantity().spec_value() as int
++                        + right.spec_quantity().spec_value() as int) as u64,
++                ),
++            }
++        }
++        None => left.spec_quantity().spec_value() as int
++            + right.spec_quantity().spec_value() as int > u64::MAX as int,
++    },
++{
++    let quantity = left.quantity().get().checked_add(right.quantity().get())?;
++    Some(ResourceEntry::new(
++        left.kind(),
++        ResourceQuantity::from_wire(quantity),
++    ))
++}
++
++proof fn added_entries_push_both(
++    left: Seq<ResourceEntry>,
++    right: Seq<ResourceEntry>,
++    left_entry: ResourceEntry,
++    right_entry: ResourceEntry,
++)
++    requires
++        left.len() == 0
++            || left.last().spec_kind().spec_tag() < left_entry.spec_kind().spec_tag(),
++        right.len() == 0
++            || right.last().spec_kind().spec_tag() < right_entry.spec_kind().spec_tag(),
++        left_entry.spec_kind() == right_entry.spec_kind(),
++        left_entry.spec_quantity().spec_value() as int
++            + right_entry.spec_quantity().spec_value() as int <= u64::MAX as int,
++    ensures
++        added_entries(left.push(left_entry), right.push(right_entry))
++            == added_entries(left, right).push(ResourceEntry {
++                kind: left_entry.spec_kind(),
++                quantity: ResourceQuantity(
++                    (left_entry.spec_quantity().spec_value() as int
++                        + right_entry.spec_quantity().spec_value() as int) as u64,
++                ),
++            }),
++{
++    assert(left.push(left_entry).last() == left_entry);
++    assert(left.push(left_entry).drop_last() =~= left);
++    assert(right.push(right_entry).last() == right_entry);
++    assert(right.push(right_entry).drop_last() =~= right);
++    assert(left_entry.spec_kind().spec_tag() == right_entry.spec_kind().spec_tag());
++    reveal(added_entries);
++}
++
++fn merge(
++    left_vector: &ResourceVector,
++    right_vector: &ResourceVector,
++    maximum_dimensions: u16,
++) -> (outcome: VectorAddition)
++    ensures match outcome {
++        VectorAddition::Value(vector) => {
++            &&& addition_admissible(
++                left_vector.spec_entries(), right_vector.spec_entries(), maximum_dimensions)
++            &&& addition_result(&vector, left_vector, right_vector)
++            &&& addition_quantities(&vector, left_vector, right_vector)
++            &&& vector.spec_entries().len()
++                == union_dimensions(left_vector.spec_entries(), right_vector.spec_entries())
++        }
++        VectorAddition::Overflow =>
++            addition_overflows(left_vector.spec_entries(), right_vector.spec_entries()),
++        VectorAddition::LimitExceeded => {
++            &&& !addition_overflows(left_vector.spec_entries(), right_vector.spec_entries())
++            &&& union_dimensions(left_vector.spec_entries(), right_vector.spec_entries())
++                > maximum_dimensions as int
++        }
++    },
++{
++    match merge::merge_entries(left_vector, right_vector) {
++        merge::MergeOutcome::Value(entries) => {
++            if entries.len() > usize::from(maximum_dimensions) {
++                VectorAddition::LimitExceeded
++            } else {
++                proof {
++                    assert(crate::resource::capacity::entries_canonical(entries@)) by {
++                        reveal(crate::resource::capacity::entries_canonical);
++                    }
++                }
++                let vector = ResourceVector(entries);
++                proof {
++                    assert(addition_result(&vector, left_vector, right_vector));
++                    assert(addition_quantities(&vector, left_vector, right_vector)) by {
++                        assert forall |kind: ResourceKind| #![auto]
++                            vector.spec_quantity(kind)
++                                == left_vector.spec_quantity(kind)
++                                    + right_vector.spec_quantity(kind) by {
++                            vector.quantity_matches_entries(kind);
++                        }
++                    }
++                }
++                VectorAddition::Value(vector)
++            }
++        }
++        merge::MergeOutcome::Overflow => VectorAddition::Overflow,
++    }
++}
++
++pub(super) fn add(
++    left_vector: &ResourceVector,
++    right_vector: &ResourceVector,
++    maximum_dimensions: u16,
++) -> (outcome: VectorAddition)
++    ensures match outcome {
++        VectorAddition::Value(vector) => {
++            &&& addition_admissible(
++                left_vector.spec_entries(), right_vector.spec_entries(), maximum_dimensions)
++            &&& addition_result(&vector, left_vector, right_vector)
++            &&& addition_quantities(&vector, left_vector, right_vector)
++            &&& vector.spec_entries().len()
++                == union_dimensions(left_vector.spec_entries(), right_vector.spec_entries())
++        }
++        VectorAddition::Overflow =>
++            addition_overflows(left_vector.spec_entries(), right_vector.spec_entries()),
++        VectorAddition::LimitExceeded => {
++            &&& !addition_overflows(left_vector.spec_entries(), right_vector.spec_entries())
++            &&& union_dimensions(left_vector.spec_entries(), right_vector.spec_entries())
++                > maximum_dimensions as int
++        }
++    },
++{
++    merge(left_vector, right_vector, maximum_dimensions)
++}
++
++} // verus!
+diff -ruN /tmp/peritus-parent-scheduler244-complete-source/src/resource/capacity.rs /tmp/peritus-sol-scheduler-perf-aggregate-final-source-20260913T001/src/resource/capacity.rs
+--- /tmp/peritus-parent-scheduler244-complete-source/src/resource/capacity.rs	2026-09-12 19:27:54.707139151 -0500
++++ /tmp/peritus-sol-scheduler-perf-aggregate-final-source-20260913T001/src/resource/capacity.rs	2026-09-12 22:11:51.413522170 -0500
+@@ -2,10 +2,82 @@
+ 
+ use vstd::prelude::*;
+ 
+-use super::{ResourceEntry, ResourceKind, ResourceVector};
++use super::{ResourceEntry, ResourceKind, ResourceVector, VectorAdmission};
++use core::cmp::Ordering;
+ 
+ verus! {
+ 
++/// Canonical nonempty resource entries in strictly ascending adjacent tag order.
++pub open spec fn entries_canonical(entries: Seq<ResourceEntry>) -> bool {
++    &&& 0 < entries.len() <= u16::MAX as int
++    &&& forall |index: int| #![trigger entries[index]] 1 <= index < entries.len() ==>
++        entries[index - 1].spec_kind().spec_tag() < entries[index].spec_kind().spec_tag()
++}
++
++/// Exact public constructor admission under the supplied dimension ceiling.
++pub open spec fn entries_admissible(
++    entries: Seq<ResourceEntry>,
++    maximum_dimensions: u16,
++) -> bool {
++    &&& 0 < entries.len() <= maximum_dimensions as int
++    &&& forall |index: int| #![trigger entries[index]] 1 <= index < entries.len() ==>
++        entries[index - 1].spec_kind().spec_tag() < entries[index].spec_kind().spec_tag()
++}
++
++/// Checks the same adjacent canonical order used by resource-vector admission.
++pub(super) fn order_is_canonical(entries: &[ResourceEntry]) -> (result: bool)
++    requires entries@.len() > 0,
++    ensures result == (forall |index: int| #![trigger entries@[index]]
++        1 <= index < entries@.len() ==>
++        entries@[index - 1].spec_kind().spec_tag()
++            < entries@[index].spec_kind().spec_tag()),
++{
++    let mut index = 1;
++    while index < entries.len()
++        invariant
++            1 <= index <= entries@.len(),
++            forall |prior: int| #![trigger entries@[prior]] 1 <= prior < index ==>
++                entries@[prior - 1].spec_kind().spec_tag()
++                    < entries@[prior].spec_kind().spec_tag(),
++        decreases entries@.len() - index,
++    {
++        if entries[index - 1].kind().tag() >= entries[index].kind().tag() {
++            return false;
++        }
++        index += 1;
++    }
++    true
++}
++
++/// Performs the exact production admission decision before public error construction.
++pub(super) fn admit_entries(
++    entries: Vec<ResourceEntry>,
++    maximum_dimensions: u16,
++) -> (result: VectorAdmission)
++    ensures match result {
++        VectorAdmission::Accepted(vector) => {
++            &&& entries_admissible(entries@, maximum_dimensions)
++            &&& vector.spec_entries() == entries@
++        }
++        VectorAdmission::LimitExceeded => {
++            entries@.len() == 0 || entries@.len() > maximum_dimensions as int
++        }
++        VectorAdmission::NonCanonical => {
++            &&& 0 < entries@.len() <= maximum_dimensions as int
++            &&& !entries_admissible(entries@, maximum_dimensions)
++        }
++    },
++{
++    if entries.is_empty() || entries.len() > usize::from(maximum_dimensions) {
++        VectorAdmission::LimitExceeded
++    } else if !order_is_canonical(entries.as_slice()) {
++        VectorAdmission::NonCanonical
++    } else {
++        assert(entries_canonical(entries@));
++        VectorAdmission::Accepted(ResourceVector(entries))
++    }
++}
++
+ /// Returns the first exact quantity for a resource kind, or zero when absent.
+ pub open spec fn entries_quantity(
+     entries: Seq<ResourceEntry>,
+@@ -50,40 +122,146 @@
+     }
+ }
+ 
+-fn quantity_from(
++pub(super) proof fn earlier_tag_is_less(
++    entries: Seq<ResourceEntry>,
++    left: int,
++    right: int,
++)
++    requires
++        entries_canonical(entries),
++        0 <= left < right < entries.len(),
++    ensures
++        entries[left].spec_kind().spec_tag() < entries[right].spec_kind().spec_tag(),
++    decreases right - left,
++{
++    if left + 1 < right {
++        earlier_tag_is_less(entries, left, right - 1);
++        assert(entries[right - 1].spec_kind().spec_tag()
++            < entries[right].spec_kind().spec_tag());
++    }
++}
++
++proof fn drop_first_is_canonical(entries: Seq<ResourceEntry>)
++    requires entries_canonical(entries), entries.len() > 1,
++    ensures entries_canonical(entries.drop_first()),
++{
++    assert forall |index: int| #![trigger entries.drop_first()[index]]
++        1 <= index < entries.drop_first().len() implies
++        entries.drop_first()[index - 1].spec_kind().spec_tag()
++            < entries.drop_first()[index].spec_kind().spec_tag() by {
++        assert(entries.drop_first()[index - 1] == entries[index]);
++        assert(entries.drop_first()[index] == entries[index + 1]);
++    }
++}
++
++pub(super) proof fn exact_quantity_at(
++    entries: Seq<ResourceEntry>,
++    index: int,
++    kind: ResourceKind,
++)
++    requires
++        entries_canonical(entries),
++        0 <= index < entries.len(),
++        entries[index].spec_kind() == kind,
++    ensures
++        entries_quantity(entries, kind)
++            == entries[index].spec_quantity().spec_value() as int,
++    decreases entries.len(),
++{
++    if index > 0 {
++        earlier_tag_is_less(entries, 0, index);
++        assert(entries[0].spec_kind() != kind);
++        drop_first_is_canonical(entries);
++        exact_quantity_at(entries.drop_first(), index - 1, kind);
++    }
++}
++
++proof fn absent_quantity_is_zero(entries: Seq<ResourceEntry>, kind: ResourceKind)
++    requires
++        forall |index: int| #![trigger entries[index]] 0 <= index < entries.len() ==>
++            entries[index].spec_kind() != kind,
++    ensures entries_quantity(entries, kind) == 0,
++    decreases entries.len(),
++{
++    if entries.len() > 0 {
++        assert(entries.first().spec_kind() != kind);
++        assert forall |index: int| #![trigger entries.drop_first()[index]]
++            0 <= index < entries.drop_first().len() implies
++            entries.drop_first()[index].spec_kind() != kind by {
++            assert(entries.drop_first()[index] == entries[index + 1]);
++        }
++        absent_quantity_is_zero(entries.drop_first(), kind);
++    }
++}
++
++fn indexed_quantity(
+     entries: &[ResourceEntry],
+-    index: usize,
+     kind: ResourceKind,
+ ) -> (result: u64)
+-    requires index <= entries@.len(),
+-    ensures
+-        result as int
+-            == entries_quantity(entries@.subrange(index as int, entries@.len() as int), kind),
+-    decreases entries@.len() - index,
++    requires entries_canonical(entries@),
++    ensures result as int == entries_quantity(entries@, kind),
+ {
+-    if index == entries.len() {
+-        proof {
+-            assert(entries@.subrange(index as int, entries@.len() as int).len() == 0);
++    let mut low = 0usize;
++    let mut high = entries.len();
++    while low < high
++        invariant
++            low <= high <= entries@.len(),
++            entries_canonical(entries@),
++            forall |prior: int| #![trigger entries@[prior]] 0 <= prior < low ==>
++                entries@[prior].spec_kind() != kind,
++            forall |later: int| #![trigger entries@[later]] high <= later < entries@.len() ==>
++                entries@[later].spec_kind() != kind,
++        decreases high - low,
++    {
++        let middle = low + (high - low) / 2;
++        assert(low <= middle < high);
++        let observed = entries[middle].kind().tag();
++        let target = kind.tag();
++        match observed.cmp(&target) {
++            Ordering::Equal => {
++                assert(observed == target);
++                assert(entries@[middle as int].spec_kind() == kind);
++                proof {
++                    exact_quantity_at(entries@, middle as int, kind);
++                }
++                return entries[middle].quantity().get();
++            }
++            Ordering::Less => {
++                assert(observed < target);
++                assert forall |prior: int| #![trigger entries@[prior]]
++                    0 <= prior <= middle implies
++                    entries@[prior].spec_kind() != kind by {
++                    if prior >= low && prior < middle {
++                        earlier_tag_is_less(entries@, prior, middle as int);
++                    }
++                }
++                low = middle + 1;
++            }
++            Ordering::Greater => {
++                assert(observed > target);
++                assert forall |later: int| #![trigger entries@[later]]
++                    middle <= later < entries@.len() implies
++                    entries@[later].spec_kind() != kind by {
++                    if later > middle {
++                        earlier_tag_is_less(entries@, middle as int, later);
++                    }
++                }
++                high = middle;
++            }
+         }
+-        0
+-    } else {
+-        let ghost suffix = entries@.subrange(index as int, entries@.len() as int);
+-        assert(suffix.len() > 0);
+-        assert(suffix.first() == entries@[index as int]);
+-        assert(suffix.drop_first()
+-            =~= entries@.subrange(index as int + 1, entries@.len() as int));
+-        if entries[index].kind().same(kind) {
+-            let result = entries[index].quantity().get();
+-            assert(suffix.first().spec_kind() == kind);
+-            assert(result as int == suffix.first().spec_quantity().spec_value() as int);
+-            result
++    }
++    assert forall |index: int| #![trigger entries@[index]]
++        0 <= index < entries@.len() implies
++        entries@[index].spec_kind() != kind by {
++        if index < low {
+         } else {
+-            let result = quantity_from(entries, index + 1, kind);
+-            assert(suffix.first().spec_kind() != kind);
+-            assert(result as int == entries_quantity(suffix.drop_first(), kind));
+-            result
++            assert(index >= high);
+         }
+     }
++    proof {
++        absent_quantity_is_zero(entries@, kind);
++    }
++    0
+ }
+ 
+ fn fits_from(
+@@ -123,11 +301,8 @@
+     pub fn quantity(&self, kind: ResourceKind) -> (result: u64)
+         ensures result as int == self.spec_quantity(kind),
+     {
+-        let result = quantity_from(&self.0, 0, kind);
+-        proof {
+-            assert(self.0@.subrange(0, self.0@.len() as int) =~= self.0@);
+-        }
+-        result
++        proof { use_type_invariant(self); }
++        indexed_quantity(&self.0, kind)
+     }
+ 
+     /// Returns whether every requested quantity is provided by `capacity`.
+diff -ruN /tmp/peritus-parent-scheduler244-complete-source/src/resource/subtraction.rs /tmp/peritus-sol-scheduler-perf-aggregate-final-source-20260913T001/src/resource/subtraction.rs
+--- /tmp/peritus-parent-scheduler244-complete-source/src/resource/subtraction.rs	1969-12-31 18:00:00.000000000 -0600
++++ /tmp/peritus-sol-scheduler-perf-aggregate-final-source-20260913T001/src/resource/subtraction.rs	2026-09-12 22:22:57.716699691 -0500
+@@ -0,0 +1,315 @@
++//! Verified canonical resource subtraction without output revalidation.
++
++use vstd::prelude::*;
++
++use super::{ResourceEntry, ResourceQuantity, ResourceVector, VectorSubtraction};
++
++verus! {
++
++/// A left-hand dimension would underflow before sentinel validation.
++pub(super) open spec fn subtraction_underflows(
++    left: &ResourceVector,
++    other: &ResourceVector,
++) -> bool {
++    exists |index: int| #![trigger left.spec_entries()[index]]
++        0 <= index < left.spec_entries().len()
++            && left.spec_entries()[index].spec_quantity().spec_value()
++                < other.spec_quantity(left.spec_entries()[index].spec_kind())
++}
++
++/// The subtrahend names a dimension whose left lookup is the zero sentinel.
++pub(super) open spec fn subtraction_has_zero_sentinel(
++    left: &ResourceVector,
++    other: &ResourceVector,
++) -> bool {
++    exists |index: int| #![trigger other.spec_entries()[index]]
++        0 <= index < other.spec_entries().len()
++            && left.spec_quantity(other.spec_entries()[index].spec_kind()) == 0
++}
++
++/// Exact nonzero canonical entries produced after successful subtraction.
++pub(super) open spec fn subtracted_entries(
++    left: Seq<ResourceEntry>,
++    other: &ResourceVector,
++) ->Seq<ResourceEntry>
++    decreases left.len(),
++{
++    if left.len() == 0 {
++        Seq::empty()
++    } else {
++        let prior = subtracted_entries(left.drop_last(), other);
++        let entry = left.last();
++        let remaining = entry.spec_quantity().spec_value() as int
++            - other.spec_quantity(entry.spec_kind());
++        if remaining <= 0 {
++            prior
++        } else {
++            prior.push(ResourceEntry {
++                kind: entry.spec_kind(),
++                quantity: ResourceQuantity(remaining as u64),
++            })
++        }
++    }
++}
++
++/// Exact successful quantity difference across every resource identity.
++pub(super) open spec fn subtraction_result(
++    result: &ResourceVector,
++    left: &ResourceVector,
++    other: &ResourceVector,
++) -> bool {
++    result.spec_entries() == subtracted_entries(left.spec_entries(), other)
++}
++
++/// Returns whether a possibly empty sequence has bounded canonical ordering.
++pub(super) open spec fn entries_ordered(entries: Seq<ResourceEntry>) -> bool {
++    &&& entries.len() <= u16::MAX as int
++    &&& forall |index: int| #![trigger entries[index]] 1 <= index < entries.len() ==>
++        entries[index - 1].spec_kind().spec_tag() < entries[index].spec_kind().spec_tag()
++}
++
++proof fn ordered_push(entries: Seq<ResourceEntry>, entry: ResourceEntry)
++    requires
++        entries_ordered(entries),
++        entries.len() < u16::MAX as int,
++        forall |index: int| #![trigger entries[index]] 0 <= index < entries.len() ==>
++            entries[index].spec_kind().spec_tag() < entry.spec_kind().spec_tag(),
++    ensures entries_ordered(entries.push(entry)),
++{
++    assert forall |index: int| #![trigger entries.push(entry)[index]]
++        1 <= index < entries.push(entry).len() implies
++        entries.push(entry)[index - 1].spec_kind().spec_tag()
++            < entries.push(entry)[index].spec_kind().spec_tag() by {
++        if index < entries.len() {
++            assert(entries.push(entry)[index - 1] == entries[index - 1]);
++            assert(entries.push(entry)[index] == entries[index]);
++        } else {
++            assert(index == entries.len());
++            assert(entries.push(entry)[index - 1] == entries[index - 1]);
++            assert(entries.push(entry)[index] == entry);
++        }
++    }
++}
++
++proof fn subtracted_entries_push(
++    left: Seq<ResourceEntry>,
++    other: &ResourceVector,
++    entry: ResourceEntry,
++)
++    ensures
++        subtracted_entries(left.push(entry), other) == {
++            let remaining = entry.spec_quantity().spec_value() as int
++                - other.spec_quantity(entry.spec_kind());
++            if remaining <= 0 {
++                subtracted_entries(left, other)
++            } else {
++                subtracted_entries(left, other).push(ResourceEntry {
++                    kind: entry.spec_kind(),
++                    quantity: ResourceQuantity(remaining as u64),
++                })
++            }
++        },
++{
++    assert(left.push(entry).last() == entry);
++    assert(left.push(entry).drop_last() =~= left);
++    reveal(subtracted_entries);
++}
++
++enum EntrySubtraction {
++    Value(Vec<ResourceEntry>),
++    Underflow,
++}
++
++fn subtract_entries(
++    left: &ResourceVector,
++    other: &ResourceVector,
++) -> (result: EntrySubtraction)
++    ensures match result {
++        EntrySubtraction::Underflow => subtraction_underflows(left, other),
++        EntrySubtraction::Value(entries) => {
++            &&& !subtraction_underflows(left, other)
++            &&& entries@ == subtracted_entries(left.spec_entries(), other)
++            &&& entries_ordered(entries@)
++        }
++    },
++{
++    proof {
++        use_type_invariant(left);
++        use_type_invariant(other);
++    }
++    let mut entries = Vec::with_capacity(left.0.len());
++    let mut index = 0usize;
++    while index < left.0.len()
++        invariant
++            index <= left.0@.len(),
++            crate::resource::capacity::entries_canonical(left.0@),
++            crate::resource::capacity::entries_canonical(other.0@),
++            entries_ordered(entries@),
++            entries@ == subtracted_entries(left.0@.take(index as int), other),
++            forall |prior: int| 0 <= prior < index ==>
++                left.0@[prior].spec_quantity().spec_value()
++                    >= other.spec_quantity(left.0@[prior].spec_kind()),
++            entries@.len() <= index,
++            index < left.0@.len() ==>
++                forall |prior: int| #![trigger entries@[prior]]
++                    0 <= prior < entries@.len() ==>
++                    entries@[prior].spec_kind().spec_tag()
++                        < left.0@[index as int].spec_kind().spec_tag(),
++        decreases left.0@.len() - index,
++    {
++        let entry = left.0[index];
++        let ghost prefix = left.0@.take(index as int);
++        let subtract = other.quantity(entry.kind());
++        if entry.quantity().get() < subtract {
++            assert(subtraction_underflows(left, other)) by {
++                let witness = index as int;
++                assert(left.spec_entries()[witness] == entry);
++                assert(subtract as int == other.spec_quantity(entry.spec_kind()));
++            }
++            return EntrySubtraction::Underflow;
++        }
++        assert(left.0@.take(index as int + 1) == prefix.push(entry));
++        proof { subtracted_entries_push(prefix, other, entry); }
++        let remaining = entry.quantity().get() - subtract;
++        if remaining != 0 {
++            let next = ResourceEntry::new(entry.kind(), ResourceQuantity::from_wire(remaining));
++            proof {
++                assert(entries@.len() < u16::MAX as int);
++                assert forall |prior: int| #![trigger entries@[prior]]
++                    0 <= prior < entries@.len() implies
++                    entries@[prior].spec_kind().spec_tag() < next.spec_kind().spec_tag() by {
++                    assert(next.spec_kind() == entry.spec_kind());
++                }
++                ordered_push(entries@, next);
++            }
++            entries.push(next);
++        }
++        proof {
++            if index + 1 < left.0.len() {
++                assert(left.0@[index as int].spec_kind().spec_tag()
++                    < left.0@[index as int + 1].spec_kind().spec_tag());
++                assert forall |prior: int| #![trigger entries@[prior]]
++                    0 <= prior < entries@.len() implies
++                    entries@[prior].spec_kind().spec_tag()
++                        < left.0@[index as int + 1].spec_kind().spec_tag() by {
++                    if remaining != 0 && prior == entries@.len() - 1 {
++                        assert(entries@[prior].spec_kind() == entry.spec_kind());
++                    }
++                }
++            }
++        }
++        index += 1;
++    }
++    assert(left.0@.take(index as int) =~= left.0@);
++    EntrySubtraction::Value(entries)
++}
++
++fn has_zero_sentinel(
++    left: &ResourceVector,
++    other: &ResourceVector,
++) -> (result: bool)
++    ensures result == subtraction_has_zero_sentinel(left, other),
++{
++    let mut other_index = 0usize;
++    while other_index < other.0.len()
++        invariant
++            other_index <= other.0@.len(),
++            forall |prior: int| 0 <= prior < other_index ==>
++                left.spec_quantity(other.0@[prior].spec_kind()) != 0,
++        decreases other.0@.len() - other_index,
++    {
++        if left.quantity(other.0[other_index].kind()) == 0 {
++            assert(subtraction_has_zero_sentinel(left, other)) by {
++                let witness = other_index as int;
++                assert(other.spec_entries()[witness] == other.0[other_index as int]);
++                assert(left.spec_quantity(other.0[other_index as int].spec_kind()) == 0);
++            }
++            return true;
++        }
++        other_index += 1;
++    }
++    assert(!subtraction_has_zero_sentinel(left, other)) by {
++        assert forall |index: int| #![trigger other.spec_entries()[index]]
++            0 <= index < other.spec_entries().len() implies
++            left.spec_quantity(other.spec_entries()[index].spec_kind()) != 0 by {
++        }
++    }
++    false
++}
++
++pub(super) fn subtract(
++    left: &ResourceVector,
++    other: &ResourceVector,
++) -> (result: VectorSubtraction)
++    ensures match result {
++        VectorSubtraction::Underflow => subtraction_underflows(left, other),
++        VectorSubtraction::AbsentDimension => {
++            &&& !subtraction_underflows(left, other)
++            &&& subtraction_has_zero_sentinel(left, other)
++        }
++        VectorSubtraction::ExactZero => {
++            &&& !subtraction_underflows(left, other)
++            &&& !subtraction_has_zero_sentinel(left, other)
++            &&& subtracted_entries(left.spec_entries(), other).len() == 0
++        }
++        VectorSubtraction::Value(vector) => {
++            &&& !subtraction_underflows(left, other)
++            &&& !subtraction_has_zero_sentinel(left, other)
++            &&& subtracted_entries(left.spec_entries(), other).len() > 0
++            &&& subtraction_result(&vector, left, other)
++        }
++    },
++{
++    let entries = match subtract_entries(left, other) {
++        EntrySubtraction::Underflow => return VectorSubtraction::Underflow,
++        EntrySubtraction::Value(entries) => entries,
++    };
++    if has_zero_sentinel(left, other) {
++        return VectorSubtraction::AbsentDimension;
++    }
++
++    if !entries.is_empty() {
++        assert(crate::resource::capacity::entries_canonical(entries@));
++        let vector = ResourceVector(entries);
++        assert(subtraction_result(&vector, left, other));
++        return VectorSubtraction::Value(vector);
++    }
++    assert(subtracted_entries(left.spec_entries(), other).len() == 0);
++    VectorSubtraction::ExactZero
++}
++
++} // verus!
++
++#[cfg(test)]
++mod tests {
++    use super::{ResourceEntry, ResourceQuantity, ResourceVector};
++    use crate::{ResourceKind, SchedulerErrorKind};
++
++    fn cpu_vector(quantity: u64) -> ResourceVector {
++        match ResourceVector::new(
++            vec![ResourceEntry::new(ResourceKind::CPU, ResourceQuantity::from_wire(quantity))],
++            1,
++        ) {
++            Ok(vector) => vector,
++            Err(error) => panic!("canonical unit vector was rejected: {error}"),
++        }
++    }
++
++    #[test]
++    fn zero_quantity_preserves_absent_dimension_and_underflow_precedence() {
++        let zero = cpu_vector(0);
++        let one = cpu_vector(1);
++
++        let Err(absent) = zero.checked_subtract(&zero) else {
++            panic!("zero sentinel was not rejected as an absent dimension");
++        };
++        assert_eq!(absent.kind(), SchedulerErrorKind::ResourceConflict);
++        assert_eq!(absent.detail(), "resource subtraction names an absent dimension");
++
++        let Err(underflow) = zero.checked_subtract(&one) else {
++            panic!("underflow was not rejected before sentinel validation");
++        };
++        assert_eq!(underflow.kind(), SchedulerErrorKind::ResourceConflict);
++        assert_eq!(underflow.detail(), "resource subtraction underflowed");
++    }
++}
+diff -ruN /tmp/peritus-parent-scheduler244-complete-source/src/resource.rs /tmp/peritus-sol-scheduler-perf-aggregate-final-source-20260913T001/src/resource.rs
+--- /tmp/peritus-parent-scheduler244-complete-source/src/resource.rs	2026-09-12 19:27:54.707099820 -0500
++++ /tmp/peritus-sol-scheduler-perf-aggregate-final-source-20260913T001/src/resource.rs	2026-09-12 21:28:49.130810015 -0500
+@@ -3,7 +3,9 @@
+ use crate::{SchedulerError, SchedulerErrorKind};
+ use vstd::prelude::*;
+ 
++mod addition;
+ pub mod capacity;
++mod subtraction;
+ 
+ verus! {
+ 
+@@ -15,11 +17,12 @@
+     /// Returns the mathematical stable resource tag.
+     pub closed spec fn spec_tag(&self) -> u16 { self.0 }
+ 
+-    /// Compares exact stable resource tags for verified executable lookup.
+-    pub(crate) const fn same(self, other: Self) -> (result: bool)
+-        ensures result == (self == other),
++    /// Returns the stable canonical tag.
++    #[must_use]
++    pub const fn tag(self) -> (result: u16)
++        ensures result == self.spec_tag(),
+     {
+-        self.0 == other.0
++        self.0
+     }
+ }
+ 
+@@ -48,12 +51,6 @@
+             Ok(Self(tag))
+         }
+     }
+-
+-    /// Returns the stable canonical tag.
+-    #[must_use]
+-    pub const fn tag(self) -> u16 {
+-        self.0
+-    }
+ }
+ 
+ verus! {
+@@ -73,6 +70,12 @@
+     {
+         self.0
+     }
++
++    pub(crate) const fn from_wire(value: u64) -> (result: Self)
++        ensures result.spec_value() == value,
++    {
++        Self(value)
++    }
+ }
+ 
+ } // verus!
+@@ -89,10 +92,6 @@
+             Ok(Self(value))
+         }
+     }
+-
+-    pub(crate) const fn from_wire(value: u64) -> Self {
+-        Self(value)
+-    }
+ }
+ 
+ verus! {
+@@ -124,25 +123,51 @@
+     {
+         self.quantity
+     }
+-}
+-
+-} // verus!
+ 
+-impl ResourceEntry {
+     /// Creates one checked entry.
+     #[must_use]
+-    pub const fn new(kind: ResourceKind, quantity: ResourceQuantity) -> Self {
++    pub const fn new(kind: ResourceKind, quantity: ResourceQuantity) -> (result: Self)
++        ensures
++            result.spec_kind() == kind,
++            result.spec_quantity() == quantity,
++    {
+         Self { kind, quantity }
+     }
+ }
+ 
++} // verus!
++
+ verus! {
+ 
+ /// Nonempty unique resource vector in ascending kind order.
+ #[derive(Debug, Eq, Hash, PartialEq)]
+ pub struct ResourceVector(Vec<ResourceEntry>);
+ 
++enum VectorAdmission {
++    Accepted(ResourceVector),
++    LimitExceeded,
++    NonCanonical,
++}
++
++enum VectorAddition {
++    Value(ResourceVector),
++    Overflow,
++    LimitExceeded,
++}
++
++enum VectorSubtraction {
++    Value(ResourceVector),
++    ExactZero,
++    Underflow,
++    AbsentDimension,
++}
++
+ impl ResourceVector {
++    #[verifier::type_invariant]
++    closed spec fn invariant(&self) -> bool {
++        capacity::entries_canonical(self.spec_entries())
++    }
++
+     /// Returns the exact mathematical entry sequence.
+     pub closed spec fn spec_entries(&self) -> Seq<ResourceEntry> {
+         self.0@
+@@ -155,12 +180,28 @@
+     {
+         &self.0
+     }
++
++    /// Adds two canonical vectors for internal aggregate accounting.
++    pub(crate) fn aggregate_add(&self, other: &Self) -> (result: Option<Self>)
++        ensures match result {
++            Some(vector) => forall |kind: ResourceKind| #![auto]
++                vector.spec_quantity(kind)
++                    == self.spec_quantity(kind) + other.spec_quantity(kind),
++            None => true,
++        },
++    {
++        match addition::add(self, other, u16::MAX) {
++            VectorAddition::Value(vector) => Some(vector),
++            VectorAddition::Overflow | VectorAddition::LimitExceeded => None,
++        }
++    }
+ }
+ 
+ impl Clone for ResourceVector {
+     fn clone(&self) -> (result: Self)
+         ensures result.spec_entries() == self.spec_entries(),
+     {
++        proof { use_type_invariant(self); }
+         Self(self.0.clone())
+     }
+ }
+@@ -176,19 +217,17 @@
+         entries: Vec<ResourceEntry>,
+         maximum_dimensions: u16,
+     ) -> Result<Self, SchedulerError> {
+-        if entries.is_empty() || entries.len() > usize::from(maximum_dimensions) {
+-            return Err(crate::error::reject(
++        match capacity::admit_entries(entries, maximum_dimensions) {
++            VectorAdmission::Accepted(vector) => Ok(vector),
++            VectorAdmission::LimitExceeded => Err(crate::error::reject(
+                 SchedulerErrorKind::LimitExceeded,
+                 "resource vector is empty or exceeds its dimension bound",
+-            ));
+-        }
+-        if entries.windows(2).any(|pair| pair[0].kind() >= pair[1].kind()) {
+-            return Err(crate::error::reject(
++            )),
++            VectorAdmission::NonCanonical => Err(crate::error::reject(
+                 SchedulerErrorKind::NonCanonical,
+                 "resource entries are duplicated or not in ascending kind order",
+-            ));
++            )),
+         }
+-        Ok(Self(entries))
+     }
+ 
+     /// Adds two vectors without wrapping or losing canonical ordering.
+@@ -200,39 +239,17 @@
+         other: &Self,
+         maximum_dimensions: u16,
+     ) -> Result<Self, SchedulerError> {
+-        let mut result = Vec::with_capacity(self.0.len().saturating_add(other.0.len()));
+-        let (mut left, mut right) = (0, 0);
+-        while left < self.0.len() || right < other.0.len() {
+-            match (self.0.get(left), other.0.get(right)) {
+-                (Some(a), Some(b)) if a.kind() == b.kind() => {
+-                    let quantity =
+-                        a.quantity().get().checked_add(b.quantity().get()).ok_or_else(|| {
+-                            crate::error::reject(
+-                                SchedulerErrorKind::ResourceConflict,
+-                                "resource addition overflowed",
+-                            )
+-                        })?;
+-                    result
+-                        .push(ResourceEntry::new(a.kind(), ResourceQuantity::from_wire(quantity)));
+-                    left += 1;
+-                    right += 1;
+-                }
+-                (Some(a), Some(b)) if a.kind() < b.kind() => {
+-                    result.push(*a);
+-                    left += 1;
+-                }
+-                (Some(_) | None, Some(b)) => {
+-                    result.push(*b);
+-                    right += 1;
+-                }
+-                (Some(a), None) => {
+-                    result.push(*a);
+-                    left += 1;
+-                }
+-                (None, None) => break,
+-            }
++        match addition::add(self, other, maximum_dimensions) {
++            VectorAddition::Value(vector) => Ok(vector),
++            VectorAddition::Overflow => Err(crate::error::reject(
++                SchedulerErrorKind::ResourceConflict,
++                "resource addition overflowed",
++            )),
++            VectorAddition::LimitExceeded => Err(crate::error::reject(
++                SchedulerErrorKind::LimitExceeded,
++                "resource vector is empty or exceeds its dimension bound",
++            )),
+         }
+-        Self::new(result, maximum_dimensions)
+     }
+ 
+     /// Subtracts an exact vector, returning `None` for exact zero.
+@@ -240,27 +257,18 @@
+     /// # Errors
+     /// Rejects any absent dimension or underflow.
+     pub fn checked_subtract(&self, other: &Self) -> Result<Option<Self>, SchedulerError> {
+-        let mut result = Vec::with_capacity(self.0.len());
+-        for entry in &self.0 {
+-            let subtract = other.quantity(entry.kind());
+-            let remaining = entry.quantity().get().checked_sub(subtract).ok_or_else(|| {
+-                crate::error::reject(
+-                    SchedulerErrorKind::ResourceConflict,
+-                    "resource subtraction underflowed",
+-                )
+-            })?;
+-            if remaining != 0 {
+-                result
+-                    .push(ResourceEntry::new(entry.kind(), ResourceQuantity::from_wire(remaining)));
+-            }
+-        }
+-        if other.0.iter().any(|entry| self.quantity(entry.kind()) == 0) {
+-            return Err(crate::error::reject(
++        match subtraction::subtract(self, other) {
++            VectorSubtraction::Value(vector) => Ok(Some(vector)),
++            VectorSubtraction::ExactZero => Ok(None),
++            VectorSubtraction::Underflow => Err(crate::error::reject(
++                SchedulerErrorKind::ResourceConflict,
++                "resource subtraction underflowed",
++            )),
++            VectorSubtraction::AbsentDimension => Err(crate::error::reject(
+                 SchedulerErrorKind::ResourceConflict,
+                 "resource subtraction names an absent dimension",
+-            ));
++            )),
+         }
+-        Ok((!result.is_empty()).then_some(Self(result)))
+     }
+ 
+     pub(crate) fn validate(&self, maximum_dimensions: u16) -> Result<(), SchedulerError> {
+diff -ruN /tmp/peritus-parent-scheduler244-complete-source/src/selection/capacity/aggregate.rs /tmp/peritus-sol-scheduler-perf-aggregate-final-source-20260913T001/src/selection/capacity/aggregate.rs
+--- /tmp/peritus-parent-scheduler244-complete-source/src/selection/capacity/aggregate.rs	1969-12-31 18:00:00.000000000 -0600
++++ /tmp/peritus-sol-scheduler-perf-aggregate-final-source-20260913T001/src/selection/capacity/aggregate.rs	2026-09-12 21:47:36.581630274 -0500
+@@ -0,0 +1,318 @@
++//! Canonical aggregate resource sums with exact fallback semantics.
++
++use vstd::prelude::*;
++
++use crate::{ResourceKind, ResourceVector, SchedulerReservation, WorkerId};
++
++verus! {
++
++pub(super) enum Aggregate {
++    Empty,
++    Value(ResourceVector),
++    Failed,
++}
++
++impl Aggregate {
++    pub(super) open spec fn spec_quantity(&self, kind: ResourceKind) -> int {
++        match self {
++            Self::Value(vector) => vector.spec_quantity(kind),
++            Self::Empty | Self::Failed => 0,
++        }
++    }
++
++    pub(super) open spec fn spec_usable(&self) -> bool {
++        !matches!(self, Self::Failed)
++    }
++
++    pub(super) fn quantity(&self, kind: ResourceKind) -> (result: u64)
++        ensures result as int == self.spec_quantity(kind),
++    {
++        match self {
++            Self::Value(vector) => vector.quantity(kind),
++            Self::Empty | Self::Failed => 0,
++        }
++    }
++
++    pub(super) proof fn global_quantity_matches(
++        &self,
++        reservations: Seq<SchedulerReservation>,
++        kind: ResourceKind,
++    )
++        requires
++            self.spec_usable(),
++            global_sound(self, reservations),
++        ensures
++            self.spec_quantity(kind)
++                == crate::verified::reservation_quantity(reservations, kind),
++    {
++        match self {
++            Self::Empty => {
++                assert(crate::verified::reservation_quantity(reservations, kind) == 0);
++            }
++            Self::Value(vector) => {
++                assert(vector.spec_quantity(kind)
++                    == crate::verified::reservation_quantity(reservations, kind));
++            }
++            Self::Failed => assert(false),
++        }
++    }
++
++    pub(super) proof fn worker_quantity_matches(
++        &self,
++        reservations: Seq<SchedulerReservation>,
++        worker: WorkerId,
++        kind: ResourceKind,
++    )
++        requires
++            self.spec_usable(),
++            worker_sound(self, reservations, worker),
++        ensures
++            self.spec_quantity(kind)
++                == crate::verified::worker_quantity(reservations, worker, kind),
++    {
++        match self {
++            Self::Empty => {
++                assert(crate::verified::worker_quantity(reservations, worker, kind) == 0);
++            }
++            Self::Value(vector) => {
++                assert(vector.spec_quantity(kind)
++                    == crate::verified::worker_quantity(reservations, worker, kind));
++            }
++            Self::Failed => assert(false),
++        }
++    }
++}
++
++pub(super) open spec fn global_sound(
++    aggregate: &Aggregate,
++    _reservations: Seq<SchedulerReservation>,
++) -> bool {
++    match aggregate {
++        Aggregate::Empty => forall |kind: ResourceKind| #![auto]
++            crate::verified::reservation_quantity(_reservations, kind) == 0,
++        Aggregate::Value(vector) => forall |kind: ResourceKind| #![auto]
++            vector.spec_quantity(kind)
++                == crate::verified::reservation_quantity(_reservations, kind),
++        Aggregate::Failed => true,
++    }
++}
++
++pub(super) open spec fn worker_sound(
++    aggregate: &Aggregate,
++    reservations: Seq<SchedulerReservation>,
++    worker: WorkerId,
++) -> bool {
++    match aggregate {
++        Aggregate::Empty => forall |kind: ResourceKind| #![auto]
++            crate::verified::worker_quantity(reservations, worker, kind) == 0,
++        Aggregate::Value(vector) => forall |kind: ResourceKind| #![auto]
++            vector.spec_quantity(kind)
++                == crate::verified::worker_quantity(reservations, worker, kind),
++        Aggregate::Failed => true,
++    }
++}
++
++fn prepend_global(
++    aggregate: Aggregate,
++    reservations: &[SchedulerReservation],
++    index: usize,
++) -> (result: Aggregate)
++    requires
++        index < reservations@.len(),
++        global_sound(
++            &aggregate,
++            reservations@.subrange(index as int + 1, reservations@.len() as int),
++        ),
++    ensures global_sound(
++        &result,
++        reservations@.subrange(index as int, reservations@.len() as int),
++    ),
++{
++    let reservation = &reservations[index];
++    let ghost tail = reservations@.subrange(index as int + 1, reservations@.len() as int);
++    let ghost full = reservations@.subrange(index as int, reservations@.len() as int);
++    assert(full.len() > 0);
++    assert(full.first() == *reservation);
++    assert(full.drop_first() =~= tail);
++    assert(full.drop_first() == tail);
++    match aggregate {
++        Aggregate::Empty => {
++            let vector = reservation.resources().clone();
++            proof {
++                assert forall |kind: ResourceKind| #![auto]
++                    vector.spec_quantity(kind)
++                        == crate::verified::reservation_quantity(
++                            full, kind) by {
++                    assert(crate::verified::reservation_quantity(tail, kind) == 0);
++                    vector.quantity_matches_entries(kind);
++                    reservation.spec_resources().quantity_matches_entries(kind);
++                    assert(vector.spec_entries()
++                        == reservation.spec_resources().spec_entries());
++                    assert(vector.spec_quantity(kind)
++                        == reservation.spec_resources().spec_quantity(kind));
++                    reveal(crate::verified::vector_quantity);
++                    reveal(crate::verified::reservation_quantity);
++                }
++            }
++            Aggregate::Value(vector)
++        }
++        Aggregate::Value(current) => {
++            let Some(vector) = current.aggregate_add(reservation.resources()) else {
++                return Aggregate::Failed;
++            };
++            proof {
++                assert forall |kind: ResourceKind| #![auto]
++                    vector.spec_quantity(kind)
++                        == crate::verified::reservation_quantity(
++                            full, kind) by {
++                    assert(current.spec_quantity(kind)
++                        == crate::verified::reservation_quantity(tail, kind));
++                    assert(vector.spec_quantity(kind)
++                        == current.spec_quantity(kind)
++                            + reservation.spec_resources().spec_quantity(kind));
++                    reservation.spec_resources().quantity_matches_entries(kind);
++                    reveal(crate::verified::vector_quantity);
++                    reveal(crate::verified::reservation_quantity);
++                }
++            }
++            Aggregate::Value(vector)
++        }
++        Aggregate::Failed => Aggregate::Failed,
++    }
++}
++
++fn prepend_worker(
++    aggregate: Aggregate,
++    reservations: &[SchedulerReservation],
++    index: usize,
++    worker: WorkerId,
++) -> (result: Aggregate)
++    requires
++        index < reservations@.len(),
++        worker_sound(
++            &aggregate,
++            reservations@.subrange(index as int + 1, reservations@.len() as int),
++            worker,
++        ),
++    ensures worker_sound(
++        &result,
++        reservations@.subrange(index as int, reservations@.len() as int),
++        worker,
++    ),
++{
++    let reservation = &reservations[index];
++    let ghost tail = reservations@.subrange(index as int + 1, reservations@.len() as int);
++    let ghost full = reservations@.subrange(index as int, reservations@.len() as int);
++    assert(full.len() > 0);
++    assert(full.first() == *reservation);
++    assert(full.drop_first() =~= tail);
++    assert(full.drop_first() == tail);
++    if !reservation.worker_id().same(&worker) {
++        proof {
++            assert(reservation.spec_worker_id() != worker);
++            assert forall |kind: ResourceKind| #![auto]
++                crate::verified::worker_quantity(
++                    full, worker, kind)
++                    == crate::verified::worker_quantity(tail, worker, kind) by {
++                reveal(crate::verified::worker_quantity);
++            }
++            assert(worker_sound(&aggregate, full, worker));
++        }
++        return aggregate;
++    }
++    assert(reservation.spec_worker_id() == worker);
++    match aggregate {
++        Aggregate::Empty => {
++            let vector = reservation.resources().clone();
++            proof {
++                assert forall |kind: ResourceKind| #![auto]
++                    vector.spec_quantity(kind)
++                        == crate::verified::worker_quantity(
++                            full, worker, kind) by {
++                    assert(crate::verified::worker_quantity(tail, worker, kind) == 0);
++                    vector.quantity_matches_entries(kind);
++                    reservation.spec_resources().quantity_matches_entries(kind);
++                    assert(vector.spec_entries()
++                        == reservation.spec_resources().spec_entries());
++                    assert(vector.spec_quantity(kind)
++                        == reservation.spec_resources().spec_quantity(kind));
++                    reveal(crate::verified::vector_quantity);
++                    reveal(crate::verified::worker_quantity);
++                }
++            }
++            Aggregate::Value(vector)
++        }
++        Aggregate::Value(current) => {
++            let Some(vector) = current.aggregate_add(reservation.resources()) else {
++                return Aggregate::Failed;
++            };
++            proof {
++                assert forall |kind: ResourceKind| #![auto]
++                    vector.spec_quantity(kind)
++                        == crate::verified::worker_quantity(
++                            full, worker, kind) by {
++                    assert(current.spec_quantity(kind)
++                        == crate::verified::worker_quantity(tail, worker, kind));
++                    assert(vector.spec_quantity(kind)
++                        == current.spec_quantity(kind)
++                            + reservation.spec_resources().spec_quantity(kind));
++                    reservation.spec_resources().quantity_matches_entries(kind);
++                    reveal(crate::verified::vector_quantity);
++                    reveal(crate::verified::worker_quantity);
++                }
++            }
++            Aggregate::Value(vector)
++        }
++        Aggregate::Failed => Aggregate::Failed,
++    }
++}
++
++pub(super) fn global(
++    reservations: &[SchedulerReservation],
++) -> (result: Aggregate)
++    ensures global_sound(&result, reservations@),
++{
++    let mut result = Aggregate::Empty;
++    let mut index = reservations.len();
++    while index > 0
++        invariant
++            index <= reservations@.len(),
++            global_sound(
++                &result,
++                reservations@.subrange(index as int, reservations@.len() as int),
++            ),
++        decreases index,
++    {
++        index -= 1;
++        result = prepend_global(result, reservations, index);
++    }
++    assert(reservations@.subrange(0, reservations@.len() as int) =~= reservations@);
++    result
++}
++
++pub(super) fn worker(
++    reservations: &[SchedulerReservation],
++    worker_id: WorkerId,
++) -> (result: Aggregate)
++    ensures worker_sound(&result, reservations@, worker_id),
++{
++    let mut result = Aggregate::Empty;
++    let mut index = reservations.len();
++    while index > 0
++        invariant
++            index <= reservations@.len(),
++            worker_sound(
++                &result,
++                reservations@.subrange(index as int, reservations@.len() as int),
++                worker_id,
++            ),
++        decreases index,
++    {
++        index -= 1;
++        result = prepend_worker(result, reservations, index, worker_id);
++    }
++    assert(reservations@.subrange(0, reservations@.len() as int) =~= reservations@);
++    result
++}
++
++} // verus!
+diff -ruN /tmp/peritus-parent-scheduler244-complete-source/src/selection/capacity/fallback.rs /tmp/peritus-sol-scheduler-perf-aggregate-final-source-20260913T001/src/selection/capacity/fallback.rs
+--- /tmp/peritus-parent-scheduler244-complete-source/src/selection/capacity/fallback.rs	1969-12-31 18:00:00.000000000 -0600
++++ /tmp/peritus-sol-scheduler-perf-aggregate-final-source-20260913T001/src/selection/capacity/fallback.rs	2026-09-12 21:13:08.038831382 -0500
+@@ -0,0 +1,211 @@
++//! Exact per-dimension fallback when canonical aggregate storage cannot represent a sum.
++
++use vstd::prelude::*;
++
++use crate::{ResourceEntry, ResourceKind, ResourceVector, SchedulerReservation, SchedulerState};
++
++verus! {
++
++fn global_quantity_from(
++    reservations: &[SchedulerReservation],
++    index: usize,
++    kind: ResourceKind,
++) -> (result: u128)
++    requires
++        index <= reservations@.len(),
++        reservations@.len() <= 4_096,
++    ensures
++        result as int
++            == crate::verified::reservation_quantity(
++                reservations@.subrange(index as int, reservations@.len() as int),
++                kind,
++            ),
++        result as int
++            <= (reservations@.len() - index) * (u64::MAX as int),
++    decreases reservations@.len() - index,
++{
++    if index == reservations.len() {
++        proof {
++            assert(reservations@.subrange(index as int, reservations@.len() as int).len() == 0);
++        }
++        0
++    } else {
++        let ghost suffix = reservations@.subrange(index as int, reservations@.len() as int);
++        assert(suffix.len() > 0);
++        assert(suffix.first() == reservations@[index as int]);
++        assert(suffix.drop_first()
++            =~= reservations@.subrange(index as int + 1, reservations@.len() as int));
++        let head = u128::from(reservations[index].resources().quantity(kind));
++        let tail = global_quantity_from(reservations, index + 1, kind);
++        proof {
++            reservations@[index as int].spec_resources().quantity_matches_entries(kind);
++        }
++        reveal(crate::verified::vector_quantity);
++        assert(head as int == crate::verified::vector_quantity(
++            suffix.first().spec_resources().spec_entries(),
++            kind,
++        ));
++        assert(tail as int == crate::verified::reservation_quantity(suffix.drop_first(), kind));
++        assert(head as int <= u64::MAX as int);
++        assert(tail as int <= 4_095 * (u64::MAX as int));
++        head + tail
++    }
++}
++
++fn worker_quantity_from(
++    reservations: &[SchedulerReservation],
++    index: usize,
++    worker: crate::WorkerId,
++    kind: ResourceKind,
++) -> (result: u128)
++    requires
++        index <= reservations@.len(),
++        reservations@.len() <= 4_096,
++    ensures
++        result as int
++            == crate::verified::worker_quantity(
++                reservations@.subrange(index as int, reservations@.len() as int),
++                worker,
++                kind,
++            ),
++        result as int
++            <= (reservations@.len() - index) * (u64::MAX as int),
++    decreases reservations@.len() - index,
++{
++    if index == reservations.len() {
++        proof {
++            assert(reservations@.subrange(index as int, reservations@.len() as int).len() == 0);
++        }
++        0
++    } else {
++        let ghost suffix = reservations@.subrange(index as int, reservations@.len() as int);
++        assert(suffix.len() > 0);
++        assert(suffix.first() == reservations@[index as int]);
++        assert(suffix.drop_first()
++            =~= reservations@.subrange(index as int + 1, reservations@.len() as int));
++        let tail = worker_quantity_from(reservations, index + 1, worker, kind);
++        if reservations[index].worker_id().same(&worker) {
++            let head = u128::from(reservations[index].resources().quantity(kind));
++            proof {
++                reservations@[index as int].spec_resources().quantity_matches_entries(kind);
++            }
++            reveal(crate::verified::vector_quantity);
++            assert(suffix.first().spec_worker_id() == worker);
++            assert(head as int == crate::verified::vector_quantity(
++                suffix.first().spec_resources().spec_entries(),
++                kind,
++            ));
++            assert(tail as int == crate::verified::worker_quantity(
++                suffix.drop_first(), worker, kind,
++            ));
++            assert(head as int <= u64::MAX as int);
++            assert(tail as int <= 4_095 * (u64::MAX as int));
++            head + tail
++        } else {
++            assert(suffix.first().spec_worker_id() != worker);
++            assert(tail as int == crate::verified::worker_quantity(
++                suffix.drop_first(), worker, kind,
++            ));
++            tail
++        }
++    }
++}
++
++
++pub(super) fn global_fits_from(
++    state: &SchedulerState,
++    entries: &[ResourceEntry],
++    index: usize,
++) -> (result: bool)
++    requires
++        index <= entries@.len(),
++        state.spec_reservations().len() <= 4_096,
++    ensures
++        result
++            == super::global_entries_fit_after(
++                state,
++                entries@.subrange(index as int, entries@.len() as int),
++            ),
++    decreases entries@.len() - index,
++{
++    if index == entries.len() {
++        proof {
++            assert(entries@.subrange(index as int, entries@.len() as int).len() == 0);
++        }
++        true
++    } else {
++        let ghost suffix = entries@.subrange(index as int, entries@.len() as int);
++        assert(suffix.len() > 0);
++        assert(suffix.first() == entries@[index as int]);
++        assert(suffix.drop_first()
++            =~= entries@.subrange(index as int + 1, entries@.len() as int));
++        let entry = entries[index];
++        let used = global_quantity_from(state.reservations(), 0, entry.kind());
++        let request = u128::from(entry.quantity().get());
++        let capacity = u128::from(state.binding().capacity().quantity(entry.kind()));
++        let rest = global_fits_from(state, entries, index + 1);
++        assert(state.spec_reservations().subrange(
++            0, state.spec_reservations().len() as int,
++        ) =~= state.spec_reservations());
++        assert(used as int == crate::verified::reservation_quantity(
++            state.spec_reservations(), entry.spec_kind(),
++        ));
++        assert(capacity as int == state.spec_binding().spec_capacity()
++            .spec_quantity(entry.spec_kind()));
++        assert(rest == super::global_entries_fit_after(state, suffix.drop_first()));
++        used + request <= capacity && rest
++    }
++}
++
++
++pub(super) fn worker_fits_from(
++    state: &SchedulerState,
++    worker: crate::WorkerId,
++    capacity: &ResourceVector,
++    entries: &[ResourceEntry],
++    index: usize,
++) -> (result: bool)
++    requires
++        index <= entries@.len(),
++        state.spec_reservations().len() <= 4_096,
++    ensures
++        result
++            == super::worker_entries_fit_after(
++                state,
++                worker,
++                capacity,
++                entries@.subrange(index as int, entries@.len() as int),
++            ),
++    decreases entries@.len() - index,
++{
++    if index == entries.len() {
++        proof {
++            assert(entries@.subrange(index as int, entries@.len() as int).len() == 0);
++        }
++        true
++    } else {
++        let ghost suffix = entries@.subrange(index as int, entries@.len() as int);
++        assert(suffix.len() > 0);
++        assert(suffix.first() == entries@[index as int]);
++        assert(suffix.drop_first()
++            =~= entries@.subrange(index as int + 1, entries@.len() as int));
++        let entry = entries[index];
++        let used = worker_quantity_from(state.reservations(), 0, worker, entry.kind());
++        let request = u128::from(entry.quantity().get());
++        let available = u128::from(capacity.quantity(entry.kind()));
++        let rest = worker_fits_from(state, worker, capacity, entries, index + 1);
++        assert(state.spec_reservations().subrange(
++            0, state.spec_reservations().len() as int,
++        ) =~= state.spec_reservations());
++        assert(used as int == crate::verified::worker_quantity(
++            state.spec_reservations(), worker, entry.spec_kind(),
++        ));
++        assert(available as int == capacity.spec_quantity(entry.spec_kind()));
++        assert(rest == super::worker_entries_fit_after(
++            state, worker, capacity, suffix.drop_first(),
++        ));
++        used + request <= available && rest
++    }
++}
++
++} // verus!
+diff -ruN /tmp/peritus-parent-scheduler244-complete-source/src/selection/capacity.rs /tmp/peritus-sol-scheduler-perf-aggregate-final-source-20260913T001/src/selection/capacity.rs
+--- /tmp/peritus-parent-scheduler244-complete-source/src/selection/capacity.rs	2026-09-12 19:27:54.707239865 -0500
++++ /tmp/peritus-sol-scheduler-perf-aggregate-final-source-20260913T001/src/selection/capacity.rs	2026-09-12 22:21:53.318491070 -0500
+@@ -2,8 +2,10 @@
+ 
+ use vstd::prelude::*;
+ 
+-use crate::{ResourceEntry, ResourceKind, ResourceVector, SchedulerReservation, SchedulerState};
++use crate::{ResourceEntry, ResourceVector, SchedulerReservation, SchedulerState};
+ 
++mod aggregate;
++mod fallback;
+ mod refinement;
+ 
+ #[cfg(verus_only)]
+@@ -46,111 +48,6 @@
+     }
+ }
+ 
+-fn global_quantity_from(
+-    reservations: &[SchedulerReservation],
+-    index: usize,
+-    kind: ResourceKind,
+-) -> (result: u128)
+-    requires
+-        index <= reservations@.len(),
+-        reservations@.len() <= 4_096,
+-    ensures
+-        result as int
+-            == crate::verified::reservation_quantity(
+-                reservations@.subrange(index as int, reservations@.len() as int),
+-                kind,
+-            ),
+-        result as int
+-            <= (reservations@.len() - index) * (u64::MAX as int),
+-    decreases reservations@.len() - index,
+-{
+-    if index == reservations.len() {
+-        proof {
+-            assert(reservations@.subrange(index as int, reservations@.len() as int).len() == 0);
+-        }
+-        0
+-    } else {
+-        let ghost suffix = reservations@.subrange(index as int, reservations@.len() as int);
+-        assert(suffix.len() > 0);
+-        assert(suffix.first() == reservations@[index as int]);
+-        assert(suffix.drop_first()
+-            =~= reservations@.subrange(index as int + 1, reservations@.len() as int));
+-        let head = u128::from(reservations[index].resources().quantity(kind));
+-        let tail = global_quantity_from(reservations, index + 1, kind);
+-        proof {
+-            reservations@[index as int].spec_resources().quantity_matches_entries(kind);
+-        }
+-        reveal(crate::verified::vector_quantity);
+-        assert(head as int == crate::verified::vector_quantity(
+-            suffix.first().spec_resources().spec_entries(),
+-            kind,
+-        ));
+-        assert(tail as int == crate::verified::reservation_quantity(suffix.drop_first(), kind));
+-        assert(head as int <= u64::MAX as int);
+-        assert(tail as int <= 4_095 * (u64::MAX as int));
+-        head + tail
+-    }
+-}
+-
+-fn worker_quantity_from(
+-    reservations: &[SchedulerReservation],
+-    index: usize,
+-    worker: crate::WorkerId,
+-    kind: ResourceKind,
+-) -> (result: u128)
+-    requires
+-        index <= reservations@.len(),
+-        reservations@.len() <= 4_096,
+-    ensures
+-        result as int
+-            == crate::verified::worker_quantity(
+-                reservations@.subrange(index as int, reservations@.len() as int),
+-                worker,
+-                kind,
+-            ),
+-        result as int
+-            <= (reservations@.len() - index) * (u64::MAX as int),
+-    decreases reservations@.len() - index,
+-{
+-    if index == reservations.len() {
+-        proof {
+-            assert(reservations@.subrange(index as int, reservations@.len() as int).len() == 0);
+-        }
+-        0
+-    } else {
+-        let ghost suffix = reservations@.subrange(index as int, reservations@.len() as int);
+-        assert(suffix.len() > 0);
+-        assert(suffix.first() == reservations@[index as int]);
+-        assert(suffix.drop_first()
+-            =~= reservations@.subrange(index as int + 1, reservations@.len() as int));
+-        let tail = worker_quantity_from(reservations, index + 1, worker, kind);
+-        if reservations[index].worker_id().same(&worker) {
+-            let head = u128::from(reservations[index].resources().quantity(kind));
+-            proof {
+-                reservations@[index as int].spec_resources().quantity_matches_entries(kind);
+-            }
+-            reveal(crate::verified::vector_quantity);
+-            assert(suffix.first().spec_worker_id() == worker);
+-            assert(head as int == crate::verified::vector_quantity(
+-                suffix.first().spec_resources().spec_entries(),
+-                kind,
+-            ));
+-            assert(tail as int == crate::verified::worker_quantity(
+-                suffix.drop_first(), worker, kind,
+-            ));
+-            assert(head as int <= u64::MAX as int);
+-            assert(tail as int <= 4_095 * (u64::MAX as int));
+-            head + tail
+-        } else {
+-            assert(suffix.first().spec_worker_id() != worker);
+-            assert(tail as int == crate::verified::worker_quantity(
+-                suffix.drop_first(), worker, kind,
+-            ));
+-            tail
+-        }
+-    }
+-}
+-
+ fn worker_count_from(
+     reservations: &[SchedulerReservation],
+     index: usize,
+@@ -186,98 +83,195 @@
+     }
+ }
+ 
+-fn global_fits_from(
+-    state: &SchedulerState,
++closed spec fn aggregate_entries_fit_after(
++    usage: &aggregate::Aggregate,
++    entries: Seq<ResourceEntry>,
++    capacity: &ResourceVector,
++) -> bool
++    decreases entries.len(),
++{
++    entries.len() == 0 || {
++        let entry = entries.first();
++        usage.spec_quantity(entry.spec_kind()) + entry.spec_quantity().spec_value()
++            <= capacity.spec_quantity(entry.spec_kind())
++            && aggregate_entries_fit_after(usage, entries.drop_first(), capacity)
++    }
++}
++
++fn aggregate_fits_from(
++    usage: &aggregate::Aggregate,
+     entries: &[ResourceEntry],
+     index: usize,
++    capacity: &ResourceVector,
+ ) -> (result: bool)
+     requires
+         index <= entries@.len(),
+-        state.spec_reservations().len() <= 4_096,
+     ensures
+-        result
+-            == global_entries_fit_after(
+-                state,
+-                entries@.subrange(index as int, entries@.len() as int),
+-            ),
++        result == aggregate_entries_fit_after(
++            usage,
++            entries@.subrange(index as int, entries@.len() as int),
++            capacity,
++        ),
+     decreases entries@.len() - index,
+ {
++    reveal(aggregate_entries_fit_after);
+     if index == entries.len() {
+-        proof {
+-            assert(entries@.subrange(index as int, entries@.len() as int).len() == 0);
++        assert(entries@.subrange(index as int, entries@.len() as int).len() == 0);
++        return true;
++    }
++    let ghost suffix = entries@.subrange(index as int, entries@.len() as int);
++    assert(suffix.len() > 0);
++    assert(suffix.first() == entries@[index as int]);
++    assert(suffix.drop_first()
++        =~= entries@.subrange(index as int + 1, entries@.len() as int));
++    let entry = entries[index];
++    let used = u128::from(usage.quantity(entry.kind()));
++    let requested = u128::from(entry.quantity().get());
++    let available = u128::from(capacity.quantity(entry.kind()));
++    let rest = aggregate_fits_from(usage, entries, index + 1, capacity);
++    assert(rest == aggregate_entries_fit_after(usage, suffix.drop_first(), capacity));
++    used + requested <= available && rest
++}
++
++proof fn aggregate_fit_matches_global(
++    state: &SchedulerState,
++    usage: &aggregate::Aggregate,
++    entries: Seq<ResourceEntry>,
++)
++    requires
++        usage.spec_usable(),
++        aggregate::global_sound(usage, state.spec_reservations()),
++    ensures aggregate_entries_fit_after(usage, entries, state.spec_binding().spec_capacity())
++        == global_entries_fit_after(state, entries),
++    decreases entries.len(),
++{
++    reveal(aggregate_entries_fit_after);
++    if entries.len() > 0 {
++        let entry = entries.first();
++        usage.global_quantity_matches(state.spec_reservations(), entry.spec_kind());
++        aggregate_fit_matches_global(state, usage, entries.drop_first());
++    }
++}
++
++proof fn aggregate_fit_matches_worker(
++    state: &SchedulerState,
++    worker: crate::WorkerId,
++    capacity: &ResourceVector,
++    usage: &aggregate::Aggregate,
++    entries: Seq<ResourceEntry>,
++)
++    requires
++        usage.spec_usable(),
++        aggregate::worker_sound(usage, state.spec_reservations(), worker),
++    ensures aggregate_entries_fit_after(usage, entries, capacity)
++        == worker_entries_fit_after(state, worker, capacity, entries),
++    decreases entries.len(),
++{
++    reveal(aggregate_entries_fit_after);
++    if entries.len() > 0 {
++        let entry = entries.first();
++        usage.worker_quantity_matches(
++            state.spec_reservations(), worker, entry.spec_kind());
++        aggregate_fit_matches_worker(state, worker, capacity, usage, entries.drop_first());
++    }
++}
++
++fn global_fits_with_aggregate(
++    state: &SchedulerState,
++    request: &ResourceVector,
++    usage: &aggregate::Aggregate,
++) -> (result: bool)
++    requires
++        usage.spec_usable(),
++        aggregate::global_sound(usage, state.spec_reservations()),
++    ensures result == global_entries_fit_after(state, request.spec_entries()),
++{
++    let result = aggregate_fits_from(
++        usage,
++        request.entries(),
++        0,
++        state.binding().capacity(),
++    );
++    proof {
++        aggregate_fit_matches_global(state, usage, request.spec_entries());
++        assert(request.spec_entries().subrange(
++            0, request.spec_entries().len() as int) =~= request.spec_entries());
++    }
++    result
++}
++
++fn worker_fits_with_aggregate(
++    _state: &SchedulerState,
++    _worker: crate::WorkerId,
++    capacity: &ResourceVector,
++    request: &ResourceVector,
++    usage: &aggregate::Aggregate,
++) -> (result: bool)
++    requires
++        usage.spec_usable(),
++        aggregate::worker_sound(usage, _state.spec_reservations(), _worker),
++    ensures result == worker_entries_fit_after(
++        _state, _worker, capacity, request.spec_entries()),
++{
++    let result = aggregate_fits_from(usage, request.entries(), 0, capacity);
++    proof {
++        aggregate_fit_matches_worker(
++            _state, _worker, capacity, usage, request.spec_entries());
++        assert(request.spec_entries().subrange(
++            0, request.spec_entries().len() as int) =~= request.spec_entries());
++    }
++    result
++}
++
++fn global_fits_with_fallback(
++    state: &SchedulerState,
++    request: &ResourceVector,
++    usage: &aggregate::Aggregate,
++) -> (result: bool)
++    requires
++        state.spec_reservations().len() <= 4_096,
++        aggregate::global_sound(usage, state.spec_reservations()),
++    ensures result == global_entries_fit_after(state, request.spec_entries()),
++{
++    match usage {
++        aggregate::Aggregate::Failed => {
++            let entries = request.entries();
++            let result = fallback::global_fits_from(state, entries, 0);
++            assert(entries@.subrange(0, entries@.len() as int) =~= entries@);
++            result
++        }
++        aggregate::Aggregate::Empty | aggregate::Aggregate::Value(_) => {
++            assert(usage.spec_usable());
++            global_fits_with_aggregate(state, request, usage)
+         }
+-        true
+-    } else {
+-        let ghost suffix = entries@.subrange(index as int, entries@.len() as int);
+-        assert(suffix.len() > 0);
+-        assert(suffix.first() == entries@[index as int]);
+-        assert(suffix.drop_first()
+-            =~= entries@.subrange(index as int + 1, entries@.len() as int));
+-        let entry = entries[index];
+-        let used = global_quantity_from(state.reservations(), 0, entry.kind());
+-        let request = u128::from(entry.quantity().get());
+-        let capacity = u128::from(state.binding().capacity().quantity(entry.kind()));
+-        let rest = global_fits_from(state, entries, index + 1);
+-        assert(state.spec_reservations().subrange(
+-            0, state.spec_reservations().len() as int,
+-        ) =~= state.spec_reservations());
+-        assert(used as int == crate::verified::reservation_quantity(
+-            state.spec_reservations(), entry.spec_kind(),
+-        ));
+-        assert(capacity as int == state.spec_binding().spec_capacity()
+-            .spec_quantity(entry.spec_kind()));
+-        assert(rest == global_entries_fit_after(state, suffix.drop_first()));
+-        used + request <= capacity && rest
+     }
+ }
+ 
+-fn worker_fits_from(
++fn worker_fits_with_fallback(
+     state: &SchedulerState,
+     worker: crate::WorkerId,
+     capacity: &ResourceVector,
+-    entries: &[ResourceEntry],
+-    index: usize,
++    request: &ResourceVector,
++    usage: &aggregate::Aggregate,
+ ) -> (result: bool)
+     requires
+-        index <= entries@.len(),
+         state.spec_reservations().len() <= 4_096,
+-    ensures
+-        result
+-            == worker_entries_fit_after(
+-                state,
+-                worker,
+-                capacity,
+-                entries@.subrange(index as int, entries@.len() as int),
+-            ),
+-    decreases entries@.len() - index,
++        aggregate::worker_sound(usage, state.spec_reservations(), worker),
++    ensures result == worker_entries_fit_after(
++        state, worker, capacity, request.spec_entries()),
+ {
+-    if index == entries.len() {
+-        proof {
+-            assert(entries@.subrange(index as int, entries@.len() as int).len() == 0);
++    match usage {
++        aggregate::Aggregate::Failed => {
++            let entries = request.entries();
++            let result = fallback::worker_fits_from(
++                state, worker, capacity, entries, 0);
++            assert(entries@.subrange(0, entries@.len() as int) =~= entries@);
++            result
++        }
++        aggregate::Aggregate::Empty | aggregate::Aggregate::Value(_) => {
++            assert(usage.spec_usable());
++            worker_fits_with_aggregate(state, worker, capacity, request, usage)
+         }
+-        true
+-    } else {
+-        let ghost suffix = entries@.subrange(index as int, entries@.len() as int);
+-        assert(suffix.len() > 0);
+-        assert(suffix.first() == entries@[index as int]);
+-        assert(suffix.drop_first()
+-            =~= entries@.subrange(index as int + 1, entries@.len() as int));
+-        let entry = entries[index];
+-        let used = worker_quantity_from(state.reservations(), 0, worker, entry.kind());
+-        let request = u128::from(entry.quantity().get());
+-        let available = u128::from(capacity.quantity(entry.kind()));
+-        let rest = worker_fits_from(state, worker, capacity, entries, index + 1);
+-        assert(state.spec_reservations().subrange(
+-            0, state.spec_reservations().len() as int,
+-        ) =~= state.spec_reservations());
+-        assert(used as int == crate::verified::worker_quantity(
+-            state.spec_reservations(), worker, entry.spec_kind(),
+-        ));
+-        assert(available as int == capacity.spec_quantity(entry.spec_kind()));
+-        assert(rest == worker_entries_fit_after(
+-            state, worker, capacity, suffix.drop_first(),
+-        ));
+-        used + request <= available && rest
+     }
+ }
+ 
+@@ -292,12 +286,8 @@
+     if state.reservations().len() > 4_096 {
+         false
+     } else {
+-        let result = global_fits_from(state, request.entries(), 0);
+-        proof {
+-            assert(request.spec_entries().subrange(0, request.spec_entries().len() as int)
+-                =~= request.spec_entries());
+-        }
+-        result
++        let usage = aggregate::global(state.reservations());
++        global_fits_with_fallback(state, request, &usage)
+     }
+ }
+ 
+@@ -314,12 +304,8 @@
+     if state.reservations().len() > 4_096 {
+         false
+     } else {
+-        let result = worker_fits_from(state, worker, capacity, request.entries(), 0);
+-        proof {
+-            assert(request.spec_entries().subrange(0, request.spec_entries().len() as int)
+-                =~= request.spec_entries());
+-        }
+-        result
++        let usage = aggregate::worker(state.reservations(), worker);
++        worker_fits_with_fallback(state, worker, capacity, request, &usage)
+     }
+ }
+ 
+diff -ruN /tmp/peritus-parent-scheduler244-complete-source/tests/resource_invariants.rs /tmp/peritus-sol-scheduler-perf-aggregate-final-source-20260913T001/tests/resource_invariants.rs
+--- /tmp/peritus-parent-scheduler244-complete-source/tests/resource_invariants.rs	2026-09-12 19:27:54.708834583 -0500
++++ /tmp/peritus-sol-scheduler-perf-aggregate-final-source-20260913T001/tests/resource_invariants.rs	2026-09-12 21:22:37.944549135 -0500
+@@ -28,6 +28,24 @@
+         ResourceVector::new(duplicate, fixture.limits.resource_dimensions()).unwrap_err().kind(),
+         SchedulerErrorKind::NonCanonical
+     );
++
++    let duplicate_over_limit = vec![
++        ResourceEntry::new(ResourceKind::CPU, ResourceQuantity::new(1).unwrap()),
++        ResourceEntry::new(ResourceKind::CPU, ResourceQuantity::new(2).unwrap()),
++    ];
++    assert_eq!(
++        ResourceVector::new(duplicate_over_limit, 1).unwrap_err().kind(),
++        SchedulerErrorKind::LimitExceeded
++    );
++
++    let descending = vec![
++        ResourceEntry::new(ResourceKind::MEMORY_BYTES, ResourceQuantity::new(1).unwrap()),
++        ResourceEntry::new(ResourceKind::CPU, ResourceQuantity::new(1).unwrap()),
++    ];
++    assert_eq!(
++        ResourceVector::new(descending, fixture.limits.resource_dimensions()).unwrap_err().kind(),
++        SchedulerErrorKind::NonCanonical
++    );
+ }
+ 
+ #[test]
+@@ -41,13 +59,41 @@
+     assert_eq!(sum.quantity(ResourceKind::MEMORY_BYTES), 100);
+     assert_eq!(sum.checked_subtract(&right).unwrap(), Some(left));
+     let excessive = resources(&[(ResourceKind::CPU, 6)], fixture.limits);
+-    assert_eq!(
+-        sum.checked_subtract(&excessive).unwrap_err().kind(),
+-        SchedulerErrorKind::ResourceConflict
+-    );
++    let underflow = sum.checked_subtract(&excessive).unwrap_err();
++    assert_eq!(underflow.kind(), SchedulerErrorKind::ResourceConflict);
++    assert_eq!(underflow.detail(), "resource subtraction underflowed");
++
++    let absent = resources(&[(ResourceKind::GPU, 1)], fixture.limits);
++    let absent_error = sum.checked_subtract(&absent).unwrap_err();
++    assert_eq!(absent_error.kind(), SchedulerErrorKind::ResourceConflict);
++    assert_eq!(absent_error.detail(), "resource subtraction names an absent dimension");
++    assert_eq!(sum.checked_subtract(&sum).unwrap(), None);
++
+     let maximum = resources(&[(ResourceKind::CPU, u64::MAX)], fixture.limits);
+-    assert_eq!(
+-        maximum.checked_add(&right, fixture.limits.resource_dimensions()).unwrap_err().kind(),
+-        SchedulerErrorKind::ResourceConflict
+-    );
++    let overflow_before_limit = maximum.checked_add(&right, 0).unwrap_err();
++    assert_eq!(overflow_before_limit.kind(), SchedulerErrorKind::ResourceConflict);
++    assert_eq!(overflow_before_limit.detail(), "resource addition overflowed");
++
++    let distinct = resources(&[(ResourceKind::GPU, 1)], fixture.limits);
++    let dimension_limit = right.checked_add(&distinct, 1).unwrap_err();
++    assert_eq!(dimension_limit.kind(), SchedulerErrorKind::LimitExceeded);
++    assert_eq!(dimension_limit.detail(), "resource vector is empty or exceeds its dimension bound");
++}
++
++#[test]
++fn indexed_quantity_preserves_present_and_absent_dimensions() {
++    let fixture = Fixture::new();
++    let first = ResourceKind::new(1).unwrap();
++    let middle = ResourceKind::new(128).unwrap();
++    let last = ResourceKind::new(256).unwrap();
++    let vector = resources(&[(first, 11), (middle, 22), (last, 33)], fixture.limits);
++
++    assert_eq!(vector.quantity(first), 11);
++    assert_eq!(vector.quantity(middle), 22);
++    assert_eq!(vector.quantity(last), 33);
++    assert_eq!(vector.quantity(ResourceKind::new(2).unwrap()), 0);
++    assert_eq!(vector.quantity(ResourceKind::new(127).unwrap()), 0);
++    assert_eq!(vector.quantity(ResourceKind::new(129).unwrap()), 0);
++    assert_eq!(vector.quantity(ResourceKind::new(255).unwrap()), 0);
++    assert_eq!(vector.quantity(ResourceKind::new(257).unwrap()), 0);
+ }

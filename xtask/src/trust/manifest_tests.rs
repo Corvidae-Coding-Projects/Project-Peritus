@@ -387,3 +387,5 @@ fn occurrence() -> TrustedOccurrence {
 mod adversarial;
 #[path = "manifest_tests/core.rs"]
 mod core;
+#[path = "manifest_tests/evidence.rs"]
+mod evidence;

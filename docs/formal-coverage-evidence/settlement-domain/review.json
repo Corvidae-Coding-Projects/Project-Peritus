@@ -1,0 +1,37 @@
+{
+  "schema": "peritus.formal-coverage.increment-review",
+  "schema_version": 1,
+  "status": "reviewed-bounded-increment-not-obligation-discharge",
+  "recorded_at": "2026-09-12T20:03:56.804682+00:00",
+  "base_commit": "1aa9282ff2cfcbf8fac325f11f157f408d33ee30",
+  "implementation": "/root",
+  "reviewer": "/root/sol_acceptance_completion",
+  "review_provenance": "Independent source review through Codex collaboration in thread 01a08ab8-4887-7c63-8c75-7b8541cbbe4c; not an external signature or protected proof-impact authorization.",
+  "reviewed_source_manifest_sha256": "bebda5e4d2d7377ff3796e52a8730005e6a3c768689bb78f0e2561416c7a21f0",
+  "reviewer_verdict": "PASS for exact identity/evidence/checkpoint/settlement contracts, full rejection state preservation, real production callers and nonvacuity.",
+  "remaining_limits": [
+    "Supplied evidence truth, effects, persistence and clock facts are not proved.",
+    "Accepted is not restricted to Completed cause; existing priority is preserved.",
+    "Two pre-existing generic evidence Clone warnings remain; source and tests here use Copy.",
+    "Not a full compiler-input attestation or final clean commit."
+  ],
+  "results": {
+    "isolated_strict_verified": 71,
+    "integrated_strict_verified": 71,
+    "proof_errors": 0,
+    "isolated_tests_passed": 9,
+    "integrated_tests_passed": 9,
+    "clippy": "passed",
+    "format": "passed"
+  },
+  "artifacts": {
+    "audit.md": "11ac93f675dc2b35b1258cf0cd4097c9206006206ba071dbbc3e51f2cb4153ea",
+    "clippy.txt": "c26dc6cc8d244aa8b69fc52528e59527bbca1ad50b62bc5026ce475d21217ca2",
+    "commands.txt": "6224addc72c6dd2a5161478b62767571d35d24b6f0fb11015647f31974e0eac8",
+    "source-sha256.txt": "bebda5e4d2d7377ff3796e52a8730005e6a3c768689bb78f0e2561416c7a21f0",
+    "tests-integrated.txt": "d02a26ed248f8edd634370a8fab161e7dd1e71237d10e279d47c9d2d70252863",
+    "tests-isolated.txt": "1a64031a9db0c5f83c8f23ecff1683bad393f4e5dce49726dc458baa83186e71",
+    "verus-integrated.txt": "0d455967d1c794080cfc5880c2f9caa3ab8c539d929cf758c36b97095c63e5da",
+    "verus-isolated.txt": "b8293b42ca51855df9f5dbea516bb49ad5196c90d9b111673e22a21ca4b5c62b"
+  }
+}

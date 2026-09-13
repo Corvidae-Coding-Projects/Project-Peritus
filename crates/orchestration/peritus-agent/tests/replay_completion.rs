@@ -4,10 +4,13 @@ mod common;
 
 use common::*;
 use peritus_agent::{
-    ActivePhase, AgentCommand, AgentCommandKind, AgentErrorCode, AgentEvent, AgentPhase,
-    ModelCallId, ModelTerminalRecord, ProviderEventRecord, ProviderRetryClass, ProviderRetryRecord,
-    TerminalKind, reduce, replay, start,
+    ActivePhase, AgentCommand, AgentCommandKind, AgentErrorCode, AgentPhase, ModelCallId,
+    ModelTerminalRecord, ProviderEventRecord, ProviderRetryClass, ProviderRetryRecord,
+    TerminalKind, reduce, replay,
 };
+#[cfg(feature = "protocol-bridge")]
+use peritus_agent::{AgentEvent, start};
+#[cfg(feature = "protocol-bridge")]
 use peritus_codec::CodecLimits;
 
 #[test]
@@ -101,6 +104,37 @@ fn provider_retry_closes_in_flight_work_and_replays_exact_resume() {
 }
 
 #[test]
+fn provider_retry_restarts_a_safe_new_request_and_replays_the_backward_phase_edge() {
+    let (mut events, mut state) = started(64);
+    start_model(&mut state, &mut events);
+    apply(
+        &mut state,
+        &mut events,
+        AgentCommandKind::ProviderRetryScheduled(ProviderRetryRecord::new(
+            digest(48),
+            digest(49),
+            ProviderRetryClass::SafeNewRequest,
+        )),
+    );
+    assert_eq!(state.phase(), AgentPhase::Active(ActivePhase::RequestingModel));
+    assert!(!state.model().in_flight());
+    assert!(!state.model().resume_exact());
+    assert_eq!(state.model().retry_count(), 1);
+    apply(
+        &mut state,
+        &mut events,
+        AgentCommandKind::ModelRequestStarted {
+            call_id: ModelCallId::new(digest(50)).expect("retry call"),
+            request_digest: digest(49),
+        },
+    );
+    assert_eq!(state.model().cursor(), 0);
+    assert_eq!(state.phase(), AgentPhase::Active(ActivePhase::StreamingResponse));
+    assert_eq!(replay(&events).expect("safe-new retry replay"), state);
+}
+
+#[test]
+#[cfg(feature = "protocol-bridge")]
 fn protocol_records_recover_pure_retry_events_and_replay_exactly() {
     let configured_limits = limits(64);
     let started = start(

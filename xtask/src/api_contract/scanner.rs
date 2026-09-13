@@ -157,6 +157,7 @@ fn verus_spec_clauses(tokens: &[Token]) -> Vec<String> {
 struct Header {
     clauses: Vec<String>,
     opaque_return: bool,
+    body: Option<usize>,
 }
 
 impl Header {
@@ -190,7 +191,7 @@ fn inspect_header(tokens: &[Token], function: usize) -> Option<Header> {
         let top_level = parentheses == 0 && brackets == 0 && (in_contract || angles == 0);
         if top_level {
             if punctuation_is(&tokens[cursor], ';') {
-                return Some(Header { clauses, opaque_return });
+                return Some(Header { clauses, opaque_return, body: None });
             }
             if punctuation_is(&tokens[cursor], '{') {
                 if in_contract {
@@ -200,7 +201,7 @@ fn inspect_header(tokens: &[Token], function: usize) -> Option<Header> {
                         continue;
                     }
                 }
-                return Some(Header { clauses, opaque_return });
+                return Some(Header { clauses, opaque_return, body: Some(cursor) });
             }
             if let Some(word) = identifier(&tokens[cursor]) {
                 if matches!(
@@ -227,6 +228,10 @@ fn inspect_header(tokens: &[Token], function: usize) -> Option<Header> {
         cursor += 1;
     }
     None
+}
+
+pub(super) fn function_body(tokens: &[Token], function: usize) -> Option<usize> {
+    inspect_header(tokens, function)?.body
 }
 
 fn braced_contract_expression_continues(tokens: &[Token], end: usize) -> bool {

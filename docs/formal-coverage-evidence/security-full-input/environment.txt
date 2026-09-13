@@ -1,0 +1,14 @@
+2026-09-12T15:26:55-05:00
+/home/doll/Project-Peritus/.worktrees/formal-coverage
+1aa9282ff2cfcbf8fac325f11f157f408d33ee30
+feature/formal-coverage
+rustc 1.97.1 (8bab26f4f 2026-07-14)
+binary: rustc
+commit-hash: 8bab26f4f68e0e26f0bb7960be334d5b520ea452
+commit-date: 2026-07-14
+host: x86_64-unknown-linux-gnu
+release: 1.97.1
+LLVM version: 22.1.6
+cargo 1.97.1 (c980f4866 2026-06-30)
+f15ad47b4bafe5a71deda4e5e11c075478f484c62572ce814ce07f2d73134205  Cargo.lock
+8e390d6a0838315f972690f46ef8bae8b7ecc9ee6c1ed70140ef852869c2482e  rust-toolchain.toml

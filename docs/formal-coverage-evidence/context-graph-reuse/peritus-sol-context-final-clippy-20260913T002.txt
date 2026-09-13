@@ -1,0 +1,2 @@
+    Checking peritus-context v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/target/sol-context-source-001/crates/orchestration/peritus-context)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.29s

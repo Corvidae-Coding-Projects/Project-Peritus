@@ -1,0 +1,83 @@
+{
+  "cwd": "/home/doll/Project-Peritus/.worktrees/formal-coverage",
+  "source_manifest_sha256": "812d4eabac5f6b131baa156cc970eee34a7c45a40a79c36433cdb65493e84f40",
+  "environment": {
+    "CARGO_BUILD_JOBS": "2",
+    "CCACHE_DISABLE": "1",
+    "CARGO_TARGET_DIR": "/home/doll/Project-Peritus/.worktrees/formal-coverage/target"
+  },
+  "commands": [
+    {
+      "command": [
+        "cargo",
+        "verus",
+        "verify",
+        "--package",
+        "peritus-scheduler",
+        "--all-features",
+        "--locked",
+        "--check-toolchain",
+        "--fwd-verus-args-to",
+        "roots",
+        "--",
+        "--no-cheating",
+        "--rlimit",
+        "20"
+      ],
+      "log": "/tmp/peritus-parent-scheduler244-shared-verus.log",
+      "exit_code": 0
+    },
+    {
+      "command": [
+        "cargo",
+        "test",
+        "--package",
+        "peritus-scheduler",
+        "--all-features",
+        "--locked"
+      ],
+      "log": "/tmp/peritus-parent-scheduler244-shared-tests.log",
+      "exit_code": 0
+    },
+    {
+      "command": [
+        "cargo",
+        "test",
+        "--package",
+        "peritus-gates",
+        "--package",
+        "peritus-product-runner",
+        "--all-features",
+        "--lib",
+        "--locked",
+        "obligation"
+      ],
+      "log": "/tmp/peritus-parent-scheduler244-shared-obligations-callers.log",
+      "exit_code": 0
+    },
+    {
+      "command": [
+        "/home/doll/Project-Peritus/.worktrees/formal-coverage/target/debug/xtask",
+        "ordinary-api-check"
+      ],
+      "log": "/tmp/peritus-parent-scheduler244-shared-api.log",
+      "exit_code": 0
+    },
+    {
+      "command": [
+        "/home/doll/Project-Peritus/.worktrees/formal-coverage/target/debug/xtask",
+        "source-layout-check"
+      ],
+      "log": "/tmp/peritus-parent-scheduler244-shared-layout.log",
+      "exit_code": 0
+    },
+    {
+      "command": [
+        "/home/doll/Project-Peritus/.worktrees/formal-coverage/target/debug/xtask",
+        "docs-check"
+      ],
+      "log": "/tmp/peritus-parent-scheduler244-shared-docs.log",
+      "exit_code": 0
+    }
+  ]
+}

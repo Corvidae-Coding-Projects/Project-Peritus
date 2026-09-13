@@ -1,0 +1,116 @@
+{
+  "integrated_files": 21,
+  "prior_files_checked": 36,
+  "final_files_checked": 51,
+  "cwd": "/home/doll/Project-Peritus/.worktrees/formal-coverage",
+  "environment": {
+    "CARGO_BUILD_JOBS": "2",
+    "CCACHE_DISABLE": "1",
+    "CARGO_TARGET_DIR": "/home/doll/Project-Peritus/.worktrees/formal-coverage/target"
+  },
+  "commands": [
+    {
+      "command": [
+        "cargo",
+        "verus",
+        "verify",
+        "--package",
+        "peritus-obligations",
+        "--all-features",
+        "--locked",
+        "--check-toolchain",
+        "--fwd-verus-args-to",
+        "roots",
+        "--",
+        "--no-cheating",
+        "--rlimit",
+        "20"
+      ],
+      "log": "/tmp/peritus-parent-obligations356-verus-integrated.log",
+      "exit_code": 0
+    },
+    {
+      "command": [
+        "cargo",
+        "test",
+        "--package",
+        "peritus-obligations",
+        "--all-features",
+        "--locked"
+      ],
+      "log": "/tmp/peritus-parent-obligations356-tests-all-integrated.log",
+      "exit_code": 0
+    },
+    {
+      "command": [
+        "cargo",
+        "test",
+        "--package",
+        "peritus-obligations",
+        "--locked"
+      ],
+      "log": "/tmp/peritus-parent-obligations356-tests-default-integrated.log",
+      "exit_code": 0
+    },
+    {
+      "command": [
+        "cargo",
+        "clippy",
+        "--package",
+        "peritus-obligations",
+        "--all-features",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "log": "/tmp/peritus-parent-obligations356-clippy-integrated.log",
+      "exit_code": 0
+    },
+    {
+      "command": [
+        "cargo",
+        "fmt",
+        "--package",
+        "peritus-obligations",
+        "--",
+        "--check"
+      ],
+      "log": "/tmp/peritus-parent-obligations356-fmt-integrated.log",
+      "exit_code": 0
+    },
+    {
+      "command": [
+        "cargo",
+        "test",
+        "--package",
+        "peritus-gates",
+        "--package",
+        "peritus-product-runner",
+        "--all-features",
+        "--lib",
+        "--locked",
+        "obligation"
+      ],
+      "log": "/tmp/peritus-parent-obligations356-caller-tests-integrated.log",
+      "exit_code": 0
+    },
+    {
+      "command": [
+        "/home/doll/Project-Peritus/.worktrees/formal-coverage/target/debug/xtask",
+        "ordinary-api-check"
+      ],
+      "log": "/tmp/peritus-parent-obligations356-api-integrated.log",
+      "exit_code": 0
+    },
+    {
+      "command": [
+        "/home/doll/Project-Peritus/.worktrees/formal-coverage/target/debug/xtask",
+        "source-layout-check"
+      ],
+      "log": "/tmp/peritus-parent-obligations356-layout-integrated.log",
+      "exit_code": 1
+    }
+  ]
+}

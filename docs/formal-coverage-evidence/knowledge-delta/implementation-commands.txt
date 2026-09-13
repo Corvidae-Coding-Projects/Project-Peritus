@@ -1,0 +1,29 @@
+Working directory for all qualification commands:
+/tmp/peritus-parent-readiness-review.q25p5n7e
+
+Target directory:
+/home/doll/Project-Peritus/.worktrees/formal-coverage/target/peritus-sol-knowledge-delta
+
+1. Strict Verus (exit 0; 214 verified, 0 errors)
+env CARGO_BUILD_JOBS=2 CARGO_TARGET_DIR=/home/doll/Project-Peritus/.worktrees/formal-coverage/target/peritus-sol-knowledge-delta cargo verus verify --package peritus-run-knowledge --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20
+Raw log: /tmp/peritus-sol-knowledge-delta-verus-final-01.log
+
+2. Default features (exit 0; 20 passed, 0 failed)
+env CARGO_BUILD_JOBS=2 CCACHE_DISABLE=1 CARGO_TARGET_DIR=/home/doll/Project-Peritus/.worktrees/formal-coverage/target/peritus-sol-knowledge-delta cargo test --package peritus-run-knowledge --locked
+Raw log: /tmp/peritus-sol-knowledge-delta-tests-default-01.log
+
+3. All features (exit 0; 20 passed, 0 failed)
+env CARGO_BUILD_JOBS=2 CCACHE_DISABLE=1 CARGO_TARGET_DIR=/home/doll/Project-Peritus/.worktrees/formal-coverage/target/peritus-sol-knowledge-delta cargo test --package peritus-run-knowledge --all-features --locked
+Raw log: /tmp/peritus-sol-knowledge-delta-tests-allfeatures-01.log
+
+4. Strict Clippy, all targets and features (exit 0)
+env CARGO_BUILD_JOBS=2 CCACHE_DISABLE=1 CARGO_TARGET_DIR=/home/doll/Project-Peritus/.worktrees/formal-coverage/target/peritus-sol-knowledge-delta cargo clippy --package peritus-run-knowledge --all-features --all-targets --locked -- -D warnings
+Raw log: /tmp/peritus-sol-knowledge-delta-clippy-01.log
+
+5. Rustfmt check (exit 0; empty log)
+cargo fmt --package peritus-run-knowledge -- --check
+Raw log: /tmp/peritus-sol-knowledge-delta-fmt-02.log
+
+6. Repository source-layout check (exit 0; 4278 source files)
+env CARGO_BUILD_JOBS=2 CARGO_TARGET_DIR=/home/doll/Project-Peritus/.worktrees/formal-coverage/target/peritus-sol-knowledge-delta cargo xtask source-layout-check
+Raw log: /tmp/peritus-sol-knowledge-delta-source-layout-01.log

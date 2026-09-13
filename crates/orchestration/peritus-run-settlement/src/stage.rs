@@ -22,6 +22,18 @@ pub enum CandidateStage {
 }
 
 impl CandidateStage {
+    /// Mathematical qualification order for an unchanged candidate.
+    pub open spec fn spec_rank(self) -> u8 {
+        match self {
+            Self::Observed => 1,
+            Self::Changed => 2,
+            Self::SelfChecked => 3,
+            Self::GatesPassed => 4,
+            Self::ReviewPending => 5,
+            Self::Qualified => 6,
+        }
+    }
+
     /// Stable protocol tag.
     #[must_use]
     pub const fn tag(self) -> u16 {
@@ -51,7 +63,9 @@ impl CandidateStage {
 
     /// Stable increasing qualification rank.
     #[must_use]
-    pub const fn rank(self) -> u8 {
+    pub const fn rank(self) -> (rank: u8)
+        ensures rank == self.spec_rank(),
+    {
         match self {
             Self::Observed => 1,
             Self::Changed => 2,

@@ -1,0 +1,2 @@
+    Checking xtask v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/xtask)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 7.30s

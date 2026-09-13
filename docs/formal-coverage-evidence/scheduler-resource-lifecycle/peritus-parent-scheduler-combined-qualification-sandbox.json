@@ -1,0 +1,152 @@
+{
+  "cwd": "/home/doll/Project-Peritus/.worktrees/formal-coverage",
+  "source_files": 101,
+  "source_manifest_sha256": "feeaa698786b412f733ac0215fcd75466a526a0987c4578a12f9374ac33b4333",
+  "environment": {
+    "CARGO_BUILD_JOBS": "1",
+    "CCACHE_DISABLE": "1",
+    "CARGO_TARGET_DIR": "/home/doll/Project-Peritus/.worktrees/formal-coverage/target"
+  },
+  "commands": [
+    {
+      "label": "verus",
+      "command": [
+        "cargo",
+        "verus",
+        "verify",
+        "--package",
+        "peritus-scheduler",
+        "--all-features",
+        "--locked",
+        "--check-toolchain",
+        "--fwd-verus-args-to",
+        "roots",
+        "--",
+        "--no-cheating",
+        "--rlimit",
+        "20",
+        "--num-threads",
+        "2"
+      ],
+      "log": "/tmp/peritus-parent-scheduler-combined-verus.log",
+      "exit_code": 0
+    },
+    {
+      "label": "tests-default",
+      "command": [
+        "cargo",
+        "test",
+        "--package",
+        "peritus-scheduler",
+        "--locked"
+      ],
+      "log": "/tmp/peritus-parent-scheduler-combined-tests-default.log",
+      "exit_code": 0
+    },
+    {
+      "label": "tests-no-default",
+      "command": [
+        "cargo",
+        "test",
+        "--package",
+        "peritus-scheduler",
+        "--no-default-features",
+        "--locked"
+      ],
+      "log": "/tmp/peritus-parent-scheduler-combined-tests-no-default.log",
+      "exit_code": 0
+    },
+    {
+      "label": "tests-all",
+      "command": [
+        "cargo",
+        "test",
+        "--package",
+        "peritus-scheduler",
+        "--all-features",
+        "--locked"
+      ],
+      "log": "/tmp/peritus-parent-scheduler-combined-tests-all.log",
+      "exit_code": 0
+    },
+    {
+      "label": "clippy",
+      "command": [
+        "cargo",
+        "clippy",
+        "--package",
+        "peritus-scheduler",
+        "--all-targets",
+        "--all-features",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "log": "/tmp/peritus-parent-scheduler-combined-clippy.log",
+      "exit_code": 0
+    },
+    {
+      "label": "fmt",
+      "command": [
+        "cargo",
+        "fmt",
+        "--package",
+        "peritus-scheduler",
+        "--",
+        "--check"
+      ],
+      "log": "/tmp/peritus-parent-scheduler-combined-fmt.log",
+      "exit_code": 0
+    },
+    {
+      "label": "api",
+      "command": [
+        "/home/doll/Project-Peritus/.worktrees/formal-coverage/target/debug/xtask",
+        "ordinary-api-check"
+      ],
+      "log": "/tmp/peritus-parent-scheduler-combined-api.log",
+      "exit_code": 0
+    },
+    {
+      "label": "layout",
+      "command": [
+        "/home/doll/Project-Peritus/.worktrees/formal-coverage/target/debug/xtask",
+        "source-layout-check"
+      ],
+      "log": "/tmp/peritus-parent-scheduler-combined-layout.log",
+      "exit_code": 0
+    },
+    {
+      "label": "daemon-owner",
+      "command": [
+        "cargo",
+        "test",
+        "--package",
+        "peritus-daemon",
+        "--all-features",
+        "--lib",
+        "--locked",
+        "scheduler_"
+      ],
+      "log": "/tmp/peritus-parent-scheduler-combined-daemon-owner.log",
+      "exit_code": 0
+    },
+    {
+      "label": "daemon-runtime",
+      "command": [
+        "cargo",
+        "test",
+        "--package",
+        "peritus-daemon",
+        "--all-features",
+        "--test",
+        "runtime",
+        "--locked",
+        "runtime_commits_and_replays_registered_scheduler_commands"
+      ],
+      "log": "/tmp/peritus-parent-scheduler-combined-daemon-runtime.log",
+      "exit_code": 101
+    }
+  ]
+}

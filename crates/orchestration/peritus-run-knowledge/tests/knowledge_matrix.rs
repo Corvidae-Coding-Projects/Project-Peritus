@@ -4,10 +4,14 @@ mod support;
 
 use peritus_role::HarnessRole;
 use peritus_run_knowledge::{
-    DeltaDelivery, InvalidationReason, InvalidationRequest, KnowledgeAuthority, KnowledgeChange,
-    KnowledgeErrorKind, KnowledgeSectionKind, ReuseDecision, plan_delta_packet, plan_invalidation,
+    CurrentKnowledgeState, DeltaDelivery, InvalidationReason, InvalidationRequest,
+    KnowledgeAuthority, KnowledgeChange, KnowledgeErrorKind, KnowledgeSectionId,
+    KnowledgeSectionKind, KnowledgeSourceId, ReuseDecision, SourceDigest, plan_delta_packet,
+    plan_invalidation,
 };
-use support::{FixtureRevision, candidate, limits, section_id, snapshot, sources, state};
+use support::{
+    FixtureRevision, candidate, digest, limits, section_id, snapshot, source_id, sources, state,
+};
 
 fn decision(plan: &peritus_run_knowledge::InvalidationPlan, byte: u8) -> ReuseDecision {
     plan.entries()
@@ -60,6 +64,130 @@ fn one_changed_source_invalidates_its_observations_and_dependents() {
     assert_eq!(delta.accounting().current_references(), 2);
     assert_eq!(delta.accounting().navigation_sections(), 2);
     assert_eq!(delta.accounting().invalidated_prior_sections(), 6);
+}
+
+#[test]
+fn planner_emits_one_ordered_entry_per_section_and_partitions_accounting() {
+    let identity = candidate(20, 1, 1);
+    let prior = snapshot(identity, HarnessRole::Writer, 11, FixtureRevision::Baseline);
+    let request =
+        InvalidationRequest::new(state(identity, 13), KnowledgeChange::SourceChanged, Vec::new())
+            .expect("source change request");
+
+    let plan = plan_invalidation(&prior, &request).expect("ordered invalidation plan");
+    assert_eq!(plan.entries().len(), prior.sections().len());
+    for (expected, entry) in prior.sections().iter().zip(plan.entries()) {
+        assert_eq!(entry.section_id(), expected.id());
+    }
+    let accounting = plan.accounting();
+    assert_eq!(accounting.total(), plan.entries().len());
+    assert_eq!(accounting.total(), accounting.reused() + accounting.invalidated());
+}
+
+#[test]
+fn clarification_invalidation_closes_transitively_over_prior_entries() {
+    let identity = candidate(20, 1, 1);
+    let prior = snapshot(identity, HarnessRole::Writer, 11, FixtureRevision::Baseline);
+    let request = InvalidationRequest::new(
+        state(identity, 11),
+        KnowledgeChange::UserClarification,
+        vec![section_id(3)],
+    )
+    .expect("clarification request");
+
+    let plan = plan_invalidation(&prior, &request).expect("dependency-closed plan");
+    assert_eq!(
+        decision(&plan, 3),
+        ReuseDecision::Invalidate(InvalidationReason::UserClarification),
+    );
+    assert_eq!(
+        decision(&plan, 4),
+        ReuseDecision::Invalidate(InvalidationReason::DependencyInvalidated),
+    );
+    assert_eq!(
+        decision(&plan, 8),
+        ReuseDecision::Invalidate(InvalidationReason::DependencyInvalidated),
+    );
+    assert_eq!(plan.accounting().reused(), 5);
+    assert_eq!(plan.accounting().invalidated(), 3);
+}
+
+#[test]
+fn late_identity_and_digest_bytes_are_part_of_freshness() {
+    let identity = candidate(20, 1, 1);
+    let prior = snapshot(identity, HarnessRole::Writer, 11, FixtureRevision::Baseline);
+
+    let mut late_source_bytes = [1; 16];
+    late_source_bytes[15] = 2;
+    let late_source = KnowledgeSourceId::new(late_source_bytes).expect("late-byte source id");
+    let changed_identity_state = CurrentKnowledgeState::new(
+        identity,
+        vec![
+            SourceDigest::new(late_source, digest(11)),
+            SourceDigest::new(source_id(2), digest(12)),
+        ],
+        limits(),
+    )
+    .expect("current source state");
+    let identity_request =
+        InvalidationRequest::new(changed_identity_state, KnowledgeChange::SameRevision, Vec::new())
+            .expect("same-revision request");
+    let identity_plan = plan_invalidation(&prior, &identity_request).expect("identity plan");
+    assert_eq!(
+        decision(&identity_plan, 1),
+        ReuseDecision::Invalidate(InvalidationReason::SourceChanged),
+    );
+
+    let mut late_digest_bytes = [11; 32];
+    late_digest_bytes[31] = 12;
+    let changed_digest_state = CurrentKnowledgeState::new(
+        identity,
+        vec![
+            SourceDigest::new(source_id(1), peritus_types::Sha256Digest::new(late_digest_bytes)),
+            SourceDigest::new(source_id(2), digest(12)),
+        ],
+        limits(),
+    )
+    .expect("current digest state");
+    let digest_request =
+        InvalidationRequest::new(changed_digest_state, KnowledgeChange::SameRevision, Vec::new())
+            .expect("same-revision request");
+    let digest_plan = plan_invalidation(&prior, &digest_request).expect("digest plan");
+    assert_eq!(
+        decision(&digest_plan, 1),
+        ReuseDecision::Invalidate(InvalidationReason::SourceChanged),
+    );
+
+    let mut late_section_bytes = [3; 16];
+    late_section_bytes[15] = 4;
+    let late_section = KnowledgeSectionId::new(late_section_bytes).expect("late-byte section id");
+    assert!(prior.section(late_section).is_none());
+    let clarification = InvalidationRequest::new(
+        state(identity, 11),
+        KnowledgeChange::UserClarification,
+        vec![late_section],
+    )
+    .expect("clarification request");
+    let error = plan_invalidation(&prior, &clarification).expect_err("unknown late-byte target");
+    assert_eq!(error.kind(), KnowledgeErrorKind::InvalidClarificationTarget);
+    assert_eq!(error.section_id(), Some(late_section));
+}
+
+#[test]
+fn future_observations_fail_closed_against_the_supplied_checkpoint() {
+    let observed = candidate(20, 1, 5);
+    let current = candidate(20, 1, 4);
+    let prior = snapshot(observed, HarnessRole::Writer, 11, FixtureRevision::Baseline);
+    let request =
+        InvalidationRequest::new(state(current, 11), KnowledgeChange::SameRevision, Vec::new())
+            .expect("earlier checkpoint request");
+
+    let plan = plan_invalidation(&prior, &request).expect("future-observation plan");
+    assert!(plan.entries().iter().all(|entry| {
+        entry.decision() == ReuseDecision::Invalidate(InvalidationReason::FutureObservation)
+    }));
+    assert_eq!(plan.accounting().reused(), 0);
+    assert_eq!(plan.accounting().invalidated(), prior.sections().len());
 }
 
 #[test]

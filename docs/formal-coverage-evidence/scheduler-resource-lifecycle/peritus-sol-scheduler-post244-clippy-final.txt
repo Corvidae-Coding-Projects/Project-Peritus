@@ -1,0 +1,845 @@
+    Checking verus_builtin v0.0.0-2026-08-09-0044 (https://github.com/verus-lang/verus.git?rev=92f466f247f45128c630d1c843fd6e27d2115587#92f466f2)
+    Checking vstd v0.0.0-2026-08-09-0044 (https://github.com/verus-lang/verus.git?rev=92f466f247f45128c630d1c843fd6e27d2115587#92f466f2)
+    Checking typenum v1.20.1
+    Checking hybrid-array v0.4.14
+    Checking peritus-types v0.0.2 (/tmp/peritus-sol-scheduler-post244-source-001/crates/foundation/peritus-types)
+    Checking cfg-if v1.0.4
+    Checking block-buffer v0.12.1
+    Checking crypto-common v0.2.2
+    Checking digest v0.11.3
+    Checking cpufeatures v0.3.0
+    Checking sha2 v0.11.0
+    Checking bitflags v2.13.1
+    Checking peritus-policy v0.0.2 (/tmp/peritus-sol-scheduler-post244-source-001/crates/foundation/peritus-policy)
+    Checking linux-raw-sys v0.12.1
+    Checking rustix v1.1.4
+    Checking peritus-spec v0.0.2 (/tmp/peritus-sol-scheduler-post244-source-001/crates/foundation/peritus-spec)
+    Checking signature v3.0.0
+    Checking subtle v2.6.1
+    Checking curve25519-dalek v5.0.0
+    Checking ed25519 v3.0.0
+    Checking peritus-quality-policy v0.0.2 (/tmp/peritus-sol-scheduler-post244-source-001/crates/foundation/peritus-quality-policy)
+    Checking libsqlite3-sys v0.38.2
+    Checking peritus-budget v0.0.2 (/tmp/peritus-sol-scheduler-post244-source-001/crates/foundation/peritus-budget)
+    Checking smallvec v1.15.2
+    Checking fallible-iterator v0.3.0
+    Checking fallible-streaming-iterator v0.1.9
+    Checking rusqlite v0.40.2
+    Checking peritus-kernel v0.0.2 (/tmp/peritus-sol-scheduler-post244-source-001/crates/foundation/peritus-kernel)
+    Checking ed25519-dalek v3.0.0
+    Checking fs4 v1.1.0
+    Checking peritus-codec v0.0.2 (/tmp/peritus-sol-scheduler-post244-source-001/crates/foundation/peritus-codec)
+    Checking peritus-protocol v0.0.2 (/tmp/peritus-sol-scheduler-post244-source-001/crates/foundation/peritus-protocol)
+    Checking peritus-artifact-store v0.0.2 (/tmp/peritus-sol-scheduler-post244-source-001/crates/state/peritus-artifact-store)
+    Checking peritus-approval v0.0.2 (/tmp/peritus-sol-scheduler-post244-source-001/crates/state/peritus-approval)
+    Checking peritus-leases v0.0.2 (/tmp/peritus-sol-scheduler-post244-source-001/crates/state/peritus-leases)
+    Checking peritus-journal v0.0.2 (/tmp/peritus-sol-scheduler-post244-source-001/crates/state/peritus-journal)
+    Checking peritus-projection v0.0.2 (/tmp/peritus-sol-scheduler-post244-source-001/crates/state/peritus-projection)
+    Checking libc v0.2.189
+    Checking getrandom v0.4.3
+    Checking peritus-evidence v0.0.2 (/tmp/peritus-sol-scheduler-post244-source-001/crates/state/peritus-evidence)
+    Checking fastrand v2.5.0
+    Checking once_cell v1.21.4
+    Checking tempfile v3.27.0
+    Checking peritus-scheduler v0.0.2 (/tmp/peritus-sol-scheduler-post244-source-001/crates/orchestration/peritus-scheduler)
+error: it is more idiomatic to use `Option<&T>` instead of `&Option<T>`
+   --> crates/orchestration/peritus-scheduler/src/state/clone_impl.rs:201:1
+    |
+201 | / fn clone_terminal(
+202 | |     value: &Option<SchedulerTerminal>,
+203 | | ) -> (result: Option<SchedulerTerminal>)
+204 | |     ensures terminal_clone_equivalent(value, &result),
+...   |
+210 | | }
+    | |_^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#ref_option
+    = note: `-D clippy::ref-option` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::ref_option)]`
+help: change this to
+    |
+202 -     value: &Option<SchedulerTerminal>,
+202 +     value: Option<&SchedulerTerminal>,
+    |
+
+error: manual implementation of `Option::map`
+   --> crates/orchestration/peritus-scheduler/src/state/clone_impl.rs:206:5
+    |
+206 | /     match value {
+207 | |         Some(terminal) => Some(terminal.clone()),
+208 | |         None => None,
+209 | |     }
+    | |_____^ help: try: `value.as_ref().map(|terminal| terminal.clone())`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#manual_map
+    = note: `-D clippy::manual-map` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::manual_map)]`
+
+error: use Option::map_or instead of an if let/else
+   --> crates/orchestration/peritus-scheduler/src/state/clone_impl.rs:206:5
+    |
+206 | /     match value {
+207 | |         Some(terminal) => Some(terminal.clone()),
+208 | |         None => None,
+209 | |     }
+    | |_____^ help: try: `value.as_ref().map_or(None, |terminal| Some(terminal.clone()))`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#option_if_let_else
+    = note: `-D clippy::option-if-let-else` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::option_if_let_else)]`
+
+error: this function has too many lines (125/100)
+  --> crates/orchestration/peritus-scheduler/src/state/mutation/acknowledge_start.rs:29:1
+   |
+29 | / pub fn acknowledge_reservation_start(
+30 | |     state: &mut SchedulerState,
+31 | |     dispatch_id: DispatchId,
+32 | |     work_id: WorkId,
+33 | | ) -> (result: Option<bool>)
+   | |__________________________^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#too_many_lines
+   = note: `-D clippy::too-many-lines` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::too_many_lines)]`
+
+error: consider adding a `;` to the last statement for consistent formatting
+   --> crates/orchestration/peritus-scheduler/src/state/mutation/entity_insertion.rs:114:5
+    |
+114 |     proof {
+    |     ^^^^^ help: add a `;` here: `proof;`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#semicolon_if_nothing_returned
+    = note: `-D clippy::semicolon-if-nothing-returned` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::semicolon_if_nothing_returned)]`
+
+error: consider adding a `;` to the last statement for consistent formatting
+   --> crates/orchestration/peritus-scheduler/src/state/mutation/entity_insertion.rs:186:5
+    |
+186 |     proof {
+    |     ^^^^^ help: add a `;` here: `proof;`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#semicolon_if_nothing_returned
+
+error: pub(crate) enum inside private module
+  --> crates/orchestration/peritus-scheduler/src/state/mutation/reservation_command.rs:11:1
+   |
+11 | pub(crate) enum AcknowledgeStartOutcome {
+   | ----------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | |
+   | help: consider using: `pub`
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#redundant_pub_crate
+   = note: `-D clippy::redundant-pub-crate` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::redundant_pub_crate)]`
+
+error: item in documentation is missing backticks
+  --> crates/orchestration/peritus-scheduler/src/state/mutation/reservation_command.rs:14:36
+   |
+14 |     /// The actual command was not AcknowledgeStart.
+   |                                    ^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#doc_markdown
+   = note: `-D clippy::doc-markdown` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::doc_markdown)]`
+help: try
+   |
+14 -     /// The actual command was not AcknowledgeStart.
+14 +     /// The actual command was not `AcknowledgeStart`.
+   |
+
+error: pub(crate) enum inside private module
+  --> crates/orchestration/peritus-scheduler/src/state/mutation/reservation_command.rs:28:1
+   |
+28 | pub(crate) enum CompleteCommandOutcome {
+   | ----------^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | |
+   | help: consider using: `pub`
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#redundant_pub_crate
+
+error: item in documentation is missing backticks
+  --> crates/orchestration/peritus-scheduler/src/state/mutation/reservation_command.rs:31:36
+   |
+31 |     /// The actual command was not CompleteWork.
+   |                                    ^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#doc_markdown
+help: try
+   |
+31 -     /// The actual command was not CompleteWork.
+31 +     /// The actual command was not `CompleteWork`.
+   |
+
+error: pub(crate) enum inside private module
+  --> crates/orchestration/peritus-scheduler/src/state/mutation/reservation_command.rs:43:1
+   |
+43 | pub(crate) enum FailCommandOutcome {
+   | ----------^^^^^^^^^^^^^^^^^^^^^^^^
+   | |
+   | help: consider using: `pub`
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#redundant_pub_crate
+
+error: item in documentation is missing backticks
+  --> crates/orchestration/peritus-scheduler/src/state/mutation/reservation_command.rs:46:36
+   |
+46 |     /// The actual command was not FailWork.
+   |                                    ^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#doc_markdown
+help: try
+   |
+46 -     /// The actual command was not FailWork.
+46 +     /// The actual command was not `FailWork`.
+   |
+
+error: pub(crate) enum inside private module
+  --> crates/orchestration/peritus-scheduler/src/state/mutation/reservation_command.rs:58:1
+   |
+58 | pub(crate) enum AcknowledgeCancellationOutcome {
+   | ----------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | |
+   | help: consider using: `pub`
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#redundant_pub_crate
+
+error: item in documentation is missing backticks
+  --> crates/orchestration/peritus-scheduler/src/state/mutation/reservation_command.rs:61:36
+   |
+61 |     /// The actual command was not AcknowledgeCancellation.
+   |                                    ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#doc_markdown
+help: try
+   |
+61 -     /// The actual command was not AcknowledgeCancellation.
+61 +     /// The actual command was not `AcknowledgeCancellation`.
+   |
+
+error: pub(crate) enum inside private module
+  --> crates/orchestration/peritus-scheduler/src/state/mutation/reservation_command.rs:75:1
+   |
+75 | pub(crate) enum AbandonCommandOutcome {
+   | ----------^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | |
+   | help: consider using: `pub`
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#redundant_pub_crate
+
+error: item in documentation is missing backticks
+  --> crates/orchestration/peritus-scheduler/src/state/mutation/reservation_command.rs:78:36
+   |
+78 |     /// The actual command was not AbandonDispatch.
+   |                                    ^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#doc_markdown
+help: try
+   |
+78 -     /// The actual command was not AbandonDispatch.
+78 +     /// The actual command was not `AbandonDispatch`.
+   |
+
+error: item in documentation is missing backticks
+  --> crates/orchestration/peritus-scheduler/src/state/mutation/reservation_command.rs:86:24
+   |
+86 | /// Applies the actual AcknowledgeStart payload through the verified atomic mutation.
+   |                        ^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#doc_markdown
+help: try
+   |
+86 - /// Applies the actual AcknowledgeStart payload through the verified atomic mutation.
+86 + /// Applies the actual `AcknowledgeStart` payload through the verified atomic mutation.
+   |
+
+error: pub(crate) function inside private module
+  --> crates/orchestration/peritus-scheduler/src/state/mutation/reservation_command.rs:87:1
+   |
+87 | pub(crate) fn apply_acknowledge_start_command(
+   | ----------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | |
+   | help: consider using: `pub`
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#redundant_pub_crate
+
+error: this could be rewritten as `let...else`
+   --> crates/orchestration/peritus-scheduler/src/state/mutation/reservation_command.rs:103:5
+    |
+103 | /     let reservation = match state.reservation(dispatch_id) {
+104 | |         Some(reservation) => reservation,
+105 | |         None => return AcknowledgeStartOutcome::DispatchNotActive,
+106 | |     };
+    | |______^ help: consider writing: `let Some(reservation) = state.reservation(dispatch_id) else { return AcknowledgeStartOutcome::DispatchNotActive };`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#manual_let_else
+    = note: `-D clippy::manual-let-else` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::manual_let_else)]`
+
+error: item in documentation is missing backticks
+   --> crates/orchestration/peritus-scheduler/src/state/mutation/reservation_command.rs:128:24
+    |
+128 | /// Applies the actual CompleteWork payload through the verified release mutation.
+    |                        ^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#doc_markdown
+help: try
+    |
+128 - /// Applies the actual CompleteWork payload through the verified release mutation.
+128 + /// Applies the actual `CompleteWork` payload through the verified release mutation.
+    |
+
+error: pub(crate) function inside private module
+   --> crates/orchestration/peritus-scheduler/src/state/mutation/reservation_command.rs:129:1
+    |
+129 | pub(crate) fn apply_complete_command(
+    | ----------^^^^^^^^^^^^^^^^^^^^^^^^^^
+    | |
+    | help: consider using: `pub`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#redundant_pub_crate
+
+error: this could be rewritten as `let...else`
+   --> crates/orchestration/peritus-scheduler/src/state/mutation/reservation_command.rs:147:5
+    |
+147 | /     let reservation = match state.reservation(dispatch_id) {
+148 | |         Some(reservation) => reservation,
+149 | |         None => return CompleteCommandOutcome::DispatchNotActive,
+150 | |     };
+    | |______^ help: consider writing: `let Some(reservation) = state.reservation(dispatch_id) else { return CompleteCommandOutcome::DispatchNotActive };`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#manual_let_else
+
+error: item in documentation is missing backticks
+   --> crates/orchestration/peritus-scheduler/src/state/mutation/reservation_command.rs:180:24
+    |
+180 | /// Applies the actual FailWork payload through the verified release mutation.
+    |                        ^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#doc_markdown
+help: try
+    |
+180 - /// Applies the actual FailWork payload through the verified release mutation.
+180 + /// Applies the actual `FailWork` payload through the verified release mutation.
+    |
+
+error: pub(crate) function inside private module
+   --> crates/orchestration/peritus-scheduler/src/state/mutation/reservation_command.rs:181:1
+    |
+181 | pub(crate) fn apply_fail_command(
+    | ----------^^^^^^^^^^^^^^^^^^^^^^
+    | |
+    | help: consider using: `pub`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#redundant_pub_crate
+
+error: this could be rewritten as `let...else`
+   --> crates/orchestration/peritus-scheduler/src/state/mutation/reservation_command.rs:201:5
+    |
+201 | /     let reservation = match state.reservation(dispatch_id) {
+202 | |         Some(reservation) => reservation,
+203 | |         None => return FailCommandOutcome::DispatchNotActive,
+204 | |     };
+    | |______^ help: consider writing: `let Some(reservation) = state.reservation(dispatch_id) else { return FailCommandOutcome::DispatchNotActive };`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#manual_let_else
+
+error: this could be rewritten as `let...else`
+   --> crates/orchestration/peritus-scheduler/src/state/mutation/reservation_command.rs:206:5
+    |
+206 | /     let work = match state.work_item(work_id) {
+207 | |         Some(work) => work,
+208 | |         None => return FailCommandOutcome::WorkDisappeared,
+209 | |     };
+    | |______^ help: consider writing: `let Some(work) = state.work_item(work_id) else { return FailCommandOutcome::WorkDisappeared };`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#manual_let_else
+
+error: item in documentation is missing backticks
+   --> crates/orchestration/peritus-scheduler/src/state/mutation/reservation_command.rs:254:24
+    |
+254 | /// Applies the actual AcknowledgeCancellation payload through the verified release mutation.
+    |                        ^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#doc_markdown
+help: try
+    |
+254 - /// Applies the actual AcknowledgeCancellation payload through the verified release mutation.
+254 + /// Applies the actual `AcknowledgeCancellation` payload through the verified release mutation.
+    |
+
+error: pub(crate) function inside private module
+   --> crates/orchestration/peritus-scheduler/src/state/mutation/reservation_command.rs:255:1
+    |
+255 | pub(crate) fn apply_acknowledge_cancellation_command(
+    | ----------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    | |
+    | help: consider using: `pub`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#redundant_pub_crate
+
+error: this could be rewritten as `let...else`
+   --> crates/orchestration/peritus-scheduler/src/state/mutation/reservation_command.rs:271:5
+    |
+271 | /     let reservation = match state.reservation(dispatch_id) {
+272 | |         Some(reservation) => reservation,
+273 | |         None => return AcknowledgeCancellationOutcome::DispatchNotActive,
+274 | |     };
+    | |______^ help: consider writing: `let Some(reservation) = state.reservation(dispatch_id) else { return AcknowledgeCancellationOutcome::DispatchNotActive };`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#manual_let_else
+
+error: item in documentation is missing backticks
+   --> crates/orchestration/peritus-scheduler/src/state/mutation/reservation_command.rs:298:24
+    |
+298 | /// Applies the actual AbandonDispatch payload through the verified release mutation.
+    |                        ^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#doc_markdown
+help: try
+    |
+298 - /// Applies the actual AbandonDispatch payload through the verified release mutation.
+298 + /// Applies the actual `AbandonDispatch` payload through the verified release mutation.
+    |
+
+error: pub(crate) function inside private module
+   --> crates/orchestration/peritus-scheduler/src/state/mutation/reservation_command.rs:299:1
+    |
+299 | pub(crate) fn apply_abandon_command(
+    | ----------^^^^^^^^^^^^^^^^^^^^^^^^^
+    | |
+    | help: consider using: `pub`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#redundant_pub_crate
+
+error: this could be rewritten as `let...else`
+   --> crates/orchestration/peritus-scheduler/src/state/mutation/reservation_command.rs:317:5
+    |
+317 | /     let reservation = match state.reservation(dispatch_id) {
+318 | |         Some(reservation) => reservation,
+319 | |         None => return AbandonCommandOutcome::DispatchNotActive,
+320 | |     };
+    | |______^ help: consider writing: `let Some(reservation) = state.reservation(dispatch_id) else { return AbandonCommandOutcome::DispatchNotActive };`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#manual_let_else
+
+error: this function has too many lines (169/100)
+  --> crates/orchestration/peritus-scheduler/src/state/mutation/reservation_update.rs:38:1
+   |
+38 | pub fn mark_reservation_started(state: &mut SchedulerState, id: DispatchId) -> (found: bool)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#too_many_lines
+
+error: this could be a `const fn`
+   --> crates/orchestration/peritus-scheduler/src/state/mutation/scheduler_phase.rs:81:1
+    |
+ 81 | / fn pause_scheduler(state: &mut SchedulerState) -> (applied: bool)
+ 82 | |     ensures
+ 83 | |         old(state).spec_reservation_reducer_ready()
+ 84 | |             ==> final(state).spec_reservation_reducer_ready(),
+...   |
+107 | |     true
+108 | | }
+    | |_^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#missing_const_for_fn
+    = note: `-D clippy::missing-const-for-fn` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::missing_const_for_fn)]`
+help: make the function `const`
+    |
+ 81 | const fn pause_scheduler(state: &mut SchedulerState) -> (applied: bool)
+    | +++++
+
+error: this could be a `const fn`
+   --> crates/orchestration/peritus-scheduler/src/state/mutation/scheduler_phase.rs:111:1
+    |
+111 | / fn resume_scheduler(state: &mut SchedulerState) -> (applied: bool)
+112 | |     ensures
+113 | |         old(state).spec_reservation_reducer_ready()
+114 | |             ==> final(state).spec_reservation_reducer_ready(),
+...   |
+137 | |     true
+138 | | }
+    | |_^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#missing_const_for_fn
+help: make the function `const`
+    |
+111 | const fn resume_scheduler(state: &mut SchedulerState) -> (applied: bool)
+    | +++++
+
+error: this could be a `const fn`
+   --> crates/orchestration/peritus-scheduler/src/state/mutation/scheduler_phase.rs:141:1
+    |
+141 | / fn drain_scheduler(state: &mut SchedulerState) -> (applied: bool)
+142 | |     ensures
+143 | |         old(state).spec_reservation_reducer_ready()
+144 | |             ==> final(state).spec_reservation_reducer_ready(),
+...   |
+167 | |     true
+168 | | }
+    | |_^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#missing_const_for_fn
+help: make the function `const`
+    |
+141 | const fn drain_scheduler(state: &mut SchedulerState) -> (applied: bool)
+    | +++++
+
+error: pub(crate) enum inside private module
+  --> crates/orchestration/peritus-scheduler/src/state/mutation/work_command.rs:11:1
+   |
+11 | pub(crate) enum RetryCommandOutcome {
+   | ----------^^^^^^^^^^^^^^^^^^^^^^^^^
+   | |
+   | help: consider using: `pub`
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#redundant_pub_crate
+
+error: item in documentation is missing backticks
+  --> crates/orchestration/peritus-scheduler/src/state/mutation/work_command.rs:14:36
+   |
+14 |     /// The actual command was not RetryWork.
+   |                                    ^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#doc_markdown
+help: try
+   |
+14 -     /// The actual command was not RetryWork.
+14 +     /// The actual command was not `RetryWork`.
+   |
+
+error: pub(crate) enum inside private module
+  --> crates/orchestration/peritus-scheduler/src/state/mutation/work_command.rs:28:1
+   |
+28 | pub(crate) enum ExhaustCommandOutcome {
+   | ----------^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | |
+   | help: consider using: `pub`
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#redundant_pub_crate
+
+error: item in documentation is missing backticks
+  --> crates/orchestration/peritus-scheduler/src/state/mutation/work_command.rs:31:36
+   |
+31 |     /// The actual command was not ExhaustWork.
+   |                                    ^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#doc_markdown
+help: try
+   |
+31 -     /// The actual command was not ExhaustWork.
+31 +     /// The actual command was not `ExhaustWork`.
+   |
+
+error: item in documentation is missing backticks
+  --> crates/orchestration/peritus-scheduler/src/state/mutation/work_command.rs:41:24
+   |
+41 | /// Applies the actual RetryWork payload through the verified work-update kernel.
+   |                        ^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#doc_markdown
+help: try
+   |
+41 - /// Applies the actual RetryWork payload through the verified work-update kernel.
+41 + /// Applies the actual `RetryWork` payload through the verified work-update kernel.
+   |
+
+error: pub(crate) function inside private module
+  --> crates/orchestration/peritus-scheduler/src/state/mutation/work_command.rs:42:1
+   |
+42 | pub(crate) fn apply_retry_command(
+   | ----------^^^^^^^^^^^^^^^^^^^^^^^
+   | |
+   | help: consider using: `pub`
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#redundant_pub_crate
+
+error: this could be rewritten as `let...else`
+  --> crates/orchestration/peritus-scheduler/src/state/mutation/work_command.rs:73:5
+   |
+73 | /     let work = match state.work_item(work_id) {
+74 | |         Some(record) => record,
+75 | |         None => return RetryCommandOutcome::WorkNotRetained,
+76 | |     };
+   | |______^ help: consider writing: `let Some(work) = state.work_item(work_id) else { return RetryCommandOutcome::WorkNotRetained };`
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#manual_let_else
+
+error: item in documentation is missing backticks
+   --> crates/orchestration/peritus-scheduler/src/state/mutation/work_command.rs:107:24
+    |
+107 | /// Applies the actual ExhaustWork payload through the verified work-update kernel.
+    |                        ^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#doc_markdown
+help: try
+    |
+107 - /// Applies the actual ExhaustWork payload through the verified work-update kernel.
+107 + /// Applies the actual `ExhaustWork` payload through the verified work-update kernel.
+    |
+
+error: pub(crate) function inside private module
+   --> crates/orchestration/peritus-scheduler/src/state/mutation/work_command.rs:108:1
+    |
+108 | pub(crate) fn apply_exhaust_command(
+    | ----------^^^^^^^^^^^^^^^^^^^^^^^^^
+    | |
+    | help: consider using: `pub`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#redundant_pub_crate
+
+error: this function has too many lines (121/100)
+  --> crates/orchestration/peritus-scheduler/src/state/mutation/work_update/release.rs:25:1
+   |
+25 | / fn release_with_update(
+26 | |     state: &mut SchedulerState,
+27 | |     dispatch_id: DispatchId,
+28 | |     work_id: WorkId,
+29 | |     update: WorkUpdate,
+30 | | ) -> (removed: Option<SchedulerReservation>)
+   | |___________________________________________^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#too_many_lines
+
+error: this could be rewritten as `let...else`
+  --> crates/orchestration/peritus-scheduler/src/state/mutation/work_update/release.rs:56:5
+   |
+56 | /     let reservation = match super::super::remove_reservation(state, dispatch_id) {
+57 | |         Some(reservation) => reservation,
+58 | |         None => {
+59 | |             proof {
+...  |
+75 | |     };
+   | |______^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#manual_let_else
+help: consider writing
+   |
+56 ~     let Some(reservation) = super::super::remove_reservation(state, dispatch_id) else {
+57 +             proof {
+58 +                 if target_exists {
+59 +                     reveal(release_target_exists);
+60 +                     let target_index = choose |reservation_index: int|
+61 +                         #![trigger before_reservations[reservation_index]]
+62 +                         0 <= reservation_index < before_reservations.len()
+63 +                             && before_reservations[reservation_index].spec_dispatch_id()
+64 +                                 == dispatch_id
+65 +                             && before_reservations[reservation_index].spec_work_id() == work_id;
+66 +                     reveal(super::super::reservation_remove::reservation_removal_matches);
+67 +                     assert(before_reservations[target_index].spec_dispatch_id() != dispatch_id);
+68 +                     assert(false);
+69 +                 }
+70 +             }
+71 +             return None;
+72 +         };
+   |
+
+error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
+  --> crates/orchestration/peritus-scheduler/src/state/mutation/work_update/release.rs:56:23
+   |
+56 |       let reservation = match super::super::remove_reservation(state, dispatch_id) {
+   |  _______________________^
+57 | |         Some(reservation) => reservation,
+58 | |         None => {
+59 | |             proof {
+...  |
+75 | |     };
+   | |_____^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#single_match_else
+   = note: `-D clippy::single-match-else` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::single_match_else)]`
+help: try
+   |
+56 ~     let reservation = if let Some(reservation) = super::super::remove_reservation(state, dispatch_id) { reservation } else {
+57 +         proof {
+58 +             if target_exists {
+59 +                 reveal(release_target_exists);
+60 +                 let target_index = choose |reservation_index: int|
+61 +                     #![trigger before_reservations[reservation_index]]
+62 +                     0 <= reservation_index < before_reservations.len()
+63 +                         && before_reservations[reservation_index].spec_dispatch_id()
+64 +                             == dispatch_id
+65 +                         && before_reservations[reservation_index].spec_work_id() == work_id;
+66 +                 reveal(super::super::reservation_remove::reservation_removal_matches);
+67 +                 assert(before_reservations[target_index].spec_dispatch_id() != dispatch_id);
+68 +                 assert(false);
+69 +             }
+70 +         }
+71 +         return None;
+72 ~     };
+   |
+
+error: this function has too many lines (170/100)
+  --> crates/orchestration/peritus-scheduler/src/state/mutation/work_update.rs:78:1
+   |
+78 | / pub(super) fn update_work(
+79 | |     state: &mut SchedulerState,
+80 | |     id: WorkId,
+81 | |     update: WorkUpdate,
+82 | | ) -> (found: bool)
+   | |_________________^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#too_many_lines
+
+error: this function has too many lines (124/100)
+  --> crates/orchestration/peritus-scheduler/src/state/mutation/worker_update.rs:39:1
+   |
+39 | / pub fn set_worker_phase(
+40 | |     state: &mut SchedulerState,
+41 | |     id: WorkerId,
+42 | |     phase: WorkerPhase,
+43 | | ) -> (found: bool)
+   | |_________________^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#too_many_lines
+
+error: pub(crate) import inside private module
+  --> crates/orchestration/peritus-scheduler/src/state/mutation.rs:19:5
+   |
+18 | pub(crate) use reservation_command::{
+   | ---------- help: consider using: `pub`
+19 |     AbandonCommandOutcome, AcknowledgeCancellationOutcome, AcknowledgeStartOutcome,
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#redundant_pub_crate
+
+error: pub(crate) import inside private module
+  --> crates/orchestration/peritus-scheduler/src/state/mutation.rs:19:28
+   |
+18 | pub(crate) use reservation_command::{
+   | ---------- help: consider using: `pub`
+19 |     AbandonCommandOutcome, AcknowledgeCancellationOutcome, AcknowledgeStartOutcome,
+   |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#redundant_pub_crate
+
+error: pub(crate) import inside private module
+  --> crates/orchestration/peritus-scheduler/src/state/mutation.rs:19:60
+   |
+18 | pub(crate) use reservation_command::{
+   | ---------- help: consider using: `pub`
+19 |     AbandonCommandOutcome, AcknowledgeCancellationOutcome, AcknowledgeStartOutcome,
+   |                                                            ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#redundant_pub_crate
+
+error: pub(crate) import inside private module
+  --> crates/orchestration/peritus-scheduler/src/state/mutation.rs:20:5
+   |
+18 | pub(crate) use reservation_command::{
+   | ---------- help: consider using: `pub`
+19 |     AbandonCommandOutcome, AcknowledgeCancellationOutcome, AcknowledgeStartOutcome,
+20 |     CompleteCommandOutcome, FailCommandOutcome, apply_abandon_command,
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#redundant_pub_crate
+
+error: pub(crate) import inside private module
+  --> crates/orchestration/peritus-scheduler/src/state/mutation.rs:20:29
+   |
+18 | pub(crate) use reservation_command::{
+   | ---------- help: consider using: `pub`
+19 |     AbandonCommandOutcome, AcknowledgeCancellationOutcome, AcknowledgeStartOutcome,
+20 |     CompleteCommandOutcome, FailCommandOutcome, apply_abandon_command,
+   |                             ^^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#redundant_pub_crate
+
+error: pub(crate) import inside private module
+  --> crates/orchestration/peritus-scheduler/src/state/mutation.rs:20:49
+   |
+18 | pub(crate) use reservation_command::{
+   | ---------- help: consider using: `pub`
+19 |     AbandonCommandOutcome, AcknowledgeCancellationOutcome, AcknowledgeStartOutcome,
+20 |     CompleteCommandOutcome, FailCommandOutcome, apply_abandon_command,
+   |                                                 ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#redundant_pub_crate
+
+error: pub(crate) import inside private module
+  --> crates/orchestration/peritus-scheduler/src/state/mutation.rs:21:5
+   |
+18 | pub(crate) use reservation_command::{
+   | ---------- help: consider using: `pub`
+...
+21 |     apply_acknowledge_cancellation_command, apply_acknowledge_start_command,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#redundant_pub_crate
+
+error: pub(crate) import inside private module
+  --> crates/orchestration/peritus-scheduler/src/state/mutation.rs:21:45
+   |
+18 | pub(crate) use reservation_command::{
+   | ---------- help: consider using: `pub`
+...
+21 |     apply_acknowledge_cancellation_command, apply_acknowledge_start_command,
+   |                                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#redundant_pub_crate
+
+error: pub(crate) import inside private module
+  --> crates/orchestration/peritus-scheduler/src/state/mutation.rs:22:5
+   |
+18 | pub(crate) use reservation_command::{
+   | ---------- help: consider using: `pub`
+...
+22 |     apply_complete_command, apply_fail_command,
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#redundant_pub_crate
+
+error: pub(crate) import inside private module
+  --> crates/orchestration/peritus-scheduler/src/state/mutation.rs:22:29
+   |
+18 | pub(crate) use reservation_command::{
+   | ---------- help: consider using: `pub`
+...
+22 |     apply_complete_command, apply_fail_command,
+   |                             ^^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#redundant_pub_crate
+
+error: pub(crate) import inside private module
+  --> crates/orchestration/peritus-scheduler/src/state/mutation.rs:31:5
+   |
+30 | pub(crate) use work_command::{
+   | ---------- help: consider using: `pub`
+31 |     ExhaustCommandOutcome, RetryCommandOutcome, apply_exhaust_command, apply_retry_command,
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#redundant_pub_crate
+
+error: pub(crate) import inside private module
+  --> crates/orchestration/peritus-scheduler/src/state/mutation.rs:31:28
+   |
+30 | pub(crate) use work_command::{
+   | ---------- help: consider using: `pub`
+31 |     ExhaustCommandOutcome, RetryCommandOutcome, apply_exhaust_command, apply_retry_command,
+   |                            ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#redundant_pub_crate
+
+error: pub(crate) import inside private module
+  --> crates/orchestration/peritus-scheduler/src/state/mutation.rs:31:49
+   |
+30 | pub(crate) use work_command::{
+   | ---------- help: consider using: `pub`
+31 |     ExhaustCommandOutcome, RetryCommandOutcome, apply_exhaust_command, apply_retry_command,
+   |                                                 ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#redundant_pub_crate
+
+error: pub(crate) import inside private module
+  --> crates/orchestration/peritus-scheduler/src/state/mutation.rs:31:72
+   |
+30 | pub(crate) use work_command::{
+   | ---------- help: consider using: `pub`
+31 |     ExhaustCommandOutcome, RetryCommandOutcome, apply_exhaust_command, apply_retry_command,
+   |                                                                        ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#redundant_pub_crate
+
+error: could not compile `peritus-scheduler` (lib) due to 64 previous errors

@@ -1,12 +1,10 @@
-use super::workflow_ci;
 use super::workflow_command_policy::CommandPolicy;
-use super::workflow_discovery;
 use super::workflow_files::{DocumentKind, action_files, workflow_files};
-use super::workflow_governance;
 use super::workflow_local::{LocalUseKind, validate_local_reference};
 use super::workflow_pins::{validate_pin_occurrences, validate_required_ci_pins};
 use super::workflow_run;
 use super::workflow_timeout;
+use super::{workflow_authority, workflow_ci, workflow_discovery, workflow_governance};
 use crate::error::{Diagnostic, XtaskError};
 use crate::model::ToolchainPolicy;
 use std::fs;
@@ -40,6 +38,13 @@ pub(super) fn validate(
             WORKFLOW_DIRECTORY,
             "the required Gate A status workflow is missing",
             "restore the canonical workflow that emits the repository ruleset's required Gate A check",
+        ));
+    }
+    if !files.iter().any(|(path, _)| relative(root, path) == Path::new(workflow_authority::PATH)) {
+        diagnostics.push(Diagnostic::at(
+            WORKFLOW_DIRECTORY,
+            "the trusted-base formal authority workflow is missing",
+            "restore the default-branch pull-request-target workflow that runs the protected checker against the candidate",
         ));
     }
     if !files.iter().any(|(path, _)| relative(root, path) == Path::new(workflow_discovery::PATH)) {
@@ -104,6 +109,9 @@ pub(super) fn validate_document(
     validate_pin_occurrences(document, relative, tools, diagnostics);
     if relative == Path::new(workflow_discovery::PATH) {
         workflow_discovery::validate(mapping, diagnostics);
+    }
+    if relative == Path::new(workflow_authority::PATH) {
+        workflow_authority::validate(mapping, contents, relative, tools, diagnostics);
     }
     if relative == Path::new(CI_WORKFLOW) || relative == Path::new(CI_WORKFLOW_ALTERNATE) {
         validate_required_ci_pins(mapping, relative, tools, diagnostics);

@@ -1,0 +1,96 @@
+{
+  "workflow_sha256": "18c818b0d650413fc407377293221018c0ac151a6e8ea4fbc182a5fb00e6601f",
+  "scope": "Only unmodified identity/custody guard scripts; no build, metadata, candidate execution, hosted Actions, bootstrap or App authorization.",
+  "passed": 12,
+  "results": [
+    {
+      "case": "unchanged_develop_three_distinct_revisions",
+      "exit_codes": [
+        0,
+        0
+      ],
+      "expected_failure_stage": null
+    },
+    {
+      "case": "unchanged_main_checker_equals_base",
+      "exit_codes": [
+        0,
+        0
+      ],
+      "expected_failure_stage": null
+    },
+    {
+      "case": "wrong_event_revision",
+      "exit_codes": [
+        1
+      ],
+      "expected_failure_stage": 0
+    },
+    {
+      "case": "checker_role_swap",
+      "exit_codes": [
+        1
+      ],
+      "expected_failure_stage": 0
+    },
+    {
+      "case": "base_checkout_mismatch",
+      "exit_codes": [
+        1
+      ],
+      "expected_failure_stage": 0
+    },
+    {
+      "case": "candidate_checkout_mismatch",
+      "exit_codes": [
+        1
+      ],
+      "expected_failure_stage": 0
+    },
+    {
+      "case": "unsupported_base_branch",
+      "exit_codes": [
+        1
+      ],
+      "expected_failure_stage": 0
+    },
+    {
+      "case": "wrong_repository_identity",
+      "exit_codes": [
+        1
+      ],
+      "expected_failure_stage": 0
+    },
+    {
+      "case": "main_base_cannot_differ_from_checker",
+      "exit_codes": [
+        1
+      ],
+      "expected_failure_stage": 0
+    },
+    {
+      "case": "protected_input_drift_at_base",
+      "exit_codes": [
+        0,
+        1
+      ],
+      "expected_failure_stage": 1
+    },
+    {
+      "case": "protected_input_drift_at_candidate",
+      "exit_codes": [
+        0,
+        1
+      ],
+      "expected_failure_stage": 1
+    },
+    {
+      "case": "alternate_cargo_selector",
+      "exit_codes": [
+        0,
+        1
+      ],
+      "expected_failure_stage": 1
+    }
+  ]
+}

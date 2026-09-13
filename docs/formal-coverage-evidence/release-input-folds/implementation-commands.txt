@@ -1,0 +1,8 @@
+# working directory: /home/doll/Project-Peritus/.worktrees/formal-coverage
+CARGO_BUILD_JOBS=2 CCACHE_DISABLE=1 CARGO_TARGET_DIR=/home/doll/Project-Peritus/.worktrees/formal-coverage/target/sol-release-remaining cargo verus verify --package peritus-release-policy --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20
+CARGO_BUILD_JOBS=2 CCACHE_DISABLE=1 CARGO_TARGET_DIR=/home/doll/Project-Peritus/.worktrees/formal-coverage/target/sol-release-remaining cargo test --locked --all-features --package peritus-release-policy
+CARGO_BUILD_JOBS=2 CCACHE_DISABLE=1 CARGO_TARGET_DIR=/home/doll/Project-Peritus/.worktrees/formal-coverage/target/sol-release-remaining cargo clippy --locked --all-features --all-targets --package peritus-release-policy -- -D warnings
+cargo fmt --check --package peritus-release-policy
+CARGO_BUILD_JOBS=2 CCACHE_DISABLE=1 CARGO_TARGET_DIR=/home/doll/Project-Peritus/.worktrees/formal-coverage/target/sol-release-remaining cargo xtask source-layout-check
+rg -n '\bassume\s*\(|\badmit\s*\(|\baxiom\s+fn\b|verifier::external_body|cfg\s*\(\s*not\s*\(\s*verus_only' crates/foundation/peritus-release-policy/src crates/foundation/peritus-release-policy/tests
+git diff --check -- crates/foundation/peritus-release-policy

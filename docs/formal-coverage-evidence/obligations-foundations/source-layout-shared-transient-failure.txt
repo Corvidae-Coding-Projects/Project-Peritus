@@ -1,0 +1,9 @@
+error[PERITUS-XTASK-SOURCE-001]: source-layout-check found 4 violation(s)
+  - crates/foundation/peritus-release-policy/src/candidate.rs: source has 412 lines and exceeds the soft budget of 400
+    help: split responsibilities or add a reviewed exception with owner and rationale
+  - crates/orchestration/peritus-scheduler/src/selection.rs: source has 427 lines and exceeds the soft budget of 400
+    help: split responsibilities or add a reviewed exception with owner and rationale
+  - crates/orchestration/peritus-scheduler/src/verified/reservations.rs: source has 454 lines and exceeds the soft budget of 400
+    help: split responsibilities or add a reviewed exception with owner and rationale
+  - crates/orchestration/peritus-scheduler/src/work.rs: source has 408 lines and exceeds the soft budget of 400
+    help: split responsibilities or add a reviewed exception with owner and rationale

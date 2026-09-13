@@ -1,0 +1,12 @@
+# Isolated clone source: /tmp/peritus-sol-waiver-kernel-clone-work-20260912
+# Integrated source: /home/doll/Project-Peritus/.worktrees/formal-coverage
+# Separate disk-backed Cargo targets; CARGO_BUILD_JOBS=2 CCACHE_DISABLE=1
+cargo verus verify --package peritus-kernel --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20
+# Final integration target: target/formal-kernel-integration
+cargo test --locked --package peritus-quality-policy --package peritus-kernel --all-targets --all-features
+# Isolated validation
+cargo test --locked --package peritus-kernel --all-features
+cargo clippy --locked --package peritus-kernel --all-targets --all-features -- -D warnings
+cargo fmt --package peritus-kernel -- --check
+# Baseline regression: archived 1aa9282ff2cfcbf8fac325f11f157f408d33ee30 plus test/support changes only
+cargo test --locked --package peritus-kernel --test adversarial waiver_grant_rejects_a_finding_from_another_review_cycle -- --exact

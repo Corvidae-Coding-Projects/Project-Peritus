@@ -78,6 +78,11 @@ pub struct KernelEvent {
 }
 
 impl KernelEvent {
+    /// Specification view of the emitted event kind.
+    pub closed spec fn spec_kind(&self) -> KernelEventKind { self.kind }
+    /// Specification view of the emitted event subject.
+    pub closed spec fn spec_subject(&self) -> KernelSubject { self.subject }
+
     pub(crate) const fn new(
         id: EventId,
         command_id: CommandId,
@@ -95,6 +100,8 @@ impl KernelEvent {
             result.revision == revision,
             result.kind == kind,
             result.subject == subject,
+            result.spec_kind() == kind,
+            result.spec_subject() == subject,
     {
         Self { id, command_id, sequence, previous_event_id, revision, kind, subject }
     }

@@ -1,0 +1,108 @@
+[
+  {
+    "name": "verus9-final",
+    "command": [
+      "cargo",
+      "verus",
+      "verify",
+      "--package",
+      "peritus-run-knowledge",
+      "--all-features",
+      "--locked",
+      "--check-toolchain",
+      "--fwd-verus-args-to",
+      "roots",
+      "--",
+      "--no-cheating",
+      "--rlimit",
+      "20"
+    ],
+    "cwd": "/tmp/peritus-parent-obligations-proof.6ib_z8mo",
+    "environment": {
+      "CARGO_BUILD_JOBS": "2",
+      "CCACHE_DISABLE": "1",
+      "CARGO_TARGET_DIR": "/home/doll/Project-Peritus/.worktrees/formal-coverage/target/formal-knowledge-parent"
+    },
+    "exit_code": 0,
+    "log": "/tmp/peritus-parent-knowledge-admission-verus9-final.log"
+  },
+  {
+    "name": "tests-default4",
+    "command": [
+      "cargo",
+      "test",
+      "--package",
+      "peritus-run-knowledge",
+      "--locked"
+    ],
+    "cwd": "/tmp/peritus-parent-obligations-proof.6ib_z8mo",
+    "environment": {
+      "CARGO_BUILD_JOBS": "2",
+      "CCACHE_DISABLE": "1",
+      "CARGO_TARGET_DIR": "/home/doll/Project-Peritus/.worktrees/formal-coverage/target/formal-knowledge-parent"
+    },
+    "exit_code": 0,
+    "log": "/tmp/peritus-parent-knowledge-admission-tests-default4.log"
+  },
+  {
+    "name": "tests-allfeatures4",
+    "command": [
+      "cargo",
+      "test",
+      "--package",
+      "peritus-run-knowledge",
+      "--all-features",
+      "--locked"
+    ],
+    "cwd": "/tmp/peritus-parent-obligations-proof.6ib_z8mo",
+    "environment": {
+      "CARGO_BUILD_JOBS": "2",
+      "CCACHE_DISABLE": "1",
+      "CARGO_TARGET_DIR": "/home/doll/Project-Peritus/.worktrees/formal-coverage/target/formal-knowledge-parent"
+    },
+    "exit_code": 0,
+    "log": "/tmp/peritus-parent-knowledge-admission-tests-allfeatures4.log"
+  },
+  {
+    "name": "clippy3",
+    "command": [
+      "cargo",
+      "clippy",
+      "--package",
+      "peritus-run-knowledge",
+      "--all-features",
+      "--all-targets",
+      "--locked",
+      "--",
+      "-D",
+      "warnings"
+    ],
+    "cwd": "/tmp/peritus-parent-obligations-proof.6ib_z8mo",
+    "environment": {
+      "CARGO_BUILD_JOBS": "2",
+      "CCACHE_DISABLE": "1",
+      "CARGO_TARGET_DIR": "/home/doll/Project-Peritus/.worktrees/formal-coverage/target/formal-knowledge-parent"
+    },
+    "exit_code": 0,
+    "log": "/tmp/peritus-parent-knowledge-admission-clippy3.log"
+  },
+  {
+    "name": "fmt3",
+    "command": [
+      "cargo",
+      "fmt",
+      "--package",
+      "peritus-run-knowledge",
+      "--",
+      "--check"
+    ],
+    "cwd": "/tmp/peritus-parent-obligations-proof.6ib_z8mo",
+    "environment": {
+      "CARGO_BUILD_JOBS": "2",
+      "CCACHE_DISABLE": "1",
+      "CARGO_TARGET_DIR": "/home/doll/Project-Peritus/.worktrees/formal-coverage/target/formal-knowledge-parent"
+    },
+    "exit_code": 0,
+    "log": "/tmp/peritus-parent-knowledge-admission-fmt3.log"
+  }
+]

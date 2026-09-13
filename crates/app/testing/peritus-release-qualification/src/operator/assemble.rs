@@ -1,6 +1,6 @@
 //! Final H4 bundle assembly from authenticated retained inputs.
 
-use crate::{EvidenceKind, QualificationInputs, QualificationReport, QualificationVerdict};
+use crate::{EvidenceKind, QualificationInputs, QualificationReport};
 
 use super::{
     OperatorError, admission::EvidenceStore, args::FinalizeInput, audit_input, binding,
@@ -51,7 +51,7 @@ pub(super) fn finalize(input: &FinalizeInput) -> Result<(), OperatorError> {
     }) {
         inputs = inputs.evidence(record.clone());
     }
-    let report = QualificationReport::evaluate(&inputs, &policy)?;
+    let report = QualificationReport::evaluate_verified(&inputs, &policy)?;
     let entries = [
         ("qualification-report.json", report.canonical_json()?),
         ("evidence-manifest.json", audit.manifest.canonical_json()?),
@@ -62,7 +62,7 @@ pub(super) fn finalize(input: &FinalizeInput) -> Result<(), OperatorError> {
         ("final-audit.json", serde_json::to_vec(&audit.final_audit)?),
     ];
     files::publish_bundle(&input.output, &entries)?;
-    if report.verdict() == QualificationVerdict::Ready {
+    if report.is_ready() {
         Ok(())
     } else {
         Err(OperatorError::not_ready(format!(

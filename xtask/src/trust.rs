@@ -1,3 +1,4 @@
+use crate::api_contract::{Configuration, Mode};
 use crate::error::{Diagnostic, ErrorCode, XtaskError};
 use crate::metadata;
 use crate::model::{ArchitecturePolicy, CargoMetadata};
@@ -38,6 +39,70 @@ mod manifest_support;
 mod manifest_symbol;
 #[path = "trust/manifest_trust.rs"]
 mod manifest_trust;
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) struct RegisteredProofSymbol {
+    pub(crate) obligation: String,
+    pub(crate) owner: String,
+    pub(crate) symbol: String,
+    pub(crate) mode: Mode,
+}
+
+/// Returns the exact compiler-visible symbols claimed as Verus evidence by the register.
+pub(crate) fn registered_proof_symbols(
+    root: &Path,
+) -> Result<Vec<RegisteredProofSymbol>, XtaskError> {
+    let document: manifest_model::ObligationsDocument =
+        metadata::read_toml(&root.join("verification/obligations.toml"))?;
+    let mut registered = Vec::new();
+    for entry in document.entries {
+        for evidence in entry.evidence.into_iter().filter(|evidence| {
+            matches!(evidence.kind, manifest_model::ProofEvidenceKind::VerusProof)
+        }) {
+            let source = root.join(&evidence.source_file);
+            let contents = fs::read_to_string(&source)
+                .map_err(|error| XtaskError::io("read registered proof source", &source, error))?;
+            let name = evidence.symbol.rsplit("::").next().unwrap_or(&evidence.symbol);
+            let matches: Vec<_> = manifest_symbol::owned_function_declarations(
+                &entry.owning_crate,
+                &source,
+                &contents,
+                name,
+            )
+            .into_iter()
+            .filter(|declaration| declaration.path == evidence.symbol)
+            .collect();
+            let [declaration] = matches.as_slice() else {
+                return Err(XtaskError::metadata(format!(
+                    "registered proof `{}` does not resolve to exactly one declaration",
+                    evidence.symbol
+                )));
+            };
+            let Some(mode) = declaration.declaration.mode else {
+                return Err(XtaskError::metadata(format!(
+                    "registered proof `{}` has an unrecognized Verus function signature",
+                    evidence.symbol
+                )));
+            };
+            if !declaration.declaration.in_verus
+                || declaration.declaration.nested
+                || declaration.declaration.configuration != Configuration::Unconditional
+            {
+                return Err(XtaskError::metadata(format!(
+                    "registered proof `{}` is not an unconditional non-local verus! declaration",
+                    evidence.symbol
+                )));
+            }
+            registered.push(RegisteredProofSymbol {
+                obligation: entry.id.clone(),
+                owner: entry.owning_crate.clone(),
+                symbol: evidence.symbol,
+                mode,
+            });
+        }
+    }
+    Ok(registered)
+}
 
 pub(crate) fn check(root: &Path, policy: &ArchitecturePolicy) -> Result<usize, XtaskError> {
     check_workspace(root, policy, true)

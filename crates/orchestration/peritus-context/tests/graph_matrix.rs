@@ -4,8 +4,8 @@ mod support;
 
 use peritus_codec::sha256;
 use peritus_context::{
-    AuthorityClass, ContentKind, ContextErrorKind, ContextGraph, ContextLimits, ContextNodeId,
-    ContextNodeMetadata, Provenance, RequirementMode, RoleVisibility, TrustClass,
+    AuthorityClass, ContentKind, ContextErrorKind, ContextGraph, ContextLimits, ContextNode,
+    ContextNodeId, ContextNodeMetadata, Provenance, RequirementMode, RoleVisibility, TrustClass,
     bind_context_content,
 };
 use peritus_policy::ActorRole;
@@ -213,10 +213,9 @@ fn graph_rejects_cycles_and_accepts_a_canonical_dag() {
         evidence_node(1, "one", 1, RequirementMode::Optional, vec![id(2)]),
         evidence_node(2, "two", 1, RequirementMode::Optional, vec![id(1)]),
     ];
-    assert_eq!(
-        ContextGraph::new(cycle, limits()).expect_err("cycle").kind(),
-        ContextErrorKind::DependencyCycle
-    );
+    let cycle_error = ContextGraph::new(cycle, limits()).expect_err("cycle");
+    assert_eq!(cycle_error.kind(), ContextErrorKind::DependencyCycle);
+    assert_eq!(cycle_error.node_id(), Some(id(1)));
     let dag = ContextGraph::new(
         vec![
             evidence_node(1, "one", 1, RequirementMode::DependencyRequired, Vec::new()),
@@ -227,4 +226,109 @@ fn graph_rejects_cycles_and_accepts_a_canonical_dag() {
     .expect("valid DAG");
     assert_eq!(dag.nodes().len(), 2);
     assert_eq!(dag.node(id(1)).expect("indexed node").content().bytes(), b"one");
+}
+
+fn legacy_cycle_member(nodes: &[ContextNode]) -> Option<ContextNodeId> {
+    let mut indegree = vec![0_usize; nodes.len()];
+    for node in nodes {
+        for dependency in node.dependencies() {
+            let Some(target) = nodes.iter().position(|candidate| candidate.id() == *dependency)
+            else {
+                return Some(node.id());
+            };
+            let Some(next) = indegree[target].checked_add(1) else {
+                return Some(nodes[target].id());
+            };
+            indegree[target] = next;
+        }
+    }
+
+    let mut removed = vec![false; nodes.len()];
+    let mut removed_count = 0_usize;
+    while removed_count < nodes.len() {
+        let Some(index) = (0..nodes.len()).find(|index| !removed[*index] && indegree[*index] == 0)
+        else {
+            break;
+        };
+        removed[index] = true;
+        removed_count += 1;
+        for dependency in nodes[index].dependencies() {
+            let Some(target) = nodes.iter().position(|candidate| candidate.id() == *dependency)
+            else {
+                return Some(nodes[index].id());
+            };
+            let Some(next) = indegree[target].checked_sub(1) else {
+                return Some(nodes[target].id());
+            };
+            indegree[target] = next;
+        }
+    }
+    removed.iter().position(|removed| !removed).map(|index| nodes[index].id())
+}
+
+fn assert_cycle_diagnostic_matches_legacy(nodes: Vec<ContextNode>, expected: ContextNodeId) {
+    assert_eq!(legacy_cycle_member(nodes.as_slice()), Some(expected));
+    let error = ContextGraph::new(nodes, limits()).expect_err("cycle must be rejected");
+    assert_eq!(error.kind(), ContextErrorKind::DependencyCycle);
+    assert_eq!(error.node_id(), Some(expected));
+}
+
+#[test]
+fn cycle_diagnostics_preserve_legacy_residual_order_for_complex_shapes() {
+    assert_cycle_diagnostic_matches_legacy(
+        vec![
+            evidence_node(1, "dependency tail", 1, RequirementMode::Optional, Vec::new()),
+            evidence_node(2, "cycle a", 1, RequirementMode::Optional, vec![id(1), id(3)]),
+            evidence_node(3, "cycle b", 1, RequirementMode::Optional, vec![id(2)]),
+            evidence_node(4, "dependent tail", 1, RequirementMode::Optional, vec![id(3)]),
+            evidence_node(5, "independent", 1, RequirementMode::Optional, Vec::new()),
+        ],
+        id(1),
+    );
+
+    assert_cycle_diagnostic_matches_legacy(
+        vec![
+            evidence_node(1, "cycle a1", 1, RequirementMode::Optional, vec![id(2)]),
+            evidence_node(2, "cycle a2", 1, RequirementMode::Optional, vec![id(1)]),
+            evidence_node(3, "cycle b1", 1, RequirementMode::Optional, vec![id(4)]),
+            evidence_node(4, "cycle b2", 1, RequirementMode::Optional, vec![id(3)]),
+        ],
+        id(1),
+    );
+
+    assert_cycle_diagnostic_matches_legacy(
+        vec![
+            evidence_node(1, "first leaf", 1, RequirementMode::Optional, Vec::new()),
+            evidence_node(2, "second leaf", 1, RequirementMode::Optional, vec![id(3)]),
+            evidence_node(3, "cycle a", 1, RequirementMode::Optional, vec![id(4)]),
+            evidence_node(4, "cycle b", 1, RequirementMode::Optional, vec![id(3)]),
+        ],
+        id(3),
+    );
+}
+
+#[test]
+fn dependent_count_traversal_preserves_long_chain_and_cycle_result() {
+    const NODE_COUNT: u8 = 128;
+    let graph_limits =
+        ContextLimits::new(usize::from(NODE_COUNT), 4_096, 16, 11).expect("long-chain limits");
+
+    let chain = (1..=NODE_COUNT)
+        .map(|byte| {
+            let dependencies = if byte == 1 { Vec::new() } else { vec![id(byte - 1)] };
+            evidence_node(byte, "long chain", 1, RequirementMode::Optional, dependencies)
+        })
+        .collect();
+    let graph = ContextGraph::new(chain, graph_limits).expect("long chain is acyclic");
+    assert_eq!(graph.nodes().len(), usize::from(NODE_COUNT));
+
+    let cycle = (1..=NODE_COUNT)
+        .map(|byte| {
+            let dependency = if byte == 1 { id(NODE_COUNT) } else { id(byte - 1) };
+            evidence_node(byte, "long cycle", 1, RequirementMode::Optional, vec![dependency])
+        })
+        .collect();
+    let error = ContextGraph::new(cycle, graph_limits).expect_err("long cycle is rejected");
+    assert_eq!(error.kind(), ContextErrorKind::DependencyCycle);
+    assert_eq!(error.node_id(), Some(id(1)));
 }

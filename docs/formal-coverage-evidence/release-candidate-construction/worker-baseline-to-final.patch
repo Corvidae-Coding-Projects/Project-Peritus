@@ -1,0 +1,862 @@
+diff -ruN /tmp/peritus-parent-release377-source-exact/crates/foundation/peritus-release-policy/src/candidate/construction.rs /tmp/peritus-sol-release-candidate-contracts-source-01/crates/foundation/peritus-release-policy/src/candidate/construction.rs
+--- /tmp/peritus-parent-release377-source-exact/crates/foundation/peritus-release-policy/src/candidate/construction.rs	1969-12-31 18:00:00.000000000 -0600
++++ /tmp/peritus-sol-release-candidate-contracts-source-01/crates/foundation/peritus-release-policy/src/candidate/construction.rs	2026-09-12 19:24:02.686938537 -0500
+@@ -0,0 +1,233 @@
++//! Exact checked construction of complete release-candidate components.
++
++use super::{
++    GitCommitId, PlatformMatrix, ProfileIdentity, ReleaseCandidate, ReleaseVersion, SchemaIdentity,
++    ToolchainIdentity,
++};
++use crate::{CandidateId, ConstructionError};
++use peritus_types::Sha256Digest;
++use vstd::prelude::*;
++
++verus! {
++
++impl ToolchainIdentity {
++    /// Exact admission predicate for a complete toolchain identity.
++    pub open spec fn inputs_valid(
++        rust_digest: Sha256Digest,
++        verus_digest: Sha256Digest,
++        vstd_digest: Sha256Digest,
++        solver_digest: Sha256Digest,
++    ) -> bool {
++        crate::validation::spec_digest_nonzero(rust_digest)
++            && crate::validation::spec_digest_nonzero(verus_digest)
++            && crate::validation::spec_digest_nonzero(vstd_digest)
++            && crate::validation::spec_digest_nonzero(solver_digest)
++    }
++
++    /// Creates an exact non-placeholder toolchain identity.
++    ///
++    /// # Errors
++    ///
++    /// Returns [`crate::ConstructionErrorKind::ZeroDigest`] when any component is a placeholder.
++    pub fn new(
++        rust_digest: Sha256Digest,
++        verus_digest: Sha256Digest,
++        vstd_digest: Sha256Digest,
++        solver_digest: Sha256Digest,
++    ) -> (result: Result<Self, ConstructionError>)
++        ensures
++            result.is_ok() == Self::inputs_valid(
++                rust_digest, verus_digest, vstd_digest, solver_digest),
++            match result {
++                Ok(value) => value.spec_rust_digest() == rust_digest
++                    && value.spec_verus_digest() == verus_digest
++                    && value.spec_vstd_digest() == vstd_digest
++                    && value.spec_solver_digest() == solver_digest,
++                Err(error) => error.spec_kind() == crate::ConstructionErrorKind::ZeroDigest,
++            },
++    {
++        crate::validation::require_digest(rust_digest)?;
++        crate::validation::require_digest(verus_digest)?;
++        crate::validation::require_digest(vstd_digest)?;
++        crate::validation::require_digest(solver_digest)?;
++        Ok(Self { rust_digest, verus_digest, vstd_digest, solver_digest })
++    }
++}
++
++impl ProfileIdentity {
++    /// Exact admission predicate for a profile identity.
++    pub open spec fn inputs_valid(revision: u64, digest: Sha256Digest) -> bool {
++        revision > 0 && crate::validation::spec_digest_nonzero(digest)
++    }
++
++    /// Exact first-error result for rejected profile inputs.
++    pub open spec fn construction_error(
++        revision: u64,
++        digest: Sha256Digest,
++        error: ConstructionError,
++    ) -> bool {
++        if revision == 0 {
++            error.spec_kind() == crate::ConstructionErrorKind::ZeroRevision
++        } else {
++            !crate::validation::spec_digest_nonzero(digest)
++                && error.spec_kind() == crate::ConstructionErrorKind::ZeroDigest
++        }
++    }
++
++    /// Creates a positive, content-bound profile identity.
++    ///
++    /// # Errors
++    ///
++    /// Returns a typed error for zero revision or digest.
++    pub fn new(
++        revision: u64,
++        digest: Sha256Digest,
++    ) -> (result: Result<Self, ConstructionError>)
++        ensures
++            result.is_ok() == Self::inputs_valid(revision, digest),
++            match result {
++                Ok(value) => value.spec_revision() == revision
++                    && value.spec_digest() == digest,
++                Err(error) => Self::construction_error(revision, digest, error),
++            },
++    {
++        crate::validation::require_revision(revision)?;
++        crate::validation::require_digest(digest)?;
++        Ok(Self { revision, digest })
++    }
++}
++
++impl SchemaIdentity {
++    /// Exact admission predicate for a complete schema identity.
++    pub open spec fn inputs_valid(
++        policy: u64,
++        evidence: u64,
++        report: u64,
++        artifact: u64,
++        catalog_digest: Sha256Digest,
++    ) -> bool {
++        policy > 0 && evidence > 0 && report > 0 && artifact > 0
++            && crate::validation::spec_digest_nonzero(catalog_digest)
++    }
++
++    /// Exact observable first-error result for rejected schema inputs.
++    pub open spec fn construction_error(
++        policy: u64,
++        evidence: u64,
++        report: u64,
++        artifact: u64,
++        catalog_digest: Sha256Digest,
++        error: ConstructionError,
++    ) -> bool {
++        if policy == 0 || evidence == 0 || report == 0 || artifact == 0 {
++            error.spec_kind() == crate::ConstructionErrorKind::ZeroRevision
++        } else {
++            !crate::validation::spec_digest_nonzero(catalog_digest)
++                && error.spec_kind() == crate::ConstructionErrorKind::ZeroDigest
++        }
++    }
++
++    /// Creates a positive, content-bound schema identity.
++    ///
++    /// # Errors
++    ///
++    /// Returns a typed error for any zero revision or placeholder digest.
++    pub fn new(
++        policy: u64,
++        evidence: u64,
++        report: u64,
++        artifact: u64,
++        catalog_digest: Sha256Digest,
++    ) -> (result: Result<Self, ConstructionError>)
++        ensures
++            result.is_ok() == Self::inputs_valid(
++                policy, evidence, report, artifact, catalog_digest),
++            match result {
++                Ok(value) => value.spec_policy() == policy
++                    && value.spec_evidence() == evidence
++                    && value.spec_report() == report
++                    && value.spec_artifact() == artifact
++                    && value.spec_catalog_digest() == catalog_digest,
++                Err(error) => Self::construction_error(
++                    policy, evidence, report, artifact, catalog_digest, error),
++            },
++    {
++        crate::validation::require_revision(policy)?;
++        crate::validation::require_revision(evidence)?;
++        crate::validation::require_revision(report)?;
++        crate::validation::require_revision(artifact)?;
++        crate::validation::require_digest(catalog_digest)?;
++        Ok(Self { policy, evidence, report, artifact, catalog_digest })
++    }
++}
++
++impl ReleaseCandidate {
++    /// Exact admission predicate for the complete candidate container.
++    pub open spec fn inputs_valid(source_revision: u64, manifest_digest: Sha256Digest) -> bool {
++        source_revision > 0 && crate::validation::spec_digest_nonzero(manifest_digest)
++    }
++
++    /// Exact first-error result for rejected candidate-container inputs.
++    pub open spec fn construction_error(
++        source_revision: u64,
++        manifest_digest: Sha256Digest,
++        error: ConstructionError,
++    ) -> bool {
++        if source_revision == 0 {
++            error.spec_kind() == crate::ConstructionErrorKind::ZeroRevision
++        } else {
++            !crate::validation::spec_digest_nonzero(manifest_digest)
++                && error.spec_kind() == crate::ConstructionErrorKind::ZeroDigest
++        }
++    }
++
++    /// Creates the complete exact release-candidate identity.
++    ///
++    /// # Errors
++    ///
++    /// Returns a typed error for a zero source revision or placeholder manifest digest.
++    #[allow(clippy::too_many_arguments, reason = "the release identity keeps every exact binding explicit")]
++    pub fn new(
++        id: CandidateId,
++        commit: GitCommitId,
++        version: ReleaseVersion,
++        platforms: PlatformMatrix,
++        toolchain: ToolchainIdentity,
++        profile: ProfileIdentity,
++        schemas: SchemaIdentity,
++        source_revision: u64,
++        manifest_digest: Sha256Digest,
++    ) -> (result: Result<Self, ConstructionError>)
++        ensures
++            result.is_ok() == Self::inputs_valid(source_revision, manifest_digest),
++            match result {
++                Ok(value) => value.spec_id() == id
++                    && value.spec_commit() == commit
++                    && value.spec_version() == version
++                    && value.spec_platforms() == platforms
++                    && value.spec_toolchain() == toolchain
++                    && value.spec_profile() == profile
++                    && value.spec_schemas() == schemas
++                    && value.spec_source_revision() == source_revision
++                    && value.spec_manifest_digest() == manifest_digest,
++                Err(error) => Self::construction_error(
++                    source_revision, manifest_digest, error),
++            },
++    {
++        crate::validation::require_revision(source_revision)?;
++        crate::validation::require_digest(manifest_digest)?;
++        Ok(Self {
++            id,
++            commit,
++            version,
++            platforms,
++            toolchain,
++            profile,
++            schemas,
++            source_revision,
++            manifest_digest,
++        })
++    }
++}
++
++} // verus!
+diff -ruN /tmp/peritus-parent-release377-source-exact/crates/foundation/peritus-release-policy/src/candidate/git.rs /tmp/peritus-sol-release-candidate-contracts-source-01/crates/foundation/peritus-release-policy/src/candidate/git.rs
+--- /tmp/peritus-parent-release377-source-exact/crates/foundation/peritus-release-policy/src/candidate/git.rs	2026-09-12 17:33:32.893876385 -0500
++++ /tmp/peritus-sol-release-candidate-contracts-source-01/crates/foundation/peritus-release-policy/src/candidate/git.rs	2026-09-12 19:18:11.640774091 -0500
+@@ -27,16 +27,39 @@
+ }
+ 
+ impl GitCommitId {
++    /// Exact admission predicate for a SHA-1 commit identity.
++    pub open spec fn sha1_inputs_valid(bytes: [u8; 20]) -> bool {
++        exists |index: int| 0 <= index < 20 && bytes[index] != 0
++    }
++
++    /// Exact admission predicate for a SHA-256 commit identity.
++    pub open spec fn sha256_inputs_valid(bytes: [u8; 32]) -> bool {
++        exists |index: int| 0 <= index < 32 && bytes[index] != 0
++    }
++
+     /// Creates a nonzero SHA-1 commit identity.
+     ///
+     /// # Errors
+     ///
+     /// Returns [`ConstructionErrorKind::ZeroIdentity`] for an all-zero identifier.
+-    pub const fn sha1(bytes: [u8; 20]) -> Result<Self, ConstructionError> {
++    pub const fn sha1(
++        bytes: [u8; 20],
++    ) -> (result: Result<Self, ConstructionError>)
++        ensures
++            result.is_ok() == Self::sha1_inputs_valid(bytes),
++            match result {
++                Ok(value) => value.spec_format() == GitObjectFormat::Sha1
++                    && value.spec_sha1_bytes() == Some(bytes)
++                    && value.spec_sha256_bytes().is_none(),
++                Err(error) => error.spec_kind() == ConstructionErrorKind::ZeroIdentity,
++            },
++    {
+         let mut nonzero = false;
+         let mut index = 0;
+         while index < bytes.len()
+-            invariant 0 <= index <= bytes.len(),
++            invariant
++                0 <= index <= bytes.len(),
++                nonzero == (exists |prior: int| 0 <= prior < index && bytes[prior] != 0),
+             decreases bytes.len() - index,
+         {
+             if bytes[index] != 0 { nonzero = true; }
+@@ -54,7 +77,18 @@
+     /// # Errors
+     ///
+     /// Returns [`ConstructionErrorKind::ZeroIdentity`] for an all-zero identifier.
+-    pub const fn sha256(bytes: [u8; 32]) -> Result<Self, ConstructionError> {
++    pub const fn sha256(
++        bytes: [u8; 32],
++    ) -> (result: Result<Self, ConstructionError>)
++        ensures
++            result.is_ok() == Self::sha256_inputs_valid(bytes),
++            match result {
++                Ok(value) => value.spec_format() == GitObjectFormat::Sha256
++                    && value.spec_sha1_bytes().is_none()
++                    && value.spec_sha256_bytes() == Some(bytes),
++                Err(error) => error.spec_kind() == ConstructionErrorKind::ZeroIdentity,
++            },
++    {
+         if crate::validation::digest_bytes_nonzero(&bytes) {
+             Ok(Self { bytes: GitCommitBytes::Sha256(bytes) })
+         } else {
+diff -ruN /tmp/peritus-parent-release377-source-exact/crates/foundation/peritus-release-policy/src/candidate/platform.rs /tmp/peritus-sol-release-candidate-contracts-source-01/crates/foundation/peritus-release-policy/src/candidate/platform.rs
+--- /tmp/peritus-parent-release377-source-exact/crates/foundation/peritus-release-policy/src/candidate/platform.rs	2026-09-12 17:33:32.993876723 -0500
++++ /tmp/peritus-sol-release-candidate-contracts-source-01/crates/foundation/peritus-release-policy/src/candidate/platform.rs	2026-09-12 19:20:02.527143076 -0500
+@@ -35,6 +35,11 @@
+ }
+ 
+ impl PlatformIdentity {
++    /// Exact admission predicate for one native target identity.
++    pub open spec fn inputs_valid(profile_digest: Sha256Digest) -> bool {
++        crate::validation::spec_digest_nonzero(profile_digest)
++    }
++
+     /// Creates one exact native target identity.
+     ///
+     /// # Errors
+@@ -44,7 +49,16 @@
+         operating_system: OperatingSystem,
+         architecture: Architecture,
+         profile_digest: Sha256Digest,
+-    ) -> Result<Self, ConstructionError> {
++    ) -> (result: Result<Self, ConstructionError>)
++        ensures
++            result.is_ok() == Self::inputs_valid(profile_digest),
++            match result {
++                Ok(value) => value.spec_operating_system() == operating_system
++                    && value.spec_architecture() == architecture
++                    && value.spec_profile_digest() == profile_digest,
++                Err(error) => error.spec_kind() == ConstructionErrorKind::ZeroDigest,
++            },
++    {
+         crate::validation::require_digest(profile_digest)?;
+         Ok(Self { operating_system, architecture, profile_digest })
+     }
+@@ -92,6 +106,17 @@
+ }
+ 
+ impl PlatformMatrix {
++    /// Exact admission predicate for the canonical three-slot platform matrix.
++    pub open spec fn inputs_valid(
++        linux: PlatformIdentity,
++        macos: PlatformIdentity,
++        windows: PlatformIdentity,
++    ) -> bool {
++        linux.spec_operating_system() == OperatingSystem::Linux
++            && macos.spec_operating_system() == OperatingSystem::MacOs
++            && windows.spec_operating_system() == OperatingSystem::Windows
++    }
++
+     /// Creates a complete tier-one matrix in canonical Linux/macOS/Windows order.
+     ///
+     /// # Errors
+@@ -101,7 +126,16 @@
+         linux: PlatformIdentity,
+         macos: PlatformIdentity,
+         windows: PlatformIdentity,
+-    ) -> Result<Self, ConstructionError> {
++    ) -> (result: Result<Self, ConstructionError>)
++        ensures
++            result.is_ok() == Self::inputs_valid(linux, macos, windows),
++            match result {
++                Ok(value) => value.spec_linux() == linux
++                    && value.spec_macos() == macos
++                    && value.spec_windows() == windows,
++                Err(error) => error.spec_kind() == ConstructionErrorKind::InvalidPlatformMatrix,
++            },
++    {
+         if matches!(linux.operating_system(), OperatingSystem::Linux)
+             && matches!(macos.operating_system(), OperatingSystem::MacOs)
+             && matches!(windows.operating_system(), OperatingSystem::Windows)
+diff -ruN /tmp/peritus-parent-release377-source-exact/crates/foundation/peritus-release-policy/src/candidate/version.rs /tmp/peritus-sol-release-candidate-contracts-source-01/crates/foundation/peritus-release-policy/src/candidate/version.rs
+--- /tmp/peritus-parent-release377-source-exact/crates/foundation/peritus-release-policy/src/candidate/version.rs	2026-09-12 17:33:33.088877044 -0500
++++ /tmp/peritus-sol-release-candidate-contracts-source-01/crates/foundation/peritus-release-policy/src/candidate/version.rs	2026-09-12 19:24:02.780938846 -0500
+@@ -16,6 +16,11 @@
+ }
+ 
+ impl ReleaseVersion {
++    /// Exact admission predicate for a release-version identity.
++    pub open spec fn inputs_valid(descriptor_digest: Sha256Digest) -> bool {
++        crate::validation::spec_digest_nonzero(descriptor_digest)
++    }
++
+     /// Creates an exact semantic release version.
+     ///
+     /// `descriptor_digest` binds the canonical complete version string, including any pre-release
+@@ -29,7 +34,17 @@
+         minor: u16,
+         patch: u16,
+         descriptor_digest: Sha256Digest,
+-    ) -> Result<Self, ConstructionError> {
++    ) -> (result: Result<Self, ConstructionError>)
++        ensures
++            result.is_ok() == Self::inputs_valid(descriptor_digest),
++            match result {
++                Ok(value) => value.spec_major() == major
++                    && value.spec_minor() == minor
++                    && value.spec_patch() == patch
++                    && value.spec_descriptor_digest() == descriptor_digest,
++                Err(error) => error.spec_kind() == crate::ConstructionErrorKind::ZeroDigest,
++            },
++    {
+         crate::validation::require_digest(descriptor_digest)?;
+         Ok(Self { major, minor, patch, descriptor_digest })
+     }
+diff -ruN /tmp/peritus-parent-release377-source-exact/crates/foundation/peritus-release-policy/src/candidate.rs /tmp/peritus-sol-release-candidate-contracts-source-01/crates/foundation/peritus-release-policy/src/candidate.rs
+--- /tmp/peritus-parent-release377-source-exact/crates/foundation/peritus-release-policy/src/candidate.rs	2026-09-12 17:33:32.794876051 -0500
++++ /tmp/peritus-sol-release-candidate-contracts-source-01/crates/foundation/peritus-release-policy/src/candidate.rs	2026-09-12 19:20:02.429142750 -0500
+@@ -1,12 +1,12 @@
+ //! Exact release-candidate, platform, toolchain, profile, and schema identities.
+ 
+-use crate::validation::{require_digest, require_revision};
+-use crate::{CandidateId, ConstructionError};
++use crate::CandidateId;
+ use peritus_types::Sha256Digest;
+ use vstd::prelude::*;
+ 
+ verus! {
+ 
++mod construction;
+ mod git;
+ pub mod equality;
+ mod platform;
+@@ -31,24 +31,6 @@
+ }
+ 
+ impl ToolchainIdentity {
+-    /// Creates an exact non-placeholder toolchain identity.
+-    ///
+-    /// # Errors
+-    ///
+-    /// Returns [`ConstructionErrorKind::ZeroDigest`] when any component is a placeholder.
+-    pub fn new(
+-        rust_digest: Sha256Digest,
+-        verus_digest: Sha256Digest,
+-        vstd_digest: Sha256Digest,
+-        solver_digest: Sha256Digest,
+-    ) -> Result<Self, ConstructionError> {
+-        require_digest(rust_digest)?;
+-        require_digest(verus_digest)?;
+-        require_digest(vstd_digest)?;
+-        require_digest(solver_digest)?;
+-        Ok(Self { rust_digest, verus_digest, vstd_digest, solver_digest })
+-    }
+-
+     /// Returns the exact Rust toolchain digest.
+     #[must_use]
+     pub const fn rust_digest(&self) -> (digest: Sha256Digest)
+@@ -102,17 +84,6 @@
+ }
+ 
+ impl ProfileIdentity {
+-    /// Creates a positive, content-bound profile identity.
+-    ///
+-    /// # Errors
+-    ///
+-    /// Returns a typed error for zero revision or digest.
+-    pub fn new(revision: u64, digest: Sha256Digest) -> Result<Self, ConstructionError> {
+-        require_revision(revision)?;
+-        require_digest(digest)?;
+-        Ok(Self { revision, digest })
+-    }
+-
+     /// Returns the profile revision.
+     #[must_use]
+     pub const fn revision(&self) -> (revision: u64) ensures revision == self.spec_revision() {
+@@ -143,26 +114,6 @@
+ }
+ 
+ impl SchemaIdentity {
+-    /// Creates a positive, content-bound schema identity.
+-    ///
+-    /// # Errors
+-    ///
+-    /// Returns a typed error for any zero revision or placeholder digest.
+-    pub fn new(
+-        policy: u64,
+-        evidence: u64,
+-        report: u64,
+-        artifact: u64,
+-        catalog_digest: Sha256Digest,
+-    ) -> Result<Self, ConstructionError> {
+-        require_revision(policy)?;
+-        require_revision(evidence)?;
+-        require_revision(report)?;
+-        require_revision(artifact)?;
+-        require_digest(catalog_digest)?;
+-        Ok(Self { policy, evidence, report, artifact, catalog_digest })
+-    }
+-
+     /// Returns the release-policy schema revision.
+     #[must_use]
+     pub const fn policy(&self) -> (revision: u64) ensures revision == self.spec_policy() {
+@@ -226,38 +177,6 @@
+ }
+ 
+ impl ReleaseCandidate {
+-    /// Creates the complete exact release-candidate identity.
+-    ///
+-    /// # Errors
+-    ///
+-    /// Returns a typed error for a zero source revision or placeholder manifest digest.
+-    #[allow(clippy::too_many_arguments, reason = "the release identity keeps every exact binding explicit")]
+-    pub fn new(
+-        id: CandidateId,
+-        commit: GitCommitId,
+-        version: ReleaseVersion,
+-        platforms: PlatformMatrix,
+-        toolchain: ToolchainIdentity,
+-        profile: ProfileIdentity,
+-        schemas: SchemaIdentity,
+-        source_revision: u64,
+-        manifest_digest: Sha256Digest,
+-    ) -> Result<Self, ConstructionError> {
+-        require_revision(source_revision)?;
+-        require_digest(manifest_digest)?;
+-        Ok(Self {
+-            id,
+-            commit,
+-            version,
+-            platforms,
+-            toolchain,
+-            profile,
+-            schemas,
+-            source_revision,
+-            manifest_digest,
+-        })
+-    }
+-
+     /// Returns the nominal candidate identity.
+     #[must_use]
+     pub const fn id(&self) -> (id: CandidateId) ensures id == self.spec_id() { self.id }
+diff -ruN /tmp/peritus-parent-release377-source-exact/crates/foundation/peritus-release-policy/src/identity.rs /tmp/peritus-sol-release-candidate-contracts-source-01/crates/foundation/peritus-release-policy/src/identity.rs
+--- /tmp/peritus-parent-release377-source-exact/crates/foundation/peritus-release-policy/src/identity.rs	2026-09-12 15:08:04.469036172 -0500
++++ /tmp/peritus-sol-release-candidate-contracts-source-01/crates/foundation/peritus-release-policy/src/identity.rs	2026-09-12 19:21:08.114361323 -0500
+@@ -5,7 +5,8 @@
+ 
+ verus! {
+ 
+-pub(crate) open spec fn nonzero_identifier(bytes: [u8; 16]) -> bool {
++/// Logical predicate for a nominal identity outside the reserved all-zero value.
++pub open spec fn nonzero_identifier(bytes: [u8; 16]) -> bool {
+     bytes[0] != 0 || bytes[1] != 0 || bytes[2] != 0 || bytes[3] != 0
+         || bytes[4] != 0 || bytes[5] != 0 || bytes[6] != 0 || bytes[7] != 0
+         || bytes[8] != 0 || bytes[9] != 0 || bytes[10] != 0 || bytes[11] != 0
+@@ -20,7 +21,12 @@
+     closed spec fn invariant(&self) -> bool { nonzero_identifier(self.0) }
+ 
+     const fn new(bytes: [u8; 16]) -> (result: Result<Self, ConstructionError>)
+-        ensures result.is_ok() == nonzero_identifier(bytes)
++        ensures
++            result.is_ok() == nonzero_identifier(bytes),
++            match result {
++                Ok(value) => value.spec_bytes() == bytes,
++                Err(error) => error.spec_kind() == ConstructionErrorKind::ZeroIdentity,
++            },
+     {
+         if nonzero_identifier_exec(bytes) {
+             Ok(Self(bytes))
+@@ -52,12 +58,22 @@
+ pub struct CandidateId(StableIdentity);
+ 
+ impl CandidateId {
++    /// Exact admission predicate for a candidate identity.
++    pub open spec fn inputs_valid(bytes: [u8; 16]) -> bool { nonzero_identifier(bytes) }
++
+     /// Creates a nonzero candidate identity.
+     ///
+     /// # Errors
+     ///
+     /// Returns [`ConstructionErrorKind::ZeroIdentity`] for the reserved zero value.
+-    pub const fn new(bytes: [u8; 16]) -> Result<Self, ConstructionError> {
++    pub const fn new(bytes: [u8; 16]) -> (result: Result<Self, ConstructionError>)
++        ensures
++            result.is_ok() == Self::inputs_valid(bytes),
++            match result {
++                Ok(value) => value.spec_bytes() == bytes,
++                Err(error) => error.spec_kind() == ConstructionErrorKind::ZeroIdentity,
++            },
++    {
+         match StableIdentity::new(bytes) {
+             Ok(value) => Ok(Self(value)),
+             Err(error) => Err(error),
+@@ -81,12 +97,22 @@
+ pub struct PrincipalId(StableIdentity);
+ 
+ impl PrincipalId {
++    /// Exact admission predicate for a principal identity.
++    pub open spec fn inputs_valid(bytes: [u8; 16]) -> bool { nonzero_identifier(bytes) }
++
+     /// Creates a nonzero principal identity.
+     ///
+     /// # Errors
+     ///
+     /// Returns [`ConstructionErrorKind::ZeroIdentity`] for the reserved zero value.
+-    pub const fn new(bytes: [u8; 16]) -> Result<Self, ConstructionError> {
++    pub const fn new(bytes: [u8; 16]) -> (result: Result<Self, ConstructionError>)
++        ensures
++            result.is_ok() == Self::inputs_valid(bytes),
++            match result {
++                Ok(value) => value.spec_bytes() == bytes,
++                Err(error) => error.spec_kind() == ConstructionErrorKind::ZeroIdentity,
++            },
++    {
+         match StableIdentity::new(bytes) {
+             Ok(value) => Ok(Self(value)),
+             Err(error) => Err(error),
+@@ -110,12 +136,22 @@
+ pub struct ReviewId(StableIdentity);
+ 
+ impl ReviewId {
++    /// Exact admission predicate for a review identity.
++    pub open spec fn inputs_valid(bytes: [u8; 16]) -> bool { nonzero_identifier(bytes) }
++
+     /// Creates a nonzero review identity.
+     ///
+     /// # Errors
+     ///
+     /// Returns [`ConstructionErrorKind::ZeroIdentity`] for the reserved zero value.
+-    pub const fn new(bytes: [u8; 16]) -> Result<Self, ConstructionError> {
++    pub const fn new(bytes: [u8; 16]) -> (result: Result<Self, ConstructionError>)
++        ensures
++            result.is_ok() == Self::inputs_valid(bytes),
++            match result {
++                Ok(value) => value.spec_bytes() == bytes,
++                Err(error) => error.spec_kind() == ConstructionErrorKind::ZeroIdentity,
++            },
++    {
+         match StableIdentity::new(bytes) {
+             Ok(value) => Ok(Self(value)),
+             Err(error) => Err(error),
+@@ -139,12 +175,22 @@
+ pub struct FindingId(StableIdentity);
+ 
+ impl FindingId {
++    /// Exact admission predicate for a finding identity.
++    pub open spec fn inputs_valid(bytes: [u8; 16]) -> bool { nonzero_identifier(bytes) }
++
+     /// Creates a nonzero finding identity.
+     ///
+     /// # Errors
+     ///
+     /// Returns [`ConstructionErrorKind::ZeroIdentity`] for the reserved zero value.
+-    pub const fn new(bytes: [u8; 16]) -> Result<Self, ConstructionError> {
++    pub const fn new(bytes: [u8; 16]) -> (result: Result<Self, ConstructionError>)
++        ensures
++            result.is_ok() == Self::inputs_valid(bytes),
++            match result {
++                Ok(value) => value.spec_bytes() == bytes,
++                Err(error) => error.spec_kind() == ConstructionErrorKind::ZeroIdentity,
++            },
++    {
+         match StableIdentity::new(bytes) {
+             Ok(value) => Ok(Self(value)),
+             Err(error) => Err(error),
+diff -ruN /tmp/peritus-parent-release377-source-exact/crates/foundation/peritus-release-policy/src/validation.rs /tmp/peritus-sol-release-candidate-contracts-source-01/crates/foundation/peritus-release-policy/src/validation.rs
+--- /tmp/peritus-parent-release377-source-exact/crates/foundation/peritus-release-policy/src/validation.rs	2026-09-12 17:34:41.191107011 -0500
++++ /tmp/peritus-sol-release-candidate-contracts-source-01/crates/foundation/peritus-release-policy/src/validation.rs	2026-09-12 19:27:51.715626743 -0500
+@@ -57,7 +57,16 @@
+ }
+ 
+ /// Rejects a zero revision used by an identity-bearing input.
+-pub const fn require_revision(revision: u64) -> Result<(), ConstructionError> {
++pub const fn require_revision(
++    revision: u64,
++) -> (result: Result<(), ConstructionError>)
++    ensures
++        result.is_ok() == (revision > 0),
++        match result {
++            Ok(()) => true,
++            Err(error) => error.spec_kind() == ConstructionErrorKind::ZeroRevision,
++        },
++{
+     if revision == 0 {
+         Err(ConstructionError::new(ConstructionErrorKind::ZeroRevision))
+     } else {
+diff -ruN /tmp/peritus-parent-release377-source-exact/crates/foundation/peritus-release-policy/tests/construction.rs /tmp/peritus-sol-release-candidate-contracts-source-01/crates/foundation/peritus-release-policy/tests/construction.rs
+--- /tmp/peritus-parent-release377-source-exact/crates/foundation/peritus-release-policy/tests/construction.rs	2026-09-12 18:20:38.120216825 -0500
++++ /tmp/peritus-sol-release-candidate-contracts-source-01/crates/foundation/peritus-release-policy/tests/construction.rs	2026-09-12 19:24:31.696034121 -0500
+@@ -4,9 +4,15 @@
+ 
+ use peritus_release_policy::{
+     Architecture, CandidateId, ConstructionErrorKind, EvidenceBinding, EvidenceObservation,
+-    GitCommitId, OperatingSystem, PlatformIdentity, PlatformMatrix, PrincipalId, ReleaseEvidence,
+-    ReviewId,
++    FindingId, GitCommitId, GitObjectFormat, OperatingSystem, PlatformIdentity, PlatformMatrix,
++    PrincipalId, ProfileIdentity, ReleaseCandidate, ReleaseEvidence, ReleaseVersion, ReviewId,
++    SchemaIdentity, ToolchainIdentity,
+ };
++use peritus_types::Sha256Digest;
++
++const fn zero_digest() -> Sha256Digest {
++    Sha256Digest::new([0; 32])
++}
+ 
+ #[test]
+ fn zero_nominal_identities_are_rejected() {
+@@ -23,9 +29,164 @@
+         ConstructionErrorKind::ZeroIdentity
+     );
+     assert_eq!(
++        FindingId::new([0; 16]).expect_err("zero finding id").kind(),
++        ConstructionErrorKind::ZeroIdentity
++    );
++    assert_eq!(
+         GitCommitId::sha1([0; 20]).expect_err("zero commit").kind(),
+         ConstructionErrorKind::ZeroIdentity
+     );
++    assert_eq!(
++        GitCommitId::sha256([0; 32]).expect_err("zero SHA-256 commit").kind(),
++        ConstructionErrorKind::ZeroIdentity
++    );
++}
++
++#[test]
++fn late_nonzero_identity_bytes_are_preserved_exactly() {
++    let mut nominal = [0; 16];
++    nominal[15] = 91;
++    assert_eq!(*CandidateId::new(nominal).expect("candidate id").as_bytes(), nominal);
++    assert_eq!(*PrincipalId::new(nominal).expect("principal id").as_bytes(), nominal);
++    assert_eq!(*ReviewId::new(nominal).expect("review id").as_bytes(), nominal);
++    assert_eq!(*FindingId::new(nominal).expect("finding id").as_bytes(), nominal);
++
++    let mut sha1 = [0; 20];
++    sha1[19] = 92;
++    let commit = GitCommitId::sha1(sha1).expect("late SHA-1 byte");
++    assert_eq!(commit.format(), GitObjectFormat::Sha1);
++    assert_eq!(commit.sha1_bytes(), Some(sha1));
++    assert_eq!(commit.sha256_bytes(), None);
++
++    let mut sha256 = [0; 32];
++    sha256[31] = 93;
++    let commit = GitCommitId::sha256(sha256).expect("late SHA-256 byte");
++    assert_eq!(commit.format(), GitObjectFormat::Sha256);
++    assert_eq!(commit.sha1_bytes(), None);
++    assert_eq!(commit.sha256_bytes(), Some(sha256));
++}
++
++#[test]
++fn digest_bound_candidate_components_preserve_fields_and_reject_zero() {
++    let version = ReleaseVersion::new(7, 8, 9, support::digest(1)).expect("version");
++    assert_eq!((version.major(), version.minor(), version.patch()), (7, 8, 9));
++    assert_eq!(version.descriptor_digest(), support::digest(1));
++    assert_eq!(
++        ReleaseVersion::new(7, 8, 9, zero_digest()).expect_err("zero descriptor").kind(),
++        ConstructionErrorKind::ZeroDigest
++    );
++
++    let linux =
++        PlatformIdentity::new(OperatingSystem::Linux, Architecture::Aarch64, support::digest(2))
++            .expect("platform");
++    assert_eq!(linux.operating_system(), OperatingSystem::Linux);
++    assert_eq!(linux.architecture(), Architecture::Aarch64);
++    assert_eq!(linux.profile_digest(), support::digest(2));
++    assert_eq!(
++        PlatformIdentity::new(OperatingSystem::Linux, Architecture::Aarch64, zero_digest())
++            .expect_err("zero platform profile")
++            .kind(),
++        ConstructionErrorKind::ZeroDigest
++    );
++
++    let toolchain = ToolchainIdentity::new(
++        support::digest(3),
++        support::digest(4),
++        support::digest(5),
++        support::digest(6),
++    )
++    .expect("toolchain");
++    assert_eq!(toolchain.rust_digest(), support::digest(3));
++    assert_eq!(toolchain.verus_digest(), support::digest(4));
++    assert_eq!(toolchain.vstd_digest(), support::digest(5));
++    assert_eq!(toolchain.solver_digest(), support::digest(6));
++    assert_eq!(
++        ToolchainIdentity::new(
++            support::digest(3),
++            support::digest(4),
++            zero_digest(),
++            support::digest(6),
++        )
++        .expect_err("zero toolchain component")
++        .kind(),
++        ConstructionErrorKind::ZeroDigest
++    );
++}
++
++#[test]
++fn revision_errors_precede_later_digest_errors() {
++    assert_eq!(
++        ProfileIdentity::new(0, zero_digest()).expect_err("profile revision first").kind(),
++        ConstructionErrorKind::ZeroRevision
++    );
++    assert_eq!(
++        ProfileIdentity::new(1, zero_digest()).expect_err("profile digest second").kind(),
++        ConstructionErrorKind::ZeroDigest
++    );
++    assert_eq!(
++        SchemaIdentity::new(1, 0, 1, 1, zero_digest()).expect_err("schema revision first").kind(),
++        ConstructionErrorKind::ZeroRevision
++    );
++    assert_eq!(
++        SchemaIdentity::new(1, 1, 1, 1, zero_digest()).expect_err("schema digest second").kind(),
++        ConstructionErrorKind::ZeroDigest
++    );
++
++    let base = support::candidate();
++    assert_eq!(
++        rebuild_candidate(&base, 0, zero_digest()).expect_err("source revision first").kind(),
++        ConstructionErrorKind::ZeroRevision
++    );
++    assert_eq!(
++        rebuild_candidate(&base, 1, zero_digest()).expect_err("manifest digest second").kind(),
++        ConstructionErrorKind::ZeroDigest
++    );
++}
++
++#[test]
++fn revision_bound_components_and_platform_matrix_preserve_every_field() {
++    let profile = ProfileIdentity::new(17, support::digest(7)).expect("profile");
++    assert_eq!(profile.revision(), 17);
++    assert_eq!(profile.digest(), support::digest(7));
++
++    let schemas = SchemaIdentity::new(18, 19, 20, 21, support::digest(8)).expect("schemas");
++    assert_eq!(schemas.policy(), 18);
++    assert_eq!(schemas.evidence(), 19);
++    assert_eq!(schemas.report(), 20);
++    assert_eq!(schemas.artifact(), 21);
++    assert_eq!(schemas.catalog_digest(), support::digest(8));
++
++    let linux =
++        PlatformIdentity::new(OperatingSystem::Linux, Architecture::X86_64, support::digest(9))
++            .expect("linux");
++    let macos =
++        PlatformIdentity::new(OperatingSystem::MacOs, Architecture::Aarch64, support::digest(10))
++            .expect("macOS");
++    let windows =
++        PlatformIdentity::new(OperatingSystem::Windows, Architecture::X86_64, support::digest(11))
++            .expect("windows");
++    let matrix = PlatformMatrix::new(linux, macos, windows).expect("platform matrix");
++    assert_eq!(matrix.linux(), linux);
++    assert_eq!(matrix.macos(), macos);
++    assert_eq!(matrix.windows(), windows);
++}
++
++fn rebuild_candidate(
++    base: &ReleaseCandidate,
++    source_revision: u64,
++    manifest_digest: Sha256Digest,
++) -> Result<ReleaseCandidate, peritus_release_policy::ConstructionError> {
++    ReleaseCandidate::new(
++        base.id(),
++        base.commit(),
++        base.version(),
++        base.platforms(),
++        base.toolchain(),
++        base.profile(),
++        base.schemas(),
++        source_revision,
++        manifest_digest,
++    )
+ }
+ 
+ #[test]

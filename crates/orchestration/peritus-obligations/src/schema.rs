@@ -7,6 +7,13 @@ use crate::{
 };
 use vstd::prelude::*;
 
+#[path = "schema_coverage.rs"]
+mod coverage;
+#[path = "schema_model.rs"]
+mod model;
+#[path = "schema_validation.rs"]
+mod validation;
+
 verus! {
 
 /// Direction of a public schema contract.
@@ -19,13 +26,22 @@ pub enum SchemaDirection {
 }
 
 /// One exact required schema field.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq)]
 pub struct SchemaField {
     id: SchemaFieldId,
     exact_name: Vec<u8>,
 }
 
 impl SchemaField {
+    /// Logical view of the complete field identity.
+    pub closed spec fn spec_id(&self) -> SchemaFieldId { self.id }
+
+    /// Logical view of every byte in the exact public field spelling.
+    pub closed spec fn spec_exact_name(&self) -> Seq<u8> { self.exact_name@ }
+
+    #[verifier::type_invariant]
+    closed spec fn invariant(&self) -> bool { self.spec_valid() }
+
     /// Creates a nonempty bounded field name.
     ///
     /// # Errors
@@ -35,7 +51,16 @@ impl SchemaField {
         id: SchemaFieldId,
         exact_name: Vec<u8>,
         maximum_bytes: usize,
-    ) -> Result<Self, ObligationError> {
+    ) -> (result: Result<Self, ObligationError>)
+        ensures
+            result.is_ok() == (0 < exact_name@.len() <= maximum_bytes),
+            match result {
+                Ok(value) => value.spec_id() == id
+                    && value.spec_exact_name() == exact_name@
+                    && value.spec_valid(),
+                Err(_) => true,
+            },
+    {
         if exact_name.is_empty() || exact_name.len() > maximum_bytes {
             Err(ObligationError::numbers(
                 ObligationErrorKind::InvalidText,
@@ -49,21 +74,31 @@ impl SchemaField {
 
     /// Stable direction-specific field identity.
     #[must_use]
-    pub const fn id(&self) -> SchemaFieldId { self.id }
+    pub const fn id(&self) -> (id: SchemaFieldId)
+        ensures id == self.spec_id(),
+    { self.id }
 
     /// Exact public field spelling.
     #[must_use]
-    pub const fn exact_name(&self) -> &[u8] { self.exact_name.as_slice() }
+    pub const fn exact_name(&self) -> (name: &[u8])
+        ensures name@ == self.spec_exact_name(),
+    { self.exact_name.as_slice() }
 }
 
 /// Required fields for one side of a public interface.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq)]
 pub struct SchemaRequirement {
     direction: SchemaDirection,
     fields: Vec<SchemaField>,
 }
 
 impl SchemaRequirement {
+    /// Logical view of the exact request or response direction.
+    pub closed spec fn spec_direction(&self) -> SchemaDirection { self.direction }
+
+    #[verifier::type_invariant]
+    closed spec fn invariant(&self) -> bool { self.spec_canonical() }
+
     /// Creates a nonempty canonical directional field set.
     ///
     /// # Errors
@@ -73,35 +108,27 @@ impl SchemaRequirement {
         direction: SchemaDirection,
         fields: Vec<SchemaField>,
         limits: ObligationLimits,
-    ) -> Result<Self, ObligationError> {
-        if fields.is_empty() || fields.len() > limits.max_schema_fields() {
-            return Err(ObligationError::numbers(
-                ObligationErrorKind::InvalidSchema,
-                limits.max_schema_fields() as u64,
-                fields.len() as u64,
-            ));
-        }
-        let mut index = 0;
-        while index < fields.len()
-            invariant index <= fields.len(),
-            decreases fields.len() - index,
-        {
-            if index > 0 {
-                if fields[index - 1].id() == fields[index].id() {
-                    return Err(ObligationError::plain(ObligationErrorKind::DuplicateValue));
-                }
-                if fields[index - 1].id() > fields[index].id() {
-                    return Err(ObligationError::plain(ObligationErrorKind::NonCanonicalOrder));
-                }
-            }
-            index += 1;
-        }
+    ) -> (result: Result<Self, ObligationError>)
+        ensures
+            result.is_ok() == (0 < fields@.len()
+                && fields@.len() <= limits.spec_max_schema_fields()
+                && model::required_fields_ordered(fields@)),
+            match result {
+                Ok(value) => value.spec_direction() == direction
+                    && value.spec_fields() == fields@
+                    && value.spec_canonical(),
+                Err(_) => true,
+            },
+    {
+        validation::validate_required_fields(fields.as_slice(), limits.max_schema_fields())?;
         Ok(Self { direction, fields })
     }
 
     /// Contract direction.
     #[must_use]
-    pub const fn direction(&self) -> SchemaDirection { self.direction }
+    pub const fn direction(&self) -> (direction: SchemaDirection)
+        ensures direction == self.spec_direction(),
+    { self.direction }
 
     /// Exact required fields.
     pub closed spec fn spec_fields(&self) -> Seq<SchemaField> { self.fields@ }
@@ -116,7 +143,7 @@ impl SchemaRequirement {
 }
 
 /// Candidate observation of one direction-specific schema.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq)]
 pub struct SchemaEvidence {
     binding: EvidenceBinding,
     direction: SchemaDirection,
@@ -124,6 +151,15 @@ pub struct SchemaEvidence {
 }
 
 impl SchemaEvidence {
+    /// Logical view of the exact observed direction.
+    pub closed spec fn spec_direction(&self) -> SchemaDirection { self.direction }
+
+    #[verifier::type_invariant]
+    closed spec fn invariant(&self) -> bool { self.spec_canonical() }
+
+    /// Exact binding supplied with the schema observation.
+    pub closed spec fn spec_binding(&self) -> EvidenceBinding { self.binding }
+
     /// Creates a canonical observed field set.
     ///
     /// # Errors
@@ -134,39 +170,34 @@ impl SchemaEvidence {
         direction: SchemaDirection,
         observed_fields: Vec<SchemaFieldId>,
         limits: ObligationLimits,
-    ) -> Result<Self, ObligationError> {
-        if observed_fields.len() > limits.max_schema_fields() {
-            return Err(ObligationError::numbers(
-                ObligationErrorKind::InvalidSchema,
-                limits.max_schema_fields() as u64,
-                observed_fields.len() as u64,
-            ));
-        }
-        let mut index = 0;
-        while index < observed_fields.len()
-            invariant index <= observed_fields.len(),
-            decreases observed_fields.len() - index,
-        {
-            if index > 0 {
-                if observed_fields[index - 1] == observed_fields[index] {
-                    return Err(ObligationError::plain(ObligationErrorKind::DuplicateValue));
-                }
-                if observed_fields[index - 1] > observed_fields[index] {
-                    return Err(ObligationError::plain(ObligationErrorKind::NonCanonicalOrder));
-                }
-            }
-            index += 1;
-        }
+    ) -> (result: Result<Self, ObligationError>)
+        ensures
+            result.is_ok() == (observed_fields@.len() <= limits.spec_max_schema_fields()
+                && model::observed_fields_ordered(observed_fields@)),
+            match result {
+                Ok(value) => value.spec_binding() == binding
+                    && value.spec_direction() == direction
+                    && value.spec_observed_fields() == observed_fields@
+                    && value.spec_canonical(),
+                Err(_) => true,
+            },
+    {
+        validation::validate_observed_fields(
+            observed_fields.as_slice(), limits.max_schema_fields())?;
         Ok(Self { binding, direction, observed_fields })
     }
 
     /// Complete current-candidate binding.
     #[must_use]
-    pub const fn binding(&self) -> &EvidenceBinding { &self.binding }
+    pub const fn binding(&self) -> (value: &EvidenceBinding)
+        ensures *value == self.spec_binding(),
+    { &self.binding }
 
     /// Observed interface direction.
     #[must_use]
-    pub const fn direction(&self) -> SchemaDirection { self.direction }
+    pub const fn direction(&self) -> (direction: SchemaDirection)
+        ensures direction == self.spec_direction(),
+    { self.direction }
 
     /// Canonical observed field identities.
     pub closed spec fn spec_observed_fields(&self) -> Seq<SchemaFieldId> {
@@ -183,36 +214,85 @@ impl SchemaEvidence {
 
     /// Whether the evidence covers the exact required direction and fields.
     #[must_use]
-    #[allow(clippy::comparison_chain, reason = "explicit comparisons remain Verus-compatible")]
-    pub fn covers(&self, requirement: &SchemaRequirement) -> bool {
-        if self.direction != requirement.direction() {
-            return false;
-        }
-        let mut required_index = 0;
-        let mut observed_index = 0;
-        while required_index < requirement.fields().len()
+    pub fn covers(&self, requirement: &SchemaRequirement) -> (covered: bool)
+        ensures covered == self.spec_covers(requirement),
+    {
+        coverage::covers(self, requirement)
+    }
+}
+
+impl SchemaField {
+    fn clone_sequence(fields: &[Self]) -> (result: Vec<Self>)
+        ensures Self::sequence_same_content(fields@, result@),
+    {
+        let mut result = Vec::with_capacity(fields.len());
+        let mut index = 0;
+        while index < fields.len()
             invariant
-                required_index <= requirement.spec_fields().len(),
-                observed_index <= self.spec_observed_fields().len(),
-            decreases
-                (requirement.spec_fields().len() - required_index)
-                    + (self.spec_observed_fields().len() - observed_index),
+                index <= fields.len(),
+                result@.len() == index,
+                forall |prior: int| #![auto]
+                    0 <= prior < index ==>
+                        fields@[prior].spec_same_content(&result@[prior]),
+            decreases fields.len() - index,
         {
-            if observed_index >= self.observed_fields.len() {
-                return false;
-            }
-            let required = requirement.fields()[required_index].id();
-            let observed = self.observed_fields[observed_index];
-            if observed == required {
-                required_index += 1;
-                observed_index += 1;
-            } else if observed < required {
-                observed_index += 1;
-            } else {
-                return false;
-            }
+            result.push(fields[index].clone());
+            index += 1;
         }
-        true
+        result
+    }
+}
+
+impl Clone for SchemaField {
+    fn clone(&self) -> (value: Self)
+        ensures self.spec_same_content(&value),
+    {
+        proof { use_type_invariant(self); }
+        let exact_name = self.exact_name.clone();
+        proof { assert(exact_name@ =~= self.exact_name@); }
+        Self { id: self.id, exact_name }
+    }
+}
+
+impl Clone for SchemaRequirement {
+    fn clone(&self) -> (value: Self)
+        ensures self.spec_same_content(&value),
+    {
+        proof { use_type_invariant(self); }
+        let fields = SchemaField::clone_sequence(self.fields.as_slice());
+        proof {
+            assert(model::required_fields_ordered(fields@)) by {
+                assert forall |index: int| 1 <= index < fields@.len() implies
+                    crate::order::byte_order(
+                        #[trigger] fields@[index - 1].spec_id().spec_digest().spec_bytes()@,
+                        #[trigger] fields@[index].spec_id().spec_digest().spec_bytes()@,
+                    ) == core::cmp::Ordering::Less by {
+                    assert(self.fields@[index - 1].spec_same_content(&fields@[index - 1]));
+                    assert(self.fields@[index].spec_same_content(&fields@[index]));
+                }
+            }
+            model::required_ordered_implies_unique(fields@);
+        }
+        Self { direction: self.direction, fields }
+    }
+}
+
+impl Clone for SchemaEvidence {
+    fn clone(&self) -> (value: Self)
+        ensures self.spec_same_content(&value),
+    {
+        proof { use_type_invariant(self); }
+        let observed_fields = self.observed_fields.clone();
+        proof {
+            assert(observed_fields@ =~= self.observed_fields@);
+            assert(model::observed_fields_ordered(observed_fields@));
+            model::observed_ordered_implies_unique(observed_fields@);
+        }
+        Self {
+            binding: self.binding.clone(),
+            direction: self.direction,
+            observed_fields,
+        }
     }
 }
 

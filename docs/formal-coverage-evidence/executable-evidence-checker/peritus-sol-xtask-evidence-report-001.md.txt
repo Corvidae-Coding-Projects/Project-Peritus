@@ -1,0 +1,109 @@
+# Exact executable-evidence checker increment
+
+## Scope and source identity
+
+This bounded increment changes only the repository `xtask` checker and its verification-format
+documentation. It does not alter production crates, CI settings, manifests, dependencies, or the
+obligation records that exposed the checker bug.
+
+- Working source root: `/tmp/peritus-sol-xtask-evidence-source-001`
+- Immutable review source: `/tmp/peritus-sol-xtask-evidence-final-source-001`
+- Shared baseline commit observed at freeze: `8e8cbb1bcf0de9787d86c7be3d6fc1f2079f3493`
+- Initial 187-file `xtask/src` preimage manifest:
+  `/tmp/peritus-sol-xtask-evidence-preimage-001.sha256`
+  (`0a2c690630db0715f6866dfa0fdca55d4b6c40816e5eb0baf2`)
+- The 187 preimage hashes were rechecked against the shared tree before constructing the immutable
+  baseline; all matched. The check is retained in
+  `/tmp/peritus-sol-xtask-evidence-preimage-shared-check-001.log`.
+- Immutable 188-file baseline checker/doc manifest:
+  `/tmp/peritus-sol-xtask-evidence-baseline-source-001.sha256`
+  (`10058a75a10a5045cac8fd09cd56cb875d3bc0ace0b2343d807addb8b9044cf5`)
+- Immutable 191-file final checker/doc manifest:
+  `/tmp/peritus-sol-xtask-evidence-full-source-001.sha256`
+  (`7cd89b94c3a77785a316256fc9c36b712bf4e09d4d3e6930b7f9f82f08252173`)
+- Exact 16-path delta manifest:
+  `/tmp/peritus-sol-xtask-evidence-delta-source-001.sha256`
+  (`b44335811249a902887765e5a6c79c7f5ce9d3e98264dc6065edd2cadd102ee6`)
+- Patch: `/tmp/peritus-sol-xtask-evidence-001.patch`
+  (`dfe21328a168ae005de00854a72ff63737b64fc5450cf53995511404197fdfb7`)
+
+The original checker rejected 13 newly registered, actual executable Verus definitions because its
+line heuristic recognized only `proof fn` and `spec fn`; an ordinary `const fn` also returned early
+without any diagnostic. The retained reproducer is
+`/tmp/peritus-parent-formal-inventory-after-registration.err`
+(`8044a171bda88e9c38dee7220583980798ed4f3b375bf37b46028367783bdcd1`).
+
+## Code-ready behavior
+
+The checker now parses function declarations with the existing token lexer, function-body scanner,
+and pinned Verus signature grammar. It records the declaration's actual mode, lexical `verus!`
+enclosure, function nesting, exact conditional-compilation envelope, and exact Cargo-test status.
+It then joins declaration metadata to the existing owner-path parser by the same-name declaration
+occurrence ordinal. Both token streams count every same-name function, including locals, before
+owner-path filtering, so two same-name functions on one source line cannot inherit each other's
+mode or configuration.
+
+Static manifest validation now requires:
+
+- Cargo-test evidence to resolve to one non-local, non-ignored exact `#[test]` enabled either
+  unconditionally or only by conventional `#[cfg(test)]`;
+- Cargo-Verus evidence to resolve to one unconditional, non-local executable, proof, or spec
+  declaration lexically inside `verus!`;
+- the fully qualified source module and associated-item owner to match exactly.
+
+Any other `cfg`, `cfg_attr`, malformed configuration, ignored test, nested function, duplicate
+declaration, ordinary Rust function, wrong owner, or ambiguous source path fails closed. Actual
+Verus `const fn` definitions are eligible, while ordinary Rust `const fn` definitions remain
+ineligible.
+
+The strict proof-scope runner carries the parsed source mode into the fresh package verification.
+Every registered executable or proof symbol must appear in Verus's selected-function inventory and
+have a successful solver query in the same `exec` or `proof` mode. A registered spec symbol must be
+selected; it need not have a standalone solver query. Conflicting query modes, missing selections,
+failed or partial verification results, wrong toolchain identities, and sibling-root substitutions
+remain errors.
+
+Regression coverage includes comments/literals, actual executable/proof/spec modes, the prior
+ordinary-`const fn` bypass, disabled and attributed configuration, nested and duplicate declarations,
+wrong owners, ignored Cargo tests, and same-name same-line declarations in different owners and
+modes. The same-line regression specifically keeps `Model::checked` as `spec` and
+`Runtime::checked` as `exec`, then verifies that the executable still requires an `exec` compiler
+query.
+
+## Exact qualification
+
+- `CARGO_BUILD_JOBS=1 CCACHE_DISABLE=1 CARGO_TARGET_DIR=/home/doll/Project-Peritus/.worktrees/formal-coverage/target/sol-xtask-evidence-001 cargo test --locked --package xtask --lib -- --skip release::archive_tests::native_archive_bytes_do_not_depend_on_source_timestamps`
+  passed: 432 passed, 0 failed, 1 ignored, 1 filtered. The one filtered archive test requires Git
+  metadata that the isolated source copy intentionally does not contain.
+- The same environment with `cargo run --locked --package xtask -- formal-inventory` passed against
+  the actual current records and emitted valid `peritus.formal-audit-inventory` JSON for 66 packages.
+- The same environment with `cargo clippy --locked --package xtask --all-targets --all-features -- -D warnings`
+  passed.
+- `cargo fmt --package xtask -- --check` passed.
+- The exact built checker passed `ordinary-api-check`: 3,555 formal-boundary files and 14,704
+  ordinary-safe executable entry points.
+- The exact built checker passed `source-layout-check`: 4,459 source files. The new natural test
+  split leaves the affected files at 391, 381, 286, and 122 lines.
+
+Final raw evidence is retained at:
+
+- `/tmp/peritus-sol-xtask-evidence-tests-006.log`
+- `/tmp/peritus-sol-xtask-evidence-inventory-005.json`
+- `/tmp/peritus-sol-xtask-evidence-inventory-005.err`
+- `/tmp/peritus-sol-xtask-evidence-clippy-003.log`
+- `/tmp/peritus-sol-xtask-evidence-fmt-003.log`
+- `/tmp/peritus-sol-xtask-evidence-ordinary-api-003.log`
+- `/tmp/peritus-sol-xtask-evidence-layout-004.log`
+
+## Trust boundary and remaining deployment work
+
+The static manifest pass establishes source eligibility and exact ownership; it does not establish
+that Verus verified the symbol. `formal-inventory` is explicitly audit-only and does not assert
+freshness of any retained compiler-scope observation. The fresh strict CI proof-scope run is the
+compiler-backed gate that requires selection and same-mode successful queries.
+
+A selected symbol or successful query does not itself prove production correspondence, discharge an
+obligation, authenticate the runner, or authorize a review. Those remain the responsibility of the
+actual proof contracts, production-caller mapping, trusted workflow execution, and independent review
+records. This source is code-ready for hash-guarded integration and final shared-tree qualification;
+deployment and external required-status authority remain separate prerequisites.

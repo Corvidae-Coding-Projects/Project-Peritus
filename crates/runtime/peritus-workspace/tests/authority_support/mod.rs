@@ -256,7 +256,7 @@ fn commit_next_with_reference(
         state.revision(),
     );
     let transition =
-        state.reduce(envelope, command.clone(), inputs).into_result().expect("kernel transition");
+        state.reduce(envelope, command, inputs).into_result().expect("kernel transition");
     let event = transition.event();
     let head = journal.head(key).expect("kernel head").expect("kernel head present");
     let inputs = replay_input.into_iter().collect();

@@ -22,7 +22,14 @@ fn every_active_phase_pauses_resumes_and_cancels_explicitly() {
             AgentCommandKind::Resumed { recovery_checked: true },
         );
         assert_eq!(paused.phase(), AgentPhase::Active(phase), "resume to {phase:?}");
+        assert_eq!(paused.paused_from(), None);
         assert_eq!(replay(&paused_events).expect("paused replay"), paused);
+
+        apply(&mut paused, &mut paused_events, AgentCommandKind::Paused);
+        apply(&mut paused, &mut paused_events, AgentCommandKind::CancellationRequested);
+        assert_eq!(paused.paused_from(), None, "cancel clears saved phase {phase:?}");
+        apply(&mut paused, &mut paused_events, AgentCommandKind::CancellationFinished);
+        assert_eq!(replay(&paused_events).expect("paused cancellation replay"), paused);
 
         let mut cancelled_events = events;
         let mut cancelled = state;
@@ -32,6 +39,27 @@ fn every_active_phase_pauses_resumes_and_cancels_explicitly() {
         assert_eq!(cancelled.terminal_kind(), Some(TerminalKind::Cancelled));
         assert_eq!(replay(&cancelled_events).expect("cancel replay"), cancelled);
     }
+}
+
+#[test]
+fn cancellation_phase_completion_does_not_claim_outstanding_tool_termination() {
+    let (_, mut events, mut state) = active_phase_prefixes()
+        .into_iter()
+        .find(|(phase, _, _)| *phase == ActivePhase::ExecutingTools)
+        .expect("executing tools prefix");
+    apply(
+        &mut state,
+        &mut events,
+        AgentCommandKind::ToolDispatched { ordinal: ToolOrdinal::new(0) },
+    );
+    assert_eq!(state.counters().active_tool_calls(), 1);
+    let dispatched = state.tools().expect("tool batch").clone();
+    apply(&mut state, &mut events, AgentCommandKind::CancellationRequested);
+    apply(&mut state, &mut events, AgentCommandKind::CancellationFinished);
+    assert_eq!(state.terminal_kind(), Some(TerminalKind::Cancelled));
+    assert_eq!(state.counters().active_tool_calls(), 1);
+    assert_eq!(state.tools(), Some(&dispatched));
+    assert_eq!(replay(&events).expect("outstanding tool cancellation replay"), state);
 }
 
 fn active_phase_prefixes() -> Vec<(ActivePhase, Vec<AgentEvent>, AgentTurnState)> {

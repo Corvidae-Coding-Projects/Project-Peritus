@@ -27,6 +27,7 @@ enum Command {
     Reproducibility,
     Toolchain,
     Trust,
+    FormalInventory,
     CiShard { operation: crate::ci_shard::Operation, shard: &'static str },
     ProductPackage,
     ProductInstall,
@@ -185,12 +186,11 @@ pub(crate) fn execute(
                 &format!("verify-trust passed: {files} source file(s) scanned\n"),
             )?;
         }
+        Command::FormalInventory => {
+            write_output(output, &crate::formal_inventory::render(root)?)?;
+        }
         Command::CiShard { operation, shard } => {
-            let packages = crate::ci_shard::run(root, operation, shard)?;
-            write_output(
-                output,
-                &format!("CI shard `{shard}` passed {operation:?} for {packages} package(s)\n"),
-            )?;
+            execute_ci_shard(root, operation, shard, output)?;
         }
         Command::ProductPackage
         | Command::ProductInstall
@@ -214,6 +214,19 @@ pub(crate) fn execute(
         Command::Help => {}
     }
     Ok(())
+}
+
+fn execute_ci_shard(
+    root: &Path,
+    operation: crate::ci_shard::Operation,
+    shard: &str,
+    output: &mut dyn Write,
+) -> Result<(), XtaskError> {
+    let packages = crate::ci_shard::run(root, operation, shard)?;
+    write_output(
+        output,
+        &format!("CI shard `{shard}` passed {operation:?} for {packages} package(s)\n"),
+    )
 }
 
 fn execute_release_stage(root: &Path, output: &mut dyn Write) -> Result<(), XtaskError> {
@@ -281,6 +294,7 @@ fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Command, XtaskError
         Some("reproducibility-check") => Ok(Command::Reproducibility),
         Some("toolchain-check") => Ok(Command::Toolchain),
         Some("verify-trust") => Ok(Command::Trust),
+        Some("formal-inventory") => Ok(Command::FormalInventory),
         Some("product-package") => Ok(Command::ProductPackage),
         Some("product-install") => Ok(Command::ProductInstall),
         Some("product-package-smoke") => Ok(Command::ProductPackageSmoke),

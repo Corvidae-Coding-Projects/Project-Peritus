@@ -1,0 +1,12 @@
+# Formal campaign local-checkpoint scope review
+
+**Verdict: PASS for an explicitly incomplete local checkpoint. Concrete commit blockers: none found.**
+
+- Planned ownership is exact: 236 tracked changes and 1,098 untracked files fall under the authorized `Cargo.lock`, formal workflow, `crates/`, `xtask/`, `docs/`, and `verification/` paths. All 38 other untracked files are confined to the explicitly excluded `.claude/`, `.codex/`, `.crosslink/`, `.mcp.json`, and `AGENTS.md` set. No unexpected path was found.
+- The resumed eight-path delta is byte-bound to `docs/formal-coverage-evidence/stabilization-checkpoint/review.json`: all six obligations hashes and both scheduler hashes match the current files. The retained ledger and scheduler reviews both pass their bounded source scopes.
+- The checkpoint record is honest about state: status is `two-patches-reviewed-and-integrated; full-goal-incomplete`, every registered obligation remains `in-progress`, hosted CI is recorded as not run, and the app-runner CI scope gate is explicitly `FAILED` for the OBL-0222 method-module versus type-owner locator mismatch (with OBL-0224 noted as analogous). The raw exit-code-1 result and diagnostic log are retained and hash-bound.
+- Added-line and untracked-source scans found no debug statements, TODO/FIXME stubs, disabled warnings, executable assumptions/admits, external bodies, trusted annotations, or credential material. Matches in checker tests are deliberate source-text negative fixtures; credential-shaped strings are placeholders used by the credential detector tests.
+- The sole tracked deletion, `crates/app/peritus-product-runner/src/verified_api/progress.rs`, is an intentional relocation: all public progress getters and constants remain on `accounting::ProductRunProgress` and are re-exported from `verified_api`.
+- `git diff --check` passes. Retained JSON files parse, checkpoint artifact hashes and eight source hashes bind successfully, and no symlink or binary payload was found in the selected untracked evidence/source set. Empty `.txt` evidence files correspond to successful silent format/diff/actionlint checks rather than accidental empty source files.
+
+No builds or tests were run in this bounded review.

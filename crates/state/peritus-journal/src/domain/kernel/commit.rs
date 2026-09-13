@@ -98,7 +98,7 @@ impl KernelCommitRequest {
         let envelope_frame = exact(&CommandEnvelopeDto::from(envelope), "encode kernel envelope")?;
         let command_frame = command
             .as_ref()
-            .map(|command| exact(&KernelCommandDto::from(command.clone()), "encode kernel command"))
+            .map(|command| exact(&KernelCommandDto::from(*command), "encode kernel command"))
             .transpose()?;
         if matches!(kind, CapsuleKind::Genesis) != command_frame.is_none() {
             return Err(input("genesis and command capsule kind disagree"));

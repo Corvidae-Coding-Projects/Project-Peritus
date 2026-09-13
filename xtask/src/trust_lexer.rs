@@ -75,17 +75,19 @@ enum DeclarationScope {
     Other,
 }
 
-/// Returns the inline-module and associated-item path for every declaration of `item`.
+/// Returns the owner path and same-name declaration ordinal for every declaration of `item`.
 ///
 /// An empty path identifies a file/module item. Tokenization excludes comments and literals, and
 /// declarations nested in a function are ineligible, so a manifest symbol cannot be redirected by
-/// declaration-shaped text that does not name a repository-visible item.
-pub(super) fn declaration_paths(source: &str, item: &str) -> Vec<Vec<String>> {
+/// declaration-shaped text that does not name a repository-visible item. The ordinal preserves
+/// exact token identity when multiple declarations occupy the same physical source line.
+pub(super) fn declaration_paths(source: &str, item: &str) -> Vec<(Vec<String>, usize)> {
     let tokens = tokenize(source);
     let mut paths = Vec::new();
     let mut scopes = Vec::new();
     let mut pending = None;
     let mut impl_header = None;
+    let mut ordinal = 0_usize;
 
     for (index, token) in tokens.iter().enumerate() {
         match token.kind {
@@ -94,10 +96,11 @@ pub(super) fn declaration_paths(source: &str, item: &str) -> Vec<Vec<String>> {
                 pending = None;
             }
             TokenKind::Identifier("fn") => {
-                if next_identifier(&tokens, index + 1) == Some(item)
-                    && let Some(path) = enclosing_declaration_path(&scopes)
-                {
-                    paths.push(path);
+                if next_identifier(&tokens, index + 1) == Some(item) {
+                    if let Some(path) = enclosing_declaration_path(&scopes) {
+                        paths.push((path, ordinal));
+                    }
+                    ordinal += 1;
                 }
                 pending = Some(DeclarationScope::Function);
             }
@@ -130,8 +133,6 @@ pub(super) fn declaration_paths(source: &str, item: &str) -> Vec<Vec<String>> {
             _ => {}
         }
     }
-    paths.sort();
-    paths.dedup();
     paths
 }
 

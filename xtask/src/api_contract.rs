@@ -6,6 +6,8 @@ use std::collections::BTreeSet;
 use std::fs;
 use std::path::{Path, PathBuf};
 
+#[path = "api_contract/declaration.rs"]
+mod declaration;
 #[path = "api_contract/expansion.rs"]
 mod expansion;
 #[path = "api_contract/scanner.rs"]
@@ -16,6 +18,11 @@ mod signature;
 mod verifier_only;
 #[path = "api_contract/violation.rs"]
 mod violation;
+
+pub(crate) use declaration::{
+    CargoTest, Configuration, FunctionDeclaration, function_declarations,
+};
+pub(crate) use signature::Mode;
 
 /// Successful ordinary-Rust boundary audit statistics.
 #[derive(Debug)]
@@ -134,3 +141,7 @@ mod signature_tests;
 #[cfg(test)]
 #[path = "api_contract/policy_tests.rs"]
 mod policy_tests;
+
+#[cfg(test)]
+#[path = "api_contract/declaration_tests.rs"]
+mod declaration_tests;

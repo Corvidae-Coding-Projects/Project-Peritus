@@ -1,0 +1,1880 @@
+diff -ruN /tmp/peritus-sol-context-source-final-20260913T004133Z/peritus-context/src/graph/cycle.rs /tmp/peritus-sol-context-cycle-fix-final-source-003/peritus-context/src/graph/cycle.rs
+--- /tmp/peritus-sol-context-source-final-20260913T004133Z/peritus-context/src/graph/cycle.rs	2026-09-12 19:40:27.464181270 -0500
++++ /tmp/peritus-sol-context-cycle-fix-final-source-003/peritus-context/src/graph/cycle.rs	2026-09-12 21:14:05.980825938 -0500
+@@ -1,102 +1,21 @@
+ //! Production Kahn traversal connected to the finite cycle model.
+ 
+ #[cfg(verus_only)]
++use super::cycle_count_model;
++use super::cycle_count_init;
++use super::cycle_count_update;
++use super::cycle_counts;
++#[cfg(verus_only)]
+ use super::cycle_model;
+ #[cfg(verus_only)]
+ use super::cycle_proofs;
++#[cfg(verus_only)]
++use super::model;
+ use crate::{ContextNode, ContextNodeId};
+ use vstd::prelude::*;
+ 
+ verus! {
+ 
+-fn dependency_contains(
+-    dependencies: &[ContextNodeId],
+-    id: ContextNodeId,
+-) -> (contains: bool)
+-    ensures contains == cycle_model::dependency_contains_from(dependencies@, id, 0),
+-{
+-    let mut index = 0;
+-    while index < dependencies.len()
+-        invariant
+-            index <= dependencies.len(),
+-            cycle_model::dependency_contains_from(dependencies@, id, 0)
+-                == cycle_model::dependency_contains_from(dependencies@, id, index as nat),
+-        decreases dependencies.len() - index,
+-    {
+-        if dependencies[index].matches(&id) {
+-            return true;
+-        }
+-        index += 1;
+-    }
+-    false
+-}
+-
+-fn first_remaining_dependent(
+-    nodes: &[ContextNode],
+-    removed: &[bool],
+-    target: usize,
+-) -> (result: Option<usize>)
+-    requires removed@.len() == nodes@.len(), target < nodes@.len(),
+-    ensures match result {
+-        Some(index) => index < nodes.len()
+-            && cycle_model::first_remaining_dependent_from(
+-                nodes@, removed@, target as nat, 0) == Some(index as nat),
+-        None => cycle_model::first_remaining_dependent_from(
+-            nodes@, removed@, target as nat, 0).is_none(),
+-    },
+-{
+-    let mut source = 0;
+-    while source < nodes.len()
+-        invariant
+-            source <= nodes.len(),
+-            removed@.len() == nodes@.len(),
+-            target < nodes@.len(),
+-            cycle_model::first_remaining_dependent_from(
+-                nodes@, removed@, target as nat, 0)
+-                == cycle_model::first_remaining_dependent_from(
+-                    nodes@, removed@, target as nat, source as nat),
+-        decreases nodes.len() - source,
+-    {
+-        if !removed[source]
+-            && dependency_contains(nodes[source].dependencies(), nodes[target].id())
+-        {
+-            return Some(source);
+-        }
+-        source += 1;
+-    }
+-    None
+-}
+-
+-fn first_removable(
+-    nodes: &[ContextNode],
+-    removed: &[bool],
+-) -> (result: Option<usize>)
+-    requires removed@.len() == nodes@.len(),
+-    ensures match result {
+-        Some(index) => index < nodes.len()
+-            && cycle_model::removable(nodes@, removed@, index as nat)
+-            && cycle_model::first_removable_from(nodes@, removed@, 0)
+-                == Some(index as nat),
+-        None => cycle_model::first_removable_from(nodes@, removed@, 0).is_none(),
+-    },
+-{
+-    let mut index = 0;
+-    while index < nodes.len()
+-        invariant
+-            index <= nodes.len(),
+-            removed@.len() == nodes@.len(),
+-            cycle_model::first_removable_from(nodes@, removed@, 0)
+-                == cycle_model::first_removable_from(nodes@, removed@, index as nat),
+-        decreases nodes.len() - index,
+-    {
+-        if !removed[index] && first_remaining_dependent(nodes, removed, index).is_none() {
+-            return Some(index);
+-        }
+-        index += 1;
+-    }
+-    None
+-}
+-
+ fn first_unremoved(removed: &[bool]) -> (result: Option<usize>)
+     ensures match result {
+         Some(index) => index < removed.len()
+@@ -138,35 +57,41 @@
+ }
+ 
+ pub(super) fn cycle_member(nodes: &[ContextNode]) -> (result: Option<ContextNodeId>)
+-    ensures
+-        cycle_model::cycle_result(nodes@, result),
++    requires model::nodes_canonical(nodes@), model::dependencies_exist(nodes@),
++    ensures cycle_model::cycle_result(nodes@, result),
+         result.is_none() == cycle_model::acyclic(nodes@),
+ {
+     let mut removed = initial_removal_state(nodes.len());
+-    let mut order: Vec<usize> = Vec::with_capacity(nodes.len());
++    let mut dependent_counts = cycle_count_init::initial_counts(nodes);
++    let mut removed_count = 0usize;
+     let ghost mut proof_order: Seq<nat> = Seq::empty();
+     proof {
+         cycle_model::initial_state_matches(nodes@.len());
+         reveal(cycle_model::canonical_elimination);
+     }
+     let mut exhausted = false;
+-    while order.len() < nodes.len() && !exhausted
++    while removed_count < nodes.len() && !exhausted
+         invariant
++            model::nodes_canonical(nodes@),
++            model::dependencies_exist(nodes@),
+             removed@.len() == nodes@.len(),
+-            order@.len() <= nodes@.len(),
+-            order@.len() == proof_order.len(),
++            removed_count <= nodes@.len(),
++            removed_count == proof_order.len(),
+             cycle_model::removal_state_matches(removed@, proof_order, nodes@.len()),
++            cycle_count_model::counts_match(nodes@, removed@, dependent_counts@),
+             cycle_model::partial_elimination_certificate(nodes@, proof_order),
+             exhausted ==> cycle_model::first_removable_from(nodes@, removed@, 0).is_none(),
+             cycle_model::eliminate(
+                 nodes@,
+                 removed@,
+                 proof_order,
+-                (nodes@.len() - order@.len()) as int,
++                (nodes@.len() - removed_count) as int,
+             ) == cycle_model::canonical_elimination(nodes@),
+-        decreases nodes.len() - order.len(), if exhausted { 0nat } else { 1nat },
++        decreases nodes.len() - removed_count, if exhausted { 0nat } else { 1nat },
+     {
+-        match first_removable(nodes, removed.as_slice()) {
++        match cycle_counts::first_removable(
++            nodes, removed.as_slice(), dependent_counts.as_slice(),
++        ) {
+             None => {
+                 exhausted = true;
+             }
+@@ -175,15 +100,15 @@
+                 let ghost old_proof_order = proof_order;
+                 proof {
+                     cycle_model::append_removable(
+-                        nodes@,
+-                        old_removed,
+-                        old_proof_order,
+-                        index as nat,
++                        nodes@, old_removed, old_proof_order, index as nat,
+                     );
+                     reveal(cycle_model::eliminate);
+                 }
++                cycle_count_update::remove_source(
++                    nodes, removed.as_slice(), &mut dependent_counts, index,
++                );
+                 removed.set(index, true);
+-                order.push(index);
++                removed_count += 1;
+                 proof {
+                     proof_order = old_proof_order.push(index as nat);
+                 }
+@@ -196,7 +121,7 @@
+             nodes@,
+             removed@,
+             proof_order,
+-            order@.len(),
++            removed_count as nat,
+             exhausted,
+         );
+     }
+@@ -216,7 +141,7 @@
+     let index = first.unwrap();
+     proof {
+         if !exhausted {
+-            assert(order@.len() == nodes@.len());
++            assert(removed_count == nodes@.len());
+             cycle_proofs::full_trace_marks_every_node(
+                 removed@,
+                 proof_order,
+diff -ruN /tmp/peritus-sol-context-source-final-20260913T004133Z/peritus-context/src/graph/cycle_count_init.rs /tmp/peritus-sol-context-cycle-fix-final-source-003/peritus-context/src/graph/cycle_count_init.rs
+--- /tmp/peritus-sol-context-source-final-20260913T004133Z/peritus-context/src/graph/cycle_count_init.rs	1969-12-31 18:00:00.000000000 -0600
++++ /tmp/peritus-sol-context-cycle-fix-final-source-003/peritus-context/src/graph/cycle_count_init.rs	2026-09-12 21:08:02.997604207 -0500
+@@ -0,0 +1,322 @@
++//! Edge-driven initialization of exact remaining-dependent counts.
++
++#[cfg(verus_only)]
++use super::cycle_count_model::counts_match;
++#[cfg(verus_only)]
++use super::cycle_edge_model::{
++    dependency_match_count_from, dependency_match_count_is_indicator,
++    matching_index_makes_full_count_positive, processed_source_count,
++    processed_source_count_is_bounded, processed_sources_partition_initial,
++};
++#[cfg(verus_only)]
++use super::{cycle_model, model};
++use super::validation;
++use crate::ContextNode;
++use vstd::prelude::*;
++
++verus! {
++
++pub(super) fn initial_counts(nodes: &[ContextNode]) -> (counts: Vec<usize>)
++    requires
++        model::nodes_canonical(nodes@),
++        model::dependencies_exist(nodes@),
++    ensures counts_match(nodes@, cycle_model::initial_removed(nodes@.len()), counts@),
++{
++    let mut counts = Vec::with_capacity(nodes.len());
++    while counts.len() < nodes.len()
++        invariant
++            counts.len() <= nodes.len(),
++            forall |target: int| #![auto] 0 <= target < counts@.len() ==>
++                counts@[target] == 0,
++        decreases nodes.len() - counts.len(),
++    {
++        counts.push(0usize);
++    }
++
++    let mut source = 0usize;
++    while source < nodes.len()
++        invariant
++            source <= nodes.len(),
++            counts@.len() == nodes@.len(),
++            model::nodes_canonical(nodes@),
++            model::dependencies_exist(nodes@),
++            forall |target: int| #![auto] 0 <= target < nodes@.len() ==>
++                counts@[target] as nat
++                    == processed_source_count(nodes@, target as nat, source as nat),
++        decreases nodes.len() - source,
++    {
++        let source_node = &nodes[source];
++        let dependencies = source_node.dependencies();
++        proof {
++            use_type_invariant(&*source_node);
++            assert(source_node.invariant());
++            assert(nodes@[source as int].invariant());
++        }
++        let mut dependency = 0usize;
++        while dependency < dependencies.len()
++            invariant
++                dependency <= dependencies.len(),
++                source < nodes@.len(),
++                dependencies@ == nodes@[source as int].spec_dependencies(),
++                counts@.len() == nodes@.len(),
++                model::nodes_canonical(nodes@),
++                model::dependencies_exist(nodes@),
++                nodes@[source as int].invariant(),
++                forall |target: int| #![auto] 0 <= target < nodes@.len() ==>
++                    counts@[target] as nat
++                        + dependency_match_count_from(
++                            dependencies@,
++                            nodes@[target].spec_id(),
++                            dependency as nat,
++                        )
++                        == processed_source_count(nodes@, target as nat, source as nat)
++                            + dependency_match_count_from(
++                                dependencies@,
++                                nodes@[target].spec_id(),
++                                0,
++                            ),
++            decreases dependencies.len() - dependency,
++        {
++            proof {
++                model::admitted_dependency_exists(nodes@, source as nat, dependency as nat);
++            }
++            let Some(target) = validation::find_node_index(nodes, dependencies[dependency]) else {
++                proof {
++                    assert(model::node_exists(nodes@, dependencies@[dependency as int]));
++                    assert(false);
++                }
++                return counts;
++            };
++            let ghost before = counts@;
++            proof {
++                increment_is_safe(
++                    nodes@, dependencies@, counts@, source as nat,
++                    dependency as nat, target as nat,
++                );
++            }
++            let next = counts[target] + 1;
++            counts.set(target, next);
++            proof {
++                assert(counts@ == before.update(target as int, next));
++                increment_step(
++                    nodes@, dependencies@, dependency as nat, target as nat,
++                    before, counts@, next, source as nat,
++                );
++            }
++            dependency += 1;
++        }
++        proof {
++            finish_source(nodes@, dependencies@, counts@, source as nat);
++        }
++        source += 1;
++    }
++    proof {
++        finish_initial_counts(nodes@, counts@);
++    }
++    counts
++}
++
++proof fn increment_is_safe(
++    nodes: Seq<ContextNode>,
++    dependencies: Seq<crate::ContextNodeId>,
++    counts: Seq<usize>,
++    source: nat,
++    dependency: nat,
++    target: nat,
++)
++    requires
++        source < nodes.len(),
++        target < nodes.len(),
++        dependency < dependencies.len(),
++        counts.len() == nodes.len(),
++        nodes.len() <= usize::MAX,
++        dependencies == nodes[source as int].spec_dependencies(),
++        nodes[source as int].invariant(),
++        dependencies[dependency as int].spec_matches(&nodes[target as int].spec_id()),
++        counts[target as int] as nat
++            + dependency_match_count_from(
++                dependencies,
++                nodes[target as int].spec_id(),
++                dependency,
++            )
++            == processed_source_count(nodes, target, source)
++                + dependency_match_count_from(
++                    dependencies,
++                    nodes[target as int].spec_id(),
++                    0,
++                ),
++    ensures counts[target as int] < usize::MAX,
++{
++    assert(target < counts.len());
++    dependency_match_count_is_indicator(
++        &nodes[source as int],
++        nodes[target as int].spec_id(),
++    );
++    processed_source_count_is_bounded(nodes, target, source);
++    matching_index_makes_full_count_positive(
++        dependencies,
++        nodes[target as int].spec_id(),
++        dependency,
++    );
++    assert(dependency_match_count_from(
++        dependencies,
++        nodes[target as int].spec_id(),
++        0,
++    ) == 1);
++    assert(counts[target as int] as nat <= processed_source_count(nodes, target, source));
++    assert(processed_source_count(nodes, target, source) <= source);
++    assert(source < usize::MAX);
++}
++
++proof fn increment_step(
++    nodes: Seq<ContextNode>,
++    dependencies: Seq<crate::ContextNodeId>,
++    dependency: nat,
++    target: nat,
++    before: Seq<usize>,
++    after: Seq<usize>,
++    next: usize,
++    source: nat,
++)
++    requires
++        source < nodes.len(),
++        target < nodes.len(),
++        dependency < dependencies.len(),
++        before.len() == nodes.len(),
++        after.len() == nodes.len(),
++        model::nodes_canonical(nodes),
++        dependencies[dependency as int].spec_matches(&nodes[target as int].spec_id()),
++        after == before.update(target as int, next),
++        next == before[target as int] + 1,
++        forall |other: int| #![auto] 0 <= other < nodes.len() ==>
++            before[other] as nat
++                + dependency_match_count_from(
++                    dependencies,
++                    nodes[other].spec_id(),
++                    dependency,
++                )
++                == processed_source_count(nodes, other as nat, source)
++                    + dependency_match_count_from(
++                        dependencies,
++                        nodes[other].spec_id(),
++                        0,
++                    ),
++    ensures forall |other: int| #![auto] 0 <= other < nodes.len() ==>
++        after[other] as nat
++            + dependency_match_count_from(
++                dependencies,
++                nodes[other].spec_id(),
++                dependency + 1,
++            )
++            == processed_source_count(nodes, other as nat, source)
++                + dependency_match_count_from(
++                    dependencies,
++                    nodes[other].spec_id(),
++                    0,
++                ),
++{
++    assert forall |other: int| #![auto] 0 <= other < nodes.len() implies
++        after[other] as nat
++            + dependency_match_count_from(
++                dependencies,
++                nodes[other].spec_id(),
++                dependency + 1,
++            )
++            == processed_source_count(nodes, other as nat, source)
++                + dependency_match_count_from(
++                    dependencies,
++                    nodes[other].spec_id(),
++                    0,
++        ) by {
++        reveal(dependency_match_count_from);
++        if other == target {
++            assert(after[other] == next);
++            assert(before[other] == before[target as int]);
++            assert(dependency_match_count_from(
++                dependencies,
++                nodes[other].spec_id(),
++                dependency,
++            ) == 1 + dependency_match_count_from(
++                dependencies,
++                nodes[other].spec_id(),
++                dependency + 1,
++            ));
++        } else if dependencies[dependency as int].spec_matches(&nodes[other].spec_id()) {
++            model::canonical_match_is_unique(
++                nodes,
++                dependencies[dependency as int],
++                target,
++                other as nat,
++            );
++            assert(false);
++        }
++    }
++}
++
++proof fn finish_source(
++    nodes: Seq<ContextNode>,
++    dependencies: Seq<crate::ContextNodeId>,
++    counts: Seq<usize>,
++    source: nat,
++)
++    requires
++        source < nodes.len(),
++        counts.len() == nodes.len(),
++        dependencies == nodes[source as int].spec_dependencies(),
++        nodes[source as int].invariant(),
++        forall |target: int| #![auto] 0 <= target < nodes.len() ==>
++            counts[target] as nat
++                + dependency_match_count_from(
++                    dependencies,
++                    nodes[target].spec_id(),
++                    dependencies.len(),
++                )
++                == processed_source_count(nodes, target as nat, source)
++                    + dependency_match_count_from(
++                        dependencies,
++                        nodes[target].spec_id(),
++                        0,
++                    ),
++    ensures forall |target: int| #![auto] 0 <= target < nodes.len() ==>
++        counts[target] as nat
++            == processed_source_count(nodes, target as nat, source + 1),
++{
++    assert forall |target: int| #![auto] 0 <= target < nodes.len() implies
++        counts[target] as nat
++            == processed_source_count(nodes, target as nat, source + 1) by {
++        dependency_match_count_is_indicator(
++            &nodes[source as int],
++            nodes[target].spec_id(),
++        );
++        reveal(processed_source_count);
++        reveal(cycle_model::node_depends_on);
++        reveal(dependency_match_count_from);
++    }
++}
++
++proof fn finish_initial_counts(nodes: Seq<ContextNode>, counts: Seq<usize>)
++    requires
++        counts.len() == nodes.len(),
++        forall |target: int| #![auto] 0 <= target < nodes.len() ==>
++            counts[target] as nat
++                == processed_source_count(nodes, target as nat, nodes.len()),
++    ensures counts_match(
++        nodes,
++        cycle_model::initial_removed(nodes.len()),
++        counts,
++    ),
++{
++    assert forall |target: int| #![auto] 0 <= target < nodes.len() implies
++        counts[target] as nat == super::cycle_count_model::remaining_count_from(
++            nodes,
++            cycle_model::initial_removed(nodes.len()),
++            target as nat,
++            0,
++        ) by {
++        processed_sources_partition_initial(nodes, target as nat, nodes.len());
++        reveal(super::cycle_count_model::remaining_count_from);
++    }
++    reveal(counts_match);
++}
++
++} // verus!
+diff -ruN /tmp/peritus-sol-context-source-final-20260913T004133Z/peritus-context/src/graph/cycle_count_model.rs /tmp/peritus-sol-context-cycle-fix-final-source-003/peritus-context/src/graph/cycle_count_model.rs
+--- /tmp/peritus-sol-context-source-final-20260913T004133Z/peritus-context/src/graph/cycle_count_model.rs	1969-12-31 18:00:00.000000000 -0600
++++ /tmp/peritus-sol-context-cycle-fix-final-source-003/peritus-context/src/graph/cycle_count_model.rs	2026-09-12 20:38:58.520451361 -0500
+@@ -0,0 +1,224 @@
++//! Exact remaining-dependent-count model and update lemmas.
++
++#[cfg(verus_only)]
++use super::cycle_model;
++#[cfg(verus_only)]
++use crate::{ContextNode, ContextNodeId};
++use vstd::prelude::*;
++
++verus! {
++
++/// Number of not-yet-removed sources depending directly on one target.
++pub open spec fn remaining_count_from(
++    nodes: Seq<ContextNode>,
++    removed: Seq<bool>,
++    target: nat,
++    source: nat,
++) -> nat
++    decreases nodes.len() - source,
++{
++    if source >= nodes.len() {
++        0
++    } else {
++        (if !removed[source as int] && cycle_model::node_depends_on(nodes, source, target) {
++            1nat
++        } else {
++            0nat
++        }) + remaining_count_from(nodes, removed, target, source + 1)
++    }
++}
++
++/// Exact correspondence between an executable count vector and a removal state.
++pub open spec fn counts_match(
++    nodes: Seq<ContextNode>,
++    removed: Seq<bool>,
++    counts: Seq<usize>,
++) -> bool {
++    removed.len() == nodes.len()
++        && counts.len() == nodes.len()
++        && forall |target: int| #![auto] 0 <= target < nodes.len() ==>
++            counts[target] as nat == remaining_count_from(
++                nodes,
++                removed,
++                target as nat,
++                0,
++            )
++}
++
++proof fn present_source_makes_remaining_positive_from(
++    nodes: Seq<ContextNode>,
++    removed: Seq<bool>,
++    target: nat,
++    source: nat,
++    scan: nat,
++)
++    requires
++        removed.len() == nodes.len(),
++        target < nodes.len(),
++        scan <= source < nodes.len(),
++        !removed[source as int],
++        cycle_model::node_depends_on(nodes, source, target),
++    ensures remaining_count_from(nodes, removed, target, scan) > 0,
++    decreases source - scan,
++{
++    reveal(remaining_count_from);
++    if scan < source {
++        present_source_makes_remaining_positive_from(
++            nodes,
++            removed,
++            target,
++            source,
++            scan + 1,
++        );
++    }
++}
++
++/// A present direct dependent contributes positively to the target's exact count.
++pub proof fn present_source_makes_remaining_positive(
++    nodes: Seq<ContextNode>,
++    removed: Seq<bool>,
++    target: nat,
++    source: nat,
++)
++    requires
++        removed.len() == nodes.len(),
++        target < nodes.len(),
++        source < nodes.len(),
++        !removed[source as int],
++        cycle_model::node_depends_on(nodes, source, target),
++    ensures remaining_count_from(nodes, removed, target, 0) > 0,
++{
++    present_source_makes_remaining_positive_from(
++        nodes,
++        removed,
++        target,
++        source,
++        0,
++    );
++}
++
++/// A zero count is exactly the absence of a remaining dependent.
++pub proof fn zero_iff_no_remaining(
++    nodes: Seq<ContextNode>,
++    removed: Seq<bool>,
++    target: nat,
++    source: nat,
++)
++    requires
++        removed.len() == nodes.len(),
++        target < nodes.len(),
++        source <= nodes.len(),
++    ensures
++        remaining_count_from(nodes, removed, target, source) == 0
++            <==> cycle_model::first_remaining_dependent_from(
++                nodes,
++                removed,
++                target,
++                source,
++            ).is_none(),
++    decreases nodes.len() - source,
++{
++    reveal(remaining_count_from);
++    reveal(cycle_model::first_remaining_dependent_from);
++    if source < nodes.len() {
++        zero_iff_no_remaining(nodes, removed, target, source + 1);
++    }
++}
++
++/// Removing one present source subtracts exactly its contribution to a target count.
++pub proof fn removing_source_updates_count(
++    nodes: Seq<ContextNode>,
++    removed: Seq<bool>,
++    source: nat,
++    target: nat,
++    scan: nat,
++)
++    requires
++        removed.len() == nodes.len(),
++        source < nodes.len(),
++        target < nodes.len(),
++        scan <= nodes.len(),
++        !removed[source as int],
++    ensures
++        remaining_count_from(nodes, removed, target, scan)
++            == remaining_count_from(
++                nodes,
++                removed.update(source as int, true),
++                target,
++                scan,
++            ) + if scan <= source && cycle_model::node_depends_on(nodes, source, target) {
++                1nat
++            } else {
++                0nat
++            },
++    decreases nodes.len() - scan,
++{
++    reveal(remaining_count_from);
++    if scan < nodes.len() {
++        if scan == source {
++            assert(removed.update(source as int, true)[scan as int]);
++            assert(remaining_count_from(
++                nodes,
++                removed,
++                target,
++                scan + 1,
++            ) == remaining_count_from(
++                nodes,
++                removed.update(source as int, true),
++                target,
++                scan + 1,
++            )) by {
++                removing_source_updates_count(
++                    nodes,
++                    removed,
++                    source,
++                    target,
++                    scan + 1,
++                );
++            }
++        } else {
++            assert(removed.update(source as int, true)[scan as int] == removed[scan as int]);
++            removing_source_updates_count(
++                nodes,
++                removed,
++                source,
++                target,
++                scan + 1,
++            );
++        }
++    }
++}
++
++/// All-present state has the direct-dependent count computed by a source scan.
++pub proof fn initial_count_step(
++    nodes: Seq<ContextNode>,
++    target: nat,
++    source: nat,
++)
++    requires target < nodes.len(), source <= nodes.len(),
++    ensures
++        remaining_count_from(
++            nodes,
++            cycle_model::initial_removed(nodes.len()),
++            target,
++            source,
++        ) == if source >= nodes.len() {
++            0nat
++        } else {
++            (if cycle_model::node_depends_on(nodes, source, target) {
++                1nat
++            } else {
++                0nat
++            }) + remaining_count_from(
++                nodes,
++                cycle_model::initial_removed(nodes.len()),
++                target,
++                source + 1,
++            )
++        },
++{
++    reveal(remaining_count_from);
++    reveal(cycle_model::initial_removed);
++}
++
++} // verus!
+diff -ruN /tmp/peritus-sol-context-source-final-20260913T004133Z/peritus-context/src/graph/cycle_count_update.rs /tmp/peritus-sol-context-cycle-fix-final-source-003/peritus-context/src/graph/cycle_count_update.rs
+--- /tmp/peritus-sol-context-source-final-20260913T004133Z/peritus-context/src/graph/cycle_count_update.rs	1969-12-31 18:00:00.000000000 -0600
++++ /tmp/peritus-sol-context-cycle-fix-final-source-003/peritus-context/src/graph/cycle_count_update.rs	2026-09-12 20:58:21.541640281 -0500
+@@ -0,0 +1,352 @@
++//! Edge-driven maintenance of exact remaining-dependent counts.
++
++#[cfg(verus_only)]
++use super::cycle_count_model::{
++    counts_match, present_source_makes_remaining_positive, remaining_count_from,
++    removing_source_updates_count,
++};
++#[cfg(verus_only)]
++use super::cycle_edge_model::{
++    dependency_match_count_from, dependency_match_count_is_indicator,
++    matching_index_makes_full_count_positive,
++};
++#[cfg(verus_only)]
++use super::{cycle_model, model};
++use super::validation;
++use crate::ContextNode;
++use vstd::prelude::*;
++
++verus! {
++
++pub(super) fn remove_source(
++    nodes: &[ContextNode],
++    _removed: &[bool],
++    counts: &mut Vec<usize>,
++    source: usize,
++)
++    requires
++        model::nodes_canonical(nodes@),
++        model::dependencies_exist(nodes@),
++        counts_match(nodes@, _removed@, old(counts)@),
++        source < nodes@.len(),
++        !_removed@[source as int],
++    ensures counts_match(
++        nodes@,
++        _removed@.update(source as int, true),
++        final(counts)@,
++    ),
++{
++    let ghost before = counts@;
++    let source_node = &nodes[source];
++    let dependencies = source_node.dependencies();
++    proof {
++        use_type_invariant(&*source_node);
++        assert(source_node.invariant());
++        assert(nodes@[source as int].invariant());
++        reveal(counts_match);
++    }
++    let mut dependency = 0usize;
++    while dependency < dependencies.len()
++        invariant
++            dependency <= dependencies.len(),
++            source < nodes@.len(),
++            !_removed@[source as int],
++            dependencies@ == nodes@[source as int].spec_dependencies(),
++            nodes@[source as int].invariant(),
++            counts@.len() == nodes@.len(),
++            before.len() == nodes@.len(),
++            _removed@.len() == nodes@.len(),
++            model::nodes_canonical(nodes@),
++            model::dependencies_exist(nodes@),
++            forall |target: int| #![auto] 0 <= target < nodes@.len() ==>
++                before[target] as nat == remaining_count_from(
++                    nodes@,
++                    _removed@,
++                    target as nat,
++                    0,
++                ),
++            forall |target: int| #![auto] 0 <= target < nodes@.len() ==>
++                counts@[target] as nat
++                    + dependency_match_count_from(
++                        dependencies@,
++                        nodes@[target].spec_id(),
++                        0,
++                    )
++                    == before[target] as nat
++                        + dependency_match_count_from(
++                            dependencies@,
++                            nodes@[target].spec_id(),
++                            dependency as nat,
++                        ),
++        decreases dependencies.len() - dependency,
++    {
++        proof {
++            model::admitted_dependency_exists(nodes@, source as nat, dependency as nat);
++        }
++        let Some(target) = validation::find_node_index(nodes, dependencies[dependency]) else {
++            proof {
++                assert(model::node_exists(nodes@, dependencies@[dependency as int]));
++                assert(false);
++            }
++            return;
++        };
++        let ghost before_set = counts@;
++        proof {
++            decrement_is_safe(
++                nodes@, _removed@, dependencies@, counts@, before,
++                source as nat, dependency as nat, target as nat,
++            );
++        }
++        let next = counts[target] - 1;
++        counts.set(target, next);
++        proof {
++            assert(counts@ == before_set.update(target as int, next));
++            assert(next + 1 == before_set[target as int]);
++            decrement_step(
++                nodes@, dependencies@, dependency as nat, target as nat,
++                before, before_set, counts@, next,
++            );
++        }
++        dependency += 1;
++    }
++    proof {
++        finish_removed_source(
++            nodes@, _removed@, counts@, before,
++            source as nat, dependencies@,
++        );
++    };
++}
++
++proof fn decrement_is_safe(
++    nodes: Seq<ContextNode>,
++    removed: Seq<bool>,
++    dependencies: Seq<crate::ContextNodeId>,
++    counts: Seq<usize>,
++    before: Seq<usize>,
++    source: nat,
++    dependency: nat,
++    target: nat,
++)
++    requires
++        source < nodes.len(),
++        target < nodes.len(),
++        dependency < dependencies.len(),
++        removed.len() == nodes.len(),
++        !removed[source as int],
++        dependencies == nodes[source as int].spec_dependencies(),
++        nodes[source as int].invariant(),
++        dependencies[dependency as int].spec_matches(&nodes[target as int].spec_id()),
++        before[target as int] as nat
++            == remaining_count_from(nodes, removed, target, 0),
++        counts[target as int] as nat
++            + dependency_match_count_from(
++                dependencies,
++                nodes[target as int].spec_id(),
++                0,
++            )
++            == before[target as int] as nat
++                + dependency_match_count_from(
++                    dependencies,
++                    nodes[target as int].spec_id(),
++                    dependency,
++                ),
++    ensures counts[target as int] > 0,
++{
++    dependency_match_count_is_indicator(
++        &nodes[source as int],
++        nodes[target as int].spec_id(),
++    );
++    matching_index_makes_full_count_positive(
++        dependencies,
++        nodes[target as int].spec_id(),
++        dependency,
++    );
++    assert(dependency_match_count_from(
++        dependencies,
++        nodes[target as int].spec_id(),
++        0,
++    ) == 1);
++    reveal(cycle_model::node_depends_on);
++    assert(cycle_model::node_depends_on(nodes, source, target));
++    present_source_makes_remaining_positive(nodes, removed, target, source);
++    assert(before[target as int] > 0);
++    reveal(dependency_match_count_from);
++}
++
++proof fn decrement_step(
++    nodes: Seq<ContextNode>,
++    dependencies: Seq<crate::ContextNodeId>,
++    dependency: nat,
++    target: nat,
++    before: Seq<usize>,
++    before_set: Seq<usize>,
++    after: Seq<usize>,
++    next: usize,
++)
++    requires
++        dependency < dependencies.len(),
++        target < nodes.len(),
++        nodes.len() == before_set.len(),
++        model::nodes_canonical(nodes),
++        dependencies[dependency as int].spec_matches(&nodes[target as int].spec_id()),
++        after == before_set.update(target as int, next),
++        next + 1 == before_set[target as int],
++        forall |other: int| #![auto] 0 <= other < nodes.len() ==>
++            before_set[other] as nat
++                + dependency_match_count_from(
++                    dependencies,
++                    nodes[other].spec_id(),
++                    0,
++                )
++                == before[other] as nat
++                    + dependency_match_count_from(
++                        dependencies,
++                        nodes[other].spec_id(),
++                        dependency,
++                    ),
++    ensures forall |other: int| #![auto] 0 <= other < nodes.len() ==>
++        after[other] as nat
++            + dependency_match_count_from(
++                dependencies,
++                nodes[other].spec_id(),
++                0,
++            )
++            == before[other] as nat
++                + dependency_match_count_from(
++                    dependencies,
++                    nodes[other].spec_id(),
++                    dependency + 1,
++                ),
++{
++    assert forall |other: int| #![auto] 0 <= other < nodes.len() implies
++        after[other] as nat
++            + dependency_match_count_from(
++                dependencies,
++                nodes[other].spec_id(),
++                0,
++            )
++            == before[other] as nat
++                + dependency_match_count_from(
++                    dependencies,
++                    nodes[other].spec_id(),
++                    dependency + 1,
++                ) by {
++        reveal(dependency_match_count_from);
++        if other == target {
++        } else if dependencies[dependency as int].spec_matches(
++            &nodes[other].spec_id(),
++        ) {
++            model::canonical_match_is_unique(
++                nodes,
++                dependencies[dependency as int],
++                target,
++                other as nat,
++            );
++            assert(false);
++        }
++    }
++}
++
++proof fn finish_removed_source(
++    nodes: Seq<ContextNode>,
++    removed: Seq<bool>,
++    counts: Seq<usize>,
++    before: Seq<usize>,
++    source: nat,
++    dependencies: Seq<crate::ContextNodeId>,
++)
++    requires
++        source < nodes.len(),
++        !removed[source as int],
++        removed.len() == nodes.len(),
++        counts.len() == nodes.len(),
++        before.len() == nodes.len(),
++        dependencies == nodes[source as int].spec_dependencies(),
++        nodes[source as int].invariant(),
++        forall |target: int| #![auto] 0 <= target < nodes.len() ==>
++            before[target] as nat == remaining_count_from(
++                nodes,
++                removed,
++                target as nat,
++                0,
++            ),
++        forall |target: int| #![auto] 0 <= target < nodes.len() ==>
++            counts[target] as nat
++                + dependency_match_count_from(
++                    dependencies,
++                    nodes[target].spec_id(),
++                    0,
++                )
++                == before[target] as nat
++                    + dependency_match_count_from(
++                        dependencies,
++                        nodes[target].spec_id(),
++                        dependencies.len(),
++                    ),
++    ensures counts_match(
++        nodes,
++        removed.update(source as int, true),
++        counts,
++    ),
++{
++    assert forall |target: int| #![auto] 0 <= target < nodes.len() implies
++        counts[target] as nat == remaining_count_from(
++            nodes,
++            removed.update(source as int, true),
++            target as nat,
++            0,
++        ) by {
++        dependency_match_count_is_indicator(
++            &nodes[source as int],
++            nodes[target].spec_id(),
++        );
++        removing_source_updates_count(nodes, removed, source, target as nat, 0);
++        assert(dependency_match_count_from(
++            dependencies,
++            nodes[target].spec_id(),
++            dependencies.len(),
++        ) == 0) by {
++            reveal(dependency_match_count_from);
++        }
++        assert(counts[target] as nat
++            + dependency_match_count_from(dependencies, nodes[target].spec_id(), 0)
++            == before[target] as nat);
++        reveal(cycle_model::node_depends_on);
++        if cycle_model::dependency_contains_from(
++            dependencies,
++            nodes[target].spec_id(),
++            0,
++        ) {
++            assert(dependency_match_count_from(
++                dependencies,
++                nodes[target].spec_id(),
++                0,
++            ) == 1);
++            assert(cycle_model::node_depends_on(nodes, source, target as nat));
++            assert(counts[target] as nat + 1 == before[target] as nat);
++            assert(before[target] as nat == remaining_count_from(
++                nodes,
++                removed.update(source as int, true),
++                target as nat,
++                0,
++            ) + 1);
++        } else {
++            assert(dependency_match_count_from(
++                dependencies,
++                nodes[target].spec_id(),
++                0,
++            ) == 0);
++            assert(!cycle_model::node_depends_on(nodes, source, target as nat));
++            assert(counts[target] as nat == before[target] as nat);
++            assert(before[target] as nat == remaining_count_from(
++                nodes,
++                removed.update(source as int, true),
++                target as nat,
++                0,
++            ));
++        }
++    }
++    reveal(counts_match);
++}
++
++} // verus!
+diff -ruN /tmp/peritus-sol-context-source-final-20260913T004133Z/peritus-context/src/graph/cycle_counts.rs /tmp/peritus-sol-context-cycle-fix-final-source-003/peritus-context/src/graph/cycle_counts.rs
+--- /tmp/peritus-sol-context-source-final-20260913T004133Z/peritus-context/src/graph/cycle_counts.rs	1969-12-31 18:00:00.000000000 -0600
++++ /tmp/peritus-sol-context-cycle-fix-final-source-003/peritus-context/src/graph/cycle_counts.rs	2026-09-12 20:39:39.455962903 -0500
+@@ -0,0 +1,63 @@
++//! Exact zero-count selection for the production Kahn traversal.
++
++#[cfg(verus_only)]
++use super::cycle_count_model::{counts_match, remaining_count_from, zero_iff_no_remaining};
++#[cfg(verus_only)]
++use super::cycle_model;
++use crate::ContextNode;
++use vstd::prelude::*;
++
++verus! {
++
++pub(super) fn first_removable(
++    nodes: &[ContextNode],
++    removed: &[bool],
++    counts: &[usize],
++) -> (result: Option<usize>)
++    requires counts_match(nodes@, removed@, counts@),
++    ensures match result {
++        Some(index) => index < nodes.len()
++            && cycle_model::removable(nodes@, removed@, index as nat)
++            && cycle_model::first_removable_from(nodes@, removed@, 0)
++                == Some(index as nat),
++        None => cycle_model::first_removable_from(nodes@, removed@, 0).is_none(),
++    },
++{
++    reveal(counts_match);
++    let mut index = 0usize;
++    while index < nodes.len()
++        invariant
++            index <= nodes.len(),
++            removed@.len() == nodes@.len(),
++            counts@.len() == nodes@.len(),
++            forall |target: int| #![auto] 0 <= target < nodes@.len() ==>
++                counts@[target] as nat == remaining_count_from(
++                    nodes@,
++                    removed@,
++                    target as nat,
++                    0,
++                ),
++            cycle_model::first_removable_from(nodes@, removed@, 0)
++                == cycle_model::first_removable_from(
++                    nodes@,
++                    removed@,
++                    index as nat,
++                ),
++        decreases nodes.len() - index,
++    {
++        proof {
++            zero_iff_no_remaining(nodes@, removed@, index as nat, 0);
++            reveal(cycle_model::removable);
++        }
++        reveal(cycle_model::first_removable_from);
++        if !removed[index] && counts[index] == 0 {
++            assert(cycle_model::removable(nodes@, removed@, index as nat));
++            return Some(index);
++        }
++        assert(!cycle_model::removable(nodes@, removed@, index as nat));
++        index += 1;
++    }
++    None
++}
++
++} // verus!
+diff -ruN /tmp/peritus-sol-context-source-final-20260913T004133Z/peritus-context/src/graph/cycle_edge_model.rs /tmp/peritus-sol-context-cycle-fix-final-source-003/peritus-context/src/graph/cycle_edge_model.rs
+--- /tmp/peritus-sol-context-source-final-20260913T004133Z/peritus-context/src/graph/cycle_edge_model.rs	1969-12-31 18:00:00.000000000 -0600
++++ /tmp/peritus-sol-context-cycle-fix-final-source-003/peritus-context/src/graph/cycle_edge_model.rs	2026-09-12 20:38:58.520527485 -0500
+@@ -0,0 +1,213 @@
++//! Exact edge-occurrence and processed-source count model.
++
++#[cfg(verus_only)]
++use super::cycle_count_model::{remaining_count_from};
++#[cfg(verus_only)]
++use super::cycle_model;
++#[cfg(verus_only)]
++use crate::{ContextNode, ContextNodeId};
++use vstd::prelude::*;
++
++verus! {
++
++/// Number of matching dependency identities at or after one dependency index.
++pub open spec fn dependency_match_count_from(
++    dependencies: Seq<ContextNodeId>,
++    id: ContextNodeId,
++    index: nat,
++) -> nat
++    decreases dependencies.len() - index,
++{
++    if index >= dependencies.len() {
++        0
++    } else {
++        (if dependencies[index as int].spec_matches(&id) { 1nat } else { 0nat })
++            + dependency_match_count_from(dependencies, id, index + 1)
++    }
++}
++
++/// Number of direct dependent sources already processed during count construction.
++pub open spec fn processed_source_count(
++    nodes: Seq<ContextNode>,
++    target: nat,
++    source: nat,
++) -> nat
++    decreases source,
++{
++    if source == 0 {
++        0
++    } else {
++        processed_source_count(nodes, target, (source - 1) as nat)
++            + if cycle_model::node_depends_on(nodes, (source - 1) as nat, target) {
++                1nat
++            } else {
++                0nat
++            }
++    }
++}
++
++/// A processed prefix contributes at most one count per source.
++pub proof fn processed_source_count_is_bounded(
++    nodes: Seq<ContextNode>,
++    target: nat,
++    source: nat,
++)
++    ensures processed_source_count(nodes, target, source) <= source,
++    decreases source,
++{
++    reveal(processed_source_count);
++    if source > 0 {
++        processed_source_count_is_bounded(nodes, target, (source - 1) as nat);
++    }
++}
++
++proof fn positive_match_count_has_witness(
++    dependencies: Seq<ContextNodeId>,
++    id: ContextNodeId,
++    index: nat,
++)
++    requires
++        index <= dependencies.len(),
++        dependency_match_count_from(dependencies, id, index) > 0,
++    ensures exists |found: nat| index <= found < dependencies.len()
++        && dependencies[found as int].spec_matches(&id),
++    decreases dependencies.len() - index,
++{
++    reveal(dependency_match_count_from);
++    if index < dependencies.len()
++        && !dependencies[index as int].spec_matches(&id)
++    {
++        positive_match_count_has_witness(dependencies, id, index + 1);
++    }
++}
++
++proof fn matching_index_makes_count_positive_from(
++    dependencies: Seq<ContextNodeId>,
++    id: ContextNodeId,
++    found: nat,
++    start: nat,
++)
++    requires
++        start <= found < dependencies.len(),
++        dependencies[found as int].spec_matches(&id),
++    ensures dependency_match_count_from(dependencies, id, start) > 0,
++    decreases found - start,
++{
++    reveal(dependency_match_count_from);
++    if start < found {
++        matching_index_makes_count_positive_from(dependencies, id, found, start + 1);
++    }
++}
++
++/// A matching dependency at a known index makes the complete occurrence count positive.
++pub proof fn matching_index_makes_full_count_positive(
++    dependencies: Seq<ContextNodeId>,
++    id: ContextNodeId,
++    found: nat,
++)
++    requires
++        found < dependencies.len(),
++        dependencies[found as int].spec_matches(&id),
++    ensures dependency_match_count_from(dependencies, id, 0) > 0,
++{
++    matching_index_makes_count_positive_from(dependencies, id, found, 0);
++}
++
++proof fn match_count_is_at_most_one(
++    node: &ContextNode,
++    id: ContextNodeId,
++    index: nat,
++)
++    requires
++        node.invariant(),
++        index <= node.spec_dependencies().len(),
++    ensures dependency_match_count_from(node.spec_dependencies(), id, index) <= 1,
++    decreases node.spec_dependencies().len() - index,
++{
++    reveal(dependency_match_count_from);
++    if index < node.spec_dependencies().len() {
++        match_count_is_at_most_one(node, id, index + 1);
++        if node.spec_dependencies()[index as int].spec_matches(&id)
++            && dependency_match_count_from(node.spec_dependencies(), id, index + 1) > 0
++        {
++            positive_match_count_has_witness(node.spec_dependencies(), id, index + 1);
++            let other = choose |other: nat| index + 1 <= other
++                && other < node.spec_dependencies().len()
++                && node.spec_dependencies()[other as int].spec_matches(&id);
++            assert(node.spec_dependencies()[index as int].spec_matches(
++                &node.spec_dependencies()[other as int],
++            ));
++            node.dependency_match_is_unique(index, other);
++            assert(false);
++        }
++    }
++}
++
++proof fn match_count_positive_iff_contains(
++    dependencies: Seq<ContextNodeId>,
++    id: ContextNodeId,
++    index: nat,
++)
++    requires index <= dependencies.len(),
++    ensures
++        (dependency_match_count_from(dependencies, id, index) > 0)
++            == cycle_model::dependency_contains_from(dependencies, id, index),
++    decreases dependencies.len() - index,
++{
++    reveal(dependency_match_count_from);
++    reveal(cycle_model::dependency_contains_from);
++    if index < dependencies.len() {
++        match_count_positive_iff_contains(dependencies, id, index + 1);
++    }
++}
++
++/// A checked node's canonical dependencies contribute exactly one or zero to an edge count.
++pub(super) proof fn dependency_match_count_is_indicator(
++    node: &ContextNode,
++    id: ContextNodeId,
++)
++    requires node.invariant(),
++    ensures
++        dependency_match_count_from(node.spec_dependencies(), id, 0)
++            == if cycle_model::dependency_contains_from(
++                node.spec_dependencies(), id, 0,
++            ) { 1nat } else { 0nat },
++{
++    match_count_is_at_most_one(node, id, 0);
++    match_count_positive_iff_contains(node.spec_dependencies(), id, 0);
++}
++
++/// Processed source counts and the unprocessed suffix partition the initial exact count.
++pub proof fn processed_sources_partition_initial(
++    nodes: Seq<ContextNode>,
++    target: nat,
++    source: nat,
++)
++    requires
++        target < nodes.len(),
++        source <= nodes.len(),
++    ensures
++        processed_source_count(nodes, target, source)
++            + remaining_count_from(
++                nodes,
++                cycle_model::initial_removed(nodes.len()),
++                target,
++                source,
++            )
++            == remaining_count_from(
++                nodes,
++                cycle_model::initial_removed(nodes.len()),
++                target,
++                0,
++            ),
++    decreases source,
++{
++    if source > 0 {
++        processed_sources_partition_initial(nodes, target, (source - 1) as nat);
++        reveal(processed_source_count);
++        reveal(remaining_count_from);
++        reveal(cycle_model::initial_removed);
++    }
++}
++
++} // verus!
+diff -ruN /tmp/peritus-sol-context-source-final-20260913T004133Z/peritus-context/src/graph/model.rs /tmp/peritus-sol-context-cycle-fix-final-source-003/peritus-context/src/graph/model.rs
+--- /tmp/peritus-sol-context-source-final-20260913T004133Z/peritus-context/src/graph/model.rs	2026-09-12 19:29:05.635936766 -0500
++++ /tmp/peritus-sol-context-cycle-fix-final-source-003/peritus-context/src/graph/model.rs	2026-09-12 20:31:41.626252316 -0500
+@@ -116,4 +116,161 @@
+     first_missing_dependency(nodes, 0).is_none()
+ }
+ 
++proof fn missing_dependency_suffix_is_empty(
++    nodes: Seq<ContextNode>,
++    index: nat,
++)
++    requires
++        first_missing_dependency(nodes, 0).is_none(),
++        index <= nodes.len(),
++    ensures first_missing_dependency(nodes, index).is_none(),
++    decreases index,
++{
++    if index > 0 {
++        missing_dependency_suffix_is_empty(nodes, (index - 1) as nat);
++        reveal(first_missing_dependency);
++    }
++}
++
++proof fn missing_for_node_suffix_is_empty(
++    nodes: Seq<ContextNode>,
++    owner: ContextNodeId,
++    dependencies: Seq<ContextNodeId>,
++    index: nat,
++)
++    requires
++        first_missing_for_node(nodes, owner, dependencies, 0).is_none(),
++        index <= dependencies.len(),
++    ensures first_missing_for_node(nodes, owner, dependencies, index).is_none(),
++    decreases index,
++{
++    if index > 0 {
++        missing_for_node_suffix_is_empty(
++            nodes,
++            owner,
++            dependencies,
++            (index - 1) as nat,
++        );
++        reveal(first_missing_for_node);
++    }
++}
++
++pub(super) proof fn admitted_dependency_exists(
++    nodes: Seq<ContextNode>,
++    source: nat,
++    dependency: nat,
++)
++    requires
++        dependencies_exist(nodes),
++        source < nodes.len(),
++        dependency < nodes[source as int].spec_dependencies().len(),
++    ensures node_exists(
++        nodes,
++        nodes[source as int].spec_dependencies()[dependency as int],
++    ),
++{
++    reveal(dependencies_exist);
++    missing_dependency_suffix_is_empty(nodes, source);
++    reveal(first_missing_dependency);
++    let dependencies = nodes[source as int].spec_dependencies();
++    missing_for_node_suffix_is_empty(
++        nodes,
++        nodes[source as int].spec_id(),
++        dependencies,
++        dependency,
++    );
++    reveal(first_missing_for_node);
++}
++
++proof fn order_error_suffix_is_empty(
++    nodes: Seq<ContextNode>,
++    index: nat,
++)
++    requires
++        first_node_order_error(nodes, 1).is_none(),
++        1 <= index <= nodes.len(),
++    ensures first_node_order_error(nodes, index).is_none(),
++    decreases index - 1,
++{
++    if index > 1 {
++        order_error_suffix_is_empty(nodes, (index - 1) as nat);
++        reveal(first_node_order_error);
++    }
++}
++
++proof fn canonical_adjacent(
++    nodes: Seq<ContextNode>,
++    index: nat,
++)
++    requires
++        nodes_canonical(nodes),
++        1 <= index < nodes.len(),
++    ensures
++        nodes[index as int - 1].spec_id().spec_order(
++            &nodes[index as int].spec_id(),
++        ) == Ordering::Less,
++{
++    reveal(nodes_canonical);
++    order_error_suffix_is_empty(nodes, index);
++    reveal(first_node_order_error);
++    match nodes[index as int - 1].spec_id().spec_order(
++        &nodes[index as int].spec_id(),
++    ) {
++        Ordering::Less => {}
++        Ordering::Equal => { assert(false); }
++        Ordering::Greater => { assert(false); }
++    }
++}
++
++proof fn canonical_pair(
++    nodes: Seq<ContextNode>,
++    left: nat,
++    right: nat,
++)
++    requires
++        nodes_canonical(nodes),
++        left < right < nodes.len(),
++    ensures nodes[left as int].spec_id().spec_order(
++        &nodes[right as int].spec_id(),
++    ) == Ordering::Less,
++    decreases right - left,
++{
++    canonical_adjacent(nodes, right);
++    if left + 1 < right {
++        canonical_pair(nodes, left, (right - 1) as nat);
++        ContextNodeId::order_transitive(
++            &nodes[left as int].spec_id(),
++            &nodes[right as int - 1].spec_id(),
++            &nodes[right as int].spec_id(),
++        );
++    }
++}
++
++pub(super) proof fn canonical_match_is_unique(
++    nodes: Seq<ContextNode>,
++    id: ContextNodeId,
++    found: nat,
++    other: nat,
++)
++    requires
++        nodes_canonical(nodes),
++        found < nodes.len(),
++        other < nodes.len(),
++        nodes[found as int].spec_id().spec_matches(&id),
++        nodes[other as int].spec_id().spec_matches(&id),
++    ensures found == other,
++{
++    ContextNodeId::matches_implies_equal(&nodes[found as int].spec_id(), &id);
++    ContextNodeId::matches_implies_equal(&nodes[other as int].spec_id(), &id);
++    if found < other {
++        canonical_pair(nodes, found, other);
++        ContextNodeId::order_reflexive(&id);
++        assert(false);
++    } else if other < found {
++        canonical_pair(nodes, other, found);
++        ContextNodeId::order_reflexive(&id);
++        assert(false);
++    }
++}
++
+ } // verus!
+diff -ruN /tmp/peritus-sol-context-source-final-20260913T004133Z/peritus-context/src/graph.rs /tmp/peritus-sol-context-cycle-fix-final-source-003/peritus-context/src/graph.rs
+--- /tmp/peritus-sol-context-source-final-20260913T004133Z/peritus-context/src/graph.rs	2026-09-12 19:39:27.757986429 -0500
++++ /tmp/peritus-sol-context-cycle-fix-final-source-003/peritus-context/src/graph.rs	2026-09-12 20:39:08.402753085 -0500
+@@ -4,6 +4,11 @@
+ use vstd::prelude::*;
+ 
+ mod cycle;
++mod cycle_count_init;
++mod cycle_count_model;
++mod cycle_count_update;
++mod cycle_counts;
++mod cycle_edge_model;
+ mod cycle_model;
+ mod cycle_proofs;
+ mod model;
+diff -ruN /tmp/peritus-sol-context-source-final-20260913T004133Z/peritus-context/src/identity.rs /tmp/peritus-sol-context-cycle-fix-final-source-003/peritus-context/src/identity.rs
+--- /tmp/peritus-sol-context-source-final-20260913T004133Z/peritus-context/src/identity.rs	2026-09-12 18:39:44.244063662 -0500
++++ /tmp/peritus-sol-context-cycle-fix-final-source-003/peritus-context/src/identity.rs	2026-09-12 20:24:51.819888401 -0500
+@@ -82,6 +82,34 @@
+     {
+         compare_bytes_from(self.as_bytes(), other.as_bytes(), 0)
+     }
++
++    pub(crate) proof fn matches_implies_equal(left: &Self, right: &Self)
++        requires left.spec_matches(right),
++        ensures *left == *right,
++    {
++        reveal(ContextNodeId::spec_matches);
++        reveal(ContextNodeId::spec_bytes);
++    }
++
++    pub(crate) proof fn order_reflexive(value: &Self)
++        ensures value.spec_order(value) == Ordering::Equal,
++    {
++        order_reflexive_from(value.spec_bytes()@, 0);
++    }
++
++    pub(crate) proof fn order_transitive(left: &Self, middle: &Self, right: &Self)
++        requires
++            left.spec_order(middle) == Ordering::Less,
++            middle.spec_order(right) == Ordering::Less,
++        ensures left.spec_order(right) == Ordering::Less,
++    {
++        order_transitive_from(
++            left.spec_bytes()@,
++            middle.spec_bytes()@,
++            right.spec_bytes()@,
++            0,
++        );
++    }
+ }
+ 
+ /// Content digest identifying one compaction-policy revision.
+@@ -165,4 +193,37 @@
+     }
+ }
+ 
++proof fn order_reflexive_from(bytes: Seq<u8>, index: nat)
++    requires index <= bytes.len(),
++    ensures peritus_types::canonical_byte_order_from(bytes, bytes, index) == Ordering::Equal,
++    decreases bytes.len() - index,
++{
++    if index < bytes.len() {
++        order_reflexive_from(bytes, index + 1);
++    }
++}
++
++proof fn order_transitive_from(
++    left: Seq<u8>,
++    middle: Seq<u8>,
++    right: Seq<u8>,
++    index: nat,
++)
++    requires
++        left.len() == middle.len(),
++        middle.len() == right.len(),
++        index <= left.len(),
++        peritus_types::canonical_byte_order_from(left, middle, index) == Ordering::Less,
++        peritus_types::canonical_byte_order_from(middle, right, index) == Ordering::Less,
++    ensures peritus_types::canonical_byte_order_from(left, right, index) == Ordering::Less,
++    decreases left.len() - index,
++{
++    if index < left.len()
++        && left[index as int] == middle[index as int]
++        && middle[index as int] == right[index as int]
++    {
++        order_transitive_from(left, middle, right, index + 1);
++    }
++}
++
+ } // verus!
+diff -ruN /tmp/peritus-sol-context-source-final-20260913T004133Z/peritus-context/src/node/metadata/model.rs /tmp/peritus-sol-context-cycle-fix-final-source-003/peritus-context/src/node/metadata/model.rs
+--- /tmp/peritus-sol-context-source-final-20260913T004133Z/peritus-context/src/node/metadata/model.rs	2026-09-12 19:29:15.992970893 -0500
++++ /tmp/peritus-sol-context-cycle-fix-final-source-003/peritus-context/src/node/metadata/model.rs	2026-09-12 20:26:32.215222194 -0500
+@@ -89,4 +89,96 @@
+     }
+ }
+ 
++proof fn dependency_error_suffix_is_empty(
++    id: ContextNodeId,
++    dependencies: Seq<ContextNodeId>,
++    index: nat,
++)
++    requires
++        first_dependency_error(id, dependencies, 0).is_none(),
++        index <= dependencies.len(),
++    ensures first_dependency_error(id, dependencies, index).is_none(),
++    decreases index,
++{
++    if index > 0 {
++        dependency_error_suffix_is_empty(id, dependencies, (index - 1) as nat);
++        reveal(first_dependency_error);
++    }
++}
++
++proof fn valid_dependency_adjacent(
++    id: ContextNodeId,
++    dependencies: Seq<ContextNodeId>,
++    index: nat,
++)
++    requires
++        dependencies_valid(id, dependencies),
++        1 <= index < dependencies.len(),
++    ensures dependencies[index as int - 1].spec_order(
++        &dependencies[index as int],
++    ) == Ordering::Less,
++{
++    reveal(dependencies_valid);
++    dependency_error_suffix_is_empty(id, dependencies, index);
++    reveal(first_dependency_error);
++    match dependencies[index as int - 1].spec_order(&dependencies[index as int]) {
++        Ordering::Less => {}
++        Ordering::Equal => { assert(false); }
++        Ordering::Greater => { assert(false); }
++    }
++}
++
++proof fn valid_dependency_pair(
++    id: ContextNodeId,
++    dependencies: Seq<ContextNodeId>,
++    left: nat,
++    right: nat,
++)
++    requires
++        dependencies_valid(id, dependencies),
++        left < right < dependencies.len(),
++    ensures dependencies[left as int].spec_order(
++        &dependencies[right as int],
++    ) == Ordering::Less,
++    decreases right - left,
++{
++    valid_dependency_adjacent(id, dependencies, right);
++    if left + 1 < right {
++        valid_dependency_pair(id, dependencies, left, (right - 1) as nat);
++        ContextNodeId::order_transitive(
++            &dependencies[left as int],
++            &dependencies[right as int - 1],
++            &dependencies[right as int],
++        );
++    }
++}
++
++pub(super) proof fn valid_dependency_match_is_unique(
++    id: ContextNodeId,
++    dependencies: Seq<ContextNodeId>,
++    left: nat,
++    right: nat,
++)
++    requires
++        dependencies_valid(id, dependencies),
++        left < dependencies.len(),
++        right < dependencies.len(),
++        dependencies[left as int].spec_matches(&dependencies[right as int]),
++    ensures left == right,
++{
++    ContextNodeId::matches_implies_equal(
++        &dependencies[left as int],
++        &dependencies[right as int],
++    );
++    if left < right {
++        valid_dependency_pair(id, dependencies, left, right);
++        ContextNodeId::order_reflexive(&dependencies[left as int]);
++        assert(false);
++    } else if right < left {
++        valid_dependency_pair(id, dependencies, right, left);
++        ContextNodeId::order_reflexive(&dependencies[left as int]);
++        assert(false);
++    }
++}
++
+ } // verus!
+diff -ruN /tmp/peritus-sol-context-source-final-20260913T004133Z/peritus-context/src/node/metadata.rs /tmp/peritus-sol-context-cycle-fix-final-source-003/peritus-context/src/node/metadata.rs
+--- /tmp/peritus-sol-context-source-final-20260913T004133Z/peritus-context/src/node/metadata.rs	2026-09-12 18:54:57.243122577 -0500
++++ /tmp/peritus-sol-context-cycle-fix-final-source-003/peritus-context/src/node/metadata.rs	2026-09-12 20:29:54.990896376 -0500
+@@ -59,6 +59,25 @@
+     /// Logical view of canonical direct dependencies.
+     pub closed spec fn spec_dependencies(&self) -> Seq<ContextNodeId> { self.dependencies@ }
+ 
++    pub(crate) proof fn dependency_match_is_unique(&self, left: nat, right: nat)
++        requires
++            self.spec_well_formed(),
++            left < self.spec_dependencies().len(),
++            right < self.spec_dependencies().len(),
++            self.spec_dependencies()[left as int].spec_matches(
++                &self.spec_dependencies()[right as int],
++            ),
++        ensures left == right,
++    {
++        reveal(ContextNodeMetadata::spec_well_formed);
++        model::valid_dependency_match_is_unique(
++            self.spec_id(),
++            self.spec_dependencies(),
++            left,
++            right,
++        );
++    }
++
+     /// Canonical non-self dependency identity shape.
+     pub open spec fn dependencies_valid(
+         id: ContextNodeId,
+diff -ruN /tmp/peritus-sol-context-source-final-20260913T004133Z/peritus-context/src/node.rs /tmp/peritus-sol-context-cycle-fix-final-source-003/peritus-context/src/node.rs
+--- /tmp/peritus-sol-context-source-final-20260913T004133Z/peritus-context/src/node.rs	2026-09-12 19:00:06.397157196 -0500
++++ /tmp/peritus-sol-context-cycle-fix-final-source-003/peritus-context/src/node.rs	2026-09-12 20:29:55.092896715 -0500
+@@ -45,6 +45,11 @@
+ }
+ 
+ impl ContextNode {
++    #[verifier::type_invariant]
++    pub(crate) open spec fn invariant(&self) -> bool {
++        self.spec_metadata().spec_well_formed()
++    }
++
+     /// Logical view of the complete checked metadata.
+     pub closed spec fn spec_metadata(&self) -> ContextNodeMetadata { self.metadata }
+ 
+@@ -86,6 +91,21 @@
+         self.metadata.spec_dependencies()
+     }
+ 
++    pub(crate) proof fn dependency_match_is_unique(&self, left: nat, right: nat)
++        requires
++            self.invariant(),
++            left < self.spec_dependencies().len(),
++            right < self.spec_dependencies().len(),
++            self.spec_dependencies()[left as int].spec_matches(
++                &self.spec_dependencies()[right as int],
++            ),
++        ensures left == right,
++    {
++        reveal(ContextNode::spec_dependencies);
++        reveal(ContextNode::spec_metadata);
++        self.metadata.dependency_match_is_unique(left, right);
++    }
++
+     /// Complete semantic fields preserved by cloning.
+     pub open spec fn clone_equivalent(left: &Self, right: &Self) -> bool {
+         ContextNodeMetadata::clone_equivalent(&left.spec_metadata(), &right.spec_metadata())
+@@ -131,6 +151,11 @@
+             result.spec_metadata() == metadata,
+             result.spec_content() == content,
+     {
++        proof {
++            use_type_invariant(&metadata);
++            reveal(ContextNode::invariant);
++            reveal(ContextNode::spec_metadata);
++        }
+         Self { metadata, content }
+     }
+ 
+@@ -280,7 +305,14 @@
+     fn clone(&self) -> (result: Self)
+         ensures Self::clone_equivalent(self, &result),
+     {
+-        Self { metadata: self.metadata.clone(), content: self.content.clone() }
++        let metadata = self.metadata.clone();
++        let content = self.content.clone();
++        proof {
++            use_type_invariant(&metadata);
++            reveal(ContextNode::invariant);
++            reveal(ContextNode::spec_metadata);
++        }
++        Self { metadata, content }
+     }
+ }
+ 
+diff -ruN /tmp/peritus-sol-context-source-final-20260913T004133Z/peritus-context/tests/graph_matrix.rs /tmp/peritus-sol-context-cycle-fix-final-source-003/peritus-context/tests/graph_matrix.rs
+--- /tmp/peritus-sol-context-source-final-20260913T004133Z/peritus-context/tests/graph_matrix.rs	2026-09-12 19:44:27.887965858 -0500
++++ /tmp/peritus-sol-context-cycle-fix-final-source-003/peritus-context/tests/graph_matrix.rs	2026-09-12 20:12:42.782470508 -0500
+@@ -306,3 +306,29 @@
+         id(3),
+     );
+ }
++
++#[test]
++fn dependent_count_traversal_preserves_long_chain_and_cycle_result() {
++    const NODE_COUNT: u8 = 128;
++    let graph_limits =
++        ContextLimits::new(usize::from(NODE_COUNT), 4_096, 16, 11).expect("long-chain limits");
++
++    let chain = (1..=NODE_COUNT)
++        .map(|byte| {
++            let dependencies = if byte == 1 { Vec::new() } else { vec![id(byte - 1)] };
++            evidence_node(byte, "long chain", 1, RequirementMode::Optional, dependencies)
++        })
++        .collect();
++    let graph = ContextGraph::new(chain, graph_limits).expect("long chain is acyclic");
++    assert_eq!(graph.nodes().len(), usize::from(NODE_COUNT));
++
++    let cycle = (1..=NODE_COUNT)
++        .map(|byte| {
++            let dependency = if byte == 1 { id(NODE_COUNT) } else { id(byte - 1) };
++            evidence_node(byte, "long cycle", 1, RequirementMode::Optional, vec![dependency])
++        })
++        .collect();
++    let error = ContextGraph::new(cycle, graph_limits).expect_err("long cycle is rejected");
++    assert_eq!(error.kind(), ContextErrorKind::DependencyCycle);
++    assert_eq!(error.node_id(), Some(id(1)));
++}

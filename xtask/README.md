@@ -8,6 +8,16 @@ Actions references. The reproducibility check also locks the reviewed GitHub Tea
 ruleset activation template; live GitHub enforcement is verified separately through the documented
 API runbook because an offline repository process cannot attest to external state.
 
+The same check locks the default-branch `formal-authority.yml` workflow byte-for-byte and validates
+its exact `main`/`develop` trigger, permissions, separate checker/base/candidate SHA custody,
+pre-metadata execution guards, both checker-input equality edges, trusted checker build, offline
+candidate evaluation, and ordered `all` plus `verify-trust` calls. The proof-impact evaluator stays
+bound to the exact PR base. Checker or dependency transitions require a separately controlled
+exact-head bootstrap that establishes identical protected inputs on `main` and `develop`; candidate
+records cannot authorize them. This is a repository-code validation contract. Exclusive
+required-check authority still depends on the separately deployed and source-bound GitHub App
+described in `docs/github-governance.md`.
+
 `docs-check` inventories maintained Markdown, checks basic structure and local links, and requires
 each crate README to name its focused test command. This keeps documentation failures visible in
 the same local and CI gate as source-layout and architecture failures.
@@ -22,6 +32,17 @@ swallow bootstrap evidence. Once the root Cargo configuration has passed policy,
 is the equivalent developer convenience interface.
 
 ## Focused checks
+
+`formal-inventory` renders the declared obligation, trust, and exclusion registers alongside
+all formal packages and their last available local compiler-scope observations. The JSON is an
+audit aid: missing observations and observed zero-query packages remain distinct, and it does
+not authorize proof discharge, assert report freshness, or establish production correspondence.
+See the [active coverage audit](../docs/formal-coverage-audit.md) for current limits and work.
+
+The existing `model-orchestration` build, test, and Clippy shards also run a separate
+`peritus-agent --all-targets --no-default-features` check after their normal all-feature command.
+Separate Cargo invocations preserve the bridge-disabled feature graph even when other workspace
+packages depend on the default protocol bridge. Failure of either configuration fails the shard.
 
 Foundation and Gate A run `ci-shard test-daemon app-shell` separately from the
 ordinary `ci-shard test app-shell` job on Linux, macOS, and Windows. Together

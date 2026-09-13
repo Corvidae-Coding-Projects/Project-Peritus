@@ -12,6 +12,7 @@ pub(crate) mod discovery;
 pub(crate) mod distro;
 pub(crate) mod documentation;
 pub(crate) mod error;
+pub(crate) mod formal_inventory;
 pub(crate) mod formatting;
 pub(crate) mod metadata;
 pub(crate) mod model;

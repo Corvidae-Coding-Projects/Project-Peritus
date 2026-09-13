@@ -1,7 +1,11 @@
 //! Reviewed package shards for bounded hosted Rust and Verus jobs.
 
 mod daemon;
+mod feature_checks;
+mod proof_scope;
 mod runner;
+
+pub(crate) use proof_scope::observation as proof_observation;
 
 use crate::error::XtaskError;
 use crate::metadata;
@@ -132,6 +136,9 @@ pub(crate) fn run(root: &Path, operation: Operation, shard: &str) -> Result<usiz
             SHARD_NAMES.join(", ")
         )));
     }
+    if operation == Operation::VerusVerifyStrict {
+        return proof_scope::run(root, shard);
+    }
     let policy = metadata::architecture_policy(root)?;
     let cargo = metadata::cargo_metadata(root)?;
     validate_plan(&policy, &cargo)?;
@@ -145,6 +152,7 @@ pub(crate) fn run(root: &Path, operation: Operation, shard: &str) -> Result<usiz
             "CI shard `{shard}` failed during {operation:?} with status {status}"
         )));
     }
+    feature_checks::run(root, operation, shard, &packages)?;
     Ok(packages.len())
 }
 

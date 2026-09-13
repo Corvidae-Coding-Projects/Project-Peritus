@@ -1,0 +1,151 @@
+# Peritus context correspondence handoff
+
+Timestamp: `2026-09-13T00:41:33Z`
+
+Status: implementation and local qualification complete; source frozen for independent review. This is a bounded `peritus-context` result, not a whole-goal completion or review approval.
+
+## Immutable source identities
+
+- Final package: `/tmp/peritus-sol-context-source-final-20260913T004133Z/peritus-context`
+- Final full-package manifest: `/tmp/peritus-sol-context-final-full-package-20260913T004133Z.sha256` (67 files), manifest SHA-256 `fa6acc10d9389133df32011675c1c4c1d907286854ccd35ad0f17e7a89aeefc6`
+- Unchanged shared-context preimage: `/tmp/peritus-sol-context-preimage-20260913T004133Z/peritus-context`
+- Preimage manifest: `/tmp/peritus-sol-context-preimage-full-package-20260913T004133Z.sha256` (55 files), manifest SHA-256 `1cfe9105489a6b024578ad00b687ac88e81863ccae6e8f2025b3d38d8b37576c`
+- Changed/new-source manifest: `/tmp/peritus-sol-context-final-changed-source-20260913T004133Z.sha256` (20 files), manifest SHA-256 `91e2adc6dc2b8946ea13036a7c017f29316bfb13dd01cb429a838f3fe28c252f`
+- Exact preimage-to-final patch: `/tmp/peritus-sol-context-final-20260913T004133Z.patch`, SHA-256 `8ee827e2debb133f39784354275c9deb5b8f2fc99f074173a9d0ba64809c7453`
+- Frozen-final versus isolated-live recursive comparison: `/tmp/peritus-sol-context-final-live-identity-20260913T001.log` (empty successful diff)
+- Frozen-preimage versus shared-context recursive comparison: `/tmp/peritus-sol-context-preimage-shared-identity-20260913T001.log` (empty successful diff)
+
+The final snapshot contains these 20 changed or new files:
+
+```text
+src/content.rs
+src/error.rs
+src/graph.rs
+src/graph/cycle.rs
+src/graph/cycle_model.rs
+src/graph/cycle_proofs.rs
+src/graph/model.rs
+src/graph/validation.rs
+src/identity.rs
+src/node.rs
+src/node/metadata.rs
+src/node/metadata/model.rs
+src/node/metadata/validation.rs
+src/node/visibility.rs
+src/reuse.rs
+src/reuse/build.rs
+src/reuse/model.rs
+src/reuse/validation.rs
+tests/graph_matrix.rs
+tests/reuse_matrix.rs
+```
+
+The isolated workspace used for compilation was `/home/doll/Project-Peritus/.worktrees/formal-coverage/target/sol-context-source-001`. It remains byte-identical to the final snapshot at handoff time. No shared `peritus-context` source was edited.
+
+## Exact dependency identities
+
+The isolated workspace used these frozen package inputs:
+
+- `peritus-run-knowledge`: 38-file manifest `/tmp/peritus-sol-knowledge-errors-source-final.sha256`, manifest SHA-256 `6854d6da0f6c0f6bd7b298f75b608a34e0937e32938ee266b233c6e00062e1d2`
+- `peritus-role`: 17-file manifest `/tmp/peritus-parent-role-policy-full-package-02.sha256`, manifest SHA-256 `af21cf03dfbc25f44e373ac08bbddbe217b5bff271528af69c2b3bd61ed7f385`
+- `peritus-spec`: manifest `/tmp/peritus-parent-role-policy-spec-dependency.sha256`, manifest SHA-256 `207f982395f69bf78f294ea773d9dfcece4470592f24bb267be48e148c784700`
+
+All three package manifests were checked against their isolated dependency copies before implementation. The comparison logs are `/tmp/peritus-sol-context-dependency-knowledge-20260912T001.log`, `/tmp/peritus-sol-context-dependency-role-20260912T001.log`, and `/tmp/peritus-sol-context-dependency-spec-20260912T001.log`.
+
+## Implemented and proved correspondence
+
+The change gives `ContextError` exact kind/payload views and exact constructors/getters. `ContextNodeId`, `ContextLimits`, `ContextContent`, `RoleVisibility`, `ContextNodeMetadata`, and `ContextNode` now have exact admission, field, membership/order, and complete semantic clone contracts for the fields used by graph and reuse validation.
+
+`ContextGraph::new` has an exact `Ok` iff contract over nonempty/bounded storage, canonical node identities, existing dependencies, and semantic acyclicity. Lookup returns the first exact identity without relying on an unproved canonical-input early stop. The production cycle reducer is connected to an independent finite sink-elimination certificate: a complete reducer run constructs the certificate, and a certificate implies an available next sink until completion. `None` is therefore equivalent to semantic acyclicity. Constructor failure priority and payloads remain empty, oversized, first node-order error, first missing dependency, then the canonical first residual node for `DependencyCycle`.
+
+The cycle implementation preserves the prior Kahn traversal's node-order tie breaking and residual diagnostic. A test-local copy of the exact prior indegree implementation is compared with the new production implementation for:
+
+- one cycle with an acyclic dependency tail, a dependent tail, and an independent node;
+- two residual cyclic components;
+- competing initially removable nodes before a residual cycle.
+
+The returned cycle diagnostic is precisely the first residual node under this traversal. It need not itself belong to a simple directed cycle when residual dependency tails are present.
+
+`build_reusable_context_selections` now has an exact success iff over the actual supplied graph, snapshot, packet, and links. Its deterministic reduction checks complete candidate identity including checkpoint sequence, exact role, link count/order/uniqueness, first section/link/node lookup, all 32 digest bytes, actor visibility, role-policy context-class visibility, and delivery/authority compatibility. Success preserves packet order and exact selected node, delivery, and complete cloned `KnowledgeSection` provenance. Failure contracts preserve the production check order and exact node/numeric payloads.
+
+## Qualification
+
+All commands ran from `/home/doll/Project-Peritus/.worktrees/formal-coverage/target/sol-context-source-001` unless stated otherwise. Build targets were on disk and used two jobs.
+
+Strict pinned Verus:
+
+```sh
+CARGO_TARGET_DIR=/home/doll/Project-Peritus/.worktrees/formal-coverage/target/sol-context-final-verus-02 CARGO_BUILD_JOBS=2 cargo verus verify --package peritus-context --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20
+```
+
+Result: `peritus-context` 481 verified, 0 errors in 49.55 seconds. The 17 emitted warnings are existing automatic-derive/trigger warnings; this change adds no warning suppressions, assumptions, admits, axioms, `external_body`, executable public preconditions, or verifier-only alternate implementations. Log: `/tmp/peritus-sol-context-final-verus-20260913T003.log`, SHA-256 `acfe8040293d160070a01d0173c8f97732f4597808089e7df638d3f9c2116223`.
+
+Default tests:
+
+```sh
+CARGO_TARGET_DIR=/home/doll/Project-Peritus/.worktrees/formal-coverage/target/sol-context-final-default-01 CARGO_BUILD_JOBS=2 cargo test --package peritus-context --locked
+```
+
+Result: 55 passed, 0 failed. Log: `/tmp/peritus-sol-context-final-tests-default-20260913T002.log`, SHA-256 `4b85a6349ddb8cc950642934b184c702e99fae454490c69ff4cae0c42b4edfc5`.
+
+All-feature tests:
+
+```sh
+CARGO_TARGET_DIR=/home/doll/Project-Peritus/.worktrees/formal-coverage/target/sol-context-final-all-01 CARGO_BUILD_JOBS=2 cargo test --package peritus-context --all-features --locked
+```
+
+Result: 55 passed, 0 failed. Log: `/tmp/peritus-sol-context-final-tests-all-20260913T002.log`, SHA-256 `3f833387c8e56787ce4d999b66c78562a6407663e17fee7af5bbb824d57c9565`.
+
+Focused legacy cycle-diagnostic comparison:
+
+```sh
+CARGO_TARGET_DIR=/home/doll/Project-Peritus/.worktrees/formal-coverage/target/sol-context-build-001 CARGO_BUILD_JOBS=2 cargo test --package peritus-context --test graph_matrix cycle_diagnostics_preserve_legacy_residual_order_for_complex_shapes --locked -- --exact
+```
+
+Result: 1 passed, 0 failed. Log: `/tmp/peritus-sol-context-cycle-legacy-comparison-20260913T001.log`, SHA-256 `c2b45124f1ad63b840d8e772653e9b99d836abe5844909302dc6bfdb33f7a9cd`.
+
+Strict Clippy:
+
+```sh
+CARGO_TARGET_DIR=/home/doll/Project-Peritus/.worktrees/formal-coverage/target/sol-context-final-clippy-01 CARGO_BUILD_JOBS=2 cargo clippy --package peritus-context --all-targets --all-features --locked -- -D warnings
+```
+
+Result: pass. Log: `/tmp/peritus-sol-context-final-clippy-20260913T002.log`, SHA-256 `3b041e3f508123a1a9aeba5f922dc7be46be08fae144bf731e739a670ed410e7`.
+
+Format:
+
+```sh
+cargo fmt --package peritus-context -- --check
+```
+
+Result: pass. Log: `/tmp/peritus-sol-context-final-fmt-20260913T002.log`, SHA-256 `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855`.
+
+Repository source-layout gate:
+
+```sh
+CARGO_TARGET_DIR=/home/doll/Project-Peritus/.worktrees/formal-coverage/target/sol-context-xtask-001 CARGO_BUILD_JOBS=2 cargo run --locked --package xtask -- source-layout-check
+```
+
+Result: pass over 4,410 source files. All 20 changed/new files are below 400 lines; the largest changed production file is 375 lines and largest changed test is 315 lines. The unchanged preimage contains `tests/compaction_matrix.rs` at 427 lines, which remains within the repository check's test-file policy. Log: `/tmp/peritus-sol-context-final-source-layout-20260913T001.log`, SHA-256 `b33489aed2bd279952e44db3794acc644770a6793fe4c90a2ef737daa5828127`.
+
+Ordinary API gate:
+
+```sh
+CARGO_TARGET_DIR=/home/doll/Project-Peritus/.worktrees/formal-coverage/target/sol-context-xtask-002 CARGO_BUILD_JOBS=2 cargo run --locked --package xtask -- ordinary-api-check
+```
+
+Result: pass over 3,509 formal-boundary files and 14,691 ordinary-safe executable entry points. Log: `/tmp/peritus-sol-context-final-ordinary-api-20260913T001.log`, SHA-256 `89e7677f78359de8185fa35ef62d6eac57d28268781bc5caea8bba841313fb30`.
+
+No whole-workspace test suite was run, per task scope.
+
+## Proved, tested, and external boundaries
+
+Proved: deterministic finite validation and reduction over the exact typed inputs described above; semantic acyclicity correspondence; first-error payloads and order; successful output field/order/provenance retention; exact underlying admission/getter/clone facts used in those paths.
+
+Tested: valid graph and reuse admission; identifier/content/limit/visibility/metadata failures; graph order, missing dependency, and cycle failures; candidate checkpoint mismatch; link count/order/uniqueness; missing section/link/node; full digest mismatch; actor and context-class visibility independently; successful packet-order/full-provenance retention; and the three legacy cycle diagnostic shapes.
+
+External: `bind_context_content` executes `peritus_codec::sha256`, but this proof does not verify the SHA-256 algorithm, input authenticity, or the truth of caller-supplied observations. Repository/provider I/O, snapshot provenance, checkpoint authenticity, and delivery observation truth remain outside this deterministic core. The role-policy and run-knowledge semantics are dependency guarantees pinned to the exact manifests above rather than reproved here.
+
+The ordinary public type graph does not permit constructing a delivery/authority-invalid `DeltaPacket` without bypassing private checked constructors. The deterministic delivery/authority branch is proved exact, and positive ordinary tests cover legitimate planner outputs; no malformed-private-state ordinary fixture was added.
+
+This increment does not complete unrelated selection, compaction, or working-state proofs in `peritus-context`, and it does not establish end-to-end external context authenticity or whole-system admission.

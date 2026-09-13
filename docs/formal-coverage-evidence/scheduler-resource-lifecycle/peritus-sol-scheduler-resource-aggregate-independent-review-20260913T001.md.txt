@@ -1,0 +1,49 @@
+# Independent source review: scheduler resource/selection aggregate repair
+
+## Verdict
+
+**PASS for the exact frozen 244-to-aggregate repair.** No source-correctness or bounded-performance blocker was found in the ten-path delta. Integration remains conditional on a guarded overlay onto the separately reviewed scheduler317 source and combined strict proof/tests/Clippy/fmt/API/layout gates.
+
+## Exact identities checked
+
+- Base root: `/tmp/peritus-parent-scheduler244-complete-source` (75 files).
+- Base manifest SHA-256: `812d4eabac5f6b131baa156cc970eee34a7c45a40a79c36433cdb65493e84f40`.
+- Final immutable root: `/tmp/peritus-sol-scheduler-perf-aggregate-final-source-20260913T001` (81 files).
+- Final manifest SHA-256: `0c56a4d67868a92691d27ded95e36b5a13375cc49f572274d04952e64c3bf1f8`; all 81 entries independently checked.
+- Changed-ten manifest SHA-256: `bf731c755755a31c5886629a0113fdc5e4bd4d4461163038222baad7a9c6dfd9`.
+- Base-to-final patch SHA-256: `b86fd5e3fd0d2aab92a83c8d343a44a1c68b2937c93b578c7099d24b4fada262`.
+- Ten-path inventory SHA-256: `32f910902e7318813795776ed3ca962db693b5e6f134391679928e9f15d02206`.
+- Worker report SHA-256: `51148d9e61dc8d8f0c1722e970c75e57dbc037302db5ec12f3a7e0707c144eaa`.
+- Worker evidence manifest SHA-256: `2a2f8c790495683b2821226023810b6b5d5bdf444671ee1b1638bfd3e3077fb1`; all 33 entries independently checked.
+
+The immutable root byte-matches the qualified live package. The ten changed paths are limited to resource admission/arithmetic/capacity, selection capacity aggregation/fallback, and focused resource tests.
+
+## Source findings
+
+- Canonical addition uses the actual production-called merge kernel. It retains ascending unique kinds, exact per-kind mathematical sums, and explicit zero-valued entries. Any shared-dimension `u64` overflow is detected during merge before the dimension ceiling is tested, preserving `ResourceConflict / resource addition overflowed` over `LimitExceeded`. A nonoverflowing union above the caller ceiling maps to the prior limit error.
+- Subtraction retains the prior order: scan left dimensions for underflow first, then validate the subtrahend's zero-quantity sentinel as an absent dimension. This covers wire-decoded explicit zero quantities: zero minus positive reports underflow; zero minus zero reports the existing absent-dimension error. A successful empty difference returns `None`; a nonempty result retains exact ordered differences without revalidating through a new runtime guard.
+- `ResourceVector::quantity` now uses verified binary lookup and returns the exact stored value or the same absence-as-zero sentinel. Constructor admission still checks empty/oversized before ordering, preserving error priority.
+- Each global or worker capacity predicate call folds reservation resources into a canonical aggregate and checks requested dimensions against that aggregate. Representable folds equal the mathematical reservation sums. If the fold cannot represent a sum, the implementation invokes the exact prior `u128` per-reservation fallback; aggregation failure cannot itself admit or reject work.
+- The public selection loop, candidate precedence, first-worker order, worker-count calculation, and `>4096 => false` defensive branch are unchanged. The aggregate and fallback paths prove equality with the same global/worker fit predicates, so valid admitted states keep the same feasibility result and deterministic selection order.
+- No new public executable precondition, rejection guard, assumption, admit, axiom, external body, verifier substitute, or lint suppression appears in the ten paths. Public addition/subtraction remain ordinary wrappers that call the verified kernels and map their outcomes to the prior exact errors; the wrappers themselves do not carry Verus Result contracts.
+
+## Performance evidence
+
+The supplied ignored release fixture constructs valid dense canonical scheduler states and calls public `select_next` and public dispatch decision logic. Production source hashes match the frozen repair; the only timing overlay adds the ignored probe module. The measurements are bounded observations on one machine, not an asymptotic theorem.
+
+Median D aggregate results compared with both A Git base and B frozen244:
+
+| Shape/path | D/A | D/B |
+|---|---:|---:|
+| 1024x256 select | 0.958x | 0.0278x |
+| 1024x256 dispatch | 0.921x | 0.186x |
+| 3072x256 select | 0.684x | 0.0242x |
+| 3072x256 dispatch | 0.936x | 0.151x |
+
+Thus the tested repair recovers the proof-induced regression relative to frozen244 and is no slower than the retained Git-base medians on these two dense shapes. The algorithm aggregates once per capacity predicate invocation, not once for an entire selection pass. With production bounds of 256 dimensions and 4096 reservations, its merge cost is bounded by reservation count times accumulated dimensions, followed by indexed request lookups. Sparse and multi-candidate workload latency remains unmeasured and is not claimed.
+
+## Supplied qualification and pending integration
+
+Supplied exact-source results: strict Verus 301/0; default, no-default, and all-feature package tests 26/0 each; strict Clippy, fmt, and source layout pass. These were inspected and their hashes verified; this independent review ran no build or verifier.
+
+The isolated ordinary API run failed only on inherited `src/work/terminal.rs` ghost-documentation `cfg_attr`, outside the ten-path patch and before the reviewed scanner correction was composed. The combined current-checker API gate is pending. The parent must overlay these paths onto scheduler317, resolve only actual composition conflicts, verify final identities, and run the combined proof and ordinary gates before shipping.

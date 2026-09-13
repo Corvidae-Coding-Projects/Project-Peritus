@@ -2,10 +2,12 @@
 
 mod data;
 
-use peritus_security_policy::{AcceptanceCriterion, SecurityRequirement};
+use peritus_security_policy::{
+    AcceptanceCriterion, SECURITY_QUALIFICATION_PROBE_COUNT, SecurityRequirement,
+};
 
 /// Number of probes in the immutable H0 production campaign.
-pub const H0_PRODUCTION_PROBE_COUNT: usize = 42;
+pub const H0_PRODUCTION_PROBE_COUNT: usize = SECURITY_QUALIFICATION_PROBE_COUNT;
 
 /// Native target on which a probe must execute.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]

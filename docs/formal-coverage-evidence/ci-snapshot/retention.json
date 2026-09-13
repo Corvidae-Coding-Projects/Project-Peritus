@@ -1,0 +1,13 @@
+{
+  "schema": "peritus.formal-coverage.review-retention",
+  "schema_version": 1,
+  "reviewer": "/root/chaos_boundaries_plan",
+  "scope": "Retained bounded review; no obligation discharge or final trusted CI approval.",
+  "original_hash_manifest": "/tmp/peritus-ci-snapshot-independent-review.sha256",
+  "retained_hash_manifest": "source-sha256.txt",
+  "review_record": "review.json",
+  "artifacts": {
+    "source-sha256.txt": "0947d599f16527680fc50a7b1a67182dfab411252fbdb32a6d126f46a79952b2",
+    "review.json": "a12cd726ba0c98ff9c0db783b6a196da390cc2857eb5f5bb30e4553d31d01509"
+  }
+}

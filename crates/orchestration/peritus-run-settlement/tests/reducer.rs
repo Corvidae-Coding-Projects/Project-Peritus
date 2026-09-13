@@ -213,6 +213,100 @@ fn reducer_rejects_nonadvancing_regressing_and_post_terminal_updates() {
 }
 
 #[test]
+fn cancellation_recovery_and_user_wait_retain_a_qualified_candidate_without_accepting_it() {
+    let checkpoint = qualified(identity(3, 7, 1));
+    for (cause, expected) in [
+        (SettlementCause::Cancellation, RunDisposition::Cancelled),
+        (SettlementCause::Recovery, RunDisposition::RecoveryRequired),
+        (SettlementCause::UserWait, RunDisposition::WaitingForUser),
+    ] {
+        let mut reducer = SettlementReducer::new();
+        reducer.observe(checkpoint).expect("qualified candidate");
+        let result = reducer.settle(cause).expect("terminal override");
+        assert_eq!(result.disposition(), expected);
+        assert_eq!(result.checkpoint(), Some(&checkpoint));
+        assert_eq!(result.cause(), cause);
+        assert!(!result.is_accepted());
+    }
+}
+
+#[test]
+fn rejected_observations_and_terminal_updates_preserve_the_complete_reducer() {
+    let first = qualified(identity(3, 7, 1));
+    let mut reducer = SettlementReducer::new();
+    reducer.observe(first).expect("first candidate");
+    let before = reducer;
+    assert_eq!(
+        reducer.observe(first).expect_err("sequence must advance").kind(),
+        SettlementErrorKind::CheckpointDidNotAdvance,
+    );
+    assert_eq!(reducer, before);
+    let regressed = CandidateCheckpoint::new(
+        identity(3, 7, 2),
+        CandidateStage::Changed,
+        EvidenceStatus::Missing,
+        EvidenceStatus::Missing,
+        EvidenceStatus::Missing,
+    )
+    .expect("well-formed earlier stage");
+    assert_eq!(
+        reducer.observe(regressed).expect_err("stage must not regress").kind(),
+        SettlementErrorKind::CandidateStageRegressed,
+    );
+    assert_eq!(reducer, before);
+    reducer.settle(SettlementCause::Completed).expect("first settlement");
+    let settled = reducer;
+    assert_eq!(
+        reducer.settle(SettlementCause::Cancellation).expect_err("already terminal").kind(),
+        SettlementErrorKind::AlreadySettled,
+    );
+    assert_eq!(reducer, settled);
+    assert_eq!(
+        reducer.observe(qualified(identity(4, 8, 3))).expect_err("already terminal").kind(),
+        SettlementErrorKind::AlreadySettled,
+    );
+    assert_eq!(reducer, settled);
+}
+
+#[test]
+fn candidate_comparison_uses_every_identity_byte_and_ignores_only_checkpoint_sequence() {
+    let candidate = identity(3, 7, 1);
+    let advanced = identity(3, 7, 2);
+    assert!(candidate.same_candidate(&advanced));
+    assert!(!candidate.same_candidate(&identity(3, 8, 2)));
+    for index in 0..32 {
+        let mut digest = [3; 32];
+        digest[index] = 4;
+        let changed = CandidateIdentity::new(
+            candidate.run_id(),
+            candidate.workspace_id(),
+            Sha256Digest::new(digest),
+            7,
+            2,
+        )
+        .expect("changed content");
+        assert!(candidate.same_lineage(&changed));
+        assert!(!candidate.same_candidate(&changed));
+    }
+    for index in 0..16 {
+        let mut run = [1; 16];
+        run[index] = 3;
+        let mut workspace = [2; 16];
+        workspace[index] = 3;
+        for (run_id, workspace_id) in [
+            (RunId::new(run).expect("changed run"), candidate.workspace_id()),
+            (candidate.run_id(), WorkspaceId::new(workspace).expect("changed workspace")),
+        ] {
+            let changed =
+                CandidateIdentity::new(run_id, workspace_id, candidate.candidate_digest(), 7, 2)
+                    .expect("changed lineage");
+            assert!(!candidate.same_lineage(&changed));
+            assert!(!candidate.same_candidate(&changed));
+        }
+    }
+}
+
+#[test]
 fn every_stable_tag_round_trips_and_unknown_tags_reject() {
     for stage in [
         CandidateStage::Observed,

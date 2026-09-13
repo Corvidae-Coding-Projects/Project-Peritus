@@ -1,252 +1,267 @@
 //! Blocker, waiver, and final human-approval evaluation.
 
-use super::requirements;
-use crate::{
-    AcceptanceEvidence, ApprovalObservation, ApprovalOutcome, ApprovalSubject, FindingDisposition,
-    FindingObservation, InvalidWaiverReason, UnmetCondition, WaiverObservation,
-};
-use peritus_spec::{AcceptanceContract, HumanApprovalPolicy, WaiverPolicy};
-use peritus_types::{ApprovalRequestId, FindingId, RevisionTuple};
+mod blockers;
+pub(super) mod diagnostics;
+mod lookup;
+mod supplied;
+mod waiver;
+
+use crate::{AcceptanceEvidence, ApprovalOutcome, ApprovalSubject, UnmetCondition};
+#[cfg(verus_only)]
+use crate::model::approvals::*;
+use peritus_spec::{AcceptanceContract, HumanApprovalPolicy};
+use peritus_types::RevisionTuple;
 use vstd::prelude::*;
 
 verus! {
 
-fn current_waiver(
-    evidence: &AcceptanceEvidence,
-    finding_id: FindingId,
-    requested: RevisionTuple,
-) -> Option<&WaiverObservation> {
-    let mut index = 0;
-    while index < evidence.waivers().len()
-        invariant 0 <= index <= evidence.spec_waivers().len(),
-        decreases evidence.spec_waivers().len() - index,
-    {
-        let waiver = &evidence.waivers()[index];
-        if waiver.finding_id() == finding_id && waiver.revision() == requested {
-            return Some(waiver);
-        }
-        index += 1;
-    }
-    None
-}
-
-fn current_approval(
-    evidence: &AcceptanceEvidence,
-    request_id: ApprovalRequestId,
-    requested: RevisionTuple,
-) -> Option<&ApprovalObservation> {
-    let mut index = 0;
-    while index < evidence.approvals().len()
-        invariant 0 <= index <= evidence.spec_approvals().len(),
-        decreases evidence.spec_approvals().len() - index,
-    {
-        let approval = &evidence.approvals()[index];
-        if approval.request_id() == request_id && approval.revision() == requested {
-            return Some(approval);
-        }
-        index += 1;
-    }
-    None
-}
-
-fn current_finding(
-    evidence: &AcceptanceEvidence,
-    finding_id: FindingId,
-    requested: RevisionTuple,
-) -> Option<&FindingObservation> {
-    let mut review_index = 0;
-    while review_index < evidence.reviews().len()
-        invariant 0 <= review_index <= evidence.spec_reviews().len(),
-        decreases evidence.spec_reviews().len() - review_index,
-    {
-        if evidence.reviews()[review_index].revision() == requested {
-            let findings = evidence.reviews()[review_index].findings();
-            let mut finding_index = 0;
-            while finding_index < findings.len()
-                invariant 0 <= finding_index <= findings.len(),
-                decreases findings.len() - finding_index,
-            {
-                if findings[finding_index].finding_id() == finding_id {
-                    return Some(&findings[finding_index]);
-                }
-                finding_index += 1;
-            }
-        }
-        review_index += 1;
-    }
-    None
-}
-
-fn waiver_failure(
-    contract: &AcceptanceContract,
-    requested: RevisionTuple,
-    evidence: &AcceptanceEvidence,
-    finding: &FindingObservation,
-    waiver: &WaiverObservation,
-) -> Option<InvalidWaiverReason> {
-    match finding.disposition() {
-        FindingDisposition::Resolved { .. } => {
-            return Some(InvalidWaiverReason::AlreadyResolved);
-        }
-        FindingDisposition::Open => return Some(InvalidWaiverReason::NotRequested),
-        FindingDisposition::WaiverRequested => {}
-    }
-    let (authority, requirement) = match contract.waiver_policy() {
-        WaiverPolicy::Forbidden => return Some(InvalidWaiverReason::Forbidden),
-        WaiverPolicy::Allowed { authority, evidence } => (authority, evidence),
-    };
-    if waiver.authority() != authority {
-        return Some(InvalidWaiverReason::WrongAuthority);
-    }
-    if waiver.evidence_requirement_id() != requirement {
-        return Some(InvalidWaiverReason::WrongEvidenceRequirement);
-    }
-    if !requirements::has_current(evidence, requirement, requested) {
-        return Some(InvalidWaiverReason::MissingEvidence);
-    }
-    let Some(approval) = current_approval(evidence, waiver.approval_request_id(), requested) else {
-        return Some(InvalidWaiverReason::MissingApproval);
-    };
-    if approval.subject() != ApprovalSubject::FindingWaiver(finding.finding_id())
-        || approval.authority() != authority
-    {
-        return Some(InvalidWaiverReason::MissingApproval);
-    }
-    match approval.outcome() {
-        ApprovalOutcome::Approved => None,
-        ApprovalOutcome::Denied => Some(InvalidWaiverReason::ApprovalDenied),
-    }
-}
-
-fn current_waiver_is_valid(
-    contract: &AcceptanceContract,
-    requested: RevisionTuple,
-    evidence: &AcceptanceEvidence,
-    finding: &FindingObservation,
-) -> bool {
-    #[allow(
-        clippy::option_if_let_else,
-        reason = "explicit Option branches remain directly supported and auditable in Verus"
-    )]
-    match current_waiver(evidence, finding.finding_id(), requested) {
-        Some(waiver) => waiver_failure(contract, requested, evidence, finding, waiver).is_none(),
-        None => false,
-    }
-}
-
 pub(super) fn evaluate_waivers(
+    contract: &AcceptanceContract, requested: RevisionTuple,
+    evidence: &AcceptanceEvidence, unmet: &mut Vec<UnmetCondition>,
+) -> (complete: bool)
+    ensures
+        complete == crate::model::authority::waiver_phase_complete(contract, requested, evidence),
+        diagnostics::preserved(old(unmet)@, final(unmet)@),
+        crate::model::authority::invalid_waivers_reported(contract, requested, evidence, final(unmet)@),
+        complete ==> final(unmet)@ == old(unmet)@,
+{
+    let supplied_valid = supplied::evaluate(contract, requested, evidence, unmet);
+    let ghost after_supplied = unmet@;
+    let blockers_resolved = blockers::evaluate(contract, requested, evidence, unmet);
+    proof { diagnostics::preserve_reports(contract, requested, evidence, after_supplied, unmet@, evidence.spec_waivers().len() as int); }
+    supplied_valid && blockers_resolved
+}
+
+#[allow(
+    clippy::option_if_let_else,
+    reason = "explicit Option branches preserve the audited approval-diagnostic precedence in Verus"
+)]
+pub(super) fn evaluate_final_approval(
     contract: &AcceptanceContract,
     requested: RevisionTuple,
     evidence: &AcceptanceEvidence,
     unmet: &mut Vec<UnmetCondition>,
-) -> bool {
-    let mut complete = true;
+) -> (complete: bool)
+    ensures
+        complete == final_approval_complete(contract, requested, evidence),
+        diagnostics::preserved(old(unmet)@, final(unmet)@),
+        final(unmet)@ == match final_approval_failure(contract, requested, evidence) {
+            None => old(unmet)@,
+            Some(condition) => old(unmet)@.push(condition),
+        },
+{
+    let failure = match contract.approval_policy() {
+        HumanApprovalPolicy::NotRequired => {
+            assert(final_approval_failure(contract, requested, evidence).is_none());
+            None
+        },
+        HumanApprovalPolicy::Required(required_authority) => {
+            match current_acceptance_approval(evidence, requested) {
+                None => {
+                    assert(!current_acceptance_approval_exists(
+                        evidence.spec_approvals(), requested,
+                    ));
+                    assert(final_approval_failure(contract, requested, evidence)
+                        == Some(UnmetCondition::MissingHumanApproval));
+                    Some(UnmetCondition::MissingHumanApproval)
+                },
+                Some(index) => {
+                    let approval = &evidence.approvals()[index];
+                    proof {
+                        assert(current_acceptance_approval_exists(
+                            evidence.spec_approvals(), requested,
+                        ));
+                        assert(first_current_acceptance_has_authority(
+                            evidence.spec_approvals(), requested, required_authority,
+                        ) == crate::model::authority::authority_matches(
+                            approval.spec_authority(), required_authority,
+                        ));
+                        assert(first_current_acceptance_approved(
+                            evidence.spec_approvals(), requested,
+                        ) == (approval.spec_outcome() == ApprovalOutcome::Approved));
+                    }
+                    if crate::revision::digest_matches(
+                        approval.authority().digest(),
+                        required_authority.digest(),
+                    ) {
+                        match approval.outcome() {
+                            ApprovalOutcome::Denied => {
+                                assert(final_approval_failure(contract, requested, evidence)
+                                    == Some(UnmetCondition::HumanApprovalDenied));
+                                Some(UnmetCondition::HumanApprovalDenied)
+                            },
+                            ApprovalOutcome::Approved => {
+                                assert(final_approval_failure(contract, requested, evidence).is_none());
+                                None
+                            },
+                        }
+                    } else {
+                        assert(final_approval_failure(contract, requested, evidence)
+                            == Some(UnmetCondition::WrongHumanApprovalAuthority));
+                        Some(UnmetCondition::WrongHumanApprovalAuthority)
+                    }
+                },
+            }
+        },
+    };
+    assert(failure == final_approval_failure(contract, requested, evidence));
+    match failure {
+        None => true,
+        Some(condition) => {
+            unmet.push(condition);
+            false
+        },
+    }
+}
 
-    // Validate each supplied current waiver once in canonical waiver order. Validation is not
-    // conditional on finding severity: non-blocking findings cannot smuggle unauthorized waiver
-    // or approval observations into an otherwise acceptable evidence set.
+fn current_acceptance_approval(
+    evidence: &AcceptanceEvidence,
+    requested: RevisionTuple,
+) -> (result: Option<usize>)
+    ensures match result {
+        Some(index) => {
+            &&& first_current_acceptance_approval_at(
+                evidence.spec_approvals(), requested, index as int,
+            )
+            &&& forall |other: int| first_current_acceptance_approval_at(
+                evidence.spec_approvals(), requested, other,
+            ) ==> other == index
+        },
+        None => forall |index: int| !current_acceptance_approval_at(
+            evidence.spec_approvals(), requested, index,
+        ),
+    },
+{
+    let mut index = 0;
+    while index < evidence.approvals().len()
+        invariant
+            0 <= index <= evidence.spec_approvals().len(),
+            forall |prior: int| 0 <= prior < index ==>
+                !current_acceptance_approval_at(
+                    evidence.spec_approvals(), requested, prior,
+                ),
+        decreases evidence.spec_approvals().len() - index,
+    {
+        let approval = &evidence.approvals()[index];
+        if crate::revision::revision_matches(approval.revision(), requested)
+            && lookup::subject_equal(approval.subject(), ApprovalSubject::Acceptance)
+        {
+            assert forall |other: int| first_current_acceptance_approval_at(
+                evidence.spec_approvals(), requested, other,
+            ) implies other == index by {
+                if other < index {
+                    assert(!current_acceptance_approval_at(
+                        evidence.spec_approvals(), requested, other,
+                    ));
+                } else if other > index {
+                    assert(!first_current_acceptance_approval_at(
+                        evidence.spec_approvals(), requested, other,
+                    )) by {
+                        assert(current_acceptance_approval_at(
+                            evidence.spec_approvals(), requested, index as int,
+                        ));
+                    };
+                }
+            }
+            return Some(index);
+        }
+        index += 1;
+    }
+    None
+}
+
+fn waiver_approval_expected(
+    contract: &AcceptanceContract,
+    requested: RevisionTuple,
+    evidence: &AcceptanceEvidence,
+    approval: &crate::ApprovalObservation,
+    finding: peritus_types::FindingId,
+) -> (expected: bool)
+    ensures expected == crate::model::approvals::waiver_approval_expected(
+        contract, requested, evidence, *approval, finding,
+    ),
+{
+    let mut found = false;
     let mut waiver_index = 0;
     while waiver_index < evidence.waivers().len()
-        invariant 0 <= waiver_index <= evidence.spec_waivers().len(),
+        invariant
+            0 <= waiver_index <= evidence.spec_waivers().len(),
+            found == (exists |waiver: int|
+                waiver < waiver_index
+                && #[trigger] waiver_approval_witness(
+                    contract, requested, evidence, *approval, finding, waiver,
+                )),
         decreases evidence.spec_waivers().len() - waiver_index,
     {
+        let ghost found_before = found;
         let waiver = &evidence.waivers()[waiver_index];
-        if waiver.revision() == requested {
-            match current_finding(evidence, waiver.finding_id(), requested) {
-                None => {
-                    complete = false;
-                    unmet.push(UnmetCondition::InvalidWaiver {
-                        finding_id: waiver.finding_id(),
-                        reason: InvalidWaiverReason::UnknownFinding,
-                    });
-                }
-                Some(finding) => {
-                    if let Some(reason) =
-                        waiver_failure(contract, requested, evidence, finding, waiver)
-                    {
-                        complete = false;
-                        unmet.push(UnmetCondition::InvalidWaiver {
-                            finding_id: waiver.finding_id(),
-                            reason,
-                        });
+        if crate::revision::revision_matches(waiver.revision(), requested)
+            && lookup::finding_equal(waiver.finding_id(), finding)
+            && lookup::request_equal(waiver.approval_request_id(), approval.request_id())
+            && waiver::supplied_failure(contract, requested, evidence, waiver).is_none()
+        {
+            assert(waiver_approval_witness(
+                contract, requested, evidence, *approval, finding, waiver_index as int,
+            ));
+            found = true;
+        }
+        if !found {
+            assert(!waiver_approval_witness(
+                contract, requested, evidence, *approval, finding, waiver_index as int,
+            ));
+        }
+        assert(found == (exists |candidate: int|
+            candidate < waiver_index + 1
+            && #[trigger] waiver_approval_witness(
+                contract, requested, evidence, *approval, finding, candidate,
+            ))) by {
+            if found_before {
+                let candidate = choose |candidate: int|
+                    candidate < waiver_index
+                    && waiver_approval_witness(
+                        contract, requested, evidence, *approval, finding, candidate,
+                    );
+                assert(candidate < waiver_index + 1);
+            } else if found {
+                assert(waiver_approval_witness(
+                    contract, requested, evidence, *approval, finding, waiver_index as int,
+                ));
+            } else {
+                assert forall |candidate: int| candidate < waiver_index + 1 implies
+                    !waiver_approval_witness(
+                        contract, requested, evidence, *approval, finding, candidate,
+                    ) by {
+                    if candidate < waiver_index {
+                        assert(!waiver_approval_witness(
+                            contract, requested, evidence, *approval, finding, candidate,
+                        ));
+                    } else {
+                        assert(candidate == waiver_index);
                     }
                 }
             }
         }
         waiver_index += 1;
     }
-
-    let threshold = contract.review_policy().blocking_severity();
-    let mut review_index = 0;
-    while review_index < evidence.reviews().len()
-        invariant 0 <= review_index <= evidence.spec_reviews().len(),
-        decreases evidence.spec_reviews().len() - review_index,
-    {
-        if evidence.reviews()[review_index].revision() == requested {
-            let findings = evidence.reviews()[review_index].findings();
-            let mut finding_index = 0;
-            while finding_index < findings.len()
-                invariant 0 <= finding_index <= findings.len(),
-                decreases findings.len() - finding_index,
-            {
-                let finding = &findings[finding_index];
-                if finding.severity() >= threshold {
-                    match finding.disposition() {
-                        FindingDisposition::Resolved { .. } => {}
-                        FindingDisposition::Open | FindingDisposition::WaiverRequested => {
-                            if !current_waiver_is_valid(
-                                contract,
-                                requested,
-                                evidence,
-                                finding,
-                            ) {
-                                complete = false;
-                                unmet.push(UnmetCondition::UnwaivedBlocker {
-                                    finding_id: finding.finding_id(),
-                                    severity: finding.severity(),
-                                });
-                            }
-                        }
-                    }
-                }
-                finding_index += 1;
-            }
-        }
-        review_index += 1;
-    }
-    complete
+    found
 }
 
-pub(super) fn evaluate_final_approval(
+fn approval_expected(
     contract: &AcceptanceContract,
     requested: RevisionTuple,
     evidence: &AcceptanceEvidence,
-    unmet: &mut Vec<UnmetCondition>,
-) -> bool {
-    let required_authority = match contract.approval_policy() {
-        HumanApprovalPolicy::NotRequired => return true,
-        HumanApprovalPolicy::Required(authority) => authority,
-    };
-    let mut index = 0;
-    while index < evidence.approvals().len()
-        invariant 0 <= index <= evidence.spec_approvals().len(),
-        decreases evidence.spec_approvals().len() - index,
-    {
-        let approval = &evidence.approvals()[index];
-        if approval.revision() == requested && approval.subject() == ApprovalSubject::Acceptance {
-            if approval.authority() != required_authority {
-                unmet.push(UnmetCondition::WrongHumanApprovalAuthority);
-                return false;
-            } else if approval.outcome() == ApprovalOutcome::Denied {
-                unmet.push(UnmetCondition::HumanApprovalDenied);
-                return false;
-            }
-            return true;
-        }
-        index += 1;
+    approval: &crate::ApprovalObservation,
+) -> (expected: bool)
+    ensures expected == crate::model::approvals::approval_expected(
+        contract, requested, evidence, *approval,
+    ),
+{
+    match approval.subject() {
+        ApprovalSubject::Acceptance => contract.approval_policy().is_required(),
+        ApprovalSubject::FindingWaiver(finding) => {
+            waiver_approval_expected(contract, requested, evidence, approval, finding)
+        },
     }
-    unmet.push(UnmetCondition::MissingHumanApproval);
-    false
 }
 
 pub(super) fn evaluate_unexpected_approvals(
@@ -254,55 +269,35 @@ pub(super) fn evaluate_unexpected_approvals(
     requested: RevisionTuple,
     evidence: &AcceptanceEvidence,
     unmet: &mut Vec<UnmetCondition>,
-) -> bool {
+) -> (complete: bool)
+    ensures
+        complete == unexpected_approvals_complete(contract, requested, evidence),
+        diagnostics::preserved(old(unmet)@, final(unmet)@),
+        complete ==> final(unmet)@ == old(unmet)@,
+        !complete ==> old(unmet)@.len() < final(unmet)@.len(),
+{
     let mut complete = true;
     let mut index = 0;
     while index < evidence.approvals().len()
-        invariant 0 <= index <= evidence.spec_approvals().len(),
+        invariant
+            0 <= index <= evidence.spec_approvals().len(),
+            diagnostics::preserved(old(unmet)@, unmet@),
+            complete == (forall |prior: int| 0 <= prior < index
+                && crate::model::revision_fresh(
+                    #[trigger] evidence.spec_approvals()[prior].spec_revision(), requested,
+                ) ==> crate::model::approvals::approval_expected(
+                    contract, requested, evidence, evidence.spec_approvals()[prior],
+                )),
+            complete ==> unmet@ == old(unmet)@,
+            !complete ==> old(unmet)@.len() < unmet@.len(),
         decreases evidence.spec_approvals().len() - index,
     {
         let approval = &evidence.approvals()[index];
-        if approval.revision() == requested {
-            let expected = match approval.subject() {
-                ApprovalSubject::Acceptance => contract.approval_policy().is_required(),
-                ApprovalSubject::FindingWaiver(finding_id) => {
-                    let mut waiver_index = 0;
-                    let mut found = false;
-                    while waiver_index < evidence.waivers().len()
-                        invariant 0 <= waiver_index <= evidence.spec_waivers().len(),
-                        decreases evidence.spec_waivers().len() - waiver_index,
-                    {
-                        let waiver = &evidence.waivers()[waiver_index];
-                        #[allow(
-                            clippy::collapsible_if,
-                            reason = "separate lookup branch keeps the bounded Verus loop direct"
-                        )]
-                        if waiver.revision() == requested
-                            && waiver.finding_id() == finding_id
-                            && waiver.approval_request_id() == approval.request_id()
-                        {
-                            if let Some(finding) =
-                                current_finding(evidence, finding_id, requested)
-                            {
-                                found = waiver_failure(
-                                    contract,
-                                    requested,
-                                    evidence,
-                                    finding,
-                                    waiver,
-                                )
-                                .is_none();
-                            }
-                        }
-                        waiver_index += 1;
-                    }
-                    found
-                }
-            };
-            if !expected {
-                complete = false;
-                unmet.push(UnmetCondition::UnexpectedApproval(approval.actor_id()));
-            }
+        if crate::revision::revision_matches(approval.revision(), requested)
+            && !approval_expected(contract, requested, evidence, approval)
+        {
+            complete = false;
+            unmet.push(UnmetCondition::UnexpectedApproval(approval.actor_id()));
         }
         index += 1;
     }

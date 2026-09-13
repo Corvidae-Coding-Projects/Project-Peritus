@@ -1,0 +1,2 @@
+    Checking peritus-context v0.0.2 (/tmp/peritus-sol-context-cycle-fix-001/crates/orchestration/peritus-context)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 3.29s

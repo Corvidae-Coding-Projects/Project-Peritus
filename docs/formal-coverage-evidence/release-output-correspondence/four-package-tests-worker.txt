@@ -1,0 +1,434 @@
+   Compiling proc-macro2 v1.0.107
+   Compiling quote v1.0.47
+   Compiling unicode-ident v1.0.24
+   Compiling equivalent v1.0.2
+   Compiling hashbrown v0.17.1
+   Compiling indexmap v2.14.0
+   Compiling syn v2.0.119
+   Compiling syn v3.0.3
+   Compiling synstructure v0.13.2
+   Compiling verus_syn v0.0.0-2026-08-02-0125 (https://github.com/verus-lang/verus.git?rev=92f466f247f45128c630d1c843fd6e27d2115587#92f466f2)
+   Compiling verus_prettyplease v0.0.0-2026-08-09-0044 (https://github.com/verus-lang/verus.git?rev=92f466f247f45128c630d1c843fd6e27d2115587#92f466f2)
+   Compiling vstd v0.0.0-2026-08-09-0044 (https://github.com/verus-lang/verus.git?rev=92f466f247f45128c630d1c843fd6e27d2115587#92f466f2)
+   Compiling convert_case v0.4.0
+   Compiling verus_builtin v0.0.0-2026-08-09-0044 (https://github.com/verus-lang/verus.git?rev=92f466f247f45128c630d1c843fd6e27d2115587#92f466f2)
+   Compiling libc v0.2.189
+   Compiling itoa v1.0.18
+   Compiling typenum v1.20.1
+   Compiling hybrid-array v0.4.14
+   Compiling cfg-if v1.0.4
+   Compiling serde_core v1.0.229
+   Compiling once_cell v1.21.4
+   Compiling verus_builtin_macros v0.0.0-2026-08-09-0044 (https://github.com/verus-lang/verus.git?rev=92f466f247f45128c630d1c843fd6e27d2115587#92f466f2)
+   Compiling verus_state_machines_macros v0.0.0-2026-08-02-0125 (https://github.com/verus-lang/verus.git?rev=92f466f247f45128c630d1c843fd6e27d2115587#92f466f2)
+   Compiling block-buffer v0.12.1
+   Compiling crypto-common v0.2.2
+   Compiling digest v0.11.3
+   Compiling cpufeatures v0.3.0
+   Compiling zmij v1.0.23
+   Compiling sha2 v0.11.0
+   Compiling serde_json v1.0.149
+   Compiling serde v1.0.229
+   Compiling serde_derive v1.0.229
+   Compiling peritus-types v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/foundation/peritus-types)
+   Compiling memchr v2.8.3
+   Compiling bitflags v2.13.1
+   Compiling rustix v1.1.4
+   Compiling getrandom v0.4.3
+   Compiling linux-raw-sys v0.12.1
+   Compiling thiserror v2.0.20
+   Compiling thiserror-impl v2.0.20
+   Compiling fastrand v2.5.0
+   Compiling tempfile v3.27.0
+   Compiling zerofrom-derive v0.1.7
+   Compiling yoke-derive v0.8.2
+   Compiling zerofrom v0.1.8
+   Compiling stable_deref_trait v1.2.1
+   Compiling jobserver v0.1.35
+   Compiling shlex v2.0.1
+   Compiling find-msvc-tools v0.1.11
+   Compiling cc v1.4.4
+   Compiling yoke v0.8.3
+   Compiling zerovec-derive v0.11.6
+   Compiling pin-project-lite v0.2.17
+   Compiling bytes v1.12.1
+   Compiling zerovec v0.11.8
+   Compiling cmake v0.1.58
+   Compiling displaydoc v0.2.7
+   Compiling dunce v1.0.5
+   Compiling cfg_aliases v0.2.2
+   Compiling futures-core v0.3.34
+   Compiling pkg-config v0.3.34
+   Compiling fs_extra v1.3.0
+   Compiling nix v0.31.3
+   Compiling aws-lc-sys v0.44.0
+   Compiling peritus-security-policy v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/foundation/peritus-security-policy)
+   Compiling errno v0.3.14
+   Compiling winnow v1.0.4
+   Compiling toml_parser v1.1.3+spec-1.1.0
+   Compiling signal-hook-registry v1.4.8
+   Compiling serde_spanned v1.1.1
+   Compiling toml_datetime v1.1.1+spec-1.1.0
+   Compiling socket2 v0.6.5
+   Compiling mio v1.2.2
+   Compiling tokio-macros v2.7.2
+   Compiling toml_writer v1.1.2+spec-1.1.0
+   Compiling subtle v2.6.1
+   Compiling toml v1.1.4+spec-1.1.0
+   Compiling tokio v1.53.1
+   Compiling tinystr v0.8.4
+   Compiling smallvec v1.15.2
+   Compiling litemap v0.8.3
+   Compiling writeable v0.6.4
+   Compiling zeroize v1.9.0
+   Compiling aws-lc-rs v1.18.0
+   Compiling icu_locale_core v2.3.0
+   Compiling zerotrie v0.2.5
+   Compiling potential_utf v0.1.6
+   Compiling http v1.5.0
+   Compiling icu_properties_data v2.3.0
+   Compiling icu_normalizer_data v2.3.0
+   Compiling slab v0.4.12
+   Compiling utf8_iter v1.0.4
+   Compiling icu_collections v2.3.0
+   Compiling icu_provider v2.3.1
+   Compiling rustls-pki-types v1.15.1
+   Compiling peritus-security-qualification v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/app/testing/peritus-security-qualification)
+   Compiling peritus-release-policy v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/foundation/peritus-release-policy)
+   Compiling http-body v1.1.0
+   Compiling tracing-core v0.1.36
+   Compiling futures-macro v0.3.34
+   Compiling futures-task v0.3.34
+   Compiling futures-sink v0.3.34
+   Compiling httparse v1.10.1
+   Compiling percent-encoding v2.3.2
+   Compiling untrusted v0.9.0
+   Compiling rustls v0.23.43
+   Compiling tokio-util v0.7.19
+   Compiling futures-util v0.3.34
+   Compiling tracing v0.1.44
+   Compiling icu_normalizer v2.3.0
+   Compiling icu_properties v2.3.0
+   Compiling fnv v1.0.7
+   Compiling semver v1.0.28
+   Compiling tower-service v0.3.3
+   Compiling atomic-waker v1.1.2
+   Compiling try-lock v0.2.5
+   Compiling want v0.3.1
+   Compiling h2 v0.4.19
+   Compiling rustc_version v0.4.1
+   Compiling idna_adapter v1.2.2
+   Compiling futures-channel v0.3.34
+   Compiling hyper v1.11.0
+   Compiling idna v1.1.0
+   Compiling curve25519-dalek v5.0.0
+   Compiling form_urlencoded v1.2.2
+   Compiling sync_wrapper v1.0.2
+   Compiling base64 v0.22.1
+   Compiling ipnet v2.12.1
+   Compiling tower-layer v0.3.3
+   Compiling openssl-probe v0.2.1
+   Compiling rustls-native-certs v0.8.4
+   Compiling tower v0.5.3
+   Compiling hyper-util v0.1.20
+   Compiling url v2.5.8
+   Compiling curve25519-dalek-derive v0.1.1
+   Compiling signature v3.0.0
+   Compiling log v0.4.34
+   Compiling ed25519 v3.0.0
+   Compiling tower-http v0.6.11
+   Compiling http-body-util v0.1.5
+   Compiling peritus-codec v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/foundation/peritus-codec)
+   Compiling peritus-model-protocol v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/model/peritus-model-protocol)
+   Compiling ed25519-dalek v3.0.0
+   Compiling peritus-release-artifacts v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/app/testing/peritus-release-artifacts)
+   Compiling peritus-release-qualification v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/app/testing/peritus-release-qualification)
+   Compiling rustls-webpki v0.103.15
+   Compiling tokio-rustls v0.26.4
+   Compiling hyper-rustls v0.27.9
+   Compiling rustls-platform-verifier v0.7.0
+   Compiling reqwest v0.13.4
+   Compiling peritus-provider-core v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/model/peritus-provider-core)
+   Compiling peritus-provider-openai v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/model/peritus-provider-openai)
+   Compiling peritus-provider-anthropic v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/model/peritus-provider-anthropic)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1m 16s
+     Running unittests src/lib.rs (target/sol-readiness-four-package-final/debug/deps/peritus_release_policy-74ec423914b69dd3)
+
+running 3 tests
+test catalog::tests::criterion_twenty_four_requires_every_release_artifact_class ... ok
+test error::tests::every_error_kind_has_a_stable_h4_code ... ok
+test catalog::tests::stable_catalog_ids_are_contiguous ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/acceptance.rs (target/sol-readiness-four-package-final/debug/deps/acceptance-525337dcbec09bd8)
+
+running 4 tests
+test complete_exact_evidence_is_ready_without_publication_authority ... ok
+test every_final_qualification_check_is_required_for_admission ... ok
+test decision_is_bound_to_the_exact_candidate_and_time ... ok
+test every_required_artifact_fails_closed_when_removed ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/catalog.rs (target/sol-readiness-four-package-final/debug/deps/catalog-adf41b6338b67876)
+
+running 3 tests
+test production_catalog_is_exactly_twenty_five_stable_items ... ok
+test evidence_catalog_has_stable_unique_ids_and_sources ... ok
+test every_criterion_has_at_least_one_required_artifact ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/construction.rs (target/sol-readiness-four-package-final/debug/deps/construction-f3e73ea8611e48e3)
+
+running 4 tests
+test zero_nominal_identities_are_rejected ... ok
+test invalid_time_and_source_revision_bindings_are_rejected ... ok
+test platform_slots_are_nominal_not_positional_guesswork ... ok
+test evidence_collection_bound_is_enforced ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/fail_closed.rs (target/sol-readiness-four-package-final/debug/deps/fail_closed-606bceee39a136ad)
+
+running 4 tests
+test stale_evidence_is_diagnosed_and_cannot_contribute ... ok
+test mismatched_candidate_evidence_is_diagnosed_and_excluded ... ok
+test wrong_source_unreviewed_unsigned_and_conflict_are_distinct ... ok
+test every_complete_candidate_identity_component_is_checked ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/permutation.rs (target/sol-readiness-four-package-final/debug/deps/permutation-8c9f69ed105af5d8)
+
+running 1 test
+test evidence_permutations_preserve_verdict_digest_and_diagnostics ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/qualifications.rs (target/sol-readiness-four-package-final/debug/deps/qualifications-de4910653fd5e270)
+
+running 4 tests
+test conflicting_current_qualification_reports_block_release ... ok
+test stale_and_unreviewed_qualifications_never_count_as_ready ... ok
+test explicit_not_ready_qualification_blocks_release ... ok
+test every_h_slice_is_required ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/reviews_and_findings.rs (target/sol-readiness-four-package-final/debug/deps/reviews_and_findings-9f17decdbc31ef65)
+
+running 5 tests
+test independent_review_quorum_is_mandatory ... ok
+test independent_waiver_can_resolve_a_nonblocking_finding ... ok
+test self_review_changes_required_and_shared_context_each_block ... ok
+test ignored_and_quarantined_findings_are_never_release_ready ... ok
+test unresolved_release_blocker_cannot_be_waived ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/sol-readiness-four-package-final/debug/deps/peritus_release_qualification-05671129f2dc81a4)
+
+running 8 tests
+test criteria::tests::catalog_is_exactly_twenty_five_and_stably_numbered ... ok
+test criteria::tests::empty_mapping_set_fails_closed ... ok
+test operator::args::tests::envelope_requires_the_complete_closed_argument_set ... ok
+test operator::args::tests::verify_requires_public_material ... ok
+test verified_policy::tests::digest_drift_never_reaches_verified_policy ... ok
+test operator::files::tests::exact_material_accepts_raw_and_lowercase_hex ... ok
+test verified_policy::tests::exact_composition_reaches_verified_policy_and_remains_not_ready_without_evidence ... ok
+test operator::plan::tests::checked_operator_template_matches_the_strict_plan_and_remains_not_satisfied ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/bin/peritus_h4.rs (target/sol-readiness-four-package-final/debug/deps/peritus_h4-bf1fde2b502bc618)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/evidence_operator.rs (target/sol-readiness-four-package-final/debug/deps/evidence_operator-1dd4f40c6485f822)
+
+running 2 tests
+test operator_rejects_payload_substitution_after_signing ... ok
+test operator_prepares_exact_envelope_and_admits_only_matching_signature ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+
+     Running tests/fail_closed.rs (target/sol-readiness-four-package-final/debug/deps/fail_closed-f89d649ad5947bb1)
+
+running 2 tests
+test provisioning_failure_is_retained_for_every_required_campaign ... ok
+test missing_inputs_are_not_ready_and_policy_is_not_called ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/finalize_operator.rs (target/sol-readiness-four-package-final/debug/deps/finalize_operator-6ca52cbc76e13531)
+
+running 2 tests
+test finalizer_rejects_unsigned_cleanup_substitution ... ok
+test finalizer_emits_one_ready_no_overwrite_bundle ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.74s
+
+     Running unittests src/lib.rs (target/sol-readiness-four-package-final/debug/deps/peritus_security_policy-f4c47afff9f8a71e)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/policy.rs (target/sol-readiness-four-package-final/debug/deps/policy-56612cc05488f427)
+
+running 7 tests
+test any_candidate_mutation_invalidates_prior_security_evidence ... ok
+test resolved_high_finding_requires_remediation_and_retest_evidence ... ok
+test every_native_probe_outcome_is_required_for_final_admission ... ok
+test complete_exact_candidate_is_security_ready_without_release_authority ... ok
+test unresolved_high_finding_blocks_readiness ... ok
+test missing_independent_review_is_not_ready ... ok
+test every_required_security_dimension_fails_closed_when_removed ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/sol-readiness-four-package-final/debug/deps/peritus_security_qualification-cdaa8163962deb60)
+
+running 7 tests
+test controller::plan::tests::every_catalog_probe_has_a_nonempty_closed_plan ... ok
+test controller::plan::tests::only_the_serial_compiler_probe_uses_four_build_jobs ... ok
+test operator::tests::linux_warmup_and_parallel_queue_cover_every_work_unit_once ... ok
+test operator::tests::work_units_alternate_between_catalog_edges ... ok
+test operator::tests::only_linux_serializes_the_workspace_compiler_probe ... ok
+test operator::tests::concurrent_workers_claim_every_linux_probe_exactly_once ... ok
+test controller::inventory::tests::every_reviewed_source_inventory_reconciles_the_checked_in_candidate ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.75s
+
+     Running unittests src/bin/peritus-h0.rs (target/sol-readiness-four-package-final/debug/deps/peritus_h0-f9aa335e81ae02b9)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/bin/peritus-h0-aggregate.rs (target/sol-readiness-four-package-final/debug/deps/peritus_h0_aggregate-4049115b3a6e7011)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/bin/peritus-h0-controller.rs (target/sol-readiness-four-package-final/debug/deps/peritus_h0_controller-73f29251df66dd37)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/bin/peritus-h0-prepare.rs (target/sol-readiness-four-package-final/debug/deps/peritus_h0_prepare-9a6ddfedcd1e7118)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/aggregate_operator.rs (target/sol-readiness-four-package-final/debug/deps/aggregate_operator-faa1615685883c3c)
+
+running 1 test
+test aggregate_operator_publishes_one_ready_candidate_bound_report ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+     Running tests/catalog.rs (target/sol-readiness-four-package-final/debug/deps/catalog-9ad7b83e397a0deb)
+
+running 2 tests
+test security_catalogs_and_schemas_are_packaged ... ok
+test production_catalog_covers_every_literal_requirement_and_criterion ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/native_controller.rs (target/sol-readiness-four-package-final/debug/deps/native_controller-6d4c82100b137cbf)
+
+running 2 tests
+test controller_reconciles_a_candidate_bound_threat_inventory ... ok
+test controller_rejects_a_source_digest_substitution_before_assertions ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running tests/native_process.rs (target/sol-readiness-four-package-final/debug/deps/native_process-320c51a4d0a99106)
+
+running 4 tests
+test cancellation_kills_the_complete_native_process_group ... ok
+test response_for_another_request_is_rejected_and_subject_still_cleans ... ok
+test native_executor_runs_every_case_in_a_fresh_cleaned_subject ... ok
+test response_with_a_false_artifact_digest_is_rejected_and_retained ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.88s
+
+     Running tests/operator.rs (target/sol-readiness-four-package-final/debug/deps/operator-b6d6eff6b909c9ee)
+
+running 2 tests
+test failed_native_operator_still_publishes_a_diagnostic_shard ... ok
+test native_operator_publishes_one_parseable_linux_shard_without_overwrite ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.26s
+
+     Running tests/preparation.rs (target/sol-readiness-four-package-final/debug/deps/preparation-d496cce5f872b2b2)
+
+running 1 test
+test preparation_binds_committed_source_and_refuses_dirty_or_overwritten_outputs ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.12s
+
+     Running tests/qualification.rs (target/sol-readiness-four-package-final/debug/deps/qualification-bb4e2e7f0154f995)
+
+running 7 tests
+test cancelled_campaign_records_every_remaining_case_as_non_success ... ok
+test absent_external_review_cannot_be_fabricated_into_success ... ok
+test full_native_campaign_and_independent_review_can_reach_h0_ready ... ok
+test unresolved_external_high_finding_is_not_ready ... ok
+test stale_native_observation_fails_the_exact_candidate ... ok
+test canonical_manifest_bytes_and_digest_are_reproducible ... ok
+test every_canonical_probe_outcome_is_required_for_final_admission ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.21s
+
+     Running tests/review_interchange.rs (target/sol-readiness-four-package-final/debug/deps/review_interchange-9b1156430b8b5655)
+
+running 3 tests
+test complete_independent_review_parses_for_the_exact_candidate ... ok
+test claimed_independence_must_match_the_review_identities ... ok
+test finding_lifecycle_requires_its_exact_evidence_shape ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/shards.rs (target/sol-readiness-four-package-final/debug/deps/shards-45465ae3d8cdaee4)
+
+running 3 tests
+test aggregation_rejects_missing_platform_and_candidate_drift ... ok
+test canonical_three_host_shards_cover_every_probe_exactly_once ... ok
+test shard_json_round_trips_exact_evidence_and_rejects_failed_or_cross_host_tampering ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+   Doc-tests peritus_release_policy
+
+running 1 test
+test crates/foundation/peritus-release-policy/src/decision.rs - decision::ReleaseDecision (line 68) - compile fail ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+   Doc-tests peritus_release_qualification
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests peritus_security_policy
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests peritus_security_qualification
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

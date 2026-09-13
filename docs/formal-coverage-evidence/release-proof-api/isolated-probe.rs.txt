@@ -1,0 +1,58 @@
+//! Independent client checks for exported evaluator contracts and exact diagnostic text.
+
+use peritus_release_policy::{
+    ConstructionError, ConstructionErrorKind, ReleaseCandidate, ReleaseDecision, ReleaseEvidence,
+    evaluate_release,
+};
+#[cfg(verus_only)]
+use peritus_release_policy::{ready_evaluation_contract, release_inputs_ready};
+use vstd::prelude::*;
+
+verus! {
+
+fn public_evaluator_contract(
+    candidate: ReleaseCandidate,
+    evaluated_at: u64,
+    evidence: &ReleaseEvidence,
+) -> (decision: ReleaseDecision)
+    ensures
+        ready_evaluation_contract(&decision, candidate, evaluated_at, evidence),
+        decision.spec_is_ready() == release_inputs_ready(evidence, candidate, evaluated_at),
+        (decision.spec_diagnostics().len() == 0)
+            == release_inputs_ready(evidence, candidate, evaluated_at),
+{
+    let decision = evaluate_release(candidate, evaluated_at, evidence);
+    let actual_ready = decision.is_ready();
+    assert(actual_ready == release_inputs_ready(evidence, candidate, evaluated_at));
+    decision
+}
+
+fn public_error_text(error: ConstructionError) {
+    let text = error.code();
+    match error.kind() {
+        ConstructionErrorKind::ZeroIdentity => {
+            assert(text@ == "H4_INPUT_ZERO_IDENTITY"@);
+        },
+        ConstructionErrorKind::ZeroDigest => {
+            assert(text@ == "H4_INPUT_ZERO_DIGEST"@);
+        },
+        ConstructionErrorKind::ZeroRevision => {
+            assert(text@ == "H4_INPUT_ZERO_REVISION"@);
+        },
+        ConstructionErrorKind::InvalidValidityInterval => {
+            assert(text@ == "H4_INPUT_INVALID_VALIDITY"@);
+        },
+        ConstructionErrorKind::InvalidPlatformMatrix => {
+            assert(text@ == "H4_INPUT_PLATFORM_MATRIX"@);
+        },
+        ConstructionErrorKind::CollectionLimitExceeded => {
+            assert(text@ == "H4_INPUT_COLLECTION_LIMIT"@);
+        },
+    }
+}
+
+fn main() {
+    let _ = peritus_release_policy::CandidateId::new([0u8; 16]);
+}
+
+} // verus!
