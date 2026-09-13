@@ -9,7 +9,10 @@ mod state;
 #[cfg(test)]
 mod fixture_tests;
 
-use peritus_codec::{CanonicalReader, CanonicalWriter, CodecError, CodecErrorKind};
+use peritus_codec::{
+    CanonicalReader, CanonicalWriter, CodecError, CodecErrorKind, CodecLimits, decode_frame,
+    decode_message, encode_message,
+};
 use peritus_types::{
     AcceptanceSpecId, ActorId, BudgetReservationId, CommandId, EventId, Generation, HarnessId,
     PolicyId, ProviderProfileId, RevisionNumber, RevisionTuple, RunId, Sha256Digest, WorkspaceId,
@@ -17,7 +20,8 @@ use peritus_types::{
 
 use crate::{
     DispatchId, ResourceEntry, ResourceKind, ResourceQuantity, ResourceVector, SchedulerBinding,
-    SchedulerId, SchedulerLimits, WorkId, WorkerId,
+    SchedulerCommand, SchedulerEvent, SchedulerId, SchedulerLimits, SchedulerSemantics,
+    SchedulerState, WorkId, WorkerId,
 };
 
 use domain::{
@@ -32,6 +36,148 @@ use records::{
 pub use command::SchedulerCommandFrame;
 pub use event::SchedulerEventFrame;
 pub use state::SchedulerStateFrame;
+
+use command::SchedulerCommandFrameV1;
+use event::SchedulerEventFrameV1;
+use state::SchedulerStateFrameV1;
+
+/// Encodes a scheduler command using its explicit semantic schema.
+///
+/// # Errors
+///
+/// Returns a codec error when the payload exceeds the supplied limits or its semantic identity
+/// does not match the selected frame schema.
+pub fn encode_scheduler_command(
+    command: &SchedulerCommand,
+    limits: CodecLimits,
+) -> Result<Vec<u8>, CodecError> {
+    match command.semantics() {
+        SchedulerSemantics::LegacyQueueV1 => {
+            encode_message(&SchedulerCommandFrameV1::from_command(command), limits)
+        }
+        SchedulerSemantics::StrictRecoveryQueueV2 => {
+            encode_message(&SchedulerCommandFrame::from_command(command), limits)
+        }
+    }
+}
+
+/// Decodes a scheduler command using the semantic schema in its checked frame header.
+///
+/// # Errors
+///
+/// Returns a codec error for an invalid frame, unsupported scheduler schema, malformed payload,
+/// or a value that exceeds the supplied limits.
+pub fn decode_scheduler_command(
+    input: &[u8],
+    limits: CodecLimits,
+) -> Result<SchedulerCommand, CodecError> {
+    let semantics = scheduler_semantics(input, limits, 70)?;
+    match semantics {
+        SchedulerSemantics::LegacyQueueV1 => {
+            decode_message::<SchedulerCommandFrameV1>(input, limits)
+                .map(SchedulerCommandFrameV1::into_command)
+        }
+        SchedulerSemantics::StrictRecoveryQueueV2 => {
+            decode_message::<SchedulerCommandFrame>(input, limits)
+                .map(SchedulerCommandFrame::into_command)
+        }
+    }
+}
+
+/// Encodes a scheduler event using its explicit semantic schema.
+///
+/// # Errors
+///
+/// Returns a codec error when the payload exceeds the supplied limits or its semantic identity
+/// does not match the selected frame schema.
+pub fn encode_scheduler_event(
+    event: &SchedulerEvent,
+    limits: CodecLimits,
+) -> Result<Vec<u8>, CodecError> {
+    match event.semantics() {
+        SchedulerSemantics::LegacyQueueV1 => {
+            encode_message(&SchedulerEventFrameV1::new(event.clone()), limits)
+        }
+        SchedulerSemantics::StrictRecoveryQueueV2 => {
+            encode_message(&SchedulerEventFrame::new(event.clone()), limits)
+        }
+    }
+}
+
+/// Decodes a scheduler event using the semantic schema in its checked frame header.
+///
+/// # Errors
+///
+/// Returns a codec error for an invalid frame, unsupported scheduler schema, malformed payload,
+/// or a value that exceeds the supplied limits.
+pub fn decode_scheduler_event(
+    input: &[u8],
+    limits: CodecLimits,
+) -> Result<SchedulerEvent, CodecError> {
+    let semantics = scheduler_semantics(input, limits, 71)?;
+    match semantics {
+        SchedulerSemantics::LegacyQueueV1 => decode_message::<SchedulerEventFrameV1>(input, limits)
+            .map(SchedulerEventFrameV1::into_event),
+        SchedulerSemantics::StrictRecoveryQueueV2 => {
+            decode_message::<SchedulerEventFrame>(input, limits)
+                .map(SchedulerEventFrame::into_event)
+        }
+    }
+}
+
+/// Encodes a scheduler checkpoint using its explicit semantic schema.
+///
+/// # Errors
+///
+/// Returns a codec error when the payload exceeds the supplied limits or its semantic identity
+/// does not match the selected frame schema.
+pub fn encode_scheduler_state(
+    state: &SchedulerState,
+    limits: CodecLimits,
+) -> Result<Vec<u8>, CodecError> {
+    match state.binding().semantics() {
+        SchedulerSemantics::LegacyQueueV1 => {
+            encode_message(&SchedulerStateFrameV1::from_state(state), limits)
+        }
+        SchedulerSemantics::StrictRecoveryQueueV2 => {
+            encode_message(&SchedulerStateFrame::from_state(state), limits)
+        }
+    }
+}
+
+/// Decodes a scheduler checkpoint using the semantic schema in its checked frame header.
+///
+/// # Errors
+///
+/// Returns a codec error for an invalid frame, unsupported scheduler schema, malformed payload,
+/// or a value that exceeds the supplied limits.
+pub fn decode_scheduler_state(
+    input: &[u8],
+    limits: CodecLimits,
+) -> Result<SchedulerState, CodecError> {
+    let semantics = scheduler_semantics(input, limits, 72)?;
+    match semantics {
+        SchedulerSemantics::LegacyQueueV1 => decode_message::<SchedulerStateFrameV1>(input, limits)
+            .map(SchedulerStateFrameV1::into_state),
+        SchedulerSemantics::StrictRecoveryQueueV2 => {
+            decode_message::<SchedulerStateFrame>(input, limits)
+                .map(SchedulerStateFrame::into_state)
+        }
+    }
+}
+
+fn scheduler_semantics(
+    input: &[u8],
+    limits: CodecLimits,
+    expected_family: u16,
+) -> Result<SchedulerSemantics, CodecError> {
+    let header = decode_frame(input, limits)?.header();
+    if header.family() != expected_family {
+        return Err(CodecError::at(CodecErrorKind::WrongFamily, 6));
+    }
+    SchedulerSemantics::from_schema_version(header.schema_version())
+        .ok_or_else(|| CodecError::at(CodecErrorKind::WrongSchemaVersion, 8))
+}
 
 pub const fn invalid(reader: &CanonicalReader<'_>) -> CodecError {
     CodecError::at(CodecErrorKind::InvalidDomainValue, reader.offset())
@@ -218,13 +364,17 @@ pub fn write_binding(
     write_limits(writer, value.limits())?;
     write_resources(writer, value.capacity())
 }
-pub fn read_binding(reader: &mut CanonicalReader<'_>) -> Result<SchedulerBinding, CodecError> {
+pub fn read_binding(
+    reader: &mut CanonicalReader<'_>,
+    semantics: SchedulerSemantics,
+) -> Result<SchedulerBinding, CodecError> {
     let offset = reader.offset();
     let run = read_run_id(reader)?;
     let scheduler = read_scheduler_id(reader)?;
     let revision = read_revision(reader)?;
     let limits = read_limits(reader)?;
-    SchedulerBinding::new(
+    SchedulerBinding::from_wire(
+        semantics,
         run,
         scheduler,
         revision,

@@ -1,8 +1,10 @@
 //! Truthful scheduler terminal evaluation.
 
+mod evaluation;
+
 use peritus_types::Sha256Digest;
 
-use crate::{WorkId, WorkRecord, WorkTerminal};
+use crate::{WorkId, WorkRecord};
 use vstd::prelude::*;
 
 verus! {
@@ -61,27 +63,7 @@ impl Clone for SchedulerTerminal {
 
 impl SchedulerTerminal {
     pub(crate) fn evaluate(work: &[WorkRecord]) -> Self {
-        let mut kind = SchedulerTerminalKind::Completed;
-        let mut non_successful_work = Vec::new();
-        for record in work {
-            let candidate = match record.terminal() {
-                Some(WorkTerminal::Succeeded { .. }) => continue,
-                Some(WorkTerminal::Failed { .. } | WorkTerminal::Abandoned { .. }) => {
-                    SchedulerTerminalKind::Failed
-                }
-                Some(WorkTerminal::DependencyFailed { .. }) => {
-                    SchedulerTerminalKind::DependencyFailed
-                }
-                Some(WorkTerminal::Ambiguous { .. }) => SchedulerTerminalKind::Ambiguous,
-                Some(WorkTerminal::Exhausted { .. }) => SchedulerTerminalKind::Exhausted,
-                Some(WorkTerminal::Cancelled) => SchedulerTerminalKind::Cancelled,
-                None => SchedulerTerminalKind::Failed,
-            };
-            if terminal_precedence(candidate) > terminal_precedence(kind) {
-                kind = candidate;
-            }
-            non_successful_work.push(record.spec().id());
-        }
+        let (kind, non_successful_work) = evaluation::summarize(work);
         let mut terminal = Self { kind, non_successful_work, digest: Sha256Digest::new([0; 32]) };
         terminal.digest = crate::canonical::terminal_digest(&terminal);
         terminal
@@ -111,16 +93,5 @@ impl SchedulerTerminal {
         digest: Sha256Digest,
     ) -> Self {
         Self { kind, non_successful_work, digest }
-    }
-}
-
-const fn terminal_precedence(kind: SchedulerTerminalKind) -> u8 {
-    match kind {
-        SchedulerTerminalKind::Completed => 0,
-        SchedulerTerminalKind::Cancelled => 1,
-        SchedulerTerminalKind::Failed => 2,
-        SchedulerTerminalKind::DependencyFailed => 3,
-        SchedulerTerminalKind::Exhausted => 4,
-        SchedulerTerminalKind::Ambiguous => 5,
     }
 }

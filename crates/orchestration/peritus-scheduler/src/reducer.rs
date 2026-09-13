@@ -1,6 +1,7 @@
 //! Pure deterministic scheduler reduction and exact replay.
 
 mod apply;
+mod fences;
 
 use std::collections::BTreeSet;
 
@@ -8,7 +9,7 @@ use peritus_types::{EventSequence, Sha256Digest};
 
 use crate::{
     SchedulerCommand, SchedulerCommandKind, SchedulerError, SchedulerErrorKind, SchedulerEvent,
-    SchedulerEventKind, SchedulerPhase, SchedulerState, SchedulerTransition,
+    SchedulerEventKind, SchedulerState, SchedulerTransition,
 };
 
 use apply::apply;
@@ -22,7 +23,8 @@ pub fn start(command: &SchedulerCommand) -> Result<SchedulerTransition, Schedule
         return Err(illegal("scheduler genesis command is not StartScheduler"));
     };
     binding.validate()?;
-    if command.run_id() != binding.run_id()
+    if command.semantics() != binding.semantics()
+        || command.run_id() != binding.run_id()
         || command.revision() != binding.revision()
         || command.expected_sequence() != 0
         || command.expected_previous_event().is_some()
@@ -44,6 +46,7 @@ pub fn start(command: &SchedulerCommand) -> Result<SchedulerTransition, Schedule
     let successor = crate::canonical::state_digest(&state);
     crate::state::mutation::set_state_digest(&mut state, successor);
     let event = SchedulerEvent::from_wire(
+        command.semantics(),
         command.event_id(),
         command.command_id(),
         EventSequence::first(),
@@ -91,6 +94,7 @@ pub fn decide(
     let successor_digest = crate::canonical::state_digest(&successor);
     crate::state::mutation::set_state_digest(&mut successor, successor_digest);
     let event = SchedulerEvent::from_wire(
+        command.semantics(),
         command.event_id(),
         command.command_id(),
         sequence,
@@ -112,7 +116,7 @@ pub fn replay(events: &[SchedulerEvent]) -> Result<SchedulerState, SchedulerErro
     let first = events.first().ok_or_else(|| {
         crate::error::reject(SchedulerErrorKind::ReplayMismatch, "scheduler replay is empty")
     })?;
-    let first_command = command_from_event(first, 0, None)?;
+    let first_command = command_from_event(first, 0, None);
     let first_transition = start(&first_command)?;
     if first_transition.event() != first {
         return Err(replay_error("scheduler genesis differs from deterministic reduction"));
@@ -121,11 +125,14 @@ pub fn replay(events: &[SchedulerEvent]) -> Result<SchedulerState, SchedulerErro
     let mut event_ids = BTreeSet::from([first.id()]);
     let mut command_ids = BTreeSet::from([first.command_id()]);
     for event in &events[1..] {
+        if event.semantics() != first.semantics() {
+            return Err(replay_error("scheduler replay mixes semantic versions"));
+        }
         if !event_ids.insert(event.id()) || !command_ids.insert(event.command_id()) {
             return Err(replay_error("scheduler event or command identity is duplicated"));
         }
         let command =
-            command_from_event(event, state.sequence().get(), Some(state.last_event_id()))?;
+            command_from_event(event, state.sequence().get(), Some(state.last_event_id()));
         let transition = decide(&state, &command)?;
         if transition.event() != event {
             return Err(replay_error("scheduler event differs from deterministic reduction"));
@@ -139,36 +146,27 @@ fn validate_fences(
     state: &SchedulerState,
     command: &SchedulerCommand,
 ) -> Result<(), SchedulerError> {
-    if state.phase() == SchedulerPhase::Terminal {
-        return Err(illegal("scheduler aggregate is terminal and fenced closed"));
-    }
-    if state.used_commands().len() >= 65_535 {
-        return Err(crate::error::reject(
+    match fences::classify(state, command) {
+        fences::FenceAdmission::Accepted => Ok(()),
+        fences::FenceAdmission::Terminal => {
+            Err(illegal("scheduler aggregate is terminal and fenced closed"))
+        }
+        fences::FenceAdmission::HistoryLimit => Err(crate::error::reject(
             SchedulerErrorKind::LimitExceeded,
             "scheduler command history reached the canonical collection limit",
-        ));
-    }
-    if state.run_id() != command.run_id()
-        || state.binding().revision() != command.revision()
-        || state.sequence().get() != command.expected_sequence()
-        || command.expected_previous_event() != Some(state.last_event_id())
-        || command.prior_state_digest() != state.state_digest()
-        || state.used_commands().contains(&command.command_id())
-        || matches!(command.kind(), SchedulerCommandKind::StartScheduler { .. })
-    {
-        return Err(crate::error::reject(
+        )),
+        fences::FenceAdmission::Stale => Err(crate::error::reject(
             SchedulerErrorKind::StaleFence,
             "scheduler command run, revision, predecessor, digest, identity, or lifecycle differs",
-        ));
+        )),
     }
-    Ok(())
 }
 
 fn command_from_event(
     event: &SchedulerEvent,
     expected_sequence: u64,
     previous: Option<peritus_types::EventId>,
-) -> Result<SchedulerCommand, SchedulerError> {
+) -> SchedulerCommand {
     let kind = match event.kind() {
         SchedulerEventKind::SchedulerStarted { binding } => {
             SchedulerCommandKind::StartScheduler { binding: binding.clone() }
@@ -238,7 +236,8 @@ fn command_from_event(
         SchedulerEventKind::SchedulerDrainRequested => SchedulerCommandKind::DrainScheduler,
         SchedulerEventKind::SchedulerFinalized { .. } => SchedulerCommandKind::FinalizeScheduler,
     };
-    SchedulerCommand::new(
+    SchedulerCommand::from_wire(
+        event.semantics(),
         event.command_id(),
         event.id(),
         event.run_id(),

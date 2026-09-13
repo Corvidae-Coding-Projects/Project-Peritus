@@ -3,7 +3,7 @@
 use crate::state::mutation;
 use crate::{
     SchedulerError, SchedulerErrorKind, SchedulerEventKind, SchedulerState, SchedulerTerminal,
-    WorkId, WorkPhase, WorkTerminal,
+    WorkId, WorkPhase,
 };
 
 pub(super) fn cancel(
@@ -15,39 +15,9 @@ pub(super) fn cancel(
     if root.phase() == WorkPhase::Terminal {
         return Err(crate::reducer::illegal("work is already terminal"));
     }
-    let mut affected = vec![work_id];
-    if descendants {
-        loop {
-            let before = affected.len();
-            for record in state.work() {
-                if record
-                    .spec()
-                    .parent()
-                    .is_some_and(|parent| affected.binary_search(&parent).is_ok())
-                    && affected.binary_search(&record.spec().id()).is_err()
-                {
-                    affected.push(record.spec().id());
-                    affected.sort_unstable();
-                }
-            }
-            if affected.len() == before {
-                break;
-            }
-        }
-    }
-    affected.retain(|id| {
-        state.work_item(*id).is_some_and(|record| record.phase() != WorkPhase::Terminal)
-    });
-    for id in &affected {
-        let active = state.reservations().iter().any(|reservation| reservation.work_id() == *id);
-        let updated = if active {
-            mutation::set_work_phase(state, *id, WorkPhase::Cancelling)
-        } else {
-            mutation::terminalize_work(state, *id, WorkTerminal::Cancelled)
-        };
-        if !updated {
-            return Err(unknown("affected cancellation work disappeared"));
-        }
+    let (affected, complete) = super::cancellation::cancel_retained(state, work_id, descendants);
+    if !complete {
+        return Err(unknown("affected cancellation work disappeared"));
     }
     Ok(SchedulerEventKind::WorkCancelled { work_id, descendants, affected })
 }

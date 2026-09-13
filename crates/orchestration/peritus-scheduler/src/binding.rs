@@ -2,7 +2,7 @@
 
 use peritus_types::{RevisionTuple, RunId, Sha256Digest};
 
-use crate::{ResourceVector, SchedulerError, SchedulerId, SchedulerLimits};
+use crate::{ResourceVector, SchedulerError, SchedulerId, SchedulerLimits, SchedulerSemantics};
 use vstd::prelude::*;
 
 verus! {
@@ -10,6 +10,7 @@ verus! {
 /// Immutable identity and capacity context for one scheduler aggregate.
 #[derive(Debug, Eq, PartialEq)]
 pub struct SchedulerBinding {
+    semantics: SchedulerSemantics,
     run_id: RunId,
     scheduler_id: SchedulerId,
     revision: RevisionTuple,
@@ -18,9 +19,40 @@ pub struct SchedulerBinding {
 }
 
 impl SchedulerBinding {
+    /// Returns the immutable scheduler semantics.
+    pub closed spec fn spec_semantics(&self) -> SchedulerSemantics { self.semantics }
+
+    /// Returns the exact immutable run identity.
+    pub closed spec fn spec_run_id(&self) -> RunId { self.run_id }
+
+    /// Returns the exact immutable scheduler identity.
+    pub closed spec fn spec_scheduler_id(&self) -> SchedulerId { self.scheduler_id }
+
+    /// Returns the exact immutable revision fence.
+    pub closed spec fn spec_revision(&self) -> RevisionTuple { self.revision }
+
+    /// Returns the bound run.
+    #[must_use]
+    pub const fn run_id(&self) -> (result: RunId)
+        ensures result == self.spec_run_id(),
+    { self.run_id }
+
+    /// Returns the stable scheduler identity.
+    #[must_use]
+    pub const fn scheduler_id(&self) -> (result: SchedulerId)
+        ensures result == self.spec_scheduler_id(),
+    { self.scheduler_id }
+
+    /// Returns the exact immutable revision fence.
+    #[must_use]
+    pub const fn revision(&self) -> (result: RevisionTuple)
+        ensures result == self.spec_revision(),
+    { self.revision }
+
     /// Relates an exact semantic clone of every immutable binding field.
     pub closed spec fn clone_equivalent(left: &Self, right: &Self) -> bool {
-        left.run_id == right.run_id
+        left.semantics == right.semantics
+            && left.run_id == right.run_id
             && left.scheduler_id == right.scheduler_id
             && left.revision == right.revision
             && left.limits == right.limits
@@ -31,9 +63,18 @@ impl SchedulerBinding {
     pub proof fn clone_preserves_reservation_fields(left: &Self, right: &Self)
         requires Self::clone_equivalent(left, right),
         ensures
+            left.spec_semantics() == right.spec_semantics(),
             left.spec_limits() == right.spec_limits(),
             left.spec_capacity().spec_entries() == right.spec_capacity().spec_entries(),
     {
+    }
+
+    /// Returns the immutable queue and recovery semantics.
+    #[must_use]
+    pub const fn semantics(&self) -> (result: SchedulerSemantics)
+        ensures result == self.spec_semantics(),
+    {
+        self.semantics
     }
 
     /// Returns the mathematical scheduler limits.
@@ -68,6 +109,7 @@ impl Clone for SchedulerBinding {
         ensures Self::clone_equivalent(self, &result),
     {
         Self {
+            semantics: self.semantics,
             run_id: self.run_id,
             scheduler_id: self.scheduler_id,
             revision: self.revision,
@@ -91,26 +133,29 @@ impl SchedulerBinding {
         limits: SchedulerLimits,
         capacity: ResourceVector,
     ) -> Result<Self, SchedulerError> {
-        limits.validate()?;
-        capacity.validate(limits.resource_dimensions())?;
-        Ok(Self { run_id, scheduler_id, revision, limits, capacity })
+        Self::from_wire(
+            SchedulerSemantics::StrictRecoveryQueueV2,
+            run_id,
+            scheduler_id,
+            revision,
+            limits,
+            capacity,
+        )
     }
 
-    /// Returns the bound run.
-    #[must_use]
-    pub const fn run_id(&self) -> RunId {
-        self.run_id
+    pub(crate) fn from_wire(
+        semantics: SchedulerSemantics,
+        run_id: RunId,
+        scheduler_id: SchedulerId,
+        revision: RevisionTuple,
+        limits: SchedulerLimits,
+        capacity: ResourceVector,
+    ) -> Result<Self, SchedulerError> {
+        limits.validate()?;
+        capacity.validate(limits.resource_dimensions())?;
+        Ok(Self { semantics, run_id, scheduler_id, revision, limits, capacity })
     }
-    /// Returns the stable scheduler identity.
-    #[must_use]
-    pub const fn scheduler_id(&self) -> SchedulerId {
-        self.scheduler_id
-    }
-    /// Returns the exact immutable revision.
-    #[must_use]
-    pub const fn revision(&self) -> RevisionTuple {
-        self.revision
-    }
+
     /// Returns the domain-separated canonical digest of every immutable binding field.
     #[must_use]
     pub fn digest(&self) -> Sha256Digest {
@@ -118,7 +163,14 @@ impl SchedulerBinding {
     }
 
     pub(crate) fn validate(&self) -> Result<(), SchedulerError> {
-        Self::new(self.run_id, self.scheduler_id, self.revision, self.limits, self.capacity.clone())
-            .map(|_| ())
+        Self::from_wire(
+            self.semantics,
+            self.run_id,
+            self.scheduler_id,
+            self.revision,
+            self.limits,
+            self.capacity.clone(),
+        )
+        .map(|_| ())
     }
 }

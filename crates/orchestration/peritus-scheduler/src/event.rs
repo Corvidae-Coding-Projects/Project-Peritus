@@ -1,167 +1,21 @@
-//! Immutable scheduler facts and successor transitions.
+//! Immutable scheduler events and successor transitions.
+
+mod kind;
+mod loss;
+
+pub use kind::SchedulerEventKind;
+pub use loss::LossOutcome;
 
 use peritus_types::{CommandId, EventId, EventSequence, RevisionTuple, RunId, Sha256Digest};
 
-use crate::{
-    DispatchId, FailureDisposition, SchedulerBinding, SchedulerReservation, SchedulerState,
-    SchedulerTerminal, WorkId, WorkSpec, WorkerDescriptor, WorkerId,
-};
-
-/// Deterministic work outcome caused by one worker-loss event.
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub enum LossOutcome {
-    /// Safe ownership loss released and requeued the work.
-    Requeued {
-        /// Released dispatch identity.
-        dispatch_id: DispatchId,
-        /// Work returned to the queue.
-        work_id: WorkId,
-    },
-    /// Attempt bound was reached during safe-retry classification.
-    Exhausted {
-        /// Released dispatch identity.
-        dispatch_id: DispatchId,
-        /// Work whose attempt bound was reached.
-        work_id: WorkId,
-    },
-    /// External result became ambiguous.
-    Ambiguous {
-        /// Released dispatch identity.
-        dispatch_id: DispatchId,
-        /// Work with unknowable external outcome.
-        work_id: WorkId,
-    },
-    /// Loss policy classified work as failed.
-    Failed {
-        /// Released dispatch identity.
-        dispatch_id: DispatchId,
-        /// Work classified as failed.
-        work_id: WorkId,
-    },
-    /// Cancellation already dominated the lost ownership.
-    Cancelled {
-        /// Released dispatch identity.
-        dispatch_id: DispatchId,
-        /// Work whose cancellation dominated the loss.
-        work_id: WorkId,
-    },
-}
-
-/// Closed semantic fact emitted by the scheduler reducer.
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub enum SchedulerEventKind {
-    /// Scheduler aggregate started.
-    SchedulerStarted {
-        /// Immutable scheduler binding.
-        binding: SchedulerBinding,
-    },
-    /// Worker was registered.
-    WorkerRegistered {
-        /// Registered worker definition.
-        descriptor: WorkerDescriptor,
-    },
-    /// Worker became available.
-    WorkerAvailable {
-        /// Worker made available.
-        worker_id: WorkerId,
-    },
-    /// Worker began draining.
-    WorkerDrainRequested {
-        /// Worker entering drain mode.
-        worker_id: WorkerId,
-    },
-    /// Worker was lost and all owned dispatches were classified.
-    WorkerLost {
-        /// Lost worker identity.
-        worker_id: WorkerId,
-        /// Canonical outcomes for released ownership.
-        outcomes: Vec<LossOutcome>,
-    },
-    /// Quiescent worker was removed.
-    WorkerRemoved {
-        /// Removed worker identity.
-        worker_id: WorkerId,
-    },
-    /// Work was durably admitted.
-    WorkAdmitted {
-        /// Immutable admitted work definition.
-        spec: WorkSpec,
-    },
-    /// Exact dispatch was reserved before effect delivery.
-    WorkReserved {
-        /// Durable dispatch ownership reservation.
-        reservation: SchedulerReservation,
-    },
-    /// Worker acknowledged execution ownership.
-    WorkStartAcknowledged {
-        /// Acknowledged dispatch identity.
-        dispatch_id: DispatchId,
-    },
-    /// Work succeeded and ownership was released.
-    WorkSucceeded {
-        /// Successful dispatch identity.
-        dispatch_id: DispatchId,
-        /// Digest of the inert result.
-        result_digest: Sha256Digest,
-    },
-    /// Work failed and ownership was released under an explicit disposition.
-    WorkFailed {
-        /// Failed dispatch identity.
-        dispatch_id: DispatchId,
-        /// Digest of the inert failure record.
-        failure_digest: Sha256Digest,
-        /// Applied retry or terminal classification.
-        disposition: FailureDisposition,
-    },
-    /// Retry-pending work returned to the queue.
-    WorkRetryQueued {
-        /// Work returned to the queue.
-        work_id: WorkId,
-    },
-    /// Work cancellation was applied to a canonical affected set.
-    WorkCancelled {
-        /// Root cancellation target.
-        work_id: WorkId,
-        /// Whether descendants were traversed.
-        descendants: bool,
-        /// Canonically ordered affected work identities.
-        affected: Vec<WorkId>,
-    },
-    /// Active cancellation was acknowledged and released.
-    CancellationAcknowledged {
-        /// Released cancelling dispatch identity.
-        dispatch_id: DispatchId,
-    },
-    /// Inactive work was explicitly exhausted.
-    WorkExhausted {
-        /// Exhausted work identity.
-        work_id: WorkId,
-        /// Digest explaining exhaustion.
-        cause_digest: Sha256Digest,
-    },
-    /// Active ownership was explicitly abandoned.
-    DispatchAbandoned {
-        /// Abandoned dispatch identity.
-        dispatch_id: DispatchId,
-        /// Digest explaining abandonment.
-        cause_digest: Sha256Digest,
-    },
-    /// Scheduler dispatch was paused.
-    SchedulerPaused,
-    /// Scheduler dispatch resumed.
-    SchedulerResumed,
-    /// Scheduler closed admission and began draining.
-    SchedulerDrainRequested,
-    /// Truthful terminal summary was committed.
-    SchedulerFinalized {
-        /// Truthful immutable final summary.
-        terminal: SchedulerTerminal,
-    },
-}
+use crate::{SchedulerSemantics, SchedulerState};
+use vstd::prelude::*;
 
 /// One canonical event carrying all predecessor/successor fences.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(verus_keep_ghost, verifier::verify)]
+#[derive(Debug, Eq, PartialEq)]
 pub struct SchedulerEvent {
+    semantics: SchedulerSemantics,
     id: EventId,
     command_id: CommandId,
     sequence: EventSequence,
@@ -176,6 +30,7 @@ pub struct SchedulerEvent {
 impl SchedulerEvent {
     #[allow(clippy::too_many_arguments)]
     pub(crate) const fn from_wire(
+        semantics: SchedulerSemantics,
         id: EventId,
         command_id: CommandId,
         sequence: EventSequence,
@@ -187,6 +42,7 @@ impl SchedulerEvent {
         kind: SchedulerEventKind,
     ) -> Self {
         Self {
+            semantics,
             id,
             command_id,
             sequence,
@@ -244,6 +100,56 @@ impl SchedulerEvent {
         &self.kind
     }
 }
+
+verus! {
+
+impl SchedulerEvent {
+    /// Relates every fence, digest, and semantic payload across an event clone.
+    pub closed spec fn clone_equivalent(left: &Self, right: &Self) -> bool {
+        &&& left.semantics == right.semantics
+        &&& left.id == right.id
+        &&& left.command_id == right.command_id
+        &&& left.sequence == right.sequence
+        &&& left.previous_event == right.previous_event
+        &&& left.run_id == right.run_id
+        &&& left.revision == right.revision
+        &&& left.prior_state_digest == right.prior_state_digest
+        &&& left.successor_state_digest == right.successor_state_digest
+        &&& SchedulerEventKind::clone_equivalent(&left.kind, &right.kind)
+    }
+
+    /// Returns the mathematical immutable scheduler semantics.
+    pub closed spec fn spec_semantics(&self) -> SchedulerSemantics { self.semantics }
+
+    /// Returns the immutable queue and recovery semantics.
+    #[must_use]
+    pub const fn semantics(&self) -> (result: SchedulerSemantics)
+        ensures result == self.spec_semantics(),
+    {
+        self.semantics
+    }
+}
+
+impl Clone for SchedulerEvent {
+    fn clone(&self) -> (result: Self)
+        ensures Self::clone_equivalent(self, &result),
+    {
+        Self {
+            semantics: self.semantics,
+            id: self.id,
+            command_id: self.command_id,
+            sequence: self.sequence,
+            previous_event: self.previous_event,
+            run_id: self.run_id,
+            revision: self.revision,
+            prior_state_digest: self.prior_state_digest,
+            successor_state_digest: self.successor_state_digest,
+            kind: self.kind.clone(),
+        }
+    }
+}
+
+} // verus!
 
 /// Pure accepted event plus complete successor checkpoint.
 #[derive(Clone, Debug, Eq, PartialEq)]

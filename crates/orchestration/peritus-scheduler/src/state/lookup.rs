@@ -1,4 +1,4 @@
-//! Verified sound lookups using the production binary-search algorithm.
+//! Exact lookups in canonical state using the production binary-search algorithm.
 
 use vstd::prelude::*;
 
@@ -15,7 +15,9 @@ impl SchedulerState {
                 &&& index < self.spec_workers().len()
                 &&& self.spec_workers()[index as int].spec_descriptor().spec_id() == id
             },
-            None => true,
+            None => self.spec_workers_ordered() ==> forall |index: int|
+                0 <= index < self.spec_workers().len() ==>
+                    self.spec_workers()[index].spec_descriptor().spec_id() != id,
         },
     {
         let mut size: usize = self.workers.len();
@@ -28,6 +30,10 @@ impl SchedulerState {
                 0 < size <= self.workers@.len(),
                 base < self.workers@.len(),
                 base + size <= self.workers@.len(),
+                self.spec_workers_ordered() ==> forall |index: int|
+                    0 <= index < self.spec_workers().len()
+                        && self.spec_workers()[index].spec_descriptor().spec_id() == id ==>
+                            base <= index < base + size,
             decreases size,
         {
             let half = size / 2;
@@ -39,10 +45,30 @@ impl SchedulerState {
             }
             let mid = base + half;
             let observed = self.workers[mid].descriptor().id();
+            let ghost previous_base = base;
+            let ghost previous_size = size;
             if !id.precedes(&observed) {
                 base = mid;
             }
             size -= half;
+            proof {
+                assert forall |index: int| self.spec_workers_ordered()
+                    && 0 <= index < self.spec_workers().len()
+                    && self.spec_workers()[index].spec_descriptor().spec_id() == id implies
+                        base <= index < base + size by {
+                    assert(previous_base <= index < previous_base + previous_size);
+                    if index < mid && !id.spec_precedes(&observed) {
+                        assert(id.spec_precedes(&observed));
+                    }
+                    if mid < index && id.spec_precedes(&observed) {
+                        assert(observed.spec_precedes(&id));
+                        WorkerId::order_asymmetric(&id, &observed);
+                    }
+                    if mid == index && id.spec_precedes(&observed) {
+                        WorkerId::order_irreflexive(&id);
+                    }
+                }
+            };
         }
         if self.workers[base].descriptor().id().same(&id) {
             proof {
@@ -54,7 +80,7 @@ impl SchedulerState {
         }
     }
 
-    /// Looks up a worker and proves every returned record has the requested identity.
+    /// Returns the exact retained worker; canonical ordering makes absence complete.
     #[must_use]
     pub fn worker(&self, id: WorkerId) -> (result: Option<&WorkerRecord>)
         ensures match result {
@@ -64,8 +90,11 @@ impl SchedulerState {
                     0 <= index < self.spec_workers().len()
                         && self.spec_workers()[index].spec_descriptor().spec_id() == id
                         && self.spec_workers()[index].spec_phase() == record.spec_phase()
+                        && self.spec_workers()[index] == *record
             },
-            None => true,
+            None => self.spec_workers_ordered() ==> forall |index: int|
+                0 <= index < self.spec_workers().len() ==>
+                    self.spec_workers()[index].spec_descriptor().spec_id() != id,
         },
     {
         let found_index = self.worker_index(id)?;
@@ -75,7 +104,8 @@ impl SchedulerState {
                 0 <= index < self.spec_workers().len()
                     && self.spec_workers()[index].spec_descriptor().spec_id() == id
                     && self.spec_workers()[index].spec_phase()
-                        == self.spec_workers()[found_index as int].spec_phase()) by {
+                        == self.spec_workers()[found_index as int].spec_phase()
+                    && self.spec_workers()[index] == self.spec_workers()[found_index as int]) by {
                 assert(0 <= found_index as int
                     && (found_index as int) < self.spec_workers().len());
             }
@@ -83,7 +113,7 @@ impl SchedulerState {
         Some(&self.workers[found_index])
     }
 
-    /// Looks up work and proves every returned record has the requested identity.
+    /// Returns the exact retained work; canonical ordering makes absence complete.
     #[must_use]
     pub fn work_item(&self, id: WorkId) -> (result: Option<&WorkRecord>)
         ensures match result {
@@ -93,8 +123,11 @@ impl SchedulerState {
                     0 <= index < self.spec_work().len()
                         && self.spec_work()[index].spec_definition().spec_id() == id
                         && self.spec_work()[index].spec_phase() == record.spec_phase()
+                        && self.spec_work()[index] == *record
             },
-            None => true,
+            None => self.spec_work_ordered() ==> forall |index: int|
+                0 <= index < self.spec_work().len() ==>
+                    self.spec_work()[index].spec_definition().spec_id() != id,
         },
     {
         let mut size: usize = self.work.len();
@@ -107,6 +140,10 @@ impl SchedulerState {
                 0 < size <= self.work@.len(),
                 base < self.work@.len(),
                 base + size <= self.work@.len(),
+                self.spec_work_ordered() ==> forall |index: int|
+                    0 <= index < self.spec_work().len()
+                        && self.spec_work()[index].spec_definition().spec_id() == id ==>
+                            base <= index < base + size,
             decreases size,
         {
             let half = size / 2;
@@ -118,10 +155,30 @@ impl SchedulerState {
             }
             let mid = base + half;
             let observed = self.work[mid].spec().id();
+            let ghost previous_base = base;
+            let ghost previous_size = size;
             if !id.precedes(&observed) {
                 base = mid;
             }
             size -= half;
+            proof {
+                assert forall |index: int| self.spec_work_ordered()
+                    && 0 <= index < self.spec_work().len()
+                    && self.spec_work()[index].spec_definition().spec_id() == id implies
+                        base <= index < base + size by {
+                    assert(previous_base <= index < previous_base + previous_size);
+                    if index < mid && !id.spec_precedes(&observed) {
+                        assert(id.spec_precedes(&observed));
+                    }
+                    if mid < index && id.spec_precedes(&observed) {
+                        assert(observed.spec_precedes(&id));
+                        WorkId::order_asymmetric(&id, &observed);
+                    }
+                    if mid == index && id.spec_precedes(&observed) {
+                        WorkId::order_irreflexive(&id);
+                    }
+                }
+            };
         }
         if self.work[base].spec().id().same(&id) {
             proof {
@@ -130,7 +187,8 @@ impl SchedulerState {
                     0 <= index < self.spec_work().len()
                         && self.spec_work()[index].spec_definition().spec_id() == id
                         && self.spec_work()[index].spec_phase()
-                            == self.spec_work()[base as int].spec_phase()) by {
+                            == self.spec_work()[base as int].spec_phase()
+                        && self.spec_work()[index] == self.spec_work()[base as int]) by {
                     assert(0 <= base as int && (base as int) < self.spec_work().len());
                 }
             }
@@ -140,7 +198,7 @@ impl SchedulerState {
         }
     }
 
-    /// Looks up a live reservation and proves every returned record has the requested identity.
+    /// Returns the exact live reservation; canonical ordering makes absence complete.
     #[must_use]
     pub fn reservation(&self, id: DispatchId) -> (result: Option<&SchedulerReservation>)
         ensures match result {
@@ -153,8 +211,11 @@ impl SchedulerState {
                             == reservation.spec_work_id()
                         && self.spec_reservations()[index].spec_started()
                             == reservation.spec_started()
+                        && self.spec_reservations()[index] == *reservation
             },
-            None => true,
+            None => self.spec_reservations_ordered() ==> forall |index: int|
+                0 <= index < self.spec_reservations().len() ==>
+                    self.spec_reservations()[index].spec_dispatch_id() != id,
         },
     {
         let mut size: usize = self.reservations.len();
@@ -167,6 +228,10 @@ impl SchedulerState {
                 0 < size <= self.reservations@.len(),
                 base < self.reservations@.len(),
                 base + size <= self.reservations@.len(),
+                self.spec_reservations_ordered() ==> forall |index: int|
+                    0 <= index < self.spec_reservations().len()
+                        && self.spec_reservations()[index].spec_dispatch_id() == id ==>
+                            base <= index < base + size,
             decreases size,
         {
             let half = size / 2;
@@ -178,10 +243,30 @@ impl SchedulerState {
             }
             let mid = base + half;
             let observed = self.reservations[mid].dispatch_id();
+            let ghost previous_base = base;
+            let ghost previous_size = size;
             if !id.precedes(&observed) {
                 base = mid;
             }
             size -= half;
+            proof {
+                assert forall |index: int| self.spec_reservations_ordered()
+                    && 0 <= index < self.spec_reservations().len()
+                    && self.spec_reservations()[index].spec_dispatch_id() == id implies
+                        base <= index < base + size by {
+                    assert(previous_base <= index < previous_base + previous_size);
+                    if index < mid && !id.spec_precedes(&observed) {
+                        assert(id.spec_precedes(&observed));
+                    }
+                    if mid < index && id.spec_precedes(&observed) {
+                        assert(observed.spec_precedes(&id));
+                        DispatchId::order_asymmetric(&id, &observed);
+                    }
+                    if mid == index && id.spec_precedes(&observed) {
+                        DispatchId::order_irreflexive(&id);
+                    }
+                }
+            };
         }
         if self.reservations[base].dispatch_id().same(&id) {
             proof {
@@ -192,7 +277,9 @@ impl SchedulerState {
                         && self.spec_reservations()[index].spec_work_id()
                             == self.spec_reservations()[base as int].spec_work_id()
                         && self.spec_reservations()[index].spec_started()
-                            == self.spec_reservations()[base as int].spec_started()) by {
+                            == self.spec_reservations()[base as int].spec_started()
+                        && self.spec_reservations()[index]
+                            == self.spec_reservations()[base as int]) by {
                     assert(0 <= base as int
                         && (base as int) < self.spec_reservations().len());
                 }

@@ -3,6 +3,8 @@
 mod clone_impl;
 mod lookup;
 pub mod mutation;
+mod ordering;
+pub mod queue;
 mod terminal;
 mod validation;
 
@@ -76,6 +78,18 @@ impl SchedulerState {
     pub closed spec fn spec_dispatch_ordinal(&self) -> u64 {
         self.dispatch_ordinal
     }
+    /// Returns the exact event sequence fence.
+    pub closed spec fn spec_sequence(&self) -> EventSequence { self.sequence }
+    /// Returns the exact predecessor event fence.
+    pub closed spec fn spec_last_event_id(&self) -> EventId { self.last_event_id }
+    /// Returns the exact retained state digest.
+    pub closed spec fn spec_state_digest(&self) -> Sha256Digest { self.state_digest }
+    /// Returns the exact admission ordinal.
+    pub closed spec fn spec_enqueue_ordinal(&self) -> u64 { self.enqueue_ordinal }
+    /// Returns command identities in durable event order.
+    pub closed spec fn spec_used_commands(&self) -> Seq<CommandId> { self.used_commands@ }
+    /// Returns the retained terminal evidence.
+    pub closed spec fn spec_terminal(&self) -> Option<SchedulerTerminal> { self.terminal }
 
     /// Borrows immutable scheduler binding.
     #[must_use]
@@ -138,7 +152,16 @@ impl SchedulerState {
         event_id: EventId,
         command_id: CommandId,
     ) -> (result: Self)
-        ensures result.spec_reservation_reducer_ready(),
+        ensures
+            result.spec_reservation_reducer_ready(),
+            result.spec_collections_ordered(),
+            *result.spec_binding() == binding,
+            result.spec_phase() == SchedulerPhase::Active,
+            result.spec_workers() == Seq::<WorkerRecord>::empty(),
+            result.spec_work() == Seq::<WorkRecord>::empty(),
+            result.spec_reservations() == Seq::<SchedulerReservation>::empty(),
+            result.spec_used_dispatches() == Seq::<DispatchId>::empty(),
+            result.spec_dispatch_ordinal() == 0,
     {
         let used_commands = vec![command_id];
         let result = Self {
@@ -188,43 +211,66 @@ impl SchedulerState {
 
 } // verus!
 
+verus! {
+
 impl SchedulerState {
     /// Returns bound run.
     #[must_use]
-    pub const fn run_id(&self) -> RunId {
+    pub const fn run_id(&self) -> (result: RunId)
+        ensures result == self.spec_binding().spec_run_id(),
+    {
         self.binding.run_id()
     }
     /// Returns current one-based event sequence.
     #[must_use]
-    pub const fn sequence(&self) -> EventSequence {
+    pub const fn sequence(&self) -> (result: EventSequence)
+        ensures result == self.spec_sequence(),
+    {
         self.sequence
     }
     /// Returns latest event identity.
     #[must_use]
-    pub const fn last_event_id(&self) -> EventId {
+    pub const fn last_event_id(&self) -> (result: EventId)
+        ensures result == self.spec_last_event_id(),
+    {
         self.last_event_id
     }
     /// Returns canonical complete-state digest.
     #[must_use]
-    pub const fn state_digest(&self) -> Sha256Digest {
+    pub const fn state_digest(&self) -> (result: Sha256Digest)
+        ensures result == self.spec_state_digest(),
+    {
         self.state_digest
     }
     /// Returns last assigned enqueue ordinal.
     #[must_use]
-    pub const fn enqueue_ordinal(&self) -> u64 {
+    pub const fn enqueue_ordinal(&self) -> (result: u64)
+        ensures result == self.spec_enqueue_ordinal(),
+    {
         self.enqueue_ordinal
     }
     /// Borrows used command identities in event order.
     #[must_use]
-    pub fn used_commands(&self) -> &[CommandId] {
+    pub fn used_commands(&self) -> (result: &[CommandId])
+        ensures result@ == self.spec_used_commands(),
+    {
         &self.used_commands
     }
     /// Borrows immutable terminal summary.
     #[must_use]
-    pub const fn terminal(&self) -> Option<&SchedulerTerminal> {
+    pub const fn terminal(&self) -> (result: Option<&SchedulerTerminal>)
+        ensures match result {
+            Some(value) => self.spec_terminal() == Some(*value),
+            None => self.spec_terminal().is_none(),
+        },
+    {
         self.terminal.as_ref()
     }
+}
 
+} // verus!
+
+impl SchedulerState {
     /// Returns used global resources, with `None` representing exact zero.
     ///
     /// # Errors

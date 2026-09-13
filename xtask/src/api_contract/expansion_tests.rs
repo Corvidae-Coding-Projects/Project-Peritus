@@ -2,6 +2,48 @@ use super::scanner::scan;
 use super::violation::ViolationKind;
 
 #[test]
+fn permits_only_the_pinned_direct_verification_marker() {
+    let accepted = scan(
+        r"
+        #[cfg_attr(verus_keep_ghost, verifier::verify)]
+        pub enum Verified { Value { field: u64 } }
+        ",
+    );
+    assert!(accepted.violations.is_empty(), "{:?}", accepted.violations);
+
+    for attribute in [
+        "cfg_attr(verus_only, verifier::verify)",
+        "cfg_attr(verus_keep_ghost, verify)",
+        "cfg_attr(verus_keep_ghost, verifier::external_body)",
+        "cfg_attr(verus_keep_ghost, verifier::verify, verifier::external_body)",
+        "cfg_attr(verus_keep_ghost, verifier::verify, cfg(any()))",
+        "cfg_attr(verus_keep_ghost, verifier::verify,)",
+    ] {
+        let source = format!("#[{attribute}] pub enum Rejected {{ Value }}");
+        assert!(
+            scan(&source)
+                .violations
+                .iter()
+                .any(|violation| violation.kind == ViolationKind::UnsupportedAttribute),
+            "{source}"
+        );
+    }
+}
+
+#[test]
+fn direct_verification_marker_does_not_hide_public_preconditions() {
+    let result = scan(
+        r"
+        #[cfg_attr(verus_keep_ghost, verifier::verify)]
+        pub fn cannot_skip_contract(value: u64) requires value > 0 { }
+        ",
+    );
+    assert_eq!(result.violations.len(), 1, "{:?}", result.violations);
+    assert_eq!(result.violations[0].function, "cannot_skip_contract");
+    assert_eq!(result.violations[0].kind, ViolationKind::ExposedRequires);
+}
+
+#[test]
 fn permits_only_documentation_lint_metadata_for_generated_ghost_items() {
     for attribute in [
         r#"cfg_attr(verus_keep_ghost, allow(missing_docs, reason = "pinned enum projection generator"))"#,

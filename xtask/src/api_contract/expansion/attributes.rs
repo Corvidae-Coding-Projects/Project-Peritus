@@ -47,6 +47,7 @@ pub(super) fn inspect(
     let name = attribute_name(tokens);
     let allowed = name.as_deref().is_some_and(|name| SIMPLE.contains(&name))
         || name.as_deref().is_some_and(trust_accounted)
+        || audited_direct_verification(tokens)
         || audited_ghost_documentation(tokens)
         || audited_repr(tokens)
         || deserialize_imported && serde::audited(tokens, serialize_imported)
@@ -145,6 +146,21 @@ fn audited_repr(tokens: &[Token]) -> bool {
         && punctuation_is(&tokens[1], '(')
         && identifier_is(&tokens[2], "u8")
         && punctuation_is(&tokens[3], ')')
+}
+
+// The pinned Verus toolchain uses this marker to verify ordinary Rust declarations
+// without routing them through `verus!` and synthesizing undocumented enum projections.
+fn audited_direct_verification(tokens: &[Token]) -> bool {
+    tokens.len() == 9
+        && identifier_is(&tokens[0], "cfg_attr")
+        && punctuation_is(&tokens[1], '(')
+        && identifier_is(&tokens[2], "verus_keep_ghost")
+        && punctuation_is(&tokens[3], ',')
+        && identifier_is(&tokens[4], "verifier")
+        && punctuation_is(&tokens[5], ':')
+        && punctuation_is(&tokens[6], ':')
+        && identifier_is(&tokens[7], "verify")
+        && punctuation_is(&tokens[8], ')')
 }
 
 // The pinned Verus enum expansion synthesizes undocumented ghost projection methods.

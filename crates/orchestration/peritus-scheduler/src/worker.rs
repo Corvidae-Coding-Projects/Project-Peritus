@@ -8,6 +8,7 @@ use crate::{
 };
 use vstd::prelude::*;
 
+mod admission;
 mod clone_impl;
 
 verus! {
@@ -66,6 +67,14 @@ impl WorkerDescriptor {
         self.concurrency
     }
 
+    /// Borrows supported execution classes in canonical order.
+    #[must_use]
+    pub fn classes(&self) -> (result: &[ExecutionClass])
+        ensures result@ == self.spec_classes(),
+    {
+        &self.classes
+    }
+
     /// Returns whether this worker supports the class.
     #[must_use]
     pub fn supports(&self, class: ExecutionClass) -> (result: bool)
@@ -108,24 +117,27 @@ impl WorkerDescriptor {
         concurrency: u16,
         limits: SchedulerLimits,
     ) -> Result<Self, SchedulerError> {
-        if classes.is_empty()
-            || classes.windows(2).any(|pair| pair[0] >= pair[1])
-            || concurrency == 0
-            || concurrency > limits.active_reservations()
-        {
-            return Err(crate::error::reject(
-                SchedulerErrorKind::NonCanonical,
-                "worker classes or concurrency are empty, duplicated, unsorted, or out of bounds",
-            ));
+        match admission::admit_descriptor(
+            id,
+            owner,
+            classes,
+            capacity,
+            concurrency,
+            limits.active_reservations(),
+            limits.resource_dimensions(),
+        ) {
+            admission::DescriptorAdmission::Accepted(descriptor) => Ok(descriptor),
+            admission::DescriptorAdmission::ClassesOrConcurrencyRejected => {
+                Err(crate::error::reject(
+                    SchedulerErrorKind::NonCanonical,
+                    "worker classes or concurrency are empty, duplicated, unsorted, or out of bounds",
+                ))
+            }
+            admission::DescriptorAdmission::CapacityLimitExceeded => Err(crate::error::reject(
+                SchedulerErrorKind::LimitExceeded,
+                "resource vector is empty or exceeds its dimension bound",
+            )),
         }
-        capacity.validate(limits.resource_dimensions())?;
-        Ok(Self { id, owner, classes, capacity, concurrency })
-    }
-
-    /// Borrows supported execution classes in canonical order.
-    #[must_use]
-    pub fn classes(&self) -> &[ExecutionClass] {
-        &self.classes
     }
 }
 

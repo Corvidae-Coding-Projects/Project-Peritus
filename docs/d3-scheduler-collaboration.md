@@ -105,8 +105,18 @@ Commands fence the run, revision, expected sequence, predecessor, prior-state di
 identity, and successor event identity. A stale fence, conflicting command reuse, or invalid
 semantic transition leaves the aggregate unchanged.
 
-The scheduler persists schema-v1 command/event/state frames in B3 families 70, 71, and 72 under
-C0 aggregate tag 10 and checkpoint namespace `0xD301`. Collaboration uses families 73, 74, and
+The scheduler persists command/event/state frames in B3 families 70, 71, and 72 under C0
+aggregate tag 10 and checkpoint namespace `0xD301`. New aggregates use schema 2; existing schema-1
+aggregates retain historical admission, canonical bytes and writable continuations. The version
+is immutable per aggregate and is carried by the frame header. Schema-2 admission counts waiting
+work and Reserved/Running work with another attempt available, preventing recovery from
+overfilling the waiting queue. Schema-1 checkpoints use the reachable waiting-plus-active bound
+of `queued_work + active_reservations`; schema-2 recovery pressure stays within `queued_work`.
+
+Use the scheduler's version-aware codec helpers and `SchedulerCommand::from_state` for
+continuations. Fresh durable schema-1 genesis is rejected, while exact historical command retries
+resolve before the new-genesis policy is applied. No journal rewrite or namespace migration is
+required. Collaboration continues using schema 1 in families 73, 74, and
 75, aggregate tag 11, and namespace `0xD302`. The decoded frames are inert until checked by their
 domain constructors and reducers.
 

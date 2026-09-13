@@ -49,8 +49,20 @@ impl WorkSpec {
     pub closed spec fn spec_request(&self) -> &ResourceVector { &self.request }
     /// Returns the mathematical attempt ceiling.
     pub closed spec fn spec_maximum_attempts(&self) -> AttemptNumber { self.maximum_attempts }
+    /// Returns the immutable worker-loss recovery policy.
+    pub closed spec fn spec_recovery(&self) -> RecoveryPolicy { self.recovery }
     /// Returns the mathematical scheduling priority.
     pub closed spec fn spec_priority(&self) -> u8 { self.priority }
+    /// Returns the immutable parent edge used by cancellation traversal.
+    pub closed spec fn spec_parent(&self) -> Option<WorkId> { self.parent }
+
+    /// Returns optional parent work.
+    #[must_use]
+    pub const fn parent(&self) -> (result: Option<WorkId>)
+        ensures result == self.spec_parent(),
+    {
+        self.parent
+    }
 
     /// Returns stable work identity.
     #[must_use]
@@ -98,6 +110,14 @@ impl WorkSpec {
         ensures result == self.spec_maximum_attempts(),
     {
         self.maximum_attempts
+    }
+
+    /// Returns recorded worker-loss recovery policy.
+    #[must_use]
+    pub const fn recovery(&self) -> (result: RecoveryPolicy)
+        ensures result == self.spec_recovery(),
+    {
+        self.recovery
     }
 
     /// Returns exact immutable revision.
@@ -174,16 +194,6 @@ impl WorkSpec {
     #[must_use]
     pub fn dependencies(&self) -> &[WorkId] {
         &self.dependencies
-    }
-    /// Returns optional parent work.
-    #[must_use]
-    pub const fn parent(&self) -> Option<WorkId> {
-        self.parent
-    }
-    /// Returns fixed worker-loss policy.
-    #[must_use]
-    pub const fn recovery(&self) -> RecoveryPolicy {
-        self.recovery
     }
     /// Returns inert exact payload digest.
     #[must_use]

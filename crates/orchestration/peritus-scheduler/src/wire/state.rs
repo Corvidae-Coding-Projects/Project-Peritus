@@ -3,11 +3,14 @@ use peritus_codec::{
 };
 use peritus_types::EventSequence;
 
-use crate::{SchedulerPhase, SchedulerState};
+use crate::{SchedulerPhase, SchedulerSemantics, SchedulerState};
 
-/// Canonical family-72 schema-v1 complete scheduler checkpoint.
+/// Canonical family-72 schema-v2 complete scheduler checkpoint.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct SchedulerStateFrame(SchedulerState);
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(super) struct SchedulerStateFrameV1(SchedulerState);
 
 impl SchedulerStateFrame {
     /// Clones complete state into an inert frame.
@@ -54,115 +57,158 @@ impl SchedulerStateFrame {
 
 impl CanonicalEncode for SchedulerStateFrame {
     const FAMILY: u16 = 72;
-    const SCHEMA_VERSION: u16 = 1;
+    const SCHEMA_VERSION: u16 = 2;
     fn encode_payload(&self, writer: &mut CanonicalWriter) -> Result<(), CodecError> {
-        let state = &self.0;
-        super::write_binding(writer, state.binding())?;
-        writer.write_u8(super::scheduler_phase_tag(state.phase()))?;
-        writer.write_u64(state.sequence().get())?;
-        super::write_id(writer, state.last_event_id().as_bytes())?;
-        super::write_digest(writer, state.state_digest())?;
-        writer.write_collection_len(state.workers().len())?;
-        for worker in state.workers() {
-            super::write_worker_record(writer, worker)?;
-        }
-        writer.write_collection_len(state.work().len())?;
-        for work in state.work() {
-            super::write_work_record(writer, work)?;
-        }
-        writer.write_collection_len(state.reservations().len())?;
-        for reservation in state.reservations() {
-            super::write_reservation(writer, reservation)?;
-        }
-        writer.write_collection_len(state.used_dispatches().len())?;
-        for dispatch in state.used_dispatches() {
-            super::write_id(writer, dispatch.as_bytes())?;
-        }
-        writer.write_u64(state.enqueue_ordinal())?;
-        writer.write_u64(state.dispatch_ordinal())?;
-        writer.write_collection_len(state.used_commands().len())?;
-        for command in state.used_commands() {
-            super::write_id(writer, command.as_bytes())?;
-        }
-        writer.write_option_tag(state.terminal().is_some())?;
-        if let Some(terminal) = state.terminal() {
-            super::write_terminal(writer, terminal)?;
-        }
-        Ok(())
+        encode_payload(&self.0, SchedulerSemantics::StrictRecoveryQueueV2, writer)
     }
 }
 
 impl CanonicalDecode for SchedulerStateFrame {
     const FAMILY: u16 = 72;
-    const SCHEMA_VERSION: u16 = 1;
+    const SCHEMA_VERSION: u16 = 2;
     fn decode_payload(reader: &mut CanonicalReader<'_>) -> Result<Self, CodecError> {
-        let binding = super::read_binding(reader)?;
-        let limits = binding.limits();
-        let offset = reader.offset();
-        let phase = match reader.read_u8()? {
-            1 => SchedulerPhase::Active,
-            2 => SchedulerPhase::Paused,
-            3 => SchedulerPhase::Draining,
-            4 => SchedulerPhase::DrainingPaused,
-            5 => SchedulerPhase::Terminal,
-            _ => return Err(super::unknown(offset)),
-        };
-        let sequence_offset = reader.offset();
-        let sequence = EventSequence::new(reader.read_u64()?)
-            .map_err(|_| CodecError::at(CodecErrorKind::InvalidDomainValue, sequence_offset))?;
-        let event = super::read_event_id(reader)?;
-        let digest = super::read_digest(reader)?;
-        let worker_count = bounded(reader, usize::from(limits.workers()))?;
-        let mut workers = Vec::with_capacity(worker_count);
-        for _ in 0..worker_count {
-            workers.push(super::read_worker_record(reader, limits)?);
-        }
-        let work_count = bounded(reader, limits.retained_work() as usize)?;
-        let mut work = Vec::with_capacity(work_count);
-        for _ in 0..work_count {
-            work.push(super::read_work_record(reader, limits)?);
-        }
-        let reservation_count = bounded(reader, usize::from(limits.active_reservations()))?;
-        let mut reservations = Vec::with_capacity(reservation_count);
-        for _ in 0..reservation_count {
-            reservations.push(super::read_reservation(reader, limits)?);
-        }
-        let dispatch_count = bounded(
-            reader,
-            (limits.retained_work() as usize)
-                .saturating_mul(usize::from(limits.attempts_per_work())),
-        )?;
-        let mut dispatches = Vec::with_capacity(dispatch_count);
-        for _ in 0..dispatch_count {
-            dispatches.push(super::read_dispatch_id(reader)?);
-        }
-        let enqueue = reader.read_u64()?;
-        let dispatch = reader.read_u64()?;
-        let command_count = reader.read_collection_len()?;
-        let mut commands = Vec::with_capacity(command_count);
-        for _ in 0..command_count {
-            commands.push(super::read_command_id(reader)?);
-        }
-        let terminal =
-            reader.read_option_tag()?.then(|| super::read_terminal(reader)).transpose()?;
-        let state = SchedulerState::from_wire(
-            binding,
-            phase,
-            sequence,
-            event,
-            digest,
-            workers,
-            work,
-            reservations,
-            dispatches,
-            enqueue,
-            dispatch,
-            commands,
-            terminal,
-        );
-        state.validate_inert().map_err(|_| super::invalid(reader))?;
-        Ok(Self(state))
+        decode_payload(reader, SchedulerSemantics::StrictRecoveryQueueV2).map(Self)
     }
+}
+
+impl SchedulerStateFrameV1 {
+    pub(super) fn from_state(state: &SchedulerState) -> Self {
+        Self(state.clone())
+    }
+
+    pub(super) fn into_state(self) -> SchedulerState {
+        self.0
+    }
+}
+
+impl CanonicalEncode for SchedulerStateFrameV1 {
+    const FAMILY: u16 = 72;
+    const SCHEMA_VERSION: u16 = 1;
+
+    fn encode_payload(&self, writer: &mut CanonicalWriter) -> Result<(), CodecError> {
+        encode_payload(&self.0, SchedulerSemantics::LegacyQueueV1, writer)
+    }
+}
+
+impl CanonicalDecode for SchedulerStateFrameV1 {
+    const FAMILY: u16 = 72;
+    const SCHEMA_VERSION: u16 = 1;
+
+    fn decode_payload(reader: &mut CanonicalReader<'_>) -> Result<Self, CodecError> {
+        decode_payload(reader, SchedulerSemantics::LegacyQueueV1).map(Self)
+    }
+}
+
+fn encode_payload(
+    state: &SchedulerState,
+    semantics: SchedulerSemantics,
+    writer: &mut CanonicalWriter,
+) -> Result<(), CodecError> {
+    if state.binding().semantics() != semantics {
+        return Err(CodecError::at(CodecErrorKind::WrongSchemaVersion, 8));
+    }
+    super::write_binding(writer, state.binding())?;
+    writer.write_u8(super::scheduler_phase_tag(state.phase()))?;
+    writer.write_u64(state.sequence().get())?;
+    super::write_id(writer, state.last_event_id().as_bytes())?;
+    super::write_digest(writer, state.state_digest())?;
+    writer.write_collection_len(state.workers().len())?;
+    for worker in state.workers() {
+        super::write_worker_record(writer, worker)?;
+    }
+    writer.write_collection_len(state.work().len())?;
+    for work in state.work() {
+        super::write_work_record(writer, work)?;
+    }
+    writer.write_collection_len(state.reservations().len())?;
+    for reservation in state.reservations() {
+        super::write_reservation(writer, reservation)?;
+    }
+    writer.write_collection_len(state.used_dispatches().len())?;
+    for dispatch in state.used_dispatches() {
+        super::write_id(writer, dispatch.as_bytes())?;
+    }
+    writer.write_u64(state.enqueue_ordinal())?;
+    writer.write_u64(state.dispatch_ordinal())?;
+    writer.write_collection_len(state.used_commands().len())?;
+    for command in state.used_commands() {
+        super::write_id(writer, command.as_bytes())?;
+    }
+    writer.write_option_tag(state.terminal().is_some())?;
+    if let Some(terminal) = state.terminal() {
+        super::write_terminal(writer, terminal)?;
+    }
+    Ok(())
+}
+
+fn decode_payload(
+    reader: &mut CanonicalReader<'_>,
+    semantics: SchedulerSemantics,
+) -> Result<SchedulerState, CodecError> {
+    let binding = super::read_binding(reader, semantics)?;
+    let limits = binding.limits();
+    let offset = reader.offset();
+    let phase = match reader.read_u8()? {
+        1 => SchedulerPhase::Active,
+        2 => SchedulerPhase::Paused,
+        3 => SchedulerPhase::Draining,
+        4 => SchedulerPhase::DrainingPaused,
+        5 => SchedulerPhase::Terminal,
+        _ => return Err(super::unknown(offset)),
+    };
+    let sequence_offset = reader.offset();
+    let sequence = EventSequence::new(reader.read_u64()?)
+        .map_err(|_| CodecError::at(CodecErrorKind::InvalidDomainValue, sequence_offset))?;
+    let event = super::read_event_id(reader)?;
+    let digest = super::read_digest(reader)?;
+    let worker_count = bounded(reader, usize::from(limits.workers()))?;
+    let mut workers = Vec::with_capacity(worker_count);
+    for _ in 0..worker_count {
+        workers.push(super::read_worker_record(reader, limits)?);
+    }
+    let work_count = bounded(reader, limits.retained_work() as usize)?;
+    let mut work = Vec::with_capacity(work_count);
+    for _ in 0..work_count {
+        work.push(super::read_work_record(reader, limits)?);
+    }
+    let reservation_count = bounded(reader, usize::from(limits.active_reservations()))?;
+    let mut reservations = Vec::with_capacity(reservation_count);
+    for _ in 0..reservation_count {
+        reservations.push(super::read_reservation(reader, limits)?);
+    }
+    let dispatch_count = bounded(
+        reader,
+        (limits.retained_work() as usize).saturating_mul(usize::from(limits.attempts_per_work())),
+    )?;
+    let mut dispatches = Vec::with_capacity(dispatch_count);
+    for _ in 0..dispatch_count {
+        dispatches.push(super::read_dispatch_id(reader)?);
+    }
+    let enqueue = reader.read_u64()?;
+    let dispatch = reader.read_u64()?;
+    let command_count = reader.read_collection_len()?;
+    let mut commands = Vec::with_capacity(command_count);
+    for _ in 0..command_count {
+        commands.push(super::read_command_id(reader)?);
+    }
+    let terminal = reader.read_option_tag()?.then(|| super::read_terminal(reader)).transpose()?;
+    let state = SchedulerState::from_wire(
+        binding,
+        phase,
+        sequence,
+        event,
+        digest,
+        workers,
+        work,
+        reservations,
+        dispatches,
+        enqueue,
+        dispatch,
+        commands,
+        terminal,
+    );
+    state.validate_inert().map_err(|_| super::invalid(reader))?;
+    Ok(state)
 }
 
 fn bounded(reader: &mut CanonicalReader<'_>, maximum: usize) -> Result<usize, CodecError> {

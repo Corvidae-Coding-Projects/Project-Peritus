@@ -1,6 +1,12 @@
 //! Scheduler-owned stable nonzero identities.
 
+mod order;
+#[cfg(test)]
+mod tests;
+
 use crate::{SchedulerError, SchedulerErrorKind};
+#[cfg(verus_only)]
+use core::cmp::Ordering;
 use peritus_types::ActorId;
 use vstd::prelude::*;
 
@@ -83,39 +89,32 @@ verus! {
 pub struct WorkId([u8; 16]);
 
 impl WorkId {
-    /// Compares exact canonical work identities for verified lookup.
-    pub(crate) const fn same(&self, other: &Self) -> (result: bool)
-        ensures result == (*self == *other),
+    /// Logical view of every canonical work-identity byte.
+    pub closed spec fn spec_bytes(&self) -> [u8; 16] { self.0 }
+
+    /// Exact canonical lexicographic order of work identities.
+    pub open spec fn spec_precedes(&self, other: &Self) -> bool {
+        peritus_types::canonical_byte_order_from(
+            self.spec_bytes()@,
+            other.spec_bytes()@,
+            0,
+        ) == Ordering::Less
+    }
+
+    /// Returns canonical lexicographic order for deterministic selection.
+    pub(crate) const fn precedes(&self, other: &Self) -> (result: bool)
+        ensures result == self.spec_precedes(other),
     {
         let mut index = 0;
         while index < 16
             invariant
                 index <= 16,
-                forall |prior: int| 0 <= prior < index ==>
-                    self.0[prior] == other.0[prior],
-            decreases 16 - index,
-        {
-            if self.0[index] != other.0[index] {
-                assert(*self != *other);
-                return false;
-            }
-            index += 1;
-        }
-        assert(self.0@ =~= other.0@) by {
-            assert forall |at: int| 0 <= at < self.0@.len()
-                implies self.0@[at] == other.0@[at] by {
-            }
-        }
-        assert(self.0 == other.0);
-        assert(*self == *other);
-        true
-    }
-
-    /// Returns canonical lexicographic order for deterministic selection.
-    pub(crate) const fn precedes(&self, other: &Self) -> (result: bool) {
-        let mut index = 0;
-        while index < 16
-            invariant index <= 16,
+                self.spec_precedes(other) ==
+                    (peritus_types::canonical_byte_order_from(
+                        self.spec_bytes()@,
+                        other.spec_bytes()@,
+                        index as nat,
+                    ) == Ordering::Less),
             decreases 16 - index,
         {
             if self.0[index] < other.0[index] {
@@ -128,6 +127,7 @@ impl WorkId {
         }
         false
     }
+
 }
 
 } // verus!
@@ -164,39 +164,32 @@ verus! {
 pub struct WorkerId([u8; 16]);
 
 impl WorkerId {
-    /// Compares exact canonical worker identities for verified lookup.
-    pub(crate) const fn same(&self, other: &Self) -> (result: bool)
-        ensures result == (*self == *other),
+    /// Logical view of every canonical worker-identity byte.
+    pub closed spec fn spec_bytes(&self) -> [u8; 16] { self.0 }
+
+    /// Exact canonical lexicographic order of worker identities.
+    pub open spec fn spec_precedes(&self, other: &Self) -> bool {
+        peritus_types::canonical_byte_order_from(
+            self.spec_bytes()@,
+            other.spec_bytes()@,
+            0,
+        ) == Ordering::Less
+    }
+
+    /// Returns canonical lexicographic order for verified insertion.
+    pub(crate) const fn precedes(&self, other: &Self) -> (result: bool)
+        ensures result == self.spec_precedes(other),
     {
         let mut index = 0;
         while index < 16
             invariant
                 index <= 16,
-                forall |prior: int| 0 <= prior < index ==>
-                    self.0[prior] == other.0[prior],
-            decreases 16 - index,
-        {
-            if self.0[index] != other.0[index] {
-                assert(*self != *other);
-                return false;
-            }
-            index += 1;
-        }
-        assert(self.0@ =~= other.0@) by {
-            assert forall |at: int| 0 <= at < self.0@.len()
-                implies self.0@[at] == other.0@[at] by {
-            }
-        }
-        assert(self.0 == other.0);
-        assert(*self == *other);
-        true
-    }
-
-    /// Returns canonical lexicographic order for verified insertion.
-    pub(crate) const fn precedes(&self, other: &Self) -> (result: bool) {
-        let mut index = 0;
-        while index < 16
-            invariant index <= 16,
+                self.spec_precedes(other) ==
+                    (peritus_types::canonical_byte_order_from(
+                        self.spec_bytes()@,
+                        other.spec_bytes()@,
+                        index as nat,
+                    ) == Ordering::Less),
             decreases 16 - index,
         {
             if self.0[index] < other.0[index] {
@@ -209,6 +202,7 @@ impl WorkerId {
         }
         false
     }
+
 }
 
 } // verus!
@@ -245,39 +239,32 @@ verus! {
 pub struct DispatchId([u8; 16]);
 
 impl DispatchId {
-    /// Compares exact dispatch identities for verified history membership.
-    pub(crate) const fn same(&self, other: &Self) -> (result: bool)
-        ensures result == (*self == *other),
+    /// Logical view of every canonical dispatch-identity byte.
+    pub closed spec fn spec_bytes(&self) -> [u8; 16] { self.0 }
+
+    /// Exact canonical lexicographic order of dispatch identities.
+    pub open spec fn spec_precedes(&self, other: &Self) -> bool {
+        peritus_types::canonical_byte_order_from(
+            self.spec_bytes()@,
+            other.spec_bytes()@,
+            0,
+        ) == Ordering::Less
+    }
+
+    /// Returns canonical lexicographic ordering used by scheduler-owned sorted vectors.
+    pub(crate) const fn precedes(&self, other: &Self) -> (result: bool)
+        ensures result == self.spec_precedes(other),
     {
         let mut index = 0;
         while index < 16
             invariant
                 index <= 16,
-                forall |prior: int| 0 <= prior < index ==>
-                    self.0[prior] == other.0[prior],
-            decreases 16 - index,
-        {
-            if self.0[index] != other.0[index] {
-                assert(*self != *other);
-                return false;
-            }
-            index += 1;
-        }
-        assert(self.0@ =~= other.0@) by {
-            assert forall |at: int| 0 <= at < self.0@.len()
-                implies self.0@[at] == other.0@[at] by {
-            }
-        }
-        assert(self.0 == other.0);
-        assert(*self == *other);
-        true
-    }
-
-    /// Returns canonical lexicographic ordering used by scheduler-owned sorted vectors.
-    pub(crate) const fn precedes(&self, other: &Self) -> (result: bool) {
-        let mut index = 0;
-        while index < 16
-            invariant index <= 16,
+                self.spec_precedes(other) ==
+                    (peritus_types::canonical_byte_order_from(
+                        self.spec_bytes()@,
+                        other.spec_bytes()@,
+                        index as nat,
+                    ) == Ordering::Less),
             decreases 16 - index,
         {
             if self.0[index] < other.0[index] {
@@ -290,6 +277,7 @@ impl DispatchId {
         }
         false
     }
+
 }
 
 /// Returns exact membership in a canonical dispatch-identity sequence.

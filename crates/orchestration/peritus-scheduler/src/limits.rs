@@ -69,6 +69,17 @@ pub struct SchedulerLimits {
 }
 
 impl SchedulerLimits {
+    /// Returns the mathematical waiting-work ceiling.
+    pub closed spec fn spec_queued_work(&self) -> u32 { self.queued_work }
+
+    /// Maximum simultaneously queued work.
+    #[must_use]
+    pub const fn queued_work(self) -> (result: u32)
+        ensures result == self.spec_queued_work(),
+    {
+        self.queued_work
+    }
+
     /// Returns the mathematical live-reservation ceiling.
     pub closed spec fn spec_active_reservations(&self) -> u16 {
         self.active_reservations
@@ -204,11 +215,6 @@ impl SchedulerLimits {
         }
     }
 
-    /// Maximum simultaneously queued work.
-    #[must_use]
-    pub const fn queued_work(self) -> u32 {
-        self.queued_work
-    }
     /// Maximum retained work history.
     #[must_use]
     pub const fn retained_work(self) -> u32 {

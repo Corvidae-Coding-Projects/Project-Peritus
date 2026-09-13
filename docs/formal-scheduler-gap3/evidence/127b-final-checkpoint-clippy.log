@@ -1,0 +1,6 @@
+    Checking peritus-app-protocol v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-scheduler-gap3/crates/app/peritus-app-protocol)
+    Checking peritus-projection v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-scheduler-gap3/crates/state/peritus-projection)
+    Checking peritus-scheduler v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-scheduler-gap3/crates/orchestration/peritus-scheduler)
+    Checking peritus-evidence v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-scheduler-gap3/crates/state/peritus-evidence)
+    Checking peritus-protocol v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-scheduler-gap3/crates/foundation/peritus-protocol)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 14.02s

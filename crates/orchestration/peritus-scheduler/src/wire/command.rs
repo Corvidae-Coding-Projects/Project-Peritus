@@ -2,11 +2,14 @@ use peritus_codec::{
     CanonicalDecode, CanonicalEncode, CanonicalReader, CanonicalWriter, CodecError, CodecErrorKind,
 };
 
-use crate::{FailureDisposition, SchedulerCommand, SchedulerCommandKind};
+use crate::{FailureDisposition, SchedulerCommand, SchedulerCommandKind, SchedulerSemantics};
 
-/// Canonical family-70 schema-v1 scheduler command frame.
+/// Canonical family-70 schema-v2 scheduler command frame.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct SchedulerCommandFrame(SchedulerCommand);
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(super) struct SchedulerCommandFrameV1(SchedulerCommand);
 
 impl SchedulerCommandFrame {
     /// Clones a command into an inert canonical frame.
@@ -23,52 +26,95 @@ impl SchedulerCommandFrame {
 
 impl CanonicalEncode for SchedulerCommandFrame {
     const FAMILY: u16 = 70;
-    const SCHEMA_VERSION: u16 = 1;
+    const SCHEMA_VERSION: u16 = 2;
     fn encode_payload(&self, writer: &mut CanonicalWriter) -> Result<(), CodecError> {
-        let command = &self.0;
-        super::write_id(writer, command.command_id().as_bytes())?;
-        super::write_id(writer, command.event_id().as_bytes())?;
-        super::write_id(writer, command.run_id().as_bytes())?;
-        writer.write_u64(command.expected_sequence())?;
-        super::write_option_id(
-            writer,
-            command.expected_previous_event(),
-            peritus_types::EventId::into_bytes,
-        )?;
-        super::write_digest(writer, command.prior_state_digest())?;
-        super::write_revision(writer, command.revision())?;
-        write_kind(writer, command.kind())
+        encode_payload(&self.0, SchedulerSemantics::StrictRecoveryQueueV2, writer)
     }
 }
 
 impl CanonicalDecode for SchedulerCommandFrame {
     const FAMILY: u16 = 70;
-    const SCHEMA_VERSION: u16 = 1;
+    const SCHEMA_VERSION: u16 = 2;
     fn decode_payload(reader: &mut CanonicalReader<'_>) -> Result<Self, CodecError> {
-        let command_id = super::read_command_id(reader)?;
-        let event_id = super::read_event_id(reader)?;
-        let run_id = super::read_run_id(reader)?;
-        let expected_sequence = reader.read_u64()?;
-        let previous =
-            reader.read_option_tag()?.then(|| super::read_event_id(reader)).transpose()?;
-        if (expected_sequence == 0) != previous.is_none() {
-            return Err(super::invalid(reader));
-        }
-        let prior = super::read_digest(reader)?;
-        let revision = super::read_revision(reader)?;
-        SchedulerCommand::new(
-            command_id,
-            event_id,
-            run_id,
-            expected_sequence,
-            previous,
-            prior,
-            revision,
-            read_kind(reader)?,
-        )
-        .map(Self)
-        .map_err(|_| super::invalid(reader))
+        decode_payload(reader, SchedulerSemantics::StrictRecoveryQueueV2).map(Self)
     }
+}
+
+impl SchedulerCommandFrameV1 {
+    pub(super) fn from_command(command: &SchedulerCommand) -> Self {
+        Self(command.clone())
+    }
+
+    pub(super) fn into_command(self) -> SchedulerCommand {
+        self.0
+    }
+}
+
+impl CanonicalEncode for SchedulerCommandFrameV1 {
+    const FAMILY: u16 = 70;
+    const SCHEMA_VERSION: u16 = 1;
+
+    fn encode_payload(&self, writer: &mut CanonicalWriter) -> Result<(), CodecError> {
+        encode_payload(&self.0, SchedulerSemantics::LegacyQueueV1, writer)
+    }
+}
+
+impl CanonicalDecode for SchedulerCommandFrameV1 {
+    const FAMILY: u16 = 70;
+    const SCHEMA_VERSION: u16 = 1;
+
+    fn decode_payload(reader: &mut CanonicalReader<'_>) -> Result<Self, CodecError> {
+        decode_payload(reader, SchedulerSemantics::LegacyQueueV1).map(Self)
+    }
+}
+
+fn encode_payload(
+    command: &SchedulerCommand,
+    semantics: SchedulerSemantics,
+    writer: &mut CanonicalWriter,
+) -> Result<(), CodecError> {
+    if command.semantics() != semantics {
+        return Err(CodecError::at(CodecErrorKind::WrongSchemaVersion, 8));
+    }
+    super::write_id(writer, command.command_id().as_bytes())?;
+    super::write_id(writer, command.event_id().as_bytes())?;
+    super::write_id(writer, command.run_id().as_bytes())?;
+    writer.write_u64(command.expected_sequence())?;
+    super::write_option_id(
+        writer,
+        command.expected_previous_event(),
+        peritus_types::EventId::into_bytes,
+    )?;
+    super::write_digest(writer, command.prior_state_digest())?;
+    super::write_revision(writer, command.revision())?;
+    write_kind(writer, command.kind())
+}
+
+fn decode_payload(
+    reader: &mut CanonicalReader<'_>,
+    semantics: SchedulerSemantics,
+) -> Result<SchedulerCommand, CodecError> {
+    let command_id = super::read_command_id(reader)?;
+    let event_id = super::read_event_id(reader)?;
+    let run_id = super::read_run_id(reader)?;
+    let expected_sequence = reader.read_u64()?;
+    let previous = reader.read_option_tag()?.then(|| super::read_event_id(reader)).transpose()?;
+    if (expected_sequence == 0) != previous.is_none() {
+        return Err(super::invalid(reader));
+    }
+    let prior = super::read_digest(reader)?;
+    let revision = super::read_revision(reader)?;
+    Ok(SchedulerCommand::from_wire(
+        semantics,
+        command_id,
+        event_id,
+        run_id,
+        expected_sequence,
+        previous,
+        prior,
+        revision,
+        read_kind(reader, semantics)?,
+    ))
 }
 
 fn write_kind(writer: &mut CanonicalWriter, kind: &SchedulerCommandKind) -> Result<(), CodecError> {
@@ -154,10 +200,15 @@ fn write_kind(writer: &mut CanonicalWriter, kind: &SchedulerCommandKind) -> Resu
     }
 }
 
-fn read_kind(reader: &mut CanonicalReader<'_>) -> Result<SchedulerCommandKind, CodecError> {
+fn read_kind(
+    reader: &mut CanonicalReader<'_>,
+    semantics: SchedulerSemantics,
+) -> Result<SchedulerCommandKind, CodecError> {
     let offset = reader.offset();
     match reader.read_u8()? {
-        1 => Ok(SchedulerCommandKind::StartScheduler { binding: super::read_binding(reader)? }),
+        1 => Ok(SchedulerCommandKind::StartScheduler {
+            binding: super::read_binding(reader, semantics)?,
+        }),
         2 => Ok(SchedulerCommandKind::RegisterWorker {
             descriptor: super::read_descriptor(reader, super::production_limits())?,
         }),

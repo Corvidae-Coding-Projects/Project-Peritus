@@ -2,6 +2,7 @@
 
 mod acknowledge_start;
 mod entity_insertion;
+mod insertion_slots;
 mod reservation_command;
 mod reservation_remove;
 mod reservation_update;
@@ -30,11 +31,14 @@ pub use scheduler_phase::{PhaseCommandOutcome, apply_phase_command};
 pub use work_command::{
     ExhaustCommandOutcome, RetryCommandOutcome, apply_exhaust_command, apply_retry_command,
 };
-#[cfg(verus_only)]
-pub(crate) use work_update::release_target_exists;
 pub use work_update::{
     begin_work_attempt_at, queue_work_retry, release_to_phase, release_to_retry_pending,
     release_to_terminal, set_work_bypasses, set_work_phase, terminalize_work,
+};
+#[cfg(verus_only)]
+pub(crate) use work_update::{
+    release_target_exists, work_phase_update_matches, work_record_update_matches,
+    work_terminal_update_matches, work_update_preserves_other_state,
 };
 pub use worker_update::set_worker_phase;
 
@@ -44,40 +48,11 @@ use crate::{
     DispatchId, SchedulerPhase, SchedulerReservation, SchedulerState, SchedulerTerminal, WorkPhase,
     WorkRecord, WorkTerminal, WorkerPhase,
 };
+use insertion_slots::{dispatch_slot, reservation_slot};
 use vstd::prelude::*;
 
 verus! {
 
-fn reservation_slot(values: &[SchedulerReservation], id: DispatchId) -> (at: usize)
-    ensures at <= values@.len(),
-{
-    let mut size = values.len();
-    if size == 0 {
-        return 0;
-    }
-    let mut base: usize = 0;
-    while size > 1
-        invariant
-            0 < size <= values.len(),
-            base < values.len(),
-            base + size <= values.len(),
-        decreases size,
-    {
-        let half = size / 2;
-        let mid = base + half;
-        let observed = values[mid].dispatch_id();
-        if !id.precedes(&observed) {
-            base = mid;
-        }
-        size -= half;
-    }
-    let observed = values[base].dispatch_id();
-    if observed.precedes(&id) {
-        base + 1
-    } else {
-        base
-    }
-}
 
 pub fn insert_reservation(state: &mut SchedulerState, value: SchedulerReservation)
     ensures
@@ -92,6 +67,10 @@ pub fn insert_reservation(state: &mut SchedulerState, value: SchedulerReservatio
         final(state).spec_workers() == old(state).spec_workers(),
         final(state).spec_work() == old(state).spec_work(),
         final(state).spec_used_dispatches() == old(state).spec_used_dispatches(),
+        old(state).spec_reservations_ordered()
+                && (forall |index: int| 0 <= index < old(state).spec_reservations().len() ==>
+                    old(state).spec_reservations()[index].spec_dispatch_id() != value.spec_dispatch_id())
+            ==> final(state).spec_reservations_ordered(),
         old(state).spec_reservation_invariant()
                 && old(state).spec_reservation_feasible(&value)
             ==> final(state).spec_reservation_invariant(),
@@ -100,6 +79,12 @@ pub fn insert_reservation(state: &mut SchedulerState, value: SchedulerReservatio
     let at = reservation_slot(&state.reservations, value.dispatch_id());
     proof {
         assert(0 <= (at as int) && (at as int) <= state.spec_reservations().len());
+        if state.spec_reservations_ordered()
+            && (forall |index: int| 0 <= index < before.len() ==>
+                before[index].spec_dispatch_id() != value.spec_dispatch_id())
+        {
+            SchedulerState::reservation_insertion_ordered(before, value, at as int);
+        }
         if state.spec_reservation_invariant() && state.spec_reservation_feasible(&value) {
             crate::verified::actual_reservation_insertion_preserves(
                 state.spec_binding(),
@@ -125,21 +110,6 @@ pub fn insert_reservation(state: &mut SchedulerState, value: SchedulerReservatio
 
 verus! {
 
-fn dispatch_slot(values: &[DispatchId], id: DispatchId) -> (at: usize)
-    ensures at <= values@.len(),
-{
-    let mut index = 0;
-    while index < values.len()
-        invariant index <= values@.len(),
-        decreases values@.len() - index,
-    {
-        if id.precedes(&values[index]) {
-            return index;
-        }
-        index += 1;
-    }
-    index
-}
 
 pub fn retain_dispatch_identity(state: &mut SchedulerState, id: DispatchId)
     ensures
@@ -154,9 +124,16 @@ pub fn retain_dispatch_identity(state: &mut SchedulerState, id: DispatchId)
         final(state).spec_workers() == old(state).spec_workers(),
         final(state).spec_work() == old(state).spec_work(),
         final(state).spec_reservations() == old(state).spec_reservations(),
+        old(state).spec_used_dispatches_ordered() && !old(state).spec_used_dispatches().contains(id)
+            ==> final(state).spec_used_dispatches_ordered(),
 {
     let ghost before = state.spec_used_dispatches();
     let at = dispatch_slot(&state.used_dispatches, id);
+    proof {
+        if state.spec_used_dispatches_ordered() && !before.contains(id) {
+            SchedulerState::dispatch_insertion_ordered(before, id, at as int);
+        }
+    }
     state.used_dispatches.insert(at, id);
     proof {
         assert(state.spec_used_dispatches() == before.insert(at as int, id));

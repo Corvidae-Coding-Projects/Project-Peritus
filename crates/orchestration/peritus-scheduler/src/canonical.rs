@@ -6,8 +6,8 @@ use peritus_types::Sha256Digest;
 
 use crate::{
     ExecutionClass, RecoveryPolicy, SchedulerBinding, SchedulerPhase, SchedulerReservation,
-    SchedulerState, SchedulerTerminal, SchedulerTerminalKind, WorkPhase, WorkRecord, WorkSpec,
-    WorkTerminal, WorkerDescriptor, WorkerPhase, WorkerRecord,
+    SchedulerSemantics, SchedulerState, SchedulerTerminal, SchedulerTerminalKind, WorkPhase,
+    WorkRecord, WorkSpec, WorkTerminal, WorkerDescriptor, WorkerPhase, WorkerRecord,
 };
 
 use encoder::Encoder;
@@ -15,7 +15,14 @@ use encoder::Encoder;
 /// Hashes every immutable scheduler binding field under a stable domain separator.
 #[must_use]
 pub fn binding_digest(binding: &SchedulerBinding) -> Sha256Digest {
-    let mut out = Encoder::new(b"peritus-d3-scheduler-binding-v1\0");
+    let mut out = match binding.semantics() {
+        SchedulerSemantics::LegacyQueueV1 => Encoder::new(b"peritus-d3-scheduler-binding-v1\0"),
+        SchedulerSemantics::StrictRecoveryQueueV2 => {
+            let mut out = Encoder::new(b"peritus-d3-scheduler-binding-v2\0");
+            out.u16(binding.semantics().schema_version());
+            out
+        }
+    };
     encode_binding(&mut out, binding);
     out.hash()
 }
@@ -23,7 +30,14 @@ pub fn binding_digest(binding: &SchedulerBinding) -> Sha256Digest {
 /// Hashes every scheduler state field while logically zeroing its state-digest field.
 #[must_use]
 pub fn state_digest(state: &SchedulerState) -> Sha256Digest {
-    let mut out = Encoder::new(b"peritus-d3-scheduler-state-v1\0");
+    let mut out = match state.binding().semantics() {
+        SchedulerSemantics::LegacyQueueV1 => Encoder::new(b"peritus-d3-scheduler-state-v1\0"),
+        SchedulerSemantics::StrictRecoveryQueueV2 => {
+            let mut out = Encoder::new(b"peritus-d3-scheduler-state-v2\0");
+            out.u16(state.binding().semantics().schema_version());
+            out
+        }
+    };
     encode_binding(&mut out, state.binding());
     out.u8(scheduler_phase_tag(state.phase()));
     out.u64(state.sequence().get());

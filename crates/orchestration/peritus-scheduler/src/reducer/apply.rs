@@ -1,16 +1,18 @@
 //! Closed command application against a cloned scheduler state.
 
+mod cancellation;
 mod control;
 mod dispatch;
+mod loss;
 mod worker_control;
 
 use peritus_codec::sha256;
 
 use crate::state::mutation;
 use crate::{
-    DispatchId, LossOutcome, RecoveryPolicy, SchedulerCommandKind, SchedulerError,
-    SchedulerErrorKind, SchedulerEventKind, SchedulerPhase, SchedulerReservation, SchedulerState,
-    WorkPhase, WorkRecord, WorkSpec, WorkTerminal, WorkerPhase,
+    DispatchId, LossOutcome, SchedulerCommandKind, SchedulerError, SchedulerErrorKind,
+    SchedulerEventKind, SchedulerPhase, SchedulerState, WorkPhase, WorkRecord, WorkSpec,
+    WorkTerminal, WorkerPhase,
 };
 
 pub(super) fn apply(
@@ -62,12 +64,7 @@ fn lose_worker(
     if matches!(phase, WorkerPhase::Lost | WorkerPhase::Removed) {
         return Err(super::illegal("worker is already lost or removed"));
     }
-    let dispatches: Vec<_> = state
-        .reservations()
-        .iter()
-        .filter(|reservation| reservation.worker_id() == worker_id)
-        .map(SchedulerReservation::dispatch_id)
-        .collect();
+    let dispatches = loss::dispatches_for_worker(state.reservations(), worker_id);
     let mut outcomes = Vec::with_capacity(dispatches.len());
     for dispatch_id in dispatches {
         let work_id = state
@@ -76,38 +73,32 @@ fn lose_worker(
             .work_id();
         let record =
             state.work_item(work_id).ok_or_else(|| unknown("worker-loss work disappeared"))?;
-        let (terminal, phase, outcome) = if record.phase() == WorkPhase::Cancelling {
-            (Some(WorkTerminal::Cancelled), None, LossOutcome::Cancelled { dispatch_id, work_id })
-        } else {
-            match record.spec().recovery() {
-                RecoveryPolicy::RetrySafe
-                    if record.attempts_started() < record.spec().maximum_attempts().get() =>
-                {
-                    (None, Some(WorkPhase::Queued), LossOutcome::Requeued { dispatch_id, work_id })
-                }
-                RecoveryPolicy::RetrySafe => (
-                    Some(WorkTerminal::Exhausted { cause_digest: sha256(dispatch_id.as_bytes()) }),
-                    None,
-                    LossOutcome::Exhausted { dispatch_id, work_id },
-                ),
-                RecoveryPolicy::Ambiguous => (
-                    Some(WorkTerminal::Ambiguous { dispatch_id }),
-                    None,
-                    LossOutcome::Ambiguous { dispatch_id, work_id },
-                ),
-                RecoveryPolicy::Fail => (
-                    Some(WorkTerminal::Failed { failure_digest: sha256(dispatch_id.as_bytes()) }),
-                    None,
-                    LossOutcome::Failed { dispatch_id, work_id },
-                ),
+        let outcome = loss::classify(record, dispatch_id);
+        let released = match &outcome {
+            LossOutcome::Requeued { .. } => {
+                mutation::release_to_phase(state, dispatch_id, work_id, WorkPhase::Queued)
             }
-        };
-        let released = match (terminal, phase) {
-            (Some(terminal), _) => {
-                mutation::release_to_terminal(state, dispatch_id, work_id, terminal)
+            LossOutcome::Cancelled { .. } => {
+                mutation::release_to_terminal(state, dispatch_id, work_id, WorkTerminal::Cancelled)
             }
-            (None, Some(phase)) => mutation::release_to_phase(state, dispatch_id, work_id, phase),
-            (None, None) => None,
+            LossOutcome::Exhausted { .. } => mutation::release_to_terminal(
+                state,
+                dispatch_id,
+                work_id,
+                WorkTerminal::Exhausted { cause_digest: sha256(dispatch_id.as_bytes()) },
+            ),
+            LossOutcome::Ambiguous { .. } => mutation::release_to_terminal(
+                state,
+                dispatch_id,
+                work_id,
+                WorkTerminal::Ambiguous { dispatch_id },
+            ),
+            LossOutcome::Failed { .. } => mutation::release_to_terminal(
+                state,
+                dispatch_id,
+                work_id,
+                WorkTerminal::Failed { failure_digest: sha256(dispatch_id.as_bytes()) },
+            ),
         };
         if released.is_none() {
             return Err(unknown("worker-loss work disappeared"));
@@ -129,7 +120,7 @@ fn admit_work(
     }
     let limits = state.binding().limits();
     if state.work().len() >= limits.retained_work() as usize
-        || queued_count(state) >= limits.queued_work() as usize
+        || crate::state::queue::admission_count(state) >= limits.queued_work() as usize
     {
         return Err(limit("work retention or queue limit reached"));
     }
@@ -318,19 +309,6 @@ fn retry(
             Err(super::illegal("retry dispatcher received a non-retry command"))
         }
     }
-}
-
-fn queued_count(state: &SchedulerState) -> usize {
-    state
-        .work()
-        .iter()
-        .filter(|record| {
-            matches!(
-                record.phase(),
-                WorkPhase::Queued | WorkPhase::WaitingDependencies | WorkPhase::RetryPending
-            )
-        })
-        .count()
 }
 
 fn limit(detail: &'static str) -> SchedulerError {
