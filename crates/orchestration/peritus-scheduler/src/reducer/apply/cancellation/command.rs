@@ -68,6 +68,7 @@ pub open spec fn command_matches(
             &&& before.spec_reservation_invariant() ==> after.spec_reservation_invariant()
             &&& before.spec_reservation_reducer_ready() ==> after.spec_reservation_reducer_ready()
             &&& before.spec_collections_ordered() ==> after.spec_collections_ordered()
+            &&& before.spec_collections_ordered() ==> affected@.no_duplicates()
             &&& before.spec_reservation_reducer_ready()
                     && crate::state::queue::queue_bound(before)
                 ==> crate::state::queue::queue_bound(after)
@@ -99,6 +100,12 @@ pub fn apply_command(
         return Err(CancellationRejection::WorkAlreadyTerminal);
     }
     let (affected, _) = super::cancel_retained(state, root, descendants);
+    proof {
+        if old(state).spec_collections_ordered() {
+            reveal(SchedulerState::spec_collections_ordered);
+            reveal(SchedulerState::spec_work_ordered);
+        }
+    }
     Ok(SchedulerEventKind::WorkCancelled { work_id: root, descendants, affected })
 }
 

@@ -15,9 +15,13 @@ use super::outcome_matches;
 #[cfg(verus_only)]
 mod lookup_proofs;
 #[cfg(verus_only)]
+mod queue;
+#[cfg(verus_only)]
 use lookup_proofs::{
     establish_loss_release, missing_dispatch_is_impossible, missing_work_is_impossible,
 };
+#[cfg(verus_only)]
+use queue::loss_release_preserves_queue_bound;
 
 verus! {
 
@@ -130,11 +134,17 @@ pub(in crate::reducer::apply) fn release_one(
                 },
                 Err(_) => false,
             },
+        old(state).spec_reservation_reducer_ready()
+                && old(state).spec_collections_ordered()
+                && dispatch_exists(old(state), dispatch_id)
+                && crate::state::queue::queue_bound(old(state))
+            ==> crate::state::queue::queue_bound(final(state)),
 {
     let ghost before_work = state.spec_work();
     let ghost was_ready = state.spec_reservation_reducer_ready();
     let ghost was_ordered = state.spec_collections_ordered();
     let ghost existed = dispatch_exists(state, dispatch_id);
+    let ghost had_queue_bound = crate::state::queue::queue_bound(state);
     let Some(reservation) = state.reservation(dispatch_id) else {
         proof {
             if was_ready && was_ordered && existed {
@@ -215,6 +225,11 @@ pub(in crate::reducer::apply) fn release_one(
                 work_index,
                 selected_work,
             );
+            if had_queue_bound {
+                loss_release_preserves_queue_bound(
+                    old(state), state, dispatch_id, failure_digest, outcome,
+                );
+            }
         }
     }
     Ok(outcome)

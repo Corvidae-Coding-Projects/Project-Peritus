@@ -1,6 +1,7 @@
 //! Reducer-only state mutation and derived invariant maintenance.
 
 mod acknowledge_start;
+mod cursor;
 mod entity_insertion;
 mod insertion_slots;
 mod reservation_command;
@@ -15,6 +16,7 @@ mod worker_update;
 pub use acknowledge_start::acknowledge_reservation_start;
 #[cfg(verus_only)]
 pub(crate) use acknowledge_start::start_target_exists;
+pub use cursor::{advance_cursor, set_state_digest};
 pub use entity_insertion::{insert_work, insert_worker};
 pub use reservation_command::{
     AbandonCommandOutcome, AcknowledgeCancellationOutcome, AcknowledgeStartOutcome,
@@ -27,11 +29,15 @@ pub(crate) use reservation_command::{
     acknowledge_cancellation_outcome_matches, cancelling_dispatch_cannot_resurrect,
     complete_command_outcome_matches,
 };
+#[cfg(verus_only)]
+pub(crate) use reservation_remove::exact_reservation_removal_matches;
 pub use reservation_remove::remove_reservation;
 pub use reservation_update::mark_reservation_started;
 #[cfg(verus_only)]
 pub(crate) use reserve::dispatch_admission_ready;
 pub use reserve::reserve_selected_at;
+#[cfg(verus_only)]
+pub(crate) use scheduler_phase::phase_command_matches;
 pub use scheduler_phase::{PhaseCommandOutcome, apply_phase_command};
 pub use work_command::{
     ExhaustCommandOutcome, RetryCommandOutcome, apply_exhaust_command, apply_retry_command,
@@ -47,8 +53,10 @@ pub(crate) use work_update::{
     work_update_preserves_other_state,
 };
 pub use worker_update::set_worker_phase;
-
-use peritus_types::{CommandId, EventId, EventSequence, Sha256Digest};
+#[cfg(verus_only)]
+pub(crate) use worker_update::{
+    worker_phase_state_matches, worker_phase_update_matches, worker_update_preserves_other_state,
+};
 
 use crate::{
     DispatchId, SchedulerPhase, SchedulerReservation, SchedulerState, SchedulerTerminal, WorkPhase,
@@ -223,10 +231,17 @@ pub const fn set_phase(state: &mut SchedulerState, phase: SchedulerPhase)
     ensures
         final(state).spec_phase() == phase,
         final(state).spec_binding() == old(state).spec_binding(),
+        final(state).spec_sequence() == old(state).spec_sequence(),
+        final(state).spec_last_event_id() == old(state).spec_last_event_id(),
+        final(state).spec_state_digest() == old(state).spec_state_digest(),
         final(state).spec_workers() == old(state).spec_workers(),
         final(state).spec_work() == old(state).spec_work(),
         final(state).spec_reservations() == old(state).spec_reservations(),
         final(state).spec_used_dispatches() == old(state).spec_used_dispatches(),
+        final(state).spec_enqueue_ordinal() == old(state).spec_enqueue_ordinal(),
+        final(state).spec_dispatch_ordinal() == old(state).spec_dispatch_ordinal(),
+        final(state).spec_used_commands() == old(state).spec_used_commands(),
+        final(state).spec_terminal() == old(state).spec_terminal(),
         old(state).spec_reservation_invariant()
             ==> final(state).spec_reservation_invariant(),
         old(state).spec_reservation_reducer_ready()
@@ -244,33 +259,6 @@ pub fn set_terminal(state: &mut SchedulerState, terminal: SchedulerTerminal)
 {
     state.phase = SchedulerPhase::Terminal;
     state.terminal = Some(terminal);
-}
-
-pub fn advance_cursor(
-    state: &mut SchedulerState,
-    sequence: EventSequence,
-    event_id: EventId,
-    command_id: CommandId,
-)
-    ensures
-        old(state).spec_reservation_invariant()
-            ==> final(state).spec_reservation_invariant(),
-        old(state).spec_reservation_reducer_ready()
-            ==> final(state).spec_reservation_reducer_ready(),
-{
-    state.sequence = sequence;
-    state.last_event_id = event_id;
-    state.used_commands.push(command_id);
-}
-
-pub const fn set_state_digest(state: &mut SchedulerState, digest: Sha256Digest)
-    ensures
-        old(state).spec_reservation_invariant()
-            ==> final(state).spec_reservation_invariant(),
-        old(state).spec_reservation_reducer_ready()
-            ==> final(state).spec_reservation_reducer_ready(),
-{
-    state.state_digest = digest;
 }
 
 } // verus!

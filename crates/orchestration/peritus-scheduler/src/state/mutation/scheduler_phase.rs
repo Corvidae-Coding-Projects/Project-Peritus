@@ -77,6 +77,38 @@ pub open spec fn phase_command_successor(
     }
 }
 
+/// Every authoritative field outside scheduler phase is unchanged by phase control.
+pub open spec fn phase_update_preserves_other_state(
+    before: &SchedulerState,
+    after: &SchedulerState,
+) -> bool {
+    &&& after.spec_sequence() == before.spec_sequence()
+    &&& after.spec_last_event_id() == before.spec_last_event_id()
+    &&& after.spec_state_digest() == before.spec_state_digest()
+    &&& after.spec_binding() == before.spec_binding()
+    &&& after.spec_workers() == before.spec_workers()
+    &&& after.spec_work() == before.spec_work()
+    &&& after.spec_reservations() == before.spec_reservations()
+    &&& after.spec_used_dispatches() == before.spec_used_dispatches()
+    &&& after.spec_enqueue_ordinal() == before.spec_enqueue_ordinal()
+    &&& after.spec_dispatch_ordinal() == before.spec_dispatch_ordinal()
+    &&& after.spec_used_commands() == before.spec_used_commands()
+    &&& after.spec_terminal() == before.spec_terminal()
+}
+
+/// Exact outcome and complete state effect of one production phase command.
+pub open spec fn phase_command_matches(
+    before: &SchedulerState,
+    after: &SchedulerState,
+    command: &SchedulerCommandKind,
+    outcome: PhaseCommandOutcome,
+) -> bool {
+    &&& outcome == phase_command_outcome(command, before.spec_phase())
+    &&& after.spec_phase() == phase_command_successor(command, before.spec_phase())
+    &&& phase_update_preserves_other_state(before, after)
+    &&& outcome != PhaseCommandOutcome::Applied ==> *after == *before
+}
+
 /// Applies the exact Active/Draining pause transition when admitted.
 const fn pause_scheduler(state: &mut SchedulerState) -> (applied: bool)
     ensures
@@ -91,12 +123,14 @@ const fn pause_scheduler(state: &mut SchedulerState) -> (applied: bool)
             SchedulerPhase::Draining => SchedulerPhase::DrainingPaused,
             _ => old(state).spec_phase(),
         },
+        !applied ==> *final(state) == *old(state),
         !applied ==> final(state).spec_phase() == old(state).spec_phase(),
         final(state).spec_binding() == old(state).spec_binding(),
         final(state).spec_workers() == old(state).spec_workers(),
         final(state).spec_work() == old(state).spec_work(),
         final(state).spec_reservations() == old(state).spec_reservations(),
         final(state).spec_used_dispatches() == old(state).spec_used_dispatches(),
+        phase_update_preserves_other_state(old(state), final(state)),
 {
     let phase = match state.phase() {
         SchedulerPhase::Active => SchedulerPhase::Paused,
@@ -121,12 +155,14 @@ const fn resume_scheduler(state: &mut SchedulerState) -> (applied: bool)
             SchedulerPhase::DrainingPaused => SchedulerPhase::Draining,
             _ => old(state).spec_phase(),
         },
+        !applied ==> *final(state) == *old(state),
         !applied ==> final(state).spec_phase() == old(state).spec_phase(),
         final(state).spec_binding() == old(state).spec_binding(),
         final(state).spec_workers() == old(state).spec_workers(),
         final(state).spec_work() == old(state).spec_work(),
         final(state).spec_reservations() == old(state).spec_reservations(),
         final(state).spec_used_dispatches() == old(state).spec_used_dispatches(),
+        phase_update_preserves_other_state(old(state), final(state)),
 {
     let phase = match state.phase() {
         SchedulerPhase::Paused => SchedulerPhase::Active,
@@ -151,12 +187,14 @@ const fn drain_scheduler(state: &mut SchedulerState) -> (applied: bool)
             SchedulerPhase::Paused => SchedulerPhase::DrainingPaused,
             _ => old(state).spec_phase(),
         },
+        !applied ==> *final(state) == *old(state),
         !applied ==> final(state).spec_phase() == old(state).spec_phase(),
         final(state).spec_binding() == old(state).spec_binding(),
         final(state).spec_workers() == old(state).spec_workers(),
         final(state).spec_work() == old(state).spec_work(),
         final(state).spec_reservations() == old(state).spec_reservations(),
         final(state).spec_used_dispatches() == old(state).spec_used_dispatches(),
+        phase_update_preserves_other_state(old(state), final(state)),
 {
     let phase = match state.phase() {
         SchedulerPhase::Active => SchedulerPhase::Draining,
@@ -183,8 +221,9 @@ pub const fn apply_phase_command(
         final(state).spec_work() == old(state).spec_work(),
         final(state).spec_reservations() == old(state).spec_reservations(),
         final(state).spec_used_dispatches() == old(state).spec_used_dispatches(),
+        phase_command_matches(old(state), final(state), command, outcome),
 {
-    match command {
+    let outcome = match command {
         SchedulerCommandKind::PauseScheduler => {
             if pause_scheduler(state) {
                 PhaseCommandOutcome::Applied
@@ -207,7 +246,12 @@ pub const fn apply_phase_command(
             }
         },
         _ => PhaseCommandOutcome::NotPhaseCommand,
+    };
+    proof {
+        reveal(phase_command_matches);
+        reveal(phase_update_preserves_other_state);
     }
+    outcome
 }
 
 } // verus!

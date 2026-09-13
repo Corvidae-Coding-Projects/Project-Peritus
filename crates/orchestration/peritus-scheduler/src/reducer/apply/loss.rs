@@ -5,9 +5,10 @@ use crate::{
 };
 use vstd::prelude::*;
 
+mod batch;
 mod release_one;
 
-pub(super) use release_one::{LossReleaseError, release_one};
+pub(super) use batch::{WorkerLossError, apply_worker_loss};
 
 verus! {
 

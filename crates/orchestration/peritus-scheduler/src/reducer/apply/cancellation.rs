@@ -6,6 +6,8 @@ use vstd::prelude::*;
 pub(super) mod command;
 mod ids;
 #[cfg(verus_only)]
+mod non_resurrection;
+#[cfg(verus_only)]
 mod queue;
 #[cfg(test)]
 mod tests;

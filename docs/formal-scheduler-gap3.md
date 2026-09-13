@@ -375,15 +375,55 @@ The [bounded independent review](formal-scheduler-gap3/admission-cancellation-re
 source manifest 182 identify this increment relative to `39f56c636`. Historical reviews and
 qualification remain attached to their original source snapshots.
 
+### Worker-loss batch and replay reconstruction increment
+
+The actual worker-loss path now executes a verified release batch. Its contract ties the selected
+dispatches to a finite, exact sequence of individual releases, the ordered `WorkerLost` outcomes,
+and the final Lost worker phase. It preserves unrelated records, worker descriptors, reservation
+readiness, collection ordering and both versioned queue bounds. The existing SHA-256 wrapper
+supplies each dispatch's failure digest; the proof establishes exact propagation of those values.
+The public regression covers empty loss, missing/lost/removed worker errors, mixed recovery
+policies, exact ownership/resource effects and replay. Exact rejection contracts and the outer
+reducer/caller composition remain open.
+
+The cancellation lifecycle theorem now derives its initial cancelling-dispatch premise from the
+successful root command's exact production relation. It composes the actual cancellation,
+completion and acknowledgement contracts to exclude late-success resurrection, retaining queue
+capacity throughout. The theorem does not yet appear in a whole-reducer/replay invariant.
+
+Production replay now calls the contracted event-to-command reconstruction. All event variants
+map to their exact causative command inputs, including the cancellation-tree flag and dispatch
+token. Derived loss/cancellation/finalization outputs remain subject to replay's existing event
+comparison. Event fields, transition construction/clone/access and cursor/digest mutations have
+exact contracts. Pause, resume and drain produce exact typed events or unchanged-state rejections.
+These relationships do not claim a proof of the outer replay loop, cryptographic execution or
+every command successor.
+
+The combined source passes 590 strict verification items and all 77 scheduler tests. A guarded
+negative probe reverses the replay cancellation-tree flag and fails the reconstruction
+postcondition; its source is restored byte-for-byte. Separate public replay tests reject a
+tampered successor digest and a tampered derived cancellation list. Retained source identities,
+gate output and independent bounded reviews accompany this increment. Dependency and worker
+refresh drafts remain separate pending integration and validation.
+
+Source manifest `211-composition-source.sha256` binds 168 scheduler paths relative to checkpoint
+`c6db6c9e6`; its SHA-256 is
+`c7a5b16af1112d16e0cb859cd54ef325b85369976acde7b71944ae86cbd2ffc4`.
+The [cancellation/reconstruction review](formal-scheduler-gap3/cancellation-reconstruction-review.md),
+[worker-loss review](formal-scheduler-gap3/worker-loss-batch-review.md) and
+[integration review](formal-scheduler-gap3/reducer-integration-review.md) identify their distinct
+reviewers and author exclusions. These bounded technical reviews are not human approvals or
+final protected authorization.
+
 ## Remaining requirements on the draft
 
 | Requirement | What this checkpoint establishes | What remains open |
 |---|---|---|
 | Admission | Exact production work-admission state/event/rejection contract, worker descriptor and command-fence classifiers; retention, ordering and queue-pressure preservation | Remaining command admission, error wrappers, ordering producers and decoded-state composition |
-| Cancellation | Exact root/event and descendant updates; readiness, ordering and queue-bound preservation; exact terminal release and completion/acknowledgement chain; public lifecycle regressions | Root-command-to-chain premise, plus outer reducer/replay/caller relationships |
-| Worker loss | Exact owned-reservation selection, recovery classification and individual release relation; mixed-worker lifecycle regressions | Loss-specific queue-bound preservation, complete release loop, resource deltas, worker mutation and successor event relation |
-| Transitions and replay | Exact terminal summary and versioned queue accounting; fixed historical replay/durability/caller tests | All command successors, dispatch selection, dependency refresh, cursor/digest/event reconstruction and whole replay/caller relationships |
-| Termination | Checked decreases on the new classifiers, cancellation closure/update loops and relevant primitives | Remaining worker-loss, refresh, selection and replay loops |
+| Cancellation | Exact root/event and descendant updates; readiness, ordering and queue-bound preservation; root-to-completion/acknowledgement non-resurrection chain; public lifecycle regressions | Outer reducer/replay/caller relationships |
+| Worker loss | Exact owned-reservation selection, finite complete release trace, recovery outcomes, worker Lost update, ownership/resource constraints and queue-bound preservation; mixed-worker and rejection regressions | Exact rejection contracts, ordinary digest/error wrapper and whole reducer/caller composition |
+| Transitions and replay | Exact terminal summary, phase-control state/events, event-command reconstruction, cursor/digest mutations and transition fields/clone; historical and tampered-history regressions | Remaining command successors, dispatch selection, dependency/worker refresh, finalization and whole replay/caller relationships; digest/codec boundaries |
+| Termination | Checked decreases on the classifiers, cancellation closure/update, complete worker-loss loop and relevant primitives | Remaining refresh, selection and replay loops |
 | Delivery | Bounded independent agent reviews and retained local qualification | Current source inventory/fingerprints, protected authorization/trust and final hosted workflows |
 
 The existing CI/checker implementation from GAP-02 remains in place. No branch protection,

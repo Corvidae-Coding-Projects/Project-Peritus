@@ -236,6 +236,7 @@ impl WorkerRecord {
     pub(crate) const fn set_phase(&mut self, phase: WorkerPhase)
         ensures
             Self::reservation_owner_equivalent(old(self), final(self)),
+            final(self).spec_descriptor() == old(self).spec_descriptor(),
             final(self).spec_phase() == phase,
     {
         self.phase = phase;
@@ -271,12 +272,24 @@ pub struct SchedulerReservation {
 
 } // verus!
 
+verus! {
+
 impl SchedulerReservation {
+    /// Returns the mathematical idempotent effect token.
+    pub closed spec fn spec_dispatch_token(&self) -> Sha256Digest { self.dispatch_token }
+
     /// Returns idempotent effect token.
     #[must_use]
-    pub const fn dispatch_token(&self) -> Sha256Digest {
+    pub const fn dispatch_token(&self) -> (result: Sha256Digest)
+        ensures result == self.spec_dispatch_token(),
+    {
         self.dispatch_token
     }
+}
+
+} // verus!
+
+impl SchedulerReservation {
     pub(crate) fn validate_against(
         &self,
         work: &crate::WorkRecord,

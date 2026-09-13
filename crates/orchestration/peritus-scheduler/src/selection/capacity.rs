@@ -309,7 +309,7 @@ pub(super) fn worker_fits_after(
     }
 }
 
-pub(super) fn worker_reservation_count(
+pub fn worker_reservation_count(
     state: &SchedulerState,
     worker: crate::WorkerId,
 ) -> (result: usize)

@@ -12,7 +12,7 @@ use peritus_codec::sha256;
 use crate::state::mutation;
 use crate::{
     DispatchId, SchedulerCommandKind, SchedulerError, SchedulerErrorKind, SchedulerEventKind,
-    SchedulerPhase, SchedulerState, WorkSpec, WorkerPhase,
+    SchedulerPhase, SchedulerState, WorkSpec,
 };
 
 pub(super) fn apply(
@@ -60,26 +60,21 @@ fn lose_worker(
     state: &mut SchedulerState,
     worker_id: crate::WorkerId,
 ) -> Result<SchedulerEventKind, SchedulerError> {
-    let phase = state.worker(worker_id).ok_or_else(|| unknown("worker is not registered"))?.phase();
-    if matches!(phase, WorkerPhase::Lost | WorkerPhase::Removed) {
-        return Err(super::illegal("worker is already lost or removed"));
-    }
-    let dispatches = loss::dispatches_for_worker(state.reservations(), worker_id);
-    let mut outcomes = Vec::with_capacity(dispatches.len());
-    for dispatch_id in dispatches {
-        let outcome = loss::release_one(state, dispatch_id, sha256(dispatch_id.as_bytes()))
-            .map_err(|error| match error {
-                loss::LossReleaseError::ReservationDisappeared => {
-                    unknown("worker-loss reservation disappeared")
-                }
-                loss::LossReleaseError::WorkDisappeared => unknown("worker-loss work disappeared"),
-            })?;
-        outcomes.push(outcome);
-    }
-    if !mutation::set_worker_phase(state, worker_id, WorkerPhase::Lost) {
-        return Err(unknown("lost worker disappeared"));
-    }
-    Ok(SchedulerEventKind::WorkerLost { worker_id, outcomes })
+    let plan: Vec<_> = loss::dispatches_for_worker(state.reservations(), worker_id)
+        .into_iter()
+        .map(|dispatch_id| (dispatch_id, sha256(dispatch_id.as_bytes())))
+        .collect();
+    loss::apply_worker_loss(state, worker_id, &plan).map_err(|error| match error {
+        loss::WorkerLossError::WorkerMissing => unknown("worker is not registered"),
+        loss::WorkerLossError::AlreadyLostOrRemoved => {
+            super::illegal("worker is already lost or removed")
+        }
+        loss::WorkerLossError::ReservationDisappeared => {
+            unknown("worker-loss reservation disappeared")
+        }
+        loss::WorkerLossError::WorkDisappeared => unknown("worker-loss work disappeared"),
+        loss::WorkerLossError::LostWorkerDisappeared => unknown("lost worker disappeared"),
+    })
 }
 
 fn admit_work(

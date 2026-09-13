@@ -105,6 +105,41 @@ only ghost-proof corrections and import formatting; the executable code was unch
 source manifests and approvals are preserved. Raw output is copied byte-for-byte, including the
 ordinary test log's trailing blank line.
 
+## Worker-loss batch and replay reconstruction increment
+
+Source manifest `211-composition-source.sha256` binds 168 scheduler paths relative to
+checkpoint `c6db6c9e6`. Its SHA-256 is
+`c7a5b16af1112d16e0cb859cd54ef325b85369976acde7b71944ae86cbd2ffc4`.
+It checked successfully after the final ordinary tests, Clippy and restored strict proof run.
+The [worker-loss review](../worker-loss-batch-review.md),
+[cancellation/reconstruction review](../cancellation-reconstruction-review.md) and
+[ordinary integration review](../reducer-integration-review.md) retain distinct review scopes
+and explicitly exclude each reviewer's authored implementation.
+
+| Output | Final increment result |
+|---|---|
+| `214-final-composition-verus.log` | 590 verified, zero errors; no cheating and unchanged resource limits |
+| `212-final-composition-tests.log` | All 77 scheduler tests passed; zero failures or ignores |
+| `213-final-composition-clippy.log` | All-targets, all-features scheduler Clippy passed with warnings denied |
+| `208b-final-composition-format.log` | Workspace formatting passed |
+| `209-final-composition-architecture.log` | 84 packages and 4,546 source files passed |
+| `210-final-composition-api.log` | 3,633 formal-boundary files and 14,763 ordinary-safe entry points passed |
+| `215-composition-docs-check.log` | 255 documentation files passed |
+
+Negative probe `206-reconstruction-mutation.sh` reverses the cancellation-tree reconstruction
+flag. Its retained diff and output show the exact payload postcondition fails (589 verified,
+one failing verification item, exit 101). The restoration record confirms byte-identical source
+restoration. The final strict proof run occurs after restoration. Public regressions require the
+exact replay mismatch kind and detail for changed successor digests and derived cancellation
+identities, and retain mixed-worker loss/resource/queue/replay coverage. Earlier output 204, 205
+and 207 records the initial green combined source; 208 records a subsequently corrected test
+line-wrap. Historical evidence is not overwritten.
+
+This increment closes the bounded root-to-cancellation-chain link, loss queue/batch/worker/event
+composition, and exact replay input/cursor/transition contracts. Whole reducer/replay/caller
+composition, remaining command/refresh/selection/finalization paths, final source authorization
+and hosted qualification remain open. No historical approval or obligation is relabelled.
+
 ## Rerunnable local checks
 
 Use the repository's pinned toolchains. These commands keep one build job; strict Verus uses

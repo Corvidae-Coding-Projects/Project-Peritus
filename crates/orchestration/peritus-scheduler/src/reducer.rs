@@ -2,6 +2,7 @@
 
 mod apply;
 mod fences;
+mod reconstruction;
 
 use std::collections::BTreeSet;
 
@@ -13,6 +14,7 @@ use crate::{
 };
 
 use apply::apply;
+use reconstruction::command_from_event;
 
 /// Starts a scheduler from the only legal genesis command.
 ///
@@ -160,93 +162,6 @@ fn validate_fences(
             "scheduler command run, revision, predecessor, digest, identity, or lifecycle differs",
         )),
     }
-}
-
-fn command_from_event(
-    event: &SchedulerEvent,
-    expected_sequence: u64,
-    previous: Option<peritus_types::EventId>,
-) -> SchedulerCommand {
-    let kind = match event.kind() {
-        SchedulerEventKind::SchedulerStarted { binding } => {
-            SchedulerCommandKind::StartScheduler { binding: binding.clone() }
-        }
-        SchedulerEventKind::WorkerRegistered { descriptor } => {
-            SchedulerCommandKind::RegisterWorker { descriptor: descriptor.clone() }
-        }
-        SchedulerEventKind::WorkerAvailable { worker_id } => {
-            SchedulerCommandKind::SetWorkerAvailable { worker_id: *worker_id }
-        }
-        SchedulerEventKind::WorkerDrainRequested { worker_id } => {
-            SchedulerCommandKind::DrainWorker { worker_id: *worker_id }
-        }
-        SchedulerEventKind::WorkerLost { worker_id, .. } => {
-            SchedulerCommandKind::LoseWorker { worker_id: *worker_id }
-        }
-        SchedulerEventKind::WorkerRemoved { worker_id } => {
-            SchedulerCommandKind::RemoveWorker { worker_id: *worker_id }
-        }
-        SchedulerEventKind::WorkAdmitted { spec } => {
-            SchedulerCommandKind::AdmitWork { spec: spec.clone() }
-        }
-        SchedulerEventKind::WorkReserved { reservation } => SchedulerCommandKind::DispatchNext {
-            dispatch_id: reservation.dispatch_id(),
-            dispatch_token: reservation.dispatch_token(),
-        },
-        SchedulerEventKind::WorkStartAcknowledged { dispatch_id } => {
-            SchedulerCommandKind::AcknowledgeStart { dispatch_id: *dispatch_id }
-        }
-        SchedulerEventKind::WorkSucceeded { dispatch_id, result_digest } => {
-            SchedulerCommandKind::CompleteWork {
-                dispatch_id: *dispatch_id,
-                result_digest: *result_digest,
-            }
-        }
-        SchedulerEventKind::WorkFailed { dispatch_id, failure_digest, disposition } => {
-            SchedulerCommandKind::FailWork {
-                dispatch_id: *dispatch_id,
-                failure_digest: *failure_digest,
-                disposition: *disposition,
-            }
-        }
-        SchedulerEventKind::WorkRetryQueued { work_id } => {
-            SchedulerCommandKind::RetryWork { work_id: *work_id }
-        }
-        SchedulerEventKind::WorkCancelled { work_id, descendants, .. } => {
-            if *descendants {
-                SchedulerCommandKind::CancelWorkTree { work_id: *work_id }
-            } else {
-                SchedulerCommandKind::CancelWork { work_id: *work_id }
-            }
-        }
-        SchedulerEventKind::CancellationAcknowledged { dispatch_id } => {
-            SchedulerCommandKind::AcknowledgeCancellation { dispatch_id: *dispatch_id }
-        }
-        SchedulerEventKind::WorkExhausted { work_id, cause_digest } => {
-            SchedulerCommandKind::ExhaustWork { work_id: *work_id, cause_digest: *cause_digest }
-        }
-        SchedulerEventKind::DispatchAbandoned { dispatch_id, cause_digest } => {
-            SchedulerCommandKind::AbandonDispatch {
-                dispatch_id: *dispatch_id,
-                cause_digest: *cause_digest,
-            }
-        }
-        SchedulerEventKind::SchedulerPaused => SchedulerCommandKind::PauseScheduler,
-        SchedulerEventKind::SchedulerResumed => SchedulerCommandKind::ResumeScheduler,
-        SchedulerEventKind::SchedulerDrainRequested => SchedulerCommandKind::DrainScheduler,
-        SchedulerEventKind::SchedulerFinalized { .. } => SchedulerCommandKind::FinalizeScheduler,
-    };
-    SchedulerCommand::from_wire(
-        event.semantics(),
-        event.command_id(),
-        event.id(),
-        event.run_id(),
-        expected_sequence,
-        previous,
-        event.prior_state_digest(),
-        event.revision(),
-        kind,
-    )
 }
 
 pub fn illegal(detail: &'static str) -> SchedulerError {

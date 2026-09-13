@@ -7,6 +7,8 @@ use crate::{SchedulerState, WorkId, WorkPhase, WorkerPhase};
 mod capacity;
 mod model;
 
+pub use capacity::worker_reservation_count;
+
 use model::IndexedSelection;
 pub use model::Selection;
 
@@ -93,7 +95,7 @@ fn worker_is_feasible_for(
     {
         return false;
     }
-    let count = capacity::worker_reservation_count(state, worker_id);
+    let count = worker_reservation_count(state, worker_id);
     if count >= worker.descriptor().concurrency() as usize
         || !capacity::worker_fits_after(
             state,

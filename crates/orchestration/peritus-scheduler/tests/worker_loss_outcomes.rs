@@ -4,9 +4,9 @@ mod support;
 
 use peritus_codec::{CodecLimits, decode_message, encode_message, sha256};
 use peritus_scheduler::{
-    DispatchId, LossOutcome, RecoveryPolicy, ResourceKind, SchedulerCommandKind, SchedulerEvent,
-    SchedulerEventKind, SchedulerState, SchedulerStateFrame, WorkId, WorkPhase, WorkTerminal,
-    WorkerId, WorkerPhase, replay,
+    DispatchId, LossOutcome, RecoveryPolicy, ResourceKind, SchedulerCommandKind,
+    SchedulerErrorKind, SchedulerEvent, SchedulerEventKind, SchedulerState, SchedulerStateFrame,
+    WorkId, WorkPhase, WorkTerminal, WorkerId, WorkerPhase, decide, replay,
 };
 
 use support::{Fixture, bytes, digest};
@@ -172,4 +172,43 @@ fn mixed_loss_reports_each_owned_dispatch_once_in_order_and_preserves_other_work
             }
         }
     }
+}
+
+#[test]
+fn empty_worker_loss_has_exact_admission_errors_and_replays() {
+    let fixture = Fixture::new();
+    let (mut state, mut events) = fixture.started();
+    let worker_id = WorkerId::new(bytes(30)).expect("fixed worker identity");
+    let command = Fixture::command(&state, 3, SchedulerCommandKind::LoseWorker { worker_id });
+    let error = decide(&state, &command).expect_err("missing worker is rejected");
+    assert_eq!(error.kind(), SchedulerErrorKind::UnknownIdentity);
+    assert_eq!(error.detail(), "worker is not registered");
+    Fixture::apply(
+        &mut state,
+        &mut events,
+        3,
+        SchedulerCommandKind::RegisterWorker { descriptor: fixture.worker(30, 1) },
+    );
+    let lost =
+        Fixture::apply(&mut state, &mut events, 4, SchedulerCommandKind::LoseWorker { worker_id });
+    assert_eq!(
+        lost.event().kind(),
+        &SchedulerEventKind::WorkerLost { worker_id, outcomes: Vec::new() },
+    );
+    for phase in [WorkerPhase::Lost, WorkerPhase::Removed] {
+        assert_eq!(state.worker(worker_id).expect("retained worker").phase(), phase);
+        let command = Fixture::command(&state, 6, SchedulerCommandKind::LoseWorker { worker_id });
+        let error = decide(&state, &command).expect_err("lost or removed worker is rejected");
+        assert_eq!(error.kind(), SchedulerErrorKind::IllegalTransition);
+        assert_eq!(error.detail(), "worker is already lost or removed");
+        if phase == WorkerPhase::Lost {
+            Fixture::apply(
+                &mut state,
+                &mut events,
+                5,
+                SchedulerCommandKind::RemoveWorker { worker_id },
+            );
+        }
+    }
+    assert_eq!(replay(&events).expect("empty loss and removal replay"), state);
 }

@@ -6,6 +6,8 @@ use crate::{
     WorkId,
 };
 
+mod phase;
+
 pub(super) fn cancel(
     state: &mut SchedulerState,
     work_id: WorkId,
@@ -105,29 +107,18 @@ pub(super) fn scheduler_phase(
     state: &mut SchedulerState,
     command: &crate::SchedulerCommandKind,
 ) -> Result<SchedulerEventKind, SchedulerError> {
-    match mutation::apply_phase_command(state, command) {
-        mutation::PhaseCommandOutcome::Applied => match command {
-            crate::SchedulerCommandKind::PauseScheduler => Ok(SchedulerEventKind::SchedulerPaused),
-            crate::SchedulerCommandKind::ResumeScheduler => {
-                Ok(SchedulerEventKind::SchedulerResumed)
-            }
-            crate::SchedulerCommandKind::DrainScheduler => {
-                Ok(SchedulerEventKind::SchedulerDrainRequested)
-            }
-            _ => Err(crate::reducer::illegal(
-                "scheduler phase dispatcher received a non-phase command",
-            )),
-        },
-        mutation::PhaseCommandOutcome::IllegalPause => {
+    match phase::apply_phase_event(state, command) {
+        Ok(event) => Ok(event),
+        Err(phase::PhaseControlRejection::IllegalPause) => {
             Err(crate::reducer::illegal("scheduler is already paused or terminal"))
         }
-        mutation::PhaseCommandOutcome::IllegalResume => {
+        Err(phase::PhaseControlRejection::IllegalResume) => {
             Err(crate::reducer::illegal("scheduler is not paused"))
         }
-        mutation::PhaseCommandOutcome::IllegalDrain => {
+        Err(phase::PhaseControlRejection::IllegalDrain) => {
             Err(crate::reducer::illegal("scheduler is already draining"))
         }
-        mutation::PhaseCommandOutcome::NotPhaseCommand => {
+        Err(phase::PhaseControlRejection::NotPhaseCommand) => {
             Err(crate::reducer::illegal("scheduler phase dispatcher received a non-phase command"))
         }
     }
