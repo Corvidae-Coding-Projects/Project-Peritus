@@ -37,8 +37,8 @@ pub use work_update::{
 };
 #[cfg(verus_only)]
 pub(crate) use work_update::{
-    release_target_exists, work_phase_update_matches, work_record_update_matches,
-    work_terminal_update_matches, work_update_preserves_other_state,
+    release_target_exists, terminal_release_matches, work_phase_update_matches,
+    work_record_update_matches, work_terminal_update_matches, work_update_preserves_other_state,
 };
 pub use worker_update::set_worker_phase;
 

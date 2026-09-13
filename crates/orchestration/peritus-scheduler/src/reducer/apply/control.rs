@@ -3,7 +3,7 @@
 use crate::state::mutation;
 use crate::{
     SchedulerError, SchedulerErrorKind, SchedulerEventKind, SchedulerState, SchedulerTerminal,
-    WorkId, WorkPhase,
+    WorkId,
 };
 
 pub(super) fn cancel(
@@ -11,15 +11,15 @@ pub(super) fn cancel(
     work_id: WorkId,
     descendants: bool,
 ) -> Result<SchedulerEventKind, SchedulerError> {
-    let root = state.work_item(work_id).ok_or_else(|| unknown("work is not retained"))?;
-    if root.phase() == WorkPhase::Terminal {
-        return Err(crate::reducer::illegal("work is already terminal"));
+    match super::cancellation::command::apply_command(state, work_id, descendants) {
+        Ok(event) => Ok(event),
+        Err(super::cancellation::command::CancellationRejection::WorkNotRetained) => {
+            Err(unknown("work is not retained"))
+        }
+        Err(super::cancellation::command::CancellationRejection::WorkAlreadyTerminal) => {
+            Err(crate::reducer::illegal("work is already terminal"))
+        }
     }
-    let (affected, complete) = super::cancellation::cancel_retained(state, work_id, descendants);
-    if !complete {
-        return Err(unknown("affected cancellation work disappeared"));
-    }
-    Ok(SchedulerEventKind::WorkCancelled { work_id, descendants, affected })
 }
 
 pub(super) fn acknowledge_cancel(

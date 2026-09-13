@@ -3,6 +3,7 @@
 use crate::{SchedulerState, WorkId, WorkPhase, WorkRecord};
 use vstd::prelude::*;
 
+pub(super) mod command;
 mod ids;
 #[cfg(test)]
 mod tests;
@@ -261,6 +262,8 @@ pub(super) fn cancel_retained(
             old(state).spec_reservations(), result.0@),
         crate::state::mutation::work_update_preserves_other_state(old(state), final(state)),
         old(state).spec_reservation_invariant() ==> final(state).spec_reservation_invariant(),
+        old(state).spec_reservation_reducer_ready() ==> final(state).spec_reservation_reducer_ready(),
+        old(state).spec_collections_ordered() ==> final(state).spec_collections_ordered(),
         SchedulerState::work_records_ordered(old(state).spec_work()) ==>
             result.0@.no_duplicates(),
 {

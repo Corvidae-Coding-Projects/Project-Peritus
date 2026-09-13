@@ -318,12 +318,43 @@ qualified: its recorded failures are exactly 49 stale and 38 missing proof-impac
 This local candidate is frozen before the separate authorization/application sequence; none of
 these local successes is represented as final hosted qualification or an obligation discharge.
 
-## Remaining requirements at this checkpoint
+### Cancellation command composition on draft PR 77
+
+The production root-cancellation kernel now relates each rejection to the unchanged input state
+and each success to the exact `WorkCancelled` event and affected work sequence. The actual
+cancellation loop preserves reservation readiness and collection ordering, allowing subsequent
+reservation commands to use their checked lookups. The ordinary error wrapper retains its
+existing diagnostic kinds and text.
+
+Terminal release now relates the exact removed reservation, supplied terminal payload, updated
+work record and every unaffected scheduler field. Its ordering guarantee composes with the
+production completion and cancellation-acknowledgement kernels. Those kernels classify each
+outcome and prove rejected valid-state commands leave the complete state unchanged. Their exact
+outcome contracts require readiness and collection ordering in the pre-state; this condition is
+explicit rather than imposed as a new executable precondition.
+
+The existing public regression exercises Reserved, Running and Cancelling descendants, ownership
+retention, acknowledgement, late completion on both sides of acknowledgement, and replay plus
+checkpoint roundtrips. The command-specific modules keep the source budget without changing the
+existing public reexports. This increment does not claim whole-reducer or whole-replay proofs.
+
+Final validation passes 505 strict scheduler verification items, all 70 scheduler tests, strict
+Clippy, formatting, architecture and ordinary-API checks. The
+[independent command-composition review](formal-scheduler-gap3/cancellation-command-review.md)
+passes this bounded increment against the 142-file scheduler snapshot 157. Its raw output and
+source manifest are retained in [the evidence directory](formal-scheduler-gap3/evidence/README.md).
+
+Checkpoint `5020fddf692b0894c6c8d188efc3490a3419b8c8` and subsequent work share
+[draft PR 77](https://github.com/Corvidae-Coding-Projects/Project-Peritus/pull/77), targeting
+`develop`. The PR remains a draft and must not be merged as part of this work. Remaining work goes
+on `feature/formal-scheduler-gap3` and that same PR.
+
+## Remaining requirements on the draft
 
 | Requirement | What this checkpoint establishes | What remains open |
 |---|---|---|
 | Admission | Exact worker descriptor and command-fence classifiers; ordering, lookup, insertion and queue-pressure primitives | Complete work/command admission, error wrappers, ordering producers and decoded-state composition |
-| Cancellation | Production-called exact descendant selection and terminating lifecycle updates; unchanged unrelated state; exact returned reservation on removal; public lifecycle regressions | Root/error/event composition, complete acknowledgement/release outcomes, and stateful late-success theorem |
+| Cancellation | Exact production root admission and event, descendant selection and terminating updates; readiness and ordering preservation; exact terminal release and acknowledgement/completion outcomes; public lifecycle regressions | Explicit multi-command late-success and queue-invariant composition, plus outer reducer/replay/caller relationships |
 | Worker loss | Exact owned-reservation selection and recovery classification; mixed-worker lifecycle regressions | Complete release loop, resource deltas, worker mutation and successor event relation |
 | Transitions and replay | Exact terminal summary and versioned queue accounting; fixed historical replay/durability/caller tests | All command successors, dispatch selection, dependency refresh, cursor/digest/event reconstruction and whole replay/caller relationships |
 | Termination | Checked decreases on the new classifiers, cancellation closure/update loops and relevant primitives | Remaining worker-loss, refresh, selection and replay loops |

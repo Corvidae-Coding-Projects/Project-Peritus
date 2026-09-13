@@ -4,7 +4,7 @@ use super::{
     cancellation_step_matches, has_active_reservation, target_exists, work_id_layout_matches,
 };
 use crate::state::mutation;
-use crate::{SchedulerReservation, WorkId, WorkPhase, WorkRecord, WorkTerminal};
+use crate::{SchedulerReservation, SchedulerState, WorkId, WorkPhase, WorkRecord, WorkTerminal};
 use vstd::prelude::*;
 
 verus! {
@@ -275,6 +275,57 @@ pub(super) proof fn cancellation_step_preserves_other_record(
             WorkTerminal::Cancelled,
             index,
         );
+    }
+}
+
+/// Each cancellation phase agrees exactly with whether ownership is retained.
+pub(super) proof fn cancellation_update_admissible(
+    work: Seq<WorkRecord>,
+    reservations: Seq<SchedulerReservation>,
+    id: WorkId,
+)
+    requires target_exists(work, id),
+    ensures crate::verified::work_phase_update_admissible(
+        work, reservations, id,
+        if has_active_reservation(reservations, id) {
+            WorkPhase::Cancelling
+        } else {
+            WorkPhase::Terminal
+        },
+    ),
+{
+    reveal(target_exists);
+    reveal(has_active_reservation);
+    reveal(crate::verified::work_phase_update_admissible);
+    reveal(crate::verified::work_phase_retains_reservation);
+}
+
+/// Lifecycle-only changes preserve the canonical order needed by subsequent commands.
+pub(super) proof fn collection_order_preserved(
+    before: &SchedulerState,
+    after: &SchedulerState,
+)
+    requires
+        work_id_layout_matches(before.spec_work(), after.spec_work()),
+        mutation::work_update_preserves_other_state(before, after),
+    ensures before.spec_collections_ordered() ==> after.spec_collections_ordered(),
+{
+    reveal(work_id_layout_matches);
+    reveal(mutation::work_update_preserves_other_state);
+    reveal(SchedulerState::spec_collections_ordered);
+    reveal(SchedulerState::spec_work_ordered);
+    reveal(SchedulerState::work_records_ordered);
+    if before.spec_collections_ordered() {
+        assert forall |left: int, right: int|
+            0 <= left < right < after.spec_work().len() implies
+                after.spec_work()[left].spec_definition().spec_id().spec_precedes(
+                    &after.spec_work()[right].spec_definition().spec_id(),
+                ) by {
+            assert(before.spec_work()[left].spec_definition().spec_id()
+                == after.spec_work()[left].spec_definition().spec_id());
+            assert(before.spec_work()[right].spec_definition().spec_id()
+                == after.spec_work()[right].spec_definition().spec_id());
+        }
     }
 }
 

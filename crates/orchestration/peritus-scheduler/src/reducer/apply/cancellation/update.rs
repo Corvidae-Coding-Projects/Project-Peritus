@@ -13,7 +13,8 @@ mod trace;
 
 #[cfg(verus_only)]
 use frame::{
-    cancellation_step_preserves_ids, cancellation_step_target_exists, target_existence_preserved,
+    cancellation_step_preserves_ids, cancellation_step_target_exists,
+    cancellation_update_admissible, collection_order_preserved, target_existence_preserved,
 };
 #[cfg(verus_only)]
 use trace::{advance_prefix, empty_updates, establish_complete_result, establish_missing_result};
@@ -174,6 +175,9 @@ pub open spec fn cancellation_apply_matches(
         complete,
     )
     &&& mutation::work_update_preserves_other_state(before, after)
+    &&& work_id_layout_matches(before.spec_work(), after.spec_work())
+    &&& before.spec_reservation_reducer_ready() ==> after.spec_reservation_reducer_ready()
+    &&& before.spec_collections_ordered() ==> after.spec_collections_ordered()
     &&& before.spec_reservation_invariant() ==> after.spec_reservation_invariant()
     &&& complete ==> cancellation_final_matches(
         before.spec_work(),
@@ -217,6 +221,7 @@ fn is_active(reservations: &[SchedulerReservation], id: WorkId) -> (active: bool
 /// Applies the reservation-sensitive lifecycle mutation for one selected identity.
 fn update_one(state: &mut SchedulerState, id: WorkId) -> (updated: bool)
     ensures
+        old(state).spec_reservation_reducer_ready() ==> final(state).spec_reservation_reducer_ready(),
         updated == target_exists(old(state).spec_work(), id),
         updated ==> cancellation_step_matches(
             old(state).spec_work(),
@@ -233,6 +238,12 @@ fn update_one(state: &mut SchedulerState, id: WorkId) -> (updated: bool)
     let active = is_active(state.reservations(), id);
     let ghost before = state.spec_work();
     let ghost reservations = state.spec_reservations();
+    let ghost was_ready = state.spec_reservation_reducer_ready();
+    proof {
+        if target_exists(before, id) {
+            cancellation_update_admissible(before, reservations, id);
+        }
+    }
     let updated = if active {
         mutation::set_work_phase(state, id, WorkPhase::Cancelling)
     } else {
@@ -264,6 +275,7 @@ fn update_one(state: &mut SchedulerState, id: WorkId) -> (updated: bool)
         }
         if !updated {
             reveal(work_id_layout_matches);
+            if was_ready { reveal(SchedulerState::spec_reservation_reducer_ready); }
         }
     }
     updated
@@ -283,6 +295,7 @@ pub(super) fn apply_updates(
     let ghost before = state.spec_work();
     let ghost reservations = state.spec_reservations();
     let ghost had_invariant = state.spec_reservation_invariant();
+    let ghost was_ready = state.spec_reservation_reducer_ready();
     let mut index = 0;
     proof {
         empty_updates(before, reservations);
@@ -298,6 +311,8 @@ pub(super) fn apply_updates(
             state.spec_reservations() == reservations,
             had_invariant == old(state).spec_reservation_invariant(),
             had_invariant ==> state.spec_reservation_invariant(),
+            was_ready == old(state).spec_reservation_reducer_ready(),
+            was_ready ==> state.spec_reservation_reducer_ready(),
             mutation::work_update_preserves_other_state(old(state), state),
             cancellation_updates_match(
                 before,
@@ -331,6 +346,7 @@ pub(super) fn apply_updates(
                     index as int,
                 );
                 reveal(mutation::work_update_preserves_other_state);
+                collection_order_preserved(old(state), state);
                 reveal(cancellation_apply_matches);
             }
             return false;
@@ -358,6 +374,7 @@ pub(super) fn apply_updates(
         assert(affected@.take(index as int) =~= affected@);
         assert(all_targets_exist(before, affected@));
         establish_complete_result(before, state.spec_work(), reservations, affected@);
+        collection_order_preserved(old(state), state);
         reveal(cancellation_apply_matches);
     }
     true

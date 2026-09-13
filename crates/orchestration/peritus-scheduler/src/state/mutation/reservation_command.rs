@@ -1,87 +1,28 @@
 //! Verified production command kernels for live reservation transitions.
 
+mod acknowledge_cancellation;
+mod complete;
+#[cfg(verus_only)]
+mod contracts;
+mod outcome;
+
+pub use acknowledge_cancellation::apply_acknowledge_cancellation_command;
+pub use complete::apply_complete_command;
+#[cfg(verus_only)]
+pub(super) use contracts::{
+    acknowledge_cancellation_outcome_matches, complete_command_outcome_matches, reservation_at,
+    work_at,
+};
+pub use outcome::{
+    AbandonCommandOutcome, AcknowledgeCancellationOutcome, AcknowledgeStartOutcome,
+    CompleteCommandOutcome, FailCommandOutcome,
+};
+
 use vstd::prelude::*;
 
 use crate::{FailureDisposition, SchedulerCommandKind, SchedulerState, WorkPhase, WorkTerminal};
 
 verus! {
-
-/// Deterministic result of applying the actual start-acknowledgement payload.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum AcknowledgeStartOutcome {
-    /// The reservation became started and its work became running.
-    Applied,
-    /// The actual command was not `AcknowledgeStart`.
-    NotAcknowledgeStartCommand,
-    /// The dispatch identity was not live.
-    DispatchNotActive,
-    /// The dispatch start was already acknowledged.
-    AlreadyAcknowledged,
-    /// The live dispatch disappeared during mutation.
-    DispatchDisappeared,
-    /// The live reservation's work disappeared during mutation.
-    WorkDisappeared,
-}
-
-/// Deterministic result of applying the actual successful-completion payload.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum CompleteCommandOutcome {
-    /// Running acknowledged work became terminally successful.
-    Applied,
-    /// The actual command was not `CompleteWork`.
-    NotCompleteCommand,
-    /// The dispatch identity was not live.
-    DispatchNotActive,
-    /// The live reservation's work was not retained.
-    WorkDisappeared,
-    /// Only acknowledged running work can complete successfully.
-    NotAcknowledgedRunning,
-}
-
-/// Deterministic result of applying the actual failure-classification payload.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum FailCommandOutcome {
-    /// Reserved or running work was released under the requested disposition.
-    Applied,
-    /// The actual command was not `FailWork`.
-    NotFailCommand,
-    /// The dispatch identity was not live.
-    DispatchNotActive,
-    /// The live reservation's work was not retained.
-    WorkDisappeared,
-    /// Only reserved or running work can report failure.
-    WorkNotFailable,
-}
-
-/// Deterministic result of applying the actual cancellation-acknowledgement payload.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum AcknowledgeCancellationOutcome {
-    /// Cancelling ownership was released and the work became cancelled.
-    Applied,
-    /// The actual command was not `AcknowledgeCancellation`.
-    NotAcknowledgeCancellationCommand,
-    /// The dispatch identity was not live.
-    DispatchNotActive,
-    /// The live reservation's work was not retained.
-    ReservationWorkDisappeared,
-    /// The live reservation's work was not cancelling.
-    WorkNotCancelling,
-    /// The cancelling work disappeared during release.
-    CancellingWorkDisappeared,
-}
-
-/// Deterministic result of applying the actual dispatch-abandonment payload.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum AbandonCommandOutcome {
-    /// Active ownership was released to abandoned or cancelled terminal state.
-    Applied,
-    /// The actual command was not `AbandonDispatch`.
-    NotAbandonCommand,
-    /// The dispatch identity was not live.
-    DispatchNotActive,
-    /// The live reservation's work disappeared during abandonment.
-    WorkDisappeared,
-}
 
 /// Applies the actual `AcknowledgeStart` payload through the verified atomic mutation.
 pub fn apply_acknowledge_start_command(
@@ -124,56 +65,6 @@ pub fn apply_acknowledge_start_command(
     }
 }
 
-/// Applies the actual `CompleteWork` payload through the verified release mutation.
-pub fn apply_complete_command(
-    state: &mut SchedulerState,
-    command: &SchedulerCommandKind,
-) -> (outcome: CompleteCommandOutcome)
-    ensures
-        old(state).spec_reservation_reducer_ready()
-            ==> final(state).spec_reservation_reducer_ready(),
-        final(state).spec_phase() == old(state).spec_phase(),
-        final(state).spec_binding() == old(state).spec_binding(),
-        final(state).spec_workers() == old(state).spec_workers(),
-        final(state).spec_used_dispatches() == old(state).spec_used_dispatches(),
-{
-    let (dispatch_id, result_digest) = match command {
-        SchedulerCommandKind::CompleteWork { dispatch_id, result_digest } => {
-            (*dispatch_id, *result_digest)
-        },
-        _ => return CompleteCommandOutcome::NotCompleteCommand,
-    };
-    let Some(reservation) = state.reservation(dispatch_id) else {
-        return CompleteCommandOutcome::DispatchNotActive;
-    };
-    let work_id = reservation.work_id();
-    let started = reservation.started();
-    let phase = match state.work_item(work_id) {
-        Some(work) => work.phase(),
-        None => return CompleteCommandOutcome::WorkDisappeared,
-    };
-    if !started || !phase.same(WorkPhase::Running) {
-        return CompleteCommandOutcome::NotAcknowledgedRunning;
-    }
-    proof {
-        reveal(super::release_target_exists);
-        assert(exists |reservation_index: int|
-            #![trigger state.spec_reservations()[reservation_index]]
-            0 <= reservation_index < state.spec_reservations().len()
-                && state.spec_reservations()[reservation_index].spec_dispatch_id() == dispatch_id
-                && state.spec_reservations()[reservation_index].spec_work_id() == work_id);
-    }
-    if super::release_to_terminal(
-        state,
-        dispatch_id,
-        work_id,
-        WorkTerminal::Succeeded { result_digest },
-    ).is_some() {
-        CompleteCommandOutcome::Applied
-    } else {
-        CompleteCommandOutcome::WorkDisappeared
-    }
-}
 
 /// Applies the actual `FailWork` payload through the verified release mutation.
 pub fn apply_fail_command(
@@ -247,48 +138,6 @@ pub fn apply_fail_command(
     }
 }
 
-/// Applies the actual `AcknowledgeCancellation` payload through the verified release mutation.
-pub fn apply_acknowledge_cancellation_command(
-    state: &mut SchedulerState,
-    command: &SchedulerCommandKind,
-) -> (outcome: AcknowledgeCancellationOutcome)
-    ensures
-        old(state).spec_reservation_reducer_ready()
-            ==> final(state).spec_reservation_reducer_ready(),
-        final(state).spec_phase() == old(state).spec_phase(),
-        final(state).spec_binding() == old(state).spec_binding(),
-        final(state).spec_workers() == old(state).spec_workers(),
-        final(state).spec_used_dispatches() == old(state).spec_used_dispatches(),
-{
-    let dispatch_id = match command {
-        SchedulerCommandKind::AcknowledgeCancellation { dispatch_id } => *dispatch_id,
-        _ => return AcknowledgeCancellationOutcome::NotAcknowledgeCancellationCommand,
-    };
-    let Some(reservation) = state.reservation(dispatch_id) else {
-        return AcknowledgeCancellationOutcome::DispatchNotActive;
-    };
-    let work_id = reservation.work_id();
-    let phase = match state.work_item(work_id) {
-        Some(work) => work.phase(),
-        None => return AcknowledgeCancellationOutcome::ReservationWorkDisappeared,
-    };
-    if !phase.same(WorkPhase::Cancelling) {
-        return AcknowledgeCancellationOutcome::WorkNotCancelling;
-    }
-    proof {
-        reveal(super::release_target_exists);
-        assert(exists |reservation_index: int|
-            #![trigger state.spec_reservations()[reservation_index]]
-            0 <= reservation_index < state.spec_reservations().len()
-                && state.spec_reservations()[reservation_index].spec_dispatch_id() == dispatch_id
-                && state.spec_reservations()[reservation_index].spec_work_id() == work_id);
-    }
-    if super::release_to_terminal(state, dispatch_id, work_id, WorkTerminal::Cancelled).is_some() {
-        AcknowledgeCancellationOutcome::Applied
-    } else {
-        AcknowledgeCancellationOutcome::CancellingWorkDisappeared
-    }
-}
 
 /// Applies the actual `AbandonDispatch` payload through the verified release mutation.
 pub fn apply_abandon_command(

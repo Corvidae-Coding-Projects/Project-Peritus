@@ -56,6 +56,32 @@ ignores are the existing subprocess fixture (invoked by its parent test) and two
 The trust output predates the last test-only signature wrapping; this does not resolve any of
 its outstanding fingerprints. Final authorization and hosted workflows remain open.
 
+## Cancellation command increment on draft PR 77
+
+The next increment changes only the scheduler package and its evidence/documentation relative to
+checkpoint `5020fddf692b0894c6c8d188efc3490a3419b8c8`. The 142-file scheduler manifest
+`157-cancellation-source.sha256` has SHA-256
+`ada577222b7b8587214ffd3a9580d224964dbf8efc7a56e442180b706b794def`.
+Use the checkpoint commit for the unchanged remainder of the repository. Historical manifests
+and reviews above remain bound to their original source, rather than being overwritten.
+The [independent review](../cancellation-command-review.md) records the bounded result and its
+reviewer identity; it is not a human approval or a protected authorization record.
+
+| Output | Final increment result |
+|---|---|
+| `158-cancellation-final-verus.log` | 505 verified, zero errors; no cheating and unchanged resource limits |
+| `159-cancellation-final-tests.log` | All 70 scheduler tests passed; zero failures or ignores |
+| `156-cancellation-final-clippy.log` | All-targets, all-features scheduler Clippy passed with warnings denied |
+| `160-cancellation-final-format.log` | Workspace formatting passed |
+| `161-cancellation-final-architecture.log` | Architecture and source budgets passed |
+| `162-cancellation-final-ordinary-api.log` | Ordinary API contracts passed |
+
+The existing public cancellation test covers late completion before and after acknowledgement,
+resource release, unrelated state, and replay/checkpoint roundtrips. Root admission and terminal
+release now have exact production-called contracts; the remaining scheduler relationships and
+final inventory/trust/hosted qualification stay open on the draft. This increment does not rerun
+or relabel the historical daemon and API-checker test results as current scheduler tests.
+
 ## Rerunnable local checks
 
 Use the repository's pinned toolchains. These commands keep one build job; strict Verus uses
