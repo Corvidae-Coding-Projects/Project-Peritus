@@ -3,9 +3,9 @@
   "frontier": {
     "agents": {
       "4jyS": {
-        "sequence": 6,
-        "tip_oid": "8e33b098ea6a7289298c79dabc1daf921f0238e1",
-        "prefix_sha256": "7a36f69ba2ead271cece200e09bf01245af0b2fb69d1e180c402c714e8ab5d64"
+        "sequence": 7,
+        "tip_oid": "87de025128444596cb4f4bc7e187f2216624c88f",
+        "prefix_sha256": "afbb7ca8049b43dfff02fb5fc01b0f1a520becb748890adf9c97fd9d7dcb7803"
       },
       "6ME5": {
         "sequence": 1485,
@@ -35,7 +35,7 @@
     }
   },
   "next_display_id": 76,
-  "next_comment_id": 1572,
+  "next_comment_id": 1573,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -14665,7 +14665,7 @@
       "priority": "high",
       "created_by": "4jyS",
       "created_at": "2026-09-12T15:27:42.848160186Z",
-      "updated_at": "2026-09-13T11:54:05.891626309Z",
+      "updated_at": "2026-09-13T12:28:19.472716696Z",
       "comments": {
         "9b3dbe2b-a2e1-45e6-ae90-9965b35d3e52": {
           "display_id": 1571,
@@ -14675,6 +14675,15 @@
           "kind": "handoff",
           "signed_by": "SHA256:F4pa6Img4SKcIhtZ3zyHSwUehhPFSMjlvpf7eTU6qsE",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAge6D6FO+sYKpnSAKFLUH9UJDB0DalEbmiGhqILuP+evwAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA2Z/mFLkc9I8wcXMP+d5jZJnYX3u9/S5MgNTr+NVlKwLDg6cb3WeD/M6BVZXPLjJFt0oFy+dy+3+SNG8yFPt2Dg=="
+        },
+        "ac1a5e11-ead8-4320-908d-c43fd955d63b": {
+          "display_id": 1572,
+          "author": "4jyS",
+          "content": "[action] Fixing GAP-01 exact method ownership: source resolver, six canonical obligation locators, adversarial regressions; full xtask tests now pass. Final strict scope and review pending.",
+          "created_at": "2026-09-13T12:28:19.457889688Z",
+          "kind": "note",
+          "signed_by": "SHA256:F4pa6Img4SKcIhtZ3zyHSwUehhPFSMjlvpf7eTU6qsE",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAge6D6FO+sYKpnSAKFLUH9UJDB0DalEbmiGhqILuP+evwAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA8K4UfCep8/dTrgWevRGqn1DqhkAz3qeVCths5BKO7cfuOkdeP5dGWQJGICWDg6SLp36HS0avmeYU3GsMEGwADg=="
         },
         "d0c45b08-1d77-498e-bd65-22be851637ea": {
           "display_id": 1570,
