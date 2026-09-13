@@ -3,9 +3,9 @@
   "frontier": {
     "agents": {
       "4jyS": {
-        "sequence": 12,
-        "tip_oid": "1e0355c21144cf1f8802c278f198d80cec8d9090",
-        "prefix_sha256": "f42db07b8a5e2fb77542e73db8852ddbf8aa0a8a760fe6998fa8f93a412040c0"
+        "sequence": 13,
+        "tip_oid": "0f614d42a164fd9919d3fa4b2514d6e4016402a7",
+        "prefix_sha256": "c4cce8c6c5a4c9ae141b79c2243b602ba199615585165bc37e511f56c9bd4c60"
       },
       "6ME5": {
         "sequence": 1485,
@@ -35,7 +35,7 @@
     }
   },
   "next_display_id": 76,
-  "next_comment_id": 1576,
+  "next_comment_id": 1577,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -14665,7 +14665,7 @@
       "priority": "high",
       "created_by": "4jyS",
       "created_at": "2026-09-12T15:27:42.848160186Z",
-      "updated_at": "2026-09-13T12:54:10.762595476Z",
+      "updated_at": "2026-09-13T14:21:16.966325214Z",
       "comments": {
         "22915443-e685-4d35-af01-b64a63201909": {
           "display_id": 1573,
@@ -14675,6 +14675,15 @@
           "kind": "result",
           "signed_by": "SHA256:F4pa6Img4SKcIhtZ3zyHSwUehhPFSMjlvpf7eTU6qsE",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAge6D6FO+sYKpnSAKFLUH9UJDB0DalEbmiGhqILuP+evwAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAF9KJajd9LABuoHiW+qz0msDlW429xjsPJ/F/Ljn266ocvln6TKPUjFchRWfHURgzb5qJmKaIdmNSdROZ6nj4AQ=="
+        },
+        "93b76722-b459-443e-8344-4c0e696657c7": {
+          "display_id": 1576,
+          "author": "4jyS",
+          "content": "Frozen candidate 5cbd9efd: fix(formal): prepare exact candidate authorization and qualification. Full xtask qualification passed (452 library, 4 CLI, 4 release tests; 1 existing ignored), strict Clippy, formatting, docs, regenerated inventory, ten reconciliation probes, and unchanged-base checker build plus locator regression. Preserved prior approvals and all 153 in-progress statuses; authentic owner/reviewer enrolled. Next: fresh fingerprints and all 132 package gates, independent final approval, authorization-first landing, then exact-base verify-trust.",
+          "created_at": "2026-09-13T14:21:16.959666661Z",
+          "kind": "result",
+          "signed_by": "SHA256:F4pa6Img4SKcIhtZ3zyHSwUehhPFSMjlvpf7eTU6qsE",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAge6D6FO+sYKpnSAKFLUH9UJDB0DalEbmiGhqILuP+evwAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA74nXT3KScKhz1QFr4EaiH3HVSqit+88FbWI4/IIkT7RVsBIkSWf3kHjclYlat++NsDNtPgSz9x5C6Wi4A2zSCw=="
         },
         "99cabe55-af54-486b-8daa-73bfaa351a30": {
           "display_id": 1575,
