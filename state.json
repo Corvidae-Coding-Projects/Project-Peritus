@@ -3,9 +3,9 @@
   "frontier": {
     "agents": {
       "4jyS": {
-        "sequence": 10,
-        "tip_oid": "d167b9bdd31b961efebd43df2e79b2199c9f81b4",
-        "prefix_sha256": "1507a342b43c044c11859ed7cd9ea2c590d1f97370d910934095630e15ec741e"
+        "sequence": 11,
+        "tip_oid": "655429da7f9db3db3bdd34c3cb63460beb746ecf",
+        "prefix_sha256": "96df80e47ee7a5a162e103423fc4874172086c225ae8471de5a96e3a123f3d41"
       },
       "6ME5": {
         "sequence": 1485,
@@ -35,7 +35,7 @@
     }
   },
   "next_display_id": 76,
-  "next_comment_id": 1575,
+  "next_comment_id": 1576,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -14661,7 +14661,7 @@
       "priority": "high",
       "created_by": "4jyS",
       "created_at": "2026-09-12T15:27:42.848160186Z",
-      "updated_at": "2026-09-13T12:45:00.208258634Z",
+      "updated_at": "2026-09-13T12:54:10.762595476Z",
       "comments": {
         "22915443-e685-4d35-af01-b64a63201909": {
           "display_id": 1573,
@@ -14671,6 +14671,15 @@
           "kind": "result",
           "signed_by": "SHA256:F4pa6Img4SKcIhtZ3zyHSwUehhPFSMjlvpf7eTU6qsE",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAge6D6FO+sYKpnSAKFLUH9UJDB0DalEbmiGhqILuP+evwAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAF9KJajd9LABuoHiW+qz0msDlW429xjsPJ/F/Ljn266ocvln6TKPUjFchRWfHURgzb5qJmKaIdmNSdROZ6nj4AQ=="
+        },
+        "99cabe55-af54-486b-8daa-73bfaa351a30": {
+          "display_id": 1575,
+          "author": "4jyS",
+          "content": "Published the user-authorized checkpoint: pushed feature/formal-coverage at d0e4f0cf0943c7194adaaeabcb11fc70badc3fe8 and opened draft PR #74 to develop: https://github.com/Corvidae-Coding-Projects/Project-Peritus/pull/74 . Draft body covers the accumulated checkpoint plus GAP-01 repair, local validation, known protected-trust failure, and GAP-02 through GAP-08. Hosted qualification remains pending; full goal remains open.",
+          "created_at": "2026-09-13T12:54:10.746539439Z",
+          "kind": "result",
+          "signed_by": "SHA256:F4pa6Img4SKcIhtZ3zyHSwUehhPFSMjlvpf7eTU6qsE",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAge6D6FO+sYKpnSAKFLUH9UJDB0DalEbmiGhqILuP+evwAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAvJFu8oBs+T67fB86O4Llni8SeUWvgCd1cmvRpcZRjCyMmJBdOgx98S6dSx3Etm1B811OnikfXFVqltONIkDwBg=="
         },
         "9b3dbe2b-a2e1-45e6-ae90-9965b35d3e52": {
           "display_id": 1571,
