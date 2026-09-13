@@ -197,3 +197,34 @@ fn rejects_unknown_text_truncation_and_dependency_failures() {
     let text = format!("{}\n{{", compiler());
     assert!(parse(text.as_bytes()).is_err());
 }
+
+#[test]
+fn method_evidence_requires_the_exact_defining_owner_in_selection_and_queries() {
+    let canonical = "peritus_example::accounting::AccountingState::apply_usage";
+    let evidence = vec![RegisteredProofSymbol {
+        obligation: "OBL-METHOD".into(),
+        owner: "peritus-example".into(),
+        symbol: canonical.into(),
+        mode: Mode::Exec,
+    }];
+    for selected in [
+        canonical,
+        "peritus_example::accounting::usage::AccountingState::apply_usage",
+        "peritus_example::accounting::OtherState::apply_usage",
+        "peritus_example::accounting::State::apply_usage",
+    ] {
+        for queried in [canonical, selected] {
+            let mut value = compiler();
+            value["func-details"] = json!({selected: {}});
+            value["times-ms"]["smt"]["smt-run-module-times"][0]["function-breakdown"] =
+                json!([{"function": queried, "mode:": "exec", "success": true}]);
+            let reports = parse(value.to_string().as_bytes()).expect("compiler report");
+            assert_eq!(
+                check(&reports, "peritus-example", &["peritus_example"], &evidence, &tools())
+                    .is_ok(),
+                selected == canonical && queried == canonical,
+                "selected {selected}, queried {queried}",
+            );
+        }
+    }
+}

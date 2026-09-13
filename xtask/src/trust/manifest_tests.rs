@@ -389,3 +389,5 @@ mod adversarial;
 mod core;
 #[path = "manifest_tests/evidence.rs"]
 mod evidence;
+#[path = "manifest_tests/method_owners.rs"]
+mod method_owners;

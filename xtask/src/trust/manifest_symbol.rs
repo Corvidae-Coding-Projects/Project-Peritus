@@ -1,3 +1,7 @@
+#[path = "manifest_symbol/owner.rs"]
+mod owner;
+
+use super::lexer::DeclarationOwner;
 use crate::api_contract::{FunctionDeclaration, function_declarations};
 use crate::error::Diagnostic;
 use std::fs;
@@ -71,11 +75,30 @@ pub(super) fn owned_function_declarations(
             if declaration.nested {
                 return None;
             }
-            let mut path = owners.into_iter().fold(module.clone(), |mut path, owner| {
-                path.push_str("::");
-                path.push_str(&owner);
-                path
-            });
+            let mut path = module.clone();
+            let mut inline_modules = Vec::new();
+            for owner in owners {
+                match owner {
+                    DeclarationOwner::Module(name) => {
+                        path.push_str("::");
+                        path.push_str(&name);
+                        inline_modules.push(name);
+                    }
+                    DeclarationOwner::Trait(name) => {
+                        path.push_str("::");
+                        path.push_str(&name);
+                    }
+                    DeclarationOwner::Impl(self_type) => {
+                        path = owner::resolve(
+                            owning_crate,
+                            source,
+                            contents,
+                            &inline_modules,
+                            &self_type,
+                        )?;
+                    }
+                }
+            }
             path.push_str("::");
             path.push_str(name);
             Some(OwnedFunctionDeclaration { path, declaration })

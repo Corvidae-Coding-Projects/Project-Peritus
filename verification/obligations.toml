@@ -1348,7 +1348,7 @@ kind = "contract"
 statement = "A strict E1 manifest and recursive inventory activate only checked bounded component content, and each deterministic C1 plan is confined to the exact owned target set with artifact, preimage, revision, snapshot, and rollback-reason bindings."
 owning_crate = "peritus-harness"
 source_file = "crates/orchestration/peritus-harness/src/materialization/planner.rs"
-symbol = "peritus_harness::materialization::planner::MaterializationPlan::build"
+symbol = "peritus_harness::materialization::plan_model::MaterializationPlan::build"
 status = "in-progress"
 dependencies = ["INV-017", "OBL-0162", "OBL-0163"]
 live_issue = "#20"
@@ -1714,7 +1714,7 @@ kind = "refinement"
 statement = "C0 adds exact approve-once consumption to an existing multi-aggregate append in one transaction; stale registry or approval-state CAS leaves every supplied aggregate head and state projection unchanged."
 owning_crate = "peritus-journal"
 source_file = "crates/state/peritus-journal/src/domain/approval_use.rs"
-symbol = "peritus_journal::domain::approval_use::SqliteJournal::commit_approval_use"
+symbol = "peritus_journal::sqlite::connection::SqliteJournal::commit_approval_use"
 status = "in-progress"
 dependencies = ["OBL-0115"]
 live_issue = "#23"
@@ -1900,7 +1900,7 @@ kind = "invariant"
 statement = "A3 at-least-once subscriptions preserve exact event/frame identity across redelivery, enforce cumulative acknowledgement legality, make retention gaps and snapshot requirements explicit, and apply bounded backpressure without loss."
 owning_crate = "peritus-app-protocol"
 source_file = "crates/app/peritus-app-protocol/src/subscription/transitions.rs"
-symbol = "peritus_app_protocol::subscription::transitions::SubscriptionState::deliver"
+symbol = "peritus_app_protocol::subscription::state::SubscriptionState::deliver"
 status = "in-progress"
 dependencies = []
 live_issue = "#24"
@@ -2052,7 +2052,7 @@ kind = "contract"
 statement = "G0 startup binds one protected state root, exact C0 store identity, durable authority epoch, canonical current public credential registry, recovered workspace/process/application state, production harness pointer, outbox, and authenticated local endpoint before read-write admission."
 owning_crate = "peritus-daemon"
 source_file = "crates/app/peritus-daemon/src/startup/runtime/runner.rs"
-symbol = "peritus_daemon::startup::runtime::runner::DaemonRuntime::start"
+symbol = "peritus_daemon::startup::runtime::DaemonRuntime::start"
 status = "in-progress"
 dependencies = ["INV-028", "INV-029"]
 live_issue = "#25"
@@ -2441,13 +2441,13 @@ kind = "invariant"
 statement = "Product-run usage accounting atomically replaces the current response high-water contribution: success updates every usage total by exact subtraction then addition while preserving nonusage fields, and either overflow category preserves the complete accounting state with exact precedence."
 owning_crate = "peritus-product-runner"
 source_file = "crates/app/peritus-product-runner/src/accounting/usage.rs"
-symbol = "peritus_product_runner::accounting::usage::AccountingState::apply_usage"
+symbol = "peritus_product_runner::accounting::AccountingState::apply_usage"
 status = "in-progress"
 dependencies = []
 live_issue = "#75"
 owner = "ACTOR-0001"
 evidence = [
-  { kind = "verus-proof", source_file = "crates/app/peritus-product-runner/src/accounting/usage.rs", symbol = "peritus_product_runner::accounting::usage::AccountingState::apply_usage", command = "cargo verus verify --package peritus-product-runner --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "verus-proof", source_file = "crates/app/peritus-product-runner/src/accounting/usage.rs", symbol = "peritus_product_runner::accounting::AccountingState::apply_usage", command = "cargo verus verify --package peritus-product-runner --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "refinement-test", source_file = "crates/app/peritus-product-runner/src/budget/tests.rs", symbol = "peritus_product_runner::budget::tests::usage_replacement_rejection_preserves_totals_and_the_retained_response", command = "cargo test --package peritus-product-runner --all-targets --all-features --locked" },
   { kind = "refinement-test", source_file = "crates/app/peritus-product-runner/src/budget/tests.rs", symbol = "peritus_product_runner::budget::tests::replacement_subtracts_before_adding_and_rejects_missing_prior_contributions", command = "cargo test --package peritus-product-runner --all-targets --all-features --locked" },
 ]
@@ -2475,13 +2475,13 @@ kind = "invariant"
 statement = "Product-run work accounting atomically increments exactly the counters selected by each actual work event, resets only the per-response high-water snapshot when a new model request starts, preserves every unrelated field, and preserves the complete prior state if any selected counter would overflow."
 owning_crate = "peritus-product-runner"
 source_file = "crates/app/peritus-product-runner/src/accounting/work.rs"
-symbol = "peritus_product_runner::accounting::work::AccountingState::apply_work"
+symbol = "peritus_product_runner::accounting::AccountingState::apply_work"
 status = "in-progress"
 dependencies = []
 live_issue = "#75"
 owner = "ACTOR-0001"
 evidence = [
-  { kind = "verus-proof", source_file = "crates/app/peritus-product-runner/src/accounting/work.rs", symbol = "peritus_product_runner::accounting::work::AccountingState::apply_work", command = "cargo verus verify --package peritus-product-runner --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "verus-proof", source_file = "crates/app/peritus-product-runner/src/accounting/work.rs", symbol = "peritus_product_runner::accounting::AccountingState::apply_work", command = "cargo verus verify --package peritus-product-runner --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "refinement-test", source_file = "crates/app/peritus-product-runner/src/budget/tests.rs", symbol = "peritus_product_runner::budget::tests::rejected_model_request_preserves_prior_usage_and_every_counter", command = "cargo test --package peritus-product-runner --all-targets --all-features --locked" },
   { kind = "refinement-test", source_file = "crates/app/peritus-product-runner/src/budget/tests.rs", symbol = "peritus_product_runner::budget::tests::work_events_accumulate_without_a_successful_role_outcome", command = "cargo test --package peritus-product-runner --all-targets --all-features --locked" },
 ]

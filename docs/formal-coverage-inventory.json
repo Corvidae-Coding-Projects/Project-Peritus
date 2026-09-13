@@ -281,7 +281,7 @@
     "crates/tools/peritus-tools-quality/Cargo.toml": "5a40d1981c0c3f6952427599e029a99c332665faabdd9af842ea539d21737d27",
     "crates/tools/peritus-tools-shell/Cargo.toml": "1c2693e3a84bc2e349b1301d9931bfd95f9f44c4dc561bede6e6c01bc4daeb4b",
     "verification/exclusions.toml": "d5131194dfc2732002592fb1f15c7ce7d895f371e602df9f0e882dd908da1528",
-    "verification/obligations.toml": "d048a2c0fd50e64d2838885d6992aaa38e8930e1537f6a3f2b958f7876faed04",
+    "verification/obligations.toml": "6796854430d100cee4a8440f786d995f55540461cf285dbcae806d5fe0a02aeb",
     "verification/trust.toml": "ad06d8af4fc5dc5f83e305453a1efc7bbe621a6be799edb1e999920461c2e958"
   },
   "limits": [
@@ -8410,7 +8410,111 @@
       "verus_opt_in": true
     },
     "peritus-product-runner": {
-      "observed_compiler_scope": null,
+      "observed_compiler_scope": {
+        "has_solver_queries": true,
+        "package": "peritus-product-runner",
+        "queried_functions": {
+          "peritus_product_runner::accounting::AccountingError::clone": "exec",
+          "peritus_product_runner::accounting::AccountingState::apply_usage": "exec",
+          "peritus_product_runner::accounting::AccountingState::apply_work": "exec",
+          "peritus_product_runner::accounting::AccountingState::checked_usage": "exec",
+          "peritus_product_runner::accounting::AccountingState::checked_work": "exec",
+          "peritus_product_runner::accounting::AccountingState::clone": "exec",
+          "peritus_product_runner::accounting::ProductRunProgress::budget_violation": "exec",
+          "peritus_product_runner::accounting::ProductRunProgress::cached_input_tokens": "exec",
+          "peritus_product_runner::accounting::ProductRunProgress::clone": "exec",
+          "peritus_product_runner::accounting::ProductRunProgress::compactions": "exec",
+          "peritus_product_runner::accounting::ProductRunProgress::elapsed_millis": "exec",
+          "peritus_product_runner::accounting::ProductRunProgress::input_tokens": "exec",
+          "peritus_product_runner::accounting::ProductRunProgress::model_requests": "exec",
+          "peritus_product_runner::accounting::ProductRunProgress::output_tokens": "exec",
+          "peritus_product_runner::accounting::ProductRunProgress::peak_rss_bytes": "exec",
+          "peritus_product_runner::accounting::ProductRunProgress::provider_cost_microunits": "exec",
+          "peritus_product_runner::accounting::ProductRunProgress::provider_failovers": "exec",
+          "peritus_product_runner::accounting::ProductRunProgress::retries": "exec",
+          "peritus_product_runner::accounting::ProductRunProgress::tool_calls": "exec",
+          "peritus_product_runner::accounting::ProductRunProgress::total_tokens": "exec",
+          "peritus_product_runner::accounting::ProductRunProgress::usage_observations": "exec",
+          "peritus_product_runner::accounting::ProductRunProgress::workspace_bytes": "exec",
+          "peritus_product_runner::accounting::ProductRunProgress::workspace_growth_bytes": "exec",
+          "peritus_product_runner::accounting::limits::BudgetViolation::clone": "exec",
+          "peritus_product_runner::accounting::limits::PRODUCT_RUN_MAX_COST_MICROUNITS": "spec",
+          "peritus_product_runner::accounting::limits::PRODUCT_RUN_MAX_MODEL_REQUESTS": "spec",
+          "peritus_product_runner::accounting::limits::PRODUCT_RUN_MAX_PEAK_RSS_BYTES": "spec",
+          "peritus_product_runner::accounting::limits::PRODUCT_RUN_MAX_TOOL_CALLS": "spec",
+          "peritus_product_runner::accounting::limits::PRODUCT_RUN_MAX_TOTAL_TOKENS": "spec",
+          "peritus_product_runner::accounting::limits::PRODUCT_RUN_MAX_WORKSPACE_GROWTH_BYTES": "spec",
+          "peritus_product_runner::accounting::usage::UsageSnapshot::clone": "exec",
+          "peritus_product_runner::accounting::usage::UsageSnapshot::empty": "exec",
+          "peritus_product_runner::accounting::usage::replace": "exec",
+          "peritus_product_runner::accounting::work::WorkEvent::clone": "exec"
+        },
+        "registered_symbols": 2,
+        "root_targets": [
+          "peritus_product_runner"
+        ],
+        "selected_functions": [
+          "peritus_product_runner::accounting::AccountingError::clone",
+          "peritus_product_runner::accounting::AccountingState::apply_usage",
+          "peritus_product_runner::accounting::AccountingState::apply_work",
+          "peritus_product_runner::accounting::AccountingState::checked_usage",
+          "peritus_product_runner::accounting::AccountingState::checked_work",
+          "peritus_product_runner::accounting::AccountingState::clone",
+          "peritus_product_runner::accounting::AccountingState::is_usage_update_of",
+          "peritus_product_runner::accounting::AccountingState::is_work_update_of",
+          "peritus_product_runner::accounting::AccountingState::numeric_usage_fits",
+          "peritus_product_runner::accounting::AccountingState::observation_count_fits",
+          "peritus_product_runner::accounting::AccountingState::usage_fits",
+          "peritus_product_runner::accounting::AccountingState::work_fits",
+          "peritus_product_runner::accounting::ProductRunProgress::budget_violation",
+          "peritus_product_runner::accounting::ProductRunProgress::cached_input_tokens",
+          "peritus_product_runner::accounting::ProductRunProgress::clone",
+          "peritus_product_runner::accounting::ProductRunProgress::compactions",
+          "peritus_product_runner::accounting::ProductRunProgress::elapsed_millis",
+          "peritus_product_runner::accounting::ProductRunProgress::input_tokens",
+          "peritus_product_runner::accounting::ProductRunProgress::model_requests",
+          "peritus_product_runner::accounting::ProductRunProgress::output_tokens",
+          "peritus_product_runner::accounting::ProductRunProgress::peak_rss_bytes",
+          "peritus_product_runner::accounting::ProductRunProgress::provider_cost_microunits",
+          "peritus_product_runner::accounting::ProductRunProgress::provider_failovers",
+          "peritus_product_runner::accounting::ProductRunProgress::retries",
+          "peritus_product_runner::accounting::ProductRunProgress::spec_budget_violation",
+          "peritus_product_runner::accounting::ProductRunProgress::spec_cached_input_tokens",
+          "peritus_product_runner::accounting::ProductRunProgress::spec_compactions",
+          "peritus_product_runner::accounting::ProductRunProgress::spec_elapsed_millis",
+          "peritus_product_runner::accounting::ProductRunProgress::spec_input_tokens",
+          "peritus_product_runner::accounting::ProductRunProgress::spec_model_requests",
+          "peritus_product_runner::accounting::ProductRunProgress::spec_output_tokens",
+          "peritus_product_runner::accounting::ProductRunProgress::spec_peak_rss_bytes",
+          "peritus_product_runner::accounting::ProductRunProgress::spec_provider_cost_microunits",
+          "peritus_product_runner::accounting::ProductRunProgress::spec_provider_failovers",
+          "peritus_product_runner::accounting::ProductRunProgress::spec_retries",
+          "peritus_product_runner::accounting::ProductRunProgress::spec_tool_calls",
+          "peritus_product_runner::accounting::ProductRunProgress::spec_total_tokens",
+          "peritus_product_runner::accounting::ProductRunProgress::spec_usage_observations",
+          "peritus_product_runner::accounting::ProductRunProgress::spec_workspace_bytes",
+          "peritus_product_runner::accounting::ProductRunProgress::spec_workspace_growth_bytes",
+          "peritus_product_runner::accounting::ProductRunProgress::tool_calls",
+          "peritus_product_runner::accounting::ProductRunProgress::total_tokens",
+          "peritus_product_runner::accounting::ProductRunProgress::usage_observations",
+          "peritus_product_runner::accounting::ProductRunProgress::workspace_bytes",
+          "peritus_product_runner::accounting::ProductRunProgress::workspace_growth_bytes",
+          "peritus_product_runner::accounting::limits::BudgetViolation::clone",
+          "peritus_product_runner::accounting::limits::PRODUCT_RUN_MAX_COST_MICROUNITS",
+          "peritus_product_runner::accounting::limits::PRODUCT_RUN_MAX_MODEL_REQUESTS",
+          "peritus_product_runner::accounting::limits::PRODUCT_RUN_MAX_PEAK_RSS_BYTES",
+          "peritus_product_runner::accounting::limits::PRODUCT_RUN_MAX_TOOL_CALLS",
+          "peritus_product_runner::accounting::limits::PRODUCT_RUN_MAX_TOTAL_TOKENS",
+          "peritus_product_runner::accounting::limits::PRODUCT_RUN_MAX_WORKSPACE_GROWTH_BYTES",
+          "peritus_product_runner::accounting::usage::UsageSnapshot::clone",
+          "peritus_product_runner::accounting::usage::UsageSnapshot::empty",
+          "peritus_product_runner::accounting::usage::replace",
+          "peritus_product_runner::accounting::usage::replacement_fits",
+          "peritus_product_runner::accounting::work::WorkEvent::arrow_ModelRequest_retry",
+          "peritus_product_runner::accounting::work::WorkEvent::arrow_retry",
+          "peritus_product_runner::accounting::work::WorkEvent::clone"
+        ]
+      },
       "owner": "G4",
       "owning_obligations": [
         "OBL-0222",
@@ -14667,7 +14771,7 @@
           "source_file": "crates/orchestration/peritus-harness/src/materialization/planner.rs",
           "statement": "A strict E1 manifest and recursive inventory activate only checked bounded component content, and each deterministic C1 plan is confined to the exact owned target set with artifact, preimage, revision, snapshot, and rollback-reason bindings.",
           "status": "in-progress",
-          "symbol": "peritus_harness::materialization::planner::MaterializationPlan::build"
+          "symbol": "peritus_harness::materialization::plan_model::MaterializationPlan::build"
         },
         {
           "dependencies": [
@@ -15322,7 +15426,7 @@
           "source_file": "crates/state/peritus-journal/src/domain/approval_use.rs",
           "statement": "C0 adds exact approve-once consumption to an existing multi-aggregate append in one transaction; stale registry or approval-state CAS leaves every supplied aggregate head and state projection unchanged.",
           "status": "in-progress",
-          "symbol": "peritus_journal::domain::approval_use::SqliteJournal::commit_approval_use"
+          "symbol": "peritus_journal::sqlite::connection::SqliteJournal::commit_approval_use"
         },
         {
           "dependencies": [
@@ -15616,7 +15720,7 @@
           "source_file": "crates/app/peritus-app-protocol/src/subscription/transitions.rs",
           "statement": "A3 at-least-once subscriptions preserve exact event/frame identity across redelivery, enforce cumulative acknowledgement legality, make retention gaps and snapshot requirements explicit, and apply bounded backpressure without loss.",
           "status": "in-progress",
-          "symbol": "peritus_app_protocol::subscription::transitions::SubscriptionState::deliver"
+          "symbol": "peritus_app_protocol::subscription::state::SubscriptionState::deliver"
         },
         {
           "dependencies": [],
@@ -15855,7 +15959,7 @@
           "source_file": "crates/app/peritus-daemon/src/startup/runtime/runner.rs",
           "statement": "G0 startup binds one protected state root, exact C0 store identity, durable authority epoch, canonical current public credential registry, recovered workspace/process/application state, production harness pointer, outbox, and authenticated local endpoint before read-write admission.",
           "status": "in-progress",
-          "symbol": "peritus_daemon::startup::runtime::runner::DaemonRuntime::start"
+          "symbol": "peritus_daemon::startup::runtime::DaemonRuntime::start"
         },
         {
           "dependencies": [],
@@ -16519,7 +16623,7 @@
               "command": "cargo verus verify --package peritus-product-runner --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20",
               "kind": "verus-proof",
               "source_file": "crates/app/peritus-product-runner/src/accounting/usage.rs",
-              "symbol": "peritus_product_runner::accounting::usage::AccountingState::apply_usage"
+              "symbol": "peritus_product_runner::accounting::AccountingState::apply_usage"
             },
             {
               "command": "cargo test --package peritus-product-runner --all-targets --all-features --locked",
@@ -16542,7 +16646,7 @@
           "source_file": "crates/app/peritus-product-runner/src/accounting/usage.rs",
           "statement": "Product-run usage accounting atomically replaces the current response high-water contribution: success updates every usage total by exact subtraction then addition while preserving nonusage fields, and either overflow category preserves the complete accounting state with exact precedence.",
           "status": "in-progress",
-          "symbol": "peritus_product_runner::accounting::usage::AccountingState::apply_usage"
+          "symbol": "peritus_product_runner::accounting::AccountingState::apply_usage"
         },
         {
           "dependencies": [],
@@ -16583,7 +16687,7 @@
               "command": "cargo verus verify --package peritus-product-runner --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20",
               "kind": "verus-proof",
               "source_file": "crates/app/peritus-product-runner/src/accounting/work.rs",
-              "symbol": "peritus_product_runner::accounting::work::AccountingState::apply_work"
+              "symbol": "peritus_product_runner::accounting::AccountingState::apply_work"
             },
             {
               "command": "cargo test --package peritus-product-runner --all-targets --all-features --locked",
@@ -16606,7 +16710,7 @@
           "source_file": "crates/app/peritus-product-runner/src/accounting/work.rs",
           "statement": "Product-run work accounting atomically increments exactly the counters selected by each actual work event, resets only the per-response high-water snapshot when a new model request starts, preserves every unrelated field, and preserves the complete prior state if any selected counter would overflow.",
           "status": "in-progress",
-          "symbol": "peritus_product_runner::accounting::work::AccountingState::apply_work"
+          "symbol": "peritus_product_runner::accounting::AccountingState::apply_work"
         }
       ],
       "schema": "peritus.verification.obligations",
