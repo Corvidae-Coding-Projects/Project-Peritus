@@ -282,7 +282,8 @@ fn current_workspace_data_includes_are_all_resolvable() {
         "security/threat-model-v1.toml",
         "release/templates/release-inputs.template.json",
         "packaging/linux/Install-Peritus.sh",
-        ".github/workflows/formal-governance.yml",
+        "xtask/src/reproducibility/canonical/formal-authority.yml",
+        "xtask/src/reproducibility/canonical/formal-governance.yml",
         "crates/app/testing/peritus-bug-discovery/corpus/sse/basic",
     ] {
         assert!(data.contains(&root.join(relative)), "missing compiled data: {relative}");

@@ -12,6 +12,16 @@ passes. Four ordinary method locators affected by the same defect were corrected
 See the [method-mapping repair and evidence](formal-method-mapping-fix.md). No obligation was
 marked discharged; GAP-02 through GAP-08 remain open.
 
+## Follow-up: proof-impact reconciliation (2026-09-13)
+
+GAP-02 has an [exact historical pending reconciliation and final qualification procedure](formal-proof-impact-reconciliation.md): the earlier audit records 620
+source identity transitions, 66 affected packages, preserved historical approvals and provenance,
+and all 153 obligations still in progress. The next candidate enrolls the actual current owner and
+independent reviewer; all live obligations transfer current accountability while preserving status. The proposal includes 218 inherited
+protected-base discrepancies and a separate 406-transition branch comparison. The required 132
+package gates, final-candidate review, and protected-base authorization remain outstanding; the
+audit output does not claim their success.
+
 ## Completed in this pass
 
 1. **Ledger extraction errors.** `RequirementLedger::extract_preimage` now specifies the exact
@@ -66,7 +76,7 @@ checkpoint, proof exclusions, or a claim that the unreviewed remainder is infeas
 | ID | Remaining requirement | Evidence needed to close it |
 |---|---|---|
 | GAP-01 | **Closed locally by the [method-mapping repair](formal-method-mapping-fix.md).** OBL-0222 and OBL-0224 now name `accounting::AccountingState::{apply_usage,apply_work}` while retaining their implementation files. | Exact owner resolution, wrong-owner/decoy regressions, independent source review, and the strict app-runner scope gate pass. Full protected authorization and hosted qualification remain GAP-02/GAP-07/GAP-08. |
-| GAP-02 | Reconcile final proof-impact fingerprints, affected packages, actor/review provenance, and obligation statuses with the completed sources. Earlier approved transitions must remain immutable. | Actual current trust-gate success against the correct base and source-bound independent reviews. Static inventory success or refreshed hashes alone do not discharge obligations. |
+| GAP-02 | [Source accounting and provenance audit prepared; authorization remains open](formal-proof-impact-reconciliation.md). The exact pending proposal retains earlier approved transitions and all obligation statuses. | All 132 final-candidate package gates, authentic final source review, separate protected authorization and application, and actual trust-gate success against the correct base. Inventory output alone does not discharge obligations. |
 | GAP-03 | Complete scheduler command admission, cancellation/tree and worker-loss loops, whole reducer/replay/terminal composition, and termination. The cancellation draft remains unimplemented. | Contracts on production-called code, sufficient independent specifications, strict proofs, regression/caller tests, and independent review for each listed relationship. |
 | GAP-04 | Complete context selection, compaction, working-state and rendering/resume correspondence beyond the reviewed graph/reuse kernels. | Exact input/output/state relationships on the real implementations and consumers, with proofs and reviewed boundaries. |
 | GAP-05 | Finish remaining kernel/agent/protocol lifecycle composition, journal persistence/recovery, product ordering/cancellation, and end-to-end release/security qualification. | A current obligation-to-specification-to-executable-to-caller map identifying what later increments already closed; complete the remaining feasible relationships and review their exact sources. Historical audit paragraphs are not a substitute for that final map. |

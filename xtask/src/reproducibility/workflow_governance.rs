@@ -9,7 +9,7 @@ use yaml_rust2::yaml::Hash;
 
 pub(super) const PATH: &str = ".github/workflows/formal-governance.yml";
 
-const CANONICAL: &str = include_str!("../../../.github/workflows/formal-governance.yml");
+const CANONICAL: &str = include_str!("canonical/formal-governance.yml");
 const CHECKOUT: &str = "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1";
 const RUST_ACTION: &str = "dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772";
 const RUST_REFERENCE: &str = "${{ env.RUST_VERSION }}";

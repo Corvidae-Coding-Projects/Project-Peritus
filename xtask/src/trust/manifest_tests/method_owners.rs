@@ -25,6 +25,22 @@ fn accepts(source: &Path, symbol: &str) -> bool {
     diagnostics.is_empty()
 }
 
+fn accepts_repository_symbol(owning_crate: &str, source_file: &str, symbol: &str) -> bool {
+    let repository = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .expect("xtask must be inside the repository");
+    let mut diagnostics = Vec::new();
+    validate_symbol(
+        Path::new("verification/obligations.toml"),
+        "OBL-0001",
+        owning_crate,
+        Some(&repository.join(source_file)),
+        symbol,
+        &mut diagnostics,
+    );
+    diagnostics.is_empty()
+}
+
 #[test]
 fn methods_resolve_the_type_definition_instead_of_the_impl_file() {
     for header in [
@@ -48,6 +64,45 @@ fn methods_resolve_the_type_definition_instead_of_the_impl_file() {
         ] {
             assert!(!accepts(&source, wrong), "accepted {wrong} from {header}");
         }
+    }
+}
+
+#[test]
+fn protected_base_method_locators_fail_while_the_candidate_owners_resolve() {
+    for (owning_crate, source, protected_base, candidate) in [
+        (
+            "peritus-harness",
+            "crates/orchestration/peritus-harness/src/materialization/planner.rs",
+            "peritus_harness::materialization::planner::MaterializationPlan::build",
+            "peritus_harness::materialization::plan_model::MaterializationPlan::build",
+        ),
+        (
+            "peritus-journal",
+            "crates/state/peritus-journal/src/domain/approval_use.rs",
+            "peritus_journal::domain::approval_use::SqliteJournal::commit_approval_use",
+            "peritus_journal::sqlite::connection::SqliteJournal::commit_approval_use",
+        ),
+        (
+            "peritus-app-protocol",
+            "crates/app/peritus-app-protocol/src/subscription/transitions.rs",
+            "peritus_app_protocol::subscription::transitions::SubscriptionState::deliver",
+            "peritus_app_protocol::subscription::state::SubscriptionState::deliver",
+        ),
+        (
+            "peritus-daemon",
+            "crates/app/peritus-daemon/src/startup/runtime/runner.rs",
+            "peritus_daemon::startup::runtime::runner::DaemonRuntime::start",
+            "peritus_daemon::startup::runtime::DaemonRuntime::start",
+        ),
+    ] {
+        assert!(
+            !accepts_repository_symbol(owning_crate, source, protected_base),
+            "protected-base locator unexpectedly resolved: {protected_base}"
+        );
+        assert!(
+            accepts_repository_symbol(owning_crate, source, candidate),
+            "candidate locator did not resolve: {candidate}"
+        );
     }
 }
 

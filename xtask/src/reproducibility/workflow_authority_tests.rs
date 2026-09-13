@@ -23,7 +23,7 @@ const AUTHORITY_INPUTS: &[&str] = &[
 static NEXT_FIXTURE: AtomicU64 = AtomicU64::new(0);
 
 fn canonical() -> String {
-    include_str!("../../../.github/workflows/formal-authority.yml").to_owned()
+    include_str!("canonical/formal-authority.yml").to_owned()
 }
 
 #[test]

@@ -1,0 +1,10 @@
+test_existing_output_and_symlink_are_never_overwritten (__main__.ReconciliationBoundaries.test_existing_output_and_symlink_are_never_overwritten) ... ok
+test_failed_inventory_publishes_no_result_directory (__main__.ReconciliationBoundaries.test_failed_inventory_publishes_no_result_directory) ... ok
+test_full_annotated_tag_identity_is_rejected_as_a_commit (__main__.ReconciliationBoundaries.test_full_annotated_tag_identity_is_rejected_as_a_commit) ... ok
+test_materialization_preserves_raw_bytes_despite_export_substitution (__main__.ReconciliationBoundaries.test_materialization_preserves_raw_bytes_despite_export_substitution) ... ok
+test_symlink_and_excessive_tree_entries_fail_before_materialization (__main__.ReconciliationBoundaries.test_symlink_and_excessive_tree_entries_fail_before_materialization) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.627s
+
+OK

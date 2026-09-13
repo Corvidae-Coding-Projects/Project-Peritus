@@ -31,6 +31,14 @@ The checks return stable error categories and actionable diagnostics. CI and `ju
 swallow bootstrap evidence. Once the root Cargo configuration has passed policy, `cargo xtask all`
 is the equivalent developer convenience interface.
 
+An authorization-only commit preserves the comparison base's application, policy, and actor
+files. On that commit, `all` validates the immutable authorization and runs the complete local
+policy suite against its exact materialized implementation candidate. That nested candidate checks
+its actors, obligations, and trust boundaries without recursively selecting historical proof-impact
+authorization. Canonical workflow resources live under `xtask/src/reproducibility/canonical` so the
+reviewed checker builds on the unchanged base; candidate workflow bytes must still match them.
+`verify-trust` additionally enforces the externally selected review base and approved transitions.
+
 ## Focused checks
 
 `formal-inventory` renders the declared obligation, trust, and exclusion registers alongside
@@ -38,6 +46,13 @@ all formal packages and their last available local compiler-scope observations. 
 audit aid: missing observations and observed zero-query packages remain distinct, and it does
 not authorize proof discharge, assert report freshness, or establish production correspondence.
 See the [active coverage audit](../docs/formal-coverage-audit.md) for current limits and work.
+
+`proof-impact-inventory` emits raw-byte fingerprints and affected package sets using the trust
+gate's own compilation-source discovery and ownership policy. It can inspect a checkout whose
+approval inventory is stale without treating that stale manifest as authority. Its `audit-only`
+output does not approve transitions, run evidence commands, or discharge obligations. Discovery
+errors still fail the command. Compare it against the actual protected Git base and retained
+history before preparing an independently reviewed authorization.
 
 The existing `model-orchestration` build, test, and Clippy shards also run a separate
 `peritus-agent --all-targets --no-default-features` check after their normal all-feature command.

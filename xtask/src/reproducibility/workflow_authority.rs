@@ -9,7 +9,7 @@ use yaml_rust2::{Yaml, YamlLoader};
 
 pub(super) const PATH: &str = ".github/workflows/formal-authority.yml";
 
-const CANONICAL: &str = include_str!("../../../.github/workflows/formal-authority.yml");
+const CANONICAL: &str = include_str!("canonical/formal-authority.yml");
 const CHECKOUT: &str = "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1";
 const RUST_ACTION: &str = "dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772";
 const REPOSITORY: &str = "${{ github.repository }}";
