@@ -3,9 +3,9 @@
   "frontier": {
     "agents": {
       "4jyS": {
-        "sequence": 7,
-        "tip_oid": "87de025128444596cb4f4bc7e187f2216624c88f",
-        "prefix_sha256": "afbb7ca8049b43dfff02fb5fc01b0f1a520becb748890adf9c97fd9d7dcb7803"
+        "sequence": 8,
+        "tip_oid": "8d3abe3daede7300177d19da6010ecf70ca9de4f",
+        "prefix_sha256": "81e71fde95ae0e505946214dc6a4995dc1d02ba3a3b7013d8b33576281a88a20"
       },
       "6ME5": {
         "sequence": 1485,
@@ -35,7 +35,7 @@
     }
   },
   "next_display_id": 76,
-  "next_comment_id": 1573,
+  "next_comment_id": 1574,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -14665,8 +14665,17 @@
       "priority": "high",
       "created_by": "4jyS",
       "created_at": "2026-09-12T15:27:42.848160186Z",
-      "updated_at": "2026-09-13T12:28:19.472716696Z",
+      "updated_at": "2026-09-13T12:43:26.205654531Z",
       "comments": {
+        "22915443-e685-4d35-af01-b64a63201909": {
+          "display_id": 1573,
+          "author": "4jyS",
+          "content": "GAP-01 repaired in local signed checkpoint d0e4f0cf: resolves methods through unique nominal owners and explicit imports/reexports; six obligation locators corrected without status/specification/source-file changes. Independent Sol review PASS binds eight source/register hashes. Final local checks: 447 library + 3 CLI + 4 release tests pass (1 existing ignored), strict Clippy/fmt/local policy/docs/inventory pass; real strict app-runner scope passes 2 registered symbols, 34 verified, 0 errors, with all 4627 captured source files unchanged. Fresh protected verify-trust still fails on removed verified_api/progress.rs, recorded as GAP-02. Report: docs/formal-method-mapping-fix.md. No push or PR; full goal remains open.",
+          "created_at": "2026-09-13T12:43:26.199004073Z",
+          "kind": "result",
+          "signed_by": "SHA256:F4pa6Img4SKcIhtZ3zyHSwUehhPFSMjlvpf7eTU6qsE",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAge6D6FO+sYKpnSAKFLUH9UJDB0DalEbmiGhqILuP+evwAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAF9KJajd9LABuoHiW+qz0msDlW429xjsPJ/F/Ljn266ocvln6TKPUjFchRWfHURgzb5qJmKaIdmNSdROZ6nj4AQ=="
+        },
         "9b3dbe2b-a2e1-45e6-ae90-9965b35d3e52": {
           "display_id": 1571,
           "author": "4jyS",
