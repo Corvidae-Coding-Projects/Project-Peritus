@@ -3,9 +3,9 @@
   "frontier": {
     "agents": {
       "4jyS": {
-        "sequence": 17,
-        "tip_oid": "0ddfc8580fe572bc50848b2b02078cd46c5e0c43",
-        "prefix_sha256": "625ad0beb19e6a0ae2527aac15743a9a3b6cead45d58716b44c1f6e39107d717"
+        "sequence": 18,
+        "tip_oid": "b19fe95bb2a1e3591feece29e513fe1eba0547f6",
+        "prefix_sha256": "70bf15e1acde559d01b8a7887c16070d2e9e2690661dff2facf0f437ae388e45"
       },
       "6ME5": {
         "sequence": 1485,
@@ -35,7 +35,7 @@
     }
   },
   "next_display_id": 77,
-  "next_comment_id": 1580,
+  "next_comment_id": 1581,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -11318,7 +11318,18 @@
       "parent_uuid": "eb5c64d1-b12e-4ec5-8bae-6c66adc80c81",
       "created_by": "4jyS",
       "created_at": "2026-09-13T16:14:31.488687806Z",
-      "updated_at": "2026-09-13T16:14:31.488687806Z"
+      "updated_at": "2026-09-13T16:16:33.368609134Z",
+      "comments": {
+        "0606283c-fa81-4d40-add9-5a8da66e7ee2": {
+          "display_id": 1580,
+          "author": "4jyS",
+          "content": "GAP-02 execution checkpoint. GitHub application PR76 (not this local tracker) is OPEN, head41e77e5c4817bf66a0dc6ed0192b347031aa06bb, tree2902edba7095a6ebd53b02bbf6f19005193d6deb, branch feature/formal-coverage-application-75, worktree /home/doll/Project-Peritus/.worktrees/formal-coverage-application-75. Sole parent/actual landed authorization base d2730e3544035f03b25a43b19b8ab370b800939e. Authorization PR75 merged first; its side commit44b636826ad46a728fe7b90f82bd14cf2c99952a, original B8e8cbb1bcf0de9787d86c7be3d6fc1f2079f3493. Root closed draft GitHub PR74 as frozen-source checkpoint; all work is preserved in76. Closing74 was root workflow choice, not checker requirement; user asked why and received this explanation.\nExact approved candidate C3=65f16e2933b70305de865750931bb05fe9afb64d, treeae2a43f9a9b73f5fec944d39cf165a8b3ec4df20. All132 canonical commands passed (66 ordinary+66 full Verus) in formal-coverage/target/proof-impact-gates/C3; state SHA0ed72de329a5e3f1fa104e236a356303d84a063ecba4cf9d35a643823d8908eb. ACTOR5 actual owner, independent Sol5.6xhigh ACTOR6 /root/gap2_final_review issued PCR6 binding620 transitions,132 passes,3 fixed findings. All153 obligations remain in-progress. PCR1-6 and artifacts preserved; inventory3640 current sources. Applied manifest SHAe47304af30f22b39a1bc1a02bcab86104ad7df2624834e51f99d04c5246f1e06.\nApplication local fullxtask453+4+4 tests, fmt, all and verify-trust against actual d273 base PASS; logs /tmp/peritus-gap2-application-I, peer final review /tmp/peritus-gap2-final-application-review.md SHA946b742102986d818fdacd1d137b540f0e2a031413ff84b9bae81d8aec27a2ec. Git-shape helper PASS with full Isha; helper resolves HEAD in formal-coverage so always pass literalsha. Whitespace warnings only172 byte-identical historical raw evidence files; preserve their bytes. Main /home/doll/Project-Peritus unrelated message-editor feature is untouched.\nRemaining: monitor FINAL I hosted runs NativeSecurity34767713448, GateA34767713432, Foundation34767713431, Distribution34767713428, Proactive34767713412, WindowsTitle34767713411, NativeProduct34767713409. Agent /root/gap2_authorization_prepare is monitoring read-only and retains failures. Do not claim complete until ALL final I checks pass; fix actual failures without weakening checker or losing prior fixes. No source changes are currently needed. Intermediate C3/A pending runs were canceled ONLY AFTER all7 final I workflows scheduled; record /tmp/peritus-gap2-final-ci-superseded-runs.json. A deliberately preserved B source and had no-default-feature agent and H0 missing-candidate-doc/workflow failures; corresponding exact C3 jobs passed and raw comparisons retained. These are not final I passes or failures. The earlier self-imposed wait for entire intermediate matrices was explicitly relaxed due99 queued Mac jobs/five active, while final hosted qualification remains required.\nAfter final CI success, verify current develop is still exact d273, PR76 head is exact41e, merge using merge commit with exact-head guard, fetch resulting develop and verify parents/tree/source equivalence, then retain final verify-trust log with d273 as actual comparison base. Preserve maintainer self-merge; do not deploy GitHub rules or change main. Develop is not protected: local exact-base trust pass does not close GAP07 hosted authority. Broader proof goal and GAP03-08 remain open. Record final results and close only this continuation subissue with --no-changelog; do not close full parent75 or mark paused broad /goal complete.",
+          "created_at": "2026-09-13T16:16:33.362612626Z",
+          "kind": "note",
+          "signed_by": "SHA256:F4pa6Img4SKcIhtZ3zyHSwUehhPFSMjlvpf7eTU6qsE",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAge6D6FO+sYKpnSAKFLUH9UJDB0DalEbmiGhqILuP+evwAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAg+t2+ki4fMe8Ul1RyVnvzCTC/HRfdC52Rh2j9j3xR34ANplgFscxh009mSAkKI6CiU23s2o6BBv+9mA+QxKhBA=="
+        }
+      }
     },
     "8d3b149c-50c3-4887-9973-8bea59b5f6a2": {
       "uuid": "8d3b149c-50c3-4887-9973-8bea59b5f6a2",
