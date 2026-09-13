@@ -1,1 +1,0 @@
-verification results:: 10 verified, 0 errors

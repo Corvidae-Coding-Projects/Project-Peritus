@@ -179,18 +179,9 @@ impl Fixture {
         contract: &AcceptanceContract,
         finding_id: FindingId,
     ) -> AcceptanceEvidence {
-        self.waiver_evidence_for_review(contract, finding_id, self.review_id)
-    }
-
-    pub fn waiver_evidence_for_review(
-        &self,
-        contract: &AcceptanceContract,
-        finding_id: FindingId,
-        review_id: ReviewCycleId,
-    ) -> AcceptanceEvidence {
         let request_id = ApprovalRequestId::new(bytes(92)).expect("waiver approval request");
         let review = ReviewObservation::new(
-            review_id,
+            self.review_id,
             ReviewCycleOrdinal::new(1).expect("review ordinal"),
             self.revision,
             ReviewerIdentity::new(

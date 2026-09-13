@@ -1,0 +1,45 @@
+{"candidate_commit": "65f16e2933b70305de865750931bb05fe9afb64d", "candidate_tree": "ae2a43f9a9b73f5fec944d39cf165a8b3ec4df20", "environment": {"CARGO_BUILD_JOBS": "1", "CCACHE_DISABLE": "1", "RUST_TEST_THREADS": "1"}, "gate": {"command": "cargo test --package peritus-collaboration --all-targets --all-features --locked", "invocation": ["cargo", "test", "--package", "peritus-collaboration", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "output": "013-peritus-collaboration-ordinary-test.log", "owning_crate": "peritus-collaboration", "started_at": "2026-09-13T15:17:51.281924Z"}, "plan_sha256": "7fc101b7f8284fbe3818461a8166d73d3425f369120b43c1cbf1b43809a6b7c9"}
+
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.19s
+     Running unittests src/lib.rs (target/debug/deps/peritus_collaboration-9e039b44eec755b1)
+
+running 1 test
+test wire::fixture_tests::canonical_corpus_is_exact_and_rejects_tag_and_trailing_corruption ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/cancellation_causality.rs (target/debug/deps/cancellation_causality-59738872862b0531)
+
+running 2 tests
+test cancellation_propagates_canonically_and_cannot_resurrect_success ... ok
+test pause_blocks_only_new_delegation_and_resume_restores_it ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/domain_lifecycle.rs (target/debug/deps/domain_lifecycle-113b61f498c39268)
+
+running 4 tests
+test all_required_lifecycle_message_handoff_and_finalization_are_exact ... ok
+test any_required_needs_one_declared_success_and_optional_failure_does_not_manufacture_it ... ok
+test identities_limits_and_causal_message_shape_are_checked ... ok
+test missing_required_child_wrong_owner_and_stale_reservation_are_rejected_without_transition ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/durability_restart.rs (target/debug/deps/durability_restart-fb0f3c5c4d2c596d)
+
+running 2 tests
+test exact_transition_survives_restart_and_resolves_idempotently ... ok
+test reused_command_identity_with_different_bytes_is_a_conflict ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/replay_semantics.rs (target/debug/deps/replay_semantics-854bf26671d54dce)
+
+running 1 test
+test replay_is_exact_and_rejects_empty_duplicate_and_reordered_streams ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+GATE DRIVER RESULT: {"command": "cargo test --package peritus-collaboration --all-targets --all-features --locked", "command_exit_code": 0, "elapsed_seconds": 0.315, "exit_code": 0, "finished_at": "2026-09-13T15:17:51.597111Z", "invocation": ["cargo", "test", "--package", "peritus-collaboration", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "output": "013-peritus-collaboration-ordinary-test.log", "owning_crate": "peritus-collaboration", "result": "passed", "started_at": "2026-09-13T15:17:51.281924Z"}

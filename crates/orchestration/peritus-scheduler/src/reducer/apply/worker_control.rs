@@ -45,9 +45,9 @@ pub(super) fn available(
     if state.reservations().iter().any(|reservation| reservation.worker_id() == worker_id) {
         return Err(crate::reducer::illegal("worker still owns active dispatches"));
     }
-    if !mutation::set_worker_phase(state, worker_id, WorkerPhase::Available) {
-        return Err(unknown("worker disappeared"));
-    }
+    mutation::worker_mut(state, worker_id)
+        .ok_or_else(|| unknown("worker disappeared"))?
+        .set_phase(WorkerPhase::Available);
     Ok(SchedulerEventKind::WorkerAvailable { worker_id })
 }
 
@@ -55,13 +55,12 @@ pub(super) fn drain(
     state: &mut SchedulerState,
     worker_id: WorkerId,
 ) -> Result<SchedulerEventKind, SchedulerError> {
-    let phase = state.worker(worker_id).ok_or_else(|| unknown("worker is not registered"))?.phase();
-    if !matches!(phase, WorkerPhase::Available | WorkerPhase::Busy) {
+    let worker = mutation::worker_mut(state, worker_id)
+        .ok_or_else(|| unknown("worker is not registered"))?;
+    if !matches!(worker.phase(), WorkerPhase::Available | WorkerPhase::Busy) {
         return Err(crate::reducer::illegal("worker cannot enter draining from its current phase"));
     }
-    if !mutation::set_worker_phase(state, worker_id, WorkerPhase::Draining) {
-        return Err(unknown("worker disappeared"));
-    }
+    worker.set_phase(WorkerPhase::Draining);
     Ok(SchedulerEventKind::WorkerDrainRequested { worker_id })
 }
 
@@ -77,9 +76,9 @@ pub(super) fn remove(
             "only a quiescent draining or lost worker may be removed",
         ));
     }
-    if !mutation::set_worker_phase(state, worker_id, WorkerPhase::Removed) {
-        return Err(unknown("removed worker disappeared"));
-    }
+    mutation::worker_mut(state, worker_id)
+        .ok_or_else(|| unknown("removed worker disappeared"))?
+        .set_phase(WorkerPhase::Removed);
     Ok(SchedulerEventKind::WorkerRemoved { worker_id })
 }
 

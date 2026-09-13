@@ -1,0 +1,24 @@
+{"candidate_commit": "65f16e2933b70305de865750931bb05fe9afb64d", "candidate_tree": "ae2a43f9a9b73f5fec944d39cf165a8b3ec4df20", "environment": {"CARGO_BUILD_JOBS": "1", "CCACHE_DISABLE": "1", "RUST_TEST_THREADS": "1"}, "gate": {"command": "cargo test --package peritus-security-policy --all-targets --all-features --locked", "invocation": ["cargo", "test", "--package", "peritus-security-policy", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "output": "107-peritus-security-policy-ordinary-test.log", "owning_crate": "peritus-security-policy", "started_at": "2026-09-13T15:21:49.118836Z"}, "plan_sha256": "7fc101b7f8284fbe3818461a8166d73d3425f369120b43c1cbf1b43809a6b7c9"}
+
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.16s
+     Running unittests src/lib.rs (target/debug/deps/peritus_security_policy-0710d9bf442b6af9)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/policy.rs (target/debug/deps/policy-feab0973b2ebbfbd)
+
+running 7 tests
+test any_candidate_mutation_invalidates_prior_security_evidence ... ok
+test complete_exact_candidate_is_security_ready_without_release_authority ... ok
+test every_native_probe_outcome_is_required_for_final_admission ... ok
+test every_required_security_dimension_fails_closed_when_removed ... ok
+test missing_independent_review_is_not_ready ... ok
+test resolved_high_finding_requires_remediation_and_retest_evidence ... ok
+test unresolved_high_finding_blocks_readiness ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+
+GATE DRIVER RESULT: {"command": "cargo test --package peritus-security-policy --all-targets --all-features --locked", "command_exit_code": 0, "elapsed_seconds": 0.265, "exit_code": 0, "finished_at": "2026-09-13T15:21:49.384879Z", "invocation": ["cargo", "test", "--package", "peritus-security-policy", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "output": "107-peritus-security-policy-ordinary-test.log", "owning_crate": "peritus-security-policy", "result": "passed", "started_at": "2026-09-13T15:21:49.118836Z"}

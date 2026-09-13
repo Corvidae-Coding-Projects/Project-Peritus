@@ -157,7 +157,7 @@ fn next(
         state.revision(),
     );
     let transition = state
-        .reduce(envelope, command, inputs)
+        .reduce(envelope, command.clone(), inputs)
         .into_result()
         .map_err(|error| format!("reduce command kernel transition: {error:?}"))?;
     let event = transition.event();

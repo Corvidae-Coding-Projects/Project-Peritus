@@ -1,11 +1,11 @@
 //! Private validation and deterministic policy-reduction helpers.
 
 use peritus_release_artifacts::Sha256Digest;
-use peritus_release_policy::ReleaseQualificationCheck;
 
 use crate::{
-    EvidenceDisposition, EvidenceKind, EvidenceReference, PolicyCriterionInput, QualificationError,
-    ReleasePolicyInput, SignedEvidenceRecord,
+    DeterministicReleasePolicy, EvidenceDisposition, EvidenceKind, EvidenceReference,
+    PolicyCriterionInput, PolicyDecision, QualificationError, ReleasePolicyInput,
+    SignedEvidenceRecord,
 };
 
 use super::{AcReference, Blocker, QualificationInputs, RequiredInput};
@@ -21,8 +21,7 @@ pub(super) struct PolicyDigests {
 pub(super) fn collect_records<'a>(
     inputs: &'a QualificationInputs,
     blockers: &mut Vec<Blocker>,
-) -> (Vec<&'a SignedEvidenceRecord>, ReleaseQualificationCheck) {
-    let blocker_count = blockers.len();
+) -> Vec<&'a SignedEvidenceRecord> {
     let mut records: Vec<&SignedEvidenceRecord> = inputs.evidence.iter().collect();
     if let Some(run) = &inputs.collection_run {
         records.extend(run.records());
@@ -35,15 +34,14 @@ pub(super) fn collect_records<'a>(
     } else {
         blockers.push(Blocker::MissingInput(RequiredInput::CollectionRun));
     }
-    (records, check_since(blockers, blocker_count))
+    records
 }
 
 pub(super) fn validate_required_records(
     inputs: &QualificationInputs,
     records: &[&SignedEvidenceRecord],
     blockers: &mut Vec<Blocker>,
-) -> ReleaseQualificationCheck {
-    let blocker_count = blockers.len();
+) {
     if records.iter().any(|record| record.binding() != &inputs.binding) {
         blockers.push(Blocker::BindingMismatch);
     }
@@ -63,18 +61,16 @@ pub(super) fn validate_required_records(
             blockers.push(Blocker::UnsatisfiedSignedEvidence(kind));
         }
     }
-    check_since(blockers, blocker_count)
 }
 
 pub(super) fn validate_artifact_inventory(
     inputs: &QualificationInputs,
     records: &[&SignedEvidenceRecord],
     blockers: &mut Vec<Blocker>,
-) -> Result<(Option<Sha256Digest>, ReleaseQualificationCheck), QualificationError> {
-    let blocker_count = blockers.len();
+) -> Result<Option<Sha256Digest>, QualificationError> {
     let Some(inventory) = &inputs.artifact_inventory else {
         blockers.push(Blocker::MissingInput(RequiredInput::ArtifactInventory));
-        return Ok((None, check_since(blockers, blocker_count)));
+        return Ok(None);
     };
     if inventory.binding() != &inputs.binding {
         blockers.push(Blocker::BindingMismatch);
@@ -89,18 +85,17 @@ pub(super) fn validate_artifact_inventory(
     if !record_digest_matches(records, EvidenceKind::ArtifactInventory, digest) {
         blockers.push(Blocker::ArtifactInventoryDigestMismatch);
     }
-    Ok((Some(digest), check_since(blockers, blocker_count)))
+    Ok(Some(digest))
 }
 
 pub(super) fn validate_reproducibility(
     inputs: &QualificationInputs,
     records: &[&SignedEvidenceRecord],
     blockers: &mut Vec<Blocker>,
-) -> Result<ReleaseQualificationCheck, QualificationError> {
-    let blocker_count = blockers.len();
+) -> Result<(), QualificationError> {
     let Some(comparison) = &inputs.reproducibility else {
         blockers.push(Blocker::MissingInput(RequiredInput::ReproducibilityComparison));
-        return Ok(check_since(blockers, blocker_count));
+        return Ok(());
     };
     if comparison.binding() != &inputs.binding {
         blockers.push(Blocker::BindingMismatch);
@@ -118,7 +113,7 @@ pub(super) fn validate_reproducibility(
     if !record_digest_matches(records, EvidenceKind::Reproducibility, digest) {
         blockers.push(Blocker::ReproducibilityDigestMismatch);
     }
-    Ok(check_since(blockers, blocker_count))
+    Ok(())
 }
 
 pub(super) fn available_references<'a>(
@@ -137,11 +132,10 @@ pub(super) fn validate_criterion_map(
     inputs: &QualificationInputs,
     available: &[&EvidenceReference],
     blockers: &mut Vec<Blocker>,
-) -> Result<(Option<Sha256Digest>, ReleaseQualificationCheck), QualificationError> {
-    let blocker_count = blockers.len();
+) -> Result<Option<Sha256Digest>, QualificationError> {
     let Some(map) = &inputs.criterion_map else {
         blockers.push(Blocker::MissingInput(RequiredInput::CriterionEvidenceMap));
-        return Ok((None, check_since(blockers, blocker_count)));
+        return Ok(None);
     };
     for mapping in map.mappings() {
         if mapping.evidence().iter().any(|reference| !available.contains(&reference)) {
@@ -156,18 +150,17 @@ pub(super) fn validate_criterion_map(
     }) {
         blockers.push(Blocker::CriterionMapDigestMismatch);
     }
-    Ok((Some(digest), check_since(blockers, blocker_count)))
+    Ok(Some(digest))
 }
 
 pub(super) fn validate_manifest(
     inputs: &QualificationInputs,
     available: &[&EvidenceReference],
     blockers: &mut Vec<Blocker>,
-) -> Result<(Option<Sha256Digest>, ReleaseQualificationCheck), QualificationError> {
-    let blocker_count = blockers.len();
+) -> Result<Option<Sha256Digest>, QualificationError> {
     let Some(manifest) = &inputs.evidence_manifest else {
         blockers.push(Blocker::MissingInput(RequiredInput::EvidenceManifest));
-        return Ok((None, check_since(blockers, blocker_count)));
+        return Ok(None);
     };
     if manifest.binding() != &inputs.binding {
         blockers.push(Blocker::BindingMismatch);
@@ -180,17 +173,16 @@ pub(super) fn validate_manifest(
             blockers.push(Blocker::ManifestReferenceMissing(reference.kind()));
         }
     }
-    Ok((Some(manifest.digest()?), check_since(blockers, blocker_count)))
+    Ok(Some(manifest.digest()?))
 }
 
 pub(super) fn validate_audit(
     inputs: &QualificationInputs,
     blockers: &mut Vec<Blocker>,
-) -> Result<(Option<Sha256Digest>, ReleaseQualificationCheck), QualificationError> {
-    let blocker_count = blockers.len();
+) -> Result<Option<Sha256Digest>, QualificationError> {
     let Some(audit) = &inputs.final_audit else {
         blockers.push(Blocker::MissingInput(RequiredInput::FinalAudit));
-        return Ok((None, check_since(blockers, blocker_count)));
+        return Ok(None);
     };
     if audit.binding() != &inputs.binding {
         blockers.push(Blocker::BindingMismatch);
@@ -206,22 +198,15 @@ pub(super) fn validate_audit(
     {
         blockers.push(Blocker::AuditSubjectMismatch);
     }
-    Ok((Some(audit.digest()), check_since(blockers, blocker_count)))
+    Ok(Some(audit.digest()))
 }
 
-const fn check_since(blockers: &[Blocker], previous_len: usize) -> ReleaseQualificationCheck {
-    if blockers.len() == previous_len {
-        ReleaseQualificationCheck::Satisfied
-    } else {
-        ReleaseQualificationCheck::NotSatisfied
-    }
-}
-
-pub(super) fn build_policy_input(
+pub(super) fn evaluate_policy<P: DeterministicReleasePolicy>(
     inputs: &QualificationInputs,
+    policy: &P,
     digests: PolicyDigests,
-    blockers: &[Blocker],
-) -> Option<ReleasePolicyInput> {
+    blockers: &mut Vec<Blocker>,
+) -> Option<PolicyDecision> {
     if !blockers.is_empty() {
         return None;
     }
@@ -246,14 +231,21 @@ pub(super) fn build_policy_input(
         .iter()
         .map(|mapping| PolicyCriterionInput::new(mapping.criterion(), mapping.evidence().to_vec()))
         .collect();
-    Some(ReleasePolicyInput::new(
+    let policy_input = ReleasePolicyInput::new(
         inputs.binding.clone(),
         artifact_inventory,
         evidence_manifest,
         criterion_map,
         final_audit,
         criteria,
-    ))
+    );
+    let decision = policy.evaluate(&policy_input);
+    match &decision {
+        PolicyDecision::Ready => {}
+        PolicyDecision::NotReady { .. } => blockers.push(Blocker::PolicyRejected),
+        PolicyDecision::Unavailable { .. } => blockers.push(Blocker::PolicyUnavailable),
+    }
+    Some(decision)
 }
 
 fn record_digest_matches(

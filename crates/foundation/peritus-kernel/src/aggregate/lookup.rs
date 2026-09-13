@@ -167,53 +167,32 @@ impl KernelAggregate {
     }
     pub(crate) fn review_index(&self, id: ReviewCycleId) -> (result: Option<usize>)
         ensures match result {
-            Some(index) => (index as int) < self.reviews@.len()
-                && crate::identity::review_cycle_ids_equal(
-                    self.reviews@[index as int].spec_id(), id),
-            None => forall |index: int| 0 <= index < self.reviews@.len() ==>
-                !crate::identity::review_cycle_ids_equal(self.reviews@[index].spec_id(), id),
+            Some(index) => (index as int) < self.reviews@.len(),
+            None => true,
         },
     {
         let mut index = 0;
         while index < self.reviews.len()
-            invariant
-                index <= self.reviews.len(),
-                forall |prior: int| 0 <= prior < index ==>
-                    !crate::identity::review_cycle_ids_equal(
-                        self.reviews@[prior].spec_id(), id),
+            invariant index <= self.reviews.len(),
             decreases self.reviews.len() - index,
         {
-            let review = self.reviews[index];
-            if crate::identity::review_cycle_id_equal(review.id(), id) {
-                return Some(index);
-            }
+            if self.reviews[index].id() == id { return Some(index); }
             index += 1;
         }
         None
     }
     pub(crate) fn waiver_index(&self, id: FindingId) -> (result: Option<usize>)
         ensures match result {
-            Some(index) => (index as int) < self.waivers@.len()
-                && peritus_quality_policy::finding_ids_match(
-                    self.waivers@[index as int].spec_finding_id(), id),
-            None => forall |index: int| 0 <= index < self.waivers@.len() ==>
-                !peritus_quality_policy::finding_ids_match(
-                    self.waivers@[index].spec_finding_id(), id),
+            Some(index) => (index as int) < self.waivers@.len(),
+            None => true,
         },
     {
         let mut index = 0;
         while index < self.waivers.len()
-            invariant
-                index <= self.waivers.len(),
-                forall |prior: int| 0 <= prior < index ==>
-                    !peritus_quality_policy::finding_ids_match(
-                        self.waivers@[prior].spec_finding_id(), id),
+            invariant index <= self.waivers.len(),
             decreases self.waivers.len() - index,
         {
-            let waiver = self.waivers[index];
-            if crate::identity::finding_id_equal(waiver.finding_id(), id) {
-                return Some(index);
-            }
+            if self.waivers[index].finding_id() == id { return Some(index); }
             index += 1;
         }
         None

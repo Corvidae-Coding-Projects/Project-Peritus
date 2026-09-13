@@ -2,8 +2,8 @@
 
 use crate::state::mutation;
 use crate::{
-    SchedulerError, SchedulerErrorKind, SchedulerEventKind, SchedulerState, SchedulerTerminal,
-    WorkId, WorkPhase, WorkTerminal,
+    DispatchId, SchedulerError, SchedulerErrorKind, SchedulerEventKind, SchedulerPhase,
+    SchedulerState, SchedulerTerminal, WorkId, WorkPhase, WorkTerminal,
 };
 
 pub(super) fn cancel(
@@ -40,13 +40,12 @@ pub(super) fn cancel(
     });
     for id in &affected {
         let active = state.reservations().iter().any(|reservation| reservation.work_id() == *id);
-        let updated = if active {
-            mutation::set_work_phase(state, *id, WorkPhase::Cancelling)
+        let record = mutation::work_mut(state, *id)
+            .ok_or_else(|| unknown("affected cancellation work disappeared"))?;
+        if active {
+            record.set_phase(WorkPhase::Cancelling);
         } else {
-            mutation::terminalize_work(state, *id, WorkTerminal::Cancelled)
-        };
-        if !updated {
-            return Err(unknown("affected cancellation work disappeared"));
+            record.terminalize(WorkTerminal::Cancelled);
         }
     }
     Ok(SchedulerEventKind::WorkCancelled { work_id, descendants, affected })
@@ -54,113 +53,90 @@ pub(super) fn cancel(
 
 pub(super) fn acknowledge_cancel(
     state: &mut SchedulerState,
-    command: &crate::SchedulerCommandKind,
+    dispatch_id: DispatchId,
 ) -> Result<SchedulerEventKind, SchedulerError> {
-    let crate::SchedulerCommandKind::AcknowledgeCancellation { dispatch_id } = command else {
-        return Err(crate::reducer::illegal(
-            "cancellation acknowledgement dispatcher received a different command",
-        ));
-    };
-    match mutation::apply_acknowledge_cancellation_command(state, command) {
-        mutation::AcknowledgeCancellationOutcome::Applied => {
-            Ok(SchedulerEventKind::CancellationAcknowledged { dispatch_id: *dispatch_id })
-        }
-        mutation::AcknowledgeCancellationOutcome::DispatchNotActive => {
-            Err(unknown("dispatch is not active"))
-        }
-        mutation::AcknowledgeCancellationOutcome::ReservationWorkDisappeared => {
-            Err(unknown("reservation work disappeared"))
-        }
-        mutation::AcknowledgeCancellationOutcome::WorkNotCancelling => {
-            Err(crate::reducer::illegal("dispatch work is not cancelling"))
-        }
-        mutation::AcknowledgeCancellationOutcome::CancellingWorkDisappeared => {
-            Err(unknown("cancelling work disappeared"))
-        }
-        mutation::AcknowledgeCancellationOutcome::NotAcknowledgeCancellationCommand => {
-            Err(crate::reducer::illegal(
-                "cancellation acknowledgement dispatcher received a different command",
-            ))
-        }
+    let work_id =
+        state.reservation(dispatch_id).ok_or_else(|| unknown("dispatch is not active"))?.work_id();
+    let phase =
+        state.work_item(work_id).ok_or_else(|| unknown("reservation work disappeared"))?.phase();
+    if phase != WorkPhase::Cancelling {
+        return Err(crate::reducer::illegal("dispatch work is not cancelling"));
     }
+    mutation::remove_reservation(state, dispatch_id)
+        .ok_or_else(|| unknown("cancelling reservation disappeared"))?;
+    mutation::work_mut(state, work_id)
+        .ok_or_else(|| unknown("cancelling work disappeared"))?
+        .terminalize(WorkTerminal::Cancelled);
+    Ok(SchedulerEventKind::CancellationAcknowledged { dispatch_id })
 }
 
 pub(super) fn exhaust(
     state: &mut SchedulerState,
-    command: &crate::SchedulerCommandKind,
+    work_id: WorkId,
+    cause: peritus_types::Sha256Digest,
 ) -> Result<SchedulerEventKind, SchedulerError> {
-    let crate::SchedulerCommandKind::ExhaustWork { work_id, cause_digest } = command else {
-        return Err(crate::reducer::illegal("exhaust dispatcher received a non-exhaust command"));
-    };
-    match mutation::apply_exhaust_command(state, command) {
-        mutation::ExhaustCommandOutcome::Applied => {
-            Ok(SchedulerEventKind::WorkExhausted { work_id: *work_id, cause_digest: *cause_digest })
-        }
-        mutation::ExhaustCommandOutcome::WorkNotRetained
-        | mutation::ExhaustCommandOutcome::WorkDisappeared => Err(unknown("work is not retained")),
-        mutation::ExhaustCommandOutcome::WorkNotExhaustible => {
-            Err(crate::reducer::illegal("active or terminal work cannot be explicitly exhausted"))
-        }
-        mutation::ExhaustCommandOutcome::NotExhaustCommand => {
-            Err(crate::reducer::illegal("exhaust dispatcher received a non-exhaust command"))
-        }
+    let work = mutation::work_mut(state, work_id).ok_or_else(|| unknown("work is not retained"))?;
+    if matches!(
+        work.phase(),
+        WorkPhase::Reserved | WorkPhase::Running | WorkPhase::Cancelling | WorkPhase::Terminal
+    ) {
+        return Err(crate::reducer::illegal(
+            "active or terminal work cannot be explicitly exhausted",
+        ));
     }
+    work.terminalize(WorkTerminal::Exhausted { cause_digest: cause });
+    Ok(SchedulerEventKind::WorkExhausted { work_id, cause_digest: cause })
 }
 
 pub(super) fn abandon(
     state: &mut SchedulerState,
-    command: &crate::SchedulerCommandKind,
+    dispatch_id: DispatchId,
+    cause: peritus_types::Sha256Digest,
 ) -> Result<SchedulerEventKind, SchedulerError> {
-    let crate::SchedulerCommandKind::AbandonDispatch { dispatch_id, cause_digest } = command else {
-        return Err(crate::reducer::illegal("abandonment dispatcher received a different command"));
-    };
-    match mutation::apply_abandon_command(state, command) {
-        mutation::AbandonCommandOutcome::Applied => Ok(SchedulerEventKind::DispatchAbandoned {
-            dispatch_id: *dispatch_id,
-            cause_digest: *cause_digest,
-        }),
-        mutation::AbandonCommandOutcome::DispatchNotActive => {
-            Err(unknown("dispatch is not active"))
-        }
-        mutation::AbandonCommandOutcome::WorkDisappeared => {
-            Err(unknown("abandoned work disappeared"))
-        }
-        mutation::AbandonCommandOutcome::NotAbandonCommand => {
-            Err(crate::reducer::illegal("abandonment dispatcher received a different command"))
-        }
+    let work_id =
+        state.reservation(dispatch_id).ok_or_else(|| unknown("dispatch is not active"))?.work_id();
+    mutation::remove_reservation(state, dispatch_id)
+        .ok_or_else(|| unknown("abandoned reservation disappeared"))?;
+    let work =
+        mutation::work_mut(state, work_id).ok_or_else(|| unknown("abandoned work disappeared"))?;
+    if work.phase() == WorkPhase::Cancelling {
+        work.terminalize(WorkTerminal::Cancelled);
+    } else {
+        work.terminalize(WorkTerminal::Abandoned { cause_digest: cause });
     }
+    Ok(SchedulerEventKind::DispatchAbandoned { dispatch_id, cause_digest: cause })
 }
 
-pub(super) fn scheduler_phase(
+pub(super) fn pause(state: &mut SchedulerState) -> Result<SchedulerEventKind, SchedulerError> {
+    let phase = match state.phase() {
+        SchedulerPhase::Active => SchedulerPhase::Paused,
+        SchedulerPhase::Draining => SchedulerPhase::DrainingPaused,
+        _ => return Err(crate::reducer::illegal("scheduler is already paused or terminal")),
+    };
+    mutation::set_phase(state, phase);
+    Ok(SchedulerEventKind::SchedulerPaused)
+}
+
+pub(super) fn resume(state: &mut SchedulerState) -> Result<SchedulerEventKind, SchedulerError> {
+    let phase = match state.phase() {
+        SchedulerPhase::Paused => SchedulerPhase::Active,
+        SchedulerPhase::DrainingPaused => SchedulerPhase::Draining,
+        _ => return Err(crate::reducer::illegal("scheduler is not paused")),
+    };
+    mutation::set_phase(state, phase);
+    Ok(SchedulerEventKind::SchedulerResumed)
+}
+
+pub(super) fn drain_scheduler(
     state: &mut SchedulerState,
-    command: &crate::SchedulerCommandKind,
 ) -> Result<SchedulerEventKind, SchedulerError> {
-    match mutation::apply_phase_command(state, command) {
-        mutation::PhaseCommandOutcome::Applied => match command {
-            crate::SchedulerCommandKind::PauseScheduler => Ok(SchedulerEventKind::SchedulerPaused),
-            crate::SchedulerCommandKind::ResumeScheduler => {
-                Ok(SchedulerEventKind::SchedulerResumed)
-            }
-            crate::SchedulerCommandKind::DrainScheduler => {
-                Ok(SchedulerEventKind::SchedulerDrainRequested)
-            }
-            _ => Err(crate::reducer::illegal(
-                "scheduler phase dispatcher received a non-phase command",
-            )),
-        },
-        mutation::PhaseCommandOutcome::IllegalPause => {
-            Err(crate::reducer::illegal("scheduler is already paused or terminal"))
-        }
-        mutation::PhaseCommandOutcome::IllegalResume => {
-            Err(crate::reducer::illegal("scheduler is not paused"))
-        }
-        mutation::PhaseCommandOutcome::IllegalDrain => {
-            Err(crate::reducer::illegal("scheduler is already draining"))
-        }
-        mutation::PhaseCommandOutcome::NotPhaseCommand => {
-            Err(crate::reducer::illegal("scheduler phase dispatcher received a non-phase command"))
-        }
-    }
+    let phase = match state.phase() {
+        SchedulerPhase::Active => SchedulerPhase::Draining,
+        SchedulerPhase::Paused => SchedulerPhase::DrainingPaused,
+        _ => return Err(crate::reducer::illegal("scheduler is already draining")),
+    };
+    mutation::set_phase(state, phase);
+    Ok(SchedulerEventKind::SchedulerDrainRequested)
 }
 
 pub(super) fn finalize(state: &mut SchedulerState) -> Result<SchedulerEventKind, SchedulerError> {

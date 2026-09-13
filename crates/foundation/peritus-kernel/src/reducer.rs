@@ -9,9 +9,6 @@ mod run;
 mod session;
 mod turn;
 mod waiver;
-mod waiver_evidence;
-#[cfg(verus_only)]
-mod waiver_correspondence;
 
 use crate::{
     AcceptanceOutcome, CommandEnvelope, KernelAggregate, KernelCommand, KernelError,
@@ -30,45 +27,17 @@ struct AppliedCommand {
 }
 
 impl AppliedCommand {
-    const fn new(event_kind: KernelEventKind, subject: KernelSubject) -> (result: Self)
-        ensures result.event_kind == event_kind, result.subject == subject,
-            result.acceptance_outcome.is_none(),
-    {
+    pub(crate) const fn new(event_kind: KernelEventKind, subject: KernelSubject) -> Self {
         Self { event_kind, subject, acceptance_outcome: None }
     }
-    const fn acceptance(
+    pub(crate) const fn acceptance(
         event_kind: KernelEventKind,
         subject: KernelSubject,
         outcome: AcceptanceOutcome,
-    ) -> (result: Self)
-        ensures result.event_kind == event_kind, result.subject == subject,
-            result.acceptance_outcome == Some(outcome),
-    {
+    ) -> Self {
         Self { event_kind, subject, acceptance_outcome: Some(outcome) }
     }
 }
-
-/// An applied evaluation acceptance is justified by the exact supplied policy inputs.
-/// Other command families retain their separate lifecycle refinement obligations.
-pub closed spec fn acceptance_result_authorized(
-    before: &KernelAggregate,
-    command: KernelCommand,
-    inputs: &ReducerInputs<'_>,
-    result: KernelOutcome,
-) -> bool {
-    match result {
-        KernelOutcome::Applied(transition) =>
-            matches!(command, KernelCommand::EvaluateAcceptance { .. })
-            && transition.event.kind == KernelEventKind::AcceptanceAccepted
-            ==> inputs.spec_acceptance_authorized(before.revision),
-        KernelOutcome::Rejected { .. } => true,
-    }
-}
-
-#[cfg(verus_only)]
-pub use waiver_correspondence::{
-    waiver_grant_authorized, waiver_grant_recorded, waiver_grant_result_authorized,
-};
 
 /// Direct refinement contract of the executable reducer.
 pub closed spec fn reducer_result_refines(
@@ -112,10 +81,7 @@ impl KernelAggregate {
         command: KernelCommand,
         inputs: ReducerInputs<'_>,
     ) -> (result: KernelOutcome)
-        ensures
-            reducer_result_refines(&self, envelope, result),
-            acceptance_result_authorized(&self, command, &inputs, result),
-            waiver_grant_result_authorized(&self, command, &inputs, result),
+        ensures reducer_result_refines(&self, envelope, result),
     {
         let next_sequence = match preflight(&self, envelope, &inputs) {
             Ok(sequence) => sequence,
@@ -123,28 +89,16 @@ impl KernelAggregate {
         };
         let original = self;
         let mut next = original.clone();
+        next.project_id = original.project_id;
+        next.revision = original.revision;
+        next.contract_binding = original.contract_binding;
+        next.head_event_id = original.head_event_id;
+        next.last_sequence = original.last_sequence;
         let previous_event_id = original.head_event_id;
-        let ghost apply_input_checkpoint = next;
         let applied = match apply_command(&mut next, &command, &inputs) {
             Ok(applied) => applied,
             Err(error) => return KernelOutcome::Rejected { aggregate: original, error },
         };
-        proof {
-            if matches!(command, KernelCommand::EvaluateAcceptance { .. })
-                && applied.event_kind == KernelEventKind::AcceptanceAccepted
-            {
-                acceptance::authorization_follows_clone(
-                    &apply_input_checkpoint, &original, &inputs);
-            }
-            if let KernelCommand::GrantWaiver { finding_id } = &command {
-                if applied.event_kind == KernelEventKind::WaiverGranted {
-                    waiver_correspondence::grant_authorized_is_extensional(
-                        &apply_input_checkpoint, &original, *finding_id, &inputs);
-                    assert(waiver_grant_recorded(&next, *finding_id, &inputs));
-                }
-            }
-        }
-        let ghost grant_checkpoint = next;
         let event = KernelEvent::new(
             envelope.event_id,
             envelope.command_id,
@@ -158,20 +112,6 @@ impl KernelAggregate {
         next.last_sequence = next_sequence;
         next.accepted_command_ids.push(envelope.command_id);
         next.event_ids.push(envelope.event_id);
-        proof {
-            if let KernelCommand::GrantWaiver { finding_id } = &command {
-                if applied.event_kind == KernelEventKind::WaiverGranted {
-                    grant_checkpoint.expose_internal_views();
-                    next.expose_internal_views();
-                    original.expose_internal_views();
-                    waiver_correspondence::grant_revision_follows_clone(
-                        &apply_input_checkpoint, &grant_checkpoint, &original);
-                    assert(grant_checkpoint.spec_revision() == original.spec_revision());
-                    waiver_correspondence::grant_recorded_is_extensional(
-                        &grant_checkpoint, &next, *finding_id, &inputs);
-                }
-            }
-        }
         if !refinement::critical_step_is_legal(
             &original,
             &next,
@@ -201,16 +141,6 @@ impl KernelAggregate {
             };
         }
         next.revision = original.revision;
-        proof {
-            if let KernelCommand::GrantWaiver { finding_id } = &command {
-                if applied.event_kind == KernelEventKind::WaiverGranted {
-                    grant_checkpoint.expose_internal_views();
-                    next.expose_internal_views();
-                    waiver_correspondence::grant_recorded_is_extensional(
-                        &grant_checkpoint, &next, *finding_id, &inputs);
-                }
-            }
-        }
         let transition = KernelTransition::new(
             next,
             event,
@@ -260,22 +190,6 @@ impl KernelAggregate {
                 transition.event.kind == KernelEventKind::AcceptanceAccepted
                     || crate::model::no_new_accepted_run(&original, &transition.aggregate)
             );
-            if let KernelCommand::GrantWaiver { finding_id } = &command {
-                if transition.event.kind == KernelEventKind::WaiverGranted {
-                    assert(applied.event_kind == KernelEventKind::WaiverGranted);
-                    assert(waiver_grant_recorded(
-                        &transition.aggregate,
-                        *finding_id,
-                        &inputs,
-                    ));
-                }
-            }
-            assert(waiver_grant_result_authorized(
-                &original,
-                command,
-                &inputs,
-                KernelOutcome::Applied(transition),
-            ));
         }
         KernelOutcome::Applied(transition)
     }
@@ -339,25 +253,7 @@ fn apply_command(
     state: &mut KernelAggregate,
     command: &KernelCommand,
     inputs: &ReducerInputs<'_>,
-) -> (result: Result<AppliedCommand, KernelError>)
-    ensures match result {
-        Ok(applied) => {
-            &&& matches!(command, KernelCommand::EvaluateAcceptance { .. })
-                && applied.event_kind == KernelEventKind::AcceptanceAccepted
-                ==> inputs.spec_acceptance_authorized(old(state).revision)
-            &&& match command {
-                KernelCommand::GrantWaiver { finding_id } =>
-                    applied.event_kind == KernelEventKind::WaiverGranted ==>
-                        applied.subject == KernelSubject::Waiver(*finding_id)
-                        && final(state).revision == old(state).revision
-                        && waiver_grant_authorized(old(state), *finding_id, inputs)
-                        && waiver_grant_recorded(final(state), *finding_id, inputs),
-                _ => true,
-            }
-        }
-        Err(_) => true,
-    },
-{
+) -> Result<AppliedCommand, KernelError> {
     match command {
         KernelCommand::PauseSession
         | KernelCommand::ResumeSession

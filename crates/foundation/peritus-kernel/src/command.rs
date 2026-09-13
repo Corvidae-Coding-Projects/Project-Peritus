@@ -52,7 +52,7 @@ pub enum KernelCommandKind {
 }
 
 /// Complete requests understood by the lifecycle kernel.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum KernelCommand {
     PauseSession,
     ResumeSession,

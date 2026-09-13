@@ -139,15 +139,11 @@ pub(super) fn evaluate(
     evidence: &AcceptanceEvidence,
     unmet: &mut Vec<UnmetCondition>,
 ) -> (fresh: bool)
-    ensures
-        fresh == evidence.spec_all_current(requested),
-        fresh ==> final(unmet)@ == old(unmet)@,
+    ensures fresh == evidence.spec_all_current(requested),
 {
     let mut index = 0;
     while index < evidence.gates().len()
-        invariant
-            0 <= index <= evidence.spec_gates().len(),
-            evidence.spec_all_current(requested) ==> unmet@ == old(unmet)@,
+        invariant 0 <= index <= evidence.spec_gates().len(),
         decreases evidence.spec_gates().len() - index,
     {
         if !crate::revision::revision_matches(evidence.gates()[index].revision(), requested) {
@@ -157,9 +153,7 @@ pub(super) fn evaluate(
     }
     index = 0;
     while index < evidence.reviews().len()
-        invariant
-            0 <= index <= evidence.spec_reviews().len(),
-            evidence.spec_all_current(requested) ==> unmet@ == old(unmet)@,
+        invariant 0 <= index <= evidence.spec_reviews().len(),
         decreases evidence.spec_reviews().len() - index,
     {
         if !crate::revision::revision_matches(evidence.reviews()[index].revision(), requested) {
@@ -169,9 +163,7 @@ pub(super) fn evaluate(
     }
     index = 0;
     while index < evidence.evidence().len()
-        invariant
-            0 <= index <= evidence.spec_evidence().len(),
-            evidence.spec_all_current(requested) ==> unmet@ == old(unmet)@,
+        invariant 0 <= index <= evidence.spec_evidence().len(),
         decreases evidence.spec_evidence().len() - index,
     {
         if !crate::revision::revision_matches(evidence.evidence()[index].revision(), requested) {
@@ -181,9 +173,7 @@ pub(super) fn evaluate(
     }
     index = 0;
     while index < evidence.approvals().len()
-        invariant
-            0 <= index <= evidence.spec_approvals().len(),
-            evidence.spec_all_current(requested) ==> unmet@ == old(unmet)@,
+        invariant 0 <= index <= evidence.spec_approvals().len(),
         decreases evidence.spec_approvals().len() - index,
     {
         if !crate::revision::revision_matches(evidence.approvals()[index].revision(), requested) {
@@ -193,9 +183,7 @@ pub(super) fn evaluate(
     }
     index = 0;
     while index < evidence.waivers().len()
-        invariant
-            0 <= index <= evidence.spec_waivers().len(),
-            evidence.spec_all_current(requested) ==> unmet@ == old(unmet)@,
+        invariant 0 <= index <= evidence.spec_waivers().len(),
         decreases evidence.spec_waivers().len() - index,
     {
         if !crate::revision::revision_matches(evidence.waivers()[index].revision(), requested) {

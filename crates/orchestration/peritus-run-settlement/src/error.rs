@@ -32,18 +32,11 @@ pub struct SettlementError {
 }
 
 impl SettlementError {
-    /// Logical view of the stable rejection category.
-    pub closed spec fn spec_kind(&self) -> SettlementErrorKind { self.kind }
-
-    pub(crate) const fn new(kind: SettlementErrorKind) -> (error: Self)
-        ensures error.spec_kind() == kind,
-    { Self { kind } }
+    pub(crate) const fn new(kind: SettlementErrorKind) -> Self { Self { kind } }
 
     /// Returns the stable failure category.
     #[must_use]
-    pub const fn kind(&self) -> (kind: SettlementErrorKind)
-        ensures kind == self.spec_kind(),
-    { self.kind }
+    pub const fn kind(&self) -> SettlementErrorKind { self.kind }
 }
 
 } // verus!

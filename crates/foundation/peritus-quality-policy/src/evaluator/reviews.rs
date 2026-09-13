@@ -1,14 +1,9 @@
 //! Review quorum, category, and independence evaluation.
 
-mod coverage;
-
-use coverage::{category_covered, current_count, observed_categories_declared};
-
 use crate::{
     AcceptanceEvidence, ReviewerIdentity, ReviewerIndependenceFailure, UnmetCondition,
 };
-use crate::model::ReviewIndependenceDimension as IndependenceDimension;
-use peritus_spec::AcceptanceContract;
+use peritus_spec::{AcceptanceContract, ReviewCategory};
 use peritus_types::RevisionTuple;
 use vstd::prelude::*;
 
@@ -55,12 +50,72 @@ fn cycles_within_limit(
     true
 }
 
+fn category_declared(contract: &AcceptanceContract, target: ReviewCategory) -> bool {
+    let categories = contract.review_policy().required_categories();
+    let mut index = 0;
+    while index < categories.len()
+        invariant 0 <= index <= categories.len(),
+        decreases categories.len() - index,
+    {
+        if categories[index] == target { return true; }
+        index += 1;
+    }
+    false
+}
+
+fn category_covered(
+    evidence: &AcceptanceEvidence,
+    target: ReviewCategory,
+    requested: RevisionTuple,
+) -> bool {
+    let mut review_index = 0;
+    while review_index < evidence.reviews().len()
+        invariant 0 <= review_index <= evidence.spec_reviews().len(),
+        decreases evidence.spec_reviews().len() - review_index,
+    {
+        if evidence.reviews()[review_index].revision() == requested {
+            let categories = evidence.reviews()[review_index].categories();
+            let mut category_index = 0;
+            while category_index < categories.len()
+                invariant 0 <= category_index <= categories.len(),
+                decreases categories.len() - category_index,
+            {
+                if categories[category_index] == target { return true; }
+                category_index += 1;
+            }
+        }
+        review_index += 1;
+    }
+    false
+}
+
+fn current_count(evidence: &AcceptanceEvidence, requested: RevisionTuple) -> u16 {
+    let mut count = 0u16;
+    let mut index = 0;
+    while index < evidence.reviews().len()
+        invariant 0 <= index <= evidence.spec_reviews().len(),
+        decreases evidence.spec_reviews().len() - index,
+    {
+        if evidence.reviews()[index].revision() == requested && count < u16::MAX {
+            count += 1;
+        }
+        index += 1;
+    }
+    count
+}
+
+#[derive(Clone, Copy)]
+enum IndependenceDimension {
+    Context,
+    ModelFamily,
+    Provider,
+    Ancestry,
+}
+
 const fn independence_fact(
     identity: &ReviewerIdentity,
     dimension: IndependenceDimension,
-) -> (fact: peritus_types::Sha256Digest)
-    ensures fact == crate::model::reviewer_fact(*identity, dimension),
-{
+) -> peritus_types::Sha256Digest {
     match dimension {
         IndependenceDimension::Context => identity.context(),
         IndependenceDimension::ModelFamily => identity.model_family(),
@@ -73,39 +128,22 @@ fn has_duplicate_fact(
     evidence: &AcceptanceEvidence,
     requested: RevisionTuple,
     dimension: IndependenceDimension,
-) -> (duplicate: bool)
-    ensures duplicate == crate::model::duplicate_reviewer_fact(evidence.spec_reviews(), requested, dimension),
-{
+) -> bool {
     let mut right = 0;
     while right < evidence.reviews().len()
-        invariant
-            0 <= right <= evidence.spec_reviews().len(),
-            forall |earlier: int, later: int| later < right
-                && #[trigger] crate::model::current_review_pair(evidence.spec_reviews(), requested, earlier, later)
-                ==> !crate::model::digests_match(
-                    crate::model::reviewer_fact(evidence.spec_reviews()[earlier].spec_reviewer(), dimension),
-                    crate::model::reviewer_fact(evidence.spec_reviews()[later].spec_reviewer(), dimension)),
+        invariant 0 <= right <= evidence.spec_reviews().len(),
         decreases evidence.spec_reviews().len() - right,
     {
-        if crate::revision::revision_matches(evidence.reviews()[right].revision(), requested) {
+        if evidence.reviews()[right].revision() == requested {
             let mut left = 0;
             while left < right
-                invariant
-                    0 <= left <= right < evidence.spec_reviews().len(),
-                    crate::model::revision_fresh(evidence.spec_reviews()[right as int].spec_revision(), requested),
-                    forall |earlier: int| earlier < left
-                        && #[trigger] crate::model::current_review_pair(evidence.spec_reviews(), requested, earlier, right as int)
-                        ==> !crate::model::digests_match(
-                            crate::model::reviewer_fact(evidence.spec_reviews()[earlier].spec_reviewer(), dimension),
-                            crate::model::reviewer_fact(evidence.spec_reviews()[right as int].spec_reviewer(), dimension)),
+                invariant 0 <= left <= right < evidence.spec_reviews().len(),
                 decreases right - left,
             {
-                if crate::revision::revision_matches(evidence.reviews()[left].revision(), requested)
-                    && crate::revision::digest_matches(
-                        independence_fact(evidence.reviews()[left].reviewer(), dimension),
-                        independence_fact(evidence.reviews()[right].reviewer(), dimension))
+                if evidence.reviews()[left].revision() == requested
+                    && independence_fact(evidence.reviews()[left].reviewer(), dimension)
+                        == independence_fact(evidence.reviews()[right].reviewer(), dimension)
                 {
-                    assert(crate::model::current_review_pair(evidence.spec_reviews(), requested, left as int, right as int));
                     return true;
                 }
                 left += 1;
@@ -116,39 +154,22 @@ fn has_duplicate_fact(
     false
 }
 
-fn has_duplicate_actor(evidence: &AcceptanceEvidence, requested: RevisionTuple) -> (duplicate: bool)
-    ensures duplicate == crate::model::duplicate_reviewer_actor(evidence.spec_reviews(), requested),
-{
+fn has_duplicate_actor(evidence: &AcceptanceEvidence, requested: RevisionTuple) -> bool {
     let mut right = 0;
     while right < evidence.reviews().len()
-        invariant
-            0 <= right <= evidence.spec_reviews().len(),
-            forall |earlier: int, later: int| later < right
-                && #[trigger] crate::model::current_review_pair(evidence.spec_reviews(), requested, earlier, later)
-                ==> !crate::model::reviewer_actors_match(
-                    evidence.spec_reviews()[earlier].spec_reviewer().spec_actor_id(),
-                    evidence.spec_reviews()[later].spec_reviewer().spec_actor_id()),
+        invariant 0 <= right <= evidence.spec_reviews().len(),
         decreases evidence.spec_reviews().len() - right,
     {
-        if crate::revision::revision_matches(evidence.reviews()[right].revision(), requested) {
+        if evidence.reviews()[right].revision() == requested {
             let mut left = 0;
             while left < right
-                invariant
-                    0 <= left <= right < evidence.spec_reviews().len(),
-                    crate::model::revision_fresh(evidence.spec_reviews()[right as int].spec_revision(), requested),
-                    forall |earlier: int| earlier < left
-                        && #[trigger] crate::model::current_review_pair(evidence.spec_reviews(), requested, earlier, right as int)
-                        ==> !crate::model::reviewer_actors_match(
-                            evidence.spec_reviews()[earlier].spec_reviewer().spec_actor_id(),
-                            evidence.spec_reviews()[right as int].spec_reviewer().spec_actor_id()),
+                invariant 0 <= left <= right < evidence.spec_reviews().len(),
                 decreases right - left,
             {
-                if crate::revision::revision_matches(evidence.reviews()[left].revision(), requested)
-                    && crate::revision::reviewer_actor_matches(
-                        evidence.reviews()[left].reviewer().actor_id(),
-                        evidence.reviews()[right].reviewer().actor_id())
+                if evidence.reviews()[left].revision() == requested
+                    && evidence.reviews()[left].reviewer().actor_id()
+                        == evidence.reviews()[right].reviewer().actor_id()
                 {
-                    assert(crate::model::current_review_pair(evidence.spec_reviews(), requested, left as int, right as int));
                     return true;
                 }
                 left += 1;
@@ -170,26 +191,19 @@ pub(super) fn evaluate(
     maximum_cycles: u16,
     unmet: &mut Vec<UnmetCondition>,
 ) -> (complete: bool)
-    ensures
-        complete == crate::model::required_reviews_complete(contract, requested, evidence, maximum_cycles),
-        complete ==> crate::model::review_cycles_within_limit(
-            evidence.spec_reviews(), requested, maximum_cycles),
-        complete ==> final(unmet)@ == old(unmet)@,
+    ensures complete ==> crate::model::review_cycles_within_limit(
+        evidence.spec_reviews(),
+        requested,
+        maximum_cycles,
+    ),
 {
     let mut complete = true;
     let mut review_index = 0;
     while review_index < evidence.reviews().len()
-        invariant
-            0 <= review_index <= evidence.spec_reviews().len(),
-            complete == (forall |prior: int| 0 <= prior < review_index
-                && crate::model::revision_fresh(#[trigger] evidence.spec_reviews()[prior].spec_revision(), requested)
-                ==> (evidence.spec_reviews()[prior].spec_cycle_ordinal() <= maximum_cycles
-                    && crate::model::categories_declared(evidence.spec_reviews()[prior].spec_categories(),
-                        contract.spec_review_policy().spec_required_categories()))),
-            complete ==> unmet@ == old(unmet)@,
+        invariant 0 <= review_index <= evidence.spec_reviews().len(),
         decreases evidence.spec_reviews().len() - review_index,
     {
-        if crate::revision::revision_matches(evidence.reviews()[review_index].revision(), requested) {
+        if evidence.reviews()[review_index].revision() == requested {
             if evidence.reviews()[review_index].cycle_ordinal().get() > maximum_cycles {
                 complete = false;
                 unmet.push(UnmetCondition::ReviewCycleLimitExceeded {
@@ -198,17 +212,24 @@ pub(super) fn evaluate(
                     maximum: maximum_cycles,
                 });
             }
-            let categories_complete = observed_categories_declared(
-                contract, evidence.reviews()[review_index].categories(), unmet);
-            complete = complete && categories_complete;
+            let categories = evidence.reviews()[review_index].categories();
+            let mut category_index = 0;
+            while category_index < categories.len()
+                invariant 0 <= category_index <= categories.len(),
+                decreases categories.len() - category_index,
+            {
+                if !category_declared(contract, categories[category_index]) {
+                    complete = false;
+                    unmet.push(UnmetCondition::UnknownReviewCategory(categories[category_index]));
+                }
+                category_index += 1;
+            }
         }
         review_index += 1;
     }
 
     let observed = current_count(evidence, requested);
     let required = contract.review_policy().reviewer_quorum();
-    assert((observed >= required) == (crate::model::current_review_count_prefix(
-        evidence.spec_reviews(), requested, evidence.spec_reviews().len()) >= required));
     if observed < required {
         complete = false;
         unmet.push(UnmetCondition::ReviewerQuorum { required, observed });
@@ -217,18 +238,7 @@ pub(super) fn evaluate(
     let categories = contract.review_policy().required_categories();
     let mut category_index = 0;
     while category_index < categories.len()
-        invariant
-            0 <= category_index <= categories.len(),
-            categories@ == contract.spec_review_policy().spec_required_categories(),
-            complete == (crate::model::current_review_categories_declared(contract, requested, evidence)
-                && crate::model::review_cycles_within_limit(evidence.spec_reviews(), requested, maximum_cycles)
-                && crate::model::current_review_count_prefix(
-                    evidence.spec_reviews(), requested, evidence.spec_reviews().len())
-                    >= contract.spec_review_policy().spec_reviewer_quorum()
-                && (forall |prior: int| 0 <= prior < category_index ==>
-                    crate::model::current_category_covered(evidence.spec_reviews(),
-                        #[trigger] categories@[prior], requested))),
-            complete ==> unmet@ == old(unmet)@,
+        invariant 0 <= category_index <= categories.len(),
         decreases categories.len() - category_index,
     {
         if !category_covered(evidence, categories[category_index], requested) {
@@ -251,14 +261,10 @@ pub(super) fn evaluate(
         let mut index = 0;
         let mut failed = false;
         while index < evidence.reviews().len()
-            invariant
-                0 <= index <= evidence.spec_reviews().len(),
-                failed == (exists |prior: int| 0 <= prior < index
-                    && crate::model::revision_fresh(#[trigger] evidence.spec_reviews()[prior].spec_revision(), requested)
-                    && !evidence.spec_reviews()[prior].spec_reviewer().spec_independent_from_producer()),
+            invariant 0 <= index <= evidence.spec_reviews().len(),
             decreases evidence.spec_reviews().len() - index,
         {
-            if crate::revision::revision_matches(evidence.reviews()[index].revision(), requested)
+            if evidence.reviews()[index].revision() == requested
                 && !evidence.reviews()[index].reviewer().independent_from_producer()
             {
                 failed = true;

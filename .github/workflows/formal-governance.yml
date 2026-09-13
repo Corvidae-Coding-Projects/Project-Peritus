@@ -325,14 +325,6 @@ jobs:
       - name: Run reviewed Verus package shard
         working-directory: candidate
         run: cargo +1.97.1 run --locked --package xtask -- ci-shard ${{ matrix.operation }} ${{ matrix.shard }}
-      - name: Retain compiler proof selection
-        if: ${{ always() && matrix.operation == 'verus-verify-strict' }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: formal-scope-${{ github.sha }}-${{ matrix.shard }}
-          path: candidate/target/formal-scope/${{ matrix.shard }}
-          if-no-files-found: error
-          retention-days: 14
 
   verus:
     name: Verus

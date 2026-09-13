@@ -1,0 +1,29 @@
+{"candidate_commit": "65f16e2933b70305de865750931bb05fe9afb64d", "candidate_tree": "ae2a43f9a9b73f5fec944d39cf165a8b3ec4df20", "environment": {"CARGO_BUILD_JOBS": "1", "CCACHE_DISABLE": "1", "RUST_TEST_THREADS": "1"}, "gate": {"command": "cargo test --package peritus-tool-protocol --all-targets --all-features --locked", "invocation": ["cargo", "test", "--package", "peritus-tool-protocol", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "output": "115-peritus-tool-protocol-ordinary-test.log", "owning_crate": "peritus-tool-protocol", "started_at": "2026-09-13T15:21:52.776930Z"}, "plan_sha256": "7fc101b7f8284fbe3818461a8166d73d3425f369120b43c1cbf1b43809a6b7c9"}
+
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.16s
+     Running unittests src/lib.rs (target/debug/deps/peritus_tool_protocol-bc1e3ae4f900c4de)
+
+running 1 test
+test verified::tests::bounds_reject_each_missing_fact ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/protocol_envelopes.rs (target/debug/deps/protocol_envelopes-c8edb752ef0223ef)
+
+running 11 tests
+test canonical_json_and_schema_fixtures_are_byte_stable ... ok
+test canonical_json_rejects_duplicate_keys_at_every_depth ... ok
+test common_envelope_decoder_enforces_transport_bounds_and_header ... ok
+test complete_schema_validation_rejects_wrong_and_extra_values ... ok
+test descriptor_and_prepared_generation_is_deterministic ... ok
+test every_public_envelope_has_stable_versioned_bytes ... ok
+test json_limit_construction_can_only_narrow_production_ceilings ... ok
+test progress_and_terminal_output_enforce_narrowed_call_bounds ... ok
+test protocol_error_rejects_an_over_limit_path ... ok
+test recursive_schema_error_paths_are_utf8_safely_bounded ... ok
+test schema_compatibility_allows_only_additive_optional_properties ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+GATE DRIVER RESULT: {"command": "cargo test --package peritus-tool-protocol --all-targets --all-features --locked", "command_exit_code": 0, "elapsed_seconds": 0.265, "exit_code": 0, "finished_at": "2026-09-13T15:21:53.043110Z", "invocation": ["cargo", "test", "--package", "peritus-tool-protocol", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "output": "115-peritus-tool-protocol-ordinary-test.log", "owning_crate": "peritus-tool-protocol", "result": "passed", "started_at": "2026-09-13T15:21:52.776930Z"}

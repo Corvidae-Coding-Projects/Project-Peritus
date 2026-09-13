@@ -2,11 +2,6 @@
 
 use crate::{AgentErrorCode, AgentOperation, AgentRecovery, AgentRejection, SafeText};
 use peritus_types::{EvidenceId, RevisionTuple, Sha256Digest};
-use vstd::prelude::*;
-
-mod clone_impl;
-
-verus! {
 
 /// Exact evidence identity and the revision at which it was observed.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -14,8 +9,6 @@ pub struct EvidenceReference {
     id: EvidenceId,
     revision: RevisionTuple,
 }
-
-} // verus!
 
 impl EvidenceReference {
     #[must_use]
@@ -32,8 +25,6 @@ impl EvidenceReference {
     }
 }
 
-verus! {
-
 /// Requested orchestration action. This is data, never authority to perform it.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum CompletionRequest {
@@ -44,10 +35,6 @@ pub enum CompletionRequest {
     ReportBlocked,
 }
 
-} // verus!
-
-verus! {
-
 /// Digests of the exact context, model response, and ordered tool transcript.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct TranscriptDigests {
@@ -55,8 +42,6 @@ pub struct TranscriptDigests {
     model: Sha256Digest,
     tools: Sha256Digest,
 }
-
-} // verus!
 
 impl TranscriptDigests {
     #[must_use]
@@ -77,10 +62,8 @@ impl TranscriptDigests {
     }
 }
 
-verus! {
-
 /// Bounded proposal emitted by a completed agent turn.
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct CompletionProposal {
     summary: SafeText,
     evidence: Vec<EvidenceReference>,
@@ -89,8 +72,6 @@ pub struct CompletionProposal {
     transcripts: TranscriptDigests,
     requested: CompletionRequest,
 }
-
-} // verus!
 
 impl CompletionProposal {
     pub const MAX_EVIDENCE: usize = 1_024;

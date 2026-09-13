@@ -16,7 +16,6 @@ mod tool_executor;
 mod types;
 mod usage;
 
-pub use crate::usage::DeveloperUsage;
 pub use accounting::DeveloperAccountingEvent;
 pub use context_port::{
     DeveloperContextAssembly, DeveloperContextEvent, DeveloperContextPort,
@@ -34,3 +33,4 @@ pub use types::{
     DeveloperRetryReason, DeveloperRetryRecord, DeveloperToolObservation, DeveloperTrace,
     DeveloperTraceEvent,
 };
+pub use usage::DeveloperUsage;

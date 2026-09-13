@@ -1,7 +1,5 @@
 //! Durable cooperative-driver integration with fake provider and crash recovery.
 
-#![cfg(feature = "protocol-bridge")]
-
 mod budget_fixture;
 mod common;
 

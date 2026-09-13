@@ -1,40 +1,10 @@
 //! Independently checked scheduler bounds.
 
 use crate::{SchedulerError, SchedulerErrorKind};
-use vstd::prelude::*;
-
-verus! {
 
 /// One-based bounded work attempt number.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct AttemptNumber(u16);
-
-} // verus!
-
-verus! {
-
-impl AttemptNumber {
-    /// Returns the mathematical one-based attempt value.
-    pub closed spec fn spec_value(&self) -> u16 {
-        self.0
-    }
-
-    /// Returns the one-based number.
-    #[must_use]
-    pub const fn get(self) -> (result: u16)
-        ensures result == self.spec_value(),
-    {
-        self.0
-    }
-
-    pub(crate) const fn from_wire(value: u16) -> (result: Self)
-        ensures result.spec_value() == value,
-    {
-        Self(value)
-    }
-}
-
-} // verus!
 
 impl AttemptNumber {
     /// Creates a nonzero attempt number.
@@ -48,9 +18,15 @@ impl AttemptNumber {
             Ok(Self(value))
         }
     }
+    /// Returns the one-based number.
+    #[must_use]
+    pub const fn get(self) -> u16 {
+        self.0
+    }
+    pub(crate) const fn from_wire(value: u16) -> Self {
+        Self(value)
+    }
 }
-
-verus! {
 
 /// Complete independently enforced limits for one scheduler aggregate.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
@@ -67,34 +43,6 @@ pub struct SchedulerLimits {
     payload_bytes: u64,
     state_bytes: u64,
 }
-
-impl SchedulerLimits {
-    /// Returns the mathematical live-reservation ceiling.
-    pub closed spec fn spec_active_reservations(&self) -> u16 {
-        self.active_reservations
-    }
-
-    /// Returns the mathematical bounded-bypass ceiling.
-    pub closed spec fn spec_bypass_count(&self) -> u16 { self.bypass_count }
-
-    /// Maximum live reservations.
-    #[must_use]
-    pub const fn active_reservations(self) -> (result: u16)
-        ensures result == self.spec_active_reservations(),
-    {
-        self.active_reservations
-    }
-
-    /// Bypasses before a feasible item is forced ahead.
-    #[must_use]
-    pub const fn bypass_count(self) -> (result: u16)
-        ensures result == self.spec_bypass_count(),
-    {
-        self.bypass_count
-    }
-}
-
-} // verus!
 
 impl SchedulerLimits {
     /// Compiled maximum queued items.
@@ -229,10 +177,20 @@ impl SchedulerLimits {
     pub const fn resource_dimensions(self) -> u16 {
         self.resource_dimensions
     }
+    /// Maximum live reservations.
+    #[must_use]
+    pub const fn active_reservations(self) -> u16 {
+        self.active_reservations
+    }
     /// Maximum attempts for one item.
     #[must_use]
     pub const fn attempts_per_work(self) -> u16 {
         self.attempts_per_work
+    }
+    /// Bypasses before a feasible item is forced ahead.
+    #[must_use]
+    pub const fn bypass_count(self) -> u16 {
+        self.bypass_count
     }
     /// Maximum directives returned by one runtime poll.
     #[must_use]

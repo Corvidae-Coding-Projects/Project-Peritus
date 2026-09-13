@@ -1,0 +1,31 @@
+{"candidate_commit": "65f16e2933b70305de865750931bb05fe9afb64d", "candidate_tree": "ae2a43f9a9b73f5fec944d39cf165a8b3ec4df20", "environment": {"CARGO_BUILD_JOBS": "1", "CCACHE_DISABLE": "1", "RUST_TEST_THREADS": "1"}, "gate": {"command": "cargo test --package peritus-tools-fs --all-targets --all-features --locked", "invocation": ["cargo", "test", "--package", "peritus-tools-fs", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "output": "119-peritus-tools-fs-ordinary-test.log", "owning_crate": "peritus-tools-fs", "started_at": "2026-09-13T15:21:55.057666Z"}, "plan_sha256": "7fc101b7f8284fbe3818461a8166d73d3425f369120b43c1cbf1b43809a6b7c9"}
+
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.18s
+     Running unittests src/lib.rs (target/debug/deps/peritus_tools_fs-095ac67794970d7c)
+
+running 1 test
+test verified::tests::independent_bounds_fail_closed ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/filesystem_tools.rs (target/debug/deps/filesystem_tools-b164d7ca51daeb2e)
+
+running 4 tests
+test descriptor_catalog_is_complete_canonical_and_deterministic ... ok
+test every_mutation_form_compiles_to_one_canonical_patch_set ... ok
+test immutable_discover_read_metadata_and_search_are_real_and_bounded ... ok
+test immutable_inspection_refuses_symlink_traversal ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.14s
+
+     Running tests/fs_dispatch.rs (target/debug/deps/fs_dispatch-0ddbcef246ebc739)
+
+running 3 tests
+test authorized_preimage_conflict_is_failed_without_effect ... ok
+test router_dispatches_create_and_write_through_target_owned_gateway ... ok
+test router_dispatches_remove_replace_and_atomic_multi_file_patch ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.84s
+
+
+GATE DRIVER RESULT: {"command": "cargo test --package peritus-tools-fs --all-targets --all-features --locked", "command_exit_code": 0, "elapsed_seconds": 1.268, "exit_code": 0, "finished_at": "2026-09-13T15:21:56.326992Z", "invocation": ["cargo", "test", "--package", "peritus-tools-fs", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "output": "119-peritus-tools-fs-ordinary-test.log", "owning_crate": "peritus-tools-fs", "result": "passed", "started_at": "2026-09-13T15:21:55.057666Z"}

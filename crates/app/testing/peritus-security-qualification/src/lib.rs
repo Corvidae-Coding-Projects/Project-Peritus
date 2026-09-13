@@ -39,7 +39,8 @@ pub use limits::{CancellationToken, QualificationLimits, ResourceUsage};
 pub use manifest::EvidenceManifest;
 pub use native::{HostFingerprint, NativeProbeFactory};
 pub use observation::{
-    CaseFailure, CaseReport, CleanupObservation, ProbeObservation, ProbeOutcome, QualificationRun,
+    CaseFailure, CaseOutcome, CaseReport, CleanupObservation, ProbeObservation, ProbeOutcome,
+    QualificationRun,
 };
 pub use operator::{
     H0AggregateStatus, H0OperatorStatus, run_aggregate_from_env as run_h0_aggregate_operator,
@@ -48,7 +49,7 @@ pub use operator::{
 pub use peritus_security_policy::{
     AcceptanceCriterion, FindingLifecycle, FindingObservation, FindingSeverity,
     IndependentSecurityReview, IntegratedCandidate, ReviewCompletion, ReviewScope,
-    ReviewerIdentity, SecurityQualificationOutcome as CaseOutcome, SecurityRequirement,
+    ReviewerIdentity, SecurityRequirement,
 };
 pub use preparation::run_from_env as run_h0_preparation;
 pub use report::{NotReadyReason, QualificationReport, ReadinessEvidence, ReadinessVerdict};

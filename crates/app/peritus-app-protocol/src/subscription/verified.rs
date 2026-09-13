@@ -2,13 +2,9 @@
 
 use vstd::prelude::*;
 
-verus! {
-
 /// Returns whether `after` strictly advances `before` without assigning meaning to skipped values.
 #[must_use]
-pub const fn cursor_advances(before: u64, after: u64) -> (advances: bool)
-    ensures advances == spec_cursor_advances(before as int, after as int),
-{
+pub const fn cursor_advances(before: u64, after: u64) -> bool {
     before < after
 }
 
@@ -20,11 +16,7 @@ pub const fn acknowledgement_is_legal(
     candidate: u64,
     gap_active: bool,
     delivered_member: bool,
-) -> (legal: bool)
-    ensures legal == spec_acknowledgement_legal(
-        acknowledged as int, delivered as int, candidate as int, gap_active, delivered_member,
-    ),
-{
+) -> bool {
     !gap_active
         && acknowledged <= candidate
         && candidate <= delivered
@@ -38,11 +30,11 @@ pub const fn delivery_window_is_safe(
     delivered: u64,
     in_flight: usize,
     maximum: usize,
-) -> (safe: bool)
-    ensures safe == (acknowledged <= delivered && in_flight <= maximum),
-{
+) -> bool {
     acknowledged <= delivered && in_flight <= maximum
 }
+
+verus! {
 
 /// Mathematical strictly-advancing source-cursor rule for `INV-024 DeliverySafety`.
 pub open spec fn spec_cursor_advances(before: int, after: int) -> bool {

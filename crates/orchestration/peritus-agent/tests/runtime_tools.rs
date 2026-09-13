@@ -1,7 +1,5 @@
 //! End-to-end D0 → C4 fake-tool execution with committed independent authority.
 
-#![cfg(feature = "protocol-bridge")]
-
 #[allow(unused_imports, reason = "shared C4 fixture exports a wider test API")]
 mod router_fixture;
 

@@ -1,2 +1,0 @@
-    Checking peritus-agent v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/orchestration/peritus-agent)
-    Finished `dev` profile [unoptimized + debuginfo] target(s) in 2.03s

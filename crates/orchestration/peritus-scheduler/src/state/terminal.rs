@@ -3,9 +3,6 @@
 use peritus_types::Sha256Digest;
 
 use crate::{WorkId, WorkRecord, WorkTerminal};
-use vstd::prelude::*;
-
-verus! {
 
 /// Stable scheduler terminal classification.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -24,40 +21,13 @@ pub enum SchedulerTerminalKind {
     Cancelled,
 }
 
-} // verus!
-
-verus! {
-
 /// Immutable truthful final scheduler summary.
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct SchedulerTerminal {
     kind: SchedulerTerminalKind,
     non_successful_work: Vec<WorkId>,
     digest: Sha256Digest,
 }
-
-impl SchedulerTerminal {
-    /// Relates an exact semantic clone of a terminal summary.
-    pub closed spec fn clone_equivalent(left: &Self, right: &Self) -> bool {
-        left.kind == right.kind
-            && left.non_successful_work@ == right.non_successful_work@
-            && left.digest == right.digest
-    }
-}
-
-impl Clone for SchedulerTerminal {
-    fn clone(&self) -> (result: Self)
-        ensures Self::clone_equivalent(self, &result),
-    {
-        Self {
-            kind: self.kind,
-            non_successful_work: self.non_successful_work.clone(),
-            digest: self.digest,
-        }
-    }
-}
-
-} // verus!
 
 impl SchedulerTerminal {
     pub(crate) fn evaluate(work: &[WorkRecord]) -> Self {

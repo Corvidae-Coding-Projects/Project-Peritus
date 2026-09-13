@@ -14,7 +14,6 @@ mod error;
 mod identity;
 mod kind;
 mod limits;
-pub mod model;
 mod plan;
 mod section;
 mod snapshot;

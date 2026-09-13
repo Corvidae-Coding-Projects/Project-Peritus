@@ -143,11 +143,11 @@ impl PolicyFailure {
     }
 }
 
-/// Verdict reported by a configured deterministic release-policy adapter.
+/// Decision returned by the authoritative deterministic release policy adapter.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum PolicyDecision {
-    /// The adapter reported its ready verdict.
+    /// Policy accepted every exact input.
     Ready,
     /// Policy rejected one or more rules.
     NotReady {
@@ -159,14 +159,6 @@ pub enum PolicyDecision {
         /// Stable reason for inability to evaluate.
         failure: PolicyFailure,
     },
-}
-
-impl PolicyDecision {
-    /// Reports whether the adapter returned its `Ready` verdict variant.
-    #[must_use]
-    pub const fn is_ready(&self) -> bool {
-        matches!(self, Self::Ready)
-    }
 }
 
 /// Adapter implemented by the separately owned deterministic H4 policy crate.

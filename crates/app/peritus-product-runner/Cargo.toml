@@ -49,7 +49,6 @@ sha2.workspace = true
 tokio.workspace = true
 toml.workspace = true
 yaml-rust2.workspace = true
-vstd.workspace = true
 
 [dev-dependencies]
 peritus-provider-anthropic = { version = "=0.0.2", path = "../../model/peritus-provider-anthropic" }

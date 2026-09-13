@@ -14,8 +14,7 @@ fn command_restart_fixture() {
     effects.write_all(format!("{marker}\n").as_bytes()).expect("record command effect");
     effects.flush().expect("flush command effect");
     let mut output = std::io::stdout();
-    // Start a separate line even when the serial test harness leaves its prefix open.
-    output.write_all(format!("\nrestart-effect:{marker}\n").as_bytes()).expect("report effect");
+    output.write_all(format!("restart-effect:{marker}\n").as_bytes()).expect("report effect");
     output.flush().expect("flush effect observation");
 }
 

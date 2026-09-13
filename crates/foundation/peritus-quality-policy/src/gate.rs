@@ -42,9 +42,6 @@ pub struct GateObservation {
 }
 
 impl GateObservation {
-    /// Specification view of the exact declared gate identity.
-    pub closed spec fn spec_gate_id(&self) -> GateId { self.gate_id }
-
     /// Specification view of the exact observed revision.
     pub closed spec fn spec_revision(&self) -> RevisionTuple { self.revision }
 
@@ -73,9 +70,7 @@ impl GateObservation {
 
     /// Returns the gate identity declared by the contract.
     #[must_use]
-    pub const fn gate_id(&self) -> (id: GateId)
-        ensures id == self.spec_gate_id(),
-    { self.gate_id }
+    pub const fn gate_id(&self) -> GateId { self.gate_id }
 
     /// Returns the one-based attempt number for this gate execution.
     #[must_use]

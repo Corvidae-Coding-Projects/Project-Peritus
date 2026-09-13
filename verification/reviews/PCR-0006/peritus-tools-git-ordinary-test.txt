@@ -1,0 +1,28 @@
+{"candidate_commit": "65f16e2933b70305de865750931bb05fe9afb64d", "candidate_tree": "ae2a43f9a9b73f5fec944d39cf165a8b3ec4df20", "environment": {"CARGO_BUILD_JOBS": "1", "CCACHE_DISABLE": "1", "RUST_TEST_THREADS": "1"}, "gate": {"command": "cargo test --package peritus-tools-git --all-targets --all-features --locked", "invocation": ["cargo", "test", "--package", "peritus-tools-git", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "output": "121-peritus-tools-git-ordinary-test.log", "owning_crate": "peritus-tools-git", "started_at": "2026-09-13T15:21:56.975347Z"}, "plan_sha256": "7fc101b7f8284fbe3818461a8166d73d3425f369120b43c1cbf1b43809a6b7c9"}
+
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.18s
+     Running unittests src/lib.rs (target/debug/deps/peritus_tools_git-0f2b9f6c5b06d8e1)
+
+running 1 test
+test verified::tests::diff_dimensions_are_independent ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/git_dispatch.rs (target/debug/deps/git_dispatch-7697c64321a32bd9)
+
+running 1 test
+test router_dispatches_candidate_snapshot_and_history_preserving_rollback ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.33s
+
+     Running tests/git_tools.rs (target/debug/deps/git_tools-d9dbbe561ed68928)
+
+running 3 tests
+test descriptor_catalog_is_complete_canonical_and_deterministic ... ok
+test merge_is_typed_unsupported_and_never_mutates_refs ... ok
+test structured_status_diff_history_and_snapshot_use_real_git_observations ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.16s
+
+
+GATE DRIVER RESULT: {"command": "cargo test --package peritus-tools-git --all-targets --all-features --locked", "command_exit_code": 0, "elapsed_seconds": 0.766, "exit_code": 0, "finished_at": "2026-09-13T15:21:57.743060Z", "invocation": ["cargo", "test", "--package", "peritus-tools-git", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "output": "121-peritus-tools-git-ordinary-test.log", "owning_crate": "peritus-tools-git", "result": "passed", "started_at": "2026-09-13T15:21:56.975347Z"}

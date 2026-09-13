@@ -1,360 +1,138 @@
 //! Pure deterministic bounded-bypass selection.
 
-use vstd::prelude::*;
+use core::cmp::Ordering;
 
-use crate::{SchedulerState, WorkId, WorkPhase, WorkerPhase};
+use crate::{ResourceVector, SchedulerState, WorkId, WorkPhase, WorkerId, WorkerPhase};
 
-mod capacity;
-mod model;
-
-use model::IndexedSelection;
-pub use model::Selection;
-
-#[cfg(verus_only)]
-use model::selection_is_feasible;
-#[cfg(verus_only)]
-pub(crate) use model::{
-    admitted_work_is_unreserved, selected_pair_admitted, selected_pair_feasible,
-    selected_pair_feasible_parts,
-};
-
-verus! {
-proof fn establish_selected_pair(
-    state: &SchedulerState,
-    work_index: int,
-    worker_index: int,
-)
-    requires
-        0 <= work_index < state.spec_work().len(),
-        0 <= worker_index < state.spec_workers().len(),
-        state.spec_work()[work_index].spec_phase() == WorkPhase::Queued,
-        state.spec_workers()[worker_index].spec_phase() == WorkerPhase::Available,
-        crate::identity::actor_ids_match(
-            state.spec_workers()[worker_index].spec_descriptor().spec_owner(),
-            state.spec_work()[work_index].spec_definition().spec_owner(),
-        ),
-        state.spec_workers()[worker_index].spec_descriptor().spec_classes().contains(
-            state.spec_work()[work_index].spec_definition().spec_class(),
-        ),
-        crate::verified::worker_count(
-            state.spec_reservations(),
-            state.spec_workers()[worker_index].spec_descriptor().spec_id(),
-        ) < state.spec_workers()[worker_index].spec_descriptor().spec_concurrency(),
-        forall |kind: crate::ResourceKind| #![auto]
-            crate::verified::reservation_quantity(state.spec_reservations(), kind)
-                    + crate::verified::vector_quantity(
-                        state.spec_work()[work_index]
-                            .spec_definition().spec_request().spec_entries(),
-                        kind,
-                    ) <= state.spec_binding().spec_capacity().spec_quantity(kind),
-        forall |kind: crate::ResourceKind| #![auto]
-            crate::verified::worker_quantity(
-                state.spec_reservations(),
-                state.spec_workers()[worker_index].spec_descriptor().spec_id(),
-                kind,
-            ) + crate::verified::vector_quantity(
-                state.spec_work()[work_index]
-                    .spec_definition().spec_request().spec_entries(),
-                kind,
-            ) <= state.spec_workers()[worker_index]
-                .spec_descriptor().spec_capacity().spec_quantity(kind),
-    ensures selected_pair_admitted(state, work_index, worker_index),
-{
-    reveal(selected_pair_admitted);
-    reveal(selected_pair_feasible);
+/// One deterministic feasible work/worker choice.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct Selection {
+    work_id: WorkId,
+    worker_id: WorkerId,
 }
 
-fn worker_is_feasible_for(
-    state: &SchedulerState,
-    work_index: usize,
-    worker_index: usize,
-) -> (result: bool)
-    requires
-        work_index < state.spec_work().len(),
-        worker_index < state.spec_workers().len(),
-        state.spec_work()[work_index as int].spec_phase() == WorkPhase::Queued,
-        state.spec_reservation_invariant() ==> forall |kind: crate::ResourceKind| #![auto]
-            crate::verified::reservation_quantity(state.spec_reservations(), kind)
-                    + crate::verified::vector_quantity(
-                        state.spec_work()[work_index as int]
-                            .spec_definition().spec_request().spec_entries(),
-                        kind,
-                    ) <= state.spec_binding().spec_capacity().spec_quantity(kind),
-    ensures
-        result && state.spec_reservation_invariant() ==>
-            selected_pair_admitted(state, work_index as int, worker_index as int),
-{
-    let work = &state.work()[work_index];
-    let worker = &state.workers()[worker_index];
-    let worker_id = worker.descriptor().id();
-    if !worker.phase().same(WorkerPhase::Available)
-        || !crate::identity::actor_ids_same(worker.descriptor().owner(), work.spec().owner())
-        || !worker.descriptor().supports(work.spec().class())
-    {
-        return false;
+impl Selection {
+    /// Returns selected work.
+    #[must_use]
+    pub const fn work_id(self) -> WorkId {
+        self.work_id
     }
-    let count = capacity::worker_reservation_count(state, worker_id);
-    if count >= worker.descriptor().concurrency() as usize
-        || !capacity::worker_fits_after(
-            state,
-            worker_id,
-            worker.descriptor().capacity(),
-            work.spec().request(),
-        )
-    {
-        return false;
-    }
-    proof {
-        if state.spec_reservation_invariant() {
-            capacity::worker_entrywise_implies_all(
-                state,
-                worker_index as int,
-                work.spec_definition().spec_request(),
-            );
-            assert(count as int == crate::verified::worker_count(
-                state.spec_reservations(),
-                worker.spec_descriptor().spec_id(),
-            ));
-            establish_selected_pair(state, work_index as int, worker_index as int);
-        }
-    }
-    true
-}
-
-fn first_feasible_worker(
-    state: &SchedulerState,
-    work_index: usize,
-) -> (result: Option<usize>)
-    requires work_index < state.spec_work().len(),
-    ensures
-        match result {
-            Some(worker_index) =>
-                worker_index < state.spec_workers().len()
-                    && (state.spec_reservation_invariant() ==> selected_pair_admitted(
-                        state,
-                        work_index as int,
-                        worker_index as int,
-                    )),
-            None => true,
-        },
-{
-    let work_records = state.work();
-    let work = &work_records[work_index];
-    proof {
-        assert(work_records@ == state.spec_work());
-        assert(*work == state.spec_work()[work_index as int]);
-    }
-    if !work.phase().same(WorkPhase::Queued)
-        || !capacity::global_fits_after(state, work.spec().request())
-    {
-        return None;
-    }
-    proof {
-        if state.spec_reservation_invariant() {
-            capacity::global_entrywise_implies_all(
-                state,
-                work.spec_definition().spec_request(),
-            );
-        }
-    }
-    let workers = state.workers();
-    let mut worker_index = 0;
-    while worker_index < workers.len()
-        invariant
-            work_index < state.spec_work().len(),
-            work_records@ == state.spec_work(),
-            *work == state.spec_work()[work_index as int],
-            work.spec_phase() == WorkPhase::Queued,
-            workers@ == state.spec_workers(),
-            worker_index <= state.spec_workers().len(),
-            state.spec_reservation_invariant() ==> forall |kind: crate::ResourceKind| #![auto]
-                crate::verified::reservation_quantity(
-                    state.spec_reservations(), kind,
-                ) + crate::verified::vector_quantity(
-                    work.spec_definition().spec_request().spec_entries(), kind,
-                ) <= state.spec_binding().spec_capacity().spec_quantity(kind),
-        decreases state.spec_workers().len() - worker_index,
-    {
-        if worker_is_feasible_for(state, work_index, worker_index) {
-            return Some(worker_index);
-        }
-        worker_index += 1;
-    }
-    None
-}
-
-fn candidate_precedes(
-    state: &SchedulerState,
-    left_index: usize,
-    right_index: usize,
-) -> (result: bool)
-    requires
-        left_index < state.spec_work().len(),
-        right_index < state.spec_work().len(),
-{
-    let left = &state.work()[left_index];
-    let right = &state.work()[right_index];
-    let limit = state.binding().limits().bypass_count();
-    let left_aged = left.bypasses() >= limit;
-    let right_aged = right.bypasses() >= limit;
-    if left_aged != right_aged {
-        left_aged
-    } else if left.spec().priority() != right.spec().priority() {
-        left.spec().priority() > right.spec().priority()
-    } else if left.enqueue_ordinal() != right.enqueue_ordinal() {
-        left.enqueue_ordinal() < right.enqueue_ordinal()
-    } else {
-        left.spec().id().precedes(&right.spec().id())
+    /// Returns selected worker.
+    #[must_use]
+    pub const fn worker_id(self) -> WorkerId {
+        self.worker_id
     }
 }
 
 /// Selects the next feasible item by aged-first, priority, enqueue ordinal, identity, then worker.
 #[must_use]
-fn select_next_indexed(state: &SchedulerState) -> (result: Option<IndexedSelection>)
-    ensures
-        match result {
-            Some(selection) =>
-                selection.work_index < state.spec_work().len()
-                    && selection.worker_index < state.spec_workers().len()
-                    && (state.spec_reservation_invariant() ==> selected_pair_admitted(
-                        state,
-                        selection.work_index as int,
-                        selection.worker_index as int,
-                    )),
-            None => true,
-        },
-{
-    let mut chosen: Option<(usize, usize)> = None;
-    let mut work_index = 0;
-    while work_index < state.work().len()
-        invariant
-            work_index <= state.spec_work().len(),
-            match chosen {
-                Some((selected_work, selected_worker)) =>
-                    selected_work < state.spec_work().len()
-                        && selected_worker < state.spec_workers().len()
-                        && (state.spec_reservation_invariant() ==> selected_pair_admitted(
-                            state,
-                            selected_work as int,
-                            selected_worker as int,
-                        )),
-                None => true,
-            },
-        decreases state.spec_work().len() - work_index,
-    {
-        if let Some(worker_index) = first_feasible_worker(state, work_index) {
-            let replace = match chosen {
-                Some((current, _)) => candidate_precedes(state, work_index, current),
-                None => true,
-            };
-            if replace {
-                chosen = Some((work_index, worker_index));
+pub fn select_next(state: &SchedulerState) -> Option<Selection> {
+    let mut feasible = state
+        .work()
+        .iter()
+        .filter_map(|work| {
+            if work.phase() != WorkPhase::Queued {
+                return None;
             }
-        }
-        work_index += 1;
-    }
-    proof {
-        assert(match chosen {
-            Some((selected_work, selected_worker)) =>
-                selected_work < state.spec_work().len()
-                    && selected_worker < state.spec_workers().len()
-                    && (state.spec_reservation_invariant() ==> selected_pair_admitted(
-                        state,
-                        selected_work as int,
-                        selected_worker as int,
-                    )),
-            None => true,
-        });
-    }
-    match chosen {
-        Some((work_index, worker_index)) => {
-            proof {
-                assert(work_index < state.spec_work().len());
-                assert(worker_index < state.spec_workers().len());
-                if state.spec_reservation_invariant() {
-                    assert(selected_pair_admitted(
-                        state,
-                        work_index as int,
-                        worker_index as int,
-                    ));
-                }
-            }
-            Some(IndexedSelection { work_index, worker_index })
-        }
-        None => None,
-    }
-}
-
-pub fn select_next_for_dispatch(
-    state: &SchedulerState,
-) -> (result: Option<(usize, usize)>)
-    ensures
-        match result {
-            Some((work_index, worker_index)) =>
-                work_index < state.spec_work().len()
-                    && worker_index < state.spec_workers().len()
-                    && (state.spec_reservation_invariant() ==> selected_pair_admitted(
-                        state,
-                        work_index as int,
-                        worker_index as int,
-                    )),
-            None => true,
-        },
-{
-    let selection = select_next_indexed(state)?;
-    Some((selection.work_index, selection.worker_index))
-}
-
-/// Selects the next feasible item by aged-first, priority, enqueue ordinal, identity, then worker.
-#[must_use]
-pub fn select_next(state: &SchedulerState) -> (result: Option<Selection>)
-    ensures
-        state.spec_reservation_invariant() ==> match result {
-            Some(selection) => selection_is_feasible(state, selection),
-            None => true,
-        },
-{
-    let selection = select_next_indexed(state)?;
-            let work_records = state.work();
-            let workers = state.workers();
-            let selected = Selection::new(
-                work_records[selection.work_index].spec().id(),
-                workers[selection.worker_index].descriptor().id(),
-            );
-            proof {
-                if state.spec_reservation_invariant() {
-                    assert(selected_pair_admitted(
-                        state,
-                        selection.work_index as int,
-                        selection.worker_index as int,
-                    ));
-                    reveal(selected_pair_admitted);
-                    assert(work_records@ == state.spec_work());
-                    assert(workers@ == state.spec_workers());
-                    assert(state.spec_work()[selection.work_index as int]
-                        .spec_definition().spec_id() == selected.spec_work_id());
-                    assert(state.spec_workers()[selection.worker_index as int]
-                        .spec_descriptor().spec_id() == selected.spec_worker_id());
-                    assert(selection_is_feasible(state, selected));
-                }
-            }
-    Some(selected)
+            let worker = first_feasible_worker(state, work.spec().id())?;
+            Some((work, worker))
+        })
+        .collect::<Vec<_>>();
+    feasible.sort_by(|(left, left_worker), (right, right_worker)| {
+        compare_work(state, left, right).then_with(|| left_worker.cmp(right_worker))
+    });
+    feasible
+        .first()
+        .map(|(work, worker)| Selection { work_id: work.spec().id(), worker_id: *worker })
 }
 
 /// Returns whether an item is feasible under current global and at least one worker capacity.
 #[must_use]
-pub fn is_feasible(state: &SchedulerState, work_id: WorkId) -> (result: bool) {
-    let mut index = 0;
-    while index < state.work().len()
-        invariant index <= state.spec_work().len(),
-        decreases state.spec_work().len() - index,
-    {
-        if state.work()[index].spec().id().same(&work_id) {
-            return first_feasible_worker(state, index).is_some();
-        }
-        index += 1;
-    }
-    false
+pub fn is_feasible(state: &SchedulerState, work_id: WorkId) -> bool {
+    first_feasible_worker(state, work_id).is_some()
 }
 
-} // verus!
+fn compare_work(
+    state: &SchedulerState,
+    left: &crate::WorkRecord,
+    right: &crate::WorkRecord,
+) -> Ordering {
+    let limit = state.binding().limits().bypass_count();
+    let left_aged = left.bypasses() >= limit;
+    let right_aged = right.bypasses() >= limit;
+    right_aged
+        .cmp(&left_aged)
+        .then_with(|| right.spec().priority().cmp(&left.spec().priority()))
+        .then_with(|| left.enqueue_ordinal().cmp(&right.enqueue_ordinal()))
+        .then_with(|| left.spec().id().cmp(&right.spec().id()))
+}
+
+fn first_feasible_worker(state: &SchedulerState, work_id: WorkId) -> Option<WorkerId> {
+    let work = state.work_item(work_id)?;
+    let global_used = state.used_resources().ok().flatten();
+    if !fits_after(
+        global_used.as_ref(),
+        work.spec().request(),
+        state.binding().capacity(),
+        state.binding().limits().resource_dimensions(),
+    ) {
+        return None;
+    }
+    state.workers().iter().find_map(|worker| {
+        if worker.phase() != WorkerPhase::Available
+            || worker.descriptor().owner() != work.spec().owner()
+            || !worker.descriptor().supports(work.spec().class())
+        {
+            return None;
+        }
+        let active: Vec<_> = state
+            .reservations()
+            .iter()
+            .filter(|reservation| reservation.worker_id() == worker.descriptor().id())
+            .collect();
+        if active.len() >= usize::from(worker.descriptor().concurrency()) {
+            return None;
+        }
+        let used = resource_sum(active.into_iter(), state.binding().limits().resource_dimensions())
+            .ok()?;
+        fits_after(
+            used.as_ref(),
+            work.spec().request(),
+            worker.descriptor().capacity(),
+            state.binding().limits().resource_dimensions(),
+        )
+        .then_some(worker.descriptor().id())
+    })
+}
+
+fn fits_after(
+    current: Option<&ResourceVector>,
+    request: &ResourceVector,
+    capacity: &ResourceVector,
+    dimensions: u16,
+) -> bool {
+    current.map_or_else(
+        || request.fits_within(capacity),
+        |current| {
+            current
+                .checked_add(request, dimensions)
+                .is_ok_and(|combined| combined.fits_within(capacity))
+        },
+    )
+}
+
+fn resource_sum<'a>(
+    values: impl Iterator<Item = &'a crate::SchedulerReservation>,
+    dimensions: u16,
+) -> Result<Option<ResourceVector>, ()> {
+    let mut sum = None;
+    for reservation in values {
+        sum = Some(sum.map_or_else(
+            || Ok(reservation.resources().clone()),
+            |current: ResourceVector| {
+                current.checked_add(reservation.resources(), dimensions).map_err(|_| ())
+            },
+        )?);
+    }
+    Ok(sum)
+}

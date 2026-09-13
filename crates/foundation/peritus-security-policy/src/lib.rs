@@ -16,7 +16,6 @@ mod evidence;
 mod model;
 mod observation;
 mod proofs;
-mod qualification_admission;
 mod review;
 
 pub use binding::IntegratedCandidate;
@@ -28,10 +27,6 @@ pub use evidence::SecurityEvidence;
 pub use observation::{
     ArtifactObservation, CriterionObservation, InventoryObservation, RequirementObservation,
     SecurityControlOutcome,
-};
-pub use qualification_admission::{
-    SECURITY_QUALIFICATION_PROBE_COUNT, SecurityQualificationAdmission,
-    SecurityQualificationOutcome,
 };
 pub use review::{
     FindingLifecycle, FindingObservation, FindingSeverity, IndependentSecurityReview,

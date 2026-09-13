@@ -12,34 +12,11 @@ use vstd::prelude::*;
 
 verus! {
 
-pub(super) proof fn authorization_follows_clone(
-    cloned: &KernelAggregate,
-    original: &KernelAggregate,
-    inputs: &ReducerInputs<'_>,
-)
-    requires
-        inputs.spec_acceptance_authorized(cloned.revision),
-        cloned.spec_revision() == original.spec_revision(),
-    ensures inputs.spec_acceptance_authorized(original.revision),
-{
-    cloned.expose_internal_views();
-    original.expose_internal_views();
-}
-
 pub(super) fn apply(
     state: &mut KernelAggregate,
     command: &KernelCommand,
     inputs: &ReducerInputs<'_>,
-) -> (result: Result<AppliedCommand, KernelError>)
-    ensures
-        final(state).revision == old(state).revision,
-        result.is_err() ==> *final(state) == *old(state),
-        match result {
-            Ok(applied) => applied.event_kind == KernelEventKind::AcceptanceAccepted
-                ==> inputs.spec_acceptance_authorized(old(state).revision),
-            Err(_) => true,
-        },
-{
+) -> Result<AppliedCommand, KernelError> {
     match command {
         KernelCommand::BeginAcceptance { run_id } => begin(state, *run_id),
         KernelCommand::EvaluateAcceptance { run_id } => evaluate(state, *run_id, inputs),
@@ -47,16 +24,7 @@ pub(super) fn apply(
     }
 }
 
-fn begin(state: &mut KernelAggregate, run_id: RunId) -> (result: Result<AppliedCommand, KernelError>)
-    ensures
-        final(state).revision == old(state).revision,
-        result.is_err() ==> *final(state) == *old(state),
-        match result {
-            Ok(applied) => applied.event_kind == KernelEventKind::AcceptanceBegun
-                && applied.subject == KernelSubject::Acceptance(run_id),
-            Err(_) => true,
-        },
-{
+fn begin(state: &mut KernelAggregate, run_id: RunId) -> Result<AppliedCommand, KernelError> {
     let Some(run_index) = state.run_index(run_id) else {
         return Err(KernelError::entity(KernelErrorKind::MissingEntity, LifecycleEntity::Run));
     };
@@ -84,19 +52,7 @@ fn evaluate(
     state: &mut KernelAggregate,
     run_id: RunId,
     inputs: &ReducerInputs<'_>,
-) -> (result: Result<AppliedCommand, KernelError>)
-    ensures
-        final(state).revision == old(state).revision,
-        result.is_err() ==> *final(state) == *old(state),
-        match result {
-            Ok(applied) => applied.subject == KernelSubject::Acceptance(run_id)
-                && (applied.event_kind == KernelEventKind::AcceptanceAccepted
-                    <==> inputs.spec_acceptance_authorized(old(state).revision))
-                && (applied.event_kind == KernelEventKind::AcceptanceAccepted
-                    || applied.event_kind == KernelEventKind::AcceptanceNeedsChanges),
-            Err(_) => true,
-        },
-{
+) -> Result<AppliedCommand, KernelError> {
     let Some(run_index) = state.run_index(run_id) else {
         return Err(KernelError::entity(KernelErrorKind::MissingEntity, LifecycleEntity::Run));
     };

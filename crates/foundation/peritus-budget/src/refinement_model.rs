@@ -1,10 +1,5 @@
 //! Concrete immutable-prefix and ancestor-propagation refinement predicates.
 
-mod ancestry;
-
-#[cfg(verus_only)]
-pub(crate) use ancestry::{all_ancestor_deltas, all_ancestor_deltas_follow};
-
 #[cfg(verus_only)]
 use crate::{BudgetDimension, BudgetLedger};
 use vstd::prelude::*;

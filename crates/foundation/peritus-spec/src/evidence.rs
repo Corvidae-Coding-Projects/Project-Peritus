@@ -44,9 +44,6 @@ pub struct EvidenceRequirement {
 }
 
 impl EvidenceRequirement {
-    /// Specification view of the stable evidence declaration identifier.
-    pub closed spec fn spec_id(&self) -> EvidenceRequirementId { self.id }
-
     /// Creates a required evidence declaration.
     #[must_use]
     pub const fn new(
@@ -60,9 +57,7 @@ impl EvidenceRequirement {
 
     /// Returns the stable evidence requirement identifier.
     #[must_use]
-    pub const fn id(&self) -> (result: EvidenceRequirementId)
-        ensures result == self.spec_id()
-    { self.id }
+    pub const fn id(&self) -> EvidenceRequirementId { self.id }
 
     /// Returns the immutable description reference.
     #[must_use]
@@ -89,18 +84,11 @@ pub enum HumanApprovalPolicy {
 impl HumanApprovalPolicy {
     /// Returns whether an explicit approval observation is required.
     #[must_use]
-    pub const fn is_required(&self) -> (required: bool)
-        ensures required == matches!(self, Self::Required(_)),
-    { matches!(self, Self::Required(_)) }
+    pub const fn is_required(&self) -> bool { matches!(self, Self::Required(_)) }
 
     /// Returns the authority policy reference when approval is required.
     #[must_use]
-    pub const fn authority(&self) -> (authority: Option<ContentReference>)
-        ensures authority == match self {
-            Self::NotRequired => None,
-            Self::Required(reference) => Some(*reference),
-        },
-    {
+    pub const fn authority(&self) -> Option<ContentReference> {
         match self { Self::NotRequired => None, Self::Required(reference) => Some(*reference) }
     }
 }
@@ -122,18 +110,11 @@ pub enum WaiverPolicy {
 impl WaiverPolicy {
     /// Returns whether the contract permits authorized waivers.
     #[must_use]
-    pub const fn is_allowed(&self) -> (allowed: bool)
-        ensures allowed == matches!(self, Self::Allowed { .. }),
-    { matches!(self, Self::Allowed { .. }) }
+    pub const fn is_allowed(&self) -> bool { matches!(self, Self::Allowed { .. }) }
 
     /// Returns the authority policy reference, when waivers are allowed.
     #[must_use]
-    pub const fn authority(&self) -> (result: Option<ContentReference>)
-        ensures result == match self {
-            Self::Forbidden => None,
-            Self::Allowed { authority, .. } => Some(*authority),
-        },
-    {
+    pub const fn authority(&self) -> Option<ContentReference> {
         match self {
             Self::Forbidden => None,
             Self::Allowed { authority, .. } => Some(*authority),
@@ -142,12 +123,7 @@ impl WaiverPolicy {
 
     /// Returns the evidence declaration required for every waiver.
     #[must_use]
-    pub const fn evidence_requirement(&self) -> (result: Option<EvidenceRequirementId>)
-        ensures result == match self {
-            Self::Forbidden => None,
-            Self::Allowed { evidence, .. } => Some(*evidence),
-        },
-    {
+    pub const fn evidence_requirement(&self) -> Option<EvidenceRequirementId> {
         match self {
             Self::Forbidden => None,
             Self::Allowed { evidence, .. } => Some(*evidence),

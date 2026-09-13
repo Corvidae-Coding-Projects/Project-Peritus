@@ -1,0 +1,23 @@
+{"candidate_commit": "65f16e2933b70305de865750931bb05fe9afb64d", "candidate_tree": "ae2a43f9a9b73f5fec944d39cf165a8b3ec4df20", "environment": {"CARGO_BUILD_JOBS": "1", "CCACHE_DISABLE": "1", "RUST_TEST_THREADS": "1"}, "gate": {"command": "cargo test --package peritus-product-state --all-targets --all-features --locked", "invocation": ["cargo", "test", "--package", "peritus-product-state", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "output": "067-peritus-product-state-ordinary-test.log", "owning_crate": "peritus-product-state", "started_at": "2026-09-13T15:21:00.819781Z"}, "plan_sha256": "7fc101b7f8284fbe3818461a8166d73d3425f369120b43c1cbf1b43809a6b7c9"}
+
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.16s
+     Running unittests src/lib.rs (target/debug/deps/peritus_product_state-6143572690dd8b7f)
+
+running 12 tests
+test provider::tests::failover_is_explicit_and_requires_two_routes ... ok
+test provider::tests::old_state_shape_defaults_failover_off ... ok
+test state::tests::canonical_round_trip_preserves_resume_phase ... ok
+test state::tests::provider_selection_is_durable_and_idempotent ... ok
+test state::tests::repeating_completed_effect_is_idempotent ... ok
+test state::tests::skip_and_reversal_are_rejected ... ok
+test state::tests::workspace_selection_round_trips_and_advances_once ... ok
+test state::tests::zero_identity_is_rejected ... ok
+test workspace::profile::tests::trust_requires_all_registration_facts ... ok
+test workspace::selection::tests::activation_is_recent_unique_and_removal_selects_the_next_entry ... ok
+test workspace::selection::tests::refreshing_a_trusted_workspace_replaces_its_old_registration ... ok
+test workspace::selection::tests::replacing_a_trusted_repository_retains_its_daemon_registration ... ok
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+GATE DRIVER RESULT: {"command": "cargo test --package peritus-product-state --all-targets --all-features --locked", "command_exit_code": 0, "elapsed_seconds": 0.215, "exit_code": 0, "finished_at": "2026-09-13T15:21:01.035365Z", "invocation": ["cargo", "test", "--package", "peritus-product-state", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "output": "067-peritus-product-state-ordinary-test.log", "owning_crate": "peritus-product-state", "result": "passed", "started_at": "2026-09-13T15:21:00.819781Z"}
