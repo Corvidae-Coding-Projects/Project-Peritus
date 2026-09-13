@@ -3,6 +3,7 @@ use super::manifest::TrustedOccurrence;
 use super::manifest_actor::ActorRegistry;
 use super::manifest_context::ManifestContext;
 use super::manifest_evidence::validate_boundary_evidence;
+use super::manifest_file;
 use super::manifest_model::{TrustDocument, TrustEntry};
 use super::manifest_support::{
     source_line_exists, validate_envelope, validate_id, validate_issue, validate_review_window,
@@ -30,12 +31,17 @@ pub(super) fn validate(
         diagnostics,
     );
     let mut ids = BTreeSet::new();
-    let mut entry_keys = BTreeMap::<(&str, u64, &str, &str), usize>::new();
+    let mut entry_keys = BTreeMap::<(String, u64, String, String), usize>::new();
 
     for entry in &document.entries {
         validate_entry(context, actors, manifest, entry, &mut ids, diagnostics);
         *entry_keys
-            .entry((&entry.source_file, entry.source_line, &entry.construct_kind, &entry.symbol))
+            .entry((
+                entry.source_file.clone(),
+                entry.source_line,
+                entry.construct_kind.clone(),
+                entry.symbol.clone(),
+            ))
             .or_default() += 1;
     }
 
@@ -145,17 +151,25 @@ fn validate_entry(
 fn reconcile(
     manifest: &Path,
     occurrences: &[TrustedOccurrence],
-    entries: &BTreeMap<(&str, u64, &str, &str), usize>,
+    entries: &BTreeMap<(String, u64, String, String), usize>,
     diagnostics: &mut Vec<Diagnostic>,
 ) {
-    let mut actual = BTreeMap::<(&str, u64, &str, &str), usize>::new();
+    let mut actual = BTreeMap::<(String, u64, String, String), usize>::new();
     for occurrence in occurrences {
+        let Some(source) = manifest_file::repository_path(&occurrence.source) else {
+            diagnostics.push(Diagnostic::at(
+                occurrence.source.clone(),
+                "trusted occurrence source is not a UTF-8 repository-relative path",
+                "keep trusted source paths within the repository using normal UTF-8 components",
+            ));
+            continue;
+        };
         *actual
             .entry((
-                occurrence.source.to_str().unwrap_or("<non-utf8>"),
+                source,
                 occurrence.line,
-                occurrence.construct,
-                occurrence.symbol.as_str(),
+                occurrence.construct.to_owned(),
+                occurrence.symbol.clone(),
             ))
             .or_default() += 1;
     }
@@ -174,7 +188,7 @@ fn reconcile(
     for (key, count) in actual {
         if count != 1 || entries.get(&key) != Some(&1) {
             diagnostics.push(Diagnostic::at(
-                key.0,
+                key.0.clone(),
                 format!(
                     "line {} trusted construct `{}` in `{}` has no unique manifest entry",
                     key.1, key.2, key.3
