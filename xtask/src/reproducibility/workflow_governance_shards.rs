@@ -141,7 +141,7 @@ fn verus_shards_are_exact(job: &Yaml) -> bool {
         && sequence(matrix, "operation", &VERUS_OPERATIONS)
         && sequence(matrix, "shard", &VERUS_SHARDS)
         && mapping_value(job, "steps").and_then(Yaml::as_vec).is_some_and(|steps| {
-            steps.len() == 5
+            steps.len() == 6
                 && candidate_checkout(&steps[0])
                 && config_step(&steps[1])
                 && rust_step(&steps[2], None)
@@ -150,7 +150,26 @@ fn verus_shards_are_exact(job: &Yaml) -> bool {
                     &steps[4],
                     "cargo +1.97.1 run --locked --package xtask -- ci-shard ${{ matrix.operation }} ${{ matrix.shard }}",
                 )
+                && proof_selection_artifact(&steps[5])
         })
+}
+
+fn proof_selection_artifact(step: &Yaml) -> bool {
+    let Some(step) = step.as_hash() else { return false };
+    let Some(inputs) = mapping_value(step, "with").and_then(Yaml::as_hash) else {
+        return false;
+    };
+    exact_keys(step, &["name", "if", "uses", "with"])
+        && string(step, "name") == Some("Retain compiler proof selection")
+        && string(step, "if")
+            == Some("${{ always() && matrix.operation == 'verus-verify-strict' }}")
+        && string(step, "uses")
+            == Some("actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a")
+        && exact_keys(inputs, &["name", "path", "if-no-files-found", "retention-days"])
+        && string(inputs, "name") == Some("formal-scope-${{ github.sha }}-${{ matrix.shard }}")
+        && string(inputs, "path") == Some("candidate/target/formal-scope/${{ matrix.shard }}")
+        && string(inputs, "if-no-files-found") == Some("error")
+        && integer(inputs, "retention-days") == Some(14)
 }
 
 fn verus_status_is_exact(job: &Yaml) -> bool {

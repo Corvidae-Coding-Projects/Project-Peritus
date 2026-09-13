@@ -1,7 +1,7 @@
 use crate::source::reference_lexer::{Token, TokenKind};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(super) enum Mode {
+pub(crate) enum Mode {
     Exec,
     Proof,
     Spec,

@@ -1,0 +1,87 @@
+{"candidate_commit": "65f16e2933b70305de865750931bb05fe9afb64d", "candidate_tree": "ae2a43f9a9b73f5fec944d39cf165a8b3ec4df20", "environment": {"CARGO_BUILD_JOBS": "1", "CCACHE_DISABLE": "1", "RUST_TEST_THREADS": "1"}, "gate": {"command": "cargo test --package peritus-process --all-targets --all-features --locked", "invocation": ["cargo", "test", "--package", "peritus-process", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "output": "063-peritus-process-ordinary-test.log", "owning_crate": "peritus-process", "started_at": "2026-09-13T15:20:33.223081Z"}, "plan_sha256": "7fc101b7f8284fbe3818461a8166d73d3425f369120b43c1cbf1b43809a6b7c9"}
+
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.18s
+     Running unittests src/lib.rs (target/debug/deps/peritus_process-0cc6944dddc17199)
+
+running 17 tests
+test consumption::tests::recovery::claim_manifest_digest_mismatch_blocks_probe_and_terminal_classification ... ok
+test consumption::tests::recovery::claim_without_manifest_is_an_explicit_indeterminate_recovery_entry ... ok
+test consumption::tests::recovery::complete_terminal_and_artifact_publication_survive_reopen ... ok
+test consumption::tests::recovery::completed_manifest_replacement_discards_stale_previous ... ok
+test consumption::tests::recovery::interrupted_manifest_replacement_restores_previous_and_removes_staging ... ok
+test consumption::tests::recovery::manifest_storage_faults_are_reached_truthful_and_recoverable ... ok
+test consumption::tests::recovery::quarantined_process_records_remain_visible_after_reopen ... ok
+test consumption::tests::recovery::unmatched_storage_fault_occurrence_is_a_negative_control ... ok
+test consumption::tests::recovery::zero_retained_publication_completion_is_durable_and_idempotent ... ok
+test native::observation::tests::native_lifecycle_validation_rejects_duplicate_and_out_of_order_phases ... ok
+test output::window::tests::preserves_stream_bytes_without_exceeding_the_combined_tail_limit ... ok
+test platform::resource::macos::tests::libproc_counts_preserve_optional_failures_and_buffer_bounds ... ok
+test platform::resource::macos::tests::libproc_query_clears_stale_errno_before_observing_empty_group ... ok
+test platform::resource::macos::tests::libproc_zero_with_error_is_unavailable_not_a_sampled_zero ... ok
+test terminal::canonical_tests::complete_terminal_encoding_round_trips ... ok
+test terminal::canonical_tests::corrupt_stream_accounting_is_rejected_during_decode ... ok
+test terminal::canonical_tests::terminal_digest_binds_every_durable_fact_group ... ok
+
+test result: ok. 17 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running unittests src/bin/peritus-native-helper-fixture.rs (target/debug/deps/peritus_native_helper_fixture-2f28140cc2a2b3dd)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/bin/peritus-process-fixture.rs (target/debug/deps/peritus_process_fixture-e45aeea414c2fa57)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/native_process_probe.rs (target/debug/deps/native_process_probe-d8519031838fcab2)
+
+running 3 tests
+test incomplete_birth_identity_is_never_live_or_terminable ... ok
+test linux_probe_matches_birth_token_and_terminates_only_the_exact_isolated_group ... ok
+test linux_probe_reports_a_missing_pid_as_exactly_absent ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/process_conformance.rs (target/debug/deps/process_conformance-8748ead011d2d057)
+
+running 1 test
+test production_process_passes_complete_a2_suite_with_fresh_case_subjects ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.85s
+
+     Running tests/process_integration.rs (target/debug/deps/process_integration-be7aea9eaed1acb2)
+
+running 25 tests
+test control_lifecycle::cancellation_publishes_one_terminal_owned_tree_result ... ok
+test control_lifecycle::interrupt_signal_is_ordered_and_does_not_become_cancellation ... ok
+test exact_committed_authority_launches_separate_bounded_pipe_streams ... ok
+test holder_quiescence_requires_exact_terminal_correlated_manifests ... ok
+test native_backend::lifecycle::exact_restricted_authority_runs_through_the_helper_and_releases_the_session ... ok
+test native_backend::lifecycle::native_supervisor_resource_poll_uses_the_owned_resource_limit_path ... ok
+test native_backend::lifecycle::restricted_helper_receives_the_exact_protected_anonymous_handle ... ok
+test native_backend::lifecycle::restricted_pty_keeps_binary_helper_protocol_off_the_terminal_stream ... ok
+test native_backend::rejection::descriptor_drift_never_calls_prepare_or_consumes_authority ... ok
+test native_backend::rejection::invalid_prepared_session_cleanup_failure_remains_durably_incomplete ... ok
+test native_backend::rejection::invalid_prepared_session_is_released_and_cannot_be_replayed ... ok
+test native_backend::rejection::preparation_failure_is_durable_and_cannot_be_replayed ... ok
+test native_backend::rejection::prepared_session_is_released_before_spawn_failure_is_published ... ok
+test non_dispatched_action_is_rejected_before_durable_consumption ... ok
+test regressions::artifact_failure_preserves_terminal_and_retry_resumes_per_stream ... ok
+test regressions::disk_sampling_does_not_follow_workspace_symlink_cycles ... ok
+test regressions::process_lifecycle::cancellation_after_output_preserves_first_reason_and_accounting ... ok
+test regressions::process_lifecycle::inherited_environment_authority_cannot_bind_a_literal_value ... ok
+test regressions::process_lifecycle::output_limit_reaps_a_descendant_holding_the_stream_open ... ok
+test regressions::process_lifecycle::output_limit_terminates_and_reaps_the_owned_process ... ok
+test regressions::process_lifecycle::post_spawn_control_failure_reaps_and_persists_terminal_failure ... ok
+test regressions::process_lifecycle::process_count_overrun_is_observed_cancelled_and_classified ... ok
+test regressions::process_lifecycle::resize_authority_rejects_pipe_and_denied_pty_without_stopping_owner ... ok
+test regressions::process_lifecycle::root_exit_cleans_descendant_before_waiting_for_pipe_eof ... ok
+test regressions::zero_output_artifact_publication_is_complete_and_idempotent ... ok
+
+test result: ok. 25 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.91s
+
+
+GATE DRIVER RESULT: {"command": "cargo test --package peritus-process --all-targets --all-features --locked", "command_exit_code": 0, "elapsed_seconds": 2.071, "exit_code": 0, "finished_at": "2026-09-13T15:20:35.294894Z", "invocation": ["cargo", "test", "--package", "peritus-process", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "output": "063-peritus-process-ordinary-test.log", "owning_crate": "peritus-process", "result": "passed", "started_at": "2026-09-13T15:20:33.223081Z"}

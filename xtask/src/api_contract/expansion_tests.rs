@@ -2,6 +2,62 @@ use super::scanner::scan;
 use super::violation::ViolationKind;
 
 #[test]
+fn permits_only_documentation_lint_metadata_for_generated_ghost_items() {
+    for attribute in [
+        r#"cfg_attr(verus_keep_ghost, allow(missing_docs, reason = "pinned enum projection generator"))"#,
+        r#"cfg_attr(verus_keep_ghost, allow(missing_docs, reason = "pinned enum projection generator",),)"#,
+    ] {
+        for marker in ["#", "#!"] {
+            let source =
+                format!("{marker}[{attribute}] pub enum Terminal {{ Complete {{ value: u64 }} }}");
+            assert!(scan(&source).violations.is_empty(), "{source}");
+        }
+    }
+
+    for attribute in [
+        "cfg_attr(verus_keep_ghost, allow(missing_docs))",
+        r#"cfg_attr(verus_keep_ghost, allow(missing_docs, reason = ""))"#,
+        r#"cfg_attr(verus_keep_ghost, allow(missing_docs, reason = " "))"#,
+        r#"cfg_attr(verus_keep_ghost, allow(warnings, reason = "broader lint"))"#,
+        r#"cfg_attr(verus_keep_ghost, allow(missing_docs, dead_code, reason = "broader lint"))"#,
+        r#"cfg_attr(verus_only, allow(missing_docs, reason = "different condition"))"#,
+        r#"cfg_attr(not(verus_keep_ghost), allow(missing_docs, reason = "ordinary Rust"))"#,
+        r#"cfg_attr(all(), allow(missing_docs, reason = "unconditional"))"#,
+        r#"cfg_attr(verus_keep_ghost, allow(missing_docs, reason = "docs"), verus_spec(requires false))"#,
+        r#"cfg_attr(verus_keep_ghost, allow(missing_docs, reason = "docs"), cfg(any()))"#,
+        "cfg_attr(verus_keep_ghost, verifier::external_body)",
+        "cfg_attr(verus_keep_ghost, derive(Custom))",
+        r#"cfg_attr(verus_keep_ghost, cfg_attr(verus_keep_ghost, allow(missing_docs, reason = "nested")))"#,
+    ] {
+        for marker in ["#", "#!"] {
+            let source =
+                format!("{marker}[{attribute}] pub enum Terminal {{ Complete {{ value: u64 }} }}");
+            assert!(
+                scan(&source)
+                    .violations
+                    .iter()
+                    .any(|violation| violation.kind == ViolationKind::UnsupportedAttribute),
+                "{source}"
+            );
+        }
+    }
+}
+
+#[test]
+fn ghost_documentation_metadata_does_not_hide_executable_preconditions() {
+    let result = scan(
+        r#"
+        #![cfg_attr(verus_keep_ghost, allow(missing_docs, reason = "pinned enum generator"))]
+        verus! {
+            pub fn cannot_skip_contract(value: u64) requires value > 0 { }
+        }
+        "#,
+    );
+    assert_eq!(result.violations.len(), 1, "{:?}", result.violations);
+    assert_eq!(result.violations[0].function, "cannot_skip_contract");
+}
+
+#[test]
 fn rejects_conditional_qualified_and_unmodeled_expansions() {
     let result = scan(
         r"

@@ -1,0 +1,4435 @@
+GAP-02 FINDING-0002 EVIDENCE BUNDLE
+schema=peritus.independent-finding-evidence.v1
+encoding=length-delimited-raw-bytes
+entry-metadata-bytes=145
+{"bytes":56114,"finding_id":"FINDING-0002","label":"c2-failed-state","sha256":"3d8f1c520d08e50e32127bdd97e9626e84c1a277f6cfab3b71ce9a6a71a872c8"}
+entry-raw-begin
+{
+  "schema": "peritus.proof-impact-package-gates",
+  "schema_version": 1,
+  "candidate_commit": "08f2b7a3cfffdd612bb3033a39ef2d645e7e4f71",
+  "candidate_tree": "ef7b7ce79545e26b0ca68a7808b386e0f06452f7",
+  "plan_sha256": "8aed4d8733b4f955439612cd8a4f90dc10660de74d1e1db10bcfe88e4f2be6f2",
+  "driver_sha256": "7c966425b117c73ac99dec92f0d46f20b4379eab38f9e99f47a403c9d4371094",
+  "environment": {
+    "CARGO_BUILD_JOBS": "1",
+    "CCACHE_DISABLE": "1",
+    "RUST_TEST_THREADS": "1"
+  },
+  "verus_cpu_affinity": [
+    0,
+    1
+  ],
+  "command_timeout_seconds": 3600,
+  "started_at": "2026-09-13T14:42:55.311071Z",
+  "status": "failed",
+  "active": null,
+  "results": [
+    {
+      "kind": "ordinary-test",
+      "owning_crate": "peritus-agent",
+      "command": "cargo test --package peritus-agent --all-targets --all-features --locked",
+      "started_at": "2026-09-13T14:42:55.329924Z",
+      "output": "001-peritus-agent-ordinary-test.log",
+      "invocation": [
+        "cargo",
+        "test",
+        "--package",
+        "peritus-agent",
+        "--all-targets",
+        "--all-features",
+        "--locked"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T14:42:57.752298Z",
+      "elapsed_seconds": 2.422,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "ffdca91053372acbb8439a86e22aee1f0944bb3be1ac2a7149c1754dfafb3328"
+    },
+    {
+      "kind": "verus-verify",
+      "owning_crate": "peritus-agent",
+      "command": "cargo verus verify --package peritus-agent --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20",
+      "started_at": "2026-09-13T14:42:57.790075Z",
+      "output": "002-peritus-agent-verus-verify.log",
+      "invocation": [
+        "taskset",
+        "-c",
+        "0,1",
+        "cargo",
+        "verus",
+        "verify",
+        "--package",
+        "peritus-agent",
+        "--all-features",
+        "--locked",
+        "--check-toolchain",
+        "--fwd-verus-args-to",
+        "roots",
+        "--",
+        "--no-cheating",
+        "--rlimit",
+        "20"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T14:42:58.456951Z",
+      "elapsed_seconds": 0.667,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "0a43aac0e822fadfd60c8cf046e7eefa60c9d3bd9d169d42b3a6e401cbed7f77"
+    },
+    {
+      "kind": "ordinary-test",
+      "owning_crate": "peritus-app-protocol",
+      "command": "cargo test --package peritus-app-protocol --all-targets --all-features --locked",
+      "started_at": "2026-09-13T14:42:58.495048Z",
+      "output": "003-peritus-app-protocol-ordinary-test.log",
+      "invocation": [
+        "cargo",
+        "test",
+        "--package",
+        "peritus-app-protocol",
+        "--all-targets",
+        "--all-features",
+        "--locked"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T14:42:58.910784Z",
+      "elapsed_seconds": 0.415,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "3355926deeee2aaaf7555983c1fa626285f2c5e8b18ffb3af1065b7613cb0d87"
+    },
+    {
+      "kind": "verus-verify",
+      "owning_crate": "peritus-app-protocol",
+      "command": "cargo verus verify --package peritus-app-protocol --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20",
+      "started_at": "2026-09-13T14:42:58.948770Z",
+      "output": "004-peritus-app-protocol-verus-verify.log",
+      "invocation": [
+        "taskset",
+        "-c",
+        "0,1",
+        "cargo",
+        "verus",
+        "verify",
+        "--package",
+        "peritus-app-protocol",
+        "--all-features",
+        "--locked",
+        "--check-toolchain",
+        "--fwd-verus-args-to",
+        "roots",
+        "--",
+        "--no-cheating",
+        "--rlimit",
+        "20"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T14:42:59.514885Z",
+      "elapsed_seconds": 0.566,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "93f9d3401735ae272cf80a1fdf27d4e7cd88cd0d332aa17e4b63e7616578a81c"
+    },
+    {
+      "kind": "ordinary-test",
+      "owning_crate": "peritus-approval",
+      "command": "cargo test --package peritus-approval --all-targets --all-features --locked",
+      "started_at": "2026-09-13T14:42:59.552797Z",
+      "output": "005-peritus-approval-ordinary-test.log",
+      "invocation": [
+        "cargo",
+        "test",
+        "--package",
+        "peritus-approval",
+        "--all-targets",
+        "--all-features",
+        "--locked"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T14:43:11.654138Z",
+      "elapsed_seconds": 12.101,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "b2615f2122cec64930312a616fa58de63b044ee16f2c647e792289bbbe4e8fc7"
+    },
+    {
+      "kind": "verus-verify",
+      "owning_crate": "peritus-approval",
+      "command": "cargo verus verify --package peritus-approval --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20",
+      "started_at": "2026-09-13T14:43:11.693777Z",
+      "output": "006-peritus-approval-verus-verify.log",
+      "invocation": [
+        "taskset",
+        "-c",
+        "0,1",
+        "cargo",
+        "verus",
+        "verify",
+        "--package",
+        "peritus-approval",
+        "--all-features",
+        "--locked",
+        "--check-toolchain",
+        "--fwd-verus-args-to",
+        "roots",
+        "--",
+        "--no-cheating",
+        "--rlimit",
+        "20"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T14:43:12.260269Z",
+      "elapsed_seconds": 0.566,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "fb04bd6f3fdd1087541187f2abd7da6e0942403dd970093937a16dd53fe2e518"
+    },
+    {
+      "kind": "ordinary-test",
+      "owning_crate": "peritus-artifact-store",
+      "command": "cargo test --package peritus-artifact-store --all-targets --all-features --locked",
+      "started_at": "2026-09-13T14:43:12.297847Z",
+      "output": "007-peritus-artifact-store-ordinary-test.log",
+      "invocation": [
+        "cargo",
+        "test",
+        "--package",
+        "peritus-artifact-store",
+        "--all-targets",
+        "--all-features",
+        "--locked"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T14:43:12.613513Z",
+      "elapsed_seconds": 0.315,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "f7de399448cc0dbd3dbab370b880134692d06f29f6bae251dee2557e4b6b709f"
+    },
+    {
+      "kind": "verus-verify",
+      "owning_crate": "peritus-artifact-store",
+      "command": "cargo verus verify --package peritus-artifact-store --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20",
+      "started_at": "2026-09-13T14:43:12.652361Z",
+      "output": "008-peritus-artifact-store-verus-verify.log",
+      "invocation": [
+        "taskset",
+        "-c",
+        "0,1",
+        "cargo",
+        "verus",
+        "verify",
+        "--package",
+        "peritus-artifact-store",
+        "--all-features",
+        "--locked",
+        "--check-toolchain",
+        "--fwd-verus-args-to",
+        "roots",
+        "--",
+        "--no-cheating",
+        "--rlimit",
+        "20"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T14:43:13.219337Z",
+      "elapsed_seconds": 0.566,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "85d08f824f367c3d425c22414ae69973f45caa89bc111e8e3dc6d4af859f327b"
+    },
+    {
+      "kind": "ordinary-test",
+      "owning_crate": "peritus-budget",
+      "command": "cargo test --package peritus-budget --all-targets --all-features --locked",
+      "started_at": "2026-09-13T14:43:13.256816Z",
+      "output": "009-peritus-budget-ordinary-test.log",
+      "invocation": [
+        "cargo",
+        "test",
+        "--package",
+        "peritus-budget",
+        "--all-targets",
+        "--all-features",
+        "--locked"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T14:43:13.672760Z",
+      "elapsed_seconds": 0.415,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "91210776a95009be5778c9040b5b6a9447bea9c66dcf0c510ba1993e2e1c3f99"
+    },
+    {
+      "kind": "verus-verify",
+      "owning_crate": "peritus-budget",
+      "command": "cargo verus verify --package peritus-budget --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20",
+      "started_at": "2026-09-13T14:43:13.710439Z",
+      "output": "010-peritus-budget-verus-verify.log",
+      "invocation": [
+        "taskset",
+        "-c",
+        "0,1",
+        "cargo",
+        "verus",
+        "verify",
+        "--package",
+        "peritus-budget",
+        "--all-features",
+        "--locked",
+        "--check-toolchain",
+        "--fwd-verus-args-to",
+        "roots",
+        "--",
+        "--no-cheating",
+        "--rlimit",
+        "20"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T14:43:14.277235Z",
+      "elapsed_seconds": 0.566,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "163bd2d06e4a6f2a48cf5183b1b3be9a3876e07cf66456130bb49d039ea68af2"
+    },
+    {
+      "kind": "ordinary-test",
+      "owning_crate": "peritus-codec",
+      "command": "cargo test --package peritus-codec --all-targets --all-features --locked",
+      "started_at": "2026-09-13T14:43:14.314739Z",
+      "output": "011-peritus-codec-ordinary-test.log",
+      "invocation": [
+        "cargo",
+        "test",
+        "--package",
+        "peritus-codec",
+        "--all-targets",
+        "--all-features",
+        "--locked"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T14:43:14.580168Z",
+      "elapsed_seconds": 0.265,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "6bf51b81706c482860b71aff6c055f7f98299bd1fdfc23a610a5358460637b30"
+    },
+    {
+      "kind": "verus-verify",
+      "owning_crate": "peritus-codec",
+      "command": "cargo verus verify --package peritus-codec --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20",
+      "started_at": "2026-09-13T14:43:14.619512Z",
+      "output": "012-peritus-codec-verus-verify.log",
+      "invocation": [
+        "taskset",
+        "-c",
+        "0,1",
+        "cargo",
+        "verus",
+        "verify",
+        "--package",
+        "peritus-codec",
+        "--all-features",
+        "--locked",
+        "--check-toolchain",
+        "--fwd-verus-args-to",
+        "roots",
+        "--",
+        "--no-cheating",
+        "--rlimit",
+        "20"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T14:43:15.186519Z",
+      "elapsed_seconds": 0.566,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "50467c92efddd1444b7381b90e5488ac1071bf6efc5864115f6d5cd2db1cce85"
+    },
+    {
+      "kind": "ordinary-test",
+      "owning_crate": "peritus-collaboration",
+      "command": "cargo test --package peritus-collaboration --all-targets --all-features --locked",
+      "started_at": "2026-09-13T14:43:15.224542Z",
+      "output": "013-peritus-collaboration-ordinary-test.log",
+      "invocation": [
+        "cargo",
+        "test",
+        "--package",
+        "peritus-collaboration",
+        "--all-targets",
+        "--all-features",
+        "--locked"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T14:43:15.490196Z",
+      "elapsed_seconds": 0.265,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "d8e0f0cc8e3e366e9adf382374dd079703d0623432769871365868cfe34737da"
+    },
+    {
+      "kind": "verus-verify",
+      "owning_crate": "peritus-collaboration",
+      "command": "cargo verus verify --package peritus-collaboration --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20",
+      "started_at": "2026-09-13T14:43:15.527541Z",
+      "output": "014-peritus-collaboration-verus-verify.log",
+      "invocation": [
+        "taskset",
+        "-c",
+        "0,1",
+        "cargo",
+        "verus",
+        "verify",
+        "--package",
+        "peritus-collaboration",
+        "--all-features",
+        "--locked",
+        "--check-toolchain",
+        "--fwd-verus-args-to",
+        "roots",
+        "--",
+        "--no-cheating",
+        "--rlimit",
+        "20"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T14:43:16.094147Z",
+      "elapsed_seconds": 0.566,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "a908f172d7446e06eab8c2783851cc07d6195ee516cc332803d1321c6eea8231"
+    },
+    {
+      "kind": "ordinary-test",
+      "owning_crate": "peritus-context",
+      "command": "cargo test --package peritus-context --all-targets --all-features --locked",
+      "started_at": "2026-09-13T14:43:16.133295Z",
+      "output": "015-peritus-context-ordinary-test.log",
+      "invocation": [
+        "cargo",
+        "test",
+        "--package",
+        "peritus-context",
+        "--all-targets",
+        "--all-features",
+        "--locked"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T14:43:16.399233Z",
+      "elapsed_seconds": 0.265,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "26dc5d2bca0b4ab90de4de23fa63ebcfb83b9f0abf8b77590b83ee0576fb5c93"
+    },
+    {
+      "kind": "verus-verify",
+      "owning_crate": "peritus-context",
+      "command": "cargo verus verify --package peritus-context --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20",
+      "started_at": "2026-09-13T14:43:16.436149Z",
+      "output": "016-peritus-context-verus-verify.log",
+      "invocation": [
+        "taskset",
+        "-c",
+        "0,1",
+        "cargo",
+        "verus",
+        "verify",
+        "--package",
+        "peritus-context",
+        "--all-features",
+        "--locked",
+        "--check-toolchain",
+        "--fwd-verus-args-to",
+        "roots",
+        "--",
+        "--no-cheating",
+        "--rlimit",
+        "20"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T14:43:17.003061Z",
+      "elapsed_seconds": 0.566,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "065e29db01d2842a51220497550dffb78f947b98b6d1acb3c2445dd8f41b9b0b"
+    },
+    {
+      "kind": "ordinary-test",
+      "owning_crate": "peritus-daemon",
+      "command": "cargo test --package peritus-daemon --all-targets --all-features --locked",
+      "started_at": "2026-09-13T14:43:17.040147Z",
+      "output": "017-peritus-daemon-ordinary-test.log",
+      "invocation": [
+        "cargo",
+        "test",
+        "--package",
+        "peritus-daemon",
+        "--all-targets",
+        "--all-features",
+        "--locked"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T14:45:17.732657Z",
+      "elapsed_seconds": 120.692,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "5be3552e608c5f6eb2b12c071b29cc7618f5cbec6da4e458a0ea4969d5655465"
+    },
+    {
+      "kind": "verus-verify",
+      "owning_crate": "peritus-daemon",
+      "command": "cargo verus verify --package peritus-daemon --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20",
+      "started_at": "2026-09-13T14:45:17.778571Z",
+      "output": "018-peritus-daemon-verus-verify.log",
+      "invocation": [
+        "taskset",
+        "-c",
+        "0,1",
+        "cargo",
+        "verus",
+        "verify",
+        "--package",
+        "peritus-daemon",
+        "--all-features",
+        "--locked",
+        "--check-toolchain",
+        "--fwd-verus-args-to",
+        "roots",
+        "--",
+        "--no-cheating",
+        "--rlimit",
+        "20"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T14:49:13.635620Z",
+      "elapsed_seconds": 235.857,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "d1994d4812dd7a687e989e20fccf3870be75395fa9d0204a65ac61472c3af1e5"
+    },
+    {
+      "kind": "ordinary-test",
+      "owning_crate": "peritus-debugger",
+      "command": "cargo test --package peritus-debugger --all-targets --all-features --locked",
+      "started_at": "2026-09-13T14:49:13.674532Z",
+      "output": "019-peritus-debugger-ordinary-test.log",
+      "invocation": [
+        "cargo",
+        "test",
+        "--package",
+        "peritus-debugger",
+        "--all-targets",
+        "--all-features",
+        "--locked"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T14:49:46.146068Z",
+      "elapsed_seconds": 32.471,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "851d63ce3cb74bc833720d7fd58b6eae4bec8d61a6b05b53c16e66d94400ceed"
+    },
+    {
+      "kind": "verus-verify",
+      "owning_crate": "peritus-debugger",
+      "command": "cargo verus verify --package peritus-debugger --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20",
+      "started_at": "2026-09-13T14:49:46.185157Z",
+      "output": "020-peritus-debugger-verus-verify.log",
+      "invocation": [
+        "taskset",
+        "-c",
+        "0,1",
+        "cargo",
+        "verus",
+        "verify",
+        "--package",
+        "peritus-debugger",
+        "--all-features",
+        "--locked",
+        "--check-toolchain",
+        "--fwd-verus-args-to",
+        "roots",
+        "--",
+        "--no-cheating",
+        "--rlimit",
+        "20"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T14:51:11.475586Z",
+      "elapsed_seconds": 85.29,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "b90145af1c7dcee089b48124d76f47afcbea26f05df9c5aa6216854e8ec8768a"
+    },
+    {
+      "kind": "ordinary-test",
+      "owning_crate": "peritus-eval",
+      "command": "cargo test --package peritus-eval --all-targets --all-features --locked",
+      "started_at": "2026-09-13T14:51:11.515651Z",
+      "output": "021-peritus-eval-ordinary-test.log",
+      "invocation": [
+        "cargo",
+        "test",
+        "--package",
+        "peritus-eval",
+        "--all-targets",
+        "--all-features",
+        "--locked"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T14:51:43.286641Z",
+      "elapsed_seconds": 31.77,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "16646b12651e8c1dbc32e0f0e0df575abdc5a538f0df6615ca7348eb1183531c"
+    },
+    {
+      "kind": "verus-verify",
+      "owning_crate": "peritus-eval",
+      "command": "cargo verus verify --package peritus-eval --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20",
+      "started_at": "2026-09-13T14:51:43.326897Z",
+      "output": "022-peritus-eval-verus-verify.log",
+      "invocation": [
+        "taskset",
+        "-c",
+        "0,1",
+        "cargo",
+        "verus",
+        "verify",
+        "--package",
+        "peritus-eval",
+        "--all-features",
+        "--locked",
+        "--check-toolchain",
+        "--fwd-verus-args-to",
+        "roots",
+        "--",
+        "--no-cheating",
+        "--rlimit",
+        "20"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T14:52:18.412745Z",
+      "elapsed_seconds": 35.085,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "70c77ddc9086639bc5e784a83b8c5ad8ea4a540b1a8f35e7d4b1f94c2dc069dd"
+    },
+    {
+      "kind": "ordinary-test",
+      "owning_crate": "peritus-evidence",
+      "command": "cargo test --package peritus-evidence --all-targets --all-features --locked",
+      "started_at": "2026-09-13T14:52:18.453666Z",
+      "output": "023-peritus-evidence-ordinary-test.log",
+      "invocation": [
+        "cargo",
+        "test",
+        "--package",
+        "peritus-evidence",
+        "--all-targets",
+        "--all-features",
+        "--locked"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T14:52:20.523869Z",
+      "elapsed_seconds": 2.07,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "d1c354b03948f90fc6d96f197bf1c86abeccc545f4d5d9da0d094faa3014e500"
+    },
+    {
+      "kind": "verus-verify",
+      "owning_crate": "peritus-evidence",
+      "command": "cargo verus verify --package peritus-evidence --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20",
+      "started_at": "2026-09-13T14:52:20.563314Z",
+      "output": "024-peritus-evidence-verus-verify.log",
+      "invocation": [
+        "taskset",
+        "-c",
+        "0,1",
+        "cargo",
+        "verus",
+        "verify",
+        "--package",
+        "peritus-evidence",
+        "--all-features",
+        "--locked",
+        "--check-toolchain",
+        "--fwd-verus-args-to",
+        "roots",
+        "--",
+        "--no-cheating",
+        "--rlimit",
+        "20"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T14:52:21.180502Z",
+      "elapsed_seconds": 0.617,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "b058cb5f1d2d758674478d1ff0f0da8f846262f39a9b821274d022cbb0312b99"
+    },
+    {
+      "kind": "ordinary-test",
+      "owning_crate": "peritus-evolution",
+      "command": "cargo test --package peritus-evolution --all-targets --all-features --locked",
+      "started_at": "2026-09-13T14:52:21.224118Z",
+      "output": "025-peritus-evolution-ordinary-test.log",
+      "invocation": [
+        "cargo",
+        "test",
+        "--package",
+        "peritus-evolution",
+        "--all-targets",
+        "--all-features",
+        "--locked"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T14:52:33.875321Z",
+      "elapsed_seconds": 12.65,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "be1cdbb62e3d66ac7a2ab03cdab33b0c5596a2d6ed49459e1208add29f2d9308"
+    },
+    {
+      "kind": "verus-verify",
+      "owning_crate": "peritus-evolution",
+      "command": "cargo verus verify --package peritus-evolution --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20",
+      "started_at": "2026-09-13T14:52:33.917322Z",
+      "output": "026-peritus-evolution-verus-verify.log",
+      "invocation": [
+        "taskset",
+        "-c",
+        "0,1",
+        "cargo",
+        "verus",
+        "verify",
+        "--package",
+        "peritus-evolution",
+        "--all-features",
+        "--locked",
+        "--check-toolchain",
+        "--fwd-verus-args-to",
+        "roots",
+        "--",
+        "--no-cheating",
+        "--rlimit",
+        "20"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T14:52:38.947883Z",
+      "elapsed_seconds": 5.03,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "f361183dfed1eb33c7bbf2872555f6b673e2a6e5ba4bc5ae7e94ce9161ab24d9"
+    },
+    {
+      "kind": "ordinary-test",
+      "owning_crate": "peritus-gates",
+      "command": "cargo test --package peritus-gates --all-targets --all-features --locked",
+      "started_at": "2026-09-13T14:52:38.985707Z",
+      "output": "027-peritus-gates-ordinary-test.log",
+      "invocation": [
+        "cargo",
+        "test",
+        "--package",
+        "peritus-gates",
+        "--all-targets",
+        "--all-features",
+        "--locked"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T14:53:06.739862Z",
+      "elapsed_seconds": 27.753,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "fb071a0a70fcd1e3fab7b1fbba3e22208c6051187f1eb5d9def9ce90e9dff56c"
+    },
+    {
+      "kind": "verus-verify",
+      "owning_crate": "peritus-gates",
+      "command": "cargo verus verify --package peritus-gates --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20",
+      "started_at": "2026-09-13T14:53:06.778675Z",
+      "output": "028-peritus-gates-verus-verify.log",
+      "invocation": [
+        "taskset",
+        "-c",
+        "0,1",
+        "cargo",
+        "verus",
+        "verify",
+        "--package",
+        "peritus-gates",
+        "--all-features",
+        "--locked",
+        "--check-toolchain",
+        "--fwd-verus-args-to",
+        "roots",
+        "--",
+        "--no-cheating",
+        "--rlimit",
+        "20"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T14:53:41.705868Z",
+      "elapsed_seconds": 34.927,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "6b68dce7f22bf69560df7375418862e92b1a1e90c030fbc6be6db3fcf9a4b39f"
+    },
+    {
+      "kind": "ordinary-test",
+      "owning_crate": "peritus-git",
+      "command": "cargo test --package peritus-git --all-targets --all-features --locked",
+      "started_at": "2026-09-13T14:53:41.749855Z",
+      "output": "029-peritus-git-ordinary-test.log",
+      "invocation": [
+        "cargo",
+        "test",
+        "--package",
+        "peritus-git",
+        "--all-targets",
+        "--all-features",
+        "--locked"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T14:53:44.220562Z",
+      "elapsed_seconds": 2.47,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "e6f5fb102f1c97cb7d1eee0845f9afa1ae143f94b608cf3dd1829ed525f60280"
+    },
+    {
+      "kind": "verus-verify",
+      "owning_crate": "peritus-git",
+      "command": "cargo verus verify --package peritus-git --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20",
+      "started_at": "2026-09-13T14:53:44.259620Z",
+      "output": "030-peritus-git-verus-verify.log",
+      "invocation": [
+        "taskset",
+        "-c",
+        "0,1",
+        "cargo",
+        "verus",
+        "verify",
+        "--package",
+        "peritus-git",
+        "--all-features",
+        "--locked",
+        "--check-toolchain",
+        "--fwd-verus-args-to",
+        "roots",
+        "--",
+        "--no-cheating",
+        "--rlimit",
+        "20"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T14:53:44.875618Z",
+      "elapsed_seconds": 0.615,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "82b62ed982411d4d0d72fa0e8d2ea95e4b8ec5bc61a8559b87911f097d26080e"
+    },
+    {
+      "kind": "ordinary-test",
+      "owning_crate": "peritus-harness",
+      "command": "cargo test --package peritus-harness --all-targets --all-features --locked",
+      "started_at": "2026-09-13T14:53:44.915373Z",
+      "output": "031-peritus-harness-ordinary-test.log",
+      "invocation": [
+        "cargo",
+        "test",
+        "--package",
+        "peritus-harness",
+        "--all-targets",
+        "--all-features",
+        "--locked"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T14:53:53.803149Z",
+      "elapsed_seconds": 8.887,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "11afc6dadae15e3860ec634d1abd8c07c9221729a4a34e3fb067893932f2e199"
+    },
+    {
+      "kind": "verus-verify",
+      "owning_crate": "peritus-harness",
+      "command": "cargo verus verify --package peritus-harness --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20",
+      "started_at": "2026-09-13T14:53:53.843074Z",
+      "output": "032-peritus-harness-verus-verify.log",
+      "invocation": [
+        "taskset",
+        "-c",
+        "0,1",
+        "cargo",
+        "verus",
+        "verify",
+        "--package",
+        "peritus-harness",
+        "--all-features",
+        "--locked",
+        "--check-toolchain",
+        "--fwd-verus-args-to",
+        "roots",
+        "--",
+        "--no-cheating",
+        "--rlimit",
+        "20"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T14:53:54.459740Z",
+      "elapsed_seconds": 0.616,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "3cfb99265aa8d1924147df21563644af81a40c085fd1850ccae4f72e2fea0ad3"
+    },
+    {
+      "kind": "ordinary-test",
+      "owning_crate": "peritus-journal",
+      "command": "cargo test --package peritus-journal --all-targets --all-features --locked",
+      "started_at": "2026-09-13T14:53:54.500252Z",
+      "output": "033-peritus-journal-ordinary-test.log",
+      "invocation": [
+        "cargo",
+        "test",
+        "--package",
+        "peritus-journal",
+        "--all-targets",
+        "--all-features",
+        "--locked"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T14:54:06.998690Z",
+      "elapsed_seconds": 12.498,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "b0332908efaa6f82cc86ecf829d22fc3696b2430336def67828567143a82c6fb"
+    },
+    {
+      "kind": "verus-verify",
+      "owning_crate": "peritus-journal",
+      "command": "cargo verus verify --package peritus-journal --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20",
+      "started_at": "2026-09-13T14:54:07.037487Z",
+      "output": "034-peritus-journal-verus-verify.log",
+      "invocation": [
+        "taskset",
+        "-c",
+        "0,1",
+        "cargo",
+        "verus",
+        "verify",
+        "--package",
+        "peritus-journal",
+        "--all-features",
+        "--locked",
+        "--check-toolchain",
+        "--fwd-verus-args-to",
+        "roots",
+        "--",
+        "--no-cheating",
+        "--rlimit",
+        "20"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T14:54:07.654272Z",
+      "elapsed_seconds": 0.616,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "42cc3aa92592da172ad5751556ce12e7b23bd8902c2c6812c13d37f31ae14f45"
+    },
+    {
+      "kind": "ordinary-test",
+      "owning_crate": "peritus-kernel",
+      "command": "cargo test --package peritus-kernel --all-targets --all-features --locked",
+      "started_at": "2026-09-13T14:54:07.693044Z",
+      "output": "035-peritus-kernel-ordinary-test.log",
+      "invocation": [
+        "cargo",
+        "test",
+        "--package",
+        "peritus-kernel",
+        "--all-targets",
+        "--all-features",
+        "--locked"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T14:54:09.564336Z",
+      "elapsed_seconds": 1.87,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "251d6e3081969473f54f96b20e8316adcdec1fb37aae2e59d22706edba34a927"
+    },
+    {
+      "kind": "verus-verify",
+      "owning_crate": "peritus-kernel",
+      "command": "cargo verus verify --package peritus-kernel --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20",
+      "started_at": "2026-09-13T14:54:09.602711Z",
+      "output": "036-peritus-kernel-verus-verify.log",
+      "invocation": [
+        "taskset",
+        "-c",
+        "0,1",
+        "cargo",
+        "verus",
+        "verify",
+        "--package",
+        "peritus-kernel",
+        "--all-features",
+        "--locked",
+        "--check-toolchain",
+        "--fwd-verus-args-to",
+        "roots",
+        "--",
+        "--no-cheating",
+        "--rlimit",
+        "20"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T14:54:10.169506Z",
+      "elapsed_seconds": 0.566,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "12fadb57ec3202ce131dc3523368a1a624d6914b9ecf34655d7365a6df637dae"
+    },
+    {
+      "kind": "ordinary-test",
+      "owning_crate": "peritus-leases",
+      "command": "cargo test --package peritus-leases --all-targets --all-features --locked",
+      "started_at": "2026-09-13T14:54:10.209017Z",
+      "output": "037-peritus-leases-ordinary-test.log",
+      "invocation": [
+        "cargo",
+        "test",
+        "--package",
+        "peritus-leases",
+        "--all-targets",
+        "--all-features",
+        "--locked"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T14:54:13.233257Z",
+      "elapsed_seconds": 3.023,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "891ec3533a026dd31e18dd03a413ed4b90205afa75426b12e859d90dec0bfc3d"
+    },
+    {
+      "kind": "verus-verify",
+      "owning_crate": "peritus-leases",
+      "command": "cargo verus verify --package peritus-leases --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20",
+      "started_at": "2026-09-13T14:54:13.272057Z",
+      "output": "038-peritus-leases-verus-verify.log",
+      "invocation": [
+        "taskset",
+        "-c",
+        "0,1",
+        "cargo",
+        "verus",
+        "verify",
+        "--package",
+        "peritus-leases",
+        "--all-features",
+        "--locked",
+        "--check-toolchain",
+        "--fwd-verus-args-to",
+        "roots",
+        "--",
+        "--no-cheating",
+        "--rlimit",
+        "20"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T14:54:13.838964Z",
+      "elapsed_seconds": 0.566,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "6b8a1cbfcd9e1e991f1c88687402c9e37ba7220c1507d8250e19803f97d989c4"
+    },
+    {
+      "kind": "ordinary-test",
+      "owning_crate": "peritus-local-socket",
+      "command": "cargo test --package peritus-local-socket --all-targets --all-features --locked",
+      "started_at": "2026-09-13T14:54:13.879865Z",
+      "output": "039-peritus-local-socket-ordinary-test.log",
+      "invocation": [
+        "cargo",
+        "test",
+        "--package",
+        "peritus-local-socket",
+        "--all-targets",
+        "--all-features",
+        "--locked"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T14:54:14.396390Z",
+      "elapsed_seconds": 0.516,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "19210a6224d84620346a9fbef9f5284e4c18069facc3061f0c9aded572d50b32"
+    },
+    {
+      "kind": "verus-verify",
+      "owning_crate": "peritus-local-socket",
+      "command": "cargo verus verify --package peritus-local-socket --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20",
+      "started_at": "2026-09-13T14:54:14.435801Z",
+      "output": "040-peritus-local-socket-verus-verify.log",
+      "invocation": [
+        "taskset",
+        "-c",
+        "0,1",
+        "cargo",
+        "verus",
+        "verify",
+        "--package",
+        "peritus-local-socket",
+        "--all-features",
+        "--locked",
+        "--check-toolchain",
+        "--fwd-verus-args-to",
+        "roots",
+        "--",
+        "--no-cheating",
+        "--rlimit",
+        "20"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T14:54:15.654320Z",
+      "elapsed_seconds": 1.218,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "4ab3eaf4a1b4f17abe8d60312d3a6d9c3aad2ca0c0b151aa8d18d2aa0278c38e"
+    },
+    {
+      "kind": "ordinary-test",
+      "owning_crate": "peritus-mcp",
+      "command": "cargo test --package peritus-mcp --all-targets --all-features --locked",
+      "started_at": "2026-09-13T14:54:15.692057Z",
+      "output": "041-peritus-mcp-ordinary-test.log",
+      "invocation": [
+        "cargo",
+        "test",
+        "--package",
+        "peritus-mcp",
+        "--all-targets",
+        "--all-features",
+        "--locked"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T14:54:18.967205Z",
+      "elapsed_seconds": 3.274,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "f9fc56e371b19502258c4f59d73681d0758a9f70988f039376b27771a0b9018d"
+    },
+    {
+      "kind": "verus-verify",
+      "owning_crate": "peritus-mcp",
+      "command": "cargo verus verify --package peritus-mcp --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20",
+      "started_at": "2026-09-13T14:54:19.007749Z",
+      "output": "042-peritus-mcp-verus-verify.log",
+      "invocation": [
+        "taskset",
+        "-c",
+        "0,1",
+        "cargo",
+        "verus",
+        "verify",
+        "--package",
+        "peritus-mcp",
+        "--all-features",
+        "--locked",
+        "--check-toolchain",
+        "--fwd-verus-args-to",
+        "roots",
+        "--",
+        "--no-cheating",
+        "--rlimit",
+        "20"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T14:54:29.200112Z",
+      "elapsed_seconds": 10.191,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "0fcc9340714da3a4fe12744c848ebbad2e87cd4f1458e8b2db42f91a15df07cf"
+    },
+    {
+      "kind": "ordinary-test",
+      "owning_crate": "peritus-memory",
+      "command": "cargo test --package peritus-memory --all-targets --all-features --locked",
+      "started_at": "2026-09-13T14:54:29.239559Z",
+      "output": "043-peritus-memory-ordinary-test.log",
+      "invocation": [
+        "cargo",
+        "test",
+        "--package",
+        "peritus-memory",
+        "--all-targets",
+        "--all-features",
+        "--locked"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T14:54:31.710899Z",
+      "elapsed_seconds": 2.47,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "0b8a0ca6e8489146a1b6447f1cd5e086ace9921b0e0ac793efbecb3505a7b2da"
+    },
+    {
+      "kind": "verus-verify",
+      "owning_crate": "peritus-memory",
+      "command": "cargo verus verify --package peritus-memory --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20",
+      "started_at": "2026-09-13T14:54:31.750048Z",
+      "output": "044-peritus-memory-verus-verify.log",
+      "invocation": [
+        "taskset",
+        "-c",
+        "0,1",
+        "cargo",
+        "verus",
+        "verify",
+        "--package",
+        "peritus-memory",
+        "--all-features",
+        "--locked",
+        "--check-toolchain",
+        "--fwd-verus-args-to",
+        "roots",
+        "--",
+        "--no-cheating",
+        "--rlimit",
+        "20"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T14:54:37.332213Z",
+      "elapsed_seconds": 5.581,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "8a2a9000a9d609214f4713a815426ec832027aae85218c3906f31cc824525b8d"
+    },
+    {
+      "kind": "ordinary-test",
+      "owning_crate": "peritus-migrations",
+      "command": "cargo test --package peritus-migrations --all-targets --all-features --locked",
+      "started_at": "2026-09-13T14:54:37.372116Z",
+      "output": "045-peritus-migrations-ordinary-test.log",
+      "invocation": [
+        "cargo",
+        "test",
+        "--package",
+        "peritus-migrations",
+        "--all-targets",
+        "--all-features",
+        "--locked"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T14:54:39.243092Z",
+      "elapsed_seconds": 1.87,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "770a04b34a494f0f231a206b31bbba8256aa6625e4661ccb419c5e93e62176f7"
+    },
+    {
+      "kind": "verus-verify",
+      "owning_crate": "peritus-migrations",
+      "command": "cargo verus verify --package peritus-migrations --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20",
+      "started_at": "2026-09-13T14:54:39.283408Z",
+      "output": "046-peritus-migrations-verus-verify.log",
+      "invocation": [
+        "taskset",
+        "-c",
+        "0,1",
+        "cargo",
+        "verus",
+        "verify",
+        "--package",
+        "peritus-migrations",
+        "--all-features",
+        "--locked",
+        "--check-toolchain",
+        "--fwd-verus-args-to",
+        "roots",
+        "--",
+        "--no-cheating",
+        "--rlimit",
+        "20"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T14:54:40.702953Z",
+      "elapsed_seconds": 1.419,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "56c39fbe4d9d1be0ee6aba5adfd979ef859c3246330945b29663c972e877a337"
+    },
+    {
+      "kind": "ordinary-test",
+      "owning_crate": "peritus-model-protocol",
+      "command": "cargo test --package peritus-model-protocol --all-targets --all-features --locked",
+      "started_at": "2026-09-13T14:54:40.742744Z",
+      "output": "047-peritus-model-protocol-ordinary-test.log",
+      "invocation": [
+        "cargo",
+        "test",
+        "--package",
+        "peritus-model-protocol",
+        "--all-targets",
+        "--all-features",
+        "--locked"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T14:54:44.871362Z",
+      "elapsed_seconds": 4.128,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "b5923bdf46ea85971f45e21b17bd122bb077b68b9fd216f2c45533e34233dadc"
+    },
+    {
+      "kind": "verus-verify",
+      "owning_crate": "peritus-model-protocol",
+      "command": "cargo verus verify --package peritus-model-protocol --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20",
+      "started_at": "2026-09-13T14:54:44.911716Z",
+      "output": "048-peritus-model-protocol-verus-verify.log",
+      "invocation": [
+        "taskset",
+        "-c",
+        "0,1",
+        "cargo",
+        "verus",
+        "verify",
+        "--package",
+        "peritus-model-protocol",
+        "--all-features",
+        "--locked",
+        "--check-toolchain",
+        "--fwd-verus-args-to",
+        "roots",
+        "--",
+        "--no-cheating",
+        "--rlimit",
+        "20"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T14:54:47.132719Z",
+      "elapsed_seconds": 2.22,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "dbb70aa88af421877f8d99c2896051d3a25e302dbec9dd08397a077f4c49de12"
+    },
+    {
+      "kind": "ordinary-test",
+      "owning_crate": "peritus-network",
+      "command": "cargo test --package peritus-network --all-targets --all-features --locked",
+      "started_at": "2026-09-13T14:54:47.173945Z",
+      "output": "049-peritus-network-ordinary-test.log",
+      "invocation": [
+        "cargo",
+        "test",
+        "--package",
+        "peritus-network",
+        "--all-targets",
+        "--all-features",
+        "--locked"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T14:54:54.256661Z",
+      "elapsed_seconds": 7.082,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "3a8bd293c3e4f44139eba39fb9ff997367198b8f4f2d398a05261ad968cc11fb"
+    },
+    {
+      "kind": "verus-verify",
+      "owning_crate": "peritus-network",
+      "command": "cargo verus verify --package peritus-network --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20",
+      "started_at": "2026-09-13T14:54:54.298516Z",
+      "output": "050-peritus-network-verus-verify.log",
+      "invocation": [
+        "taskset",
+        "-c",
+        "0,1",
+        "cargo",
+        "verus",
+        "verify",
+        "--package",
+        "peritus-network",
+        "--all-features",
+        "--locked",
+        "--check-toolchain",
+        "--fwd-verus-args-to",
+        "roots",
+        "--",
+        "--no-cheating",
+        "--rlimit",
+        "20"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T14:54:57.523837Z",
+      "elapsed_seconds": 3.225,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "53a249fea21e9f39781d22d17908830c56413f49214bc13f11b3dc8de4d84011"
+    },
+    {
+      "kind": "ordinary-test",
+      "owning_crate": "peritus-obligations",
+      "command": "cargo test --package peritus-obligations --all-targets --all-features --locked",
+      "started_at": "2026-09-13T14:54:57.562682Z",
+      "output": "051-peritus-obligations-ordinary-test.log",
+      "invocation": [
+        "cargo",
+        "test",
+        "--package",
+        "peritus-obligations",
+        "--all-targets",
+        "--all-features",
+        "--locked"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T14:54:57.878743Z",
+      "elapsed_seconds": 0.315,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "463f7a25f28ca47dddf683a9a24bf9f5f616482407aaed1063ff41aed8142e7b"
+    },
+    {
+      "kind": "verus-verify",
+      "owning_crate": "peritus-obligations",
+      "command": "cargo verus verify --package peritus-obligations --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20",
+      "started_at": "2026-09-13T14:54:57.918256Z",
+      "output": "052-peritus-obligations-verus-verify.log",
+      "invocation": [
+        "taskset",
+        "-c",
+        "0,1",
+        "cargo",
+        "verus",
+        "verify",
+        "--package",
+        "peritus-obligations",
+        "--all-features",
+        "--locked",
+        "--check-toolchain",
+        "--fwd-verus-args-to",
+        "roots",
+        "--",
+        "--no-cheating",
+        "--rlimit",
+        "20"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T14:54:58.485102Z",
+      "elapsed_seconds": 0.566,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "68424157df124a2597609aa99102e79a1b0bba3ebe60824b47b9b5cd674aeeb8"
+    },
+    {
+      "kind": "ordinary-test",
+      "owning_crate": "peritus-orchestrator",
+      "command": "cargo test --package peritus-orchestrator --all-targets --all-features --locked",
+      "started_at": "2026-09-13T14:54:58.525580Z",
+      "output": "053-peritus-orchestrator-ordinary-test.log",
+      "invocation": [
+        "cargo",
+        "test",
+        "--package",
+        "peritus-orchestrator",
+        "--all-targets",
+        "--all-features",
+        "--locked"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T14:55:03.453420Z",
+      "elapsed_seconds": 4.927,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "1d874ee42d9bc42c50cf8d0874926bb3efd866287d074fba2cb8d6351285cb4b"
+    },
+    {
+      "kind": "verus-verify",
+      "owning_crate": "peritus-orchestrator",
+      "command": "cargo verus verify --package peritus-orchestrator --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20",
+      "started_at": "2026-09-13T14:55:03.494739Z",
+      "output": "054-peritus-orchestrator-verus-verify.log",
+      "invocation": [
+        "taskset",
+        "-c",
+        "0,1",
+        "cargo",
+        "verus",
+        "verify",
+        "--package",
+        "peritus-orchestrator",
+        "--all-features",
+        "--locked",
+        "--check-toolchain",
+        "--fwd-verus-args-to",
+        "roots",
+        "--",
+        "--no-cheating",
+        "--rlimit",
+        "20"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T14:55:04.211834Z",
+      "elapsed_seconds": 0.716,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "e16afef357a9cbdabaa7e666c3c9b32d7e40eb4b01ba1ee426b9c4faef924dad"
+    },
+    {
+      "kind": "ordinary-test",
+      "owning_crate": "peritus-patch",
+      "command": "cargo test --package peritus-patch --all-targets --all-features --locked",
+      "started_at": "2026-09-13T14:55:04.252939Z",
+      "output": "055-peritus-patch-ordinary-test.log",
+      "invocation": [
+        "cargo",
+        "test",
+        "--package",
+        "peritus-patch",
+        "--all-targets",
+        "--all-features",
+        "--locked"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T14:55:09.381903Z",
+      "elapsed_seconds": 5.128,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "64cff882dcda319657b4dc3d2625b2ada4c6ddf8cf419eeb278f063c8a2d083e"
+    },
+    {
+      "kind": "verus-verify",
+      "owning_crate": "peritus-patch",
+      "command": "cargo verus verify --package peritus-patch --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20",
+      "started_at": "2026-09-13T14:55:09.421774Z",
+      "output": "056-peritus-patch-verus-verify.log",
+      "invocation": [
+        "taskset",
+        "-c",
+        "0,1",
+        "cargo",
+        "verus",
+        "verify",
+        "--package",
+        "peritus-patch",
+        "--all-features",
+        "--locked",
+        "--check-toolchain",
+        "--fwd-verus-args-to",
+        "roots",
+        "--",
+        "--no-cheating",
+        "--rlimit",
+        "20"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T14:55:10.038383Z",
+      "elapsed_seconds": 0.616,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "d24d2d2196ef57acc3ff67ecf0a6cd4aa64d1b1b43ab13a8b1c09de33a28ce58"
+    },
+    {
+      "kind": "ordinary-test",
+      "owning_crate": "peritus-plugin-host",
+      "command": "cargo test --package peritus-plugin-host --all-targets --all-features --locked",
+      "started_at": "2026-09-13T14:55:10.078940Z",
+      "output": "057-peritus-plugin-host-ordinary-test.log",
+      "invocation": [
+        "cargo",
+        "test",
+        "--package",
+        "peritus-plugin-host",
+        "--all-targets",
+        "--all-features",
+        "--locked"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T14:55:19.120219Z",
+      "elapsed_seconds": 9.04,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "e57ed93e7a08fb6b03f8a72eebb3e6f39afb37b718f3c9189ff08c5466e41de3"
+    },
+    {
+      "kind": "verus-verify",
+      "owning_crate": "peritus-plugin-host",
+      "command": "cargo verus verify --package peritus-plugin-host --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20",
+      "started_at": "2026-09-13T14:55:19.160887Z",
+      "output": "058-peritus-plugin-host-verus-verify.log",
+      "invocation": [
+        "taskset",
+        "-c",
+        "0,1",
+        "cargo",
+        "verus",
+        "verify",
+        "--package",
+        "peritus-plugin-host",
+        "--all-features",
+        "--locked",
+        "--check-toolchain",
+        "--fwd-verus-args-to",
+        "roots",
+        "--",
+        "--no-cheating",
+        "--rlimit",
+        "20"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T14:55:24.692459Z",
+      "elapsed_seconds": 5.531,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "1be6a1c1a6f9e755051c932a7d37f8ddb9663752d8eeb27c6cc1a9ba2742f73f"
+    },
+    {
+      "kind": "ordinary-test",
+      "owning_crate": "peritus-plugin-sdk",
+      "command": "cargo test --package peritus-plugin-sdk --all-targets --all-features --locked",
+      "started_at": "2026-09-13T14:55:24.734103Z",
+      "output": "059-peritus-plugin-sdk-ordinary-test.log",
+      "invocation": [
+        "cargo",
+        "test",
+        "--package",
+        "peritus-plugin-sdk",
+        "--all-targets",
+        "--all-features",
+        "--locked"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T14:55:26.955566Z",
+      "elapsed_seconds": 2.221,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "a31e5b8557be7a0f68d3c51385ec5c3bc7e1f5c9e161ce102801517bd3b5c241"
+    },
+    {
+      "kind": "verus-verify",
+      "owning_crate": "peritus-plugin-sdk",
+      "command": "cargo verus verify --package peritus-plugin-sdk --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20",
+      "started_at": "2026-09-13T14:55:27.003344Z",
+      "output": "060-peritus-plugin-sdk-verus-verify.log",
+      "invocation": [
+        "taskset",
+        "-c",
+        "0,1",
+        "cargo",
+        "verus",
+        "verify",
+        "--package",
+        "peritus-plugin-sdk",
+        "--all-features",
+        "--locked",
+        "--check-toolchain",
+        "--fwd-verus-args-to",
+        "roots",
+        "--",
+        "--no-cheating",
+        "--rlimit",
+        "20"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T14:55:28.573849Z",
+      "elapsed_seconds": 1.57,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "9ea0dad5f666ee63f7b15dd1c91ce2b2c4e2d6f494da829d7fc7d29f273aa5bf"
+    },
+    {
+      "kind": "ordinary-test",
+      "owning_crate": "peritus-policy",
+      "command": "cargo test --package peritus-policy --all-targets --all-features --locked",
+      "started_at": "2026-09-13T14:55:28.612954Z",
+      "output": "061-peritus-policy-ordinary-test.log",
+      "invocation": [
+        "cargo",
+        "test",
+        "--package",
+        "peritus-policy",
+        "--all-targets",
+        "--all-features",
+        "--locked"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T14:55:30.584231Z",
+      "elapsed_seconds": 1.97,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "c368b40d9f7af96d0954a0d67b4ec89419ff6408ae4a40679328be38c883372a"
+    },
+    {
+      "kind": "verus-verify",
+      "owning_crate": "peritus-policy",
+      "command": "cargo verus verify --package peritus-policy --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20",
+      "started_at": "2026-09-13T14:55:30.623893Z",
+      "output": "062-peritus-policy-verus-verify.log",
+      "invocation": [
+        "taskset",
+        "-c",
+        "0,1",
+        "cargo",
+        "verus",
+        "verify",
+        "--package",
+        "peritus-policy",
+        "--all-features",
+        "--locked",
+        "--check-toolchain",
+        "--fwd-verus-args-to",
+        "roots",
+        "--",
+        "--no-cheating",
+        "--rlimit",
+        "20"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T14:55:31.190674Z",
+      "elapsed_seconds": 0.566,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "5f8005719a2515d0b7c2d917b452812a2bd9be080b22a4c53cc0c48bf640bdd5"
+    },
+    {
+      "kind": "ordinary-test",
+      "owning_crate": "peritus-process",
+      "command": "cargo test --package peritus-process --all-targets --all-features --locked",
+      "started_at": "2026-09-13T14:55:31.230758Z",
+      "output": "063-peritus-process-ordinary-test.log",
+      "invocation": [
+        "cargo",
+        "test",
+        "--package",
+        "peritus-process",
+        "--all-targets",
+        "--all-features",
+        "--locked"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T14:55:44.888459Z",
+      "elapsed_seconds": 13.657,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "d995ef1dd3737a52388e8093238a3e4fc249b9a8ee8c5f109452fd3ca30fba60"
+    },
+    {
+      "kind": "verus-verify",
+      "owning_crate": "peritus-process",
+      "command": "cargo verus verify --package peritus-process --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20",
+      "started_at": "2026-09-13T14:55:44.928539Z",
+      "output": "064-peritus-process-verus-verify.log",
+      "invocation": [
+        "taskset",
+        "-c",
+        "0,1",
+        "cargo",
+        "verus",
+        "verify",
+        "--package",
+        "peritus-process",
+        "--all-features",
+        "--locked",
+        "--check-toolchain",
+        "--fwd-verus-args-to",
+        "roots",
+        "--",
+        "--no-cheating",
+        "--rlimit",
+        "20"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T14:55:48.905310Z",
+      "elapsed_seconds": 3.976,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "3cab958b420cd4a58e296258acf87441fc8e01f494b39b916c6cb5a9d3691d07"
+    },
+    {
+      "kind": "ordinary-test",
+      "owning_crate": "peritus-product-runner",
+      "command": "cargo test --package peritus-product-runner --all-targets --all-features --locked",
+      "started_at": "2026-09-13T14:55:48.945704Z",
+      "output": "065-peritus-product-runner-ordinary-test.log",
+      "invocation": [
+        "cargo",
+        "test",
+        "--package",
+        "peritus-product-runner",
+        "--all-targets",
+        "--all-features",
+        "--locked"
+      ],
+      "command_exit_code": 101,
+      "finished_at": "2026-09-13T14:56:09.725258Z",
+      "elapsed_seconds": 20.778,
+      "exit_code": 101,
+      "result": "failed",
+      "output_sha256": "fc4ebe63021adc3534825f4c4b5ac59d4b5a77370201160e3a1b87b1ddd0a4b3"
+    }
+  ],
+  "approval": false
+}
+
+entry-raw-end
+entry-metadata-bytes=150
+{"bytes":34201,"finding_id":"FINDING-0002","label":"canonical-gate65-red","sha256":"fc4ebe63021adc3534825f4c4b5ac59d4b5a77370201160e3a1b87b1ddd0a4b3"}
+entry-raw-begin
+{"candidate_commit": "08f2b7a3cfffdd612bb3033a39ef2d645e7e4f71", "candidate_tree": "ef7b7ce79545e26b0ca68a7808b386e0f06452f7", "environment": {"CARGO_BUILD_JOBS": "1", "CCACHE_DISABLE": "1", "RUST_TEST_THREADS": "1"}, "gate": {"command": "cargo test --package peritus-product-runner --all-targets --all-features --locked", "invocation": ["cargo", "test", "--package", "peritus-product-runner", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "output": "065-peritus-product-runner-ordinary-test.log", "owning_crate": "peritus-product-runner", "started_at": "2026-09-13T14:55:48.945704Z"}, "plan_sha256": "8aed4d8733b4f955439612cd8a4f90dc10660de74d1e1db10bcfe88e4f2be6f2"}
+
+   Compiling peritus-product-runner v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/app/peritus-product-runner)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 10.13s
+     Running unittests src/lib.rs (target/debug/deps/peritus_product_runner-f16a5c38448709d9)
+
+running 287 tests
+test attachment::decode::tests::prior_default_image_output_is_conserved_in_animation_budget ... ok
+test attachment::tests::all_supported_formats_decode_and_retain_exact_original_bytes_and_digest ... ok
+test attachment::tests::complete_animation_frames_are_validated_with_an_exact_count_bound ... ok
+test attachment::tests::complete_selection_rejects_count_aggregate_and_changed_provider_without_omission ... ok
+test attachment::tests::image_dimensions_reject_a_small_encoded_bomb_before_pixel_decode ... ok
+test attachment::tests::provider_capability_and_exact_encoded_byte_bound_are_enforced ... ok
+test attachment::tests::signatures_without_pixels_and_truncated_pixels_are_not_images ... ok
+test budget::resource_probe::tests::workspace_growth_ignores_git_storage_and_does_not_follow_links ... ok
+test budget::tests::caller_run_horizon_is_bounded_and_drives_elapsed_budget ... ok
+test budget::tests::completed_work_is_retained_when_a_hard_ceiling_rejects_the_next_boundary ... ok
+test budget::tests::exact_numeric_ceilings_are_admitted_and_rejections_keep_their_priority ... ok
+test budget::tests::later_explicit_total_replaces_the_derived_total_without_double_counting ... ok
+test budget::tests::memory_and_workspace_growth_have_distinct_hard_failures ... ok
+test budget::tests::provider_failovers_are_counted_separately_from_same_provider_retries ... ok
+test budget::tests::rejected_model_request_preserves_prior_usage_and_every_counter ... ok
+test budget::tests::replacement_subtracts_before_adding_and_rejects_missing_prior_contributions ... ok
+test budget::tests::streaming_usage_replaces_each_response_snapshot_and_survives_failure ... ok
+test budget::tests::successful_probe_closes_a_run_scoped_provider_circuit ... ok
+test budget::tests::usage_replacement_rejection_preserves_totals_and_the_retained_response ... ok
+test budget::tests::work_events_accumulate_without_a_successful_role_outcome ... ok
+test budget::tests::workspace_growth_and_peak_memory_are_observed_at_effect_boundaries ... ok
+test bundle::tests::diff_includes_changes_committed_after_the_run_baseline ... ok
+test bundle::tests::diff_includes_untracked_text_files ... ok
+test bundle::tests::diff_projects_dirty_nested_repository_files_into_outer_context ... ok
+test bundle::tests::diff_reports_exact_permissions_separately_from_git_mode ... ok
+test candidate::tests::candidate_expands_dirty_files_inside_an_untracked_nested_repository ... ok
+test candidate::tests::candidate_includes_changes_committed_after_the_run_baseline ... ok
+test candidate::tests::candidate_keeps_tracked_build_paths_but_omits_untracked_build_products ... ok
+test candidate::tests::candidate_survives_restart_and_includes_new_modified_and_deleted_files ... ok
+test context_config::sandbox_wire::tests::platform_fields_are_exact_and_roundtrip_without_widening ... ok
+test control::brief::tests::brief_edits_share_immutable_queue_sources_and_do_not_release_a_held_requirement ... ok
+test control::brief::tests::incorporated_brief_edits_become_new_corrections_without_rewriting_prior_sources ... ok
+test control::brief::tests::ordinary_queue_edits_refresh_exact_brief_revision_but_not_unrelated_fields ... ok
+test control::checkpoint::tests::same_run_can_advance_the_exact_owned_postimage_but_another_run_cannot ... ok
+test control::files::tests::historical_files_retain_bytes_and_references_without_reusing_refresh_consent ... ok
+test control::files::tests::refresh_preserves_original_version_and_fences_previous_context_generation ... ok
+test control::files::tests::snapshot_or_held_references_cannot_refresh_and_deselection_retains_history ... ok
+test control::files::tests::text_is_exact_and_invalid_ranges_binary_or_rebound_sources_reject ... ok
+test control::goal::tests::graphical_evidence_is_independent_fresh_and_revision_fenced ... ok
+test control::goal::tests::missing_usage_is_unknown_not_zero_and_cost_has_independent_provenance ... ok
+test control::goal::tests::only_fresh_strict_settlement_achieves_goal ... ok
+test control::goal::tests::pause_boundaries_do_not_admit_mutation_or_complete_from_model_text ... ok
+test control::goal::tests::request_budget_is_reserved_before_admission_and_survives_resume ... ok
+test control::identity::tests::exact_encoding_and_nonzero_validation_survive_explicit_deserialization ... ok
+test control::images::tests::aggregate_limit_and_invalid_metadata_reject_without_dropping_any_selection ... ok
+test control::images::tests::count_limit_is_exact_and_held_input_cannot_be_released_past_the_limit ... ok
+test control::images::tests::empty_image_state_preserves_legacy_bytes_and_reference_operation_cannot_be_rebound ... ok
+test control::inputs::tests::dependency_order_hold_withdraw_and_incorporation_reject_invalid_plans_without_mutation ... ok
+test control::inputs::tests::editing_preserves_old_text_and_incorporated_text_requires_a_new_correction ... ok
+test control::inputs::tests::historical_snapshot_preserves_context_but_holds_all_inherited_pending_work ... ok
+test control::inputs::tests::malformed_import_and_capacity_fail_closed ... ok
+test control::inputs::tests::request_capture_excludes_held_dependencies_and_tracks_every_mutation ... ok
+test control::permissions::tests::narrowing_is_durable_and_broadening_above_host_rejects ... ok
+test control::review::tests::anchors_reject_line_only_and_unsafe_path_identity ... ok
+test control::review::tests::leave_alone_is_a_revisioned_input_and_stays_protected_until_dismissed ... ok
+test control::tests::deserialization_cannot_construct_reserved_identifiers_or_unbounded_text ... ok
+test control::tests::restore_capacity::applied_restore_invalidates_context_with_a_full_input_ledger ... ok
+test control::tests::state_and_receipt_roundtrip_but_reject_changed_owner_and_unknown_generation ... ok
+test delivery_requirement::tests::artifact_requests_and_workspace_scope_do_not_gain_an_effect_requirement ... ok
+test delivery_requirement::tests::background_and_politeness_do_not_hide_a_promised_runtime_result ... ok
+test delivery_requirement::tests::coordinated_build_and_install_requires_the_installed_result ... ok
+test delivery_requirement::tests::live_operational_requests_require_effect_evidence ... ok
+test design::artifact::tests::large_workspace_inventory_is_bounded_without_blocking_design ... ok
+test design::artifact::tests::operational_design_requires_live_effect_and_fresh_verification ... ok
+test design::artifact::tests::rendered_design_preserves_the_request_and_observed_inventory ... ok
+test design::tests::artifact_workspace_marker_selects_the_deterministic_design_path ... ok
+test design::tests::design_keeps_literal_values_and_scoped_rules_authoritative ... ok
+test design::tests::design_requires_a_real_markdown_document ... ok
+test design::tests::rejected_design_retry_explains_the_exact_heading_contract ... ok
+test developer_tools::access_policy::tests::existing_private_read_exclusions_do_not_change_process_authority ... ok
+test developer_tools::access_policy::tests::hard_constraint_allows_read_but_blocks_file_and_unconfined_process_writes ... ok
+test developer_tools::access_policy::tests::opaque_query_contract_blocks_implementation_reads_and_hidden_state ... ok
+test developer_tools::access_policy::tests::ordinary_repository_request_keeps_normal_access ... ok
+test developer_tools::arguments::tests::every_catalog_schema_is_supported_and_read_only_definitions_agree ... ok
+test developer_tools::arguments::tests::invalid_fields_are_rejected_instead_of_defaulted_or_coerced ... ok
+test developer_tools::catalog::tests::mutating_catalog_declares_fresh_grounding_protocol ... ok
+test developer_tools::command_budget::tests::command_is_refused_once_only_the_completion_reserve_remains ... ok
+test developer_tools::command_budget::tests::late_command_is_clamped_before_the_completion_reserve ... ok
+test developer_tools::command_budget::tests::ordinary_command_keeps_its_requested_timeout ... ok
+test developer_tools::command_runtime::compactor::tests::compiled_compactor_contract_admits_exact_inputs_only ... ok
+test developer_tools::command_runtime::compactor::tests::missing_or_directory_weights_never_allocate_process_authority ... ok
+test developer_tools::command_runtime::folder_patch::tests::plan_cannot_be_committed_by_another_runtime_with_the_same_run_id ... ok
+test developer_tools::command_runtime::folder_patch::tests::real_authority_applies_only_the_exact_c1_folder_patch_bytes ... ok
+test developer_tools::command_runtime::ordinal::tests::independent_threads_reserve_distinct_numbers ... ok
+test developer_tools::command_runtime::ordinal::tests::invalid_and_exhausted_stored_counters_are_never_reset ... ok
+test developer_tools::command_runtime::ordinal::tests::legacy_shell_and_compactor_identities_are_preserved_including_gaps ... ok
+test developer_tools::command_runtime::ordinal::tests::malformed_store_and_exhaustion_fail_without_resetting_identity ... ok
+test developer_tools::command_runtime::ordinal::tests::reopening_and_stale_local_counters_do_not_reuse_reservations ... ok
+test developer_tools::command_runtime::ordinal::tests::separate_runs_retain_independent_high_water_marks ... ok
+test developer_tools::command_runtime::ordinal::tests::transient_writer_contention_waits_for_a_durable_reservation ... ok
+test developer_tools::command_runtime::plan::tests::executable_resolution_preserves_multicall_name_and_normalizes_parent ... ok
+test developer_tools::command_runtime::plan::tests::executable_resolution_rejects_dangling_symlinks ... ok
+test developer_tools::command_runtime::preview::tests::controlled_preview_fixture ... ignored, subprocess fixture; invoked by the owned-preview test
+test developer_tools::command_runtime::preview::tests::owned_preview_launches_accepts_input_and_stops_explicitly ... ok
+test developer_tools::command_runtime::result::tests::stream_projection_preserves_head_and_tail ... ok
+test developer_tools::command_runtime::tests::command_restart_fixture ... ok
+test developer_tools::command_runtime::tests::commands_after_failed_start_and_runtime_reopen_execute_once_with_fresh_identities ... FAILED
+test developer_tools::command_runtime::tests::idempotency_keys_are_stable_and_fixed_width ... ok
+test developer_tools::evidence::tests::evidence_retains_recent_bounded_command_observations ... ok
+test developer_tools::evidence::tests::only_explicit_successful_purposes_become_acceptance_evidence ... ok
+test developer_tools::executor::inspection_progress::tests::identical_and_alternating_inspections_warn_then_stop ... ok
+test developer_tools::executor::inspection_progress::tests::new_evidence_and_noninspection_work_reset_the_cycle ... ok
+test developer_tools::executor::receipt_tests::append_effect_counter_fixture ... ignored, subprocess fixture invoked by the duplicate-effect regression
+test developer_tools::executor::receipt_tests::completed_workspace_effect_replays_without_a_second_write ... ok
+test developer_tools::executor::receipt_tests::disconnect::disconnect_retry_cannot_relaunch_a_durably_pending_command ... 
+running 1 test
+test developer_tools::executor::receipt_tests::append_effect_counter_fixture ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 286 filtered out; finished in 0.00s
+
+
+running 1 test
+test developer_tools::executor::receipt_tests::append_effect_counter_fixture ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 286 filtered out; finished in 0.00s
+
+ok
+test developer_tools::executor::receipt_tests::reused_provider_call_id_cannot_dispatch_a_second_external_effect ... ok
+test developer_tools::executor::tests::access::folder_private_state_is_excluded_from_read_list_and_search_even_after_contract_refresh ... ok
+test developer_tools::executor::tests::access::read_only_tools_reject_undeclared_mutation_and_process_calls ... ok
+test developer_tools::executor::tests::admission::absent_manifest_read_does_not_change_progress_or_block_greenfield_creation ... ok
+test developer_tools::executor::tests::admission::bad_write_is_repairable_in_the_same_invocation_without_enrollment_or_effect ... ok
+test developer_tools::executor::tests::admission::live_permission_narrowing_precedes_reads_scope_receipts_and_process_effects ... ok
+test developer_tools::executor::tests::admission::malformed_command_is_rejected_before_a_receipt_or_process_can_start ... ok
+test developer_tools::executor::tests::checkpoint::changed_write_captures_the_exact_preimage_before_the_effect ... ok
+test developer_tools::executor::tests::checkpoint::checkpoint_failure_aborts_the_workspace_effect_and_unchanged_writes_skip_capture ... ok
+test developer_tools::executor::tests::checkpoint::empty_directory_capture_precedes_removal_with_an_explicit_kind ... ok
+test developer_tools::executor::tests::checkpoint::intervening_change_that_refuses_patch_never_reports_an_owned_mutation ... ok
+test developer_tools::executor::tests::checkpoint::successful_command_seals_only_changed_scoped_paths_from_its_exact_receipt ... ok
+test developer_tools::executor::tests::command::active_command_created_files_are_owned_after_terminal_observation ... ok
+test developer_tools::executor::tests::command::active_commands_accept_terminal_input_and_reach_a_stable_result ... ok
+test developer_tools::executor::tests::command::active_commands_cancel_the_owned_process_tree ... ok
+test developer_tools::executor::tests::command::command_created_file_fixture ... ok
+test developer_tools::executor::tests::command::command_created_files_can_be_removed_without_owning_unrelated_late_files ... ok
+test developer_tools::executor::tests::command::command_output_fixture ... ok
+test developer_tools::executor::tests::command::command_stdin_fixture ... ok
+test developer_tools::executor::tests::command::command_timeout_fixture ... ok
+test developer_tools::executor::tests::command::commands_accept_a_workspace_reached_through_a_filesystem_alias ... ok
+test developer_tools::executor::tests::command::control::rejected_pipe_controls_preserve_the_active_command_handle ... ok
+test developer_tools::executor::tests::command::missing_executable_returns_scoped_prerequisite_recovery_guidance ... ok
+test developer_tools::executor::tests::command::signal::active_commands_deliver_interrupt_signal_to_the_owned_process ... ok
+test developer_tools::executor::tests::command::structured_commands_drain_and_bound_both_output_streams ... ok
+test developer_tools::executor::tests::command::structured_commands_shrink_to_preserve_the_product_completion_reserve ... ok
+test developer_tools::executor::tests::command::structured_commands_time_out_without_freezing_the_agent ... ok
+test developer_tools::executor::tests::exact_remove_preserves_late_external_evidence_and_blocks_shell_deletion ... ok
+test developer_tools::executor::tests::existing_files_cannot_be_mutated_before_they_are_read ... ok
+test developer_tools::executor::tests::inspection::read_only_inspection_and_real_delivery_do_not_exhaust_the_nudge_budget ... ok
+test developer_tools::executor::tests::inspection::repeated_successful_listings_warn_and_block_without_resetting_grounding ... ok
+test developer_tools::executor::tests::long_inspection_sequence_returns_one_concrete_delivery_nudge ... ok
+test developer_tools::executor::tests::task_contract_keeps_opaque_implementation_out_of_tool_evidence ... ok
+test developer_tools::executor::tests::workspace_reads_report_exact_posix_permissions ... ok
+test developer_tools::executor::tests::workspace_remove_deletes_only_an_observed_empty_directory ... ok
+test developer_tools::executor::tests::workspace_tools_inspect_edit_search_and_execute_without_a_shell ... ok
+test developer_tools::executor::tests::workspace_write_reports_and_preserves_an_unchanged_file ... ok
+test developer_tools::grounding::tests::empty_directory_removal_requires_exact_listing_evidence ... ok
+test developer_tools::grounding::tests::existing_target_requires_repository_and_target_observation ... ok
+test developer_tools::grounding::tests::observed_empty_repository_allows_new_files ... ok
+test developer_tools::ownership::tests::ignored_folder_does_not_inherit_parent_repository_ownership ... ok
+test developer_tools::ownership::tests::late_external_file_is_not_owned_by_the_product_run ... ok
+test developer_tools::receipt::tests::append_after_truncated_tail_remains_replayable_after_another_restart ... ok
+test developer_tools::receipt::tests::complete_corrupt_frame_fails_closed_without_truncation ... ok
+test developer_tools::receipt::tests::completed_effect_replays_and_conflicting_request_is_refused ... ok
+test developer_tools::receipt::tests::durable_receipt_state_rejects_inconsistent_result_fields ... ok
+test developer_tools::receipt::tests::interrupted_command_is_durably_ambiguous_and_never_relaunched ... ok
+test developer_tools::receipt::tests::interrupted_non_command_effect_remains_executable ... ok
+test developer_tools::receipt::tests::ledger_byte_bound_accepts_exact_limit_and_rejects_one_byte_over ... ok
+test developer_tools::receipt::tests::process_termination_preserves_receipt_decisions ... ok
+test developer_tools::receipt::tests::receipt_process_child_fixture ... ignored, subprocess fixture; invoked by process_termination_preserves_receipt_decisions
+test developer_tools::receipt::tests::receipt_read_errors_are_not_treated_as_an_empty_ledger ... ok
+test developer_tools::receipt::tests::record_byte_bound_accepts_exact_limit_and_rejects_one_byte_over ... ok
+test developer_tools::receipt::tests::repeated_provider_call_id_never_executes_a_second_effect ... ok
+test developer_tools::receipt::tests::reused_provider_call_id_conflicts_on_each_identity_dimension ... ok
+test developer_tools::resources::tests::admitted_commands_receive_cross_language_parallelism_defaults ... ok
+test developer_tools::resources::tests::common_build_job_flags_are_recognized_without_inspecting_shell_text ... ok
+test developer_tools::resources::tests::excessive_explicit_parallelism_is_rejected_before_spawn ... ok
+test developer_tools::resources::tests::linux_resource_formats_are_parsed_conservatively ... ok
+test engineering_workflow::tests::embedded_workflow_carries_the_hard_source_limit_for_every_role ... ok
+test engineering_workflow::tests::reviewer_rejects_correlated_exact_extraction_evidence ... ok
+test execution::acceptance::tests::external_effect_evidence_needs_an_action_and_a_fresh_verification ... ok
+test execution::acceptance::tests::external_evidence_never_weakens_the_default_workspace_scope ... ok
+test execution::acceptance::tests::partial_handoffs_do_not_label_failed_or_interrupted_gates_as_successful ... ok
+test execution::checkpoint::tests::changed_candidate_stales_prior_gate_evidence ... ok
+test execution::checkpoint::tests::conversation_revision_stales_prior_evidence ... ok
+test execution::checkpoint::tests::fresh_reversion_clears_an_old_workspace_candidate ... ok
+test execution::checkpoint::tests::retry_preserves_a_clean_review_when_failed_gates_are_reacquired ... ok
+test execution::deadline::tests::active_window_always_preserves_a_finalization_reserve ... ok
+test execution::deadline::tests::model_turns_stop_before_finalization_time_is_consumed ... ok
+test execution::fix_progress::tests::a_changed_blocker_identity_starts_a_fresh_attempt_budget ... ok
+test execution::fix_progress::tests::candidate_change_resets_the_unchanged_count ... ok
+test execution::fix_progress::tests::candidate_permission_change_counts_as_fixer_progress ... ok
+test execution::fix_progress::tests::changing_candidate_does_not_hide_a_persistent_blocker ... ok
+test execution::fix_progress::tests::two_unchanged_fixer_cycles_exhaust_progress ... ok
+test execution::obligations::tests::exact_public_text_becomes_a_qualified_requirement_only_after_review ... ok
+test execution::obligations::tests::failed_obligation_routes_only_candidate_defects_to_the_fixer ... ok
+test execution::resume::tests::conversation_change_restarts_at_design ... ok
+test execution::resume::tests::durable_resume_rejects_an_unknown_version ... ok
+test execution::resume::tests::durable_resume_retains_candidate_and_reacquires_effectful_gates ... ok
+test execution::resume::tests::provider_retry_reuses_valid_design_and_resumes_review ... ok
+test execution::resume::tests::report_retry_reuses_every_completed_execution_phase ... ok
+test execution::settlement::tests::incomplete_candidate_names_each_missing_acceptance_boundary ... ok
+test execution::settlement::tests::qualified_candidate_has_no_remaining_work ... ok
+test failover::tests::capability_and_circuit_bypasses_do_not_reopen_provider_circuits ... ok
+test failover::tests::progress_continues_bounded_segments_but_never_overrides_integrity_or_policy ... ok
+test failover::tests::same_provider_role_recovery_is_transient_and_finite ... ok
+test failover::tests::transient_terminals_allow_failover_but_policy_terminals_do_not ... ok
+test gates::artifact_csv::tests::accepts_quoted_commas_quotes_and_newlines ... ok
+test gates::artifact_csv::tests::gate_checks_only_changed_csv_artifacts ... ok
+test gates::artifact_csv::tests::rejects_backslash_escaped_quotes_from_the_benchmark_regression ... ok
+test gates::artifact_csv::tests::rejects_ragged_rows ... ok
+test gates::deliverable_inventory::tests::accepts_exact_single_file_inventory ... ok
+test gates::deliverable_inventory::tests::does_not_close_inventory_for_negated_or_ambiguous_language ... ok
+test gates::deliverable_inventory::tests::rejects_compiler_byproduct_beside_requested_single_file ... ok
+test gates::explicit_paths::tests::alternative_output_paths_require_one_member_instead_of_every_member ... ok
+test gates::explicit_paths::tests::arithmetic_addition_does_not_make_a_later_example_input_an_output ... ok
+test gates::explicit_paths::tests::attendee_email_is_not_mistaken_for_an_output_path ... ok
+test gates::explicit_paths::tests::command_interpreter_is_not_mistaken_for_an_output_path ... ok
+test gates::explicit_paths::tests::conditional_deliverables_are_not_universal_requirements ... ok
+test gates::explicit_paths::tests::conditional_troubleshooting_commands_do_not_create_output_requirements ... ok
+test gates::explicit_paths::tests::descriptive_extension_is_not_a_literal_path_but_a_dotfile_is ... ok
+test gates::explicit_paths::tests::exact_output_passes_without_treating_command_products_as_required ... ok
+test gates::explicit_paths::tests::generated_filename_placeholders_are_not_literal_output_paths ... ok
+test gates::explicit_paths::tests::missing_nested_output_rejects_same_basename_at_workspace_root ... ok
+test gates::explicit_paths::tests::output_verbs_do_not_leak_into_later_verification_sentences ... ok
+test gates::explicit_paths::tests::prose_abbreviation_is_not_an_output_path ... ok
+test gates::explicit_paths::tests::quoted_extensionless_executable_is_a_required_output ... ok
+test gates::explicit_paths::tests::read_only_and_negated_paths_are_not_required_outputs ... ok
+test gates::json_structure::tests::rejects_malformed_json ... ok
+test gates::json_structure::tests::validates_only_changed_json_files_in_the_project ... ok
+test gates::source_layout::tests::ignores_unchanged_and_generated_sources ... ok
+test gates::source_layout::tests::product_scope_keeps_first_party_files_strict_and_skips_late_imports ... ok
+test gates::source_layout::tests::rejects_a_rust_source_file_over_the_hard_limit ... ok
+test gates::sqlite_migration::tests::executes_forward_twice_postcheck_and_rollback ... ok
+test gates::sqlite_migration::tests::rejects_a_migration_that_fails_on_the_second_run ... ok
+test gates::tests::artifact_layout_checks_candidate_sources_without_rejecting_untouched_vendor_code ... ok
+test gates::tests::explicit_nested_output_cannot_be_satisfied_at_the_workspace_root ... ok
+test gates::tests::nested_rust_target_cannot_be_satisfied_by_unrelated_root_tests ... ok
+test gates::yaml_structure::tests::rejects_malformed_yaml ... ok
+test gates::yaml_structure::tests::validates_only_changed_yaml_files_in_the_project ... ok
+test local_context::semantic::tests::malformed_output_timeout_and_missing_local_runtime_use_deterministic_state ... ok
+test local_context::semantic::tests::valid_local_proposal_uses_the_same_source_scope_and_atomic_update_validation ... ok
+test local_context::storage::tests::a_missing_artifact_aborts_the_entire_c0_transaction ... ok
+test local_context::storage::tests::checkpoint_roots_and_exact_artifacts_survive_restart ... ok
+test local_context::storage::tests::ownership_and_scope_fail_closed ... ok
+test local_context::storage::tests::unpublished_candidate_and_stale_generation_preserve_previous_checkpoint ... ok
+test local_context::tests::a_precise_file_dependency_survives_unrelated_edits_and_invalidates_on_change ... ok
+test local_context::tests::a_source_backed_failed_cause_survives_repeated_view_reductions ... ok
+test local_context::tests::capacity::optional_working_entries_leave_room_for_policy_tools_and_message_framing ... ok
+test local_context::tests::capacity::required_working_closure_uses_provider_headroom_and_survives_restart ... ok
+test local_context::tests::folder::folder_memory_rejects_candidate_claims_and_private_file_dependencies ... ok
+test local_context::tests::folder::folder_memory_reopens_and_file_validity_tracks_only_explicit_dependencies ... ok
+test local_context::tests::inspection::inspection_keeps_exact_published_view_and_reports_unpublished_tail ... ok
+test local_context::tests::invocation::current_policy_replaces_checkpoint_state_without_erasing_completed_tools ... ok
+test local_context::tests::invocation::invocation_policy_is_included_in_capacity_and_origin_checks ... ok
+test local_context::tests::later_literal_correction_is_pinned_and_prepared_failure_keeps_the_published_view ... ok
+test local_context::tests::reasoning::assistant_reasoning_survives_local_archive_and_recovery_without_becoming_instructions ... ok
+test local_context::tests::recovery::a_trace_committed_before_memory_is_ingested_once_after_restart ... ok
+test local_context::tests::recovery::checkpoint_and_uncovered_pending_proposal_survive_without_claiming_execution ... ok
+test local_context::tests::recovery::reused_provider_call_ids_are_distinct_completed_episodes ... ok
+test local_context::tests::retrieval::bounded_pages_report_unreturned_handles_and_state_cursors_are_revision_bound ... ok
+test local_context::tests::retrieval::exact_read_and_search_find_diagnostics_beyond_any_prefix_preview ... ok
+test local_context::tests::reviewer::failed_reviewer_observations_remain_readable_without_derived_memory ... ok
+test local_context::tests::updates_survive_observation_bookkeeping_and_reject_stale_or_forged_operations ... ok
+test local_context::tools::secret_text::tests::credential_shapes_are_rejected_without_rejecting_security_guidance ... ok
+test progress::tests::checkpoint_changes_only_when_candidate_content_changes ... ok
+test progress::tests::checkpoint_changes_when_candidate_permissions_change ... ok
+test progress::tests::checkpoint_changes_when_the_task_creates_a_commit ... ok
+test review::tests::durable_clean_review_round_trip_can_continue_with_the_next_review ... ok
+test review::tests::durable_ledger_round_trip_preserves_a_fixer_proposal ... ok
+test review::tests::reviewer_boolean_is_rejected_and_advisory_remains_nonblocking ... ok
+test reviewer_turn::tests::rejected_review_requires_fresh_authoritative_reads ... ok
+test turn::evidence::tests::projection_bounds_first_turn_and_preserves_each_section ... ok
+test turn::evidence::tests::smaller_provider_profiles_receive_smaller_evidence_packets ... ok
+test turn::tests::external_effect_completion_may_retain_concise_steps ... ok
+test turn::tests::external_effect_writer_attempts_scoped_prerequisites_before_escalating ... ok
+test turn::tests::fresh_provider_recovery_requires_new_repository_grounding ... ok
+test turn::tests::live_operational_delivery_rejects_helper_files_as_the_whole_result ... ok
+test turn::tests::rejected_terminal_correction_requires_fresh_repository_grounding ... ok
+test turn::tests::reviewer_bounds_oversized_initial_evidence_before_provider_compaction ... ok
+test turn::tests::reviewer_checks_literal_request_independently_of_the_design ... ok
+test turn::tests::reviewer_rechecks_conserved_finding_locations_after_fixes ... ok
+test turn::tests::unchanged_question_is_challenged_with_confirmed_workspace_capabilities ... ok
+test turn::tests::workspace_completion_requires_a_direct_run_command ... ok
+test turn::tests::writer_batches_tools_and_respects_artifact_workspaces ... ok
+test workspace_delivery::scope::tests::a_directory_declaration_cannot_conceal_undeclared_descendant_effects ... ok
+test workspace_delivery::scope::tests::a_scoped_file_replaced_by_a_symlink_fails_before_reading_the_destination ... ok
+test workspace_delivery::scope::tests::enrollment_is_not_progress_but_creation_edit_deletion_and_reversion_are ... ok
+test workspace_delivery::scope::tests::exact_file_baseline_survives_reopen_without_inventory_or_rebaselining ... ok
+test workspace_delivery::scope::tests::full_file_changes_beyond_the_preview_invalidate_freshness ... ok
+test workspace_delivery::scope::tests::scope_rejects_protected_traversal_torn_and_forged_records ... ok
+test workspace_filter::tests::recognizes_common_language_build_and_cache_trees ... ok
+test workspace_media::folder::tests::greeting_never_discovers_or_attaches_unmentioned_images ... ok
+test workspace_media::folder::tests::only_explicit_non_private_paths_are_attached ... ok
+test workspace_media::tests::image_task_fails_explicitly_for_a_text_only_provider ... ok
+test workspace_media::tests::manifest_paths_use_provider_neutral_separators ... ok
+test workspace_media::tests::mentioned_image_directory_attaches_the_complete_bounded_collection ... ok
+test workspace_media::tests::mentioned_source_directory_does_not_attach_descendant_screenshots ... ok
+test workspace_media::tests::mentioned_workspace_image_is_attached_with_its_path ... ok
+test workspace_media::tests::unrelated_image_is_not_added_to_a_text_task ... ok
+test workspace_media::tests::verifier_reference_image_does_not_attach_unrelated_workspace_media ... ok
+
+failures:
+
+---- developer_tools::command_runtime::tests::commands_after_failed_start_and_runtime_reopen_execute_once_with_fresh_identities stdout ----
+
+thread 'developer_tools::command_runtime::tests::commands_after_failed_start_and_runtime_reopen_execute_once_with_fresh_identities' (1119943) panicked at crates/app/peritus-product-runner/src/developer_tools/command_runtime/tests.rs:112:13:
+{"disposition":"exited","exit_code":0,"failure":null,"handle":"e929bcd3c8e5b571d6659154a145eb2e","progress":[{"kind":"update","message":"process event 10: resource-sample","sequence":10},{"kind":"update","message":"process event 11: tree-quiescent","sequence":11},{"kind":"update","message":"process event 12: output-closed","sequence":12},{"kind":"update","message":"process event 13: terminal-published","sequence":13}],"state":"completed","status":"succeeded","stderr":"","stdout":"\nrunning 1 test\ntest developer_tools::command_runtime::tests::command_restart_fixture ... restart-effect:first\nok\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 286 filtered out; finished in 0.00s\n\n","success":true,"timed_out":false,"tool_result":{"artifact_publication_complete":true,"disposition":"exited","os_exit":"code:0","plan_digest":"45792cfc9b2ac087308c088ba4dd9107e74e9aab1209cab0304e5df8f89cc164","process_id":"9d0241b4285f2f73c7416116ee705e7f","progress_truncated":false,"recovery":"OriginalOwner","resources":[{"ceiling":"10000","dimension":"WallTimeMilliseconds","fidelity":"Enforced","value":"25"},{"ceiling":"640000","dimension":"CpuTimeMilliseconds","fidelity":"Sampled","value":"2"},{"ceiling":"12884901888","dimension":"MemoryBytes","fidelity":"Sampled","value":"0"},{"ceiling":"53687091200","dimension":"DiskBytes","fidelity":"Sampled","value":"6"},{"ceiling":"8388608","dimension":"OutputBytes","fidelity":"Enforced","value":"212"},{"ceiling":"4096","dimension":"ProcessCount","fidelity":"Sampled","value":"1"},{"ceiling":"8192","dimension":"OpenHandles","fidelity":"Sampled","value":"0"},{"ceiling":"1","dimension":"ConcurrencySlots","fidelity":"Enforced","value":"1"}],"streams":[{"completeness":"complete","dropped":"0","observed":"212","retained":"212","stream":"stdout"},{"completeness":"complete","dropped":"0","observed":"0","retained":"0","stream":"stderr"}],"support_tasks_joined":true,"tree_cleanup_complete":true}}
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    developer_tools::command_runtime::tests::commands_after_failed_start_and_runtime_reopen_execute_once_with_fresh_identities
+
+test result: FAILED. 283 passed; 1 failed; 3 ignored; 0 measured; 0 filtered out; finished in 10.54s
+
+error: test failed, to rerun pass `-p peritus-product-runner --lib`
+
+GATE DRIVER RESULT: {"command": "cargo test --package peritus-product-runner --all-targets --all-features --locked", "command_exit_code": 101, "elapsed_seconds": 20.778, "exit_code": 101, "finished_at": "2026-09-13T14:56:09.725258Z", "invocation": ["cargo", "test", "--package", "peritus-product-runner", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "output": "065-peritus-product-runner-ordinary-test.log", "owning_crate": "peritus-product-runner", "result": "failed", "started_at": "2026-09-13T14:55:48.945704Z"}
+
+entry-raw-end
+entry-metadata-bytes=159
+{"bytes":59064,"finding_id":"FINDING-0002","label":"diagnostic-continuation-state","sha256":"1e4a864a465966315174b1bfc9a5592cd671516d48258fb21b0826724ded50fd"}
+entry-raw-begin
+{
+  "schema": "peritus.proof-impact-package-diagnostics",
+  "schema_version": 1,
+  "candidate_commit": "08f2b7a3cfffdd612bb3033a39ef2d645e7e4f71",
+  "candidate_tree": "ef7b7ce79545e26b0ca68a7808b386e0f06452f7",
+  "plan_sha256": "8aed4d8733b4f955439612cd8a4f90dc10660de74d1e1db10bcfe88e4f2be6f2",
+  "driver_sha256": "7c966425b117c73ac99dec92f0d46f20b4379eab38f9e99f47a403c9d4371094",
+  "environment": {
+    "CARGO_BUILD_JOBS": "1",
+    "CCACHE_DISABLE": "1",
+    "RUST_TEST_THREADS": "1"
+  },
+  "verus_cpu_affinity": [
+    0,
+    1
+  ],
+  "command_timeout_seconds": 3600,
+  "started_at": "2026-09-13T14:58:44.264599Z",
+  "status": "diagnostics-complete",
+  "active": null,
+  "results": [
+    {
+      "kind": "verus-verify",
+      "owning_crate": "peritus-product-runner",
+      "command": "cargo verus verify --package peritus-product-runner --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20",
+      "started_at": "2026-09-13T14:58:44.283473Z",
+      "output": "066-peritus-product-runner-verus-verify.log",
+      "invocation": [
+        "taskset",
+        "-c",
+        "0,1",
+        "cargo",
+        "verus",
+        "verify",
+        "--package",
+        "peritus-product-runner",
+        "--all-features",
+        "--locked",
+        "--check-toolchain",
+        "--fwd-verus-args-to",
+        "roots",
+        "--",
+        "--no-cheating",
+        "--rlimit",
+        "20"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T14:58:45.050200Z",
+      "elapsed_seconds": 0.766,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "c2a8896ce10796c0fe222d4d154eb2f9b29724e47e990e196fb9fb6ccd8c637c"
+    },
+    {
+      "kind": "ordinary-test",
+      "owning_crate": "peritus-product-state",
+      "command": "cargo test --package peritus-product-state --all-targets --all-features --locked",
+      "started_at": "2026-09-13T14:58:45.089305Z",
+      "output": "067-peritus-product-state-ordinary-test.log",
+      "invocation": [
+        "cargo",
+        "test",
+        "--package",
+        "peritus-product-state",
+        "--all-targets",
+        "--all-features",
+        "--locked"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T14:58:46.256813Z",
+      "elapsed_seconds": 1.167,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "863a39c6cb227811cc8252ffcf91a7197cf09b1fc6227bc61f924b0e554c8447"
+    },
+    {
+      "kind": "verus-verify",
+      "owning_crate": "peritus-product-state",
+      "command": "cargo verus verify --package peritus-product-state --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20",
+      "started_at": "2026-09-13T14:58:46.294370Z",
+      "output": "068-peritus-product-state-verus-verify.log",
+      "invocation": [
+        "taskset",
+        "-c",
+        "0,1",
+        "cargo",
+        "verus",
+        "verify",
+        "--package",
+        "peritus-product-state",
+        "--all-features",
+        "--locked",
+        "--check-toolchain",
+        "--fwd-verus-args-to",
+        "roots",
+        "--",
+        "--no-cheating",
+        "--rlimit",
+        "20"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T14:58:47.812956Z",
+      "elapsed_seconds": 1.518,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "7b48a8239da5558b862e11491f1717f3d6844836332183d786acf38f72f51db3"
+    },
+    {
+      "kind": "ordinary-test",
+      "owning_crate": "peritus-projection",
+      "command": "cargo test --package peritus-projection --all-targets --all-features --locked",
+      "started_at": "2026-09-13T14:58:47.851923Z",
+      "output": "069-peritus-projection-ordinary-test.log",
+      "invocation": [
+        "cargo",
+        "test",
+        "--package",
+        "peritus-projection",
+        "--all-targets",
+        "--all-features",
+        "--locked"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T14:58:49.570539Z",
+      "elapsed_seconds": 1.718,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "c3980e039f82eefe91c9b40df752cad6573ffd7832efe680b218022b42f4ba5b"
+    },
+    {
+      "kind": "verus-verify",
+      "owning_crate": "peritus-projection",
+      "command": "cargo verus verify --package peritus-projection --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20",
+      "started_at": "2026-09-13T14:58:49.613715Z",
+      "output": "070-peritus-projection-verus-verify.log",
+      "invocation": [
+        "taskset",
+        "-c",
+        "0,1",
+        "cargo",
+        "verus",
+        "verify",
+        "--package",
+        "peritus-projection",
+        "--all-features",
+        "--locked",
+        "--check-toolchain",
+        "--fwd-verus-args-to",
+        "roots",
+        "--",
+        "--no-cheating",
+        "--rlimit",
+        "20"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T14:58:50.230457Z",
+      "elapsed_seconds": 0.616,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "3f52888e9592846a95cfabac9b696e013facb6bb83f4c19ea4ffcc9ac84ebdc4"
+    },
+    {
+      "kind": "ordinary-test",
+      "owning_crate": "peritus-protocol",
+      "command": "cargo test --package peritus-protocol --all-targets --all-features --locked",
+      "started_at": "2026-09-13T14:58:50.268834Z",
+      "output": "071-peritus-protocol-ordinary-test.log",
+      "invocation": [
+        "cargo",
+        "test",
+        "--package",
+        "peritus-protocol",
+        "--all-targets",
+        "--all-features",
+        "--locked"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T14:58:52.741715Z",
+      "elapsed_seconds": 2.472,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "dc8d2cd977bd4c4eaa15219094c5179f564d32157f197be23210789bfc78f212"
+    },
+    {
+      "kind": "verus-verify",
+      "owning_crate": "peritus-protocol",
+      "command": "cargo verus verify --package peritus-protocol --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20",
+      "started_at": "2026-09-13T14:58:52.782953Z",
+      "output": "072-peritus-protocol-verus-verify.log",
+      "invocation": [
+        "taskset",
+        "-c",
+        "0,1",
+        "cargo",
+        "verus",
+        "verify",
+        "--package",
+        "peritus-protocol",
+        "--all-features",
+        "--locked",
+        "--check-toolchain",
+        "--fwd-verus-args-to",
+        "roots",
+        "--",
+        "--no-cheating",
+        "--rlimit",
+        "20"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T14:58:54.051629Z",
+      "elapsed_seconds": 1.268,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "8fe57431b72e77e4122fb959be8477335595e7c25d9306a06ad57cef530cf433"
+    },
+    {
+      "kind": "ordinary-test",
+      "owning_crate": "peritus-provider-anthropic",
+      "command": "cargo test --package peritus-provider-anthropic --all-targets --all-features --locked",
+      "started_at": "2026-09-13T14:58:54.092461Z",
+      "output": "073-peritus-provider-anthropic-ordinary-test.log",
+      "invocation": [
+        "cargo",
+        "test",
+        "--package",
+        "peritus-provider-anthropic",
+        "--all-targets",
+        "--all-features",
+        "--locked"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T14:59:12.108021Z",
+      "elapsed_seconds": 18.015,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "3e9ab14ee68de360902f1db4fd918f07b561e17763dbf16e12e41a6c13dc41ae"
+    },
+    {
+      "kind": "verus-verify",
+      "owning_crate": "peritus-provider-anthropic",
+      "command": "cargo verus verify --package peritus-provider-anthropic --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20",
+      "started_at": "2026-09-13T14:59:12.149350Z",
+      "output": "074-peritus-provider-anthropic-verus-verify.log",
+      "invocation": [
+        "taskset",
+        "-c",
+        "0,1",
+        "cargo",
+        "verus",
+        "verify",
+        "--package",
+        "peritus-provider-anthropic",
+        "--all-features",
+        "--locked",
+        "--check-toolchain",
+        "--fwd-verus-args-to",
+        "roots",
+        "--",
+        "--no-cheating",
+        "--rlimit",
+        "20"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T14:59:18.430145Z",
+      "elapsed_seconds": 6.28,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "f7385b322645f92aa9cdeb09ef5f4f1d80b58b8fdf9fe5e8e50263eab98c393f"
+    },
+    {
+      "kind": "ordinary-test",
+      "owning_crate": "peritus-provider-compatible",
+      "command": "cargo test --package peritus-provider-compatible --all-targets --all-features --locked",
+      "started_at": "2026-09-13T14:59:18.469228Z",
+      "output": "075-peritus-provider-compatible-ordinary-test.log",
+      "invocation": [
+        "cargo",
+        "test",
+        "--package",
+        "peritus-provider-compatible",
+        "--all-targets",
+        "--all-features",
+        "--locked"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T14:59:24.101765Z",
+      "elapsed_seconds": 5.632,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "986f9ef4b307fdbf442cd8d69a8b6d7caf45022bc50426dbac07598183877564"
+    },
+    {
+      "kind": "verus-verify",
+      "owning_crate": "peritus-provider-compatible",
+      "command": "cargo verus verify --package peritus-provider-compatible --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20",
+      "started_at": "2026-09-13T14:59:24.141217Z",
+      "output": "076-peritus-provider-compatible-verus-verify.log",
+      "invocation": [
+        "taskset",
+        "-c",
+        "0,1",
+        "cargo",
+        "verus",
+        "verify",
+        "--package",
+        "peritus-provider-compatible",
+        "--all-features",
+        "--locked",
+        "--check-toolchain",
+        "--fwd-verus-args-to",
+        "roots",
+        "--",
+        "--no-cheating",
+        "--rlimit",
+        "20"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T14:59:25.760893Z",
+      "elapsed_seconds": 1.619,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "4a4735fb7e1f2df10c0621978c35433a0abe290340c5fda23aab6d149ff01b97"
+    },
+    {
+      "kind": "ordinary-test",
+      "owning_crate": "peritus-provider-core",
+      "command": "cargo test --package peritus-provider-core --all-targets --all-features --locked",
+      "started_at": "2026-09-13T14:59:25.800362Z",
+      "output": "077-peritus-provider-core-ordinary-test.log",
+      "invocation": [
+        "cargo",
+        "test",
+        "--package",
+        "peritus-provider-core",
+        "--all-targets",
+        "--all-features",
+        "--locked"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T14:59:34.741086Z",
+      "elapsed_seconds": 8.94,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "55808cd87c98b8c3950c6d48f856e20d715350d39e49d2cb7a8f6187e85b97e3"
+    },
+    {
+      "kind": "verus-verify",
+      "owning_crate": "peritus-provider-core",
+      "command": "cargo verus verify --package peritus-provider-core --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20",
+      "started_at": "2026-09-13T14:59:34.782289Z",
+      "output": "078-peritus-provider-core-verus-verify.log",
+      "invocation": [
+        "taskset",
+        "-c",
+        "0,1",
+        "cargo",
+        "verus",
+        "verify",
+        "--package",
+        "peritus-provider-core",
+        "--all-features",
+        "--locked",
+        "--check-toolchain",
+        "--fwd-verus-args-to",
+        "roots",
+        "--",
+        "--no-cheating",
+        "--rlimit",
+        "20"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T14:59:35.400086Z",
+      "elapsed_seconds": 0.617,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "1928ac1665f72f6bee7a7651527dcaf8812fe50fe42e9a682b1d531c84583ef8"
+    },
+    {
+      "kind": "ordinary-test",
+      "owning_crate": "peritus-provider-google",
+      "command": "cargo test --package peritus-provider-google --all-targets --all-features --locked",
+      "started_at": "2026-09-13T14:59:35.439820Z",
+      "output": "079-peritus-provider-google-ordinary-test.log",
+      "invocation": [
+        "cargo",
+        "test",
+        "--package",
+        "peritus-provider-google",
+        "--all-targets",
+        "--all-features",
+        "--locked"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T14:59:38.966063Z",
+      "elapsed_seconds": 3.526,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "344b4909b1fbdfc1a0b611b028ba44f507f5e53a7a737f4f177e48b3d0c95585"
+    },
+    {
+      "kind": "verus-verify",
+      "owning_crate": "peritus-provider-google",
+      "command": "cargo verus verify --package peritus-provider-google --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20",
+      "started_at": "2026-09-13T14:59:39.004825Z",
+      "output": "080-peritus-provider-google-verus-verify.log",
+      "invocation": [
+        "taskset",
+        "-c",
+        "0,1",
+        "cargo",
+        "verus",
+        "verify",
+        "--package",
+        "peritus-provider-google",
+        "--all-features",
+        "--locked",
+        "--check-toolchain",
+        "--fwd-verus-args-to",
+        "roots",
+        "--",
+        "--no-cheating",
+        "--rlimit",
+        "20"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T14:59:40.523845Z",
+      "elapsed_seconds": 1.518,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "ac61af904ceb108005bc4e60a2ded444159d40d65625f6cb0b13c0f4c6936bf4"
+    },
+    {
+      "kind": "ordinary-test",
+      "owning_crate": "peritus-provider-openai",
+      "command": "cargo test --package peritus-provider-openai --all-targets --all-features --locked",
+      "started_at": "2026-09-13T14:59:40.564053Z",
+      "output": "081-peritus-provider-openai-ordinary-test.log",
+      "invocation": [
+        "cargo",
+        "test",
+        "--package",
+        "peritus-provider-openai",
+        "--all-targets",
+        "--all-features",
+        "--locked"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T14:59:49.054772Z",
+      "elapsed_seconds": 8.49,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "34560a6a9915da02ac9b42e8220a60dd358acd75d11daed8c96c247bc573ab11"
+    },
+    {
+      "kind": "verus-verify",
+      "owning_crate": "peritus-provider-openai",
+      "command": "cargo verus verify --package peritus-provider-openai --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20",
+      "started_at": "2026-09-13T14:59:49.096363Z",
+      "output": "082-peritus-provider-openai-verus-verify.log",
+      "invocation": [
+        "taskset",
+        "-c",
+        "0,1",
+        "cargo",
+        "verus",
+        "verify",
+        "--package",
+        "peritus-provider-openai",
+        "--all-features",
+        "--locked",
+        "--check-toolchain",
+        "--fwd-verus-args-to",
+        "roots",
+        "--",
+        "--no-cheating",
+        "--rlimit",
+        "20"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T14:59:51.367758Z",
+      "elapsed_seconds": 2.271,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "1f706de41adabdd9c87bc5d59c710cf364b5e67681927334f31f0e071324e970"
+    },
+    {
+      "kind": "ordinary-test",
+      "owning_crate": "peritus-quality-policy",
+      "command": "cargo test --package peritus-quality-policy --all-targets --all-features --locked",
+      "started_at": "2026-09-13T14:59:51.407503Z",
+      "output": "083-peritus-quality-policy-ordinary-test.log",
+      "invocation": [
+        "cargo",
+        "test",
+        "--package",
+        "peritus-quality-policy",
+        "--all-targets",
+        "--all-features",
+        "--locked"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T14:59:52.725990Z",
+      "elapsed_seconds": 1.318,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "c59a1a2d4e2992a787350e71412474d08de04a404514ecb4bea7a8ba19a223cd"
+    },
+    {
+      "kind": "verus-verify",
+      "owning_crate": "peritus-quality-policy",
+      "command": "cargo verus verify --package peritus-quality-policy --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20",
+      "started_at": "2026-09-13T14:59:52.764184Z",
+      "output": "084-peritus-quality-policy-verus-verify.log",
+      "invocation": [
+        "taskset",
+        "-c",
+        "0,1",
+        "cargo",
+        "verus",
+        "verify",
+        "--package",
+        "peritus-quality-policy",
+        "--all-features",
+        "--locked",
+        "--check-toolchain",
+        "--fwd-verus-args-to",
+        "roots",
+        "--",
+        "--no-cheating",
+        "--rlimit",
+        "20"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T14:59:53.330908Z",
+      "elapsed_seconds": 0.566,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "16593ba970a84c9d40bc3666621c602a4b4ce4c20b80f700710a04732043efbd"
+    },
+    {
+      "kind": "ordinary-test",
+      "owning_crate": "peritus-release-policy",
+      "command": "cargo test --package peritus-release-policy --all-targets --all-features --locked",
+      "started_at": "2026-09-13T14:59:53.369816Z",
+      "output": "085-peritus-release-policy-ordinary-test.log",
+      "invocation": [
+        "cargo",
+        "test",
+        "--package",
+        "peritus-release-policy",
+        "--all-targets",
+        "--all-features",
+        "--locked"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T14:59:53.685380Z",
+      "elapsed_seconds": 0.315,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "3c92f315e1663134816225f665eb438fb1475e58f1601da25a97cac82c0ecebf"
+    },
+    {
+      "kind": "verus-verify",
+      "owning_crate": "peritus-release-policy",
+      "command": "cargo verus verify --package peritus-release-policy --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20",
+      "started_at": "2026-09-13T14:59:53.728843Z",
+      "output": "086-peritus-release-policy-verus-verify.log",
+      "invocation": [
+        "taskset",
+        "-c",
+        "0,1",
+        "cargo",
+        "verus",
+        "verify",
+        "--package",
+        "peritus-release-policy",
+        "--all-features",
+        "--locked",
+        "--check-toolchain",
+        "--fwd-verus-args-to",
+        "roots",
+        "--",
+        "--no-cheating",
+        "--rlimit",
+        "20"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T14:59:54.295339Z",
+      "elapsed_seconds": 0.566,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "f943aa161661dfe6edfc9df145bd23467ac866c7cca6d2ecf457211206ff3c41"
+    },
+    {
+      "kind": "ordinary-test",
+      "owning_crate": "peritus-review",
+      "command": "cargo test --package peritus-review --all-targets --all-features --locked",
+      "started_at": "2026-09-13T14:59:54.336982Z",
+      "output": "087-peritus-review-ordinary-test.log",
+      "invocation": [
+        "cargo",
+        "test",
+        "--package",
+        "peritus-review",
+        "--all-targets",
+        "--all-features",
+        "--locked"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T14:59:59.719842Z",
+      "elapsed_seconds": 5.382,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "c0c1863388ce6f3c4249cf87bf543aa7e2423c729b92e417c4a0f9ff938cbb0d"
+    },
+    {
+      "kind": "verus-verify",
+      "owning_crate": "peritus-review",
+      "command": "cargo verus verify --package peritus-review --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20",
+      "started_at": "2026-09-13T14:59:59.757703Z",
+      "output": "088-peritus-review-verus-verify.log",
+      "invocation": [
+        "taskset",
+        "-c",
+        "0,1",
+        "cargo",
+        "verus",
+        "verify",
+        "--package",
+        "peritus-review",
+        "--all-features",
+        "--locked",
+        "--check-toolchain",
+        "--fwd-verus-args-to",
+        "roots",
+        "--",
+        "--no-cheating",
+        "--rlimit",
+        "20"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T15:00:01.879234Z",
+      "elapsed_seconds": 2.121,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "4f0d733286e1a85f12abb61ae8dd75e26f52d5936a1850286ea999f80db10a18"
+    },
+    {
+      "kind": "ordinary-test",
+      "owning_crate": "peritus-role",
+      "command": "cargo test --package peritus-role --all-targets --all-features --locked",
+      "started_at": "2026-09-13T15:00:01.920946Z",
+      "output": "089-peritus-role-ordinary-test.log",
+      "invocation": [
+        "cargo",
+        "test",
+        "--package",
+        "peritus-role",
+        "--all-targets",
+        "--all-features",
+        "--locked"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T15:00:02.738511Z",
+      "elapsed_seconds": 0.817,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "8c5283dc8baebec73e4836864de7fa0b7661c9c960518636d195f59ade486251"
+    },
+    {
+      "kind": "verus-verify",
+      "owning_crate": "peritus-role",
+      "command": "cargo verus verify --package peritus-role --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20",
+      "started_at": "2026-09-13T15:00:02.776784Z",
+      "output": "090-peritus-role-verus-verify.log",
+      "invocation": [
+        "taskset",
+        "-c",
+        "0,1",
+        "cargo",
+        "verus",
+        "verify",
+        "--package",
+        "peritus-role",
+        "--all-features",
+        "--locked",
+        "--check-toolchain",
+        "--fwd-verus-args-to",
+        "roots",
+        "--",
+        "--no-cheating",
+        "--rlimit",
+        "20"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T15:00:03.343118Z",
+      "elapsed_seconds": 0.566,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "f2513d5c0c2ec5237dd365c665700defb3b49d74f7e8e90374da1ded316584b6"
+    },
+    {
+      "kind": "ordinary-test",
+      "owning_crate": "peritus-run-knowledge",
+      "command": "cargo test --package peritus-run-knowledge --all-targets --all-features --locked",
+      "started_at": "2026-09-13T15:00:03.381557Z",
+      "output": "091-peritus-run-knowledge-ordinary-test.log",
+      "invocation": [
+        "cargo",
+        "test",
+        "--package",
+        "peritus-run-knowledge",
+        "--all-targets",
+        "--all-features",
+        "--locked"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T15:00:04.951326Z",
+      "elapsed_seconds": 1.569,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "c4c2f34ecc6ed2110cbfb209aa2fa4785a7c89ef30c687573dbc8e42eedbd31b"
+    },
+    {
+      "kind": "verus-verify",
+      "owning_crate": "peritus-run-knowledge",
+      "command": "cargo verus verify --package peritus-run-knowledge --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20",
+      "started_at": "2026-09-13T15:00:04.993093Z",
+      "output": "092-peritus-run-knowledge-verus-verify.log",
+      "invocation": [
+        "taskset",
+        "-c",
+        "0,1",
+        "cargo",
+        "verus",
+        "verify",
+        "--package",
+        "peritus-run-knowledge",
+        "--all-features",
+        "--locked",
+        "--check-toolchain",
+        "--fwd-verus-args-to",
+        "roots",
+        "--",
+        "--no-cheating",
+        "--rlimit",
+        "20"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T15:00:05.559670Z",
+      "elapsed_seconds": 0.566,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "6e792dee9e973d982005a4b551de00607b2ffcb2fca20425b83ae261af923560"
+    },
+    {
+      "kind": "ordinary-test",
+      "owning_crate": "peritus-run-settlement",
+      "command": "cargo test --package peritus-run-settlement --all-targets --all-features --locked",
+      "started_at": "2026-09-13T15:00:05.598961Z",
+      "output": "093-peritus-run-settlement-ordinary-test.log",
+      "invocation": [
+        "cargo",
+        "test",
+        "--package",
+        "peritus-run-settlement",
+        "--all-targets",
+        "--all-features",
+        "--locked"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T15:00:06.165892Z",
+      "elapsed_seconds": 0.566,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "b499b2a7b0068bead9bb1d0c15a52f8d265b24bbf8af48cad1cb026cad0db1f5"
+    },
+    {
+      "kind": "verus-verify",
+      "owning_crate": "peritus-run-settlement",
+      "command": "cargo verus verify --package peritus-run-settlement --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20",
+      "started_at": "2026-09-13T15:00:06.204793Z",
+      "output": "094-peritus-run-settlement-verus-verify.log",
+      "invocation": [
+        "taskset",
+        "-c",
+        "0,1",
+        "cargo",
+        "verus",
+        "verify",
+        "--package",
+        "peritus-run-settlement",
+        "--all-features",
+        "--locked",
+        "--check-toolchain",
+        "--fwd-verus-args-to",
+        "roots",
+        "--",
+        "--no-cheating",
+        "--rlimit",
+        "20"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T15:00:06.771526Z",
+      "elapsed_seconds": 0.566,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "6c49630b9decd0a1dff190f84877c6a1bbbd21fd6bdeeca01fcdb2d9981b0088"
+    },
+    {
+      "kind": "ordinary-test",
+      "owning_crate": "peritus-sandbox",
+      "command": "cargo test --package peritus-sandbox --all-targets --all-features --locked",
+      "started_at": "2026-09-13T15:00:06.810808Z",
+      "output": "095-peritus-sandbox-ordinary-test.log",
+      "invocation": [
+        "cargo",
+        "test",
+        "--package",
+        "peritus-sandbox",
+        "--all-targets",
+        "--all-features",
+        "--locked"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T15:00:08.631875Z",
+      "elapsed_seconds": 1.82,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "d8a6c5f8f575f053e1f1e975b6736b0c38c7fe616dd226756044a3be0f0e3e62"
+    },
+    {
+      "kind": "verus-verify",
+      "owning_crate": "peritus-sandbox",
+      "command": "cargo verus verify --package peritus-sandbox --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20",
+      "started_at": "2026-09-13T15:00:08.673306Z",
+      "output": "096-peritus-sandbox-verus-verify.log",
+      "invocation": [
+        "taskset",
+        "-c",
+        "0,1",
+        "cargo",
+        "verus",
+        "verify",
+        "--package",
+        "peritus-sandbox",
+        "--all-features",
+        "--locked",
+        "--check-toolchain",
+        "--fwd-verus-args-to",
+        "roots",
+        "--",
+        "--no-cheating",
+        "--rlimit",
+        "20"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T15:00:09.239597Z",
+      "elapsed_seconds": 0.566,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "ab0650eb7604a7834ae215c68ed0435f280e1ae5f1700cac73e2eaaa9ebd2597"
+    },
+    {
+      "kind": "ordinary-test",
+      "owning_crate": "peritus-sandbox-linux",
+      "command": "cargo test --package peritus-sandbox-linux --all-targets --all-features --locked",
+      "started_at": "2026-09-13T15:00:09.280417Z",
+      "output": "097-peritus-sandbox-linux-ordinary-test.log",
+      "invocation": [
+        "cargo",
+        "test",
+        "--package",
+        "peritus-sandbox-linux",
+        "--all-targets",
+        "--all-features",
+        "--locked"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T15:01:37.222835Z",
+      "elapsed_seconds": 87.942,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "29f9f86776dfa42dec5fe4515c19b8cc849739397ac9b87dd3ec45f72834a61b"
+    },
+    {
+      "kind": "verus-verify",
+      "owning_crate": "peritus-sandbox-linux",
+      "command": "cargo verus verify --package peritus-sandbox-linux --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20",
+      "started_at": "2026-09-13T15:01:37.263528Z",
+      "output": "098-peritus-sandbox-linux-verus-verify.log",
+      "invocation": [
+        "taskset",
+        "-c",
+        "0,1",
+        "cargo",
+        "verus",
+        "verify",
+        "--package",
+        "peritus-sandbox-linux",
+        "--all-features",
+        "--locked",
+        "--check-toolchain",
+        "--fwd-verus-args-to",
+        "roots",
+        "--",
+        "--no-cheating",
+        "--rlimit",
+        "20"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T15:06:05.650778Z",
+      "elapsed_seconds": 268.387,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "fc58a6c8d3252798cea9395a656d434014391b233d62369e910c48bfa893d720"
+    },
+    {
+      "kind": "ordinary-test",
+      "owning_crate": "peritus-sandbox-macos",
+      "command": "cargo test --package peritus-sandbox-macos --all-targets --all-features --locked",
+      "started_at": "2026-09-13T15:06:05.692953Z",
+      "output": "099-peritus-sandbox-macos-ordinary-test.log",
+      "invocation": [
+        "cargo",
+        "test",
+        "--package",
+        "peritus-sandbox-macos",
+        "--all-targets",
+        "--all-features",
+        "--locked"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T15:06:15.484765Z",
+      "elapsed_seconds": 9.791,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "91d60ba045e8a8789fadc396d34643303e299f78e82de89580ef79cd91ec6427"
+    },
+    {
+      "kind": "verus-verify",
+      "owning_crate": "peritus-sandbox-macos",
+      "command": "cargo verus verify --package peritus-sandbox-macos --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20",
+      "started_at": "2026-09-13T15:06:15.523883Z",
+      "output": "100-peritus-sandbox-macos-verus-verify.log",
+      "invocation": [
+        "taskset",
+        "-c",
+        "0,1",
+        "cargo",
+        "verus",
+        "verify",
+        "--package",
+        "peritus-sandbox-macos",
+        "--all-features",
+        "--locked",
+        "--check-toolchain",
+        "--fwd-verus-args-to",
+        "roots",
+        "--",
+        "--no-cheating",
+        "--rlimit",
+        "20"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T15:06:22.812954Z",
+      "elapsed_seconds": 7.287,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "ec61f6c04278bbfd65d41105dfc1cb252dd242c8abc52974d62ad3d0f6e10ec2"
+    },
+    {
+      "kind": "ordinary-test",
+      "owning_crate": "peritus-sandbox-windows",
+      "command": "cargo test --package peritus-sandbox-windows --all-targets --all-features --locked",
+      "started_at": "2026-09-13T15:06:22.853561Z",
+      "output": "101-peritus-sandbox-windows-ordinary-test.log",
+      "invocation": [
+        "cargo",
+        "test",
+        "--package",
+        "peritus-sandbox-windows",
+        "--all-targets",
+        "--all-features",
+        "--locked"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T15:06:26.378198Z",
+      "elapsed_seconds": 3.524,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "a25844588672ae84548d5a8809e7a49ccec92b684c4c9f079c277632b97bb28b"
+    },
+    {
+      "kind": "verus-verify",
+      "owning_crate": "peritus-sandbox-windows",
+      "command": "cargo verus verify --package peritus-sandbox-windows --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20",
+      "started_at": "2026-09-13T15:06:26.417201Z",
+      "output": "102-peritus-sandbox-windows-verus-verify.log",
+      "invocation": [
+        "taskset",
+        "-c",
+        "0,1",
+        "cargo",
+        "verus",
+        "verify",
+        "--package",
+        "peritus-sandbox-windows",
+        "--all-features",
+        "--locked",
+        "--check-toolchain",
+        "--fwd-verus-args-to",
+        "roots",
+        "--",
+        "--no-cheating",
+        "--rlimit",
+        "20"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T15:06:29.091391Z",
+      "elapsed_seconds": 2.673,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "f0efb0fdda208a4cd68792120adcfc5d8120c9c46625edb605e4c234d6603074"
+    },
+    {
+      "kind": "ordinary-test",
+      "owning_crate": "peritus-scheduler",
+      "command": "cargo test --package peritus-scheduler --all-targets --all-features --locked",
+      "started_at": "2026-09-13T15:06:29.131828Z",
+      "output": "103-peritus-scheduler-ordinary-test.log",
+      "invocation": [
+        "cargo",
+        "test",
+        "--package",
+        "peritus-scheduler",
+        "--all-targets",
+        "--all-features",
+        "--locked"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T15:06:29.648872Z",
+      "elapsed_seconds": 0.516,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "ab433cca4900f512737f4c830d02f2e2cd66a2c73d9544180308204550d3c2da"
+    },
+    {
+      "kind": "verus-verify",
+      "owning_crate": "peritus-scheduler",
+      "command": "cargo verus verify --package peritus-scheduler --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20",
+      "started_at": "2026-09-13T15:06:29.688911Z",
+      "output": "104-peritus-scheduler-verus-verify.log",
+      "invocation": [
+        "taskset",
+        "-c",
+        "0,1",
+        "cargo",
+        "verus",
+        "verify",
+        "--package",
+        "peritus-scheduler",
+        "--all-features",
+        "--locked",
+        "--check-toolchain",
+        "--fwd-verus-args-to",
+        "roots",
+        "--",
+        "--no-cheating",
+        "--rlimit",
+        "20"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T15:06:30.306513Z",
+      "elapsed_seconds": 0.617,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "3a448125fe0186090d76be76237170510d3e347b21223aeecda2005625b1334a"
+    },
+    {
+      "kind": "ordinary-test",
+      "owning_crate": "peritus-secrets",
+      "command": "cargo test --package peritus-secrets --all-targets --all-features --locked",
+      "started_at": "2026-09-13T15:06:30.344928Z",
+      "output": "105-peritus-secrets-ordinary-test.log",
+      "invocation": [
+        "cargo",
+        "test",
+        "--package",
+        "peritus-secrets",
+        "--all-targets",
+        "--all-features",
+        "--locked"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T15:06:57.594078Z",
+      "elapsed_seconds": 27.248,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "4d37e1adf6485751eef66b5fb3a067474be81def92604aa3c130fd20992e2e1c"
+    },
+    {
+      "kind": "verus-verify",
+      "owning_crate": "peritus-secrets",
+      "command": "cargo verus verify --package peritus-secrets --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20",
+      "started_at": "2026-09-13T15:06:57.633342Z",
+      "output": "106-peritus-secrets-verus-verify.log",
+      "invocation": [
+        "taskset",
+        "-c",
+        "0,1",
+        "cargo",
+        "verus",
+        "verify",
+        "--package",
+        "peritus-secrets",
+        "--all-features",
+        "--locked",
+        "--check-toolchain",
+        "--fwd-verus-args-to",
+        "roots",
+        "--",
+        "--no-cheating",
+        "--rlimit",
+        "20"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T15:07:06.524712Z",
+      "elapsed_seconds": 8.891,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "6d611a990ca56d34627754607c294fab52432999f64095941ddee38641623797"
+    },
+    {
+      "kind": "ordinary-test",
+      "owning_crate": "peritus-security-policy",
+      "command": "cargo test --package peritus-security-policy --all-targets --all-features --locked",
+      "started_at": "2026-09-13T15:07:06.564750Z",
+      "output": "107-peritus-security-policy-ordinary-test.log",
+      "invocation": [
+        "cargo",
+        "test",
+        "--package",
+        "peritus-security-policy",
+        "--all-targets",
+        "--all-features",
+        "--locked"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T15:07:07.632415Z",
+      "elapsed_seconds": 1.067,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "5c2f44477d8b12b64dcfac8fa2c556b5df25f16477b0b9e42ce7ccc17e1b4300"
+    },
+    {
+      "kind": "verus-verify",
+      "owning_crate": "peritus-security-policy",
+      "command": "cargo verus verify --package peritus-security-policy --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20",
+      "started_at": "2026-09-13T15:07:07.670985Z",
+      "output": "108-peritus-security-policy-verus-verify.log",
+      "invocation": [
+        "taskset",
+        "-c",
+        "0,1",
+        "cargo",
+        "verus",
+        "verify",
+        "--package",
+        "peritus-security-policy",
+        "--all-features",
+        "--locked",
+        "--check-toolchain",
+        "--fwd-verus-args-to",
+        "roots",
+        "--",
+        "--no-cheating",
+        "--rlimit",
+        "20"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T15:07:12.148003Z",
+      "elapsed_seconds": 4.476,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "8b2d0b5ab8933ffe19477b4cb1515aa5112516166cff124434888aea431cc360"
+    },
+    {
+      "kind": "ordinary-test",
+      "owning_crate": "peritus-spec",
+      "command": "cargo test --package peritus-spec --all-targets --all-features --locked",
+      "started_at": "2026-09-13T15:07:12.187743Z",
+      "output": "109-peritus-spec-ordinary-test.log",
+      "invocation": [
+        "cargo",
+        "test",
+        "--package",
+        "peritus-spec",
+        "--all-targets",
+        "--all-features",
+        "--locked"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T15:07:12.453415Z",
+      "elapsed_seconds": 0.265,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "a75a4944174ccb3e3351e02f5b8332fdcbd2c95d78d42cb337ec35b88976d58d"
+    },
+    {
+      "kind": "verus-verify",
+      "owning_crate": "peritus-spec",
+      "command": "cargo verus verify --package peritus-spec --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20",
+      "started_at": "2026-09-13T15:07:12.492272Z",
+      "output": "110-peritus-spec-verus-verify.log",
+      "invocation": [
+        "taskset",
+        "-c",
+        "0,1",
+        "cargo",
+        "verus",
+        "verify",
+        "--package",
+        "peritus-spec",
+        "--all-features",
+        "--locked",
+        "--check-toolchain",
+        "--fwd-verus-args-to",
+        "roots",
+        "--",
+        "--no-cheating",
+        "--rlimit",
+        "20"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T15:07:13.059131Z",
+      "elapsed_seconds": 0.566,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "c47fac81c4012fc167f0708f3b4c2ca5a3ed89c92b54815d30e33d4bcf7472aa"
+    },
+    {
+      "kind": "ordinary-test",
+      "owning_crate": "peritus-tcb",
+      "command": "cargo test --package peritus-tcb --all-targets --all-features --locked",
+      "started_at": "2026-09-13T15:07:13.099160Z",
+      "output": "111-peritus-tcb-ordinary-test.log",
+      "invocation": [
+        "cargo",
+        "test",
+        "--package",
+        "peritus-tcb",
+        "--all-targets",
+        "--all-features",
+        "--locked"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T15:07:13.665737Z",
+      "elapsed_seconds": 0.566,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "a565209d8cd3db20a66173f78482ec09af2777693cdb9ba84632377724406310"
+    },
+    {
+      "kind": "verus-verify",
+      "owning_crate": "peritus-tcb",
+      "command": "cargo verus verify --package peritus-tcb --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --rlimit 20",
+      "started_at": "2026-09-13T15:07:13.703878Z",
+      "output": "112-peritus-tcb-verus-verify.log",
+      "invocation": [
+        "taskset",
+        "-c",
+        "0,1",
+        "cargo",
+        "verus",
+        "verify",
+        "--package",
+        "peritus-tcb",
+        "--all-features",
+        "--locked",
+        "--check-toolchain",
+        "--fwd-verus-args-to",
+        "roots",
+        "--",
+        "--rlimit",
+        "20"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T15:07:14.270985Z",
+      "elapsed_seconds": 0.566,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "bd92101f51fb410dffb4679c95dee9f6d55201c64135b0e283f67ec1671cc67e"
+    },
+    {
+      "kind": "ordinary-test",
+      "owning_crate": "peritus-telemetry",
+      "command": "cargo test --package peritus-telemetry --all-targets --all-features --locked",
+      "started_at": "2026-09-13T15:07:14.311929Z",
+      "output": "113-peritus-telemetry-ordinary-test.log",
+      "invocation": [
+        "cargo",
+        "test",
+        "--package",
+        "peritus-telemetry",
+        "--all-targets",
+        "--all-features",
+        "--locked"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T15:07:16.834153Z",
+      "elapsed_seconds": 2.521,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "729fdd0d029179a6b6e93dabc1f15449ec3212079bbc7ac2f5962c516c14d21a"
+    },
+    {
+      "kind": "verus-verify",
+      "owning_crate": "peritus-telemetry",
+      "command": "cargo verus verify --package peritus-telemetry --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20",
+      "started_at": "2026-09-13T15:07:16.872822Z",
+      "output": "114-peritus-telemetry-verus-verify.log",
+      "invocation": [
+        "taskset",
+        "-c",
+        "0,1",
+        "cargo",
+        "verus",
+        "verify",
+        "--package",
+        "peritus-telemetry",
+        "--all-features",
+        "--locked",
+        "--check-toolchain",
+        "--fwd-verus-args-to",
+        "roots",
+        "--",
+        "--no-cheating",
+        "--rlimit",
+        "20"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T15:07:19.497056Z",
+      "elapsed_seconds": 2.623,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "15efa695ecea7b7e7104beaba6ff03bbb648382ba429dd1ba6a31dbb5068e29a"
+    },
+    {
+      "kind": "ordinary-test",
+      "owning_crate": "peritus-tool-protocol",
+      "command": "cargo test --package peritus-tool-protocol --all-targets --all-features --locked",
+      "started_at": "2026-09-13T15:07:19.537432Z",
+      "output": "115-peritus-tool-protocol-ordinary-test.log",
+      "invocation": [
+        "cargo",
+        "test",
+        "--package",
+        "peritus-tool-protocol",
+        "--all-targets",
+        "--all-features",
+        "--locked"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T15:07:23.112071Z",
+      "elapsed_seconds": 3.574,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "ff5ecff6998ee5cb81fe8f3e6fb48f5386d96ec0bebe8ba58980ff5015693636"
+    },
+    {
+      "kind": "verus-verify",
+      "owning_crate": "peritus-tool-protocol",
+      "command": "cargo verus verify --package peritus-tool-protocol --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20",
+      "started_at": "2026-09-13T15:07:23.152143Z",
+      "output": "116-peritus-tool-protocol-verus-verify.log",
+      "invocation": [
+        "taskset",
+        "-c",
+        "0,1",
+        "cargo",
+        "verus",
+        "verify",
+        "--package",
+        "peritus-tool-protocol",
+        "--all-features",
+        "--locked",
+        "--check-toolchain",
+        "--fwd-verus-args-to",
+        "roots",
+        "--",
+        "--no-cheating",
+        "--rlimit",
+        "20"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T15:07:26.527650Z",
+      "elapsed_seconds": 3.375,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "9d8f21210f815e8f11aa6d5b9bc81d3a03c13f23df7b05fce191a322d7111934"
+    },
+    {
+      "kind": "ordinary-test",
+      "owning_crate": "peritus-tool-router",
+      "command": "cargo test --package peritus-tool-router --all-targets --all-features --locked",
+      "started_at": "2026-09-13T15:07:26.567848Z",
+      "output": "117-peritus-tool-router-ordinary-test.log",
+      "invocation": [
+        "cargo",
+        "test",
+        "--package",
+        "peritus-tool-router",
+        "--all-targets",
+        "--all-features",
+        "--locked"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T15:07:30.144450Z",
+      "elapsed_seconds": 3.576,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "28c2ea184e61da8bc890f88ca18912a192bcf1f0a25309d87bea36e5e93d2a86"
+    },
+    {
+      "kind": "verus-verify",
+      "owning_crate": "peritus-tool-router",
+      "command": "cargo verus verify --package peritus-tool-router --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20",
+      "started_at": "2026-09-13T15:07:30.183796Z",
+      "output": "118-peritus-tool-router-verus-verify.log",
+      "invocation": [
+        "taskset",
+        "-c",
+        "0,1",
+        "cargo",
+        "verus",
+        "verify",
+        "--package",
+        "peritus-tool-router",
+        "--all-features",
+        "--locked",
+        "--check-toolchain",
+        "--fwd-verus-args-to",
+        "roots",
+        "--",
+        "--no-cheating",
+        "--rlimit",
+        "20"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T15:07:31.703875Z",
+      "elapsed_seconds": 1.519,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "7c0c6eabd86de18a44d51bf3b61b13c9d74891e25b297ab6c8f5d2af94d0979d"
+    },
+    {
+      "kind": "ordinary-test",
+      "owning_crate": "peritus-tools-fs",
+      "command": "cargo test --package peritus-tools-fs --all-targets --all-features --locked",
+      "started_at": "2026-09-13T15:07:31.743903Z",
+      "output": "119-peritus-tools-fs-ordinary-test.log",
+      "invocation": [
+        "cargo",
+        "test",
+        "--package",
+        "peritus-tools-fs",
+        "--all-targets",
+        "--all-features",
+        "--locked"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T15:07:35.419343Z",
+      "elapsed_seconds": 3.675,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "878e1102a63f7e3a32133c3ac0355c03ce5d5dcafeb12820d52b1d63d50bf6ba"
+    },
+    {
+      "kind": "verus-verify",
+      "owning_crate": "peritus-tools-fs",
+      "command": "cargo verus verify --package peritus-tools-fs --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20",
+      "started_at": "2026-09-13T15:07:35.458435Z",
+      "output": "120-peritus-tools-fs-verus-verify.log",
+      "invocation": [
+        "taskset",
+        "-c",
+        "0,1",
+        "cargo",
+        "verus",
+        "verify",
+        "--package",
+        "peritus-tools-fs",
+        "--all-features",
+        "--locked",
+        "--check-toolchain",
+        "--fwd-verus-args-to",
+        "roots",
+        "--",
+        "--no-cheating",
+        "--rlimit",
+        "20"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T15:07:37.981629Z",
+      "elapsed_seconds": 2.522,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "6c5b4be6dcb3bf5e6209a550c2e70bb005b552c03c76915343bd058f5b1aaedc"
+    },
+    {
+      "kind": "ordinary-test",
+      "owning_crate": "peritus-tools-git",
+      "command": "cargo test --package peritus-tools-git --all-targets --all-features --locked",
+      "started_at": "2026-09-13T15:07:38.022455Z",
+      "output": "121-peritus-tools-git-ordinary-test.log",
+      "invocation": [
+        "cargo",
+        "test",
+        "--package",
+        "peritus-tools-git",
+        "--all-targets",
+        "--all-features",
+        "--locked"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T15:07:40.243896Z",
+      "elapsed_seconds": 2.221,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "0a166763a800119ea13e8dd88885617bf517780dad345df6a8a41c435fcd3986"
+    },
+    {
+      "kind": "verus-verify",
+      "owning_crate": "peritus-tools-git",
+      "command": "cargo verus verify --package peritus-tools-git --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20",
+      "started_at": "2026-09-13T15:07:40.281802Z",
+      "output": "122-peritus-tools-git-verus-verify.log",
+      "invocation": [
+        "taskset",
+        "-c",
+        "0,1",
+        "cargo",
+        "verus",
+        "verify",
+        "--package",
+        "peritus-tools-git",
+        "--all-features",
+        "--locked",
+        "--check-toolchain",
+        "--fwd-verus-args-to",
+        "roots",
+        "--",
+        "--no-cheating",
+        "--rlimit",
+        "20"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T15:07:41.751738Z",
+      "elapsed_seconds": 1.469,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "bc6303db9ccabb9b7fec9a655d9941ac0fce8aef32062af151c7e66bc112836b"
+    },
+    {
+      "kind": "ordinary-test",
+      "owning_crate": "peritus-tools-quality",
+      "command": "cargo test --package peritus-tools-quality --all-targets --all-features --locked",
+      "started_at": "2026-09-13T15:07:41.790075Z",
+      "output": "123-peritus-tools-quality-ordinary-test.log",
+      "invocation": [
+        "cargo",
+        "test",
+        "--package",
+        "peritus-tools-quality",
+        "--all-targets",
+        "--all-features",
+        "--locked"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T15:07:42.858599Z",
+      "elapsed_seconds": 1.068,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "f360676be21fc8caec0ca45e30f6992cb2a4a9aaaf87878f4e0a503f0bdea095"
+    },
+    {
+      "kind": "verus-verify",
+      "owning_crate": "peritus-tools-quality",
+      "command": "cargo verus verify --package peritus-tools-quality --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20",
+      "started_at": "2026-09-13T15:07:42.896854Z",
+      "output": "124-peritus-tools-quality-verus-verify.log",
+      "invocation": [
+        "taskset",
+        "-c",
+        "0,1",
+        "cargo",
+        "verus",
+        "verify",
+        "--package",
+        "peritus-tools-quality",
+        "--all-features",
+        "--locked",
+        "--check-toolchain",
+        "--fwd-verus-args-to",
+        "roots",
+        "--",
+        "--no-cheating",
+        "--rlimit",
+        "20"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T15:07:43.514439Z",
+      "elapsed_seconds": 0.617,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "d479a92284e161b465fea8476f2ee10879057fa9dae4c2a8fb995d97ee8fdfa1"
+    },
+    {
+      "kind": "ordinary-test",
+      "owning_crate": "peritus-tools-shell",
+      "command": "cargo test --package peritus-tools-shell --all-targets --all-features --locked",
+      "started_at": "2026-09-13T15:07:43.554924Z",
+      "output": "125-peritus-tools-shell-ordinary-test.log",
+      "invocation": [
+        "cargo",
+        "test",
+        "--package",
+        "peritus-tools-shell",
+        "--all-targets",
+        "--all-features",
+        "--locked"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T15:07:46.378547Z",
+      "elapsed_seconds": 2.823,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "469522d5280ec45abd58b766955f53a826db51da5fdf87c890e561280635b047"
+    },
+    {
+      "kind": "verus-verify",
+      "owning_crate": "peritus-tools-shell",
+      "command": "cargo verus verify --package peritus-tools-shell --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20",
+      "started_at": "2026-09-13T15:07:46.418472Z",
+      "output": "126-peritus-tools-shell-verus-verify.log",
+      "invocation": [
+        "taskset",
+        "-c",
+        "0,1",
+        "cargo",
+        "verus",
+        "verify",
+        "--package",
+        "peritus-tools-shell",
+        "--all-features",
+        "--locked",
+        "--check-toolchain",
+        "--fwd-verus-args-to",
+        "roots",
+        "--",
+        "--no-cheating",
+        "--rlimit",
+        "20"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T15:07:49.091102Z",
+      "elapsed_seconds": 2.672,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "7516ff1c2a902ea1b5e5104db2c0e4f03c033b1f21e524dac6e31b762b450776"
+    },
+    {
+      "kind": "ordinary-test",
+      "owning_crate": "peritus-trace",
+      "command": "cargo test --package peritus-trace --all-targets --all-features --locked",
+      "started_at": "2026-09-13T15:07:49.131268Z",
+      "output": "127-peritus-trace-ordinary-test.log",
+      "invocation": [
+        "cargo",
+        "test",
+        "--package",
+        "peritus-trace",
+        "--all-targets",
+        "--all-features",
+        "--locked"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T15:07:50.400444Z",
+      "elapsed_seconds": 1.268,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "154a5536b9ed965c37ff46214d77ca2d15f3555439cbb4175622566d137ce5d8"
+    },
+    {
+      "kind": "verus-verify",
+      "owning_crate": "peritus-trace",
+      "command": "cargo verus verify --package peritus-trace --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20",
+      "started_at": "2026-09-13T15:07:50.438900Z",
+      "output": "128-peritus-trace-verus-verify.log",
+      "invocation": [
+        "taskset",
+        "-c",
+        "0,1",
+        "cargo",
+        "verus",
+        "verify",
+        "--package",
+        "peritus-trace",
+        "--all-features",
+        "--locked",
+        "--check-toolchain",
+        "--fwd-verus-args-to",
+        "roots",
+        "--",
+        "--no-cheating",
+        "--rlimit",
+        "20"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T15:07:51.006295Z",
+      "elapsed_seconds": 0.566,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "3e492d34bed9c34ab1d6dff2f06022d5951d70fd31d547bc003f267473aac0c2"
+    },
+    {
+      "kind": "ordinary-test",
+      "owning_crate": "peritus-types",
+      "command": "cargo test --package peritus-types --all-targets --all-features --locked",
+      "started_at": "2026-09-13T15:07:51.044593Z",
+      "output": "129-peritus-types-ordinary-test.log",
+      "invocation": [
+        "cargo",
+        "test",
+        "--package",
+        "peritus-types",
+        "--all-targets",
+        "--all-features",
+        "--locked"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T15:07:52.363926Z",
+      "elapsed_seconds": 1.318,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "3e70b13c260657a59838afa8bea760b8c028ecd28309608a40bd4214f500e02c"
+    },
+    {
+      "kind": "verus-verify",
+      "owning_crate": "peritus-types",
+      "command": "cargo verus verify --package peritus-types --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20",
+      "started_at": "2026-09-13T15:07:52.403006Z",
+      "output": "130-peritus-types-verus-verify.log",
+      "invocation": [
+        "taskset",
+        "-c",
+        "0,1",
+        "cargo",
+        "verus",
+        "verify",
+        "--package",
+        "peritus-types",
+        "--all-features",
+        "--locked",
+        "--check-toolchain",
+        "--fwd-verus-args-to",
+        "roots",
+        "--",
+        "--no-cheating",
+        "--rlimit",
+        "20"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T15:07:52.970281Z",
+      "elapsed_seconds": 0.566,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "20e48f1a9cf7a1a66d9a99da5d691513fe276b9e4ee836af8f2d50345d201b25"
+    },
+    {
+      "kind": "ordinary-test",
+      "owning_crate": "peritus-workspace",
+      "command": "cargo test --package peritus-workspace --all-targets --all-features --locked",
+      "started_at": "2026-09-13T15:07:53.017391Z",
+      "output": "131-peritus-workspace-ordinary-test.log",
+      "invocation": [
+        "cargo",
+        "test",
+        "--package",
+        "peritus-workspace",
+        "--all-targets",
+        "--all-features",
+        "--locked"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T15:08:00.203293Z",
+      "elapsed_seconds": 7.185,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "40900af5668ed0288ff95631b6da89d74a7c844f708152e68a68ca9dcbec8dbe"
+    },
+    {
+      "kind": "verus-verify",
+      "owning_crate": "peritus-workspace",
+      "command": "cargo verus verify --package peritus-workspace --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20",
+      "started_at": "2026-09-13T15:08:00.242976Z",
+      "output": "132-peritus-workspace-verus-verify.log",
+      "invocation": [
+        "taskset",
+        "-c",
+        "0,1",
+        "cargo",
+        "verus",
+        "verify",
+        "--package",
+        "peritus-workspace",
+        "--all-features",
+        "--locked",
+        "--check-toolchain",
+        "--fwd-verus-args-to",
+        "roots",
+        "--",
+        "--no-cheating",
+        "--rlimit",
+        "20"
+      ],
+      "command_exit_code": 0,
+      "finished_at": "2026-09-13T15:08:00.860124Z",
+      "elapsed_seconds": 0.616,
+      "exit_code": 0,
+      "result": "passed",
+      "output_sha256": "0ba7899363c005179115944baa46700fa4300489a65676d950eec3c80ca167a8"
+    }
+  ],
+  "approval": false,
+  "diagnostics_only": true,
+  "reason": "Qualification failed at65. Run remaining commands to discover failures before repair; none may qualify the future repaired candidate.",
+  "finished_at": "2026-09-13T15:08:00.881241Z",
+  "failed_command_indices": []
+}
+
+entry-raw-end
+entry-metadata-bytes=148
+{"bytes":1143,"finding_id":"FINDING-0002","label":"fixed-focused-green","sha256":"79aaee7665fe8a437e5e33f70e1f9c9b7c8fcbcbb7d5b978ec4bfba6c9424167"}
+entry-raw-begin
+{"command": ["cargo", "test", "--package", "peritus-product-runner", "--all-features", "--locked", "--lib", "developer_tools::command_runtime::tests::commands_after_failed_start_and_runtime_reopen_execute_once_with_fresh_identities", "--", "--exact"], "source": "crates/app/peritus-product-runner/src/developer_tools/command_runtime/tests.rs", "source_sha256": "161594f8bff3ddc48f64de1c7ab13e008ef82ee3b7be7956415b7d0c3e4c1889", "environment": {"CARGO_BUILD_JOBS": "1", "CCACHE_DISABLE": "1", "RUST_TEST_THREADS": "1"}, "started_at": "2026-09-13T15:09:12.282674+00:00"}
+
+   Compiling peritus-product-runner v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/app/peritus-product-runner)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 15.90s
+     Running unittests src/lib.rs (target/debug/deps/peritus_product_runner-f16a5c38448709d9)
+
+running 1 test
+test developer_tools::command_runtime::tests::commands_after_failed_start_and_runtime_reopen_execute_once_with_fresh_identities ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 286 filtered out; finished in 0.29s
+
+
+COMMAND EXIT CODE: 0
+
+entry-raw-end
+entry-metadata-bytes=140
+{"bytes":33675,"finding_id":"FINDING-0002","label":"full-suite","sha256":"435df6192c6e0835b538a74b2d8bb846d90e70f4150f325bc2d386518bdbce9e"}
+entry-raw-begin
+{"command": ["cargo", "test", "--package", "peritus-product-runner", "--all-targets", "--all-features", "--locked"], "source": "crates/app/peritus-product-runner/src/developer_tools/command_runtime/tests.rs", "source_sha256": "161594f8bff3ddc48f64de1c7ab13e008ef82ee3b7be7956415b7d0c3e4c1889", "environment": {"CARGO_BUILD_JOBS": "1", "CCACHE_DISABLE": "1", "RUST_TEST_THREADS": "1"}, "started_at": "2026-09-13T15:09:28.547662+00:00"}
+
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.24s
+     Running unittests src/lib.rs (target/debug/deps/peritus_product_runner-f16a5c38448709d9)
+
+running 287 tests
+test attachment::decode::tests::prior_default_image_output_is_conserved_in_animation_budget ... ok
+test attachment::tests::all_supported_formats_decode_and_retain_exact_original_bytes_and_digest ... ok
+test attachment::tests::complete_animation_frames_are_validated_with_an_exact_count_bound ... ok
+test attachment::tests::complete_selection_rejects_count_aggregate_and_changed_provider_without_omission ... ok
+test attachment::tests::image_dimensions_reject_a_small_encoded_bomb_before_pixel_decode ... ok
+test attachment::tests::provider_capability_and_exact_encoded_byte_bound_are_enforced ... ok
+test attachment::tests::signatures_without_pixels_and_truncated_pixels_are_not_images ... ok
+test budget::resource_probe::tests::workspace_growth_ignores_git_storage_and_does_not_follow_links ... ok
+test budget::tests::caller_run_horizon_is_bounded_and_drives_elapsed_budget ... ok
+test budget::tests::completed_work_is_retained_when_a_hard_ceiling_rejects_the_next_boundary ... ok
+test budget::tests::exact_numeric_ceilings_are_admitted_and_rejections_keep_their_priority ... ok
+test budget::tests::later_explicit_total_replaces_the_derived_total_without_double_counting ... ok
+test budget::tests::memory_and_workspace_growth_have_distinct_hard_failures ... ok
+test budget::tests::provider_failovers_are_counted_separately_from_same_provider_retries ... ok
+test budget::tests::rejected_model_request_preserves_prior_usage_and_every_counter ... ok
+test budget::tests::replacement_subtracts_before_adding_and_rejects_missing_prior_contributions ... ok
+test budget::tests::streaming_usage_replaces_each_response_snapshot_and_survives_failure ... ok
+test budget::tests::successful_probe_closes_a_run_scoped_provider_circuit ... ok
+test budget::tests::usage_replacement_rejection_preserves_totals_and_the_retained_response ... ok
+test budget::tests::work_events_accumulate_without_a_successful_role_outcome ... ok
+test budget::tests::workspace_growth_and_peak_memory_are_observed_at_effect_boundaries ... ok
+test bundle::tests::diff_includes_changes_committed_after_the_run_baseline ... ok
+test bundle::tests::diff_includes_untracked_text_files ... ok
+test bundle::tests::diff_projects_dirty_nested_repository_files_into_outer_context ... ok
+test bundle::tests::diff_reports_exact_permissions_separately_from_git_mode ... ok
+test candidate::tests::candidate_expands_dirty_files_inside_an_untracked_nested_repository ... ok
+test candidate::tests::candidate_includes_changes_committed_after_the_run_baseline ... ok
+test candidate::tests::candidate_keeps_tracked_build_paths_but_omits_untracked_build_products ... ok
+test candidate::tests::candidate_survives_restart_and_includes_new_modified_and_deleted_files ... ok
+test context_config::sandbox_wire::tests::platform_fields_are_exact_and_roundtrip_without_widening ... ok
+test control::brief::tests::brief_edits_share_immutable_queue_sources_and_do_not_release_a_held_requirement ... ok
+test control::brief::tests::incorporated_brief_edits_become_new_corrections_without_rewriting_prior_sources ... ok
+test control::brief::tests::ordinary_queue_edits_refresh_exact_brief_revision_but_not_unrelated_fields ... ok
+test control::checkpoint::tests::same_run_can_advance_the_exact_owned_postimage_but_another_run_cannot ... ok
+test control::files::tests::historical_files_retain_bytes_and_references_without_reusing_refresh_consent ... ok
+test control::files::tests::refresh_preserves_original_version_and_fences_previous_context_generation ... ok
+test control::files::tests::snapshot_or_held_references_cannot_refresh_and_deselection_retains_history ... ok
+test control::files::tests::text_is_exact_and_invalid_ranges_binary_or_rebound_sources_reject ... ok
+test control::goal::tests::graphical_evidence_is_independent_fresh_and_revision_fenced ... ok
+test control::goal::tests::missing_usage_is_unknown_not_zero_and_cost_has_independent_provenance ... ok
+test control::goal::tests::only_fresh_strict_settlement_achieves_goal ... ok
+test control::goal::tests::pause_boundaries_do_not_admit_mutation_or_complete_from_model_text ... ok
+test control::goal::tests::request_budget_is_reserved_before_admission_and_survives_resume ... ok
+test control::identity::tests::exact_encoding_and_nonzero_validation_survive_explicit_deserialization ... ok
+test control::images::tests::aggregate_limit_and_invalid_metadata_reject_without_dropping_any_selection ... ok
+test control::images::tests::count_limit_is_exact_and_held_input_cannot_be_released_past_the_limit ... ok
+test control::images::tests::empty_image_state_preserves_legacy_bytes_and_reference_operation_cannot_be_rebound ... ok
+test control::inputs::tests::dependency_order_hold_withdraw_and_incorporation_reject_invalid_plans_without_mutation ... ok
+test control::inputs::tests::editing_preserves_old_text_and_incorporated_text_requires_a_new_correction ... ok
+test control::inputs::tests::historical_snapshot_preserves_context_but_holds_all_inherited_pending_work ... ok
+test control::inputs::tests::malformed_import_and_capacity_fail_closed ... ok
+test control::inputs::tests::request_capture_excludes_held_dependencies_and_tracks_every_mutation ... ok
+test control::permissions::tests::narrowing_is_durable_and_broadening_above_host_rejects ... ok
+test control::review::tests::anchors_reject_line_only_and_unsafe_path_identity ... ok
+test control::review::tests::leave_alone_is_a_revisioned_input_and_stays_protected_until_dismissed ... ok
+test control::tests::deserialization_cannot_construct_reserved_identifiers_or_unbounded_text ... ok
+test control::tests::restore_capacity::applied_restore_invalidates_context_with_a_full_input_ledger ... ok
+test control::tests::state_and_receipt_roundtrip_but_reject_changed_owner_and_unknown_generation ... ok
+test delivery_requirement::tests::artifact_requests_and_workspace_scope_do_not_gain_an_effect_requirement ... ok
+test delivery_requirement::tests::background_and_politeness_do_not_hide_a_promised_runtime_result ... ok
+test delivery_requirement::tests::coordinated_build_and_install_requires_the_installed_result ... ok
+test delivery_requirement::tests::live_operational_requests_require_effect_evidence ... ok
+test design::artifact::tests::large_workspace_inventory_is_bounded_without_blocking_design ... ok
+test design::artifact::tests::operational_design_requires_live_effect_and_fresh_verification ... ok
+test design::artifact::tests::rendered_design_preserves_the_request_and_observed_inventory ... ok
+test design::tests::artifact_workspace_marker_selects_the_deterministic_design_path ... ok
+test design::tests::design_keeps_literal_values_and_scoped_rules_authoritative ... ok
+test design::tests::design_requires_a_real_markdown_document ... ok
+test design::tests::rejected_design_retry_explains_the_exact_heading_contract ... ok
+test developer_tools::access_policy::tests::existing_private_read_exclusions_do_not_change_process_authority ... ok
+test developer_tools::access_policy::tests::hard_constraint_allows_read_but_blocks_file_and_unconfined_process_writes ... ok
+test developer_tools::access_policy::tests::opaque_query_contract_blocks_implementation_reads_and_hidden_state ... ok
+test developer_tools::access_policy::tests::ordinary_repository_request_keeps_normal_access ... ok
+test developer_tools::arguments::tests::every_catalog_schema_is_supported_and_read_only_definitions_agree ... ok
+test developer_tools::arguments::tests::invalid_fields_are_rejected_instead_of_defaulted_or_coerced ... ok
+test developer_tools::catalog::tests::mutating_catalog_declares_fresh_grounding_protocol ... ok
+test developer_tools::command_budget::tests::command_is_refused_once_only_the_completion_reserve_remains ... ok
+test developer_tools::command_budget::tests::late_command_is_clamped_before_the_completion_reserve ... ok
+test developer_tools::command_budget::tests::ordinary_command_keeps_its_requested_timeout ... ok
+test developer_tools::command_runtime::compactor::tests::compiled_compactor_contract_admits_exact_inputs_only ... ok
+test developer_tools::command_runtime::compactor::tests::missing_or_directory_weights_never_allocate_process_authority ... ok
+test developer_tools::command_runtime::folder_patch::tests::plan_cannot_be_committed_by_another_runtime_with_the_same_run_id ... ok
+test developer_tools::command_runtime::folder_patch::tests::real_authority_applies_only_the_exact_c1_folder_patch_bytes ... ok
+test developer_tools::command_runtime::ordinal::tests::independent_threads_reserve_distinct_numbers ... ok
+test developer_tools::command_runtime::ordinal::tests::invalid_and_exhausted_stored_counters_are_never_reset ... ok
+test developer_tools::command_runtime::ordinal::tests::legacy_shell_and_compactor_identities_are_preserved_including_gaps ... ok
+test developer_tools::command_runtime::ordinal::tests::malformed_store_and_exhaustion_fail_without_resetting_identity ... ok
+test developer_tools::command_runtime::ordinal::tests::reopening_and_stale_local_counters_do_not_reuse_reservations ... ok
+test developer_tools::command_runtime::ordinal::tests::separate_runs_retain_independent_high_water_marks ... ok
+test developer_tools::command_runtime::ordinal::tests::transient_writer_contention_waits_for_a_durable_reservation ... ok
+test developer_tools::command_runtime::plan::tests::executable_resolution_preserves_multicall_name_and_normalizes_parent ... ok
+test developer_tools::command_runtime::plan::tests::executable_resolution_rejects_dangling_symlinks ... ok
+test developer_tools::command_runtime::preview::tests::controlled_preview_fixture ... ignored, subprocess fixture; invoked by the owned-preview test
+test developer_tools::command_runtime::preview::tests::owned_preview_launches_accepts_input_and_stops_explicitly ... ok
+test developer_tools::command_runtime::result::tests::stream_projection_preserves_head_and_tail ... ok
+test developer_tools::command_runtime::tests::command_restart_fixture ... ok
+test developer_tools::command_runtime::tests::commands_after_failed_start_and_runtime_reopen_execute_once_with_fresh_identities ... ok
+test developer_tools::command_runtime::tests::idempotency_keys_are_stable_and_fixed_width ... ok
+test developer_tools::evidence::tests::evidence_retains_recent_bounded_command_observations ... ok
+test developer_tools::evidence::tests::only_explicit_successful_purposes_become_acceptance_evidence ... ok
+test developer_tools::executor::inspection_progress::tests::identical_and_alternating_inspections_warn_then_stop ... ok
+test developer_tools::executor::inspection_progress::tests::new_evidence_and_noninspection_work_reset_the_cycle ... ok
+test developer_tools::executor::receipt_tests::append_effect_counter_fixture ... ignored, subprocess fixture invoked by the duplicate-effect regression
+test developer_tools::executor::receipt_tests::completed_workspace_effect_replays_without_a_second_write ... ok
+test developer_tools::executor::receipt_tests::disconnect::disconnect_retry_cannot_relaunch_a_durably_pending_command ... 
+running 1 test
+test developer_tools::executor::receipt_tests::append_effect_counter_fixture ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 286 filtered out; finished in 0.00s
+
+
+running 1 test
+test developer_tools::executor::receipt_tests::append_effect_counter_fixture ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 286 filtered out; finished in 0.00s
+
+ok
+test developer_tools::executor::receipt_tests::reused_provider_call_id_cannot_dispatch_a_second_external_effect ... ok
+test developer_tools::executor::tests::access::folder_private_state_is_excluded_from_read_list_and_search_even_after_contract_refresh ... ok
+test developer_tools::executor::tests::access::read_only_tools_reject_undeclared_mutation_and_process_calls ... ok
+test developer_tools::executor::tests::admission::absent_manifest_read_does_not_change_progress_or_block_greenfield_creation ... ok
+test developer_tools::executor::tests::admission::bad_write_is_repairable_in_the_same_invocation_without_enrollment_or_effect ... ok
+test developer_tools::executor::tests::admission::live_permission_narrowing_precedes_reads_scope_receipts_and_process_effects ... ok
+test developer_tools::executor::tests::admission::malformed_command_is_rejected_before_a_receipt_or_process_can_start ... ok
+test developer_tools::executor::tests::checkpoint::changed_write_captures_the_exact_preimage_before_the_effect ... ok
+test developer_tools::executor::tests::checkpoint::checkpoint_failure_aborts_the_workspace_effect_and_unchanged_writes_skip_capture ... ok
+test developer_tools::executor::tests::checkpoint::empty_directory_capture_precedes_removal_with_an_explicit_kind ... ok
+test developer_tools::executor::tests::checkpoint::intervening_change_that_refuses_patch_never_reports_an_owned_mutation ... ok
+test developer_tools::executor::tests::checkpoint::successful_command_seals_only_changed_scoped_paths_from_its_exact_receipt ... ok
+test developer_tools::executor::tests::command::active_command_created_files_are_owned_after_terminal_observation ... ok
+test developer_tools::executor::tests::command::active_commands_accept_terminal_input_and_reach_a_stable_result ... ok
+test developer_tools::executor::tests::command::active_commands_cancel_the_owned_process_tree ... ok
+test developer_tools::executor::tests::command::command_created_file_fixture ... ok
+test developer_tools::executor::tests::command::command_created_files_can_be_removed_without_owning_unrelated_late_files ... ok
+test developer_tools::executor::tests::command::command_output_fixture ... ok
+test developer_tools::executor::tests::command::command_stdin_fixture ... ok
+test developer_tools::executor::tests::command::command_timeout_fixture ... ok
+test developer_tools::executor::tests::command::commands_accept_a_workspace_reached_through_a_filesystem_alias ... ok
+test developer_tools::executor::tests::command::control::rejected_pipe_controls_preserve_the_active_command_handle ... ok
+test developer_tools::executor::tests::command::missing_executable_returns_scoped_prerequisite_recovery_guidance ... ok
+test developer_tools::executor::tests::command::signal::active_commands_deliver_interrupt_signal_to_the_owned_process ... ok
+test developer_tools::executor::tests::command::structured_commands_drain_and_bound_both_output_streams ... ok
+test developer_tools::executor::tests::command::structured_commands_shrink_to_preserve_the_product_completion_reserve ... ok
+test developer_tools::executor::tests::command::structured_commands_time_out_without_freezing_the_agent ... ok
+test developer_tools::executor::tests::exact_remove_preserves_late_external_evidence_and_blocks_shell_deletion ... ok
+test developer_tools::executor::tests::existing_files_cannot_be_mutated_before_they_are_read ... ok
+test developer_tools::executor::tests::inspection::read_only_inspection_and_real_delivery_do_not_exhaust_the_nudge_budget ... ok
+test developer_tools::executor::tests::inspection::repeated_successful_listings_warn_and_block_without_resetting_grounding ... ok
+test developer_tools::executor::tests::long_inspection_sequence_returns_one_concrete_delivery_nudge ... ok
+test developer_tools::executor::tests::task_contract_keeps_opaque_implementation_out_of_tool_evidence ... ok
+test developer_tools::executor::tests::workspace_reads_report_exact_posix_permissions ... ok
+test developer_tools::executor::tests::workspace_remove_deletes_only_an_observed_empty_directory ... ok
+test developer_tools::executor::tests::workspace_tools_inspect_edit_search_and_execute_without_a_shell ... ok
+test developer_tools::executor::tests::workspace_write_reports_and_preserves_an_unchanged_file ... ok
+test developer_tools::grounding::tests::empty_directory_removal_requires_exact_listing_evidence ... ok
+test developer_tools::grounding::tests::existing_target_requires_repository_and_target_observation ... ok
+test developer_tools::grounding::tests::observed_empty_repository_allows_new_files ... ok
+test developer_tools::ownership::tests::ignored_folder_does_not_inherit_parent_repository_ownership ... ok
+test developer_tools::ownership::tests::late_external_file_is_not_owned_by_the_product_run ... ok
+test developer_tools::receipt::tests::append_after_truncated_tail_remains_replayable_after_another_restart ... ok
+test developer_tools::receipt::tests::complete_corrupt_frame_fails_closed_without_truncation ... ok
+test developer_tools::receipt::tests::completed_effect_replays_and_conflicting_request_is_refused ... ok
+test developer_tools::receipt::tests::durable_receipt_state_rejects_inconsistent_result_fields ... ok
+test developer_tools::receipt::tests::interrupted_command_is_durably_ambiguous_and_never_relaunched ... ok
+test developer_tools::receipt::tests::interrupted_non_command_effect_remains_executable ... ok
+test developer_tools::receipt::tests::ledger_byte_bound_accepts_exact_limit_and_rejects_one_byte_over ... ok
+test developer_tools::receipt::tests::process_termination_preserves_receipt_decisions ... ok
+test developer_tools::receipt::tests::receipt_process_child_fixture ... ignored, subprocess fixture; invoked by process_termination_preserves_receipt_decisions
+test developer_tools::receipt::tests::receipt_read_errors_are_not_treated_as_an_empty_ledger ... ok
+test developer_tools::receipt::tests::record_byte_bound_accepts_exact_limit_and_rejects_one_byte_over ... ok
+test developer_tools::receipt::tests::repeated_provider_call_id_never_executes_a_second_effect ... ok
+test developer_tools::receipt::tests::reused_provider_call_id_conflicts_on_each_identity_dimension ... ok
+test developer_tools::resources::tests::admitted_commands_receive_cross_language_parallelism_defaults ... ok
+test developer_tools::resources::tests::common_build_job_flags_are_recognized_without_inspecting_shell_text ... ok
+test developer_tools::resources::tests::excessive_explicit_parallelism_is_rejected_before_spawn ... ok
+test developer_tools::resources::tests::linux_resource_formats_are_parsed_conservatively ... ok
+test engineering_workflow::tests::embedded_workflow_carries_the_hard_source_limit_for_every_role ... ok
+test engineering_workflow::tests::reviewer_rejects_correlated_exact_extraction_evidence ... ok
+test execution::acceptance::tests::external_effect_evidence_needs_an_action_and_a_fresh_verification ... ok
+test execution::acceptance::tests::external_evidence_never_weakens_the_default_workspace_scope ... ok
+test execution::acceptance::tests::partial_handoffs_do_not_label_failed_or_interrupted_gates_as_successful ... ok
+test execution::checkpoint::tests::changed_candidate_stales_prior_gate_evidence ... ok
+test execution::checkpoint::tests::conversation_revision_stales_prior_evidence ... ok
+test execution::checkpoint::tests::fresh_reversion_clears_an_old_workspace_candidate ... ok
+test execution::checkpoint::tests::retry_preserves_a_clean_review_when_failed_gates_are_reacquired ... ok
+test execution::deadline::tests::active_window_always_preserves_a_finalization_reserve ... ok
+test execution::deadline::tests::model_turns_stop_before_finalization_time_is_consumed ... ok
+test execution::fix_progress::tests::a_changed_blocker_identity_starts_a_fresh_attempt_budget ... ok
+test execution::fix_progress::tests::candidate_change_resets_the_unchanged_count ... ok
+test execution::fix_progress::tests::candidate_permission_change_counts_as_fixer_progress ... ok
+test execution::fix_progress::tests::changing_candidate_does_not_hide_a_persistent_blocker ... ok
+test execution::fix_progress::tests::two_unchanged_fixer_cycles_exhaust_progress ... ok
+test execution::obligations::tests::exact_public_text_becomes_a_qualified_requirement_only_after_review ... ok
+test execution::obligations::tests::failed_obligation_routes_only_candidate_defects_to_the_fixer ... ok
+test execution::resume::tests::conversation_change_restarts_at_design ... ok
+test execution::resume::tests::durable_resume_rejects_an_unknown_version ... ok
+test execution::resume::tests::durable_resume_retains_candidate_and_reacquires_effectful_gates ... ok
+test execution::resume::tests::provider_retry_reuses_valid_design_and_resumes_review ... ok
+test execution::resume::tests::report_retry_reuses_every_completed_execution_phase ... ok
+test execution::settlement::tests::incomplete_candidate_names_each_missing_acceptance_boundary ... ok
+test execution::settlement::tests::qualified_candidate_has_no_remaining_work ... ok
+test failover::tests::capability_and_circuit_bypasses_do_not_reopen_provider_circuits ... ok
+test failover::tests::progress_continues_bounded_segments_but_never_overrides_integrity_or_policy ... ok
+test failover::tests::same_provider_role_recovery_is_transient_and_finite ... ok
+test failover::tests::transient_terminals_allow_failover_but_policy_terminals_do_not ... ok
+test gates::artifact_csv::tests::accepts_quoted_commas_quotes_and_newlines ... ok
+test gates::artifact_csv::tests::gate_checks_only_changed_csv_artifacts ... ok
+test gates::artifact_csv::tests::rejects_backslash_escaped_quotes_from_the_benchmark_regression ... ok
+test gates::artifact_csv::tests::rejects_ragged_rows ... ok
+test gates::deliverable_inventory::tests::accepts_exact_single_file_inventory ... ok
+test gates::deliverable_inventory::tests::does_not_close_inventory_for_negated_or_ambiguous_language ... ok
+test gates::deliverable_inventory::tests::rejects_compiler_byproduct_beside_requested_single_file ... ok
+test gates::explicit_paths::tests::alternative_output_paths_require_one_member_instead_of_every_member ... ok
+test gates::explicit_paths::tests::arithmetic_addition_does_not_make_a_later_example_input_an_output ... ok
+test gates::explicit_paths::tests::attendee_email_is_not_mistaken_for_an_output_path ... ok
+test gates::explicit_paths::tests::command_interpreter_is_not_mistaken_for_an_output_path ... ok
+test gates::explicit_paths::tests::conditional_deliverables_are_not_universal_requirements ... ok
+test gates::explicit_paths::tests::conditional_troubleshooting_commands_do_not_create_output_requirements ... ok
+test gates::explicit_paths::tests::descriptive_extension_is_not_a_literal_path_but_a_dotfile_is ... ok
+test gates::explicit_paths::tests::exact_output_passes_without_treating_command_products_as_required ... ok
+test gates::explicit_paths::tests::generated_filename_placeholders_are_not_literal_output_paths ... ok
+test gates::explicit_paths::tests::missing_nested_output_rejects_same_basename_at_workspace_root ... ok
+test gates::explicit_paths::tests::output_verbs_do_not_leak_into_later_verification_sentences ... ok
+test gates::explicit_paths::tests::prose_abbreviation_is_not_an_output_path ... ok
+test gates::explicit_paths::tests::quoted_extensionless_executable_is_a_required_output ... ok
+test gates::explicit_paths::tests::read_only_and_negated_paths_are_not_required_outputs ... ok
+test gates::json_structure::tests::rejects_malformed_json ... ok
+test gates::json_structure::tests::validates_only_changed_json_files_in_the_project ... ok
+test gates::source_layout::tests::ignores_unchanged_and_generated_sources ... ok
+test gates::source_layout::tests::product_scope_keeps_first_party_files_strict_and_skips_late_imports ... ok
+test gates::source_layout::tests::rejects_a_rust_source_file_over_the_hard_limit ... ok
+test gates::sqlite_migration::tests::executes_forward_twice_postcheck_and_rollback ... ok
+test gates::sqlite_migration::tests::rejects_a_migration_that_fails_on_the_second_run ... ok
+test gates::tests::artifact_layout_checks_candidate_sources_without_rejecting_untouched_vendor_code ... ok
+test gates::tests::explicit_nested_output_cannot_be_satisfied_at_the_workspace_root ... ok
+test gates::tests::nested_rust_target_cannot_be_satisfied_by_unrelated_root_tests ... ok
+test gates::yaml_structure::tests::rejects_malformed_yaml ... ok
+test gates::yaml_structure::tests::validates_only_changed_yaml_files_in_the_project ... ok
+test local_context::semantic::tests::malformed_output_timeout_and_missing_local_runtime_use_deterministic_state ... ok
+test local_context::semantic::tests::valid_local_proposal_uses_the_same_source_scope_and_atomic_update_validation ... ok
+test local_context::storage::tests::a_missing_artifact_aborts_the_entire_c0_transaction ... ok
+test local_context::storage::tests::checkpoint_roots_and_exact_artifacts_survive_restart ... ok
+test local_context::storage::tests::ownership_and_scope_fail_closed ... ok
+test local_context::storage::tests::unpublished_candidate_and_stale_generation_preserve_previous_checkpoint ... ok
+test local_context::tests::a_precise_file_dependency_survives_unrelated_edits_and_invalidates_on_change ... ok
+test local_context::tests::a_source_backed_failed_cause_survives_repeated_view_reductions ... ok
+test local_context::tests::capacity::optional_working_entries_leave_room_for_policy_tools_and_message_framing ... ok
+test local_context::tests::capacity::required_working_closure_uses_provider_headroom_and_survives_restart ... ok
+test local_context::tests::folder::folder_memory_rejects_candidate_claims_and_private_file_dependencies ... ok
+test local_context::tests::folder::folder_memory_reopens_and_file_validity_tracks_only_explicit_dependencies ... ok
+test local_context::tests::inspection::inspection_keeps_exact_published_view_and_reports_unpublished_tail ... ok
+test local_context::tests::invocation::current_policy_replaces_checkpoint_state_without_erasing_completed_tools ... ok
+test local_context::tests::invocation::invocation_policy_is_included_in_capacity_and_origin_checks ... ok
+test local_context::tests::later_literal_correction_is_pinned_and_prepared_failure_keeps_the_published_view ... ok
+test local_context::tests::reasoning::assistant_reasoning_survives_local_archive_and_recovery_without_becoming_instructions ... ok
+test local_context::tests::recovery::a_trace_committed_before_memory_is_ingested_once_after_restart ... ok
+test local_context::tests::recovery::checkpoint_and_uncovered_pending_proposal_survive_without_claiming_execution ... ok
+test local_context::tests::recovery::reused_provider_call_ids_are_distinct_completed_episodes ... ok
+test local_context::tests::retrieval::bounded_pages_report_unreturned_handles_and_state_cursors_are_revision_bound ... ok
+test local_context::tests::retrieval::exact_read_and_search_find_diagnostics_beyond_any_prefix_preview ... ok
+test local_context::tests::reviewer::failed_reviewer_observations_remain_readable_without_derived_memory ... ok
+test local_context::tests::updates_survive_observation_bookkeeping_and_reject_stale_or_forged_operations ... ok
+test local_context::tools::secret_text::tests::credential_shapes_are_rejected_without_rejecting_security_guidance ... ok
+test progress::tests::checkpoint_changes_only_when_candidate_content_changes ... ok
+test progress::tests::checkpoint_changes_when_candidate_permissions_change ... ok
+test progress::tests::checkpoint_changes_when_the_task_creates_a_commit ... ok
+test review::tests::durable_clean_review_round_trip_can_continue_with_the_next_review ... ok
+test review::tests::durable_ledger_round_trip_preserves_a_fixer_proposal ... ok
+test review::tests::reviewer_boolean_is_rejected_and_advisory_remains_nonblocking ... ok
+test reviewer_turn::tests::rejected_review_requires_fresh_authoritative_reads ... ok
+test turn::evidence::tests::projection_bounds_first_turn_and_preserves_each_section ... ok
+test turn::evidence::tests::smaller_provider_profiles_receive_smaller_evidence_packets ... ok
+test turn::tests::external_effect_completion_may_retain_concise_steps ... ok
+test turn::tests::external_effect_writer_attempts_scoped_prerequisites_before_escalating ... ok
+test turn::tests::fresh_provider_recovery_requires_new_repository_grounding ... ok
+test turn::tests::live_operational_delivery_rejects_helper_files_as_the_whole_result ... ok
+test turn::tests::rejected_terminal_correction_requires_fresh_repository_grounding ... ok
+test turn::tests::reviewer_bounds_oversized_initial_evidence_before_provider_compaction ... ok
+test turn::tests::reviewer_checks_literal_request_independently_of_the_design ... ok
+test turn::tests::reviewer_rechecks_conserved_finding_locations_after_fixes ... ok
+test turn::tests::unchanged_question_is_challenged_with_confirmed_workspace_capabilities ... ok
+test turn::tests::workspace_completion_requires_a_direct_run_command ... ok
+test turn::tests::writer_batches_tools_and_respects_artifact_workspaces ... ok
+test workspace_delivery::scope::tests::a_directory_declaration_cannot_conceal_undeclared_descendant_effects ... ok
+test workspace_delivery::scope::tests::a_scoped_file_replaced_by_a_symlink_fails_before_reading_the_destination ... ok
+test workspace_delivery::scope::tests::enrollment_is_not_progress_but_creation_edit_deletion_and_reversion_are ... ok
+test workspace_delivery::scope::tests::exact_file_baseline_survives_reopen_without_inventory_or_rebaselining ... ok
+test workspace_delivery::scope::tests::full_file_changes_beyond_the_preview_invalidate_freshness ... ok
+test workspace_delivery::scope::tests::scope_rejects_protected_traversal_torn_and_forged_records ... ok
+test workspace_filter::tests::recognizes_common_language_build_and_cache_trees ... ok
+test workspace_media::folder::tests::greeting_never_discovers_or_attaches_unmentioned_images ... ok
+test workspace_media::folder::tests::only_explicit_non_private_paths_are_attached ... ok
+test workspace_media::tests::image_task_fails_explicitly_for_a_text_only_provider ... ok
+test workspace_media::tests::manifest_paths_use_provider_neutral_separators ... ok
+test workspace_media::tests::mentioned_image_directory_attaches_the_complete_bounded_collection ... ok
+test workspace_media::tests::mentioned_source_directory_does_not_attach_descendant_screenshots ... ok
+test workspace_media::tests::mentioned_workspace_image_is_attached_with_its_path ... ok
+test workspace_media::tests::unrelated_image_is_not_added_to_a_text_task ... ok
+test workspace_media::tests::verifier_reference_image_does_not_attach_unrelated_workspace_media ... ok
+
+test result: ok. 284 passed; 0 failed; 3 ignored; 0 measured; 0 filtered out; finished in 10.54s
+
+     Running tests/checkpoint_resume.rs (target/debug/deps/checkpoint_resume-45a47c1cae378023)
+
+running 9 tests
+test cancellation_during_review_preserves_a_pending_review_candidate ... ok
+test deadline_cutoff_still_runs_finalization ... ok
+test early_failure_after_durable_restore_retains_exact_candidate_paths ... ok
+test effect_identity::resumed_writer_can_issue_a_different_first_effect_at_the_same_conversation_revision ... ok
+test effect_identity::resumed_writer_keeps_distinct_effects_with_local_memory_disabled ... ok
+test failing_gates_remain_a_candidate_when_the_fixer_provider_fails ... ok
+test failure_during_fix_resumes_the_fixer_then_rechecks_and_accepts ... ok
+test provider_failure_after_mutation_returns_the_exact_candidate ... ok
+test reviewer_failure_resumes_review_without_design_writer_or_gates ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 6.46s
+
+     Running tests/external_effects.rs (target/debug/deps/external_effects-d49f300a4f3405bf)
+
+running 3 tests
+test authorized_external_effects_complete_without_a_synthetic_workspace_diff ... ok
+test external_effect_command_fixture ... ok
+test operational_request_needs_a_live_effect_even_when_supporting_files_change ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.57s
+
+     Running tests/in_place_recovery.rs (target/debug/deps/in_place_recovery-f8549e56658aecc6)
+
+running 2 tests
+test absent_reads_do_not_replenish_recovery_and_failed_roles_are_fully_accounted ... ok
+test material_progress_cannot_restart_a_safety_terminal_or_switch_providers ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.31s
+
+     Running tests/production_composition.rs (target/debug/deps/production_composition-c4318fd498efd533)
+
+running 4 tests
+test exact_target_tool_edit_and_typed_review_are_required_for_completion ... ok
+test fixer_cannot_erase_a_finding_without_fresh_reviewer_confirmation ... ok
+test product_run_future_leaves_room_for_composing_callers ... ok
+test provider_failure_before_first_response_retains_an_empty_trace ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.31s
+
+     Running tests/provider_failover.rs (target/debug/deps/provider_failover-4a25de8f754d29d6)
+
+running 1 test
+test unavailable_selected_provider_uses_consented_fallbacks_for_each_role ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.86s
+
+     Running tests/role_recovery.rs (target/debug/deps/role_recovery-7a7960cb2c82add1)
+
+running 1 test
+test roles_restart_after_exhausted_empty_and_interrupted_responses ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.02s
+
+     Running unittests examples/live_account_product_run.rs (target/debug/examples/live_account_product_run-1413bf99bb63ce95)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+COMMAND EXIT CODE: 0
+
+entry-raw-end
+entry-metadata-bytes=144
+{"bytes":3649,"finding_id":"FINDING-0002","label":"old-focused-red","sha256":"b4af143bca3d5cbea83b8f564a23be7cc71e69f287b49ad0330bd9976237de09"}
+entry-raw-begin
+{"command": ["cargo", "test", "--package", "peritus-product-runner", "--all-features", "--locked", "--lib", "developer_tools::command_runtime::tests::commands_after_failed_start_and_runtime_reopen_execute_once_with_fresh_identities", "--", "--exact"], "source": "crates/app/peritus-product-runner/src/developer_tools/command_runtime/tests.rs", "source_sha256": "94facc1ec45b9dc6af7a5dda1cf0f7bd5628d43822b372a61d56348fdd9e3be2", "environment": {"CARGO_BUILD_JOBS": "1", "CCACHE_DISABLE": "1", "RUST_TEST_THREADS": "1"}, "started_at": "2026-09-13T15:08:46.423694+00:00"}
+
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.27s
+     Running unittests src/lib.rs (target/debug/deps/peritus_product_runner-f16a5c38448709d9)
+
+running 1 test
+test developer_tools::command_runtime::tests::commands_after_failed_start_and_runtime_reopen_execute_once_with_fresh_identities ... FAILED
+
+failures:
+
+---- developer_tools::command_runtime::tests::commands_after_failed_start_and_runtime_reopen_execute_once_with_fresh_identities stdout ----
+
+thread 'developer_tools::command_runtime::tests::commands_after_failed_start_and_runtime_reopen_execute_once_with_fresh_identities' (1160888) panicked at crates/app/peritus-product-runner/src/developer_tools/command_runtime/tests.rs:112:13:
+{"disposition":"exited","exit_code":0,"failure":null,"handle":"e929bcd3c8e5b571d6659154a145eb2e","progress":[{"kind":"update","message":"process event 9: resource-sample","sequence":9},{"kind":"update","message":"process event 10: tree-quiescent","sequence":10},{"kind":"update","message":"process event 11: output-closed","sequence":11},{"kind":"update","message":"process event 12: terminal-published","sequence":12}],"state":"completed","status":"succeeded","stderr":"","stdout":"\nrunning 1 test\ntest developer_tools::command_runtime::tests::command_restart_fixture ... restart-effect:first\nok\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 286 filtered out; finished in 0.00s\n\n","success":true,"timed_out":false,"tool_result":{"artifact_publication_complete":true,"disposition":"exited","os_exit":"code:0","plan_digest":"122b8d2b117ffe2a95b8111f2e7478feebdc77cabac31cb5fb34fdfd8c6569ca","process_id":"9d0241b4285f2f73c7416116ee705e7f","progress_truncated":false,"recovery":"OriginalOwner","resources":[{"ceiling":"10000","dimension":"WallTimeMilliseconds","fidelity":"Enforced","value":"27"},{"ceiling":"640000","dimension":"CpuTimeMilliseconds","fidelity":"Sampled","value":"2"},{"ceiling":"12884901888","dimension":"MemoryBytes","fidelity":"Sampled","value":"0"},{"ceiling":"53687091200","dimension":"DiskBytes","fidelity":"Sampled","value":"6"},{"ceiling":"8388608","dimension":"OutputBytes","fidelity":"Enforced","value":"212"},{"ceiling":"4096","dimension":"ProcessCount","fidelity":"Sampled","value":"1"},{"ceiling":"8192","dimension":"OpenHandles","fidelity":"Sampled","value":"0"},{"ceiling":"1","dimension":"ConcurrencySlots","fidelity":"Enforced","value":"1"}],"streams":[{"completeness":"complete","dropped":"0","observed":"212","retained":"212","stream":"stdout"},{"completeness":"complete","dropped":"0","observed":"0","retained":"0","stream":"stderr"}],"support_tasks_joined":true,"tree_cleanup_complete":true}}
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    developer_tools::command_runtime::tests::commands_after_failed_start_and_runtime_reopen_execute_once_with_fresh_identities
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 286 filtered out; finished in 0.09s
+
+error: test failed, to rerun pass `-p peritus-product-runner --lib`
+
+COMMAND EXIT CODE: 101
+
+entry-raw-end
+entry-metadata-bytes=142
+{"bytes":6092,"finding_id":"FINDING-0002","label":"strict-clippy","sha256":"f7a0cf649ed1bc88e108daf3666d0b9d7521f24f6ac4a007cee70400fdf3eabe"}
+entry-raw-begin
+{"command": ["cargo", "clippy", "--package", "peritus-product-runner", "--all-targets", "--all-features", "--locked", "--", "-D", "warnings"], "source": "crates/app/peritus-product-runner/src/developer_tools/command_runtime/tests.rs", "source_sha256": "161594f8bff3ddc48f64de1c7ab13e008ef82ee3b7be7956415b7d0c3e4c1889", "environment": {"CARGO_BUILD_JOBS": "1", "CCACHE_DISABLE": "1", "RUST_TEST_THREADS": "1"}, "started_at": "2026-09-13T15:09:53.047767+00:00"}
+
+    Checking peritus-types v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/foundation/peritus-types)
+    Checking peritus-codec v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/foundation/peritus-codec)
+    Checking peritus-policy v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/foundation/peritus-policy)
+    Checking peritus-spec v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/foundation/peritus-spec)
+    Checking peritus-quality-policy v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/foundation/peritus-quality-policy)
+    Checking peritus-budget v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/foundation/peritus-budget)
+    Checking peritus-kernel v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/foundation/peritus-kernel)
+    Checking peritus-artifact-store v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/state/peritus-artifact-store)
+    Checking peritus-approval v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/state/peritus-approval)
+    Checking peritus-protocol v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/foundation/peritus-protocol)
+    Checking peritus-leases v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/state/peritus-leases)
+    Checking peritus-journal v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/state/peritus-journal)
+    Checking peritus-sandbox v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/runtime/peritus-sandbox)
+    Checking peritus-projection v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/state/peritus-projection)
+    Checking peritus-role v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/orchestration/peritus-role)
+    Checking peritus-run-settlement v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/orchestration/peritus-run-settlement)
+    Checking peritus-evidence v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/state/peritus-evidence)
+    Checking peritus-tool-protocol v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/tools/peritus-tool-protocol)
+    Checking peritus-tool-router v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/tools/peritus-tool-router)
+    Checking peritus-process v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/runtime/peritus-process)
+    Checking peritus-model-protocol v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/model/peritus-model-protocol)
+    Checking peritus-provider-core v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/model/peritus-provider-core)
+    Checking peritus-run-knowledge v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/orchestration/peritus-run-knowledge)
+    Checking peritus-patch v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/runtime/peritus-patch)
+    Checking peritus-git v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/runtime/peritus-git)
+    Checking peritus-workspace v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/runtime/peritus-workspace)
+    Checking peritus-context v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/orchestration/peritus-context)
+    Checking peritus-tools-quality v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/tools/peritus-tools-quality)
+    Checking peritus-scheduler v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/orchestration/peritus-scheduler)
+    Checking peritus-obligations v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/orchestration/peritus-obligations)
+    Checking peritus-memory v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/orchestration/peritus-memory)
+    Checking peritus-agent v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/orchestration/peritus-agent)
+    Checking peritus-gates v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/orchestration/peritus-gates)
+    Checking peritus-collaboration v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/orchestration/peritus-collaboration)
+    Checking peritus-secrets v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/runtime/peritus-secrets)
+    Checking peritus-review v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/orchestration/peritus-review)
+    Checking peritus-network v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/runtime/peritus-network)
+    Checking peritus-sandbox-linux v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/runtime/peritus-sandbox-linux)
+    Checking peritus-orchestrator v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/orchestration/peritus-orchestrator)
+    Checking peritus-tools-shell v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/tools/peritus-tools-shell)
+    Checking peritus-provider-anthropic v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/model/peritus-provider-anthropic)
+    Checking peritus-provider-openai v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/model/peritus-provider-openai)
+    Checking peritus-product-runner v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/app/peritus-product-runner)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 50.01s
+
+COMMAND EXIT CODE: 0
+
+entry-raw-end

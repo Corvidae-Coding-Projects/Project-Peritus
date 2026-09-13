@@ -1,6 +1,8 @@
 use super::workflow_command_policy;
 use super::workflow_command_policy::CommandPolicy;
-use super::{workflow_governance, workflow_governance_jobs, workflow_governance_shards};
+use super::{
+    workflow_authority, workflow_governance, workflow_governance_jobs, workflow_governance_shards,
+};
 use crate::error::Diagnostic;
 use std::path::Path;
 use yaml_rust2::Yaml;
@@ -54,6 +56,11 @@ pub(super) fn validate_step(
     }
     if path == Path::new(workflow_governance::PATH)
         && workflow_governance_shards::status_script_is_exact(location, script)
+    {
+        return;
+    }
+    if path == Path::new(workflow_authority::PATH)
+        && workflow_authority::reviewed_run_step(location, script)
     {
         return;
     }

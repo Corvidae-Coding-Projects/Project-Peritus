@@ -60,6 +60,17 @@ pub(crate) fn discover_compilation_sources(
     trust_discovery::discover(root, policy, target_roots)
 }
 
+/// Returns the existing lexical source references without resolving their compilation context.
+pub(crate) fn static_compilation_references(
+    contents: &str,
+) -> Vec<(Option<PathBuf>, usize, &'static str)> {
+    reference::scan(contents)
+        .references
+        .into_iter()
+        .map(|reference| (reference.path, reference.line, reference.kind.label()))
+        .collect()
+}
+
 fn visit(
     root: &Path,
     directory: &Path,

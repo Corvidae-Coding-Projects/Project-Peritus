@@ -17,6 +17,7 @@ pub(super) fn validate(
     let candidate = CandidateTree::materialize(repository, tree)?;
     let root = candidate.root();
     let policy = crate::metadata::architecture_policy(root)?;
+    crate::cli::all::check_candidate(root)?;
     let cargo = crate::metadata::cargo_metadata(root)?;
     let (target_roots, target_diagnostics) = crate::trust::workspace_target_policy(root, &cargo);
     diagnostics.extend(target_diagnostics);
@@ -28,6 +29,22 @@ pub(super) fn validate(
     projected.sources = overlay(base, change);
     let changes = current.changes.iter().map(|item| (item.id.as_str(), item)).collect();
     validate_source_inventory(&context, &projected, &expected, &changes, diagnostics)
+}
+
+#[cfg(test)]
+fn validate_local_trust(
+    root: &Path,
+    policy: &crate::model::ArchitecturePolicy,
+    diagnostics: &mut Vec<Diagnostic>,
+) -> Result<(), XtaskError> {
+    match crate::trust::check_candidate(root, policy) {
+        Ok(_) => Ok(()),
+        Err(error) if !error.diagnostics().is_empty() => {
+            diagnostics.extend(error.diagnostics().iter().cloned());
+            Ok(())
+        }
+        Err(error) => Err(error),
+    }
 }
 
 fn overlay(base: &ProofImpactDocument, change: &ProofImpactChange) -> Vec<ProofImpactSource> {
@@ -64,10 +81,14 @@ pub(super) fn history_is_applied(document: &ProofImpactDocument) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::{history_is_applied, overlay};
+    use super::{history_is_applied, overlay, validate_local_trust};
     use crate::trust::manifest_model::{
         ProofImpactChange, ProofImpactDocument, ProofImpactPackage, ProofImpactSnapshot,
         ProofImpactSource, ProofImpactStatus, ProofSourceChange,
+    };
+    use crate::trust::manifest_tests::{
+        Fixture, excluded_obligation, make_cargo_metadata_runnable, policy, trust_entry,
+        write_coverage_documents, write_fixture,
     };
 
     fn baseline() -> ProofImpactDocument {
@@ -146,5 +167,80 @@ mod tests {
         assert_eq!(result.len(), base.sources.len() - 1);
         assert!(result.iter().all(|source| base.sources.contains(source)));
         assert!(!result.iter().any(|source| source.source_file == base.sources[0].source_file));
+    }
+
+    #[test]
+    fn materialized_candidate_general_trust_accepts_a_complete_candidate() {
+        let fixture = candidate_fixture();
+        let mut diagnostics = Vec::new();
+        validate_local_trust(fixture.path(), &policy(), &mut diagnostics)
+            .expect("complete candidate trust fixture must be executable");
+        assert!(diagnostics.is_empty(), "unexpected candidate diagnostics: {diagnostics:?}");
+    }
+
+    #[test]
+    fn materialized_candidate_rejects_an_invalid_obligation() {
+        let fixture = candidate_fixture();
+        write_coverage_documents(&fixture, "[]", excluded_obligation());
+        let mut diagnostics = Vec::new();
+        validate_local_trust(fixture.path(), &policy(), &mut diagnostics)
+            .expect("invalid candidate obligation must produce diagnostics");
+        assert!(
+            diagnostics.iter().any(|diagnostic| {
+                diagnostic.path() == Some(std::path::Path::new("verification/obligations.toml"))
+                    && diagnostic.message().contains("matching live exclusion")
+            }),
+            "missing candidate obligation diagnostic: {diagnostics:?}"
+        );
+    }
+
+    #[test]
+    fn materialized_candidate_rejects_trusted_construct_outside_the_trust_root() {
+        let fixture = candidate_fixture();
+        fixture.write(
+            "crates/foundation/peritus-types/src/lib.rs",
+            "pub fn value() -> u64 { assume(false); 1 }\n",
+        );
+        let mut diagnostics = Vec::new();
+        validate_local_trust(fixture.path(), &policy(), &mut diagnostics)
+            .expect("invalid candidate trusted construct must produce diagnostics");
+        assert!(
+            diagnostics.iter().any(|diagnostic| {
+                diagnostic.path()
+                    == Some(std::path::Path::new("crates/foundation/peritus-types/src/lib.rs"))
+                    && diagnostic.message().contains("outside an allowed trust root")
+            }),
+            "missing candidate trusted-construct diagnostic: {diagnostics:?}"
+        );
+    }
+
+    fn candidate_fixture() -> Fixture {
+        let fixture = Fixture::new();
+        write_fixture(&fixture, trust_entry());
+        make_cargo_metadata_runnable(&fixture);
+        let proof_impact =
+            std::fs::read_to_string(fixture.path().join("verification/proof-impact.toml"))
+                .expect("fixture proof-impact manifest");
+        fixture.write(
+            "verification/proof-impact.toml",
+            &format!(
+                r#"{proof_impact}
+[[changes]]
+id = "PCR-0005"
+status = "approved"
+change_kinds = ["executable", "specification", "precondition", "postcondition", "proof"]
+rationale = "legacy authorization reference retained in candidate"
+impact = "candidate-local trust must not recursively classify this record"
+owner = "ACTOR-0001"
+reviewer = "ACTOR-0002"
+review_date = "2026-09-13"
+source_changes = []
+evidence = []
+verdict = {{ path = "verification/reviews/PCR-0005.toml", sha256 = "{}" }}
+"#,
+                "a".repeat(64),
+            ),
+        );
+        fixture
     }
 }

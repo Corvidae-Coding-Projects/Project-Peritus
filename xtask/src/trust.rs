@@ -1,3 +1,4 @@
+use crate::api_contract::{Configuration, Mode};
 use crate::error::{Diagnostic, ErrorCode, XtaskError};
 use crate::metadata;
 use crate::model::{ArchitecturePolicy, CargoMetadata};
@@ -30,6 +31,7 @@ mod manifest_evidence;
 mod manifest_file;
 #[path = "trust/manifest_impact.rs"]
 mod manifest_impact;
+pub(crate) use manifest_impact::render_snapshot as proof_impact_inventory;
 #[path = "trust/manifest_model.rs"]
 mod manifest_model;
 #[path = "trust/manifest_support.rs"]
@@ -39,19 +41,113 @@ mod manifest_symbol;
 #[path = "trust/manifest_trust.rs"]
 mod manifest_trust;
 
-pub(crate) fn check(root: &Path, policy: &ArchitecturePolicy) -> Result<usize, XtaskError> {
-    check_workspace(root, policy, true)
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) struct RegisteredProofSymbol {
+    pub(crate) obligation: String,
+    pub(crate) owner: String,
+    pub(crate) symbol: String,
+    pub(crate) mode: Mode,
 }
 
-/// Runs the locally executable trust boundary without protected-base proof-impact authorization.
+/// Returns the exact compiler-visible symbols claimed as Verus evidence by the register.
+pub(crate) fn registered_proof_symbols(
+    root: &Path,
+) -> Result<Vec<RegisteredProofSymbol>, XtaskError> {
+    let document: manifest_model::ObligationsDocument =
+        metadata::read_toml(&root.join("verification/obligations.toml"))?;
+    let mut registered = Vec::new();
+    for entry in document.entries {
+        for evidence in entry.evidence.into_iter().filter(|evidence| {
+            matches!(evidence.kind, manifest_model::ProofEvidenceKind::VerusProof)
+        }) {
+            let source = root.join(&evidence.source_file);
+            let contents = fs::read_to_string(&source)
+                .map_err(|error| XtaskError::io("read registered proof source", &source, error))?;
+            let name = evidence.symbol.rsplit("::").next().unwrap_or(&evidence.symbol);
+            let matches: Vec<_> = manifest_symbol::owned_function_declarations(
+                &entry.owning_crate,
+                &source,
+                &contents,
+                name,
+            )
+            .into_iter()
+            .filter(|declaration| declaration.path == evidence.symbol)
+            .collect();
+            let [declaration] = matches.as_slice() else {
+                return Err(XtaskError::metadata(format!(
+                    "registered proof `{}` does not resolve to exactly one declaration",
+                    evidence.symbol
+                )));
+            };
+            let Some(mode) = declaration.declaration.mode else {
+                return Err(XtaskError::metadata(format!(
+                    "registered proof `{}` has an unrecognized Verus function signature",
+                    evidence.symbol
+                )));
+            };
+            if !declaration.declaration.in_verus
+                || declaration.declaration.nested
+                || declaration.declaration.configuration != Configuration::Unconditional
+            {
+                return Err(XtaskError::metadata(format!(
+                    "registered proof `{}` is not an unconditional non-local verus! declaration",
+                    evidence.symbol
+                )));
+            }
+            registered.push(RegisteredProofSymbol {
+                obligation: entry.id.clone(),
+                owner: entry.owning_crate.clone(),
+                symbol: evidence.symbol,
+                mode,
+            });
+        }
+    }
+    Ok(registered)
+}
+
+pub(crate) fn check(root: &Path, policy: &ArchitecturePolicy) -> Result<usize, XtaskError> {
+    check_workspace(root, policy, ManifestValidation::Enforced)
+}
+/// Runs local trust checks and validates authorization against its verdict-declared base.
 pub(crate) fn check_local(root: &Path, policy: &ArchitecturePolicy) -> Result<usize, XtaskError> {
-    check_workspace(root, policy, false)
+    check_workspace(root, policy, ManifestValidation::Local)
+}
+
+/// Validates a materialized candidate without selecting its proof-impact authorization record.
+pub(crate) fn check_candidate(
+    root: &Path,
+    policy: &ArchitecturePolicy,
+) -> Result<usize, XtaskError> {
+    check_workspace(root, policy, ManifestValidation::Candidate)
+}
+
+/// Validates a local authorization before `all` redirects ordinary policy to its exact candidate.
+pub(crate) fn check_local_authorization(
+    root: &Path,
+    policy: &ArchitecturePolicy,
+) -> Result<bool, XtaskError> {
+    let cargo = metadata::cargo_metadata(root)?;
+    let mut diagnostics = Vec::new();
+    let authorization =
+        manifest::validate_local_authorization(root, policy, &cargo, &mut diagnostics)?;
+    if diagnostics.is_empty() {
+        Ok(authorization)
+    } else {
+        Err(XtaskError::violations(ErrorCode::Trust, "verify-trust", diagnostics))
+    }
+}
+
+#[derive(Clone, Copy)]
+enum ManifestValidation {
+    Enforced,
+    Local,
+    Candidate,
 }
 
 fn check_workspace(
     root: &Path,
     policy: &ArchitecturePolicy,
-    include_proof_impact: bool,
+    manifest_validation: ManifestValidation,
 ) -> Result<usize, XtaskError> {
     let cargo = metadata::cargo_metadata(root)?;
     let dependencies = metadata::cargo_metadata_with_dependencies(root)?;
@@ -63,7 +159,7 @@ fn check_workspace(
         Some(&cargo),
         &target_roots,
         diagnostics,
-        include_proof_impact,
+        manifest_validation,
     )
 }
 
@@ -109,7 +205,14 @@ fn check_cargo_fixture(root: &Path, policy: &ArchitecturePolicy) -> Result<usize
     let dependencies = metadata::cargo_metadata_with_dependencies(root)?;
     let (target_roots, mut diagnostics) = workspace_target_policy(root, &cargo);
     dependency_execution::validate(root, &dependencies, &mut diagnostics);
-    check_with_policy_diagnostics(root, policy, None, &target_roots, diagnostics, true)
+    check_with_policy_diagnostics(
+        root,
+        policy,
+        None,
+        &target_roots,
+        diagnostics,
+        ManifestValidation::Enforced,
+    )
 }
 
 #[cfg(test)]
@@ -118,7 +221,14 @@ fn check_with_roots(
     policy: &ArchitecturePolicy,
     target_roots: &[PathBuf],
 ) -> Result<usize, XtaskError> {
-    check_with_policy_diagnostics(root, policy, None, target_roots, Vec::new(), true)
+    check_with_policy_diagnostics(
+        root,
+        policy,
+        None,
+        target_roots,
+        Vec::new(),
+        ManifestValidation::Enforced,
+    )
 }
 
 fn check_with_policy_diagnostics(
@@ -127,7 +237,7 @@ fn check_with_policy_diagnostics(
     cargo: Option<&CargoMetadata>,
     target_roots: &[PathBuf],
     mut diagnostics: Vec<Diagnostic>,
-    include_proof_impact: bool,
+    manifest_validation: ManifestValidation,
 ) -> Result<usize, XtaskError> {
     let discovery = source::discover_compilation_sources(root, policy, target_roots)?;
     diagnostics.extend(discovery.diagnostics);
@@ -208,32 +318,59 @@ fn check_with_policy_diagnostics(
     }
 
     if let Some(cargo) = cargo {
-        if include_proof_impact {
-            manifest::validate(
-                root,
-                policy,
-                cargo,
-                &compilation_sources,
-                &trusted_occurrences,
-                true,
-                &mut diagnostics,
-            )?;
-        } else {
-            manifest::validate_local(
-                root,
-                policy,
-                cargo,
-                &compilation_sources,
-                &trusted_occurrences,
-                &mut diagnostics,
-            )?;
-        }
+        validate_manifests(
+            root,
+            policy,
+            cargo,
+            &compilation_sources,
+            &trusted_occurrences,
+            manifest_validation,
+            &mut diagnostics,
+        )?;
     }
 
     if diagnostics.is_empty() {
         Ok(scanned)
     } else {
         Err(XtaskError::violations(ErrorCode::Trust, "verify-trust", diagnostics))
+    }
+}
+
+fn validate_manifests(
+    root: &Path,
+    policy: &ArchitecturePolicy,
+    cargo: &CargoMetadata,
+    compilation_sources: &[PathBuf],
+    trusted_occurrences: &[manifest::TrustedOccurrence],
+    validation: ManifestValidation,
+    diagnostics: &mut Vec<Diagnostic>,
+) -> Result<(), XtaskError> {
+    match validation {
+        ManifestValidation::Enforced => manifest::validate(
+            root,
+            policy,
+            cargo,
+            compilation_sources,
+            trusted_occurrences,
+            true,
+            diagnostics,
+        ),
+        ManifestValidation::Local => manifest::validate_local(
+            root,
+            policy,
+            cargo,
+            compilation_sources,
+            trusted_occurrences,
+            diagnostics,
+        ),
+        ManifestValidation::Candidate => manifest::validate_candidate(
+            root,
+            policy,
+            cargo,
+            compilation_sources,
+            trusted_occurrences,
+            diagnostics,
+        ),
     }
 }
 

@@ -1,0 +1,48 @@
+{"candidate_commit": "65f16e2933b70305de865750931bb05fe9afb64d", "candidate_tree": "ae2a43f9a9b73f5fec944d39cf165a8b3ec4df20", "environment": {"CARGO_BUILD_JOBS": "1", "CCACHE_DISABLE": "1", "RUST_TEST_THREADS": "1"}, "gate": {"command": "cargo test --package peritus-evidence --all-targets --all-features --locked", "invocation": ["cargo", "test", "--package", "peritus-evidence", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "output": "023-peritus-evidence-ordinary-test.log", "owning_crate": "peritus-evidence", "started_at": "2026-09-13T15:19:57.971532Z"}, "plan_sha256": "7fc101b7f8284fbe3818461a8166d73d3425f369120b43c1cbf1b43809a6b7c9"}
+
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.17s
+     Running unittests src/lib.rs (target/debug/deps/peritus_evidence-8ec7a38e796f8f36)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/admission.rs (target/debug/deps/admission-df03db84cd3b4a5f)
+
+running 6 tests
+test canonical_older_ancestry_is_admitted_and_future_causality_is_rejected ... ok
+test durable_catalog_corruption_is_detected_on_reopen ... ok
+test exact_retry_after_journal_advance_returns_original_record ... ok
+test missing_and_corrupt_artifact_bytes_are_rejected ... ok
+test nonexistent_cause_and_identity_conflict_are_rejected_without_partial_rows ... ok
+test valid_admission_is_atomic_idempotent_and_survives_restart ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.08s
+
+     Running tests/bundle.rs (target/debug/deps/bundle-aaa8549aeecf56a5)
+
+running 2 tests
+test deterministic_streaming_bundle_reverifies_offline_and_after_restart ... ok
+test offline_verification_rejects_corruption_truncation_and_trailing_bytes ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running tests/domain.rs (target/debug/deps/domain-0580457c513af347)
+
+running 2 tests
+test drafts_links_and_invalidations_enforce_structural_invariants ... ok
+test stable_tags_reject_noncanonical_spellings ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/freshness.rs (target/debug/deps/freshness-7aff9bb7c7c1a903)
+
+running 3 tests
+test every_revision_tuple_component_drifts_independently ... ok
+test explicit_later_invalidation_is_durable_and_dominates_revision_freshness ... ok
+test revision_digest_matches_the_journal_canonical_tuple_encoding ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+
+GATE DRIVER RESULT: {"command": "cargo test --package peritus-evidence --all-targets --all-features --locked", "command_exit_code": 0, "elapsed_seconds": 0.416, "exit_code": 0, "finished_at": "2026-09-13T15:19:58.387772Z", "invocation": ["cargo", "test", "--package", "peritus-evidence", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "output": "023-peritus-evidence-ordinary-test.log", "owning_crate": "peritus-evidence", "result": "passed", "started_at": "2026-09-13T15:19:57.971532Z"}

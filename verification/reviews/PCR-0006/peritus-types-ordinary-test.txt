@@ -1,0 +1,71 @@
+{"candidate_commit": "65f16e2933b70305de865750931bb05fe9afb64d", "candidate_tree": "ae2a43f9a9b73f5fec944d39cf165a8b3ec4df20", "environment": {"CARGO_BUILD_JOBS": "1", "CCACHE_DISABLE": "1", "RUST_TEST_THREADS": "1"}, "gate": {"command": "cargo test --package peritus-types --all-targets --all-features --locked", "invocation": ["cargo", "test", "--package", "peritus-types", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "output": "129-peritus-types-ordinary-test.log", "owning_crate": "peritus-types", "started_at": "2026-09-13T15:22:01.477222Z"}, "plan_sha256": "7fc101b7f8284fbe3818461a8166d73d3425f369120b43c1cbf1b43809a6b7c9"}
+
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.16s
+     Running unittests src/lib.rs (target/debug/deps/peritus_types-153ab0982e8f1688)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/capability.rs (target/debug/deps/capability-e3a9fb89e8dee24d)
+
+running 5 tests
+test accepts_the_complete_grammar_and_length_boundaries ... ok
+test canonical_comparison_is_exact_ascii_lexicographic_order ... ok
+test rejects_empty_overlong_and_empty_segments ... ok
+test rejects_invalid_segment_starts ... ok
+test rejects_non_ascii_and_disallowed_ascii ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/digest.rs (target/debug/deps/digest-cd785d9c7aa65251)
+
+running 1 test
+test digest_preserves_every_exact_byte_pattern ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/errors.rs (target/debug/deps/errors-08ad85d75ac0ab62)
+
+running 1 test
+test error_codes_are_stable_and_category_specific ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/ids.rs (target/debug/deps/ids-ce529d4a1b8de50a)
+
+running 3 tests
+test every_byte_position_can_make_an_identifier_nonzero ... ok
+test every_nominal_identifier_enforces_the_shared_boundary ... ok
+test identifiers_have_value_semantics_and_nominal_types ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/numbers.rs (target/debug/deps/numbers-5c2640bd1355a922)
+
+running 3 tests
+test event_sequences_are_one_based_and_checked ... ok
+test generations_are_one_based_and_checked ... ok
+test revision_numbers_are_one_based_and_checked ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/resource.rs (target/debug/deps/resource-5f6b4a09da8ac2ee)
+
+running 3 tests
+test addition_is_exact_or_reports_overflow ... ok
+test subtraction_is_exact_or_reports_underflow ... ok
+test zero_and_all_resource_dimensions_are_representable ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/revision.rs (target/debug/deps/revision-a1cbf7dd594270ef)
+
+running 2 tests
+test changing_any_component_changes_tuple_identity ... ok
+test revision_tuple_preserves_every_nominal_component ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+GATE DRIVER RESULT: {"command": "cargo test --package peritus-types --all-targets --all-features --locked", "command_exit_code": 0, "elapsed_seconds": 0.265, "exit_code": 0, "finished_at": "2026-09-13T15:22:01.743204Z", "invocation": ["cargo", "test", "--package", "peritus-types", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "output": "129-peritus-types-ordinary-test.log", "owning_crate": "peritus-types", "result": "passed", "started_at": "2026-09-13T15:22:01.477222Z"}

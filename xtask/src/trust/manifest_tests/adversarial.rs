@@ -1,10 +1,12 @@
 use super::*;
 
 #[test]
-fn evidence_must_be_an_unconditionally_exercised_test() {
+fn evidence_must_be_exercised_by_the_canonical_cargo_test_command() {
     for source in [
         "fn audited() { assume(false); }\nfn evidence_case() { let _value = 1; }\n",
         "fn audited() { assume(false); }\n#[cfg(any())]\n#[test]\nfn evidence_case() { let _value = 1; }\n",
+        "fn audited() { assume(false); }\n#[cfg_attr(test, test)]\nfn evidence_case() { let _value = 1; }\n",
+        "fn audited() { assume(false); }\n#[cfg(test)]\n#[ignore]\n#[test]\nfn evidence_case() { let _value = 1; }\n",
     ] {
         let fixture = Fixture::new();
         write_fixture(&fixture, trust_entry());

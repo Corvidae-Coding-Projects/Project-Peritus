@@ -43,7 +43,11 @@ pub(super) fn validate(
         cargo,
         compilation_sources,
         occurrences,
-        Some(enforce_review_base),
+        if enforce_review_base {
+            ProofImpactValidation::Enforced
+        } else {
+            ProofImpactValidation::Unprotected
+        },
         diagnostics,
     )
 }
@@ -62,9 +66,50 @@ pub(super) fn validate_local(
         cargo,
         compilation_sources,
         occurrences,
-        None,
+        ProofImpactValidation::Local,
         diagnostics,
     )
+}
+
+pub(super) fn validate_candidate(
+    root: &Path,
+    policy: &ArchitecturePolicy,
+    cargo: &CargoMetadata,
+    compilation_sources: &[PathBuf],
+    occurrences: &[TrustedOccurrence],
+    diagnostics: &mut Vec<Diagnostic>,
+) -> Result<(), XtaskError> {
+    validate_with_proof_impact(
+        root,
+        policy,
+        cargo,
+        compilation_sources,
+        occurrences,
+        ProofImpactValidation::Candidate,
+        diagnostics,
+    )
+}
+
+pub(super) fn validate_local_authorization(
+    root: &Path,
+    policy: &ArchitecturePolicy,
+    cargo: &CargoMetadata,
+    diagnostics: &mut Vec<Diagnostic>,
+) -> Result<bool, XtaskError> {
+    validate_inventory(root, diagnostics);
+    let Some(document) = manifest_file::read_toml::<ProofImpactDocument>(
+        root,
+        Path::new(PROOF_IMPACT_PATH),
+        diagnostics,
+    ) else {
+        return Ok(false);
+    };
+    let context = ManifestContext::new(root, policy, cargo);
+    if !manifest_impact::is_authorization_phase(&context, &document, diagnostics)? {
+        return Ok(false);
+    }
+    manifest_impact::validate_authorization(&context, &document, false, diagnostics)?;
+    Ok(true)
 }
 
 fn validate_with_proof_impact(
@@ -73,7 +118,7 @@ fn validate_with_proof_impact(
     cargo: &CargoMetadata,
     compilation_sources: &[PathBuf],
     occurrences: &[TrustedOccurrence],
-    enforce_review_base: Option<bool>,
+    proof_impact: ProofImpactValidation,
     diagnostics: &mut Vec<Diagnostic>,
 ) -> Result<(), XtaskError> {
     if policy.trusted_source_roots != [PathBuf::from(TCB_SOURCE_ROOT)] {
@@ -84,6 +129,21 @@ fn validate_with_proof_impact(
         ));
     }
     validate_inventory(root, diagnostics);
+    let proof_impact_document: Option<ProofImpactDocument> =
+        manifest_file::read_toml(root, Path::new(PROOF_IMPACT_PATH), diagnostics);
+    let context = ManifestContext::new(root, policy, cargo);
+    if proof_impact.allows_authorization()
+        && let Some(document) = &proof_impact_document
+        && manifest_impact::is_authorization_phase(&context, document, diagnostics)?
+    {
+        manifest_impact::validate_authorization(
+            &context,
+            document,
+            proof_impact.enforces_review_base(),
+            diagnostics,
+        )?;
+        return Ok(());
+    }
     let actors: Option<ActorsDocument> =
         manifest_file::read_toml(root, Path::new(ACTORS_PATH), diagnostics);
     let trust: Option<TrustDocument> =
@@ -92,21 +152,20 @@ fn validate_with_proof_impact(
         manifest_file::read_toml(root, Path::new(EXCLUSIONS_PATH), diagnostics);
     let obligations: Option<ObligationsDocument> =
         manifest_file::read_toml(root, Path::new(OBLIGATIONS_PATH), diagnostics);
-    let proof_impact: Option<ProofImpactDocument> =
-        manifest_file::read_toml(root, Path::new(PROOF_IMPACT_PATH), diagnostics);
     let (Some(actors), Some(trust), Some(exclusions), Some(obligations)) =
         (actors, trust, exclusions, obligations)
     else {
         return Ok(());
     };
-    let context = ManifestContext::new(root, policy, cargo);
     let Some(actors) = manifest_actor::validate(root, &actors, diagnostics) else {
         return Ok(());
     };
     manifest_trust::validate(&context, &actors, &trust, occurrences, diagnostics);
     let indexed_exclusions = validate_exclusions(&context, &actors, &exclusions, diagnostics);
     validate_obligations(&context, &actors, &obligations, &indexed_exclusions, diagnostics);
-    if let (Some(enforce_review_base), Some(proof_impact)) = (enforce_review_base, proof_impact) {
+    if let (Some(enforce_review_base), Some(proof_impact)) =
+        (proof_impact.review_base_setting(), proof_impact_document)
+    {
         manifest_impact::validate(
             &context,
             &actors,
@@ -117,6 +176,32 @@ fn validate_with_proof_impact(
         )?;
     }
     Ok(())
+}
+
+#[derive(Clone, Copy)]
+enum ProofImpactValidation {
+    Enforced,
+    Unprotected,
+    Local,
+    Candidate,
+}
+
+impl ProofImpactValidation {
+    const fn allows_authorization(self) -> bool {
+        matches!(self, Self::Enforced | Self::Local)
+    }
+
+    const fn enforces_review_base(self) -> bool {
+        matches!(self, Self::Enforced)
+    }
+
+    const fn review_base_setting(self) -> Option<bool> {
+        match self {
+            Self::Enforced => Some(true),
+            Self::Unprotected => Some(false),
+            Self::Local | Self::Candidate => None,
+        }
+    }
 }
 
 fn validate_inventory(root: &Path, diagnostics: &mut Vec<Diagnostic>) {

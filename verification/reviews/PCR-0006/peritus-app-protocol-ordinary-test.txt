@@ -1,0 +1,196 @@
+{"candidate_commit": "65f16e2933b70305de865750931bb05fe9afb64d", "candidate_tree": "ae2a43f9a9b73f5fec944d39cf165a8b3ec4df20", "environment": {"CARGO_BUILD_JOBS": "1", "CCACHE_DISABLE": "1", "RUST_TEST_THREADS": "1"}, "gate": {"command": "cargo test --package peritus-app-protocol --all-targets --all-features --locked", "invocation": ["cargo", "test", "--package", "peritus-app-protocol", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "output": "003-peritus-app-protocol-ordinary-test.log", "owning_crate": "peritus-app-protocol", "started_at": "2026-09-13T15:17:34.442390Z"}, "plan_sha256": "7fc101b7f8284fbe3818461a8166d73d3425f369120b43c1cbf1b43809a6b7c9"}
+
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.18s
+     Running unittests src/lib.rs (target/debug/deps/peritus_app_protocol-8d9114774205864c)
+
+running 61 tests
+test command::result::tests::committed_range_is_positive_and_counts_inclusively ... ok
+test doctor::tests::rejects_controls_oversized_text_duplicates_and_empty_reports ... ok
+test doctor::tests::report_and_optional_provider_roundtrip_through_public_wire ... ok
+test error::code::tests::assigned_error_tags_round_trip ... ok
+test identity::tests::idempotency_key_is_nonempty_and_bounded ... ok
+test identity::tests::nominal_id_rejects_zero_and_preserves_exact_bytes ... ok
+test limits::tests::invalid_codec_relationship_is_rejected ... ok
+test limits::tests::negotiation_is_pointwise_minimum ... ok
+test schema::codegen::tests::manifest_inventory_is_sorted_and_content_addressed ... ok
+test schema::fields::tests::review_intents_are_closed_union_members_with_resolved_json_refs ... ok
+test version::feature::tests::feature_sets_are_sorted_and_duplicate_free ... ok
+test version::negotiation::tests::negotiation_selects_greatest_common_version_and_marks_downgrade ... ok
+test version::range::tests::intersection_selects_greatest_common_minor ... ok
+test version::range::tests::range_rejects_zero_major_and_reversal ... ok
+test wire::product::settlement::tests::unknown_evidence_status_rejects_before_reading_a_record ... ok
+test wire::tests::all_product_handoff_controls_round_trip ... ok
+test wire::tests::all_six_families_round_trip_and_typed_hello_decodes ... ok
+test wire::tests::dispatcher_separates_family_schema_tag_and_frame_failures ... ok
+test wire::tests::encoder_rejects_value_built_above_negotiated_flow_limit ... ok
+test wire::tests::negotiated_frame_limit_is_applied_before_payload_allocation ... ok
+test wire::tests::product_retry_is_limited_to_unsuccessful_terminal_runs ... ok
+test wire::tests::product_run_followups_and_conversations_round_trip ... ok
+test wire::tests::product_run_requests_and_snapshots_round_trip ... ok
+test wire::workbench_brief::tests::brief_wire_checks_field_count_before_allocating_or_reading_sources ... ok
+test wire::workbench_brief::tests::unknown_brief_field_rejects_without_consuming_source_data ... ok
+test wire::workbench_checkpoints::tests::checkpoint_inspection_request_uses_tag_121_and_round_trips ... ok
+test wire::workbench_checkpoints::tests::preview_round_trips_and_rejects_a_tampered_fingerprint ... ok
+test wire::workbench_checkpoints::tests::rewind_modes_child_and_allocation_are_in_the_exact_preview_fingerprint ... ok
+test wire::workbench_context::tests::context_query_unknown_view_rejects_without_interpreting_additional_fields ... ok
+test wire::workbench_context::tests::rejects_an_excessive_row_count_before_attempting_to_read_any_row ... ok
+test wire::workbench_image_page::tests::image_page_rejects_oversized_row_count_before_reading_any_rows ... ok
+test wire::workbench_image_page::tests::image_query_rejects_unfenced_continuation_and_excessive_offsets_on_the_wire ... ok
+test wire::workbench_init::tests::decoder_rejects_excessive_source_count_before_reading_sources ... ok
+test wire::workbench_init::tests::proposal_fingerprint_changes_with_reviewed_identity ... ok
+test wire::workbench_init::tests::proposal_roundtrip_retains_exact_original_patch_and_structured_argv ... ok
+test wire::workbench_launch::tests::complete_result_page_round_trips_as_a_persistence_value ... ok
+test wire::workbench_memory::tests::active_and_content_free_forgotten_rows_roundtrip ... ok
+test wire::workbench_memory::tests::all_five_guidance_intent_bodies_roundtrip_canonically ... ok
+test wire::workbench_memory::tests::excessive_row_count_rejects_before_allocating_rows ... ok
+test workbench::brief::tests::brief_fixtures_roundtrip_every_field_and_require_the_independent_feature ... ok
+test workbench::brief::tests::brief_rejects_uncommitted_duplicate_noncanonical_and_superseded_bindings ... ok
+test workbench::brief::tests::brief_separates_agent_proposals_and_observed_facts_from_confirmed_fields ... ok
+test workbench::context::tests::context_fixtures_roundtrip_every_source_role_view_and_disposition_without_content ... ok
+test workbench::context::tests::context_pages_reject_false_seals_wrong_views_gaps_and_duplicate_sources ... ok
+test workbench::files::tests::file_compatibility_frames_roundtrip_and_require_independent_feature ... ok
+test workbench::images::tests::image_fixtures_roundtrip_every_format_and_independently_gate_upload_preview_and_confirmation ... ok
+test workbench::images::tests::image_metadata_and_labels_reject_controls_and_host_limit_violations ... ok
+test workbench::images::tests::page::image_eligibility_rejects_deselected_held_withdrawn_and_superseded_sources ... ok
+test workbench::images::tests::page::image_page_requires_exact_cardinality_unique_operations_and_committed_revision ... ok
+test workbench::init::tests::a_preexisting_managed_section_is_replaced_without_changing_surrounding_bytes ... ok
+test workbench::init::tests::exact_managed_section_preserves_all_existing_instruction_bytes ... ok
+test workbench::init::tests::proposal_rejects_noncanonical_commands_and_inconsistent_diffs ... ok
+test workbench::launch::tests::denied_capture_cannot_carry_fabricated_artifact_facts ... ok
+test workbench::launch::tests::evidence_classes_remain_independent ... ok
+test workbench::library::fork::tests::read_only_allocation_is_optional_but_isolated_allocation_is_required ... ok
+test workbench::memory::tests::accepted_reply_digest_and_stale_dependency_fences_fail_closed ... ok
+test workbench::memory::tests::an_older_record_can_advance_from_the_current_project_dependency_revision ... ok
+test workbench::memory::tests::explicit_guidance_enters_exact_future_context_then_forget_excludes_it ... ok
+test workbench::review::tests::parser_binds_file_and_hunks_to_content_not_line_numbers ... ok
+test workbench::review::tests::parser_rejects_traversal_and_malformed_line_only_ranges ... ok
+test workbench::review::tests::tag_80_page_and_tag_50_comment_round_trip_canonically ... ok
+
+test result: ok. 61 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running unittests src/bin/peritus-app-protocol-codegen.rs (target/debug/deps/peritus_app_protocol_codegen-57bb3a3eaf05bd38)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/artifact_traces.rs (target/debug/deps/artifact_traces-3cf1bd04fb3a5f11)
+
+running 1 test
+test chunks_conserve_order_size_digest_and_terminal_state ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/command_binding.rs (target/debug/deps/command_binding-3725119ab430a1f2)
+
+running 1 test
+test binding_preserves_exact_b3_frames_and_rejects_revision_drift ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/daemon_controls.rs (target/debug/deps/daemon_controls-07e8341d8d97d867)
+
+running 1 test
+test readiness_heartbeat_diagnostics_and_shutdown_report_truthful_states ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/idempotency.rs (target/debug/deps/idempotency-0777844dd1ba3444)
+
+running 1 test
+test window_distinguishes_new_replay_conflict_capacity_and_removal ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/interaction.rs (target/debug/deps/interaction-051060ad9226814a)
+
+running 5 tests
+test effort_bearing_requests_and_snapshots_roundtrip_every_level_without_changing_legacy_tags ... ok
+test every_mode_and_new_query_roundtrips ... ok
+test impossible_input_lifecycle_and_duplicate_activity_sequences_are_rejected ... ok
+test public_activity_and_catalog_provenance_roundtrip ... ok
+test unknown_effort_and_noncanonical_explicit_default_payload_are_rejected ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/negotiation.rs (target/debug/deps/negotiation-982f1f1da1cc0914)
+
+running 1 test
+test negotiation_matrix_is_deterministic_and_explicit ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/product_settlement.rs (target/debug/deps/product_settlement-2b52847b1651046e)
+
+running 5 tests
+test bounded_settlement_collection_round_trips ... ok
+test candidate_available_round_trips_without_becoming_accepted ... ok
+test legacy_deliverable_bytes_decode_as_qualified ... ok
+test settlement_collection_rejects_the_first_out_of_bounds_item ... ok
+test snapshot_rejects_candidate_identity_or_stage_disagreement ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/production_conformance.rs (target/debug/deps/production_conformance-c70554981cb2da9a)
+
+running 1 test
+test production_protocol_passes_all_sixteen_a2_cases ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/production_refinement.rs (target/debug/deps/production_refinement-9d307f798d46cbf9)
+
+running 2 tests
+test production_acknowledgement_preserves_replay_gaps_and_maximum_cursor_boundaries ... ok
+test production_chunk_and_terminal_arithmetic_matches_wide_integer_accounting ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/prompt_freshness.rs (target/debug/deps/prompt_freshness-5fb8fac187757cc6)
+
+running 2 tests
+test answers_require_complete_binding_and_live_revision ... ok
+test approval_prompts_require_challenges_and_accept_only_signed_or_cancelled_answers ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/schema_assets.rs (target/debug/deps/schema_assets-450434bd87d50cc5)
+
+running 1 test
+test checked_in_schema_and_fixture_assets_match_rust_metadata ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+
+     Running tests/subscription_traces.rs (target/debug/deps/subscription_traces-e8349f06cb03dec5)
+
+running 1 test
+test resume_redelivery_ack_gap_and_backpressure_are_explicit ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/terminal_traces.rs (target/debug/deps/terminal_traces-07b8c46fef8ba980)
+
+running 1 test
+test terminal_attach_stream_resize_detach_cancel_and_exit_ordering_is_exact ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/verified_refinement.rs (target/debug/deps/verified_refinement-497ac263a04b6053)
+
+running 4 tests
+test delivery_and_ack_predicates_enforce_contiguous_monotonic_progress ... ok
+test negotiation_predicates_cover_success_and_failure_boundaries ... ok
+test terminal_and_bound_predicates_reject_post_terminal_or_excess_input ... ok
+test transfer_predicates_conserve_exact_size ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/wire_matrix.rs (target/debug/deps/wire_matrix-1f3442c2bc8f418b)
+
+running 1 test
+test all_six_families_round_trip_and_reject_malformed_frames ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+GATE DRIVER RESULT: {"command": "cargo test --package peritus-app-protocol --all-targets --all-features --locked", "command_exit_code": 0, "elapsed_seconds": 0.415, "exit_code": 0, "finished_at": "2026-09-13T15:17:34.857914Z", "invocation": ["cargo", "test", "--package", "peritus-app-protocol", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "output": "003-peritus-app-protocol-ordinary-test.log", "owning_crate": "peritus-app-protocol", "result": "passed", "started_at": "2026-09-13T15:17:34.442390Z"}

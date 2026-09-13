@@ -14,6 +14,8 @@ Commands:
   reproducibility-check  Validate toolchain pins, lock policy, and immutable CI inputs
   toolchain-check        Probe installed Rust, Verus, vstd metadata, and bundled Z3
   verify-trust           Reject trusted Verus constructs outside approved roots
+  formal-inventory       Emit declared formal registers and last observed compiler scope as JSON
+  proof-impact-inventory Emit current proof-impact inputs and package sets without authorizing them
   ci-shard OPERATION SHARD Run one reviewed package shard for hosted Rust or Verus CI
   product-package        Build a host-native checked Peritus package in dist/
   product-install        Build and install Peritus for the current user
