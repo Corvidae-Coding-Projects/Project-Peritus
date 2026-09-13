@@ -28,9 +28,9 @@
         "prefix_sha256": "21c4051e6a57903d94c7d0bc4352e52dd09eb90550e5fe258691ae3ded851039"
       },
       "oF4J": {
-        "sequence": 7,
-        "tip_oid": "218bd452c5aff9b13c0affdd6a2eec06c6d48179",
-        "prefix_sha256": "65ffed218ba5ed3580f4aaf02cdb66d21c6260eba735221cb6fc91a60d3dcf45"
+        "sequence": 8,
+        "tip_oid": "3b0e6a1315a73eb2c13081e273cc5493c7c312d3",
+        "prefix_sha256": "dc2c79298d5d25031c2c7bb08730ce2ebbd7fc10e39bd64af1aac0beceb7b383"
       },
       "p0bJ": {
         "sequence": 8,
@@ -40,7 +40,7 @@
     }
   },
   "next_display_id": 80,
-  "next_comment_id": 1585,
+  "next_comment_id": 1586,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -345,7 +345,18 @@
       "parent_uuid": "cfa4c5e9-a5ae-4fcd-843d-3cc1f600d723",
       "created_by": "oF4J",
       "created_at": "2026-09-13T21:05:25.626302514Z",
-      "updated_at": "2026-09-13T21:05:25.626302514Z"
+      "updated_at": "2026-09-13T21:43:09.239051247Z",
+      "comments": {
+        "d44ab2c0-5e06-4564-b502-861508981322": {
+          "display_id": 1585,
+          "author": "oF4J",
+          "content": "[action] Frozen local GAP-03 checkpoint: strict scheduler Verus 498/0; final scheduler/protocol/projection tests 109/0; daemon 178/0 with 3 existing ignored fixtures; API checker 45/0; strict Clippy, formatting, architecture, ordinary API and code generation pass. Independent final review binds source manifest 140. Protected trust remains unqualified only for 49 stale and 38 missing fingerprints; whole scheduler relationships remain listed in docs/formal-scheduler-gap3.md.",
+          "created_at": "2026-09-13T21:43:09.222982769Z",
+          "kind": "note",
+          "signed_by": "SHA256:6i1eQ/7kGjVq4DI4yUCBFk4bwyvvZOhSsWcR9SkdFok",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg/EnEj+fMMglOKHVSgF9XkfkH9og9l/fzQpIgYx0ARh4AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAbZOm4ohMpX2Aw9thvrB8qpNuwEtebKDHEr/s8wfH2lESDTg+e/nRHpxBmprE+tju0lW6qgzS9hN9pDv/YC4ABA=="
+        }
+      }
     },
     "1384f136-8a99-4b49-838f-841a017d1ff4": {
       "uuid": "1384f136-8a99-4b49-838f-841a017d1ff4",
