@@ -5,6 +5,8 @@ use vstd::prelude::*;
 
 pub(super) mod command;
 mod ids;
+#[cfg(verus_only)]
+mod queue;
 #[cfg(test)]
 mod tests;
 mod update;
@@ -264,6 +266,9 @@ pub(super) fn cancel_retained(
         old(state).spec_reservation_invariant() ==> final(state).spec_reservation_invariant(),
         old(state).spec_reservation_reducer_ready() ==> final(state).spec_reservation_reducer_ready(),
         old(state).spec_collections_ordered() ==> final(state).spec_collections_ordered(),
+        old(state).spec_reservation_reducer_ready()
+                && crate::state::queue::queue_bound(old(state))
+            ==> crate::state::queue::queue_bound(final(state)),
         SchedulerState::work_records_ordered(old(state).spec_work()) ==>
             result.0@.no_duplicates(),
 {

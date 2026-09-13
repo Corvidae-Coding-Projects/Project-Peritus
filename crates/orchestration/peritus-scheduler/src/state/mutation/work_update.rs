@@ -15,7 +15,7 @@ mod wrappers;
 use apply_at::update_work_at;
 pub use attempt::begin_work_attempt_at;
 #[cfg(verus_only)]
-pub(crate) use release::{release_target_exists, terminal_release_matches};
+pub(crate) use release::{phase_release_matches, release_target_exists, terminal_release_matches};
 pub use release::{release_to_phase, release_to_retry_pending, release_to_terminal};
 pub use wrappers::{queue_work_retry, set_work_bypasses, set_work_phase, terminalize_work};
 

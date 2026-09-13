@@ -22,6 +22,11 @@ pub use reservation_command::{
     apply_acknowledge_cancellation_command, apply_acknowledge_start_command,
     apply_complete_command, apply_fail_command,
 };
+#[cfg(verus_only)]
+pub(crate) use reservation_command::{
+    acknowledge_cancellation_outcome_matches, cancelling_dispatch_cannot_resurrect,
+    complete_command_outcome_matches,
+};
 pub use reservation_remove::remove_reservation;
 pub use reservation_update::mark_reservation_started;
 #[cfg(verus_only)]
@@ -37,8 +42,9 @@ pub use work_update::{
 };
 #[cfg(verus_only)]
 pub(crate) use work_update::{
-    release_target_exists, terminal_release_matches, work_phase_update_matches,
-    work_record_update_matches, work_terminal_update_matches, work_update_preserves_other_state,
+    phase_release_matches, release_target_exists, terminal_release_matches,
+    work_phase_update_matches, work_record_update_matches, work_terminal_update_matches,
+    work_update_preserves_other_state,
 };
 pub use worker_update::set_worker_phase;
 
@@ -148,8 +154,31 @@ pub fn retain_dispatch_identity(state: &mut SchedulerState, id: DispatchId)
 
 verus! {
 
+/// Admission ordinals change no other scheduler field.
+pub open spec fn enqueue_preserves_other_state(before: &SchedulerState, after: &SchedulerState) -> bool {
+    &&& after.spec_binding() == before.spec_binding()
+    &&& after.spec_phase() == before.spec_phase()
+    &&& after.spec_sequence() == before.spec_sequence()
+    &&& after.spec_last_event_id() == before.spec_last_event_id()
+    &&& after.spec_state_digest() == before.spec_state_digest()
+    &&& after.spec_workers() == before.spec_workers()
+    &&& after.spec_work() == before.spec_work()
+    &&& after.spec_reservations() == before.spec_reservations()
+    &&& after.spec_used_dispatches() == before.spec_used_dispatches()
+    &&& after.spec_dispatch_ordinal() == before.spec_dispatch_ordinal()
+    &&& after.spec_used_commands() == before.spec_used_commands()
+    &&& after.spec_terminal() == before.spec_terminal()
+}
+
 pub fn next_enqueue_ordinal(state: &mut SchedulerState) -> (result: Option<u64>)
     ensures
+        enqueue_preserves_other_state(old(state), final(state)),
+        result.is_some() == (old(state).spec_enqueue_ordinal() < u64::MAX),
+        match result {
+            Some(value) => value == old(state).spec_enqueue_ordinal() + 1
+                && final(state).spec_enqueue_ordinal() == value,
+            None => *final(state) == *old(state),
+        },
         old(state).spec_reservation_invariant()
             ==> final(state).spec_reservation_invariant(),
         old(state).spec_reservation_reducer_ready()

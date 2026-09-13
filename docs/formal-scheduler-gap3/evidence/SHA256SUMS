@@ -23,6 +23,13 @@ a5494e6aad5b0cd1eeeb007ac292a1fe9cce80dcce27f48a22ae48e2debebae4  docs/formal-sc
 e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  docs/formal-scheduler-gap3/evidence/160-cancellation-final-format.log
 a62d2d865b0526266ef70a03a95b70e1c892b82693bce323b431745e214d992d  docs/formal-scheduler-gap3/evidence/161-cancellation-final-architecture.log
 a4a951f761adb3a45844f1cdb964fc67079b235af4168a7bd92e1f7b80340cff  docs/formal-scheduler-gap3/evidence/162-cancellation-final-ordinary-api.log
+02f95410fa8ee061a5f5750693acc1a9be55d06d566ba71ca20ebf2d56f333e1  docs/formal-scheduler-gap3/evidence/176-scheduler-clippy.log
+e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  docs/formal-scheduler-gap3/evidence/181-final-format-check.log
+dae05abf83eea5d194cb3f6261ac4fcac64e9aa5cf6bb4dde178e49b429f205b  docs/formal-scheduler-gap3/evidence/182-admission-cancellation-source.sha256
+6c7825b7633f677dce08524cc65c0f4ac6dcc100dbf51e909384d9dc50a8196d  docs/formal-scheduler-gap3/evidence/183-final-strict-verus.log
+40bd85c2f283837768cab0d9b4567b710bbb7078914084dc61aad3d6a9410336  docs/formal-scheduler-gap3/evidence/184-final-scheduler-tests.log
+44ece22148fb456b717bbc5445486978498a04b8755d44b7df99a11898074614  docs/formal-scheduler-gap3/evidence/185-final-architecture-check.log
+77d85ada8ca90959418d9580e6fed26cd4b4fee09dbbf341d31eb9f96dee0aa8  docs/formal-scheduler-gap3/evidence/186-final-ordinary-api-check.log
 c414cfd4079e87b4bf7d404e9c978a3c974f8585f7e8d56a108ae84950c95441  docs/formal-scheduler-gap3/evidence/68-schema-consumer-tests.log
 34ea77df13a67d70fac3c4f89e3de95a4efc6ab3cc6f4bc9f2e711d468183730  docs/formal-scheduler-gap3/evidence/80-83-mutation-driver.log
 94d103dac35d38f6725468d366ab3608b7356fc189555f8ec979c45cd814ff88  docs/formal-scheduler-gap3/evidence/80-queue-running-mutation.diff
@@ -42,4 +49,4 @@ e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  docs/formal-sc
 fc62783e94a6d168bbcb7844f285136c0f8c98c655559a03cc260deb7a8e41e4  docs/formal-scheduler-gap3/evidence/91-final-versioned-queue-clippy.log
 401e634a71d72b827d97800d9875cf78fc83197ac1281621bd5ebf38224575bc  docs/formal-scheduler-gap3/evidence/92-versioned-queue-source.sha256
 616103169c7da08e338557beecac2bff41163a3cbb443adbabd4242eaae768ce  docs/formal-scheduler-gap3/evidence/92-versioned-queue-source.tar.gz
-4586c384bf77b24545ea81d3f231989ce4d8fce2698504d86904d2032c537425  docs/formal-scheduler-gap3/evidence/README.md
+f7c23de204f235c4abbadcd00c527fcfbc2af3df8e49916cfdb55f6aad87b793  docs/formal-scheduler-gap3/evidence/README.md

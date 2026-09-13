@@ -68,6 +68,9 @@ pub open spec fn command_matches(
             &&& before.spec_reservation_invariant() ==> after.spec_reservation_invariant()
             &&& before.spec_reservation_reducer_ready() ==> after.spec_reservation_reducer_ready()
             &&& before.spec_collections_ordered() ==> after.spec_collections_ordered()
+            &&& before.spec_reservation_reducer_ready()
+                    && crate::state::queue::queue_bound(before)
+                ==> crate::state::queue::queue_bound(after)
         },
         Ok(_) => false,
     }

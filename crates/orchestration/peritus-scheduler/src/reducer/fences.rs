@@ -108,7 +108,7 @@ pub open spec fn revisions_match(left: RevisionTuple, right: RevisionTuple) -> b
         )
 }
 
-const fn revision_values_equal(
+pub(super) const fn revision_values_equal(
     left: RevisionTuple,
     right: RevisionTuple,
 ) -> (equal: bool)

@@ -274,6 +274,7 @@ impl WorkRecord {
         enqueue_ordinal: u64,
     ) -> (result: Self)
         ensures
+            *result.spec_definition() == spec,
             result.spec_phase() == phase,
             result.spec_enqueue_ordinal() == enqueue_ordinal,
             result.spec_bypasses() == 0,

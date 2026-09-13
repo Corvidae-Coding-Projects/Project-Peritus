@@ -55,6 +55,16 @@ impl WorkSpec {
     pub closed spec fn spec_priority(&self) -> u8 { self.priority }
     /// Returns the immutable parent edge used by cancellation traversal.
     pub closed spec fn spec_parent(&self) -> Option<WorkId> { self.parent }
+    /// Returns the immutable dependency identities.
+    pub closed spec fn spec_dependencies(&self) -> Seq<WorkId> { self.dependencies@ }
+
+    /// Borrows canonical dependencies.
+    #[must_use]
+    pub fn dependencies(&self) -> (result: &[WorkId])
+        ensures result@ == self.spec_dependencies(),
+    {
+        &self.dependencies
+    }
 
     /// Returns optional parent work.
     #[must_use]
@@ -189,11 +199,6 @@ impl WorkSpec {
     #[must_use]
     pub const fn budget_reservation(&self) -> Option<BudgetReservationId> {
         self.budget_reservation
-    }
-    /// Borrows canonical dependencies.
-    #[must_use]
-    pub fn dependencies(&self) -> &[WorkId] {
-        &self.dependencies
     }
     /// Returns inert exact payload digest.
     #[must_use]

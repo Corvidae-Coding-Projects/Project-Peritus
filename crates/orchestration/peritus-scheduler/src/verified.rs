@@ -21,14 +21,14 @@ pub(crate) use reservation_transitions::{
 };
 #[cfg(verus_only)]
 pub(crate) use reservations::{
-    active_work_has_reservations, admissible_work_update_preserves_relations,
-    equivalent_sequences_preserve_phase, equivalent_state_preserves,
-    inactive_work_insertion_preserves_phase, inactive_work_update_is_admissible,
-    lifecycle_work_update_preserves_relations, release_preserves_relations,
-    reservation_feasible_parts, reservation_has_active_work, reservation_identities_unique,
-    reservation_invariant_parts, reservation_matches_work_phase, reservation_quantity,
-    reservations_are_retained_dispatches, reservations_bind_active_work, reservations_have_work,
-    reservations_have_workers, reservations_match_work_phases,
+    active_work_has_reservation, active_work_has_reservations, active_work_has_reservations_intro,
+    admissible_work_update_preserves_relations, equivalent_sequences_preserve_phase,
+    equivalent_state_preserves, inactive_work_insertion_preserves_phase,
+    inactive_work_update_is_admissible, lifecycle_work_update_preserves_relations,
+    release_preserves_relations, reservation_feasible_parts, reservation_has_active_work,
+    reservation_identities_unique, reservation_invariant_parts, reservation_matches_work_phase,
+    reservation_quantity, reservations_are_retained_dispatches, reservations_bind_active_work,
+    reservations_have_work, reservations_have_workers, reservations_match_work_phases,
     selected_insertion_establishes_phase, selected_insertion_establishes_relations,
     start_acknowledgement_preserves_relations, unused_dispatch_is_not_live, vector_quantity,
     vector_quantity_nonnegative, work_identities_unique, work_identity_absent,

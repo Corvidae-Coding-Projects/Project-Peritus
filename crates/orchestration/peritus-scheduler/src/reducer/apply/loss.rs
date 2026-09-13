@@ -5,6 +5,10 @@ use crate::{
 };
 use vstd::prelude::*;
 
+mod release_one;
+
+pub(super) use release_one::{LossReleaseError, release_one};
+
 verus! {
 
 /// The ordered projection of exactly the reservations belonging to this worker.

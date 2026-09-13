@@ -252,4 +252,104 @@ pub(super) proof fn establish_complete_result(
     reveal(cancellation_final_matches);
 }
 
+proof fn cancelling_record_survives_suffix(
+    states: Seq<Seq<WorkRecord>>,
+    reservations: Seq<SchedulerReservation>,
+    affected: Seq<WorkId>,
+    id: WorkId,
+    selected: int,
+    changed: int,
+    step: int,
+)
+    requires
+        affected.no_duplicates(),
+        0 <= selected < affected.len(),
+        affected[selected] == id,
+        selected + 1 <= step <= affected.len(),
+        states.len() == affected.len() + 1,
+        forall |at: int| #![trigger states[at]] 0 <= at < affected.len() ==>
+            cancellation_step_matches(
+                states[at], states[at + 1], reservations, affected[at],
+            ),
+        0 <= changed < states[step].len(),
+        states[step][changed].spec_definition().spec_id() == id,
+        states[step][changed].spec_phase() == crate::WorkPhase::Cancelling,
+    ensures
+        0 <= changed < states[affected.len() as int].len(),
+        states[affected.len() as int][changed].spec_definition().spec_id() == id,
+        states[affected.len() as int][changed].spec_phase()
+            == crate::WorkPhase::Cancelling,
+    decreases affected.len() - step,
+{
+    if step < affected.len() {
+        assert(affected[step] != id) by {
+            if affected[step] == id {
+                assert(affected[step] == affected[selected]);
+                assert(false);
+            }
+        }
+        cancellation_step_preserves_other_record(
+            states[step], states[step + 1], reservations, affected[step], changed,
+        );
+        cancelling_record_survives_suffix(
+            states, reservations, affected, id, selected, changed, step + 1,
+        );
+    }
+}
+
+/// A uniquely selected identity retaining a reservation ends the exact cancellation trace in
+/// `Cancelling`, even when later selected identities are updated in the same batch.
+pub(crate) proof fn active_target_finishes_cancelling(
+    before: Seq<WorkRecord>,
+    after: Seq<WorkRecord>,
+    reservations: Seq<SchedulerReservation>,
+    affected: Seq<WorkId>,
+    id: WorkId,
+)
+    requires
+        cancellation_updates_match(before, after, reservations, affected),
+        affected.no_duplicates(),
+        affected.contains(id),
+        super::has_active_reservation(reservations, id),
+    ensures exists |index: int| #![trigger after[index]]
+        0 <= index < after.len()
+            && after[index].spec_definition().spec_id() == id
+            && after[index].spec_phase() == crate::WorkPhase::Cancelling,
+{
+    reveal(cancellation_updates_match);
+    let states = choose |states: Seq<Seq<WorkRecord>>| {
+        &&& states.len() == affected.len() + 1
+        &&& states[0] == before
+        &&& states[affected.len() as int] == after
+        &&& forall |step: int| #![trigger states[step]] 0 <= step < affected.len() ==>
+            cancellation_step_matches(
+                states[step], states[step + 1], reservations, affected[step],
+            )
+    };
+    let selected = choose |step: int| 0 <= step < affected.len() && affected[step] == id;
+    reveal(cancellation_step_matches);
+    reveal(crate::state::mutation::work_phase_update_matches);
+    let changed = choose |index: int| #![trigger states[selected][index]] {
+        &&& 0 <= index < states[selected].len()
+        &&& crate::state::mutation::work_record_update_matches(
+            states[selected][index], states[selected + 1][index], id,
+            crate::WorkPhase::Cancelling,
+        )
+        &&& forall |other: int| #![auto]
+            0 <= other < states[selected].len() && other != index ==>
+                states[selected + 1][other] == states[selected][other]
+    };
+    reveal(crate::state::mutation::work_record_update_matches);
+    WorkRecord::lifecycle_update_fields(
+        &states[selected][changed],
+        &states[selected + 1][changed],
+    );
+    assert(states[selected + 1][changed].spec_definition().spec_id() == id);
+    assert(states[selected + 1][changed].spec_phase() == crate::WorkPhase::Cancelling);
+    cancelling_record_survives_suffix(
+        states, reservations, affected, id, selected, changed, selected + 1,
+    );
+    assert(states[affected.len() as int] == after);
+}
+
 } // verus!

@@ -9,10 +9,12 @@ mod outcome;
 pub use acknowledge_cancellation::apply_acknowledge_cancellation_command;
 pub use complete::apply_complete_command;
 #[cfg(verus_only)]
-pub(super) use contracts::{
-    acknowledge_cancellation_outcome_matches, complete_command_outcome_matches, reservation_at,
-    work_at,
+pub(crate) use contracts::{
+    acknowledge_cancellation_outcome_matches, cancelling_dispatch_cannot_resurrect,
+    complete_command_outcome_matches,
 };
+#[cfg(verus_only)]
+pub(super) use contracts::{reservation_at, work_at};
 pub use outcome::{
     AbandonCommandOutcome, AcknowledgeCancellationOutcome, AcknowledgeStartOutcome,
     CompleteCommandOutcome, FailCommandOutcome,

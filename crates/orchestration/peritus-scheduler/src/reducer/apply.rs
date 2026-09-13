@@ -1,5 +1,6 @@
 //! Closed command application against a cloned scheduler state.
 
+mod admission;
 mod cancellation;
 mod control;
 mod dispatch;
@@ -10,9 +11,8 @@ use peritus_codec::sha256;
 
 use crate::state::mutation;
 use crate::{
-    DispatchId, LossOutcome, SchedulerCommandKind, SchedulerError, SchedulerErrorKind,
-    SchedulerEventKind, SchedulerPhase, SchedulerState, WorkPhase, WorkRecord, WorkSpec,
-    WorkTerminal, WorkerPhase,
+    DispatchId, SchedulerCommandKind, SchedulerError, SchedulerErrorKind, SchedulerEventKind,
+    SchedulerPhase, SchedulerState, WorkSpec, WorkerPhase,
 };
 
 pub(super) fn apply(
@@ -67,42 +67,13 @@ fn lose_worker(
     let dispatches = loss::dispatches_for_worker(state.reservations(), worker_id);
     let mut outcomes = Vec::with_capacity(dispatches.len());
     for dispatch_id in dispatches {
-        let work_id = state
-            .reservation(dispatch_id)
-            .ok_or_else(|| unknown("worker-loss reservation disappeared"))?
-            .work_id();
-        let record =
-            state.work_item(work_id).ok_or_else(|| unknown("worker-loss work disappeared"))?;
-        let outcome = loss::classify(record, dispatch_id);
-        let released = match &outcome {
-            LossOutcome::Requeued { .. } => {
-                mutation::release_to_phase(state, dispatch_id, work_id, WorkPhase::Queued)
-            }
-            LossOutcome::Cancelled { .. } => {
-                mutation::release_to_terminal(state, dispatch_id, work_id, WorkTerminal::Cancelled)
-            }
-            LossOutcome::Exhausted { .. } => mutation::release_to_terminal(
-                state,
-                dispatch_id,
-                work_id,
-                WorkTerminal::Exhausted { cause_digest: sha256(dispatch_id.as_bytes()) },
-            ),
-            LossOutcome::Ambiguous { .. } => mutation::release_to_terminal(
-                state,
-                dispatch_id,
-                work_id,
-                WorkTerminal::Ambiguous { dispatch_id },
-            ),
-            LossOutcome::Failed { .. } => mutation::release_to_terminal(
-                state,
-                dispatch_id,
-                work_id,
-                WorkTerminal::Failed { failure_digest: sha256(dispatch_id.as_bytes()) },
-            ),
-        };
-        if released.is_none() {
-            return Err(unknown("worker-loss work disappeared"));
-        }
+        let outcome = loss::release_one(state, dispatch_id, sha256(dispatch_id.as_bytes()))
+            .map_err(|error| match error {
+                loss::LossReleaseError::ReservationDisappeared => {
+                    unknown("worker-loss reservation disappeared")
+                }
+                loss::LossReleaseError::WorkDisappeared => unknown("worker-loss work disappeared"),
+            })?;
         outcomes.push(outcome);
     }
     if !mutation::set_worker_phase(state, worker_id, WorkerPhase::Lost) {
@@ -115,52 +86,28 @@ fn admit_work(
     state: &mut SchedulerState,
     spec: &WorkSpec,
 ) -> Result<SchedulerEventKind, SchedulerError> {
-    if matches!(state.phase(), SchedulerPhase::Draining | SchedulerPhase::DrainingPaused) {
-        return Err(super::illegal("draining scheduler rejects work admission"));
-    }
-    let limits = state.binding().limits();
-    if state.work().len() >= limits.retained_work() as usize
-        || crate::state::queue::admission_count(state) >= limits.queued_work() as usize
-    {
-        return Err(limit("work retention or queue limit reached"));
-    }
-    if state.work_item(spec.id()).is_some() {
-        return Err(conflict("work identity is retained"));
-    }
-    if spec.revision() != state.binding().revision() {
-        return Err(binding("work revision differs from scheduler binding"));
-    }
-    if !spec.request().fits_within(state.binding().capacity()) {
-        return Err(resource("work request exceeds global scheduler capacity"));
-    }
-    for dependency in spec.dependencies() {
-        if state.work_item(*dependency).is_none() {
-            return Err(unknown("work dependency is absent"));
+    admission::apply_command(state, spec).map_err(|reason| match reason {
+        admission::AdmissionRejection::Draining => {
+            super::illegal("draining scheduler rejects work admission")
         }
-    }
-    if spec.parent().is_some_and(|parent| state.work_item(parent).is_none()) {
-        return Err(unknown("work parent is absent"));
-    }
-    if !state.workers().iter().any(|worker| {
-        worker.phase() != WorkerPhase::Removed
-            && worker.descriptor().owner() == spec.owner()
-            && worker.descriptor().supports(spec.class())
-            && spec.request().fits_within(worker.descriptor().capacity())
-    }) {
-        return Err(crate::error::reject(
+        admission::AdmissionRejection::CapacityLimit => {
+            limit("work retention or queue limit reached")
+        }
+        admission::AdmissionRejection::DuplicateWork => conflict("work identity is retained"),
+        admission::AdmissionRejection::RevisionMismatch => {
+            binding("work revision differs from scheduler binding")
+        }
+        admission::AdmissionRejection::ResourceConflict => {
+            resource("work request exceeds global scheduler capacity")
+        }
+        admission::AdmissionRejection::MissingDependency => unknown("work dependency is absent"),
+        admission::AdmissionRejection::MissingParent => unknown("work parent is absent"),
+        admission::AdmissionRejection::UnsupportedWork => crate::error::reject(
             SchedulerErrorKind::InvalidInput,
             "no registered owner worker supports the work execution class and request",
-        ));
-    }
-    let ordinal =
-        mutation::next_enqueue_ordinal(state).ok_or_else(|| limit("enqueue ordinal overflowed"))?;
-    let phase = if spec.dependencies().is_empty() {
-        WorkPhase::Queued
-    } else {
-        WorkPhase::WaitingDependencies
-    };
-    mutation::insert_work(state, WorkRecord::new(spec.clone(), phase, ordinal));
-    Ok(SchedulerEventKind::WorkAdmitted { spec: spec.clone() })
+        ),
+        admission::AdmissionRejection::OrdinalOverflow => limit("enqueue ordinal overflowed"),
+    })
 }
 
 fn dispatch(

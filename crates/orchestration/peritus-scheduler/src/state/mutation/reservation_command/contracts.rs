@@ -8,6 +8,11 @@ use crate::{
     WorkTerminal,
 };
 
+#[cfg(verus_only)]
+mod non_resurrection;
+#[cfg(verus_only)]
+pub(crate) use non_resurrection::cancelling_dispatch_cannot_resurrect;
+
 verus! {
 
 pub open spec fn reservation_at(
@@ -35,7 +40,10 @@ pub open spec fn complete_command_outcome_matches(
     command: &SchedulerCommandKind,
     outcome: CompleteCommandOutcome,
 ) -> bool {
-    match (command, outcome) {
+    &&& before.spec_reservation_reducer_ready() ==> after.spec_reservation_reducer_ready()
+    &&& before.spec_reservation_reducer_ready() && before.spec_collections_ordered()
+        ==> after.spec_collections_ordered()
+    &&& match (command, outcome) {
         (SchedulerCommandKind::CompleteWork { .. }, CompleteCommandOutcome::NotCompleteCommand) => {
             false
         },
@@ -107,7 +115,10 @@ pub open spec fn acknowledge_cancellation_outcome_matches(
     command: &SchedulerCommandKind,
     outcome: AcknowledgeCancellationOutcome,
 ) -> bool {
-    match (command, outcome) {
+    &&& before.spec_reservation_reducer_ready() ==> after.spec_reservation_reducer_ready()
+    &&& before.spec_reservation_reducer_ready() && before.spec_collections_ordered()
+        ==> after.spec_collections_ordered()
+    &&& match (command, outcome) {
         (
             SchedulerCommandKind::AcknowledgeCancellation { .. },
             AcknowledgeCancellationOutcome::NotAcknowledgeCancellationCommand,

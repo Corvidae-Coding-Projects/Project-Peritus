@@ -29,12 +29,12 @@ pub(super) use preservation::{
 };
 #[cfg(verus_only)]
 pub(crate) use readiness::{
-    active_work_has_reservations, admissible_work_update_preserves_relations,
-    equivalent_sequences_preserve_phase, inactive_work_insertion_preserves_phase,
-    inactive_work_update_is_admissible, release_preserves_relations, reservation_has_active_work,
-    reservation_matches_work_phase, reservations_match_work_phases,
-    selected_insertion_establishes_phase, start_acknowledgement_preserves_relations,
-    work_phase_update_admissible,
+    active_work_has_reservation, active_work_has_reservations, active_work_has_reservations_intro,
+    admissible_work_update_preserves_relations, equivalent_sequences_preserve_phase,
+    inactive_work_insertion_preserves_phase, inactive_work_update_is_admissible,
+    release_preserves_relations, reservation_has_active_work, reservation_matches_work_phase,
+    reservations_match_work_phases, selected_insertion_establishes_phase,
+    start_acknowledgement_preserves_relations, work_phase_update_admissible,
 };
 
 verus! {

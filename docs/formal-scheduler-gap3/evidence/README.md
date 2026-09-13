@@ -82,6 +82,29 @@ release now have exact production-called contracts; the remaining scheduler rela
 final inventory/trust/hosted qualification stay open on the draft. This increment does not rerun
 or relabel the historical daemon and API-checker test results as current scheduler tests.
 
+## Work admission and cancellation capacity increment
+
+Relative to checkpoint `39f56c636`, source manifest `182-admission-cancellation-source.sha256`
+binds all 154 scheduler package files. Its SHA-256 is
+`dae05abf83eea5d194cb3f6261ac4fcac64e9aa5cf6bb4dde178e49b429f205b`.
+The [independent review](../admission-cancellation-review.md) covers the exact admission,
+cancellation capacity/non-resurrection and individual worker-loss release claims. The root-to-chain
+link, loss queue-bound/full-batch contract, whole reducer/replay and final trust/CI remain open.
+
+| Output | Final increment result |
+|---|---|
+| `183-final-strict-verus.log` | 539 verified, zero errors; no cheating and unchanged resource limits |
+| `184-final-scheduler-tests.log` | All 74 scheduler tests passed; zero failures or ignores |
+| `176-scheduler-clippy.log` | All-targets, all-features scheduler Clippy passed with warnings denied |
+| `181-final-format-check.log` | Workspace formatting passed |
+| `185-final-architecture-check.log` | 84 packages and 4,532 source files passed |
+| `186-final-ordinary-api-check.log` | 3,619 formal-boundary files and 14,761 ordinary-safe entry points passed |
+
+The frozen manifest checked successfully after both final proof and test commands. Clippy preceded
+only ghost-proof corrections and import formatting; the executable code was unchanged. Historical
+source manifests and approvals are preserved. Raw output is copied byte-for-byte, including the
+ordinary test log's trailing blank line.
+
 ## Rerunnable local checks
 
 Use the repository's pinned toolchains. These commands keep one build job; strict Verus uses

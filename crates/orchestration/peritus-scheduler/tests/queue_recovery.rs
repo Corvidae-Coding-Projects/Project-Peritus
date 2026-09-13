@@ -26,6 +26,31 @@ fn fixture() -> Fixture {
     Fixture { limits, binding, owner: original.owner }
 }
 
+#[test]
+fn full_queue_rejection_precedes_duplicate_identity() {
+    let fixture = fixture();
+    let (mut state, mut events) = fixture.started();
+    Fixture::apply(
+        &mut state,
+        &mut events,
+        3,
+        SchedulerCommandKind::RegisterWorker { descriptor: fixture.worker(30, 1) },
+    );
+    let spec = fixture.work(40, 1, Vec::new(), None, 1, RecoveryPolicy::Fail);
+    Fixture::apply(
+        &mut state,
+        &mut events,
+        4,
+        SchedulerCommandKind::AdmitWork { spec: spec.clone() },
+    );
+    let before = state.clone();
+    let command = Fixture::command(&state, 5, SchedulerCommandKind::AdmitWork { spec });
+    let error = decide(&state, &command).expect_err("queue bound is checked before identity");
+    assert_eq!(error.kind(), SchedulerErrorKind::LimitExceeded);
+    assert_eq!(error.detail(), "work retention or queue limit reached");
+    assert_eq!(state, before);
+}
+
 fn recovery_roundtrip(worker_loss: bool, recovery_policy: RecoveryPolicy, started: bool) {
     let fixture = fixture();
     let (mut state, mut events) = fixture.started();

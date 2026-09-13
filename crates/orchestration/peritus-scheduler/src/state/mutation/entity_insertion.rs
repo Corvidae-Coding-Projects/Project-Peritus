@@ -84,6 +84,7 @@ pub fn insert_worker(state: &mut SchedulerState, value: WorkerRecord)
 /// Inserts one work record at the same canonical binary-search position used by admission.
 pub fn insert_work(state: &mut SchedulerState, value: WorkRecord)
     ensures
+        super::work_update_preserves_other_state(old(state), final(state)),
         exists |at: int| #![auto]
             0 <= at <= old(state).spec_work().len()
                 && final(state).spec_work() == old(state).spec_work().insert(at, value),
@@ -149,6 +150,7 @@ pub fn insert_work(state: &mut SchedulerState, value: WorkRecord)
     }
     state.work.insert(at, value);
     proof {
+        reveal(super::work_update_preserves_other_state);
         assert(state.spec_work() == before.insert(at as int, value));
         if had_invariant && was_absent {
             assert(state.spec_reservation_invariant());

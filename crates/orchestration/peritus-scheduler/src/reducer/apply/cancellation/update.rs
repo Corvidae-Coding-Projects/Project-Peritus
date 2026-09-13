@@ -1,21 +1,26 @@
 //! Exact cancellation lifecycle updates for a preselected work sequence.
 
-#[cfg(verus_only)]
-use crate::WorkRecord;
 use crate::state::mutation;
-use crate::{SchedulerReservation, SchedulerState, WorkId, WorkPhase, WorkTerminal};
+#[cfg(verus_only)]
+use crate::{SchedulerReservation, WorkRecord};
+use crate::{SchedulerState, WorkId, WorkPhase, WorkTerminal};
 use vstd::prelude::*;
 
+mod activity;
 #[cfg(verus_only)]
 mod frame;
 #[cfg(verus_only)]
 mod trace;
+
+use activity::is_active;
 
 #[cfg(verus_only)]
 use frame::{
     cancellation_step_preserves_ids, cancellation_step_target_exists,
     cancellation_update_admissible, collection_order_preserved, target_existence_preserved,
 };
+#[cfg(verus_only)]
+pub(super) use trace::active_target_finishes_cancelling;
 #[cfg(verus_only)]
 use trace::{advance_prefix, empty_updates, establish_complete_result, establish_missing_result};
 
@@ -179,43 +184,15 @@ pub open spec fn cancellation_apply_matches(
     &&& before.spec_reservation_reducer_ready() ==> after.spec_reservation_reducer_ready()
     &&& before.spec_collections_ordered() ==> after.spec_collections_ordered()
     &&& before.spec_reservation_invariant() ==> after.spec_reservation_invariant()
+    &&& before.spec_reservation_reducer_ready()
+            && crate::state::queue::queue_bound(before)
+        ==> crate::state::queue::queue_bound(after)
     &&& complete ==> cancellation_final_matches(
         before.spec_work(),
         after.spec_work(),
         before.spec_reservations(),
         affected,
     )
-}
-
-fn is_active(reservations: &[SchedulerReservation], id: WorkId) -> (active: bool)
-    ensures active == has_active_reservation(reservations@, id),
-{
-    let mut index = 0;
-    while index < reservations.len()
-        invariant
-            index <= reservations.len(),
-            forall |prior: int| #![trigger reservations@[prior]] 0 <= prior < index ==>
-                reservations@[prior].spec_work_id() != id,
-        decreases reservations.len() - index,
-    {
-        if reservations[index].work_id().same(&id) {
-            proof {
-                assert(reservations@[index as int].spec_work_id() == id);
-                assert(has_active_reservation(reservations@, id));
-            }
-            return true;
-        }
-        proof { assert(reservations@[index as int].spec_work_id() != id); }
-        index += 1;
-    }
-    proof {
-        assert forall |at: int| #![trigger reservations@[at]] 0 <= at < reservations.len()
-            implies reservations@[at].spec_work_id() != id by {
-            assert(at < index);
-        }
-        reveal(has_active_reservation);
-    }
-    false
 }
 
 /// Applies the reservation-sensitive lifecycle mutation for one selected identity.
@@ -234,11 +211,15 @@ fn update_one(state: &mut SchedulerState, id: WorkId) -> (updated: bool)
         mutation::work_update_preserves_other_state(old(state), final(state)),
         old(state).spec_reservation_invariant() ==>
             final(state).spec_reservation_invariant(),
+        old(state).spec_reservation_reducer_ready()
+                && crate::state::queue::queue_bound(old(state))
+            ==> crate::state::queue::queue_bound(final(state)),
 {
     let active = is_active(state.reservations(), id);
     let ghost before = state.spec_work();
     let ghost reservations = state.spec_reservations();
     let ghost was_ready = state.spec_reservation_reducer_ready();
+    let ghost had_queue_bound = crate::state::queue::queue_bound(state);
     proof {
         if target_exists(before, id) {
             cancellation_update_admissible(before, reservations, id);
@@ -277,6 +258,15 @@ fn update_one(state: &mut SchedulerState, id: WorkId) -> (updated: bool)
             reveal(work_id_layout_matches);
             if was_ready { reveal(SchedulerState::spec_reservation_reducer_ready); }
         }
+        if was_ready && had_queue_bound {
+            if updated {
+                super::queue::cancellation_step_preserves_queue_bound(
+                    old(state), state, id,
+                );
+            } else {
+                super::queue::unchanged_work_preserves_queue_bound(old(state), state);
+            }
+        }
     }
     updated
 }
@@ -296,6 +286,7 @@ pub(super) fn apply_updates(
     let ghost reservations = state.spec_reservations();
     let ghost had_invariant = state.spec_reservation_invariant();
     let ghost was_ready = state.spec_reservation_reducer_ready();
+    let ghost had_queue_bound = crate::state::queue::queue_bound(state);
     let mut index = 0;
     proof {
         empty_updates(before, reservations);
@@ -313,6 +304,8 @@ pub(super) fn apply_updates(
             had_invariant ==> state.spec_reservation_invariant(),
             was_ready == old(state).spec_reservation_reducer_ready(),
             was_ready ==> state.spec_reservation_reducer_ready(),
+            had_queue_bound == crate::state::queue::queue_bound(old(state)),
+            was_ready && had_queue_bound ==> crate::state::queue::queue_bound(state),
             mutation::work_update_preserves_other_state(old(state), state),
             cancellation_updates_match(
                 before,

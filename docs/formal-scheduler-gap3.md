@@ -349,13 +349,39 @@ Checkpoint `5020fddf692b0894c6c8d188efc3490a3419b8c8` and subsequent work share
 `develop`. The PR remains a draft and must not be merged as part of this work. Remaining work goes
 on `feature/formal-scheduler-gap3` and that same PR.
 
+### Work admission and cancellation capacity increment
+
+The production `AdmitWork` path now calls an exact verified kernel. Its contract preserves all
+nine rejection priorities, unchanged rejected state, the admitted definition and event, initial
+work fields, canonical insertion, ordinal advancement, retention limits and versioned queue
+pressure. The dependency and worker scans terminate. Public tests cover competing rejection
+conditions and preserve the existing rule that Lost and Draining workers can witness admission
+capability until Removed; accepted histories still replay and decode exactly.
+
+Cancellation now preserves the queue bound through each actual update, the complete selected
+batch and successful root command. A proof over the production completion/acknowledgement
+relations establishes that late completion is an exact no-op rejection, acknowledgement removes
+ownership and records Cancelled, and later completion remains an exact no-op rejection. The
+remaining link from the root command relation to this chain's initial cancelling-dispatch premise
+is explicit below; this is not a claim of whole public-command composition.
+
+Worker loss now calls an individually verified classification/release kernel. It binds the
+pre-release work policy to the exact outcome, removed reservation, lifecycle result and other-state
+frame, preserving reducer readiness and ordering. Digest values still come from the existing
+ordinary SHA-256 boundary. The full loop, worker/event composition and loss-specific queue-bound
+proof remain open. In-progress batch work is excluded from this checkpoint.
+
+The [bounded independent review](formal-scheduler-gap3/admission-cancellation-review.md) and
+source manifest 182 identify this increment relative to `39f56c636`. Historical reviews and
+qualification remain attached to their original source snapshots.
+
 ## Remaining requirements on the draft
 
 | Requirement | What this checkpoint establishes | What remains open |
 |---|---|---|
-| Admission | Exact worker descriptor and command-fence classifiers; ordering, lookup, insertion and queue-pressure primitives | Complete work/command admission, error wrappers, ordering producers and decoded-state composition |
-| Cancellation | Exact production root admission and event, descendant selection and terminating updates; readiness and ordering preservation; exact terminal release and acknowledgement/completion outcomes; public lifecycle regressions | Explicit multi-command late-success and queue-invariant composition, plus outer reducer/replay/caller relationships |
-| Worker loss | Exact owned-reservation selection and recovery classification; mixed-worker lifecycle regressions | Complete release loop, resource deltas, worker mutation and successor event relation |
+| Admission | Exact production work-admission state/event/rejection contract, worker descriptor and command-fence classifiers; retention, ordering and queue-pressure preservation | Remaining command admission, error wrappers, ordering producers and decoded-state composition |
+| Cancellation | Exact root/event and descendant updates; readiness, ordering and queue-bound preservation; exact terminal release and completion/acknowledgement chain; public lifecycle regressions | Root-command-to-chain premise, plus outer reducer/replay/caller relationships |
+| Worker loss | Exact owned-reservation selection, recovery classification and individual release relation; mixed-worker lifecycle regressions | Loss-specific queue-bound preservation, complete release loop, resource deltas, worker mutation and successor event relation |
 | Transitions and replay | Exact terminal summary and versioned queue accounting; fixed historical replay/durability/caller tests | All command successors, dispatch selection, dependency refresh, cursor/digest/event reconstruction and whole replay/caller relationships |
 | Termination | Checked decreases on the new classifiers, cancellation closure/update loops and relevant primitives | Remaining worker-loss, refresh, selection and replay loops |
 | Delivery | Bounded independent agent reviews and retained local qualification | Current source inventory/fingerprints, protected authorization/trust and final hosted workflows |
