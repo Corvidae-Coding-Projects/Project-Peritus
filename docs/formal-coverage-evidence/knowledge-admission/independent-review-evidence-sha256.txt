@@ -1,0 +1,9 @@
+cd272a247340a74fe3d34092c8bd1459475c428380cd14078e5c0c3015aa5f1b  /tmp/peritus-sol-knowledge-admission-independent-review-20260912T001.md
+fc38322696054b46f777d95c1a457c3a8177d59728b2efae3e3c94f281cdea1a  /tmp/peritus-parent-knowledge-admission-source.sha256
+67b8b133b4fc0f0c5670333d6c05b7fa1736df1398ef763731d6ad7a78e57bb8  /tmp/peritus-parent-knowledge-admission-full-package.sha256
+10be43ce8af89af3cc048d42efdbdffe59ba79231b5fb2ea4c6edda766a6a656  /tmp/peritus-parent-knowledge-admission-source.patch
+22802cc9f3826415e95d7473947aaab671db67232aa4cd1ad0e684f4c4bd2ea4  /tmp/peritus-parent-knowledge-admission-qualification3.json
+2f9f58257e1dc1852a116de05a7af6f9fa2a1adf39a6de5f0b50affcbf3ac299  /tmp/peritus-parent-knowledge-admission-audit.md
+c087f49d97bee4b13b3dde15cb066be45382765ee84753faede74abd8e785fb5  /tmp/peritus-parent-knowledge-admission-negative-source-id.json
+1ff8d5418055f8e8663861b1e602b7dab57326ec708fe395ce0d7040c0711b0c  /tmp/peritus-parent-knowledge-admission-negative-source-id.log
+ebfae82fec74a4eff4fe099006f228599a97067b2eff3c2bb3ecd34d80d2238a  /tmp/peritus-parent-knowledge-admission-verus10-restored.log

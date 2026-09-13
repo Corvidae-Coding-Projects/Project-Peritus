@@ -1,0 +1,26 @@
+{
+  "retained_manifest": "/home/doll/Project-Peritus/.worktrees/formal-coverage/docs/formal-coverage-evidence/release-input-readiness/full-package-sha256.txt",
+  "retained_manifest_sha256": "a1369b4a9b011130293b7389b7a09d6cd8a7726490597c4c0f1cc22fb1c50483",
+  "matching_count": 34,
+  "mismatch_or_missing_count": 18,
+  "mismatch_or_missing": [
+    "crates/foundation/peritus-release-policy/src/candidate.rs",
+    "crates/foundation/peritus-release-policy/src/candidate/equality.rs",
+    "crates/foundation/peritus-release-policy/src/candidate/git.rs",
+    "crates/foundation/peritus-release-policy/src/candidate/platform.rs",
+    "crates/foundation/peritus-release-policy/src/candidate/version.rs",
+    "crates/foundation/peritus-release-policy/src/decision/completeness.rs",
+    "crates/foundation/peritus-release-policy/src/evaluator/admission.rs",
+    "crates/foundation/peritus-release-policy/src/evaluator/findings/lookup.rs",
+    "crates/foundation/peritus-release-policy/src/evaluator/findings/model.rs",
+    "crates/foundation/peritus-release-policy/src/evaluator/qualifications/model.rs",
+    "crates/foundation/peritus-release-policy/src/evaluator/reviews/model.rs",
+    "crates/foundation/peritus-release-policy/src/identity.rs",
+    "crates/foundation/peritus-release-policy/src/lib.rs",
+    "crates/foundation/peritus-release-policy/src/qualification_admission.rs",
+    "crates/foundation/peritus-release-policy/src/review.rs",
+    "crates/foundation/peritus-release-policy/src/review/equality.rs",
+    "crates/foundation/peritus-release-policy/tests/acceptance.rs",
+    "crates/foundation/peritus-release-policy/tests/fail_closed.rs"
+  ]
+}

@@ -14,6 +14,33 @@ pub struct RunSettlement {
 }
 
 impl RunSettlement {
+    /// Logical view of the terminal disposition.
+    pub closed spec fn spec_disposition(&self) -> RunDisposition { self.disposition }
+    /// Logical view of the retained termination cause.
+    pub closed spec fn spec_cause(&self) -> SettlementCause { self.cause }
+    /// Logical view of the exact retained candidate checkpoint.
+    pub closed spec fn spec_checkpoint(&self) -> Option<CandidateCheckpoint> { self.checkpoint }
+
+    /// User wait, cancellation and recovery take precedence over candidate qualification.
+    pub open spec fn spec_expected_disposition(
+        checkpoint: Option<CandidateCheckpoint>,
+        cause: SettlementCause,
+    ) -> RunDisposition {
+        match cause {
+            SettlementCause::UserWait => RunDisposition::WaitingForUser,
+            SettlementCause::Cancellation => RunDisposition::Cancelled,
+            SettlementCause::Recovery => RunDisposition::RecoveryRequired,
+            _ => match checkpoint {
+                Some(candidate) => if candidate.spec_is_qualified() {
+                    RunDisposition::Accepted
+                } else {
+                    RunDisposition::CandidateAvailable
+                },
+                None => RunDisposition::FailedNoCandidate,
+            },
+        }
+    }
+
     #[allow(
         clippy::manual_map,
         clippy::option_if_let_else,
@@ -22,7 +49,16 @@ impl RunSettlement {
     pub(crate) fn decide(
         checkpoint: Option<&CandidateCheckpoint>,
         cause: SettlementCause,
-    ) -> Self {
+    ) -> (settlement: Self)
+        ensures
+            settlement.spec_cause() == cause,
+            settlement.spec_checkpoint() == match checkpoint {
+                Some(candidate) => Some(*candidate),
+                None => None,
+            },
+            settlement.spec_disposition() == Self::spec_expected_disposition(
+                match checkpoint { Some(candidate) => Some(*candidate), None => None }, cause),
+    {
         let qualified = match checkpoint {
             Some(candidate) => candidate.is_qualified(),
             None => false,
@@ -44,21 +80,32 @@ impl RunSettlement {
 
     /// Honest user-visible terminal disposition.
     #[must_use]
-    pub const fn disposition(&self) -> RunDisposition { self.disposition }
+    pub const fn disposition(&self) -> (value: RunDisposition)
+        ensures value == self.spec_disposition(),
+    { self.disposition }
 
     /// Typed cause that ended active execution.
     #[must_use]
-    pub const fn cause(&self) -> SettlementCause { self.cause }
+    pub const fn cause(&self) -> (value: SettlementCause)
+        ensures value == self.spec_cause(),
+    { self.cause }
 
     /// Strongest exact candidate observed before settlement.
     #[must_use]
-    pub const fn checkpoint(&self) -> Option<&CandidateCheckpoint> {
+    pub const fn checkpoint(&self) -> (value: Option<&CandidateCheckpoint>)
+        ensures match value {
+            Some(candidate) => self.spec_checkpoint() == Some(*candidate),
+            None => self.spec_checkpoint().is_none(),
+        },
+    {
         self.checkpoint.as_ref()
     }
 
     /// Whether strict automated qualification accepted the candidate.
     #[must_use]
-    pub const fn is_accepted(&self) -> bool { self.disposition.is_accepted() }
+    pub const fn is_accepted(&self) -> (accepted: bool)
+        ensures accepted == (self.spec_disposition() == RunDisposition::Accepted),
+    { self.disposition.is_accepted() }
 }
 
 } // verus!

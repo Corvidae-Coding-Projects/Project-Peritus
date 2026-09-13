@@ -1,0 +1,34 @@
+# Role policy and capability production correspondence checkpoint
+
+Implementer: `/root`. Independent review is pending; no formal obligation is discharged by this checkpoint alone. No shared role source, GitHub review requirement, or repository setting has been changed.
+
+## Exact source
+
+Frozen package: `/tmp/peritus-parent-role-policy-source-02` (17 files). Full manifest `/tmp/peritus-parent-role-policy-full-package-02.sha256` has SHA256 `af21cf03dfbc25f44e373ac08bbddbe217b5bff271528af69c2b3bd61ed7f385`. The 12 changed files relative to the 13-file shared package preimage have manifest SHA256 `d868078e87abe1288246879ca79f7c9ec81aa1196c3691946717aa1a79f31d0d`. Patch `/tmp/peritus-parent-role-policy-source-02.patch` has SHA256 `f874fb0736ebe20c9abf7befcdf2c70c812d3e2249abf500f875520317f9c982`.
+
+Preimage is `/tmp/peritus-parent-role-policy-preimage`, with manifest `/tmp/peritus-parent-role-policy-preimage.sha256`. The isolated workspace is `/tmp/peritus-parent-obligations-proof.6ib_z8mo`. Its acceptance-spec dependency was synchronized byte-for-byte from the current shared integration package to use the already-proved ReviewerIndependence views; `/tmp/peritus-parent-role-policy-spec-dependency.sha256` records the 21 exact dependency files. That synchronization did not edit shared source.
+
+## Production guarantees added
+
+- HarnessRole maps all five harness variants to their exact ActorRole and exposes the exact partial inverse for all eleven canonical roles.
+- ContextClass rank and ContextClassSet membership bind the actual enum values. Public set construction succeeds iff its supplied sequence is nonempty and strictly ordered by the complete class rank. Rejections identify the first duplicate or descending pair and preserve all optional error fields. The private from_canonical helper remains total and merely retains exact fields; its actual fixed-table callers provide the canonical values. No public guard or new precondition was added.
+- Every RoleError constructor and getter exposes its complete category, context-class, and operation payload. Context-class and operation errors explicitly exclude the other payload.
+- Actual role-policy tables were moved intact into context_policy/tables.rs. Separate ghost input tables specify exact visible, contributable, and required sequences for every role, plus fresh-context, memory, reasoning, ancestry, and presentation choices. All constructors and getters are connected to those exact definitions. The restricted helper remains total, with a conditional contract matching its callers; no new runtime restriction was added.
+- RoleProfile constructors bind exact actor and harness identities, complete context policy, exact capability sequence, and non-widening. ContextClassSet, CapabilityView, ContextPolicy, and RoleProfile now have production semantic Clone contracts covering every stored field.
+- CapabilityView::new now proves success iff every supplied operation is permitted and canonically ordered, exact retained fields, and the complete first error. Permission is checked before order at each position, and earlier positions precede later ones. The actual per-position validator was extracted into a private leaf to stay within the pinned resource limit; the public constructor calls it. Enum rank comparisons replace equivalent enum equality comparisons because the derived PartialEq implementation lacks the needed proof contract. There is no admission-policy change.
+- PresentationProfile binds the exact requested style and all three enabled presentation facts. ReviewIndependenceView retains all six supplied acceptance-contract requirements and sets fresh context. This is product-domain data, unrelated to GitHub PR review settings.
+- Actual capability_view_is_narrow and reviewer_context_is_fresh now expose exact result predicates. For a profile matching the deterministic role policy, reviewer freshness holds exactly for the reviewer role.
+
+## Qualification and negative control
+
+Baseline role proof: 76 verified, 0 errors. Final strict proof: 77 verified, 0 errors; the count barely changes because most changes strengthen contracts on existing functions. Command: `cargo verus verify --package peritus-role --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20`, with CARGO_BUILD_JOBS=2 and an on-disk target. Log `/tmp/peritus-parent-role-policy-verus13.log`.
+
+Default and all-feature package tests each pass 12 tests. New regressions cover complete first-error payloads under multiple invalid positions, private/mutating material remaining excluded after reviewer-profile cloning, and all 64 combinations of the six independence inputs. Strict all-target/all-feature Clippy and formatting pass. Exact ordinary commands/results are in `/tmp/peritus-parent-role-policy-qualification4.json`. Final API and source-layout logs are `/tmp/peritus-parent-role-policy-ordinary-api3.log` and `/tmp/peritus-parent-role-policy-source-layout3.log`.
+
+The actual reviewer visible table was mutated to append HiddenReasoning while preserving canonical order. Strict verification rejected the changed production policy postcondition. The mutation ran only in the isolated workspace; frozen source was untouched. Raw command, original and mutated table hashes, failure, full 17-file restoration, and final strict rerun are retained in `/tmp/peritus-parent-role-policy-negative-hidden-reasoning2.json`, the matching log, and `/tmp/peritus-parent-role-policy-verus14-restored.log`.
+
+Intermediate failures remain in the earlier logs: missing dependency contracts in the older isolated acceptance-spec package; a capability-loop resource limit resolved by the real per-position helper; unused imports and a match-style lint resolved in source; and ordinary API rejection of seq! macros in ghost definitions. The final definitions use direct array views matching the pinned vstd expansion (and singleton push expressions). The checker was not changed. No proof-escape annotation, alternate executable implementation, public executable precondition, blanket allow, or manifest edit was introduced.
+
+## Remaining boundaries
+
+This checkpoint proves deterministic role-policy construction and predicates over supplied values. Actual context graph admission, full context selection, rendering, compaction, persistence, observed-content authenticity, and caller-wide enforcement are separate work. The independent reviewer must check exact table correspondence, rank equivalence, first-error priority, full Clone fields, and the distinction between a total private constructor's field contract and a type invariant. The exact finite tables determine their canonical/subset properties; this checkpoint does not introduce a separate general canonical/subset theorem for arbitrary ContextPolicy values. Repository-wide proof records and final-head hosted CI remain pending.

@@ -1,0 +1,7 @@
+cargo verus verify --package peritus-quality-policy --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20
+cargo test --package peritus-quality-policy --all-targets --all-features --locked
+cargo clippy --package peritus-quality-policy --all-targets --all-features --locked -- -D warnings
+cargo fmt --package peritus-quality-policy -- --check
+cargo run --locked --package xtask -- source-layout-check
+sha256sum -c /tmp/peritus-sol-acceptance-source-final.sha256
+sha256sum -c /tmp/peritus-parent-kernel-acceptance-source.sha256

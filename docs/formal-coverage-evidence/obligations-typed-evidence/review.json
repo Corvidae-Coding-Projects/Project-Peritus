@@ -1,0 +1,33 @@
+{
+  "schema": "peritus.formal-coverage.increment-review",
+  "schema_version": 1,
+  "status": "reviewed-bounded-increment-not-obligation-discharge",
+  "recorded_at": "2026-09-12T21:17:38.930455+00:00",
+  "base_commit": "1aa9282ff2cfcbf8fac325f11f157f408d33ee30",
+  "implementation": "/root",
+  "reviewer": "/root/sol_readiness_correspondence",
+  "reviewed_source_manifest_sha256": "2d33fba1e6985b78b193559cf4e1f597d57d24a8ea57f2858823848cff5c370e",
+  "results": {
+    "isolated_strict_verified": 193,
+    "integrated_strict_verified": 193,
+    "proof_errors": 0,
+    "isolated_tests_passed": 16,
+    "integrated_tests_passed": 16,
+    "clippy": "passed",
+    "format": "passed",
+    "existing_obligation_clone_warnings": 9
+  },
+  "independent_review": "Source/contracts/callers and parent-produced logs inspected; no independent execution claimed.",
+  "artifacts": {
+    "audit.md": "fa2e358c59e15eca1b20ca713a3b7a05a9b7f70c5207491fb076ca36826a6ed8",
+    "clippy.txt": "5528a2fbd9d1f3665c5254d3e8fa5fc3d591275381fb7c8869fa9ffffdbfb89b",
+    "commands.txt": "b10e16a8711e397889b514d673550ac8979bfeb82f66ddf9b7b6b9d8676835f1",
+    "format.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "independent-review.txt": "4ed9da0ceb38c9582fa159f391c9a40a5291b4cfecb91c9a8bcb772d1b77efc7",
+    "source-sha256.txt": "2d33fba1e6985b78b193559cf4e1f597d57d24a8ea57f2858823848cff5c370e",
+    "tests-integrated.txt": "14da8351c1b8984da6ba444979cfefcb84bc1b69264884e4d81539593b55bc3f",
+    "tests-isolated.txt": "2a5c815c85d6365911d6931ffdec734165f5bcab567ee6cf4023918dad0de679",
+    "verus-integrated.txt": "0e45cb4908f36aeee307c1aa710a51c5f26e066d009e44493f66f6c051b8db74",
+    "verus-isolated.txt": "2e552c1502a1b6711dbb2542f580828eda9b51a461ce1afd2d9c7e5a835c9ce8"
+  }
+}

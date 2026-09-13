@@ -34,7 +34,12 @@ impl SecurityEvidence {
             #[trigger] crate::binding::candidate_fresh(
                 self.spec_artifacts()[index].spec_candidate(), requested))
         && match self.spec_review() {
-            Some(review) => crate::binding::candidate_fresh(review.spec_candidate(), requested),
+            Some(review) => {
+                crate::binding::candidate_fresh(review.spec_candidate(), requested)
+                    && (forall |index: int| 0 <= index < review.spec_findings().len() ==>
+                        #[trigger] crate::binding::candidate_fresh(
+                            review.spec_findings()[index].spec_candidate(), requested))
+            }
             None => true,
         }
     }
@@ -93,11 +98,9 @@ impl SecurityEvidence {
     /// Borrows independently supplied external review evidence, when present.
     #[must_use]
     pub const fn review(&self) -> (result: Option<&IndependentSecurityReview>)
-        ensures match (result, self.spec_review()) {
-            (Some(actual), Some(expected)) =>
-                actual.spec_candidate() == expected.spec_candidate(),
-            (None, None) => true,
-            _ => false,
+        ensures match result {
+            Some(actual) => self.spec_review() == Some(*actual),
+            None => self.spec_review() == None,
         },
     {
         self.review.as_ref()

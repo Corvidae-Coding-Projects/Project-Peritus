@@ -1,0 +1,1641 @@
+--- a/src/binding.rs
++++ b/src/binding.rs
+@@ -17,6 +17,42 @@
+ }
+ 
+ impl KnowledgeBinding {
++    #[verifier::type_invariant]
++    pub(crate) open spec fn invariant(&self) -> bool { self.spec_well_formed() }
++
++    /// Roles for which a knowledge binding is accepted.
++    pub open spec fn role_supported(role: HarnessRole) -> bool {
++        matches!(role, HarnessRole::Writer | HarnessRole::Reviewer | HarnessRole::Fixer)
++    }
++
++    /// Intrinsic admitted shape; caller allocation bounds are not retained in this type.
++    pub open spec fn spec_well_formed(&self) -> bool {
++        Self::role_supported(self.spec_role()) && self.spec_creation_sequence() > 0
++            && self.spec_sources().len() > 0 && crate::model::sources_canonical(self.spec_sources())
++    }
++
++    /// Exact constructor admission, without adding a candidate checkpoint restriction.
++    pub open spec fn inputs_valid(
++        role: HarnessRole, creation_sequence: u64, sources: Seq<SourceDigest>, limits: KnowledgeLimits,
++    ) -> bool {
++        Self::role_supported(role) && creation_sequence > 0
++            && crate::model::sources_admitted(sources, limits.spec_max_sources_per_section(), false)
++    }
++
++    /// Exact failure precedence and details from the supplied constructor inputs.
++    pub open spec fn construction_error(
++        role: HarnessRole, creation_sequence: u64, sources: Seq<SourceDigest>, limits: KnowledgeLimits,
++        error: KnowledgeError,
++    ) -> bool {
++        if !Self::role_supported(role) {
++            error.spec_plain(KnowledgeErrorKind::UnsupportedRole)
++        } else if creation_sequence == 0 {
++            error.spec_plain(KnowledgeErrorKind::ZeroCreationSequence)
++        } else {
++            crate::model::sources_validation_error(sources, limits.spec_max_sources_per_section(), false, error)
++        }
++    }
++
+     /// Logical view of the candidate provenance.
+     pub closed spec fn spec_candidate(&self) -> CandidateIdentity { self.candidate }
+ 
+@@ -50,12 +86,13 @@
+         sources: Vec<SourceDigest>,
+         limits: KnowledgeLimits,
+     ) -> (result: Result<Self, KnowledgeError>)
+-        ensures match result {
++        ensures result.is_ok() == Self::inputs_valid(role, creation_sequence, sources@, limits),
++            match result {
+             Ok(value) => value.spec_candidate() == candidate
+                 && value.spec_role() == role
+                 && value.spec_creation_sequence() == creation_sequence
+-                && value.spec_sources() == sources@,
+-            Err(_) => true,
++                && value.spec_sources() == sources@ && value.spec_well_formed(),
++            Err(error) => Self::construction_error(role, creation_sequence, sources@, limits, error),
+         },
+     {
+         if !supported_role(role) {
+@@ -108,6 +145,7 @@
+     fn clone(&self) -> (result: Self)
+         ensures Self::clone_equivalent(self, &result),
+     {
++        proof { use_type_invariant(self); }
+         Self {
+             candidate: self.candidate,
+             role: self.role,
+@@ -117,7 +155,9 @@
+     }
+ }
+ 
+-pub const fn supported_role(role: HarnessRole) -> bool {
++pub const fn supported_role(role: HarnessRole) -> (supported: bool)
++    ensures supported == KnowledgeBinding::role_supported(role),
++{
+     matches!(role, HarnessRole::Writer | HarnessRole::Reviewer | HarnessRole::Fixer)
+ }
+ 
+--- a/src/change.rs
++++ b/src/change.rs
+@@ -48,6 +48,14 @@
+ }
+ 
+ impl CurrentKnowledgeState {
++    #[verifier::type_invariant]
++    pub(crate) open spec fn invariant(&self) -> bool { self.spec_well_formed() }
++
++    /// The admitted catalog is nonempty and strictly ordered by exact source identity.
++    pub open spec fn spec_well_formed(&self) -> bool {
++        self.spec_sources().len() > 0 && crate::model::sources_canonical(self.spec_sources())
++    }
++
+     /// Logical view of the exact current candidate.
+     pub closed spec fn spec_candidate(&self) -> CandidateIdentity { self.candidate }
+ 
+@@ -69,10 +77,14 @@
+         sources: Vec<SourceDigest>,
+         limits: KnowledgeLimits,
+     ) -> (result: Result<Self, KnowledgeError>)
+-        ensures match result {
+-            Ok(value) => value.spec_candidate() == candidate && value.spec_sources() == sources@,
+-            Err(_) => true,
+-        },
++        ensures result.is_ok() == crate::model::sources_admitted(
++                sources@, limits.spec_max_catalog_sources(), false),
++            match result {
++                Ok(value) => value.spec_candidate() == candidate && value.spec_sources() == sources@
++                    && value.spec_well_formed(),
++                Err(error) => crate::model::sources_validation_error(
++                    sources@, limits.spec_max_catalog_sources(), false, error),
++            },
+     {
+         crate::source::validate_sources(sources.as_slice(), limits.max_catalog_sources(), false)?;
+         Ok(Self { candidate, sources })
+@@ -128,6 +140,7 @@
+     fn clone(&self) -> (result: Self)
+         ensures Self::clone_equivalent(self, &result),
+     {
++        proof { use_type_invariant(self); }
+         Self { candidate: self.candidate, sources: self.sources.clone() }
+     }
+ }
+@@ -141,6 +154,28 @@
+ }
+ 
+ impl InvalidationRequest {
++    #[verifier::type_invariant]
++    pub(crate) open spec fn invariant(&self) -> bool {
++        Self::inputs_valid(self.spec_change(), self.spec_affected_sections())
++    }
++
++    /// Exact change-shape and canonical target admission.
++    pub open spec fn inputs_valid(change: KnowledgeChange, affected: Seq<KnowledgeSectionId>) -> bool {
++        (change.spec_is_user_clarification() == (affected.len() > 0))
++            && crate::model::id_members_valid(affected, None)
++    }
++
++    /// Exact change-shape errors take precedence over the first invalid identity pair.
++    pub open spec fn construction_error(
++        change: KnowledgeChange, affected: Seq<KnowledgeSectionId>, error: KnowledgeError,
++    ) -> bool {
++        if change.spec_is_user_clarification() && affected.len() == 0 {
++            error.spec_plain(KnowledgeErrorKind::EmptyCollection)
++        } else if !change.spec_is_user_clarification() && affected.len() > 0 {
++            error.spec_plain(KnowledgeErrorKind::InvalidChangeRequest)
++        } else { crate::model::id_collection_error(affected, None, error) }
++    }
++
+     /// Logical view of the complete current observation.
+     pub closed spec fn spec_state(&self) -> CurrentKnowledgeState { self.state }
+ 
+@@ -169,41 +204,22 @@
+         change: KnowledgeChange,
+         affected_sections: Vec<KnowledgeSectionId>,
+     ) -> (result: Result<Self, KnowledgeError>)
+-        ensures match result {
++        ensures result.is_ok() == Self::inputs_valid(change, affected_sections@),
++            match result {
+             Ok(value) => value.spec_state() == state
+                 && value.spec_change() == change
+                 && value.spec_affected_sections() == affected_sections@,
+-            Err(_) => true,
++            Err(error) => Self::construction_error(change, affected_sections@, error),
+         },
+     {
+-        if change == KnowledgeChange::UserClarification {
++        if change.is_user_clarification() {
+             if affected_sections.is_empty() {
+                 return Err(KnowledgeError::plain(KnowledgeErrorKind::EmptyCollection));
+             }
+         } else if !affected_sections.is_empty() {
+             return Err(KnowledgeError::plain(KnowledgeErrorKind::InvalidChangeRequest));
+         }
+-        let mut index = 0;
+-        while index < affected_sections.len()
+-            invariant index <= affected_sections.len(),
+-            decreases affected_sections.len() - index,
+-        {
+-            if index > 0 {
+-                if affected_sections[index - 1] == affected_sections[index] {
+-                    return Err(KnowledgeError::section(
+-                        KnowledgeErrorKind::DuplicateValue,
+-                        affected_sections[index],
+-                    ));
+-                }
+-                if affected_sections[index - 1] > affected_sections[index] {
+-                    return Err(KnowledgeError::section(
+-                        KnowledgeErrorKind::NonCanonicalOrder,
+-                        affected_sections[index],
+-                    ));
+-                }
+-            }
+-            index += 1;
+-        }
++        crate::identity::validate_section_ids(affected_sections.as_slice(), None)?;
+         Ok(Self { state, change, affected_sections })
+     }
+ 
+@@ -273,6 +289,7 @@
+     fn clone(&self) -> (result: Self)
+         ensures Self::clone_equivalent(self, &result),
+     {
++        proof { use_type_invariant(self); }
+         Self {
+             state: self.state.clone(),
+             change: self.change,
+--- a/src/error.rs
++++ b/src/error.rs
+@@ -55,19 +55,66 @@
+ }
+ 
+ impl KnowledgeError {
+-    pub(crate) const fn plain(kind: KnowledgeErrorKind) -> Self {
++    /// Exact error category.
++    pub closed spec fn spec_kind(&self) -> KnowledgeErrorKind { self.kind }
++    /// Exact optional section identity.
++    pub closed spec fn spec_section_id(&self) -> Option<KnowledgeSectionId> { self.section_id }
++    /// Exact optional source identity.
++    pub closed spec fn spec_source_id(&self) -> Option<KnowledgeSourceId> { self.source_id }
++    /// Exact optional expected bound or sequence.
++    pub closed spec fn spec_expected(&self) -> Option<u64> { self.expected }
++    /// Exact optional observed bound or sequence.
++    pub closed spec fn spec_actual(&self) -> Option<u64> { self.actual }
++
++    /// A category-only error with every optional detail absent.
++    pub open spec fn spec_plain(&self, kind: KnowledgeErrorKind) -> bool {
++        self.spec_kind() == kind && self.spec_section_id().is_none()
++            && self.spec_source_id().is_none() && self.spec_expected().is_none()
++            && self.spec_actual().is_none()
++    }
++
++    /// An error retaining exactly the supplied section identity.
++    pub open spec fn spec_section(&self, kind: KnowledgeErrorKind, id: KnowledgeSectionId) -> bool {
++        self.spec_kind() == kind && self.spec_section_id() == Some(id)
++            && self.spec_source_id().is_none() && self.spec_expected().is_none()
++            && self.spec_actual().is_none()
++    }
++
++    /// An error retaining exactly the supplied source identity.
++    pub open spec fn spec_source(&self, kind: KnowledgeErrorKind, id: KnowledgeSourceId) -> bool {
++        self.spec_kind() == kind && self.spec_section_id().is_none()
++            && self.spec_source_id() == Some(id) && self.spec_expected().is_none()
++            && self.spec_actual().is_none()
++    }
++
++    /// An error retaining exactly the expected and observed numbers.
++    pub open spec fn spec_numbers(&self, kind: KnowledgeErrorKind, expected: u64, actual: u64) -> bool {
++        self.spec_kind() == kind && self.spec_section_id().is_none()
++            && self.spec_source_id().is_none() && self.spec_expected() == Some(expected)
++            && self.spec_actual() == Some(actual)
++    }
++
++    pub(crate) const fn plain(kind: KnowledgeErrorKind) -> (value: Self)
++        ensures value.spec_plain(kind),
++    {
+         Self { kind, section_id: None, source_id: None, expected: None, actual: None }
+     }
+ 
+-    pub(crate) const fn section(kind: KnowledgeErrorKind, section_id: KnowledgeSectionId) -> Self {
++    pub(crate) const fn section(kind: KnowledgeErrorKind, section_id: KnowledgeSectionId) -> (value: Self)
++        ensures value.spec_section(kind, section_id),
++    {
+         Self { kind, section_id: Some(section_id), source_id: None, expected: None, actual: None }
+     }
+ 
+-    pub(crate) const fn source(kind: KnowledgeErrorKind, source_id: KnowledgeSourceId) -> Self {
++    pub(crate) const fn source(kind: KnowledgeErrorKind, source_id: KnowledgeSourceId) -> (value: Self)
++        ensures value.spec_source(kind, source_id),
++    {
+         Self { kind, section_id: None, source_id: Some(source_id), expected: None, actual: None }
+     }
+ 
+-    pub(crate) const fn numbers(kind: KnowledgeErrorKind, expected: u64, actual: u64) -> Self {
++    pub(crate) const fn numbers(kind: KnowledgeErrorKind, expected: u64, actual: u64) -> (value: Self)
++        ensures value.spec_numbers(kind, expected, actual),
++    {
+         Self {
+             kind,
+             section_id: None,
+@@ -79,23 +126,33 @@
+ 
+     /// Stable failure category.
+     #[must_use]
+-    pub const fn kind(&self) -> KnowledgeErrorKind { self.kind }
++    pub const fn kind(&self) -> (value: KnowledgeErrorKind)
++        ensures value == self.spec_kind(),
++    { self.kind }
+ 
+     /// Relevant section identity, when present.
+     #[must_use]
+-    pub const fn section_id(&self) -> Option<KnowledgeSectionId> { self.section_id }
++    pub const fn section_id(&self) -> (value: Option<KnowledgeSectionId>)
++        ensures value == self.spec_section_id(),
++    { self.section_id }
+ 
+     /// Relevant source identity, when present.
+     #[must_use]
+-    pub const fn source_id(&self) -> Option<KnowledgeSourceId> { self.source_id }
++    pub const fn source_id(&self) -> (value: Option<KnowledgeSourceId>)
++        ensures value == self.spec_source_id(),
++    { self.source_id }
+ 
+     /// Expected bound or sequence, when present.
+     #[must_use]
+-    pub const fn expected(&self) -> Option<u64> { self.expected }
++    pub const fn expected(&self) -> (value: Option<u64>)
++        ensures value == self.spec_expected(),
++    { self.expected }
+ 
+     /// Observed bound or sequence, when present.
+     #[must_use]
+-    pub const fn actual(&self) -> Option<u64> { self.actual }
++    pub const fn actual(&self) -> (value: Option<u64>)
++        ensures value == self.spec_actual(),
++    { self.actual }
+ }
+ 
+ } // verus!
+--- a/src/identity/collection.rs
++++ b/src/identity/collection.rs
+@@ -0,0 +1,62 @@
++//! Production validation of canonical section identity collections.
++
++use crate::{KnowledgeError, KnowledgeErrorKind, KnowledgeSectionId};
++use core::cmp::Ordering;
++use vstd::prelude::*;
++
++verus! {
++
++pub fn validate_section_ids(
++    ids: &[KnowledgeSectionId], excluded: Option<KnowledgeSectionId>,
++) -> (result: Result<(), KnowledgeError>)
++    ensures result.is_ok() == crate::model::id_members_valid(ids@, excluded),
++        match result {
++            Ok(()) => true,
++            Err(error) => crate::model::id_collection_error(ids@, excluded, error),
++        },
++{
++    let mut index = 0;
++    while index < ids.len()
++        invariant index <= ids.len(),
++            crate::model::id_members_valid_through(ids@, excluded, index as nat),
++        decreases ids.len() - index,
++    {
++        match excluded {
++            Some(id) if ids[index].matches(&id) => {
++                assert(!crate::model::id_members_valid(ids@, excluded));
++                let error = KnowledgeError::section(KnowledgeErrorKind::SelfDependency, id);
++                assert(crate::model::id_collection_error(ids@, excluded, error)) by {
++                    assert(crate::model::id_first_error(ids@, excluded, index as int, error));
++                }
++                return Err(error);
++            }
++            _ => {}
++        }
++        if index > 0 {
++            match ids[index - 1].canonical_order(&ids[index]) {
++                Ordering::Equal => {
++                    assert(!crate::model::id_members_valid(ids@, excluded));
++                    let error = KnowledgeError::section(KnowledgeErrorKind::DuplicateValue, ids[index]);
++                    assert(crate::model::id_collection_error(ids@, excluded, error)) by {
++                        assert(crate::model::id_first_error(ids@, excluded, index as int, error));
++                    }
++                    return Err(error);
++                }
++                Ordering::Greater => {
++                    assert(!crate::model::id_members_valid(ids@, excluded));
++                    let error = KnowledgeError::section(KnowledgeErrorKind::NonCanonicalOrder, ids[index]);
++                    assert(crate::model::id_collection_error(ids@, excluded, error)) by {
++                        assert(crate::model::id_first_error(ids@, excluded, index as int, error));
++                    }
++                    return Err(error);
++                }
++                Ordering::Less => {}
++            }
++        }
++        assert(crate::model::id_members_valid_through(ids@, excluded, index as nat + 1));
++        index += 1;
++    }
++    Ok(())
++}
++
++} // verus!
+--- a/src/identity.rs
++++ b/src/identity.rs
+@@ -1,4 +1,7 @@
+ //! Stable caller-supplied knowledge identities.
++
++mod collection;
++pub use collection::validate_section_ids;
+ 
+ use crate::{KnowledgeError, KnowledgeErrorKind};
+ use core::cmp::Ordering;
+@@ -38,7 +41,7 @@
+             result.is_ok() == (exists |index: int| 0 <= index < 16 && bytes[index] != 0),
+             match result {
+                 Ok(value) => value.spec_bytes() == bytes,
+-                Err(_) => true,
++                Err(error) => error.spec_plain(KnowledgeErrorKind::ZeroIdentifier),
+             },
+     {
+         let mut index = 0;
+@@ -113,6 +116,17 @@
+         self.spec_bytes() == other.spec_bytes()
+     }
+ 
++    /// Exact canonical lexicographic order of every identity byte.
++    pub open spec fn spec_order(&self, other: &Self) -> Ordering {
++        peritus_types::canonical_byte_order_from(self.spec_bytes()@, other.spec_bytes()@, 0)
++    }
++
++    pub(crate) fn canonical_order(&self, other: &Self) -> (order: Ordering)
++        ensures order == self.spec_order(other),
++    {
++        compare_bytes_from(self.as_bytes(), other.as_bytes(), 0)
++    }
++
+     /// Creates a nonzero source identity.
+     ///
+     /// # Errors
+@@ -123,7 +137,7 @@
+             result.is_ok() == (exists |index: int| 0 <= index < 16 && bytes[index] != 0),
+             match result {
+                 Ok(value) => value.spec_bytes() == bytes,
+-                Err(_) => true,
++                Err(error) => error.spec_plain(KnowledgeErrorKind::ZeroIdentifier),
+             },
+     {
+         let mut index = 0;
+--- a/src/limits.rs
++++ b/src/limits.rs
+@@ -15,6 +15,17 @@
+ }
+ 
+ impl KnowledgeLimits {
++    /// Exact maximum number of snapshot sections.
++    pub closed spec fn spec_max_sections(&self) -> usize { self.sections }
++    /// Exact maximum number of catalog sources.
++    pub closed spec fn spec_max_catalog_sources(&self) -> usize { self.catalog_sources }
++    /// Exact maximum number of sources on one binding.
++    pub closed spec fn spec_max_sources_per_section(&self) -> usize { self.sources_per_section }
++    /// Exact maximum number of direct section dependencies.
++    pub closed spec fn spec_max_dependencies_per_section(&self) -> usize {
++        self.dependencies_per_section
++    }
++
+     /// Creates nonzero knowledge bounds.
+     ///
+     /// # Errors
+@@ -25,7 +36,17 @@
+         max_catalog_sources: usize,
+         max_sources_per_section: usize,
+         max_dependencies_per_section: usize,
+-    ) -> Result<Self, KnowledgeError> {
++    ) -> (result: Result<Self, KnowledgeError>)
++        ensures result.is_ok() == (max_sections > 0 && max_catalog_sources > 0
++            && max_sources_per_section > 0 && max_dependencies_per_section > 0),
++            match result {
++                Ok(value) => value.spec_max_sections() == max_sections
++                    && value.spec_max_catalog_sources() == max_catalog_sources
++                    && value.spec_max_sources_per_section() == max_sources_per_section
++                    && value.spec_max_dependencies_per_section() == max_dependencies_per_section,
++                Err(error) => error.spec_plain(KnowledgeErrorKind::InvalidLimit),
++            },
++    {
+         if max_sections == 0
+             || max_catalog_sources == 0
+             || max_sources_per_section == 0
+@@ -44,19 +65,27 @@
+ 
+     /// Maximum sections in one role snapshot.
+     #[must_use]
+-    pub const fn max_sections(self) -> usize { self.sections }
++    pub const fn max_sections(self) -> (value: usize)
++        ensures value == self.spec_max_sections(),
++    { self.sections }
+ 
+     /// Maximum distinct sources in the complete current-state catalog.
+     #[must_use]
+-    pub const fn max_catalog_sources(self) -> usize { self.catalog_sources }
++    pub const fn max_catalog_sources(self) -> (value: usize)
++        ensures value == self.spec_max_catalog_sources(),
++    { self.catalog_sources }
+ 
+     /// Maximum exact source digests bound to one section.
+     #[must_use]
+-    pub const fn max_sources_per_section(self) -> usize { self.sources_per_section }
++    pub const fn max_sources_per_section(self) -> (value: usize)
++        ensures value == self.spec_max_sources_per_section(),
++    { self.sources_per_section }
+ 
+     /// Maximum direct section dependencies.
+     #[must_use]
+-    pub const fn max_dependencies_per_section(self) -> usize {
++    pub const fn max_dependencies_per_section(self) -> (value: usize)
++        ensures value == self.spec_max_dependencies_per_section(),
++    {
+         self.dependencies_per_section
+     }
+ }
+--- a/src/model/admission/sections.rs
++++ b/src/model/admission/sections.rs
+@@ -0,0 +1,52 @@
++//! Exact canonical section-identity collection admission.
++
++#[cfg(verus_only)]
++use crate::{KnowledgeError, KnowledgeErrorKind, KnowledgeSectionId};
++#[cfg(verus_only)]
++use core::cmp::Ordering;
++use vstd::prelude::*;
++
++verus! {
++
++/// Every examined identity avoids the optional excluded section and is strictly ordered.
++pub open spec fn id_members_valid_through(
++    ids: Seq<KnowledgeSectionId>, excluded: Option<KnowledgeSectionId>, end: nat,
++) -> bool {
++    end <= ids.len()
++        && (forall |index: int| #![trigger ids[index]] 0 <= index < end ==> match excluded {
++            Some(id) => !ids[index].spec_matches(&id), None => true,
++        })
++        && (forall |index: int| 1 <= index < end ==>
++            #[trigger] ids[index - 1].spec_order(&ids[index]) == Ordering::Less)
++}
++
++/// Exact content admission independent of the caller's size and change-shape checks.
++pub open spec fn id_members_valid(
++    ids: Seq<KnowledgeSectionId>, excluded: Option<KnowledgeSectionId>,
++) -> bool { id_members_valid_through(ids, excluded, ids.len()) }
++
++/// The first rejected position, preserving self-reference before pair-order precedence.
++pub open spec fn id_first_error(
++    ids: Seq<KnowledgeSectionId>, excluded: Option<KnowledgeSectionId>, index: int,
++    error: KnowledgeError,
++) -> bool {
++    0 <= index < ids.len() && id_members_valid_through(ids, excluded, index as nat)
++        && if excluded.is_some() && ids[index].spec_matches(&excluded.unwrap()) {
++            error.spec_section(KnowledgeErrorKind::SelfDependency, excluded.unwrap())
++        } else {
++            index > 0 && match ids[index - 1].spec_order(&ids[index]) {
++                Ordering::Equal => error.spec_section(KnowledgeErrorKind::DuplicateValue, ids[index]),
++                Ordering::Greater => error.spec_section(KnowledgeErrorKind::NonCanonicalOrder, ids[index]),
++                Ordering::Less => false,
++            }
++        }
++}
++
++/// Exact first rejected member and its complete error detail.
++pub open spec fn id_collection_error(
++    ids: Seq<KnowledgeSectionId>, excluded: Option<KnowledgeSectionId>, error: KnowledgeError,
++) -> bool {
++    exists |index: int| #[trigger] id_first_error(ids, excluded, index, error)
++}
++
++} // verus!
+--- a/src/model/admission/snapshot.rs
++++ b/src/model/admission/snapshot.rs
+@@ -0,0 +1,114 @@
++//! Input-defined snapshot lineage, role, time, topology, and exact admission errors.
++
++#[cfg(verus_only)]
++use crate::{KnowledgeError, KnowledgeErrorKind, KnowledgeSection};
++#[cfg(verus_only)]
++use core::cmp::Ordering;
++#[cfg(verus_only)]
++use peritus_role::HarnessRole;
++#[cfg(verus_only)]
++use peritus_run_settlement::CandidateIdentity;
++use vstd::prelude::*;
++
++verus! {
++
++/// Existing snapshot policy permits older candidate content but requires the same run and workspace.
++pub open spec fn binding_valid(
++    candidate: CandidateIdentity, role: HarnessRole, section: KnowledgeSection,
++) -> bool {
++    section.spec_binding().spec_candidate().spec_same_lineage(&candidate)
++        && section.spec_binding().spec_role() == role
++        && section.spec_binding().spec_creation_sequence() <= candidate.spec_checkpoint_sequence()
++}
++
++/// All already examined bindings satisfy the supplied snapshot lineage, role, and time.
++pub open spec fn section_bindings_valid_through(
++    candidate: CandidateIdentity, role: HarnessRole, sections: Seq<KnowledgeSection>, end: nat,
++) -> bool {
++    end <= sections.len() && forall |index: int| 0 <= index < end ==>
++        #[trigger] binding_valid(candidate, role, sections[index])
++}
++
++/// Exact admission of the examined section prefix, before required references are checked.
++pub open spec fn sections_valid_through(
++    candidate: CandidateIdentity, role: HarnessRole, sections: Seq<KnowledgeSection>, end: nat,
++) -> bool {
++    crate::model::sections_canonical_through(sections, end)
++        && crate::model::dependencies_precede_through(sections, end)
++        && section_bindings_valid_through(candidate, role, sections, end)
++}
++
++/// Exact section validation independent of allocation bounds and required reference checks.
++pub open spec fn sections_valid(
++    candidate: CandidateIdentity, role: HarnessRole, sections: Seq<KnowledgeSection>,
++) -> bool { sections_valid_through(candidate, role, sections, sections.len()) }
++
++/// Error category and full identity from an invalid adjacent section pair.
++pub open spec fn section_order_error(
++    sections: Seq<KnowledgeSection>, index: int, error: KnowledgeError,
++) -> bool {
++    1 <= index < sections.len()
++        && match sections[index - 1].spec_id().spec_order(&sections[index].spec_id()) {
++            Ordering::Equal => error.spec_section(KnowledgeErrorKind::DuplicateValue, sections[index].spec_id()),
++            Ordering::Greater => error.spec_section(KnowledgeErrorKind::NonCanonicalOrder, sections[index].spec_id()),
++            Ordering::Less => false,
++        }
++}
++
++/// Exact per-binding failure precedence: lineage, role, then creation after checkpoint.
++pub open spec fn section_binding_error(
++    candidate: CandidateIdentity, role: HarnessRole, section: KnowledgeSection, error: KnowledgeError,
++) -> bool {
++    if !section.spec_binding().spec_candidate().spec_same_lineage(&candidate) {
++        error.spec_section(KnowledgeErrorKind::CandidateLineageMismatch, section.spec_id())
++    } else if section.spec_binding().spec_role() != role {
++        error.spec_section(KnowledgeErrorKind::RoleMismatch, section.spec_id())
++    } else {
++        section.spec_binding().spec_creation_sequence() > candidate.spec_checkpoint_sequence()
++            && error.spec_section(KnowledgeErrorKind::FutureKnowledge, section.spec_id())
++    }
++}
++
++/// First dependency that does not resolve to an earlier snapshot section.
++pub open spec fn section_dependency_error_at(
++    sections: Seq<KnowledgeSection>, index: int, dependency_index: int, error: KnowledgeError,
++) -> bool {
++    0 <= index < sections.len()
++        && 0 <= dependency_index < sections[index].spec_dependencies().len()
++        && (forall |prior: int| 0 <= prior < dependency_index ==>
++            crate::model::dependency_resolves_before(sections, index,
++                #[trigger] sections[index].spec_dependencies()[prior]))
++        && !crate::model::dependency_resolves_before(sections, index,
++            sections[index].spec_dependencies()[dependency_index])
++        && error.spec_section(KnowledgeErrorKind::InvalidDependency,
++            sections[index].spec_dependencies()[dependency_index])
++}
++
++/// Complete first dependency error for one supplied section.
++pub open spec fn section_dependency_error(
++    sections: Seq<KnowledgeSection>, index: int, error: KnowledgeError,
++) -> bool {
++    exists |dependency: int| #[trigger] section_dependency_error_at(sections, index, dependency, error)
++}
++
++/// First section failure, preserving order before binding before dependency checks.
++pub open spec fn section_validation_error_at(
++    candidate: CandidateIdentity, role: HarnessRole, sections: Seq<KnowledgeSection>, index: int,
++    error: KnowledgeError,
++) -> bool {
++    0 <= index < sections.len() && sections_valid_through(candidate, role, sections, index as nat)
++        && if index > 0 && sections[index - 1].spec_id().spec_order(&sections[index].spec_id()) != Ordering::Less {
++            section_order_error(sections, index, error)
++        } else if !binding_valid(candidate, role, sections[index]) {
++            section_binding_error(candidate, role, sections[index], error)
++        } else { section_dependency_error(sections, index, error) }
++}
++
++/// Complete exact error for validating the supplied section sequence.
++pub open spec fn sections_validation_error(
++    candidate: CandidateIdentity, role: HarnessRole, sections: Seq<KnowledgeSection>, error: KnowledgeError,
++) -> bool {
++    exists |index: int| #[trigger] section_validation_error_at(candidate, role, sections, index, error)
++}
++
++} // verus!
+--- a/src/model/admission.rs
++++ b/src/model/admission.rs
+@@ -0,0 +1,67 @@
++//! Input-defined source collection admission and exact failure precedence.
++
++#[cfg(verus_only)]
++use crate::{KnowledgeError, KnowledgeErrorKind, SourceDigest};
++#[cfg(verus_only)]
++use core::cmp::Ordering;
++mod sections;
++mod snapshot;
++#[cfg(verus_only)]
++pub use snapshot::{binding_valid, section_bindings_valid_through, sections_valid,
++    sections_valid_through, section_order_error, section_binding_error,
++    section_dependency_error_at, section_dependency_error, section_validation_error_at,
++    sections_validation_error};
++#[cfg(verus_only)]
++pub use sections::{id_members_valid, id_members_valid_through, id_first_error, id_collection_error};
++
++use vstd::prelude::*;
++
++verus! {
++
++/// Every adjacent complete source identity is in strict canonical order.
++pub open spec fn sources_canonical(sources: Seq<SourceDigest>) -> bool {
++    sources_canonical_through(sources, sources.len())
++}
++
++/// Canonical ordering of the already examined prefix.
++pub open spec fn sources_canonical_through(sources: Seq<SourceDigest>, end: nat) -> bool {
++    end <= sources.len() && forall |index: int| 1 <= index < end ==>
++        #[trigger] sources[index - 1].spec_source_id().spec_order(&sources[index].spec_source_id())
++            == Ordering::Less
++}
++
++/// Exact admission rule, including the caller's allocation and emptiness policy.
++pub open spec fn sources_admitted(
++    sources: Seq<SourceDigest>, maximum: usize, allow_empty: bool,
++) -> bool {
++    (allow_empty || sources.len() > 0) && sources.len() <= maximum && sources_canonical(sources)
++}
++
++/// Exact identity detail and category at the first noncanonical adjacent pair.
++pub open spec fn sources_first_bad_pair(
++    sources: Seq<SourceDigest>, index: int, error: KnowledgeError,
++) -> bool {
++    1 <= index < sources.len() && sources_canonical_through(sources, index as nat)
++        && match sources[index - 1].spec_source_id().spec_order(&sources[index].spec_source_id()) {
++            Ordering::Equal => error.spec_source(
++                KnowledgeErrorKind::DuplicateValue, sources[index].spec_source_id()),
++            Ordering::Greater => error.spec_source(
++                KnowledgeErrorKind::NonCanonicalOrder, sources[index].spec_source_id()),
++            Ordering::Less => false,
++        }
++}
++
++/// Exact error precedence: required emptiness, maximum length, then first bad pair.
++pub open spec fn sources_validation_error(
++    sources: Seq<SourceDigest>, maximum: usize, allow_empty: bool, error: KnowledgeError,
++) -> bool {
++    if !allow_empty && sources.len() == 0 {
++        error.spec_plain(KnowledgeErrorKind::EmptyCollection)
++    } else if sources.len() > maximum {
++        error.spec_numbers(KnowledgeErrorKind::LimitExceeded, maximum as u64, sources.len() as u64)
++    } else {
++        exists |index: int| #[trigger] sources_first_bad_pair(sources, index, error)
++    }
++}
++
++} // verus!
+--- a/src/model/topology.rs
++++ b/src/model/topology.rs
+@@ -88,7 +88,9 @@
+ ) -> bool {
+     match result {
+         Some(index) => index < sections.len()
+-            && sections[index as int].spec_id().spec_matches(&id),
++            && sections[index as int].spec_id().spec_matches(&id)
++            && (forall |prior: int| 0 <= prior < index ==>
++                !#[trigger] sections[prior].spec_id().spec_matches(&id)),
+         None => forall |index: int| 0 <= index < sections.len() ==>
+             !#[trigger] sections[index].spec_id().spec_matches(&id),
+     }
+--- a/src/model.rs
++++ b/src/model.rs
+@@ -1,8 +1,17 @@
+ //! Input-defined logical model for run-knowledge freshness and reuse.
+ 
++mod admission;
+ mod closure;
+ mod delta;
+ mod material;
++
++#[cfg(verus_only)]
++pub use admission::{sources_admitted, sources_canonical, sources_canonical_through,
++    sources_first_bad_pair, sources_validation_error, id_members_valid, id_members_valid_through,
++    id_first_error, id_collection_error, binding_valid, section_bindings_valid_through,
++    sections_valid, sections_valid_through, section_order_error, section_binding_error,
++    section_dependency_error_at, section_dependency_error, section_validation_error_at,
++    sections_validation_error};
+ 
+ #[cfg(verus_only)]
+ pub use material::{dependencies_match, first_prior_material_matches, section_material_matches, sources_match};
+--- a/src/section.rs
++++ b/src/section.rs
+@@ -20,6 +20,33 @@
+ }
+ 
+ impl KnowledgeSection {
++    #[verifier::type_invariant]
++    pub(crate) open spec fn invariant(&self) -> bool { self.spec_well_formed() }
++
++    /// Intrinsic dependency shape retained without the caller's allocation limit.
++    pub open spec fn spec_well_formed(&self) -> bool {
++        crate::model::id_members_valid(self.spec_dependencies(), Some(self.spec_id()))
++    }
++
++    /// Exact constructor admission for the supplied section identity and dependencies.
++    pub open spec fn inputs_valid(
++        id: KnowledgeSectionId, dependencies: Seq<KnowledgeSectionId>, limits: KnowledgeLimits,
++    ) -> bool {
++        dependencies.len() <= limits.spec_max_dependencies_per_section()
++            && crate::model::id_members_valid(dependencies, Some(id))
++    }
++
++    /// Exact constructor errors, checking the size bound before identity content.
++    pub open spec fn construction_error(
++        id: KnowledgeSectionId, dependencies: Seq<KnowledgeSectionId>, limits: KnowledgeLimits,
++        error: KnowledgeError,
++    ) -> bool {
++        if dependencies.len() > limits.spec_max_dependencies_per_section() {
++            error.spec_numbers(KnowledgeErrorKind::LimitExceeded,
++                limits.spec_max_dependencies_per_section() as u64, dependencies.len() as u64)
++        } else { crate::model::id_collection_error(dependencies, Some(id), error) }
++    }
++
+     /// Logical view of the stable section identity.
+     pub closed spec fn spec_id(&self) -> KnowledgeSectionId { self.id }
+ 
+@@ -87,13 +114,14 @@
+         dependencies: Vec<KnowledgeSectionId>,
+         limits: KnowledgeLimits,
+     ) -> (result: Result<Self, KnowledgeError>)
+-        ensures match result {
++        ensures result.is_ok() == Self::inputs_valid(id, dependencies@, limits),
++            match result {
+             Ok(value) => value.spec_id() == id
+                 && value.spec_kind() == kind
+                 && value.spec_section_digest() == section_digest
+                 && value.spec_binding() == binding
+-                && value.spec_dependencies() == dependencies@,
+-            Err(_) => true,
++                && value.spec_dependencies() == dependencies@ && value.spec_well_formed(),
++            Err(error) => Self::construction_error(id, dependencies@, limits, error),
+         },
+     {
+         if dependencies.len() > limits.max_dependencies_per_section() {
+@@ -103,30 +131,7 @@
+                 dependencies.len() as u64,
+             ));
+         }
+-        let mut index = 0;
+-        while index < dependencies.len()
+-            invariant index <= dependencies.len(),
+-            decreases dependencies.len() - index,
+-        {
+-            if dependencies[index] == id {
+-                return Err(KnowledgeError::section(KnowledgeErrorKind::SelfDependency, id));
+-            }
+-            if index > 0 {
+-                if dependencies[index - 1] == dependencies[index] {
+-                    return Err(KnowledgeError::section(
+-                        KnowledgeErrorKind::DuplicateValue,
+-                        dependencies[index],
+-                    ));
+-                }
+-                if dependencies[index - 1] > dependencies[index] {
+-                    return Err(KnowledgeError::section(
+-                        KnowledgeErrorKind::NonCanonicalOrder,
+-                        dependencies[index],
+-                    ));
+-                }
+-            }
+-            index += 1;
+-        }
++        crate::identity::validate_section_ids(dependencies.as_slice(), Some(id))?;
+         Ok(Self { id, kind, section_digest, binding, dependencies })
+     }
+ 
+@@ -190,6 +195,7 @@
+     fn clone(&self) -> (result: Self)
+         ensures Self::clone_equivalent(self, &result),
+     {
++        proof { use_type_invariant(self); }
+         Self {
+             id: self.id,
+             kind: self.kind,
+--- a/src/snapshot/validation.rs
++++ b/src/snapshot/validation.rs
+@@ -15,9 +15,12 @@
+     role: HarnessRole,
+     sections: &[KnowledgeSection],
+ ) -> (result: Result<(), KnowledgeError>)
+-    ensures result.is_ok() ==> crate::model::sections_canonical(sections@)
+-        && crate::model::section_ids_unique(sections@)
+-        && crate::model::dependencies_precede(sections@),
++    ensures result.is_ok() == crate::model::sections_valid(*candidate, role, sections@),
++        result.is_ok() ==> crate::model::section_ids_unique(sections@),
++        match result {
++            Ok(()) => true,
++            Err(error) => crate::model::sections_validation_error(*candidate, role, sections@, error),
++        },
+ {
+     let mut index = 0;
+     while index < sections.len()
+@@ -25,10 +28,15 @@
+             index <= sections.len(),
+             crate::model::sections_canonical_through(sections@, index as nat),
+             crate::model::dependencies_precede_through(sections@, index as nat),
++            crate::model::section_bindings_valid_through(*candidate, role, sections@, index as nat),
+         decreases sections.len() - index,
+     {
+         let section = &sections[index];
+-        validate_order(sections, index)?;
++        if let Err(error) = validate_order(sections, index) {
++            assert(!crate::model::sections_valid(*candidate, role, sections@));
++            proof { record_section_error(*candidate, role, sections@, index as int, error); }
++            return Err(error);
++        }
+         assert(crate::model::sections_canonical_through(
+             sections@, index as nat + 1)) by {
+             assert forall |ordered_index: int| 1 <= ordered_index < index + 1 implies
+@@ -43,21 +51,29 @@
+             }
+         }
+         if !section.binding().candidate().same_lineage(candidate) {
+-            return Err(KnowledgeError::section(
+-                KnowledgeErrorKind::CandidateLineageMismatch,
+-                section.id(),
+-            ));
+-        }
+-        if section.binding().role() != role {
+-            return Err(KnowledgeError::section(KnowledgeErrorKind::RoleMismatch, section.id()));
++            let error = KnowledgeError::section(KnowledgeErrorKind::CandidateLineageMismatch, section.id());
++            assert(!crate::model::binding_valid(*candidate, role, *section));
++            proof { record_section_error(*candidate, role, sections@, index as int, error); }
++            return Err(error);
++        }
++        if !crate::binding::roles_match(section.binding().role(), role) {
++            let error = KnowledgeError::section(KnowledgeErrorKind::RoleMismatch, section.id());
++            assert(!crate::model::binding_valid(*candidate, role, *section));
++            proof { record_section_error(*candidate, role, sections@, index as int, error); }
++            return Err(error);
+         }
+         if section.binding().creation_sequence() > candidate.checkpoint_sequence() {
+-            return Err(KnowledgeError::section(
+-                KnowledgeErrorKind::FutureKnowledge,
+-                section.id(),
+-            ));
+-        }
+-        validate_dependencies(sections, index)?;
++            let error = KnowledgeError::section(KnowledgeErrorKind::FutureKnowledge, section.id());
++            assert(!crate::model::binding_valid(*candidate, role, *section));
++            proof { record_section_error(*candidate, role, sections@, index as int, error); }
++            return Err(error);
++        }
++        assert(crate::model::binding_valid(*candidate, role, *section));
++        if let Err(error) = validate_dependencies(sections, index) {
++            assert(!crate::model::dependencies_precede(sections@));
++            proof { record_section_error(*candidate, role, sections@, index as int, error); }
++            return Err(error);
++        }
+         assert(crate::model::dependencies_precede_through(
+             sections@, index as nat + 1)) by {
+             assert forall |section_index: int, dependency: int|
+@@ -78,12 +94,22 @@
+                 }
+             }
+         }
++        assert(crate::model::section_bindings_valid_through(*candidate, role, sections@, index as nat + 1));
+         index += 1;
+     }
+     proof {
+         crate::model::canonical_implies_unique(sections@);
+     }
+     Ok(())
++}
++
++proof fn record_section_error(
++    candidate: CandidateIdentity, role: HarnessRole, sections: Seq<KnowledgeSection>, index: int,
++    error: KnowledgeError,
++)
++    requires crate::model::section_validation_error_at(candidate, role, sections, index, error),
++    ensures crate::model::sections_validation_error(candidate, role, sections, error),
++{
+ }
+ 
+ fn validate_order(
+@@ -94,6 +120,10 @@
+     ensures result.is_ok() == (index == 0
+         || sections@[index as int - 1].spec_id().spec_order(
+             &sections@[index as int].spec_id()) == Ordering::Less),
++        match result {
++            Ok(()) => true,
++            Err(error) => crate::model::section_order_error(sections@, index as int, error),
++        },
+ {
+     if index == 0 {
+         return Ok(());
+@@ -118,13 +148,17 @@
+     index: usize,
+ ) -> (result: Result<(), KnowledgeError>)
+     requires index < sections.len(),
+-    ensures result.is_ok() ==> forall |dependency: int|
++    ensures result.is_ok() == (forall |dependency: int|
+         0 <= dependency < sections@[index as int].spec_dependencies().len() ==>
+             crate::model::dependency_resolves_before(
+                 sections@,
+                 index as int,
+                 #[trigger] sections@[index as int].spec_dependencies()[dependency],
+-            ),
++            )),
++        match result {
++            Ok(()) => true,
++            Err(error) => crate::model::section_dependency_error(sections@, index as int, error),
++        },
+ {
+     let section = &sections[index];
+     let dependencies = section.dependencies();
+@@ -132,6 +166,7 @@
+     while dependency_index < dependencies.len()
+         invariant
+             dependency_index <= dependencies.len(),
++            index < sections.len(),
+             dependencies@ == section.spec_dependencies(),
+             *section == sections@[index as int],
+             forall |prior_dependency: int|
+@@ -152,10 +187,13 @@
+                 };
+             }
+             _ => {
+-                return Err(KnowledgeError::section(
+-                    KnowledgeErrorKind::InvalidDependency,
+-                    dependency,
+-                ));
++                assert(!crate::model::dependency_resolves_before(sections@, index as int, dependency));
++                let error = KnowledgeError::section(KnowledgeErrorKind::InvalidDependency, dependency);
++                assert(crate::model::section_dependency_error(sections@, index as int, error)) by {
++                    assert(crate::model::section_dependency_error_at(
++                        sections@, index as int, dependency_index as int, error));
++                }
++                return Err(error);
+             }
+         }
+         dependency_index += 1;
+--- a/src/snapshot.rs
++++ b/src/snapshot.rs
+@@ -27,7 +27,7 @@
+ impl RunKnowledgeSnapshot {
+     #[verifier::type_invariant]
+     pub(crate) open spec fn invariant(&self) -> bool {
+-        self.spec_topology_valid()
++        self.spec_well_formed()
+     }
+ 
+     /// Logical view of the snapshot candidate.
+@@ -65,6 +65,55 @@
+             self.spec_relevant_file_map(),
+             self.spec_requirement_ledger(),
+         )
++    }
++
++    /// All required references resolve to their exact expected section kinds.
++    pub open spec fn required_references_valid(
++        sections: Seq<KnowledgeSection>, repository_inventory: KnowledgeSectionId,
++        relevant_file_map: KnowledgeSectionId, requirement_ledger: KnowledgeSectionId,
++    ) -> bool {
++        crate::model::required_section_has_kind(sections, repository_inventory, KnowledgeSectionKind::RepositoryInventory)
++            && crate::model::required_section_has_kind(sections, relevant_file_map, KnowledgeSectionKind::RelevantFileMap)
++            && crate::model::required_section_has_kind(sections, requirement_ledger, KnowledgeSectionKind::LiteralRequirementLedger)
++    }
++
++    /// Exact constructor admission; nested source and dependency bounds were checked by their own constructors.
++    pub open spec fn inputs_valid(
++        candidate: CandidateIdentity, role: HarnessRole, repository_inventory: KnowledgeSectionId,
++        relevant_file_map: KnowledgeSectionId, requirement_ledger: KnowledgeSectionId,
++        sections: Seq<KnowledgeSection>, limits: KnowledgeLimits,
++    ) -> bool {
++        crate::KnowledgeBinding::role_supported(role) && 3 <= sections.len() <= limits.spec_max_sections()
++            && crate::model::sections_valid(candidate, role, sections)
++            && Self::required_references_valid(sections, repository_inventory, relevant_file_map, requirement_ledger)
++    }
++
++    /// All checked snapshot inputs and the resulting unique backward topology.
++    pub open spec fn spec_well_formed(&self) -> bool {
++        Self::inputs_valid(self.spec_candidate(), self.spec_role(), self.spec_repository_inventory(),
++            self.spec_relevant_file_map(), self.spec_requirement_ledger(), self.spec_sections(), self.spec_limits())
++            && self.spec_topology_valid()
++    }
++
++    /// Exact error precedence, including the first rejected section and complete detail fields.
++    pub open spec fn construction_error(
++        candidate: CandidateIdentity, role: HarnessRole, repository_inventory: KnowledgeSectionId,
++        relevant_file_map: KnowledgeSectionId, requirement_ledger: KnowledgeSectionId,
++        sections: Seq<KnowledgeSection>, limits: KnowledgeLimits, error: KnowledgeError,
++    ) -> bool {
++        if !crate::KnowledgeBinding::role_supported(role) {
++            error.spec_plain(KnowledgeErrorKind::UnsupportedRole)
++        } else if sections.len() < 3 {
++            error.spec_plain(KnowledgeErrorKind::EmptyCollection)
++        } else if sections.len() > limits.spec_max_sections() {
++            error.spec_numbers(KnowledgeErrorKind::LimitExceeded,
++                limits.spec_max_sections() as u64, sections.len() as u64)
++        } else if !crate::model::sections_valid(candidate, role, sections) {
++            crate::model::sections_validation_error(candidate, role, sections, error)
++        } else {
++            !Self::required_references_valid(sections, repository_inventory, relevant_file_map, requirement_ledger)
++                && error.spec_plain(KnowledgeErrorKind::InvalidRequiredSection)
++        }
+     }
+ 
+     /// Semantic fields preserved by cloning.
+@@ -95,7 +144,9 @@
+         sections: Vec<KnowledgeSection>,
+         limits: KnowledgeLimits,
+     ) -> (result: Result<Self, KnowledgeError>)
+-        ensures match result {
++        ensures result.is_ok() == Self::inputs_valid(candidate, role, repository_inventory,
++                relevant_file_map, requirement_ledger, sections@, limits),
++            match result {
+             Ok(value) => value.spec_candidate() == candidate
+                 && value.spec_role() == role
+                 && value.spec_repository_inventory() == repository_inventory
+@@ -103,8 +154,9 @@
+                 && value.spec_requirement_ledger() == requirement_ledger
+                 && value.spec_sections() == sections@
+                 && value.spec_limits() == limits
+-                && value.spec_topology_valid(),
+-            Err(_) => true,
++                && value.spec_well_formed(),
++            Err(error) => Self::construction_error(candidate, role, repository_inventory,
++                relevant_file_map, requirement_ledger, sections@, limits, error),
+         },
+     {
+         if !crate::binding::supported_role(role) {
+@@ -239,6 +291,15 @@
+                 self.spec_relevant_file_map(),
+                 self.spec_requirement_ledger(),
+             );
++            assert(crate::model::section_bindings_valid_through(
++                self.spec_candidate(), self.spec_role(), cloned_sections@, cloned_sections@.len())) by {
++                assert forall |index: int| 0 <= index < cloned_sections@.len() implies
++                    #[trigger] crate::model::binding_valid(self.spec_candidate(), self.spec_role(), cloned_sections@[index]) by {
++                    assert(KnowledgeSection::clone_equivalent(&self.spec_sections()[index], &cloned_sections@[index]));
++                    assert(crate::model::binding_valid(self.spec_candidate(), self.spec_role(), self.spec_sections()[index]));
++                }
++            }
++
+         }
+         Self {
+             candidate: self.candidate,
+--- a/src/source/validation.rs
++++ b/src/source/validation.rs
+@@ -0,0 +1,63 @@
++//! Checked source admission with exact size, order, and first-error contracts.
++
++use crate::{KnowledgeError, KnowledgeErrorKind, SourceDigest};
++use core::cmp::Ordering;
++use vstd::prelude::*;
++
++verus! {
++
++pub fn validate_sources(
++    sources: &[SourceDigest],
++    maximum: usize,
++    allow_empty: bool,
++) -> (result: Result<(), KnowledgeError>)
++    ensures result.is_ok() == crate::model::sources_admitted(sources@, maximum, allow_empty),
++        match result {
++            Ok(()) => true,
++            Err(error) => crate::model::sources_validation_error(sources@, maximum, allow_empty, error),
++        },
++{
++    if !allow_empty && sources.is_empty() {
++        return Err(KnowledgeError::plain(KnowledgeErrorKind::EmptyCollection));
++    }
++    if sources.len() > maximum {
++        return Err(KnowledgeError::numbers(
++            KnowledgeErrorKind::LimitExceeded, maximum as u64, sources.len() as u64));
++    }
++    let mut index = 0;
++    while index < sources.len()
++        invariant index <= sources.len(), sources.len() <= maximum,
++            allow_empty || sources.len() > 0,
++            crate::model::sources_canonical_through(sources@, index as nat),
++        decreases sources.len() - index,
++    {
++        if index > 0 {
++            let previous = sources[index - 1].source_id();
++            let current = sources[index].source_id();
++            match previous.canonical_order(&current) {
++                Ordering::Equal => {
++                    assert(!crate::model::sources_canonical(sources@));
++                    let error = KnowledgeError::source(KnowledgeErrorKind::DuplicateValue, current);
++                    assert(crate::model::sources_validation_error(sources@, maximum, allow_empty, error)) by {
++                        assert(crate::model::sources_first_bad_pair(sources@, index as int, error));
++                    }
++                    return Err(error);
++                }
++                Ordering::Greater => {
++                    assert(!crate::model::sources_canonical(sources@));
++                    let error = KnowledgeError::source(KnowledgeErrorKind::NonCanonicalOrder, current);
++                    assert(crate::model::sources_validation_error(sources@, maximum, allow_empty, error)) by {
++                        assert(crate::model::sources_first_bad_pair(sources@, index as int, error));
++                    }
++                    return Err(error);
++                }
++                Ordering::Less => {}
++            }
++        }
++        assert(crate::model::sources_canonical_through(sources@, index as nat + 1));
++        index += 1;
++    }
++    Ok(())
++}
++
++} // verus!
+--- a/src/source.rs
++++ b/src/source.rs
+@@ -1,6 +1,10 @@
+ //! Exact content digest for one stable source identity.
+ 
+-use crate::{KnowledgeError, KnowledgeErrorKind, KnowledgeSourceId};
++mod validation;
++
++pub use validation::validate_sources;
++
++use crate::KnowledgeSourceId;
+ use peritus_types::Sha256Digest;
+ use vstd::prelude::*;
+ 
+@@ -65,43 +69,4 @@
+     }
+ }
+ 
+-pub fn validate_sources(
+-    sources: &[SourceDigest],
+-    maximum: usize,
+-    allow_empty: bool,
+-) -> Result<(), KnowledgeError> {
+-    if !allow_empty && sources.is_empty() {
+-        return Err(KnowledgeError::plain(KnowledgeErrorKind::EmptyCollection));
+-    }
+-    if sources.len() > maximum {
+-        return Err(KnowledgeError::numbers(
+-            KnowledgeErrorKind::LimitExceeded,
+-            maximum as u64,
+-            sources.len() as u64,
+-        ));
+-    }
+-    let mut index = 0;
+-    while index < sources.len()
+-        invariant index <= sources.len(),
+-        decreases sources.len() - index,
+-    {
+-        if index > 0 {
+-            if sources[index - 1].source_id == sources[index].source_id {
+-                return Err(KnowledgeError::source(
+-                    KnowledgeErrorKind::DuplicateValue,
+-                    sources[index].source_id,
+-                ));
+-            }
+-            if sources[index - 1].source_id > sources[index].source_id {
+-                return Err(KnowledgeError::source(
+-                    KnowledgeErrorKind::NonCanonicalOrder,
+-                    sources[index].source_id,
+-                ));
+-            }
+-        }
+-        index += 1;
+-    }
+-    Ok(())
+-}
+-
+ } // verus!
+--- a/tests/admission.rs
++++ b/tests/admission.rs
+@@ -0,0 +1,195 @@
++//! Public admission and error precedence across the production knowledge constructors.
++
++mod support;
++
++use peritus_role::HarnessRole;
++use peritus_run_knowledge::{
++    CurrentKnowledgeState, InvalidationRequest, KnowledgeBinding, KnowledgeChange, KnowledgeError,
++    KnowledgeErrorKind, KnowledgeLimits, KnowledgeSection, KnowledgeSectionKind, KnowledgeSourceId,
++    SourceDigest,
++};
++use support::{candidate, digest, limits, section_id, source_id};
++
++fn assert_plain(error: KnowledgeError, kind: KnowledgeErrorKind) {
++    assert_eq!(error.kind(), kind);
++    assert_eq!(error.section_id(), None);
++    assert_eq!(error.source_id(), None);
++    assert_eq!(error.expected(), None);
++    assert_eq!(error.actual(), None);
++}
++
++fn bound_sources(ids: &[u8]) -> Vec<SourceDigest> {
++    ids.iter().map(|id| SourceDigest::new(source_id(*id), digest(*id))).collect()
++}
++
++#[test]
++fn every_limit_is_required_and_exact_maximum_values_are_retained() {
++    for zero in 0..4 {
++        let mut values = [usize::MAX; 4];
++        values[zero] = 0;
++        assert_plain(
++            KnowledgeLimits::new(values[0], values[1], values[2], values[3])
++                .expect_err("each bound must be nonzero"),
++            KnowledgeErrorKind::InvalidLimit,
++        );
++    }
++    let value = KnowledgeLimits::new(usize::MAX, 2, 3, 4).expect("nonzero limits");
++    assert_eq!(value.max_sections(), usize::MAX);
++    assert_eq!(value.max_catalog_sources(), 2);
++    assert_eq!(value.max_sources_per_section(), 3);
++    assert_eq!(value.max_dependencies_per_section(), 4);
++}
++
++#[test]
++fn binding_preserves_role_sequence_source_error_precedence_and_future_sequence_admission() {
++    let identity = candidate(20, 1, 3);
++    for role in [HarnessRole::Evaluator, HarnessRole::Evolver] {
++        assert_plain(
++            KnowledgeBinding::new(identity, role, 0, Vec::new(), limits())
++                .expect_err("role rejection precedes other invalid inputs"),
++            KnowledgeErrorKind::UnsupportedRole,
++        );
++    }
++    for role in [HarnessRole::Writer, HarnessRole::Reviewer, HarnessRole::Fixer] {
++        assert_plain(
++            KnowledgeBinding::new(identity, role, 0, Vec::new(), limits())
++                .expect_err("zero sequence precedes empty sources"),
++            KnowledgeErrorKind::ZeroCreationSequence,
++        );
++        assert_plain(
++            KnowledgeBinding::new(identity, role, 1, Vec::new(), limits())
++                .expect_err("sources required"),
++            KnowledgeErrorKind::EmptyCollection,
++        );
++        let value = KnowledgeBinding::new(identity, role, u64::MAX, bound_sources(&[1]), limits())
++            .expect("the binding constructor does not compare creation to candidate checkpoint");
++        assert_eq!(value.creation_sequence(), u64::MAX);
++        assert_eq!(*value.candidate(), identity);
++        assert_eq!(value.role(), role);
++        assert_eq!(value.clone(), value);
++    }
++}
++
++#[test]
++fn source_catalog_errors_retain_first_offending_identity_and_size_precedence() {
++    let identity = candidate(20, 1, 3);
++    let small = KnowledgeLimits::new(8, 2, 2, 2).expect("small bounds");
++    for binding in [false, true] {
++        let make = |ids: &[u8]| {
++            if binding {
++                KnowledgeBinding::new(identity, HarnessRole::Writer, 1, bound_sources(ids), small)
++                    .map(|_| ())
++            } else {
++                CurrentKnowledgeState::new(identity, bound_sources(ids), small).map(|_| ())
++            }
++        };
++        let size = make(&[2, 1, 1]).expect_err("size must precede order and duplicate errors");
++        assert_eq!(size.kind(), KnowledgeErrorKind::LimitExceeded);
++        assert_eq!(size.expected(), Some(2));
++        assert_eq!(size.actual(), Some(3));
++        assert_eq!(size.source_id(), None);
++        assert_eq!(size.section_id(), None);
++        for (ids, kind) in [
++            ([1, 1], KnowledgeErrorKind::DuplicateValue),
++            ([2, 1], KnowledgeErrorKind::NonCanonicalOrder),
++        ] {
++            let error = make(&ids).expect_err("noncanonical sources");
++            assert_eq!(error.kind(), kind);
++            assert_eq!(error.source_id(), Some(source_id(1)));
++            assert_eq!(error.section_id(), None);
++            assert_eq!(error.expected(), None);
++            assert_eq!(error.actual(), None);
++        }
++    }
++    let error = CurrentKnowledgeState::new(identity, bound_sources(&[2, 1, 1]), limits())
++        .expect_err("first descending pair precedes later duplicate");
++    assert_eq!(error.kind(), KnowledgeErrorKind::NonCanonicalOrder);
++    assert_eq!(error.source_id(), Some(source_id(1)));
++}
++
++#[test]
++fn source_order_uses_all_sixteen_bytes_and_matches_derived_order() {
++    let identity = candidate(20, 1, 3);
++    for index in 0..16 {
++        let mut lower = [1; 16];
++        let mut upper = lower;
++        lower[index] = 2;
++        upper[index] = 3;
++        let lower = KnowledgeSourceId::new(lower).expect("lower");
++        let upper = KnowledgeSourceId::new(upper).expect("upper");
++        assert!(lower < upper);
++        let first = SourceDigest::new(lower, digest(1));
++        let last = SourceDigest::new(upper, digest(2));
++        let value = CurrentKnowledgeState::new(identity, vec![first, last], limits())
++            .expect("increasing complete identities");
++        assert_eq!(value.sources(), &[first, last]);
++        assert_eq!(value.clone(), value);
++        let error = CurrentKnowledgeState::new(identity, vec![last, first], limits())
++            .expect_err("decreasing at any identity byte");
++        assert_eq!(error.kind(), KnowledgeErrorKind::NonCanonicalOrder);
++        assert_eq!(error.source_id(), Some(lower));
++    }
++}
++
++#[test]
++fn section_and_request_validation_preserve_shape_size_and_member_error_precedence() {
++    let identity = candidate(20, 1, 3);
++    let binding =
++        KnowledgeBinding::new(identity, HarnessRole::Writer, 1, bound_sources(&[1]), limits())
++            .expect("binding");
++    let small = KnowledgeLimits::new(8, 8, 8, 1).expect("small dependency bound");
++    let make = |ids: &[u8], bounds| {
++        KnowledgeSection::new(
++            section_id(2),
++            KnowledgeSectionKind::DesignSection,
++            digest(11),
++            binding.clone(),
++            ids.iter().map(|id| section_id(*id)).collect(),
++            bounds,
++        )
++    };
++    let size = make(&[2, 2], small).expect_err("size precedes self-reference");
++    assert_eq!(size.kind(), KnowledgeErrorKind::LimitExceeded);
++    assert_eq!(size.expected(), Some(1));
++    assert_eq!(size.actual(), Some(2));
++    for (ids, kind, id) in [
++        (vec![3, 2], KnowledgeErrorKind::SelfDependency, 2),
++        (vec![3, 1, 2], KnowledgeErrorKind::NonCanonicalOrder, 1),
++        (vec![1, 1, 2], KnowledgeErrorKind::DuplicateValue, 1),
++    ] {
++        let error = make(&ids, limits()).expect_err("first invalid member");
++        assert_eq!(error.kind(), kind);
++        assert_eq!(error.section_id(), Some(section_id(id)));
++        assert_eq!(error.source_id(), None);
++        assert_eq!(error.expected(), None);
++        assert_eq!(error.actual(), None);
++    }
++    let state = CurrentKnowledgeState::new(identity, bound_sources(&[1]), limits()).expect("state");
++    assert_plain(
++        InvalidationRequest::new(state.clone(), KnowledgeChange::UserClarification, Vec::new())
++            .expect_err("clarification requires targets"),
++        KnowledgeErrorKind::EmptyCollection,
++    );
++    for change in [
++        KnowledgeChange::SameRevision,
++        KnowledgeChange::ConversationRevision,
++        KnowledgeChange::SourceChanged,
++        KnowledgeChange::CandidateRevision,
++        KnowledgeChange::ProviderFailure,
++    ] {
++        assert_plain(
++            InvalidationRequest::new(state.clone(), change, vec![section_id(2), section_id(1)])
++                .expect_err("change shape precedes noncanonical targets"),
++            KnowledgeErrorKind::InvalidChangeRequest,
++        );
++        InvalidationRequest::new(state.clone(), change, Vec::new()).expect("no targets allowed");
++    }
++    let error = InvalidationRequest::new(
++        state,
++        KnowledgeChange::UserClarification,
++        vec![section_id(2), section_id(1), section_id(1)],
++    )
++    .expect_err("first descending pair precedes later duplicate");
++    assert_eq!(error.kind(), KnowledgeErrorKind::NonCanonicalOrder);
++    assert_eq!(error.section_id(), Some(section_id(1)));
++}
+--- a/tests/snapshot_admission.rs
++++ b/tests/snapshot_admission.rs
+@@ -0,0 +1,180 @@
++//! Exact snapshot constructor policy and first-error regressions.
++
++mod support;
++
++use peritus_role::HarnessRole;
++use peritus_run_knowledge::{
++    CandidateIdentity, KnowledgeBinding, KnowledgeErrorKind, KnowledgeLimits, KnowledgeSection,
++    KnowledgeSectionKind, RunKnowledgeSnapshot, SourceDigest,
++};
++use peritus_types::{RunId, WorkspaceId};
++use support::{candidate, digest, limits, section_id, source_id};
++
++fn section(
++    identity: CandidateIdentity,
++    role: HarnessRole,
++    sequence: u64,
++    id: u8,
++    kind: KnowledgeSectionKind,
++    dependencies: &[u8],
++) -> KnowledgeSection {
++    let binding = KnowledgeBinding::new(
++        identity,
++        role,
++        sequence,
++        vec![
++            SourceDigest::new(source_id(1), digest(1)),
++            SourceDigest::new(source_id(2), digest(2)),
++        ],
++        limits(),
++    )
++    .expect("binding with independent bounds");
++    KnowledgeSection::new(
++        section_id(id),
++        kind,
++        digest(id),
++        binding,
++        dependencies.iter().map(|id| section_id(*id)).collect(),
++        limits(),
++    )
++    .expect("section with independent bounds")
++}
++
++fn base_sections(
++    identity: CandidateIdentity,
++    role: HarnessRole,
++    sequence: u64,
++) -> Vec<KnowledgeSection> {
++    vec![
++        section(identity, role, sequence, 1, KnowledgeSectionKind::RepositoryInventory, &[]),
++        section(identity, role, sequence, 2, KnowledgeSectionKind::RelevantFileMap, &[1]),
++        section(
++            identity,
++            role,
++            sequence,
++            3,
++            KnowledgeSectionKind::LiteralRequirementLedger,
++            &[1, 2],
++        ),
++    ]
++}
++
++fn make(
++    identity: CandidateIdentity,
++    role: HarnessRole,
++    sections: Vec<KnowledgeSection>,
++    bounds: KnowledgeLimits,
++) -> Result<RunKnowledgeSnapshot, peritus_run_knowledge::KnowledgeError> {
++    RunKnowledgeSnapshot::new(
++        identity,
++        role,
++        section_id(1),
++        section_id(2),
++        section_id(3),
++        sections,
++        bounds,
++    )
++}
++
++#[test]
++fn snapshot_checks_role_minimum_and_maximum_before_section_content() {
++    let identity = candidate(20, 1, 3);
++    let tiny = KnowledgeLimits::new(1, 1, 1, 1).expect("tiny limits");
++    let role = make(identity, HarnessRole::Evaluator, Vec::new(), tiny).expect_err("role first");
++    assert_eq!(role.kind(), KnowledgeErrorKind::UnsupportedRole);
++    assert_eq!(role.section_id(), None);
++    let minimum = make(
++        identity,
++        HarnessRole::Writer,
++        base_sections(identity, HarnessRole::Reviewer, 9).into_iter().take(2).collect(),
++        tiny,
++    )
++    .expect_err("minimum precedes maximum and bad bindings");
++    assert_eq!(minimum.kind(), KnowledgeErrorKind::EmptyCollection);
++    assert_eq!(minimum.expected(), None);
++    let maximum = make(
++        identity,
++        HarnessRole::Writer,
++        base_sections(identity, HarnessRole::Reviewer, 9),
++        tiny,
++    )
++    .expect_err("maximum precedes bad bindings");
++    assert_eq!(maximum.kind(), KnowledgeErrorKind::LimitExceeded);
++    assert_eq!(maximum.expected(), Some(1));
++    assert_eq!(maximum.actual(), Some(3));
++    assert_eq!(maximum.section_id(), None);
++}
++
++#[test]
++fn snapshot_retains_section_order_then_lineage_role_time_dependency_error_priority() {
++    let identity = candidate(20, 1, 3);
++    let outsider = CandidateIdentity::new(
++        RunId::new([43; 16]).expect("other run"),
++        WorkspaceId::new([42; 16]).expect("workspace"),
++        digest(21),
++        1,
++        3,
++    )
++    .expect("other lineage");
++    let mut duplicate = base_sections(identity, HarnessRole::Writer, 1);
++    duplicate[1] =
++        section(outsider, HarnessRole::Fixer, 9, 1, KnowledgeSectionKind::RelevantFileMap, &[]);
++    let error = make(identity, HarnessRole::Writer, duplicate, limits()).expect_err("order first");
++    assert_eq!(error.kind(), KnowledgeErrorKind::DuplicateValue);
++    assert_eq!(error.section_id(), Some(section_id(1)));
++    for (bound, role, sequence, dependencies, kind, detail) in [
++        (outsider, HarnessRole::Fixer, 9, vec![4], KnowledgeErrorKind::CandidateLineageMismatch, 1),
++        (identity, HarnessRole::Fixer, 9, vec![4], KnowledgeErrorKind::RoleMismatch, 1),
++        (identity, HarnessRole::Writer, 9, vec![4], KnowledgeErrorKind::FutureKnowledge, 1),
++        (identity, HarnessRole::Writer, 1, vec![4], KnowledgeErrorKind::InvalidDependency, 4),
++    ] {
++        let mut sections = base_sections(identity, HarnessRole::Writer, 1);
++        sections[0] = section(
++            bound,
++            role,
++            sequence,
++            1,
++            KnowledgeSectionKind::RepositoryInventory,
++            &dependencies,
++        );
++        let error = make(identity, HarnessRole::Writer, sections, limits())
++            .expect_err("first section failure");
++        assert_eq!(error.kind(), kind);
++        assert_eq!(error.section_id(), Some(section_id(detail)));
++        assert_eq!(error.source_id(), None);
++        assert_eq!(error.expected(), None);
++        assert_eq!(error.actual(), None);
++    }
++}
++
++#[test]
++fn snapshot_uses_its_own_checkpoint_without_reapplying_nested_allocation_bounds() {
++    let current = candidate(20, 1, 3);
++    let prior = candidate(10, 9, 1);
++    let sections = base_sections(prior, HarnessRole::Reviewer, 3);
++    let bounds =
++        KnowledgeLimits::new(3, 1, 1, 1).expect("one source and dependency per nested constructor");
++    let value = make(current, HarnessRole::Reviewer, sections.clone(), bounds)
++        .expect("snapshot only applies its section count bound to already admitted nested values");
++    assert_eq!(value.sections(), sections);
++    assert_eq!(*value.candidate(), current);
++    assert_eq!(*value.sections()[0].binding().candidate(), prior);
++    assert_eq!(value.sections()[0].binding().sources().len(), 2);
++    assert_eq!(value.sections()[2].dependencies().len(), 2);
++    assert_eq!(value.clone(), value);
++}
++
++#[test]
++fn required_reference_checks_follow_all_section_validation() {
++    let identity = candidate(20, 1, 3);
++    let mut sections = base_sections(identity, HarnessRole::Writer, 1);
++    sections[2] =
++        section(identity, HarnessRole::Writer, 1, 3, KnowledgeSectionKind::DesignSection, &[1, 2]);
++    let error =
++        make(identity, HarnessRole::Writer, sections, limits()).expect_err("wrong required kind");
++    assert_eq!(error.kind(), KnowledgeErrorKind::InvalidRequiredSection);
++    assert_eq!(error.section_id(), None);
++    assert_eq!(error.source_id(), None);
++    assert_eq!(error.expected(), None);
++    assert_eq!(error.actual(), None);
++}

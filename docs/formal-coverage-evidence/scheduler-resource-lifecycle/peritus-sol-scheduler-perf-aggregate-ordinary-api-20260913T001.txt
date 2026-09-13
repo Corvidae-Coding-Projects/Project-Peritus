@@ -1,0 +1,35 @@
+   Compiling serde_core v1.0.229
+   Compiling proc-macro2 v1.0.107
+   Compiling quote v1.0.47
+   Compiling foldhash v0.2.0
+   Compiling hashbrown v0.17.1
+   Compiling libc v0.2.189
+   Compiling cfg_aliases v0.2.2
+   Compiling nix v0.31.3
+   Compiling zmij v1.0.23
+   Compiling syn v3.0.3
+   Compiling equivalent v1.0.2
+   Compiling winnow v1.0.4
+   Compiling serde v1.0.229
+   Compiling bitflags v2.13.1
+   Compiling serde_json v1.0.149
+   Compiling toml_parser v1.1.3+spec-1.1.0
+   Compiling indexmap v2.14.0
+   Compiling serde_derive v1.0.229
+   Compiling hashlink v0.12.1
+   Compiling toml_datetime v1.1.1+spec-1.1.0
+   Compiling serde_spanned v1.1.1
+   Compiling toml_writer v1.1.2+spec-1.1.0
+   Compiling arraydeque v0.5.1
+   Compiling itoa v1.0.18
+   Compiling memchr v2.8.3
+   Compiling yaml-rust2 v0.12.0
+   Compiling toml v1.1.4+spec-1.1.0
+   Compiling process-wrap v9.1.0
+   Compiling base64 v0.22.1
+   Compiling xtask v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/target/sol-scheduler-perf-aggregate-source-001/xtask)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 24.75s
+     Running `/home/doll/Project-Peritus/.worktrees/formal-coverage/target/sol-scheduler-perf-aggregate-ordinary/debug/xtask ordinary-api-check`
+error[PERITUS-XTASK-API-001]: ordinary-api-check found 1 violation(s)
+  - crates/orchestration/peritus-scheduler/src/work/terminal.rs: line 3 uses unsupported attribute `#[cfg_attr]` in formal-boundary source
+    help: remove the attribute or teach the fail-closed checker its exact expansion and contract semantics before use

@@ -1,0 +1,2 @@
+CCACHE_DIR=/tmp/peritus-formal-scope-ccache CARGO_TARGET_DIR=target/formal-budget-review cargo verus verify --package peritus-budget --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20
+CCACHE_DIR=/tmp/peritus-formal-scope-ccache CARGO_TARGET_DIR=target/formal-budget-review cargo test --locked --package peritus-budget --all-features

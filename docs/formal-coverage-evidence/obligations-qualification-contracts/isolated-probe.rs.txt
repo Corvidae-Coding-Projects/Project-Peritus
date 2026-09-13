@@ -1,0 +1,41 @@
+//! Downstream use of the actual public qualification contracts.
+
+use peritus_obligations::{
+    ConditionObservation, ObligationError, QualificationReport, RequirementEvidence, RequirementLedger,
+    qualify,
+};
+#[cfg(verus_only)]
+use peritus_obligations::{qualification_error, qualification_inputs_valid, qualification_satisfied};
+use peritus_run_settlement::CandidateIdentity;
+use vstd::prelude::*;
+
+verus! {
+
+fn public_qualification_contract(
+    ledger: &RequirementLedger,
+    candidate: &CandidateIdentity,
+    conditions: &[ConditionObservation],
+    evidence: &[RequirementEvidence],
+) -> (result: Result<QualificationReport, ObligationError>)
+    ensures
+        result.is_ok() == qualification_inputs_valid(ledger, conditions@, evidence@),
+        match result {
+            Ok(report) => report.spec_qualified()
+                == qualification_satisfied(ledger, candidate, conditions@, evidence@),
+            Err(error) => qualification_error(ledger, conditions@, evidence@, &error),
+        },
+{
+    let result = qualify(ledger, candidate, conditions, evidence);
+    if let Ok(report) = &result {
+        let actual = report.qualified();
+        assert(actual == qualification_satisfied(ledger, candidate, conditions@, evidence@));
+    }
+    result
+}
+
+fn main() {
+    let actual = peritus_obligations::qualification_allowed(true, true, true);
+    assert(actual);
+}
+
+} // verus!

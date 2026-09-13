@@ -6,6 +6,8 @@ use crate::{EvidenceBinding, ObligationError, ObligationErrorKind};
 use peritus_types::Sha256Digest;
 use vstd::prelude::*;
 
+mod model;
+
 verus! {
 
 /// Statistic selected by the public performance requirement.
@@ -48,6 +50,15 @@ pub struct PerformanceRequirement {
 }
 
 impl PerformanceRequirement {
+    /// Exact workload identity in the public requirement.
+    pub closed spec fn spec_workload(&self) -> Sha256Digest { self.workload_identity }
+    /// Exact requested statistic.
+    pub closed spec fn spec_statistic(&self) -> PerformanceStatistic { self.statistic }
+    /// Exact required repetition count.
+    pub closed spec fn spec_repetitions(&self) -> u32 { self.minimum_repetitions }
+    /// Exact threshold selected by the public requirement.
+    pub closed spec fn spec_threshold(&self) -> PerformanceExpectation { self.public_threshold }
+
     /// Creates a nonzero repeated-measurement requirement.
     ///
     /// # Errors
@@ -58,7 +69,16 @@ impl PerformanceRequirement {
         statistic: PerformanceStatistic,
         minimum_repetitions: u32,
         public_threshold: PerformanceExpectation,
-    ) -> Result<Self, ObligationError> {
+    ) -> (result: Result<Self, ObligationError>)
+        ensures result.is_ok() == (minimum_repetitions > 0),
+            match result {
+                Ok(value) => value.spec_workload() == workload_identity
+                    && value.spec_statistic() == statistic
+                    && value.spec_repetitions() == minimum_repetitions
+                    && value.spec_threshold() == public_threshold,
+                Err(_) => true,
+            },
+    {
         if minimum_repetitions == 0 {
             Err(ObligationError::plain(ObligationErrorKind::InvalidPerformance))
         } else {
@@ -73,23 +93,31 @@ impl PerformanceRequirement {
 
     /// Exact workload identity shared by baseline and candidate.
     #[must_use]
-    pub const fn workload_identity(self) -> Sha256Digest { self.workload_identity }
+    pub const fn workload_identity(self) -> (value: Sha256Digest)
+        ensures value == self.spec_workload(),
+    { self.workload_identity }
 
     /// Public statistic.
     #[must_use]
-    pub const fn statistic(self) -> PerformanceStatistic { self.statistic }
+    pub const fn statistic(self) -> (value: PerformanceStatistic)
+        ensures value == self.spec_statistic(),
+    { self.statistic }
 
     /// Minimum repetitions required for each measurement set.
     #[must_use]
-    pub const fn minimum_repetitions(self) -> u32 { self.minimum_repetitions }
+    pub const fn minimum_repetitions(self) -> (value: u32)
+        ensures value == self.spec_repetitions(),
+    { self.minimum_repetitions }
 
     /// Public threshold.
     #[must_use]
-    pub const fn public_threshold(self) -> PerformanceExpectation { self.public_threshold }
+    pub const fn public_threshold(self) -> (value: PerformanceExpectation)
+        ensures value == self.spec_threshold(),
+    { self.public_threshold }
 }
 
 /// Candidate-bound performance evidence retaining every required measurement field.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq)]
 pub struct PerformanceEvidence {
     binding: EvidenceBinding,
     workload_identity: Sha256Digest,
@@ -102,6 +130,32 @@ pub struct PerformanceEvidence {
 }
 
 impl PerformanceEvidence {
+    /// Exact binding to the observed candidate and obligation.
+    pub closed spec fn spec_binding(&self) -> EvidenceBinding { self.binding }
+    /// Exact identity of the measured workload.
+    pub closed spec fn spec_workload(&self) -> Sha256Digest { self.workload_identity }
+    /// Exact baseline measurement.
+    pub closed spec fn spec_baseline(&self) -> u64 { self.baseline }
+    /// Exact candidate measurement.
+    pub closed spec fn spec_candidate(&self) -> u64 { self.candidate }
+    /// Exact repetition count retained by the observation.
+    pub closed spec fn spec_repetitions(&self) -> u32 { self.repetitions }
+    /// Exact statistic used by the measurement.
+    pub closed spec fn spec_statistic(&self) -> PerformanceStatistic { self.statistic }
+    /// Exact admitted noise margin.
+    pub closed spec fn spec_noise(&self) -> u64 { self.noise_margin }
+    /// Exact copy of the public threshold.
+    pub closed spec fn spec_threshold(&self) -> PerformanceExpectation { self.public_threshold }
+
+    /// Exact observation-to-requirement match and unbounded-integer threshold semantics.
+    pub open spec fn spec_satisfies(&self, requirement: PerformanceRequirement) -> bool {
+        self.spec_workload().spec_bytes()@ == requirement.spec_workload().spec_bytes()@
+            && self.spec_statistic() == requirement.spec_statistic()
+            && self.spec_repetitions() >= requirement.spec_repetitions()
+            && self.spec_threshold() == requirement.spec_threshold()
+            && self.spec_threshold().spec_met(self.spec_baseline(), self.spec_candidate(), self.spec_noise())
+    }
+
     /// Creates complete repeated-measurement evidence.
     ///
     /// # Errors
@@ -117,7 +171,20 @@ impl PerformanceEvidence {
         statistic: PerformanceStatistic,
         noise_margin: u64,
         public_threshold: PerformanceExpectation,
-    ) -> Result<Self, ObligationError> {
+    ) -> (result: Result<Self, ObligationError>)
+        ensures result.is_ok() == (repetitions > 0),
+            match result {
+                Ok(value) => value.spec_binding() == binding
+                    && value.spec_workload() == workload_identity
+                    && value.spec_baseline() == baseline
+                    && value.spec_candidate() == candidate
+                    && value.spec_repetitions() == repetitions
+                    && value.spec_statistic() == statistic
+                    && value.spec_noise() == noise_margin
+                    && value.spec_threshold() == public_threshold,
+                Err(_) => true,
+            },
+    {
         if repetitions == 0 {
             Err(ObligationError::plain(ObligationErrorKind::InvalidPerformance))
         } else {
@@ -136,43 +203,61 @@ impl PerformanceEvidence {
 
     /// Complete current-candidate binding.
     #[must_use]
-    pub const fn binding(&self) -> &EvidenceBinding { &self.binding }
+    pub const fn binding(&self) -> (value: &EvidenceBinding)
+        ensures *value == self.spec_binding(),
+    { &self.binding }
 
     /// Same-workload identity.
     #[must_use]
-    pub const fn workload_identity(&self) -> Sha256Digest { self.workload_identity }
+    pub const fn workload_identity(&self) -> (value: Sha256Digest)
+        ensures value == self.spec_workload(),
+    { self.workload_identity }
 
     /// Baseline statistic.
     #[must_use]
-    pub const fn baseline(&self) -> u64 { self.baseline }
+    pub const fn baseline(&self) -> (value: u64)
+        ensures value == self.spec_baseline(),
+    { self.baseline }
 
     /// Candidate statistic.
     #[must_use]
-    pub const fn candidate(&self) -> u64 { self.candidate }
+    pub const fn candidate(&self) -> (value: u64)
+        ensures value == self.spec_candidate(),
+    { self.candidate }
 
     /// Repetitions in each measurement set.
     #[must_use]
-    pub const fn repetitions(&self) -> u32 { self.repetitions }
+    pub const fn repetitions(&self) -> (value: u32)
+        ensures value == self.spec_repetitions(),
+    { self.repetitions }
 
     /// Measured statistic.
     #[must_use]
-    pub const fn statistic(&self) -> PerformanceStatistic { self.statistic }
+    pub const fn statistic(&self) -> (value: PerformanceStatistic)
+        ensures value == self.spec_statistic(),
+    { self.statistic }
 
     /// Admitted public noise margin.
     #[must_use]
-    pub const fn noise_margin(&self) -> u64 { self.noise_margin }
+    pub const fn noise_margin(&self) -> (value: u64)
+        ensures value == self.spec_noise(),
+    { self.noise_margin }
 
     /// Threshold copied from the public requirement.
     #[must_use]
-    pub const fn public_threshold(&self) -> PerformanceExpectation { self.public_threshold }
+    pub const fn public_threshold(&self) -> (value: PerformanceExpectation)
+        ensures value == self.spec_threshold(),
+    { self.public_threshold }
 
     /// Whether this evidence measures the exact contract and meets its threshold.
     #[must_use]
-    pub fn satisfies(&self, requirement: PerformanceRequirement) -> bool {
-        self.workload_identity == requirement.workload_identity()
-            && self.statistic == requirement.statistic()
+    pub fn satisfies(&self, requirement: PerformanceRequirement) -> (satisfied: bool)
+        ensures satisfied == self.spec_satisfies(requirement),
+    {
+        matches!(crate::order::compare(self.workload_identity.as_bytes(), requirement.workload_identity().as_bytes()), core::cmp::Ordering::Equal)
+            && self.statistic.same(requirement.statistic())
             && self.repetitions >= requirement.minimum_repetitions()
-            && self.public_threshold == requirement.public_threshold()
+            && self.public_threshold.same(requirement.public_threshold())
             && threshold_met(
                 self.baseline,
                 self.candidate,
@@ -187,7 +272,9 @@ const fn threshold_met(
     candidate: u64,
     noise_margin: u64,
     threshold: PerformanceExpectation,
-) -> bool {
+) -> (met: bool)
+    ensures met == threshold.spec_met(baseline, candidate, noise_margin),
+{
     match threshold {
         PerformanceExpectation::CandidateAtMost(limit) => {
             candidate <= limit.saturating_add(noise_margin)
@@ -196,7 +283,7 @@ const fn threshold_met(
             candidate.saturating_add(noise_margin) >= limit
         }
         PerformanceExpectation::ImprovementAtLeast(delta) => {
-            baseline.saturating_sub(candidate).saturating_add(noise_margin) >= delta
+            (baseline as u128) + (noise_margin as u128) >= (candidate as u128) + (delta as u128)
         }
         PerformanceExpectation::RegressionAtMost(delta) => {
             candidate <= baseline.saturating_add(delta).saturating_add(noise_margin)

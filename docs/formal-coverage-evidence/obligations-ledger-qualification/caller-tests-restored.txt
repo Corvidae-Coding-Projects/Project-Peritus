@@ -1,0 +1,21 @@
+   Compiling peritus-scheduler v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/orchestration/peritus-scheduler)
+   Compiling peritus-collaboration v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/orchestration/peritus-collaboration)
+   Compiling peritus-orchestrator v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/orchestration/peritus-orchestrator)
+   Compiling peritus-product-runner v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/app/peritus-product-runner)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 16.49s
+     Running unittests src/lib.rs (target/debug/deps/peritus_gates-e698258f5937b638)
+
+running 2 tests
+test obligation::tests::bridge_never_routes_provider_failure_to_fixer ... ok
+test obligation::tests::bridge_passes_only_a_qualified_obligation_report ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 30 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/debug/deps/peritus_product_runner-f16a5c38448709d9)
+
+running 2 tests
+test execution::obligations::tests::failed_obligation_routes_only_candidate_defects_to_the_fixer ... ok
+test execution::obligations::tests::exact_public_text_becomes_a_qualified_requirement_only_after_review ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 285 filtered out; finished in 0.00s
+

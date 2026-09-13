@@ -1,0 +1,31 @@
+All commands ran from /tmp/peritus-parent-readiness-review.q25p5n7e unless stated otherwise.
+The delivered package is crates/orchestration/peritus-obligations.
+
+Performance diagnosis, with tests/review_scaling_probe.rs temporarily copied from
+/tmp/peritus-sol-obligations-performance-scaling-probe.rs and removed after each run:
+
+CARGO_BUILD_JOBS=2 CCACHE_DISABLE=1 CARGO_TARGET_DIR=/home/doll/Project-Peritus/.worktrees/formal-coverage/target/peritus-sol-obligations-performance cargo test -p peritus-obligations --locked --release --test review_scaling_probe -- --nocapture
+CARGO_BUILD_JOBS=2 CCACHE_DISABLE=1 CARGO_TARGET_DIR=/home/doll/Project-Peritus/.worktrees/formal-coverage/target/peritus-sol-obligations-performance-foundation cargo test -p peritus-obligations --locked --release --test review_scaling_probe -- --nocapture
+CARGO_BUILD_JOBS=2 CCACHE_DISABLE=1 CARGO_TARGET_DIR=/home/doll/Project-Peritus/.worktrees/formal-coverage/target/peritus-sol-obligations-performance cargo test -p peritus-obligations --locked --release --test review_scaling_probe -- --nocapture
+
+The first command used frozen candidate325 source, the second used the independently retained
+foundation source, and the third used the final fixed source. Package source was restored and
+checked against its retained manifest after each temporary swap/probe.
+
+Canonical compatibility baseline, with tests/canonical_encoding.rs temporarily copied into the
+foundation source and its initially diagnostic print retained in the raw log:
+
+CARGO_BUILD_JOBS=2 CCACHE_DISABLE=1 CARGO_TARGET_DIR=/home/doll/Project-Peritus/.worktrees/formal-coverage/target/peritus-sol-obligations-canonical-foundation cargo test -p peritus-obligations --locked --test canonical_encoding -- --nocapture
+
+Final qualification against the frozen delivered source:
+
+CARGO_BUILD_JOBS=2 CCACHE_DISABLE=1 CARGO_TARGET_DIR=/home/doll/Project-Peritus/.worktrees/formal-coverage/target/peritus-sol-obligations-performance cargo verus verify --package peritus-obligations --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20
+CARGO_BUILD_JOBS=2 CCACHE_DISABLE=1 CARGO_TARGET_DIR=/home/doll/Project-Peritus/.worktrees/formal-coverage/target/peritus-sol-obligations-performance cargo test -p peritus-obligations --locked --no-default-features
+CARGO_BUILD_JOBS=2 CCACHE_DISABLE=1 CARGO_TARGET_DIR=/home/doll/Project-Peritus/.worktrees/formal-coverage/target/peritus-sol-obligations-performance cargo test -p peritus-obligations --locked --all-features
+CARGO_BUILD_JOBS=2 CCACHE_DISABLE=1 CARGO_TARGET_DIR=/home/doll/Project-Peritus/.worktrees/formal-coverage/target/peritus-sol-obligations-performance cargo clippy -p peritus-obligations --locked --all-features --all-targets -- -D warnings
+cargo fmt --package peritus-obligations -- --check
+CARGO_BUILD_JOBS=2 CCACHE_DISABLE=1 CARGO_TARGET_DIR=/home/doll/Project-Peritus/.worktrees/formal-coverage/target/peritus-sol-obligations-performance cargo run --locked --package xtask -- source-layout-check
+CARGO_BUILD_JOBS=2 CCACHE_DISABLE=1 CARGO_TARGET_DIR=/home/doll/Project-Peritus/.worktrees/formal-coverage/target/peritus-sol-obligations-performance cargo run --locked --package xtask -- ordinary-api-check
+
+Final results: strict Verus 356 verified, 0 errors; 30 tests passed under each feature mode;
+Clippy, rustfmt, source layout, and ordinary API checks passed.

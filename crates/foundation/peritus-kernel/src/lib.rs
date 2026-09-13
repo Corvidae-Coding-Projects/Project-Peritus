@@ -30,6 +30,10 @@ pub use envelope::CommandEnvelope;
 pub use error::{AuthorityInputKind, KernelError, KernelErrorKind, LifecycleEntity};
 pub use event::{KernelEvent, KernelEventKind, KernelSubject};
 pub use inputs::ReducerInputs;
+#[cfg(verus_only)]
+pub use reducer::{
+    waiver_grant_authorized, waiver_grant_recorded, waiver_grant_result_authorized,
+};
 pub use state::{
     AcceptancePhase, ActionPhase, ActionState, AttemptPhase, AttemptState, ReviewPhase,
     ReviewState, RunPhase, RunState, SessionPhase, SessionState, TurnPhase, TurnState,

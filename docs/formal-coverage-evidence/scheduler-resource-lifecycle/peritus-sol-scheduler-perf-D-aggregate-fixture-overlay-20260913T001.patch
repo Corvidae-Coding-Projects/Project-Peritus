@@ -1,0 +1,287 @@
+diff -ruN /tmp/peritus-sol-scheduler-perf-aggregate-final-source-20260913T001/src/selection/performance_probe.rs /home/doll/Project-Peritus/.worktrees/formal-coverage/target/sol-scheduler-perf-aggregate-probe-source-001/crates/orchestration/peritus-scheduler/src/selection/performance_probe.rs
+--- /tmp/peritus-sol-scheduler-perf-aggregate-final-source-20260913T001/src/selection/performance_probe.rs	1969-12-31 18:00:00.000000000 -0600
++++ /home/doll/Project-Peritus/.worktrees/formal-coverage/target/sol-scheduler-perf-aggregate-probe-source-001/crates/orchestration/peritus-scheduler/src/selection/performance_probe.rs	2026-09-12 22:25:56.924659007 -0500
+@@ -0,0 +1,270 @@
++//! Reproducible dense-capacity timing probe over the public selection and dispatch paths.
++
++use std::hint::black_box;
++use std::time::Instant;
++
++use peritus_types::{
++    AcceptanceSpecId, ActorId, CommandId, EventId, EventSequence, Generation, HarnessId, PolicyId,
++    ProviderProfileId, RevisionNumber, RevisionTuple, RunId, Sha256Digest, WorkspaceId,
++};
++
++use crate::{
++    AttemptNumber, DispatchId, ExecutionClass, RecoveryPolicy, ResourceEntry, ResourceKind,
++    ResourceQuantity, ResourceVector, SchedulerBinding, SchedulerCommand, SchedulerCommandKind,
++    SchedulerId, SchedulerLimits, SchedulerPhase, SchedulerReservation, SchedulerState, WorkId,
++    WorkPhase, WorkRecord, WorkSpec, WorkerDescriptor, WorkerId, WorkerPhase, WorkerRecord,
++};
++
++fn bytes(namespace: u8, value: u64) -> [u8; 16] {
++    let mut result = [0_u8; 16];
++    result[0] = namespace;
++    result[8..].copy_from_slice(&value.to_be_bytes());
++    result
++}
++
++fn digest(value: u8) -> Sha256Digest {
++    Sha256Digest::new([value; 32])
++}
++
++fn dense_vector(dimensions: u16, quantity: u64) -> ResourceVector {
++    let entries = (1..=dimensions)
++        .map(|tag| {
++            ResourceEntry::new(
++                ResourceKind::new(tag).expect("positive resource kind"),
++                ResourceQuantity::new(quantity).expect("positive resource quantity"),
++            )
++        })
++        .collect();
++    ResourceVector::new(entries, dimensions).expect("canonical dense resource vector")
++}
++
++fn configured_usize(name: &str, default: usize) -> usize {
++    std::env::var(name).map_or(default, |value| value.parse().expect("numeric probe setting"))
++}
++
++fn dense_state(reservations: usize, dimensions: u16) -> SchedulerState {
++    assert!(reservations > 0);
++    assert!(reservations < usize::from(SchedulerLimits::MAX_ACTIVE_RESERVATIONS));
++    assert!(dimensions > 0 && dimensions <= SchedulerLimits::MAX_RESOURCE_DIMENSIONS);
++
++    let retained = u32::try_from(reservations + 1).expect("bounded retained work");
++    let active = u16::try_from(reservations + 1).expect("bounded active reservations");
++    let limits = SchedulerLimits::new(
++        1,
++        retained,
++        2,
++        1,
++        dimensions,
++        active,
++        1,
++        1,
++        1,
++        SchedulerLimits::MAX_PAYLOAD_BYTES,
++        SchedulerLimits::MAX_STATE_BYTES,
++    )
++    .expect("maximum-bounded scheduler limits");
++    let revision = RevisionTuple::new(
++        AcceptanceSpecId::new(bytes(1, 1)).expect("acceptance ID"),
++        HarnessId::new(bytes(2, 1)).expect("harness ID"),
++        WorkspaceId::new(bytes(3, 1)).expect("workspace ID"),
++        Generation::first(),
++        RevisionNumber::first(),
++        PolicyId::new(bytes(4, 1)).expect("policy ID"),
++        ProviderProfileId::new(bytes(5, 1)).expect("provider ID"),
++    );
++    let owner = ActorId::new(bytes(6, 1)).expect("owner ID");
++    let per_dimension_capacity = u64::try_from(reservations + 1).expect("bounded capacity");
++    let capacity = dense_vector(dimensions, per_dimension_capacity);
++    let binding = SchedulerBinding::new(
++        RunId::new(bytes(7, 1)).expect("run ID"),
++        SchedulerId::new(bytes(8, 1)).expect("scheduler ID"),
++        revision,
++        limits,
++        capacity.clone(),
++    )
++    .expect("valid scheduler binding");
++    let busy_worker_id = WorkerId::new(bytes(9, 1)).expect("busy worker ID");
++    let available_worker_id = WorkerId::new(bytes(9, 2)).expect("available worker ID");
++    let busy_worker = WorkerRecord::from_wire(
++        WorkerDescriptor::new(
++            busy_worker_id,
++            owner,
++            vec![ExecutionClass::Tool],
++            capacity.clone(),
++            u16::try_from(reservations).expect("bounded concurrency"),
++            limits,
++        )
++        .expect("valid busy worker"),
++        WorkerPhase::Busy,
++    );
++    let available_worker = WorkerRecord::from_wire(
++        WorkerDescriptor::new(
++            available_worker_id,
++            owner,
++            vec![ExecutionClass::Tool],
++            capacity,
++            1,
++            limits,
++        )
++        .expect("valid available worker"),
++        WorkerPhase::Available,
++    );
++
++    let request = dense_vector(dimensions, 1);
++    let mut work = Vec::with_capacity(reservations + 1);
++    let mut active = Vec::with_capacity(reservations);
++    let mut dispatches = Vec::with_capacity(reservations);
++    for offset in 0..reservations {
++        let ordinal = u64::try_from(offset + 1).expect("bounded work ordinal");
++        let work_id = WorkId::new(bytes(10, ordinal)).expect("work ID");
++        let dispatch_id = DispatchId::new(bytes(11, ordinal)).expect("dispatch ID");
++        let spec = WorkSpec::new(
++            work_id,
++            owner,
++            revision,
++            ExecutionClass::Tool,
++            1,
++            request.clone(),
++            None,
++            Vec::new(),
++            None,
++            AttemptNumber::new(1).expect("attempt bound"),
++            RecoveryPolicy::Fail,
++            digest(12),
++            limits,
++        )
++        .expect("valid reserved work");
++        work.push(WorkRecord::from_wire(
++            spec,
++            WorkPhase::Reserved,
++            ordinal,
++            0,
++            1,
++            None,
++            None,
++        ));
++        active.push(SchedulerReservation::from_wire(
++            work_id,
++            dispatch_id,
++            busy_worker_id,
++            owner,
++            AttemptNumber::new(1).expect("reservation attempt"),
++            revision,
++            request.clone(),
++            digest(13),
++            false,
++        ));
++        dispatches.push(dispatch_id);
++    }
++    let queued_ordinal = u64::try_from(reservations + 1).expect("bounded queue ordinal");
++    let queued_id = WorkId::new(bytes(10, queued_ordinal)).expect("queued work ID");
++    let queued = WorkSpec::new(
++        queued_id,
++        owner,
++        revision,
++        ExecutionClass::Tool,
++        1,
++        request,
++        None,
++        Vec::new(),
++        None,
++        AttemptNumber::new(1).expect("queued attempt bound"),
++        RecoveryPolicy::Fail,
++        digest(14),
++        limits,
++    )
++    .expect("valid queued work");
++    work.push(WorkRecord::from_wire(
++        queued,
++        WorkPhase::Queued,
++        queued_ordinal,
++        0,
++        0,
++        None,
++        None,
++    ));
++
++    let first_command = CommandId::new(bytes(15, 1)).expect("first command ID");
++    let last_event = EventId::new(bytes(16, 1)).expect("last event ID");
++    let mut state = SchedulerState::from_wire(
++        binding,
++        SchedulerPhase::Active,
++        EventSequence::first(),
++        last_event,
++        digest(0),
++        vec![busy_worker, available_worker],
++        work,
++        active,
++        dispatches,
++        queued_ordinal,
++        u64::try_from(reservations).expect("bounded dispatch ordinal"),
++        vec![first_command],
++        None,
++    );
++    let state_digest = crate::canonical::state_digest(&state);
++    crate::state::mutation::set_state_digest(&mut state, state_digest);
++    state.validate_inert().expect("dense state must satisfy inert validation");
++    assert_eq!(state.work().len(), reservations + 1);
++    assert_eq!(state.reservations().len(), reservations);
++    state
++}
++
++#[test]
++#[ignore = "explicit bounded performance probe"]
++fn dense_public_selection_and_dispatch_timings() {
++    let reservations = configured_usize("PERITUS_PERF_RESERVATIONS", 1_024);
++    let dimensions = u16::try_from(configured_usize("PERITUS_PERF_DIMENSIONS", 256))
++        .expect("dimension setting fits u16");
++    let selection_repeats = configured_usize("PERITUS_PERF_SELECTION_REPEATS", 7);
++    let dispatch_repeats = configured_usize("PERITUS_PERF_DISPATCH_REPEATS", 3);
++
++    let setup_started = Instant::now();
++    let state = dense_state(reservations, dimensions);
++    eprintln!(
++        "scheduler_perf phase=setup reservations={reservations} dimensions={dimensions} elapsed_ns={}",
++        setup_started.elapsed().as_nanos()
++    );
++
++    let warm_selection = black_box(crate::select_next(black_box(&state)));
++    assert!(warm_selection.is_some());
++    for sample in 0..selection_repeats {
++        let started = Instant::now();
++        let result = black_box(crate::select_next(black_box(&state)));
++        let elapsed = started.elapsed();
++        assert!(result.is_some());
++        eprintln!(
++            "scheduler_perf phase=select_next sample={sample} reservations={reservations} dimensions={dimensions} elapsed_ns={}",
++            elapsed.as_nanos()
++        );
++    }
++
++    let command = SchedulerCommand::new(
++        CommandId::new(bytes(15, 2)).expect("dispatch command ID"),
++        EventId::new(bytes(16, 2)).expect("dispatch event ID"),
++        state.run_id(),
++        state.sequence().get(),
++        Some(state.last_event_id()),
++        state.state_digest(),
++        state.binding().revision(),
++        SchedulerCommandKind::DispatchNext {
++            dispatch_id: DispatchId::new(bytes(11, u64::try_from(reservations + 1).unwrap()))
++                .expect("next dispatch ID"),
++            dispatch_token: digest(17),
++        },
++    )
++    .expect("valid dispatch command");
++    let warm_dispatch = black_box(crate::decide(black_box(&state), black_box(&command)));
++    assert!(warm_dispatch.is_ok());
++    drop(warm_dispatch);
++    for sample in 0..dispatch_repeats {
++        let started = Instant::now();
++        let result = black_box(crate::decide(black_box(&state), black_box(&command)));
++        let elapsed = started.elapsed();
++        assert!(result.is_ok());
++        eprintln!(
++            "scheduler_perf phase=dispatch_next sample={sample} reservations={reservations} dimensions={dimensions} elapsed_ns={}",
++            elapsed.as_nanos()
++        );
++        drop(result);
++    }
++}
+diff -ruN /tmp/peritus-sol-scheduler-perf-aggregate-final-source-20260913T001/src/selection.rs /home/doll/Project-Peritus/.worktrees/formal-coverage/target/sol-scheduler-perf-aggregate-probe-source-001/crates/orchestration/peritus-scheduler/src/selection.rs
+--- /tmp/peritus-sol-scheduler-perf-aggregate-final-source-20260913T001/src/selection.rs	2026-09-12 20:16:30.575221885 -0500
++++ /home/doll/Project-Peritus/.worktrees/formal-coverage/target/sol-scheduler-perf-aggregate-probe-source-001/crates/orchestration/peritus-scheduler/src/selection.rs	2026-09-12 22:26:01.746295862 -0500
+@@ -7,6 +7,9 @@
+ mod capacity;
+ mod model;
+ 
++#[cfg(test)]
++mod performance_probe;
++
+ use model::IndexedSelection;
+ pub use model::Selection;
+ 

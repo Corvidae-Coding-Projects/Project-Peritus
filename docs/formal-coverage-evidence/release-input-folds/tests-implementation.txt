@@ -1,0 +1,88 @@
+   Compiling verus_builtin v0.0.0-2026-08-09-0044 (https://github.com/verus-lang/verus.git?rev=92f466f247f45128c630d1c843fd6e27d2115587#92f466f2)
+   Compiling vstd v0.0.0-2026-08-09-0044 (https://github.com/verus-lang/verus.git?rev=92f466f247f45128c630d1c843fd6e27d2115587#92f466f2)
+   Compiling peritus-types v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/foundation/peritus-types)
+   Compiling peritus-release-policy v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/foundation/peritus-release-policy)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 3.44s
+     Running unittests src/lib.rs (target/sol-release-remaining/debug/deps/peritus_release_policy-7bc79be2ebedd6fa)
+
+running 3 tests
+test catalog::tests::criterion_twenty_four_requires_every_release_artifact_class ... ok
+test error::tests::every_error_kind_has_a_stable_h4_code ... ok
+test catalog::tests::stable_catalog_ids_are_contiguous ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/acceptance.rs (target/sol-release-remaining/debug/deps/acceptance-4bc022f51cf83baf)
+
+running 4 tests
+test complete_exact_evidence_is_ready_without_publication_authority ... ok
+test every_final_qualification_check_is_required_for_admission ... ok
+test decision_is_bound_to_the_exact_candidate_and_time ... ok
+test every_required_artifact_fails_closed_when_removed ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/catalog.rs (target/sol-release-remaining/debug/deps/catalog-7c55ef942dec9fdc)
+
+running 3 tests
+test every_criterion_has_at_least_one_required_artifact ... ok
+test evidence_catalog_has_stable_unique_ids_and_sources ... ok
+test production_catalog_is_exactly_twenty_five_stable_items ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/construction.rs (target/sol-release-remaining/debug/deps/construction-e4edfedbd7f21c65)
+
+running 4 tests
+test invalid_time_and_source_revision_bindings_are_rejected ... ok
+test platform_slots_are_nominal_not_positional_guesswork ... ok
+test zero_nominal_identities_are_rejected ... ok
+test evidence_collection_bound_is_enforced ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/fail_closed.rs (target/sol-release-remaining/debug/deps/fail_closed-3547060af7a9f2bb)
+
+running 4 tests
+test stale_evidence_is_diagnosed_and_cannot_contribute ... ok
+test wrong_source_unreviewed_unsigned_and_conflict_are_distinct ... ok
+test mismatched_candidate_evidence_is_diagnosed_and_excluded ... ok
+test every_complete_candidate_identity_component_is_checked ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/permutation.rs (target/sol-release-remaining/debug/deps/permutation-8a9e5ef7ce728211)
+
+running 1 test
+test evidence_permutations_preserve_verdict_digest_and_diagnostics ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/qualifications.rs (target/sol-release-remaining/debug/deps/qualifications-ef6331090169cd7c)
+
+running 4 tests
+test conflicting_current_qualification_reports_block_release ... ok
+test stale_and_unreviewed_qualifications_never_count_as_ready ... ok
+test explicit_not_ready_qualification_blocks_release ... ok
+test every_h_slice_is_required ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/reviews_and_findings.rs (target/sol-release-remaining/debug/deps/reviews_and_findings-b7d58e27cdd59034)
+
+running 5 tests
+test self_review_changes_required_and_shared_context_each_block ... ok
+test independent_review_quorum_is_mandatory ... ok
+test independent_waiver_can_resolve_a_nonblocking_finding ... ok
+test unresolved_release_blocker_cannot_be_waived ... ok
+test ignored_and_quarantined_findings_are_never_release_ready ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests peritus_release_policy
+
+running 1 test
+test crates/foundation/peritus-release-policy/src/decision.rs - decision::ReleaseDecision (line 59) - compile fail ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+

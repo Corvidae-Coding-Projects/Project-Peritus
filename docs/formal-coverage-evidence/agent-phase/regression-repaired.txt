@@ -1,0 +1,36 @@
+   Compiling peritus-kernel v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/foundation/peritus-kernel)
+warning: function `finding_id_equal` is never used
+  --> crates/foundation/peritus-kernel/src/identity.rs:90:15
+   |
+90 | pub(crate) fn finding_id_equal(left: FindingId, right: FindingId) -> (result: bool)
+   |               ^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: function `review_cycle_id_equal` is never used
+  --> crates/foundation/peritus-kernel/src/identity.rs:96:15
+   |
+96 | pub(crate) fn review_cycle_id_equal(
+   |               ^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `identifier_equal` is never used
+   --> crates/foundation/peritus-kernel/src/identity.rs:105:4
+    |
+105 | fn identifier_equal(left: &[u8; 16], right: &[u8; 16]) -> (result: bool)
+    |    ^^^^^^^^^^^^^^^^
+
+   Compiling peritus-protocol v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/foundation/peritus-protocol)
+warning: `peritus-kernel` (lib) generated 3 warnings
+   Compiling peritus-journal v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/state/peritus-journal)
+   Compiling peritus-projection v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/state/peritus-projection)
+   Compiling peritus-evidence v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/state/peritus-evidence)
+   Compiling peritus-tool-router v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/tools/peritus-tool-router)
+   Compiling peritus-agent v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/orchestration/peritus-agent)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 5.39s
+     Running unittests src/lib.rs (target/debug/deps/peritus_agent-98e019980e92ebc2)
+
+running 1 test
+test reducer::tests::replay_rejects_correctly_fenced_failure_events_after_terminal_state ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 9 filtered out; finished in 0.00s
+

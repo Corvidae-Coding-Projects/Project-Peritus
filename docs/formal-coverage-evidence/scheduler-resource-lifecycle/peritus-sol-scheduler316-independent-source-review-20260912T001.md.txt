@@ -1,0 +1,198 @@
+# Independent source review: immutable peritus-scheduler checkpoint 316
+
+Date: 2026-09-12  
+Review mode: read-only exact-source inspection; no source edits and no compiler/build commands  
+Verdict: **PASS for the bounded correctness and production-correspondence claims**  
+Standalone shipping approval: **withheld pending two already-separated integration corrections**
+
+The immutable scheduler316 increment correctly connects the actual scheduler command variants and
+production reducer routes to verified state mutation kernels for its stated reservation-lifecycle
+slice. I found no logical correctness, security, API, or proof-boundary blocker in the reviewed
+increment. It does not establish complete apply/decide/replay or all-command scheduler
+correspondence, and its supplied report preserves those limits.
+
+Two integration caveats remain outside this immutable verdict. First, scheduler316 intentionally
+retains the frozen244 resource implementation and therefore must be composed with the separately
+reviewed resource/selection performance correction. Second, `set_worker_phase` replaces the
+frozen244 binary mutable-worker lookup with a linear scan. That change is proof-induced,
+unmeasured, and unaccepted for shipping at the production worker bound. The runtime worker is
+preparing a focused correction in exactly `src/state/lookup.rs` and
+`src/state/mutation/worker_update.rs`; `src/state/mutation.rs` is not expected to change. That
+two-path correction requires a focused follow-up source review, rather than a restart of this
+43-path immutable audit.
+
+## Exact reviewed source and evidence
+
+The corrected frozen244 preimage is
+`/tmp/peritus-parent-scheduler244-complete-source`, containing 75 files. Its package-relative
+manifest is `/tmp/peritus-parent-scheduler244-complete-source.sha256`, SHA-256
+`812d4eabac5f6b131baa156cc970eee34a7c45a40a79c36433cdb65493e84f40`.
+All 75 entries independently passed `sha256sum -c` from that package root.
+
+The immutable final package is `/tmp/peritus-sol-scheduler-command-final-source-001`, containing
+95 files. Its package-relative manifest is
+`/tmp/peritus-sol-scheduler-command-final-source-001-relative.sha256`, SHA-256
+`2930562b537b2c81eea3f2d1861032837402679d6836f837d68d1b5ea1687c1c`.
+All 95 entries independently passed `sha256sum -c` from that package root. Its absolute manifest
+has SHA-256 `6b04dc2f36d44bb93230f3d4697601a4713b2ac985fb722379da13e7d3aa9827`.
+
+The exact frozen244-to-final patch is
+`/tmp/peritus-sol-scheduler244-to-command-final-001.patch`, SHA-256
+`67f8fe38ad3506f801d273ab8ca913ddec253d01d865ae343a0836fa187619fe`.
+An independently regenerated `diff -ruN` produced that same digest. The inventory
+`/tmp/peritus-sol-scheduler244-to-command-final-001.inventory.txt` has SHA-256
+`ca5b853f8890271e64cc8f09d0a6bef83829927e4fbbb2c165cfb813c95e86c4`.
+
+The runtime worker's evidence manifest
+`/tmp/peritus-sol-scheduler-command-final-evidence-001.sha256` has SHA-256
+`e0184daf099ce05ca1433734a7bce25743c7fcefd05521fda612c7f4df2db5f3`;
+all 26 entries independently passed checksum verification. The worker report
+`/tmp/peritus-sol-scheduler-command-final-report.md` has SHA-256
+`a8611973371c969994c16a4635ceeffdee390fb0e5db6b441e5e27b6249a784c`.
+
+## Source findings
+
+### Actual command and Clone correspondence
+
+`SchedulerCommandKind` remains the actual public command payload and is re-exported from the same
+public surface after its declaration moved to the private `command/kind.rs` module. Its manual
+semantic `Clone` exhaustively handles every variant and every payload field. Identity and digest
+fields are copied exactly; `SchedulerBinding`, `WorkerDescriptor`, and `WorkSpec` use their actual
+semantic clones. No command variant is omitted or collapsed.
+
+The added semantic clones for `SchedulerBinding`, `SchedulerState`, `WorkerRecord`, and
+`WorkRecord` cover all authoritative production fields needed to transport the cloned successor
+through `decide`: immutable binding identities/revision/limits/capacity, scheduler phase,
+sequence/event/digest, workers, work, reservations, used dispatches, enqueue/dispatch ordinals,
+used commands, and terminal state. Nested worker/work/reservation terminal and payload relations
+retain their exact identities and material values.
+
+### Reservation lifecycle and reducer routing
+
+Genesis establishes the strengthened reservation-reducer readiness relation. The relation now
+connects live reservations in both directions with active work, enforces the expected
+started-versus-phase relation, and retains every live dispatch identity in history. The actual
+acknowledge-start transition and all five release families preserve this relation under their
+documented pre-state conditions.
+
+The production `reducer/apply.rs` match remains exhaustive. Pause, Resume, Drain, RetryWork,
+ExhaustWork, AcknowledgeStart, CompleteWork, FailWork, AcknowledgeCancellation, and
+AbandonDispatch directly call the verified production mutation kernels. The emitted event fields
+are taken from the same command payloads. The public worker phase routes and the final worker-loss
+update call the verified worker mutation. Work/worker insertion preservation is proved as a
+mutation fact, while its complete public admission caller closure remains open as the report says.
+
+Internal command-wrapper mismatch branches return ordinary errors, but the outer exhaustive match
+routes each wrapper only for its exact variant. Likewise, the new `WorkDisappeared` and
+`DispatchDisappeared` outcomes describe failed post-lookup mutations; no interfering mutation
+occurs between the successful lookup and the target update in the inspected single-command
+paths. I found no changed reachable error priority or diagnostic payload in the claimed slice.
+These observations do not substitute for the still-open exact whole-reducer Result/error theorem.
+
+`decide` continues to clone the pre-state, apply only to the clone, refresh and validate the
+successor, and emit an event only after successful application. Therefore an apply error discards
+the partial successor at the actual public call boundary. The unchanged replay and event-to-command
+reconstruction paths remain exhaustive for the command variants. The regression suite exercises
+the new release, retry/re-reserve, rollback/error-priority, terminal-payload, and replay cases, but
+full replay correspondence is correctly left open.
+
+### Proof and API boundary
+
+The only new generated-code documentation exception is the file-local attribute in the private
+`command/kind.rs` leaf:
+
+```rust
+#![cfg_attr(
+    verus_keep_ghost,
+    allow(
+        missing_docs,
+        reason = "pinned Verus enum synthesis discards documented field projection metadata"
+    )
+)]
+```
+
+It is limited to `missing_docs`, applies only under `verus_keep_ghost`, carries a specific nonempty
+reason, and does not disable ordinary Rust documentation checks. It cannot admit executable
+preconditions or broader lints.
+
+No reviewed change introduces `assume`, `admit`, an axiom, `external_body`, unsafe code, a public
+executable precondition, or an externally reachable runtime guard used in place of proof. Internal
+proof functions have ordinary logical requirements, and production wrappers call verified actual
+kernels rather than verification-only substitutes.
+
+## Material integration caveats
+
+### Resource/selection correction is not in this package
+
+The scheduler316 copies of `src/resource.rs` and `src/resource/capacity.rs` are byte-identical to
+the frozen244 preimage. They are not the corrected files in
+`/tmp/peritus-sol-scheduler-perf-final-source-20260913T003`. Therefore this immutable package alone
+does not resolve the previously reviewed dense-resource performance risk. Integration must layer
+the separately reviewed performance delta over the common frozen244 preimage and qualify the
+combined tree.
+
+### Worker phase update regresses logarithmic lookup
+
+Frozen244's mutable worker update used `binary_search_by_key` over the canonical worker sequence.
+Scheduler316's `set_worker_phase` instead scans from index zero until the identity matches. The
+path is used by SetWorkerAvailable, DrainWorker, RemoveWorker, and the final LoseWorker update. At
+the production maximum of 4,096 retained workers this changes the update lookup from logarithmic
+to linear time. No runtime measurement or explicit performance acceptance was supplied. This is a
+shipping caveat, not a proved functional error.
+
+The runtime worker's narrowly scoped correction is expected to change only:
+
+1. `src/state/lookup.rs`, to expose/reuse a verified binary-search worker-index helper; and
+2. `src/state/mutation/worker_update.rs`, to apply the exact existing phase/frame semantics at
+   the returned index.
+
+A focused review should confirm the helper's returned-index identity guarantee, exact `None`
+behavior under the canonical worker-state facts actually available to the mutation, unchanged
+error/frame contracts, and absence of a new executable precondition or rejection guard.
+
+## Precise proof limits retained
+
+This PASS does not establish:
+
+1. canonical sorting plus lookup `None` completeness and full RegisterWorker/AdmitWork admission;
+2. CancelWork/CancelWorkTree traversal composition;
+3. LoseWorker loop composition across every affected work and reservation;
+4. exact DispatchNext failure precedence and complete result/event relation beyond the current
+   successful admission theorem;
+5. FinalizeScheduler's exact terminal composition;
+6. complete production `apply`, `decide`, replay, effect, digest/cursor, and every-error mapping;
+7. selected-minimum/first-worker/None-iff or fairness theorems; or
+8. OBL-0150 and full scheduler termination.
+
+Those are finite original-goal gaps. They are not inferred from helper-preservation contracts or
+from the passing ordinary tests.
+
+## Qualification attribution
+
+I did not rerun compiler, tests, Clippy, format, API, or layout checks. The following results are
+the runtime worker's supplied artifacts, whose hashes were independently verified through its
+26-entry evidence manifest:
+
+- pinned strict Verus: 316 verified, 0 errors, with `--no-cheating --rlimit 20 --num-threads 2`;
+- Clippy with all targets/all features and `-D warnings`: exit 0;
+- default, no-default-feature, and all-feature package tests: 25 passed, 0 failed in each profile;
+- formatting: exit 0;
+- ordinary API scanner: 3,532 formal-boundary files and 14,697 ordinary-safe entry points; and
+- source-layout checker: 4,433 files passed.
+
+The exact independently executed read-only commands are in
+`/tmp/peritus-sol-scheduler316-independent-review-commands-20260912T001.txt`.
+
+## Reviewed paths
+
+I read all 43 changed source/test files represented by the exact patch. They comprise
+`src/binding.rs`; `src/command.rs` and `src/command/kind*`; `src/identity.rs`;
+`src/reducer/apply.rs`, `control.rs`, and `worker_control.rs`; `src/state.rs`, its clone and lookup
+modules, all changed reservation/work/worker mutation modules and reserve proof modules;
+`src/verified.rs`, `reservation_transitions.rs`, and all changed reservation preservation,
+readiness, clone, insertion, update, phase, start, and release proof modules; `src/work/record.rs`;
+`src/worker.rs` and its clone module; and `tests/reservation_preservation.rs`.
+
+I also inspected the unchanged public `reducer.rs`, replay/event reconstruction, wire/state,
+durability, session, selection/resource, state validation, and affected command callers needed to
+assess rollback, error routing, API continuity, and the two performance caveats.

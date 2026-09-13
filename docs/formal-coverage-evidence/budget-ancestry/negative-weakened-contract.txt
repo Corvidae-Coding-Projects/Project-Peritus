@@ -1,0 +1,61 @@
+    Checking peritus-budget v0.0.2 (/tmp/peritus-parent-budget-negative.q1ucad1u/crates/foundation/peritus-budget)
+error: assertion failed
+   --> crates/foundation/peritus-budget/src/reachability/equivalence.rs:303:25
+    |
+303 |                   implies exists |parent: int| #![auto]
+    |  _________________________^
+304 | |                     0 <= parent < source.accounts@.len()
+305 | |                         && crate::identity_model::parent_matches(
+306 | |                             source.accounts[child].parent_id,
+...   |
+313 | |                             after.accounts[parent],
+314 | |                         ) by {
+    | |_________________________^ assertion failed
+
+note: recommendation not met: cannot prove that there exists values that satisfy the condition of the choose expression
+   --> crates/foundation/peritus-budget/src/reachability/equivalence.rs:315:26
+    |
+315 |               let parent = choose |parent: int| #![auto]
+    |  __________________________^
+316 | |                 0 <= parent < equivalent.accounts@.len()
+317 | |                     && crate::identity_model::parent_matches(
+318 | |                         equivalent.accounts[child].parent_id,
+...   |
+325 | |                         after.accounts[parent],
+326 | |                     );
+    | |_____________________^
+
+note: recommendation not met
+   --> crates/foundation/peritus-budget/src/reachability/equivalence.rs:328:20
+    |
+328 |             assert(source.accounts[parent] == equivalent.accounts[parent]);
+    |                    ^^^^^^^^^^^^^^^^^^^^^^^
+    |
+   ::: /home/doll/.cargo/git/checkouts/verus-e4ebf515fa1de14c/92f466f/source/vstd/std_specs/vec.rs:29:13
+    |
+ 29 |             0 <= i < self.view().len(),
+    |             -------------------------- recommendation not met
+
+error: precondition not satisfied
+   --> crates/foundation/peritus-budget/src/state.rs:199:9
+    |
+199 |         crate::refinement_model::all_ancestor_deltas_follow(self, &transition.spec_ledger());
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+   ::: crates/foundation/peritus-budget/src/refinement_model/ancestry.rs:41:9
+    |
+ 41 |         super::ancestor_consumption_propagates(before, after),
+    |         ----------------------------------------------------- failed precondition
+
+error: postcondition not satisfied
+  --> crates/foundation/peritus-budget/src/transition/validation/refinement.rs:17:9
+   |
+17 | /         (crate::model::ledger_well_formed(before)
+18 | |             && crate::reachability::complete_refinement(before, after)) ==> result.is_ok(),
+   | |__________________________________________________________________________________________^ failed this postcondition
+...
+34 |       validate_ancestor_propagation(before, after)?;
+   |                                                   - at this exit
+
+verification results:: 446 verified, 3 errors
+error: could not compile `peritus-budget` (lib) due to 3 previous errors

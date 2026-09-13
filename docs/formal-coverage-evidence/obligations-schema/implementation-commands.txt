@@ -1,0 +1,29 @@
+WORKTREE=/home/doll/Project-Peritus/.worktrees/formal-coverage
+TARGET=/home/doll/Project-Peritus/.worktrees/formal-coverage/target/peritus-sol-obligations-schema-01
+XTASK_TARGET=/home/doll/Project-Peritus/.worktrees/formal-coverage/target/peritus-sol-obligations-schema-xtask-01
+
+cd "$WORKTREE"
+
+env CARGO_BUILD_JOBS=2 CARGO_TARGET_DIR="$TARGET" CCACHE_DISABLE=1 cargo verus verify -p peritus-obligations --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20
+# PASS: 222 verified, 0 errors. Five pre-existing peritus-obligations Clone warnings and two dependency warnings remain.
+
+env CARGO_BUILD_JOBS=2 CARGO_TARGET_DIR="$TARGET" CCACHE_DISABLE=1 cargo test -p peritus-obligations --locked
+# PASS: 21 integration tests, 0 failures; 0 unit tests and 0 doc tests.
+
+env CARGO_BUILD_JOBS=2 CARGO_TARGET_DIR="$TARGET" CCACHE_DISABLE=1 cargo test -p peritus-obligations --all-features --locked
+# PASS: 21 integration tests, 0 failures; 0 unit tests and 0 doc tests.
+
+env CARGO_BUILD_JOBS=2 CARGO_TARGET_DIR="$TARGET" CCACHE_DISABLE=1 cargo clippy -p peritus-obligations --all-targets --all-features --locked -- -D warnings
+# PASS.
+
+cargo fmt -p peritus-obligations -- --check
+# PASS.
+
+git diff --check -- crates/orchestration/peritus-obligations/src/schema.rs crates/orchestration/peritus-obligations/src/schema_coverage.rs crates/orchestration/peritus-obligations/src/schema_model.rs crates/orchestration/peritus-obligations/src/schema_validation.rs crates/orchestration/peritus-obligations/src/evidence.rs crates/orchestration/peritus-obligations/src/order.rs crates/orchestration/peritus-obligations/src/limits.rs crates/orchestration/peritus-obligations/tests/schema_semantics.rs
+# PASS.
+
+env CARGO_BUILD_JOBS=2 CARGO_TARGET_DIR="$XTASK_TARGET" CCACHE_DISABLE=1 cargo run --locked --package xtask -- source-layout-check
+# PASS: 4344 source files.
+
+sha256sum -c /tmp/peritus-sol-obligations-schema-source-01.sha256
+# PASS: all eight frozen files match the shared worktree.

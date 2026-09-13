@@ -37,7 +37,25 @@ impl ReleaseEvidence {
         reviews: Vec<ReviewObservation>,
         findings: Vec<FindingObservation>,
         waivers: Vec<WaiverObservation>,
-    ) -> Result<Self, ConstructionError> {
+    ) -> (result: Result<Self, ConstructionError>)
+        ensures
+            result.is_ok() == (
+                observations@.len() <= Self::MAX_COLLECTION_LEN
+                    && qualifications@.len() <= Self::MAX_COLLECTION_LEN
+                    && reviews@.len() <= Self::MAX_COLLECTION_LEN
+                    && findings@.len() <= Self::MAX_COLLECTION_LEN
+                    && waivers@.len() <= Self::MAX_COLLECTION_LEN
+            ),
+            match result {
+                Ok(value) => value.spec_observations() == observations@
+                    && value.spec_qualifications() == qualifications@
+                    && value.spec_reviews() == reviews@
+                    && value.spec_findings() == findings@
+                    && value.spec_waivers() == waivers@,
+                Err(error) => error.spec_kind()
+                    == ConstructionErrorKind::CollectionLimitExceeded,
+            },
+    {
         if observations.len() > Self::MAX_COLLECTION_LEN
             || qualifications.len() > Self::MAX_COLLECTION_LEN
             || reviews.len() > Self::MAX_COLLECTION_LEN

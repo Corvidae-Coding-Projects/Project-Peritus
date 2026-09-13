@@ -1,0 +1,44 @@
+{
+  "schema": "peritus.formal-coverage.increment-review",
+  "schema_version": 1,
+  "status": "reviewed-bounded-increment-not-obligation-discharge",
+  "recorded_at": "2026-09-12T20:03:56.807568+00:00",
+  "base_commit": "1aa9282ff2cfcbf8fac325f11f157f408d33ee30",
+  "implementation": "/root/sol_readiness_correspondence",
+  "reviewer": "/root",
+  "review_provenance": "Independent source review through Codex collaboration in thread 01a08ab8-4887-7c63-8c75-7b8541cbbe4c; not an external signature or protected proof-impact authorization.",
+  "reviewed_source_manifest_sha256": "20dd4cf13e18f4cc77a5cfc95e331ba55f1a28992d4616b89e95cbb78457e03a",
+  "reviewer_verdict": "PASS for exact first-observation requirement/criterion admission, catalog fold correspondence, empty-success diagnostics and top-level implication.",
+  "remaining_limits": [
+    "Historical controls-only checkpoint; later full-input correspondence reviewed separately.",
+    "External evidence truth and authenticity are not proved.",
+    "Not a complete compiler-input attestation or final clean commit."
+  ],
+  "results": {
+    "implementation_strict_verified": 174,
+    "independent_strict_verified": 174,
+    "proof_errors": 0,
+    "implementation_tests_passed": 7,
+    "independent_tests_passed": 7,
+    "clippy": "passed",
+    "format": "passed",
+    "source_layout": "passed",
+    "prior_test_resource_failures": "two linker failures; disk-backed retry passed"
+  },
+  "artifacts": {
+    "audit.md": "25bb3da8b69fc410ec8a479b1e6040d239626316a3f4263a0e1ee0f8de36cc81",
+    "clippy.txt": "096767d67598424c973055a3c7b18fec175b76897c11b051acc52917190ed012",
+    "environment.txt": "e902258d961d0d8dc8752d96f395a8be5559bb75c82a712376bdaffbf85edc7a",
+    "forbidden-scan.txt": "b20ec96ac30009d4843a8d7adf02549caed6455ef84b325ee8b2b62411f21a28",
+    "format.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "implementation-commands.txt": "c65bb59eed7d295c37fa0541a9d5804fbfb23ee27dd51a44ef6069143192d761",
+    "implementation-manifest.txt": "642fb6852dc4f7fb6b54090026731ef53d9b5211e7ee2e9172e1bb1f77bd309c",
+    "independent-commands.txt": "34c387197e27e7c72df6e35b9c66bdc8d727436aca65f1a43072f8879f4593f5",
+    "source-layout.txt": "86678e12afe291ff1f51d80d3bdafd864f042c34b38dc2cf4cf0cd32f171d268",
+    "source-sha256.txt": "20dd4cf13e18f4cc77a5cfc95e331ba55f1a28992d4616b89e95cbb78457e03a",
+    "tests-implementation.txt": "bf14ee1c6e7d56f0f4458986392508beb51b75deed4b893c8484e747d9d9bb9b",
+    "tests-independent.txt": "1c8536ca38ef428e7c7e02ba54a1ef464911366edd89295a9a86525f9e68eb94",
+    "verus-implementation.txt": "9530c927076213aafcdabb500e14db2e941f41a33d7c1e09d4f951f198992de1",
+    "verus-independent.txt": "d36c8dd4a75f59a15fc7c0e4e9930b6766f0a0022facfccf1c6256602e612b35"
+  }
+}

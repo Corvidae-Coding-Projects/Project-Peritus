@@ -1,0 +1,21 @@
+{
+  "base_commit": "8e8cbb1bcf0de9787d86c7be3d6fc1f2079f3493",
+  "prior_runtime_files": 95,
+  "resource_source_files": 81,
+  "combined_files": 101,
+  "changed_paths": [
+    "src/resource.rs",
+    "src/resource/addition.rs",
+    "src/resource/addition/merge.rs",
+    "src/resource/addition/proofs.rs",
+    "src/resource/capacity.rs",
+    "src/resource/subtraction.rs",
+    "src/selection/capacity.rs",
+    "src/selection/capacity/aggregate.rs",
+    "src/selection/capacity/fallback.rs",
+    "tests/resource_invariants.rs"
+  ],
+  "resource_review_sha256": "a6767ec0a64bc0a286b97d73c0391ae2e61e2058e872c18929969efce6b31553",
+  "combined_manifest_sha256": "feeaa698786b412f733ac0215fcd75466a526a0987c4578a12f9374ac33b4333",
+  "qualification": "pending"
+}

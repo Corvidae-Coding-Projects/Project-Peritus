@@ -1,0 +1,19 @@
+2026-09-12T19:40:50Z
+1aa9282ff2cfcbf8fac325f11f157f408d33ee30
+f15ad47b4bafe5a71deda4e5e11c075478f484c62572ce814ce07f2d73134205  Cargo.lock
+rustc 1.97.1 (8bab26f4f 2026-07-14)
+cargo 1.97.1 (c980f4866 2026-06-30)
+rust-toolchain = "1.97.1"
+verus-version = "0.2026.08.09.92f466f"
+vstd-revision = "92f466f247f45128c630d1c843fd6e27d2115587"
+schema = 1
+rust = "1.97.1"
+verus = "0.2026.08.09.92f466f"
+vstd_revision = "92f466f247f45128c630d1c843fd6e27d2115587"
+z3 = "4.16.0"
+cargo_verus_advertised_z3 = "4.12.5"
+
+[archives.linux_x86_64]
+url = "https://github.com/verus-lang/verus/releases/download/release/0.2026.08.09.92f466f/verus-0.2026.08.09.92f466f-x86-linux.zip"
+sha256 = "2f5a41c553f424aacdd732339e9d125563716a0b003c27730f75d6f81a282cef"
+Z3 version 4.16.0 - 64 bit

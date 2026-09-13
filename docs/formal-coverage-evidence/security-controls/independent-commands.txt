@@ -1,0 +1,5 @@
+# Frozen readiness checkpoint plus the five exact source files in source-sha256.txt
+# Working directory: /tmp/peritus-parent-readiness-review.q25p5n7e
+# CARGO_BUILD_JOBS=2 CCACHE_DISABLE=1 CARGO_TARGET_DIR=/home/doll/Project-Peritus/.worktrees/formal-coverage/target/formal-readiness-review
+cargo verus verify --package peritus-security-policy --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20
+cargo test --locked --package peritus-security-policy --all-targets --all-features

@@ -1,0 +1,109 @@
+   Compiling quote v1.0.47
+   Compiling rustix v1.1.4
+   Compiling syn v2.0.119
+   Compiling verus_syn v0.0.0-2026-08-02-0125 (https://github.com/verus-lang/verus.git?rev=92f466f247f45128c630d1c843fd6e27d2115587#92f466f2)
+   Compiling verus_prettyplease v0.0.0-2026-08-09-0044 (https://github.com/verus-lang/verus.git?rev=92f466f247f45128c630d1c843fd6e27d2115587#92f466f2)
+   Compiling synstructure v0.13.2
+   Compiling linux-raw-sys v0.12.1
+   Compiling verus_state_machines_macros v0.0.0-2026-08-02-0125 (https://github.com/verus-lang/verus.git?rev=92f466f247f45128c630d1c843fd6e27d2115587#92f466f2)
+   Compiling verus_builtin_macros v0.0.0-2026-08-09-0044 (https://github.com/verus-lang/verus.git?rev=92f466f247f45128c630d1c843fd6e27d2115587#92f466f2)
+   Compiling vstd v0.0.0-2026-08-09-0044 (https://github.com/verus-lang/verus.git?rev=92f466f247f45128c630d1c843fd6e27d2115587#92f466f2)
+   Compiling cc v1.4.4
+   Compiling libsqlite3-sys v0.38.2
+   Compiling peritus-types v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/foundation/peritus-types)
+   Compiling peritus-policy v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/foundation/peritus-policy)
+   Compiling peritus-codec v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/foundation/peritus-codec)
+   Compiling peritus-spec v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/foundation/peritus-spec)
+   Compiling curve25519-dalek-derive v0.1.1
+   Compiling curve25519-dalek v5.0.0
+   Compiling peritus-quality-policy v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/foundation/peritus-quality-policy)
+   Compiling peritus-budget v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/foundation/peritus-budget)
+   Compiling fs-set-times v0.20.3
+   Compiling rustix-linux-procfs v0.1.1
+   Compiling smallvec v1.15.2
+   Compiling peritus-kernel v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/foundation/peritus-kernel)
+   Compiling rusqlite v0.40.2
+   Compiling cap-primitives v4.0.3
+   Compiling ed25519-dalek v3.0.0
+   Compiling fs4 v1.1.0
+   Compiling syn v3.0.3
+   Compiling winnow v1.0.4
+   Compiling toml_parser v1.1.3+spec-1.1.0
+   Compiling nix v0.31.3
+   Compiling peritus-artifact-store v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/state/peritus-artifact-store)
+   Compiling serde_derive v1.0.229
+   Compiling peritus-approval v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/state/peritus-approval)
+   Compiling cap-std v4.0.3
+   Compiling peritus-protocol v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/foundation/peritus-protocol)
+   Compiling peritus-leases v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/state/peritus-leases)
+   Compiling toml v1.1.4+spec-1.1.0
+   Compiling peritus-journal v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/state/peritus-journal)
+   Compiling cap-fs-ext v4.0.3
+   Compiling serde v1.0.229
+   Compiling peritus-git v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/runtime/peritus-git)
+   Compiling peritus-patch v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/runtime/peritus-patch)
+   Compiling tempfile v3.27.0
+   Compiling peritus-test-support v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/app/testing/peritus-test-support)
+   Compiling peritus-workspace v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/runtime/peritus-workspace)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 38.74s
+     Running unittests src/lib.rs (target/peritus-sol-kernel-copy-consumers-01/debug/deps/peritus_workspace-62eb9caa9c2769e7)
+
+running 12 tests
+test reconcile::tests::post_fence_classification_never_guesses_safety ... ok
+test scoped_inspection::read::tests::range_scanning_is_chunk_independent_and_preserves_original_line_terminators ... ok
+test scoped_inspection::read::tests::nonexistent_last_line_and_oversized_selected_lines_reject_without_partial_result ... ok
+test scoped_inspection::read::tests::replaced_file_identity_and_changed_same_length_content_invalidate_the_observation ... ok
+test verified::tests::authority_gate_rejects_every_missing_fact ... ok
+test verified::tests::resource_identity_rejects_each_independent_mismatch ... ok
+test scoped_inspection::tests::races::an_open_capability_rejects_a_replaced_root_before_publishing_source_bytes ... ok
+test scoped_inspection::tests::symlinks_at_every_component_and_replaced_roots_cannot_read_an_outside_file ... ok
+test scoped_inspection::tests::races::fifo_socket_and_directory_reject_as_non_regular_files_without_waiting_for_a_writer ... ok
+test scoped_inspection::tests::exact_bytes_ranges_and_full_source_digests_are_independent_and_never_truncated ... ok
+test scoped_inspection::tests::races::concurrent_intermediate_symlink_swaps_never_publish_outside_bytes ... ok
+test scoped_inspection::tests::empty_files_large_ranged_files_and_invalid_bounds_have_explicit_results ... ok
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.32s
+
+     Running tests/authorized_gateway.rs (target/peritus-sol-kernel-copy-consumers-01/debug/deps/authorized_gateway-915521ec271a23c7)
+
+running 13 tests
+test namespace_safety::open_rejects_a_transaction_root_that_contains_the_managed_worktree ... ok
+test namespace_safety::reconciliation_observes_unrelated_namespace_child_without_quarantining_it ... ok
+test clean_open_rejects_a_worktree_that_differs_from_the_current_snapshot_tree ... ok
+test folder::intervening_edit_conflicts_without_overwrite ... ok
+test folder::recovery_requires_the_exact_consumed_canonical_action_before_classifying_cleaned_state ... ok
+test folder::committed_authority_must_match_the_folder_owners_full_revision_tuple ... ok
+test folder::registered_folder_applies_exact_bytes_with_committed_authority_and_rejects_replay ... ok
+test exact_committed_receipts_are_required_before_real_patch_effect ... ok
+test durable_action_marker_rejects_receipt_replay_after_full_reopen ... ok
+test snapshot_publication::candidate_quota_failure_releases_the_unpublished_snapshot ... ok
+test caller_binding::distinct_tool_parent_binding_is_committed_and_swaps_have_no_effect ... ok
+test rollback_stays_dirty_when_manifest_finalization_fails_after_restore ... ok
+test gateway_runs_candidate_rollback_and_clean_reconciliation_with_real_effects ... ok
+
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.66s
+
+     Running tests/production_conformance.rs (target/peritus-sol-kernel-copy-consumers-01/debug/deps/production_conformance-b09a97e953570e0f)
+
+running 1 test
+test production_workspace_passes_a2_git_patch_snapshot_and_recovery_suite ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.06s
+
+     Running tests/workspace_registration.rs (target/peritus-sol-kernel-copy-consumers-01/debug/deps/workspace_registration-5bb2b2c0e0122a73)
+
+running 2 tests
+test registration_rejects_malformed_bytes_and_read_only_worktrees ... ok
+test workspace_registration_round_trips_exact_reopen_inputs ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s
+
+   Doc-tests peritus_workspace
+
+running 3 tests
+test crates/runtime/peritus-workspace/src/writable.rs - writable::_ (line 117) - compile fail ... ok
+test crates/runtime/peritus-workspace/src/writable.rs - writable::_ (line 112) - compile fail ... ok
+test crates/runtime/peritus-workspace/src/read_only.rs - read_only::_ (line 111) - compile fail ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s
+

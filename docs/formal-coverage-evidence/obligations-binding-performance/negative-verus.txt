@@ -1,0 +1,164 @@
+   Compiling proc-macro2 v1.0.107
+   Compiling unicode-ident v1.0.24
+   Compiling quote v1.0.47
+   Compiling verus_syn v0.0.0-2026-08-02-0125 (https://github.com/verus-lang/verus.git?rev=92f466f247f45128c630d1c843fd6e27d2115587#92f466f2)
+   Compiling verus_prettyplease v0.0.0-2026-08-09-0044 (https://github.com/verus-lang/verus.git?rev=92f466f247f45128c630d1c843fd6e27d2115587#92f466f2)
+   Compiling equivalent v1.0.2
+   Compiling hashbrown v0.17.1
+   Compiling indexmap v2.14.0
+   Compiling syn v2.0.119
+   Compiling synstructure v0.13.2
+    Checking typenum v1.20.1
+   Compiling convert_case v0.4.0
+   Compiling vstd v0.0.0-2026-08-09-0044 (https://github.com/verus-lang/verus.git?rev=92f466f247f45128c630d1c843fd6e27d2115587#92f466f2)
+   Compiling verus_builtin_macros v0.0.0-2026-08-09-0044 (https://github.com/verus-lang/verus.git?rev=92f466f247f45128c630d1c843fd6e27d2115587#92f466f2)
+    Checking hybrid-array v0.4.14
+   Compiling verus_state_machines_macros v0.0.0-2026-08-02-0125 (https://github.com/verus-lang/verus.git?rev=92f466f247f45128c630d1c843fd6e27d2115587#92f466f2)
+    Checking verus_builtin v0.0.0-2026-08-09-0044 (https://github.com/verus-lang/verus.git?rev=92f466f247f45128c630d1c843fd6e27d2115587#92f466f2)
+    Checking block-buffer v0.12.1
+    Checking crypto-common v0.2.2
+    Checking digest v0.11.3
+    Checking cpufeatures v0.3.0
+    Checking cfg-if v1.0.4
+    Checking sha2 v0.11.0
+verification results:: 2044 verified, 0 errors
+    Checking peritus-types v0.0.2 (/tmp/peritus-parent-obligations-negative.qcg84gl6/crates/foundation/peritus-types)
+verification results:: 210 verified, 0 errors
+    Checking peritus-run-settlement v0.0.2 (/tmp/peritus-parent-obligations-negative.qcg84gl6/crates/orchestration/peritus-run-settlement)
+    Checking peritus-spec v0.0.2 (/tmp/peritus-parent-obligations-negative.qcg84gl6/crates/foundation/peritus-spec)
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+  --> crates/orchestration/peritus-run-settlement/src/evidence.rs:47:10
+   |
+47 | #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+   |          ^^^^^
+   |
+   = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: autoderive Clone impl does not take the form Verus expects; continuing, but without adding a specification for the derived Clone impl
+  --> crates/orchestration/peritus-run-settlement/src/evidence.rs:81:10
+   |
+81 | #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+   |          ^^^^^
+   |
+   = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+verification results:: 71 verified, 0 errors
+warning: `peritus-run-settlement` (lib) generated 2 warnings
+verification results:: 176 verified, 0 errors
+    Checking peritus-obligations v0.0.2 (/tmp/peritus-parent-obligations-negative.qcg84gl6/crates/orchestration/peritus-obligations)
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+  --> crates/orchestration/peritus-obligations/src/browser.rs:39:10
+   |
+39 | #[derive(Clone, Debug, Eq, PartialEq)]
+   |          ^^^^^
+   |
+   = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+  --> crates/orchestration/peritus-obligations/src/evidence.rs:16:10
+   |
+16 | #[derive(Clone, Debug, Eq, PartialEq)]
+   |          ^^^^^
+   |
+   = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+  --> crates/orchestration/peritus-obligations/src/evidence.rs:39:10
+   |
+39 | #[derive(Clone, Debug, Eq, PartialEq)]
+   |          ^^^^^
+   |
+   = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: autoderive Clone impl does not take the form Verus expects; continuing, but without adding a specification for the derived Clone impl
+  --> crates/orchestration/peritus-obligations/src/evidence.rs:79:10
+   |
+79 | #[derive(Clone, Debug, Eq, PartialEq)]
+   |          ^^^^^
+   |
+   = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+  --> crates/orchestration/peritus-obligations/src/lifecycle.rs:59:10
+   |
+59 | #[derive(Clone, Debug, Eq, PartialEq)]
+   |          ^^^^^
+   |
+   = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+  --> crates/orchestration/peritus-obligations/src/path.rs:34:10
+   |
+34 | #[derive(Clone, Debug, Eq, PartialEq)]
+   |          ^^^^^
+   |
+   = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+  --> crates/orchestration/peritus-obligations/src/provenance.rs:10:10
+   |
+10 | #[derive(Clone, Debug, Eq, PartialEq)]
+   |          ^^^^^
+   |
+   = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+  --> crates/orchestration/peritus-obligations/src/provenance.rs:91:10
+   |
+91 | #[derive(Clone, Debug, Eq, PartialEq)]
+   |          ^^^^^
+   |
+   = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: autoderive Clone impl does not take the form Verus expects; continuing, but without adding a specification for the derived Clone impl
+  --> crates/orchestration/peritus-obligations/src/requirement.rs:33:10
+   |
+33 | #[derive(Clone, Debug, Eq, PartialEq)]
+   |          ^^^^^
+   |
+   = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+   --> crates/orchestration/peritus-obligations/src/requirement.rs:104:10
+    |
+104 | #[derive(Clone, Debug, Eq, PartialEq)]
+    |          ^^^^^
+    |
+    = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+  --> crates/orchestration/peritus-obligations/src/schema.rs:22:10
+   |
+22 | #[derive(Clone, Debug, Eq, PartialEq)]
+   |          ^^^^^
+   |
+   = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+  --> crates/orchestration/peritus-obligations/src/schema.rs:60:10
+   |
+60 | #[derive(Clone, Debug, Eq, PartialEq)]
+   |          ^^^^^
+   |
+   = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+   --> crates/orchestration/peritus-obligations/src/schema.rs:119:10
+    |
+119 | #[derive(Clone, Debug, Eq, PartialEq)]
+    |          ^^^^^
+    |
+    = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+error: postcondition not satisfied
+   --> crates/orchestration/peritus-obligations/src/performance.rs:276:13
+    |
+276 |     ensures met == threshold.spec_met(baseline, candidate, noise_margin),
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition
+...
+279 |         PerformanceExpectation::CandidateAtMost(limit) => {
+    |         ---------------------------------------------- at the end of the function body
+
+verification results:: 191 verified, 1 errors
+warning: `peritus-obligations` (lib) generated 13 warnings
+error: could not compile `peritus-obligations` (lib) due to 1 previous error; 13 warnings emitted

@@ -114,6 +114,20 @@ fn stale_native_observation_fails_the_exact_candidate() {
 }
 
 #[test]
+fn every_canonical_probe_outcome_is_required_for_final_admission() {
+    let candidate = candidate(31);
+    for spec in ProbeSpec::h0_production() {
+        let run = run(candidate, Some(spec.id()));
+        let report = QualificationReport::evaluate(run, Some(review(candidate, Vec::new())))
+            .expect("qualification report");
+        assert!(!report.is_ready(), "probe {:?} must be required", spec.id());
+        assert!(
+            matches!(report.verdict(), ReadinessVerdict::NotReady(reasons) if !reasons.is_empty())
+        );
+    }
+}
+
+#[test]
 fn cancelled_campaign_records_every_remaining_case_as_non_success() {
     let candidate = candidate(4);
     let cancellation = CancellationToken::new();

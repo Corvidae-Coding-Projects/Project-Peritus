@@ -1,99 +1,241 @@
 //! Reducer-only state mutation and derived invariant maintenance.
 
+mod acknowledge_start;
+mod entity_insertion;
+mod reservation_command;
+mod reservation_remove;
+mod reservation_update;
+mod reserve;
+mod scheduler_phase;
+mod work_command;
+mod work_update;
+mod worker_update;
+
+pub use acknowledge_start::acknowledge_reservation_start;
+#[cfg(verus_only)]
+pub(crate) use acknowledge_start::start_target_exists;
+pub use entity_insertion::{insert_work, insert_worker};
+pub use reservation_command::{
+    AbandonCommandOutcome, AcknowledgeCancellationOutcome, AcknowledgeStartOutcome,
+    CompleteCommandOutcome, FailCommandOutcome, apply_abandon_command,
+    apply_acknowledge_cancellation_command, apply_acknowledge_start_command,
+    apply_complete_command, apply_fail_command,
+};
+pub use reservation_remove::remove_reservation;
+pub use reservation_update::mark_reservation_started;
+#[cfg(verus_only)]
+pub(crate) use reserve::dispatch_admission_ready;
+pub use reserve::reserve_selected_at;
+pub use scheduler_phase::{PhaseCommandOutcome, apply_phase_command};
+pub use work_command::{
+    ExhaustCommandOutcome, RetryCommandOutcome, apply_exhaust_command, apply_retry_command,
+};
+#[cfg(verus_only)]
+pub(crate) use work_update::release_target_exists;
+pub use work_update::{
+    begin_work_attempt_at, queue_work_retry, release_to_phase, release_to_retry_pending,
+    release_to_terminal, set_work_bypasses, set_work_phase, terminalize_work,
+};
+pub use worker_update::set_worker_phase;
+
 use peritus_types::{CommandId, EventId, EventSequence, Sha256Digest};
 
 use crate::{
-    DispatchId, SchedulerPhase, SchedulerReservation, SchedulerState, SchedulerTerminal, WorkId,
-    WorkPhase, WorkRecord, WorkTerminal, WorkerId, WorkerPhase, WorkerRecord,
+    DispatchId, SchedulerPhase, SchedulerReservation, SchedulerState, SchedulerTerminal, WorkPhase,
+    WorkRecord, WorkTerminal, WorkerPhase,
 };
+use vstd::prelude::*;
 
-pub fn worker_mut(state: &mut SchedulerState, id: WorkerId) -> Option<&mut WorkerRecord> {
-    state
-        .workers
-        .binary_search_by_key(&id, |record| record.descriptor().id())
-        .ok()
-        .map(|index| &mut state.workers[index])
+verus! {
+
+fn reservation_slot(values: &[SchedulerReservation], id: DispatchId) -> (at: usize)
+    ensures at <= values@.len(),
+{
+    let mut size = values.len();
+    if size == 0 {
+        return 0;
+    }
+    let mut base: usize = 0;
+    while size > 1
+        invariant
+            0 < size <= values.len(),
+            base < values.len(),
+            base + size <= values.len(),
+        decreases size,
+    {
+        let half = size / 2;
+        let mid = base + half;
+        let observed = values[mid].dispatch_id();
+        if !id.precedes(&observed) {
+            base = mid;
+        }
+        size -= half;
+    }
+    let observed = values[base].dispatch_id();
+    if observed.precedes(&id) {
+        base + 1
+    } else {
+        base
+    }
 }
 
-pub fn work_mut(state: &mut SchedulerState, id: WorkId) -> Option<&mut WorkRecord> {
-    state
-        .work
-        .binary_search_by_key(&id, |record| record.spec().id())
-        .ok()
-        .map(|index| &mut state.work[index])
-}
-
-pub fn reservation_mut(
-    state: &mut SchedulerState,
-    id: DispatchId,
-) -> Option<&mut SchedulerReservation> {
-    state
-        .reservations
-        .binary_search_by_key(&id, SchedulerReservation::dispatch_id)
-        .ok()
-        .map(|index| &mut state.reservations[index])
-}
-
-pub fn insert_worker(state: &mut SchedulerState, value: WorkerRecord) {
-    let at = state
-        .workers
-        .binary_search_by_key(&value.descriptor().id(), |record| record.descriptor().id())
-        .unwrap_or_else(|index| index);
-    state.workers.insert(at, value);
-}
-
-pub fn insert_work(state: &mut SchedulerState, value: WorkRecord) {
-    let at = state
-        .work
-        .binary_search_by_key(&value.spec().id(), |record| record.spec().id())
-        .unwrap_or_else(|index| index);
-    state.work.insert(at, value);
-}
-
-pub fn insert_reservation(state: &mut SchedulerState, value: SchedulerReservation) {
-    let at = state
-        .reservations
-        .binary_search_by_key(&value.dispatch_id(), SchedulerReservation::dispatch_id)
-        .unwrap_or_else(|index| index);
+pub fn insert_reservation(state: &mut SchedulerState, value: SchedulerReservation)
+    ensures
+        exists |at: int| #![auto]
+            0 <= at <= old(state).spec_reservations().len()
+                && final(state).spec_reservations()
+                    == old(state).spec_reservations().insert(at, value),
+        final(state).spec_binding().spec_limits()
+            == old(state).spec_binding().spec_limits(),
+        final(state).spec_binding().spec_capacity().spec_entries()
+            == old(state).spec_binding().spec_capacity().spec_entries(),
+        final(state).spec_workers() == old(state).spec_workers(),
+        final(state).spec_work() == old(state).spec_work(),
+        final(state).spec_used_dispatches() == old(state).spec_used_dispatches(),
+        old(state).spec_reservation_invariant()
+                && old(state).spec_reservation_feasible(&value)
+            ==> final(state).spec_reservation_invariant(),
+{
+    let ghost before = state.spec_reservations();
+    let at = reservation_slot(&state.reservations, value.dispatch_id());
+    proof {
+        assert(0 <= (at as int) && (at as int) <= state.spec_reservations().len());
+        if state.spec_reservation_invariant() && state.spec_reservation_feasible(&value) {
+            crate::verified::actual_reservation_insertion_preserves(
+                state.spec_binding(),
+                state.spec_workers(),
+                state.spec_work(),
+                state.spec_reservations(),
+                value,
+                at as int,
+            );
+        }
+    };
     state.reservations.insert(at, value);
+    proof {
+        assert(state.spec_reservations() == before.insert(at as int, value));
+        assert(exists |insert_at: int| #![auto]
+            0 <= insert_at <= before.len()
+                && state.spec_reservations() == before.insert(insert_at, value)) by {
+        }
+    };
 }
 
-pub fn retain_dispatch_identity(state: &mut SchedulerState, id: DispatchId) {
-    let at = state.used_dispatches.binary_search(&id).unwrap_or_else(|index| index);
+} // verus!
+
+verus! {
+
+fn dispatch_slot(values: &[DispatchId], id: DispatchId) -> (at: usize)
+    ensures at <= values@.len(),
+{
+    let mut index = 0;
+    while index < values.len()
+        invariant index <= values@.len(),
+        decreases values@.len() - index,
+    {
+        if id.precedes(&values[index]) {
+            return index;
+        }
+        index += 1;
+    }
+    index
+}
+
+pub fn retain_dispatch_identity(state: &mut SchedulerState, id: DispatchId)
+    ensures
+        exists |at: int| #![auto]
+            0 <= at <= old(state).spec_used_dispatches().len()
+                && final(state).spec_used_dispatches()
+                    == old(state).spec_used_dispatches().insert(at, id),
+        final(state).spec_binding().spec_limits()
+            == old(state).spec_binding().spec_limits(),
+        final(state).spec_binding().spec_capacity().spec_entries()
+            == old(state).spec_binding().spec_capacity().spec_entries(),
+        final(state).spec_workers() == old(state).spec_workers(),
+        final(state).spec_work() == old(state).spec_work(),
+        final(state).spec_reservations() == old(state).spec_reservations(),
+{
+    let ghost before = state.spec_used_dispatches();
+    let at = dispatch_slot(&state.used_dispatches, id);
     state.used_dispatches.insert(at, id);
+    proof {
+        assert(state.spec_used_dispatches() == before.insert(at as int, id));
+        assert(exists |insert_at: int| #![auto]
+            0 <= insert_at <= before.len()
+                && state.spec_used_dispatches() == before.insert(insert_at, id)) by {
+        }
+    };
 }
 
-pub fn remove_reservation(
-    state: &mut SchedulerState,
-    id: DispatchId,
-) -> Option<SchedulerReservation> {
-    state
-        .reservations
-        .binary_search_by_key(&id, SchedulerReservation::dispatch_id)
-        .ok()
-        .map(|index| state.reservations.remove(index))
-}
+} // verus!
 
-pub fn next_enqueue_ordinal(state: &mut SchedulerState) -> Option<u64> {
+verus! {
+
+pub fn next_enqueue_ordinal(state: &mut SchedulerState) -> (result: Option<u64>)
+    ensures
+        old(state).spec_reservation_invariant()
+            ==> final(state).spec_reservation_invariant(),
+        old(state).spec_reservation_reducer_ready()
+            ==> final(state).spec_reservation_reducer_ready(),
+{
     let value = state.enqueue_ordinal.checked_add(1)?;
     state.enqueue_ordinal = value;
     Some(value)
 }
 
-pub const fn increment_dispatch_ordinal(state: &mut SchedulerState) -> bool {
-    if let Some(value) = state.dispatch_ordinal.checked_add(1) {
-        state.dispatch_ordinal = value;
+pub const fn increment_dispatch_ordinal(state: &mut SchedulerState) -> (result: bool)
+    ensures
+        result == (old(state).spec_dispatch_ordinal() < u64::MAX),
+        result ==> final(state).spec_dispatch_ordinal()
+            == old(state).spec_dispatch_ordinal() + 1,
+        !result ==> final(state).spec_dispatch_ordinal()
+            == old(state).spec_dispatch_ordinal(),
+        final(state).spec_binding().spec_limits()
+            == old(state).spec_binding().spec_limits(),
+        final(state).spec_binding().spec_capacity().spec_entries()
+            == old(state).spec_binding().spec_capacity().spec_entries(),
+        final(state).spec_workers() == old(state).spec_workers(),
+        final(state).spec_work() == old(state).spec_work(),
+        final(state).spec_reservations() == old(state).spec_reservations(),
+        final(state).spec_used_dispatches() == old(state).spec_used_dispatches(),
+        old(state).spec_reservation_reducer_ready()
+            ==> final(state).spec_reservation_reducer_ready(),
+{
+    if state.dispatch_ordinal < u64::MAX {
+        state.dispatch_ordinal += 1;
         true
     } else {
         false
     }
 }
 
-pub const fn set_phase(state: &mut SchedulerState, phase: SchedulerPhase) {
+} // verus!
+
+verus! {
+
+pub const fn set_phase(state: &mut SchedulerState, phase: SchedulerPhase)
+    ensures
+        final(state).spec_phase() == phase,
+        final(state).spec_binding() == old(state).spec_binding(),
+        final(state).spec_workers() == old(state).spec_workers(),
+        final(state).spec_work() == old(state).spec_work(),
+        final(state).spec_reservations() == old(state).spec_reservations(),
+        final(state).spec_used_dispatches() == old(state).spec_used_dispatches(),
+        old(state).spec_reservation_invariant()
+            ==> final(state).spec_reservation_invariant(),
+        old(state).spec_reservation_reducer_ready()
+            ==> final(state).spec_reservation_reducer_ready(),
+{
     state.phase = phase;
 }
 
-pub fn set_terminal(state: &mut SchedulerState, terminal: SchedulerTerminal) {
+pub fn set_terminal(state: &mut SchedulerState, terminal: SchedulerTerminal)
+    ensures
+        old(state).spec_reservation_invariant()
+            ==> final(state).spec_reservation_invariant(),
+        old(state).spec_reservation_reducer_ready()
+            ==> final(state).spec_reservation_reducer_ready(),
+{
     state.phase = SchedulerPhase::Terminal;
     state.terminal = Some(terminal);
 }
@@ -103,15 +245,29 @@ pub fn advance_cursor(
     sequence: EventSequence,
     event_id: EventId,
     command_id: CommandId,
-) {
+)
+    ensures
+        old(state).spec_reservation_invariant()
+            ==> final(state).spec_reservation_invariant(),
+        old(state).spec_reservation_reducer_ready()
+            ==> final(state).spec_reservation_reducer_ready(),
+{
     state.sequence = sequence;
     state.last_event_id = event_id;
     state.used_commands.push(command_id);
 }
 
-pub const fn set_state_digest(state: &mut SchedulerState, digest: Sha256Digest) {
+pub const fn set_state_digest(state: &mut SchedulerState, digest: Sha256Digest)
+    ensures
+        old(state).spec_reservation_invariant()
+            ==> final(state).spec_reservation_invariant(),
+        old(state).spec_reservation_reducer_ready()
+            ==> final(state).spec_reservation_reducer_ready(),
+{
     state.state_digest = digest;
 }
+
+} // verus!
 
 pub fn refresh(state: &mut SchedulerState) {
     propagate_dependencies(state);
@@ -148,12 +304,10 @@ fn propagate_dependencies(state: &mut SchedulerState) {
             break;
         }
         for (id, failed) in changes {
-            if let Some(record) = work_mut(state, id) {
-                if let Some(dependency) = failed {
-                    record.terminalize(WorkTerminal::DependencyFailed { dependency });
-                } else {
-                    record.set_phase(WorkPhase::Queued);
-                }
+            if let Some(dependency) = failed {
+                let _ = terminalize_work(state, id, WorkTerminal::DependencyFailed { dependency });
+            } else {
+                let _ = set_work_phase(state, id, WorkPhase::Queued);
             }
         }
     }
@@ -176,8 +330,6 @@ fn refresh_worker_phases(state: &mut SchedulerState) {
         } else {
             WorkerPhase::Available
         };
-        if let Some(worker) = worker_mut(state, id) {
-            worker.set_phase(phase);
-        }
+        let _ = set_worker_phase(state, id, phase);
     }
 }

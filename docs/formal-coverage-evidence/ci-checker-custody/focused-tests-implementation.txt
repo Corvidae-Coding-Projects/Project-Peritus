@@ -1,0 +1,33 @@
+   Compiling xtask v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/xtask)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 10.12s
+     Running unittests src/lib.rs (target/sol-ci-custody/debug/deps/xtask-88f979add953e9b2)
+
+running 7 tests
+test reproducibility::workflow_authority_tests::canonical_authority_workflow_is_exact_and_pinned ... ok
+test reproducibility::workflow_authority_tests::candidate_cannot_select_or_build_its_own_checker ... ok
+test reproducibility::workflow_authority_tests::candidate_actions_permissions_and_failure_masking_are_rejected ... ok
+test reproducibility::workflow_authority_tests::checker_build_inputs_cannot_drift_before_candidate_metadata ... ok
+test reproducibility::workflow_authority_tests::both_policy_passes_are_mandatory_and_ordered ... ok
+test reproducibility::workflow_authority_tests::checker_source_only_drift_fails_while_unrelated_drift_preserves_custody ... ok
+test reproducibility::workflow_authority_tests::revision_custody_and_pre_metadata_guards_cannot_be_relaxed ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 416 filtered out; finished in 0.08s
+
+     Running unittests src/main.rs (target/sol-ci-custody/debug/deps/xtask-41a90078cef10c75)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/cli.rs (target/sol-ci-custody/debug/deps/cli-0bf8960b46fe3ccc)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 3 filtered out; finished in 0.00s
+
+     Running tests/release_staging.rs (target/sol-ci-custody/debug/deps/release_staging-15805a54a9b679f5)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 4 filtered out; finished in 0.00s
+

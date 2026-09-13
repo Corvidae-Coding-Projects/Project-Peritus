@@ -1,0 +1,26 @@
+   Compiling libsqlite3-sys v0.38.2
+   Compiling rusqlite v0.40.2
+   Compiling peritus-artifact-store v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/target/sol-scheduler-perf-source-fixed-probe-002/crates/state/peritus-artifact-store)
+   Compiling peritus-journal v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/target/sol-scheduler-perf-source-fixed-probe-002/crates/state/peritus-journal)
+   Compiling peritus-projection v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/target/sol-scheduler-perf-source-fixed-probe-002/crates/state/peritus-projection)
+   Compiling peritus-evidence v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/target/sol-scheduler-perf-source-fixed-probe-002/crates/state/peritus-evidence)
+   Compiling peritus-scheduler v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/target/sol-scheduler-perf-source-fixed-probe-002/crates/orchestration/peritus-scheduler)
+    Finished `release` profile [optimized] target(s) in 1m 12s
+     Running unittests src/lib.rs (/home/doll/Project-Peritus/.worktrees/formal-coverage/target/sol-scheduler-perf-build-fixed-nearmax-002/release/deps/peritus_scheduler-9469d5ca2a851999)
+
+running 1 test
+test selection::performance_probe::dense_public_selection_and_dispatch_timings ... scheduler_perf phase=setup reservations=1024 dimensions=256 elapsed_ns=22780639
+scheduler_perf phase=select_next sample=0 reservations=1024 dimensions=256 elapsed_ns=5104049
+scheduler_perf phase=select_next sample=1 reservations=1024 dimensions=256 elapsed_ns=5140439
+scheduler_perf phase=select_next sample=2 reservations=1024 dimensions=256 elapsed_ns=5082036
+scheduler_perf phase=select_next sample=3 reservations=1024 dimensions=256 elapsed_ns=5097667
+scheduler_perf phase=select_next sample=4 reservations=1024 dimensions=256 elapsed_ns=5104372
+scheduler_perf phase=select_next sample=5 reservations=1024 dimensions=256 elapsed_ns=5114591
+scheduler_perf phase=select_next sample=6 reservations=1024 dimensions=256 elapsed_ns=5076717
+scheduler_perf phase=dispatch_next sample=0 reservations=1024 dimensions=256 elapsed_ns=19049967
+scheduler_perf phase=dispatch_next sample=1 reservations=1024 dimensions=256 elapsed_ns=18481651
+scheduler_perf phase=dispatch_next sample=2 reservations=1024 dimensions=256 elapsed_ns=18417510
+ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.14s
+

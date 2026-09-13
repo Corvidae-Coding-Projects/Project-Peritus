@@ -1,0 +1,3 @@
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.14s
+     Running `target/sol-release-output-xtask/debug/xtask ordinary-api-check`
+ordinary-api-check passed: 3492 formal-boundary file(s), 14680 ordinary-safe executable entry point(s)

@@ -31,10 +31,16 @@ struct ReasonDocument {
 pub(super) fn encode(report: &QualificationReport) -> Result<Vec<u8>, QualificationError> {
     let manifest_json = String::from_utf8(report.manifest().canonical_json().to_vec())
         .map_err(|_| interchange("H0 canonical evidence manifest is not UTF-8 JSON"))?;
-    let (status, reasons) = match report.verdict() {
-        ReadinessVerdict::Ready(_) => ("ready", Vec::new()),
-        ReadinessVerdict::NotReady(reasons) => {
-            ("not-ready", reasons.iter().copied().map(ReasonDocument::from_reason).collect())
+    let (status, reasons) = if report.is_ready() {
+        ("ready", Vec::new())
+    } else {
+        match report.verdict() {
+            ReadinessVerdict::NotReady(reasons) => {
+                ("not-ready", reasons.iter().copied().map(ReasonDocument::from_reason).collect())
+            }
+            ReadinessVerdict::Ready(_) => {
+                return Err(interchange("H0 report readiness invariant is inconsistent"));
+            }
         }
     };
     let document = FinalReportDocument {

@@ -1,0 +1,9 @@
+   Compiling peritus-context v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/target/sol-context-source-001/crates/orchestration/peritus-context)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.22s
+     Running tests/graph_matrix.rs (/home/doll/Project-Peritus/.worktrees/formal-coverage/target/sol-context-build-001/debug/deps/graph_matrix-354e33e2d8b78c12)
+
+running 1 test
+test cycle_diagnostics_preserve_legacy_residual_order_for_complex_shapes ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 6 filtered out; finished in 0.00s
+

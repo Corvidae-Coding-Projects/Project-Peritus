@@ -1,14 +1,20 @@
 //! Exact release-candidate, platform, toolchain, profile, and schema identities.
 
-use crate::{CandidateId, ConstructionError, ConstructionErrorKind};
+use crate::CandidateId;
 use peritus_types::Sha256Digest;
 use vstd::prelude::*;
 
 verus! {
 
+mod construction;
 mod git;
+pub mod equality;
 mod platform;
 mod version;
+
+pub use equality::candidate_matches;
+#[cfg(verus_only)]
+pub use equality::{candidate_matches_exactly, digest_matches};
 
 pub use git::{GitCommitId, GitObjectFormat};
 pub use platform::{Architecture, OperatingSystem, PlatformIdentity, PlatformMatrix};
@@ -25,39 +31,49 @@ pub struct ToolchainIdentity {
 }
 
 impl ToolchainIdentity {
-    /// Creates an exact non-placeholder toolchain identity.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`ConstructionErrorKind::ZeroDigest`] when any component is a placeholder.
-    pub fn new(
-        rust_digest: Sha256Digest,
-        verus_digest: Sha256Digest,
-        vstd_digest: Sha256Digest,
-        solver_digest: Sha256Digest,
-    ) -> Result<Self, ConstructionError> {
-        require_digest(rust_digest)?;
-        require_digest(verus_digest)?;
-        require_digest(vstd_digest)?;
-        require_digest(solver_digest)?;
-        Ok(Self { rust_digest, verus_digest, vstd_digest, solver_digest })
-    }
-
     /// Returns the exact Rust toolchain digest.
     #[must_use]
-    pub const fn rust_digest(&self) -> Sha256Digest { self.rust_digest }
+    pub const fn rust_digest(&self) -> (digest: Sha256Digest)
+        ensures digest == self.spec_rust_digest()
+    {
+        self.rust_digest
+    }
 
     /// Returns the exact Verus toolchain digest.
     #[must_use]
-    pub const fn verus_digest(&self) -> Sha256Digest { self.verus_digest }
+    pub const fn verus_digest(&self) -> (digest: Sha256Digest)
+        ensures digest == self.spec_verus_digest()
+    {
+        self.verus_digest
+    }
 
     /// Returns the exact vstd revision digest.
     #[must_use]
-    pub const fn vstd_digest(&self) -> Sha256Digest { self.vstd_digest }
+    pub const fn vstd_digest(&self) -> (digest: Sha256Digest)
+        ensures digest == self.spec_vstd_digest()
+    {
+        self.vstd_digest
+    }
 
     /// Returns the exact solver identity digest.
     #[must_use]
-    pub const fn solver_digest(&self) -> Sha256Digest { self.solver_digest }
+    pub const fn solver_digest(&self) -> (digest: Sha256Digest)
+        ensures digest == self.spec_solver_digest()
+    {
+        self.solver_digest
+    }
+
+    /// Logical view of the exact Rust toolchain digest.
+    pub closed spec fn spec_rust_digest(&self) -> Sha256Digest { self.rust_digest }
+
+    /// Logical view of the exact Verus toolchain digest.
+    pub closed spec fn spec_verus_digest(&self) -> Sha256Digest { self.verus_digest }
+
+    /// Logical view of the exact vstd revision digest.
+    pub closed spec fn spec_vstd_digest(&self) -> Sha256Digest { self.vstd_digest }
+
+    /// Logical view of the exact solver identity digest.
+    pub closed spec fn spec_solver_digest(&self) -> Sha256Digest { self.solver_digest }
 }
 
 /// Exact runtime/qualification profile revision and content.
@@ -68,24 +84,23 @@ pub struct ProfileIdentity {
 }
 
 impl ProfileIdentity {
-    /// Creates a positive, content-bound profile identity.
-    ///
-    /// # Errors
-    ///
-    /// Returns a typed error for zero revision or digest.
-    pub fn new(revision: u64, digest: Sha256Digest) -> Result<Self, ConstructionError> {
-        require_revision(revision)?;
-        require_digest(digest)?;
-        Ok(Self { revision, digest })
-    }
-
     /// Returns the profile revision.
     #[must_use]
-    pub const fn revision(&self) -> u64 { self.revision }
+    pub const fn revision(&self) -> (revision: u64) ensures revision == self.spec_revision() {
+        self.revision
+    }
 
     /// Returns the exact profile content digest.
     #[must_use]
-    pub const fn digest(&self) -> Sha256Digest { self.digest }
+    pub const fn digest(&self) -> (digest: Sha256Digest) ensures digest == self.spec_digest() {
+        self.digest
+    }
+
+    /// Logical view of the profile revision.
+    pub closed spec fn spec_revision(&self) -> u64 { self.revision }
+
+    /// Logical view of the exact profile content digest.
+    pub closed spec fn spec_digest(&self) -> Sha256Digest { self.digest }
 }
 
 /// Exact policy/evidence/report/artifact schema set.
@@ -99,45 +114,52 @@ pub struct SchemaIdentity {
 }
 
 impl SchemaIdentity {
-    /// Creates a positive, content-bound schema identity.
-    ///
-    /// # Errors
-    ///
-    /// Returns a typed error for any zero revision or placeholder digest.
-    pub fn new(
-        policy: u64,
-        evidence: u64,
-        report: u64,
-        artifact: u64,
-        catalog_digest: Sha256Digest,
-    ) -> Result<Self, ConstructionError> {
-        require_revision(policy)?;
-        require_revision(evidence)?;
-        require_revision(report)?;
-        require_revision(artifact)?;
-        require_digest(catalog_digest)?;
-        Ok(Self { policy, evidence, report, artifact, catalog_digest })
-    }
-
     /// Returns the release-policy schema revision.
     #[must_use]
-    pub const fn policy(&self) -> u64 { self.policy }
+    pub const fn policy(&self) -> (revision: u64) ensures revision == self.spec_policy() {
+        self.policy
+    }
 
     /// Returns the evidence schema revision.
     #[must_use]
-    pub const fn evidence(&self) -> u64 { self.evidence }
+    pub const fn evidence(&self) -> (revision: u64) ensures revision == self.spec_evidence() {
+        self.evidence
+    }
 
     /// Returns the report schema revision.
     #[must_use]
-    pub const fn report(&self) -> u64 { self.report }
+    pub const fn report(&self) -> (revision: u64) ensures revision == self.spec_report() {
+        self.report
+    }
 
     /// Returns the artifact schema revision.
     #[must_use]
-    pub const fn artifact(&self) -> u64 { self.artifact }
+    pub const fn artifact(&self) -> (revision: u64) ensures revision == self.spec_artifact() {
+        self.artifact
+    }
 
     /// Returns the closed catalog digest.
     #[must_use]
-    pub const fn catalog_digest(&self) -> Sha256Digest { self.catalog_digest }
+    pub const fn catalog_digest(&self) -> (digest: Sha256Digest)
+        ensures digest == self.spec_catalog_digest()
+    {
+        self.catalog_digest
+    }
+
+    /// Logical view of the release-policy schema revision.
+    pub closed spec fn spec_policy(&self) -> u64 { self.policy }
+
+    /// Logical view of the evidence schema revision.
+    pub closed spec fn spec_evidence(&self) -> u64 { self.evidence }
+
+    /// Logical view of the report schema revision.
+    pub closed spec fn spec_report(&self) -> u64 { self.report }
+
+    /// Logical view of the artifact schema revision.
+    pub closed spec fn spec_artifact(&self) -> u64 { self.artifact }
+
+    /// Logical view of the closed catalog digest.
+    pub closed spec fn spec_catalog_digest(&self) -> Sha256Digest { self.catalog_digest }
 }
 
 /// Immutable identity to which every H4 observation must bind exactly.
@@ -155,65 +177,76 @@ pub struct ReleaseCandidate {
 }
 
 impl ReleaseCandidate {
-    /// Creates the complete exact release-candidate identity.
-    ///
-    /// # Errors
-    ///
-    /// Returns a typed error for a zero source revision or placeholder manifest digest.
-    #[allow(clippy::too_many_arguments, reason = "the release identity keeps every exact binding explicit")]
-    pub fn new(
-        id: CandidateId,
-        commit: GitCommitId,
-        version: ReleaseVersion,
-        platforms: PlatformMatrix,
-        toolchain: ToolchainIdentity,
-        profile: ProfileIdentity,
-        schemas: SchemaIdentity,
-        source_revision: u64,
-        manifest_digest: Sha256Digest,
-    ) -> Result<Self, ConstructionError> {
-        require_revision(source_revision)?;
-        require_digest(manifest_digest)?;
-        Ok(Self {
-            id,
-            commit,
-            version,
-            platforms,
-            toolchain,
-            profile,
-            schemas,
-            source_revision,
-            manifest_digest,
-        })
-    }
-
     /// Returns the nominal candidate identity.
     #[must_use]
-    pub const fn id(&self) -> CandidateId { self.id }
+    pub const fn id(&self) -> (id: CandidateId) ensures id == self.spec_id() { self.id }
 
     /// Returns the exact Git commit.
     #[must_use]
-    pub const fn commit(&self) -> GitCommitId { self.commit }
+    pub const fn commit(&self) -> (commit: GitCommitId) ensures commit == self.spec_commit() {
+        self.commit
+    }
 
     /// Returns the exact version.
     #[must_use]
-    pub const fn version(&self) -> ReleaseVersion { self.version }
+    pub const fn version(&self) -> (version: ReleaseVersion)
+        ensures version == self.spec_version()
+    {
+        self.version
+    }
 
     /// Returns the exact tier-one platform matrix.
     #[must_use]
-    pub const fn platforms(&self) -> PlatformMatrix { self.platforms }
+    pub const fn platforms(&self) -> (platforms: PlatformMatrix)
+        ensures platforms == self.spec_platforms()
+    {
+        self.platforms
+    }
 
     /// Returns the exact toolchain identity.
     #[must_use]
-    pub const fn toolchain(&self) -> ToolchainIdentity { self.toolchain }
+    pub const fn toolchain(&self) -> (toolchain: ToolchainIdentity)
+        ensures toolchain == self.spec_toolchain()
+    {
+        self.toolchain
+    }
 
     /// Returns the exact runtime and qualification profile.
     #[must_use]
-    pub const fn profile(&self) -> ProfileIdentity { self.profile }
+    pub const fn profile(&self) -> (profile: ProfileIdentity)
+        ensures profile == self.spec_profile()
+    {
+        self.profile
+    }
 
     /// Returns the exact schema set.
     #[must_use]
-    pub const fn schemas(&self) -> SchemaIdentity { self.schemas }
+    pub const fn schemas(&self) -> (schemas: SchemaIdentity)
+        ensures schemas == self.spec_schemas()
+    {
+        self.schemas
+    }
+
+    /// Logical view of the nominal candidate identity.
+    pub closed spec fn spec_id(&self) -> CandidateId { self.id }
+
+    /// Logical view of the exact Git commit.
+    pub closed spec fn spec_commit(&self) -> GitCommitId { self.commit }
+
+    /// Logical view of the exact release version.
+    pub closed spec fn spec_version(&self) -> ReleaseVersion { self.version }
+
+    /// Logical view of the exact tier-one platform matrix.
+    pub closed spec fn spec_platforms(&self) -> PlatformMatrix { self.platforms }
+
+    /// Logical view of the exact toolchain identity.
+    pub closed spec fn spec_toolchain(&self) -> ToolchainIdentity { self.toolchain }
+
+    /// Logical view of the exact runtime and qualification profile.
+    pub closed spec fn spec_profile(&self) -> ProfileIdentity { self.profile }
+
+    /// Logical view of the exact schema set.
+    pub closed spec fn spec_schemas(&self) -> SchemaIdentity { self.schemas }
 
     /// Returns the exact producing source revision.
     #[must_use]
@@ -236,87 +269,6 @@ impl ReleaseCandidate {
 
     /// Specification view of the canonical complete-candidate manifest digest.
     pub closed spec fn spec_manifest_digest(&self) -> Sha256Digest { self.manifest_digest }
-}
-
-#[allow(
-    clippy::redundant_pub_crate,
-    reason = "verified evidence bindings compare canonical candidate-manifest digests"
-)]
-pub(crate) const fn digests_equal(
-    left: Sha256Digest,
-    right: Sha256Digest,
-) -> (equal: bool)
-    ensures equal == digest_bytes_equal_from(left.spec_bytes(), right.spec_bytes(), 0),
-{
-    digest_bytes_equal_exec(*left.as_bytes(), *right.as_bytes(), 0)
-}
-
-/// Mathematical suffix equality for canonical SHA-256 candidate bindings.
-pub open spec fn digest_bytes_equal_from(
-    left: [u8; 32],
-    right: [u8; 32],
-    index: nat,
-) -> bool
-    decreases 32 - index,
-{
-    if index >= 32 {
-        true
-    } else {
-        left[index as int] == right[index as int]
-            && digest_bytes_equal_from(left, right, index + 1)
-    }
-}
-
-const fn digest_bytes_equal_exec(
-    left: [u8; 32],
-    right: [u8; 32],
-    index: usize,
-) -> (equal: bool)
-    requires index <= 32,
-    ensures equal == digest_bytes_equal_from(left, right, index as nat),
-    decreases 32 - index,
-{
-    if index == 32 {
-        true
-    } else if left[index] != right[index] {
-        false
-    } else {
-        digest_bytes_equal_exec(left, right, index + 1)
-    }
-}
-
-#[allow(clippy::redundant_pub_crate, reason = "checked constructors in sibling modules share digest validation")]
-pub(crate) const fn digest_nonzero(digest: Sha256Digest) -> bool {
-    digest_bytes_nonzero(digest.as_bytes())
-}
-
-const fn digest_bytes_nonzero(bytes: &[u8; 32]) -> bool {
-    let mut index = 0;
-    while index < bytes.len()
-        invariant 0 <= index <= bytes.len(),
-        decreases bytes.len() - index,
-    {
-        if bytes[index] != 0 { return true; }
-        index += 1;
-    }
-    false
-}
-
-#[allow(clippy::redundant_pub_crate, reason = "checked constructors in sibling modules share digest validation")]
-pub(crate) const fn require_digest(digest: Sha256Digest) -> Result<(), ConstructionError> {
-    if digest_nonzero(digest) {
-        Ok(())
-    } else {
-        Err(ConstructionError::new(ConstructionErrorKind::ZeroDigest))
-    }
-}
-
-const fn require_revision(revision: u64) -> Result<(), ConstructionError> {
-    if revision == 0 {
-        Err(ConstructionError::new(ConstructionErrorKind::ZeroRevision))
-    } else {
-        Ok(())
-    }
 }
 
 } // verus!

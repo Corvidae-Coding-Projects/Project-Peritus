@@ -1,0 +1,34 @@
+{
+  "crates/orchestration/peritus-obligations/src/ledger.rs": {
+    "before": "7611b6f52a407cf071d14c0ec52dcf4e07e244a8a788f3fb9b1fff5718a9d711",
+    "after": "7f33ed5e8bc7b870a03f8ae25a736acf361442a30d03303191796fb0ce85ac0a"
+  },
+  "crates/orchestration/peritus-obligations/src/ledger/admission.rs": {
+    "before": null,
+    "after": "c439684efd62c576b3daad88450b92ff95c3da59fd10f428295073232372a926"
+  },
+  "crates/orchestration/peritus-obligations/src/ledger/validation.rs": {
+    "before": "0f0b99577edb738e0f8de93eb4654997bf2d4497fd5923d347daf36f748bd1d8",
+    "after": "f0ee05e930075d7411b37bf0c7080c4914e81f6c42d89976c533b13b4fb4ccd1"
+  },
+  "crates/orchestration/peritus-obligations/src/path.rs": {
+    "before": "ebd021b2103e4fd78787bd34f6d31bfcd5d0590d3e041f2a7747095c4af2c42c",
+    "after": "255e137d4dfe52ab161eee6412d75d28a651c907e0c6dc679b0d0b63b8cbd9f9"
+  },
+  "crates/orchestration/peritus-obligations/src/path/validation.rs": {
+    "before": "f9531787b91bcd82920541e39e5f5faaa0cc3524968ea1bd794b706621fec720",
+    "after": "8e204d3de7837f87c5aef0a4aa386005faa78b46620e68e1395833cac158b637"
+  },
+  "crates/orchestration/peritus-obligations/tests/foundation_semantics.rs": {
+    "before": "e659f2320e535f569f15c4affbc5e7fcceb747aebaea88dc7360bfdf06399bdd",
+    "after": "5c59aed7a0e2d399360b08d4a4c1c8203e970399b6736653ea0107b4fa37be90"
+  },
+  "crates/orchestration/peritus-scheduler/src/resource/addition/merge.rs": {
+    "before": "7595e85fb3c55542054227952e954b90acd69d2fb275571270315bc93d066621",
+    "after": "a793fef32138cf6a2a3887c09b3ac7ba622f92920351c914fdc0426520fcc548"
+  },
+  "crates/orchestration/peritus-scheduler/src/resource/addition/merge/advance_proofs.rs": {
+    "before": null,
+    "after": "18a7a512786e7821d9aec95c0b10a04d15fea9322dd81fd88fcb2d9fba578f41"
+  }
+}

@@ -28,15 +28,40 @@ pub struct ConstructionError {
 }
 
 impl ConstructionError {
-    pub(crate) const fn new(kind: ConstructionErrorKind) -> Self { Self { kind } }
+    /// Logical view of the exact rejection category.
+    pub closed spec fn spec_kind(&self) -> ConstructionErrorKind { self.kind }
+
+    /// Exact stable diagnostic text for the stored rejection category.
+    pub open spec fn spec_code(&self) -> Seq<char> {
+        match self.spec_kind() {
+            ConstructionErrorKind::ZeroIdentity => "H4_INPUT_ZERO_IDENTITY"@,
+            ConstructionErrorKind::ZeroDigest => "H4_INPUT_ZERO_DIGEST"@,
+            ConstructionErrorKind::ZeroRevision => "H4_INPUT_ZERO_REVISION"@,
+            ConstructionErrorKind::InvalidValidityInterval => "H4_INPUT_INVALID_VALIDITY"@,
+            ConstructionErrorKind::InvalidPlatformMatrix => "H4_INPUT_PLATFORM_MATRIX"@,
+            ConstructionErrorKind::CollectionLimitExceeded => "H4_INPUT_COLLECTION_LIMIT"@,
+        }
+    }
+
+    pub(crate) const fn new(kind: ConstructionErrorKind) -> (error: Self)
+        ensures error.spec_kind() == kind,
+    {
+        Self { kind }
+    }
 
     /// Returns the stable error category.
     #[must_use]
-    pub const fn kind(&self) -> ConstructionErrorKind { self.kind }
+    pub const fn kind(&self) -> (kind: ConstructionErrorKind)
+        ensures kind == self.spec_kind(),
+    {
+        self.kind
+    }
 
     /// Returns the stable diagnostic code.
     #[must_use]
-    pub const fn code(&self) -> &'static str {
+    pub const fn code(&self) -> (code: &'static str)
+        ensures code@ == self.spec_code(),
+    {
         match self.kind {
             ConstructionErrorKind::ZeroIdentity => "H4_INPUT_ZERO_IDENTITY",
             ConstructionErrorKind::ZeroDigest => "H4_INPUT_ZERO_DIGEST",

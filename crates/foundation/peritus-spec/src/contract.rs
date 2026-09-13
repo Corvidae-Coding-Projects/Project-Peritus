@@ -52,7 +52,19 @@ impl AcceptanceContract {
         completion_policy: CompletionPolicy,
         approval_policy: HumanApprovalPolicy,
         waiver_policy: WaiverPolicy,
-    ) -> Result<Self, SpecError> {
+    ) -> (result: Result<Self, SpecError>)
+        ensures match result {
+            Ok(contract) => contract.spec_id() == id
+                && contract.spec_content_digest() == content_digest
+                && contract.spec_gates() == gates
+                && contract.spec_review_policy() == review_policy
+                && contract.spec_evidence_requirements() == evidence_requirements@
+                && contract.spec_completion_policy() == completion_policy
+                && contract.spec_approval_policy() == approval_policy
+                && contract.spec_waiver_policy() == waiver_policy,
+            Err(_) => true,
+        },
+    {
         validation::validate_contract(
             requirements.as_slice(),
             exclusions.as_slice(),
@@ -86,6 +98,28 @@ impl AcceptanceContract {
     /// Specification view of the immutable contract digest.
     pub closed spec fn spec_content_digest(&self) -> Sha256Digest { self.content_digest }
 
+    /// Specification view of the complete gate graph supplied by this contract.
+    pub closed spec fn spec_gates(&self) -> GateGraph { self.gates }
+
+    /// Specification view of the complete immutable review policy.
+    pub closed spec fn spec_review_policy(&self) -> ReviewPolicy { self.review_policy }
+
+    /// Specification view of the final human-approval requirement.
+    pub closed spec fn spec_approval_policy(&self) -> HumanApprovalPolicy { self.approval_policy }
+
+    /// Specification view of the blocker-waiver policy.
+    pub closed spec fn spec_waiver_policy(&self) -> WaiverPolicy { self.waiver_policy }
+
+    /// Specification view of the immutable completion limits.
+    pub closed spec fn spec_completion_policy(&self) -> CompletionPolicy {
+        self.completion_policy
+    }
+
+    /// Specification view of every required evidence declaration in canonical order.
+    pub closed spec fn spec_evidence_requirements(&self) -> Seq<EvidenceRequirement> {
+        self.evidence_requirements@
+    }
+
     /// Returns the immutable acceptance-specification identifier.
     #[must_use]
     pub const fn id(&self) -> (result: AcceptanceSpecId)
@@ -116,36 +150,68 @@ impl AcceptanceContract {
 
     /// Returns the complete checked gate graph.
     #[must_use]
-    pub const fn gates(&self) -> &GateGraph { &self.gates }
+    pub const fn gates(&self) -> (result: &GateGraph)
+        ensures *result == self.spec_gates()
+    { &self.gates }
 
     /// Returns the checked review policy.
     #[must_use]
-    pub const fn review_policy(&self) -> &ReviewPolicy { &self.review_policy }
+    pub const fn review_policy(&self) -> (policy: &ReviewPolicy)
+        ensures *policy == self.spec_review_policy(),
+    { &self.review_policy }
 
     /// Returns evidence declarations in canonical identifier order.
     #[must_use]
-    pub const fn evidence_requirements(&self) -> &[EvidenceRequirement] {
+    pub const fn evidence_requirements(&self) -> (result: &[EvidenceRequirement])
+        ensures result@ == self.spec_evidence_requirements()
+    {
         self.evidence_requirements.as_slice()
     }
 
     /// Returns bounded completion policy.
     #[must_use]
-    pub const fn completion_policy(&self) -> CompletionPolicy { self.completion_policy }
+    pub const fn completion_policy(&self) -> (result: CompletionPolicy)
+        ensures result == self.spec_completion_policy()
+    { self.completion_policy }
 
     /// Returns the explicit final human-approval declaration.
     #[must_use]
-    pub const fn approval_policy(&self) -> HumanApprovalPolicy { self.approval_policy }
+    pub const fn approval_policy(&self) -> (policy: HumanApprovalPolicy)
+        ensures policy == self.spec_approval_policy(),
+    { self.approval_policy }
 
     /// Returns the explicit blocker-waiver declaration.
     #[must_use]
-    pub const fn waiver_policy(&self) -> WaiverPolicy { self.waiver_policy }
+    pub const fn waiver_policy(&self) -> (policy: WaiverPolicy)
+        ensures policy == self.spec_waiver_policy(),
+    { self.waiver_policy }
 
     /// Binds this immutable contract to an exact revision tuple.
     ///
     /// # Errors
     ///
     /// Returns [`SpecError::RevisionBindingMismatch`] when the tuple names another contract.
-    pub const fn bind(&self, revision: RevisionTuple) -> Result<ContractBinding, SpecError> {
+    pub const fn bind(
+        &self,
+        revision: RevisionTuple,
+    ) -> (result: Result<ContractBinding, SpecError>)
+        ensures
+            match result {
+                Ok(binding) => {
+                    binding.spec_contract_id() == self.spec_id()
+                        && binding.spec_contract_digest() == self.spec_content_digest()
+                        && binding.spec_revision() == revision
+                        && crate::acceptance_ids_match(
+                            revision.spec_acceptance_spec_id(),
+                            self.spec_id(),
+                        )
+                }
+                Err(_) => !crate::acceptance_ids_match(
+                    revision.spec_acceptance_spec_id(),
+                    self.spec_id(),
+                ),
+            }
+    {
         ContractBinding::new(self, revision)
     }
 }

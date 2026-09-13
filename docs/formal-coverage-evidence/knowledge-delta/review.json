@@ -1,0 +1,55 @@
+{
+  "schema": "peritus.formal-coverage.increment-review",
+  "schema_version": 1,
+  "status": "reviewed-bounded-increment-not-obligation-discharge",
+  "recorded_at": "2026-09-12T22:36:18.582404+00:00",
+  "base_commit": "1aa9282ff2cfcbf8fac325f11f157f408d33ee30",
+  "implementation": [
+    "/root/sol_acceptance_completion",
+    "/root"
+  ],
+  "reviewers": {
+    "Sol delta implementation": "/root",
+    "parent material and authority helpers": "/root/sol_readiness_correspondence"
+  },
+  "reviewed_source_manifest_sha256": "a5aec4665f698fe9a8a02450ca9f00d9c61f4317e606c122bd08867a4e60ddc2",
+  "results": {
+    "implementation_strict_verified": 214,
+    "independent_strict_verified": 214,
+    "integrated_strict_verified": 214,
+    "proof_errors": 0,
+    "implementation_tests_default": 20,
+    "implementation_tests_all_features": 20,
+    "independent_tests_all_features": 20,
+    "integrated_tests_all_features": 20,
+    "integrated_context_reuse_tests": 2,
+    "clippy": "passed",
+    "format": "passed",
+    "source_layout": "isolated workspace passed 4278 files; not final shared layout",
+    "knowledge_clone_warnings": 0,
+    "dependency_warnings_and_trigger_notes": "retained; no blanket warning-free claim"
+  },
+  "artifacts": {
+    "audit.md": "b3df72f3729fd3a806a45346cedd1a4e38689be7a4acbcabedde90789425f7eb",
+    "clippy.txt": "8ab1e85b6f3c91d04a070ef460427e74477a0e6fbd0ebf8e536446c3c3dad85d",
+    "context-reuse-tests.txt": "d5a6f3f7cac5133f1f1088d5176bad2166d360ea5b0797d2fd441417de4a5a85",
+    "format.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "full-package-sha256.txt": "7168179420a6b1f17b2fcddbede94040c0f340d1063a2124ea7e1d258bb2e0ed",
+    "implementation-commands.txt": "397cd57ac83ec76df6335842c0afd1e32d412ab15806e989abfff14df82fa0cf",
+    "implementation-review.json": "b37839fb23479fff67fd69aa341bce903830fd43ba7bdbe6497944436162824e",
+    "independent-commands.txt": "1b63ee72dfcb215f1e36a1c1352db59fe0d5172f10351ac0b613e51af9cb89a7",
+    "parent-helper-independent-review.md": "ffa7f30b1508d6be168699fc4ace479a448dce12659850a55903da132eb3e577",
+    "parent-helper-source-sha256.txt": "331411026f0fe75f181f52e0335ff364152645717b2bd7336238581e3d4c280f",
+    "parent-helper-verus.txt": "5df4505a35e651f3912144230bd5a5cb2b907c79ba5297b3e7c0022cb3b24d66",
+    "source-diff.patch": "250af261d4782f3a589fc8548ab8d694d04aabda2766514de507ccae56edd267",
+    "source-layout-isolated.txt": "6ca7ff6946e598f08665d3a73ab7095db6ce1ef6f6ed44ac7e5cff9773fdf253",
+    "source-sha256.txt": "a5aec4665f698fe9a8a02450ca9f00d9c61f4317e606c122bd08867a4e60ddc2",
+    "tests-all-features.txt": "36e1333a5964a6fa0551385cde75713cb547850cd2ad713e16d4571ae87401e8",
+    "tests-default.txt": "cd3147c959c51cae828d3f9f7c3fd241a8d6c20861434a5ed4e3768182a7e3a1",
+    "tests-independent.txt": "4fa367616753b9e6e0c0c2835b2b66e90a9beb033c2be26e156a70b8e3a6572b",
+    "tests-integrated.txt": "fbd09931fb136fe6982a6d74bf31f2b3d4f9dbf6e044e0af97efca7aa089e965",
+    "verus-implementation.txt": "e956167842a39ed703948cd70bae9d552147800aa889df580982ef76cefadf37",
+    "verus-independent.txt": "031a01ffa3464b28635eb680ffc115fc5e0c9bf60705506fd2a497e571aa7a01",
+    "verus-integrated.txt": "b6fa3a9f8532cb6b920a26960395e9e50fd14dade9f12eba8073fc70e6d06677"
+  }
+}

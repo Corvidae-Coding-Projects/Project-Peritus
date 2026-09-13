@@ -123,7 +123,7 @@ fn next(
         state.revision(),
     );
     let transition =
-        state.reduce(envelope, command.clone(), inputs).into_result().expect("kernel transition");
+        state.reduce(envelope, command, inputs).into_result().expect("kernel transition");
     let event = transition.event();
     let head = store.head(key).expect("kernel head").expect("head present");
     store

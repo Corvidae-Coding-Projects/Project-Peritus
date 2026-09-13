@@ -1,0 +1,6 @@
+# Working directory: /tmp/peritus-parent-obligations-proof.6ib_z8mo
+# Full 33-file package copied from the shared integration worktree after verifying the eight frozen source hashes.
+# Both full-package and eight-file hashes independently rechecked in the shared and isolated trees after the run.
+export CARGO_BUILD_JOBS=2 CCACHE_DISABLE=1 CARGO_TARGET_DIR=/home/doll/Project-Peritus/.worktrees/formal-coverage/target/formal-obligations-parent
+cargo verus verify --package peritus-obligations --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20
+cargo test --locked --all-features --package peritus-obligations

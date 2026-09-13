@@ -21,9 +21,34 @@ pub enum HarnessRole {
 }
 
 impl HarnessRole {
+    /// Exact canonical security role for each harness role.
+    pub open spec fn spec_actor_role(self) -> ActorRole {
+        match self {
+            Self::Writer => ActorRole::Writer,
+            Self::Reviewer => ActorRole::Reviewer,
+            Self::Fixer => ActorRole::Fixer,
+            Self::Evaluator => ActorRole::Evaluator,
+            Self::Evolver => ActorRole::EvolutionAgent,
+        }
+    }
+
+    /// Exact partial inverse for every canonical security role.
+    pub open spec fn spec_from_actor_role(role: ActorRole) -> Option<Self> {
+        match role {
+            ActorRole::Writer => Some(Self::Writer),
+            ActorRole::Reviewer => Some(Self::Reviewer),
+            ActorRole::Fixer => Some(Self::Fixer),
+            ActorRole::Evaluator => Some(Self::Evaluator),
+            ActorRole::EvolutionAgent => Some(Self::Evolver),
+            _ => None,
+        }
+    }
+
     /// Returns the canonical B1 security role. This mapping cannot widen authority.
     #[must_use]
-    pub const fn actor_role(self) -> ActorRole {
+    pub const fn actor_role(self) -> (role: ActorRole)
+        ensures role == self.spec_actor_role(),
+    {
         match self {
             Self::Writer => ActorRole::Writer,
             Self::Reviewer => ActorRole::Reviewer,
@@ -35,7 +60,9 @@ impl HarnessRole {
 
     /// Returns the harness role represented by a canonical B1 role, when applicable.
     #[must_use]
-    pub const fn from_actor_role(role: ActorRole) -> Option<Self> {
+    pub const fn from_actor_role(role: ActorRole) -> (result: Option<Self>)
+        ensures result == Self::spec_from_actor_role(role),
+    {
         match role {
             ActorRole::Writer => Some(Self::Writer),
             ActorRole::Reviewer => Some(Self::Reviewer),
