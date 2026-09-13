@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1486,
-        "tip_oid": "f99536a9712d6a20edf9cc60052826bffb023038",
-        "prefix_sha256": "e6a772e814f629b0f8260ec3899cdcd4177daee22ab72617369968e3722de22a"
+        "sequence": 1487,
+        "tip_oid": "06d7300d9d9b58f237cdfb8d219c965a50c50395",
+        "prefix_sha256": "9b2e1b787e71ecf3f035a0c7911b54f613402e9312e25867fefcb0e73f050249"
       },
       "NWAR": {
         "sequence": 39,
@@ -35,7 +35,7 @@
     }
   },
   "next_display_id": 77,
-  "next_comment_id": 1582,
+  "next_comment_id": 1583,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -11322,7 +11322,7 @@
       "parent_uuid": "eb5c64d1-b12e-4ec5-8bae-6c66adc80c81",
       "created_by": "4jyS",
       "created_at": "2026-09-13T16:14:31.488687806Z",
-      "updated_at": "2026-09-13T17:47:39.236255513Z",
+      "updated_at": "2026-09-13T17:51:48.064917778Z",
       "comments": {
         "0606283c-fa81-4d40-add9-5a8da66e7ee2": {
           "display_id": 1580,
@@ -11332,6 +11332,15 @@
           "kind": "note",
           "signed_by": "SHA256:F4pa6Img4SKcIhtZ3zyHSwUehhPFSMjlvpf7eTU6qsE",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAge6D6FO+sYKpnSAKFLUH9UJDB0DalEbmiGhqILuP+evwAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAg+t2+ki4fMe8Ul1RyVnvzCTC/HRfdC52Rh2j9j3xR34ANplgFscxh009mSAkKI6CiU23s2o6BBv+9mA+QxKhBA=="
+        },
+        "a01f12d5-c47f-47df-a1a7-048c4d2e9933": {
+          "display_id": 1582,
+          "author": "6ME5",
+          "content": "Final post-merge follow-up also passed: Windows terminal title workflow34772441779 ran on actual develop merge a41113d1389c3d8fc77a00cc562cb9a5bcb7adc8 and completed success, including real provider subprocess console isolation plus title ownership and interactive-client tests. Its final metadata, raw log, and watch output are retained in the same durable completion directory as 11-postmerge-title-final.json, 12-postmerge-title.log, and 10-postmerge-title-watch.log. All final candidate and post-merge checks are now green. Closing only continuation76; parent75 and broader proof obligations remain open.",
+          "created_at": "2026-09-13T17:51:48.058431949Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAhJiOaTKR6qhRQ9jm7aYtt5lEMJxCPsp05CgTWFs1U5HIlAUUUie1C/YHsfCw0kvKhoSHkMkAx0zOusbMjai5DA=="
         },
         "dc0194ab-c8e7-4d8f-a50c-32e9c9644377": {
           "display_id": 1581,
