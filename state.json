@@ -3,9 +3,9 @@
   "frontier": {
     "agents": {
       "4jyS": {
-        "sequence": 16,
-        "tip_oid": "69420bfbb3982f0646a7868ae446961fcdb7e583",
-        "prefix_sha256": "7e74eeaa623ee8051abfc2eb0b2018a55f8e15d008d9f53c89ac37db50d7a2fd"
+        "sequence": 17,
+        "tip_oid": "0ddfc8580fe572bc50848b2b02078cd46c5e0c43",
+        "prefix_sha256": "625ad0beb19e6a0ae2527aac15743a9a3b6cead45d58716b44c1f6e39107d717"
       },
       "6ME5": {
         "sequence": 1485,
@@ -34,7 +34,7 @@
       }
     }
   },
-  "next_display_id": 76,
+  "next_display_id": 77,
   "next_comment_id": 1580,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
@@ -82,6 +82,7 @@
     "7a160b4f-2dc9-41d3-80f1-ff16672c18ad": 67,
     "7f54e62c-3c08-44f0-99bc-570d189eadb1": 64,
     "8bbbda45-2e84-44e1-87fb-033729ad7029": 45,
+    "8cdd4c0f-6c72-4611-9269-b153f64a1b6c": 76,
     "8d3b149c-50c3-4887-9973-8bea59b5f6a2": 15,
     "92b485c0-34af-4248-b792-21bc54e81c70": 35,
     "93d4292a-5b9b-484b-99f1-e5c5aaaa8817": 71,
@@ -11307,6 +11308,17 @@
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAF0btoD/qWX5BnkpctYincMWSjkCokgMussIDpUVrCASMWxbUQmrM9MurogcMen8WER/BPjz+5uOT95Er+hi+Ag=="
         }
       }
+    },
+    "8cdd4c0f-6c72-4611-9269-b153f64a1b6c": {
+      "uuid": "8cdd4c0f-6c72-4611-9269-b153f64a1b6c",
+      "display_id": 76,
+      "title": "Continue: finish GAP-02 final CI and application merge",
+      "status": "open",
+      "priority": "high",
+      "parent_uuid": "eb5c64d1-b12e-4ec5-8bae-6c66adc80c81",
+      "created_by": "4jyS",
+      "created_at": "2026-09-13T16:14:31.488687806Z",
+      "updated_at": "2026-09-13T16:14:31.488687806Z"
     },
     "8d3b149c-50c3-4887-9973-8bea59b5f6a2": {
       "uuid": "8d3b149c-50c3-4887-9973-8bea59b5f6a2",
