@@ -28,9 +28,9 @@
         "prefix_sha256": "21c4051e6a57903d94c7d0bc4352e52dd09eb90550e5fe258691ae3ded851039"
       },
       "oF4J": {
-        "sequence": 2,
-        "tip_oid": "7a53ba9560ff97aa5222393ddd67147fdd65d664",
-        "prefix_sha256": "93d3e171a3434a304162047281c9790672e4efd77c4c3e9c5555792770f735f3"
+        "sequence": 3,
+        "tip_oid": "fef6f2d99a2027462f4d5f579cbdc38845e9f9a8",
+        "prefix_sha256": "49ade9c4cf5304ec977f95d5fecbbfbe335783aa97b79cade558f0cfc764c546"
       },
       "p0bJ": {
         "sequence": 8,
@@ -40,7 +40,7 @@
     }
   },
   "next_display_id": 78,
-  "next_comment_id": 1583,
+  "next_comment_id": 1584,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -13298,7 +13298,18 @@
       "parent_uuid": "eb5c64d1-b12e-4ec5-8bae-6c66adc80c81",
       "created_by": "oF4J",
       "created_at": "2026-09-13T18:03:19.859472507Z",
-      "updated_at": "2026-09-13T18:03:19.859472507Z"
+      "updated_at": "2026-09-13T20:17:33.453507486Z",
+      "comments": {
+        "3282c53f-adb9-4997-a5bc-1b869d530b80": {
+          "display_id": 1583,
+          "author": "oF4J",
+          "content": "[action] Versioned recovery repair implemented: scheduler 58 tests pass, schema consumers 144 pass, strict Verus 466/0, seven-package Clippy pass, daemon scheduler caller tests 3 pass. Closing hostile checkpoint and application retry evidence gaps; goal remains open.",
+          "created_at": "2026-09-13T20:17:33.437612912Z",
+          "kind": "note",
+          "signed_by": "SHA256:6i1eQ/7kGjVq4DI4yUCBFk4bwyvvZOhSsWcR9SkdFok",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg/EnEj+fMMglOKHVSgF9XkfkH9og9l/fzQpIgYx0ARh4AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAN2Ni1Wb5GNqrMMZ/hAf69bW0hemx+liyg1h0zQEryoSk6pvEoo5ykJhWtFi3A/6+6NBxJkcwwd3cCrNbtmSFBA=="
+        }
+      }
     },
     "d232751e-0c18-4e60-a858-6c3cb8ad26f1": {
       "uuid": "d232751e-0c18-4e60-a858-6c3cb8ad26f1",
