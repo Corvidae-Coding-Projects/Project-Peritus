@@ -28,9 +28,9 @@
         "prefix_sha256": "21c4051e6a57903d94c7d0bc4352e52dd09eb90550e5fe258691ae3ded851039"
       },
       "oF4J": {
-        "sequence": 12,
-        "tip_oid": "a82cf544465019598b0613f9bdbd840f27eec6db",
-        "prefix_sha256": "e5b571caacc52bf5b691ef2039d0f6b723b205950ea3185d67180dc00d19d1b9"
+        "sequence": 13,
+        "tip_oid": "2540db2e7400bcb316213de2262486241622dad0",
+        "prefix_sha256": "4b6f21b324f9dabe2fee45cca0161793c4270e14baa4d84f1b4896ba15aedf35"
       },
       "p0bJ": {
         "sequence": 8,
@@ -40,7 +40,7 @@
     }
   },
   "next_display_id": 80,
-  "next_comment_id": 1590,
+  "next_comment_id": 1591,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -345,8 +345,17 @@
       "parent_uuid": "cfa4c5e9-a5ae-4fcd-843d-3cc1f600d723",
       "created_by": "oF4J",
       "created_at": "2026-09-13T21:05:25.626302514Z",
-      "updated_at": "2026-09-13T23:03:05.455571710Z",
+      "updated_at": "2026-09-13T23:50:36.210533452Z",
       "comments": {
+        "0e4229cd-effb-437b-b113-aa820e748450": {
+          "display_id": 1590,
+          "author": "oF4J",
+          "content": "Committed 8644a2d2b, feat(scheduler): prove loss batches and replay reconstruction. Frozen manifest211 binds168 scheduler paths, SHA c7a5b16af1112d16e0cb859cd54ef325b85369976acde7b71944ae86cbd2ffc4. Final214strictVerus590/0,212tests77/0/0,213strictClippy,208bformat,209architecture84/4546,210ordinaryAPI3633/14763 and215docs255 allPASS. Negative206 inversion fails exact reconstruction contract and source is restored byte-identically. Independent bounded cancellation/reconstruction, loss-batch and integration reviews retained with author exclusions. Root-to-chain cancellation and complete loss batch/queue/worker/event relations are closed locally; whole reducer/refresh/selection/finalization/replay/caller and final inventory/trust/hosted qualification remain open. Same branch and draftPR77 to develop; no merge or obligation discharge.",
+          "created_at": "2026-09-13T23:50:36.204765182Z",
+          "kind": "result",
+          "signed_by": "SHA256:6i1eQ/7kGjVq4DI4yUCBFk4bwyvvZOhSsWcR9SkdFok",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg/EnEj+fMMglOKHVSgF9XkfkH9og9l/fzQpIgYx0ARh4AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAo/QOsIIZKpGErsqR+Ooquw54ATu4+9uINHSraN7WD5nY7Y0ZNGJNMA4WK2vKTPTaHjGuCAqQrnUNTpkJOlr2Dg=="
+        },
         "1a405cd2-c4fd-49ea-ba57-db57a08b3da9": {
           "display_id": 1589,
           "author": "oF4J",
