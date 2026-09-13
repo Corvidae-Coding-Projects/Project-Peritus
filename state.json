@@ -28,9 +28,9 @@
         "prefix_sha256": "21c4051e6a57903d94c7d0bc4352e52dd09eb90550e5fe258691ae3ded851039"
       },
       "oF4J": {
-        "sequence": 11,
-        "tip_oid": "b5287baa8c4d70dcad73e2ff4592eced76715fd2",
-        "prefix_sha256": "987baddc6c17974b350c8c0efda537420080119ea860d523d3a7c6e8c4adf6ac"
+        "sequence": 12,
+        "tip_oid": "a82cf544465019598b0613f9bdbd840f27eec6db",
+        "prefix_sha256": "e5b571caacc52bf5b691ef2039d0f6b723b205950ea3185d67180dc00d19d1b9"
       },
       "p0bJ": {
         "sequence": 8,
@@ -40,7 +40,7 @@
     }
   },
   "next_display_id": 80,
-  "next_comment_id": 1589,
+  "next_comment_id": 1590,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -345,8 +345,17 @@
       "parent_uuid": "cfa4c5e9-a5ae-4fcd-843d-3cc1f600d723",
       "created_by": "oF4J",
       "created_at": "2026-09-13T21:05:25.626302514Z",
-      "updated_at": "2026-09-13T22:19:48.385567251Z",
+      "updated_at": "2026-09-13T23:03:05.455571710Z",
       "comments": {
+        "1a405cd2-c4fd-49ea-ba57-db57a08b3da9": {
+          "display_id": 1589,
+          "author": "oF4J",
+          "content": "Committed c6db6c9e6, feat(scheduler): prove work admission and cancellation capacity. Frozen manifest182 binds154 scheduler files, SHA dae05abf83eea5d194cb3f6261ac4fcac64e9aa5cf6bb4dde178e49b429f205b. Final strict183 passes539/0; tests184 pass74/0/0; strictClippy176, format181, architecture185, ordinaryAPI186 and docs187 pass. Independent bounded review SHA efcb8803ece7127bde0dba7a9bfa3c1c8aa435f34de2c6c90d5dbab4a3c627d1. Raw evidence and explicit remaining root-to-chain, lossqueue/fullbatch, whole reducer/replay/caller, inventory/trust and hosted qualification gaps retained. Continuing on feature/formal-scheduler-gap3 and draftPR77 to develop, no merge or obligation discharge.",
+          "created_at": "2026-09-13T23:03:05.449100553Z",
+          "kind": "result",
+          "signed_by": "SHA256:6i1eQ/7kGjVq4DI4yUCBFk4bwyvvZOhSsWcR9SkdFok",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg/EnEj+fMMglOKHVSgF9XkfkH9og9l/fzQpIgYx0ARh4AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABABlUHsIrgpMSCoTi/YjYQw5XO1o1738FPiRuFPGNHDH1k507SlA+EZ0adRXtNMiqfzekgMIRIdPrMlvhtBMCWCA=="
+        },
         "3ed0b87e-ec50-4ce0-ac5f-28b4b1be7274": {
           "display_id": 1588,
           "author": "oF4J",
