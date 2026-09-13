@@ -58,6 +58,15 @@ any command or source-integrity failure. A repaired candidate requires a new fre
 complete run. Final approval requires an independent review of those exact sources and outputs.
 No final package pass or PCR-0006 approval is claimed by this preparation.
 
+The first freeze, `5cbd9efd5ef7719b1505d64350df56e1a0b58892`, was stopped after 17 passing
+package commands when investigation of an older macOS CI failure found a native-controller cleanup
+race. The controller could reap a child, receive its queued cleanup response, then wait on the
+released child again. The repair retains that observed exit status and preserves the output-limit
+error after completed teardown. Two forced-order regressions fail against the old source and pass
+against the repair; the full 23-test resilience suite and strict Clippy pass. That package is class C,
+so this evidence is additional to the 132 formal-package commands. The partial first run is retained
+as abandoned evidence and cannot qualify the repaired candidate; all 132 commands must restart.
+
 Live GitHub inspection found no protection on `develop`; only `main` has an applicable protection
 ruleset. The selected base can be bound exactly by the local checker, but describing it as protected
 does not deploy trusted authority. Live authority deployment remains GAP-07. This work does not

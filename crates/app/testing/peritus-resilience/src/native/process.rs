@@ -1,11 +1,13 @@
 //! Owned process, pipes, limits, and teardown for a native H1 controller.
 
-use std::io::{self, BufRead as _, BufReader, Read, Write as _};
+mod output;
+
+use std::io::{self, Write as _};
 use std::path::Path;
 use std::process::{Child, ChildStdin, Command, ExitStatus, Stdio};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
-use std::sync::mpsc::{self, Receiver, RecvTimeoutError, Sender, TryRecvError};
+use std::sync::mpsc::{self, Receiver, RecvTimeoutError, TryRecvError};
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
 
@@ -14,6 +16,7 @@ use crate::{CancellationToken, SubjectError, SubjectErrorCode};
 use super::diagnostics::Diagnostics;
 use super::process_tree::ProcessTree;
 use super::{NativeControllerLimits, subject_error};
+use output::{drain, read_responses};
 
 const POLL_INTERVAL: Duration = Duration::from_millis(20);
 const RESPONSE_CLOSE_GRACE: Duration = Duration::from_secs(1);
@@ -155,6 +158,7 @@ impl OwnedController {
             .map_err(|error| supervision(format!("write controller request: {error}"), true))?;
         let started = Instant::now();
         let output_start = self.output_bytes.load(Ordering::Acquire);
+        let mut reaped_cleanup_status = None;
         let response = loop {
             if cancelled(abandoned, stop, cancellation) {
                 self.terminate()?;
@@ -187,7 +191,10 @@ impl OwnedController {
                         ));
                     }
                     match self.responses.try_recv() {
-                        Ok(result) => break result?,
+                        Ok(result) => {
+                            reaped_cleanup_status = Some(status);
+                            break result?;
+                        }
                         Err(TryRecvError::Empty | TryRecvError::Disconnected) => {}
                     }
                 }
@@ -198,19 +205,26 @@ impl OwnedController {
             }
         };
         if self.output_since(output_start) > limits.output_bytes() {
-            self.terminate()?;
+            if reaped_cleanup_status.is_none() {
+                self.terminate()?;
+            }
             return Err(supervision("controller stage exceeded its output byte limit", false));
         }
         if cleanup {
-            let status = self.wait_for_exit(
-                started,
-                limits.stage_duration(),
-                abandoned,
-                stop,
-                cancellation,
-            )?;
-            self.finish_tree()?;
-            self.join_output()?;
+            let status = if let Some(status) = reaped_cleanup_status {
+                status
+            } else {
+                let status = self.wait_for_exit(
+                    started,
+                    limits.stage_duration(),
+                    abandoned,
+                    stop,
+                    cancellation,
+                )?;
+                self.finish_tree()?;
+                self.join_output()?;
+                status
+            };
             if !status.success() {
                 return Err(
                     self.failure(format!("controller cleanup exited with status {status}"), false)
@@ -321,56 +335,6 @@ impl Drop for OwnedController {
             self.reaped = true;
         }
         let _ = self.join_output();
-    }
-}
-
-fn read_responses(
-    stdout: impl Read,
-    maximum: u64,
-    count: &AtomicU64,
-    sender: &Sender<Result<Vec<u8>, SubjectError>>,
-) {
-    let mut reader = BufReader::new(stdout);
-    loop {
-        let mut line = Vec::new();
-        let read = reader.by_ref().take(maximum.saturating_add(1)).read_until(b'\n', &mut line);
-        let bytes = match read {
-            Ok(0) => return,
-            Ok(bytes) => bytes,
-            Err(error) => {
-                let _ = sender
-                    .send(Err(supervision(format!("read controller response: {error}"), true)));
-                return;
-            }
-        };
-        count.fetch_add(u64::try_from(bytes).unwrap_or(u64::MAX), Ordering::AcqRel);
-        if u64::try_from(line.len()).unwrap_or(u64::MAX) > maximum || !line.ends_with(b"\n") {
-            let _ = sender.send(Err(supervision(
-                "controller response exceeded its byte bound or lacked a newline",
-                false,
-            )));
-            return;
-        }
-        line.pop();
-        if line.is_empty() {
-            let _ = sender.send(Err(supervision("controller returned an empty response", false)));
-            return;
-        }
-        if sender.send(Ok(line)).is_err() {
-            return;
-        }
-    }
-}
-
-fn drain(mut reader: impl Read, count: &AtomicU64, diagnostics: &Diagnostics) -> io::Result<()> {
-    let mut buffer = [0_u8; 16 * 1024];
-    loop {
-        let bytes = reader.read(&mut buffer)?;
-        if bytes == 0 {
-            return Ok(());
-        }
-        count.fetch_add(u64::try_from(bytes).unwrap_or(u64::MAX), Ordering::AcqRel);
-        diagnostics.record(&buffer[..bytes]);
     }
 }
 
