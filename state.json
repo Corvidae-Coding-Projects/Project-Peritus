@@ -3,9 +3,9 @@
   "frontier": {
     "agents": {
       "4jyS": {
-        "sequence": 18,
-        "tip_oid": "b19fe95bb2a1e3591feece29e513fe1eba0547f6",
-        "prefix_sha256": "70bf15e1acde559d01b8a7887c16070d2e9e2690661dff2facf0f437ae388e45"
+        "sequence": 19,
+        "tip_oid": "6b0581588bd3d7ba852cc1b8c102c115eced2dce",
+        "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
         "sequence": 1485,
@@ -126,6 +126,10 @@
     "75": {
       "agent_id": "4jyS",
       "claimed_at": "2026-09-13T13:01:19.443571915Z"
+    },
+    "76": {
+      "agent_id": "4jyS",
+      "claimed_at": "2026-09-13T16:17:05.672054745Z"
     }
   },
   "issues": {
