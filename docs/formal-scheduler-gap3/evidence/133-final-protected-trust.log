@@ -1,0 +1,175 @@
+error[PERITUS-XTASK-TRUST-001]: verify-trust found 87 violation(s)
+  - architecture.toml: formal source bytes differ from the reviewed proof-impact fingerprint
+    help: add an independently reviewed chained change record and update the current SHA-256
+  - crates/app/peritus-app-protocol/src/command/binding.rs: formal source bytes differ from the reviewed proof-impact fingerprint
+    help: add an independently reviewed chained change record and update the current SHA-256
+  - crates/app/peritus-app-protocol/src/subscription/frame.rs: formal source bytes differ from the reviewed proof-impact fingerprint
+    help: add an independently reviewed chained change record and update the current SHA-256
+  - crates/app/peritus-app-protocol/tests/command_binding.rs: formal source bytes differ from the reviewed proof-impact fingerprint
+    help: add an independently reviewed chained change record and update the current SHA-256
+  - crates/app/peritus-app-protocol/tests/subscription_traces.rs: formal source bytes differ from the reviewed proof-impact fingerprint
+    help: add an independently reviewed chained change record and update the current SHA-256
+  - crates/app/peritus-daemon/src/authority/owner/orchestrator/children/scheduler.rs: formal source bytes differ from the reviewed proof-impact fingerprint
+    help: add an independently reviewed chained change record and update the current SHA-256
+  - crates/app/peritus-daemon/src/command.rs: formal source bytes differ from the reviewed proof-impact fingerprint
+    help: add an independently reviewed chained change record and update the current SHA-256
+  - crates/app/peritus-daemon/src/domain/dispatch.rs: formal source bytes differ from the reviewed proof-impact fingerprint
+    help: add an independently reviewed chained change record and update the current SHA-256
+  - crates/foundation/peritus-protocol/src/schema/registry.rs: formal source bytes differ from the reviewed proof-impact fingerprint
+    help: add an independently reviewed chained change record and update the current SHA-256
+  - crates/foundation/peritus-protocol/src/schema/render.rs: formal source bytes differ from the reviewed proof-impact fingerprint
+    help: add an independently reviewed chained change record and update the current SHA-256
+  - crates/foundation/peritus-protocol/tests/compatibility.rs: formal source bytes differ from the reviewed proof-impact fingerprint
+    help: add an independently reviewed chained change record and update the current SHA-256
+  - crates/foundation/peritus-protocol/tests/registry_roles.rs: formal source bytes differ from the reviewed proof-impact fingerprint
+    help: add an independently reviewed chained change record and update the current SHA-256
+  - crates/orchestration/peritus-scheduler/src/binding.rs: formal source bytes differ from the reviewed proof-impact fingerprint
+    help: add an independently reviewed chained change record and update the current SHA-256
+  - crates/orchestration/peritus-scheduler/src/canonical.rs: formal source bytes differ from the reviewed proof-impact fingerprint
+    help: add an independently reviewed chained change record and update the current SHA-256
+  - crates/orchestration/peritus-scheduler/src/command.rs: formal source bytes differ from the reviewed proof-impact fingerprint
+    help: add an independently reviewed chained change record and update the current SHA-256
+  - crates/orchestration/peritus-scheduler/src/durability.rs: formal source bytes differ from the reviewed proof-impact fingerprint
+    help: add an independently reviewed chained change record and update the current SHA-256
+  - crates/orchestration/peritus-scheduler/src/durability/binding.rs: formal source bytes differ from the reviewed proof-impact fingerprint
+    help: add an independently reviewed chained change record and update the current SHA-256
+  - crates/orchestration/peritus-scheduler/src/event.rs: formal source bytes differ from the reviewed proof-impact fingerprint
+    help: add an independently reviewed chained change record and update the current SHA-256
+  - crates/orchestration/peritus-scheduler/src/identity.rs: formal source bytes differ from the reviewed proof-impact fingerprint
+    help: add an independently reviewed chained change record and update the current SHA-256
+  - crates/orchestration/peritus-scheduler/src/lib.rs: formal source bytes differ from the reviewed proof-impact fingerprint
+    help: add an independently reviewed chained change record and update the current SHA-256
+  - crates/orchestration/peritus-scheduler/src/limits.rs: formal source bytes differ from the reviewed proof-impact fingerprint
+    help: add an independently reviewed chained change record and update the current SHA-256
+  - crates/orchestration/peritus-scheduler/src/projection.rs: formal source bytes differ from the reviewed proof-impact fingerprint
+    help: add an independently reviewed chained change record and update the current SHA-256
+  - crates/orchestration/peritus-scheduler/src/reducer.rs: formal source bytes differ from the reviewed proof-impact fingerprint
+    help: add an independently reviewed chained change record and update the current SHA-256
+  - crates/orchestration/peritus-scheduler/src/reducer/apply.rs: formal source bytes differ from the reviewed proof-impact fingerprint
+    help: add an independently reviewed chained change record and update the current SHA-256
+  - crates/orchestration/peritus-scheduler/src/reducer/apply/control.rs: formal source bytes differ from the reviewed proof-impact fingerprint
+    help: add an independently reviewed chained change record and update the current SHA-256
+  - crates/orchestration/peritus-scheduler/src/resource.rs: formal source bytes differ from the reviewed proof-impact fingerprint
+    help: add an independently reviewed chained change record and update the current SHA-256
+  - crates/orchestration/peritus-scheduler/src/state.rs: formal source bytes differ from the reviewed proof-impact fingerprint
+    help: add an independently reviewed chained change record and update the current SHA-256
+  - crates/orchestration/peritus-scheduler/src/state/clone_impl.rs: formal source bytes differ from the reviewed proof-impact fingerprint
+    help: add an independently reviewed chained change record and update the current SHA-256
+  - crates/orchestration/peritus-scheduler/src/state/lookup.rs: formal source bytes differ from the reviewed proof-impact fingerprint
+    help: add an independently reviewed chained change record and update the current SHA-256
+  - crates/orchestration/peritus-scheduler/src/state/mutation.rs: formal source bytes differ from the reviewed proof-impact fingerprint
+    help: add an independently reviewed chained change record and update the current SHA-256
+  - crates/orchestration/peritus-scheduler/src/state/mutation/entity_insertion.rs: formal source bytes differ from the reviewed proof-impact fingerprint
+    help: add an independently reviewed chained change record and update the current SHA-256
+  - crates/orchestration/peritus-scheduler/src/state/mutation/reservation_remove.rs: formal source bytes differ from the reviewed proof-impact fingerprint
+    help: add an independently reviewed chained change record and update the current SHA-256
+  - crates/orchestration/peritus-scheduler/src/state/mutation/work_update.rs: formal source bytes differ from the reviewed proof-impact fingerprint
+    help: add an independently reviewed chained change record and update the current SHA-256
+  - crates/orchestration/peritus-scheduler/src/state/mutation/work_update/wrappers.rs: formal source bytes differ from the reviewed proof-impact fingerprint
+    help: add an independently reviewed chained change record and update the current SHA-256
+  - crates/orchestration/peritus-scheduler/src/state/terminal.rs: formal source bytes differ from the reviewed proof-impact fingerprint
+    help: add an independently reviewed chained change record and update the current SHA-256
+  - crates/orchestration/peritus-scheduler/src/state/validation.rs: formal source bytes differ from the reviewed proof-impact fingerprint
+    help: add an independently reviewed chained change record and update the current SHA-256
+  - crates/orchestration/peritus-scheduler/src/wire/command.rs: formal source bytes differ from the reviewed proof-impact fingerprint
+    help: add an independently reviewed chained change record and update the current SHA-256
+  - crates/orchestration/peritus-scheduler/src/wire/event.rs: formal source bytes differ from the reviewed proof-impact fingerprint
+    help: add an independently reviewed chained change record and update the current SHA-256
+  - crates/orchestration/peritus-scheduler/src/wire/fixture_tests.rs: formal source bytes differ from the reviewed proof-impact fingerprint
+    help: add an independently reviewed chained change record and update the current SHA-256
+  - crates/orchestration/peritus-scheduler/src/wire/mod.rs: formal source bytes differ from the reviewed proof-impact fingerprint
+    help: add an independently reviewed chained change record and update the current SHA-256
+  - crates/orchestration/peritus-scheduler/src/wire/state.rs: formal source bytes differ from the reviewed proof-impact fingerprint
+    help: add an independently reviewed chained change record and update the current SHA-256
+  - crates/orchestration/peritus-scheduler/src/work.rs: formal source bytes differ from the reviewed proof-impact fingerprint
+    help: add an independently reviewed chained change record and update the current SHA-256
+  - crates/orchestration/peritus-scheduler/src/work/class.rs: formal source bytes differ from the reviewed proof-impact fingerprint
+    help: add an independently reviewed chained change record and update the current SHA-256
+  - crates/orchestration/peritus-scheduler/src/work/record.rs: formal source bytes differ from the reviewed proof-impact fingerprint
+    help: add an independently reviewed chained change record and update the current SHA-256
+  - crates/orchestration/peritus-scheduler/src/worker.rs: formal source bytes differ from the reviewed proof-impact fingerprint
+    help: add an independently reviewed chained change record and update the current SHA-256
+  - crates/orchestration/peritus-scheduler/tests/support/mod.rs: formal source bytes differ from the reviewed proof-impact fingerprint
+    help: add an independently reviewed chained change record and update the current SHA-256
+  - crates/state/peritus-evidence/src/provenance.rs: formal source bytes differ from the reviewed proof-impact fingerprint
+    help: add an independently reviewed chained change record and update the current SHA-256
+  - crates/state/peritus-projection/src/replay.rs: formal source bytes differ from the reviewed proof-impact fingerprint
+    help: add an independently reviewed chained change record and update the current SHA-256
+  - crates/state/peritus-projection/tests/rebuild.rs: formal source bytes differ from the reviewed proof-impact fingerprint
+    help: add an independently reviewed chained change record and update the current SHA-256
+  - crates/app/peritus-daemon/src/command/service_tests.rs: formal semantics input has no proof-impact fingerprint
+    help: add its exact SHA-256 and independently reviewed initial/change record
+  - crates/app/peritus-daemon/src/domain/dispatch/scheduler_tests.rs: formal semantics input has no proof-impact fingerprint
+    help: add its exact SHA-256 and independently reviewed initial/change record
+  - crates/foundation/peritus-protocol/src/schema/registry/families.rs: formal semantics input has no proof-impact fingerprint
+    help: add its exact SHA-256 and independently reviewed initial/change record
+  - crates/orchestration/peritus-scheduler/src/durability/semantics.rs: formal semantics input has no proof-impact fingerprint
+    help: add its exact SHA-256 and independently reviewed initial/change record
+  - crates/orchestration/peritus-scheduler/src/event/kind.rs: formal semantics input has no proof-impact fingerprint
+    help: add its exact SHA-256 and independently reviewed initial/change record
+  - crates/orchestration/peritus-scheduler/src/event/loss.rs: formal semantics input has no proof-impact fingerprint
+    help: add its exact SHA-256 and independently reviewed initial/change record
+  - crates/orchestration/peritus-scheduler/src/identity/order.rs: formal semantics input has no proof-impact fingerprint
+    help: add its exact SHA-256 and independently reviewed initial/change record
+  - crates/orchestration/peritus-scheduler/src/identity/tests.rs: formal semantics input has no proof-impact fingerprint
+    help: add its exact SHA-256 and independently reviewed initial/change record
+  - crates/orchestration/peritus-scheduler/src/reducer/apply/cancellation/ids.rs: formal semantics input has no proof-impact fingerprint
+    help: add its exact SHA-256 and independently reviewed initial/change record
+  - crates/orchestration/peritus-scheduler/src/reducer/apply/cancellation/tests.rs: formal semantics input has no proof-impact fingerprint
+    help: add its exact SHA-256 and independently reviewed initial/change record
+  - crates/orchestration/peritus-scheduler/src/reducer/apply/cancellation/update/frame.rs: formal semantics input has no proof-impact fingerprint
+    help: add its exact SHA-256 and independently reviewed initial/change record
+  - crates/orchestration/peritus-scheduler/src/reducer/apply/cancellation/update/trace.rs: formal semantics input has no proof-impact fingerprint
+    help: add its exact SHA-256 and independently reviewed initial/change record
+  - crates/orchestration/peritus-scheduler/src/reducer/apply/cancellation/update.rs: formal semantics input has no proof-impact fingerprint
+    help: add its exact SHA-256 and independently reviewed initial/change record
+  - crates/orchestration/peritus-scheduler/src/reducer/apply/cancellation.rs: formal semantics input has no proof-impact fingerprint
+    help: add its exact SHA-256 and independently reviewed initial/change record
+  - crates/orchestration/peritus-scheduler/src/reducer/apply/loss.rs: formal semantics input has no proof-impact fingerprint
+    help: add its exact SHA-256 and independently reviewed initial/change record
+  - crates/orchestration/peritus-scheduler/src/reducer/fences.rs: formal semantics input has no proof-impact fingerprint
+    help: add its exact SHA-256 and independently reviewed initial/change record
+  - crates/orchestration/peritus-scheduler/src/semantics.rs: formal semantics input has no proof-impact fingerprint
+    help: add its exact SHA-256 and independently reviewed initial/change record
+  - crates/orchestration/peritus-scheduler/src/state/mutation/entity_insertion/slots.rs: formal semantics input has no proof-impact fingerprint
+    help: add its exact SHA-256 and independently reviewed initial/change record
+  - crates/orchestration/peritus-scheduler/src/state/mutation/insertion_slots.rs: formal semantics input has no proof-impact fingerprint
+    help: add its exact SHA-256 and independently reviewed initial/change record
+  - crates/orchestration/peritus-scheduler/src/state/mutation/work_update/apply_at.rs: formal semantics input has no proof-impact fingerprint
+    help: add its exact SHA-256 and independently reviewed initial/change record
+  - crates/orchestration/peritus-scheduler/src/state/ordering.rs: formal semantics input has no proof-impact fingerprint
+    help: add its exact SHA-256 and independently reviewed initial/change record
+  - crates/orchestration/peritus-scheduler/src/state/queue/tests.rs: formal semantics input has no proof-impact fingerprint
+    help: add its exact SHA-256 and independently reviewed initial/change record
+  - crates/orchestration/peritus-scheduler/src/state/queue.rs: formal semantics input has no proof-impact fingerprint
+    help: add its exact SHA-256 and independently reviewed initial/change record
+  - crates/orchestration/peritus-scheduler/src/state/terminal/evaluation.rs: formal semantics input has no proof-impact fingerprint
+    help: add its exact SHA-256 and independently reviewed initial/change record
+  - crates/orchestration/peritus-scheduler/src/worker/admission.rs: formal semantics input has no proof-impact fingerprint
+    help: add its exact SHA-256 and independently reviewed initial/change record
+  - crates/orchestration/peritus-scheduler/tests/cancellation_tree/oracle.rs: formal semantics input has no proof-impact fingerprint
+    help: add its exact SHA-256 and independently reviewed initial/change record
+  - crates/orchestration/peritus-scheduler/tests/cancellation_tree.rs: formal semantics input has no proof-impact fingerprint
+    help: add its exact SHA-256 and independently reviewed initial/change record
+  - crates/orchestration/peritus-scheduler/tests/canonical_lookup.rs: formal semantics input has no proof-impact fingerprint
+    help: add its exact SHA-256 and independently reviewed initial/change record
+  - crates/orchestration/peritus-scheduler/tests/command_fences.rs: formal semantics input has no proof-impact fingerprint
+    help: add its exact SHA-256 and independently reviewed initial/change record
+  - crates/orchestration/peritus-scheduler/tests/legacy_recovery.rs: formal semantics input has no proof-impact fingerprint
+    help: add its exact SHA-256 and independently reviewed initial/change record
+  - crates/orchestration/peritus-scheduler/tests/queue_recovery.rs: formal semantics input has no proof-impact fingerprint
+    help: add its exact SHA-256 and independently reviewed initial/change record
+  - crates/orchestration/peritus-scheduler/tests/terminal_summary.rs: formal semantics input has no proof-impact fingerprint
+    help: add its exact SHA-256 and independently reviewed initial/change record
+  - crates/orchestration/peritus-scheduler/tests/versioned_durability/historical_import.rs: formal semantics input has no proof-impact fingerprint
+    help: add its exact SHA-256 and independently reviewed initial/change record
+  - crates/orchestration/peritus-scheduler/tests/versioned_durability.rs: formal semantics input has no proof-impact fingerprint
+    help: add its exact SHA-256 and independently reviewed initial/change record
+  - crates/orchestration/peritus-scheduler/tests/versioned_wire.rs: formal semantics input has no proof-impact fingerprint
+    help: add its exact SHA-256 and independently reviewed initial/change record
+  - crates/orchestration/peritus-scheduler/tests/worker_descriptor_admission.rs: formal semantics input has no proof-impact fingerprint
+    help: add its exact SHA-256 and independently reviewed initial/change record
+  - crates/orchestration/peritus-scheduler/tests/worker_loss_outcomes.rs: formal semantics input has no proof-impact fingerprint
+    help: add its exact SHA-256 and independently reviewed initial/change record
+  - crates/state/peritus-projection/tests/rebuild/journal_fixture.rs: formal semantics input has no proof-impact fingerprint
+    help: add its exact SHA-256 and independently reviewed initial/change record

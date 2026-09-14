@@ -21,6 +21,16 @@ impl WorkSpec {
             && left.recovery == right.recovery
             && left.payload_digest == right.payload_digest
     }
+
+    /// Projects admission identities from an exact semantic clone.
+    pub(crate) proof fn clone_admission_fields(left: &Self, right: &Self)
+        requires Self::clone_equivalent(left, right),
+        ensures
+            left.spec_id() == right.spec_id(),
+            left.spec_dependencies() == right.spec_dependencies(),
+            left.spec_parent() == right.spec_parent(),
+    {
+    }
 }
 
 impl Clone for WorkSpec {

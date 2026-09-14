@@ -1,0 +1,321 @@
+   Compiling peritus-scheduler v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-scheduler-gap3/crates/orchestration/peritus-scheduler)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.56s
+     Running unittests src/lib.rs (target/debug/deps/peritus_projection-b1de0ab2c11d7165)
+
+running 1 test
+test replay::tests::scheduler_family_validation_accepts_v1_v2_and_rejects_v0_v3 ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/agent.rs (target/debug/deps/agent-fa10004da9f4ea5a)
+
+running 2 tests
+test projection_rejects_turn_identity_not_derived_from_agent_aggregate ... ok
+test projection_tracks_latest_phase_digest_and_counters ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/conformance.rs (target/debug/deps/conformance-6b0114c8ac1126c1)
+
+running 1 test
+test production_replay_passes_a2_determinism_and_restart_conformance ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/rebuild.rs (target/debug/deps/rebuild-15535851af41a0c7)
+
+running 8 tests
+test artifact_projection_uses_actual_committed_dependency_digest ... ok
+test corrupt_payload_is_replaced_by_a_new_active_generation ... ok
+test journal_corruption_is_rejected_before_projection_replay ... ok
+test lifecycle_fold_checks_envelope_and_evidence_fold_has_no_effect ... ok
+test replay_accepts_supported_scheduler_schemas_only ... ok
+test replay_rejects_unknown_typed_invalid_and_stale_revision_records ... ok
+test shadow_rebuild_restart_checksum_and_atomic_swap ... ok
+test stale_checkpoint_rebuilds_and_stale_swap_is_atomic ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.08s
+
+     Running unittests src/lib.rs (target/debug/deps/peritus_protocol-251c04f74325b38d)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/bin/peritus-protocol-codegen.rs (target/debug/deps/peritus_protocol_codegen-c45a15c2209ce190)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/acceptance.rs (target/debug/deps/acceptance-04784c24d63d7621)
+
+running 2 tests
+test complete_contract_roundtrips_and_reconstructs_checked_domain ... ok
+test contract_digest_rejects_any_corrupted_advertised_value ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/agent.rs (target/debug/deps/agent-ae3e05db22c010c5)
+
+running 5 tests
+test all_agent_families_round_trip_exactly ... ok
+test configured_opaque_bound_is_enforced ... ok
+test debug_output_redacts_all_opaque_payload_bytes ... ok
+test sequence_and_predecessor_must_describe_the_same_causal_head ... ok
+test truncation_unknown_tags_digest_mismatch_and_trailing_bytes_are_rejected ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/budget.rs (target/debug/deps/budget-59e80caa4535f12b)
+
+running 2 tests
+test amounts_and_every_budget_command_roundtrip ... ok
+test snapshots_receipts_and_failures_remain_inert_data ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/compatibility.rs (target/debug/deps/compatibility-51967cb4361f5f7f)
+
+running 7 tests
+test checked_in_agent_frames_are_exact_and_decodable ... ok
+test checked_in_client_artifacts_are_exact_generator_output ... ok
+test checked_in_compatibility_frames_are_exact_and_decodable ... ok
+test f0_family_allocations_are_frozen ... ok
+test family_registry_is_nonzero_unique_and_strictly_ordered ... ok
+test lifecycle_registry_is_complete_unique_and_nonzero ... ok
+test scheduler_families_dual_read_v1_v2_while_other_families_remain_v1_only ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/lifecycle.rs (target/debug/deps/lifecycle-a71df381f12e7f42)
+
+running 5 tests
+test envelope_preserves_revision_and_causal_predecessor ... ok
+test error_record_and_malformed_values_are_closed ... ok
+test every_command_variant_roundtrips ... ok
+test every_event_kind_and_subject_roundtrips_as_inert_data ... ok
+test every_phase_roundtrips ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/policy.rs (target/debug/deps/policy-9322f1eb3989fb92)
+
+running 3 tests
+test action_digest_binds_every_action_field ... ok
+test amendment_digest_is_verified_before_domain_conversion ... ok
+test complete_policy_definition_roundtrips_through_checked_constructors ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/registry_roles.rs (target/debug/deps/registry_roles-02626db7202ca3c3)
+
+running 3 tests
+test every_registered_family_has_one_stable_role ... ok
+test registered_command_and_event_roles_are_complete_and_disjoint ... ok
+test scheduler_roles_accept_both_registered_schema_versions ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/debug/deps/peritus_scheduler-8bf2480f0a8e444e)
+
+running 12 tests
+test identity::tests::dispatch_id_precedes_matches_derived_order_at_every_byte ... ok
+test identity::tests::work_id_precedes_matches_derived_order_at_every_byte ... ok
+test identity::tests::worker_id_precedes_matches_derived_order_at_every_byte ... ok
+test reducer::apply::cancellation::tests::disconnected_parent_cycle_is_not_selected ... ok
+test reducer::apply::cancellation::tests::missing_parent_is_safe_whether_or_not_it_is_the_requested_root ... ok
+test reducer::apply::cancellation::tests::reached_parent_cycle_is_finite_and_selects_the_whole_component ... ok
+test reducer::apply::cancellation::tests::shuffled_input_preserves_the_exact_selected_subsequence ... ok
+test reducer::apply::cancellation::tests::terminal_ancestor_carries_reachability_but_is_not_selected ... ok
+test resource::subtraction::tests::zero_quantity_preserves_absent_dimension_and_underflow_precedence ... ok
+test state::queue::tests::legacy_decoder_counts_active_ownership_even_when_reservations_are_missing ... ok
+test state::queue::tests::strict_decoder_counts_each_waiting_and_recoverable_active_category_under_every_policy ... ok
+test wire::fixture_tests::canonical_binary_corpus_is_exact_and_rejects_wrong_family_or_trailing_bytes ... ok
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/binding_digest.rs (target/debug/deps/binding_digest-f75bb5d54d915140)
+
+running 1 test
+test canonical_binding_digest_is_stable_and_commits_every_binding_dimension ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/cancellation_tree.rs (target/debug/deps/cancellation_tree-5b7c4d6498283a22)
+
+running 3 tests
+test active_descendants_keep_ownership_until_each_cancellation_is_acknowledged ... ok
+test reverse_order_tree_crosses_terminal_ancestor_and_preserves_other_branches ... ok
+test single_cancel_is_root_only_and_rejections_leave_state_unchanged ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/canonical_lookup.rs (target/debug/deps/canonical_lookup-1a1c0c2846752380)
+
+running 1 test
+test admission_and_dispatch_lookups_cover_every_identity_byte_and_search_boundary ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.15s
+
+     Running tests/command_fences.rs (target/debug/deps/command_fences-d8782422560f5ae2)
+
+running 5 tests
+test current_unused_non_genesis_fences_are_accepted ... ok
+test every_identity_and_digest_byte_participates_in_fence_equality ... ok
+test every_revision_component_is_fenced_independently ... ok
+test every_stale_fence_dimension_and_start_payload_is_rejected ... ok
+test terminal_state_rejection_has_priority_over_every_stale_fence ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/domain_transitions.rs (target/debug/deps/domain_transitions-6c14306889f3f84d)
+
+running 5 tests
+test cancellation_tree_preserves_active_ownership_until_acknowledgement ... ok
+test dependency_failure_propagates_and_never_manufactures_readiness ... ok
+test pause_drain_and_terminal_truth_are_closed_and_explicit ... ok
+test retryable_failure_is_explicit_and_attempt_bound_exhausts ... ok
+test worker_loss_classifies_retry_ambiguity_failure_and_cancellation ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/durability_restart.rs (target/debug/deps/durability_restart-0519f77420261bd3)
+
+running 2 tests
+test commit_restart_resolution_and_conflicting_command_are_exact ... ok
+test missing_checkpoint_fails_closed ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests/legacy_recovery.rs (target/debug/deps/legacy_recovery-f08117680def85cf)
+
+running 2 tests
+test historical_admission_and_recovery_replay_with_exact_bytes_and_remain_writable ... ok
+test old_benign_history_requires_legacy_admission_while_new_aggregates_reserve_recovery ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/queue_recovery.rs (target/debug/deps/queue_recovery-7f192222acd2469a)
+
+running 4 tests
+test final_attempt_and_cancelling_work_release_recovery_pressure ... ok
+test repeated_explicit_recovery_preserves_the_queue_until_the_exact_final_attempt ... ok
+test retryable_failure_cannot_overfill_the_queue_after_admission ... ok
+test worker_loss_cannot_overfill_the_queue_after_admission ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests/replay_codec.rs (target/debug/deps/replay_codec-9d19d11bf8fc5117)
+
+running 2 tests
+test genesis_frames_roundtrip_and_replay_exactly ... ok
+test reordered_or_tampered_stream_fails_closed ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/reservation_preservation.rs (target/debug/deps/reservation_preservation-f7cf9dbc71d1f465)
+
+running 4 tests
+test cancellation_acknowledgement_and_abandonment_reject_without_partial_mutation ... ok
+test dispatch_rejections_preserve_error_precedence_and_state ... ok
+test every_release_path_frees_only_its_exact_capacity_and_replays ... ok
+test retry_releases_capacity_and_reserves_a_fresh_dispatch_identity ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests/resource_invariants.rs (target/debug/deps/resource_invariants-233615ce3da4e317)
+
+running 3 tests
+test identities_limits_and_vectors_reject_invalid_values ... ok
+test indexed_quantity_preserves_present_and_absent_dimensions ... ok
+test resource_addition_and_subtraction_are_exact_and_checked ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/selection_fairness.rs (target/debug/deps/selection_fairness-a2e503d6d9cab611)
+
+running 1 test
+test implementation_matches_independent_reference_and_forces_aged_work ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/session.rs (target/debug/deps/session-6dbe6e2f7623ebc4)
+
+running 7 tests
+test commit_without_matching_replay_and_invalid_pure_commands_do_not_advance_state ... ok
+test corruption_after_session_planning_is_rejected_at_the_actual_append_boundary ... ok
+test live_external_corruption_is_not_hidden_by_a_warm_session ... ok
+test ordinary_same_owner_and_external_commits_invalidate_the_old_state ... ok
+test racing_writer_rejects_planned_transition_and_then_replays_its_actual_successor ... ok
+test switching_runs_and_failed_storage_cannot_publish_a_planned_successor ... ok
+test warm_successors_and_restarted_replay_preserve_every_canonical_byte ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.15s
+
+     Running tests/terminal_summary.rs (target/debug/deps/terminal_summary-adeb37f65638c5b6)
+
+running 4 tests
+test empty_scheduler_completes_with_an_empty_non_success_list ... ok
+test every_terminal_pair_uses_declared_priority_and_exact_non_success_ids ... ok
+test missing_terminal_evidence_cannot_finalize_or_change_input ... ok
+test mixed_terminal_preserves_the_v1_digest_of_canonical_work_ids ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+     Running tests/versioned_durability.rs (target/debug/deps/versioned_durability-1e978a589df8367c)
+
+running 6 tests
+test authentic_legacy_histories_import_reopen_and_rebuild_exactly ... ok
+test checkpoint_schema_guard_rejects_both_mixed_version_directions ... ok
+test durable_load_rejects_a_mixed_event_schema_chain_before_rebuild ... ok
+test durable_load_rejects_checkpoint_event_schema_mismatch_before_rebuild ... ok
+test fresh_legacy_genesis_is_purely_replayable_but_not_durably_creatable ... ok
+test legacy_exact_retry_resolution_and_continuation_remain_version_sticky ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.09s
+
+     Running tests/versioned_wire.rs (target/debug/deps/versioned_wire-0eb42777e6fce0a9)
+
+running 3 tests
+test current_frames_are_schema_v2_and_roundtrip_through_dual_helpers ... ok
+test dual_helpers_reject_invalid_headers_lengths_and_trailing_bytes ... ok
+test historical_v1_frames_decode_and_reencode_byte_exactly ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/worker_descriptor_admission.rs (target/debug/deps/worker_descriptor_admission-4e44ad70ca021618)
+
+running 4 tests
+test capacity_limit_is_exact_and_class_rejection_keeps_priority ... ok
+test concurrency_accepts_its_maximum_and_rejects_zero_or_excess ... ok
+test empty_duplicate_and_descending_classes_are_rejected ... ok
+test every_execution_class_pair_agrees_with_derived_canonical_order ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/worker_loss_outcomes.rs (target/debug/deps/worker_loss_outcomes-e57b655dab61a5c6)
+
+running 1 test
+test mixed_loss_reports_each_owned_dispatch_once_in_order_and_preserves_other_worker ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+   Doc-tests peritus_projection
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests peritus_protocol
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests peritus_scheduler
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

@@ -7,6 +7,25 @@ use peritus_types::Sha256Digest;
 
 use super::{WorkUpdate, update_work};
 
+#[cfg(verus_only)]
+mod phase_relation;
+#[cfg(verus_only)]
+mod readiness;
+#[cfg(verus_only)]
+mod terminal_relation;
+#[cfg(verus_only)]
+pub(crate) use phase_relation::phase_release_matches;
+#[cfg(verus_only)]
+use phase_relation::phase_release_preserves_collections_order;
+#[cfg(verus_only)]
+use readiness::establish_released_state_ready;
+#[cfg(verus_only)]
+pub(crate) use terminal_relation::terminal_release_matches;
+#[cfg(verus_only)]
+use terminal_relation::{
+    release_preserves_other_state, terminal_release_preserves_collections_order,
+};
+
 verus! {
 
 /// Returns whether a live reservation exactly names the released dispatch and work.
@@ -22,95 +41,6 @@ pub open spec fn release_target_exists(
             && state.spec_reservations()[reservation_index].spec_work_id() == work_id
 }
 
-proof fn establish_released_state_ready(
-    state: &SchedulerState,
-    before_work: Seq<crate::WorkRecord>,
-    before_reservations: Seq<SchedulerReservation>,
-    after_removal: Seq<SchedulerReservation>,
-    used_dispatches: Seq<DispatchId>,
-    dispatch_id: DispatchId,
-    work_id: WorkId,
-    target_phase: WorkPhase,
-)
-    requires
-        state.spec_reservation_invariant(),
-        state.spec_reservations() == after_removal,
-        state.spec_used_dispatches() == used_dispatches,
-        crate::verified::work_identities_unique(before_work),
-        crate::verified::reservation_identities_unique(before_reservations),
-        crate::verified::reservations_match_work_phases(before_work, before_reservations),
-        crate::verified::active_work_has_reservations(before_work, before_reservations),
-        crate::verified::reservations_are_retained_dispatches(
-            before_reservations,
-            used_dispatches,
-        ),
-        exists |reservation_index: int|
-            #![trigger before_reservations[reservation_index]]
-            0 <= reservation_index < before_reservations.len()
-                && before_reservations[reservation_index].spec_dispatch_id() == dispatch_id
-                && before_reservations[reservation_index].spec_work_id() == work_id,
-        super::super::reservation_remove::reservation_removal_matches(
-            before_reservations,
-            after_removal,
-            dispatch_id,
-            true,
-        ),
-        super::work_update_matches(
-            before_work,
-            state.spec_work(),
-            work_id,
-            target_phase,
-            true,
-        ),
-        !crate::verified::work_phase_retains_reservation(target_phase),
-    ensures state.spec_reservation_reducer_ready(),
-{
-    let target_index = choose |reservation_index: int|
-        #![trigger before_reservations[reservation_index]]
-        0 <= reservation_index < before_reservations.len()
-            && before_reservations[reservation_index].spec_dispatch_id() == dispatch_id
-            && before_reservations[reservation_index].spec_work_id() == work_id;
-    reveal(super::super::reservation_remove::reservation_removal_matches);
-    let removed_index = choose |reservation_index: int|
-        #![trigger before_reservations[reservation_index]]
-        0 <= reservation_index < before_reservations.len()
-            && before_reservations[reservation_index].spec_dispatch_id() == dispatch_id
-            && after_removal == before_reservations.remove(reservation_index);
-    reveal(crate::verified::reservation_identities_unique);
-    assert(removed_index == target_index) by {
-        if removed_index != target_index {
-            assert(before_reservations[removed_index].spec_dispatch_id()
-                != before_reservations[target_index].spec_dispatch_id());
-            assert(false);
-        }
-    }
-    reveal(super::work_update_matches);
-    let work_index = choose |index: int| #![trigger before_work[index]] {
-        &&& 0 <= index < before_work.len()
-        &&& super::work_record_update_matches(
-            before_work[index],
-            state.spec_work()[index],
-            work_id,
-            target_phase,
-        )
-        &&& forall |other: int| #![auto]
-            0 <= other < before_work.len() && other != index ==>
-                state.spec_work()[other] == before_work[other]
-    };
-    reveal(super::work_record_update_matches);
-    assert(before_reservations[removed_index].spec_work_id()
-        == before_work[work_index].spec_definition().spec_id());
-    crate::verified::release_preserves_relations(
-        before_work,
-        state.spec_work(),
-        before_reservations,
-        state.spec_reservations(),
-        used_dispatches,
-        work_index,
-        removed_index,
-    );
-    reveal(SchedulerState::spec_reservation_reducer_ready);
-}
 
 fn release_with_update(
     state: &mut SchedulerState,
@@ -121,14 +51,43 @@ fn release_with_update(
     ensures
         old(state).spec_reservation_invariant()
             ==> final(state).spec_reservation_invariant(),
+        release_preserves_other_state(old(state), final(state)),
         final(state).spec_phase() == old(state).spec_phase(),
         final(state).spec_binding() == old(state).spec_binding(),
         final(state).spec_workers() == old(state).spec_workers(),
         final(state).spec_used_dispatches() == old(state).spec_used_dispatches(),
+        match removed {
+            Some(reservation) => {
+                &&& super::super::reservation_remove::exact_reservation_removal_matches(
+                    old(state).spec_reservations(),
+                    final(state).spec_reservations(),
+                    dispatch_id,
+                    Some(reservation),
+                )
+                &&& super::exact_work_update_matches(
+                    old(state).spec_work(),
+                    final(state).spec_work(),
+                    work_id,
+                    update,
+                    true,
+                )
+            },
+            None => true,
+        },
         old(state).spec_reservation_reducer_ready()
                 && !crate::verified::work_phase_retains_reservation(update.spec_phase())
                 && release_target_exists(old(state), dispatch_id, work_id)
             ==> removed.is_some() && final(state).spec_reservation_reducer_ready(),
+        old(state).spec_reservation_reducer_ready()
+                && !crate::verified::work_phase_retains_reservation(update.spec_phase())
+                && release_target_exists(old(state), dispatch_id, work_id)
+            ==> match removed {
+                Some(reservation) => {
+                    &&& reservation.spec_dispatch_id() == dispatch_id
+                    &&& reservation.spec_work_id() == work_id
+                },
+                None => false,
+            },
 {
     let ghost before_work = state.spec_work();
     let ghost before_reservations = state.spec_reservations();
@@ -157,6 +116,7 @@ fn release_with_update(
                     assert(before_reservations[target_index].spec_dispatch_id() != dispatch_id);
                     assert(false);
                 }
+                reveal(release_preserves_other_state);
             }
             return None;
     };
@@ -187,6 +147,7 @@ fn release_with_update(
                 assert(before_work[target_work].spec_definition().spec_id() == work_id);
                 assert(false);
             }
+            reveal(release_preserves_other_state);
         }
         return None;
     }
@@ -207,8 +168,24 @@ fn release_with_update(
                 dispatch_id,
                 work_id,
                 target_phase,
+                reservation,
             );
         }
+        assert(state.spec_reservations() == after_removal);
+        assert(super::super::reservation_remove::exact_reservation_removal_matches(
+            before_reservations,
+            state.spec_reservations(),
+            dispatch_id,
+            Some(reservation),
+        ));
+        assert(super::exact_work_update_matches(
+            before_work,
+            state.spec_work(),
+            work_id,
+            update,
+            true,
+        ));
+        reveal(release_preserves_other_state);
     }
     Some(reservation)
 }
@@ -230,9 +207,44 @@ pub fn release_to_phase(
                 && !crate::verified::work_phase_retains_reservation(phase)
                 && release_target_exists(old(state), dispatch_id, work_id)
             ==> removed.is_some() && final(state).spec_reservation_reducer_ready(),
+        old(state).spec_reservation_reducer_ready()
+                && !crate::verified::work_phase_retains_reservation(phase)
+                && release_target_exists(old(state), dispatch_id, work_id)
+            ==> match removed {
+                Some(reservation) => phase_release_matches(
+                    old(state), final(state), dispatch_id, work_id, phase, &reservation,
+                ),
+                None => false,
+            },
+        old(state).spec_reservation_reducer_ready()
+                && old(state).spec_collections_ordered()
+                && !crate::verified::work_phase_retains_reservation(phase)
+                && release_target_exists(old(state), dispatch_id, work_id)
+            ==> final(state).spec_collections_ordered(),
 {
     let result = release_with_update(state, dispatch_id, work_id, WorkUpdate::Phase(phase));
-    proof { reveal(WorkUpdate::spec_phase); }
+    proof {
+        reveal(WorkUpdate::spec_phase);
+        if old(state).spec_reservation_reducer_ready()
+            && !crate::verified::work_phase_retains_reservation(phase)
+            && release_target_exists(old(state), dispatch_id, work_id)
+        {
+            match &result {
+                Some(reservation) => {
+                    reveal(super::exact_work_update_matches);
+                    reveal(WorkUpdate::record_matches);
+                    reveal(super::work_phase_update_matches);
+                    reveal(phase_release_matches);
+                    if old(state).spec_collections_ordered() {
+                        phase_release_preserves_collections_order(
+                            old(state), state, dispatch_id, work_id, phase, reservation,
+                        );
+                    }
+                },
+                None => assert(false),
+            }
+        }
+    }
     result
 }
 
@@ -277,11 +289,51 @@ pub fn release_to_terminal(
         old(state).spec_reservation_reducer_ready()
                 && release_target_exists(old(state), dispatch_id, work_id)
             ==> removed.is_some() && final(state).spec_reservation_reducer_ready(),
+        old(state).spec_reservation_reducer_ready()
+                && release_target_exists(old(state), dispatch_id, work_id)
+            ==> match removed {
+                Some(reservation) => terminal_release_matches(
+                    old(state),
+                    final(state),
+                    dispatch_id,
+                    work_id,
+                    terminal,
+                    &reservation,
+                ),
+                None => false,
+            },
+        old(state).spec_reservation_reducer_ready()
+                && old(state).spec_collections_ordered()
+                && release_target_exists(old(state), dispatch_id, work_id)
+            ==> final(state).spec_collections_ordered(),
 {
     let result = release_with_update(state, dispatch_id, work_id, WorkUpdate::Terminal(terminal));
     proof {
         reveal(WorkUpdate::spec_phase);
         reveal(crate::verified::work_phase_retains_reservation);
+        if old(state).spec_reservation_reducer_ready()
+            && release_target_exists(old(state), dispatch_id, work_id)
+        {
+            match &result {
+                Some(reservation) => {
+                    reveal(super::exact_work_update_matches);
+                    reveal(WorkUpdate::record_matches);
+                    reveal(super::work_terminal_update_matches);
+                    reveal(terminal_release_matches);
+                    if old(state).spec_collections_ordered() {
+                        terminal_release_preserves_collections_order(
+                            old(state),
+                            state,
+                            dispatch_id,
+                            work_id,
+                            terminal,
+                            reservation,
+                        );
+                    }
+                },
+                None => assert(false),
+            }
+        }
     }
     result
 }

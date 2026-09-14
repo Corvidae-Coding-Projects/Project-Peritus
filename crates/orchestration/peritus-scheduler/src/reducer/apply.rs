@@ -1,16 +1,18 @@
 //! Closed command application against a cloned scheduler state.
 
+mod admission;
+mod cancellation;
 mod control;
 mod dispatch;
+mod loss;
 mod worker_control;
 
 use peritus_codec::sha256;
 
 use crate::state::mutation;
 use crate::{
-    DispatchId, LossOutcome, RecoveryPolicy, SchedulerCommandKind, SchedulerError,
-    SchedulerErrorKind, SchedulerEventKind, SchedulerPhase, SchedulerReservation, SchedulerState,
-    WorkPhase, WorkRecord, WorkSpec, WorkTerminal, WorkerPhase,
+    DispatchId, SchedulerCommandKind, SchedulerError, SchedulerErrorKind, SchedulerEventKind,
+    SchedulerState, WorkSpec,
 };
 
 pub(super) fn apply(
@@ -58,118 +60,49 @@ fn lose_worker(
     state: &mut SchedulerState,
     worker_id: crate::WorkerId,
 ) -> Result<SchedulerEventKind, SchedulerError> {
-    let phase = state.worker(worker_id).ok_or_else(|| unknown("worker is not registered"))?.phase();
-    if matches!(phase, WorkerPhase::Lost | WorkerPhase::Removed) {
-        return Err(super::illegal("worker is already lost or removed"));
-    }
-    let dispatches: Vec<_> = state
-        .reservations()
-        .iter()
-        .filter(|reservation| reservation.worker_id() == worker_id)
-        .map(SchedulerReservation::dispatch_id)
+    let plan: Vec<_> = loss::dispatches_for_worker(state.reservations(), worker_id)
+        .into_iter()
+        .map(|dispatch_id| (dispatch_id, sha256(dispatch_id.as_bytes())))
         .collect();
-    let mut outcomes = Vec::with_capacity(dispatches.len());
-    for dispatch_id in dispatches {
-        let work_id = state
-            .reservation(dispatch_id)
-            .ok_or_else(|| unknown("worker-loss reservation disappeared"))?
-            .work_id();
-        let record =
-            state.work_item(work_id).ok_or_else(|| unknown("worker-loss work disappeared"))?;
-        let (terminal, phase, outcome) = if record.phase() == WorkPhase::Cancelling {
-            (Some(WorkTerminal::Cancelled), None, LossOutcome::Cancelled { dispatch_id, work_id })
-        } else {
-            match record.spec().recovery() {
-                RecoveryPolicy::RetrySafe
-                    if record.attempts_started() < record.spec().maximum_attempts().get() =>
-                {
-                    (None, Some(WorkPhase::Queued), LossOutcome::Requeued { dispatch_id, work_id })
-                }
-                RecoveryPolicy::RetrySafe => (
-                    Some(WorkTerminal::Exhausted { cause_digest: sha256(dispatch_id.as_bytes()) }),
-                    None,
-                    LossOutcome::Exhausted { dispatch_id, work_id },
-                ),
-                RecoveryPolicy::Ambiguous => (
-                    Some(WorkTerminal::Ambiguous { dispatch_id }),
-                    None,
-                    LossOutcome::Ambiguous { dispatch_id, work_id },
-                ),
-                RecoveryPolicy::Fail => (
-                    Some(WorkTerminal::Failed { failure_digest: sha256(dispatch_id.as_bytes()) }),
-                    None,
-                    LossOutcome::Failed { dispatch_id, work_id },
-                ),
-            }
-        };
-        let released = match (terminal, phase) {
-            (Some(terminal), _) => {
-                mutation::release_to_terminal(state, dispatch_id, work_id, terminal)
-            }
-            (None, Some(phase)) => mutation::release_to_phase(state, dispatch_id, work_id, phase),
-            (None, None) => None,
-        };
-        if released.is_none() {
-            return Err(unknown("worker-loss work disappeared"));
+    loss::apply_worker_loss(state, worker_id, &plan).map_err(|error| match error {
+        loss::WorkerLossError::WorkerMissing => unknown("worker is not registered"),
+        loss::WorkerLossError::AlreadyLostOrRemoved => {
+            super::illegal("worker is already lost or removed")
         }
-        outcomes.push(outcome);
-    }
-    if !mutation::set_worker_phase(state, worker_id, WorkerPhase::Lost) {
-        return Err(unknown("lost worker disappeared"));
-    }
-    Ok(SchedulerEventKind::WorkerLost { worker_id, outcomes })
+        loss::WorkerLossError::ReservationDisappeared => {
+            unknown("worker-loss reservation disappeared")
+        }
+        loss::WorkerLossError::WorkDisappeared => unknown("worker-loss work disappeared"),
+        loss::WorkerLossError::LostWorkerDisappeared => unknown("lost worker disappeared"),
+    })
 }
 
 fn admit_work(
     state: &mut SchedulerState,
     spec: &WorkSpec,
 ) -> Result<SchedulerEventKind, SchedulerError> {
-    if matches!(state.phase(), SchedulerPhase::Draining | SchedulerPhase::DrainingPaused) {
-        return Err(super::illegal("draining scheduler rejects work admission"));
-    }
-    let limits = state.binding().limits();
-    if state.work().len() >= limits.retained_work() as usize
-        || queued_count(state) >= limits.queued_work() as usize
-    {
-        return Err(limit("work retention or queue limit reached"));
-    }
-    if state.work_item(spec.id()).is_some() {
-        return Err(conflict("work identity is retained"));
-    }
-    if spec.revision() != state.binding().revision() {
-        return Err(binding("work revision differs from scheduler binding"));
-    }
-    if !spec.request().fits_within(state.binding().capacity()) {
-        return Err(resource("work request exceeds global scheduler capacity"));
-    }
-    for dependency in spec.dependencies() {
-        if state.work_item(*dependency).is_none() {
-            return Err(unknown("work dependency is absent"));
+    admission::apply_command(state, spec).map_err(|reason| match reason {
+        admission::AdmissionRejection::Draining => {
+            super::illegal("draining scheduler rejects work admission")
         }
-    }
-    if spec.parent().is_some_and(|parent| state.work_item(parent).is_none()) {
-        return Err(unknown("work parent is absent"));
-    }
-    if !state.workers().iter().any(|worker| {
-        worker.phase() != WorkerPhase::Removed
-            && worker.descriptor().owner() == spec.owner()
-            && worker.descriptor().supports(spec.class())
-            && spec.request().fits_within(worker.descriptor().capacity())
-    }) {
-        return Err(crate::error::reject(
+        admission::AdmissionRejection::CapacityLimit => {
+            limit("work retention or queue limit reached")
+        }
+        admission::AdmissionRejection::DuplicateWork => conflict("work identity is retained"),
+        admission::AdmissionRejection::RevisionMismatch => {
+            binding("work revision differs from scheduler binding")
+        }
+        admission::AdmissionRejection::ResourceConflict => {
+            resource("work request exceeds global scheduler capacity")
+        }
+        admission::AdmissionRejection::MissingDependency => unknown("work dependency is absent"),
+        admission::AdmissionRejection::MissingParent => unknown("work parent is absent"),
+        admission::AdmissionRejection::UnsupportedWork => crate::error::reject(
             SchedulerErrorKind::InvalidInput,
             "no registered owner worker supports the work execution class and request",
-        ));
-    }
-    let ordinal =
-        mutation::next_enqueue_ordinal(state).ok_or_else(|| limit("enqueue ordinal overflowed"))?;
-    let phase = if spec.dependencies().is_empty() {
-        WorkPhase::Queued
-    } else {
-        WorkPhase::WaitingDependencies
-    };
-    mutation::insert_work(state, WorkRecord::new(spec.clone(), phase, ordinal));
-    Ok(SchedulerEventKind::WorkAdmitted { spec: spec.clone() })
+        ),
+        admission::AdmissionRejection::OrdinalOverflow => limit("enqueue ordinal overflowed"),
+    })
 }
 
 fn dispatch(
@@ -177,11 +110,11 @@ fn dispatch(
     dispatch_id: DispatchId,
     token: peritus_types::Sha256Digest,
 ) -> Result<SchedulerEventKind, SchedulerError> {
-    if !matches!(state.phase(), SchedulerPhase::Active | SchedulerPhase::Draining) {
-        return Err(super::illegal("scheduler dispatch is paused"));
-    }
-    match dispatch::reserve_next(state, dispatch_id, token) {
-        Ok(reservation) => Ok(SchedulerEventKind::WorkReserved { reservation }),
+    match dispatch::apply_command(state, dispatch_id, token) {
+        Ok(event) => Ok(event),
+        Err(dispatch::DispatchRejection::Paused) => {
+            Err(super::illegal("scheduler dispatch is paused"))
+        }
         Err(dispatch::DispatchRejection::ActiveLimit) => {
             Err(limit("active reservation limit reached"))
         }
@@ -318,19 +251,6 @@ fn retry(
             Err(super::illegal("retry dispatcher received a non-retry command"))
         }
     }
-}
-
-fn queued_count(state: &SchedulerState) -> usize {
-    state
-        .work()
-        .iter()
-        .filter(|record| {
-            matches!(
-                record.phase(),
-                WorkPhase::Queued | WorkPhase::WaitingDependencies | WorkPhase::RetryPending
-            )
-        })
-        .count()
 }
 
 fn limit(detail: &'static str) -> SchedulerError {

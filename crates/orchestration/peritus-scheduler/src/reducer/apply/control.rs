@@ -1,55 +1,25 @@
 //! Cancellation, pause/drain, abandonment, exhaustion, and terminal control.
 
 use crate::state::mutation;
-use crate::{
-    SchedulerError, SchedulerErrorKind, SchedulerEventKind, SchedulerState, SchedulerTerminal,
-    WorkId, WorkPhase, WorkTerminal,
-};
+use crate::{SchedulerError, SchedulerErrorKind, SchedulerEventKind, SchedulerState, WorkId};
+
+mod finalization;
+mod phase;
 
 pub(super) fn cancel(
     state: &mut SchedulerState,
     work_id: WorkId,
     descendants: bool,
 ) -> Result<SchedulerEventKind, SchedulerError> {
-    let root = state.work_item(work_id).ok_or_else(|| unknown("work is not retained"))?;
-    if root.phase() == WorkPhase::Terminal {
-        return Err(crate::reducer::illegal("work is already terminal"));
-    }
-    let mut affected = vec![work_id];
-    if descendants {
-        loop {
-            let before = affected.len();
-            for record in state.work() {
-                if record
-                    .spec()
-                    .parent()
-                    .is_some_and(|parent| affected.binary_search(&parent).is_ok())
-                    && affected.binary_search(&record.spec().id()).is_err()
-                {
-                    affected.push(record.spec().id());
-                    affected.sort_unstable();
-                }
-            }
-            if affected.len() == before {
-                break;
-            }
+    match super::cancellation::command::apply_command(state, work_id, descendants) {
+        Ok(event) => Ok(event),
+        Err(super::cancellation::command::CancellationRejection::WorkNotRetained) => {
+            Err(unknown("work is not retained"))
+        }
+        Err(super::cancellation::command::CancellationRejection::WorkAlreadyTerminal) => {
+            Err(crate::reducer::illegal("work is already terminal"))
         }
     }
-    affected.retain(|id| {
-        state.work_item(*id).is_some_and(|record| record.phase() != WorkPhase::Terminal)
-    });
-    for id in &affected {
-        let active = state.reservations().iter().any(|reservation| reservation.work_id() == *id);
-        let updated = if active {
-            mutation::set_work_phase(state, *id, WorkPhase::Cancelling)
-        } else {
-            mutation::terminalize_work(state, *id, WorkTerminal::Cancelled)
-        };
-        if !updated {
-            return Err(unknown("affected cancellation work disappeared"));
-        }
-    }
-    Ok(SchedulerEventKind::WorkCancelled { work_id, descendants, affected })
 }
 
 pub(super) fn acknowledge_cancel(
@@ -135,43 +105,31 @@ pub(super) fn scheduler_phase(
     state: &mut SchedulerState,
     command: &crate::SchedulerCommandKind,
 ) -> Result<SchedulerEventKind, SchedulerError> {
-    match mutation::apply_phase_command(state, command) {
-        mutation::PhaseCommandOutcome::Applied => match command {
-            crate::SchedulerCommandKind::PauseScheduler => Ok(SchedulerEventKind::SchedulerPaused),
-            crate::SchedulerCommandKind::ResumeScheduler => {
-                Ok(SchedulerEventKind::SchedulerResumed)
-            }
-            crate::SchedulerCommandKind::DrainScheduler => {
-                Ok(SchedulerEventKind::SchedulerDrainRequested)
-            }
-            _ => Err(crate::reducer::illegal(
-                "scheduler phase dispatcher received a non-phase command",
-            )),
-        },
-        mutation::PhaseCommandOutcome::IllegalPause => {
+    match phase::apply_phase_event(state, command) {
+        Ok(event) => Ok(event),
+        Err(phase::PhaseControlRejection::IllegalPause) => {
             Err(crate::reducer::illegal("scheduler is already paused or terminal"))
         }
-        mutation::PhaseCommandOutcome::IllegalResume => {
+        Err(phase::PhaseControlRejection::IllegalResume) => {
             Err(crate::reducer::illegal("scheduler is not paused"))
         }
-        mutation::PhaseCommandOutcome::IllegalDrain => {
+        Err(phase::PhaseControlRejection::IllegalDrain) => {
             Err(crate::reducer::illegal("scheduler is already draining"))
         }
-        mutation::PhaseCommandOutcome::NotPhaseCommand => {
+        Err(phase::PhaseControlRejection::NotPhaseCommand) => {
             Err(crate::reducer::illegal("scheduler phase dispatcher received a non-phase command"))
         }
     }
 }
 
 pub(super) fn finalize(state: &mut SchedulerState) -> Result<SchedulerEventKind, SchedulerError> {
-    if !state.all_work_terminal() || !state.reservations().is_empty() {
-        return Err(crate::reducer::illegal(
-            "scheduler cannot finalize with nonterminal work or directives",
-        ));
-    }
-    let terminal = SchedulerTerminal::evaluate(state.work());
-    mutation::set_terminal(state, terminal.clone());
-    Ok(SchedulerEventKind::SchedulerFinalized { terminal })
+    let plan = finalization::prepare(state).map_err(|reason| match reason {
+        finalization::FinalizationRejection::NonterminalWorkOrReservations => {
+            crate::reducer::illegal("scheduler cannot finalize with nonterminal work or directives")
+        }
+    })?;
+    let digest = crate::canonical::terminal_digest(plan.digest_input());
+    Ok(finalization::commit(state, plan, digest))
 }
 
 fn unknown(detail: &'static str) -> SchedulerError {

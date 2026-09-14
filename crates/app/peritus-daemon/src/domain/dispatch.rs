@@ -4,6 +4,8 @@ mod debugger;
 mod evaluation;
 mod evolution;
 mod harness;
+#[cfg(test)]
+mod scheduler_tests;
 
 use peritus_app_protocol::AppErrorCode;
 use peritus_codec::{CodecLimits, decode_message};
@@ -135,14 +137,13 @@ fn scheduler(
     session: &mut peritus_scheduler::SchedulerSession,
     submission: &DomainSubmission,
 ) -> Result<DomainOutcome, DaemonError> {
-    let frame = match decode_message::<peritus_scheduler::SchedulerCommandFrame>(
+    let command = match peritus_scheduler::decode_scheduler_command(
         &submission.frame,
         CodecLimits::PRODUCTION,
     ) {
-        Ok(frame) => frame,
+        Ok(command) => command,
         Err(_) => return malformed(),
     };
-    let command = frame.into_command();
     if !binding_matches(
         submission,
         command.command_id(),
@@ -157,6 +158,11 @@ fn scheduler(
         .map_err(|error| domain_failure("observe verified scheduler aggregate", error))?;
     let transition = match prior {
         Some(state) => peritus_scheduler::decide(state, &command),
+        None if command.semantics()
+            != peritus_scheduler::SchedulerSemantics::StrictRecoveryQueueV2 =>
+        {
+            return Ok(DomainOutcome::Rejected(AppErrorCode::UnsupportedSchema));
+        }
         None => peritus_scheduler::start(&command),
     };
     let Ok(transition) = transition else {

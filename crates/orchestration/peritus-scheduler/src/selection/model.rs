@@ -117,6 +117,135 @@ pub open spec fn selected_pair_admitted(
     )
 }
 
+/// State facts under which the bounded production feasibility checks are exact.
+pub open spec fn exact_selection_ready(state: &SchedulerState) -> bool {
+    state.spec_reservation_invariant() && state.spec_reservations().len() <= 4_096
+}
+
+/// Exact local worker predicate evaluated by the production worker scan.
+pub open spec fn worker_candidate(
+    state: &SchedulerState,
+    work_index: int,
+    worker_index: int,
+) -> bool {
+    &&& 0 <= work_index < state.spec_work().len()
+    &&& 0 <= worker_index < state.spec_workers().len()
+    &&& state.spec_workers()[worker_index].spec_phase() == WorkerPhase::Available
+    &&& crate::identity::actor_ids_match(
+        state.spec_workers()[worker_index].spec_descriptor().spec_owner(),
+        state.spec_work()[work_index].spec_definition().spec_owner(),
+    )
+    &&& state.spec_workers()[worker_index].spec_descriptor().spec_classes().contains(
+        state.spec_work()[work_index].spec_definition().spec_class(),
+    )
+    &&& crate::verified::worker_count(
+        state.spec_reservations(),
+        state.spec_workers()[worker_index].spec_descriptor().spec_id(),
+    ) < state.spec_workers()[worker_index].spec_descriptor().spec_concurrency()
+    &&& super::capacity::worker_entries_fit_after(
+        state,
+        state.spec_workers()[worker_index].spec_descriptor().spec_id(),
+        state.spec_workers()[worker_index].spec_descriptor().spec_capacity(),
+        state.spec_work()[work_index].spec_definition().spec_request().spec_entries(),
+    )
+}
+
+/// Exact work/worker pair accepted by the production feasibility scans.
+pub open spec fn dispatch_candidate(
+    state: &SchedulerState,
+    work_index: int,
+    worker_index: int,
+) -> bool {
+    &&& 0 <= work_index < state.spec_work().len()
+    &&& state.spec_work()[work_index].spec_phase() == WorkPhase::Queued
+    &&& super::capacity::global_entries_fit_after(
+        state,
+        state.spec_work()[work_index].spec_definition().spec_request().spec_entries(),
+    )
+    &&& worker_candidate(state, work_index, worker_index)
+}
+
+/// The worker is the first feasible worker in retained canonical order.
+pub open spec fn first_candidate_worker(
+    state: &SchedulerState,
+    work_index: int,
+    worker_index: int,
+) -> bool {
+    &&& dispatch_candidate(state, work_index, worker_index)
+    &&& forall |prior: int| 0 <= prior < worker_index ==>
+        !dispatch_candidate(state, work_index, prior)
+}
+
+/// At least one retained worker can accept the indexed work item.
+pub open spec fn work_has_candidate(state: &SchedulerState, work_index: int) -> bool {
+    exists |worker_index: int| #![trigger dispatch_candidate(state, work_index, worker_index)]
+        dispatch_candidate(state, work_index, worker_index)
+}
+
+/// Exact aged-first, priority, enqueue-ordinal and identity ordering.
+pub open spec fn work_precedes(
+    state: &SchedulerState,
+    left_index: int,
+    right_index: int,
+) -> bool {
+    let left = state.spec_work()[left_index];
+    let right = state.spec_work()[right_index];
+    let limit = state.spec_binding().spec_limits().spec_bypass_count();
+    let left_aged = left.spec_bypasses() >= limit;
+    let right_aged = right.spec_bypasses() >= limit;
+    if left_aged != right_aged {
+        left_aged
+    } else if left.spec_definition().spec_priority()
+        != right.spec_definition().spec_priority()
+    {
+        left.spec_definition().spec_priority() > right.spec_definition().spec_priority()
+    } else if left.spec_enqueue_ordinal() != right.spec_enqueue_ordinal() {
+        left.spec_enqueue_ordinal() < right.spec_enqueue_ordinal()
+    } else {
+        left.spec_definition().spec_id().spec_precedes(
+            &right.spec_definition().spec_id(),
+        )
+    }
+}
+
+/// Exact retained indices selected by the complete production ordering.
+pub open spec fn chosen_pair_matches(
+    state: &SchedulerState,
+    work_index: int,
+    worker_index: int,
+) -> bool {
+    &&& first_candidate_worker(state, work_index, worker_index)
+    &&& forall |other: int| #![trigger work_has_candidate(state, other)]
+        0 <= other < state.spec_work().len() && work_has_candidate(state, other) ==>
+            !work_precedes(state, other, work_index)
+}
+
+/// No retained work/worker pair is feasible.
+pub open spec fn no_dispatch_candidate(state: &SchedulerState) -> bool {
+    forall |work_index: int| 0 <= work_index < state.spec_work().len() ==>
+        !work_has_candidate(state, work_index)
+}
+
+/// No candidate exists before the exclusive retained-work bound.
+pub open spec fn no_candidate_before(state: &SchedulerState, end: int) -> bool {
+    forall |work_index: int| 0 <= work_index < end ==>
+        !work_has_candidate(state, work_index)
+}
+
+/// Exact best candidate among the retained-work prefix.
+pub open spec fn chosen_prefix_matches(
+    state: &SchedulerState,
+    end: int,
+    work_index: int,
+    worker_index: int,
+) -> bool {
+    &&& 0 <= work_index < end
+    &&& first_candidate_worker(state, work_index, worker_index)
+    &&& forall |other: int| #![trigger work_has_candidate(state, other)]
+        0 <= other < end && work_has_candidate(state, other) ==>
+            !work_precedes(state, other, work_index)
+}
+
 pub(super) struct IndexedSelection {
     pub(super) work_index: usize,
     pub(super) worker_index: usize,
@@ -126,6 +255,17 @@ pub(super) struct IndexedSelection {
 pub open spec fn selection_is_feasible(state: &SchedulerState, selection: Selection) -> bool {
     exists |work_index: int, worker_index: int| #![auto]
         selected_pair_feasible(state, work_index, worker_index)
+            && state.spec_work()[work_index].spec_definition().spec_id()
+                == selection.spec_work_id()
+            && state.spec_workers()[worker_index].spec_descriptor().spec_id()
+                == selection.spec_worker_id()
+}
+
+/// Relates the public identity projection to the exact production choice.
+pub open spec fn selection_is_exact(state: &SchedulerState, selection: Selection) -> bool {
+    exists |work_index: int, worker_index: int|
+        #![trigger chosen_pair_matches(state, work_index, worker_index)]
+        chosen_pair_matches(state, work_index, worker_index)
             && state.spec_work()[work_index].spec_definition().spec_id()
                 == selection.spec_work_id()
             && state.spec_workers()[worker_index].spec_descriptor().spec_id()

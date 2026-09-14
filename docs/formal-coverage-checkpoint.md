@@ -1,5 +1,21 @@
 # Formal verification stabilization checkpoint
 
+## Current campaign status
+
+This document preserves the earlier stabilization checkpoint below. Since that checkpoint,
+GAP-01 and GAP-02 have completed. GAP-02 authorization PR 75 landed before application PR 76;
+the application merged into `develop` at `a41113d1389c3d8fc77a00cc562cb9a5bcb7adc8` after
+all 132 package commands and final hosted qualification passed (576 successful checks and three
+expected skips). The trust check also passed against its actual authorization base. Crosslink
+continuation issue 76 records the source identities, independent review and completion evidence.
+
+GAP-03 is active on [draft PR 77](https://github.com/Corvidae-Coding-Projects/Project-Peritus/pull/77).
+Its [current implementation and remaining requirements](formal-scheduler-gap3.md) supersede the
+historical scheduler status below. GAP-04 through GAP-08 remain open. The draft is intentionally
+unmerged; no current scheduler source is qualified by the earlier GAP-02 results.
+
+## Historical stabilization checkpoint
+
 This local checkpoint preserves the accumulated formal-coverage work and completes the two
 patches selected on 2026-09-13. It is not a completed formal-coverage goal or a merge-ready PR.
 The full campaign's production proofs, review authorization, and hosted CI remain incomplete.

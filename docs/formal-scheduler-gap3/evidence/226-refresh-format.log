@@ -1,0 +1,11 @@
+Diff in /home/doll/Project-Peritus/.worktrees/formal-scheduler-gap3/crates/orchestration/peritus-scheduler/src/state/mutation/dependency_round.rs:6:
+ use crate::WorkRecord;
+ use crate::{SchedulerState, WorkId};
+ 
++use super::dependency_action::{DependencyAction, dependency_action};
+ #[cfg(verus_only)]
+ use super::dependency_action::{action_matches, actionable_excludes_no_change};
+-use super::dependency_action::{DependencyAction, dependency_action};
+ 
+ verus! {
+ 

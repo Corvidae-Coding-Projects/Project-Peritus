@@ -5,20 +5,29 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use peritus_codec::{CodecLimits, decode_message, encode_message, sha256};
+use peritus_codec::{CodecError, CodecLimits, sha256};
 use peritus_types::{
     AcceptanceSpecId, CommandId, EventId, Generation, HarnessId, PolicyId, ProviderProfileId,
     RevisionNumber, RevisionTuple, RunId, Sha256Digest, WorkspaceId,
 };
 
-use super::{SchedulerCommandFrame, SchedulerEventFrame, SchedulerStateFrame};
+use super::{
+    decode_scheduler_command, decode_scheduler_event, decode_scheduler_state,
+    encode_scheduler_command, encode_scheduler_event, encode_scheduler_state,
+};
 use crate::{
     ResourceEntry, ResourceKind, ResourceQuantity, ResourceVector, SchedulerBinding,
-    SchedulerCommand, SchedulerCommandKind, SchedulerId, SchedulerLimits, start,
+    SchedulerCommand, SchedulerCommandKind, SchedulerId, SchedulerLimits, SchedulerSemantics,
+    start,
 };
 
 #[test]
 fn canonical_binary_corpus_is_exact_and_rejects_wrong_family_or_trailing_bytes() {
+    check_corpus(SchedulerSemantics::LegacyQueueV1);
+    check_corpus(SchedulerSemantics::StrictRecoveryQueueV2);
+}
+
+fn check_corpus(semantics: SchedulerSemantics) {
     let limits = SchedulerLimits::new(8, 16, 4, 4, 4, 4, 3, 2, 2, 65_536, 262_144).unwrap();
     let revision = RevisionTuple::new(
         AcceptanceSpecId::new(bytes(10)).unwrap(),
@@ -29,7 +38,8 @@ fn canonical_binary_corpus_is_exact_and_rejects_wrong_family_or_trailing_bytes()
         PolicyId::new(bytes(13)).unwrap(),
         ProviderProfileId::new(bytes(14)).unwrap(),
     );
-    let binding = SchedulerBinding::new(
+    let binding = SchedulerBinding::from_wire(
+        semantics,
         RunId::new(bytes(15)).unwrap(),
         SchedulerId::new(bytes(16)).unwrap(),
         revision,
@@ -41,7 +51,8 @@ fn canonical_binary_corpus_is_exact_and_rejects_wrong_family_or_trailing_bytes()
         .unwrap(),
     )
     .unwrap();
-    let command = SchedulerCommand::new(
+    let command = SchedulerCommand::from_wire(
+        semantics,
         CommandId::new(bytes(1)).unwrap(),
         EventId::new(bytes(2)).unwrap(),
         binding.run_id(),
@@ -50,65 +61,57 @@ fn canonical_binary_corpus_is_exact_and_rejects_wrong_family_or_trailing_bytes()
         Sha256Digest::new([0; 32]),
         revision,
         SchedulerCommandKind::StartScheduler { binding },
-    )
-    .unwrap();
+    );
     let transition = start(&command).unwrap();
-    let command_bytes =
-        encode_message(&SchedulerCommandFrame::from_command(&command), CodecLimits::PRODUCTION)
-            .unwrap();
-    let event_bytes = encode_message(
-        &SchedulerEventFrame::new(transition.event().clone()),
-        CodecLimits::PRODUCTION,
-    )
-    .unwrap();
-    let state_bytes = encode_message(
-        &SchedulerStateFrame::from_state(transition.state()),
-        CodecLimits::PRODUCTION,
-    )
-    .unwrap();
+    let command_bytes = encode_scheduler_command(&command, CodecLimits::PRODUCTION).unwrap();
+    let event_bytes = encode_scheduler_event(transition.event(), CodecLimits::PRODUCTION).unwrap();
+    let state_bytes = encode_scheduler_state(transition.state(), CodecLimits::PRODUCTION).unwrap();
     let corpus = [
         ("scheduler-command.bin", command_bytes),
         ("scheduler-event.bin", event_bytes),
         ("scheduler-state.bin", state_bytes),
     ];
-    let root = fixture_root();
+    let root = fixture_root(semantics);
     let manifest = manifest(&corpus);
-    if std::env::var_os("PERITUS_UPDATE_SCHEDULER_FIXTURES").is_some() {
+    if semantics == SchedulerSemantics::StrictRecoveryQueueV2
+        && std::env::var_os("PERITUS_UPDATE_SCHEDULER_V2_FIXTURES").is_some()
+    {
         write_corpus(&root, &corpus, &manifest);
     }
     for (name, bytes) in &corpus {
         assert_eq!(fs::read(root.join(name)).unwrap(), *bytes);
     }
     assert_eq!(fs::read_to_string(root.join("SHA256SUMS")).unwrap(), manifest);
+    assert_eq!(decode_scheduler_command(&corpus[0].1, CodecLimits::PRODUCTION).unwrap(), command);
     assert_eq!(
-        decode_message::<SchedulerCommandFrame>(&corpus[0].1, CodecLimits::PRODUCTION)
-            .unwrap()
-            .into_command(),
-        command
-    );
-    assert_eq!(
-        decode_message::<SchedulerEventFrame>(&corpus[1].1, CodecLimits::PRODUCTION)
-            .unwrap()
-            .into_event(),
+        decode_scheduler_event(&corpus[1].1, CodecLimits::PRODUCTION).unwrap(),
         *transition.event()
     );
-    assert!(
-        decode_message::<SchedulerStateFrame>(&corpus[2].1, CodecLimits::PRODUCTION)
-            .unwrap()
-            .matches_state(transition.state())
+    assert_eq!(
+        decode_scheduler_state(&corpus[2].1, CodecLimits::PRODUCTION).unwrap(),
+        *transition.state()
     );
-    reject_wrong_family_or_trailing::<SchedulerCommandFrame>(&corpus[0].1);
-    reject_wrong_family_or_trailing::<SchedulerEventFrame>(&corpus[1].1);
-    reject_wrong_family_or_trailing::<SchedulerStateFrame>(&corpus[2].1);
+    reject_wrong_family_or_trailing(&corpus[0].1, |bytes| {
+        decode_scheduler_command(bytes, CodecLimits::PRODUCTION)
+    });
+    reject_wrong_family_or_trailing(&corpus[1].1, |bytes| {
+        decode_scheduler_event(bytes, CodecLimits::PRODUCTION)
+    });
+    reject_wrong_family_or_trailing(&corpus[2].1, |bytes| {
+        decode_scheduler_state(bytes, CodecLimits::PRODUCTION)
+    });
 }
 
-fn reject_wrong_family_or_trailing<T: peritus_codec::CanonicalDecode>(bytes: &[u8]) {
+fn reject_wrong_family_or_trailing<T>(
+    bytes: &[u8],
+    decode: impl Fn(&[u8]) -> Result<T, CodecError>,
+) {
     let mut wrong = bytes.to_vec();
     wrong[6..8].copy_from_slice(&999_u16.to_be_bytes());
-    assert!(decode_message::<T>(&wrong, CodecLimits::PRODUCTION).is_err());
+    assert!(decode(&wrong).is_err());
     let mut trailing = bytes.to_vec();
     trailing.push(0);
-    assert!(decode_message::<T>(&trailing, CodecLimits::PRODUCTION).is_err());
+    assert!(decode(&trailing).is_err());
 }
 
 fn manifest(corpus: &[(&str, Vec<u8>)]) -> String {
@@ -130,8 +133,10 @@ fn write_corpus(root: &Path, corpus: &[(&str, Vec<u8>)], manifest: &str) {
     fs::write(root.join("SHA256SUMS"), manifest).unwrap();
 }
 
-fn fixture_root() -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR")).join("../../..").join("fixtures/protocol/scheduler-v1")
+fn fixture_root(semantics: SchedulerSemantics) -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../..")
+        .join(format!("fixtures/protocol/scheduler-v{}", semantics.schema_version()))
 }
 
 fn hex(bytes: &[u8]) -> String {

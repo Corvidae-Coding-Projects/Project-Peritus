@@ -16,6 +16,40 @@ fn event_frame() -> RegisteredEventFrame {
         .expect("registered B3 event fixture")
 }
 
+#[test]
+fn event_subscription_accepts_supported_scheduler_schemas_only() {
+    let event = event_fixture_bytes();
+    for version in [1, 2] {
+        let frame = RegisteredEventFrame::new(
+            relabel(event.clone(), 71, version),
+            AppProtocolLimits::PRODUCTION.codec(),
+        )
+        .expect("supported scheduler event schema parses");
+        assert_eq!(frame.schema_version(), version);
+    }
+
+    for version in [0, 3] {
+        assert!(
+            RegisteredEventFrame::new(
+                relabel(event.clone(), 71, version),
+                AppProtocolLimits::PRODUCTION.codec(),
+            )
+            .is_err()
+        );
+    }
+
+    assert!(
+        RegisteredEventFrame::new(relabel(event, 41, 2), AppProtocolLimits::PRODUCTION.codec(),)
+            .is_err()
+    );
+}
+
+fn relabel(mut frame: Vec<u8>, family: u16, schema_version: u16) -> Vec<u8> {
+    frame[6..8].copy_from_slice(&family.to_be_bytes());
+    frame[8..10].copy_from_slice(&schema_version.to_be_bytes());
+    frame
+}
+
 #[allow(
     clippy::too_many_lines,
     reason = "one sequential trace keeps delivery, acknowledgement, gap, and cancellation causality visible"

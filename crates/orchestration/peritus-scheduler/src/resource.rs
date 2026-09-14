@@ -176,8 +176,11 @@ impl ResourceVector {
     /// Borrows canonical entries.
     #[must_use]
     pub fn entries(&self) -> (result: &[ResourceEntry])
-        ensures result@ == self.spec_entries(),
+        ensures
+            result@ == self.spec_entries(),
+            capacity::entries_canonical(result@),
     {
+        proof { use_type_invariant(self); }
         &self.0
     }
 

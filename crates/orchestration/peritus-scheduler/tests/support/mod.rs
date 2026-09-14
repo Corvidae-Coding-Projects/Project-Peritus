@@ -78,14 +78,10 @@ impl Fixture {
         identity: u8,
         kind: SchedulerCommandKind,
     ) -> SchedulerCommand {
-        SchedulerCommand::new(
+        SchedulerCommand::from_state(
+            state,
             CommandId::new(bytes(identity)).unwrap(),
             EventId::new(bytes(identity.wrapping_add(100))).unwrap(),
-            state.run_id(),
-            state.sequence().get(),
-            Some(state.last_event_id()),
-            state.state_digest(),
-            state.binding().revision(),
             kind,
         )
         .unwrap()

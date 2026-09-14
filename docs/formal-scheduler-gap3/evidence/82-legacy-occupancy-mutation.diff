@@ -1,0 +1,11 @@
+--- target/gap3-evidence/82-legacy-occupancy-mutation.original.rs.txt	2026-09-13 15:18:12.061690619 -0500
++++ crates/orchestration/peritus-scheduler/src/state/queue.rs	2026-09-13 15:18:12.063690623 -0500
+@@ -149,7 +149,7 @@
+     let limits = state.binding().limits();
+     match state.binding().semantics() {
+         SchedulerSemantics::LegacyQueueV1 => {
+-            let occupancy = count(state.work(), Measure::LegacyOccupancy);
++            let occupancy = count(state.work(), Measure::Waiting);
+             proof {
+                 assert((|record: WorkRecord| selected(record, Measure::LegacyOccupancy))
+                     =~= (|record: WorkRecord| is_waiting(record) || is_active(record)));

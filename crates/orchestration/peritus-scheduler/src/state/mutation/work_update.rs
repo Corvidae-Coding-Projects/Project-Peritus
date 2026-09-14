@@ -7,13 +7,15 @@ use crate::WorkRecord;
 use crate::{SchedulerState, WorkId, WorkPhase, WorkTerminal};
 use peritus_types::Sha256Digest;
 
+mod apply_at;
 mod attempt;
 mod release;
 mod wrappers;
 
+use apply_at::update_work_at;
 pub use attempt::begin_work_attempt_at;
 #[cfg(verus_only)]
-pub(crate) use release::release_target_exists;
+pub(crate) use release::{phase_release_matches, release_target_exists, terminal_release_matches};
 pub use release::{release_to_phase, release_to_retry_pending, release_to_terminal};
 pub use wrappers::{queue_work_retry, set_work_bypasses, set_work_phase, terminalize_work};
 
@@ -36,6 +38,36 @@ impl WorkUpdate {
         }
     }
 
+    pub(super) open spec fn record_matches(
+        &self,
+        before: WorkRecord,
+        after: WorkRecord,
+        id: WorkId,
+    ) -> bool {
+        match self {
+            Self::Phase(phase) => {
+                &&& work_record_update_matches(before, after, id, *phase)
+                &&& after.spec_retry_cause() == before.spec_retry_cause()
+                &&& after.spec_terminal() == before.spec_terminal()
+            },
+            Self::QueueRetry => {
+                &&& work_record_update_matches(before, after, id, WorkPhase::Queued)
+                &&& after.spec_retry_cause().is_none()
+                &&& after.spec_terminal() == before.spec_terminal()
+            },
+            Self::RetryPending(cause) => {
+                &&& work_record_update_matches(before, after, id, WorkPhase::RetryPending)
+                &&& after.spec_retry_cause() == Some(*cause)
+                &&& after.spec_terminal() == before.spec_terminal()
+            },
+            Self::Terminal(terminal) => {
+                &&& work_record_update_matches(before, after, id, WorkPhase::Terminal)
+                &&& after.spec_retry_cause().is_none()
+                &&& after.spec_terminal() == Some(*terminal)
+            },
+        }
+    }
+
 }
 
 /// Relates the uniquely targeted record before and after one phase mutation.
@@ -47,6 +79,7 @@ pub open spec fn work_record_update_matches(
 ) -> bool {
     &&& before.spec_definition().spec_id() == id
     &&& WorkRecord::reservation_binding_equivalent(&before, &after)
+    &&& WorkRecord::lifecycle_update_stable(&before, &after)
     &&& after.spec_phase() == phase
 }
 
@@ -75,108 +108,104 @@ pub open spec fn work_update_matches(
     }
 }
 
-fn update_work_at(
-    state: &mut SchedulerState,
-    index: usize,
-    _id: WorkId,
+/// Relates the complete work sequence and exact field effect of one concrete update.
+pub(super) open spec fn exact_work_update_matches(
+    before: Seq<WorkRecord>,
+    after: Seq<WorkRecord>,
+    id: WorkId,
     update: WorkUpdate,
-)
-    requires
-        index < state.spec_work().len(),
-        state.spec_work()[index as int].spec_definition().spec_id() == _id,
-    ensures
-        old(state).spec_reservation_invariant()
-            ==> final(state).spec_reservation_invariant(),
-        final(state).spec_phase() == old(state).spec_phase(),
-        final(state).spec_binding() == old(state).spec_binding(),
-        final(state).spec_workers() == old(state).spec_workers(),
-        final(state).spec_reservations() == old(state).spec_reservations(),
-        final(state).spec_used_dispatches() == old(state).spec_used_dispatches(),
-        work_update_matches(
-            old(state).spec_work(),
-            final(state).spec_work(),
-            _id,
-            update.spec_phase(),
-            true,
-        ),
-        old(state).spec_reservation_reducer_ready()
-                && crate::verified::work_phase_update_admissible(
-                    old(state).spec_work(),
-                    old(state).spec_reservations(),
-                    _id,
-                    update.spec_phase(),
-                )
-            ==> final(state).spec_reservation_reducer_ready(),
-{
-    let ghost had_invariant = state.spec_reservation_invariant();
-    let ghost before = state.spec_work();
-    let ghost reservations = state.spec_reservations();
-    let ghost used_dispatches = state.spec_used_dispatches();
-    let ghost was_ready = state.spec_reservation_reducer_ready();
-    let ghost target_phase = update.spec_phase();
-    let ghost was_admissible = crate::verified::work_phase_update_admissible(
-        before,
-        reservations,
-        _id,
-        target_phase,
-    );
-    match update {
-        WorkUpdate::Phase(phase) => state.work[index].set_phase(phase),
-        WorkUpdate::QueueRetry => state.work[index].queue_retry(),
-        WorkUpdate::RetryPending(cause) => state.work[index].set_retry_pending(cause),
-        WorkUpdate::Terminal(terminal) => state.work[index].terminalize(terminal),
-    }
-    proof {
-        assert(before.len() == state.spec_work().len());
-        assert(WorkRecord::reservation_binding_equivalent(
-            &before[index as int],
-            &state.spec_work()[index as int],
-        ));
-        assert(state.spec_work()[index as int].spec_phase() == target_phase);
-        assert forall |other: int| #![auto]
-            0 <= other < before.len() && other != index
-                implies before[other] == state.spec_work()[other] by {
-        }
-        if had_invariant {
-            crate::verified::actual_reservation_work_update_preserves(
-                state.spec_binding(),
-                state.spec_workers(),
-                before,
-                state.spec_work(),
-                state.spec_reservations(),
-                index as int,
-            );
-        }
-        reveal(work_record_update_matches);
-        reveal(work_update_matches);
-        assert(exists |found_at: int| #![trigger before[found_at]] {
-            &&& 0 <= found_at < before.len()
-            &&& work_record_update_matches(
-                before[found_at],
-                state.spec_work()[found_at],
-                _id,
-                target_phase,
-            )
+    found: bool,
+) -> bool {
+    &&& before.len() == after.len()
+    &&& if found {
+        exists |index: int| #![trigger before[index]] {
+            &&& 0 <= index < before.len()
+            &&& update.record_matches(before[index], after[index], id)
             &&& forall |other: int| #![auto]
-                0 <= other < before.len() && other != found_at ==>
-                    state.spec_work()[other] == before[other]
-        }) by {
-            assert(0 <= (index as int) && (index as int) < before.len());
+                0 <= other < before.len() && other != index ==>
+                    after[other] == before[other]
         }
-        if was_ready && was_admissible {
-            reveal(SchedulerState::spec_reservation_reducer_ready);
-            reveal(crate::verified::reservation_invariant_parts);
-            crate::verified::admissible_work_update_preserves_relations(
-                before,
-                state.spec_work(),
-                reservations,
-                used_dispatches,
-                _id,
-                target_phase,
-                index as int,
-            );
+    } else {
+        &&& after == before
+        &&& forall |index: int| #![trigger before[index]]
+            0 <= index < before.len() ==>
+                before[index].spec_definition().spec_id() != id
+    }
+}
+
+/// Relates an exact phase-only update, including every preserved target field.
+pub open spec fn work_phase_update_matches(
+    before: Seq<WorkRecord>,
+    after: Seq<WorkRecord>,
+    id: WorkId,
+    phase: WorkPhase,
+    found: bool,
+) -> bool {
+    &&& before.len() == after.len()
+    &&& if found {
+        exists |index: int| #![trigger before[index]] {
+            &&& 0 <= index < before.len()
+            &&& work_record_update_matches(before[index], after[index], id, phase)
+            &&& after[index].spec_retry_cause() == before[index].spec_retry_cause()
+            &&& after[index].spec_terminal() == before[index].spec_terminal()
+            &&& forall |other: int| #![auto]
+                0 <= other < before.len() && other != index ==>
+                    after[other] == before[other]
         }
-    };
+    } else {
+        &&& after == before
+        &&& forall |index: int| #![trigger before[index]]
+            0 <= index < before.len() ==>
+                before[index].spec_definition().spec_id() != id
+    }
+}
+
+/// Relates exact terminalization, including the supplied terminal payload.
+pub open spec fn work_terminal_update_matches(
+    before: Seq<WorkRecord>,
+    after: Seq<WorkRecord>,
+    id: WorkId,
+    terminal: WorkTerminal,
+    found: bool,
+) -> bool {
+    &&& before.len() == after.len()
+    &&& if found {
+        exists |index: int| #![trigger before[index]] {
+            &&& 0 <= index < before.len()
+            &&& work_record_update_matches(
+                before[index], after[index], id, WorkPhase::Terminal,
+            )
+            &&& after[index].spec_retry_cause().is_none()
+            &&& after[index].spec_terminal() == Some(terminal)
+            &&& forall |other: int| #![auto]
+                0 <= other < before.len() && other != index ==>
+                    after[other] == before[other]
+        }
+    } else {
+        &&& after == before
+        &&& forall |index: int| #![trigger before[index]]
+            0 <= index < before.len() ==>
+                before[index].spec_definition().spec_id() != id
+    }
+}
+
+/// Relates every scheduler field outside the retained work sequence.
+pub open spec fn work_update_preserves_other_state(
+    before: &SchedulerState,
+    after: &SchedulerState,
+) -> bool {
+    &&& after.spec_phase() == before.spec_phase()
+    &&& after.spec_sequence() == before.spec_sequence()
+    &&& after.spec_last_event_id() == before.spec_last_event_id()
+    &&& after.spec_state_digest() == before.spec_state_digest()
+    &&& after.spec_binding() == before.spec_binding()
+    &&& after.spec_workers() == before.spec_workers()
+    &&& after.spec_reservations() == before.spec_reservations()
+    &&& after.spec_used_dispatches() == before.spec_used_dispatches()
+    &&& after.spec_enqueue_ordinal() == before.spec_enqueue_ordinal()
+    &&& after.spec_dispatch_ordinal() == before.spec_dispatch_ordinal()
+    &&& after.spec_used_commands() == before.spec_used_commands()
+    &&& after.spec_terminal() == before.spec_terminal()
 }
 
 proof fn establish_work_not_found(
@@ -212,6 +241,7 @@ pub(super) fn update_work(
     ensures
         old(state).spec_reservation_invariant()
             ==> final(state).spec_reservation_invariant(),
+        work_update_preserves_other_state(old(state), final(state)),
         final(state).spec_phase() == old(state).spec_phase(),
         final(state).spec_binding() == old(state).spec_binding(),
         final(state).spec_workers() == old(state).spec_workers(),
@@ -222,6 +252,13 @@ pub(super) fn update_work(
             final(state).spec_work(),
             id,
             update.spec_phase(),
+            found,
+        ),
+        exact_work_update_matches(
+            old(state).spec_work(),
+            final(state).spec_work(),
+            id,
+            update,
             found,
         ),
         old(state).spec_reservation_reducer_ready()
@@ -257,6 +294,7 @@ pub(super) fn update_work(
             workers == old(state).spec_workers(),
             state.spec_work() == before,
             before == old(state).spec_work(),
+            work_update_preserves_other_state(old(state), state),
             state.spec_phase() == phase,
             state.spec_binding() == binding,
             state.spec_workers() == workers,
@@ -284,6 +322,7 @@ pub(super) fn update_work(
                 assert(before[index as int].spec_definition().spec_id() == id);
             }
             update_work_at(state, index, id, update);
+            proof { reveal(work_update_preserves_other_state); }
             return true;
         }
         proof {
@@ -306,6 +345,14 @@ pub(super) fn update_work(
             state.spec_work(),
             id,
             update.spec_phase(),
+            false,
+        ));
+        reveal(exact_work_update_matches);
+        assert(exact_work_update_matches(
+            old(state).spec_work(),
+            state.spec_work(),
+            id,
+            update,
             false,
         ));
     }

@@ -8,6 +8,7 @@ use crate::{
 };
 use vstd::prelude::*;
 
+mod admission;
 mod clone_impl;
 
 verus! {
@@ -66,6 +67,14 @@ impl WorkerDescriptor {
         self.concurrency
     }
 
+    /// Borrows supported execution classes in canonical order.
+    #[must_use]
+    pub fn classes(&self) -> (result: &[ExecutionClass])
+        ensures result@ == self.spec_classes(),
+    {
+        &self.classes
+    }
+
     /// Returns whether this worker supports the class.
     #[must_use]
     pub fn supports(&self, class: ExecutionClass) -> (result: bool)
@@ -108,24 +117,27 @@ impl WorkerDescriptor {
         concurrency: u16,
         limits: SchedulerLimits,
     ) -> Result<Self, SchedulerError> {
-        if classes.is_empty()
-            || classes.windows(2).any(|pair| pair[0] >= pair[1])
-            || concurrency == 0
-            || concurrency > limits.active_reservations()
-        {
-            return Err(crate::error::reject(
-                SchedulerErrorKind::NonCanonical,
-                "worker classes or concurrency are empty, duplicated, unsorted, or out of bounds",
-            ));
+        match admission::admit_descriptor(
+            id,
+            owner,
+            classes,
+            capacity,
+            concurrency,
+            limits.active_reservations(),
+            limits.resource_dimensions(),
+        ) {
+            admission::DescriptorAdmission::Accepted(descriptor) => Ok(descriptor),
+            admission::DescriptorAdmission::ClassesOrConcurrencyRejected => {
+                Err(crate::error::reject(
+                    SchedulerErrorKind::NonCanonical,
+                    "worker classes or concurrency are empty, duplicated, unsorted, or out of bounds",
+                ))
+            }
+            admission::DescriptorAdmission::CapacityLimitExceeded => Err(crate::error::reject(
+                SchedulerErrorKind::LimitExceeded,
+                "resource vector is empty or exceeds its dimension bound",
+            )),
         }
-        capacity.validate(limits.resource_dimensions())?;
-        Ok(Self { id, owner, classes, capacity, concurrency })
-    }
-
-    /// Borrows supported execution classes in canonical order.
-    #[must_use]
-    pub fn classes(&self) -> &[ExecutionClass] {
-        &self.classes
     }
 }
 
@@ -224,6 +236,7 @@ impl WorkerRecord {
     pub(crate) const fn set_phase(&mut self, phase: WorkerPhase)
         ensures
             Self::reservation_owner_equivalent(old(self), final(self)),
+            final(self).spec_descriptor() == old(self).spec_descriptor(),
             final(self).spec_phase() == phase,
     {
         self.phase = phase;
@@ -259,12 +272,24 @@ pub struct SchedulerReservation {
 
 } // verus!
 
+verus! {
+
 impl SchedulerReservation {
+    /// Returns the mathematical idempotent effect token.
+    pub closed spec fn spec_dispatch_token(&self) -> Sha256Digest { self.dispatch_token }
+
     /// Returns idempotent effect token.
     #[must_use]
-    pub const fn dispatch_token(&self) -> Sha256Digest {
+    pub const fn dispatch_token(&self) -> (result: Sha256Digest)
+        ensures result == self.spec_dispatch_token(),
+    {
         self.dispatch_token
     }
+}
+
+} // verus!
+
+impl SchedulerReservation {
     pub(crate) fn validate_against(
         &self,
         work: &crate::WorkRecord,

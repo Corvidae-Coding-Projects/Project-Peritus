@@ -19,6 +19,14 @@ impl WorkRecord {
     /// Returns the mathematical terminal outcome, when present.
     pub closed spec fn spec_terminal(&self) -> Option<WorkTerminal> { self.terminal }
 
+    /// Relates every field that phase and terminal updates must leave unchanged.
+    pub closed spec fn lifecycle_update_stable(left: &Self, right: &Self) -> bool {
+        left.spec == right.spec
+            && left.enqueue_ordinal == right.enqueue_ordinal
+            && left.bypasses == right.bypasses
+            && left.attempts_started == right.attempts_started
+    }
+
     /// Borrows immutable work definition.
     #[must_use]
     pub const fn spec(&self) -> (result: &WorkSpec)
@@ -62,6 +70,17 @@ impl WorkRecord {
         ensures result == self.spec_attempts_started(),
     {
         self.attempts_started
+    }
+
+    /// Borrows the exact retained terminal outcome.
+    #[must_use]
+    pub const fn terminal(&self) -> (result: Option<&WorkTerminal>)
+        ensures match result {
+            Some(value) => self.spec_terminal() == Some(*value),
+            None => self.spec_terminal().is_none(),
+        },
+    {
+        self.terminal.as_ref()
     }
 
     /// Relates fields that bind an active reservation to this work attempt.
@@ -125,6 +144,17 @@ impl WorkRecord {
     {
     }
 
+    /// Projects the complete stable field correspondence for a lifecycle update.
+    pub(crate) proof fn lifecycle_update_fields(left: &Self, right: &Self)
+        requires Self::lifecycle_update_stable(left, right),
+        ensures
+            left.spec_definition() == right.spec_definition(),
+            left.spec_enqueue_ordinal() == right.spec_enqueue_ordinal(),
+            left.spec_bypasses() == right.spec_bypasses(),
+            left.spec_attempts_started() == right.spec_attempts_started(),
+    {
+    }
+
     pub(crate) proof fn clone_reservation_fields(left: &Self, right: &Self)
         requires Self::clone_equivalent(left, right),
         ensures
@@ -143,6 +173,7 @@ impl WorkRecord {
     pub(crate) const fn set_phase(&mut self, phase: WorkPhase)
         ensures
             Self::reservation_binding_equivalent(old(self), final(self)),
+            Self::lifecycle_update_stable(old(self), final(self)),
             final(self).spec_phase() == phase,
             final(self).spec_retry_cause() == old(self).spec_retry_cause(),
             final(self).spec_terminal() == old(self).spec_terminal(),
@@ -162,6 +193,7 @@ impl WorkRecord {
     pub(crate) const fn set_retry_pending(&mut self, cause: Sha256Digest)
         ensures
             Self::reservation_binding_equivalent(old(self), final(self)),
+            Self::lifecycle_update_stable(old(self), final(self)),
             final(self).spec_phase() == WorkPhase::RetryPending,
             final(self).spec_retry_cause() == Some(cause),
             final(self).spec_terminal() == old(self).spec_terminal(),
@@ -173,6 +205,7 @@ impl WorkRecord {
     pub(crate) const fn queue_retry(&mut self)
         ensures
             Self::reservation_binding_equivalent(old(self), final(self)),
+            Self::lifecycle_update_stable(old(self), final(self)),
             final(self).spec_phase() == WorkPhase::Queued,
             final(self).spec_retry_cause().is_none(),
             final(self).spec_terminal() == old(self).spec_terminal(),
@@ -184,6 +217,7 @@ impl WorkRecord {
     pub(crate) const fn terminalize(&mut self, terminal: WorkTerminal)
         ensures
             Self::reservation_binding_equivalent(old(self), final(self)),
+            Self::lifecycle_update_stable(old(self), final(self)),
             final(self).spec_phase() == WorkPhase::Terminal,
             final(self).spec_retry_cause().is_none(),
             final(self).spec_terminal() == Some(terminal),
@@ -240,6 +274,7 @@ impl WorkRecord {
         enqueue_ordinal: u64,
     ) -> (result: Self)
         ensures
+            *result.spec_definition() == spec,
             result.spec_phase() == phase,
             result.spec_enqueue_ordinal() == enqueue_ordinal,
             result.spec_bypasses() == 0,
@@ -267,12 +302,6 @@ impl WorkRecord {
     pub const fn retry_cause(&self) -> Option<Sha256Digest> {
         self.retry_cause
     }
-    /// Borrows terminal outcome.
-    #[must_use]
-    pub const fn terminal(&self) -> Option<&WorkTerminal> {
-        self.terminal.as_ref()
-    }
-
     #[allow(
         clippy::too_many_arguments,
         reason = "exact closed-wire work record fields are reconstructed without defaults"
