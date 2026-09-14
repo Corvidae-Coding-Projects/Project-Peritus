@@ -28,9 +28,9 @@
         "prefix_sha256": "21c4051e6a57903d94c7d0bc4352e52dd09eb90550e5fe258691ae3ded851039"
       },
       "oF4J": {
-        "sequence": 28,
-        "tip_oid": "da35929d237afe154c328336dd97f7fb9c54bd13",
-        "prefix_sha256": "3b1685970a9c3352431ff15fbb072c9f31136738e8a6961b92394de5d54ea6f5"
+        "sequence": 29,
+        "tip_oid": "a58805eb5ca103a57206f78f6cf8995fc0a4fbba",
+        "prefix_sha256": "fa9f15c8db5984537b21d68c553b0a08c530b7b1b5fb020c825e9cc03f1ed802"
       },
       "p0bJ": {
         "sequence": 8,
@@ -40,7 +40,7 @@
     }
   },
   "next_display_id": 82,
-  "next_comment_id": 1597,
+  "next_comment_id": 1598,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -14539,7 +14539,18 @@
       "parent_uuid": "cfa4c5e9-a5ae-4fcd-843d-3cc1f600d723",
       "created_by": "oF4J",
       "created_at": "2026-09-13T21:06:31.259211337Z",
-      "updated_at": "2026-09-13T21:06:31.259211337Z"
+      "updated_at": "2026-09-14T05:04:52.806149096Z",
+      "comments": {
+        "932a2d00-befe-431a-9e28-9ca15c948c4d": {
+          "display_id": 1597,
+          "author": "oF4J",
+          "content": "PR 77 merged into develop at d19c33e607a9b32b5b0f89abca505138e4760369. The final combined candidate completed worker-loss, reducer/replay/terminal composition, and relevant termination scope with strict Verus, tests, independent review, package qualification, and hosted CI.",
+          "created_at": "2026-09-14T05:04:52.799729697Z",
+          "kind": "result",
+          "signed_by": "SHA256:6i1eQ/7kGjVq4DI4yUCBFk4bwyvvZOhSsWcR9SkdFok",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg/EnEj+fMMglOKHVSgF9XkfkH9og9l/fzQpIgYx0ARh4AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAjnpysGkKzhe0kxHcwC/BlPO8xrrC5rU2XTJ5u/aykc68PEXpUGZV3gIAJjT+HRqluKkZJ29o7Bm5L7arefllCg=="
+        }
+      }
     },
     "e24f4c6e-7a1c-4075-8361-151abdd789f0": {
       "uuid": "e24f4c6e-7a1c-4075-8361-151abdd789f0",
