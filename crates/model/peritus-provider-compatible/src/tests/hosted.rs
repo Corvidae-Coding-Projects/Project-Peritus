@@ -1,5 +1,6 @@
 //! Synthetic contracts and sanitized live Zen replay; provenance: docs/provider-contracts.md.
 
+mod opencode;
 mod openrouter;
 
 use super::support::{StaticCredential, block_on, chat_profile, credential_reference};
@@ -221,28 +222,6 @@ fn client_with_responses(
         ),
         transport,
     )
-}
-
-#[test]
-fn live_zen_deepseek_replay_completes_connection_with_nullable_tool_roles() {
-    block_on(async {
-        let (client, transport) =
-            client_with_responses(HostedService::OpenCodeZen, None, |_, step| {
-                super::support::fixture(&format!("zen-deepseek-live-{step}.sse"))
-            });
-        let report = verify_provider_connection(&client, CancellationToken::new())
-            .await
-            .expect("recorded Zen generation, tool call, and tool-result replay");
-        assert_eq!(
-            report.completed,
-            [
-                ConnectionStage::Generation,
-                ConnectionStage::ToolCalling,
-                ConnectionStage::ToolResult
-            ]
-        );
-        assert_eq!(transport.requests.lock().expect("requests").len(), 3);
-    });
 }
 
 #[test]

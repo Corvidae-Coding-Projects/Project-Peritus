@@ -51,6 +51,10 @@ function result with the original call's name and ID.
 Streams accept empty initial content as a heartbeat. Chat deltas may omit the optional role
 or set it to null; a non-null role must still be `assistant`. A null `tool_calls` field means
 no calls and does not require tool capability; non-null values still require valid tool arrays.
+OpenCode's Chat compatibility gateway may serialize several sequential fragments for choice zero
+in one `choices` array, including a tool delta followed by its finish marker. Zen and Go consume
+those entries in order as one completion; any nonzero choice index, output after a finish, or the
+same shape from another hosted service still fails closed.
 OpenRouter's content-free final usage
 choice may repeat the preceding finish reason exactly once; it cannot introduce output or change
 the finish. Chat-compatible usage snapshots remain cumulative while the stream is open; the last
@@ -104,6 +108,7 @@ app, consumed its result with normal local-context replay, and returned the requ
 - OpenCode [Zen endpoints](https://opencode.ai/docs/zen/#endpoints),
   [Go endpoints](https://opencode.ai/docs/go/#endpoints),
   [catalog response source](https://github.com/anomalyco/opencode/blob/dev/packages/console/app/src/routes/zen/util/modelsHandler.ts),
+  [Chat compatibility stream conversion](https://github.com/anomalyco/opencode/blob/dev/packages/console/app/src/routes/zen/util/provider/openai-compatible.ts),
   [live metadata client](https://github.com/anomalyco/opencode/blob/dev/packages/core/src/models-dev.ts),
   [Google gateway handler](https://github.com/anomalyco/opencode/blob/dev/packages/console/app/src/routes/zen/v1/models/%5Bmodel%5D.ts).
 - OpenRouter [API reference](https://openrouter.ai/docs/api_reference/overview),

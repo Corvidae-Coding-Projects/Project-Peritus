@@ -2,7 +2,7 @@
 use super::{ChatDecoder, FrameEvents, integer};
 use crate::error;
 use peritus_model_protocol::{ItemId, ItemKind, ModelEvent, StreamFragment};
-use peritus_provider_core::{ProviderCoreError, SseFrame};
+use peritus_provider_core::{ProviderCoreError, SseFrame, hosted::HostedService};
 use serde_json::Value;
 
 pub(super) struct CompletedChoice {
@@ -11,6 +11,33 @@ pub(super) struct CompletedChoice {
 }
 
 impl ChatDecoder {
+    pub(super) fn decode_choices(
+        &mut self,
+        value: &Value,
+        events: &mut Vec<ModelEvent>,
+    ) -> Result<(), ProviderCoreError> {
+        let choices = value
+            .get("choices")
+            .and_then(Value::as_array)
+            .ok_or_else(|| error::malformed("Chat-compatible chunk omitted choices"))?;
+        let flattened =
+            matches!(self.service, Some(HostedService::OpenCodeZen | HostedService::OpenCodeGo));
+        if choices.len() > 1 && !flattened {
+            return Err(error::malformed("Chat-compatible multiple choices are not mapped"));
+        }
+        for choice in choices {
+            let accounting = self.service == Some(HostedService::OpenRouter)
+                && self.finish.is_some()
+                && value.get("usage").is_some_and(|value| !value.is_null());
+            if accounting {
+                self.accounting(choice)?;
+            } else {
+                self.choice(choice, events)?;
+            }
+        }
+        Ok(())
+    }
+
     pub(super) fn validate_tool_choice(&self) -> Result<(), ProviderCoreError> {
         use peritus_model_protocol::ToolChoice;
         let valid = match &self.tool_choice {
