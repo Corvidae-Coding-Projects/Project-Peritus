@@ -23,9 +23,9 @@
         "prefix_sha256": "648f7ea8c4ecd24e236f709d0e3e94600daad6c8bd38292131f90cd7b7b0f501"
       },
       "cF43": {
-        "sequence": 1,
-        "tip_oid": "481a4a1e4198333007b581b32a168e96814641b1",
-        "prefix_sha256": "4cb187d46b57bb077e688275edd63f4f9f99ae7c7c692c3136d648ce177214b6"
+        "sequence": 2,
+        "tip_oid": "69613773a322690625301cb8d8f1ba2de15efe89",
+        "prefix_sha256": "0ddf6edfba85fa5aed022f133183dab363f13dcc20f9f18835ff3741fb479dd1"
       },
       "i0ox": {
         "sequence": 2,
@@ -15290,7 +15290,10 @@
       "priority": "high",
       "created_by": "cF43",
       "created_at": "2026-09-14T12:53:28.848893643Z",
-      "updated_at": "2026-09-14T12:53:28.848893643Z"
+      "updated_at": "2026-09-14T12:53:54.920852799Z",
+      "labels": [
+        "bug"
+      ]
     },
     "ef6ed3ab-52cd-436a-aa6e-d5d098c89f6c": {
       "uuid": "ef6ed3ab-52cd-436a-aa6e-d5d098c89f6c",
