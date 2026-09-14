@@ -4,8 +4,9 @@ mod working_support;
 
 use peritus_context::working::{
     WorkingBinding, WorkingCodecError, WorkingDelta, WorkingEntryStatus, WorkingError,
-    WorkingEvent, WorkingLimits, apply_working_event, decode_working_event, decode_working_state,
-    encode_working_event, encode_working_state, refresh_working_state, replay_working_events,
+    WorkingEvent, WorkingLimits, WorkingProtocol, WorkingProtocolUpdate, apply_working_event,
+    apply_working_protocol, decode_working_event, decode_working_state, encode_working_event,
+    encode_working_state, refresh_working_state, replay_working_events,
 };
 use peritus_role::HarnessRole;
 use working_support::*;
@@ -141,4 +142,55 @@ fn replay_never_skips_a_bad_event_or_redispatches_any_operation() {
     assert_eq!(state.through_observation(), 1);
     let duplicate = WorkingEvent::Observation { binding: binding(), source: source(1) };
     assert_eq!(replay_working_events(&state, &[duplicate]).unwrap(), state);
+}
+
+#[test]
+fn rejected_reducers_and_partial_replay_leave_the_exact_input_state_unchanged() {
+    let state = state();
+    let original = state.clone();
+    let b = binding();
+    let wrong = WorkingBinding::new(
+        b.run(),
+        b.workspace(),
+        b.task(),
+        HarnessRole::Reviewer,
+        b.conversation_revision(),
+    );
+
+    assert_eq!(
+        apply_working_event(
+            &state,
+            &WorkingEvent::Observation { binding: wrong, source: source(2) },
+        ),
+        Err(WorkingError::BindingMismatch)
+    );
+    assert_eq!(
+        refresh_working_state(&state, state.revision() + 1, state.environment().clone()),
+        Err(WorkingError::RevisionMismatch)
+    );
+    let delta = WorkingDelta::new(
+        wrong,
+        state.revision(),
+        vec![entry(1, vec![obs(1)], vec![], validity(vec![]))],
+        limits(),
+    )
+    .unwrap();
+    assert_eq!(
+        peritus_context::working::apply_working_delta(&state, &delta),
+        Err(WorkingError::BindingMismatch)
+    );
+    let protocol = WorkingProtocol::new(Vec::new(), Vec::new(), limits()).unwrap();
+    let update = WorkingProtocolUpdate::new(wrong, state.revision(), protocol);
+    assert_eq!(apply_working_protocol(&state, &update), Err(WorkingError::BindingMismatch));
+    assert_eq!(
+        replay_working_events(
+            &state,
+            &[
+                WorkingEvent::Observation { binding: b, source: source(2) },
+                WorkingEvent::Observation { binding: b, source: source(4) },
+            ],
+        ),
+        Err(WorkingError::SourceSequence)
+    );
+    assert_eq!(state, original);
 }

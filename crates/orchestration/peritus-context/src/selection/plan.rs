@@ -22,7 +22,18 @@ pub fn select_context(
     graph: &ContextGraph,
     policy: &SelectionPolicy,
     plan_id: ContextPlanId,
-) -> Result<ContextPlan, ContextError> {
+) -> (result: Result<ContextPlan, ContextError>)
+    ensures match result {
+        Ok(plan) => {
+            &&& plan.spec_id() == plan_id
+            &&& plan.spec_respects_policy(policy)
+            &&& plan.spec_selected().len() <= graph.spec_nodes().len()
+            &&& plan.spec_selected().len() <= policy.spec_max_selected_nodes()
+        }
+        Err(_) => true,
+    },
+{
+    proof { use_type_invariant(policy); }
     let graph_nodes = graph.nodes();
     let graph_len = graph_nodes.len();
     let mut selected = vec![false; graph_len];
@@ -38,6 +49,9 @@ pub fn select_context(
             graph_len == graph_nodes@.len(),
             selected.len() == graph_len,
             reasons.len() == graph_len,
+            used_tokens as int <= policy.spec_token_budget().spec_usable_input(),
+            used_nodes as nat <= policy.spec_max_selected_nodes(),
+            used_bytes as nat <= policy.spec_max_selected_bytes(),
         decreases graph_len - index,
     {
         let node = &graph_nodes[index];
@@ -115,6 +129,9 @@ pub fn select_context(
             selected.len() == graph_len,
             reasons.len() == graph_len,
             graph_len == graph_nodes@.len(),
+            used_tokens as int <= policy.spec_token_budget().spec_usable_input(),
+            used_nodes as nat <= policy.spec_max_selected_nodes(),
+            used_bytes as nat <= policy.spec_max_selected_bytes(),
         decreases ranked.len() - rank_index,
     {
         let root = ranked[rank_index];
@@ -190,6 +207,9 @@ pub fn select_context(
             selected.len() == graph_len,
             reasons.len() == graph_len,
             graph_len == graph_nodes@.len(),
+            selected_entries@.len() <= index,
+            used_tokens as int <= policy.spec_token_budget().spec_usable_input(),
+            used_bytes as nat <= policy.spec_max_selected_bytes(),
         decreases graph_len - index,
     {
         if selected[index] {
@@ -205,14 +225,18 @@ pub fn select_context(
     }
     sort_for_render(graph, &mut selected_entries);
     let accounting = policy.token_budget().accounting(used_tokens)?;
-    Ok(ContextPlan::new(
+    let plan = ContextPlan::new(
         plan_id,
         policy.role_profile().clone(),
         selected_entries,
         omitted,
         accounting,
         used_bytes,
-    ))
+    );
+    if plan.selected().len() > policy.max_selected_nodes() || !crate::plan_is_exact(graph, &plan) {
+        return Err(ContextError::plain(ContextErrorKind::PlanNodeMissing));
+    }
+    Ok(plan)
 }
 
 } // verus!

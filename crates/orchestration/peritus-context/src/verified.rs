@@ -62,6 +62,77 @@ pub fn plan_dependencies_complete(graph: &ContextGraph, plan: &ContextPlan) -> b
     true
 }
 
+/// Returns whether the complete plan is an exact, internally consistent view of the graph.
+///
+/// This independently rechecks source existence, uniqueness, dependency closure, visibility,
+/// render order, omission ownership, and token/byte accounting before a planner result escapes.
+#[must_use]
+pub fn plan_is_exact(graph: &ContextGraph, plan: &ContextPlan) -> bool {
+    if !plan_is_visible(graph, plan)
+        || !plan_dependencies_complete(graph, plan)
+        || !token_accounting_is_bounded(plan.accounting())
+    {
+        return false;
+    }
+    let selected = plan.selected();
+    let mut tokens = 0_u64;
+    let mut bytes = 0_usize;
+    let mut index = 0;
+    while index < selected.len()
+        invariant index <= selected.len(),
+        decreases selected.len() - index,
+    {
+        let Some(node) = graph.node(selected[index].node_id()) else { return false };
+        let mut prior = 0;
+        while prior < index
+            invariant prior <= index, index < selected.len(),
+            decreases index - prior,
+        {
+            if selected[prior].node_id() == selected[index].node_id() {
+                return false;
+            }
+            prior += 1;
+        }
+        if index > 0 {
+            let Some(previous) = graph.node(selected[index - 1].node_id()) else { return false };
+            if !crate::precedence::render_precedes(previous, node) {
+                return false;
+            }
+        }
+        let Some(next_tokens) = tokens.checked_add(node.token_estimate()) else { return false };
+        let Some(next_bytes) = bytes.checked_add(node.content().len()) else { return false };
+        tokens = next_tokens;
+        bytes = next_bytes;
+        index += 1;
+    }
+    if tokens != plan.accounting().used_input() || bytes != plan.selected_bytes() {
+        return false;
+    }
+    let omitted = plan.omitted();
+    index = 0;
+    while index < omitted.len()
+        invariant index <= omitted.len(),
+        decreases omitted.len() - index,
+    {
+        let Some(node) = graph.node(omitted[index].node_id()) else { return false };
+        if node.requirement() != crate::RequirementMode::Optional || plan.contains(node.id()) {
+            return false;
+        }
+        let mut prior = 0;
+        while prior < index
+            invariant prior <= index, index < omitted.len(),
+            decreases index - prior,
+        {
+            if omitted[prior].node_id() == omitted[index].node_id() {
+                return false;
+            }
+            prior += 1;
+        }
+        index += 1;
+    }
+    true
+}
+
 /// Returns whether every accounting equality and context-window bound holds.
 #[must_use]
 pub const fn token_accounting_is_bounded(accounting: TokenAccounting) -> (result: bool)

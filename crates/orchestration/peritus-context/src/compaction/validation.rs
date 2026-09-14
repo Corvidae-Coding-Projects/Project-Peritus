@@ -25,7 +25,12 @@ pub fn validate_compaction(
     proposal: &CompactionProposal,
     policy: CompactionPolicy,
     limits: ContextLimits,
-) -> Result<ValidatedCompaction, ContextError> {
+) -> (result: Result<ValidatedCompaction, ContextError>)
+    ensures match result {
+        Ok(validated) => validated.spec_matches_proposal(proposal, policy),
+        Err(_) => true,
+    },
+{
     if proposal.policy_id != policy.id() {
         return Err(ContextError::node(
             ContextErrorKind::CompactionPolicyMismatch,
@@ -177,13 +182,46 @@ pub fn validate_compaction(
     } else {
         metadata
     };
-    Ok(ValidatedCompaction {
-        node: ContextNode::new(metadata, proposal.content.clone()),
+    proof {
+        assert(metadata.spec_id() == proposal.spec_node_id());
+        assert(metadata.spec_provenance() == Provenance::DerivedCompaction);
+        assert(metadata.spec_authority() == AuthorityClass::NonAuthoritative);
+        assert(metadata.spec_content_kind() == ContentKind::DerivedSummary);
+        assert(metadata.spec_token_estimate() == proposal.spec_token_estimate());
+    }
+    let content = proposal.content.clone();
+    let node = ContextNode::new(metadata, content);
+    let validated = ValidatedCompaction {
+        node,
         policy_id: policy.id(),
         source_ranges: proposal.source_ranges.clone(),
         replaced_tokens,
         sources,
-    })
+    };
+    proof {
+        reveal(ValidatedCompaction::spec_node);
+        reveal(ValidatedCompaction::spec_policy_id);
+        reveal(ValidatedCompaction::spec_source_ranges);
+        reveal(ValidatedCompaction::spec_replaced_tokens);
+        assert(validated.spec_node().spec_metadata().spec_id() == proposal.spec_node_id());
+        assert(validated.spec_node().spec_metadata().spec_provenance()
+            == Provenance::DerivedCompaction);
+        assert(validated.spec_node().spec_metadata().spec_authority()
+            == AuthorityClass::NonAuthoritative);
+        assert(validated.spec_node().spec_metadata().spec_content_kind()
+            == ContentKind::DerivedSummary);
+        assert(validated.spec_node().spec_metadata().spec_token_estimate()
+            == proposal.spec_token_estimate());
+        assert(crate::ContextContent::clone_equivalent(
+            &proposal.spec_content(),
+            &validated.spec_node().spec_content(),
+        ));
+        assert(validated.spec_policy_id() == policy.spec_id());
+        assert(validated.spec_source_ranges() == proposal.spec_source_ranges());
+        assert(validated.spec_is_strict_reduction());
+        assert(validated.spec_matches_proposal(proposal, policy));
+    }
+    Ok(validated)
 }
 
 fn selected_as_required(plan: &ContextPlan, source_id: crate::ContextNodeId) -> bool {

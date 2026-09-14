@@ -20,29 +20,80 @@ pub struct AppliedCompaction {
 }
 
 impl AppliedCompaction {
+    /// Logical view of the exact replacement graph.
+    pub closed spec fn spec_graph(&self) -> ContextGraph { self.graph }
+
+    /// Logical view of the authorizing compaction policy.
+    pub closed spec fn spec_policy_id(&self) -> CompactionPolicyId { self.policy_id }
+
+    /// Logical view of the exact canonical source set removed from the live graph.
+    pub closed spec fn spec_source_ids(&self) -> Seq<ContextNodeId> { self.source_ids@ }
+
+    /// Logical view of complete source-range audit lineage.
+    pub closed spec fn spec_source_ranges(&self) -> Seq<SourceRange> { self.source_ranges@ }
+
+    /// Logical view of tokens removed from the live graph.
+    pub closed spec fn spec_replaced_tokens(&self) -> u64 { self.replaced_tokens }
+
+    /// Logical view of installed replacement tokens.
+    pub closed spec fn spec_replacement_tokens(&self) -> u64 { self.replacement_tokens }
+
+    /// Exact audit fields retained from validation, including strict reduction.
+    pub open spec fn spec_matches_validation(&self, validated: &ValidatedCompaction) -> bool {
+        &&& self.spec_policy_id() == validated.spec_policy_id()
+        &&& self.spec_source_ranges() == validated.spec_source_ranges()
+        &&& self.spec_replaced_tokens() == validated.spec_replaced_tokens()
+        &&& self.spec_replacement_tokens() == validated.spec_node().spec_token_estimate()
+        &&& self.spec_replacement_tokens() < self.spec_replaced_tokens()
+    }
+
     /// Borrows the replacement graph.
     #[must_use]
-    pub const fn graph(&self) -> &ContextGraph { &self.graph }
+    pub const fn graph(&self) -> (result: &ContextGraph)
+        ensures *result == self.spec_graph(),
+    {
+        &self.graph
+    }
 
     /// Returns the policy revision that authorized the derivation.
     #[must_use]
-    pub const fn policy_id(&self) -> CompactionPolicyId { self.policy_id }
+    pub const fn policy_id(&self) -> (result: CompactionPolicyId)
+        ensures result == self.spec_policy_id(),
+    {
+        self.policy_id
+    }
 
     /// Borrows the exact canonical set removed from the live graph.
     #[must_use]
-    pub const fn source_ids(&self) -> &[ContextNodeId] { self.source_ids.as_slice() }
+    pub const fn source_ids(&self) -> (result: &[ContextNodeId])
+        ensures result@ == self.spec_source_ids(),
+    {
+        self.source_ids.as_slice()
+    }
 
     /// Borrows source-range audit lineage, which is not a live dependency closure.
     #[must_use]
-    pub const fn source_ranges(&self) -> &[SourceRange] { self.source_ranges.as_slice() }
+    pub const fn source_ranges(&self) -> (result: &[SourceRange])
+        ensures result@ == self.spec_source_ranges(),
+    {
+        self.source_ranges.as_slice()
+    }
 
     /// Returns the complete token estimate removed from the live graph.
     #[must_use]
-    pub const fn replaced_tokens(&self) -> u64 { self.replaced_tokens }
+    pub const fn replaced_tokens(&self) -> (result: u64)
+        ensures result == self.spec_replaced_tokens(),
+    {
+        self.replaced_tokens
+    }
 
     /// Returns the installed derived node's token estimate.
     #[must_use]
-    pub const fn replacement_tokens(&self) -> u64 { self.replacement_tokens }
+    pub const fn replacement_tokens(&self) -> (result: u64)
+        ensures result == self.spec_replacement_tokens(),
+    {
+        self.replacement_tokens
+    }
 
     /// Consumes the audit result and returns the replacement graph.
     #[must_use]
@@ -59,10 +110,23 @@ impl AppliedCompaction {
 ///
 /// Rejects graph drift, protected or required sources, non-reducing replacement, invalid rewritten
 /// metadata, a missing dependency, or a dependency cycle. No partial graph is observable.
+#[allow(
+    clippy::too_many_lines,
+    reason = "replacement and its source-bound proof remain one atomic transaction"
+)]
 pub fn replace_validated_compaction(
     graph: &ContextGraph,
     validated: ValidatedCompaction,
-) -> Result<AppliedCompaction, ContextError> {
+) -> (result: Result<AppliedCompaction, ContextError>)
+    ensures match result {
+        Ok(applied) => applied.spec_matches_validation(&validated),
+        Err(_) => true,
+    },
+{
+    let ghost expected_policy = validated.spec_policy_id();
+    let ghost expected_ranges = validated.spec_source_ranges();
+    let ghost expected_replaced_tokens = validated.spec_replaced_tokens();
+    let ghost expected_replacement_tokens = validated.spec_node().spec_token_estimate();
     let output_id = validated.node.id();
     if graph.node(output_id).is_some() {
         return Err(ContextError::node(ContextErrorKind::CompactionNodeExists, output_id));
@@ -152,14 +216,27 @@ pub fn replace_validated_compaction(
         nodes.push(replacement);
     }
     let graph = ContextGraph::new(nodes, graph.limits())?;
-    Ok(AppliedCompaction {
+    let applied = AppliedCompaction {
         graph,
         policy_id: validated.policy_id,
         source_ids,
         source_ranges: validated.source_ranges,
         replaced_tokens,
         replacement_tokens,
-    })
+    };
+    proof {
+        reveal(AppliedCompaction::spec_policy_id);
+        reveal(AppliedCompaction::spec_source_ranges);
+        reveal(AppliedCompaction::spec_replaced_tokens);
+        reveal(AppliedCompaction::spec_replacement_tokens);
+        assert(applied.spec_policy_id() == expected_policy);
+        assert(applied.spec_source_ranges() == expected_ranges);
+        assert(applied.spec_replaced_tokens() == expected_replaced_tokens);
+        assert(applied.spec_replacement_tokens() == expected_replacement_tokens);
+        assert(applied.spec_replacement_tokens() < applied.spec_replaced_tokens());
+        assert(applied.spec_matches_validation(&validated));
+    }
+    Ok(applied)
 }
 
 fn external_dependencies(

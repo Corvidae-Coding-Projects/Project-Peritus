@@ -15,6 +15,13 @@ pub struct WorkingDelta {
 }
 
 impl WorkingDelta {
+    /// Logical target binding.
+    pub closed spec fn spec_binding(&self) -> WorkingBinding { self.binding }
+    /// Logical base revision.
+    pub closed spec fn spec_base_revision(&self) -> u64 { self.base_revision }
+    /// Logical canonical proposal sequence.
+    pub closed spec fn spec_entries(&self) -> Seq<WorkingEntry> { self.entries@ }
+
     /// Creates an atomic proposal. Rejections do not partially update the model.
     ///
     /// # Errors
@@ -24,7 +31,16 @@ impl WorkingDelta {
         base_revision: u64,
         entries: Vec<WorkingEntry>,
         limits: WorkingLimits,
-    ) -> Result<Self, WorkingError> {
+    ) -> (result: Result<Self, WorkingError>)
+        ensures match result {
+            Ok(delta) => {
+                &&& delta.spec_binding() == binding
+                &&& delta.spec_base_revision() == base_revision
+                &&& delta.spec_entries() == entries@
+            }
+            Err(_) => true,
+        },
+    {
         if entries.is_empty() { return Err(WorkingError::EmptyEntry); }
         if entries.len() > limits.operations() { return Err(WorkingError::Capacity); }
         let mut index = 0;
@@ -42,13 +58,19 @@ impl WorkingDelta {
     }
     /// Target task/role/conversation binding.
     #[must_use]
-    pub const fn binding(&self) -> WorkingBinding { self.binding }
+    pub const fn binding(&self) -> (result: WorkingBinding)
+        ensures result == self.spec_binding(),
+    { self.binding }
     /// Exact prior state revision.
     #[must_use]
-    pub const fn base_revision(&self) -> u64 { self.base_revision }
+    pub const fn base_revision(&self) -> (result: u64)
+        ensures result == self.spec_base_revision(),
+    { self.base_revision }
     /// Source-backed proposals in canonical entry order.
     #[must_use]
-    pub const fn entries(&self) -> &[WorkingEntry] { self.entries.as_slice() }
+    pub const fn entries(&self) -> (result: &[WorkingEntry])
+        ensures result@ == self.spec_entries(),
+    { self.entries.as_slice() }
 }
 
 /// Applies a complete source-checked proposal and validates the resulting dependency graph.
@@ -59,12 +81,23 @@ impl WorkingDelta {
 /// # Errors
 /// Rejects wrong scope/revision, missing sources or dependencies, cycles, stale proposals,
 /// resurrection of superseded records, allocation overflow, or exhausted revisions.
-pub fn apply_working_delta(state: &WorkingState, delta: &WorkingDelta) -> Result<WorkingState, WorkingError> {
+pub fn apply_working_delta(
+    state: &WorkingState,
+    delta: &WorkingDelta,
+) -> (result: Result<WorkingState, WorkingError>)
+    ensures match result {
+        Ok(next) => {
+            &&& next.spec_revision() as int == state.spec_revision() as int + 1
+            &&& next.spec_observations() == state.spec_observations()
+        }
+        Err(_) => true,
+    },
+{
     state.check_binding(delta.binding)?;
-    if delta.base_revision != state.revision { return Err(WorkingError::RevisionMismatch); }
+    if delta.base_revision != state.revision() { return Err(WorkingError::RevisionMismatch); }
     if delta.entries.len() > state.limits.operations() { return Err(WorkingError::Capacity); }
-    let revision = next_revision(state.revision)?;
-    let mut next = state.clone();
+    let revision = next_revision(state.revision())?;
+    let mut entries = state.entries.clone();
     let mut index = 0;
     while index < delta.entries.len()
         invariant index <= delta.entries.len(),
@@ -74,15 +107,15 @@ pub fn apply_working_delta(state: &WorkingState, delta: &WorkingDelta) -> Result
         validate_references(state, entry)?;
         validate_upsert(state, entry)?;
         let checked = WorkingEntry::new(entry.id, entry.kind, entry.content.clone(), entry.links.clone(), entry.validity.clone(), state.limits)?;
-        if let Some(position) = find_entry(&next.entries, checked.id()) {
-            next.entries[position] = entry.clone();
+        if let Some(position) = find_entry(&entries, checked.id()) {
+            entries[position] = entry.clone();
         } else {
-            if next.entries.len() >= state.limits.entries() { return Err(WorkingError::Capacity); }
-            insert_entry(&mut next.entries, entry.clone());
+            if entries.len() >= state.limits.entries() { return Err(WorkingError::Capacity); }
+            insert_entry(&mut entries, entry.clone());
         }
         index += 1;
     }
-    validate_graph(&next.entries)?;
+    validate_graph(&entries)?;
     index = 0;
     while index < delta.entries.len()
         invariant index <= delta.entries.len(),
@@ -90,26 +123,26 @@ pub fn apply_working_delta(state: &WorkingState, delta: &WorkingDelta) -> Result
     {
         let entry = &delta.entries[index];
         if let Some(previous) = entry.supersedes {
-            let Some(target) = find_entry(&next.entries, previous) else { return Err(WorkingError::MissingEntry); };
-            if next.entries[target].status == WorkingEntryStatus::Superseded {
+            let Some(target) = find_entry(&entries, previous) else { return Err(WorkingError::MissingEntry); };
+            if entries[target].status == WorkingEntryStatus::Superseded {
                 let Some(original) = find_entry(&state.entries, entry.id) else { return Err(WorkingError::AlreadySuperseded); };
                 if state.entries[original].supersedes != Some(previous) { return Err(WorkingError::AlreadySuperseded); }
             }
-            next.entries[target].status = WorkingEntryStatus::Superseded;
+            entries[target].status = WorkingEntryStatus::Superseded;
         }
         index += 1;
     }
-    next.entries = invalidate_entries(&next.entries, &next.environment, state.through_observation());
+    entries = invalidate_entries(&entries, &state.environment, state.through_observation());
     index = 0;
     while index < delta.entries.len()
         invariant index <= delta.entries.len(),
         decreases delta.entries.len() - index,
     {
-        let Some(target) = find_entry(&next.entries, delta.entries[index].id) else { return Err(WorkingError::MissingEntry); };
-        if next.entries[target].status == WorkingEntryStatus::Stale { return Err(WorkingError::StaleEntry); }
+        let Some(target) = find_entry(&entries, delta.entries[index].id) else { return Err(WorkingError::MissingEntry); };
+        if entries[target].status == WorkingEntryStatus::Stale { return Err(WorkingError::StaleEntry); }
         index += 1;
     }
-    next.revision = revision;
+    let next = state.with_entries(entries, revision);
     Ok(next)
 }
 

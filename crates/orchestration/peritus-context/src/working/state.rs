@@ -7,7 +7,7 @@ use vstd::prelude::*;
 
 verus! {
 /// One role-scoped working lineage. Rejected reducers leave the caller's state untouched.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq)]
 pub struct WorkingState {
     pub(super) environment: WorkingEnvironment,
     pub(super) revision: u64,
@@ -17,30 +17,102 @@ pub struct WorkingState {
     pub(super) protocol: super::WorkingProtocol,
 }
 
+impl Clone for WorkingState {
+    fn clone(&self) -> (result: Self)
+        ensures
+            result.spec_environment().spec_binding()
+                == self.spec_environment().spec_binding(),
+            result.spec_environment().spec_candidate()
+                == self.spec_environment().spec_candidate(),
+            result.spec_environment().spec_files()
+                == self.spec_environment().spec_files(),
+            result.spec_revision() == self.spec_revision(),
+            result.spec_observations() == self.spec_observations(),
+            result.spec_limits() == self.spec_limits(),
+            result.spec_protocol().spec_requirements()
+                == self.spec_protocol().spec_requirements(),
+            result.spec_protocol().spec_pending() == self.spec_protocol().spec_pending(),
+    {
+        Self {
+            environment: self.environment.clone(),
+            revision: self.revision,
+            observations: self.observations.clone(),
+            entries: self.entries.clone(),
+            limits: self.limits,
+            protocol: self.protocol.clone(),
+        }
+    }
+}
+
 impl WorkingState {
+    /// Logical host-observed environment.
+    pub closed spec fn spec_environment(&self) -> WorkingEnvironment { self.environment }
+    /// Logical reducer revision.
+    pub closed spec fn spec_revision(&self) -> u64 { self.revision }
+    /// Logical contiguous observation prefix.
+    pub closed spec fn spec_observations(&self) -> Seq<ObservationSource> { self.observations@ }
+    /// Logical retained working entries.
+    pub closed spec fn spec_entries(&self) -> Seq<WorkingEntry> { self.entries@ }
+    /// Logical allocation policy.
+    pub closed spec fn spec_limits(&self) -> WorkingLimits { self.limits }
+    /// Logical host-owned semantic pins.
+    pub closed spec fn spec_protocol(&self) -> super::WorkingProtocol { self.protocol }
+
     /// Opens an empty working model under an explicit host-observed environment.
     ///
     /// # Errors
     /// Rejects an environment built under wider limits than the state allows.
-    pub fn new(environment: WorkingEnvironment, limits: WorkingLimits) -> Result<Self, WorkingError> {
+    pub fn new(environment: WorkingEnvironment, limits: WorkingLimits) -> (result: Result<Self, WorkingError>)
+        ensures match result {
+            Ok(state) => {
+                &&& state.spec_environment() == environment
+                &&& state.spec_revision() == 0
+                &&& state.spec_observations().len() == 0
+                &&& state.spec_entries().len() == 0
+                &&& state.spec_limits() == limits
+                &&& state.spec_protocol().spec_requirements().len() == 0
+                &&& state.spec_protocol().spec_pending().len() == 0
+            }
+            Err(_) => true,
+        },
+    {
         if environment.files().len() > limits.entries() { return Err(WorkingError::Capacity); }
-        Ok(Self { environment, revision: 0, observations: Vec::new(), entries: Vec::new(), limits, protocol: super::WorkingProtocol::empty() })
+        let state = Self { environment, revision: 0, observations: Vec::new(), entries: Vec::new(), limits, protocol: super::WorkingProtocol::empty() };
+        proof {
+            reveal(WorkingState::spec_environment);
+            reveal(WorkingState::spec_revision);
+            reveal(WorkingState::spec_observations);
+            reveal(WorkingState::spec_entries);
+            reveal(WorkingState::spec_limits);
+            reveal(WorkingState::spec_protocol);
+        }
+        Ok(state)
     }
     /// Exact current binding, including the incorporated conversation revision.
     #[must_use]
-    pub const fn binding(&self) -> WorkingBinding { self.environment.binding() }
+    pub const fn binding(&self) -> (result: WorkingBinding)
+        ensures result == self.spec_environment().spec_binding(),
+    { self.environment.binding() }
     /// Monotonic state revision used for optimistic updates.
     #[must_use]
-    pub const fn revision(&self) -> u64 { self.revision }
+    pub const fn revision(&self) -> (result: u64)
+        ensures result == self.spec_revision(),
+    { self.revision }
     /// Contiguous archived observation prefix incorporated by this state.
     #[must_use]
-    pub const fn through_observation(&self) -> u64 { self.observations.len() as u64 }
+    pub const fn through_observation(&self) -> (result: u64)
+        ensures result as nat == self.spec_observations().len(),
+    { self.observations.len() as u64 }
     /// State allocation policy.
     #[must_use]
-    pub const fn limits(&self) -> WorkingLimits { self.limits }
+    pub const fn limits(&self) -> (result: WorkingLimits)
+        ensures result == self.spec_limits(),
+    { self.limits }
     /// Current workspace revision bindings.
     #[must_use]
-    pub const fn environment(&self) -> &WorkingEnvironment { &self.environment }
+    pub const fn environment(&self) -> (result: &WorkingEnvironment)
+        ensures *result == self.spec_environment(),
+    { &self.environment }
 
     /// Reads host-owned literal requirement references and unresolved operation state.
     ///
@@ -90,6 +162,58 @@ impl WorkingState {
         }
     }
 
+    pub(super) fn with_entries(
+        &self,
+        entries: Vec<WorkingEntry>,
+        revision: u64,
+    ) -> (result: Self)
+        ensures
+            result.spec_revision() == revision,
+            result.spec_observations() == self.spec_observations(),
+            result.spec_entries() == entries@,
+    {
+        let result = Self {
+            environment: self.environment.clone(),
+            revision,
+            observations: self.observations.clone(),
+            entries,
+            limits: self.limits,
+            protocol: self.protocol.clone(),
+        };
+        proof {
+            reveal(WorkingState::spec_revision);
+            reveal(WorkingState::spec_observations);
+            reveal(WorkingState::spec_entries);
+        }
+        result
+    }
+
+    pub(super) fn with_protocol(
+        &self,
+        protocol: super::WorkingProtocol,
+        revision: u64,
+    ) -> (result: Self)
+        ensures
+            result.spec_revision() == revision,
+            result.spec_observations() == self.spec_observations(),
+            result.spec_protocol() == protocol,
+    {
+        let result = Self {
+            environment: self.environment.clone(),
+            revision,
+            observations: self.observations.clone(),
+            entries: self.entries.clone(),
+            limits: self.limits,
+            protocol,
+        };
+        proof {
+            reveal(WorkingState::spec_revision);
+            reveal(WorkingState::spec_observations);
+            reveal(WorkingState::spec_protocol);
+        }
+        result
+    }
+
     pub(super) fn check_binding(&self, binding: WorkingBinding) -> Result<(), WorkingError> {
         if self.binding() == binding { Ok(()) } else { Err(WorkingError::BindingMismatch) }
     }
@@ -104,11 +228,35 @@ pub fn ingest_working_observation(
     state: &WorkingState,
     binding: WorkingBinding,
     source: ObservationSource,
-) -> Result<WorkingState, WorkingError> {
+) -> (result: Result<WorkingState, WorkingError>)
+    ensures match result {
+        Ok(next) => {
+            &&& next.spec_revision() >= state.spec_revision()
+            &&& next.spec_revision() as int <= state.spec_revision() as int + 1
+            &&& next.spec_observations().len() >= state.spec_observations().len()
+            &&& next.spec_observations().len() <= state.spec_observations().len() + 1
+            &&& (source.spec_id().spec_value() <= state.spec_observations().len()
+                ==> next.spec_revision() == state.spec_revision()
+                    && next.spec_observations().len() == state.spec_observations().len())
+            &&& (source.spec_id().spec_value() > state.spec_observations().len()
+                ==> next.spec_revision() as int == state.spec_revision() as int + 1
+                    && next.spec_observations() == state.spec_observations().push(source))
+        }
+        Err(_) => true,
+    },
+{
     state.check_binding(binding)?;
     if source.id().get() <= state.through_observation() {
         let previous = state.observation(binding, source.id())?;
-        if previous == source { return Ok(state.clone()); }
+        if previous == source {
+            let next = state.clone();
+            proof {
+                assert(source.spec_id().spec_value() <= state.spec_observations().len());
+                assert(next.spec_revision() == state.spec_revision());
+                assert(next.spec_observations() == state.spec_observations());
+            }
+            return Ok(next);
+        }
         return Err(WorkingError::SourceConflict);
     }
     if state.observations.len() >= state.limits.observations() { return Err(WorkingError::Capacity); }
@@ -118,6 +266,11 @@ pub fn ingest_working_observation(
     let mut next = state.clone();
     next.observations.push(source);
     next.revision = revision;
+    proof {
+        assert(source.spec_id().spec_value() > state.spec_observations().len());
+        assert(next.spec_revision() as int == state.spec_revision() as int + 1);
+        assert(next.spec_observations() == state.spec_observations().push(source));
+    }
     Ok(next)
 }
 
@@ -133,7 +286,16 @@ pub fn refresh_working_state(
     state: &WorkingState,
     expected_revision: u64,
     environment: WorkingEnvironment,
-) -> Result<WorkingState, WorkingError> {
+) -> (result: Result<WorkingState, WorkingError>)
+    ensures match result {
+        Ok(next) => {
+            &&& next.spec_revision() >= state.spec_revision()
+            &&& next.spec_revision() as int <= state.spec_revision() as int + 1
+            &&& next.spec_observations() == state.spec_observations()
+        }
+        Err(_) => true,
+    },
+{
     if expected_revision != state.revision { return Err(WorkingError::RevisionMismatch); }
     if !state.binding().same_lineage(environment.binding()) { return Err(WorkingError::BindingMismatch); }
     if environment.binding().conversation_revision() < state.binding().conversation_revision() {

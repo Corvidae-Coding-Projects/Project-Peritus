@@ -35,7 +35,20 @@ pub enum WorkingEvent {
 ///
 /// # Errors
 /// Propagates binding, source, revision, capacity, and graph validation failures.
-pub fn apply_working_event(state: &WorkingState, event: &WorkingEvent) -> Result<WorkingState, WorkingError> {
+pub fn apply_working_event(
+    state: &WorkingState,
+    event: &WorkingEvent,
+) -> (result: Result<WorkingState, WorkingError>)
+    ensures match result {
+        Ok(next) => {
+            &&& next.spec_revision() >= state.spec_revision()
+            &&& next.spec_revision() as int <= state.spec_revision() as int + 1
+            &&& next.spec_observations().len() >= state.spec_observations().len()
+            &&& next.spec_observations().len() <= state.spec_observations().len() + 1
+        }
+        Err(_) => true,
+    },
+{
     match event {
         WorkingEvent::Observation { binding, source } => ingest_working_observation(state, *binding, *source),
         WorkingEvent::Refresh { base_revision, environment } => refresh_working_state(state, *base_revision, environment.clone()),
@@ -48,12 +61,33 @@ pub fn apply_working_event(state: &WorkingState, event: &WorkingEvent) -> Result
 ///
 /// # Errors
 /// Rejects an oversized suffix or the first invalid event; never skips or repairs history.
-pub fn replay_working_events(state: &WorkingState, events: &[WorkingEvent]) -> Result<WorkingState, WorkingError> {
+pub fn replay_working_events(
+    state: &WorkingState,
+    events: &[WorkingEvent],
+) -> (result: Result<WorkingState, WorkingError>)
+    ensures match result {
+        Ok(next) => {
+            &&& next.spec_revision() >= state.spec_revision()
+            &&& next.spec_revision() as int
+                <= state.spec_revision() as int + events@.len()
+            &&& next.spec_observations().len() >= state.spec_observations().len()
+            &&& next.spec_observations().len()
+                <= state.spec_observations().len() + events@.len()
+        }
+        Err(_) => true,
+    },
+{
     if events.len() > state.limits.observations() { return Err(WorkingError::Capacity); }
     let mut result = state.clone();
     let mut index = 0;
     while index < events.len()
-        invariant index <= events.len(),
+        invariant
+            index <= events.len(),
+            result.spec_revision() >= state.spec_revision(),
+            result.spec_revision() as int <= state.spec_revision() as int + index,
+            result.spec_observations().len() >= state.spec_observations().len(),
+            result.spec_observations().len()
+                <= state.spec_observations().len() + index,
         decreases events.len() - index,
     {
         result = apply_working_event(&result, &events[index])?;

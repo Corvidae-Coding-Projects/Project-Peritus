@@ -83,29 +83,63 @@ pub struct OmittedContext {
 }
 
 impl OmittedContext {
+    /// Logical view of the omitted optional root identity.
+    pub closed spec fn spec_node_id(self) -> ContextNodeId { self.node_id }
+
+    /// Logical view of the exact omission reason.
+    pub closed spec fn spec_reason(self) -> OmissionReason { self.reason }
+
+    /// Logical view of the first hidden dependency, when that caused omission.
+    pub closed spec fn spec_blocking_dependency(self) -> Option<ContextNodeId> {
+        self.blocking_dependency
+    }
+
+    /// Logical view of the complete newly required token estimate.
+    pub closed spec fn spec_required_tokens(self) -> u64 { self.required_tokens }
+
     pub(crate) const fn new(
         node_id: ContextNodeId,
         reason: OmissionReason,
         blocking_dependency: Option<ContextNodeId>,
         required_tokens: u64,
-    ) -> Self {
+    ) -> (result: Self)
+        ensures
+            result.spec_node_id() == node_id,
+            result.spec_reason() == reason,
+            result.spec_blocking_dependency() == blocking_dependency,
+            result.spec_required_tokens() == required_tokens,
+    {
         Self { node_id, reason, blocking_dependency, required_tokens }
     }
 
     /// Returns the omitted optional root.
     #[must_use]
-    pub const fn node_id(self) -> ContextNodeId { self.node_id }
+    pub const fn node_id(self) -> (result: ContextNodeId)
+        ensures result == self.spec_node_id(),
+    {
+        self.node_id
+    }
     /// Returns the normal omission reason.
     #[must_use]
-    pub const fn reason(self) -> OmissionReason { self.reason }
+    pub const fn reason(self) -> (result: OmissionReason)
+        ensures result == self.spec_reason(),
+    {
+        self.reason
+    }
     /// Returns the first canonical hidden dependency, when applicable.
     #[must_use]
-    pub const fn blocking_dependency(self) -> Option<ContextNodeId> {
+    pub const fn blocking_dependency(self) -> (result: Option<ContextNodeId>)
+        ensures result == self.spec_blocking_dependency(),
+    {
         self.blocking_dependency
     }
     /// Returns the new closure's token estimate, if it was fully visible.
     #[must_use]
-    pub const fn required_tokens(self) -> u64 { self.required_tokens }
+    pub const fn required_tokens(self) -> (result: u64)
+        ensures result == self.spec_required_tokens(),
+    {
+        self.required_tokens
+    }
 }
 
 /// Complete immutable outcome of deterministic context selection.
@@ -137,6 +171,24 @@ impl ContextPlan {
 
     /// Logical view of exact selected content bytes.
     pub closed spec fn spec_selected_bytes(&self) -> nat { self.selected_bytes as nat }
+
+    /// Exact role, token reservation, and byte limits retained from selection.
+    pub open spec fn spec_respects_policy(&self, policy: &crate::SelectionPolicy) -> bool {
+        &&& RoleProfile::clone_equivalent(
+            &policy.spec_role_profile(),
+            &self.spec_role_profile(),
+        )
+        &&& self.spec_accounting().spec_context_window()
+            == policy.spec_token_budget().spec_context_window()
+        &&& self.spec_accounting().spec_reserved_output()
+            == policy.spec_token_budget().spec_reserved_output()
+        &&& self.spec_accounting().spec_reserved_protocol_overhead()
+            == policy.spec_token_budget().spec_reserved_protocol_overhead()
+        &&& self.spec_accounting().spec_usable_input()
+            == policy.spec_token_budget().spec_usable_input()
+        &&& self.spec_accounting().spec_is_bounded()
+        &&& self.spec_selected_bytes() <= policy.spec_max_selected_bytes()
+    }
 
     pub(crate) const fn new(
         id: ContextPlanId,
@@ -200,16 +252,49 @@ impl ContextPlan {
         self.selected_bytes
     }
     /// Returns whether an identity is selected.
+    pub open spec fn spec_contains(&self, id: ContextNodeId) -> bool {
+        exists |index: int| 0 <= index < self.spec_selected().len()
+            && self.spec_selected()[index].spec_node_id().spec_matches(&id)
+    }
+
+    /// Returns whether an identity is selected.
     #[must_use]
-    pub fn contains(&self, id: ContextNodeId) -> bool {
+    pub fn contains(&self, id: ContextNodeId) -> (found: bool)
+        ensures found == self.spec_contains(id),
+    {
+        proof {
+            reveal(ContextPlan::spec_selected);
+            reveal(ContextPlan::spec_contains);
+            reveal(SelectedContext::spec_node_id);
+        }
         let mut index = 0;
         while index < self.selected.len()
+            invariant
+                index <= self.selected@.len(),
+                forall |prior: int| 0 <= prior < index ==>
+                    !self.selected@[prior].spec_node_id().spec_matches(&id),
             decreases self.selected.len() - index,
         {
-            if self.selected[index].node_id == id {
+            if self.selected[index].node_id.matches(&id) {
+                proof {
+                    assert(exists |found_index: int| 0 <= found_index
+                        < self.spec_selected().len()
+                        && self.spec_selected()[found_index].spec_node_id().spec_matches(&id)) by {
+                        assert(self.spec_selected()[index as int]
+                            .spec_node_id().spec_matches(&id));
+                    }
+                }
                 return true;
             }
+            proof {
+                assert(!self.selected@[index as int].spec_node_id().spec_matches(&id));
+            }
             index += 1;
+        }
+        proof {
+            assert(!exists |found_index: int| 0 <= found_index
+                < self.spec_selected().len()
+                && self.spec_selected()[found_index].spec_node_id().spec_matches(&id));
         }
         false
     }

@@ -26,14 +26,36 @@ impl WorkingFileDigest {
 }
 
 /// Current checked environment used to invalidate dependent conclusions.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq)]
 pub struct WorkingEnvironment {
     binding: WorkingBinding,
     candidate: Sha256Digest,
     files: Vec<WorkingFileDigest>,
 }
 
+impl Clone for WorkingEnvironment {
+    fn clone(&self) -> (result: Self)
+        ensures
+            result.spec_binding() == self.spec_binding(),
+            result.spec_candidate() == self.spec_candidate(),
+            result.spec_files() == self.spec_files(),
+    {
+        Self {
+            binding: self.binding,
+            candidate: self.candidate,
+            files: self.files.clone(),
+        }
+    }
+}
+
 impl WorkingEnvironment {
+    /// Logical scope and conversation binding.
+    pub closed spec fn spec_binding(&self) -> WorkingBinding { self.binding }
+    /// Logical complete candidate digest.
+    pub closed spec fn spec_candidate(&self) -> Sha256Digest { self.candidate }
+    /// Logical canonical file/entity revisions.
+    pub closed spec fn spec_files(&self) -> Seq<WorkingFileDigest> { self.files@ }
+
     /// Creates a canonical bounded environment observation.
     ///
     /// # Errors
@@ -43,19 +65,34 @@ impl WorkingEnvironment {
         candidate: Sha256Digest,
         files: Vec<WorkingFileDigest>,
         limits: WorkingLimits,
-    ) -> Result<Self, WorkingError> {
+    ) -> (result: Result<Self, WorkingError>)
+        ensures match result {
+            Ok(environment) => {
+                &&& environment.spec_binding() == binding
+                &&& environment.spec_candidate() == candidate
+                &&& environment.spec_files() == files@
+            }
+            Err(_) => true,
+        },
+    {
         validate_files(&files, limits.entries())?;
         Ok(Self { binding, candidate, files })
     }
     /// Current scope and conversation revision.
     #[must_use]
-    pub const fn binding(&self) -> WorkingBinding { self.binding }
+    pub const fn binding(&self) -> (result: WorkingBinding)
+        ensures result == self.spec_binding(),
+    { self.binding }
     /// Current complete candidate digest.
     #[must_use]
-    pub const fn candidate(&self) -> Sha256Digest { self.candidate }
+    pub const fn candidate(&self) -> (result: Sha256Digest)
+        ensures result == self.spec_candidate(),
+    { self.candidate }
     /// Canonical observed file/entity digests.
     #[must_use]
-    pub const fn files(&self) -> &[WorkingFileDigest] { self.files.as_slice() }
+    pub const fn files(&self) -> (result: &[WorkingFileDigest])
+        ensures result@ == self.spec_files(),
+    { self.files.as_slice() }
 }
 
 /// Explicit validity dependencies; an uncertain dependency set always requires reinspection.

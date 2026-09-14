@@ -2,6 +2,7 @@
 
 use super::{super::*, support::*};
 use peritus_agent::{DeveloperToolObservation, DeveloperTrace, DeveloperTraceEvent};
+use peritus_codec::sha256;
 use serde_json::Value;
 
 #[test]
@@ -97,4 +98,48 @@ fn checkpoint_and_uncovered_pending_proposal_survive_without_claiming_execution(
             .flat_map(peritus_model_protocol::Message::content)
             .all(|block| !matches!(block, peritus_model_protocol::ContentBlock::ToolCall(_)))
     );
+}
+
+#[test]
+fn restart_rejects_a_published_checkpoint_with_stale_selected_source_accounting() {
+    let fixture = Fixture::new();
+    let mut memory = fixture.open();
+    begin(&mut memory, "validation-corruption");
+    let view = memory.prepare_view(&profile(32_768), &[]).unwrap();
+    memory.publish(&view).unwrap();
+
+    let previous = memory.last_checkpoint.clone().unwrap();
+    let previous_bytes = record::encode(&previous).unwrap();
+    let mut validation: record::ViewValidation =
+        record::decode(&memory.store.read(previous.validation).unwrap()).unwrap();
+    validation.selected_observations.push(memory.sources.len() as u64 + 1);
+    let validation = memory.store.store(&record::encode(&validation).unwrap()).unwrap();
+    let mut corrupted = previous;
+    corrupted.previous = Some(sha256(&previous_bytes).into_bytes());
+    corrupted.generation = memory.store.generation() + 1;
+    corrupted.validation = validation;
+    let corrupted_bytes = record::encode(&corrupted).unwrap();
+    let manifest = memory.store.store(&corrupted_bytes).unwrap();
+    let event = record::encode(&record::MemoryRecord::Checkpoint { manifest }).unwrap();
+    let roots = [
+        corrupted.working_state.digest,
+        corrupted.transcript_manifest.digest,
+        corrupted.source_index.digest,
+        corrupted.view.digest,
+        corrupted.validation.digest,
+        manifest.digest,
+    ];
+    let generation = memory.store.generation();
+    memory.store.append(&event, &roots, Some((generation, corrupted_bytes))).unwrap();
+    drop(memory);
+
+    let reopened = memory::LocalMemory::load(
+        &fixture.state.path().join("memory"),
+        fixture.workspace.path(),
+        &fixture.state.path().join("run.trace"),
+        binding(),
+        LocalContextConfig::default(),
+    );
+    let Err(error) = reopened else { panic!("corrupt checkpoint unexpectedly recovered") };
+    assert!(error.to_string().contains("checkpoint validation does not bind its exact state"));
 }

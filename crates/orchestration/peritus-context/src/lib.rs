@@ -49,6 +49,8 @@ pub use reuse::{
 };
 pub use selection::{SelectionPolicy, select_context};
 pub use trust::TrustClass;
-pub use verified::{plan_dependencies_complete, plan_is_visible, token_accounting_is_bounded};
+pub use verified::{
+    plan_dependencies_complete, plan_is_exact, plan_is_visible, token_accounting_is_bounded,
+};
 
 } // verus!

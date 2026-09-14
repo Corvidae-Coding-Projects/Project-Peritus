@@ -74,3 +74,39 @@ fn optional_working_entries_leave_room_for_policy_tools_and_message_framing() {
     assert!(memory.prepared.as_ref().unwrap().validation.omitted_entries > 0);
     assert_eq!(memory.state.entries(memory.state.binding()).unwrap().len(), 8);
 }
+
+#[test]
+fn retry_and_restart_preserve_the_exact_selected_working_view_and_sources() {
+    let fixture = Fixture::new();
+    let mut memory = fixture.open();
+    begin(&mut memory, "selected-view-source");
+    let source = observation(&mut memory, "read", "source for retained working state", false);
+    let proposal = update(
+        memory.model_revision,
+        source,
+        "retained-finding",
+        "The selected working view must retain this exact source binding.",
+    );
+    let result = tools::update::execute(&mut memory, proposal.to_string().as_bytes()).unwrap();
+    assert!(result.get("rejected").is_none(), "{result}");
+
+    begin(&mut memory, "selected-view-source-next");
+    memory.config.retrieved_evidence_max_tokens = 0;
+    let provider = profile(32_768);
+    let first = memory.prepare_view(&provider, &[]).unwrap();
+    let first_validation = memory.prepared.as_ref().unwrap().validation.clone();
+    assert!(render(&first).contains("selected working view must retain this exact source binding"));
+    assert!(first_validation.selected_observations.contains(&source));
+
+    let retry = memory.prepare_view(&provider, &[]).unwrap();
+    assert_eq!(retry, first);
+    assert_eq!(memory.prepared.as_ref().unwrap().validation, first_validation);
+    memory.publish(&retry).unwrap();
+    drop(memory);
+
+    let mut recovered = fixture.open();
+    recovered.config.retrieved_evidence_max_tokens = 0;
+    let restarted = recovered.prepare_view(&provider, &[]).unwrap();
+    assert_eq!(restarted, first);
+    assert_eq!(recovered.prepared.as_ref().unwrap().validation, first_validation);
+}

@@ -70,17 +70,51 @@ impl LocalMemory {
         self.last_view =
             decode_messages(&self.store.read(manifest.view)?, ProtocolLimits::PRODUCTION)?;
         let validation: ViewValidation = decode(&self.store.read(manifest.validation)?)?;
-        if validation.state_revision != self.state.revision()
-            || validation.through_observation != self.state.through_observation()
-            || validation.estimated_input_tokens > validation.max_input_tokens
-            || validation.max_input_tokens == 0
-        {
-            return Err(error("checkpoint validation does not bind its state"));
-        }
+        self.validate_checkpoint(&validation)?;
         self.local_compactor_failures = validation.local_compactor_failures;
         self.retrieval_calls = validation.retrieval_calls;
         self.model_revision = validation.model_revision;
         self.validate_index()
+    }
+
+    fn validate_checkpoint(&self, validation: &ViewValidation) -> Result<(), DeveloperLoopError> {
+        let archive_bytes = self.sources.iter().try_fold(0_u64, |total, source| {
+            total
+                .checked_add(source.artifact.bytes)
+                .ok_or_else(|| error("checkpoint archive accounting overflow"))
+        })?;
+        let entries = self
+            .state
+            .entries(self.state.binding())
+            .map_err(|_| error("checkpoint state binding mismatch"))?;
+        let stale_entries = entries
+            .iter()
+            .filter(|entry| entry.status() == peritus_context::working::WorkingEntryStatus::Stale)
+            .count();
+        let selected_are_canonical =
+            validation.selected_observations.windows(2).all(|pair| pair[0] < pair[1]);
+        let selected_exist = validation
+            .selected_observations
+            .iter()
+            .all(|sequence| *sequence > 0 && *sequence <= self.sources.len() as u64);
+        if validation.state_revision != self.state.revision()
+            || validation.through_observation != self.state.through_observation()
+            || validation.estimated_input_tokens > validation.max_input_tokens
+            || validation.max_input_tokens == 0
+            || validation.input_tokens_saved
+                != validation
+                    .uncompacted_input_tokens
+                    .saturating_sub(validation.estimated_input_tokens)
+            || validation.archive_bytes != archive_bytes
+            || validation.stale_entries != stale_entries
+            || validation.omitted_entries > entries.len()
+            || validation.pending_operations != self.transcript.pending.len()
+            || !selected_are_canonical
+            || !selected_exist
+        {
+            return Err(error("checkpoint validation does not bind its exact state"));
+        }
+        Ok(())
     }
 
     fn replay_record(

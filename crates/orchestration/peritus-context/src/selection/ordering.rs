@@ -27,7 +27,7 @@ pub(super) fn ranked_optional_roots(
         decreases graph_len - index,
     {
         let node = &graph_nodes[index];
-        if node.requirement() != RequirementMode::Required
+        if node.requirement() == RequirementMode::Optional
             && !selected[index]
             && is_visible(node, role)
         {
@@ -55,7 +55,9 @@ pub(super) fn ranked_optional_roots(
     ranked
 }
 
-pub(super) fn sort_for_render(graph: &ContextGraph, entries: &mut Vec<SelectedContext>) {
+pub(super) fn sort_for_render(graph: &ContextGraph, entries: &mut Vec<SelectedContext>)
+    ensures final(entries)@.len() == old(entries)@.len(),
+{
     let entries_len = entries.len();
     if entries_len < 2 {
         return;
@@ -65,13 +67,18 @@ pub(super) fn sort_for_render(graph: &ContextGraph, entries: &mut Vec<SelectedCo
         invariant
             1 <= index <= entries_len,
             entries.len() == entries_len,
+            entries_len == old(entries)@.len(),
         decreases entries_len - index,
     {
-        let entry = entries.remove(index);
+        let entry = entries[index];
         let Some(node) = graph.node(entry.node_id()) else { return };
         let mut position = index;
         while position > 0
-            invariant position <= entries.len(),
+            invariant
+                position <= index,
+                position <= entries.len(),
+                entries.len() == entries_len,
+                entries_len == old(entries)@.len(),
             decreases position,
         {
             let Some(previous) = graph.node(entries[position - 1].node_id()) else { return };
@@ -80,7 +87,14 @@ pub(super) fn sort_for_render(graph: &ContextGraph, entries: &mut Vec<SelectedCo
             }
             position -= 1;
         }
-        entries.insert(position, entry);
+        if position != index {
+            entries.remove(index);
+            proof {
+                assert(position < index);
+                assert(position <= entries@.len());
+            }
+            entries.insert(position, entry);
+        }
         index += 1;
     }
 }
