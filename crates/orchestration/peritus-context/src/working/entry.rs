@@ -40,7 +40,7 @@ pub enum WorkingEntryStatus {
 }
 
 /// Canonical source and entry references for a proposed record.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq)]
 pub struct WorkingLinks {
     supports: Vec<ObservationId>,
     contradicts: Vec<ObservationId>,
@@ -48,6 +48,19 @@ pub struct WorkingLinks {
 }
 
 impl WorkingLinks {
+    /// Logical supporting observation sequence.
+    pub closed spec fn spec_supports(&self) -> Seq<ObservationId> { self.supports@ }
+    /// Logical contradicting observation sequence.
+    pub closed spec fn spec_contradicts(&self) -> Seq<ObservationId> { self.contradicts@ }
+    /// Logical prerequisite entry sequence.
+    pub closed spec fn spec_depends_on(&self) -> Seq<ContextNodeId> { self.depends_on@ }
+    /// Complete semantic equality retained by cloning links.
+    pub open spec fn clone_equivalent(left: &Self, right: &Self) -> bool {
+        left.spec_supports() == right.spec_supports()
+            && left.spec_contradicts() == right.spec_contradicts()
+            && left.spec_depends_on() == right.spec_depends_on()
+    }
+
     /// Checks bounds, strict ordering, and support/contradiction disjointness.
     ///
     /// # Errors
@@ -100,8 +113,20 @@ impl WorkingLinks {
     pub const fn depends_on(&self) -> &[ContextNodeId] { self.depends_on.as_slice() }
 }
 
+impl Clone for WorkingLinks {
+    fn clone(&self) -> (result: Self)
+        ensures Self::clone_equivalent(self, &result),
+    {
+        Self {
+            supports: self.supports.clone(),
+            contradicts: self.contradicts.clone(),
+            depends_on: self.depends_on.clone(),
+        }
+    }
+}
+
 /// Immutable bounded investigation entry. Hosts must redact content before construction.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq)]
 pub struct WorkingEntry {
     pub(super) id: ContextNodeId,
     pub(super) kind: WorkingEntryKind,
@@ -114,6 +139,124 @@ pub struct WorkingEntry {
 }
 
 impl WorkingEntry {
+    /// Logical stable entry identity.
+    pub closed spec fn spec_id(&self) -> ContextNodeId { self.id }
+    /// Logical entry purpose.
+    pub closed spec fn spec_kind(&self) -> WorkingEntryKind { self.kind }
+    /// Logical current investigation status.
+    pub closed spec fn spec_status(&self) -> WorkingEntryStatus { self.status }
+    /// Logical exact bounded content.
+    pub closed spec fn spec_content(&self) -> ContextContent { self.content }
+    /// Logical source and prerequisite links.
+    pub closed spec fn spec_links(&self) -> WorkingLinks { self.links }
+    /// Logical validity dependencies.
+    pub closed spec fn spec_validity(&self) -> WorkingValidity { self.validity }
+    /// Logical superseded predecessor.
+    pub closed spec fn spec_supersedes(&self) -> Option<ContextNodeId> { self.supersedes }
+    /// Logical observation frontier for stale status.
+    pub closed spec fn spec_stale_through(&self) -> u64 { self.stale_through }
+
+    /// Complete semantic equality retained by cloning an entry.
+    pub open spec fn clone_equivalent(left: &Self, right: &Self) -> bool {
+        &&& left.spec_id() == right.spec_id()
+        &&& left.spec_kind() == right.spec_kind()
+        &&& left.spec_status() == right.spec_status()
+        &&& ContextContent::clone_equivalent(&left.spec_content(), &right.spec_content())
+        &&& WorkingLinks::clone_equivalent(&left.spec_links(), &right.spec_links())
+        &&& WorkingValidity::clone_equivalent(&left.spec_validity(), &right.spec_validity())
+        &&& left.spec_supersedes() == right.spec_supersedes()
+        &&& left.spec_stale_through() == right.spec_stale_through()
+    }
+
+    /// All source-backed payload fields preserved while the host derives status.
+    /// Source-backed payload equality while host-derived status may differ.
+    pub open spec fn payload_equivalent(left: &Self, right: &Self) -> bool {
+        &&& left.spec_id() == right.spec_id()
+        &&& left.spec_kind() == right.spec_kind()
+        &&& ContextContent::clone_equivalent(&left.spec_content(), &right.spec_content())
+        &&& WorkingLinks::clone_equivalent(&left.spec_links(), &right.spec_links())
+        &&& WorkingValidity::clone_equivalent(&left.spec_validity(), &right.spec_validity())
+        &&& left.spec_supersedes() == right.spec_supersedes()
+    }
+
+    /// Elementwise source-backed payload equality for entry sequences.
+    pub open spec fn sequence_payload_equivalent(
+        left: Seq<Self>,
+        right: Seq<Self>,
+    ) -> bool {
+        left.len() == right.len()
+            && forall |index: int| #![auto] 0 <= index < left.len() ==>
+                Self::payload_equivalent(&left[index], &right[index])
+    }
+
+    /// Clone equivalence implies source-backed payload equivalence.
+    pub proof fn sequence_clone_implies_payload(left: Seq<Self>, right: Seq<Self>)
+        requires Self::sequence_clone_equivalent(left, right),
+        ensures Self::sequence_payload_equivalent(left, right),
+    {
+        assert forall |index: int| #![auto] 0 <= index < left.len() implies
+            Self::payload_equivalent(&left[index], &right[index]) by {
+            reveal(WorkingEntry::clone_equivalent);
+            reveal(WorkingEntry::payload_equivalent);
+        }
+    }
+
+    /// Source-backed payload equivalence composes transitively.
+    pub proof fn payload_transitive(left: &Self, middle: &Self, right: &Self)
+        requires
+            Self::payload_equivalent(left, middle),
+            Self::payload_equivalent(middle, right),
+        ensures Self::payload_equivalent(left, right),
+    {
+        reveal(WorkingEntry::payload_equivalent);
+        reveal(WorkingLinks::clone_equivalent);
+        reveal(WorkingValidity::clone_equivalent);
+        reveal(ContextContent::clone_equivalent);
+    }
+
+    /// Elementwise semantic equivalence retained by cloning an entry sequence.
+    pub open spec fn sequence_clone_equivalent(
+        left: Seq<Self>,
+        right: Seq<Self>,
+    ) -> bool {
+        left.len() == right.len()
+            && forall |index: int| #![auto] 0 <= index < left.len() ==>
+                Self::clone_equivalent(&left[index], &right[index])
+    }
+
+    /// Clones an entry sequence with complete semantic field preservation.
+    pub(super) fn clone_sequence(entries: &[Self]) -> (result: Vec<Self>)
+        ensures Self::sequence_clone_equivalent(entries@, result@),
+    {
+        let mut result = Vec::with_capacity(entries.len());
+        let mut index = 0;
+        while index < entries.len()
+            invariant
+                index <= entries.len(),
+                result@.len() == index,
+                forall |prior: int| #![auto] 0 <= prior < index ==>
+                    Self::clone_equivalent(&entries@[prior], &result@[prior]),
+            decreases entries.len() - index,
+        {
+            result.push(entries[index].clone());
+            index += 1;
+        }
+        result
+    }
+
+    /// Changes only status fields owned by the host invalidation reducer.
+    pub(super) const fn with_host_status(
+        self,
+        status: WorkingEntryStatus,
+        stale_through: u64,
+    ) -> (result: Self)
+        ensures Self::payload_equivalent(&self, &result),
+    {
+        let mut result = self;
+        result.status = status;
+        result.stale_through = stale_through;
+        result
+    }
     /// Creates an open, source-backed record under the supplied allocation limits.
     ///
     /// # Errors
@@ -181,6 +324,23 @@ impl WorkingEntry {
     pub const fn authority(&self) -> (authority: AuthorityClass)
         ensures authority == AuthorityClass::NonAuthoritative,
     { AuthorityClass::NonAuthoritative }
+}
+
+impl Clone for WorkingEntry {
+    fn clone(&self) -> (result: Self)
+        ensures Self::clone_equivalent(self, &result),
+    {
+        Self {
+            id: self.id,
+            kind: self.kind,
+            status: self.status,
+            content: self.content.clone(),
+            links: self.links.clone(),
+            validity: self.validity.clone(),
+            supersedes: self.supersedes,
+            stale_through: self.stale_through,
+        }
+    }
 }
 
 fn validate_sources(sources: &[ObservationId]) -> Result<(), WorkingError> {

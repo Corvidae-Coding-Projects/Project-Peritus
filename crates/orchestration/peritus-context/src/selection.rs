@@ -6,10 +6,12 @@ use vstd::prelude::*;
 
 verus! {
 
+mod certificate;
 mod closure;
 mod ordering;
 mod plan;
 
+pub use certificate::selection_result_is_exact;
 pub use plan::select_context;
 
 /// Pure selection inputs and explicit bounds.

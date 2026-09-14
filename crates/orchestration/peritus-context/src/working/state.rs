@@ -16,7 +16,6 @@ pub struct WorkingState {
     pub(super) limits: WorkingLimits,
     pub(super) protocol: super::WorkingProtocol,
 }
-
 impl Clone for WorkingState {
     fn clone(&self) -> (result: Self)
         ensures
@@ -28,6 +27,10 @@ impl Clone for WorkingState {
                 == self.spec_environment().spec_files(),
             result.spec_revision() == self.spec_revision(),
             result.spec_observations() == self.spec_observations(),
+            WorkingEntry::sequence_clone_equivalent(
+                self.spec_entries(),
+                result.spec_entries(),
+            ),
             result.spec_limits() == self.spec_limits(),
             result.spec_protocol().spec_requirements()
                 == self.spec_protocol().spec_requirements(),
@@ -37,13 +40,12 @@ impl Clone for WorkingState {
             environment: self.environment.clone(),
             revision: self.revision,
             observations: self.observations.clone(),
-            entries: self.entries.clone(),
+            entries: WorkingEntry::clone_sequence(&self.entries),
             limits: self.limits,
             protocol: self.protocol.clone(),
         }
     }
 }
-
 impl WorkingState {
     /// Logical host-observed environment.
     pub closed spec fn spec_environment(&self) -> WorkingEnvironment { self.environment }
@@ -57,6 +59,26 @@ impl WorkingState {
     pub closed spec fn spec_limits(&self) -> WorkingLimits { self.limits }
     /// Logical host-owned semantic pins.
     pub closed spec fn spec_protocol(&self) -> super::WorkingProtocol { self.protocol }
+    /// Complete semantic equality used to frame reducers and replay.
+    pub open spec fn spec_same(&self, other: &Self) -> bool {
+        &&& self.spec_environment().spec_binding()
+            == other.spec_environment().spec_binding()
+        &&& self.spec_environment().spec_candidate()
+            == other.spec_environment().spec_candidate()
+        &&& self.spec_environment().spec_files()
+            == other.spec_environment().spec_files()
+        &&& self.spec_revision() == other.spec_revision()
+        &&& self.spec_observations() == other.spec_observations()
+        &&& WorkingEntry::sequence_clone_equivalent(
+            self.spec_entries(),
+            other.spec_entries(),
+        )
+        &&& self.spec_limits() == other.spec_limits()
+        &&& self.spec_protocol().spec_requirements()
+            == other.spec_protocol().spec_requirements()
+        &&& self.spec_protocol().spec_pending()
+            == other.spec_protocol().spec_pending()
+    }
 
     /// Opens an empty working model under an explicit host-observed environment.
     ///
@@ -113,7 +135,6 @@ impl WorkingState {
     pub const fn environment(&self) -> (result: &WorkingEnvironment)
         ensures *result == self.spec_environment(),
     { &self.environment }
-
     /// Reads host-owned literal requirement references and unresolved operation state.
     ///
     /// # Errors
@@ -122,7 +143,6 @@ impl WorkingState {
         self.check_binding(binding)?;
         Ok(&self.protocol)
     }
-
     /// Reads the retained model only through an exact task/role/conversation binding.
     ///
     /// # Errors
@@ -168,9 +188,19 @@ impl WorkingState {
         revision: u64,
     ) -> (result: Self)
         ensures
+            result.spec_environment().spec_binding()
+                == self.spec_environment().spec_binding(),
+            result.spec_environment().spec_candidate()
+                == self.spec_environment().spec_candidate(),
+            result.spec_environment().spec_files()
+                == self.spec_environment().spec_files(),
             result.spec_revision() == revision,
             result.spec_observations() == self.spec_observations(),
             result.spec_entries() == entries@,
+            result.spec_limits() == self.spec_limits(),
+            result.spec_protocol().spec_requirements()
+                == self.spec_protocol().spec_requirements(),
+            result.spec_protocol().spec_pending() == self.spec_protocol().spec_pending(),
     {
         let result = Self {
             environment: self.environment.clone(),
@@ -194,8 +224,19 @@ impl WorkingState {
         revision: u64,
     ) -> (result: Self)
         ensures
+            result.spec_environment().spec_binding()
+                == self.spec_environment().spec_binding(),
+            result.spec_environment().spec_candidate()
+                == self.spec_environment().spec_candidate(),
+            result.spec_environment().spec_files()
+                == self.spec_environment().spec_files(),
             result.spec_revision() == revision,
             result.spec_observations() == self.spec_observations(),
+            WorkingEntry::sequence_clone_equivalent(
+                self.spec_entries(),
+                result.spec_entries(),
+            ),
+            result.spec_limits() == self.spec_limits(),
             result.spec_protocol() == protocol,
     {
         let result = Self {
@@ -231,6 +272,12 @@ pub fn ingest_working_observation(
 ) -> (result: Result<WorkingState, WorkingError>)
     ensures match result {
         Ok(next) => {
+            &&& next.spec_environment().spec_binding()
+                == state.spec_environment().spec_binding()
+            &&& next.spec_environment().spec_candidate()
+                == state.spec_environment().spec_candidate()
+            &&& next.spec_environment().spec_files()
+                == state.spec_environment().spec_files()
             &&& next.spec_revision() >= state.spec_revision()
             &&& next.spec_revision() as int <= state.spec_revision() as int + 1
             &&& next.spec_observations().len() >= state.spec_observations().len()
@@ -241,6 +288,14 @@ pub fn ingest_working_observation(
             &&& (source.spec_id().spec_value() > state.spec_observations().len()
                 ==> next.spec_revision() as int == state.spec_revision() as int + 1
                     && next.spec_observations() == state.spec_observations().push(source))
+            &&& WorkingEntry::sequence_clone_equivalent(
+                state.spec_entries(), next.spec_entries(),
+            )
+            &&& next.spec_limits() == state.spec_limits()
+            &&& next.spec_protocol().spec_requirements()
+                == state.spec_protocol().spec_requirements()
+            &&& next.spec_protocol().spec_pending()
+                == state.spec_protocol().spec_pending()
         }
         Err(_) => true,
     },
@@ -289,9 +344,22 @@ pub fn refresh_working_state(
 ) -> (result: Result<WorkingState, WorkingError>)
     ensures match result {
         Ok(next) => {
+            &&& next.spec_environment().spec_binding()
+                == environment.spec_binding()
+            &&& next.spec_environment().spec_candidate()
+                == environment.spec_candidate()
+            &&& next.spec_environment().spec_files() == environment.spec_files()
             &&& next.spec_revision() >= state.spec_revision()
             &&& next.spec_revision() as int <= state.spec_revision() as int + 1
             &&& next.spec_observations() == state.spec_observations()
+            &&& WorkingEntry::sequence_payload_equivalent(
+                state.spec_entries(), next.spec_entries(),
+            )
+            &&& next.spec_limits() == state.spec_limits()
+            &&& next.spec_protocol().spec_requirements()
+                == state.spec_protocol().spec_requirements()
+            &&& next.spec_protocol().spec_pending()
+                == state.spec_protocol().spec_pending()
         }
         Err(_) => true,
     },
@@ -302,7 +370,17 @@ pub fn refresh_working_state(
         return Err(WorkingError::StaleConversation);
     }
     if environment.files().len() > state.limits.entries() { return Err(WorkingError::Capacity); }
-    if environment == state.environment { return Ok(state.clone()); }
+    if environment == state.environment {
+        let mut next = state.clone();
+        next.environment = environment;
+        proof {
+            WorkingEntry::sequence_clone_implies_payload(
+                state.spec_entries(),
+                next.spec_entries(),
+            );
+        }
+        return Ok(next);
+    }
     let revision = next_revision(state.revision)?;
     let mut next = state.clone();
     next.entries = invalidate_entries(&next.entries, &environment, state.through_observation());

@@ -1,6 +1,6 @@
 //! Required working memory can borrow provider headroom without losing its durable closure.
 
-use super::super::tools;
+use super::super::{LocalContextConfig, memory, tools};
 use super::support::*;
 use peritus_agent::estimate_developer_request_tokens;
 use serde_json::Value;
@@ -104,8 +104,16 @@ fn retry_and_restart_preserve_the_exact_selected_working_view_and_sources() {
     memory.publish(&retry).unwrap();
     drop(memory);
 
-    let mut recovered = fixture.open();
-    recovered.config.retrieved_evidence_max_tokens = 0;
+    let recovered_config =
+        LocalContextConfig { retrieved_evidence_max_tokens: 0, ..LocalContextConfig::default() };
+    let mut recovered = memory::LocalMemory::load(
+        &fixture.state.path().join("memory"),
+        fixture.workspace.path(),
+        &fixture.state.path().join("run.trace"),
+        binding(),
+        recovered_config,
+    )
+    .unwrap();
     let restarted = recovered.prepare_view(&provider, &[]).unwrap();
     assert_eq!(restarted, first);
     assert_eq!(recovered.prepared.as_ref().unwrap().validation, first_validation);

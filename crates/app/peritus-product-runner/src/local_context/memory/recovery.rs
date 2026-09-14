@@ -3,12 +3,15 @@
 use super::super::{
     error,
     record::{
-        ArchiveKind, ArchivedObservation, CheckpointManifest, MemoryRecord, TranscriptManifest,
-        ViewValidation, decode, encode,
+        ArchiveKind, ArchivedObservation, CHECKPOINT_SCHEMA_VERSION, CheckpointManifest,
+        LEGACY_CHECKPOINT_SCHEMA_VERSION, MemoryRecord, TranscriptManifest, ViewValidation, decode,
+        encode,
     },
+    view_binding,
 };
 use super::LocalMemory;
 use peritus_agent::DeveloperLoopError;
+use peritus_codec::sha256;
 use peritus_context::working::{
     ObservationId, WorkingEvent, apply_working_event, decode_working_event, decode_working_state,
     encode_working_state,
@@ -52,8 +55,10 @@ impl LocalMemory {
         &mut self,
         manifest: &CheckpointManifest,
     ) -> Result<(), DeveloperLoopError> {
-        if manifest.schema_version != 1
-            || manifest.scope != self.store.scope_digest().into_bytes()
+        if !matches!(
+            manifest.schema_version,
+            LEGACY_CHECKPOINT_SCHEMA_VERSION | CHECKPOINT_SCHEMA_VERSION
+        ) || manifest.scope != self.store.scope_digest().into_bytes()
             || manifest.generation != self.store.generation()
             || manifest.through_event >= self.store.sequence()
         {
@@ -67,17 +72,28 @@ impl LocalMemory {
         .map_err(|_| error("invalid working checkpoint"))?;
         self.sources = decode(&self.store.read(manifest.source_index)?)?;
         self.transcript = decode(&self.store.read(manifest.transcript_manifest)?)?;
-        self.last_view =
-            decode_messages(&self.store.read(manifest.view)?, ProtocolLimits::PRODUCTION)?;
-        let validation: ViewValidation = decode(&self.store.read(manifest.validation)?)?;
-        self.validate_checkpoint(&validation)?;
+        let view_bytes = self.store.read(manifest.view)?;
+        self.last_view = decode_messages(&view_bytes, ProtocolLimits::PRODUCTION)?;
+        let validation_bytes = self.store.read(manifest.validation)?;
+        let validation: ViewValidation = decode(&validation_bytes)?;
+        self.validate_checkpoint(manifest.schema_version, &validation)?;
+        view_binding::verify(manifest, &view_bytes, &validation)?;
+        if manifest.schema_version == CHECKPOINT_SCHEMA_VERSION
+            && manifest.render_policy != sha256(&encode(&self.config)?).into_bytes()
+        {
+            return Err(error("checkpoint render policy mismatch"));
+        }
         self.local_compactor_failures = validation.local_compactor_failures;
         self.retrieval_calls = validation.retrieval_calls;
         self.model_revision = validation.model_revision;
         self.validate_index()
     }
 
-    fn validate_checkpoint(&self, validation: &ViewValidation) -> Result<(), DeveloperLoopError> {
+    pub(super) fn validate_checkpoint(
+        &self,
+        schema_version: u16,
+        validation: &ViewValidation,
+    ) -> Result<(), DeveloperLoopError> {
         let archive_bytes = self.sources.iter().try_fold(0_u64, |total, source| {
             total
                 .checked_add(source.artifact.bytes)
@@ -111,6 +127,11 @@ impl LocalMemory {
             || validation.pending_operations != self.transcript.pending.len()
             || !selected_are_canonical
             || !selected_exist
+            || match schema_version {
+                LEGACY_CHECKPOINT_SCHEMA_VERSION => validation.tool_policy.is_some(),
+                CHECKPOINT_SCHEMA_VERSION => validation.tool_policy.is_none(),
+                _ => true,
+            }
         {
             return Err(error("checkpoint validation does not bind its exact state"));
         }

@@ -10,6 +10,7 @@ mod storage;
 #[cfg(test)]
 mod tests;
 mod tools;
+mod view_binding;
 
 pub use driver::{InvocationAccounting, run_live_invocation};
 pub use port::LocalContextHandle;

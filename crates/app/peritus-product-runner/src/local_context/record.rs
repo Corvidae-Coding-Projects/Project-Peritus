@@ -7,6 +7,9 @@ use serde::Deserialize;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 
+pub(super) const LEGACY_CHECKPOINT_SCHEMA_VERSION: u16 = 1;
+pub(super) const CHECKPOINT_SCHEMA_VERSION: u16 = 2;
+
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, Eq, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub(super) enum ArchiveKind {
@@ -136,6 +139,8 @@ pub(super) struct CheckpointManifest {
     pub(super) view: StoredArtifact,
     pub(super) render_policy: [u8; 32],
     pub(super) validation: StoredArtifact,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(super) view_binding: Option<[u8; 32]>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
@@ -157,6 +162,8 @@ pub(super) struct ViewValidation {
     pub(super) pending_operations: usize,
     pub(super) local_compactor_failures: u64,
     pub(super) retrieval_calls: u64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(super) tool_policy: Option<[u8; 32]>,
 }
 
 pub(super) fn encode<T: Serialize>(value: &T) -> Result<Vec<u8>, DeveloperLoopError> {

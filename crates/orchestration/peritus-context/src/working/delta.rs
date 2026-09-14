@@ -87,8 +87,19 @@ pub fn apply_working_delta(
 ) -> (result: Result<WorkingState, WorkingError>)
     ensures match result {
         Ok(next) => {
+            &&& next.spec_environment().spec_binding()
+                == state.spec_environment().spec_binding()
+            &&& next.spec_environment().spec_candidate()
+                == state.spec_environment().spec_candidate()
+            &&& next.spec_environment().spec_files()
+                == state.spec_environment().spec_files()
             &&& next.spec_revision() as int == state.spec_revision() as int + 1
             &&& next.spec_observations() == state.spec_observations()
+            &&& next.spec_limits() == state.spec_limits()
+            &&& next.spec_protocol().spec_requirements()
+                == state.spec_protocol().spec_requirements()
+            &&& next.spec_protocol().spec_pending()
+                == state.spec_protocol().spec_pending()
         }
         Err(_) => true,
     },

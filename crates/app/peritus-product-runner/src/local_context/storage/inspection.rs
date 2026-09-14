@@ -2,8 +2,12 @@
 
 use super::super::{
     error,
-    record::{ArchivedObservation, CheckpointManifest, TranscriptManifest, ViewValidation, decode},
+    record::{
+        ArchivedObservation, CHECKPOINT_SCHEMA_VERSION, CheckpointManifest,
+        LEGACY_CHECKPOINT_SCHEMA_VERSION, TranscriptManifest, ViewValidation, decode,
+    },
     tools::hex,
+    view_binding,
 };
 use super::{
     MAX_ARTIFACT_BYTES, STATE_KEY, STATE_NAMESPACE, StoredArtifact, identity::StorageIdentity,
@@ -31,8 +35,10 @@ pub(in crate::local_context) fn inspect(
         .map_err(|_| error("read exact checkpoint root"))?
         .ok_or_else(|| error("no published model-visible view exists"))?;
     let manifest: CheckpointManifest = decode(row.bytes())?;
-    if manifest.schema_version != 1
-        || manifest.scope != identity.scope.into_bytes()
+    if !matches!(
+        manifest.schema_version,
+        LEGACY_CHECKPOINT_SCHEMA_VERSION | CHECKPOINT_SCHEMA_VERSION
+    ) || manifest.scope != identity.scope.into_bytes()
         || manifest.generation != row.revision()
     {
         return Err(error("inspection scope or generation mismatch"));
@@ -52,17 +58,28 @@ pub(in crate::local_context) fn inspect(
         }
         Ok(bytes)
     };
-    let validation: ViewValidation = decode(&read(manifest.validation)?)?;
+    let validation_bytes = read(manifest.validation)?;
+    let validation: ViewValidation = decode(&validation_bytes)?;
     let sources: Vec<ArchivedObservation> = decode(&read(manifest.source_index)?)?;
     let state =
         decode_working_state(&read(manifest.working_state)?, binding, WorkingLimits::standard())
             .map_err(|_| error("invalid inspection working state"))?;
     let transcript: TranscriptManifest = decode(&read(manifest.transcript_manifest)?)?;
+    let selected_are_canonical =
+        validation.selected_observations.windows(2).all(|pair| pair[0] < pair[1]);
+    let selected_exist = validation
+        .selected_observations
+        .iter()
+        .all(|sequence| *sequence > 0 && *sequence <= sources.len() as u64);
     if validation.state_revision != state.revision()
         || validation.through_observation != state.through_observation()
         || sources.len() as u64 != state.through_observation()
         || validation.estimated_input_tokens > validation.max_input_tokens
         || validation.max_input_tokens == 0
+        || validation.input_tokens_saved
+            != validation.uncompacted_input_tokens.saturating_sub(validation.estimated_input_tokens)
+        || !selected_are_canonical
+        || !selected_exist
     {
         return Err(error("inspection validation does not bind exact state"));
     }
@@ -80,6 +97,7 @@ pub(in crate::local_context) fn inspect(
         source.validate_locator(locator)?;
     }
     let archive = read(manifest.view)?;
+    view_binding::verify(&manifest, &archive, &validation)?;
     let messages = decode_messages(&archive, ProtocolLimits::PRODUCTION)?;
     let readable = readable_messages(&messages);
     let head = journal

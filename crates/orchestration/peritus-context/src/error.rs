@@ -64,6 +64,8 @@ pub enum ContextErrorKind {
     InvalidSelectionPolicy,
     /// A selected plan referred to a graph node that was not present.
     PlanNodeMissing,
+    /// Independent deterministic replay rejected a constructed selection result.
+    SelectionCertificateMismatch,
     /// A compaction source range was empty or out of bounds.
     InvalidSourceRange,
     /// Source ranges overlapped.

@@ -2500,6 +2500,7 @@ owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/orchestration/peritus-context/src/verified.rs", symbol = "peritus_context::verified::plan_is_exact", command = "cargo verus verify --package peritus-context --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "refinement-test", source_file = "crates/orchestration/peritus-context/tests/selection_matrix.rs", symbol = "peritus_context::tests::selection_matrix::optional_omission_uses_the_first_capacity_failure_and_names_only_the_root", command = "cargo test --package peritus-context --all-targets --all-features --locked" },
+  { kind = "refinement-test", source_file = "crates/orchestration/peritus-context/tests/selection_certificate.rs", symbol = "peritus_context::tests::selection_certificate::optional_atomicity_ranking_and_first_error_precedence_cannot_be_substituted", command = "cargo test --package peritus-context --all-targets --all-features --locked" },
 ]
 
 [[entries]]
@@ -2530,7 +2531,7 @@ dependencies = ["OBL-0138", "OBL-0225"]
 live_issue = "#80"
 owner = "ACTOR-0005"
 evidence = [
-  { kind = "verus-proof", source_file = "crates/orchestration/peritus-context/src/working/state.rs", symbol = "peritus_context::working::state::WorkingState::spec_observations", command = "cargo verus verify --package peritus-context --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "verus-proof", source_file = "crates/orchestration/peritus-context/src/working/event.rs", symbol = "peritus_context::working::event::replay_success_prefix", command = "cargo verus verify --package peritus-context --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "refinement-test", source_file = "crates/orchestration/peritus-context/tests/working_replay.rs", symbol = "peritus_context::tests::working_replay::snapshot_plus_committed_suffix_matches_uninterrupted_execution", command = "cargo test --package peritus-context --all-targets --all-features --locked" },
   { kind = "refinement-test", source_file = "crates/orchestration/peritus-context/tests/working_replay.rs", symbol = "peritus_context::tests::working_replay::rejected_reducers_and_partial_replay_leave_the_exact_input_state_unchanged", command = "cargo test --package peritus-context --all-targets --all-features --locked" },
 ]
@@ -2538,7 +2539,7 @@ evidence = [
 [[entries]]
 id = "OBL-0228"
 kind = "refinement"
-statement = "Product local-context assembly binds every selected working entry's supporting and contradicting observation handles into the exact provider-view validation record, and retry or restart reconstructs byte-equal messages and equal validation while corrupt or out-of-range checkpoint accounting fails closed."
+statement = "Product local-context assembly binds every selected working entry's supporting and contradicting observation handles into the exact provider-view validation record. Schema-v2 checkpoints bind the encoded provider view to its selection, profile revision, tool policy, render policy, accounting, scope, generation, and event frontier; retry or restart reconstructs byte-equal messages and equal validation while stale or corrupt state fails closed."
 owning_crate = "peritus-product-runner"
 source_file = "crates/app/peritus-product-runner/src/local_context/assembly/working.rs"
 symbol = "peritus_product_runner::local_context::assembly::working::append"
@@ -2548,5 +2549,6 @@ live_issue = "#80"
 owner = "ACTOR-0005"
 evidence = [
   { kind = "refinement-test", source_file = "crates/app/peritus-product-runner/src/local_context/tests/capacity.rs", symbol = "peritus_product_runner::tests::capacity::retry_and_restart_preserve_the_exact_selected_working_view_and_sources", command = "cargo test --package peritus-product-runner --all-targets --all-features --locked" },
-  { kind = "refinement-test", source_file = "crates/app/peritus-product-runner/src/local_context/tests/recovery.rs", symbol = "peritus_product_runner::tests::recovery::restart_rejects_a_published_checkpoint_with_stale_selected_source_accounting", command = "cargo test --package peritus-product-runner --all-targets --all-features --locked" },
+  { kind = "refinement-test", source_file = "crates/app/peritus-product-runner/src/local_context/tests/recovery.rs", symbol = "peritus_product_runner::tests::recovery::restart_rejects_semantically_changed_v2_views_with_valid_outer_hashes", command = "cargo test --package peritus-product-runner --all-targets --all-features --locked" },
+  { kind = "refinement-test", source_file = "crates/app/peritus-product-runner/src/local_context/tests/recovery.rs", symbol = "peritus_product_runner::tests::recovery::legacy_v1_checkpoint_without_view_binding_still_recovers", command = "cargo test --package peritus-product-runner --all-targets --all-features --locked" },
 ]

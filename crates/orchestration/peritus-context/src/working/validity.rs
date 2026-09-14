@@ -96,7 +96,7 @@ impl WorkingEnvironment {
 }
 
 /// Explicit validity dependencies; an uncertain dependency set always requires reinspection.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq)]
 pub struct WorkingValidity {
     conversation_revision: Option<u64>,
     candidate: Option<Sha256Digest>,
@@ -105,6 +105,23 @@ pub struct WorkingValidity {
 }
 
 impl WorkingValidity {
+    /// Logical optional conversation revision dependency.
+    pub closed spec fn spec_conversation_revision(&self) -> Option<u64> {
+        self.conversation_revision
+    }
+    /// Logical optional complete-candidate dependency.
+    pub closed spec fn spec_candidate(&self) -> Option<Sha256Digest> { self.candidate }
+    /// Logical canonical file dependency sequence.
+    pub closed spec fn spec_files(&self) -> Seq<WorkingFileDigest> { self.files@ }
+    /// Logical unknown-dependency marker.
+    pub closed spec fn spec_requires_recheck(&self) -> bool { self.requires_recheck }
+    /// Complete semantic equality retained by cloning validity constraints.
+    pub open spec fn clone_equivalent(left: &Self, right: &Self) -> bool {
+        left.spec_conversation_revision() == right.spec_conversation_revision()
+            && left.spec_candidate() == right.spec_candidate()
+            && left.spec_files() == right.spec_files()
+            && left.spec_requires_recheck() == right.spec_requires_recheck()
+    }
     /// Binds a conclusion to exact known dependencies. All supplied constraints must hold.
     ///
     /// Empty constraints explicitly mean task-local lifetime. Use `uncertain` when dependencies
@@ -156,6 +173,19 @@ impl WorkingValidity {
             index += 1;
         }
         true
+    }
+}
+
+impl Clone for WorkingValidity {
+    fn clone(&self) -> (result: Self)
+        ensures Self::clone_equivalent(self, &result),
+    {
+        Self {
+            conversation_revision: self.conversation_revision,
+            candidate: self.candidate,
+            files: self.files.clone(),
+            requires_recheck: self.requires_recheck,
+        }
     }
 }
 

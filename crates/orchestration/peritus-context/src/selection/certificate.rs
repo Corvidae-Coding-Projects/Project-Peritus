@@ -1,4 +1,4 @@
-//! Transactional required-first and optional context planning.
+//! Independent deterministic replay certificate for a complete selection result.
 
 use super::SelectionPolicy;
 use super::closure::{admit_closure, closure_delta, dependency_closure, first_hidden, is_visible};
@@ -11,39 +11,14 @@ use vstd::prelude::*;
 
 verus! {
 
-/// Selects one complete deterministic plan or returns its exact first typed failure.
+/// Replays the complete selection state machine without calling the production constructor.
 ///
 /// # Errors
 ///
 /// Returns a typed error when required content is hidden or cannot fit, or checked arithmetic
 /// overflows. Optional failures are represented as atomic omission records in the successful plan.
-/// A certificate mismatch reports an internal construction fault rather than exposing an
-/// unverified result.
-pub fn select_context(
-    graph: &ContextGraph,
-    policy: &SelectionPolicy,
-    plan_id: ContextPlanId,
-) -> (result: Result<ContextPlan, ContextError>)
-    ensures match result {
-        Ok(plan) => {
-            &&& plan.spec_id() == plan_id
-            &&& plan.spec_respects_policy(policy)
-            &&& plan.spec_selected().len() <= graph.spec_nodes().len()
-            &&& plan.spec_selected().len() <= policy.spec_max_selected_nodes()
-        }
-        Err(_) => true,
-    },
-{
-    let candidate = construct_context_candidate(graph, policy, plan_id);
-    if super::certificate::selection_result_is_exact(graph, policy, plan_id, &candidate) {
-        candidate
-    } else {
-        Err(ContextError::plain(ContextErrorKind::SelectionCertificateMismatch))
-    }
-}
-
 #[allow(clippy::too_many_lines, reason = "required and optional phases share one atomic transaction")]
-fn construct_context_candidate(
+fn expected_selection(
     graph: &ContextGraph,
     policy: &SelectionPolicy,
     plan_id: ContextPlanId,
@@ -262,6 +237,20 @@ fn construct_context_candidate(
         return Err(ContextError::plain(ContextErrorKind::PlanNodeMissing));
     }
     Ok(plan)
+}
+
+/// Checks a candidate against the independent deterministic result for the same immutable inputs.
+///
+/// Equality covers the complete success plan and every field of the exact first error.
+#[must_use]
+pub fn selection_result_is_exact(
+    graph: &ContextGraph,
+    policy: &SelectionPolicy,
+    plan_id: ContextPlanId,
+    candidate: &Result<ContextPlan, ContextError>,
+) -> bool {
+    let expected = expected_selection(graph, policy, plan_id);
+    candidate == &expected
 }
 
 } // verus!

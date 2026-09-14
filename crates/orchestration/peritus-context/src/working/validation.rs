@@ -112,38 +112,85 @@ fn edges(entry: &WorkingEntry) -> Vec<ContextNodeId> {
     edges
 }
 
-pub(super) fn invalidate_entries(entries: &[WorkingEntry], environment: &WorkingEnvironment, through: u64) -> Vec<WorkingEntry> {
+pub(super) fn invalidate_entries(
+    entries: &[WorkingEntry],
+    environment: &WorkingEnvironment,
+    through: u64,
+) -> (result: Vec<WorkingEntry>)
+    ensures WorkingEntry::sequence_payload_equivalent(entries@, result@),
+{
+    proof {
+        reveal(WorkingEntry::sequence_payload_equivalent);
+        reveal(WorkingEntry::payload_equivalent);
+    }
     let mut result = Vec::new();
     let mut position = 0;
     while position < entries.len()
-        invariant position <= entries.len(), result.len() == position,
+        invariant
+            position <= entries.len(),
+            result.len() == position,
+            forall |prior: int| #![auto] 0 <= prior < position ==>
+                WorkingEntry::payload_equivalent(&entries@[prior], &result@[prior]),
         decreases entries.len() - position,
     {
-        result.push(entries[position].clone());
+        let cloned = entries[position].clone();
+        proof {
+            assert(WorkingEntry::payload_equivalent(
+                &entries@[position as int],
+                &cloned,
+            ));
+        }
+        result.push(cloned);
         position += 1;
     }
     let mut pass = 0;
     while pass < entries.len()
-        invariant pass <= entries.len(), result.len() == entries.len(),
+        invariant
+            pass <= entries.len(),
+            result.len() == entries.len(),
+            WorkingEntry::sequence_payload_equivalent(entries@, result@),
         decreases entries.len() - pass,
     {
         let mut changed = false;
         let mut index = 0;
         while index < result.len()
-            invariant index <= result.len(), result.len() == entries.len(),
+            invariant
+                index <= result.len(),
+                result.len() == entries.len(),
+                WorkingEntry::sequence_payload_equivalent(entries@, result@),
             decreases result.len() - index,
         {
+            let ghost before = result@[index as int];
+            proof {
+                assert(WorkingEntry::payload_equivalent(
+                    &entries@[index as int],
+                    &before,
+                ));
+            }
             if result[index].status == WorkingEntryStatus::Stale
                 && !result[index].validity.holds(environment)
             {
-                result[index].stale_through = through;
+                result[index] = result[index].clone().with_host_status(
+                    WorkingEntryStatus::Stale,
+                    through,
+                );
             }
             if !unusable(result[index].status)
                 && (!result[index].validity.holds(environment) || stale_dependency(&result, &result[index]))
             {
-                result[index].status = WorkingEntryStatus::Stale;
-                result[index].stale_through = through;
+                result[index] = result[index].clone().with_host_status(
+                    WorkingEntryStatus::Stale,
+                    through,
+                );
                 changed = true;
+            }
+            proof {
+                assert(WorkingEntry::payload_equivalent(&before, &result@[index as int]));
+                WorkingEntry::payload_transitive(
+                    &entries@[index as int],
+                    &before,
+                    &result@[index as int],
+                );
             }
             index += 1;
         }
