@@ -28,9 +28,9 @@
         "prefix_sha256": "21c4051e6a57903d94c7d0bc4352e52dd09eb90550e5fe258691ae3ded851039"
       },
       "oF4J": {
-        "sequence": 15,
-        "tip_oid": "3122b1ce2bd55e7e25b98c70fe55c3e24d3d2de1",
-        "prefix_sha256": "2ac3820eca98c71da020ab88d36f018f75a89a6588f98cf5b88beabc0f80adc3"
+        "sequence": 16,
+        "tip_oid": "829b74b87422287a1744eea3757e9825c6bb932c",
+        "prefix_sha256": "0c4852789936b96e03f67b41c51e0c788f1a0f06e5af43215b60e57a83af4865"
       },
       "p0bJ": {
         "sequence": 8,
@@ -40,7 +40,7 @@
     }
   },
   "next_display_id": 80,
-  "next_comment_id": 1593,
+  "next_comment_id": 1594,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -13381,7 +13381,7 @@
       "parent_uuid": "eb5c64d1-b12e-4ec5-8bae-6c66adc80c81",
       "created_by": "oF4J",
       "created_at": "2026-09-13T18:03:19.859472507Z",
-      "updated_at": "2026-09-14T01:25:24.058199061Z",
+      "updated_at": "2026-09-14T02:18:04.285028023Z",
       "comments": {
         "0dba7d45-9621-4b04-b084-bc010bbd4ce2": {
           "display_id": 1592,
@@ -13400,6 +13400,15 @@
           "kind": "note",
           "signed_by": "SHA256:6i1eQ/7kGjVq4DI4yUCBFk4bwyvvZOhSsWcR9SkdFok",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg/EnEj+fMMglOKHVSgF9XkfkH9og9l/fzQpIgYx0ARh4AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAN2Ni1Wb5GNqrMMZ/hAf69bW0hemx+liyg1h0zQEryoSk6pvEoo5ykJhWtFi3A/6+6NBxJkcwwd3cCrNbtmSFBA=="
+        },
+        "41b2a157-e31f-40ff-bc82-f764454a371d": {
+          "display_id": 1593,
+          "author": "oF4J",
+          "content": "Commit 4b1d7de4f retains the exact final-candidate technical PASS, proof-impact inventory (155 transitions; 66 packages; 132 gates), and complete package outputs. Ordinary package gates: 66/66 passed. Full Verus package gates: 66/66 passed. Final docs-check and SHA manifests pass. Protected-base PCR authorization remains a later governance step and is not claimed by this evidence commit.",
+          "created_at": "2026-09-14T02:18:04.270687840Z",
+          "kind": "result",
+          "signed_by": "SHA256:6i1eQ/7kGjVq4DI4yUCBFk4bwyvvZOhSsWcR9SkdFok",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg/EnEj+fMMglOKHVSgF9XkfkH9og9l/fzQpIgYx0ARh4AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAUARB7iyTb+k06RsdL8tRDML2bo7eoGRmXxjC2u48NPR1HkDFbRN8ui667dMtrvP4jBYxHwX5LJ02S1jrwVBdCw=="
         },
         "dd68881c-925b-4b86-a45a-9620a2cccca1": {
           "display_id": 1584,
