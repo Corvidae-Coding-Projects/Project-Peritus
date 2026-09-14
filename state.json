@@ -28,9 +28,9 @@
         "prefix_sha256": "21c4051e6a57903d94c7d0bc4352e52dd09eb90550e5fe258691ae3ded851039"
       },
       "oF4J": {
-        "sequence": 26,
-        "tip_oid": "b502f66eed2d498d32b8f44da4026a78dbafefde",
-        "prefix_sha256": "0c6e04a6a760a24a0bbd17e97918a7b74cb75f4a01ad5bfd4970015ed1ef6c1f"
+        "sequence": 27,
+        "tip_oid": "34a4299321cb6429523d673dd6804deb280668be",
+        "prefix_sha256": "edfa960311ba1f9f567b29586cb07801b9e28bd047d38e44e624c02ca790ff1d"
       },
       "p0bJ": {
         "sequence": 8,
@@ -341,12 +341,13 @@
       "display_id": 78,
       "title": "Continue: complete cancellation path proofs and qualification",
       "description": "Complete the production cancellation selector and update loop, exact acknowledgement and terminal release, rejection of late completion, caller tests, strict Verus at the unchanged pinned settings, negative proof probes and independent review. Source in feature/formal-scheduler-gap3; do not mark the parent GAP-03 complete. Current selectors pass479 verification items and latest scheduler tests pass70; whole update loop still has two pending proof checks.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "cfa4c5e9-a5ae-4fcd-843d-3cc1f600d723",
       "created_by": "oF4J",
       "created_at": "2026-09-13T21:05:25.626302514Z",
-      "updated_at": "2026-09-14T05:03:52.711377681Z",
+      "updated_at": "2026-09-14T05:04:13.259518765Z",
+      "closed_at": "2026-09-14T05:04:13.257636570Z",
       "comments": {
         "0e4229cd-effb-437b-b113-aa820e748450": {
           "display_id": 1590,
