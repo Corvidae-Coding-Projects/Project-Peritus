@@ -1,0 +1,15 @@
+{
+  "hub_version": 3,
+  "migrated_from_commit": "f4e7b70802b3dae750fbc1a1b0142539cb890561",
+  "migrated_at": "2026-09-14T04:53:54.207830637Z",
+  "genesis_checkpoint_commit": "22df2afa1a0278de04ee5a42e487a0db45778ea5",
+  "seed_agent_tips": {
+    "4jyS": "2cd921157947f5bee8def13c0eaa0561368d44c7",
+    "6ME5": "c980e3f3929d7ee2c3cc77b8c8d95f3dc3bc1c25",
+    "NWAR": "e855a71364514cddbc39a0e1837a040e0057e4a8",
+    "QWDj": "eefee33cb00632ffab74ce65d642a0e8424069bb",
+    "krvx": "79fdb27c3c0cca7ac2e10293a955eccc7b26134e",
+    "oF4J": "4e5ee5f76bc226ee286006bea118b8bd592369d8",
+    "p0bJ": "e51f780bd56183b884fc74c11a8cfd0d1caf55bd"
+  }
+}
