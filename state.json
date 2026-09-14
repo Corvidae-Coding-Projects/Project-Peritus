@@ -28,9 +28,9 @@
         "prefix_sha256": "21c4051e6a57903d94c7d0bc4352e52dd09eb90550e5fe258691ae3ded851039"
       },
       "oF4J": {
-        "sequence": 13,
-        "tip_oid": "2540db2e7400bcb316213de2262486241622dad0",
-        "prefix_sha256": "4b6f21b324f9dabe2fee45cca0161793c4270e14baa4d84f1b4896ba15aedf35"
+        "sequence": 14,
+        "tip_oid": "628afa1e0595cafce142782ea97c356cc59feec6",
+        "prefix_sha256": "ffe56dc572e283347fc104f1cd8f60f2736f64e4ec300acdf1315bc657d80b81"
       },
       "p0bJ": {
         "sequence": 8,
@@ -40,7 +40,7 @@
     }
   },
   "next_display_id": 80,
-  "next_comment_id": 1591,
+  "next_comment_id": 1592,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -345,7 +345,7 @@
       "parent_uuid": "cfa4c5e9-a5ae-4fcd-843d-3cc1f600d723",
       "created_by": "oF4J",
       "created_at": "2026-09-13T21:05:25.626302514Z",
-      "updated_at": "2026-09-13T23:50:36.210533452Z",
+      "updated_at": "2026-09-14T00:27:31.961798741Z",
       "comments": {
         "0e4229cd-effb-437b-b113-aa820e748450": {
           "display_id": 1590,
@@ -400,6 +400,15 @@
           "kind": "result",
           "signed_by": "SHA256:6i1eQ/7kGjVq4DI4yUCBFk4bwyvvZOhSsWcR9SkdFok",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg/EnEj+fMMglOKHVSgF9XkfkH9og9l/fzQpIgYx0ARh4AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA+Au9XNxFL9Q0UXb3ZpenneNXODzxK3r13QSVU8FJQgI0SreM6vuV5WNkuMeEqhtfFRjqBic54ibbvbZ592FSCA=="
+        },
+        "e8259c31-77fb-4018-bb18-7626df319736": {
+          "display_id": 1591,
+          "author": "oF4J",
+          "content": "Committed and pushed 5753da26b, feat(scheduler): verify refresh scans and finalization, to the existing draft PR77/develop. Final manifest228c binds176 scheduler paths, SHA f3682e9867d5e449f36c6db291a58244716d9df99af38c926adb3531af596aab. Final230c strictVerus628/0,229b tests79/0/0,231b strictClippy,226c format,227 architecture84/4554,232 ordinaryAPI3641/14764 and233 docs257 allPASS. Negative225 wrong worker counter fails its exact invariant; source restored byte-identically. Independent refresh/finalization reviews retained with author exclusions, source hashes and final evidence. All source and evidence hashes checked. Production dependency scan/collector, worker refresh and finalization split are qualified locally; per-round dependency updates/fixed-point, remaining command/selection and whole reducer/replay/caller, final inventory/trust and hosted qualification remain open. No merge or obligation discharge. User requested pragmatic closure of current patches; further drafts remain unintegrated and explicitly unqualified.",
+          "created_at": "2026-09-14T00:27:31.955477792Z",
+          "kind": "result",
+          "signed_by": "SHA256:6i1eQ/7kGjVq4DI4yUCBFk4bwyvvZOhSsWcR9SkdFok",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg/EnEj+fMMglOKHVSgF9XkfkH9og9l/fzQpIgYx0ARh4AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAvgHPIzWkPwGCNOeKqLUSustr1dTPI2vSlW/mNQIxLMawp6nnm8NKAogWH8WeUphzA7jlZm2mzpcPsHX3sM7mAQ=="
         }
       }
     },
