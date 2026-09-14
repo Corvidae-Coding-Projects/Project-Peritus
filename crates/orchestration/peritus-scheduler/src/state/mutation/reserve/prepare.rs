@@ -29,6 +29,7 @@ pub open spec fn preparation_matches(
     work_index: int,
     worker_index: int,
     dispatch_id: DispatchId,
+    dispatch_token: Sha256Digest,
     reservation: &SchedulerReservation,
 ) -> bool {
     &&& after.spec_binding().spec_limits() == before.spec_binding().spec_limits()
@@ -60,6 +61,7 @@ pub open spec fn preparation_matches(
     &&& reservation.spec_resources().spec_entries()
         == before.spec_work()[work_index]
             .spec_definition().spec_request().spec_entries()
+    &&& reservation.spec_dispatch_token() == dispatch_token
     &&& reservation.spec_attempt().spec_value()
         == after.spec_work()[work_index].spec_attempts_started()
     &&& !reservation.spec_started()
@@ -80,7 +82,7 @@ pub fn selected_reservation(
         match result {
             Some(reservation) => preparation_matches(
                 old(state), final(state), work_index as int, worker_index as int,
-                dispatch_id, &reservation,
+                dispatch_id, dispatch_token, &reservation,
             ),
             None => true,
         },
@@ -135,7 +137,7 @@ pub fn selected_reservation(
         reveal(preparation_matches);
         assert(preparation_matches(
             old(state), state, work_index as int, worker_index as int,
-            dispatch_id, &reservation,
+            dispatch_id, dispatch_token, &reservation,
         ));
         assert(before == old(state));
     }

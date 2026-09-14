@@ -39,6 +39,21 @@ pub fn reserve_selected_at(
         dispatch_admission_ready(
             old(state), work_index as int, worker_index as int, dispatch_id,
         ) ==> result.is_some() && final(state).spec_reservation_reducer_ready(),
+        match result {
+            Some(reservation) => {
+                &&& work_index < old(state).spec_work().len()
+                &&& worker_index < old(state).spec_workers().len()
+                &&& reservation.spec_work_id()
+                    == old(state).spec_work()[work_index as int]
+                        .spec_definition().spec_id()
+                &&& reservation.spec_dispatch_id() == dispatch_id
+                &&& reservation.spec_dispatch_token() == dispatch_token
+                &&& reservation.spec_worker_id()
+                    == old(state).spec_workers()[worker_index as int]
+                        .spec_descriptor().spec_id()
+            },
+            None => true,
+        },
 {
     let ghost before_binding = state.spec_binding();
     let ghost before_workers = state.spec_workers();

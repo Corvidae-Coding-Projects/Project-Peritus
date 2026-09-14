@@ -167,6 +167,29 @@ Earlier output 220, 223 and 224 records the preceding ordinary/proof checks; 226
 subsequently corrected import ordering. The per-round dependency applicator and complete
 fixed-point termination theorem are not part of this increment.
 
+## Final dependency, selection and reducer completion
+
+Manifest `257-final-scheduler-source.sha256` binds all 189 files in the scheduler package after
+the dependency fixed point, exact selector and dispatch adapter, pending-directive relation, and
+genesis/decision commitment seams were integrated. Its SHA-256 is
+`fe6b85f563ed3cbc6ca990b3e6e6d041734eb2592da0ba4a23416b911bd67240`.
+
+| Output | Final combined result |
+|---|---|
+| `251-final-combined-verus.log` | 693 verified, zero errors; no cheating and unchanged resource limit |
+| `252-final-scheduler-tests.log` | All 79 scheduler tests passed; zero failures or ignores |
+| `254-final-scheduler-clippy.log` | All-targets, all-features scheduler Clippy passed with warnings denied |
+| `253-final-format-check.log` | Workspace formatting passed |
+| `255-final-architecture-check.log` | 84 packages and 4,567 source files passed |
+| `256-final-ordinary-api-check.log` | 3,654 formal-boundary files and 14,765 ordinary-safe entry points passed |
+| `258-final-docs-check.log` | 257 documentation files passed |
+
+The retained tests cover exact replay and tamper rejection, durable restart/session callers,
+dispatch error precedence, dependency cascades, selection fairness, queue recovery and both wire
+schema versions. The proof contracts keep SHA-256 execution and encoded-size evaluation explicit
+ordinary boundaries. Final independent review, proof-impact reconciliation and current-head hosted
+qualification follow this frozen source checkpoint; historical records above remain unchanged.
+
 ## Rerunnable local checks
 
 Use the repository's pinned toolchains. These commands keep one build job; strict Verus uses

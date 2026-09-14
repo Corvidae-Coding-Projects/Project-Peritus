@@ -1,15 +1,15 @@
 # GAP-03 scheduler production proofs
 
-Status: in progress. This work starts from develop commit
+Status: candidate implementation locally qualified; proof-impact reconciliation and current-head
+hosted qualification remain in progress. This work starts from develop commit
 `a41113d1389c3d8fc77a00cc562cb9a5bcb7adc8`, after GAP-02 authorization and application.
-No scheduler obligation is discharged by this plan or by a passing helper proof.
 
 The complete scope is the GAP-03 row of [the stabilization checkpoint](formal-coverage-checkpoint.md),
 with the behavioral requirements in [the D3 design](../.design/d3-scheduler-collaboration.md).
 Local issue 77 tracks this work under the broader formal-verification campaign, issue 75.
 Issue 78 tracks cancellation qualification; issue 79 retains worker-loss and whole-transition
-composition. The current delivery is a bounded local checkpoint. It does not discharge GAP-03
-or replace final proof-impact authorization and hosted qualification.
+composition. This delivery closes the remaining production-code gaps targeted on draft PR 77.
+Final proof-impact authorization and hosted qualification are separate delivery gates.
 
 ## Required production relationships
 
@@ -454,21 +454,44 @@ Clippy, formatting, architecture and ordinary-API checks. Manifest `228c-refresh
 binds 176 scheduler paths relative to `8644a2d2b`; its SHA-256 is
 `f3682e9867d5e449f36c6db291a58244716d9df99af38c926adb3531af596aab`.
 
+### Dependency, selection and reducer completion increment
+
+Production dependency refresh now reaches a verified fixed point with a finite two-step budget per
+retained work item. Each immutable round has an exact action trace, preserves identity layout and
+unrelated state, and strictly reduces the natural WaitingDependencies/Queued measure on valid
+states. Production selection now proves the exact first feasible worker and exact aged, priority,
+enqueue-ordinal and work-identity ordering. The implementation retains the original concurrency
+short-circuit before resource scans.
+
+`DispatchNext` now passes through a production-called typed adapter that preserves the existing
+rejection order, error kinds and diagnostic strings and relates successful events to the exact
+selected work, worker, dispatch identity and token. Pending directives have an exact canonical
+reservation-order filter/map and configured batch cutoff for unacknowledged dispatch and
+cancellation effects. Production `start` and `decide` call verified preparation and commitment
+seams for genesis, cursor, digest and event construction. State-size checks, SHA-256 execution and
+semantic command application remain explicit ordinary boundaries.
+
+The final combined source passes 693 strict verification items and all 79 scheduler tests. Strict
+Clippy, formatting, architecture and ordinary-API checks pass. The tests include deterministic
+replay equality, tampered-history rejection, restart/session callers, dispatch rejection priority,
+dependency cascades, selection fairness and both scheduler wire versions. Manifest
+`257-final-scheduler-source.sha256` binds all 189 scheduler package files; its SHA-256 is
+`fe6b85f563ed3cbc6ca990b3e6e6d041734eb2592da0ba4a23416b911bd67240`.
+
 ## Remaining requirements on the draft
 
 | Requirement | What this checkpoint establishes | What remains open |
 |---|---|---|
-| Admission | Exact production work-admission state/event/rejection contract, worker descriptor and command-fence classifiers; retention, ordering and queue-pressure preservation | Remaining command admission, error wrappers, ordering producers and decoded-state composition |
-| Cancellation | Exact root/event and descendant updates; readiness, ordering and queue-bound preservation; root-to-completion/acknowledgement non-resurrection chain; public lifecycle regressions | Outer reducer/replay/caller relationships |
-| Worker loss | Exact owned-reservation selection, finite complete release trace, recovery outcomes, worker Lost update, ownership/resource constraints and queue-bound preservation; mixed-worker and rejection regressions | Exact rejection contracts, ordinary digest/error wrapper and whole reducer/caller composition |
-| Transitions and replay | Exact terminal summary and finalization prepare/commit, phase-control events, event-command reconstruction, cursor/digest mutations, transition fields/clone, dependency scan/collection and complete worker refresh; public replay regressions | Remaining command successors, dispatch selection, dependency update/fixed-point composition and whole replay/caller relationships; digest/codec boundaries |
-| Termination | Checked decreases on the classifiers, cancellation closure/update, worker-loss batch, dependency scans, complete worker refresh, finalization admission and reservation counting | Dependency update/fixed-point, remaining selection and replay loops |
-| Delivery | Bounded independent agent reviews and retained local qualification | Current source inventory/fingerprints, protected authorization/trust and final hosted workflows |
+| Admission | Exact work admission, dispatch selection/rejection, command fences, canonical retention and queue pressure; unchanged error mapping | State-size and hashing execution remain ordinary checked boundaries |
+| Cancellation | Exact root/event and descendant updates, queue/readiness preservation and non-resurrection; public lifecycle and replay regressions | Cryptographic digest execution remains an ordinary boundary |
+| Worker loss | Complete finite release trace, exact recovery outcomes, worker/event changes and ownership/resource/queue preservation | Cryptographic loss-cause digest execution remains an ordinary boundary |
+| Transitions and replay | Exact terminal, phase, dependency fixed point, selection, pending directives, genesis/cursor/digest/event commitment and reconstruction contracts; deterministic replay and caller regressions | Replay's standard-library set membership and event equality are validated by executable tests rather than a new Verus model |
+| Termination | Checked decreases for classifiers, cancellation, worker loss, dependency fixed point, selection, refresh, finalization and directive loops | External worker progress is outside the pure scheduler |
+| Delivery | Frozen source manifest and complete local scheduler qualification | Independent final review, reconciled fingerprints/authorization/trust and current-head hosted workflows |
 
 The existing CI/checker implementation from GAP-02 remains in place. No branch protection,
 maintainer self-merge permission, historical approval or obligation status changes in this
-checkpoint. Broader work is listed here so this local result can be reviewed without implying
-that every scheduler behavior has a complete proof.
+checkpoint.
 
 ## Verification and evidence
 

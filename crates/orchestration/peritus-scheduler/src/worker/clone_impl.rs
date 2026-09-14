@@ -116,6 +116,7 @@ impl SchedulerReservation {
             result.spec_attempt() == attempt,
             result.spec_revision() == revision,
             result.spec_resources().spec_entries() == resources.spec_entries(),
+            result.spec_dispatch_token() == dispatch_token,
             !result.spec_started(),
     {
         Self {

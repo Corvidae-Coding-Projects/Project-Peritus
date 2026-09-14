@@ -3,6 +3,9 @@
 mod acknowledge_start;
 mod cursor;
 mod dependency_action;
+mod dependency_budget;
+#[cfg(verus_only)]
+mod dependency_measure;
 mod dependency_round;
 mod entity_insertion;
 mod insertion_slots;
@@ -21,6 +24,8 @@ pub use acknowledge_start::acknowledge_reservation_start;
 #[cfg(verus_only)]
 pub(crate) use acknowledge_start::start_target_exists;
 pub use cursor::{advance_cursor, set_state_digest};
+#[cfg(verus_only)]
+pub(crate) use cursor::{cursor_preserves_other_state, digest_preserves_other_state};
 pub use entity_insertion::{insert_work, insert_worker};
 pub use reservation_command::{
     AbandonCommandOutcome, AcknowledgeCancellationOutcome, AcknowledgeStartOutcome,
@@ -63,17 +68,12 @@ pub(crate) use worker_update::{
     worker_phase_state_matches, worker_phase_update_matches, worker_update_preserves_other_state,
 };
 
-use crate::{
-    DispatchId, SchedulerPhase, SchedulerReservation, SchedulerState, WorkPhase, WorkTerminal,
-};
-use dependency_action::DependencyAction;
+use crate::{DispatchId, SchedulerPhase, SchedulerReservation, SchedulerState};
 use insertion_slots::{dispatch_slot, reservation_slot};
 use vstd::prelude::*;
 use worker_refresh::refresh_worker_phases;
 
 verus! {
-
-
 pub fn insert_reservation(state: &mut SchedulerState, value: SchedulerReservation)
     ensures
         exists |at: int| #![auto]
@@ -258,31 +258,143 @@ pub const fn set_phase(state: &mut SchedulerState, phase: SchedulerPhase)
 
 } // verus!
 
-pub fn refresh(state: &mut SchedulerState) {
+verus! {
+
+pub fn refresh(state: &mut SchedulerState)
+    ensures
+        old(state).spec_reservation_reducer_ready()
+                && old(state).spec_collections_ordered()
+            ==> {
+                &&& final(state).spec_reservation_reducer_ready()
+                &&& final(state).spec_collections_ordered()
+                &&& dependency_round::dependency_fixed_point(final(state))
+            },
+        old(state).spec_reservation_reducer_ready()
+                && old(state).spec_collections_ordered()
+                && crate::state::queue::queue_bound(old(state))
+            ==> crate::state::queue::queue_bound(final(state)),
+{
+    let ghost initial = *state;
     propagate_dependencies(state);
+    let ghost dependencies_refreshed = *state;
     refresh_worker_phases(state);
+    proof {
+        if initial.spec_reservation_reducer_ready()
+            && initial.spec_collections_ordered()
+        {
+            reveal(worker_update_preserves_other_state);
+            dependency_round::fixed_point_preserved_by_same_work(
+                &dependencies_refreshed,
+                state,
+            );
+        }
+    };
 }
 
-fn propagate_dependencies(state: &mut SchedulerState) {
-    loop {
-        let changes = dependency_round::collect_dependency_changes(state);
-        if changes.is_empty() {
-            break;
-        }
-        for change in changes {
-            match change.action() {
-                DependencyAction::NoChange => {}
-                DependencyAction::Failed { dependency } => {
-                    let _ = terminalize_work(
-                        state,
-                        change.work_id(),
-                        WorkTerminal::DependencyFailed { dependency },
-                    );
-                }
-                DependencyAction::Ready => {
-                    let _ = set_work_phase(state, change.work_id(), WorkPhase::Queued);
-                }
+fn propagate_dependencies(state: &mut SchedulerState)
+    ensures
+        old(state).spec_reservation_reducer_ready()
+                && old(state).spec_collections_ordered()
+            ==> {
+                &&& final(state).spec_reservation_reducer_ready()
+                &&& final(state).spec_collections_ordered()
+                &&& dependency_round::dependency_fixed_point(final(state))
+            },
+        old(state).spec_reservation_reducer_ready()
+                && old(state).spec_collections_ordered()
+                && crate::state::queue::queue_bound(old(state))
+            ==> crate::state::queue::queue_bound(final(state)),
+        work_update_preserves_other_state(old(state), final(state)),
+        dependency_round::work_id_layout_matches(
+            old(state).spec_work(), final(state).spec_work(),
+        ),
+{
+    let ghost initial = *state;
+    let ghost valid = state.spec_reservation_reducer_ready()
+        && state.spec_collections_ordered();
+    let ghost had_queue_bound = crate::state::queue::queue_bound(state);
+    let mut remaining = state.work().len();
+    let mut second_half = false;
+    proof {
+        reveal(work_update_preserves_other_state);
+        reveal(dependency_round::work_id_layout_matches);
+        dependency_measure::dependency_measure_is_bounded(initial.spec_work());
+        assert(dependency_measure::dependency_measure(state.spec_work())
+            < dependency_budget::dependency_budget(remaining as nat, second_half));
+    };
+    while remaining > 0
+        invariant
+            valid == (
+                old(state).spec_reservation_reducer_ready()
+                    && old(state).spec_collections_ordered()
+            ),
+            had_queue_bound == crate::state::queue::queue_bound(old(state)),
+            valid ==> state.spec_reservation_reducer_ready(),
+            valid ==> state.spec_collections_ordered(),
+            valid && had_queue_bound ==> crate::state::queue::queue_bound(state),
+            work_update_preserves_other_state(old(state), state),
+            dependency_round::work_id_layout_matches(
+                old(state).spec_work(), state.spec_work(),
+            ),
+            remaining <= initial.spec_work().len(),
+            second_half ==> remaining > 0,
+            valid ==> dependency_measure::dependency_measure(state.spec_work())
+                < dependency_budget::dependency_budget(remaining as nat, second_half),
+        decreases dependency_budget::dependency_budget(remaining as nat, second_half),
+    {
+        let ghost before = *state;
+        let changed = dependency_round::apply_dependency_round(state);
+        proof {
+            reveal(work_update_preserves_other_state);
+            reveal(dependency_round::work_id_layout_matches);
+            assert forall |index: int| #![trigger old(state).spec_work()[index]]
+                0 <= index < old(state).spec_work().len() implies
+                    state.spec_work()[index].spec_definition().spec_id()
+                        == old(state).spec_work()[index].spec_definition().spec_id() by {
+                assert(before.spec_work()[index].spec_definition().spec_id()
+                    == old(state).spec_work()[index].spec_definition().spec_id());
             }
+        };
+        if !changed {
+            proof {
+                if valid {
+                    assert(before.spec_reservation_reducer_ready());
+                    assert(before.spec_collections_ordered());
+                    assert(state.spec_reservation_reducer_ready());
+                    assert(state.spec_collections_ordered());
+                    if had_queue_bound {
+                        assert(crate::state::queue::queue_bound(&before));
+                        assert(crate::state::queue::queue_bound(state));
+                    }
+                    assert(dependency_round::dependency_fixed_point(state));
+                }
+                assert(work_update_preserves_other_state(old(state), state));
+                assert(dependency_round::work_id_layout_matches(
+                    old(state).spec_work(), state.spec_work(),
+                ));
+            };
+            return;
         }
+        proof {
+            if valid {
+                assert(dependency_measure::dependency_measure(state.spec_work())
+                    < dependency_measure::dependency_measure(before.spec_work()));
+            }
+        };
+        dependency_budget::consume(&mut remaining, &mut second_half);
+        proof {
+            if valid {
+                assert(dependency_measure::dependency_measure(state.spec_work())
+                    < dependency_budget::dependency_budget(remaining as nat, second_half));
+            }
+        };
     }
+    proof {
+        assert(remaining == 0);
+        if valid {
+            dependency_measure::propagation_is_complete(state, remaining as nat, second_half);
+        }
+    };
 }
+
+} // verus!

@@ -295,6 +295,8 @@ pub(super) fn global_fits_after(
     request: &ResourceVector,
 ) -> (result: bool)
     ensures
+        state.spec_reservations().len() <= 4_096 ==>
+            result == global_entries_fit_after(state, request.spec_entries()),
         state.spec_reservation_invariant() && result ==>
             global_entries_fit_after(state, request.spec_entries()),
 {
@@ -313,6 +315,8 @@ pub(super) fn worker_fits_after(
     request: &ResourceVector,
 ) -> (result: bool)
     ensures
+        state.spec_reservations().len() <= 4_096 ==>
+            result == worker_entries_fit_after(state, worker, capacity, request.spec_entries()),
         state.spec_reservation_invariant() && result ==>
             worker_entries_fit_after(state, worker, capacity, request.spec_entries()),
 {

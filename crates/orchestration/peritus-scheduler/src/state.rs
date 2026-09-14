@@ -39,6 +39,11 @@ pub enum SchedulerPhase {
 
 verus! {
 
+/// Exact mathematical projection of the reserved all-zero digest value.
+pub(crate) open spec fn digest_is_zero(digest: Sha256Digest) -> bool {
+    forall |index: int| 0 <= index < 32 ==> digest.spec_bytes()[index] == 0
+}
+
 /// Complete deterministic replayable scheduler aggregate.
 #[derive(Debug, Eq, PartialEq)]
 pub struct SchedulerState {
@@ -161,7 +166,13 @@ impl SchedulerState {
             result.spec_work() == Seq::<WorkRecord>::empty(),
             result.spec_reservations() == Seq::<SchedulerReservation>::empty(),
             result.spec_used_dispatches() == Seq::<DispatchId>::empty(),
+            result.spec_sequence().spec_value() == 1,
+            result.spec_last_event_id() == event_id,
+            digest_is_zero(result.spec_state_digest()),
+            result.spec_enqueue_ordinal() == 0,
             result.spec_dispatch_ordinal() == 0,
+            result.spec_used_commands() == Seq::<CommandId>::empty().push(command_id),
+            result.spec_terminal().is_none(),
     {
         let used_commands = vec![command_id];
         let result = Self {
@@ -204,6 +215,9 @@ impl SchedulerState {
                 );
             }
             assert(result.spec_reservation_reducer_ready());
+            assert forall |index: int| 0 <= index < 32 implies
+                result.spec_state_digest().spec_bytes()[index] == 0 by {
+            }
         }
         result
     }

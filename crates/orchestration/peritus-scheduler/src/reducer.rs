@@ -1,16 +1,18 @@
 //! Pure deterministic scheduler reduction and exact replay.
 
 mod apply;
+mod decision;
 mod fences;
 mod reconstruction;
+mod start;
 
 use std::collections::BTreeSet;
 
-use peritus_types::{EventSequence, Sha256Digest};
+use peritus_types::Sha256Digest;
 
 use crate::{
     SchedulerCommand, SchedulerCommandKind, SchedulerError, SchedulerErrorKind, SchedulerEvent,
-    SchedulerEventKind, SchedulerState, SchedulerTransition,
+    SchedulerState, SchedulerTransition,
 };
 
 use apply::apply;
@@ -37,8 +39,7 @@ pub fn start(command: &SchedulerCommand) -> Result<SchedulerTransition, Schedule
             "scheduler genesis differs from its exact binding or fences",
         ));
     }
-    let mut state =
-        SchedulerState::genesis(binding.clone(), command.event_id(), command.command_id());
+    let mut state = start::prepare_genesis(binding, command.event_id(), command.command_id());
     if state.estimated_encoded_bytes() > binding.limits().state_bytes() {
         return Err(crate::error::reject(
             SchedulerErrorKind::LimitExceeded,
@@ -46,19 +47,7 @@ pub fn start(command: &SchedulerCommand) -> Result<SchedulerTransition, Schedule
         ));
     }
     let successor = crate::canonical::state_digest(&state);
-    crate::state::mutation::set_state_digest(&mut state, successor);
-    let event = SchedulerEvent::from_wire(
-        command.semantics(),
-        command.event_id(),
-        command.command_id(),
-        EventSequence::first(),
-        None,
-        command.run_id(),
-        command.revision(),
-        Sha256Digest::new([0; 32]),
-        successor,
-        SchedulerEventKind::SchedulerStarted { binding: binding.clone() },
-    );
+    let event = start::commit_genesis(command, binding, &mut state, successor);
     Ok(SchedulerTransition::new(event, state))
 }
 
@@ -87,26 +76,9 @@ pub fn decide(
             "scheduler successor exceeds its immutable state-byte bound",
         ));
     }
-    crate::state::mutation::advance_cursor(
-        &mut successor,
-        sequence,
-        command.event_id(),
-        command.command_id(),
-    );
+    decision::prepare_cursor(&mut successor, sequence, command.event_id(), command.command_id());
     let successor_digest = crate::canonical::state_digest(&successor);
-    crate::state::mutation::set_state_digest(&mut successor, successor_digest);
-    let event = SchedulerEvent::from_wire(
-        command.semantics(),
-        command.event_id(),
-        command.command_id(),
-        sequence,
-        Some(state.last_event_id()),
-        command.run_id(),
-        command.revision(),
-        state.state_digest(),
-        successor_digest,
-        kind,
-    );
+    let event = decision::commit_event(state, command, &mut successor, kind, successor_digest);
     Ok(SchedulerTransition::new(event, successor))
 }
 

@@ -83,6 +83,11 @@ impl SchedulerLimits {
     /// Returns the mathematical waiting-work ceiling.
     pub closed spec fn spec_queued_work(&self) -> u32 { self.queued_work }
 
+    /// Returns the mathematical runtime-directive batch ceiling.
+    pub closed spec fn spec_dispatch_batch_size(&self) -> u16 {
+        self.dispatch_batch_size
+    }
+
     /// Maximum simultaneously queued work.
     #[must_use]
     pub const fn queued_work(self) -> (result: u32)
@@ -113,6 +118,14 @@ impl SchedulerLimits {
         ensures result == self.spec_bypass_count(),
     {
         self.bypass_count
+    }
+
+    /// Maximum directives returned by one runtime poll.
+    #[must_use]
+    pub const fn dispatch_batch_size(self) -> (result: u16)
+        ensures result == self.spec_dispatch_batch_size(),
+    {
+        self.dispatch_batch_size
     }
 }
 
@@ -245,11 +258,6 @@ impl SchedulerLimits {
     #[must_use]
     pub const fn attempts_per_work(self) -> u16 {
         self.attempts_per_work
-    }
-    /// Maximum directives returned by one runtime poll.
-    #[must_use]
-    pub const fn dispatch_batch_size(self) -> u16 {
-        self.dispatch_batch_size
     }
     /// Maximum command/event payload bytes.
     #[must_use]

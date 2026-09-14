@@ -12,7 +12,7 @@ use peritus_codec::sha256;
 use crate::state::mutation;
 use crate::{
     DispatchId, SchedulerCommandKind, SchedulerError, SchedulerErrorKind, SchedulerEventKind,
-    SchedulerPhase, SchedulerState, WorkSpec,
+    SchedulerState, WorkSpec,
 };
 
 pub(super) fn apply(
@@ -110,11 +110,11 @@ fn dispatch(
     dispatch_id: DispatchId,
     token: peritus_types::Sha256Digest,
 ) -> Result<SchedulerEventKind, SchedulerError> {
-    if !matches!(state.phase(), SchedulerPhase::Active | SchedulerPhase::Draining) {
-        return Err(super::illegal("scheduler dispatch is paused"));
-    }
-    match dispatch::reserve_next(state, dispatch_id, token) {
-        Ok(reservation) => Ok(SchedulerEventKind::WorkReserved { reservation }),
+    match dispatch::apply_command(state, dispatch_id, token) {
+        Ok(event) => Ok(event),
+        Err(dispatch::DispatchRejection::Paused) => {
+            Err(super::illegal("scheduler dispatch is paused"))
+        }
         Err(dispatch::DispatchRejection::ActiveLimit) => {
             Err(limit("active reservation limit reached"))
         }
