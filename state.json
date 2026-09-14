@@ -28,9 +28,9 @@
         "prefix_sha256": "21c4051e6a57903d94c7d0bc4352e52dd09eb90550e5fe258691ae3ded851039"
       },
       "oF4J": {
-        "sequence": 14,
-        "tip_oid": "628afa1e0595cafce142782ea97c356cc59feec6",
-        "prefix_sha256": "ffe56dc572e283347fc104f1cd8f60f2736f64e4ec300acdf1315bc657d80b81"
+        "sequence": 15,
+        "tip_oid": "3122b1ce2bd55e7e25b98c70fe55c3e24d3d2de1",
+        "prefix_sha256": "2ac3820eca98c71da020ab88d36f018f75a89a6588f98cf5b88beabc0f80adc3"
       },
       "p0bJ": {
         "sequence": 8,
@@ -40,7 +40,7 @@
     }
   },
   "next_display_id": 80,
-  "next_comment_id": 1592,
+  "next_comment_id": 1593,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -13381,8 +13381,17 @@
       "parent_uuid": "eb5c64d1-b12e-4ec5-8bae-6c66adc80c81",
       "created_by": "oF4J",
       "created_at": "2026-09-13T18:03:19.859472507Z",
-      "updated_at": "2026-09-13T20:50:16.144979190Z",
+      "updated_at": "2026-09-14T01:25:24.058199061Z",
       "comments": {
+        "0dba7d45-9621-4b04-b084-bc010bbd4ce2": {
+          "display_id": 1592,
+          "author": "oF4J",
+          "content": "Commit 5d739de29 proof(scheduler): close remaining GAP-03 code gaps. Strict scheduler Verus 693/0; all 79 scheduler tests passed; strict Clippy, formatting, architecture, ordinary API, docs, and source/evidence digest checks passed. Candidate frozen for independent review and proof-impact reconciliation.",
+          "created_at": "2026-09-14T01:25:24.051235530Z",
+          "kind": "result",
+          "signed_by": "SHA256:6i1eQ/7kGjVq4DI4yUCBFk4bwyvvZOhSsWcR9SkdFok",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg/EnEj+fMMglOKHVSgF9XkfkH9og9l/fzQpIgYx0ARh4AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAxxRtSzDY849DbxAle4VNXVeKwGr6Uncrm+Q3qqDjOCURlHGPoszzHlGXUIXn5VVmbYPbvamnZks+BdJpUg+fDg=="
+        },
         "3282c53f-adb9-4997-a5bc-1b869d530b80": {
           "display_id": 1583,
           "author": "oF4J",
