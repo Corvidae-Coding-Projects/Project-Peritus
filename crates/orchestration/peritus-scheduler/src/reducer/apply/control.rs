@@ -1,11 +1,9 @@
 //! Cancellation, pause/drain, abandonment, exhaustion, and terminal control.
 
 use crate::state::mutation;
-use crate::{
-    SchedulerError, SchedulerErrorKind, SchedulerEventKind, SchedulerState, SchedulerTerminal,
-    WorkId,
-};
+use crate::{SchedulerError, SchedulerErrorKind, SchedulerEventKind, SchedulerState, WorkId};
 
+mod finalization;
 mod phase;
 
 pub(super) fn cancel(
@@ -125,14 +123,13 @@ pub(super) fn scheduler_phase(
 }
 
 pub(super) fn finalize(state: &mut SchedulerState) -> Result<SchedulerEventKind, SchedulerError> {
-    if !state.all_work_terminal() || !state.reservations().is_empty() {
-        return Err(crate::reducer::illegal(
-            "scheduler cannot finalize with nonterminal work or directives",
-        ));
-    }
-    let terminal = SchedulerTerminal::evaluate(state.work());
-    mutation::set_terminal(state, terminal.clone());
-    Ok(SchedulerEventKind::SchedulerFinalized { terminal })
+    let plan = finalization::prepare(state).map_err(|reason| match reason {
+        finalization::FinalizationRejection::NonterminalWorkOrReservations => {
+            crate::reducer::illegal("scheduler cannot finalize with nonterminal work or directives")
+        }
+    })?;
+    let digest = crate::canonical::terminal_digest(plan.digest_input());
+    Ok(finalization::commit(state, plan, digest))
 }
 
 fn unknown(detail: &'static str) -> SchedulerError {

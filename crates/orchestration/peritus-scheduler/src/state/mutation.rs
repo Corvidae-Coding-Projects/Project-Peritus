@@ -2,6 +2,8 @@
 
 mod acknowledge_start;
 mod cursor;
+mod dependency_action;
+mod dependency_round;
 mod entity_insertion;
 mod insertion_slots;
 mod reservation_command;
@@ -9,8 +11,10 @@ mod reservation_remove;
 mod reservation_update;
 mod reserve;
 mod scheduler_phase;
+mod set_terminal;
 mod work_command;
 mod work_update;
+mod worker_refresh;
 mod worker_update;
 
 pub use acknowledge_start::acknowledge_reservation_start;
@@ -39,6 +43,7 @@ pub use reserve::reserve_selected_at;
 #[cfg(verus_only)]
 pub(crate) use scheduler_phase::phase_command_matches;
 pub use scheduler_phase::{PhaseCommandOutcome, apply_phase_command};
+pub use set_terminal::set_terminal;
 pub use work_command::{
     ExhaustCommandOutcome, RetryCommandOutcome, apply_exhaust_command, apply_retry_command,
 };
@@ -59,11 +64,12 @@ pub(crate) use worker_update::{
 };
 
 use crate::{
-    DispatchId, SchedulerPhase, SchedulerReservation, SchedulerState, SchedulerTerminal, WorkPhase,
-    WorkRecord, WorkTerminal, WorkerPhase,
+    DispatchId, SchedulerPhase, SchedulerReservation, SchedulerState, WorkPhase, WorkTerminal,
 };
+use dependency_action::DependencyAction;
 use insertion_slots::{dispatch_slot, reservation_slot};
 use vstd::prelude::*;
+use worker_refresh::refresh_worker_phases;
 
 verus! {
 
@@ -250,17 +256,6 @@ pub const fn set_phase(state: &mut SchedulerState, phase: SchedulerPhase)
     state.phase = phase;
 }
 
-pub fn set_terminal(state: &mut SchedulerState, terminal: SchedulerTerminal)
-    ensures
-        old(state).spec_reservation_invariant()
-            ==> final(state).spec_reservation_invariant(),
-        old(state).spec_reservation_reducer_ready()
-            ==> final(state).spec_reservation_reducer_ready(),
-{
-    state.phase = SchedulerPhase::Terminal;
-    state.terminal = Some(terminal);
-}
-
 } // verus!
 
 pub fn refresh(state: &mut SchedulerState) {
@@ -270,60 +265,24 @@ pub fn refresh(state: &mut SchedulerState) {
 
 fn propagate_dependencies(state: &mut SchedulerState) {
     loop {
-        let mut changes = Vec::new();
-        for record in &state.work {
-            if !matches!(record.phase(), WorkPhase::WaitingDependencies | WorkPhase::Queued) {
-                continue;
-            }
-            let mut failed = None;
-            let mut all_success = true;
-            for dependency in record.spec().dependencies() {
-                let observed = state.work_item(*dependency);
-                match observed.and_then(WorkRecord::terminal) {
-                    Some(WorkTerminal::Succeeded { .. }) => {}
-                    Some(_) => {
-                        failed = Some(*dependency);
-                        break;
-                    }
-                    None => all_success = false,
-                }
-            }
-            if let Some(dependency) = failed {
-                changes.push((record.spec().id(), Some(dependency)));
-            } else if all_success && record.phase() == WorkPhase::WaitingDependencies {
-                changes.push((record.spec().id(), None));
-            }
-        }
+        let changes = dependency_round::collect_dependency_changes(state);
         if changes.is_empty() {
             break;
         }
-        for (id, failed) in changes {
-            if let Some(dependency) = failed {
-                let _ = terminalize_work(state, id, WorkTerminal::DependencyFailed { dependency });
-            } else {
-                let _ = set_work_phase(state, id, WorkPhase::Queued);
+        for change in changes {
+            match change.action() {
+                DependencyAction::NoChange => {}
+                DependencyAction::Failed { dependency } => {
+                    let _ = terminalize_work(
+                        state,
+                        change.work_id(),
+                        WorkTerminal::DependencyFailed { dependency },
+                    );
+                }
+                DependencyAction::Ready => {
+                    let _ = set_work_phase(state, change.work_id(), WorkPhase::Queued);
+                }
             }
         }
-    }
-}
-
-fn refresh_worker_phases(state: &mut SchedulerState) {
-    let ids: Vec<_> = state.workers.iter().map(|worker| worker.descriptor().id()).collect();
-    for id in ids {
-        let Some(worker) = state.worker(id) else { continue };
-        if matches!(
-            worker.phase(),
-            WorkerPhase::Draining | WorkerPhase::Lost | WorkerPhase::Removed
-        ) {
-            continue;
-        }
-        let active =
-            state.reservations.iter().filter(|reservation| reservation.worker_id() == id).count();
-        let phase = if active >= usize::from(worker.descriptor().concurrency()) {
-            WorkerPhase::Busy
-        } else {
-            WorkerPhase::Available
-        };
-        let _ = set_worker_phase(state, id, phase);
     }
 }

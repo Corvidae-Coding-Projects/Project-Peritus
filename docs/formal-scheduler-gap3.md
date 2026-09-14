@@ -415,6 +415,45 @@ The [cancellation/reconstruction review](formal-scheduler-gap3/cancellation-reco
 reviewers and author exclusions. These bounded technical reviews are not human approvals or
 final protected authorization.
 
+### Dependency scanning, worker refresh and finalization increment
+
+Dependency propagation now calls a verified scan and ordered change collector. The scan handles
+missing and nonterminal dependencies, chooses the first failed dependency in specification order,
+and makes waiting work ready only when every dependency succeeded. The collector emits exactly
+the actionable records in retained work order. Their loops terminate. The outer dependency update
+and fixed-point loop still require composition and a termination proof; this increment does not
+claim that a passing scan proves that whole loop.
+
+On ready, ordered scheduler states, the actual worker refresh loop now proves every final phase
+from the original reservation snapshot. Draining, Lost and Removed workers remain unchanged;
+other workers are Busy exactly
+when owned reservations reach concurrency, including ownership retained during cancellation.
+Descriptors, unrelated scheduler fields, readiness, ordering and queue bounds are preserved.
+The reused reservation counter now uses a reverse-index loop with its existing exact contract,
+preserving constant stack use instead of introducing recursive counting into refresh.
+
+Finalization retains its exact existing admission and error order. A read-only prepare pass
+checks terminal work and empty reservations, then summarizes work once. The ordinary adapter
+hashes that summary once; the verified commit installs the supplied digest and exact summary in
+both state and event, changing only scheduler phase and terminal fields. The prepared-summary
+clause is conditional on the plan matching the input work; the immediate production
+prepare/hash/commit path supplies that premise without an intervening state mutation. Cryptographic
+execution and the outer reducer remain explicit boundaries.
+
+Public regressions exercise reverse-identity dependency cascades, deterministic first failure,
+the Available/Busy concurrency threshold, cancellation retaining ownership until acknowledgement,
+unchanged inactive workers and exact replay. Inverting the counter's worker predicate fails its
+exact loop invariant; the original source is restored byte-for-byte before final qualification.
+The [refresh review](formal-scheduler-gap3/refresh-review.md) and
+[finalization review](formal-scheduler-gap3/finalization-review.md) identify independent reviewers
+and their author exclusions. Retained final evidence and source identities are listed in
+[the evidence directory](formal-scheduler-gap3/evidence/README.md).
+
+Final qualification passes 628 strict verification items and all 79 scheduler tests, strict
+Clippy, formatting, architecture and ordinary-API checks. Manifest `228c-refresh-source.sha256`
+binds 176 scheduler paths relative to `8644a2d2b`; its SHA-256 is
+`f3682e9867d5e449f36c6db291a58244716d9df99af38c926adb3531af596aab`.
+
 ## Remaining requirements on the draft
 
 | Requirement | What this checkpoint establishes | What remains open |
@@ -422,8 +461,8 @@ final protected authorization.
 | Admission | Exact production work-admission state/event/rejection contract, worker descriptor and command-fence classifiers; retention, ordering and queue-pressure preservation | Remaining command admission, error wrappers, ordering producers and decoded-state composition |
 | Cancellation | Exact root/event and descendant updates; readiness, ordering and queue-bound preservation; root-to-completion/acknowledgement non-resurrection chain; public lifecycle regressions | Outer reducer/replay/caller relationships |
 | Worker loss | Exact owned-reservation selection, finite complete release trace, recovery outcomes, worker Lost update, ownership/resource constraints and queue-bound preservation; mixed-worker and rejection regressions | Exact rejection contracts, ordinary digest/error wrapper and whole reducer/caller composition |
-| Transitions and replay | Exact terminal summary, phase-control state/events, event-command reconstruction, cursor/digest mutations and transition fields/clone; historical and tampered-history regressions | Remaining command successors, dispatch selection, dependency/worker refresh, finalization and whole replay/caller relationships; digest/codec boundaries |
-| Termination | Checked decreases on the classifiers, cancellation closure/update, complete worker-loss loop and relevant primitives | Remaining refresh, selection and replay loops |
+| Transitions and replay | Exact terminal summary and finalization prepare/commit, phase-control events, event-command reconstruction, cursor/digest mutations, transition fields/clone, dependency scan/collection and complete worker refresh; public replay regressions | Remaining command successors, dispatch selection, dependency update/fixed-point composition and whole replay/caller relationships; digest/codec boundaries |
+| Termination | Checked decreases on the classifiers, cancellation closure/update, worker-loss batch, dependency scans, complete worker refresh, finalization admission and reservation counting | Dependency update/fixed-point, remaining selection and replay loops |
 | Delivery | Bounded independent agent reviews and retained local qualification | Current source inventory/fingerprints, protected authorization/trust and final hosted workflows |
 
 The existing CI/checker implementation from GAP-02 remains in place. No branch protection,

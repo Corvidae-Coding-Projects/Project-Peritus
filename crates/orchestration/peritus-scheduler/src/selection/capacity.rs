@@ -61,26 +61,41 @@ fn worker_count_from(
                 worker,
             ),
         result <= reservations.len() - index,
-    decreases reservations@.len() - index,
 {
-    if index == reservations.len() {
-        proof {
-            assert(reservations@.subrange(index as int, reservations@.len() as int).len() == 0);
-        }
-        0
-    } else {
-        let ghost suffix = reservations@.subrange(index as int, reservations@.len() as int);
-        assert(suffix.len() > 0);
-        assert(suffix.first() == reservations@[index as int]);
-        assert(suffix.drop_first()
-            =~= reservations@.subrange(index as int + 1, reservations@.len() as int));
-        let tail = worker_count_from(reservations, index + 1, worker);
-        if reservations[index].worker_id().same(&worker) {
-            tail + 1
-        } else {
-            tail
-        }
+    let mut cursor = reservations.len();
+    let mut result = 0;
+    proof {
+        assert(reservations@.subrange(cursor as int, reservations@.len() as int).len() == 0);
     }
+    while index < cursor
+        invariant
+            index <= cursor <= reservations@.len(),
+            result as int
+                == crate::verified::worker_count(
+                    reservations@.subrange(cursor as int, reservations@.len() as int),
+                    worker,
+                ),
+            result <= reservations.len() - cursor,
+        decreases cursor - index,
+    {
+        let ghost previous_cursor = cursor;
+        cursor -= 1;
+        let ghost suffix = reservations@.subrange(cursor as int, reservations@.len() as int);
+        proof {
+            assert(previous_cursor == cursor + 1);
+            assert(suffix.len() > 0);
+            assert(suffix.first() == reservations@[cursor as int]);
+            assert(suffix.drop_first()
+                =~= reservations@.subrange(previous_cursor as int, reservations@.len() as int));
+        }
+        if reservations[cursor].worker_id().same(&worker) {
+            proof { assert(result < usize::MAX); }
+            result += 1;
+        }
+        proof { reveal(crate::verified::worker_count); };
+    }
+    proof { assert(cursor == index); }
+    result
 }
 
 closed spec fn aggregate_entries_fit_after(

@@ -140,6 +140,33 @@ composition, and exact replay input/cursor/transition contracts. Whole reducer/r
 composition, remaining command/refresh/selection/finalization paths, final source authorization
 and hosted qualification remain open. No historical approval or obligation is relabelled.
 
+## Dependency scanning, worker refresh and finalization increment
+
+Manifest `228c-refresh-source.sha256` binds 176 scheduler paths relative to checkpoint
+`8644a2d2b`, with SHA-256
+`f3682e9867d5e449f36c6db291a58244716d9df99af38c926adb3531af596aab`.
+The [refresh review](../refresh-review.md) and [finalization review](../finalization-review.md)
+retain independent scopes, author exclusions, exact source identities and the remaining outer
+dependency-loop and reducer/replay boundaries.
+
+| Output | Final increment result |
+|---|---|
+| `230c-final-refresh-verus.log` | 628 verified, zero errors; no cheating and unchanged resource limits |
+| `229b-final-refresh-tests.log` | All 79 scheduler tests passed; zero failures or ignores |
+| `231b-final-refresh-clippy.log` | All-targets, all-features scheduler Clippy passed with warnings denied |
+| `226c-refresh-format.log` | Workspace formatting passed |
+| `227-refresh-architecture.log` | 84 packages and 4,554 source files passed |
+| `232-refresh-api.log` | 3,641 formal-boundary files and 14,764 ordinary-safe entry points passed |
+| `233-refresh-docs-check.log` | 257 documentation files passed |
+
+Negative probe `225-worker-count-mutation.sh` inverts worker ownership in the iterative
+reservation count. Its exact suffix-count invariant fails (627 verified, one failing item,
+exit 101), and the restoration record confirms byte-identical restoration. The final strict
+run follows restoration and the ghost-helper file split needed for the repository source budget.
+Earlier output 220, 223 and 224 records the preceding ordinary/proof checks; 226 records the
+subsequently corrected import ordering. The per-round dependency applicator and complete
+fixed-point termination theorem are not part of this increment.
+
 ## Rerunnable local checks
 
 Use the repository's pinned toolchains. These commands keep one build job; strict Verus uses
