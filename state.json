@@ -28,9 +28,9 @@
         "prefix_sha256": "21c4051e6a57903d94c7d0bc4352e52dd09eb90550e5fe258691ae3ded851039"
       },
       "oF4J": {
-        "sequence": 19,
-        "tip_oid": "ef5136dcb376b504ee21f4af5cb9ad69d2916312",
-        "prefix_sha256": "acf018a7080db4857de6cb234d5628eca8cb42995998c19260b24e009156af8e"
+        "sequence": 20,
+        "tip_oid": "eec184a51f5083a98cb2df3e100680ebc3f8909d",
+        "prefix_sha256": "e39ff7a44b9d090d8418c6bc106ff7c5e3ff3099f7c815dbb9438c80523f3fa9"
       },
       "p0bJ": {
         "sequence": 8,
@@ -39,7 +39,7 @@
       }
     }
   },
-  "next_display_id": 81,
+  "next_display_id": 82,
   "next_comment_id": 1595,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
@@ -82,6 +82,7 @@
     "5e103ed6-e70e-4298-aee2-4edda920cacc": 26,
     "614f7903-fce8-4890-bd74-8fa06b060c39": 53,
     "65f4d2ae-ffe6-471c-8d5f-3de1632a9724": 61,
+    "6a32b5b0-36fd-4f4c-a6c2-b7166599c08d": 81,
     "6bf9b38c-eb2f-4dcb-a19a-2a99c45886ff": 70,
     "6e8845fe-4835-478b-80d0-18135c12bc4d": 43,
     "79bb0f68-384c-454b-9302-eb88b692c28f": 18,
@@ -11031,6 +11032,18 @@
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAmmOV1JShpO9vM/0Catk7k9De5dxP+207jycTUOGCySA7AR2k8ZazLU0oqEdPIDo288b+8ZPj5w39HyD7/keTBQ=="
         }
       }
+    },
+    "6a32b5b0-36fd-4f4c-a6c2-b7166599c08d": {
+      "uuid": "6a32b5b0-36fd-4f4c-a6c2-b7166599c08d",
+      "display_id": 81,
+      "title": "Close GAP-04 context selection, rendering, and resume correspondence",
+      "description": "Start after PR 77 lands on develop. Prove exact production correspondence for peritus-context selection, compaction, working-state reduction and replay, typed rendering, and context preservation across provider retry and daemon/process resume. Preserve the reviewed graph/reuse kernels. Map current OBL-0138 through OBL-0140 and every new obligation to the exact specification, executable implementation, production caller, tests, and review evidence before changing obligations. Acceptance requires contracts on production-called code; adversarial caller and restart tests; negative proof mutations; strict no-cheating Verus; ordinary tests; strict Clippy; formatting; rustdoc; architecture and API gates; frozen source-bound independent review; proof-impact reconciliation; and hosted CI. Keep cryptographic execution, clocks, storage durability itself, and provider effects in GAP-06, and broader lifecycle composition in GAP-05. Do not weaken checks, compatibility, or maintainer self-merge. GAP-03 issue 77 must land first.",
+      "status": "open",
+      "priority": "high",
+      "parent_uuid": "eb5c64d1-b12e-4ec5-8bae-6c66adc80c81",
+      "created_by": "oF4J",
+      "created_at": "2026-09-14T04:50:46.569519652Z",
+      "updated_at": "2026-09-14T04:50:46.569519652Z"
     },
     "6bf9b38c-eb2f-4dcb-a19a-2a99c45886ff": {
       "uuid": "6bf9b38c-eb2f-4dcb-a19a-2a99c45886ff",
