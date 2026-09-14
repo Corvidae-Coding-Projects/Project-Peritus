@@ -28,9 +28,9 @@
         "prefix_sha256": "21c4051e6a57903d94c7d0bc4352e52dd09eb90550e5fe258691ae3ded851039"
       },
       "oF4J": {
-        "sequence": 31,
-        "tip_oid": "5d163dcacd85c3c44f7e97bad891de469779bc75",
-        "prefix_sha256": "fc9840c91b88778f083f77f280babbbfa3d0aededb3cefbf66eeafa3741bca8e"
+        "sequence": 32,
+        "tip_oid": "627654fa352d123c8c98acca70a494cc1d525bc0",
+        "prefix_sha256": "7db51321ab50bb70aced4211ecf96fd830ed49b11e0c127be53520f5958e9683"
       },
       "p0bJ": {
         "sequence": 8,
@@ -13412,12 +13412,13 @@
       "display_id": 77,
       "title": "Close GAP-03 scheduler production proof gaps",
       "description": "Complete production-called scheduler contracts and strict proofs for command admission, cancellation trees, worker-loss ownership/resource recovery, reducer/replay/terminal composition, and loop termination. Preserve existing behavior, proofs, wire formats, and prior fixes. Require independent specification/source review, meaningful regression and actual caller tests, and source-bound verification evidence. Worktree .worktrees/formal-scheduler-gap3, branch feature/formal-scheduler-gap3, base a41113d1389c3d8fc77a00cc562cb9a5bcb7adc8. Do not close the broader proof campaign or claim helper proofs discharge whole-path obligations.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "eb5c64d1-b12e-4ec5-8bae-6c66adc80c81",
       "created_by": "oF4J",
       "created_at": "2026-09-13T18:03:19.859472507Z",
-      "updated_at": "2026-09-14T05:05:32.840559935Z",
+      "updated_at": "2026-09-14T05:05:52.701899882Z",
+      "closed_at": "2026-09-14T05:05:52.700039907Z",
       "comments": {
         "0dba7d45-9621-4b04-b084-bc010bbd4ce2": {
           "display_id": 1592,
