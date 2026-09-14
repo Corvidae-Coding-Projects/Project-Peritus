@@ -22,6 +22,11 @@
         "tip_oid": "eefee33cb00632ffab74ce65d642a0e8424069bb",
         "prefix_sha256": "648f7ea8c4ecd24e236f709d0e3e94600daad6c8bd38292131f90cd7b7b0f501"
       },
+      "cF43": {
+        "sequence": 1,
+        "tip_oid": "481a4a1e4198333007b581b32a168e96814641b1",
+        "prefix_sha256": "4cb187d46b57bb077e688275edd63f4f9f99ae7c7c692c3136d648ce177214b6"
+      },
       "i0ox": {
         "sequence": 2,
         "tip_oid": "a6282cf89b44f6efa5f8df6f212d41bf97fb6348",
@@ -44,7 +49,7 @@
       }
     }
   },
-  "next_display_id": 82,
+  "next_display_id": 83,
   "next_comment_id": 1599,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
@@ -120,6 +125,7 @@
     "e6cc067a-83c2-4e9c-a1f9-17ff1faa9e11": 72,
     "eb5c64d1-b12e-4ec5-8bae-6c66adc80c81": 75,
     "ec4c6d0c-2cbb-40b9-8be2-4ac69e7fc750": 32,
+    "edda35ab-7441-4598-95a8-a13cc6d161d8": 82,
     "ef6ed3ab-52cd-436a-aa6e-d5d098c89f6c": 8,
     "f27888a7-5366-4703-a68a-9f17b1adad81": 20,
     "f350243c-7824-4375-a9c4-63dd3e976f1a": 49,
@@ -15274,6 +15280,17 @@
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA1/efw3KK5QDdZaCuCxQRzKxps7Z/Ma0eJTMIo9x5t48yl5T/rbV9NXIvflGsLw0HtJuyrFRrGxQQlIM1eX1JBg=="
         }
       }
+    },
+    "edda35ab-7441-4598-95a8-a13cc6d161d8": {
+      "uuid": "edda35ab-7441-4598-95a8-a13cc6d161d8",
+      "display_id": 82,
+      "title": "Fix OpenCode Zen DeepSeek stream failure from GitHub #79",
+      "description": "Reproduce GitHub issue #79 on develop d19c33e: deepseek-v4-flash on OpenCode Zen succeeds through repeated workspace tools, then returns HTTP 200 but the compatible Chat stream is classified as malformed. Capture a sanitized provider shape, repair the actual compatible-stream contract without weakening unrelated providers, add regressions, validate affected packages and open a dedicated draft PR to develop.",
+      "status": "open",
+      "priority": "high",
+      "created_by": "cF43",
+      "created_at": "2026-09-14T12:53:28.848893643Z",
+      "updated_at": "2026-09-14T12:53:28.848893643Z"
     },
     "ef6ed3ab-52cd-436a-aa6e-d5d098c89f6c": {
       "uuid": "ef6ed3ab-52cd-436a-aa6e-d5d098c89f6c",
