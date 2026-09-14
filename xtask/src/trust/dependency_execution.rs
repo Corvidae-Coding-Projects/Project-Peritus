@@ -43,7 +43,7 @@ const REVIEWED_BUILD_SCRIPT_PACKAGES: [&str; 66] = [
     "registry+https://github.com/rust-lang/crates.io-index#quinn-udp@0.5.15",
     "registry+https://github.com/rust-lang/crates.io-index#ring@0.17.14",
     "registry+https://github.com/rust-lang/crates.io-index#rustix@1.1.4",
-    "registry+https://github.com/rust-lang/crates.io-index#rustls@0.23.43",
+    "registry+https://github.com/rust-lang/crates.io-index#rustls@0.23.45",
     "registry+https://github.com/rust-lang/crates.io-index#rustversion@1.0.23",
     "registry+https://github.com/rust-lang/crates.io-index#serde@1.0.229",
     "registry+https://github.com/rust-lang/crates.io-index#serde_core@1.0.229",
