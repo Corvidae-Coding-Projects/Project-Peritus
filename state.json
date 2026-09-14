@@ -28,9 +28,9 @@
         "prefix_sha256": "21c4051e6a57903d94c7d0bc4352e52dd09eb90550e5fe258691ae3ded851039"
       },
       "oF4J": {
-        "sequence": 24,
-        "tip_oid": "f896fb0b49234af4834c1123b221602f64f15b1d",
-        "prefix_sha256": "e381bf1a6932cbe2884efd23730c9d13fa912a8eef7a9720c13aa6eb5b506d8b"
+        "sequence": 25,
+        "tip_oid": "5729a75a3a0d0e3740683b899e33b21d8171b0a9",
+        "prefix_sha256": "9f65f063d718f84d0aa46ddd7bd9e2dd819b05497a6c72c59384080528890a5e"
       },
       "p0bJ": {
         "sequence": 8,
@@ -40,7 +40,7 @@
     }
   },
   "next_display_id": 82,
-  "next_comment_id": 1595,
+  "next_comment_id": 1596,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -13109,13 +13109,24 @@
       "parent_uuid": "eb5c64d1-b12e-4ec5-8bae-6c66adc80c81",
       "created_by": "oF4J",
       "created_at": "2026-09-14T04:49:47.967555501Z",
-      "updated_at": "2026-09-14T04:57:45.167464650Z",
+      "updated_at": "2026-09-14T05:00:15.087474624Z",
       "labels": [
         "formal-verification"
       ],
       "blockers": [
         "cfa4c5e9-a5ae-4fcd-843d-3cc1f600d723"
-      ]
+      ],
+      "comments": {
+        "8fa773c4-8e8d-4a3f-8f81-db7bfaccf5fb": {
+          "display_id": 1595,
+          "author": "oF4J",
+          "content": "Prepared local branch feature/formal-context-gap4 at commit 481f32625 (docs(formal): prepare GAP-04 context proof plan), based on exact PR 77 head 4b1d7de4f. The source-grounded design maps selection, compaction, working-state replay, local-context persistence/recovery, rendering, and retry/restart correspondence; it records acceptance tests, proof mutations, qualification, compatibility, and GAP-05/06/07/08 boundaries. All mapped paths exist, git diff --check passed, and cargo xtask docs-check passed for 259 documentation files. No GAP-04 implementation has started; issue remains blocked on #77 landing.",
+          "created_at": "2026-09-14T05:00:15.081239576Z",
+          "kind": "result",
+          "signed_by": "SHA256:6i1eQ/7kGjVq4DI4yUCBFk4bwyvvZOhSsWcR9SkdFok",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg/EnEj+fMMglOKHVSgF9XkfkH9og9l/fzQpIgYx0ARh4AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAfsRJ8Z4R9FohtxRPY20SXEl1qva+blH4vZ2StbWXI1/RmA33pZNXw43xsMn/L53j8ol1fkbims5ZykLLUPT0AA=="
+        }
+      }
     },
     "b46fadc4-8cd4-48dc-8f36-bd78e9ee2e8c": {
       "uuid": "b46fadc4-8cd4-48dc-8f36-bd78e9ee2e8c",
