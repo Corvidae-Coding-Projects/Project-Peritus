@@ -116,24 +116,7 @@ impl ChatDecoder {
             self.response_id = Some(id.clone());
             events.push(ModelEvent::ResponseStarted { response_id: Some(id), model: Some(model) });
         }
-        let choices = value
-            .get("choices")
-            .and_then(Value::as_array)
-            .ok_or_else(|| error::malformed("Chat-compatible chunk omitted choices"))?;
-        if choices.len() > 1 {
-            return Err(error::malformed("Chat-compatible multiple choices are not mapped"));
-        }
-        if let Some(choice) = choices.first() {
-            let accounting = self.service
-                == Some(peritus_provider_core::hosted::HostedService::OpenRouter)
-                && self.finish.is_some()
-                && value.get("usage").is_some_and(|value| !value.is_null());
-            if accounting {
-                self.accounting(choice)?;
-            } else {
-                self.choice(choice, &mut events)?;
-            }
-        }
+        self.decode_choices(&value, &mut events)?;
         if let Some(usage) = value.get("usage").filter(|value| !value.is_null()) {
             if !self.allow_usage {
                 return Err(error::malformed(
