@@ -15,8 +15,8 @@ The `working` module adds bounded task-local investigation state: provider-indep
 exact artifact-range observation handles, source-backed atomic updates, canonical dependency
 validation, and transitive stale/superseded status. Every working entry is non-authoritative.
 Hosts supply verified, redacted inputs; these reducers perform no storage or provider calls.
-This engine is not yet wired into the product. Durable checkpoint encoding, replay manifests,
-host persistence, and memory tools remain subsequent local-working-memory increments.
+The product runner integrates this engine through its local-context storage, checkpoint, recovery,
+assembly, and memory-tool adapters; those effectful adapters remain outside this pure crate.
 
 ## Focused checks
 

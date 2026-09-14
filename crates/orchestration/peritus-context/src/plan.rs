@@ -27,16 +27,37 @@ pub struct SelectedContext {
 }
 
 impl SelectedContext {
-    pub(crate) const fn new(node_id: ContextNodeId, reason: SelectionReason) -> Self {
+    /// Logical view of the exact selected node identity.
+    pub closed spec fn spec_node_id(self) -> ContextNodeId { self.node_id }
+
+    /// Logical view of the exact admission reason.
+    pub closed spec fn spec_reason(self) -> SelectionReason { self.reason }
+
+    pub(crate) const fn new(
+        node_id: ContextNodeId,
+        reason: SelectionReason,
+    ) -> (result: Self)
+        ensures
+            result.spec_node_id() == node_id,
+            result.spec_reason() == reason,
+    {
         Self { node_id, reason }
     }
 
     /// Returns the selected node identity.
     #[must_use]
-    pub const fn node_id(self) -> ContextNodeId { self.node_id }
+    pub const fn node_id(self) -> (result: ContextNodeId)
+        ensures result == self.spec_node_id(),
+    {
+        self.node_id
+    }
     /// Returns why this node was selected.
     #[must_use]
-    pub const fn reason(self) -> SelectionReason { self.reason }
+    pub const fn reason(self) -> (result: SelectionReason)
+        ensures result == self.spec_reason(),
+    {
+        self.reason
+    }
 }
 
 /// Normal reason an optional root and its entire closure were not admitted.
@@ -99,6 +120,24 @@ pub struct ContextPlan {
 }
 
 impl ContextPlan {
+    /// Logical view of the caller-bound plan identity.
+    pub closed spec fn spec_id(&self) -> ContextPlanId { self.id }
+
+    /// Logical view of the frozen role profile.
+    pub closed spec fn spec_role_profile(&self) -> RoleProfile { self.role_profile }
+
+    /// Logical view of selected entries in render order.
+    pub closed spec fn spec_selected(&self) -> Seq<SelectedContext> { self.selected@ }
+
+    /// Logical view of optional-root omissions in ranking order.
+    pub closed spec fn spec_omitted(&self) -> Seq<OmittedContext> { self.omitted@ }
+
+    /// Logical view of exact token accounting.
+    pub closed spec fn spec_accounting(&self) -> TokenAccounting { self.accounting }
+
+    /// Logical view of exact selected content bytes.
+    pub closed spec fn spec_selected_bytes(&self) -> nat { self.selected_bytes as nat }
+
     pub(crate) const fn new(
         id: ContextPlanId,
         role_profile: RoleProfile,
@@ -106,28 +145,60 @@ impl ContextPlan {
         omitted: Vec<OmittedContext>,
         accounting: TokenAccounting,
         selected_bytes: usize,
-    ) -> Self {
+    ) -> (result: Self)
+        ensures
+            result.spec_id() == id,
+            result.spec_role_profile() == role_profile,
+            result.spec_selected() == selected@,
+            result.spec_omitted() == omitted@,
+            result.spec_accounting() == accounting,
+            result.spec_selected_bytes() == selected_bytes as nat,
+    {
         Self { id, role_profile, selected, omitted, accounting, selected_bytes }
     }
 
     /// Returns the caller-bound immutable plan ID.
     #[must_use]
-    pub const fn id(&self) -> ContextPlanId { self.id }
+    pub const fn id(&self) -> (result: ContextPlanId)
+        ensures result == self.spec_id(),
+    {
+        self.id
+    }
     /// Returns the role whose visibility policy was applied.
     #[must_use]
-    pub const fn role_profile(&self) -> &RoleProfile { &self.role_profile }
+    pub const fn role_profile(&self) -> (result: &RoleProfile)
+        ensures *result == self.spec_role_profile(),
+    {
+        &self.role_profile
+    }
     /// Borrows selected entries in deterministic render precedence.
     #[must_use]
-    pub const fn selected(&self) -> &[SelectedContext] { self.selected.as_slice() }
+    pub const fn selected(&self) -> (result: &[SelectedContext])
+        ensures result@ == self.spec_selected(),
+    {
+        self.selected.as_slice()
+    }
     /// Borrows optional-root omissions in deterministic ranking order.
     #[must_use]
-    pub const fn omitted(&self) -> &[OmittedContext] { self.omitted.as_slice() }
+    pub const fn omitted(&self) -> (result: &[OmittedContext])
+        ensures result@ == self.spec_omitted(),
+    {
+        self.omitted.as_slice()
+    }
     /// Returns exact checked token accounting.
     #[must_use]
-    pub const fn accounting(&self) -> TokenAccounting { self.accounting }
+    pub const fn accounting(&self) -> (result: TokenAccounting)
+        ensures result == self.spec_accounting(),
+    {
+        self.accounting
+    }
     /// Returns the exact selected content-byte total.
     #[must_use]
-    pub const fn selected_bytes(&self) -> usize { self.selected_bytes }
+    pub const fn selected_bytes(&self) -> (result: usize)
+        ensures result as nat == self.spec_selected_bytes(),
+    {
+        self.selected_bytes
+    }
     /// Returns whether an identity is selected.
     #[must_use]
     pub fn contains(&self, id: ContextNodeId) -> bool {
