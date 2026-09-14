@@ -22,6 +22,11 @@
         "tip_oid": "eefee33cb00632ffab74ce65d642a0e8424069bb",
         "prefix_sha256": "648f7ea8c4ecd24e236f709d0e3e94600daad6c8bd38292131f90cd7b7b0f501"
       },
+      "i0ox": {
+        "sequence": 1,
+        "tip_oid": "fa27af1bdad58aaf37c3416257f27aab772d102c",
+        "prefix_sha256": "d824ac6584ad7771e6b114b3a78101c75034e8f14443a10e0b7e59c3237a82fd"
+      },
       "krvx": {
         "sequence": 247,
         "tip_oid": "79fdb27c3c0cca7ac2e10293a955eccc7b26134e",
@@ -13111,12 +13116,9 @@
       "parent_uuid": "eb5c64d1-b12e-4ec5-8bae-6c66adc80c81",
       "created_by": "oF4J",
       "created_at": "2026-09-14T04:49:47.967555501Z",
-      "updated_at": "2026-09-14T05:00:15.087474624Z",
+      "updated_at": "2026-09-14T05:07:56.346488372Z",
       "labels": [
         "formal-verification"
-      ],
-      "blockers": [
-        "cfa4c5e9-a5ae-4fcd-843d-3cc1f600d723"
       ],
       "comments": {
         "8fa773c4-8e8d-4a3f-8f81-db7bfaccf5fb": {
