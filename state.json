@@ -28,9 +28,9 @@
         "prefix_sha256": "21c4051e6a57903d94c7d0bc4352e52dd09eb90550e5fe258691ae3ded851039"
       },
       "oF4J": {
-        "sequence": 25,
-        "tip_oid": "5729a75a3a0d0e3740683b899e33b21d8171b0a9",
-        "prefix_sha256": "9f65f063d718f84d0aa46ddd7bd9e2dd819b05497a6c72c59384080528890a5e"
+        "sequence": 26,
+        "tip_oid": "b502f66eed2d498d32b8f44da4026a78dbafefde",
+        "prefix_sha256": "0c6e04a6a760a24a0bbd17e97918a7b74cb75f4a01ad5bfd4970015ed1ef6c1f"
       },
       "p0bJ": {
         "sequence": 8,
@@ -40,7 +40,7 @@
     }
   },
   "next_display_id": 82,
-  "next_comment_id": 1596,
+  "next_comment_id": 1597,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -346,7 +346,7 @@
       "parent_uuid": "cfa4c5e9-a5ae-4fcd-843d-3cc1f600d723",
       "created_by": "oF4J",
       "created_at": "2026-09-13T21:05:25.626302514Z",
-      "updated_at": "2026-09-14T00:27:31.961798741Z",
+      "updated_at": "2026-09-14T05:03:52.711377681Z",
       "comments": {
         "0e4229cd-effb-437b-b113-aa820e748450": {
           "display_id": 1590,
@@ -374,6 +374,15 @@
           "kind": "result",
           "signed_by": "SHA256:6i1eQ/7kGjVq4DI4yUCBFk4bwyvvZOhSsWcR9SkdFok",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg/EnEj+fMMglOKHVSgF9XkfkH9og9l/fzQpIgYx0ARh4AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAOW2l+gJLXQbjcHYMftHd7Z91RKA1y1QCgp6mgjbqFx5rQl3qhmfqFt8Qsh9iQ6WeIMC1SB7JBJ//GW1Ci2hzDw=="
+        },
+        "6b39b02b-a701-4d63-b05b-1554467859d3": {
+          "display_id": 1596,
+          "author": "oF4J",
+          "content": "PR 77 merged into develop at d19c33e607a9b32b5b0f89abca505138e4760369. The final combined candidate completed the cancellation path scope with strict Verus, regression/caller tests, independent source review, package qualification, and hosted CI.",
+          "created_at": "2026-09-14T05:03:52.704804583Z",
+          "kind": "result",
+          "signed_by": "SHA256:6i1eQ/7kGjVq4DI4yUCBFk4bwyvvZOhSsWcR9SkdFok",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg/EnEj+fMMglOKHVSgF9XkfkH9og9l/fzQpIgYx0ARh4AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA2u46werBS+IrOP6l8TCbrh2YyJgQl/pLuhG1KmxbQUAQOQJPCZ58omp5alpHmOgcIWoa3DFjm3u8RVj3cUjNDA=="
         },
         "c7b56edf-8852-4c95-ac4f-fbac7e4c3aa6": {
           "display_id": 1587,
