@@ -28,9 +28,9 @@
         "prefix_sha256": "21c4051e6a57903d94c7d0bc4352e52dd09eb90550e5fe258691ae3ded851039"
       },
       "oF4J": {
-        "sequence": 29,
-        "tip_oid": "a58805eb5ca103a57206f78f6cf8995fc0a4fbba",
-        "prefix_sha256": "fa9f15c8db5984537b21d68c553b0a08c530b7b1b5fb020c825e9cc03f1ed802"
+        "sequence": 30,
+        "tip_oid": "8d3d9531c205d3c73344fdbf68d19415b33d5ae6",
+        "prefix_sha256": "8cfcada1e5b9a22f7ba398d49e237d93f580c08f1961c533e64666fe590ea00f"
       },
       "p0bJ": {
         "sequence": 8,
@@ -14534,12 +14534,13 @@
       "display_id": 79,
       "title": "Complete worker-loss and whole scheduler transition composition",
       "description": "After the complete cancellation path, finish exact worker-loss release/resources/outcomes, admission, whole reducer/replay/terminal and relevant loop termination from GAP-03. Preserve source-bound review, existing queue compatibility repair and all required qualification. This remains open rather than treating helper verification as end-to-end completion.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "cfa4c5e9-a5ae-4fcd-843d-3cc1f600d723",
       "created_by": "oF4J",
       "created_at": "2026-09-13T21:06:31.259211337Z",
-      "updated_at": "2026-09-14T05:04:52.806149096Z",
+      "updated_at": "2026-09-14T05:05:12.677559318Z",
+      "closed_at": "2026-09-14T05:05:12.675644915Z",
       "comments": {
         "932a2d00-befe-431a-9e28-9ca15c948c4d": {
           "display_id": 1597,
