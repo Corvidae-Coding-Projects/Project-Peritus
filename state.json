@@ -28,9 +28,9 @@
         "prefix_sha256": "21c4051e6a57903d94c7d0bc4352e52dd09eb90550e5fe258691ae3ded851039"
       },
       "oF4J": {
-        "sequence": 22,
-        "tip_oid": "23b52daab9f674c7e3868c03bfbebb93c62fd790",
-        "prefix_sha256": "a5d7d9f7596612e8acad8c5f38687f77d1acf2e8078b8cf8c4c892a2e2490935"
+        "sequence": 23,
+        "tip_oid": "4e5ee5f76bc226ee286006bea118b8bd592369d8",
+        "prefix_sha256": "3720237182ffb58538f170ed17a9774761658839cc951079bd43464e8d244847"
       },
       "p0bJ": {
         "sequence": 8,
@@ -13110,9 +13110,12 @@
       "parent_uuid": "eb5c64d1-b12e-4ec5-8bae-6c66adc80c81",
       "created_by": "oF4J",
       "created_at": "2026-09-14T04:49:47.967555501Z",
-      "updated_at": "2026-09-14T04:50:13.801591157Z",
+      "updated_at": "2026-09-14T04:52:30.083293690Z",
       "labels": [
         "formal-verification"
+      ],
+      "blockers": [
+        "cfa4c5e9-a5ae-4fcd-843d-3cc1f600d723"
       ]
     },
     "b46fadc4-8cd4-48dc-8f36-bd78e9ee2e8c": {
