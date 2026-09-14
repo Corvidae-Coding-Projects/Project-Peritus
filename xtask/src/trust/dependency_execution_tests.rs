@@ -77,6 +77,7 @@ fn accepts_only_exact_reviewed_executable_dependency_identities() {
         "registry+https://github.com/rust-lang/crates.io-index#nix@0.28.0",
         "registry+https://github.com/rust-lang/crates.io-index#nix@0.31.3",
         "registry+https://github.com/rust-lang/crates.io-index#rustix@1.1.4",
+        "registry+https://github.com/rust-lang/crates.io-index#rustls@0.23.43",
         "registry+https://github.com/rust-lang/crates.io-index#rustls@0.23.45",
         "registry+https://github.com/rust-lang/crates.io-index#thiserror@1.0.69",
         "registry+https://github.com/rust-lang/crates.io-index#web_atoms@0.2.6",
