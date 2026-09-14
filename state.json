@@ -28,9 +28,9 @@
         "prefix_sha256": "21c4051e6a57903d94c7d0bc4352e52dd09eb90550e5fe258691ae3ded851039"
       },
       "oF4J": {
-        "sequence": 17,
-        "tip_oid": "2c125c0efbaa85f2a32949fc04e7d4c891a0f557",
-        "prefix_sha256": "8c22123c3215ed52ae7cc8afb5e6b57ac22652f759e5a1176f8f8896841c2819"
+        "sequence": 18,
+        "tip_oid": "3c1fc12fe2f48d4970ef85679e2094e7fc9a2b01",
+        "prefix_sha256": "03e9d302c395774e75111e33847f29efe9e1588e5452f90c1bceea20af0138c2"
       },
       "p0bJ": {
         "sequence": 8,
@@ -39,7 +39,7 @@
       }
     }
   },
-  "next_display_id": 80,
+  "next_display_id": 81,
   "next_comment_id": 1595,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
@@ -98,6 +98,7 @@
     "9de8dfc7-1d53-4ac4-a7a1-98aaf6dd354d": 21,
     "ab24c7bc-0720-480b-b39f-23f603a8b11f": 11,
     "addf9afe-e336-42bb-bba7-213bbc0e4611": 54,
+    "b25f016a-c241-4f3e-99a1-d7540e07883e": 80,
     "b46fadc4-8cd4-48dc-8f36-bd78e9ee2e8c": 13,
     "b6f5371d-b205-4d62-a3e9-74c962cf12f0": 63,
     "be287235-44b0-49cd-b238-d64fe12e32f1": 37,
@@ -13097,6 +13098,18 @@
       "labels": [
         "feature"
       ]
+    },
+    "b25f016a-c241-4f3e-99a1-d7540e07883e": {
+      "uuid": "b25f016a-c241-4f3e-99a1-d7540e07883e",
+      "display_id": 80,
+      "title": "Close GAP-04 context selection, rendering, and resume correspondence",
+      "description": "Start after PR #77 lands on develop. Close GAP-04 by proving exact correspondence across the production context path while preserving the already reviewed graph/reuse kernels.\n\nScope:\n1. Context selection: exact required dependency closure, visibility rejection, optional ranking and atomic omission, token/node/byte accounting, and final render order in peritus-context.\n2. Compaction: exact source ranges, protected-content rejection, strict size reduction, replacement lineage, and correspondence from C6 validation into the production PromptView and developer-loop compaction paths.\n3. Working state: exact observation ingestion, delta/protocol application, invalidation, replay, wire round-trip, bounded selection, and rendered evidence-only view.\n4. Rendering: every selected node maps exactly once to a production render segment/message with unchanged content, role, provenance, authority, trust, digest, and deterministic order.\n5. Resume: persisted or reconstructed context/working state produces the same eligible prompt view after provider retry and daemon/process restart, subject only to explicitly modeled fresh inputs. The current working-state engine is not yet wired into the product, so production integration is part of this gap.\n\nKnown starting obligations OBL-0138 through OBL-0140 cover authority ceilings, protected compaction content, and token accounting. Build a fresh obligation-to-specification-to-executable-to-caller map before adding or revising obligations; do not mark any obligation discharged during implementation.\n\nAcceptance:\n- contracts are on code called by peritus-agent, peritus-product-runner, and relevant daemon consumers;\n- regression/caller tests cover required-content loss, hidden dependencies, competing capacity failures, compaction tampering, authority promotion, replay divergence, stale bindings, and restart/resume equivalence;\n- negative proof mutations demonstrate the contracts reject incorrect selection, omission, ordering, replacement, or replay;\n- strict no-cheating Verus, ordinary tests, strict Clippy, formatting, rustdoc, architecture, ordinary API, generated artifact, and relevant durability tests pass;\n- final source is frozen and independently reviewed with source-bound evidence before proof-impact reconciliation and hosted CI.\n\nOut of scope: cryptographic execution, clocks, storage durability itself, and external/provider effects belong to GAP-06; broader kernel/agent/protocol lifecycle composition belongs to GAP-05. Do not weaken existing checks, wire compatibility, or maintainer self-merge.\n\nDependency: GAP-03 / Crosslink issue #77 must land first so the implementation branch can be based on its protected develop result.",
+      "status": "open",
+      "priority": "high",
+      "parent_uuid": "eb5c64d1-b12e-4ec5-8bae-6c66adc80c81",
+      "created_by": "oF4J",
+      "created_at": "2026-09-14T04:49:47.967555501Z",
+      "updated_at": "2026-09-14T04:49:47.967555501Z"
     },
     "b46fadc4-8cd4-48dc-8f36-bd78e9ee2e8c": {
       "uuid": "b46fadc4-8cd4-48dc-8f36-bd78e9ee2e8c",
