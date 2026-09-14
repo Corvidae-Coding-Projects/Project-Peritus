@@ -1,0 +1,44 @@
+{
+  "snapshot": {
+    "base_commit": "a41113d1389c3d8fc77a00cc562cb9a5bcb7adc8",
+    "base_tree": "2902edba7095a6ebd53b02bbf6f19005193d6deb",
+    "candidate_commit": "5d739de2902de0a5379f23f32b0c9f0ae562b28c",
+    "candidate_tree": "3ca8f9e7fa5388ae3baa127c51c4bb5bd5c4fed7",
+    "merge_base": "a41113d1389c3d8fc77a00cc562cb9a5bcb7adc8",
+    "base_is_ancestor": true
+  },
+  "base_source_count": 3640,
+  "candidate_source_count": 3731,
+  "transition_count": 155,
+  "transition_kinds": {
+    "added": 91,
+    "removed": 0,
+    "changed": 64
+  },
+  "package_count": 66,
+  "verification_classes": [
+    {
+      "class": "H",
+      "count": 53
+    },
+    {
+      "class": "T",
+      "count": 1
+    },
+    {
+      "class": "V",
+      "count": 12
+    }
+  ],
+  "gate_count": 132,
+  "gate_kinds": [
+    {
+      "kind": "ordinary-test",
+      "count": 66
+    },
+    {
+      "kind": "verus-verify",
+      "count": 66
+    }
+  ]
+}

@@ -183,12 +183,20 @@ genesis/decision commitment seams were integrated. Its SHA-256 is
 | `255-final-architecture-check.log` | 84 packages and 4,567 source files passed |
 | `256-final-ordinary-api-check.log` | 3,654 formal-boundary files and 14,765 ordinary-safe entry points passed |
 | `258-final-docs-check.log` | 257 documentation files passed |
+| `259-ordinary-package-gates.log` | All 66 affected-package ordinary commands passed |
+| `260-verus-package-gates.log` | All 66 affected-package Verus commands passed; V/H used `--no-cheating`, while the TCB used its declared trust-aware command |
+| `261-final-docs-check.log` | Final documentation set passed with the review and proof-impact inventory linked |
 
 The retained tests cover exact replay and tamper rejection, durable restart/session callers,
 dispatch error precedence, dependency cascades, selection fairness, queue recovery and both wire
 schema versions. The proof contracts keep SHA-256 execution and encoded-size evaluation explicit
-ordinary boundaries. Final independent review, proof-impact reconciliation and current-head hosted
-qualification follow this frozen source checkpoint; historical records above remain unchanged.
+ordinary boundaries. The [independent final-candidate review](../final-candidate-review.md) passes
+the exact candidate commit and tree without claiming human or GitHub approval. Its SHA-256 is
+`850feac54d2e92387d97331b5f6b29aa70c60cbec42a18362140f10de0cb6699`. The
+[`pcr7-inventory`](pcr7-inventory/README.md) bundle binds the protected-base comparison, all
+155 source transitions, all 66 affected packages and the exact 132-command plan. Its contents are
+audit evidence, not protected-base authorization or obligation discharge. All 137 recorded
+obligation statuses remain `in-progress`, and historical records above remain unchanged.
 
 ## Rerunnable local checks
 

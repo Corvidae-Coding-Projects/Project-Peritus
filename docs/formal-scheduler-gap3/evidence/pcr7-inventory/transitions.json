@@ -1,0 +1,2958 @@
+[
+  {
+    "source_file": "architecture.toml",
+    "previous": {
+      "sha256": "049f58aff544793aeac3acb63e8b395f6e6139044c6110735f55630cc2594a28",
+      "affected_packages": [
+        {
+          "package": "peritus-agent",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-app-protocol",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-approval",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-artifact-store",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-budget",
+          "verification_class": "V"
+        },
+        {
+          "package": "peritus-codec",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-collaboration",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-context",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-daemon",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-debugger",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-eval",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-evidence",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-evolution",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-gates",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-git",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-harness",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-journal",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-kernel",
+          "verification_class": "V"
+        },
+        {
+          "package": "peritus-leases",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-local-socket",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-mcp",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-memory",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-migrations",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-model-protocol",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-network",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-obligations",
+          "verification_class": "V"
+        },
+        {
+          "package": "peritus-orchestrator",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-patch",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-plugin-host",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-plugin-sdk",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-policy",
+          "verification_class": "V"
+        },
+        {
+          "package": "peritus-process",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-product-runner",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-product-state",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-projection",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-protocol",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-provider-anthropic",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-provider-compatible",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-provider-core",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-provider-google",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-provider-openai",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-quality-policy",
+          "verification_class": "V"
+        },
+        {
+          "package": "peritus-release-policy",
+          "verification_class": "V"
+        },
+        {
+          "package": "peritus-review",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-role",
+          "verification_class": "V"
+        },
+        {
+          "package": "peritus-run-knowledge",
+          "verification_class": "V"
+        },
+        {
+          "package": "peritus-run-settlement",
+          "verification_class": "V"
+        },
+        {
+          "package": "peritus-sandbox",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-sandbox-linux",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-sandbox-macos",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-sandbox-windows",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-secrets",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-security-policy",
+          "verification_class": "V"
+        },
+        {
+          "package": "peritus-spec",
+          "verification_class": "V"
+        },
+        {
+          "package": "peritus-tcb",
+          "verification_class": "T"
+        },
+        {
+          "package": "peritus-telemetry",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-tool-protocol",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-tool-router",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-tools-fs",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-tools-git",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-tools-quality",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-tools-shell",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-trace",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-types",
+          "verification_class": "V"
+        },
+        {
+          "package": "peritus-workspace",
+          "verification_class": "H"
+        }
+      ]
+    },
+    "current": {
+      "sha256": "f4910a94a758a4274585d89706cf1f17842ad8d374507a2c8ef987f22a0c38b6",
+      "affected_packages": [
+        {
+          "package": "peritus-agent",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-app-protocol",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-approval",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-artifact-store",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-budget",
+          "verification_class": "V"
+        },
+        {
+          "package": "peritus-codec",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-collaboration",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-context",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-daemon",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-debugger",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-eval",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-evidence",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-evolution",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-gates",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-git",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-harness",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-journal",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-kernel",
+          "verification_class": "V"
+        },
+        {
+          "package": "peritus-leases",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-local-socket",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-mcp",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-memory",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-migrations",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-model-protocol",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-network",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-obligations",
+          "verification_class": "V"
+        },
+        {
+          "package": "peritus-orchestrator",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-patch",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-plugin-host",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-plugin-sdk",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-policy",
+          "verification_class": "V"
+        },
+        {
+          "package": "peritus-process",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-product-runner",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-product-state",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-projection",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-protocol",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-provider-anthropic",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-provider-compatible",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-provider-core",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-provider-google",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-provider-openai",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-quality-policy",
+          "verification_class": "V"
+        },
+        {
+          "package": "peritus-release-policy",
+          "verification_class": "V"
+        },
+        {
+          "package": "peritus-review",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-role",
+          "verification_class": "V"
+        },
+        {
+          "package": "peritus-run-knowledge",
+          "verification_class": "V"
+        },
+        {
+          "package": "peritus-run-settlement",
+          "verification_class": "V"
+        },
+        {
+          "package": "peritus-sandbox",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-sandbox-linux",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-sandbox-macos",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-sandbox-windows",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-secrets",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-security-policy",
+          "verification_class": "V"
+        },
+        {
+          "package": "peritus-spec",
+          "verification_class": "V"
+        },
+        {
+          "package": "peritus-tcb",
+          "verification_class": "T"
+        },
+        {
+          "package": "peritus-telemetry",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-tool-protocol",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-tool-router",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-tools-fs",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-tools-git",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-tools-quality",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-tools-shell",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-trace",
+          "verification_class": "H"
+        },
+        {
+          "package": "peritus-types",
+          "verification_class": "V"
+        },
+        {
+          "package": "peritus-workspace",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/app/peritus-app-protocol/src/command/binding.rs",
+    "previous": {
+      "sha256": "9e787464a0591da0d53cebaffdef4a74a27d7c7347b547ac5c860bea8387a322",
+      "affected_packages": [
+        {
+          "package": "peritus-app-protocol",
+          "verification_class": "H"
+        }
+      ]
+    },
+    "current": {
+      "sha256": "d219acb4d851f622f6d2925c5e632d1df7ebb7bb7ec31d95e77d98ee8ee70c57",
+      "affected_packages": [
+        {
+          "package": "peritus-app-protocol",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/app/peritus-app-protocol/src/subscription/frame.rs",
+    "previous": {
+      "sha256": "945e71f2362d4b030bf65581fd4c4d1f61534238b59e2c34e31fe33201db4574",
+      "affected_packages": [
+        {
+          "package": "peritus-app-protocol",
+          "verification_class": "H"
+        }
+      ]
+    },
+    "current": {
+      "sha256": "a31203eb28ae3972620f9131237620950e493632ca37eed50776cbf7355369a0",
+      "affected_packages": [
+        {
+          "package": "peritus-app-protocol",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/app/peritus-app-protocol/tests/command_binding.rs",
+    "previous": {
+      "sha256": "285773aad61cca82c3f2d4ab6a0c2776b3aeedfd9944ebba3ab7354ba1f0a70e",
+      "affected_packages": [
+        {
+          "package": "peritus-app-protocol",
+          "verification_class": "H"
+        }
+      ]
+    },
+    "current": {
+      "sha256": "7b1df7fa2b4b260946e154f583dd01be5b8fd7ff54e0f350bf893541a43e5555",
+      "affected_packages": [
+        {
+          "package": "peritus-app-protocol",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/app/peritus-app-protocol/tests/subscription_traces.rs",
+    "previous": {
+      "sha256": "5f05e28ea798b372f465fbb665f11fec15350f4b905606b5d2b783f2911d775b",
+      "affected_packages": [
+        {
+          "package": "peritus-app-protocol",
+          "verification_class": "H"
+        }
+      ]
+    },
+    "current": {
+      "sha256": "5ab92c7acfce226dad29cdccf66425ede7ff2329b4dbfaec471bef2ee67391b1",
+      "affected_packages": [
+        {
+          "package": "peritus-app-protocol",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/app/peritus-daemon/src/authority/owner/orchestrator/children/scheduler.rs",
+    "previous": {
+      "sha256": "5d57601cc6344734f8b4a99345ef1dcfe52cd19c07549e7222a023d3c6d7afaf",
+      "affected_packages": [
+        {
+          "package": "peritus-daemon",
+          "verification_class": "H"
+        }
+      ]
+    },
+    "current": {
+      "sha256": "0d43c9fa353997fd7e0ad88273707f68391c9c5af431f7c22eb37a82457ad5a3",
+      "affected_packages": [
+        {
+          "package": "peritus-daemon",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/app/peritus-daemon/src/command.rs",
+    "previous": {
+      "sha256": "035c17c24b06997049420ef86bc6716c9083fdc1d92bd9457f0a726bfc5f750a",
+      "affected_packages": [
+        {
+          "package": "peritus-daemon",
+          "verification_class": "H"
+        }
+      ]
+    },
+    "current": {
+      "sha256": "559acadc480c1c0769715d69c5cff9c95696a790ecc584ec5ab7a5007516654e",
+      "affected_packages": [
+        {
+          "package": "peritus-daemon",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/app/peritus-daemon/src/command/service_tests.rs",
+    "current": {
+      "sha256": "5af2f9fb6117d39abcd891edb684b93e7d60f33409b291b3183e8e49c46c75f2",
+      "affected_packages": [
+        {
+          "package": "peritus-daemon",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/app/peritus-daemon/src/domain/dispatch.rs",
+    "previous": {
+      "sha256": "949e1bc99b2957a699793d2d564f62d27efb317bc8186579e2b0e244a09f2aa2",
+      "affected_packages": [
+        {
+          "package": "peritus-daemon",
+          "verification_class": "H"
+        }
+      ]
+    },
+    "current": {
+      "sha256": "af0cdbb09525a9976cd91a734b49f5a81f3407f2961afb2b67ba671d9163ab96",
+      "affected_packages": [
+        {
+          "package": "peritus-daemon",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/app/peritus-daemon/src/domain/dispatch/scheduler_tests.rs",
+    "current": {
+      "sha256": "3119c72d04b968e88a3d7f76dcb08b6b84c5de564e273a7ce192b671f27abe7f",
+      "affected_packages": [
+        {
+          "package": "peritus-daemon",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/foundation/peritus-protocol/src/schema/registry.rs",
+    "previous": {
+      "sha256": "3149db2bd13a8887e382b92bc8f3e9b7116d86dfe39f8ade155c6d443000491e",
+      "affected_packages": [
+        {
+          "package": "peritus-protocol",
+          "verification_class": "H"
+        }
+      ]
+    },
+    "current": {
+      "sha256": "6c4aa21bafe6d0c8370a55e3b182eecbf788c8fd4fd76dec82310f7940ff367e",
+      "affected_packages": [
+        {
+          "package": "peritus-protocol",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/foundation/peritus-protocol/src/schema/registry/families.rs",
+    "current": {
+      "sha256": "14c6a9f88e883ccaafd0d128c8a4c89c2e65874017026cb4b588f32a4c2620b5",
+      "affected_packages": [
+        {
+          "package": "peritus-protocol",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/foundation/peritus-protocol/src/schema/render.rs",
+    "previous": {
+      "sha256": "0c73bdae1ed71f6542ed07a8de1caccd29b460811401d0035e7ed0b72f041f63",
+      "affected_packages": [
+        {
+          "package": "peritus-protocol",
+          "verification_class": "H"
+        }
+      ]
+    },
+    "current": {
+      "sha256": "5374fa925ed8297ded3433390ffe29041054c2a4daa0fc256958ba8579111b38",
+      "affected_packages": [
+        {
+          "package": "peritus-protocol",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/foundation/peritus-protocol/tests/compatibility.rs",
+    "previous": {
+      "sha256": "b0b0001d8bbf0092bfb2dd26348ee1ac17283006fdfba5892b901a7ce2cca874",
+      "affected_packages": [
+        {
+          "package": "peritus-protocol",
+          "verification_class": "H"
+        }
+      ]
+    },
+    "current": {
+      "sha256": "3e5ca462bbba1a249ee7aea55111ba4616c00bbbe2e66712efec93dd64743d82",
+      "affected_packages": [
+        {
+          "package": "peritus-protocol",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/foundation/peritus-protocol/tests/registry_roles.rs",
+    "previous": {
+      "sha256": "02ebdc9d7be95e7e0aa2fc03aabfec21a7807e4959b583c6ca4733ce62e75e6e",
+      "affected_packages": [
+        {
+          "package": "peritus-protocol",
+          "verification_class": "H"
+        }
+      ]
+    },
+    "current": {
+      "sha256": "97669cfd16fb98ff2054eaa45a1135891c63b0d974ab5f87bf3b45a13d5c7200",
+      "affected_packages": [
+        {
+          "package": "peritus-protocol",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/binding.rs",
+    "previous": {
+      "sha256": "53264253920e0dec58ed2bb84fe0bd14cfaa80753470e8c89009846b4acb1d89",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    },
+    "current": {
+      "sha256": "60c009cadd02d81e922417d9b049d182b2e62a3b54f91262ae0a078f9f5f10a9",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/canonical.rs",
+    "previous": {
+      "sha256": "ad23b75a5f219040a32770ae5b26a2a7a7d1621e924eb4bc7629b7b9e93a4232",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    },
+    "current": {
+      "sha256": "28630b2de70cc3fc48202fbc80015c73c66584714926826ba3d2beab92038659",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/command.rs",
+    "previous": {
+      "sha256": "9e34ee8a5c0eee58d14da10a4607a45151189548ad2968e65507ef6cf9fb9e1c",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    },
+    "current": {
+      "sha256": "65640c3880cba840b2d5614807343bfc7658fa0d9c2e88e55b0551648fcbc662",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/durability.rs",
+    "previous": {
+      "sha256": "741351e504c810f7e1bcd9772731e6cd8640c3e36c4d39f10c2b7310ea560af3",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    },
+    "current": {
+      "sha256": "79e10c6df98561b392cf16c9e4c0bc265f531c422be224502db2ca35ffef272b",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/durability/binding.rs",
+    "previous": {
+      "sha256": "d850d4565ddc3840b1b19ecd6612a015f55c5b61544ea0166133fb50a0fbc046",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    },
+    "current": {
+      "sha256": "77456de9af77d6e6f686601336662cbb55350747c740f08d67fdaca5ceb48fdf",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/durability/semantics.rs",
+    "current": {
+      "sha256": "fb26dac5a98f58e53786c8f99d303ad3a90eacf262a8dec13f348920906d0ca4",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/event.rs",
+    "previous": {
+      "sha256": "ecbb59d8501bf4841c107b20e03bda2ca32bff7c698318d21afa4f8d29e7c817",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    },
+    "current": {
+      "sha256": "8a52c1dbf3c8869d2baafd19482b3e44bc6f6b594ac18bd895679c8e85f4da97",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/event/kind.rs",
+    "current": {
+      "sha256": "0c33ea41f6bb1ab13399b6efbba91c5a15accf70d19f83935adc9bb6d46dbd95",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/event/loss.rs",
+    "current": {
+      "sha256": "cac5235a6047b5980de43c31fea4d58f2efbf2b5f6b7f61b0ec26e9a3e52dcad",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/identity.rs",
+    "previous": {
+      "sha256": "eca4d912b55052aa969182880059757d0b1e773491f4b042f7b618d69346b1e1",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    },
+    "current": {
+      "sha256": "740b53895b4007a5d3ef826aa42e0ac38cd529638801d715c44b1bc83c8c0507",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/identity/order.rs",
+    "current": {
+      "sha256": "9452376a6355cc36dd05103b7fd5fcd799e351bf68c2a1e9f0e2f05c64f5cbfe",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/identity/tests.rs",
+    "current": {
+      "sha256": "4fa3fdff032f512284c8dade7d4fcd583fc484b808f9d0d12860fb001f015e59",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/lib.rs",
+    "previous": {
+      "sha256": "fbabc4b8043c5ac8a7176eca808fde6796e22a88ffad8b94f1c8fe99bf599ffb",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    },
+    "current": {
+      "sha256": "64c277a3acf790909c50c17c0a96d7c3e5c780395ec1ec12d0640718a08f15ba",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/limits.rs",
+    "previous": {
+      "sha256": "736c7cfcd85a63d7a1dad1ee26ee6440b8418b55f55cbc909f015f96072f94e9",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    },
+    "current": {
+      "sha256": "edebbff2eec5441f11774da21c0c37551f5425053a2e36ce5f78724e5e011b1d",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/projection.rs",
+    "previous": {
+      "sha256": "285296e7d7ff0ba5fef8fb72e8b9128188263c99ea62e2bf8e8bcea127620ff7",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    },
+    "current": {
+      "sha256": "aef89073bcbc4f43b4f8072c53efba287bb1464e52ef4d0f6d8296efa0c6c1a7",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/reducer.rs",
+    "previous": {
+      "sha256": "436ca7afe517dcbd203249ea564f0bdb363c3737747188db31c2b8eed20bfd65",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    },
+    "current": {
+      "sha256": "2adacadbd8fb550607ac902284dce090a4d80b32c56b692837e9a50ee800ce59",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/reducer/apply.rs",
+    "previous": {
+      "sha256": "6453b34b637982605c057313cf4d54e79e19dc7c1aef8c947deaf6949efa14fa",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    },
+    "current": {
+      "sha256": "7aa0dce311249497734d08646eb290e5aebdf944c857e8c5801b41fd204c7d0c",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/reducer/apply/admission.rs",
+    "current": {
+      "sha256": "3951d6095745a63838a482046e1224d8e784ee11d3493168516214b5938b7153",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/reducer/apply/admission/bounds.rs",
+    "current": {
+      "sha256": "8c4bc5d3032878ffc0d2b55e309d897648faf1d276d97f91dfbad6ed39a86e78",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/reducer/apply/admission/checks.rs",
+    "current": {
+      "sha256": "c2e87800a144d711a5bf36c1c471b19bc96f0b47472a3ec3c59dac7c3623c748",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/reducer/apply/admission/contracts.rs",
+    "current": {
+      "sha256": "0eea88a66e6d398022c36f2a281b3a5366bc118f9b8c3d68a55b3a07aaa716be",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/reducer/apply/cancellation.rs",
+    "current": {
+      "sha256": "128fee6724d2ce190d76eb5b03a821e646da437a50c0de3510a96777a2c89914",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/reducer/apply/cancellation/command.rs",
+    "current": {
+      "sha256": "ca864ca5fcdc73853e84a40cb5a57836df4f5d394cd97ee9223e245f12636637",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/reducer/apply/cancellation/ids.rs",
+    "current": {
+      "sha256": "6210b94e9926b3bcda5cfd4a20d8e64bd417c5e42203558ef04e221ec7d995ef",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/reducer/apply/cancellation/non_resurrection.rs",
+    "current": {
+      "sha256": "050b9bc78b125c417104762de86f7910c3d88d5038f4e7c8cdc04147e00b5a7c",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/reducer/apply/cancellation/queue.rs",
+    "current": {
+      "sha256": "21d3892647f737ec325846dd555d465c126775839ca09ac3913eb21c4704511d",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/reducer/apply/cancellation/tests.rs",
+    "current": {
+      "sha256": "8bcb21405b22d65075ab06db0d831270bda0796201005eebb42e8425d2389deb",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/reducer/apply/cancellation/update.rs",
+    "current": {
+      "sha256": "35c426a1ef39503f51f2397a147db1a79f0b4ab3e09b0010b834c3d76703b765",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/reducer/apply/cancellation/update/activity.rs",
+    "current": {
+      "sha256": "70ca83a70fa64efe2b707abbfe29a5b4d0bf1b506777a16d101c0b221b15f4ea",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/reducer/apply/cancellation/update/frame.rs",
+    "current": {
+      "sha256": "7e02d81fa657d39b17aa87d4b4e589cfa209af2988f2d34a8508409a65b68021",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/reducer/apply/cancellation/update/trace.rs",
+    "current": {
+      "sha256": "b2f2ed3964e058d0058fb56640b0e9f0084e32ef70a6c7523d7bb00834497f67",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/reducer/apply/control.rs",
+    "previous": {
+      "sha256": "5a7b416afc24b7739bfd881b100c7e7c4d4d76d2812cd4315c76200d311870d3",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    },
+    "current": {
+      "sha256": "7dc4be2a97a1638f6b78ee21a0c937a0917bd4c7c3875de80d4d31041d9d7aee",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/reducer/apply/control/finalization.rs",
+    "current": {
+      "sha256": "ac93d52283b7a147b2a49d8f558ae7cdff22d25404ec8e3f6f7ced438e1da507",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/reducer/apply/control/phase.rs",
+    "current": {
+      "sha256": "abd75ef418ace0a5e987ce79ed5d494cfba3c29dbedc4b0d8e0712d93bd7bee0",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/reducer/apply/dispatch.rs",
+    "previous": {
+      "sha256": "92b24d6acb6cc2b3717f9788c05c2204840eb0bb781f54375e7c91630e79e216",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    },
+    "current": {
+      "sha256": "7a08a70de8fb7ec7ddd9a391a75cc20823fe271b7bd1707ad80c73ec64741f4d",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/reducer/apply/dispatch/contracts.rs",
+    "current": {
+      "sha256": "1e99c93c0669dbf14dca6e93354474aba892a9c5ca643ca38612af07ad6576cd",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/reducer/apply/loss.rs",
+    "current": {
+      "sha256": "4f79985a61aef8a64bcca7ee3c529cfa3b642d85cc35a752a17bee8d6d436783",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/reducer/apply/loss/batch.rs",
+    "current": {
+      "sha256": "b7348fac3b63ae072a302c4b14ea4ad04d0d948166720f7a217888a13b0e31c7",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/reducer/apply/loss/batch/release_plan.rs",
+    "current": {
+      "sha256": "4638d80afa8f63b8d72cdc4f5390d6e91f1837e13d81aa46b1a69838844312d8",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/reducer/apply/loss/batch/selection.rs",
+    "current": {
+      "sha256": "b6e4984dfb0755b28d9bde9ae44cf3c53e2fee60099a6dfa4a1ccec43850039e",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/reducer/apply/loss/batch/state_frame.rs",
+    "current": {
+      "sha256": "8ec64ada9b00e8c9b6b8323fa042c876244fc1a29afa34a47b3d6c3714e4afc2",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/reducer/apply/loss/batch/trace.rs",
+    "current": {
+      "sha256": "34d64d73af536590bd62ec84bba93ccb2ae19fad161d67c0c6ae24b1635effcf",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/reducer/apply/loss/batch/worker_target.rs",
+    "current": {
+      "sha256": "9b3d7c7547d0de46fa4f53423b60b870850608afb2e45091e877f68c71fe0a08",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/reducer/apply/loss/release_one.rs",
+    "current": {
+      "sha256": "c6bd39dcac3ed8fc0c68f11c59fdbcc984c35b0efd260f3d4ce5cf54adc76d21",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/reducer/apply/loss/release_one/lookup_proofs.rs",
+    "current": {
+      "sha256": "43b652fcfd13587d7e967e245b2849173ac574012e2bb2d1d30c82f357e2bb27",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/reducer/apply/loss/release_one/queue.rs",
+    "current": {
+      "sha256": "1955efac6d4214f2640c9e15afaf5803ac20e89d432ad884d7f19cf3851d9fd2",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/reducer/decision.rs",
+    "current": {
+      "sha256": "01936c6c032534b8d150442ec42128b9381712de7890abb8881dbf6526f5d671",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/reducer/fences.rs",
+    "current": {
+      "sha256": "894ae773f2815d47317de1a543527ca24a05392a0327a77f2e6c44de960017d1",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/reducer/reconstruction.rs",
+    "current": {
+      "sha256": "103adb661e4e80410e298ae5d5230c5c8f9090c13d933488bed9471566379ff6",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/reducer/reconstruction/relation.rs",
+    "current": {
+      "sha256": "8ce8ea98f3c59c31e4a869f83c4c2c5df2d2a62df562e9ae1af2110decc895bc",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/reducer/start.rs",
+    "current": {
+      "sha256": "759bc89c1390849da8e4e55958c002aeee9b6289e5984f5d874bb642895dcbd7",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/resource.rs",
+    "previous": {
+      "sha256": "3d6c6c18de770620cef973e66f44f1aded97a5b4094eeb641ec82c53cb19e84d",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    },
+    "current": {
+      "sha256": "91a99a066ed0cd0a45ae962db33dcbb922842c19b39867c3f4a1828cabb68dd9",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/runtime.rs",
+    "previous": {
+      "sha256": "0a41f52536759f2e3a0e3fe4cdfe6ce0536ede0cb5bf361fe9d902706eddc5cc",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    },
+    "current": {
+      "sha256": "51c9ea1b0a49f984bfa5c3a6c36219d76426be576653701d939a515928e822e3",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/selection.rs",
+    "previous": {
+      "sha256": "8ffd91db4b7da5481e0e93d20b0249f4954a099b08078c17db202577fee28f70",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    },
+    "current": {
+      "sha256": "eb761f61a6983ed645e2369784a239e041de4d604cb0f4e430ac935dad0b9db4",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/selection/capacity.rs",
+    "previous": {
+      "sha256": "73ca4e67cd656cbeebcc1d39940e33ede593cf6266fa417b6c453202249bf848",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    },
+    "current": {
+      "sha256": "818c87ba23dc7fe404c2f03516afb271ec5e0c8a70efa711be751efbba879260",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/selection/model.rs",
+    "previous": {
+      "sha256": "6b4aa15c2c4e0e2228de1dd7ad634526d20eef127aacdd6a510c8bb698792bee",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    },
+    "current": {
+      "sha256": "053802e5c6c2cf2c7f8b129fcc96604752c5654d5e58041e40da286ec75ddaeb",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/selection/ordering.rs",
+    "current": {
+      "sha256": "eb5a0f4bd3c4dd32ca30f5f12c05d207bbb87fc36d0b137b770dfe6485345f26",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/selection/scan.rs",
+    "current": {
+      "sha256": "716294b9dfcfd1a62157cfaa88498a707318ea79cc93945d87e188429333b3e9",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/selection/scan/work.rs",
+    "current": {
+      "sha256": "8bc569ef3a4a4299a3f7c08afb730c9eb310f7deb91f3e7ab8c7b7e873fbda53",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/semantics.rs",
+    "current": {
+      "sha256": "665b40258f0034e98aa1afecf21c1972c8ae3d9c064ea65f2015d9ed0d31cf5a",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/state.rs",
+    "previous": {
+      "sha256": "4c63733a353a2f398967dc949ab2cf73b9cfb7ef47c5d08a1e49e358b7d0eff3",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    },
+    "current": {
+      "sha256": "9413014472ea507ea63cb1e53408f7c53a20963364c4e7380bb3fac1bce369f5",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/state/clone_impl.rs",
+    "previous": {
+      "sha256": "f9dd57370ffde41abadb860a4d7b98fb97b5e26b26560c6c42e23401c6bc9f5e",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    },
+    "current": {
+      "sha256": "59d547840533e7764fad2b59467600f28cb94c2f06452c88e9f4d09906094d49",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/state/lookup.rs",
+    "previous": {
+      "sha256": "574a39383eb174ea0b4338ee56fe3e3dfae0fb9ce3b22dc63fb48dd00d20ffd5",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    },
+    "current": {
+      "sha256": "6d96a41f0fe95442cce6b7d7318c711b65004a33d4aa46fffa7b8958fc85613d",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/state/mutation.rs",
+    "previous": {
+      "sha256": "180a9a9e748adde778cabfd963437ce4e12e016e6fd871ee320262504a777a6c",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    },
+    "current": {
+      "sha256": "db8c9c9aed5af72a3b52fe21e767898449d5d354407826bc515ed59fd40729d5",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/state/mutation/cursor.rs",
+    "current": {
+      "sha256": "1077a5865307c6b678c8cecc86c426c598619a2fe39c508692550deba86a4b6f",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/state/mutation/dependency_action.rs",
+    "current": {
+      "sha256": "ce54860f8a1d85ff21017f79059740055184d79ca0e88b11c32e632aafab361c",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/state/mutation/dependency_action/proofs.rs",
+    "current": {
+      "sha256": "c163f9ebc38ab0986e2e50eb223435e8fd1d5ec7776916f96f5256ab3ca2346f",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/state/mutation/dependency_budget.rs",
+    "current": {
+      "sha256": "693bcdbe569fa467a35510f1b9932677dc222f626dd420838d93f5eaec69357b",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/state/mutation/dependency_measure.rs",
+    "current": {
+      "sha256": "435839738c6a7d12144506cb70b4a2539cca972730cc43b8142ce374a7cb0aa6",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/state/mutation/dependency_round.rs",
+    "current": {
+      "sha256": "6f45629138fc3aa8575d16c53df540f56a42630b502b48bd6ee3301bc6635811",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/state/mutation/dependency_round/apply.rs",
+    "current": {
+      "sha256": "68747733e4acbbc7080ffbddcc80f07c663d24fba25b88528fbbeeb73dffb6e0",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/state/mutation/dependency_round/frame.rs",
+    "current": {
+      "sha256": "ac90be3660c79f4eff2872e927afee2e00c442f5b3ca3c72dd9a673572840cc7",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/state/mutation/dependency_round/queue.rs",
+    "current": {
+      "sha256": "e857812c1c2e84887d493e53e3608cc19bf4eb54e1c9501694e2de99a92ee42c",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/state/mutation/dependency_round/selection.rs",
+    "current": {
+      "sha256": "be01f4babeec75da1f1e0b04c22994dc618f162596ec1cce663d1b133ff41df9",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/state/mutation/dependency_round/trace.rs",
+    "current": {
+      "sha256": "b98f15e9d25ba0327ce42ca11db54c93d146b5782b548f8153c068e1254f2cf2",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/state/mutation/entity_insertion.rs",
+    "previous": {
+      "sha256": "02e695865fa2aa3eaf669b36c030906d0cd8e151ca40307eefaf262347c7b595",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    },
+    "current": {
+      "sha256": "7e28771a4d10b43d5e71d89d99a00fd58f7d5a1a0ed6973b6193abbd70cd972c",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/state/mutation/entity_insertion/slots.rs",
+    "current": {
+      "sha256": "4b0367db81ea51b76468ab77263c4ca9e34104b12bed823ae2748dbf9eacc3fb",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/state/mutation/insertion_slots.rs",
+    "current": {
+      "sha256": "c00638f032fde71dc2f29d22e6dd79a1389e35002a80515c8feb9d15c4b409e5",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/state/mutation/reservation_command.rs",
+    "previous": {
+      "sha256": "2a5a1913ee013e70e3d9b5cc86257e19c95495ab9897486d9a359473e0ca57fe",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    },
+    "current": {
+      "sha256": "77029daa2efa30820508b8876f58b320abbb7fd92660db7b8ac225a46f9ef18c",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/state/mutation/reservation_command/acknowledge_cancellation.rs",
+    "current": {
+      "sha256": "4bd464f3ae65ad41926ed33b68b06a860327963a639cbc47948905ab63b52528",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/state/mutation/reservation_command/complete.rs",
+    "current": {
+      "sha256": "490a6a7d90feb7d4448ea5ef3d8323becf65b7ff4c4d536ddcaf349922408e98",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/state/mutation/reservation_command/contracts.rs",
+    "current": {
+      "sha256": "7641a2471879f25167fdbd6339bc4dc1808dbf43d73407f31ca0bfcf55cdeff2",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/state/mutation/reservation_command/contracts/non_resurrection.rs",
+    "current": {
+      "sha256": "e2bcf0420cd5fbe572a2af443cc821825e6ac5c5545260d241bbb0fb9eaa55e3",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/state/mutation/reservation_command/contracts/non_resurrection/classification.rs",
+    "current": {
+      "sha256": "7734c0a694467b51ed2c01ff130984da11b669775c1dbe8e62d2efb9e8e690e3",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/state/mutation/reservation_command/outcome.rs",
+    "current": {
+      "sha256": "31dd4dca6674e1a2779ac3d9fa7ac0edd9054483822519a7d47ee0bf93d68747",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/state/mutation/reservation_remove.rs",
+    "previous": {
+      "sha256": "b914301fb40464e164ddbd710617a5955a0314ab67591d346ba61958cdfa03cb",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    },
+    "current": {
+      "sha256": "77bf048d6b509a8569b92afc371e0d9452d5d6aa24f251cf0fbed3de65a721e2",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/state/mutation/reserve.rs",
+    "previous": {
+      "sha256": "7468cc850a25c8970bc74195f4c74d318729ea8dfd817061c83832354938c8df",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    },
+    "current": {
+      "sha256": "1c7512ccbe16885cc7b186023c617005b730c539c2aaae51da0200f0e6a72bff",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/state/mutation/reserve/prepare.rs",
+    "previous": {
+      "sha256": "f25f09a1c5b1d9f8f8ff669e2aa53e309d4ced91ed3f1944035669201f76e671",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    },
+    "current": {
+      "sha256": "a07057a959325e2144e7a323d7cb90149d4c1d8a6cc2bdaf89337ba4bb62d86b",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/state/mutation/scheduler_phase.rs",
+    "previous": {
+      "sha256": "2f0a6e073598999dce390bdd99955dc5f98664b0a908218464aaaf9b46d20147",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    },
+    "current": {
+      "sha256": "2c0cc0a0c66843f16b8c3d5799a86d4a127013f8b664ba02cee8c1567b6b9aae",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/state/mutation/set_terminal.rs",
+    "current": {
+      "sha256": "fc8be0a8713e194f2fb99660d5e7c07f481a5081eb0cf5101c7ced02d6505c4e",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/state/mutation/work_update.rs",
+    "previous": {
+      "sha256": "172b9eb8f58e96ef10bb1eca1fe9445b2c77eae239c641b051728c10c8e881af",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    },
+    "current": {
+      "sha256": "f1b512b3cc49e675cfa72509aa32a055fb0a423be6a4a521220d52280b1f2d95",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/state/mutation/work_update/apply_at.rs",
+    "current": {
+      "sha256": "38e4d3f73370318d9565c5462ced6775beb12124ca9ae19891b7411e79080584",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/state/mutation/work_update/release.rs",
+    "previous": {
+      "sha256": "6533c15d399fb00aea9fc3b487d81dc8487008489bc1241c414959041135d272",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    },
+    "current": {
+      "sha256": "47e46bead43460fef6be6dcd8ce4d5174981ed5666ea501c19047fc8d7e65b3c",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/state/mutation/work_update/release/phase_relation.rs",
+    "current": {
+      "sha256": "5a7f5ef013e16a965fe559e59a96d6846cd045c3f6309de9323e5755544988b2",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/state/mutation/work_update/release/readiness.rs",
+    "current": {
+      "sha256": "8c5c9f74411115c61b2499423027daef46b197e3cc055e036da7c61a001309b9",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/state/mutation/work_update/release/terminal_relation.rs",
+    "current": {
+      "sha256": "86320a6ee8c10bc5e464ccfc05037f496ded6f01e0f581a5c66c031ceb3eda0b",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/state/mutation/work_update/wrappers.rs",
+    "previous": {
+      "sha256": "3d3ce6c6044794a52d3c91929ccc5622977fa680284846e2f6d5a6eabcccc9e6",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    },
+    "current": {
+      "sha256": "2b90e10c1b604441bdf726730b43b70991e5c958cbb4042a09066fce75003455",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/state/mutation/worker_refresh.rs",
+    "current": {
+      "sha256": "2d7473bbf7ca508dbe810b220de174148771e34533034cbaa07f1d52d6ce9283",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/state/mutation/worker_refresh/step.rs",
+    "current": {
+      "sha256": "7c35e60360151f9813d3d60e3d0cbdf732f424746a565b2ec015a73ac709d258",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/state/mutation/worker_update.rs",
+    "previous": {
+      "sha256": "fa43db03325d3d65ac4bb6ce3579ea585d96896d1164d604930857c127681683",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    },
+    "current": {
+      "sha256": "aafae42da01347f298940c3ccc420c6a6e1561f52966468770b7842414aa3d88",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/state/ordering.rs",
+    "current": {
+      "sha256": "a6acd23d7c332ffbeef509c3f4d1f20cbc50a4f131d90a45faa1527d69a72d48",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/state/queue.rs",
+    "current": {
+      "sha256": "78cf4d6033ef886985bfe7057ea7361453bd6a018e6b4cc8b3f03f6d9b0b18ad",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/state/queue/tests.rs",
+    "current": {
+      "sha256": "3e82754777bf6ec3b961515a21451bfded651e92294254e2861bd60885c34714",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/state/terminal.rs",
+    "previous": {
+      "sha256": "91e5c6b4351e22cddce93fdbf1427244bb517b1b8632b3f3583c531a6b7a49bf",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    },
+    "current": {
+      "sha256": "574322e5def9e5ab0a47a5b94a64067de94f159b9aecb0298ccb440ab616d93e",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/state/terminal/evaluation.rs",
+    "current": {
+      "sha256": "d29cc17e3272b3a14d5257452c2a03918e287494828969bd82de9c62034f552a",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/state/validation.rs",
+    "previous": {
+      "sha256": "195dba8e898baa0c10fa6f03d9e1541b803b30cc9d1ae69c03cbe8d295f7f164",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    },
+    "current": {
+      "sha256": "4820c40925a933f7d35fd178759e93e2f1c9289b23346cec611f2aa7f1730bd1",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/verified.rs",
+    "previous": {
+      "sha256": "eb3e7f08c45f39d2f1d2a4691c1e3e9dc0596d1ba0671585494a5c0c1e023d24",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    },
+    "current": {
+      "sha256": "8b1a5b241655951190e85cfca750bf3d44bbab1f546d167dbbf7da2e2527fc32",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/verified/reservations.rs",
+    "previous": {
+      "sha256": "b74d6e19a5ee0cf1ac392c41ddfd46b61dc66801feef9dc5b949fc17e6f1ac68",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    },
+    "current": {
+      "sha256": "9cff9876abe35b8222a4a28598d01075fafa7f6160b03f54409d8b21b6e8c7c0",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/wire/command.rs",
+    "previous": {
+      "sha256": "68a5445d1a6e22e0a37afd55f435663aee3861f0badc0acc68afc17b2ce62342",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    },
+    "current": {
+      "sha256": "08c5366e1dfc78a0e1e53d3cfaf33a31a485dacf371efbe0bc1a40bc33b2e2bc",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/wire/event.rs",
+    "previous": {
+      "sha256": "174e9f5e552569b523f88355d1c7e5f7dc20bca765b862abacdfe01121bebe62",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    },
+    "current": {
+      "sha256": "a07db18d7742075d6a9477655615d248ef60f1c81cf4b69155499dd858aee1e8",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/wire/fixture_tests.rs",
+    "previous": {
+      "sha256": "98db1dadc34b209d15cf7de4dc9b668c9ba01adbd40b1322be0e74057a08b4e2",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    },
+    "current": {
+      "sha256": "908c49e62b955374becd5884a440bb47bcf6f507e6171db134d859ea615d1659",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/wire/mod.rs",
+    "previous": {
+      "sha256": "5aab13e7ba571f9b638f93cb8f9295b46220ea3b7ac0e551559bf44589cbef78",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    },
+    "current": {
+      "sha256": "5de9c9fbfe8cab39979ba15c1250c0618e6fc36c03e9c9a3418290ab8b2bbcf1",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/wire/state.rs",
+    "previous": {
+      "sha256": "c970007bc498f88e718b72605c4dd751f9679fcdd7a73e49727c4f5e7ba13079",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    },
+    "current": {
+      "sha256": "241d73b81bef09519bc87181bd8f722af27ee180d4d001db28c26b775197ca63",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/work.rs",
+    "previous": {
+      "sha256": "169da72df418ea3b697286eca25e538b16209e4e948fadb7b487fc5e6178adea",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    },
+    "current": {
+      "sha256": "d4e0570a3a6c198ff49069ff9806cbc9a82307e83bfe2020ae0893456757093f",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/work/class.rs",
+    "previous": {
+      "sha256": "d8dde5e29c126425efd5d659a88268b3845773f586d91394b2da2a41cd9e1cd6",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    },
+    "current": {
+      "sha256": "360215a63b4f7da1e3efdf98d67145f84f9664ebd052f0f312479fe3a6a78d68",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/work/clone_impl.rs",
+    "previous": {
+      "sha256": "03ada2ad3b9d9f36c031d8d447729b4e2305d1b0cf5736eb234bd7be8507689f",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    },
+    "current": {
+      "sha256": "f14ebbf5cd5a522e62905e42006df697a3ed5a1c9f04a4b59542e5605411428a",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/work/record.rs",
+    "previous": {
+      "sha256": "2bcf8bdff2caa65e3f43a1621c96e345762b8da258b6bc762dd741a4b57b5505",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    },
+    "current": {
+      "sha256": "9122090db8594805a71306c4324a3559401d631d9c66a7ff88124bff7c19bac5",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/worker.rs",
+    "previous": {
+      "sha256": "9b9c7ccac63763dcdd7d0aa40b1d427011468ea5dd7a3795bb48c69abcded76d",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    },
+    "current": {
+      "sha256": "886df300a3aa845c78a45c5eafc29364b67f3cad80334b76eaac7c4f2a612ad0",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/worker/admission.rs",
+    "current": {
+      "sha256": "e3fff53b2aac768767e6c24ed2670ca004400b27b0e456e97386dd5a7e3f143b",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/src/worker/clone_impl.rs",
+    "previous": {
+      "sha256": "75f7ca82c6c3563c570a884e9f0984844280cb122ddc1993461eb753b5bd73ba",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    },
+    "current": {
+      "sha256": "235d6dffc3f5a8fe211f1473f04fc997fd51c695862c39d213bae59b2092cbb7",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/tests/cancellation_tree.rs",
+    "current": {
+      "sha256": "06aaee85e58b26dffe16c295c91e1d9922b63402e4f823255bdf70fdb13476b8",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/tests/cancellation_tree/oracle.rs",
+    "current": {
+      "sha256": "fd7c51fd884441a5c0575fad84be743c271bc2659b7ff351010d3da305610da6",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/tests/canonical_lookup.rs",
+    "current": {
+      "sha256": "204b07402913305e6151a3de59d87549f1d5891a5deba449d5822f2b951f1fa2",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/tests/command_fences.rs",
+    "current": {
+      "sha256": "cd148daf27ba86a3605b144c1d7c162e9f8dbaa6cd9806a95187d9b9fba9aaf3",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/tests/legacy_recovery.rs",
+    "current": {
+      "sha256": "668f29a2ef004e396bf1907345cd23dfa853f7367d7ceb3922639978cf336438",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/tests/queue_recovery.rs",
+    "current": {
+      "sha256": "dcb6d9c929ed5eee517be20f8610a89f873f6a60d64ab4951e2445b0fa0a1829",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/tests/refresh_composition.rs",
+    "current": {
+      "sha256": "c592b54e35d66019e8c330e14ab70672f6835d786a45ec1af51e370b02c7ee4e",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/tests/replay_reconstruction.rs",
+    "current": {
+      "sha256": "5e9090d52a4927e3e541be1c8ea78f53d696eb0410f3bee1c7fec7aa394bb49d",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/tests/support/mod.rs",
+    "previous": {
+      "sha256": "d5c9d387bfa14d218b1d7f5ea9796ce8bdc2cf35ebf2dcda95ad24129b319ef4",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    },
+    "current": {
+      "sha256": "1883f2edc0e2e0947cf42544c5a9073a0fb00b90bac4bbe047938baf58d77a58",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/tests/terminal_summary.rs",
+    "current": {
+      "sha256": "564d896a07d9fe078b2b585805ea68844e68f05d6de8d46ce9b8699175c02e63",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/tests/versioned_durability.rs",
+    "current": {
+      "sha256": "5bb214e0b7c274fbd0566f26ab50d6484c3746b27958ffc82c706f0aea2bdc37",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/tests/versioned_durability/historical_import.rs",
+    "current": {
+      "sha256": "709e5763e7897f33c5c02cae0ac8f162bf58b6ebfe36d551fd660b1cb3ebe1bf",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/tests/versioned_wire.rs",
+    "current": {
+      "sha256": "b6a04218f0f17210ede1716f2134e8c70feb61b8581b47fb5fbab3a207817658",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/tests/work_admission.rs",
+    "current": {
+      "sha256": "b40ad8443c96c1d687150e5a5dee54d8f2e137bd2ed23d8d087b947149773b50",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/tests/worker_descriptor_admission.rs",
+    "current": {
+      "sha256": "bbc463e3eb676686788b551666da427d780f0947e6b4430f830d83b8a5103b00",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/orchestration/peritus-scheduler/tests/worker_loss_outcomes.rs",
+    "current": {
+      "sha256": "7c676364d9b2f8e80c8ff12cb1d8404a1a5fb824fc3b9edd9902fa49386631e6",
+      "affected_packages": [
+        {
+          "package": "peritus-scheduler",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/state/peritus-evidence/src/provenance.rs",
+    "previous": {
+      "sha256": "ca22dd09a77558e4b1fec1748a7a8b3c274fb745eee72456f83d47f5b0de1946",
+      "affected_packages": [
+        {
+          "package": "peritus-evidence",
+          "verification_class": "H"
+        }
+      ]
+    },
+    "current": {
+      "sha256": "8ecc3d8c2023d7ebc36034846021093116b758c3835d8e71fece841d61f49731",
+      "affected_packages": [
+        {
+          "package": "peritus-evidence",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/state/peritus-projection/src/replay.rs",
+    "previous": {
+      "sha256": "93e8b2cf41e36e7a05b7a170c75d80a5a477a42b004c630a2a12fe2f156baf37",
+      "affected_packages": [
+        {
+          "package": "peritus-projection",
+          "verification_class": "H"
+        }
+      ]
+    },
+    "current": {
+      "sha256": "191f45c1c027280d974264349f487f9b38ffdab355f52913b0460d0b2a3d779e",
+      "affected_packages": [
+        {
+          "package": "peritus-projection",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/state/peritus-projection/tests/rebuild.rs",
+    "previous": {
+      "sha256": "cc12e2a37aefa6c68af40b31761ee1bb6418e6758e014f37be325c21e46e226b",
+      "affected_packages": [
+        {
+          "package": "peritus-projection",
+          "verification_class": "H"
+        }
+      ]
+    },
+    "current": {
+      "sha256": "ef22d4ff26b9fe721ecdeb119d3d65a6e551128a143573ea4d5ba7ddf2069d1c",
+      "affected_packages": [
+        {
+          "package": "peritus-projection",
+          "verification_class": "H"
+        }
+      ]
+    }
+  },
+  {
+    "source_file": "crates/state/peritus-projection/tests/rebuild/journal_fixture.rs",
+    "current": {
+      "sha256": "927c690c657ee8672a1adc515ef3e3b73337d0c6f79b53734cbf2c55d3a51b65",
+      "affected_packages": [
+        {
+          "package": "peritus-projection",
+          "verification_class": "H"
+        }
+      ]
+    }
+  }
+]

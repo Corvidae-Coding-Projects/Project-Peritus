@@ -1,6 +1,7 @@
 # GAP-03 scheduler production proofs
 
-Status: candidate implementation locally qualified; proof-impact reconciliation and current-head
+Status: candidate implementation, independent technical review, proof-impact inventory, and all
+132 affected-package gates are locally qualified. Protected-base authorization and current-head
 hosted qualification remain in progress. This work starts from develop commit
 `a41113d1389c3d8fc77a00cc562cb9a5bcb7adc8`, after GAP-02 authorization and application.
 
@@ -9,7 +10,9 @@ with the behavioral requirements in [the D3 design](../.design/d3-scheduler-coll
 Local issue 77 tracks this work under the broader formal-verification campaign, issue 75.
 Issue 78 tracks cancellation qualification; issue 79 retains worker-loss and whole-transition
 composition. This delivery closes the remaining production-code gaps targeted on draft PR 77.
-Final proof-impact authorization and hosted qualification are separate delivery gates.
+The [final candidate review](formal-scheduler-gap3/final-candidate-review.md) binds exact commit
+`5d739de2902de0a5379f23f32b0c9f0ae562b28c` and its tree. Final proof-impact authorization and
+hosted qualification are separate delivery gates.
 
 ## Required production relationships
 
