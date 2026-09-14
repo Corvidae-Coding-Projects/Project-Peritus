@@ -23,9 +23,9 @@
         "prefix_sha256": "648f7ea8c4ecd24e236f709d0e3e94600daad6c8bd38292131f90cd7b7b0f501"
       },
       "cF43": {
-        "sequence": 3,
-        "tip_oid": "4875737b19f7d49b24a4bf7e324b4ec549cab814",
-        "prefix_sha256": "7ed2eb2463f6ecf1700369d37b67adc5510b9038f243d25f10d455576b471f1a"
+        "sequence": 4,
+        "tip_oid": "1b4636355377f986b8050d28ffc775b45db2c59b",
+        "prefix_sha256": "020430056763719b5871b32b73b6c1a0a86363a39372cdc7869d8419faf27576"
       },
       "i0ox": {
         "sequence": 2,
@@ -50,7 +50,7 @@
     }
   },
   "next_display_id": 83,
-  "next_comment_id": 1599,
+  "next_comment_id": 1600,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -15294,10 +15294,21 @@
       "priority": "high",
       "created_by": "cF43",
       "created_at": "2026-09-14T12:53:28.848893643Z",
-      "updated_at": "2026-09-14T12:53:54.920852799Z",
+      "updated_at": "2026-09-14T13:11:31.280904679Z",
       "labels": [
         "bug"
-      ]
+      ],
+      "comments": {
+        "ea4d0c3b-5c3e-4181-8da3-4a9bdd864d87": {
+          "display_id": 1599,
+          "author": "cF43",
+          "content": "Commit ac9b3e18a (fix(providers): accept Zen batched choice fragments). Reproduced GitHub #79 as the same MalformedPayload / compatible.stream.malformed / HTTP 200 failure using the OpenCode gateway's batched choice-zero stream shape. The fix decodes Zen/Go sequential choice-zero fragments in order while retaining rejection of nonzero and unrelated-provider choices. Validation: peritus-provider-compatible 31/31 tests; strict Clippy; cargo fmt; fixture SHA256 inventory; docs-check; source-layout-check; cargo xtask all across 84 packages; strict cargo-verus package verification with 0 errors.",
+          "created_at": "2026-09-14T13:11:31.274655752Z",
+          "kind": "result",
+          "signed_by": "SHA256:3QDzU0AiBgCaFv0A3fQkjOiNrByeUYpOHkQ0uSOEt3M",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgOKRgeUjEgIo0z/f08WidINkSAV9VStOf178iyhtZrx8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAHqFJ+UDBrG42/ISZgyEW3sjifg0KtG4tQytlDv1T2uRub0s+c02Bp+4afs6DvNVol5RjqoHSL3x4YjVjmozAAA=="
+        }
+      }
     },
     "ef6ed3ab-52cd-436a-aa6e-d5d098c89f6c": {
       "uuid": "ef6ed3ab-52cd-436a-aa6e-d5d098c89f6c",
