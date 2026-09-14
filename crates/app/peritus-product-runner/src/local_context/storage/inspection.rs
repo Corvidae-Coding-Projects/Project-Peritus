@@ -1,7 +1,7 @@
 //! Read-only inspection of one exact published checkpoint while its writer may still be active.
 
 use super::super::{
-    error,
+    checkpoint_validation, error,
     record::{
         ArchivedObservation, CHECKPOINT_SCHEMA_VERSION, CheckpointManifest,
         LEGACY_CHECKPOINT_SCHEMA_VERSION, TranscriptManifest, ViewValidation, decode,
@@ -14,11 +14,10 @@ use super::{
 };
 use peritus_agent::DeveloperLoopError;
 use peritus_artifact_store::{ArtifactDigest, ArtifactStore, StoreConfig};
-use peritus_context::working::{
-    ObservationId, WorkingBinding, WorkingLimits, decode_working_state,
-};
+use peritus_context::working::{WorkingBinding, WorkingLimits, decode_working_state};
 use peritus_journal::JournalReader;
 use peritus_model_protocol::{ContentBlock, Message, ProtocolLimits, decode_messages};
+use peritus_types::Sha256Digest;
 use serde_json::Value;
 use std::path::Path;
 
@@ -58,44 +57,31 @@ pub(in crate::local_context) fn inspect(
         }
         Ok(bytes)
     };
+    if manifest.schema_version == LEGACY_CHECKPOINT_SCHEMA_VERSION {
+        checkpoint_validation::validate_schema_lineage(&manifest, |digest| {
+            ArtifactStore::read_existing(
+                &config,
+                ArtifactDigest::from_sha256(Sha256Digest::new(digest)),
+                MAX_ARTIFACT_BYTES,
+            )
+            .map_err(|_| error("checkpoint predecessor missing or corrupt"))
+        })?;
+    }
     let validation_bytes = read(manifest.validation)?;
     let validation: ViewValidation = decode(&validation_bytes)?;
     let sources: Vec<ArchivedObservation> = decode(&read(manifest.source_index)?)?;
-    let state =
-        decode_working_state(&read(manifest.working_state)?, binding, WorkingLimits::standard())
-            .map_err(|_| error("invalid inspection working state"))?;
+    let limits = WorkingLimits::standard();
+    let state = decode_working_state(&read(manifest.working_state)?, binding, limits)
+        .map_err(|_| error("invalid inspection working state"))?;
     let transcript: TranscriptManifest = decode(&read(manifest.transcript_manifest)?)?;
-    let selected_are_canonical =
-        validation.selected_observations.windows(2).all(|pair| pair[0] < pair[1]);
-    let selected_exist = validation
-        .selected_observations
-        .iter()
-        .all(|sequence| *sequence > 0 && *sequence <= sources.len() as u64);
-    if validation.state_revision != state.revision()
-        || validation.through_observation != state.through_observation()
-        || sources.len() as u64 != state.through_observation()
-        || validation.estimated_input_tokens > validation.max_input_tokens
-        || validation.max_input_tokens == 0
-        || validation.input_tokens_saved
-            != validation.uncompacted_input_tokens.saturating_sub(validation.estimated_input_tokens)
-        || !selected_are_canonical
-        || !selected_exist
-    {
-        return Err(error("inspection validation does not bind exact state"));
-    }
-    for (index, source) in sources.iter().enumerate() {
-        if source.sequence != index as u64 + 1 || source.invocation > transcript.invocation {
-            return Err(error("invalid inspection source index"));
-        }
-        let locator = state
-            .observation(
-                state.binding(),
-                ObservationId::new(source.sequence)
-                    .map_err(|_| error("invalid inspection source"))?,
-            )
-            .map_err(|_| error("unresolved inspection source"))?;
-        source.validate_locator(locator)?;
-    }
+    checkpoint_validation::validate_checkpoint(
+        manifest.schema_version,
+        &state,
+        &sources,
+        &transcript,
+        &validation,
+        limits,
+    )?;
     let archive = read(manifest.view)?;
     view_binding::verify(&manifest, &archive, &validation)?;
     let messages = decode_messages(&archive, ProtocolLimits::PRODUCTION)?;

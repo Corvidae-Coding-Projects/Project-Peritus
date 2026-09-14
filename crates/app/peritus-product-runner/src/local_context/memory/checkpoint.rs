@@ -1,7 +1,7 @@
 //! Persist exact prepared view and reconstruction artifacts before atomic publication.
 
 use super::super::{
-    error,
+    checkpoint_validation, error,
     record::{CHECKPOINT_SCHEMA_VERSION, CheckpointManifest, MemoryRecord, encode},
     view_binding,
 };
@@ -38,7 +38,14 @@ impl LocalMemory {
         {
             return Err(error("stale or changed prepared view"));
         }
-        self.validate_checkpoint(CHECKPOINT_SCHEMA_VERSION, &prepared.validation)?;
+        checkpoint_validation::validate_checkpoint(
+            CHECKPOINT_SCHEMA_VERSION,
+            &self.state,
+            &self.sources,
+            &self.transcript,
+            &prepared.validation,
+            self.limits,
+        )?;
         let working_state = self.store.store(
             &encode_working_state(&self.state).map_err(|_| error("encode working checkpoint"))?,
         )?;

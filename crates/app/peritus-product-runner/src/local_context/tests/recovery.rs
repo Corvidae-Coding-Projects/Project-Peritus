@@ -166,39 +166,92 @@ fn publish_rejects_changed_prepared_profile_before_writing_a_checkpoint() {
 }
 
 #[test]
-fn legacy_v1_checkpoint_without_view_binding_still_recovers() {
+fn changed_render_and_operational_config_rebinds_the_next_view_without_bricking_recovery() {
     let fixture = Fixture::new();
     let mut memory = fixture.open();
-    begin(&mut memory, "legacy-checkpoint");
-    let view = memory.prepare_view(&profile(32_768), &[]).unwrap();
-    memory.publish(&view).unwrap();
+    begin(&mut memory, "configuration-change");
+    let published = memory.prepare_view(&profile(32_768), &[]).unwrap();
+    memory.publish(&published).unwrap();
+    drop(memory);
 
-    let previous = memory.last_checkpoint.clone().unwrap();
-    let previous_bytes = record::encode(&previous).unwrap();
-    let mut validation: record::ViewValidation =
-        record::decode(&memory.store.read(previous.validation).unwrap()).unwrap();
-    validation.tool_policy = None;
-    let validation_bytes = record::encode(&validation).unwrap();
-    assert!(!String::from_utf8_lossy(&validation_bytes).contains("tool_policy"));
-    let validation = memory.store.store(&validation_bytes).unwrap();
-    let mut legacy = previous;
-    legacy.schema_version = record::LEGACY_CHECKPOINT_SCHEMA_VERSION;
-    legacy.generation = memory.store.generation() + 1;
-    legacy.through_event = memory.store.sequence();
-    legacy.previous = Some(sha256(&previous_bytes).into_bytes());
-    legacy.validation = validation;
-    legacy.view_binding = None;
-    let legacy_bytes = record::encode(&legacy).unwrap();
-    assert!(!String::from_utf8_lossy(&legacy_bytes).contains("view_binding"));
-    append_manifest(&mut memory, &legacy, legacy_bytes);
+    let changed = LocalContextConfig {
+        trigger_percent: 90,
+        retain_recent_messages: 4,
+        retrieved_evidence_max_tokens: 0,
+        max_read_bytes: 8_192,
+        checkpoint_every_completed_batch: false,
+        ..LocalContextConfig::default()
+    };
+    let mut reopened = memory::LocalMemory::load(
+        &fixture.state.path().join("memory"),
+        fixture.workspace.path(),
+        &fixture.state.path().join("run.trace"),
+        binding(),
+        changed.clone(),
+    )
+    .unwrap();
+    assert_eq!(reopened.config, changed);
+    assert_eq!(reopened.last_view, published);
+
+    let rebound = reopened.prepare_view(&profile(32_768), &[]).unwrap();
+    reopened.publish(&rebound).unwrap();
+    drop(reopened);
+
+    let recovered = memory::LocalMemory::load(
+        &fixture.state.path().join("memory"),
+        fixture.workspace.path(),
+        &fixture.state.path().join("run.trace"),
+        binding(),
+        changed,
+    )
+    .unwrap();
+    assert_eq!(recovered.last_view, rebound);
+}
+
+#[test]
+fn authentic_v1_only_checkpoint_lineage_still_recovers() {
+    let fixture = Fixture::new();
+    let mut memory = fixture.open();
+    begin(&mut memory, "legacy-checkpoint-one");
+    let first = memory.prepare_view(&profile(32_768), &[]).unwrap();
+    publish_legacy_v1(&mut memory, &first);
+
+    begin(&mut memory, "legacy-checkpoint-two");
+    let second = memory.prepare_view(&profile(32_768), &[]).unwrap();
+    publish_legacy_v1(&mut memory, &second);
     drop(memory);
 
     let reopened = fixture.open();
-    assert_eq!(reopened.last_view, view);
+    assert_eq!(reopened.last_view, second);
     assert_eq!(
         reopened.last_checkpoint.as_ref().unwrap().schema_version,
         record::LEGACY_CHECKPOINT_SCHEMA_VERSION
     );
+}
+
+#[test]
+fn restart_rejects_schema_v1_downgrade_after_schema_v2() {
+    let fixture = Fixture::new();
+    let mut memory = fixture.open();
+    begin(&mut memory, "current-checkpoint");
+    let current = memory.prepare_view(&profile(32_768), &[]).unwrap();
+    memory.publish(&current).unwrap();
+
+    let downgraded = memory.prepare_view(&profile(32_768), &[]).unwrap();
+    publish_legacy_v1(&mut memory, &downgraded);
+    let inspection = storage::inspect(&fixture.state.path().join("memory"), binding()).unwrap_err();
+    assert!(inspection.to_string().contains("checkpoint schema downgrade"), "{inspection}");
+    drop(memory);
+
+    let reopened = memory::LocalMemory::load(
+        &fixture.state.path().join("memory"),
+        fixture.workspace.path(),
+        &fixture.state.path().join("run.trace"),
+        binding(),
+        LocalContextConfig::default(),
+    );
+    let Err(error) = reopened else { panic!("schema downgrade unexpectedly recovered") };
+    assert!(error.to_string().contains("checkpoint schema downgrade"), "{error}");
 }
 
 fn append_semantically_corrupt_v2_checkpoint(
@@ -276,23 +329,4 @@ fn append_semantically_corrupt_v2_checkpoint(
     successor.validation = memory.store.store(&record::encode(&validation).unwrap()).unwrap();
     let successor_bytes = record::encode(&successor).unwrap();
     append_manifest(memory, &successor, successor_bytes);
-}
-
-fn append_manifest(
-    memory: &mut memory::LocalMemory,
-    manifest: &record::CheckpointManifest,
-    bytes: Vec<u8>,
-) {
-    let artifact = memory.store.store(&bytes).unwrap();
-    let event = record::encode(&record::MemoryRecord::Checkpoint { manifest: artifact }).unwrap();
-    let roots = [
-        manifest.working_state.digest,
-        manifest.transcript_manifest.digest,
-        manifest.source_index.digest,
-        manifest.view.digest,
-        manifest.validation.digest,
-        artifact.digest,
-    ];
-    let generation = memory.store.generation();
-    memory.store.append(&event, &roots, Some((generation, bytes))).unwrap();
 }

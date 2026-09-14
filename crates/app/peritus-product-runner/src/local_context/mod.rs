@@ -1,6 +1,7 @@
 //! Local working-memory host: C0 effects around C6 deterministic state.
 
 mod assembly;
+mod checkpoint_validation;
 mod driver;
 mod memory;
 mod port;

@@ -1,19 +1,17 @@
 //! Exact checkpoint reconstruction plus an ordered uncovered journal suffix.
 
 use super::super::{
-    error,
+    checkpoint_validation, error,
     record::{
         ArchiveKind, ArchivedObservation, CHECKPOINT_SCHEMA_VERSION, CheckpointManifest,
-        LEGACY_CHECKPOINT_SCHEMA_VERSION, MemoryRecord, TranscriptManifest, ViewValidation, decode,
-        encode,
+        LEGACY_CHECKPOINT_SCHEMA_VERSION, MemoryRecord, ViewValidation, decode, encode,
     },
     view_binding,
 };
 use super::LocalMemory;
 use peritus_agent::DeveloperLoopError;
-use peritus_codec::sha256;
 use peritus_context::working::{
-    ObservationId, WorkingEvent, apply_working_event, decode_working_event, decode_working_state,
+    WorkingEvent, apply_working_event, decode_working_event, decode_working_state,
     encode_working_state,
 };
 use peritus_model_protocol::{ProtocolLimits, decode_messages};
@@ -44,7 +42,12 @@ impl LocalMemory {
             }
             self.replay_record(decode(bytes)?, index == 0)?;
         }
-        self.validate_index()?;
+        checkpoint_validation::validate_index(
+            &self.state,
+            &self.sources,
+            &self.transcript,
+            self.limits,
+        )?;
         // Derived host projections are completed from committed observations, never from effects.
         self.sync_protocol()?;
         self.ingest_facts()?;
@@ -64,6 +67,9 @@ impl LocalMemory {
         {
             return Err(error("checkpoint binding or publication mismatch"));
         }
+        checkpoint_validation::validate_schema_lineage(manifest, |digest| {
+            self.store.read_digest(digest)
+        })?;
         self.state = decode_working_state(
             &self.store.read(manifest.working_state)?,
             self.binding,
@@ -76,65 +82,18 @@ impl LocalMemory {
         self.last_view = decode_messages(&view_bytes, ProtocolLimits::PRODUCTION)?;
         let validation_bytes = self.store.read(manifest.validation)?;
         let validation: ViewValidation = decode(&validation_bytes)?;
-        self.validate_checkpoint(manifest.schema_version, &validation)?;
+        checkpoint_validation::validate_checkpoint(
+            manifest.schema_version,
+            &self.state,
+            &self.sources,
+            &self.transcript,
+            &validation,
+            self.limits,
+        )?;
         view_binding::verify(manifest, &view_bytes, &validation)?;
-        if manifest.schema_version == CHECKPOINT_SCHEMA_VERSION
-            && manifest.render_policy != sha256(&encode(&self.config)?).into_bytes()
-        {
-            return Err(error("checkpoint render policy mismatch"));
-        }
         self.local_compactor_failures = validation.local_compactor_failures;
         self.retrieval_calls = validation.retrieval_calls;
         self.model_revision = validation.model_revision;
-        self.validate_index()
-    }
-
-    pub(super) fn validate_checkpoint(
-        &self,
-        schema_version: u16,
-        validation: &ViewValidation,
-    ) -> Result<(), DeveloperLoopError> {
-        let archive_bytes = self.sources.iter().try_fold(0_u64, |total, source| {
-            total
-                .checked_add(source.artifact.bytes)
-                .ok_or_else(|| error("checkpoint archive accounting overflow"))
-        })?;
-        let entries = self
-            .state
-            .entries(self.state.binding())
-            .map_err(|_| error("checkpoint state binding mismatch"))?;
-        let stale_entries = entries
-            .iter()
-            .filter(|entry| entry.status() == peritus_context::working::WorkingEntryStatus::Stale)
-            .count();
-        let selected_are_canonical =
-            validation.selected_observations.windows(2).all(|pair| pair[0] < pair[1]);
-        let selected_exist = validation
-            .selected_observations
-            .iter()
-            .all(|sequence| *sequence > 0 && *sequence <= self.sources.len() as u64);
-        if validation.state_revision != self.state.revision()
-            || validation.through_observation != self.state.through_observation()
-            || validation.estimated_input_tokens > validation.max_input_tokens
-            || validation.max_input_tokens == 0
-            || validation.input_tokens_saved
-                != validation
-                    .uncompacted_input_tokens
-                    .saturating_sub(validation.estimated_input_tokens)
-            || validation.archive_bytes != archive_bytes
-            || validation.stale_entries != stale_entries
-            || validation.omitted_entries > entries.len()
-            || validation.pending_operations != self.transcript.pending.len()
-            || !selected_are_canonical
-            || !selected_exist
-            || match schema_version {
-                LEGACY_CHECKPOINT_SCHEMA_VERSION => validation.tool_policy.is_some(),
-                CHECKPOINT_SCHEMA_VERSION => validation.tool_policy.is_none(),
-                _ => true,
-            }
-        {
-            return Err(error("checkpoint validation does not bind its exact state"));
-        }
         Ok(())
     }
 
@@ -194,7 +153,13 @@ impl LocalMemory {
                     .map_err(|_| error("working-state replay rejected"))?;
             }
             MemoryRecord::Transcript { manifest } => {
-                self.validate_transcript(&manifest)?;
+                checkpoint_validation::validate_transcript(
+                    &self.state,
+                    &self.sources,
+                    &manifest,
+                    self.transcript.invocation,
+                    self.limits,
+                )?;
                 self.transcript = manifest;
             }
             MemoryRecord::Checkpoint { manifest } => {
@@ -239,118 +204,6 @@ impl LocalMemory {
             }
         } else if source.kind == ArchiveKind::ToolOutput {
             return Err(error("tool output lacks call identity"));
-        }
-        Ok(())
-    }
-
-    fn validate_index(&self) -> Result<(), DeveloperLoopError> {
-        if self.sources.len() as u64 != self.state.through_observation()
-            || self.sources.len() > self.limits.observations()
-        {
-            return Err(error("source index size mismatch"));
-        }
-        for (index, source) in self.sources.iter().enumerate() {
-            if source.sequence != index as u64 + 1
-                || source.invocation == 0
-                || source.invocation > self.transcript.invocation
-            {
-                return Err(error("invalid source index order"));
-            }
-            let locator = self
-                .state
-                .observation(
-                    self.state.binding(),
-                    ObservationId::new(source.sequence).map_err(|_| error("invalid source id"))?,
-                )
-                .map_err(|_| error("unresolved indexed observation"))?;
-            source.validate_locator(locator)?;
-        }
-        let mut invocation = 0;
-        let mut tool_sequence = 0_u64;
-        for source in &self.sources {
-            if source.invocation < invocation {
-                return Err(error("source invocation order regressed"));
-            }
-            if source.invocation != invocation {
-                invocation = source.invocation;
-                tool_sequence = 0;
-            }
-            if let Some(sequence) = source.tool_sequence {
-                tool_sequence =
-                    tool_sequence.checked_add(1).ok_or_else(|| error("tool sequence overflow"))?;
-                if sequence != tool_sequence {
-                    return Err(error("noncontiguous archived tool sequence"));
-                }
-            }
-        }
-        self.validate_transcript(&self.transcript)
-    }
-
-    fn validate_transcript(
-        &self,
-        transcript: &TranscriptManifest,
-    ) -> Result<(), DeveloperLoopError> {
-        if transcript.invocation != self.transcript.invocation
-            || transcript.request_prefix.len() > 256
-            || transcript.message_ids.len() > ProtocolLimits::PRODUCTION.max_messages()
-            || transcript.current_inputs.len() > self.limits.entries()
-            || transcript.pending.len() > self.limits.entries()
-            || transcript.files.len() > self.limits.entries()
-            || transcript.facts_through > self.state.through_observation()
-        {
-            return Err(error("transcript manifest bounds or identity mismatch"));
-        }
-        for ids in [&transcript.message_ids, &transcript.current_inputs] {
-            if ids.windows(2).any(|pair| pair[0] >= pair[1]) {
-                return Err(error("noncanonical transcript source order"));
-            }
-            for id in ids {
-                let source = self.archived(*id)?;
-                if source.invocation != transcript.invocation
-                    || source.kind == ArchiveKind::ToolOutput
-                {
-                    return Err(error("invalid transcript message source"));
-                }
-            }
-        }
-        for id in &transcript.current_inputs {
-            if !transcript.message_ids.contains(id)
-                || !matches!(self.archived(*id)?.kind, ArchiveKind::Policy | ArchiveKind::User)
-            {
-                return Err(error("invocation input is not a pinned instruction source"));
-            }
-        }
-        if transcript.files.windows(2).any(|pair| pair[0] >= pair[1])
-            || transcript.files.iter().any(|path| path.is_empty() || path.len() > 4096)
-            || transcript.pending.windows(2).any(|pair| pair[0].key >= pair[1].key)
-        {
-            return Err(error("noncanonical pending or file projection"));
-        }
-        for pending in &transcript.pending {
-            let source = self.archived(pending.source)?;
-            if pending.invocation != source.invocation {
-                return Err(error("pending projection invocation mismatch"));
-            }
-            let expected_key = if let Some(handle) = &pending.handle {
-                if source.kind != ArchiveKind::ToolOutput
-                    || source.call.as_ref() != Some(&pending.call)
-                    || handle.is_empty()
-                    || handle.len() > 256
-                {
-                    return Err(error("pending operation source mismatch"));
-                }
-                super::environment::key(format!("operation:{handle}").as_bytes())?
-            } else {
-                if source.kind != ArchiveKind::Assistant {
-                    return Err(error("pending proposal source mismatch"));
-                }
-                super::environment::key(
-                    format!("proposal:{}/{}", pending.invocation, pending.call.id).as_bytes(),
-                )?
-            };
-            if expected_key.into_bytes() != pending.key {
-                return Err(error("pending identity does not bind its source"));
-            }
         }
         Ok(())
     }
