@@ -45,6 +45,67 @@ pub enum WorkingError {
     /// The proposed conclusion depends on stale or superseded material.
     StaleEntry,
 }
+
+impl WorkingError {
+    /// Error kinds produced while ingesting one observation event.
+    pub open spec fn spec_is_observation_error(self) -> bool {
+        match self {
+            WorkingError::BindingMismatch
+            | WorkingError::MissingSource
+            | WorkingError::SourceConflict
+            | WorkingError::Capacity
+            | WorkingError::ZeroSequence
+            | WorkingError::SourceSequence
+            | WorkingError::RevisionExhausted => true,
+            _ => false,
+        }
+    }
+
+    /// Error kinds produced while refreshing one environment event.
+    pub open spec fn spec_is_refresh_error(self) -> bool {
+        match self {
+            WorkingError::RevisionMismatch
+            | WorkingError::BindingMismatch
+            | WorkingError::StaleConversation
+            | WorkingError::Capacity
+            | WorkingError::RevisionExhausted => true,
+            _ => false,
+        }
+    }
+
+    /// Error kinds produced while applying one source-backed delta event.
+    pub open spec fn spec_is_delta_error(self) -> bool {
+        match self {
+            WorkingError::BindingMismatch
+            | WorkingError::RevisionMismatch
+            | WorkingError::Capacity
+            | WorkingError::MissingSource
+            | WorkingError::MissingEntry
+            | WorkingError::DependencyCycle
+            | WorkingError::DerivedStatus
+            | WorkingError::AlreadySuperseded
+            | WorkingError::StaleEntry
+            | WorkingError::EmptyEntry
+            | WorkingError::NonCanonicalOrder
+            | WorkingError::ConflictingEvidence
+            | WorkingError::RevisionExhausted => true,
+            _ => false,
+        }
+    }
+
+    /// Error kinds produced while replacing one protocol event.
+    pub open spec fn spec_is_protocol_error(self) -> bool {
+        match self {
+            WorkingError::BindingMismatch
+            | WorkingError::RevisionMismatch
+            | WorkingError::Capacity
+            | WorkingError::MissingSource
+            | WorkingError::ConflictingEvidence
+            | WorkingError::RevisionExhausted => true,
+            _ => false,
+        }
+    }
+}
 }
 
 #[cfg(not(verus_only))]

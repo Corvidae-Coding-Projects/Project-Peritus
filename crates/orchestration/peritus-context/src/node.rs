@@ -108,8 +108,44 @@ impl ContextNode {
 
     /// Complete semantic fields preserved by cloning.
     pub open spec fn clone_equivalent(left: &Self, right: &Self) -> bool {
-        ContextNodeMetadata::clone_equivalent(&left.spec_metadata(), &right.spec_metadata())
-            && ContextContent::clone_equivalent(&left.spec_content(), &right.spec_content())
+        &&& ContextNodeMetadata::clone_equivalent(&left.spec_metadata(), &right.spec_metadata())
+        &&& ContextContent::clone_equivalent(&left.spec_content(), &right.spec_content())
+        &&& left.spec_id() == right.spec_id()
+        &&& left.spec_provenance() == right.spec_provenance()
+        &&& left.spec_authority() == right.spec_authority()
+        &&& left.spec_trust() == right.spec_trust()
+        &&& left.spec_context_class() == right.spec_context_class()
+        &&& left.spec_content_kind() == right.spec_content_kind()
+        &&& left.spec_token_estimate() == right.spec_token_estimate()
+        &&& left.spec_recency_sequence() == right.spec_recency_sequence()
+        &&& left.spec_requirement() == right.spec_requirement()
+        &&& left.spec_priority() == right.spec_priority()
+        &&& left.spec_visibility().spec_roles() == right.spec_visibility().spec_roles()
+        &&& left.spec_dependencies() == right.spec_dependencies()
+        &&& left.spec_content_bytes() == right.spec_content_bytes()
+        &&& left.spec_digest() == right.spec_digest()
+    }
+
+    /// Complete semantic relation for changing only direct dependencies.
+    pub open spec fn dependencies_replaced(
+        before: &Self,
+        after: &Self,
+        dependencies: Seq<ContextNodeId>,
+    ) -> bool {
+        &&& before.spec_id() == after.spec_id()
+        &&& before.spec_provenance() == after.spec_provenance()
+        &&& before.spec_authority() == after.spec_authority()
+        &&& before.spec_trust() == after.spec_trust()
+        &&& before.spec_context_class() == after.spec_context_class()
+        &&& before.spec_content_kind() == after.spec_content_kind()
+        &&& before.spec_token_estimate() == after.spec_token_estimate()
+        &&& before.spec_recency_sequence() == after.spec_recency_sequence()
+        &&& before.spec_requirement() == after.spec_requirement()
+        &&& before.spec_priority() == after.spec_priority()
+        &&& before.spec_visibility().spec_roles() == after.spec_visibility().spec_roles()
+        &&& before.spec_content_bytes() == after.spec_content_bytes()
+        &&& before.spec_digest() == after.spec_digest()
+        &&& after.spec_dependencies() == dependencies
     }
 
     /// Elementwise semantic equivalence used by graph cloning.
@@ -281,7 +317,12 @@ impl ContextNode {
         &self,
         dependencies: Vec<ContextNodeId>,
         limits: ContextLimits,
-    ) -> Result<Self, ContextError> {
+    ) -> (result: Result<Self, ContextError>)
+        ensures match result {
+            Ok(after) => Self::dependencies_replaced(self, &after, dependencies@),
+            Err(_) => true,
+        },
+    {
         let metadata = ContextNodeMetadata::new(
             self.id(),
             self.provenance(),
@@ -297,7 +338,28 @@ impl ContextNode {
             dependencies,
             limits,
         )?;
-        Ok(Self::new(metadata, self.content.clone()))
+        let content = self.content.clone();
+        let result = Self::new(metadata, content);
+        proof {
+            reveal(ContextNode::dependencies_replaced);
+            reveal(ContextNode::spec_id);
+            reveal(ContextNode::spec_provenance);
+            reveal(ContextNode::spec_authority);
+            reveal(ContextNode::spec_trust);
+            reveal(ContextNode::spec_context_class);
+            reveal(ContextNode::spec_content_kind);
+            reveal(ContextNode::spec_token_estimate);
+            reveal(ContextNode::spec_recency_sequence);
+            reveal(ContextNode::spec_requirement);
+            reveal(ContextNode::spec_priority);
+            reveal(ContextNode::spec_visibility);
+            reveal(ContextNode::spec_content_bytes);
+            reveal(ContextNode::spec_digest);
+            reveal(ContextNode::spec_dependencies);
+            reveal(ContextNode::spec_metadata);
+            reveal(ContextNode::spec_content);
+        }
+        Ok(result)
     }
 }
 

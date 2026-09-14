@@ -70,7 +70,9 @@ impl WorkingLinks {
         contradicts: Vec<ObservationId>,
         depends_on: Vec<ContextNodeId>,
         limits: WorkingLimits,
-    ) -> Result<Self, WorkingError> {
+    ) -> (result: Result<Self, WorkingError>)
+        ensures result.is_err() ==> result.unwrap_err().spec_is_delta_error(),
+    {
         if supports.is_empty() && contradicts.is_empty() { return Err(WorkingError::EmptyEntry); }
         if supports.len() > limits.links() || contradicts.len() > limits.links()
             || depends_on.len() > limits.links()
@@ -110,7 +112,9 @@ impl WorkingLinks {
     pub const fn contradicts(&self) -> &[ObservationId] { self.contradicts.as_slice() }
     /// Entry prerequisites, in strict identifier order.
     #[must_use]
-    pub const fn depends_on(&self) -> &[ContextNodeId] { self.depends_on.as_slice() }
+    pub const fn depends_on(&self) -> (result: &[ContextNodeId])
+        ensures result@ == self.spec_depends_on(),
+    { self.depends_on.as_slice() }
 }
 
 impl Clone for WorkingLinks {
@@ -214,6 +218,16 @@ impl WorkingEntry {
         reveal(ContextContent::clone_equivalent);
     }
 
+    /// Complete semantic equality is reflexive for an unchanged entry value.
+    pub proof fn clone_reflexive(entry: &Self)
+        ensures Self::clone_equivalent(entry, entry),
+    {
+        reveal(WorkingEntry::clone_equivalent);
+        reveal(WorkingLinks::clone_equivalent);
+        reveal(WorkingValidity::clone_equivalent);
+        reveal(ContextContent::clone_equivalent);
+    }
+
     /// Elementwise semantic equivalence retained by cloning an entry sequence.
     pub open spec fn sequence_clone_equivalent(
         left: Seq<Self>,
@@ -250,7 +264,10 @@ impl WorkingEntry {
         status: WorkingEntryStatus,
         stale_through: u64,
     ) -> (result: Self)
-        ensures Self::payload_equivalent(&self, &result),
+        ensures
+            Self::payload_equivalent(&self, &result),
+            result.spec_status() == status,
+            result.spec_stale_through() == stale_through,
     {
         let mut result = self;
         result.status = status;
@@ -269,7 +286,12 @@ impl WorkingEntry {
         links: WorkingLinks,
         validity: WorkingValidity,
         limits: WorkingLimits,
-    ) -> Result<Self, WorkingError> {
+    ) -> (result: Result<Self, WorkingError>)
+        ensures match result {
+            Ok(_) => true,
+            Err(error) => error == WorkingError::Capacity,
+        },
+    {
         if content.len() > limits.entry_bytes() || links.supports.len() > limits.links()
             || links.contradicts.len() > limits.links() || links.depends_on.len() > limits.links()
             || validity.files().len() > limits.links()
@@ -300,25 +322,40 @@ impl WorkingEntry {
     }
     /// Stable identifier within this working model.
     #[must_use]
-    pub const fn id(&self) -> ContextNodeId { self.id }
+    pub const fn id(&self) -> (result: ContextNodeId)
+        ensures result == self.spec_id(),
+    { self.id }
     /// Semantic entry purpose.
     #[must_use]
     pub const fn kind(&self) -> WorkingEntryKind { self.kind }
     /// Current investigation or host-derived status.
     #[must_use]
-    pub const fn status(&self) -> WorkingEntryStatus { self.status }
+    pub const fn status(&self) -> (result: WorkingEntryStatus)
+        ensures result == self.spec_status(),
+    { self.status }
     /// Exact bounded content and digest.
     #[must_use]
     pub const fn content(&self) -> &ContextContent { &self.content }
     /// Supporting, contradicting, and prerequisite references.
     #[must_use]
-    pub const fn links(&self) -> &WorkingLinks { &self.links }
+    pub const fn links(&self) -> (result: &WorkingLinks)
+        ensures WorkingLinks::clone_equivalent(result, &self.spec_links()),
+    { &self.links }
     /// Explicit dependency constraints.
     #[must_use]
-    pub const fn validity(&self) -> &WorkingValidity { &self.validity }
+    pub const fn validity(&self) -> (result: &WorkingValidity)
+        ensures WorkingValidity::clone_equivalent(result, &self.spec_validity()),
+    { &self.validity }
     /// Earlier record replaced by this one.
     #[must_use]
-    pub const fn supersedes(&self) -> Option<ContextNodeId> { self.supersedes }
+    pub const fn supersedes(&self) -> (result: Option<ContextNodeId>)
+        ensures result == self.spec_supersedes(),
+    { self.supersedes }
+    /// Observation frontier recorded when the host derived stale status.
+    #[must_use]
+    pub const fn stale_through(&self) -> (result: u64)
+        ensures result == self.spec_stale_through(),
+    { self.stale_through }
     /// Every working entry remains non-authoritative, regardless of model-assigned status.
     #[must_use]
     pub const fn authority(&self) -> (authority: AuthorityClass)
@@ -343,7 +380,12 @@ impl Clone for WorkingEntry {
     }
 }
 
-fn validate_sources(sources: &[ObservationId]) -> Result<(), WorkingError> {
+fn validate_sources(sources: &[ObservationId]) -> (result: Result<(), WorkingError>)
+    ensures match result {
+        Ok(()) => true,
+        Err(error) => error == WorkingError::NonCanonicalOrder,
+    },
+{
     let mut index = 1;
     while index < sources.len()
         invariant index >= 1,

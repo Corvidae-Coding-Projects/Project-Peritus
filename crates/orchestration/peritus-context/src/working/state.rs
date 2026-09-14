@@ -1,8 +1,8 @@
 //! Immutable observation prefix and bounded investigation model.
 
-use super::validation::{find_entry, invalidate_entries};
-use super::{ObservationId, ObservationSource, WorkingBinding, WorkingEntry, WorkingEnvironment, WorkingError, WorkingLimits};
-use crate::ContextNodeId;
+use super::validation::invalidate_entries;
+use super::state_revision::next_revision;
+use super::{ObservationSource, WorkingBinding, WorkingEntry, WorkingEnvironment, WorkingError, WorkingLimits};
 use vstd::prelude::*;
 
 verus! {
@@ -47,6 +47,36 @@ impl Clone for WorkingState {
     }
 }
 impl WorkingState {
+    /// Logical status and stale-frontier view of an entry sequence.
+    pub closed spec fn spec_entry_statuses(
+        entries: Seq<WorkingEntry>,
+    ) -> Seq<(super::WorkingEntryStatus, u64)> {
+        super::validation::spec_status_view(entries)
+    }
+
+    /// Exact bounded fixed-point invalidation result for an entry sequence.
+    pub closed spec fn spec_invalidated_entry_statuses(
+        entries: Seq<WorkingEntry>,
+        environment: &WorkingEnvironment,
+        through: u64,
+    ) -> Seq<(super::WorkingEntryStatus, u64)> {
+        super::validation::spec_invalidation_result(entries, environment, through)
+    }
+
+    pub(super) proof fn entry_statuses_definition(entries: Seq<WorkingEntry>)
+        ensures WorkingState::spec_entry_statuses(entries)
+            == super::validation::spec_status_view(entries),
+    {}
+
+    pub(super) proof fn invalidated_entry_statuses_definition(
+        entries: Seq<WorkingEntry>,
+        environment: &WorkingEnvironment,
+        through: u64,
+    )
+        ensures WorkingState::spec_invalidated_entry_statuses(entries, environment, through)
+            == super::validation::spec_invalidation_result(entries, environment, through),
+    {}
+
     /// Logical host-observed environment.
     pub closed spec fn spec_environment(&self) -> WorkingEnvironment { self.environment }
     /// Logical reducer revision.
@@ -59,26 +89,22 @@ impl WorkingState {
     pub closed spec fn spec_limits(&self) -> WorkingLimits { self.limits }
     /// Logical host-owned semantic pins.
     pub closed spec fn spec_protocol(&self) -> super::WorkingProtocol { self.protocol }
-    /// Complete semantic equality used to frame reducers and replay.
-    pub open spec fn spec_same(&self, other: &Self) -> bool {
-        &&& self.spec_environment().spec_binding()
-            == other.spec_environment().spec_binding()
-        &&& self.spec_environment().spec_candidate()
-            == other.spec_environment().spec_candidate()
-        &&& self.spec_environment().spec_files()
-            == other.spec_environment().spec_files()
-        &&& self.spec_revision() == other.spec_revision()
-        &&& self.spec_observations() == other.spec_observations()
-        &&& WorkingEntry::sequence_clone_equivalent(
-            self.spec_entries(),
-            other.spec_entries(),
-        )
-        &&& self.spec_limits() == other.spec_limits()
-        &&& self.spec_protocol().spec_requirements()
-            == other.spec_protocol().spec_requirements()
-        &&& self.spec_protocol().spec_pending()
-            == other.spec_protocol().spec_pending()
-    }
+
+    pub(super) proof fn invalidated_state_environment_definition(
+        &self,
+        entries: Seq<WorkingEntry>,
+        through: u64,
+    )
+        ensures WorkingState::spec_invalidated_entry_statuses(
+            entries,
+            &self.spec_environment(),
+            through,
+        ) == super::validation::spec_invalidation_result(
+            entries,
+            &self.environment,
+            through,
+        ),
+    {}
 
     /// Opens an empty working model under an explicit host-observed environment.
     ///
@@ -135,52 +161,6 @@ impl WorkingState {
     pub const fn environment(&self) -> (result: &WorkingEnvironment)
         ensures *result == self.spec_environment(),
     { &self.environment }
-    /// Reads host-owned literal requirement references and unresolved operation state.
-    ///
-    /// # Errors
-    /// Rejects another lineage or stale conversation before exposing any source handles.
-    pub fn protocol(&self, binding: WorkingBinding) -> Result<&super::WorkingProtocol, WorkingError> {
-        self.check_binding(binding)?;
-        Ok(&self.protocol)
-    }
-    /// Reads the retained model only through an exact task/role/conversation binding.
-    ///
-    /// # Errors
-    /// Rejects cross-run, cross-workspace, cross-task, cross-role, and stale-conversation reads.
-    pub fn entries(&self, binding: WorkingBinding) -> Result<&[WorkingEntry], WorkingError> {
-        self.check_binding(binding)?;
-        Ok(self.entries.as_slice())
-    }
-
-    /// Resolves an exact observation handle without returning or materializing artifact bytes.
-    ///
-    /// # Errors
-    /// Rejects mismatched scope or missing handles before the host performs artifact I/O.
-    pub fn observation(&self, binding: WorkingBinding, id: ObservationId) -> Result<ObservationSource, WorkingError> {
-        self.check_binding(binding)?;
-        let mut index = 0;
-        while index < self.observations.len()
-            invariant index <= self.observations.len(),
-            decreases self.observations.len() - index,
-        {
-            if self.observations[index].id() == id { return Ok(self.observations[index]); }
-            index += 1;
-        }
-        Err(WorkingError::MissingSource)
-    }
-
-    /// Resolves an entry without dropping its stale/superseded status or counterevidence.
-    ///
-    /// # Errors
-    /// Rejects another scope or an unknown entry.
-    #[allow(clippy::option_if_let_else, reason = "Verus does not support Option::map_or")]
-    pub fn entry(&self, binding: WorkingBinding, id: ContextNodeId) -> Result<&WorkingEntry, WorkingError> {
-        self.check_binding(binding)?;
-        match find_entry(&self.entries, id) {
-            Some(index) => Ok(&self.entries[index]),
-            None => Err(WorkingError::MissingEntry),
-        }
-    }
 
     pub(super) fn with_entries(
         &self,
@@ -216,6 +196,12 @@ impl WorkingState {
             reveal(WorkingState::spec_entries);
         }
         result
+    }
+
+    pub(super) fn clone_entries(&self) -> (result: Vec<WorkingEntry>)
+        ensures WorkingEntry::sequence_clone_equivalent(self.spec_entries(), result@),
+    {
+        WorkingEntry::clone_sequence(&self.entries)
     }
 
     pub(super) fn with_protocol(
@@ -255,7 +241,12 @@ impl WorkingState {
         result
     }
 
-    pub(super) fn check_binding(&self, binding: WorkingBinding) -> Result<(), WorkingError> {
+    pub(super) fn check_binding(
+        &self,
+        binding: WorkingBinding,
+    ) -> (result: Result<(), WorkingError>)
+        ensures result.is_err() ==> result.unwrap_err() == WorkingError::BindingMismatch,
+    {
         if self.binding() == binding { Ok(()) } else { Err(WorkingError::BindingMismatch) }
     }
 }
@@ -271,33 +262,8 @@ pub fn ingest_working_observation(
     source: ObservationSource,
 ) -> (result: Result<WorkingState, WorkingError>)
     ensures match result {
-        Ok(next) => {
-            &&& next.spec_environment().spec_binding()
-                == state.spec_environment().spec_binding()
-            &&& next.spec_environment().spec_candidate()
-                == state.spec_environment().spec_candidate()
-            &&& next.spec_environment().spec_files()
-                == state.spec_environment().spec_files()
-            &&& next.spec_revision() >= state.spec_revision()
-            &&& next.spec_revision() as int <= state.spec_revision() as int + 1
-            &&& next.spec_observations().len() >= state.spec_observations().len()
-            &&& next.spec_observations().len() <= state.spec_observations().len() + 1
-            &&& (source.spec_id().spec_value() <= state.spec_observations().len()
-                ==> next.spec_revision() == state.spec_revision()
-                    && next.spec_observations().len() == state.spec_observations().len())
-            &&& (source.spec_id().spec_value() > state.spec_observations().len()
-                ==> next.spec_revision() as int == state.spec_revision() as int + 1
-                    && next.spec_observations() == state.spec_observations().push(source))
-            &&& WorkingEntry::sequence_clone_equivalent(
-                state.spec_entries(), next.spec_entries(),
-            )
-            &&& next.spec_limits() == state.spec_limits()
-            &&& next.spec_protocol().spec_requirements()
-                == state.spec_protocol().spec_requirements()
-            &&& next.spec_protocol().spec_pending()
-                == state.spec_protocol().spec_pending()
-        }
-        Err(_) => true,
+        Ok(next) => state.spec_observation_result(source, &next),
+        Err(error) => error.spec_is_observation_error(),
     },
 {
     state.check_binding(binding)?;
@@ -355,13 +321,25 @@ pub fn refresh_working_state(
             &&& WorkingEntry::sequence_payload_equivalent(
                 state.spec_entries(), next.spec_entries(),
             )
+            &&& (next.spec_revision() == state.spec_revision() ==>
+                WorkingEntry::sequence_clone_equivalent(
+                    state.spec_entries(),
+                    next.spec_entries(),
+                ))
+            &&& (next.spec_revision() > state.spec_revision() ==>
+                WorkingState::spec_entry_statuses(next.spec_entries())
+                    == WorkingState::spec_invalidated_entry_statuses(
+                        state.spec_entries(),
+                        &environment,
+                        state.spec_observations().len() as u64,
+                    ))
             &&& next.spec_limits() == state.spec_limits()
             &&& next.spec_protocol().spec_requirements()
                 == state.spec_protocol().spec_requirements()
             &&& next.spec_protocol().spec_pending()
                 == state.spec_protocol().spec_pending()
         }
-        Err(_) => true,
+        Err(error) => error.spec_is_refresh_error(),
     },
 {
     if expected_revision != state.revision { return Err(WorkingError::RevisionMismatch); }
@@ -383,18 +361,10 @@ pub fn refresh_working_state(
     }
     let revision = next_revision(state.revision)?;
     let mut next = state.clone();
-    next.entries = invalidate_entries(&next.entries, &environment, state.through_observation());
+    next.entries = invalidate_entries(&state.entries, &environment, state.through_observation());
     next.environment = environment;
     next.revision = revision;
     Ok(next)
 }
 
-pub(super) const fn next_revision(current: u64) -> (next: Result<u64, WorkingError>)
-    ensures match next {
-        Ok(value) => value as int == current as int + 1 && value > current,
-        Err(_) => current == u64::MAX,
-    },
-{
-    if current == u64::MAX { Err(WorkingError::RevisionExhausted) } else { Ok(current + 1) }
-}
 }

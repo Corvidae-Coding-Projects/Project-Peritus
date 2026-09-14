@@ -179,13 +179,13 @@ pub fn apply_working_protocol(
             &&& next.spec_protocol().spec_pending()
                 == update.spec_protocol().spec_pending()
         }
-        Err(_) => true,
+        Err(error) => error.spec_is_protocol_error(),
     },
 {
     state.check_binding(update.binding)?;
     if state.revision() != update.base_revision { return Err(WorkingError::RevisionMismatch); }
     validate_protocol(state, update.protocol())?;
-    let revision = super::state::next_revision(state.revision())?;
+    let revision = super::state_revision::next_revision(state.revision())?;
     let next = state.with_protocol(update.protocol().clone(), revision);
     proof {
         assert(next.spec_revision() as int == state.spec_revision() as int + 1);
@@ -198,7 +198,12 @@ pub fn apply_working_protocol(
     Ok(next)
 }
 
-pub(super) fn validate_protocol(state: &WorkingState, protocol: &WorkingProtocol) -> Result<(), WorkingError> {
+pub(super) fn validate_protocol(
+    state: &WorkingState,
+    protocol: &WorkingProtocol,
+) -> (result: Result<(), WorkingError>)
+    ensures result.is_err() ==> result.unwrap_err().spec_is_protocol_error(),
+{
     if protocol.requirements.len() > state.limits.entries() || protocol.pending.len() > state.limits.entries() { return Err(WorkingError::Capacity); }
     let mut index = 0;
     while index < protocol.requirements.len()

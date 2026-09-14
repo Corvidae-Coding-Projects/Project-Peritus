@@ -8,13 +8,22 @@ use vstd::prelude::*;
 verus! {
 mod binding;
 mod delta;
+mod delta_model;
+mod delta_reducer;
 mod entry;
 mod error;
 mod evidence;
 mod event;
+mod invalidation;
+mod invalidation_environment;
+mod invalidation_model;
 mod limits;
 mod protocol;
 mod state;
+mod state_access;
+mod state_model;
+mod state_revision;
+mod staleness;
 mod validation;
 mod validity;
 

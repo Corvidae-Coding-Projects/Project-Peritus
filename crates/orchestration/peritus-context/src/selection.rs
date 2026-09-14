@@ -9,10 +9,13 @@ verus! {
 mod certificate;
 mod closure;
 mod ordering;
+mod outcome;
 mod plan;
 
 pub use certificate::selection_result_is_exact;
 pub use plan::select_context;
+#[cfg(verus_only)]
+pub use outcome::selection_success_matches;
 
 /// Pure selection inputs and explicit bounds.
 #[derive(Debug, Eq, PartialEq)]

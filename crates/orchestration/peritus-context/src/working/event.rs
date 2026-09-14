@@ -39,30 +39,7 @@ pub open spec fn event_success_frame(
 ) -> bool {
     match event {
         WorkingEvent::Observation { source, .. } => {
-            &&& next.spec_environment().spec_binding()
-                == state.spec_environment().spec_binding()
-            &&& next.spec_environment().spec_candidate()
-                == state.spec_environment().spec_candidate()
-            &&& next.spec_environment().spec_files()
-                == state.spec_environment().spec_files()
-            &&& next.spec_revision() >= state.spec_revision()
-            &&& next.spec_revision() as int <= state.spec_revision() as int + 1
-            &&& next.spec_observations().len() >= state.spec_observations().len()
-            &&& next.spec_observations().len() <= state.spec_observations().len() + 1
-            &&& (source.spec_id().spec_value() <= state.spec_observations().len()
-                ==> next.spec_revision() == state.spec_revision()
-                    && next.spec_observations().len() == state.spec_observations().len())
-            &&& (source.spec_id().spec_value() > state.spec_observations().len()
-                ==> next.spec_revision() as int == state.spec_revision() as int + 1
-                    && next.spec_observations() == state.spec_observations().push(*source))
-            &&& super::WorkingEntry::sequence_clone_equivalent(
-                state.spec_entries(), next.spec_entries(),
-            )
-            &&& next.spec_limits() == state.spec_limits()
-            &&& next.spec_protocol().spec_requirements()
-                == state.spec_protocol().spec_requirements()
-            &&& next.spec_protocol().spec_pending()
-                == state.spec_protocol().spec_pending()
+            state.spec_observation_result(*source, next)
         }
         WorkingEvent::Refresh { environment, .. } => {
             &&& next.spec_environment().spec_binding() == environment.spec_binding()
@@ -74,13 +51,25 @@ pub open spec fn event_success_frame(
             &&& super::WorkingEntry::sequence_payload_equivalent(
                 state.spec_entries(), next.spec_entries(),
             )
+            &&& (next.spec_revision() == state.spec_revision() ==>
+                super::WorkingEntry::sequence_clone_equivalent(
+                    state.spec_entries(),
+                    next.spec_entries(),
+                ))
+            &&& (next.spec_revision() > state.spec_revision() ==>
+                WorkingState::spec_entry_statuses(next.spec_entries())
+                    == WorkingState::spec_invalidated_entry_statuses(
+                        state.spec_entries(),
+                        environment,
+                        state.spec_observations().len() as u64,
+                    ))
             &&& next.spec_limits() == state.spec_limits()
             &&& next.spec_protocol().spec_requirements()
                 == state.spec_protocol().spec_requirements()
             &&& next.spec_protocol().spec_pending()
                 == state.spec_protocol().spec_pending()
         }
-        WorkingEvent::Delta(_) => {
+        WorkingEvent::Delta(delta) => {
             &&& next.spec_environment().spec_binding()
                 == state.spec_environment().spec_binding()
             &&& next.spec_environment().spec_candidate()
@@ -89,6 +78,7 @@ pub open spec fn event_success_frame(
                 == state.spec_environment().spec_files()
             &&& next.spec_revision() as int == state.spec_revision() as int + 1
             &&& next.spec_observations() == state.spec_observations()
+            &&& delta.spec_result_entries(state, next.spec_entries())
             &&& next.spec_limits() == state.spec_limits()
             &&& next.spec_protocol().spec_requirements()
                 == state.spec_protocol().spec_requirements()
@@ -114,6 +104,46 @@ pub open spec fn event_success_frame(
                 == update.spec_protocol().spec_pending()
         }
     }
+}
+
+/// Event-family-specific error relation used to identify replay's first failing event.
+pub open spec fn event_error_frame(
+    event: &WorkingEvent,
+    error: WorkingError,
+) -> bool {
+    match event {
+        WorkingEvent::Observation { .. } => error.spec_is_observation_error(),
+        WorkingEvent::Refresh { .. } => error.spec_is_refresh_error(),
+        WorkingEvent::Delta(_) => error.spec_is_delta_error(),
+        WorkingEvent::Protocol(_) => error.spec_is_protocol_error(),
+    }
+}
+
+/// The capacity precheck or first event error after an exact successful prefix.
+pub open spec fn replay_first_error(
+    initial: &WorkingState,
+    events: Seq<WorkingEvent>,
+    error: WorkingError,
+) -> bool {
+    if events.len() > initial.spec_limits().spec_observations() {
+        error == WorkingError::Capacity
+    } else {
+        exists |index: int, current: WorkingState|
+            #[trigger] replay_error_witness(initial, events, index, &current, error)
+    }
+}
+
+/// One failing event following an exact successful replay prefix.
+pub open spec fn replay_error_witness(
+    initial: &WorkingState,
+    events: Seq<WorkingEvent>,
+    index: int,
+    current: &WorkingState,
+    error: WorkingError,
+) -> bool {
+    &&& 0 <= index < events.len()
+    &&& replay_success_prefix(initial, events, index, current)
+    &&& event_error_frame(&events[index], error)
 }
 
 /// Exact ordered successful prefix: every successor is the certified result of one event.
@@ -143,20 +173,133 @@ pub open spec fn replay_success_prefix(
 ///
 /// # Errors
 /// Propagates binding, source, revision, capacity, and graph validation failures.
+#[allow(clippy::too_many_lines, reason = "each event arm discharges its exact result contract")]
 pub fn apply_working_event(
     state: &WorkingState,
     event: &WorkingEvent,
 ) -> (result: Result<WorkingState, WorkingError>)
     ensures match result {
         Ok(next) => event_success_frame(state, event, &next),
-        Err(_) => true,
+        Err(error) => event_error_frame(event, error),
     },
 {
+    proof { reveal(event_success_frame); }
     match event {
-        WorkingEvent::Observation { binding, source } => ingest_working_observation(state, *binding, *source),
-        WorkingEvent::Refresh { base_revision, environment } => refresh_working_state(state, *base_revision, environment.clone()),
-        WorkingEvent::Delta(delta) => apply_working_delta(state, delta),
-        WorkingEvent::Protocol(update) => super::apply_working_protocol(state, update),
+        WorkingEvent::Observation { binding, source } => {
+            match ingest_working_observation(state, *binding, *source) {
+                Ok(next) => {
+                    proof {
+                        assert(state.spec_observation_result(*source, &next));
+                        assert(event_success_frame(state, event, &next));
+                    }
+                    Ok(next)
+                }
+                Err(error) => {
+                    proof { assert(event_error_frame(event, error)); }
+                    Err(error)
+                }
+            }
+        }
+        WorkingEvent::Refresh { base_revision, environment } => {
+            let refreshed_environment = environment.clone();
+            proof {
+                assert(refreshed_environment.spec_binding() == environment.spec_binding());
+                assert(refreshed_environment.spec_candidate() == environment.spec_candidate());
+                assert(refreshed_environment.spec_files() == environment.spec_files());
+            }
+            match refresh_working_state(state, *base_revision, refreshed_environment) {
+                Ok(next) => {
+                    proof {
+                        assert(next.spec_environment().spec_binding()
+                            == refreshed_environment.spec_binding());
+                        assert(next.spec_environment().spec_binding()
+                            == environment.spec_binding());
+                        assert(next.spec_environment().spec_candidate()
+                            == environment.spec_candidate());
+                        assert(next.spec_environment().spec_files()
+                            == environment.spec_files());
+                        assert(next.spec_revision() >= state.spec_revision());
+                        assert(next.spec_revision() as int
+                            <= state.spec_revision() as int + 1);
+                        assert(next.spec_observations() == state.spec_observations());
+                        assert(super::WorkingEntry::sequence_payload_equivalent(
+                            state.spec_entries(), next.spec_entries(),
+                        ));
+                        if next.spec_revision() == state.spec_revision() {
+                            assert(super::WorkingEntry::sequence_clone_equivalent(
+                                state.spec_entries(), next.spec_entries(),
+                            ));
+                        }
+                        if next.spec_revision() > state.spec_revision() {
+                            assert(WorkingState::spec_entry_statuses(next.spec_entries())
+                                == WorkingState::spec_invalidated_entry_statuses(
+                                    state.spec_entries(),
+                                    &refreshed_environment,
+                                    state.spec_observations().len() as u64,
+                                ));
+                            super::invalidation_environment::invalidation_result_environment_equivalent(
+                                state.spec_entries(),
+                                &refreshed_environment,
+                                environment,
+                                state.spec_observations().len() as u64,
+                            );
+                            WorkingState::invalidated_entry_statuses_definition(
+                                state.spec_entries(),
+                                &refreshed_environment,
+                                state.spec_observations().len() as u64,
+                            );
+                            WorkingState::invalidated_entry_statuses_definition(
+                                state.spec_entries(),
+                                environment,
+                                state.spec_observations().len() as u64,
+                            );
+                            assert(WorkingState::spec_entry_statuses(next.spec_entries())
+                                == WorkingState::spec_invalidated_entry_statuses(
+                                    state.spec_entries(),
+                                    environment,
+                                    state.spec_observations().len() as u64,
+                                ));
+                        }
+                        assert(next.spec_limits() == state.spec_limits());
+                        assert(next.spec_protocol().spec_requirements()
+                            == state.spec_protocol().spec_requirements());
+                        assert(next.spec_protocol().spec_pending()
+                            == state.spec_protocol().spec_pending());
+                        reveal(event_success_frame);
+                        assert(event_success_frame(state, event, &next));
+                    }
+                    Ok(next)
+                }
+                Err(error) => {
+                    proof { assert(event_error_frame(event, error)); }
+                    Err(error)
+                }
+            }
+        }
+        WorkingEvent::Delta(delta) => {
+            match apply_working_delta(state, delta) {
+                Ok(next) => {
+                    proof { assert(event_success_frame(state, event, &next)); }
+                    Ok(next)
+                }
+                Err(error) => {
+                    proof { assert(event_error_frame(event, error)); }
+                    Err(error)
+                }
+            }
+        }
+        WorkingEvent::Protocol(update) => {
+            match super::apply_working_protocol(state, update) {
+                Ok(next) => {
+                    proof { assert(event_success_frame(state, event, &next)); }
+                    Ok(next)
+                }
+                Err(error) => {
+                    proof { assert(event_error_frame(event, error)); }
+                    Err(error)
+                }
+            }
+        }
     }
 }
 
@@ -170,20 +313,62 @@ pub fn replay_working_events(
 ) -> (result: Result<WorkingState, WorkingError>)
     ensures match result {
         Ok(next) => replay_success_prefix(state, events@, events@.len() as int, &next),
-        Err(_) => true,
+        Err(error) => replay_first_error(state, events@, error),
     },
 {
-    if events.len() > state.limits.observations() { return Err(WorkingError::Capacity); }
+    let limits = state.limits();
+    let maximum_events = limits.observations();
+    proof {
+        assert(limits == state.spec_limits());
+        assert(maximum_events as nat == limits.spec_observations());
+        assert(maximum_events as nat == state.spec_limits().spec_observations());
+    }
+    if events.len() > maximum_events {
+        proof {
+            assert(events@.len() > state.spec_limits().spec_observations());
+            assert(replay_first_error(state, events@, WorkingError::Capacity));
+        }
+        return Err(WorkingError::Capacity);
+    }
     let mut result = state.clone();
-    proof { assert(replay_success_prefix(state, events@, 0, &result)); }
+    proof {
+        assert(events@.len() <= state.spec_limits().spec_observations());
+        assert(replay_success_prefix(state, events@, 0, &result));
+    }
     let mut index = 0;
     while index < events.len()
         invariant
             index <= events.len(),
+            events@.len() <= state.spec_limits().spec_observations(),
             replay_success_prefix(state, events@, index as int, &result),
         decreases events.len() - index,
     {
-        let next = apply_working_event(&result, &events[index])?;
+        let next = match apply_working_event(&result, &events[index]) {
+            Ok(next) => next,
+            Err(error) => {
+                proof {
+                    assert(events@.len() <= state.spec_limits().spec_observations());
+                    assert(event_error_frame(&events@[index as int], error));
+                    assert(replay_error_witness(
+                        state,
+                        events@,
+                        index as int,
+                        &result,
+                        error,
+                    ));
+                    assert(exists |failed_index: int, current: WorkingState|
+                        replay_error_witness(
+                            state,
+                            events@,
+                            failed_index,
+                            &current,
+                            error,
+                        ));
+                    assert(replay_first_error(state, events@, error));
+                }
+                return Err(error);
+            }
+        };
         proof {
             assert(event_success_frame(&result, &events@[index as int], &next));
             assert(index as int + 1 > 0);

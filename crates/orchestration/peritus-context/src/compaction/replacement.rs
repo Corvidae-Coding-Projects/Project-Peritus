@@ -1,12 +1,22 @@
 //! Atomic graph replacement for already validated compaction evidence.
 
 use super::{SourceRange, ValidatedCompaction};
+#[cfg(verus_only)]
+use super::ValidatedSource;
 use crate::{
     CompactionPolicyId, ContextError, ContextErrorKind, ContextGraph, ContextNodeId,
 };
 use vstd::prelude::*;
+pub mod model;
+mod dependencies;
+mod graph;
+use graph::build_replacement_graph;
+#[cfg(verus_only)]
+use model::*;
+
 
 verus! {
+
 
 /// Checked replacement result with audit lineage kept outside the live dependency graph.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -39,12 +49,18 @@ impl AppliedCompaction {
     pub closed spec fn spec_replacement_tokens(&self) -> u64 { self.replacement_tokens }
 
     /// Exact audit fields retained from validation, including strict reduction.
-    pub open spec fn spec_matches_validation(&self, validated: &ValidatedCompaction) -> bool {
+    pub open spec fn spec_matches_validation(
+        &self,
+        before: &ContextGraph,
+        validated: &ValidatedCompaction,
+    ) -> bool {
         &&& self.spec_policy_id() == validated.spec_policy_id()
+        &&& self.spec_source_ids() == validated.spec_source_ids()
         &&& self.spec_source_ranges() == validated.spec_source_ranges()
         &&& self.spec_replaced_tokens() == validated.spec_replaced_tokens()
         &&& self.spec_replacement_tokens() == validated.spec_node().spec_token_estimate()
         &&& self.spec_replacement_tokens() < self.spec_replaced_tokens()
+        &&& exact_replacement_graph(before, validated, &self.spec_graph())
     }
 
     /// Borrows the replacement graph.
@@ -119,28 +135,56 @@ pub fn replace_validated_compaction(
     validated: ValidatedCompaction,
 ) -> (result: Result<AppliedCompaction, ContextError>)
     ensures match result {
-        Ok(applied) => applied.spec_matches_validation(&validated),
+        Ok(applied) => applied.spec_matches_validation(graph, &validated),
         Err(_) => true,
     },
 {
     let ghost expected_policy = validated.spec_policy_id();
+    let ghost expected_source_ids = validated.spec_source_ids();
     let ghost expected_ranges = validated.spec_source_ranges();
     let ghost expected_replaced_tokens = validated.spec_replaced_tokens();
     let ghost expected_replacement_tokens = validated.spec_node().spec_token_estimate();
     let output_id = validated.node.id();
-    if graph.node(output_id).is_some() {
+    let existing_output = graph.node(output_id);
+    if existing_output.is_some() {
         return Err(ContextError::node(ContextErrorKind::CompactionNodeExists, output_id));
+    }
+    proof {
+        assert(existing_output.is_none());
+        assert(!graph.spec_contains_node(output_id));
     }
 
     let mut source_ids = Vec::with_capacity(validated.sources.len());
     let mut replaced_tokens = 0u64;
     let mut source_index = 0;
+    proof {
+        reveal(ValidatedCompaction::spec_source_ids);
+        assert(expected_source_ids == validated.sources@.map_values(
+            |source: ValidatedSource| source.spec_node().spec_id(),
+        ));
+        assert(expected_source_ids.len() == validated.sources@.len());
+    }
     while source_index < validated.sources.len()
-        invariant source_index <= validated.sources.len(),
+        invariant
+            source_index <= validated.sources.len(),
+            expected_source_ids == validated.sources@.map_values(
+                |source: ValidatedSource| source.spec_node().spec_id(),
+            ),
+            !graph.spec_contains_node(output_id),
+            source_ids@ == expected_source_ids.take(source_index as int),
+            forall |prior: int| 0 <= prior < source_index ==>
+                !expected_source_ids[prior].spec_matches(&output_id),
         decreases validated.sources.len() - source_index,
     {
         let binding = &validated.sources[source_index];
         let source_id = binding.node.id();
+        proof {
+            assert(*binding == validated.sources@[source_index as int]);
+            assert(source_index < expected_source_ids.len());
+            assert(expected_source_ids[source_index as int]
+                == binding.spec_node().spec_id());
+            assert(binding.spec_node().spec_id() == source_id);
+        }
         let Some(current) = graph.node(source_id) else {
             return Err(ContextError::nodes(
                 ContextErrorKind::MissingCompactionSource,
@@ -148,6 +192,17 @@ pub fn replace_validated_compaction(
                 source_id,
             ));
         };
+        proof {
+            assert(graph.spec_contains_node(source_id));
+            if source_id.spec_matches(&output_id) {
+                ContextNodeId::matches_implies_equal(&source_id, &output_id);
+                assert(source_id == output_id);
+                assert(graph.spec_contains_node(source_id)
+                    == graph.spec_contains_node(output_id));
+                assert(graph.spec_contains_node(output_id));
+                assert(false);
+            }
+        }
         if current != &binding.node {
             return Err(ContextError::nodes(
                 ContextErrorKind::CompactionSourceChanged,
@@ -173,7 +228,27 @@ pub fn replace_validated_compaction(
             ContextError::node(ContextErrorKind::ArithmeticOverflow, output_id)
         })?;
         source_ids.push(source_id);
+        proof {
+            assert(source_ids@ == expected_source_ids.take(source_index as int).push(source_id));
+            assert(expected_source_ids.take(source_index as int).push(source_id)
+                =~= expected_source_ids.take(source_index as int + 1));
+        }
         source_index += 1;
+    }
+    proof {
+        assert(source_index == validated.sources.len());
+        assert(expected_source_ids.take(source_index as int) =~= expected_source_ids);
+        assert(source_ids@ == expected_source_ids);
+        assert(expected_source_ids == validated.spec_source_ids());
+        assert(!contains_id(source_ids@, output_id)) by {
+            reveal(contains_id);
+            if contains_id(source_ids@, output_id) {
+                let prior = choose |prior: int| #![trigger source_ids@[prior]]
+                    0 <= prior < source_ids@.len()
+                        && source_ids@[prior].spec_matches(&output_id);
+                assert(false);
+            }
+        }
     }
     let replacement_tokens = validated.node.token_estimate();
     if replacement_tokens >= replaced_tokens || replaced_tokens != validated.replaced_tokens {
@@ -185,39 +260,9 @@ pub fn replace_validated_compaction(
         ));
     }
 
-    let live_dependencies = external_dependencies(&validated, source_ids.as_slice());
-    let replacement = validated
-        .node
-        .replace_dependencies(live_dependencies, graph.limits())?;
-    let graph_nodes = graph.nodes();
-    let mut nodes = Vec::with_capacity(graph_nodes.len());
-    let mut replacement_inserted = false;
-    let mut node_index = 0;
-    while node_index < graph_nodes.len()
-        invariant node_index <= graph_nodes.len(),
-        decreases graph_nodes.len() - node_index,
-    {
-        let node = &graph_nodes[node_index];
-        if !replacement_inserted && output_id < node.id() {
-            nodes.push(replacement.clone());
-            replacement_inserted = true;
-        }
-        if !contains(source_ids.as_slice(), node.id()) {
-            let dependencies = rewrite_dependencies(
-                node.dependencies(),
-                source_ids.as_slice(),
-                output_id,
-            );
-            nodes.push(node.replace_dependencies(dependencies, graph.limits())?);
-        }
-        node_index += 1;
-    }
-    if !replacement_inserted {
-        nodes.push(replacement);
-    }
-    let graph = ContextGraph::new(nodes, graph.limits())?;
+    let replacement_graph = build_replacement_graph(graph, &validated, source_ids.as_slice())?;
     let applied = AppliedCompaction {
-        graph,
+        graph: replacement_graph,
         policy_id: validated.policy_id,
         source_ids,
         source_ranges: validated.source_ranges,
@@ -226,94 +271,19 @@ pub fn replace_validated_compaction(
     };
     proof {
         reveal(AppliedCompaction::spec_policy_id);
+        reveal(AppliedCompaction::spec_source_ids);
         reveal(AppliedCompaction::spec_source_ranges);
         reveal(AppliedCompaction::spec_replaced_tokens);
         reveal(AppliedCompaction::spec_replacement_tokens);
         assert(applied.spec_policy_id() == expected_policy);
+        assert(applied.spec_source_ids() == expected_source_ids);
         assert(applied.spec_source_ranges() == expected_ranges);
         assert(applied.spec_replaced_tokens() == expected_replaced_tokens);
         assert(applied.spec_replacement_tokens() == expected_replacement_tokens);
         assert(applied.spec_replacement_tokens() < applied.spec_replaced_tokens());
-        assert(applied.spec_matches_validation(&validated));
+        assert(applied.spec_matches_validation(graph, &validated));
     }
     Ok(applied)
-}
-
-fn external_dependencies(
-    validated: &ValidatedCompaction,
-    source_ids: &[ContextNodeId],
-) -> Vec<ContextNodeId> {
-    let mut dependencies = Vec::new();
-    let mut source_index = 0;
-    while source_index < validated.sources.len()
-        invariant source_index <= validated.sources.len(),
-        decreases validated.sources.len() - source_index,
-    {
-        let source = &validated.sources[source_index];
-        let source_dependencies = source.node.dependencies();
-        let mut dependency_index = 0;
-        while dependency_index < source_dependencies.len()
-            invariant dependency_index <= source_dependencies.len(),
-            decreases source_dependencies.len() - dependency_index,
-        {
-            let dependency = source_dependencies[dependency_index];
-            if !contains(source_ids, dependency) {
-                insert_canonical(&mut dependencies, dependency);
-            }
-            dependency_index += 1;
-        }
-        source_index += 1;
-    }
-    dependencies
-}
-
-fn rewrite_dependencies(
-    dependencies: &[ContextNodeId],
-    source_ids: &[ContextNodeId],
-    output_id: ContextNodeId,
-) -> Vec<ContextNodeId> {
-    let mut rewritten = Vec::with_capacity(dependencies.len());
-    let mut dependency_index = 0;
-    while dependency_index < dependencies.len()
-        invariant dependency_index <= dependencies.len(),
-        decreases dependencies.len() - dependency_index,
-    {
-        let dependency = if contains(source_ids, dependencies[dependency_index]) {
-            output_id
-        } else {
-            dependencies[dependency_index]
-        };
-        insert_canonical(&mut rewritten, dependency);
-        dependency_index += 1;
-    }
-    rewritten
-}
-
-fn insert_canonical(values: &mut Vec<ContextNodeId>, value: ContextNodeId) {
-    let mut position = 0;
-    while position < values.len() && values[position] < value
-        invariant position <= values.len(),
-        decreases values.len() - position,
-    {
-        position += 1;
-    }
-    if position == values.len() || values[position] != value {
-        values.insert(position, value);
-    }
-}
-
-fn contains(values: &[ContextNodeId], target: ContextNodeId) -> bool {
-    let mut index = 0;
-    while index < values.len()
-        invariant index <= values.len(),
-        decreases values.len() - index,
-    {
-        if values[index] == target {
-            return true;
-        }
-        index += 1;
-    }
-    false
 }
 
 } // verus!

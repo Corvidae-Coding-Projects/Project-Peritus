@@ -3,6 +3,9 @@
 use super::SelectionPolicy;
 use super::closure::{admit_closure, closure_delta, dependency_closure, first_hidden, is_visible};
 use super::ordering::{ranked_optional_roots, sort_for_render};
+use super::outcome::required_nodes_are_selected;
+#[cfg(verus_only)]
+use super::outcome::{certified_selection_outcome, selection_success_matches};
 use crate::{
     ContextError, ContextErrorKind, ContextGraph, ContextPlan, ContextPlanId, OmissionReason,
     OmittedContext, RequirementMode, SelectedContext, SelectionReason,
@@ -24,15 +27,12 @@ pub fn select_context(
     policy: &SelectionPolicy,
     plan_id: ContextPlanId,
 ) -> (result: Result<ContextPlan, ContextError>)
-    ensures match result {
-        Ok(plan) => {
-            &&& plan.spec_id() == plan_id
-            &&& plan.spec_respects_policy(policy)
-            &&& plan.spec_selected().len() <= graph.spec_nodes().len()
-            &&& plan.spec_selected().len() <= policy.spec_max_selected_nodes()
-        }
-        Err(_) => true,
-    },
+    ensures
+        certified_selection_outcome(graph, &result),
+        match result {
+            Ok(plan) => selection_success_matches(graph, policy, plan_id, &plan),
+            Err(_) => true,
+        },
 {
     let candidate = construct_context_candidate(graph, policy, plan_id);
     if super::certificate::selection_result_is_exact(graph, policy, plan_id, &candidate) {
@@ -49,12 +49,7 @@ fn construct_context_candidate(
     plan_id: ContextPlanId,
 ) -> (result: Result<ContextPlan, ContextError>)
     ensures match result {
-        Ok(plan) => {
-            &&& plan.spec_id() == plan_id
-            &&& plan.spec_respects_policy(policy)
-            &&& plan.spec_selected().len() <= graph.spec_nodes().len()
-            &&& plan.spec_selected().len() <= policy.spec_max_selected_nodes()
-        }
+        Ok(plan) => selection_success_matches(graph, policy, plan_id, &plan),
         Err(_) => true,
     },
 {
@@ -182,15 +177,24 @@ fn construct_context_candidate(
             continue;
         }
         let delta = closure_delta(graph, closure.as_slice(), selected.as_slice())?;
-        let next_tokens = used_tokens.checked_add(delta.tokens).ok_or_else(|| {
-            ContextError::node(ContextErrorKind::ArithmeticOverflow, graph_nodes[root].id())
-        })?;
-        let next_nodes = used_nodes.checked_add(delta.nodes).ok_or_else(|| {
-            ContextError::node(ContextErrorKind::ArithmeticOverflow, graph_nodes[root].id())
-        })?;
-        let next_bytes = used_bytes.checked_add(delta.bytes).ok_or_else(|| {
-            ContextError::node(ContextErrorKind::ArithmeticOverflow, graph_nodes[root].id())
-        })?;
+        let Some(next_tokens) = used_tokens.checked_add(delta.tokens) else {
+            return Err(ContextError::node(
+                ContextErrorKind::ArithmeticOverflow,
+                graph_nodes[root].id(),
+            ));
+        };
+        let Some(next_nodes) = used_nodes.checked_add(delta.nodes) else {
+            return Err(ContextError::node(
+                ContextErrorKind::ArithmeticOverflow,
+                graph_nodes[root].id(),
+            ));
+        };
+        let Some(next_bytes) = used_bytes.checked_add(delta.bytes) else {
+            return Err(ContextError::node(
+                ContextErrorKind::ArithmeticOverflow,
+                graph_nodes[root].id(),
+            ));
+        };
 
         let omission = if next_tokens > policy.token_budget().usable_input() {
             Some(OmissionReason::TokenBudget)
@@ -258,8 +262,17 @@ fn construct_context_candidate(
         accounting,
         used_bytes,
     );
-    if plan.selected().len() > policy.max_selected_nodes() || !crate::plan_is_exact(graph, &plan) {
+    let plan_is_exact = crate::plan_is_exact(graph, &plan);
+    let required_complete = required_nodes_are_selected(graph, &plan);
+    if plan.selected().len() > policy.max_selected_nodes()
+        || !plan_is_exact
+        || !required_complete
+    {
         return Err(ContextError::plain(ContextErrorKind::PlanNodeMissing));
+    }
+    proof {
+        reveal(selection_success_matches);
+        assert(selection_success_matches(graph, policy, plan_id, &plan));
     }
     Ok(plan)
 }

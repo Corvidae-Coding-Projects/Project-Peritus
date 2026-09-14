@@ -3,6 +3,11 @@
 use crate::{ContextGraph, ContextPlan, TokenAccounting};
 use vstd::prelude::*;
 
+#[cfg(verus_only)]
+pub mod model;
+#[cfg(verus_only)]
+pub use model::plan_exact_relation;
+
 verus! {
 
 /// Returns whether every selected node remains visible to the plan's frozen role profile.
@@ -67,7 +72,13 @@ pub fn plan_dependencies_complete(graph: &ContextGraph, plan: &ContextPlan) -> b
 /// This independently rechecks source existence, uniqueness, dependency closure, visibility,
 /// render order, omission ownership, and token/byte accounting before a planner result escapes.
 #[must_use]
-pub fn plan_is_exact(graph: &ContextGraph, plan: &ContextPlan) -> bool {
+#[allow(
+    clippy::too_many_lines,
+    reason = "one exact-plan scan checks selected and omitted views under shared invariants"
+)]
+pub fn plan_is_exact(graph: &ContextGraph, plan: &ContextPlan) -> (result: bool)
+    ensures result ==> plan_exact_relation(graph, plan),
+{
     if !plan_is_visible(graph, plan)
         || !plan_dependencies_complete(graph, plan)
         || !token_accounting_is_bounded(plan.accounting())
@@ -79,16 +90,30 @@ pub fn plan_is_exact(graph: &ContextGraph, plan: &ContextPlan) -> bool {
     let mut bytes = 0_usize;
     let mut index = 0;
     while index < selected.len()
-        invariant index <= selected.len(),
+        invariant
+            index <= selected.len(),
+            forall |prior: int| #![trigger selected@[prior]] 0 <= prior < index ==>
+                graph.spec_contains_node(selected@[prior].spec_node_id()),
+            forall |left: int, right: int| #![trigger selected@[left], selected@[right]]
+                0 <= left < right < index ==>
+                    !selected@[left].spec_node_id().spec_matches(
+                        &selected@[right].spec_node_id(),
+                    ),
         decreases selected.len() - index,
     {
         let Some(node) = graph.node(selected[index].node_id()) else { return false };
         let mut prior = 0;
         while prior < index
-            invariant prior <= index, index < selected.len(),
+            invariant
+                prior <= index,
+                index < selected.len(),
+                forall |earlier: int| #![trigger selected@[earlier]] 0 <= earlier < prior ==>
+                    !selected@[earlier].spec_node_id().spec_matches(
+                        &selected@[index as int].spec_node_id(),
+                    ),
             decreases index - prior,
         {
-            if selected[prior].node_id() == selected[index].node_id() {
+            if selected[prior].node_id().matches(&selected[index].node_id()) {
                 return false;
             }
             prior += 1;
@@ -111,7 +136,17 @@ pub fn plan_is_exact(graph: &ContextGraph, plan: &ContextPlan) -> bool {
     let omitted = plan.omitted();
     index = 0;
     while index < omitted.len()
-        invariant index <= omitted.len(),
+        invariant
+            index <= omitted.len(),
+            forall |prior: int| #![trigger omitted@[prior]] 0 <= prior < index ==>
+                graph.spec_contains_node(omitted@[prior].spec_node_id()),
+            forall |prior: int| #![trigger omitted@[prior]] 0 <= prior < index ==>
+                !plan.spec_contains(omitted@[prior].spec_node_id()),
+            forall |left: int, right: int| #![trigger omitted@[left], omitted@[right]]
+                0 <= left < right < index ==>
+                    !omitted@[left].spec_node_id().spec_matches(
+                        &omitted@[right].spec_node_id(),
+                    ),
         decreases omitted.len() - index,
     {
         let Some(node) = graph.node(omitted[index].node_id()) else { return false };
@@ -120,15 +155,30 @@ pub fn plan_is_exact(graph: &ContextGraph, plan: &ContextPlan) -> bool {
         }
         let mut prior = 0;
         while prior < index
-            invariant prior <= index, index < omitted.len(),
+            invariant
+                prior <= index,
+                index < omitted.len(),
+                forall |earlier: int| #![trigger omitted@[earlier]] 0 <= earlier < prior ==>
+                    !omitted@[earlier].spec_node_id().spec_matches(
+                        &omitted@[index as int].spec_node_id(),
+                    ),
             decreases index - prior,
         {
-            if omitted[prior].node_id() == omitted[index].node_id() {
+            if omitted[prior].node_id().matches(&omitted[index].node_id()) {
                 return false;
             }
             prior += 1;
         }
         index += 1;
+    }
+    proof {
+        reveal(plan_exact_relation);
+        reveal(model::selected_references_graph);
+        reveal(model::selected_ids_unique);
+        reveal(model::omitted_references_graph);
+        reveal(model::omitted_ids_unique);
+        reveal(model::selected_and_omitted_are_disjoint);
+        assert(plan_exact_relation(graph, plan));
     }
     true
 }

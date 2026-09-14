@@ -7,13 +7,13 @@ use peritus_types::Sha256Digest;
 use vstd::prelude::*;
 
 verus! {
-
+#[cfg(verus_only)]
+mod model;
+mod access;
 mod validation;
 mod replacement;
-
 pub use validation::validate_compaction;
 pub use replacement::{AppliedCompaction, replace_validated_compaction};
-
 /// One nonempty half-open byte range bound to its source's complete digest.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct SourceRange {
@@ -320,6 +320,12 @@ struct ValidatedSource {
     required: bool,
 }
 
+impl ValidatedSource {
+    closed spec fn spec_node(&self) -> ContextNode { self.node }
+
+    closed spec fn spec_required(&self) -> bool { self.required }
+}
+
 impl ValidatedCompaction {
     /// Logical view of the checked derived node.
     pub closed spec fn spec_node(&self) -> ContextNode { self.node }
@@ -332,6 +338,21 @@ impl ValidatedCompaction {
 
     /// Logical view of complete source-token replacement.
     pub closed spec fn spec_replaced_tokens(&self) -> u64 { self.replaced_tokens }
+
+    /// Logical view of the exact canonical validated source identities.
+    pub closed spec fn spec_source_ids(&self) -> Seq<ContextNodeId> {
+        self.sources@.map_values(|source: ValidatedSource| source.spec_node().spec_id())
+    }
+
+    /// Logical view of every complete validated source node.
+    pub closed spec fn spec_source_nodes(&self) -> Seq<ContextNode> {
+        self.sources@.map_values(|source: ValidatedSource| source.spec_node())
+    }
+
+    /// Whether validation marked a source as required by mode or selection reason.
+    pub closed spec fn spec_source_required(&self, index: int) -> bool {
+        self.sources@[index].spec_required()
+    }
 
     /// Whether validation established a strict token reduction.
     pub open spec fn spec_is_strict_reduction(&self) -> bool {
@@ -359,41 +380,10 @@ impl ValidatedCompaction {
         )
         &&& self.spec_policy_id() == policy.spec_id()
         &&& self.spec_source_ranges() == proposal.spec_source_ranges()
+        &&& self.spec_source_ids() == proposal.spec_source_ids()
         &&& self.spec_is_strict_reduction()
     }
 
-    /// Returns the new derived node with complete source dependencies.
-    #[must_use]
-    pub const fn node(&self) -> (result: &ContextNode)
-        ensures *result == self.spec_node(),
-    {
-        &self.node
-    }
-    /// Returns the validated policy revision.
-    #[must_use]
-    pub const fn policy_id(&self) -> (result: CompactionPolicyId)
-        ensures result == self.spec_policy_id(),
-    {
-        self.policy_id
-    }
-    /// Returns the exact canonical source ranges.
-    #[must_use]
-    pub const fn source_ranges(&self) -> (result: &[SourceRange])
-        ensures result@ == self.spec_source_ranges(),
-    {
-        self.source_ranges.as_slice()
-    }
-    /// Returns the complete selected-source token estimate replaced by the output.
-    #[must_use]
-    pub const fn replaced_tokens(&self) -> (result: u64)
-        ensures result == self.spec_replaced_tokens(),
-    {
-        self.replaced_tokens
-    }
-
-    /// Consumes validation evidence and returns the checked derived node.
-    #[must_use]
-    pub fn into_node(self) -> ContextNode { self.node }
 }
 
 } // verus!
