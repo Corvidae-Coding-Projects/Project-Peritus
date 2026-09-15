@@ -335,6 +335,7 @@ impl DeveloperLoop {
                     observation: &observation,
                 })?;
                 let model_output = model_visible_tool_output(
+                    call.name().as_str(),
                     &observation.output,
                     profile.limits().max_input_tokens(),
                     protocol_limits,
