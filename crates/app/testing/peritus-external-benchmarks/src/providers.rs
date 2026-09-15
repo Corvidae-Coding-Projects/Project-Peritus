@@ -193,10 +193,7 @@ impl ProviderPlan {
 pub async fn authenticated(
     cancellation: &CancellationToken,
 ) -> Result<AuthenticatedProviders, BenchmarkError> {
-    let plan = match ProviderSource::from_environment()? {
-        ProviderSource::AccountRuntimes => ProviderPlan::account_runtimes()?,
-        ProviderSource::Configured => ProviderPlan::configured(None)?,
-    };
+    let plan = ProviderPlan::for_harness()?;
     plan.authenticate(cancellation).await
 }
 
