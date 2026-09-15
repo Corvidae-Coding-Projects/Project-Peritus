@@ -140,17 +140,15 @@ fn retain_harness_evidence(
     let usage_proxy = guard.seed().usage_proxy.clone().ok_or_else(|| {
         BenchmarkError::Workspace("Harness-Bench usage proxy was not admitted".to_owned())
     })?;
-    guard.seed_mut().projected_responses = trace::publish_harnessbench(
+    let trace_evidence = trace::publish_harnessbench(
         trace_inputs,
         &usage_proxy,
         &guard.seed().task_id,
         &guard.seed().session_id,
         &guard.seed().harness_model_id,
     )?;
-    guard.seed_mut().usage = trace::summarize_usage(
-        &guard.seed().trace_path,
-        &trace_inputs.last().map_or_else(String::new, |(_, prompt)| prompt.clone()),
-    )?;
+    guard.seed_mut().projected_responses = trace_evidence.projected_responses;
+    guard.seed_mut().usage = trace_evidence.usage;
     let sandbox = sandbox.ok_or_else(|| {
         BenchmarkError::Workspace("Harness-Bench sandbox was not admitted".to_owned())
     })?;
@@ -162,6 +160,9 @@ fn retain_harness_evidence(
         &usage_proxy,
         guard.seed().last_observation_path.as_deref(),
     )?);
+    if let Some(path) = trace_evidence.incomplete_response {
+        return Err(BenchmarkError::trace(path, "provider response has no terminal event"));
+    }
     Ok(())
 }
 

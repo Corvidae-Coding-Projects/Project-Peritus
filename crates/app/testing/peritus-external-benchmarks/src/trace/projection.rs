@@ -24,6 +24,11 @@ pub(super) struct ToolCall {
     pub arguments: String,
 }
 
+pub(super) struct ProjectedTrace {
+    pub rounds: Vec<Round>,
+    pub incomplete_response: bool,
+}
+
 struct ActiveResponse {
     request_messages: Vec<Value>,
     assistant_bytes: Vec<u8>,
@@ -44,7 +49,7 @@ pub(super) fn project(
     path: &Path,
     frames: &[Frame],
     initial_user_prompt: &str,
-) -> Result<Vec<Round>, BenchmarkError> {
+) -> Result<ProjectedTrace, BenchmarkError> {
     let mut history = vec![json!({"role": "user", "content": initial_user_prompt})];
     let mut rounds = Vec::new();
     let mut active: Option<ActiveResponse> = None;
@@ -72,10 +77,7 @@ pub(super) fn project(
             }
         }
     }
-    if active.is_some() {
-        return Err(BenchmarkError::trace(path, "provider response has no terminal event"));
-    }
-    Ok(rounds)
+    Ok(ProjectedTrace { rounds, incomplete_response: active.is_some() })
 }
 
 fn apply_event(
@@ -218,6 +220,8 @@ fn apply_observation(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use peritus_model_protocol::{EventEnvelope, encode_event_envelope};
+    use peritus_types::Sha256Digest;
 
     #[test]
     fn tool_arguments_decode_after_split_utf8_fragments_are_reassembled() {
@@ -268,8 +272,35 @@ mod tests {
             Frame { kind: DeveloperTraceFrameKind::LocalMemoryObservation, payload: observation },
         ];
 
-        let rounds = project(Path::new("trace"), &frames, "task").expect("project trace");
+        let projected = project(Path::new("trace"), &frames, "task").expect("project trace");
 
-        assert!(rounds.is_empty());
+        assert!(projected.rounds.is_empty());
+        assert!(!projected.incomplete_response);
+    }
+
+    #[test]
+    fn completed_rounds_survive_a_trailing_incomplete_response() {
+        let frames = [
+            event_frame(1, ModelEvent::ResponseStarted { response_id: None, model: None }),
+            event_frame(2, ModelEvent::ResponseCompleted),
+            event_frame(3, ModelEvent::ResponseStarted { response_id: None, model: None }),
+        ];
+
+        let projected = project(Path::new("trace"), &frames, "task").expect("project trace");
+
+        assert_eq!(projected.rounds.len(), 1);
+        assert!(projected.incomplete_response);
+    }
+
+    fn event_frame(sequence: u64, event: ModelEvent) -> Frame {
+        let digest = u8::try_from(sequence).expect("test sequence");
+        let envelope =
+            EventEnvelope::new(sequence, None, None, Sha256Digest::new([digest; 32]), event)
+                .expect("event envelope");
+        Frame {
+            kind: DeveloperTraceFrameKind::ProviderEnvelope,
+            payload: encode_event_envelope(&envelope, ProtocolLimits::PRODUCTION)
+                .expect("event encoding"),
+        }
     }
 }
