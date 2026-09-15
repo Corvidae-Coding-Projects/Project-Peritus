@@ -48,14 +48,14 @@
         "prefix_sha256": "75e62af207437405c7c0292c3ecc35c1e80a87ef1a9953202d92cb6ee96daa52"
       },
       "u7IC": {
-        "sequence": 12,
-        "tip_oid": "c8921d0bc5f90d637fd264fc94e05667e9e80c5a",
-        "prefix_sha256": "c06881571a2276e9a15d71769976bae28e7cfb5dc77d8b8bbeb928a3aa932add"
+        "sequence": 13,
+        "tip_oid": "37b25ea88fac0915c4451737ef349c7237d395eb",
+        "prefix_sha256": "f44d9ab8d5bee4ba9f4c3b592261a41c19b8e02b5016570669cd4aabe5cd0982"
       }
     }
   },
   "next_display_id": 84,
-  "next_comment_id": 1609,
+  "next_comment_id": 1610,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -13008,7 +13008,7 @@
       "priority": "medium",
       "created_by": "u7IC",
       "created_at": "2026-09-15T00:49:55.217770155Z",
-      "updated_at": "2026-09-15T06:04:55.818486652Z",
+      "updated_at": "2026-09-15T06:27:37.945781916Z",
       "labels": [
         "feature"
       ],
@@ -13039,6 +13039,15 @@
           "kind": "result",
           "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAueGOWhQQ6AFg9mcP6x91PqXmJlxfl0ExykVRqKV7xf47j1dVbRlQtkBiVmSji42EwZdnLKr5vfoz5sNHRTLwAA=="
+        },
+        "b70383a9-85b4-47ca-8b02-cb63959159dd": {
+          "display_id": 1609,
+          "author": "u7IC",
+          "content": "Committed and pushed e3578ee15 (retain native failure attribution for interrupted final streams) and 6c319bdc1 (retain newest complete exchange within active model capacity) to draft PR 82. The regressions fail on prior code and pass after repair. Combined tests: 488 passed, 3 existing ignored; strict all-target/all-feature Clippy, formatting, and diff checks passed. Task 012 evidence and investigation note are retained unchanged as native failure. Full committed-source workspace rebuild is in progress before task 013. Credentials, provider limits, benchmark tasks/hooks/oracles are unchanged.",
+          "created_at": "2026-09-15T06:27:37.936285093Z",
+          "kind": "result",
+          "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAF7fnTGYN8P26iSkl7fjLWp3IEox4GBJWc9km8ff4VUd9W9r9PPohQfvZREzgUBIBau3BmqJVMfT47T4WXwknAg=="
         },
         "b953bb2a-7cfe-4469-9d27-2facd5de596f": {
           "display_id": 1602,
