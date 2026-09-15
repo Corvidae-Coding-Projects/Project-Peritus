@@ -24,15 +24,7 @@ pub(super) enum TerminalTurn {
 }
 
 pub(super) fn parse(value: &str) -> Result<TerminalTurn, ProductRunnerError> {
-    let start = value.find('{').ok_or_else(|| invalid("developer response contains no JSON"))?;
-    let end = value.rfind('}').ok_or_else(|| invalid("developer response has incomplete JSON"))?;
-    let wire: TerminalWire = serde_json::from_str(&value[start..=end]).map_err(|error| {
-        ProductRunnerError::new(
-            ProductRunnerErrorKind::InvalidModelOutput,
-            "parse developer terminal",
-            error.to_string(),
-        )
-    })?;
+    let wire = last_terminal_object(value)?;
     match (wire.kind.as_str(), wire.summary, wire.run_instructions, wire.message) {
         ("complete", Some(summary), Some(run_instructions), None)
             if !summary.trim().is_empty() && !run_instructions.trim().is_empty() =>
@@ -44,6 +36,35 @@ pub(super) fn parse(value: &str) -> Result<TerminalTurn, ProductRunnerError> {
         }
         _ => Err(invalid("developer terminal fields do not match its kind")),
     }
+}
+
+fn last_terminal_object(value: &str) -> Result<TerminalWire, ProductRunnerError> {
+    let mut found_object_start = false;
+    let mut last_error = None;
+    for (start, character) in value.char_indices().rev() {
+        if character != '{' {
+            continue;
+        }
+        found_object_start = true;
+        let mut values =
+            serde_json::Deserializer::from_str(&value[start..]).into_iter::<TerminalWire>();
+        match values.next() {
+            Some(Ok(wire)) => return Ok(wire),
+            Some(Err(error)) => last_error = Some(error),
+            None => {}
+        }
+    }
+    if !found_object_start {
+        return Err(invalid("developer response contains no JSON"));
+    }
+    Err(ProductRunnerError::new(
+        ProductRunnerErrorKind::InvalidModelOutput,
+        "parse developer terminal",
+        last_error.map_or_else(
+            || "developer response has incomplete JSON".to_owned(),
+            |error| error.to_string(),
+        ),
+    ))
 }
 
 pub(super) fn validate_run_instructions(
@@ -70,4 +91,36 @@ fn invalid(detail: &'static str) -> ProductRunnerError {
         "validate developer terminal",
         detail,
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn final_terminal_object_is_selected_after_earlier_braced_prose() {
+        let value = r#"Verified output {'policy_id': 'POLICY-2024-Q3'}.
+The exact result is:
+{"kind":"complete","summary":"Generated the policy rollup and report.","run_instructions":"cat out/summary.json"}"#;
+
+        let terminal = parse(value).expect("final terminal");
+
+        let TerminalTurn::Complete((summary, run_instructions)) = terminal else {
+            panic!("expected completion");
+        };
+        assert_eq!(summary, "Generated the policy rollup and report.");
+        assert_eq!(run_instructions, "cat out/summary.json");
+    }
+
+    #[test]
+    fn terminal_schema_remains_strict_when_no_valid_terminal_object_exists() {
+        let Err(error) = parse(
+            r#"prose {"kind":"complete","summary":"done","run_instructions":"cargo test","extra":true}"#,
+        ) else {
+            panic!("unknown fields must remain rejected");
+        };
+
+        assert_eq!(error.kind(), ProductRunnerErrorKind::InvalidModelOutput);
+        assert_eq!(error.operation(), "parse developer terminal");
+    }
 }
