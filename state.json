@@ -48,14 +48,14 @@
         "prefix_sha256": "75e62af207437405c7c0292c3ecc35c1e80a87ef1a9953202d92cb6ee96daa52"
       },
       "u7IC": {
-        "sequence": 45,
-        "tip_oid": "25d4b7bc8e2d0f6bc2d2798bd388f8424fd7b920",
-        "prefix_sha256": "e7e80683bcafa32470e21b1b91db95176ed45dc5ccf30a1d29c52a990a5c997f"
+        "sequence": 46,
+        "tip_oid": "aa14072986812979c265fc9f0d44987f06411adc",
+        "prefix_sha256": "cd971c3e98154f047193d75ef118f4fb92cb677f38674fb8d0fc12090c8dbaba"
       }
     }
   },
   "next_display_id": 84,
-  "next_comment_id": 1642,
+  "next_comment_id": 1643,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -13008,7 +13008,7 @@
       "priority": "medium",
       "created_by": "u7IC",
       "created_at": "2026-09-15T00:49:55.217770155Z",
-      "updated_at": "2026-09-15T14:38:51.556709586Z",
+      "updated_at": "2026-09-15T14:41:27.534312821Z",
       "labels": [
         "feature"
       ],
@@ -13057,6 +13057,15 @@
           "kind": "result",
           "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAGAkafOWBFcRlKnZh0VI3k5qddi8+wnaQ5Lcn8OGZjyHYfslz3wJEfLHAZRTqyOIU64+63UHlvEcXlKGyVbIbBA=="
+        },
+        "1a9323f9-f138-4916-9d7a-c4d8b4db27f6": {
+          "display_id": 1642,
+          "author": "u7IC",
+          "content": "Committed/pushed neighboring-anchor fix d50f714103c2d80072731e9f3434f723baab0397 to draft PR82.26 path regressions/513 combined package tests pass,3 existing ignored; strict Clippy/fmt/diff and ALL workspace source-stamped rebuild pass. Frozen exeSHAf1e27116dc425c2f64dff094c556ade9aa15b5d99901c5b73c4780a0d1eb6c0a verified. New-source Codex/Claude probe failed at provider setup: anthropic.claude_runtime.process_interrupted; zero task model/tool requests, missing qualification, retained failed report. Previous81d native Codex/Claude flow remains qualified; current probe is not a pass, no unrelated parser patch or retry churn. Original042 remains deadline-unsuccessful with false path gate evidenced and generic before/after regression. Affected042 attempt2 now running session5553 on configured OpenCode Zen/DeepSeek32768/noimages, saved settings unchanged. PRbody reconciled to current source and honest incomplete status. Continue042 inspection,043-106, affected020/other revisits, scoped DRY and final/provider validation; CI runners excluded, PR stays draft/open.",
+          "created_at": "2026-09-15T14:41:27.527994345Z",
+          "kind": "result",
+          "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAYbPvLNiblsbXK9lEH+r0AaOX3xzj0OQzEF8fWM73xy7Ev3TnCglV4rFiJrJLPRuXmTg5Eu1O9rwEivnfJx4gAw=="
         },
         "1e1afa8c-809e-4d17-8e81-26a75e9c593b": {
           "display_id": 1604,
