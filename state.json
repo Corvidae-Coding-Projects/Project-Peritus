@@ -48,14 +48,14 @@
         "prefix_sha256": "75e62af207437405c7c0292c3ecc35c1e80a87ef1a9953202d92cb6ee96daa52"
       },
       "u7IC": {
-        "sequence": 65,
-        "tip_oid": "3fb559756119a82e251a81645f77e07a7550d57c",
-        "prefix_sha256": "132ffec453847c044f000de3fb3b651e29d489a0f6e466ed1ed351555d48ef10"
+        "sequence": 66,
+        "tip_oid": "d6b8daa1e6a68fab40115d6be4c163b207a36b9c",
+        "prefix_sha256": "f08c0f090456b3464d56828b819ac190f995d3a9418d4089a4fa959508161414"
       }
     }
   },
   "next_display_id": 84,
-  "next_comment_id": 1662,
+  "next_comment_id": 1663,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -13008,7 +13008,7 @@
       "priority": "medium",
       "created_by": "u7IC",
       "created_at": "2026-09-15T00:49:55.217770155Z",
-      "updated_at": "2026-09-15T18:40:16.164575899Z",
+      "updated_at": "2026-09-15T19:06:20.710234979Z",
       "labels": [
         "feature"
       ],
@@ -13084,6 +13084,15 @@
           "kind": "result",
           "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAYbPvLNiblsbXK9lEH+r0AaOX3xzj0OQzEF8fWM73xy7Ev3TnCglV4rFiJrJLPRuXmTg5Eu1O9rwEivnfJx4gAw=="
+        },
+        "1bf29206-3d34-4956-a460-92c8f226165d": {
+          "display_id": 1662,
+          "author": "u7IC",
+          "content": "Delivered f264fc5e14692b8c270941d0c3fdb5300c053a10 to draftPR82: literal later removals retire earlier output presence and validate cleanup; unaffected outputs, alternatives/recreation, conditions/negation, workspace and symlink boundaries remain checked. Update/create declarations retain current outputs. Original060 correct cleanup/all7 evaluator checks but native deadline/incomplete qualification remains archived with exact audit prefix and protected inputs. Three old removal regressions and compound declaration regression fail before repair; final37 path controls and combined527 tests pass (3 existing ignored), strict Clippy/fmt/diff checks and full workspace rebuild pass. Frozen executable8cf986a32db7f421180de80993acf3d3287459a9fb049987ca185235e1e57505 identity matches commit. Fresh060 revisit follows; originals061-106, earlier revisits, DRY/final compatibility remain. No source/oracle/model-output tailoring, credential/limit change, or CI/PCR detour.",
+          "created_at": "2026-09-15T19:06:20.693794184Z",
+          "kind": "result",
+          "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAmj69rLta1e0aPxVmS2SZhIk/01p9YtKEL4BHYNpPDyyJ5XUcjt1xQmFVnmoBg7GjGQ2evQYeOyyGlGazbdJaAg=="
         },
         "1e1afa8c-809e-4d17-8e81-26a75e9c593b": {
           "display_id": 1604,
