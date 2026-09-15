@@ -312,11 +312,21 @@ fn path_noun_context(words: &[&str]) -> bool {
 }
 
 fn path_context(words: &[&str]) -> bool {
-    words.iter().rev().take(3).any(|word| {
-        output_verb(word)
-            || path_noun(word)
-            || matches!(normalized(word).as_str(), "at" | "in" | "into" | "to" | "under")
-    })
+    let Some((last, preceding)) = words.split_last() else {
+        return false;
+    };
+    // A content modifier after an output's name cannot inherit that name's path cue.
+    // Determiners and naming connectors still permit ordinary explicit path clauses.
+    let cue = if matches!(normalized(last).as_str(), "a" | "an" | "the") {
+        preceding.last().copied().unwrap_or(last)
+    } else {
+        last
+    };
+    output_verb(cue)
+        || path_noun(cue)
+        || matches!(normalized(cue).as_str(), "at" | "in" | "into" | "to" | "under")
+        || matches!(normalized(last).as_str(), "named" | "called")
+            && preceding.iter().rev().take(2).any(|word| path_noun(word))
 }
 
 fn conditional_clause(words: &[&str]) -> bool {

@@ -281,6 +281,34 @@ fn slash_separated_prose_is_not_mistaken_for_an_output_path() {
 }
 
 #[test]
+fn content_qualifiers_do_not_inherit_an_extensionless_output_path_cue() {
+    let root = tempfile::tempdir().expect("root");
+    fs::write(root.path().join("report.md"), "report").expect("report");
+    for transcript in [
+        "Create report.md with start/end times.",
+        "Write report.md. Place the result in a new before/after comparison.",
+    ] {
+        let record = run(root.path(), transcript, &[PathBuf::from("report.md")]);
+        assert_eq!(record.exit_code, Some(0), "{}", record.output);
+        assert_eq!(required_outputs(root.path(), transcript), vec![PathBuf::from("report.md")]);
+    }
+}
+
+#[test]
+fn extensionless_names_remain_required_after_explicit_file_cues() {
+    let root = tempfile::tempdir().expect("root");
+    for transcript in [
+        "Create the file start/end.",
+        "Create a file named start/end.",
+        "Write the output to the start/end.",
+    ] {
+        let record = run(root.path(), transcript, &[]);
+        assert_eq!(record.exit_code, Some(1), "{transcript}: {}", record.output);
+        assert_eq!(required_outputs(root.path(), transcript), vec![PathBuf::from("start/end")]);
+    }
+}
+
+#[test]
 fn unquoted_extensionless_relative_path_remains_required_in_path_context() {
     let root = tempfile::tempdir().expect("root");
     fs::create_dir_all(root.path().join("artifacts/release")).expect("output directory");
