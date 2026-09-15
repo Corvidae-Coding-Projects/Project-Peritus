@@ -48,14 +48,14 @@
         "prefix_sha256": "75e62af207437405c7c0292c3ecc35c1e80a87ef1a9953202d92cb6ee96daa52"
       },
       "u7IC": {
-        "sequence": 98,
-        "tip_oid": "b9f44d96f0fb3b85ed60030464953921cd2a4844",
-        "prefix_sha256": "82086772d15dcbbb28698350aaecd41726fac61166861f16e8d2637544fe59b9"
+        "sequence": 99,
+        "tip_oid": "ebd121477056bf45751c71c1b40bc80ecb5f8bb2",
+        "prefix_sha256": "0073d9db3c9df4ab54bad2e2f80f4c41ea690ed70a94e6d682f2958ce1861f15"
       }
     }
   },
   "next_display_id": 85,
-  "next_comment_id": 1694,
+  "next_comment_id": 1695,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -14152,7 +14152,7 @@
       "parent_uuid": "a6fde681-2598-4b91-b824-d011ade3c601",
       "created_by": "u7IC",
       "created_at": "2026-09-15T22:18:45.813526163Z",
-      "updated_at": "2026-09-15T22:50:04.997811620Z",
+      "updated_at": "2026-09-15T23:04:20.511576431Z",
       "comments": {
         "52a89bab-06d2-47c9-96b4-201d0bed105b": {
           "display_id": 1689,
@@ -14180,6 +14180,15 @@
           "kind": "result",
           "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAyJGoNQrrAeRrZAI0t0F/k1fJk0B9zTm1vm55OvMsUZEjdLFeF4BMIK2CnI29lFgIsPrZ+XZ1Wu9EX48eHRbvBA=="
+        },
+        "daddc789-eb9b-44ce-a948-48859301870a": {
+          "display_id": 1694,
+          "author": "u7IC",
+          "content": "Exact-source d12f76d73 hosted verification now confirms Foundation policy, Candidate policy and Linux H0 native security qualification PASS. Snapshot70pass366pending3skip0fail. The common source-layout failure is resolved on GitHub; Windows app-runner tests and remaining matrices remain pending, so issue84 stays open.",
+          "created_at": "2026-09-15T23:04:20.505165254Z",
+          "kind": "result",
+          "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABADafs4MKhxgLiOiaF+SuAMmy+RAuLnA0/LId4f8gWR3802Sl4CxpHjcqR6ZfFgO5L7QdlzOplHDZT7C+M/h0gAg=="
         },
         "de3c90fb-fb13-46ef-99a1-858c748df61a": {
           "display_id": 1684,
