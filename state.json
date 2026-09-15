@@ -48,14 +48,14 @@
         "prefix_sha256": "75e62af207437405c7c0292c3ecc35c1e80a87ef1a9953202d92cb6ee96daa52"
       },
       "u7IC": {
-        "sequence": 101,
-        "tip_oid": "1b82abe36254bc917533669ddd94fbed10edea19",
-        "prefix_sha256": "9b2d3e7433e815e86648a26db89a7611f2d5c5853128a58f58e521fcdfb2608d"
+        "sequence": 102,
+        "tip_oid": "5a4c094ec8eb6731117b43412fb12183ef87b865",
+        "prefix_sha256": "23fb6a7bf92756f911b32bbe65f45c29f12d558f860eb099643c6a5a899f6b72"
       }
     }
   },
   "next_display_id": 85,
-  "next_comment_id": 1697,
+  "next_comment_id": 1698,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -14161,7 +14161,7 @@
       "parent_uuid": "a6fde681-2598-4b91-b824-d011ade3c601",
       "created_by": "u7IC",
       "created_at": "2026-09-15T22:18:45.813526163Z",
-      "updated_at": "2026-09-15T23:14:47.896881067Z",
+      "updated_at": "2026-09-15T23:15:36.238324836Z",
       "comments": {
         "52a89bab-06d2-47c9-96b4-201d0bed105b": {
           "display_id": 1689,
@@ -14180,6 +14180,15 @@
           "kind": "result",
           "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABACZnIy/Uol9RkIqrdu4ra3UnmJIxlSONr6gTF9Qk3u/XlZT8m6kz8GSCKoc98XjcHeNv+D9g1EeUM6bMmOPx7Ag=="
+        },
+        "8b184129-f08a-4c70-b1c0-e6b8fbead97c": {
+          "display_id": 1697,
+          "author": "u7IC",
+          "content": "Count correction to preceding Windows receipt:42 applicable explicit-path tests pass on Windows,43 on Linux. The only missing Windows case is existing cfg(unix) cleanup_does_not_follow_a_symlink_to_external_files. All6 repaired assertions and332 product-runner Windows tests pass. No new ignore/cfg/test weakening; validation record and PR body now carry the platform-specific counts.",
+          "created_at": "2026-09-15T23:15:36.232014385Z",
+          "kind": "result",
+          "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA5Cwj8uBb+lSfRIrVBIIfOEXLl3D3i1KZWe6+2tDuZb+IwSXW8dwuWTtH/oZwHPRKsyGev9dccUQVUTirDR3hCw=="
         },
         "906a4320-21eb-4d0d-a5e7-1e63ab731c0e": {
           "display_id": 1696,
