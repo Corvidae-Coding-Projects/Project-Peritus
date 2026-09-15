@@ -106,6 +106,7 @@ fn project_command_output(
             result.insert("progress".to_owned(), Value::Array(retained));
             if omitted_events > 0 {
                 result.insert("progress_events_omitted".to_owned(), Value::from(omitted_events));
+                omitted.push(Value::String("progress_prefix".to_owned()));
             }
         } else {
             result.insert("progress".to_owned(), progress);
@@ -193,7 +194,7 @@ mod tests {
             .collect::<Vec<_>>()
             .join(",");
         let output = json(&format!(
-            r#"{{"handle":"owned-command","progress":[{events}],"state":"running","success":true,"tool_result":{{"resources":{{"memory":42}}}}}}"#
+            r#"{{"handle":"owned-command","progress":[{events}],"state":"running","success":true}}"#
         ));
 
         let projected =
