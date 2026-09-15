@@ -15,7 +15,7 @@ mod view_binding;
 
 pub use driver::{InvocationAccounting, run_live_invocation};
 pub use port::LocalContextHandle;
-pub use tools::{MemoryTools, definitions as memory_tool_definitions};
+pub use tools::MemoryTools;
 
 pub use crate::context_config::{LocalContextConfig, LocalProcessConfig, LocalSemanticBackend};
 

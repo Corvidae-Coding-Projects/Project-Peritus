@@ -45,7 +45,7 @@ pub async fn complete(
             providers.current().profile().limits().max_input_tokens(),
             correction.as_deref(),
             accounting.remaining(),
-            memory.is_some(),
+            memory.as_ref(),
         )?;
         let media = match input.media(evidence.conversation, providers.current().profile()) {
             Ok(media) => media,
@@ -130,16 +130,14 @@ fn prepare_request(
     max_input_tokens: u64,
     correction: Option<&str>,
     remaining: std::time::Duration,
-    memory: bool,
+    memory: Option<&crate::local_context::LocalContextHandle>,
 ) -> Result<ReviewRequest, ProductRunnerError> {
     let system = turn::reviewer_system(remaining) + input.delivery_instructions();
     let tools = read_only_definitions()?;
     let mut budget_tools = tools.clone();
-    if memory {
-        budget_tools.extend(
-            crate::local_context::memory_tool_definitions()
-                .map_err(|error| turn::developer_error(&error))?,
-        );
+    if let Some(memory) = memory {
+        budget_tools
+            .extend(memory.tool_definitions().map_err(|error| turn::developer_error(&error))?);
     }
     let prompt = turn::reviewer_user(&turn::ReviewerPrompt {
         system: &system,

@@ -26,6 +26,12 @@ pub struct LocalContextHandle {
 }
 
 impl LocalContextHandle {
+    pub(crate) fn tool_definitions(
+        &self,
+    ) -> Result<Vec<peritus_model_protocol::ToolDefinition>, DeveloperLoopError> {
+        super::tools::definitions_with_config(&self.lock()?.config)
+    }
+
     pub(in crate::local_context) fn effective_permissions(
         &self,
     ) -> crate::control::HostPermissions {

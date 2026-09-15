@@ -18,6 +18,7 @@ use serde_json::Value;
 
 pub(super) use entry_view::entry_view;
 pub use schema::definitions;
+pub(in crate::local_context) use schema::definitions_with_config;
 
 pub struct MemoryTools<'a> {
     base: &'a mut dyn DeveloperToolExecutor,
