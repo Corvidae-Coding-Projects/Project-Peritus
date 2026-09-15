@@ -48,14 +48,14 @@
         "prefix_sha256": "75e62af207437405c7c0292c3ecc35c1e80a87ef1a9953202d92cb6ee96daa52"
       },
       "u7IC": {
-        "sequence": 96,
-        "tip_oid": "de5c28022322757473df4d73eed427e95b1883ea",
-        "prefix_sha256": "464df530aadf58fe21930b5a45956bb6e30928a090d4fb18e997af5ed647e385"
+        "sequence": 97,
+        "tip_oid": "b258512c5dab08dd9c93ff16d9a6b897f79f29ba",
+        "prefix_sha256": "987f7b7e66bf742fc950c18c48692eaf68fe92daf04b00508e18d51d486d2a42"
       }
     }
   },
   "next_display_id": 85,
-  "next_comment_id": 1692,
+  "next_comment_id": 1693,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -13009,7 +13009,7 @@
       "priority": "medium",
       "created_by": "u7IC",
       "created_at": "2026-09-15T00:49:55.217770155Z",
-      "updated_at": "2026-09-15T22:53:34.339847501Z",
+      "updated_at": "2026-09-15T22:56:53.247596244Z",
       "labels": [
         "feature"
       ],
@@ -13544,6 +13544,15 @@
           "kind": "result",
           "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAG4wcD3dECeiujooUjCoKvpZTw1OJJpbyfK77Cgb933q7rV5Y+wgOV6ZLL+kHFtgU5p7HmtrJKfaiRwJHO04MCg=="
+        },
+        "aed5c442-fa7e-4002-9f2d-7d6003f9256d": {
+          "display_id": 1692,
+          "author": "u7IC",
+          "content": "Original084 qualified at d12f76d73/3de54b2: all5 original checks pass, only allowed session implementation/report changes,3 protected inputs byte-intact. Initial fixture failure and wrong-cwd recovery preserved; actual scoped Node tests pass; native DeepSeek review qualifies. Evidence index through84;085 running individually on frozen executable. PR82 runner snapshot34pass402pending3skip0fail; Windows app-runner tests remain queued, so no hosted-success claim.",
+          "created_at": "2026-09-15T22:56:53.240485934Z",
+          "kind": "result",
+          "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA8TIGtm45Z5N/aU9cJh0Wm6ulI84NMukRc83WGQc8HtMn50TmTDUrXovXQEGq67ePxnRJDqw/cIkPJ4VE4EtMDA=="
         },
         "afed00fd-75f0-474b-98e2-0840ade820a3": {
           "display_id": 1672,
