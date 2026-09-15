@@ -1,7 +1,6 @@
 //! Deterministic reconciliation of literal task paths with the candidate workspace.
 
 use std::{
-    cmp::Ordering,
     collections::{BTreeMap, BTreeSet},
     fs,
     io::ErrorKind,
@@ -11,6 +10,10 @@ use std::{
 use peritus_gates::GateExecutionRecord;
 
 mod alternatives;
+mod extraction;
+mod removals;
+
+use extraction::extract;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 struct PathMention {
@@ -22,6 +25,7 @@ struct PathMention {
 struct PathRequirements {
     mentions: Vec<PathMention>,
     alternatives: Vec<Vec<PathBuf>>,
+    removals: Vec<removals::Removal>,
 }
 
 pub(super) fn run(root: &Path, transcript: &str, changed_paths: &[PathBuf]) -> GateExecutionRecord {
@@ -102,6 +106,8 @@ pub(super) fn run(root: &Path, transcript: &str, changed_paths: &[PathBuf]) -> G
         }
     }
 
+    removals::check_all(root, &requirements.removals, &mut checked, &mut failures);
+
     failures.sort();
     failures.dedup();
     let mut output = if checked.is_empty() {
@@ -124,93 +130,6 @@ pub(super) fn run(root: &Path, transcript: &str, changed_paths: &[PathBuf]) -> G
         label: "Explicit output paths".to_owned(),
         exit_code: Some(i32::from(!failures.is_empty())),
         output,
-    }
-}
-
-fn extract(root: &Path, transcript: &str) -> PathRequirements {
-    let mut paths = BTreeMap::<PathBuf, bool>::new();
-    let mut alternatives = Vec::new();
-    let mut output_list = false;
-    let mut output_directory = None;
-    let mut output_list_indentation = None;
-    for line in transcript.lines() {
-        let words = line.split_whitespace().collect::<Vec<_>>();
-        let list_item = list_item_path_index(&words);
-        let listed_output = if output_list && list_item.is_some() {
-            let indentation = line.len() - line.trim_start().len();
-            let declaration_level = *output_list_indentation.get_or_insert(indentation);
-            match indentation.cmp(&declaration_level) {
-                Ordering::Equal => list_item,
-                Ordering::Less => {
-                    output_list = false;
-                    output_directory = None;
-                    output_list_indentation = None;
-                    None
-                }
-                Ordering::Greater => None,
-            }
-        } else {
-            None
-        };
-        if !words.is_empty() && list_item.is_none() {
-            // Format/schema bullets describe an artifact's contents, not sibling files.
-            // Explicit file instructions within those bullets still use their own path cues.
-            output_list = line.trim_end().ends_with(':')
-                && output_context(&words)
-                && !words
-                    .last()
-                    .is_some_and(|word| matches!(normalized(word).as_str(), "format" | "schema"))
-                && !conditional_clause(&words);
-            output_directory = output_list.then(|| output_list_directory(root, &words)).flatten();
-            output_list_indentation = None;
-        }
-        let mut line_mentions = Vec::new();
-        for (index, word) in words.iter().enumerate() {
-            if descriptive_extension(word, words.get(index + 1).copied()) {
-                continue;
-            }
-            // Only the leading list path inherits the declaration, not inputs in its description.
-            let listed_path = listed_output == Some(index);
-            let required_output = (listed_path || output_context(&words[..index]))
-                && !conditional_clause(&words[..index]);
-            let quoted_bare_name = required_output
-                && (listed_path || path_noun_context(&words[..index]))
-                && explicitly_delimited(word);
-            let relative_path_context = path_context(&words[..index]);
-            let Some(mut relative) =
-                parse_path(root, word, required_output, quoted_bare_name, relative_path_context)
-            else {
-                continue;
-            };
-            if listed_path
-                && !Path::new(trim_delimiters(word)).is_absolute()
-                && let Some(directory) = &output_directory
-                && !relative.starts_with(directory)
-            {
-                relative = directory.join(relative);
-            }
-            line_mentions.push((index, relative, required_output));
-        }
-        let line_alternatives = alternatives::groups(&words, &line_mentions);
-        let alternative_paths =
-            line_alternatives.iter().flatten().cloned().collect::<BTreeSet<_>>();
-        alternatives.extend(line_alternatives);
-        for (_, relative, required_output) in line_mentions {
-            let individually_required = required_output && !alternative_paths.contains(&relative);
-            paths
-                .entry(relative)
-                .and_modify(|required| *required |= individually_required)
-                .or_insert(individually_required);
-        }
-    }
-    alternatives.sort();
-    alternatives.dedup();
-    PathRequirements {
-        mentions: paths
-            .into_iter()
-            .map(|(relative, required_output)| PathMention { relative, required_output })
-            .collect(),
-        alternatives,
     }
 }
 
@@ -301,7 +220,11 @@ fn parse_path(
     {
         return None;
     }
-    Some(relative)
+    let relative = relative
+        .components()
+        .filter(|component| *component != Component::CurDir)
+        .collect::<PathBuf>();
+    (!relative.as_os_str().is_empty()).then_some(relative)
 }
 
 fn unresolved_placeholder(raw: &str) -> bool {
@@ -442,37 +365,39 @@ fn explicitly_delimited(raw: &str) -> bool {
 }
 
 fn output_verb(word: &str) -> bool {
-    matches!(
-        normalized(word).as_str(),
-        "write"
-            | "writes"
-            | "create"
-            | "creates"
-            | "save"
-            | "saves"
-            | "produce"
-            | "produces"
-            | "generate"
-            | "generates"
-            | "emit"
-            | "emits"
-            | "place"
-            | "places"
-            | "put"
-            | "output"
-            | "implement"
-            | "implements"
-            | "complete"
-            | "completes"
-            | "update"
-            | "updates"
-            | "modify"
-            | "modifies"
-            | "edit"
-            | "edits"
-            | "add"
-            | "adds"
-    )
+    word.split('/').all(|part| {
+        matches!(
+            normalized(part).as_str(),
+            "write"
+                | "writes"
+                | "create"
+                | "creates"
+                | "save"
+                | "saves"
+                | "produce"
+                | "produces"
+                | "generate"
+                | "generates"
+                | "emit"
+                | "emits"
+                | "place"
+                | "places"
+                | "put"
+                | "output"
+                | "implement"
+                | "implements"
+                | "complete"
+                | "completes"
+                | "update"
+                | "updates"
+                | "modify"
+                | "modifies"
+                | "edit"
+                | "edits"
+                | "add"
+                | "adds"
+        )
+    })
 }
 
 fn negation(word: &str) -> bool {
@@ -485,3 +410,7 @@ fn normalized(word: &str) -> String {
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+#[path = "explicit_paths/removal_tests.rs"]
+mod removal_tests;
