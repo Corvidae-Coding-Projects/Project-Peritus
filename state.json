@@ -48,14 +48,14 @@
         "prefix_sha256": "75e62af207437405c7c0292c3ecc35c1e80a87ef1a9953202d92cb6ee96daa52"
       },
       "u7IC": {
-        "sequence": 47,
-        "tip_oid": "c9877f8e8b61036d06d295cdf3478a2653eeb973",
-        "prefix_sha256": "45779d04acb3e5eb56a1619170722dcd67015c56c0795baa16d4851c3d38a3a1"
+        "sequence": 48,
+        "tip_oid": "fdda5b8fa584fc9b234acda56c9832f2a9efd49d",
+        "prefix_sha256": "09164be5299f2bc31b3dc41b2671befd3ff273914618d185fb59c2bc221bac45"
       }
     }
   },
   "next_display_id": 84,
-  "next_comment_id": 1644,
+  "next_comment_id": 1645,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -13008,7 +13008,7 @@
       "priority": "medium",
       "created_by": "u7IC",
       "created_at": "2026-09-15T00:49:55.217770155Z",
-      "updated_at": "2026-09-15T15:01:34.581700271Z",
+      "updated_at": "2026-09-15T15:21:43.070777918Z",
       "labels": [
         "feature"
       ],
@@ -13318,6 +13318,15 @@
           "kind": "result",
           "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAyC8LrdVSggPwG7fubYnBcXtpeOXmrST6uqk4lYMjI/f8D5TD1njQYYzbXfPP69Kweoh7+3hujDjelTPPJhntCw=="
+        },
+        "bab8b983-d99e-47af-b0fc-e7e2e76b75e4": {
+          "display_id": 1644,
+          "author": "u7IC",
+          "content": "Original043 native qualified/completed1010.469s, whole CLI1095.407s. All5 exact-target SQL/report files changed;2 protected schema/policy files byte-intact. Built-in SQLite gate passes schema/first/second/postcheck/rollback and FK checks. Actual directSQLite receipts verify6 users4 orders/timestamps/cleaned emails, specific UNIQUE/NOTNULL/FK rejection, second run, rollback4-column schema and preserved references. All original evaluator checks pass, review advisory only final newlines. Two source-derived in-memory probes retain report overclaims: fresh blank email accepted; cleanup collision with defaultCLI continuation loses users, unlike claimed automatic rollback. Original oracle blank probe reuses existingPK; oracle untouched. Added scratch data not an original-case failure; no fixture/output edits and no new Peritus root defect established. Artifacts/investigation/PR82draft updated; original044 now live session80879 on frozen d50/SHAf1e configured DeepSeek. Continue044-106, earlier affected revisits including020, scopedDRY/final/provider checks; ignore repository runners.",
+          "created_at": "2026-09-15T15:21:43.056100863Z",
+          "kind": "result",
+          "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABALzrfva7WTM74P9HgI5GTH/igmnGLiVegJ1PB+MosBxZ2WHt+4pfOC/pKEsbUbJrpSJnpyCqzf6qsW3oUGkBXCw=="
         },
         "bc663e20-25dc-4a1a-ad17-f2f813df7bfc": {
           "display_id": 1630,
