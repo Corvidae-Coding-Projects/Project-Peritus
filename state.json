@@ -48,14 +48,14 @@
         "prefix_sha256": "75e62af207437405c7c0292c3ecc35c1e80a87ef1a9953202d92cb6ee96daa52"
       },
       "u7IC": {
-        "sequence": 90,
-        "tip_oid": "7b86f8a35c1ead13638b98f24ee07f2058106ad0",
-        "prefix_sha256": "0631d4f941b712a8dc32f5693b0970806faaa314b0424d7f9604c52468e74b58"
+        "sequence": 91,
+        "tip_oid": "e421d56623a6c86dbe274607484af392e7ba3d36",
+        "prefix_sha256": "2b866ae65707a9251d44df2068268b01bdee580f25ccb1a76135c22307fd6198"
       }
     }
   },
   "next_display_id": 85,
-  "next_comment_id": 1686,
+  "next_comment_id": 1687,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -14107,8 +14107,17 @@
       "parent_uuid": "a6fde681-2598-4b91-b824-d011ade3c601",
       "created_by": "u7IC",
       "created_at": "2026-09-15T22:18:45.813526163Z",
-      "updated_at": "2026-09-15T22:31:48.923746420Z",
+      "updated_at": "2026-09-15T22:34:29.156860405Z",
       "comments": {
+        "6aed3d89-b237-4ab5-aa60-29083ad58c47": {
+          "display_id": 1686,
+          "author": "u7IC",
+          "content": "79872e752533be4c1b49f88f2b7d1b02ef4a5455 is pushed on feature/harnessbench-deepseek-hardening; same OPEN DRAFTPR82/develop confirmed. Source-stamped ALL workspace build passes51.67s; executable fec7a7e7ed03d464932d857ec67c37d3a0cc659d50273aa4d790948ac91608e7 matches protocol/hash. Full996-test validation and strictClippy recorded in runner-policy-79872e752.validation.json. Seven exact-source GitHub workflows now active/queued; hosted green not yet proven. Benchmarks may continue frozen at this source.",
+          "created_at": "2026-09-15T22:34:29.150261202Z",
+          "kind": "result",
+          "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABACZnIy/Uol9RkIqrdu4ra3UnmJIxlSONr6gTF9Qk3u/XlZT8m6kz8GSCKoc98XjcHeNv+D9g1EeUM6bMmOPx7Ag=="
+        },
         "de3c90fb-fb13-46ef-99a1-858c748df61a": {
           "display_id": 1684,
           "author": "u7IC",
