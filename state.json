@@ -48,14 +48,14 @@
         "prefix_sha256": "75e62af207437405c7c0292c3ecc35c1e80a87ef1a9953202d92cb6ee96daa52"
       },
       "u7IC": {
-        "sequence": 71,
-        "tip_oid": "005df34d4ac60b5a678b140520c39f2892d247f7",
-        "prefix_sha256": "ec49a0779f9472e05c522ebc04286d4f2837f32fc073622bb5725b837a7ef6f6"
+        "sequence": 72,
+        "tip_oid": "f71194bd17baf4b7ffb5845af48a335f62350399",
+        "prefix_sha256": "f106eaba9b649020f9c57d721d6c8fbdb1bab006cf0cfb69646363d147a00d0e"
       }
     }
   },
   "next_display_id": 84,
-  "next_comment_id": 1668,
+  "next_comment_id": 1669,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -13008,7 +13008,7 @@
       "priority": "medium",
       "created_by": "u7IC",
       "created_at": "2026-09-15T00:49:55.217770155Z",
-      "updated_at": "2026-09-15T19:34:39.015915656Z",
+      "updated_at": "2026-09-15T19:49:32.057736269Z",
       "labels": [
         "feature"
       ],
@@ -13057,6 +13057,15 @@
           "kind": "result",
           "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA8AUaAQADSS9FjHm/uJNNSxZMQT/khQNdZ7+MJiVG6D3c9H2VJVB5wHwBFHUQo4wJ6c/J90AhH+fHDMOifQboDg=="
+        },
+        "15378d12-8a83-41de-8b7b-f56c628a05f7": {
+          "display_id": 1668,
+          "author": "u7IC",
+          "content": "Original065 inspected and archived on f264fc5e1: native deadline750.009s, incomplete gates/review, 14 requests/29 tools/6 compactions, three artifacts/two intact fixtures. Independent public-rule minimum0.552 is cheaper than private expected spot mix0.564. Native CSV gate correctly rejects unquoted-comma record; no new host patch or paid repeat. Evidence index through65 and draft PR82 updated; proceeding original066 sequentially.",
+          "created_at": "2026-09-15T19:49:32.050622070Z",
+          "kind": "result",
+          "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAsWIQx/xDJJBqz/dqUUmydsnqYUc1d21gKwpUEMCR8QPXGWXxwy76YF7OliXleIdlWSHcYnMw1f5aAYEiSOvBBA=="
         },
         "160626d5-4ad8-4d53-9451-ce575a9951d4": {
           "display_id": 1656,
