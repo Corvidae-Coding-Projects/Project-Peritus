@@ -48,14 +48,14 @@
         "prefix_sha256": "75e62af207437405c7c0292c3ecc35c1e80a87ef1a9953202d92cb6ee96daa52"
       },
       "u7IC": {
-        "sequence": 99,
-        "tip_oid": "ebd121477056bf45751c71c1b40bc80ecb5f8bb2",
-        "prefix_sha256": "0073d9db3c9df4ab54bad2e2f80f4c41ea690ed70a94e6d682f2958ce1861f15"
+        "sequence": 100,
+        "tip_oid": "4b8d26a629e433924060e4d183bcd4a068de2f53",
+        "prefix_sha256": "5c88431af0f0f1573222ae608f2dbade31731aea6a48fa13f103a6a71caecadc"
       }
     }
   },
   "next_display_id": 85,
-  "next_comment_id": 1695,
+  "next_comment_id": 1696,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -13009,7 +13009,7 @@
       "priority": "medium",
       "created_by": "u7IC",
       "created_at": "2026-09-15T00:49:55.217770155Z",
-      "updated_at": "2026-09-15T23:02:44.049444808Z",
+      "updated_at": "2026-09-15T23:11:37.640471046Z",
       "labels": [
         "feature"
       ],
@@ -13526,6 +13526,15 @@
           "kind": "result",
           "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAuRr3zg1KRE2qE6V+Kcd6yz30DhOfGwSCzySTM8GDaXTgm4DuJ50DHUZvnybJMKeGYpdXbI9EOzwgPZlMhhYICQ=="
+        },
+        "a8888934-ed6e-4e2b-8f32-69a47d65c198": {
+          "display_id": 1695,
+          "author": "u7IC",
+          "content": "Original086 retained as unsuccessful at unchanged459002ms native deadline, d12f76d73/3de54b2. No candidate, no changes,4 byte-intact original inputs;22 tools inspect inputs/check Python and SQLite versions, no producer/SQL validation. Duplicate original migration_executes receipts and missing rollback/postcheck/docs retained. No-terminal-stream detail follows cancellation;0 retries, no independently causal provider fault. Evidence index through86;087 running serially. Current PR82 CI174pass262pending3skip0fail, Windows tests in progress.",
+          "created_at": "2026-09-15T23:11:37.633763797Z",
+          "kind": "result",
+          "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAk4alXIK3n/5uC9nXHkUFytGKq4QB8flHzME/vAWTz0FTtBK9LXcx6A1gSq05by8MSoDHb42wzVcW1KshVLH4Bw=="
         },
         "aa92ea11-ed12-46fc-b6be-059dd1c2c96f": {
           "display_id": 1645,
