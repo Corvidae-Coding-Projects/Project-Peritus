@@ -48,14 +48,14 @@
         "prefix_sha256": "75e62af207437405c7c0292c3ecc35c1e80a87ef1a9953202d92cb6ee96daa52"
       },
       "u7IC": {
-        "sequence": 21,
-        "tip_oid": "52b2d7905c4a2393425029f6a2d93ed0474d2576",
-        "prefix_sha256": "9e7bedf8c6a537c644535f61cffb0a5d8c9e2a0e0e623c1f9a5c92cad3864aa5"
+        "sequence": 22,
+        "tip_oid": "9cea11966dac845aa98e62e74d7d9e159345b3da",
+        "prefix_sha256": "0ad2d34b29e1b5247758d28fd84fca2bd72f5a3023c16ba142035845ce22e253"
       }
     }
   },
   "next_display_id": 84,
-  "next_comment_id": 1618,
+  "next_comment_id": 1619,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -13008,7 +13008,7 @@
       "priority": "medium",
       "created_by": "u7IC",
       "created_at": "2026-09-15T00:49:55.217770155Z",
-      "updated_at": "2026-09-15T09:45:08.309854815Z",
+      "updated_at": "2026-09-15T10:17:38.635369414Z",
       "labels": [
         "feature"
       ],
@@ -13102,6 +13102,15 @@
           "kind": "result",
           "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAueGOWhQQ6AFg9mcP6x91PqXmJlxfl0ExykVRqKV7xf47j1dVbRlQtkBiVmSji42EwZdnLKr5vfoz5sNHRTLwAA=="
+        },
+        "ad82356c-34a3-4ee9-b1c6-2fae9384c179": {
+          "display_id": 1618,
+          "author": "u7IC",
+          "content": "Pushed f695e075d8c820ead2ec6b552f852585d159a2d8 to existing draft PR 82 targeting develop. Corrected workspace completion guidance to agree with the existing direct-command validator, using task 020 authentic host rejection as evidence; external-effect guidance and validator unchanged. Combined 508 tests passed (3 existing ignored), strict Clippy/format/diff checks and full source-stamped workspace build passed; binary SHA-256 40dbb21a5198c50e20c6199e4db8896067904fd44e53ff05b8e5d206f513cde7. Original task 021 examined: all eight inputs byte-identical, exact seven output paths, transformed values correct, deadline prevents native qualification. Hidden newline/log-label disagreements retained without tailoring. Tasks 022–106 and affected revisits/final provider/DRY validation remain. Latest native Codex writer/Claude reviewer compatibility flow running; not an official benchmark score. All evidence retained under campaign reports/checkpoints/f695e075d8c820ead2ec6b552f852585d159a2d8.",
+          "created_at": "2026-09-15T10:17:38.628761579Z",
+          "kind": "result",
+          "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAG4wcD3dECeiujooUjCoKvpZTw1OJJpbyfK77Cgb933q7rV5Y+wgOV6ZLL+kHFtgU5p7HmtrJKfaiRwJHO04MCg=="
         },
         "b70383a9-85b4-47ca-8b02-cb63959159dd": {
           "display_id": 1609,
