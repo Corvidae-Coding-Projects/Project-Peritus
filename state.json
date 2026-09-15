@@ -48,14 +48,14 @@
         "prefix_sha256": "75e62af207437405c7c0292c3ecc35c1e80a87ef1a9953202d92cb6ee96daa52"
       },
       "u7IC": {
-        "sequence": 2,
-        "tip_oid": "bb41eb778f998ceae24bec953b05037a2469b33c",
-        "prefix_sha256": "eafd49687f2d0c3fbb6327a2d9d02c5844c9f6303e247b644777cecee7d18c6a"
+        "sequence": 3,
+        "tip_oid": "d76987697c5ac28ff32c0d08d350c87772ec7445",
+        "prefix_sha256": "ce8f417077793d48d8aaf284c5bb10d86b11ec01b4d59157939012567421c608"
       }
     }
   },
   "next_display_id": 84,
-  "next_comment_id": 1600,
+  "next_comment_id": 1601,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -13004,10 +13004,21 @@
       "priority": "medium",
       "created_by": "u7IC",
       "created_at": "2026-09-15T00:49:55.217770155Z",
-      "updated_at": "2026-09-15T00:50:21.152503331Z",
+      "updated_at": "2026-09-15T01:14:18.275242063Z",
       "labels": [
         "feature"
-      ]
+      ],
+      "comments": {
+        "cd820eab-df55-4def-89b5-0cbae947bac5": {
+          "display_id": 1600,
+          "author": "u7IC",
+          "content": "Checkpoint ba94d783f routes benchmark task and rubric requests through the configured Peritus provider/model when explicitly selected. Verified full workspace build, 68 package tests, strict clippy, formatting, and a live OpenCode Zen deepseek-v4-flash canary.",
+          "created_at": "2026-09-15T01:14:18.242547341Z",
+          "kind": "result",
+          "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA+FElxzoEE4bqWY/u8YcKxu0nCQDzJeyxBQBU7VdX4ukQSYKvA8pzx+PTjk65I7AwAiJZW1fWKOGLI6+D2P/JCw=="
+        }
+      }
     },
     "ab24c7bc-0720-480b-b39f-23f603a8b11f": {
       "uuid": "ab24c7bc-0720-480b-b39f-23f603a8b11f",
