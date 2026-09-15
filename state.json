@@ -48,14 +48,14 @@
         "prefix_sha256": "75e62af207437405c7c0292c3ecc35c1e80a87ef1a9953202d92cb6ee96daa52"
       },
       "u7IC": {
-        "sequence": 102,
-        "tip_oid": "5a4c094ec8eb6731117b43412fb12183ef87b865",
-        "prefix_sha256": "23fb6a7bf92756f911b32bbe65f45c29f12d558f860eb099643c6a5a899f6b72"
+        "sequence": 103,
+        "tip_oid": "33255e4610a57ec2405bba0da8583a4cc51945e6",
+        "prefix_sha256": "47ece20d09dca3cc34175aff3f14a5794ad86c565275c4e039c7b25488cf80f5"
       }
     }
   },
   "next_display_id": 85,
-  "next_comment_id": 1698,
+  "next_comment_id": 1699,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -13009,7 +13009,7 @@
       "priority": "medium",
       "created_by": "u7IC",
       "created_at": "2026-09-15T00:49:55.217770155Z",
-      "updated_at": "2026-09-15T23:11:37.640471046Z",
+      "updated_at": "2026-09-15T23:16:40.539563284Z",
       "labels": [
         "feature"
       ],
@@ -13400,6 +13400,15 @@
           "kind": "result",
           "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABApRoHSyGKSmT++AggbvW/NxWUFd3X55SBNT7XiTcJrzTCmvTGQn/W/Cb9t4zGWcm7+PoR56QwrUASM2Yc9kgABg=="
+        },
+        "8a05c5bd-1516-4e79-b2d2-357f4488dfbd": {
+          "display_id": 1698,
+          "author": "u7IC",
+          "content": "Original087 qualified at d12f76d73/3de54b2: all5 original checks pass including hiddenCLI; actual final full suite12pass,9 new focused tests;4 protected original inputs/existing tests/sample rows byte-intact. Initial argparse descending failure/intermediate failures and final exact CLI rows retained. Partial original quality details preserved; no causal host patch or output/oracle edits. Evidence index through87;088 mockAPI compatibility running serially on frozen build. CI Windows Foundation app-runner passes332 tests/all6 repaired assertions,42 applicable path tests; remainingCI watched.",
+          "created_at": "2026-09-15T23:16:40.533276926Z",
+          "kind": "result",
+          "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAHMhUlaAGJiidXjkFDh69uDLSqLc9kCYPkuTToRbWFaI3jpMweb//tE+49V/4nOKP1N4Mzvw4NBKMTFdLFn1HAA=="
         },
         "8aea345b-3e1f-4310-9627-36b3fd78884b": {
           "display_id": 1641,
