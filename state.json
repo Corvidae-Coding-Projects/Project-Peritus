@@ -48,14 +48,14 @@
         "prefix_sha256": "75e62af207437405c7c0292c3ecc35c1e80a87ef1a9953202d92cb6ee96daa52"
       },
       "u7IC": {
-        "sequence": 7,
-        "tip_oid": "d6ddca16d7a5804486f5266ffcff1dc55697dc73",
-        "prefix_sha256": "6d5f9b04d135605bd2b261f79025b0660d8a6f658142339d6fed51a03ddab6eb"
+        "sequence": 8,
+        "tip_oid": "b243bc0af7ae9f8de194e9a0582ff436f43ba489",
+        "prefix_sha256": "4a7f75af4554a7d0ca20dbaa8b818e8414948b59d6b487480278f1c396cd0042"
       }
     }
   },
   "next_display_id": 84,
-  "next_comment_id": 1604,
+  "next_comment_id": 1605,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -13008,11 +13008,20 @@
       "priority": "medium",
       "created_by": "u7IC",
       "created_at": "2026-09-15T00:49:55.217770155Z",
-      "updated_at": "2026-09-15T03:50:12.321602529Z",
+      "updated_at": "2026-09-15T04:14:16.310551422Z",
       "labels": [
         "feature"
       ],
       "comments": {
+        "1e1afa8c-809e-4d17-8e81-26a75e9c593b": {
+          "display_id": 1604,
+          "author": "u7IC",
+          "content": "Committed and pushed f36b4a209 to draft PR #82. HarnessBench task 010 produced correct JSON and DOCX artifacts but the native runner rejected its final mixed prose because terminal parsing spanned an earlier brace-delimited example. The parser now selects the final structurally valid strict terminal object. Validation: 295 active unit tests plus 20 integration tests passed for peritus-product-runner; strict all-target/all-feature clippy passed.",
+          "created_at": "2026-09-15T04:14:16.293819874Z",
+          "kind": "result",
+          "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA7jywXIFf43ZXF+O0A5O0+lwSUZ83pGUHhA6jNO9SZwaKameJICXiM5oufwqZZ1U7W8Pef/QFNWuUe1rDXheUAw=="
+        },
         "b953bb2a-7cfe-4469-9d27-2facd5de596f": {
           "display_id": 1602,
           "author": "u7IC",
