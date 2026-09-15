@@ -153,8 +153,13 @@ fn extract(root: &Path, transcript: &str) -> PathRequirements {
             None
         };
         if !words.is_empty() && list_item.is_none() {
+            // Format/schema bullets describe an artifact's contents, not sibling files.
+            // Explicit file instructions within those bullets still use their own path cues.
             output_list = line.trim_end().ends_with(':')
                 && output_context(&words)
+                && !words
+                    .last()
+                    .is_some_and(|word| matches!(normalized(word).as_str(), "format" | "schema"))
                 && !conditional_clause(&words);
             output_directory = output_list.then(|| output_list_directory(root, &words)).flatten();
             output_list_indentation = None;

@@ -422,3 +422,33 @@ fn unquoted_extensionless_relative_path_remains_required_in_path_context() {
     assert_eq!(record.exit_code, Some(0), "{}", record.output);
     assert!(record.output.contains("artifacts/release: present"));
 }
+
+#[test]
+fn output_format_and_schema_fields_are_not_file_deliverables() {
+    let root = tempfile::tempdir().expect("root");
+    fs::create_dir(root.path().join("out")).expect("output directory");
+    fs::write(root.path().join("out/result.json"), "[]").expect("output");
+    for heading in ["Output format:", "Output schema:"] {
+        let transcript = format!(
+            "Write the answers to `out/result.json`.\n{heading}\n\
+             - Each element must include `item_id` and `evidence_hint`.\n\
+             - `evidence_hint` must provide a short supporting quote."
+        );
+        assert_eq!(
+            required_outputs(root.path(), &transcript),
+            vec![PathBuf::from("out/result.json")],
+            "{transcript}"
+        );
+        assert_eq!(run(root.path(), &transcript, &[]).exit_code, Some(0));
+    }
+
+    // The same spelling remains mandatory when the user declares an actual file.
+    for transcript in [
+        "Output files:\n- `evidence_hint`",
+        "Produce these schema files:\n- `evidence_hint`",
+        "Output format:\n- Create a file named `evidence_hint`.",
+    ] {
+        assert_eq!(required_outputs(root.path(), transcript), vec![PathBuf::from("evidence_hint")]);
+        assert_eq!(run(root.path(), transcript, &[]).exit_code, Some(1));
+    }
+}
