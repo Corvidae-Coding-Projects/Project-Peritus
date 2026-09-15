@@ -48,14 +48,14 @@
         "prefix_sha256": "75e62af207437405c7c0292c3ecc35c1e80a87ef1a9953202d92cb6ee96daa52"
       },
       "u7IC": {
-        "sequence": 58,
-        "tip_oid": "2a5e04e82a907b313e191ae71aeb36f8d7f71514",
-        "prefix_sha256": "bc3fc4f6c258aa899ece41468e672fee5f9eedcb8d8999cd237bdba212375b45"
+        "sequence": 59,
+        "tip_oid": "f6028d62eaafe954ef2285325ac62a68888e0290",
+        "prefix_sha256": "af5d215d5011a8c4e1c5dc5b8d3797f0842ebac41a06db15da8701b1aba90bcb"
       }
     }
   },
   "next_display_id": 84,
-  "next_comment_id": 1655,
+  "next_comment_id": 1656,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -13008,7 +13008,7 @@
       "priority": "medium",
       "created_by": "u7IC",
       "created_at": "2026-09-15T00:49:55.217770155Z",
-      "updated_at": "2026-09-15T17:27:28.379543596Z",
+      "updated_at": "2026-09-15T17:34:28.921403804Z",
       "labels": [
         "feature"
       ],
@@ -13453,6 +13453,15 @@
           "kind": "result",
           "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAiwaK3Xjv98Yx+ZuoCPaUdZWoGULSCOismhf7BHbkea7MFf6U0xsJI3v01VFHFNf+CWhHsVc48JdquweXGvARBg=="
+        },
+        "e88895a1-e8a6-4708-847b-b5e79cd45952": {
+          "display_id": 1655,
+          "author": "u7IC",
+          "content": "Original053 archived terminal: native qualifies339.571s/CLI367.325s,12 requests/20 tools/4 compactions/no retry or failover. Exact3 outputs and2 fixtures intact;18 suspicious/14 non-suspicious, correct inclusive/shuffled/card-only velocity and primary/secondary rules. Real copied T011 customer_id C008 versus source C009 survives native checks/review and original exact-set fails; not dismissed as oracle error. Separate notes checker misses valid Markdown18-count bullet and has stale thirteen diagnostic; other27/29 original checks pass. No new causal host patch, output/evaluator edit or paid rerun. PR82 body through053 updated, still OPEN DRAFT; proceed original054 singly on frozen d514/3878e5 SHA. Remaining originals/revisits/DRY/final provider validation retained.",
+          "created_at": "2026-09-15T17:34:28.914958521Z",
+          "kind": "result",
+          "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA5APqzx0XSWny/HjEW6xntqOcBAFTxQzWKhjkdfY1Dn5tIs174E3oPODGwFtkel5mdtKHIr8jlwEDQZTKzd8uAA=="
         },
         "ef2e3f1a-f8e7-47fa-a00d-526285735f07": {
           "display_id": 1615,
