@@ -15,6 +15,7 @@ use sha2::{Digest, Sha256};
 use crate::{BenchmarkError, providers};
 
 const MAX_REQUEST_BYTES: usize = 32 * 1024 * 1024;
+const MAX_RUBRIC_OUTPUT_TOKENS: u64 = 8_192;
 
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -80,8 +81,14 @@ pub async fn complete(body: &[u8]) -> Result<Value, BenchmarkError> {
         RequestOptions::new(
             StructuredOutput::Text,
             ReasoningPolicy::Disabled,
-            GenerationConfig::new(8_192, Vec::new(), None, None, None)
-                .map_err(|error| BenchmarkError::Provider(error.to_string()))?,
+            GenerationConfig::new(
+                rubric_output_tokens(profile.limits().max_output_tokens()),
+                Vec::new(),
+                None,
+                None,
+                None,
+            )
+            .map_err(|error| BenchmarkError::Provider(error.to_string()))?,
             CachePolicy::Disabled,
             PersistencePolicy::LOCAL_FIRST,
             None,
@@ -101,6 +108,14 @@ pub async fn complete(body: &[u8]) -> Result<Value, BenchmarkError> {
         reducer.push(event).map_err(|error| BenchmarkError::Provider(error.to_string()))?;
     }
     response(&reducer, &response_model)
+}
+
+const fn rubric_output_tokens(provider_limit: u64) -> u64 {
+    if provider_limit < MAX_RUBRIC_OUTPUT_TOKENS {
+        provider_limit
+    } else {
+        MAX_RUBRIC_OUTPUT_TOKENS
+    }
 }
 
 fn response(reducer: &ResponseReducer, model: &str) -> Result<Value, BenchmarkError> {
@@ -290,5 +305,11 @@ mod tests {
             "surprise": true
         }));
         assert!(value.is_err());
+    }
+
+    #[test]
+    fn rubric_output_respects_the_selected_model_limit() {
+        assert_eq!(rubric_output_tokens(4_096), 4_096);
+        assert_eq!(rubric_output_tokens(32_000), MAX_RUBRIC_OUTPUT_TOKENS);
     }
 }
