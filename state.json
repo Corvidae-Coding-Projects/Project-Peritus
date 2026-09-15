@@ -48,14 +48,14 @@
         "prefix_sha256": "75e62af207437405c7c0292c3ecc35c1e80a87ef1a9953202d92cb6ee96daa52"
       },
       "u7IC": {
-        "sequence": 38,
-        "tip_oid": "989e4995fc4d5c5d145e0a0176eb90106ae8eaad",
-        "prefix_sha256": "0673724e06ef0fee395458908e2867d71d92aa31186a825cc260c2ef802d9dd1"
+        "sequence": 39,
+        "tip_oid": "92e02434efe22290aab6ce0a97c6f0d5b15a5da7",
+        "prefix_sha256": "220858f65592abb0a6ef7cef1dcdb2f03e63278631f4b761aeb587fa90de771c"
       }
     }
   },
   "next_display_id": 84,
-  "next_comment_id": 1635,
+  "next_comment_id": 1636,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -13008,7 +13008,7 @@
       "priority": "medium",
       "created_by": "u7IC",
       "created_at": "2026-09-15T00:49:55.217770155Z",
-      "updated_at": "2026-09-15T12:42:14.887770719Z",
+      "updated_at": "2026-09-15T12:53:51.075820124Z",
       "labels": [
         "feature"
       ],
@@ -13093,6 +13093,15 @@
           "kind": "result",
           "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA8ZQTu2whzRvHc/p/hTKAz1cWHPX1m/rgO1OavPtXHD1N9aM9U6WeFZwFWkvYbPVpBi3FepkcaUlxhUskZxd0BQ=="
+        },
+        "5126e01d-762c-4dce-94ae-e4d98bfc7f81": {
+          "display_id": 1635,
+          "author": "u7IC",
+          "content": "Original036 archived/inspected on frozen e5cc04bde: both inputs byte-intact, exactly four requested outputs changed. Native deadline550.001s, review-pending and final qualification incomplete,26requests/37tools/1retry/15compactions; primary deadline/cancellation retained with interrupted-provider trace detail. Retained structural exact-target gate PASS does not override incomplete qualification. Original bibliography13/13 fields, formats, notes and graph pass; errors_csv disagrees8/10 expected hits with9 actual rows due consumed Ortega alias row and Chen conflict-key choice. All7 requested error-type enums present; do not impose hidden row count/key spelling. Offline DOI validity/mismatch assertions remain unverified model-quality caveat. No new generic harness cause from deadline established; no rerun/inflation/artifact/oracle edit. Original037 now live session62078, same frozen executable. PR82 remains pushed draft to develop. Originals001-036 inspected; original038-106, affected revisits including020, final DRY/provider/combined validation remain.",
+          "created_at": "2026-09-15T12:53:51.068510615Z",
+          "kind": "result",
+          "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAKl6krQY0RpJAP190otbtsD0PCleWUmL3cO84xpx9GwRTqr7Pz46O+uMDaD6qP/ckFCk3U4xO8Lw40mj0dTAeAw=="
         },
         "55f6cf53-1111-49cb-b712-5ed1222aacab": {
           "display_id": 1619,
