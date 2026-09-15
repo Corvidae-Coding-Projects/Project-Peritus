@@ -48,14 +48,14 @@
         "prefix_sha256": "75e62af207437405c7c0292c3ecc35c1e80a87ef1a9953202d92cb6ee96daa52"
       },
       "u7IC": {
-        "sequence": 72,
-        "tip_oid": "f71194bd17baf4b7ffb5845af48a335f62350399",
-        "prefix_sha256": "f106eaba9b649020f9c57d721d6c8fbdb1bab006cf0cfb69646363d147a00d0e"
+        "sequence": 73,
+        "tip_oid": "f04103b44b0ff2b235c8af7210126dde400e5a93",
+        "prefix_sha256": "c2ad4829a292e5794325e5af4477ad47d52e3e56a3b8cdd7f365d78c36e5635d"
       }
     }
   },
   "next_display_id": 84,
-  "next_comment_id": 1669,
+  "next_comment_id": 1670,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -13008,7 +13008,7 @@
       "priority": "medium",
       "created_by": "u7IC",
       "created_at": "2026-09-15T00:49:55.217770155Z",
-      "updated_at": "2026-09-15T19:49:32.057736269Z",
+      "updated_at": "2026-09-15T19:54:22.856566515Z",
       "labels": [
         "feature"
       ],
@@ -13453,6 +13453,15 @@
           "kind": "result",
           "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAF7fnTGYN8P26iSkl7fjLWp3IEox4GBJWc9km8ff4VUd9W9r9PPohQfvZREzgUBIBau3BmqJVMfT47T4WXwknAg=="
+        },
+        "b88c0f30-0552-4208-932c-dce1076a5a61": {
+          "display_id": 1669,
+          "author": "u7IC",
+          "content": "Original066 inspected/archived on f264fc5e1: native qualifies177.249s, 9 requests/15 tools/4 compactions, two artifacts/three intact fixtures, all3 original checks pass. Five real blockers and planned-only rollback/DB-owner boundaries reconcile. Private unsafe regex falsely matches nothing has been executed; monitoring inclusion in SLO remains unproven prose. No new mechanical host patch or paid repeat. Evidence through66 and draft PR82 updated; proceeding original067 sequentially.",
+          "created_at": "2026-09-15T19:54:22.849695610Z",
+          "kind": "result",
+          "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAbIp45WgGeegUFHGxpjcsN4/jtKU3HzE6pC4xOKWi8EDChMBt4DR3mN6yAvdc5qLOGL0nHkYFPDs1mXpzB3XgCQ=="
         },
         "b953bb2a-7cfe-4469-9d27-2facd5de596f": {
           "display_id": 1602,
