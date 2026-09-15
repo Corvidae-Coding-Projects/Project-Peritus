@@ -48,14 +48,14 @@
         "prefix_sha256": "75e62af207437405c7c0292c3ecc35c1e80a87ef1a9953202d92cb6ee96daa52"
       },
       "u7IC": {
-        "sequence": 26,
-        "tip_oid": "a750f45696df104800061a8240e8d949b9c7a158",
-        "prefix_sha256": "397513166f31d0902793eac937f49fb5331e0083f081d92ca42c09af1d7b88f0"
+        "sequence": 27,
+        "tip_oid": "816b011163f021ef469d45af7536ba8286f90e09",
+        "prefix_sha256": "9ce6206090e1f92a86055eaa2b76f779ec6802960691e513502628089cffdcff"
       }
     }
   },
   "next_display_id": 84,
-  "next_comment_id": 1623,
+  "next_comment_id": 1624,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -13008,7 +13008,7 @@
       "priority": "medium",
       "created_by": "u7IC",
       "created_at": "2026-09-15T00:49:55.217770155Z",
-      "updated_at": "2026-09-15T11:08:26.073847790Z",
+      "updated_at": "2026-09-15T11:24:55.398600319Z",
       "labels": [
         "feature"
       ],
@@ -13030,6 +13030,15 @@
           "kind": "result",
           "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA7jywXIFf43ZXF+O0A5O0+lwSUZ83pGUHhA6jNO9SZwaKameJICXiM5oufwqZZ1U7W8Pef/QFNWuUe1rDXheUAw=="
+        },
+        "26a03930-0bb7-4585-a90d-55bd29d39f40": {
+          "display_id": 1623,
+          "author": "u7IC",
+          "content": "Affected task 025 attempt 2 completed on frozen 384a4f52fab013cf866ac47f055610a484a6a8e3: native gates/obligations/review satisfied, six inputs byte-identical, exact three reports, all original action/dependency checks pass. Unchanged oracle underscore-normalization check remains impossible; actual rationale cites followup_emails.md. Writer/reviewer comparison views retain nine source/output pairs at 29081/30708 of 32768 estimated tokens, each in a single batch; no isolated live causality claim for two-exchange change. Original task 026 also completed: native qualification and all original external checks pass, three inputs unchanged, exact outline/notes, six template sections and four metric values/IDs match. Unsupported incidental rollout/Q4 wording retained as quality limit. No new general defect from 026. All evidence archived. Task 027 running one at a time on same frozen source. Draft PR 82 updated; original 027–106, affected revisits and final provider/DRY/combined validation remain.",
+          "created_at": "2026-09-15T11:24:55.383819016Z",
+          "kind": "result",
+          "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA1LhduGa7TdC2RMdr6cFj1JhOriNt/aMFzurs4MjXovU4vo/u3v8PvnySIQ50/a3BTw0Fe5n7tbiS6sq7Xw4eAA=="
         },
         "41603c3d-465c-44dd-ae88-a2259f3f8e0a": {
           "display_id": 1613,
