@@ -48,14 +48,14 @@
         "prefix_sha256": "75e62af207437405c7c0292c3ecc35c1e80a87ef1a9953202d92cb6ee96daa52"
       },
       "u7IC": {
-        "sequence": 36,
-        "tip_oid": "78e02b0bccc7f1d2e7d49f529cc9e74b6c7788e3",
-        "prefix_sha256": "bcbe720256a1ec0f35d9da782e8c1654cc38b4d4f7095a68d36b9ebc145845d8"
+        "sequence": 37,
+        "tip_oid": "46393cd7ea96f3e201104df03692e1186c2d42e2",
+        "prefix_sha256": "a04f3a305a54deb4d9a8074fc09486b02e60964168ac75ccb6fa5373d79feaed"
       }
     }
   },
   "next_display_id": 84,
-  "next_comment_id": 1633,
+  "next_comment_id": 1634,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -13008,7 +13008,7 @@
       "priority": "medium",
       "created_by": "u7IC",
       "created_at": "2026-09-15T00:49:55.217770155Z",
-      "updated_at": "2026-09-15T12:25:31.555370573Z",
+      "updated_at": "2026-09-15T12:30:08.868671386Z",
       "labels": [
         "feature"
       ],
@@ -13201,6 +13201,15 @@
           "kind": "result",
           "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAueGOWhQQ6AFg9mcP6x91PqXmJlxfl0ExykVRqKV7xf47j1dVbRlQtkBiVmSji42EwZdnLKr5vfoz5sNHRTLwAA=="
+        },
+        "a7a450e8-0cd6-46ca-945a-d178322acbf7": {
+          "display_id": 1633,
+          "author": "u7IC",
+          "content": "Original 034 completed on frozen e5cc04bde: native gates/obligations/review satisfied, five input fixtures byte-identical and only requested matrix changed. 18 requests/32 tools/two retries/six compactions/no failover. Independent source comparison and original format/coverage/all5 classifications/source paths pass. Original evidence-token check accepts2/5: paraphrasing/shortening omits hidden exact pairs, while decisions reconcile with supplied facts. Original checker disagreement retained without output edits or token coaching; no new general harness defect established. Terminal official/native, integrity and investigation archived. Original 035 now live, session 64063, same frozen executable; await native/rubric terminal before rebuild or next case. PR82 remains pushed draft to develop. Originals001-034 examined; originals036-106 plus affected revisits including020, final DRY/provider/combined validation remain.",
+          "created_at": "2026-09-15T12:30:08.862271679Z",
+          "kind": "result",
+          "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAuRr3zg1KRE2qE6V+Kcd6yz30DhOfGwSCzySTM8GDaXTgm4DuJ50DHUZvnybJMKeGYpdXbI9EOzwgPZlMhhYICQ=="
         },
         "ad82356c-34a3-4ee9-b1c6-2fae9384c179": {
           "display_id": 1618,
