@@ -361,11 +361,14 @@ impl DeveloperLoop {
                     )?,
                 )?;
             }
+            // A queued warning must reach a provider turn before it can justify stopping.
+            // Capturing first preserves an executor's pending-warning state for this batch.
+            let continuation_blocker = tools.continuation_blocker();
             if let Some(feedback) = tools.take_progress_feedback() {
                 context.append(&mut messages, message(Role::User, feedback, protocol_limits)?)?;
             }
             context.observe(DeveloperContextEvent::BatchCompleted)?;
-            if let Some(blocker) = tools.continuation_blocker() {
+            if let Some(blocker) = continuation_blocker {
                 return Err(DeveloperLoopError::Tool(blocker));
             }
             if tools.yields_to_host() {

@@ -3,6 +3,24 @@
 use super::*;
 
 #[test]
+fn batched_repeated_listings_warn_before_stopping_and_preserve_grounding() {
+    let workspace = tempfile::tempdir().unwrap();
+    fs::write(workspace.path().join("README.md"), "grounding\n").unwrap();
+    let mut tools = writable_tools(workspace.path());
+    execute(&mut tools, "workspace_list", r#"{"depth":1,"path":"."}"#);
+    execute(&mut tools, "workspace_read", r#"{"path":"README.md"}"#);
+    for _ in 0..6 {
+        assert!(!execute(&mut tools, "workspace_list", r#"{"depth":1,"path":"."}"#).is_error);
+    }
+    assert!(tools.required_tool_name().is_none());
+    assert!(tools.continuation_blocker().is_none());
+    assert!(tools.take_progress_feedback().unwrap().contains("inspection-no-progress"));
+    execute(&mut tools, "workspace_list", r#"{"depth":1,"path":"."}"#);
+    assert!(tools.continuation_blocker().is_some());
+    assert!(tools.required_tool_name().is_none());
+}
+
+#[test]
 fn repeated_successful_listings_warn_and_block_without_resetting_grounding() {
     let workspace = tempfile::tempdir().unwrap();
     fs::write(workspace.path().join("README.md"), "grounding\n").unwrap();

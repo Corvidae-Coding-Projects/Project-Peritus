@@ -60,6 +60,8 @@ pub trait DeveloperToolExecutor: Send {
     ///
     /// Unlike a completion prerequisite, this ends the invocation with a nonretryable tool
     /// failure. It must not be used for ordinary command failures or expected polling states.
+    /// The loop reads this before draining progress feedback, so a pending warning can defer
+    /// stopping until the provider has received the warning and returned another tool batch.
     fn continuation_blocker(&self) -> Option<String> {
         None
     }

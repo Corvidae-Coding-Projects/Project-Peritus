@@ -47,7 +47,7 @@ impl InspectionProgress {
     }
 
     pub(super) fn blocker(&self) -> Option<String> {
-        (self.repeats >= STOP_REPEATS).then(|| {
+        (self.repeats >= STOP_REPEATS && !self.warning_pending).then(|| {
             format!(
                 "inspection-no-progress: {} consecutive workspace inspections repeated previously observed arguments and results without new evidence. Stopped after warning; completed work and tool observations are preserved. Review the last tool results before starting another invocation.",
                 self.repeats,
@@ -91,6 +91,7 @@ mod tests {
         for name in ["run_command", "command_poll", "workspace_write"] {
             for _ in 0..=STOP_REPEATS {
                 progress.observe("workspace_list", &path("."), &Value::Array(Vec::new()));
+                progress.feedback();
             }
             assert!(progress.blocker().is_some());
             progress.observe(
@@ -101,5 +102,19 @@ mod tests {
             assert!(progress.blocker().is_none());
             assert!(progress.feedback().is_none());
         }
+    }
+
+    #[test]
+    fn a_batch_crossing_both_thresholds_delivers_its_warning_before_stopping() {
+        let mut progress = InspectionProgress::default();
+        progress.observe("workspace_read", &path("state"), &Value::from("same"));
+        for _ in 0..STOP_REPEATS {
+            progress.observe("workspace_read", &path("state"), &Value::from("same"));
+        }
+        assert!(progress.blocker().is_none(), "the warning has not reached a provider turn");
+        assert!(progress.feedback().is_some());
+        progress.observe("workspace_read", &path("state"), &Value::from("same"));
+        assert!(progress.blocker().is_some(), "continued unchanged inspections still stop");
+        assert!(progress.feedback().is_none());
     }
 }
