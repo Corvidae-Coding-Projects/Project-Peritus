@@ -13,6 +13,7 @@ struct RecordingContext {
     raw_outputs: Vec<String>,
     invocations: Vec<String>,
     checkpoint: Vec<Message>,
+    checkpoint_history: Vec<Vec<Message>>,
     generations: usize,
     batches: usize,
     fail_at: Option<&'static str>,
@@ -87,6 +88,7 @@ impl DeveloperContextPort for RecordingContext {
     fn checkpoint(&mut self, messages: &[Message]) -> Result<(), DeveloperLoopError> {
         self.reject("checkpoint")?;
         self.checkpoint = messages.to_vec();
+        self.checkpoint_history.push(messages.to_vec());
         self.generations += 1;
         Ok(())
     }

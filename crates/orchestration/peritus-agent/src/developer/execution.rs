@@ -1,7 +1,7 @@
 //! Tight provider/tool execution loop.
 mod invocation;
 mod provider_turn;
-use provider_turn::complete_turn;
+use provider_turn::{RetryContext, complete_turn};
 
 use peritus_model_protocol::{
     CanonicalJson, Capability, ContentBlock, JsonBounds, Message, ProtocolLimits,
@@ -106,11 +106,11 @@ impl DeveloperLoop {
                 // Replace, never append: the current host projection is budgeted and cannot
                 // accumulate stale startup states or be compacted as optional conversation.
                 messages[0] = invocation_policy;
-                if let Some(input) = governing_input {
+                if let Some(input) = governing_input.as_ref() {
                     if governing_installed {
-                        messages[2] = input;
+                        messages[2] = input.clone();
                     } else {
-                        messages.insert(2, input);
+                        messages.insert(2, input.clone());
                         governing_installed = true;
                     }
                 }
@@ -125,10 +125,11 @@ impl DeveloperLoop {
                         protected_prefix,
                     )?
                 {
+                    let mut semantic_messages = semantic.request_messages().to_vec();
                     match complete_turn(
                         provider,
                         &request,
-                        semantic.request_messages(),
+                        &mut semantic_messages,
                         profile,
                         negotiated,
                         protocol_limits,
@@ -138,6 +139,7 @@ impl DeveloperLoop {
                         &mut retries,
                         &mut usage,
                         trace,
+                        None,
                         None,
                     )
                     .await
@@ -181,7 +183,7 @@ impl DeveloperLoop {
             let Some(session) = complete_turn(
                 provider,
                 &request,
-                &messages,
+                &mut messages,
                 profile,
                 negotiated,
                 protocol_limits,
@@ -192,6 +194,11 @@ impl DeveloperLoop {
                 &mut usage,
                 trace,
                 live.map(|(port, role)| (port, role, input_revision)),
+                Some(RetryContext {
+                    context: &mut context,
+                    governing_input: governing_input.as_ref(),
+                    compactions: &mut compactions,
+                }),
             )
             .await?
             else {

@@ -4,6 +4,29 @@ use peritus_model_protocol::{BoundedText, ContentBlock, Message, ProtocolLimits,
 
 use super::super::{DeveloperLoopError, DeveloperLoopRequest};
 
+pub(super) fn retry_policy(
+    request: &DeveloperLoopRequest,
+    step: u16,
+    attempt: u8,
+    required_tool: &str,
+) -> Result<Message, DeveloperLoopError> {
+    let policy = policy(request, step, Some(required_tool))?;
+    let [ContentBlock::Text(text)] = policy.content() else {
+        return Err(DeveloperLoopError::Context(
+            "current invocation policy is not one text block".to_owned(),
+        ));
+    };
+    let text = format!(
+        "{}\n\nCURRENT PROVIDER RETRY\nattempt={attempt}; required_tool={required_tool}\nThis is a fresh provider retry of the same host step. Return exactly one call to the declared `{required_tool}` tool now and no terminal response. The host will execute the call and return its result on the next turn.",
+        text.expose_for_wire(),
+    );
+    Ok(Message::new(
+        Role::System,
+        vec![ContentBlock::Text(BoundedText::new(text, ProtocolLimits::PRODUCTION)?)],
+        ProtocolLimits::PRODUCTION,
+    )?)
+}
+
 pub(super) fn policy(
     request: &DeveloperLoopRequest,
     step: u16,
