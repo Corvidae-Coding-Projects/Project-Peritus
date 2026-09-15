@@ -10,6 +10,7 @@ use peritus_model_protocol::{Message, Role, ToolDefinition};
 pub(super) fn append(
     memory: &LocalMemory,
     messages: &mut Vec<Message>,
+    selected: &mut Vec<u64>,
     tools: &[ToolDefinition],
     capacity: u64,
 ) -> Result<WorkingRenderView, DeveloperLoopError> {
@@ -38,6 +39,17 @@ pub(super) fn append(
     .map_err(|_| error("required working-state closure exceeds input capacity"))?;
     if let Some(plan) = working.plan() {
         for segment in plan.segments() {
+            let entry = state
+                .entry(state.binding(), segment.source_id())
+                .map_err(|_| error("selected working entry is unavailable"))?;
+            selected.extend(
+                entry
+                    .links()
+                    .supports()
+                    .iter()
+                    .chain(entry.links().contradicts())
+                    .map(|source| source.get()),
+            );
             // Each rendered record already ends in a newline; all bytes are charged by C6.
             body.push_str(&String::from_utf8_lossy(segment.content()));
         }

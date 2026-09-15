@@ -3,8 +3,9 @@
 mod support;
 
 use peritus_context::{
-    ContextErrorKind, ContextPlanId, OmissionReason, RequirementMode, SelectionPolicy, TokenBudget,
-    plan_dependencies_complete, plan_is_visible, select_context, token_accounting_is_bounded,
+    ContextErrorKind, ContextPlanId, OmissionReason, RequirementMode, SelectionPolicy,
+    SelectionReason, TokenBudget, plan_dependencies_complete, plan_is_exact, plan_is_visible,
+    select_context, token_accounting_is_bounded,
 };
 use peritus_policy::ActorRole;
 use peritus_role::{HarnessRole, RoleProfile};
@@ -53,9 +54,18 @@ fn required_root_selects_complete_dependency_closure() {
     assert!(plan.contains(id(2)));
     assert!(plan_dependencies_complete(&graph, &plan));
     assert!(plan_is_visible(&graph, &plan));
+    assert!(plan_is_exact(&graph, &plan));
     assert!(token_accounting_is_bounded(plan.accounting()));
     assert_eq!(plan.accounting().used_input(), 8);
     assert_eq!(plan.accounting().remaining_input(), 0);
+    assert_eq!(
+        plan.selected().iter().find(|entry| entry.node_id() == id(1)).unwrap().reason(),
+        SelectionReason::RequiredDependency
+    );
+    assert_eq!(
+        plan.selected().iter().find(|entry| entry.node_id() == id(2)).unwrap().reason(),
+        SelectionReason::RequiredRoot
+    );
 }
 
 #[test]
@@ -154,10 +164,81 @@ fn optional_closure_is_omitted_atomically_and_explained() {
     assert!(plan.contains(id(3)));
     assert!(!plan.contains(id(1)));
     assert!(!plan.contains(id(2)));
-    assert_eq!(plan.omitted().len(), 2);
+    assert_eq!(plan.omitted().len(), 1);
     assert_eq!(plan.omitted()[0].node_id(), id(2));
     assert_eq!(plan.omitted()[0].reason(), OmissionReason::TokenBudget);
     assert_eq!(plan.omitted()[0].required_tokens(), 8);
+}
+
+#[test]
+fn dependency_required_nodes_are_never_ranked_as_standalone_optional_roots() {
+    let graph = graph(vec![evidence_node(
+        1,
+        "dependency-only",
+        1,
+        RequirementMode::DependencyRequired,
+        Vec::new(),
+    )]);
+    let plan = select_context(&graph, &policy(10, 10, 100), plan_id()).expect("empty plan");
+
+    assert!(plan.selected().is_empty());
+    assert!(plan.omitted().is_empty());
+    assert_eq!(plan.accounting().used_input(), 0);
+    assert_eq!(plan.selected_bytes(), 0);
+}
+
+#[test]
+fn optional_omission_uses_the_first_capacity_failure_and_names_only_the_root() {
+    let graph = graph(vec![
+        evidence_node(1, "dependency", 4, RequirementMode::DependencyRequired, Vec::new()),
+        evidence_node(2, "optional", 4, RequirementMode::Optional, vec![id(1)]),
+    ]);
+    let cases = [
+        (policy(7, 1, 1), OmissionReason::TokenBudget),
+        (policy(8, 1, 1), OmissionReason::NodeLimit),
+        (policy(8, 2, 1), OmissionReason::ByteLimit),
+    ];
+
+    for (selection, expected) in cases {
+        let plan = select_context(&graph, &selection, plan_id()).expect("optional omission");
+        assert!(plan.selected().is_empty());
+        assert_eq!(plan.omitted().len(), 1);
+        assert_eq!(plan.omitted()[0].node_id(), id(2));
+        assert_eq!(plan.omitted()[0].reason(), expected);
+        assert_eq!(plan.omitted()[0].blocking_dependency(), None);
+        assert_eq!(plan.omitted()[0].required_tokens(), 8);
+        assert_eq!(plan.accounting().used_input(), 0);
+        assert_eq!(plan.selected_bytes(), 0);
+    }
+}
+
+#[test]
+fn an_optional_root_with_a_hidden_dependency_is_omitted_before_capacity_checks() {
+    let hidden_dependency = node(
+        1,
+        "hidden dependency",
+        peritus_context::Provenance::Repository,
+        peritus_context::AuthorityClass::NonAuthoritative,
+        peritus_context::TrustClass::Constrained,
+        peritus_role::ContextClass::RepositorySource,
+        peritus_context::ContentKind::RepositorySource,
+        100,
+        1,
+        RequirementMode::DependencyRequired,
+        0,
+        roles(vec![ActorRole::Reviewer]),
+        Vec::new(),
+    );
+    let root = evidence_node(2, "optional", 100, RequirementMode::Optional, vec![id(1)]);
+    let plan = select_context(&graph(vec![hidden_dependency, root]), &policy(1, 1, 1), plan_id())
+        .expect("hidden optional dependency is an omission");
+
+    assert!(plan.selected().is_empty());
+    assert_eq!(plan.omitted().len(), 1);
+    assert_eq!(plan.omitted()[0].node_id(), id(2));
+    assert_eq!(plan.omitted()[0].reason(), OmissionReason::HiddenDependency);
+    assert_eq!(plan.omitted()[0].blocking_dependency(), Some(id(1)));
+    assert_eq!(plan.omitted()[0].required_tokens(), 0);
 }
 
 #[test]

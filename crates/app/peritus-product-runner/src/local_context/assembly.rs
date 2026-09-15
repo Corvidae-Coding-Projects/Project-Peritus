@@ -70,7 +70,7 @@ impl LocalMemory {
         if pinned_tokens >= capacity {
             return Err(error("pinned instructions and pending operations exceed input capacity"));
         }
-        let working = working::append(self, &mut messages, tools, capacity)?;
+        let working = working::append(self, &mut messages, &mut selected, tools, capacity)?;
         if estimate_developer_request_tokens(&messages, tools) > capacity {
             return Err(error("required working context exceeds complete request capacity"));
         }

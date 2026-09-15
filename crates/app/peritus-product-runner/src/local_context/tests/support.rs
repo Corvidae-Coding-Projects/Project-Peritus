@@ -1,11 +1,20 @@
 //! Shared exact local-memory test fixtures.
 
-use super::super::{LocalContextConfig, assembly::text_message, memory::LocalMemory};
+use super::super::{
+    LocalContextConfig,
+    assembly::text_message,
+    memory::LocalMemory,
+    record::{self, CheckpointManifest, MemoryRecord},
+};
 use peritus_agent::{DeveloperLoopLimits, DeveloperLoopRequest, DeveloperToolObservation};
-use peritus_context::{ContextNodeId, working::WorkingBinding};
+use peritus_codec::sha256;
+use peritus_context::{
+    ContextNodeId,
+    working::{WorkingBinding, encode_working_state},
+};
 use peritus_model_protocol::{
     CanonicalJson, CompletedToolCall, ContentBlock, JsonBounds, Message, ProtocolLimits, Role,
-    ToolCallId, ToolName, ToolResult,
+    ToolCallId, ToolName, ToolResult, encode_messages,
 };
 use peritus_provider_core::CancellationToken;
 use peritus_role::HarnessRole;
@@ -194,4 +203,80 @@ pub(in crate::local_context) fn profile(capacity: u64) -> peritus_model_protocol
         CancellationKind::BestEffortLocalAbort,
     )
     .unwrap()
+}
+
+pub(in crate::local_context) fn publish_legacy_v1(memory: &mut LocalMemory, messages: &[Message]) {
+    let prepared = memory.prepared.as_ref().expect("prepared legacy view");
+    assert_eq!(prepared.messages, messages);
+    assert_eq!(prepared.through_event, memory.store.sequence());
+    let through_event = prepared.through_event;
+    let render_policy = prepared.policy.into_bytes();
+    let mut view_validation = prepared.validation.clone();
+    view_validation.tool_policy = None;
+
+    let working_state = memory
+        .store
+        .store(&encode_working_state(&memory.state).expect("encode legacy working state"))
+        .expect("store legacy working state");
+    let transcript_manifest = memory
+        .store
+        .store(&record::encode(&memory.transcript).expect("encode legacy transcript"))
+        .expect("store legacy transcript");
+    let source_index = memory
+        .store
+        .store(&record::encode(&memory.sources).expect("encode legacy sources"))
+        .expect("store legacy sources");
+    let view = memory
+        .store
+        .store(&encode_messages(messages, ProtocolLimits::PRODUCTION).expect("encode legacy view"))
+        .expect("store legacy view");
+    let validation_bytes = record::encode(&view_validation).expect("encode legacy validation");
+    assert!(!String::from_utf8_lossy(&validation_bytes).contains("tool_policy"));
+    let validation = memory.store.store(&validation_bytes).expect("store legacy validation");
+    let previous = memory.last_checkpoint.as_ref().map(|manifest| {
+        sha256(&record::encode(manifest).expect("encode legacy predecessor")).into_bytes()
+    });
+    let manifest = CheckpointManifest {
+        schema_version: record::LEGACY_CHECKPOINT_SCHEMA_VERSION,
+        scope: memory.store.scope_digest().into_bytes(),
+        generation: memory.store.generation().checked_add(1).expect("legacy generation"),
+        previous,
+        through_event,
+        working_state,
+        transcript_manifest,
+        source_index,
+        view,
+        render_policy,
+        validation,
+        view_binding: None,
+    };
+    let bytes = record::encode(&manifest).expect("encode legacy manifest");
+    assert!(!String::from_utf8_lossy(&bytes).contains("view_binding"));
+    append_manifest(memory, &manifest, bytes);
+    memory.last_checkpoint = Some(manifest);
+    memory.last_view = messages.to_vec();
+    memory.prepared = None;
+}
+
+pub(in crate::local_context) fn append_manifest(
+    memory: &mut LocalMemory,
+    manifest: &CheckpointManifest,
+    bytes: Vec<u8>,
+) {
+    let artifact = memory.store.store(&bytes).expect("store checkpoint manifest");
+    let event = record::encode(&MemoryRecord::Checkpoint { manifest: artifact })
+        .expect("encode checkpoint event");
+    let roots = [
+        manifest.working_state.digest,
+        manifest.transcript_manifest.digest,
+        manifest.source_index.digest,
+        manifest.view.digest,
+        manifest.validation.digest,
+        artifact.digest,
+    ];
+    let generation = memory.store.generation();
+    memory
+        .store
+        .append(&event, &roots, Some((generation, bytes)))
+        .expect("append checkpoint manifest");
 }

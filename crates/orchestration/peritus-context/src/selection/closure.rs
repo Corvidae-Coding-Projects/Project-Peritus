@@ -4,6 +4,9 @@ use crate::{ContextError, ContextErrorKind, ContextGraph, SelectionReason};
 use peritus_role::RoleProfile;
 use vstd::prelude::*;
 
+#[cfg(verus_only)]
+use super::outcome::selection_failure_is_typed;
+
 verus! {
 
 #[derive(Clone, Copy)]
@@ -21,7 +24,12 @@ pub(super) fn is_visible(node: &crate::ContextNode, role: &RoleProfile) -> bool 
 pub(super) fn dependency_closure(
     graph: &ContextGraph,
     root: usize,
-) -> Result<Vec<usize>, ContextError> {
+) -> (result: Result<Vec<usize>, ContextError>)
+    ensures match result {
+        Ok(_) => true,
+        Err(error) => selection_failure_is_typed(&error),
+    },
+{
     let graph_nodes = graph.nodes();
     let graph_len = graph_nodes.len();
     if root >= graph_len {
@@ -111,7 +119,12 @@ pub(super) fn closure_delta(
     graph: &ContextGraph,
     closure: &[usize],
     selected: &[bool],
-) -> Result<ClosureDelta, ContextError> {
+) -> (result: Result<ClosureDelta, ContextError>)
+    ensures match result {
+        Ok(_) => true,
+        Err(error) => selection_failure_is_typed(&error),
+    },
+{
     let graph_nodes = graph.nodes();
     let mut delta = ClosureDelta { tokens: 0, bytes: 0, nodes: 0 };
     let mut index = 0;
@@ -124,30 +137,33 @@ pub(super) fn closure_delta(
             return Err(ContextError::plain(ContextErrorKind::PlanNodeMissing));
         }
         if !selected[node_index] {
-            delta.tokens = delta
+            let Some(next_tokens) = delta
                 .tokens
                 .checked_add(graph_nodes[node_index].token_estimate())
-                .ok_or_else(|| {
-                    ContextError::node(
-                        ContextErrorKind::ArithmeticOverflow,
-                        graph_nodes[node_index].id(),
-                    )
-                })?;
-            delta.bytes = delta
-                .bytes
-                .checked_add(graph_nodes[node_index].content().len())
-                .ok_or_else(|| {
-                    ContextError::node(
-                        ContextErrorKind::ArithmeticOverflow,
-                        graph_nodes[node_index].id(),
-                    )
-                })?;
-            delta.nodes = delta.nodes.checked_add(1).ok_or_else(|| {
-                ContextError::node(
+            else {
+                return Err(ContextError::node(
                     ContextErrorKind::ArithmeticOverflow,
                     graph_nodes[node_index].id(),
-                )
-            })?;
+                ));
+            };
+            let Some(next_bytes) = delta
+                .bytes
+                .checked_add(graph_nodes[node_index].content().len())
+            else {
+                return Err(ContextError::node(
+                    ContextErrorKind::ArithmeticOverflow,
+                    graph_nodes[node_index].id(),
+                ));
+            };
+            let Some(next_nodes) = delta.nodes.checked_add(1) else {
+                return Err(ContextError::node(
+                    ContextErrorKind::ArithmeticOverflow,
+                    graph_nodes[node_index].id(),
+                ));
+            };
+            delta.tokens = next_tokens;
+            delta.bytes = next_bytes;
+            delta.nodes = next_nodes;
         }
         index += 1;
     }
@@ -165,6 +181,10 @@ pub(super) fn admit_closure(
     ensures
         final(selected)@.len() == old(selected)@.len(),
         final(reasons)@.len() == old(reasons)@.len(),
+        match result {
+            Ok(()) => true,
+            Err(error) => selection_failure_is_typed(&error),
+        },
 {
     let mut index = 0;
     while index < closure.len()

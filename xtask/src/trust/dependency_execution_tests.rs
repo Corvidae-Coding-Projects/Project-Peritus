@@ -77,6 +77,8 @@ fn accepts_only_exact_reviewed_executable_dependency_identities() {
         "registry+https://github.com/rust-lang/crates.io-index#nix@0.28.0",
         "registry+https://github.com/rust-lang/crates.io-index#nix@0.31.3",
         "registry+https://github.com/rust-lang/crates.io-index#rustix@1.1.4",
+        "registry+https://github.com/rust-lang/crates.io-index#rustls@0.23.43",
+        "registry+https://github.com/rust-lang/crates.io-index#rustls@0.23.45",
         "registry+https://github.com/rust-lang/crates.io-index#thiserror@1.0.69",
         "registry+https://github.com/rust-lang/crates.io-index#web_atoms@0.2.6",
         "registry+https://github.com/rust-lang/crates.io-index#winapi@0.3.9",
@@ -176,6 +178,7 @@ fn rejects_version_and_source_near_misses_for_new_build_scripts() {
         ("io-extras", "0.19.0", "0.19.1"),
         ("io-lifetimes", "2.0.4", "2.0.5"),
         ("io-lifetimes", "3.0.1", "3.0.2"),
+        ("rustls", "0.23.45", "0.23.44"),
     ];
     let mut packages = Vec::new();
     for (name, reviewed, near_miss) in identities {

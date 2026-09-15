@@ -10,16 +10,26 @@ verus! {
 pub struct ObservationId(u64);
 
 impl ObservationId {
+    /// Logical positive archive sequence.
+    pub closed spec fn spec_value(self) -> u64 { self.0 }
+
     /// Creates a positive stable source handle.
     ///
     /// # Errors
     /// Rejects the reserved zero value.
-    pub const fn new(value: u64) -> Result<Self, WorkingError> {
+    pub const fn new(value: u64) -> (result: Result<Self, WorkingError>)
+        ensures match result {
+            Ok(id) => id.spec_value() == value && value > 0,
+            Err(_) => value == 0,
+        },
+    {
         if value == 0 { Err(WorkingError::ZeroSequence) } else { Ok(Self(value)) }
     }
     /// Exact sequence within the bound archive.
     #[must_use]
-    pub const fn get(self) -> u64 { self.0 }
+    pub const fn get(self) -> (result: u64)
+        ensures result == self.spec_value(),
+    { self.0 }
 }
 
 /// Origin supplied by the host, never inferred from instruction-like source text.
@@ -47,6 +57,9 @@ pub struct ObservationSource {
 }
 
 impl ObservationSource {
+    /// Logical stable archive handle.
+    pub closed spec fn spec_id(self) -> ObservationId { self.id }
+
     /// Creates a checked source range; the host must verify artifact existence and digest first.
     ///
     /// # Errors
@@ -66,7 +79,9 @@ impl ObservationSource {
     }
     /// Stable handle within the containing state's binding.
     #[must_use]
-    pub const fn id(self) -> ObservationId { self.id }
+    pub const fn id(self) -> (result: ObservationId)
+        ensures result == self.spec_id(),
+    { self.id }
     /// Exact artifact content digest.
     #[must_use]
     pub const fn artifact(self) -> Sha256Digest { self.artifact }

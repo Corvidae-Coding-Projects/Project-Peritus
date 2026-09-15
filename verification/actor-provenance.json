@@ -101,6 +101,22 @@
       "record_locators": [
         "codex-collaboration:Corvidae-Coding-Projects/Project-Peritus/session/4/task/root/gap2_final_review"
       ]
+    },
+    {
+      "actor_id": "ACTOR-0007",
+      "kind": "codex-subagent",
+      "principal": "Corvidae-Coding-Projects/Project-Peritus/session/4/task/root/gap4_final_review",
+      "repository": "Corvidae-Coding-Projects/Project-Peritus",
+      "issue": 75,
+      "issue_created_at": "2026-09-12T15:27:42.848160186Z",
+      "session": 4,
+      "task": "/root/gap4_final_review",
+      "mode": "read-only-review",
+      "model": "gpt-5.6-sol",
+      "reasoning_effort": "xhigh",
+      "record_locators": [
+        "codex-collaboration:Corvidae-Coding-Projects/Project-Peritus/session/4/task/root/gap4_final_review"
+      ]
     }
   ]
 }

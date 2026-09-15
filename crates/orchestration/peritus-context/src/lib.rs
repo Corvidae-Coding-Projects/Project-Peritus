@@ -47,8 +47,12 @@ pub use render::{MessageRole, RenderPlan, RenderSegment, build_render_plan};
 pub use reuse::{
     KnowledgeContextLink, ReusableContextSelection, build_reusable_context_selections,
 };
-pub use selection::{SelectionPolicy, select_context};
+pub use selection::{SelectionPolicy, select_context, selection_result_is_exact};
+#[cfg(verus_only)]
+pub use selection::selection_success_matches;
 pub use trust::TrustClass;
-pub use verified::{plan_dependencies_complete, plan_is_visible, token_accounting_is_bounded};
+pub use verified::{plan_dependencies_complete, plan_is_exact, plan_is_visible, token_accounting_is_bounded};
+#[cfg(verus_only)]
+pub use verified::plan_exact_relation;
 
 } // verus!
