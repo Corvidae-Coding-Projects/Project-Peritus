@@ -48,14 +48,14 @@
         "prefix_sha256": "75e62af207437405c7c0292c3ecc35c1e80a87ef1a9953202d92cb6ee96daa52"
       },
       "u7IC": {
-        "sequence": 5,
-        "tip_oid": "5afa9ab9539418d6744f1ff3e09cdb005954e35d",
-        "prefix_sha256": "fbc3c912627da90412419cd14b5e5d7f05f1a2c46b23aa1219815bb9f1658ecd"
+        "sequence": 6,
+        "tip_oid": "34d15596067f72fa6574553ffc3cbe6f87f4ae36",
+        "prefix_sha256": "0c24691e29fdf2b3299180b623c8ca3756a3c5c48158ebadd5aa4a7262b774a2"
       }
     }
   },
   "next_display_id": 84,
-  "next_comment_id": 1603,
+  "next_comment_id": 1604,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -13004,7 +13004,7 @@
       "priority": "medium",
       "created_by": "u7IC",
       "created_at": "2026-09-15T00:49:55.217770155Z",
-      "updated_at": "2026-09-15T02:23:03.110075654Z",
+      "updated_at": "2026-09-15T03:50:12.321602529Z",
       "labels": [
         "feature"
       ],
@@ -13017,6 +13017,15 @@
           "kind": "result",
           "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAyC8LrdVSggPwG7fubYnBcXtpeOXmrST6uqk4lYMjI/f8D5TD1njQYYzbXfPP69Kweoh7+3hujDjelTPPJhntCw=="
+        },
+        "ccd507eb-65a0-434c-a212-bbc1f4dc2f28": {
+          "display_id": 1603,
+          "author": "u7IC",
+          "content": "Committed a1466d2f3: project command observations into a concise model-facing view while preserving exact trace evidence and SHA-256 lineage. Completed commands retain decision fields and stdout/stderr; active commands retain handles and recent progress. Validation: cargo test --locked -p peritus-agent --all-features; cargo clippy --locked -p peritus-agent --all-targets --all-features -- -D warnings; cargo fmt --check; git diff --check.",
+          "created_at": "2026-09-15T03:50:12.304612108Z",
+          "kind": "result",
+          "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABABJt6yFE78HMH9J7IWWpoEtojR0zFcvRJ5StT3pf8HTzWaBYsbJrc6G0+r0Bz65sGCJ+Hvcks2Ll+enLHKa8UBQ=="
         },
         "cd820eab-df55-4def-89b5-0cbae947bac5": {
           "display_id": 1600,
