@@ -48,14 +48,14 @@
         "prefix_sha256": "75e62af207437405c7c0292c3ecc35c1e80a87ef1a9953202d92cb6ee96daa52"
       },
       "u7IC": {
-        "sequence": 83,
-        "tip_oid": "c74d790f16c2855d6c28f4fd27c22f71f63ee50e",
-        "prefix_sha256": "4ab46ce8381bbc4256e01679f357c4a4e7fb5a8ce09bf5d15bffca9761aab346"
+        "sequence": 84,
+        "tip_oid": "c15af52eaf931687ad6636a7cfac6415d1bc1042",
+        "prefix_sha256": "0e4a246797bec79b172f7e8f4fa50f4861581e60bbe7e2ff2ca0d5c310c75e80"
       }
     }
   },
   "next_display_id": 84,
-  "next_comment_id": 1680,
+  "next_comment_id": 1681,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -13008,7 +13008,7 @@
       "priority": "medium",
       "created_by": "u7IC",
       "created_at": "2026-09-15T00:49:55.217770155Z",
-      "updated_at": "2026-09-15T21:36:01.163557310Z",
+      "updated_at": "2026-09-15T21:52:10.951120173Z",
       "labels": [
         "feature"
       ],
@@ -13669,6 +13669,15 @@
           "kind": "result",
           "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA5APqzx0XSWny/HjEW6xntqOcBAFTxQzWKhjkdfY1Dn5tIs174E3oPODGwFtkel5mdtKHIr8jlwEDQZTKzd8uAA=="
+        },
+        "eabeee0a-bef6-493e-9289-4a3fa9a668c1": {
+          "display_id": 1680,
+          "author": "u7IC",
+          "content": "Original076 terminal/qualified at c19e64a2a/47aa0fd; three exact artifacts, nine intact fixtures. Offline public-source checks reconcile seven slots (3present/4missing), PLAN-A/COB triggers, 164-day stale payment, mismatched order, internal-memo nonwaiver, exact disclaimer and redaction. Actual json.tool verification/native fresh review pass. Original13/14 checks pass; private contiguous stale/mismatched phrases miss equivalent explicit explanations. One provider retry retained; no host patch, output/oracle edit or paid repeat. Evidence index and draftPR82 updated through076. Next original077.",
+          "created_at": "2026-09-15T21:52:10.935930588Z",
+          "kind": "result",
+          "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAZH2wejRC1u49/3XvUHtjL48BAtAOVK41LJJN9YQ23zhCNsG2UE/ne0nduOyfRmYc579L2S0LBWLi8om0zuZZBg=="
         },
         "ef2e3f1a-f8e7-47fa-a00d-526285735f07": {
           "display_id": 1615,
