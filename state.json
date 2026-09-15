@@ -48,14 +48,14 @@
         "prefix_sha256": "75e62af207437405c7c0292c3ecc35c1e80a87ef1a9953202d92cb6ee96daa52"
       },
       "u7IC": {
-        "sequence": 106,
-        "tip_oid": "eb6f4ceda76aaa32211e22a61ce0fe067b4db81a",
-        "prefix_sha256": "1307d9e96d75ccef4f9f9fdcd1fc5cca38b9d5850233673d8e61c199142e0956"
+        "sequence": 107,
+        "tip_oid": "a29e4b69fd5ac6987bc77f4f2d474a35e7ab091d",
+        "prefix_sha256": "c5ca63894273d2cac88f7134dbab77335542cc9de41e26558cf04b44324727ab"
       }
     }
   },
   "next_display_id": 85,
-  "next_comment_id": 1702,
+  "next_comment_id": 1703,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -13009,7 +13009,7 @@
       "priority": "medium",
       "created_by": "u7IC",
       "created_at": "2026-09-15T00:49:55.217770155Z",
-      "updated_at": "2026-09-15T23:30:29.460819928Z",
+      "updated_at": "2026-09-15T23:52:32.663572561Z",
       "labels": [
         "feature"
       ],
@@ -13346,6 +13346,15 @@
           "kind": "result",
           "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA2ApW9/z2IV57KUayByBtYp7FuZSkzT+oIcEoKiqBzh+H2W2X9cH2yiGvlkSZkBTiQIuTB4OdzPOoRVnJmhH0Dg=="
+        },
+        "6bf63b55-27d7-4001-b837-d7a7655d0f08": {
+          "display_id": 1702,
+          "author": "u7IC",
+          "content": "Original091 finished at d12f76d73/3de54b2: qualified four exact outputs, six intact inputs, 17/20 original checks. Financial totals and row nets verified; reviewer recovered its own verifier error and records no findings. Status/count interpretations and extra publicly required P999 reject differ from private checks; outputs and oracle unchanged. Historical context pressure has no independent causal host reproduction. Evidence/index/PR body updated through091; originals092-106, affected020 revisit, DRY and final compatibility remain.",
+          "created_at": "2026-09-15T23:52:32.656656535Z",
+          "kind": "result",
+          "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAWIxwd2DNzNtFE+xODMXy+1r5I1VwXLXKA8hnNLzbkzNqkjOQQavNbG1TPrlF+TdMjAse3kNVEZ1/2h58qhNOAA=="
         },
         "6c70c709-4412-4a93-a851-b23e777d5209": {
           "display_id": 1679,
