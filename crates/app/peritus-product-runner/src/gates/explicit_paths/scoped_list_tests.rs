@@ -35,7 +35,11 @@ fn scoped_output_list_does_not_accept_only_workspace_root_copies() {
     let transcript = "Write the deliverables under `exports/`—required:\n- `summary.json`";
     let record = run(root.path(), transcript, &[PathBuf::from("summary.json")]);
     assert_eq!(record.exit_code, Some(1), "{}", record.output);
-    assert!(record.output.contains("exports/summary.json: MISSING"));
+    assert!(
+        record
+            .output
+            .contains(&format!("{}: MISSING", Path::new("exports/summary.json").display()))
+    );
 }
 
 #[test]
