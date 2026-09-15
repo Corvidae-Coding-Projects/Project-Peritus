@@ -196,6 +196,7 @@ impl DeveloperLoop {
                 live.map(|(port, role)| (port, role, input_revision)),
                 Some(RetryContext {
                     context: &mut context,
+                    tools,
                     governing_input: governing_input.as_ref(),
                     compactions: &mut compactions,
                 }),

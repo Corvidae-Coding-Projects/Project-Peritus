@@ -11,7 +11,9 @@ use crate::control::PermissionCapability;
 use peritus_agent::{
     DeveloperLoopError, DeveloperToolEffect, DeveloperToolExecutor, DeveloperToolObservation,
 };
-use peritus_model_protocol::{CanonicalJson, CompletedToolCall, JsonBounds, ProtocolLimits};
+use peritus_model_protocol::{
+    CanonicalJson, CompletedToolCall, JsonBounds, Message, ProtocolLimits,
+};
 use serde_json::Value;
 
 pub(super) use entry_view::entry_view;
@@ -32,6 +34,10 @@ impl<'a> MemoryTools<'a> {
 }
 
 impl DeveloperToolExecutor for MemoryTools<'_> {
+    fn observe_model_context(&mut self, messages: &[Message]) -> Result<(), DeveloperLoopError> {
+        self.base.observe_model_context(messages)
+    }
+
     fn effect(&self, call: &CompletedToolCall) -> DeveloperToolEffect {
         match call.name().as_str() {
             "context_read" => DeveloperToolEffect::ReadOnly,

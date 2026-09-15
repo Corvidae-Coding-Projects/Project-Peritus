@@ -3,6 +3,108 @@
 use super::*;
 
 #[test]
+fn executor_observes_the_exact_selected_view_after_context_assembly() {
+    #[derive(Default)]
+    struct ContextTool {
+        tool: RecordingTool,
+        views: Vec<Vec<String>>,
+    }
+    fn result_ids(messages: &[Message]) -> Vec<String> {
+        messages
+            .iter()
+            .flat_map(Message::content)
+            .filter_map(|block| match block {
+                ContentBlock::ToolResult(result) => {
+                    Some(result.call_id().expose_for_wire().to_owned())
+                }
+                _ => None,
+            })
+            .collect()
+    }
+    impl DeveloperToolExecutor for ContextTool {
+        fn observe_model_context(
+            &mut self,
+            messages: &[Message],
+        ) -> Result<(), DeveloperLoopError> {
+            self.views.push(result_ids(messages));
+            Ok(())
+        }
+        fn execute(
+            &mut self,
+            call: &CompletedToolCall,
+        ) -> Result<DeveloperToolObservation, DeveloperLoopError> {
+            self.tool.execute(call)
+        }
+    }
+    block_on(async {
+        for omit_tool_history in [false, true] {
+            let provider = ScriptedProvider {
+                profile: parallel_profile(),
+                responses: Mutex::new(VecDeque::from([batch_tool_response(), text_response()])),
+                requests: Mutex::new(Vec::new()),
+            };
+            let mut tools = ContextTool::default();
+            let mut trace = RecordingTrace::default();
+            let mut memory = RecordingContext { omit_tool_history, ..Default::default() };
+            DeveloperLoop::run_with_context(
+                &provider,
+                request("selected-view", 2),
+                &mut tools,
+                &mut trace,
+                &mut memory,
+            )
+            .await
+            .unwrap();
+            let requests = provider.requests.lock().unwrap();
+            assert_eq!(tools.views.len(), 2);
+            for (view, request) in tools.views.iter().zip(requests.iter()) {
+                assert_eq!(*view, result_ids(request.messages()));
+            }
+            drop(requests);
+            assert!(tools.views[0].is_empty());
+            assert_eq!(tools.views[1].len(), if omit_tool_history { 0 } else { 2 });
+            assert_eq!(trace.observations, 2);
+            assert_eq!(memory.raw_outputs.len(), 2, "eviction does not remove durable evidence");
+        }
+    });
+}
+
+#[test]
+fn executor_context_failure_prevents_provider_dispatch() {
+    struct FailedContextTool(RecordingTool);
+    impl DeveloperToolExecutor for FailedContextTool {
+        fn observe_model_context(&mut self, _: &[Message]) -> Result<(), DeveloperLoopError> {
+            Err(DeveloperLoopError::Tool("context bookkeeping failed".to_owned()))
+        }
+        fn execute(
+            &mut self,
+            call: &CompletedToolCall,
+        ) -> Result<DeveloperToolObservation, DeveloperLoopError> {
+            self.0.execute(call)
+        }
+    }
+    block_on(async {
+        let provider = provider(VecDeque::from([text_response()]));
+        let mut memory = RecordingContext::default();
+        let mut trace = RecordingTrace::default();
+        let result = DeveloperLoop::run_with_context(
+            &provider,
+            request("context-failure", 1),
+            &mut FailedContextTool(RecordingTool::default()),
+            &mut trace,
+            &mut memory,
+        )
+        .await;
+        assert!(
+            matches!(result, Err(DeveloperLoopError::Tool(detail)) if detail == "context bookkeeping failed")
+        );
+        assert!(provider.requests.lock().unwrap().is_empty());
+        assert_eq!(trace.observations, 0);
+        assert!(memory.raw_outputs.is_empty());
+    });
+}
+
+#[test]
 fn required_tool_retry_dispatches_its_exact_checkpointed_view() {
     block_on(async {
         let provider = provider(VecDeque::from([

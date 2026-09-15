@@ -1,11 +1,22 @@
 //! Host-owned tool execution, prerequisite, and liveness boundaries.
 
-use peritus_model_protocol::CompletedToolCall;
+use peritus_model_protocol::{CompletedToolCall, Message};
 
 use super::{DeveloperLoopError, DeveloperToolEffect, DeveloperToolObservation};
 
 /// Executes already parsed provider tool calls against one explicitly supplied workspace.
 pub trait DeveloperToolExecutor: Send {
+    /// Observes the exact model-visible messages after context assembly and protocol validation.
+    ///
+    /// This runs for each developer request, including retries, without changing its messages.
+    /// Executors may distinguish repeated visible evidence from evidence evicted by compaction.
+    ///
+    /// # Errors
+    /// Returns an executor bookkeeping failure before role admission or provider dispatch.
+    fn observe_model_context(&mut self, _messages: &[Message]) -> Result<(), DeveloperLoopError> {
+        Ok(())
+    }
+
     /// Conservatively classifies a call before any executor-owned effect preparation.
     #[must_use]
     fn effect(&self, _call: &CompletedToolCall) -> DeveloperToolEffect {

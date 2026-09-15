@@ -19,6 +19,7 @@ struct RecordingContext {
     fail_at: Option<&'static str>,
     source_metadata: Option<CanonicalJson>,
     ignore_invocation_policy: bool,
+    omit_tool_history: bool,
 }
 
 impl RecordingContext {
@@ -76,6 +77,9 @@ impl DeveloperContextPort for RecordingContext {
         assert!(request.profile.limits().max_input_tokens() > 0);
         assert!(!request.messages.is_empty());
         let mut view = self.view.clone();
+        if self.omit_tool_history {
+            view.retain(|message| !matches!(message.role(), Role::Assistant | Role::Tool));
+        }
         if !self.ignore_invocation_policy {
             view[0] = request.invocation_policy.clone();
         }

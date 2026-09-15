@@ -2,7 +2,7 @@
 use super::super::{
     DeveloperAccountingEvent, DeveloperActivity, DeveloperControlFlow, DeveloperInteraction,
     DeveloperLoopError, DeveloperLoopRequest, DeveloperModelRole, DeveloperRequestAdmission,
-    DeveloperTrace, DeveloperTraceEvent, DeveloperUsage,
+    DeveloperToolExecutor, DeveloperTrace, DeveloperTraceEvent, DeveloperUsage,
     model_request::{ModelTurnKind, build_model_request},
     retry::DeveloperRetryPlanner,
 };
@@ -15,6 +15,7 @@ mod progress;
 
 pub(super) struct RetryContext<'a, 'port> {
     pub(super) context: &'a mut ContextSession<'port>,
+    pub(super) tools: &'a mut dyn DeveloperToolExecutor,
     pub(super) governing_input: Option<&'a Message>,
     pub(super) compactions: &'a mut u16,
 }
@@ -140,6 +141,9 @@ pub(super) async fn complete_turn(
             required_tool,
             provider.reasoning_effort(),
         )?;
+        if let Some(owner) = retry_context.as_mut() {
+            owner.tools.observe_model_context(model_request.messages())?;
+        }
         if !admit_role_request(interaction, profile, &model_request)? {
             return Ok(None);
         }
