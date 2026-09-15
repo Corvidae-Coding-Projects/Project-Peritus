@@ -143,6 +143,7 @@ fn list_item_path_index(words: &[&str]) -> Option<usize> {
 
 fn output_list_directory(root: &Path, words: &[&str]) -> Option<PathBuf> {
     words.iter().enumerate().rev().find_map(|(index, word)| {
+        let word = path_token(word);
         (trim_delimiters(word).ends_with('/') && path_context(&words[..index]))
             .then(|| parse_path(root, word, true, false, true))
             .flatten()
@@ -182,6 +183,7 @@ fn parse_path(
     quoted_bare_name: bool,
     relative_path_context: bool,
 ) -> Option<PathBuf> {
+    let raw = path_token(raw);
     if prose_abbreviation(raw) || unresolved_placeholder(raw) {
         return None;
     }
@@ -271,6 +273,20 @@ fn trim_delimiters(raw: &str) -> &str {
     })
 }
 
+fn path_token(raw: &str) -> &str {
+    let Some(opening) = raw.chars().next().filter(|ch| matches!(ch, '`' | '\'' | '"')) else {
+        return raw;
+    };
+    let after_opening = &raw[opening.len_utf8()..];
+    let Some(closing) = after_opening.find(opening).filter(|index| *index > 0) else {
+        return raw;
+    };
+    let end = opening.len_utf8() + closing + opening.len_utf8();
+    // A prose dash after a closed literal is not part of its path. Dashes inside the
+    // delimiters, unclosed literals, and concatenated path suffixes keep their bytes.
+    if raw[end..].starts_with(['—', '–']) { &raw[..end] } else { raw }
+}
+
 fn output_context(words: &[&str]) -> bool {
     // An output verb authorizes paths in its clause, not a later verification instruction.
     let start = words.len().saturating_sub(12).max(clause_start(words));
@@ -353,7 +369,7 @@ fn ambiguous_addition_verb(word: &str) -> bool {
 }
 
 fn explicitly_delimited(raw: &str) -> bool {
-    let token = raw.trim_end_matches(['.', ',', ';', ':']);
+    let token = path_token(raw).trim_end_matches(['.', ',', ';', ':']);
     let Some(opening) = token.chars().next() else {
         return false;
     };
@@ -414,3 +430,7 @@ mod tests;
 #[cfg(test)]
 #[path = "explicit_paths/removal_tests.rs"]
 mod removal_tests;
+
+#[cfg(test)]
+#[path = "explicit_paths/scoped_list_tests.rs"]
+mod scoped_list_tests;
