@@ -48,14 +48,14 @@
         "prefix_sha256": "75e62af207437405c7c0292c3ecc35c1e80a87ef1a9953202d92cb6ee96daa52"
       },
       "u7IC": {
-        "sequence": 77,
-        "tip_oid": "4f8dfcb90ac64820db7cbc421609cf5ba5d0eac0",
-        "prefix_sha256": "5004e51ca4682cae6e3b4d83d4cc56feaa2f2d0ad27a8a423ce52e668b47c561"
+        "sequence": 78,
+        "tip_oid": "25f2cc479fe781e3c666d9718b7cf8c2a2fac886",
+        "prefix_sha256": "d110b40e51ffe54b8de5f7f0b52264d7b70c2bc4bad9899588b99ab185026a0f"
       }
     }
   },
   "next_display_id": 84,
-  "next_comment_id": 1674,
+  "next_comment_id": 1675,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -13008,7 +13008,7 @@
       "priority": "medium",
       "created_by": "u7IC",
       "created_at": "2026-09-15T00:49:55.217770155Z",
-      "updated_at": "2026-09-15T20:22:09.051790770Z",
+      "updated_at": "2026-09-15T20:28:30.065710576Z",
       "labels": [
         "feature"
       ],
@@ -13039,6 +13039,15 @@
           "kind": "result",
           "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAdKcTzPNlt1WoMCFDldIh8+xK4QBA5CoWh3zxss1SRdPDHyg5uRSfptLqRKITGye9b6eNdo9nQq4BVHMchNCOBA=="
+        },
+        "0c54e51d-d5e9-4bbe-8272-f84822a25882": {
+          "display_id": 1674,
+          "author": "u7IC",
+          "content": "Original071 inspected/archived on f264fc5e1: native qualifies262.593s, 15 requests/23 tools/8 compactions, three artifacts/three intact fixtures.10 decisions/10 stable template references/5 teams/priorities/evidence/VIP rules pass verifiers/native review. Original13/15: private unpublished key names and overlapping dispute/conflict primary; original output/oracle unchanged. Template action/timing assertions not actual offline execution receipts. No new mechanical host patch or paid repeat. Index through71 and draft PR82 updated; proceeding original072 sequentially.",
+          "created_at": "2026-09-15T20:28:30.058873081Z",
+          "kind": "result",
+          "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA6+MdIWwEVORdgaPcG6xpp6gSXPLgjcW8M0bOX+GIIXJwGnu/oq+r36JxNOt98nDPw0yCfr8TVqLcusrcyITOAw=="
         },
         "0d65d668-a1bf-4e7e-8682-b8aa5a33f49a": {
           "display_id": 1628,
