@@ -48,14 +48,14 @@
         "prefix_sha256": "75e62af207437405c7c0292c3ecc35c1e80a87ef1a9953202d92cb6ee96daa52"
       },
       "u7IC": {
-        "sequence": 81,
-        "tip_oid": "8e4fb7add0fdb0186e3d6b7755b8de04aaa6c636",
-        "prefix_sha256": "35933fe48f0b7a69684dcf860001d96a12c8b6c99fc9a7c58e9918b0fc23bf93"
+        "sequence": 82,
+        "tip_oid": "b34d36cc5f600cbcd9dabf1dd9ad0c7b8a48f1a4",
+        "prefix_sha256": "f274d61a23dfa91fc2f5e1ba6dd0dc55fb5c82dfab5270f815881f206187f3f1"
       }
     }
   },
   "next_display_id": 84,
-  "next_comment_id": 1678,
+  "next_comment_id": 1679,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -13008,7 +13008,7 @@
       "priority": "medium",
       "created_by": "u7IC",
       "created_at": "2026-09-15T00:49:55.217770155Z",
-      "updated_at": "2026-09-15T20:54:08.771905409Z",
+      "updated_at": "2026-09-15T21:27:47.011447281Z",
       "labels": [
         "feature"
       ],
@@ -13174,6 +13174,15 @@
           "kind": "result",
           "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAoniIuYgDrjUv3cGOA0RLeC8LcTS+jul54beYMCAiKdWU4p8Dj5WPpGC5qOjmo03pjdL503/7RhGvSv/AUEAlBw=="
+        },
+        "3ddd2325-1901-4e79-84f8-634e889704bf": {
+          "display_id": 1678,
+          "author": "u7IC",
+          "content": "Delivered c19e64a2afba1b8dea155e1e138ac94cd708a826: preserve quoted output-directory scope when prose dashes touch a closing delimiter. Original075 falsely required workspace-root duplicates; archived native/evaluator/input evidence and context pressure separately. Three old-code regressions fail, all43 path controls and combined533 tests pass (3 existing ignored), strict all-feature/all-target Clippy/fmt/diff pass; full stamped workspace build and protocol identity pass (SHA47aa0fd231c2570f0f027c8d5c43296145d1456707b9b6f51e725621ed0322c4). Pushed same branch/draftPR82. No public API/provider/fixture/output/oracle changes; one causal075 revisit next.",
+          "created_at": "2026-09-15T21:27:46.979484227Z",
+          "kind": "result",
+          "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABADy/KFPgJPTR9tfL2c82SNdKitsl3P6DnpVhhfgOmy7gehSMohLVbk0Lpigp6UGCaayKnAJqM9D7IwRpO1qL/Ag=="
         },
         "41603c3d-465c-44dd-ae88-a2259f3f8e0a": {
           "display_id": 1613,
