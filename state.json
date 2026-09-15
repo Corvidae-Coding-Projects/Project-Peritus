@@ -48,14 +48,14 @@
         "prefix_sha256": "75e62af207437405c7c0292c3ecc35c1e80a87ef1a9953202d92cb6ee96daa52"
       },
       "u7IC": {
-        "sequence": 3,
-        "tip_oid": "d76987697c5ac28ff32c0d08d350c87772ec7445",
-        "prefix_sha256": "ce8f417077793d48d8aaf284c5bb10d86b11ec01b4d59157939012567421c608"
+        "sequence": 4,
+        "tip_oid": "6dfa1eee02447bdfd3ef340c04d1677a17f94bc2",
+        "prefix_sha256": "7b3156d80b5bb40558ac24e31a5324497a1737cc58f060f0f691d3de0c674e82"
       }
     }
   },
   "next_display_id": 84,
-  "next_comment_id": 1601,
+  "next_comment_id": 1602,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -13004,7 +13004,7 @@
       "priority": "medium",
       "created_by": "u7IC",
       "created_at": "2026-09-15T00:49:55.217770155Z",
-      "updated_at": "2026-09-15T01:14:18.275242063Z",
+      "updated_at": "2026-09-15T01:26:34.513323913Z",
       "labels": [
         "feature"
       ],
@@ -13017,6 +13017,15 @@
           "kind": "result",
           "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA+FElxzoEE4bqWY/u8YcKxu0nCQDzJeyxBQBU7VdX4ukQSYKvA8pzx+PTjk65I7AwAiJZW1fWKOGLI6+D2P/JCw=="
+        },
+        "df319b40-df60-4ead-8c9e-538ee06a2411": {
+          "display_id": 1601,
+          "author": "u7IC",
+          "content": "Fixed live OpenCode Zen rubric completion by negotiating UsageDetail when the selected provider supports it. This makes request projection include streamed accounting and keeps strict unexpected-usage rejection for providers that do not advertise the capability. Verified with 69 external-benchmark library tests, strict clippy, formatting, and a live DeepSeek rubric request returning READY with usage.",
+          "created_at": "2026-09-15T01:26:34.498451675Z",
+          "kind": "result",
+          "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAPKE9p3qj0gSz+hVxB+C7TwWD4saZHdHgFdzJTMqh/Dos/W79HFJ5wF1GOcKq6x7uIPC2hBnRgmj3lyI+mdb6BA=="
         }
       }
     },
