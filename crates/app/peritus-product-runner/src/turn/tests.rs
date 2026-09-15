@@ -15,6 +15,10 @@ fn rejected_terminal_correction_requires_fresh_repository_grounding() {
     assert!(prompt.contains("workspace_list"));
     assert!(prompt.contains("workspace_read"));
     assert!(prompt.contains("If no code change is needed"));
+    assert!(prompt.contains("exactly one terminal JSON object"));
+    assert!(prompt.contains("literal final wording"));
+    assert!(prompt.contains("inside `summary`"));
+    assert!(prompt.contains("do not emit a separate plain-text answer"));
     assert!(prompt.contains(error.detail()));
 }
 
@@ -169,6 +173,9 @@ fn writer_batches_tools_and_respects_artifact_workspaces() {
     assert!(prompt.contains("apply only explicitly named transformations"));
     assert!(prompt.contains("return exactly one direct command"));
     assert!(prompt.contains("no prose, Markdown, quotes"));
+    assert!(prompt.contains("literal final phrase"));
+    assert!(prompt.contains("inside `summary`"));
+    assert!(prompt.contains("returning only the JSON object"));
 }
 
 #[test]
