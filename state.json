@@ -48,14 +48,14 @@
         "prefix_sha256": "75e62af207437405c7c0292c3ecc35c1e80a87ef1a9953202d92cb6ee96daa52"
       },
       "u7IC": {
-        "sequence": 76,
-        "tip_oid": "ae39999b21e18b1c01bfddd885df8709a4180e36",
-        "prefix_sha256": "c1316c10543deb0ad94c5f65642b2debf44b3e06647bb693be25744b7973d088"
+        "sequence": 77,
+        "tip_oid": "4f8dfcb90ac64820db7cbc421609cf5ba5d0eac0",
+        "prefix_sha256": "5004e51ca4682cae6e3b4d83d4cc56feaa2f2d0ad27a8a423ce52e668b47c561"
       }
     }
   },
   "next_display_id": 84,
-  "next_comment_id": 1673,
+  "next_comment_id": 1674,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -13008,7 +13008,7 @@
       "priority": "medium",
       "created_by": "u7IC",
       "created_at": "2026-09-15T00:49:55.217770155Z",
-      "updated_at": "2026-09-15T20:18:09.179470588Z",
+      "updated_at": "2026-09-15T20:22:09.051790770Z",
       "labels": [
         "feature"
       ],
@@ -13552,6 +13552,15 @@
           "kind": "result",
           "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA+FElxzoEE4bqWY/u8YcKxu0nCQDzJeyxBQBU7VdX4ukQSYKvA8pzx+PTjk65I7AwAiJZW1fWKOGLI6+D2P/JCw=="
+        },
+        "d9509473-953e-4e36-887f-4ee4dd9945c7": {
+          "display_id": 1673,
+          "author": "u7IC",
+          "content": "Original070 inspected/archived on f264fc5e1: native qualifies131.275s, 9 requests/19 tools/4 compactions, two artifacts/five intact fixtures. Three rows/bounded scores/ranks/job evidence/fairness pass verifiers/native review. Original6/8: raw age substring in coverage and Candidate C shortlist interpretation; original output/oracle unchanged, numerical-rubric clarity limit retained. No new mechanical host patch or paid repeat. Index through70 and draft PR82 updated; proceeding original071 sequentially.",
+          "created_at": "2026-09-15T20:22:09.045484788Z",
+          "kind": "result",
+          "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAl/ZmtzS0QY0PPvhEsOxPsBX3HrMgtByYhO5035dL5d8mo6IWclfSMS5Z4SExzJ4bTnUEEjgJLoilJ5XfVHpkAQ=="
         },
         "df319b40-df60-4ead-8c9e-538ee06a2411": {
           "display_id": 1601,
