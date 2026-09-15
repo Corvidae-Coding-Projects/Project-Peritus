@@ -48,14 +48,14 @@
         "prefix_sha256": "75e62af207437405c7c0292c3ecc35c1e80a87ef1a9953202d92cb6ee96daa52"
       },
       "u7IC": {
-        "sequence": 28,
-        "tip_oid": "6d8fdb7482275e323f22e531f2dbe86a209aab08",
-        "prefix_sha256": "4f2456a30213291c9c3047deea125212dfbaa4f918e9f7271e78c3368403335c"
+        "sequence": 29,
+        "tip_oid": "333d1c0a538515447ae44c71169ac982c5781fb0",
+        "prefix_sha256": "fecf6a859ab7aa01e6b05e98d4d0d6b29fef88fb20777b278ec7f9797c5c8736"
       }
     }
   },
   "next_display_id": 84,
-  "next_comment_id": 1625,
+  "next_comment_id": 1626,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -13008,7 +13008,7 @@
       "priority": "medium",
       "created_by": "u7IC",
       "created_at": "2026-09-15T00:49:55.217770155Z",
-      "updated_at": "2026-09-15T11:30:57.729114502Z",
+      "updated_at": "2026-09-15T11:41:02.977599014Z",
       "labels": [
         "feature"
       ],
@@ -13111,6 +13111,15 @@
           "kind": "result",
           "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA31clR3MCiEBnqWlJM4EWJyx13EDy3/ImiePjnA3/RfJxHv+rpXRL890h5HkSEfyewmulqY2QEa1zMOcXeYqHBw=="
+        },
+        "9183d317-4a6e-4cbc-9eed-8db91fa465dc": {
+          "display_id": 1625,
+          "author": "u7IC",
+          "content": "Original task 028 completed on frozen source 384a4f52fab013cf866ac47f055610a484a6a8e3: native gates, obligations and review satisfied, 15 requests/36 tools/1 retry/6 compactions, five input fixtures byte-intact and exactly two requested changed outputs. Terminal official/native records and independent final semantic validation archived. Two threads/four unique actual message records, exact chronology, agreed date, missing questionnaire and pending procurement reconcile with source. Three unchanged oracle disagreements count a timeline reference as a duplicate or require hidden literal phrases; no new general harness bug claimed. Original task 029 is live on the same frozen binary, session 72160; do not rebuild while native/rubric request is active. All code fixes remain pushed on feature/harnessbench-deepseek-hardening and OPEN DRAFT PR 82 to develop; no merge or CI runner work.",
+          "created_at": "2026-09-15T11:41:02.970539692Z",
+          "kind": "result",
+          "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAb45T9V6CgSCs84m5KDzoaqxbm3KbkHT4/zAaq++fhPoXP5omY+X1yOhA5j9zrYC65ojidZGZlVYtPMsnHIYsCw=="
         },
         "9f6ecdcb-6fa0-45e8-9d7b-1e1786ad41c2": {
           "display_id": 1616,
