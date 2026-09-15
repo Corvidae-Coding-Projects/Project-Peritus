@@ -48,14 +48,14 @@
         "prefix_sha256": "75e62af207437405c7c0292c3ecc35c1e80a87ef1a9953202d92cb6ee96daa52"
       },
       "u7IC": {
-        "sequence": 19,
-        "tip_oid": "fd403492a31ca059bfa672b8789409cbd533c541",
-        "prefix_sha256": "682e9c86cb4f43e314c5c89d19895a598c651d1f0bafb729637d789183ab2fd0"
+        "sequence": 20,
+        "tip_oid": "720d46f581353dea721bbdb68e597bd3dcf08c29",
+        "prefix_sha256": "49d027ab5bc12cbc695abf65704917e927687272cd9700c262b92af61725111f"
       }
     }
   },
   "next_display_id": 84,
-  "next_comment_id": 1616,
+  "next_comment_id": 1617,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -13008,7 +13008,7 @@
       "priority": "medium",
       "created_by": "u7IC",
       "created_at": "2026-09-15T00:49:55.217770155Z",
-      "updated_at": "2026-09-15T08:24:07.330430013Z",
+      "updated_at": "2026-09-15T08:50:25.686578286Z",
       "labels": [
         "feature"
       ],
@@ -13066,6 +13066,15 @@
           "kind": "result",
           "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA31clR3MCiEBnqWlJM4EWJyx13EDy3/ImiePjnA3/RfJxHv+rpXRL890h5HkSEfyewmulqY2QEa1zMOcXeYqHBw=="
+        },
+        "9f6ecdcb-6fa0-45e8-9d7b-1e1786ad41c2": {
+          "display_id": 1616,
+          "author": "u7IC",
+          "content": "Pushed de7dcfb51 on existing draft PR #82 to develop. Task 019 exposed a confirmed availability mismatch: an identical inventory-file refetch counted toward the stop limit although its previous call/result was absent from the selected view. A before/after writable-workspace regression reproduces the problem. The shared loop now supplies exact protocol-validated messages before developer dispatch and each retry, forwarded by memory tools; the detector matches visible arguments and result content rather than IDs and strips host source annotations. Tests protect evicted refetches, reused IDs, visible warn-at-3/stop-at-6 cycles, grounding, exact selected-view callback binding, retained durable observations, and no dispatch on bookkeeping failure. Combined validation: 506 passed, 3 existing ignored; strict Clippy, formatting and diff checks pass. Current provider libraries: 124 tests and three runtime conformance entries pass on unchanged provider source. A complete separate Codex writer/Claude reviewer native product flow qualified on 637405935 with exact output and unchanged input. Full source-stamped rebuild underway, then account-flow compatibility and unchanged task 019 affected rerun; tasks 020-106 and final DRY/combined validation remain. Original tasks/fixtures/oracles/configuration/timeouts unchanged; no runners or proof authorization work.",
+          "created_at": "2026-09-15T08:50:25.671964525Z",
+          "kind": "result",
+          "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAMMMJZQFHd5m938TyAhXJEMdx5KcBw2ZtXrtYi41zcJXPCdHcHs5P3Lr+3sbsqkbZOdOi0rh9a7PZep7naVWRAw=="
         },
         "9fc7d64f-ba3c-40f9-a2fe-bd4dd98a1364": {
           "display_id": 1614,
