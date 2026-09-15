@@ -1,11 +1,9 @@
 //! Model-visible bounds for exact tool observations retained in the durable trace.
 
-use core::fmt::Write as _;
-
 use peritus_model_protocol::{CanonicalJson, JsonBounds, ProtocolLimits};
 use serde_json::{Map, Value};
 
-use super::DeveloperLoopError;
+use super::{DeveloperLoopError, context::digest_hex};
 
 const POLICY: &str = "peritus-tool-output-v1";
 const COMMAND_POLICY: &str = "peritus-command-output-v1";
@@ -145,14 +143,6 @@ fn head_tail(value: &str, chars: usize) -> (String, String) {
     let mut tail = value.chars().rev().take(chars).collect::<Vec<_>>();
     tail.reverse();
     (head, tail.into_iter().collect())
-}
-
-fn digest_hex(digest: peritus_types::Sha256Digest) -> String {
-    let mut output = String::with_capacity(64);
-    for byte in digest.as_bytes() {
-        let _ = write!(output, "{byte:02x}");
-    }
-    output
 }
 
 #[cfg(test)]
