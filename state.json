@@ -48,14 +48,14 @@
         "prefix_sha256": "75e62af207437405c7c0292c3ecc35c1e80a87ef1a9953202d92cb6ee96daa52"
       },
       "u7IC": {
-        "sequence": 43,
-        "tip_oid": "ec03694d2d712ca5668f0b47dc821663c02cd34c",
-        "prefix_sha256": "353a80043a4cc8d3cbc425a80f73b9785b681bcd3c0c0bffd00313dd381d21ce"
+        "sequence": 44,
+        "tip_oid": "e162d2b42bab7bd0e15dd8cf79f33392e8b828bf",
+        "prefix_sha256": "5f23fb76e53d47738b2bdb0fade051c7d1fde4a082fad0b152a43d559f6219ce"
       }
     }
   },
   "next_display_id": 84,
-  "next_comment_id": 1640,
+  "next_comment_id": 1641,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -13008,7 +13008,7 @@
       "priority": "medium",
       "created_by": "u7IC",
       "created_at": "2026-09-15T00:49:55.217770155Z",
-      "updated_at": "2026-09-15T13:53:04.676766437Z",
+      "updated_at": "2026-09-15T14:14:43.565072033Z",
       "labels": [
         "feature"
       ],
@@ -13147,6 +13147,15 @@
           "kind": "result",
           "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAMZXpq6Hb7symQ19fZtoEik6s0V8UVpU4peMNFDyXaEP+RexAlExKEUBQL7pz5ZWO18n692GQVJvgfq6xhq9pBA=="
+        },
+        "61cff217-8b89-4012-b84b-2a340a456342": {
+          "display_id": 1640,
+          "author": "u7IC",
+          "content": "Original041 qualified onE5: original tests and hidden state invariants pass, only permitted implementation changes, original test byte-intact. Pushed tool-contract fix81d7dacf4b1e27bf2ced0979d016a7305073412d clarifies relative cwd and files/validity combinations; actionable errors preserve original path/authority/bounds checks. Two generic regressions fail before, pass after; rejected state unchanged, corrected calls work, file-change staleness retained.512 combined tests pass3 existing ignored; strict Clippy/fmt/diff and full source-stamped workspace rebuild pass. BinarySHA795daecbb94fd3ec7953e47f09e0de8f9963f301c34411118aba20d4aa6e0202 verified. Exact new-source native Codex/Claude flow qualified with actual OpenAI gpt-5.6-sol/Anthropic sonnet200000-token profiles, exact sum5/source output and input unchanged,9 requests8 tools2 compactions0 retries/failover. Original041 already qualified before patch; no paid rerun chasing. Draft82 remains open to develop. Continue originals042–106, affected revisits, then scoped DRY/provider/final combined validation.",
+          "created_at": "2026-09-15T14:14:43.558087022Z",
+          "kind": "result",
+          "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAnH4eeQjYr949y8YmF4C17q1lc5VPd3OfZ/JLALYBz9qQqod9HiIzlIP784FdwH5XSNq2t3kwKUmE+INzJdxxCw=="
         },
         "6428e6ef-e290-406f-b8c7-56bd63a36f99": {
           "display_id": 1638,
