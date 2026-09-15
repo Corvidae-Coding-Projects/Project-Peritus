@@ -46,10 +46,15 @@
         "sequence": 8,
         "tip_oid": "e51f780bd56183b884fc74c11a8cfd0d1caf55bd",
         "prefix_sha256": "75e62af207437405c7c0292c3ecc35c1e80a87ef1a9953202d92cb6ee96daa52"
+      },
+      "u7IC": {
+        "sequence": 1,
+        "tip_oid": "092810f7dfa72e929263beb2363e4fc9a447ed00",
+        "prefix_sha256": "23f616c9349fc2c2ee342faedd66e322ec9d351da5c3412b7e0ea8e6175c2b1b"
       }
     }
   },
-  "next_display_id": 83,
+  "next_display_id": 84,
   "next_comment_id": 1600,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
@@ -106,6 +111,7 @@
     "951695ae-cc15-4045-8069-eb7bba119e5c": 5,
     "98cfa726-8e8c-417c-8fa5-3bd3eec94363": 27,
     "9de8dfc7-1d53-4ac4-a7a1-98aaf6dd354d": 21,
+    "a6fde681-2598-4b91-b824-d011ade3c601": 83,
     "ab24c7bc-0720-480b-b39f-23f603a8b11f": 11,
     "addf9afe-e336-42bb-bba7-213bbc0e4611": 54,
     "b25f016a-c241-4f3e-99a1-d7540e07883e": 80,
@@ -12989,6 +12995,16 @@
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAlblPBrmEsD9OXUeY28L2VUopVUcU2DdUWJIbRV7S6evA+wWX5c3JS6Mx9i8/tPKehe44HycMwVeSXDJhrO+rDw=="
         }
       }
+    },
+    "a6fde681-2598-4b91-b824-d011ade3c601": {
+      "uuid": "a6fde681-2598-4b91-b824-d011ade3c601",
+      "display_id": 83,
+      "title": "Investigate HarnessBench harness weaknesses with DeepSeek",
+      "status": "open",
+      "priority": "medium",
+      "created_by": "u7IC",
+      "created_at": "2026-09-15T00:49:55.217770155Z",
+      "updated_at": "2026-09-15T00:49:55.217770155Z"
     },
     "ab24c7bc-0720-480b-b39f-23f603a8b11f": {
       "uuid": "ab24c7bc-0720-480b-b39f-23f603a8b11f",
