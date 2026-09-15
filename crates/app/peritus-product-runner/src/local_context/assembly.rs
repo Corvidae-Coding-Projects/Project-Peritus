@@ -98,7 +98,10 @@ impl LocalMemory {
             for previous in chosen.iter().rev() {
                 candidate.extend(exchanges::messages(previous));
             }
-            if estimate_developer_request_tokens(&candidate, tools) > target {
+            // Keep the newest complete exchange when it fits the active provider. The
+            // compaction target limits older history, not the latest tool result.
+            let limit = if chosen.is_empty() { capacity } else { target };
+            if estimate_developer_request_tokens(&candidate, tools) > limit {
                 break;
             }
             recent = recent.saturating_add(group.messages.len());

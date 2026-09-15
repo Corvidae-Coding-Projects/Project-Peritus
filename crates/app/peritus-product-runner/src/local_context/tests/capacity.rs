@@ -6,6 +6,28 @@ use peritus_agent::estimate_developer_request_tokens;
 use serde_json::Value;
 
 #[test]
+fn recent_completed_exchange_uses_provider_headroom_above_compaction_target() {
+    let fixture = Fixture::new();
+    let mut memory = fixture.open();
+    begin(&mut memory, "pinned-headroom");
+    memory.config.retrieved_evidence_max_tokens = 0;
+    let policy = message(peritus_model_protocol::Role::System, "Canonical current policy.");
+    observation(&mut memory, "recent-read", "RECENT_VERIFICATION_OK", false);
+    let full = memory.prepare_view_with_policy(&profile(32_768), &[], Some(&policy)).unwrap();
+    let capacity = estimate_developer_request_tokens(&full, &[]);
+    let trigger = capacity * u64::from(memory.config.trigger_percent) / 100;
+    assert!(capacity > trigger, "fixture requires the complete exchange above the target");
+
+    let view = memory.prepare_view_with_policy(&profile(capacity), &[], Some(&policy)).unwrap();
+
+    assert_eq!(view.first(), Some(&policy));
+    assert!(estimate_developer_request_tokens(&view, &[]) <= capacity);
+    assert!(view.iter().any(|message| message.role() == peritus_model_protocol::Role::Assistant));
+    assert!(view.iter().any(|message| message.role() == peritus_model_protocol::Role::Tool));
+    memory.publish(&view).unwrap();
+}
+
+#[test]
 fn required_working_closure_uses_provider_headroom_and_survives_restart() {
     let fixture = Fixture::new();
     let mut memory = fixture.open();
