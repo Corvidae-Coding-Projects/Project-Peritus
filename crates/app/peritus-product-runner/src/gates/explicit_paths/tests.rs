@@ -34,6 +34,46 @@ fn exact_output_passes_without_treating_command_products_as_required() {
 }
 
 #[test]
+fn output_declaration_requires_literal_paths_in_following_list_items() {
+    let root = tempfile::tempdir().expect("root");
+    let transcript = format!(
+        "After completing the task, produce the following:\n\n\
+         - `{0}/out/report.md`: the final report.\n\
+         - `{0}/out/progress.md`: the execution record.",
+        root.path().display(),
+    );
+    let expected = vec![PathBuf::from("out/progress.md"), PathBuf::from("out/report.md")];
+    assert_eq!(required_outputs(root.path(), &transcript), expected);
+    assert_eq!(run(root.path(), &transcript, &[]).exit_code, Some(1));
+
+    fs::create_dir(root.path().join("out")).expect("output directory");
+    fs::write(root.path().join("out/report.md"), "report").expect("report");
+    fs::write(root.path().join("out/progress.md"), "progress").expect("progress");
+    assert_eq!(run(root.path(), &transcript, &expected).exit_code, Some(0));
+}
+
+#[test]
+fn output_list_context_does_not_require_description_inputs_or_later_read_only_lists() {
+    let root = tempfile::tempdir().expect("root");
+    let transcript = format!(
+        "Produce the following:\n\
+         - `{0}/out/report.md`: summarize `{0}/in/source.txt`.\n\n\
+         ## Read-only inputs\n\
+         - `{0}/in/other.txt`: do not change it.",
+        root.path().display(),
+    );
+    assert_eq!(required_outputs(root.path(), &transcript), vec![PathBuf::from("out/report.md")]);
+}
+
+#[test]
+fn conditional_output_declaration_does_not_make_its_list_unconditional() {
+    let root = tempfile::tempdir().expect("root");
+    let transcript = "If source rows exist, produce the following:\n- `out/optional.csv`: rows.";
+    assert!(required_outputs(root.path(), transcript).is_empty());
+    assert_eq!(run(root.path(), transcript, &[]).exit_code, Some(0));
+}
+
+#[test]
 fn read_only_and_negated_paths_are_not_required_outputs() {
     let root = tempfile::tempdir().expect("root");
     let transcript = format!(

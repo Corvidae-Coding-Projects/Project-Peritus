@@ -129,17 +129,28 @@ pub(super) fn run(root: &Path, transcript: &str, changed_paths: &[PathBuf]) -> G
 fn extract(root: &Path, transcript: &str) -> PathRequirements {
     let mut paths = BTreeMap::<PathBuf, bool>::new();
     let mut alternatives = Vec::new();
+    let mut output_list = false;
     for line in transcript.lines() {
         let words = line.split_whitespace().collect::<Vec<_>>();
+        let list_item = list_item_path_index(&words);
+        let listed_output = output_list.then_some(list_item).flatten();
+        if !words.is_empty() && list_item.is_none() {
+            output_list = line.trim_end().ends_with(':')
+                && output_context(&words)
+                && !conditional_clause(&words);
+        }
         let mut line_mentions = Vec::new();
         for (index, word) in words.iter().enumerate() {
             if descriptive_extension(word, words.get(index + 1).copied()) {
                 continue;
             }
-            let required_output =
-                output_context(&words[..index]) && !conditional_clause(&words[..index]);
-            let quoted_bare_name =
-                required_output && path_noun_context(&words[..index]) && explicitly_delimited(word);
+            // Only the leading list path inherits the declaration, not inputs in its description.
+            let listed_path = listed_output == Some(index);
+            let required_output = (listed_path || output_context(&words[..index]))
+                && !conditional_clause(&words[..index]);
+            let quoted_bare_name = required_output
+                && (listed_path || path_noun_context(&words[..index]))
+                && explicitly_delimited(word);
             let relative_path_context = path_context(&words[..index]);
             let Some(relative) =
                 parse_path(root, word, required_output, quoted_bare_name, relative_path_context)
@@ -169,6 +180,14 @@ fn extract(root: &Path, transcript: &str) -> PathRequirements {
             .collect(),
         alternatives,
     }
+}
+
+fn list_item_path_index(words: &[&str]) -> Option<usize> {
+    let marker = *words.first()?;
+    let numbered = marker
+        .strip_suffix('.')
+        .is_some_and(|number| !number.is_empty() && number.chars().all(|ch| ch.is_ascii_digit()));
+    (words.len() > 1 && (matches!(marker, "-" | "*" | "+") || numbered)).then_some(1)
 }
 
 pub(super) fn required_outputs(root: &Path, transcript: &str) -> Vec<PathBuf> {
