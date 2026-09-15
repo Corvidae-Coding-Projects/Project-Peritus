@@ -48,14 +48,14 @@
         "prefix_sha256": "75e62af207437405c7c0292c3ecc35c1e80a87ef1a9953202d92cb6ee96daa52"
       },
       "u7IC": {
-        "sequence": 20,
-        "tip_oid": "720d46f581353dea721bbdb68e597bd3dcf08c29",
-        "prefix_sha256": "49d027ab5bc12cbc695abf65704917e927687272cd9700c262b92af61725111f"
+        "sequence": 21,
+        "tip_oid": "52b2d7905c4a2393425029f6a2d93ed0474d2576",
+        "prefix_sha256": "9e7bedf8c6a537c644535f61cffb0a5d8c9e2a0e0e623c1f9a5c92cad3864aa5"
       }
     }
   },
   "next_display_id": 84,
-  "next_comment_id": 1617,
+  "next_comment_id": 1618,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -13008,11 +13008,20 @@
       "priority": "medium",
       "created_by": "u7IC",
       "created_at": "2026-09-15T00:49:55.217770155Z",
-      "updated_at": "2026-09-15T08:50:25.686578286Z",
+      "updated_at": "2026-09-15T09:45:08.309854815Z",
       "labels": [
         "feature"
       ],
       "comments": {
+        "045bf0b4-8e40-4b5e-bc0a-3e2778427559": {
+          "display_id": 1617,
+          "author": "u7IC",
+          "content": "Pushed 15a903e904b818ec42034cc72004f1229532917e to the existing draft GitHub PR 82 targeting develop. Task 019 affected rerun passed the earlier false inspection stop but exhausted independent review; evidence retained. Original task 020 produced correct archive reports and unchanged inputs but exposed reviewer context starvation: the actual selected view spends 31705/32768 tokens on initial messages and omits all fresh tool exchanges. A generic regression fails before and passes after budgeting evidence against system policy, framing and actual tool catalogs; exact closed reads survive 32768-token and 200000-token profiles. Combined checks: 508 passed, 3 existing ignored; strict all-target/all-feature Clippy, format, diff and source-stamped full workspace build pass. Binary SHA256 1be97c0aaefcbc548ca9f6b99ccd1cbf30a1910efbeeab36b6c7328bcff734dd. Current Codex/Claude native flow is running; then rerun original task 020 unchanged. Tasks 021-106, affected-case revisits, final DRY review and combined/provider validation remain. No runner or proof-authorization work. Credentials and DeepSeek configuration preserved.",
+          "created_at": "2026-09-15T09:45:08.303100107Z",
+          "kind": "result",
+          "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA4PPftFIuRoZuKxhYEDKs8LJE1A+rV7BdBHaub8yK+WJZVzdTRaZv3HeSEMK4vTBi9UOOXIo7Fj4aWnvbtaOBBQ=="
+        },
         "1e1afa8c-809e-4d17-8e81-26a75e9c593b": {
           "display_id": 1604,
           "author": "u7IC",
