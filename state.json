@@ -48,14 +48,14 @@
         "prefix_sha256": "75e62af207437405c7c0292c3ecc35c1e80a87ef1a9953202d92cb6ee96daa52"
       },
       "u7IC": {
-        "sequence": 97,
-        "tip_oid": "b258512c5dab08dd9c93ff16d9a6b897f79f29ba",
-        "prefix_sha256": "987f7b7e66bf742fc950c18c48692eaf68fe92daf04b00508e18d51d486d2a42"
+        "sequence": 98,
+        "tip_oid": "b9f44d96f0fb3b85ed60030464953921cd2a4844",
+        "prefix_sha256": "82086772d15dcbbb28698350aaecd41726fac61166861f16e8d2637544fe59b9"
       }
     }
   },
   "next_display_id": 85,
-  "next_comment_id": 1693,
+  "next_comment_id": 1694,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -13009,7 +13009,7 @@
       "priority": "medium",
       "created_by": "u7IC",
       "created_at": "2026-09-15T00:49:55.217770155Z",
-      "updated_at": "2026-09-15T22:56:53.247596244Z",
+      "updated_at": "2026-09-15T23:02:44.049444808Z",
       "labels": [
         "feature"
       ],
@@ -13040,6 +13040,15 @@
           "kind": "result",
           "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAdKcTzPNlt1WoMCFDldIh8+xK4QBA5CoWh3zxss1SRdPDHyg5uRSfptLqRKITGye9b6eNdo9nQq4BVHMchNCOBA=="
+        },
+        "0a42c24b-1fce-47a5-87f5-11dcc24b573b": {
+          "display_id": 1693,
+          "author": "u7IC",
+          "content": "Original085 qualified at d12f76d73/3de54b2: all5 original checks pass, including8 repeated test runs and hidden injected-source determinism;7 protected original fixtures byte-intact. Actual initial3 failures/intermediate ordering failure/final two4-pass model-run suites preserved. Native DeepSeek review qualifies, no root host fault or parent output/oracle edits. Evidence index through85;086 migration task now running individually on frozen source. Current PR82 runner checks remain monitored.",
+          "created_at": "2026-09-15T23:02:44.042717635Z",
+          "kind": "result",
+          "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAtDVdajhFQq/vXaK6q8oZQwekzIv+L3+UC5IiMkx7iRlK8QWdP2tgHHlixzxzV7OHFCRtWIw7JfmMezvQ54L2Aw=="
         },
         "0c54e51d-d5e9-4bbe-8272-f84822a25882": {
           "display_id": 1674,
