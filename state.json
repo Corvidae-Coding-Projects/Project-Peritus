@@ -48,14 +48,14 @@
         "prefix_sha256": "75e62af207437405c7c0292c3ecc35c1e80a87ef1a9953202d92cb6ee96daa52"
       },
       "u7IC": {
-        "sequence": 54,
-        "tip_oid": "fe7d780696d9fa48cdc8bf094ed6891f1615633e",
-        "prefix_sha256": "731c28a71fb82ba3a0ed556b3333344a776815de1716881dce42376cf8eab4e9"
+        "sequence": 55,
+        "tip_oid": "4c163aa04163346ba8dab4a547a19ead841e4c00",
+        "prefix_sha256": "3eebe930e2ac8cb024f66ee224fec3d497a914fbe5783fd541c315041e484007"
       }
     }
   },
   "next_display_id": 84,
-  "next_comment_id": 1651,
+  "next_comment_id": 1652,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -13008,7 +13008,7 @@
       "priority": "medium",
       "created_by": "u7IC",
       "created_at": "2026-09-15T00:49:55.217770155Z",
-      "updated_at": "2026-09-15T16:23:12.202664754Z",
+      "updated_at": "2026-09-15T16:49:53.943520741Z",
       "labels": [
         "feature"
       ],
@@ -13201,6 +13201,15 @@
           "kind": "result",
           "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAK0ARX73d2POTIsFlmFyrUEASRklLM88q5gqWHuuVGgdDe51YASy/gSjAbj4vPs3E3S/WuLjBi+nZFIv0S5HtBA=="
+        },
+        "6f4f06ea-1297-4e07-8582-cce63dfaffec": {
+          "display_id": 1651,
+          "author": "u7IC",
+          "content": "Original050 completed/qualified1461.932s native,1562.878s whole CLI;30 requests92 tools18 compactions0 retries/failover. Exactly4 requested artifacts remain;6 protected inputs byte-intact. Authored/executed local producer and sorted audit/region checks exit0, model removed helper itself. Alias rollup7customers, additive payment amounts, refunds/chargeback anomaly audit/schema/money/notes pass. Substantive contract/oracle disagreement: captured-payment gross includes80 from cancelled O1003 (C002 order_count0,gross/net80,West80); helper applies paid status only to counts/deductions. Native reviewer accepts literal captured-gross interpretation; original exact_metric_rows/cancelled_order_excluded/region_summary_values fail. Gross public rule lacks separate paid filter; do not label intended totals all-correct or impose task-specific oracle rule. Every other original check passes; full native/official evidence and investigation retained without generated-output/evaluator/prompt edits or paid rerun for pass. No new causal host defect established. DraftPR82 updated; original051 now live session67928 on frozen d50/SHAf1e configured OpenCode Zen/DeepSeek. Continue051-106, earlier affected revisits including020, scopedDRY and final combined/provider validation.",
+          "created_at": "2026-09-15T16:49:53.908860560Z",
+          "kind": "result",
+          "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA/xZxn1bjNLqqGH/bFlJxNg7m2QZwOexjwDrSAua0+KcrXjxfza3aE6yhktAZ+4f8UR96TVthuX2HSRoWHotuBw=="
         },
         "6fef42e7-60c5-4292-a35f-4e66e7805e34": {
           "display_id": 1634,
