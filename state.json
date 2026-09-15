@@ -48,14 +48,14 @@
         "prefix_sha256": "75e62af207437405c7c0292c3ecc35c1e80a87ef1a9953202d92cb6ee96daa52"
       },
       "u7IC": {
-        "sequence": 29,
-        "tip_oid": "333d1c0a538515447ae44c71169ac982c5781fb0",
-        "prefix_sha256": "fecf6a859ab7aa01e6b05e98d4d0d6b29fef88fb20777b278ec7f9797c5c8736"
+        "sequence": 30,
+        "tip_oid": "383ddc272c90e742af1d3ec603120fbf1f76dac6",
+        "prefix_sha256": "d70e153167aedd9c4925e0d1331673801d51637e65a25de3a583c586494ad944"
       }
     }
   },
   "next_display_id": 84,
-  "next_comment_id": 1626,
+  "next_comment_id": 1627,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -13008,7 +13008,7 @@
       "priority": "medium",
       "created_by": "u7IC",
       "created_at": "2026-09-15T00:49:55.217770155Z",
-      "updated_at": "2026-09-15T11:41:02.977599014Z",
+      "updated_at": "2026-09-15T11:49:12.725545796Z",
       "labels": [
         "feature"
       ],
@@ -13048,6 +13048,15 @@
           "kind": "result",
           "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA1LhduGa7TdC2RMdr6cFj1JhOriNt/aMFzurs4MjXovU4vo/u3v8PvnySIQ50/a3BTw0Fe5n7tbiS6sq7Xw4eAA=="
+        },
+        "2e8b512a-dc31-4356-a3d9-1a2db31c3b47": {
+          "display_id": 1626,
+          "author": "u7IC",
+          "content": "Original task 029 complete on frozen 384a4f52f: native gates/obligations/review and all unchanged external checks passed. 26 requests, 57 tools, six compactions, no retry/failover; seven input fixtures byte-identical and exactly the requested two reports changed. Supplied policy independently reconciles 1065.00 claimed and 448.50 allowed, caps, duplicate taxi rejection and missing software approval. Native CSV gate/reviewer caught an unquoted comma and writer repaired it through the normal loop. Terminal reports, integrity evidence and investigation retained. No new general harness defect established. Original task 030 is live on the same frozen binary, session 10310. Preserve executable and credentials; PR 82 remains pushed/open/draft to develop. Next originals 031-106, affected revisits, final DRY and combined validation remain.",
+          "created_at": "2026-09-15T11:49:12.711143582Z",
+          "kind": "result",
+          "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA9+ny9X9cbxJEskr89zyuwwMO+lqcGIa1tZZI36yS0GBY6kFvz/iebTVFEUYHV5fauzrCLklK9sCdd4cxZ6/7Bw=="
         },
         "41603c3d-465c-44dd-ae88-a2259f3f8e0a": {
           "display_id": 1613,
