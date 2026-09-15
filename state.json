@@ -48,14 +48,14 @@
         "prefix_sha256": "75e62af207437405c7c0292c3ecc35c1e80a87ef1a9953202d92cb6ee96daa52"
       },
       "u7IC": {
-        "sequence": 88,
-        "tip_oid": "087a9931aff57629e30273d4bd1fdf9489a97d58",
-        "prefix_sha256": "4f5093e0570905c7ced0005a7f6a6e088ae9dd3dd2f035014a4ed54ac77a99a6"
+        "sequence": 89,
+        "tip_oid": "d4ce1b707f7ca05c6cbe19de945e04e3c052bf01",
+        "prefix_sha256": "a66736a61f3539f820ef273e1d667425629e5a010a5bdb0b48376c3c4f81af40"
       }
     }
   },
   "next_display_id": 85,
-  "next_comment_id": 1684,
+  "next_comment_id": 1685,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -14098,7 +14098,18 @@
       "parent_uuid": "a6fde681-2598-4b91-b824-d011ade3c601",
       "created_by": "u7IC",
       "created_at": "2026-09-15T22:18:45.813526163Z",
-      "updated_at": "2026-09-15T22:18:45.813526163Z"
+      "updated_at": "2026-09-15T22:31:48.923746420Z",
+      "comments": {
+        "de3c90fb-fb13-46ef-99a1-858c748df61a": {
+          "display_id": 1684,
+          "author": "u7IC",
+          "content": "Commit79872e752 validated and ready for existing draftPR82. Six responsibility splits keep400-line policy intact; six Windows assertions compare exact native paths. All43 explicit-path regressions retained/passing. Full policy passes. Combined all-feature xtask/agent/product-runner/external-benchmarks:996 parent tests pass,0 fail,4 existing isolated subprocess fixtures ignored;2 child summaries retained separately. Strict Clippy all-targets/all-features-Dwarnings, fmt and diff pass. First missing module-path annotation failure retained and corrected. Hosted rerun still required; no workflow/dependency/credential/oracle changes.",
+          "created_at": "2026-09-15T22:31:48.909419268Z",
+          "kind": "result",
+          "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABALBaUTmHoVxTCL1tzujfMhLtxORBJlzLSSZSoiHQm6GpJi7dwwYMp2HPxoaaKO4fq6MQOxnynawdj/e7zacYFDg=="
+        }
+      }
     },
     "be287235-44b0-49cd-b238-d64fe12e32f1": {
       "uuid": "be287235-44b0-49cd-b238-d64fe12e32f1",
