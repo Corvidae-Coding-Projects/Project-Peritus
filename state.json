@@ -48,14 +48,14 @@
         "prefix_sha256": "75e62af207437405c7c0292c3ecc35c1e80a87ef1a9953202d92cb6ee96daa52"
       },
       "u7IC": {
-        "sequence": 66,
-        "tip_oid": "d6b8daa1e6a68fab40115d6be4c163b207a36b9c",
-        "prefix_sha256": "f08c0f090456b3464d56828b819ac190f995d3a9418d4089a4fa959508161414"
+        "sequence": 67,
+        "tip_oid": "2458a7fb71ab8dcf8a2261147c879db7c69dcd8a",
+        "prefix_sha256": "246aa760d91fce534e87abe0638781399aa75bc583dd4c77c7463a743430f81e"
       }
     }
   },
   "next_display_id": 84,
-  "next_comment_id": 1663,
+  "next_comment_id": 1664,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -13008,7 +13008,7 @@
       "priority": "medium",
       "created_by": "u7IC",
       "created_at": "2026-09-15T00:49:55.217770155Z",
-      "updated_at": "2026-09-15T19:06:20.710234979Z",
+      "updated_at": "2026-09-15T19:13:26.889966054Z",
       "labels": [
         "feature"
       ],
@@ -13543,6 +13543,15 @@
           "kind": "result",
           "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABATHT1hS9mid9TqSu31lK6cnrdO91wA4G049c2bMw6lJ0Ht3RoamvXNLA2hfD2P9yi+84Zrhj2f7G/NGHSQEu4Dg=="
+        },
+        "f67b71c0-c0e8-4e7b-8796-c56e7c73bd1c": {
+          "display_id": 1663,
+          "author": "u7IC",
+          "content": "Affected060 revisit at f264fc5e1/8cf986a32db stopped at preparation native deadline before cancellation round. Preparation deterministic gates pass; candidate review_pending and qualification incomplete, trace interruption retained. Three inputs intact, no final exports, no parent intervention. This is not a live cleanup qualification or isolated after-fix success. Generic37 path/combined527 tests validate repair separately. Both attempts archived; evidence index and draftPR82 reconciled. No paid repeat for a better outcome; continue originals061-106, earlier affected revisits, DRY/final validation.",
+          "created_at": "2026-09-15T19:13:26.874753544Z",
+          "kind": "result",
+          "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABATfkCHIUu3nS0xGAz3/I1XNXndAY3TX2qWO0m8DMxoucQCKp11GY8jkAj9/GvRs2ajeNF8a4M3SKerp6lF+7eCg=="
         },
         "facc4f71-4d58-4ac6-87ba-252bcdd39d52": {
           "display_id": 1606,
