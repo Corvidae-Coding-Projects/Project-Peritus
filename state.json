@@ -48,14 +48,14 @@
         "prefix_sha256": "75e62af207437405c7c0292c3ecc35c1e80a87ef1a9953202d92cb6ee96daa52"
       },
       "u7IC": {
-        "sequence": 46,
-        "tip_oid": "aa14072986812979c265fc9f0d44987f06411adc",
-        "prefix_sha256": "cd971c3e98154f047193d75ef118f4fb92cb677f38674fb8d0fc12090c8dbaba"
+        "sequence": 47,
+        "tip_oid": "c9877f8e8b61036d06d295cdf3478a2653eeb973",
+        "prefix_sha256": "45779d04acb3e5eb56a1619170722dcd67015c56c0795baa16d4851c3d38a3a1"
       }
     }
   },
   "next_display_id": 84,
-  "next_comment_id": 1643,
+  "next_comment_id": 1644,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -13008,7 +13008,7 @@
       "priority": "medium",
       "created_by": "u7IC",
       "created_at": "2026-09-15T00:49:55.217770155Z",
-      "updated_at": "2026-09-15T14:41:27.534312821Z",
+      "updated_at": "2026-09-15T15:01:34.581700271Z",
       "labels": [
         "feature"
       ],
@@ -13093,6 +13093,15 @@
           "kind": "result",
           "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAtCiCpizOpjTO9KLWus+aEBF+s+TtkcNe1fuuvTiEoE92wctOrnmYgK9UYypeG1vjatC/mt4ZghPxb57m9X3BCA=="
+        },
+        "2bdd562a-2266-4e52-803e-a951a500ec31": {
+          "display_id": 1643,
+          "author": "u7IC",
+          "content": "Affected042 revisit terminal1166.391s CLI/native1020.003s deadline on frozen d50/SHAf1e. No candidate, all7 original inputs byte-intact,24 successful read/list tools and no writes/verification commands;9 native requests2 required-tool recovery retries3 compactions. Final selected view validates26972/32768,0 omissions/compactor failures. Known native deadline preserved with additional interrupted-trace detail. Revisit never reaches repaired gate; no live qualification/causal success claimed and no new host defect proved. Both original042 attempts/observations/integrity/investigations archived; original suite tracked-clean1025086 and Peritus tracked-clean d50. Evidence navigation index confirms retained official/native records for all42 originals, no performance aggregation. PR82 draft body updated honestly; original043 now live session14265 on saved OpenCode Zen/DeepSeek. Continue043-106/earlier affected revisits including020, scopedDRY/final combined/provider validation; no runner/proof detour.",
+          "created_at": "2026-09-15T15:01:34.574189456Z",
+          "kind": "result",
+          "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA98LexvAUv9e+GmB7sd6c+XivNup+bULBorjAxmQOycwCBwMOjG7ywMg5ihz2G2dSN7mtXWxl/2Z6xRIfXxbeBQ=="
         },
         "2e8b512a-dc31-4356-a3d9-1a2db31c3b47": {
           "display_id": 1626,
