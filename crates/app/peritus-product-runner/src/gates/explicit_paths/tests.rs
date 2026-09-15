@@ -74,6 +74,70 @@ fn conditional_output_declaration_does_not_make_its_list_unconditional() {
 }
 
 #[test]
+fn output_list_filenames_use_the_declared_directory() {
+    let root = tempfile::tempdir().expect("root");
+    fs::create_dir_all(root.path().join("out/nested")).expect("output directories");
+    fs::write(root.path().join("out/report.json"), "{}").expect("report");
+    fs::write(root.path().join("out/nested/notes.md"), "notes").expect("notes");
+    fs::write(root.path().join("out/exact.json"), "{}").expect("exact report");
+    fs::write(root.path().join("out/full.json"), "{}").expect("qualified report");
+    let expected = vec![
+        PathBuf::from("out/exact.json"),
+        PathBuf::from("out/full.json"),
+        PathBuf::from("out/nested/notes.md"),
+        PathBuf::from("out/report.json"),
+    ];
+    for directory in ["out/".to_owned(), format!("{}/out/", root.path().display())] {
+        let transcript = format!(
+            "Produce the following artifacts, all written to `{directory}`:\n\n\
+             1. `report.json`\n\
+             2. `nested/notes.md`\n\
+             3. `{}/out/exact.json`\n\
+             4. `out/full.json`",
+            root.path().display(),
+        );
+        let record = run(root.path(), &transcript, &expected);
+        assert_eq!(record.exit_code, Some(0), "{}", record.output);
+        assert_eq!(required_outputs(root.path(), &transcript), {
+            let mut required = expected.clone();
+            required.insert(0, PathBuf::from("out"));
+            required
+        });
+    }
+}
+
+#[test]
+fn source_directory_does_not_become_the_output_list_directory() {
+    let root = tempfile::tempdir().expect("root");
+    fs::write(root.path().join("report.json"), "{}").expect("report");
+    fs::write(root.path().join("notes.md"), "notes").expect("notes");
+    let transcript = "Produce report.json from `in/`:\n- `notes.md`";
+    let record =
+        run(root.path(), transcript, &[PathBuf::from("report.json"), PathBuf::from("notes.md")]);
+    assert_eq!(record.exit_code, Some(0), "{}", record.output);
+    assert_eq!(
+        required_outputs(root.path(), transcript),
+        vec![PathBuf::from("notes.md"), PathBuf::from("report.json")]
+    );
+}
+
+#[test]
+fn nested_schema_fields_are_not_output_list_files() {
+    let root = tempfile::tempdir().expect("root");
+    fs::create_dir(root.path().join("out")).expect("output directory");
+    fs::write(root.path().join("out/report.json"), "{}").expect("report");
+    fs::write(root.path().join("out/notes.md"), "notes").expect("notes");
+    let transcript = "Produce the following files, all written to `out/`:\n\
+        1. `report.json`\n   - `status`: a string field.\n   - `items`: an array field.\n\
+        2. `notes.md`";
+    let expected =
+        vec![PathBuf::from("out"), PathBuf::from("out/notes.md"), PathBuf::from("out/report.json")];
+    let record = run(root.path(), transcript, &expected[1..]);
+    assert_eq!(record.exit_code, Some(0), "{}", record.output);
+    assert_eq!(required_outputs(root.path(), transcript), expected);
+}
+
+#[test]
 fn read_only_and_negated_paths_are_not_required_outputs() {
     let root = tempfile::tempdir().expect("root");
     let transcript = format!(

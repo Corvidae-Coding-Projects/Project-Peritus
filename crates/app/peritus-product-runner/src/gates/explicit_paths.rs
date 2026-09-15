@@ -1,6 +1,7 @@
 //! Deterministic reconciliation of literal task paths with the candidate workspace.
 
 use std::{
+    cmp::Ordering,
     collections::{BTreeMap, BTreeSet},
     fs,
     io::ErrorKind,
@@ -130,14 +131,33 @@ fn extract(root: &Path, transcript: &str) -> PathRequirements {
     let mut paths = BTreeMap::<PathBuf, bool>::new();
     let mut alternatives = Vec::new();
     let mut output_list = false;
+    let mut output_directory = None;
+    let mut output_list_indentation = None;
     for line in transcript.lines() {
         let words = line.split_whitespace().collect::<Vec<_>>();
         let list_item = list_item_path_index(&words);
-        let listed_output = output_list.then_some(list_item).flatten();
+        let listed_output = if output_list && list_item.is_some() {
+            let indentation = line.len() - line.trim_start().len();
+            let declaration_level = *output_list_indentation.get_or_insert(indentation);
+            match indentation.cmp(&declaration_level) {
+                Ordering::Equal => list_item,
+                Ordering::Less => {
+                    output_list = false;
+                    output_directory = None;
+                    output_list_indentation = None;
+                    None
+                }
+                Ordering::Greater => None,
+            }
+        } else {
+            None
+        };
         if !words.is_empty() && list_item.is_none() {
             output_list = line.trim_end().ends_with(':')
                 && output_context(&words)
                 && !conditional_clause(&words);
+            output_directory = output_list.then(|| output_list_directory(root, &words)).flatten();
+            output_list_indentation = None;
         }
         let mut line_mentions = Vec::new();
         for (index, word) in words.iter().enumerate() {
@@ -152,11 +172,18 @@ fn extract(root: &Path, transcript: &str) -> PathRequirements {
                 && (listed_path || path_noun_context(&words[..index]))
                 && explicitly_delimited(word);
             let relative_path_context = path_context(&words[..index]);
-            let Some(relative) =
+            let Some(mut relative) =
                 parse_path(root, word, required_output, quoted_bare_name, relative_path_context)
             else {
                 continue;
             };
+            if listed_path
+                && !Path::new(trim_delimiters(word)).is_absolute()
+                && let Some(directory) = &output_directory
+                && !relative.starts_with(directory)
+            {
+                relative = directory.join(relative);
+            }
             line_mentions.push((index, relative, required_output));
         }
         let line_alternatives = alternatives::groups(&words, &line_mentions);
@@ -188,6 +215,14 @@ fn list_item_path_index(words: &[&str]) -> Option<usize> {
         .strip_suffix('.')
         .is_some_and(|number| !number.is_empty() && number.chars().all(|ch| ch.is_ascii_digit()));
     (words.len() > 1 && (matches!(marker, "-" | "*" | "+") || numbered)).then_some(1)
+}
+
+fn output_list_directory(root: &Path, words: &[&str]) -> Option<PathBuf> {
+    words.iter().enumerate().rev().find_map(|(index, word)| {
+        (trim_delimiters(word).ends_with('/') && path_context(&words[..index]))
+            .then(|| parse_path(root, word, true, false, true))
+            .flatten()
+    })
 }
 
 pub(super) fn required_outputs(root: &Path, transcript: &str) -> Vec<PathBuf> {
@@ -320,6 +355,9 @@ fn output_context(words: &[&str]) -> bool {
         return false;
     }
     let trailing = &context[trigger + 1..];
+    if trailing.last().is_some_and(|word| normalized(word) == "from") {
+        return false;
+    }
     !ambiguous_addition_verb(context[trigger])
         || trailing.len() <= 3
         || trailing.iter().any(|word| path_noun(word))
