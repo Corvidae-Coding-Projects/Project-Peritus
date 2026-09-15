@@ -20,8 +20,8 @@ const UPDATE: &str = r#"{
         "contradicts":{"type":"array","maxItems":32,"items":{"type":"string","maxLength":100}},
         "depends_on":{"type":"array","maxItems":32,"items":{"type":"string","maxLength":128}},
         "status":{"type":"string","enum":["open","contradicted","resolved"]},
-        "validity":{"type":"string","enum":["candidate","files","conversation","task"]},
-        "files":{"type":"array","maxItems":32,"items":{"type":"string","maxLength":4096}},
+        "validity":{"type":"string","enum":["candidate","files","conversation","task"],"description":"Use files to bind the listed file paths. Candidate binds the current candidate; conversation and task bind their scopes. Candidate, conversation and task require empty files."},
+        "files":{"type":"array","maxItems":32,"items":{"type":"string","maxLength":4096},"description":"Workspace-relative file paths. Must be nonempty for validity=files and empty for candidate, conversation or task validity."},
         "supersedes":{"type":["string","null"],"maxLength":128}
       }
     }}

@@ -95,6 +95,40 @@ fn workspace_tools_inspect_edit_search_and_execute_without_a_shell() {
 }
 
 #[test]
+fn command_cwd_rejections_explain_the_workspace_relative_repair() {
+    let workspace = tempfile::tempdir().expect("workspace");
+    fs::write(workspace.path().join("input.txt"), "grounding").expect("input");
+    let mut tools = writable_tools(workspace.path());
+    let listed = execute(&mut tools, "workspace_list", r#"{"path":""}"#);
+    assert!(!listed.is_error, "{}", wire(&listed));
+    assert!(!execute(&mut tools, "workspace_read", r#"{"path":"input.txt"}"#).is_error);
+    for name in ["run_command", "command_start"] {
+        for cwd in [workspace.path().to_string_lossy().into_owned(), "../outside".to_owned()] {
+            let arguments = serde_json::json!({
+                "program": "rustc", "args": ["--version"],
+                "purpose": "verification", "cwd": cwd,
+            });
+            let rejected = execute(&mut tools, name, &arguments.to_string());
+            assert!(rejected.is_error);
+            let value: Value = serde_json::from_str(&wire(&rejected)).expect("rejection JSON");
+            let detail = value["error"].as_str().expect("error detail");
+            assert!(detail.contains("workspace-relative directory"), "{detail}");
+            assert!(detail.contains("omit cwd"), "{detail}");
+        }
+    }
+    assert!(tools.verification_evidence().is_empty());
+    let repaired = execute(
+        &mut tools,
+        "run_command",
+        r#"{"program":"rustc","args":["--version"],"purpose":"verification","cwd":"."}"#,
+    );
+    assert!(!repaired.is_error, "{}", wire(&repaired));
+    let value: Value = serde_json::from_str(&wire(&repaired)).expect("command JSON");
+    assert_eq!(value["success"], true);
+    assert_eq!(value["exit_code"], 0);
+}
+
+#[test]
 fn task_contract_keeps_opaque_implementation_out_of_tool_evidence() {
     let workspace = tempfile::tempdir().expect("workspace");
     fs::write(workspace.path().join("forward.py"), "A1 = 'hidden'\n").expect("opaque input");
