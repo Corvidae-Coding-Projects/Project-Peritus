@@ -56,3 +56,5 @@ mod workspace_media;
 mod api;
 mod api_parity;
 pub use api::*;
+#[cfg(not(verus_only))]
+pub use trace::DeveloperTraceFrameKind;
