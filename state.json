@@ -48,14 +48,14 @@
         "prefix_sha256": "75e62af207437405c7c0292c3ecc35c1e80a87ef1a9953202d92cb6ee96daa52"
       },
       "u7IC": {
-        "sequence": 95,
-        "tip_oid": "abade2fc4406d3fc0a7973295675097076d3377c",
-        "prefix_sha256": "793baa368a29317850d006926ed08ecc200cef1b296f4b3076d9c14195240c1b"
+        "sequence": 96,
+        "tip_oid": "de5c28022322757473df4d73eed427e95b1883ea",
+        "prefix_sha256": "464df530aadf58fe21930b5a45956bb6e30928a090d4fb18e997af5ed647e385"
       }
     }
   },
   "next_display_id": 85,
-  "next_comment_id": 1691,
+  "next_comment_id": 1692,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -13009,7 +13009,7 @@
       "priority": "medium",
       "created_by": "u7IC",
       "created_at": "2026-09-15T00:49:55.217770155Z",
-      "updated_at": "2026-09-15T22:45:40.470156797Z",
+      "updated_at": "2026-09-15T22:53:34.339847501Z",
       "labels": [
         "feature"
       ],
@@ -13346,6 +13346,15 @@
           "kind": "result",
           "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA6957liM9wo1j4PfG8IdJ1MRMF5sLtMVvse3jItSpytgNa6t4kqQxFUbOM5b49t+M8GpjIEPHTEeQDngSujaADw=="
+        },
+        "75bf7784-3c82-4ad0-8a8f-2c1f54bea2b1": {
+          "display_id": 1691,
+          "author": "u7IC",
+          "content": "Original083 qualified at d12f76d73/3de54b2: all5 original checks pass; only adapter source/report changed,11 protected original files byte-intact; normal Python caches retained. Actual pytest passes5 fixture tests, native DeepSeek review qualifies. Report explicit-currency wording overstates falsy-value fallback and is retained as a claim limit, without a new causal host fault. Evidence index through83; original084 is running individually on the same frozen executable. Runner checks on PR82 are being watched.",
+          "created_at": "2026-09-15T22:53:34.332261319Z",
+          "kind": "result",
+          "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAn6iddx8/ZiY3HvGCsfOcbVvA1kgOawpcM4KgGe5q/1TZHavvfvYCJ1vV7bTvD33x5hQx7PWoJ7xnCoaJ4yNJDQ=="
         },
         "7ccf83e5-2157-47c0-9bbe-b202503136bc": {
           "display_id": 1629,
