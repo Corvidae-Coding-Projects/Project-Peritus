@@ -48,14 +48,14 @@
         "prefix_sha256": "75e62af207437405c7c0292c3ecc35c1e80a87ef1a9953202d92cb6ee96daa52"
       },
       "u7IC": {
-        "sequence": 18,
-        "tip_oid": "b407548025d835d2c7bd767efe654612e2d5a660",
-        "prefix_sha256": "e9c24c509d8c8b410c590e3064b01a55e4d3971ede0c14f783405564951b1142"
+        "sequence": 19,
+        "tip_oid": "fd403492a31ca059bfa672b8789409cbd533c541",
+        "prefix_sha256": "682e9c86cb4f43e314c5c89d19895a598c651d1f0bafb729637d789183ab2fd0"
       }
     }
   },
   "next_display_id": 84,
-  "next_comment_id": 1615,
+  "next_comment_id": 1616,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -13008,7 +13008,7 @@
       "priority": "medium",
       "created_by": "u7IC",
       "created_at": "2026-09-15T00:49:55.217770155Z",
-      "updated_at": "2026-09-15T07:55:36.999278357Z",
+      "updated_at": "2026-09-15T08:24:07.330430013Z",
       "labels": [
         "feature"
       ],
@@ -13129,6 +13129,15 @@
           "kind": "result",
           "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAPKE9p3qj0gSz+hVxB+C7TwWD4saZHdHgFdzJTMqh/Dos/W79HFJ5wF1GOcKq6x7uIPC2hBnRgmj3lyI+mdb6BA=="
+        },
+        "ef2e3f1a-f8e7-47fa-a00d-526285735f07": {
+          "display_id": 1615,
+          "author": "u7IC",
+          "content": "Pushed 637405935 to feature/harnessbench-deepseek-hardening on existing draft PR #82 targeting develop. Three before/after regressions independently reproduce the inspection warning/stop ordering defect. A pending warning now receives a provider turn before stopping; unchanged inspections after warning still stop, complete batches and grounding survive, and acceptance gates are unchanged. Combined agent/product/external-benchmark validation: 502 passed, 3 existing ignored; strict all-target/all-feature Clippy, formatting and diff checks pass. Task 018 raw native recovery-required result and byte-integrity investigation retained; trace does not establish this ordering defect caused that live stop. Full source-stamped rebuild underway before task 019. Remaining tasks 019-106, affected reruns, provider product-flow compatibility and final affected-code DRY review. No CI runner or proof authorization work.",
+          "created_at": "2026-09-15T08:24:07.314418531Z",
+          "kind": "result",
+          "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAqoG7+UM6G3AV4Kujqez1oQ0kQzHiQc0qarRGqhoMVT5p4IrF2ZeDALOjT16JX17qVOHlb75GXI5Q072GDccfDg=="
         },
         "f2049fb7-1163-4016-8568-a54fe1c684d9": {
           "display_id": 1608,
