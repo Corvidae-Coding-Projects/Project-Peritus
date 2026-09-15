@@ -48,14 +48,14 @@
         "prefix_sha256": "75e62af207437405c7c0292c3ecc35c1e80a87ef1a9953202d92cb6ee96daa52"
       },
       "u7IC": {
-        "sequence": 17,
-        "tip_oid": "bf097661443988abcf2557b2b6589390d92cc08e",
-        "prefix_sha256": "9a1c2915882367a7966c905285665ac5d303a22433426dacaa50f4e25f835066"
+        "sequence": 18,
+        "tip_oid": "b407548025d835d2c7bd767efe654612e2d5a660",
+        "prefix_sha256": "e9c24c509d8c8b410c590e3064b01a55e4d3971ede0c14f783405564951b1142"
       }
     }
   },
   "next_display_id": 84,
-  "next_comment_id": 1614,
+  "next_comment_id": 1615,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -13008,7 +13008,7 @@
       "priority": "medium",
       "created_by": "u7IC",
       "created_at": "2026-09-15T00:49:55.217770155Z",
-      "updated_at": "2026-09-15T07:31:30.869385335Z",
+      "updated_at": "2026-09-15T07:55:36.999278357Z",
       "labels": [
         "feature"
       ],
@@ -13066,6 +13066,15 @@
           "kind": "result",
           "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA31clR3MCiEBnqWlJM4EWJyx13EDy3/ImiePjnA3/RfJxHv+rpXRL890h5HkSEfyewmulqY2QEa1zMOcXeYqHBw=="
+        },
+        "9fc7d64f-ba3c-40f9-a2fe-bd4dd98a1364": {
+          "display_id": 1614,
+          "author": "u7IC",
+          "content": "Committed d7f4bbfcc: preserve declared output-directory scopes in artifact lists, retain absolute/qualified paths, restrict inherited declarations to sibling file items rather than nested JSON fields, and exclude source references after from. Generic directory/source regressions and nested-field regression reproduce before repairs; 24 focused tests pass. Combined validation: 499 passed, 3 existing ignored; strict all-target/all-feature Clippy, formatting and diff checks pass. Task 017 passes native qualification and all external checks; four input files are byte-identical. Same draft PR 82; full source-stamped rebuild precedes task 018. No benchmark/oracle/credential changes.",
+          "created_at": "2026-09-15T07:55:36.992663244Z",
+          "kind": "result",
+          "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAeKXOvjYkAcwxAR2KAksRzR7s4mlaRCvbKjUZjc3OL0yuSXZ902QXCNgIrmipbjyA4D4/RBFoGGSMjkXo6XlyAg=="
         },
         "a3a99356-3df3-4732-af44-170a6173d941": {
           "display_id": 1605,
