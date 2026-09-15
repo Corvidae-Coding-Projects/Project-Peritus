@@ -22,7 +22,7 @@ use crate::{
     evidence::{
         BenchmarkSuite, ProductObservation, QualificationReport, RelocatablePaths, ResourceReport,
     },
-    providers, trace, workspace,
+    trace, workspace,
 };
 
 pub async fn run_harnessbench(
@@ -36,6 +36,7 @@ pub async fn execute(
 ) -> Result<crate::evidence::InvocationReport, BenchmarkError> {
     let AdmittedInvocation {
         mut guard,
+        provider_plan,
         prompt,
         conversation,
         evidence_dir,
@@ -57,7 +58,7 @@ pub async fn execute(
     guard.seed_mut().baseline = Some(baseline.clone());
 
     let cancellation = CancellationToken::new();
-    let authenticated = match providers::authenticated(&cancellation).await {
+    let authenticated = match provider_plan.authenticate(&cancellation).await {
         Ok(value) => value,
         Err(error) => return guard.fail(SettlementCause::Provider, &error),
     };

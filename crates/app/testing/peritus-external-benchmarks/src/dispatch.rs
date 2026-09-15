@@ -4,8 +4,8 @@ use std::ffi::OsString;
 
 use crate::{BenchmarkError, BenchmarkReport, agent, args, rubric, terminal_agent};
 
-/// Completes one OpenAI-compatible rubric request through the authenticated official `codex`
-/// executable and returns a Chat Completions-shaped response.
+/// Completes one OpenAI-compatible rubric request through the selected authenticated provider and
+/// returns a Chat Completions-shaped response.
 ///
 /// # Errors
 ///

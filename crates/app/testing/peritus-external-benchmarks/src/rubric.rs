@@ -1,4 +1,4 @@
-//! Local text and image rubric completion through the credential-owning Codex router.
+//! Local text and image rubric completion through the selected credential-owning provider.
 
 use base64::Engine as _;
 use peritus_model_protocol::{
@@ -7,7 +7,7 @@ use peritus_model_protocol::{
     ReasoningPolicy, ReducedItem, RequestId, RequestOptions, RequestedCapabilities,
     ResponseReducer, Role, StructuredOutput, TerminalOutcome, ToolChoice, negotiate,
 };
-use peritus_provider_core::{CancellationToken, ModelProvider};
+use peritus_provider_core::CancellationToken;
 use serde::Deserialize;
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
@@ -57,8 +57,10 @@ pub async fn complete(body: &[u8]) -> Result<Value, BenchmarkError> {
         Vec::new()
     };
     let cancellation = CancellationToken::new();
-    let provider = providers::codex_authenticated(&cancellation).await?;
+    let provider =
+        providers::ProviderPlan::load(&request.model)?.authenticate_writer(&cancellation).await?;
     let profile = provider.profile();
+    let response_model = profile.model().as_str().to_owned();
     let requested = RequestedCapabilities::new(
         &required_capabilities,
         &[Capability::Streaming],
@@ -98,10 +100,10 @@ pub async fn complete(body: &[u8]) -> Result<Value, BenchmarkError> {
     {
         reducer.push(event).map_err(|error| BenchmarkError::Provider(error.to_string()))?;
     }
-    response(&reducer)
+    response(&reducer, &response_model)
 }
 
-fn response(reducer: &ResponseReducer) -> Result<Value, BenchmarkError> {
+fn response(reducer: &ResponseReducer, model: &str) -> Result<Value, BenchmarkError> {
     if !matches!(reducer.terminal(), Some(TerminalOutcome::Succeeded { .. })) {
         return Err(BenchmarkError::Provider(format!(
             "rubric provider terminal was {:?}",
@@ -131,7 +133,7 @@ fn response(reducer: &ResponseReducer) -> Result<Value, BenchmarkError> {
         "id": "peritus-local-rubric",
         "object": "chat.completion",
         "created": 0,
-        "model": providers::WRITER_MODEL,
+        "model": model,
         "choices": [{
             "index": 0,
             "message": {"role": "assistant", "content": content},
