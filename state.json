@@ -48,14 +48,14 @@
         "prefix_sha256": "75e62af207437405c7c0292c3ecc35c1e80a87ef1a9953202d92cb6ee96daa52"
       },
       "u7IC": {
-        "sequence": 16,
-        "tip_oid": "cd944f405ec45118979572fdd19c97180ff68863",
-        "prefix_sha256": "21de517a8ff2ee7747c1cb1921de7d001702bcd50bb341ee2ba089934e82785c"
+        "sequence": 17,
+        "tip_oid": "bf097661443988abcf2557b2b6589390d92cc08e",
+        "prefix_sha256": "9a1c2915882367a7966c905285665ac5d303a22433426dacaa50f4e25f835066"
       }
     }
   },
   "next_display_id": 84,
-  "next_comment_id": 1613,
+  "next_comment_id": 1614,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -13008,7 +13008,7 @@
       "priority": "medium",
       "created_by": "u7IC",
       "created_at": "2026-09-15T00:49:55.217770155Z",
-      "updated_at": "2026-09-15T07:16:00.082463129Z",
+      "updated_at": "2026-09-15T07:31:30.869385335Z",
       "labels": [
         "feature"
       ],
@@ -13021,6 +13021,15 @@
           "kind": "result",
           "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA7jywXIFf43ZXF+O0A5O0+lwSUZ83pGUHhA6jNO9SZwaKameJICXiM5oufwqZZ1U7W8Pef/QFNWuUe1rDXheUAw=="
+        },
+        "41603c3d-465c-44dd-ae88-a2259f3f8e0a": {
+          "display_id": 1613,
+          "author": "u7IC",
+          "content": "Committed 711f82210: fix output declarations lost across artifact-list lines. Generic missing-output and read-only-section controls reproduce before the repair; all 21 focused tests pass afterward. Combined agent/product/external benchmark suite: 496 passed, 3 existing ignored; strict all-target/all-feature Clippy, format and diff checks pass. Task 015 passes native qualification and preserves all 8 tickets byte-for-byte. Oracle disagreement on a policy-impersonating ticket is preserved without tailoring. Same draft PR 82; rebuild/source identity check precede task 016.",
+          "created_at": "2026-09-15T07:31:30.852253535Z",
+          "kind": "result",
+          "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA8ZQTu2whzRvHc/p/hTKAz1cWHPX1m/rgO1OavPtXHD1N9aM9U6WeFZwFWkvYbPVpBi3FepkcaUlxhUskZxd0BQ=="
         },
         "5cb977dd-1fc1-446c-be2d-65ac460b0eae": {
           "display_id": 1612,
