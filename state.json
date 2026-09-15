@@ -48,14 +48,14 @@
         "prefix_sha256": "75e62af207437405c7c0292c3ecc35c1e80a87ef1a9953202d92cb6ee96daa52"
       },
       "u7IC": {
-        "sequence": 50,
-        "tip_oid": "c23bcf3a70804aad7738106bf28ee13fe7d7e2f4",
-        "prefix_sha256": "a435c8b95a7ee461e1d5f8a262852e05d6c11aa8de875a1bb1cf88e2e99ff662"
+        "sequence": 51,
+        "tip_oid": "2afb5f7d939d77c6c98a2842a6fa320a35f49db3",
+        "prefix_sha256": "d08432379e91435e3bc778c39a34612d63a09c0d22b2c5577f4e1e1df34408d6"
       }
     }
   },
   "next_display_id": 84,
-  "next_comment_id": 1647,
+  "next_comment_id": 1648,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -13008,7 +13008,7 @@
       "priority": "medium",
       "created_by": "u7IC",
       "created_at": "2026-09-15T00:49:55.217770155Z",
-      "updated_at": "2026-09-15T15:32:40.219335836Z",
+      "updated_at": "2026-09-15T15:39:58.993540053Z",
       "labels": [
         "feature"
       ],
@@ -13426,6 +13426,15 @@
           "kind": "result",
           "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAr8mKEvRCm6gZsxw5C4iNzmxEfrVh8UHGmj9vPiPXOOunNNBbRW4Yz6Dnun8NG8kYRklJfOs19i7IjDaCjm1GAA=="
+        },
+        "fdada134-123b-4b4e-9a99-0c6defe18871": {
+          "display_id": 1647,
+          "author": "u7IC",
+          "content": "Original046 completed and qualified:363.070s native,402.183s whole CLI,20 requests23 tools4 compactions0 retries/failover. Only permitted slow.py authored plus interpreter cache; protected benchmark_expected.json byte-intact. Indexed lookup preserves matching order, duplicate suppression, arbitrary SKUs and missing/empty/None-lines handling after authentic native correction; expanded checks and every original evaluator check pass at unchanged threshold. Authentic review retains Advisory/open shared mutable result-list behavior. Optional invalid memory writes remain rejected; no new causal host fault established, no generated output/evaluator repair or paid repeat for a cleaner result. Archived original/native/observation/integrity and investigation; draftPR82 body updated. Original047 now live session59242 on frozen d50/SHAf1e and configured OpenCode Zen/DeepSeek. Continue047-106, earlier affected revisits including020, scopedDRY and final combined/provider qualification.",
+          "created_at": "2026-09-15T15:39:58.987113820Z",
+          "kind": "result",
+          "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAQhlopdv+DHN7E1EnF/pACPqI95Yg9OSKOtm3qDhkHcYLh033ixPx7xfU9MU2E/gmOYKKo4/MdTEV1ieL5pfqAg=="
         },
         "fdeb9bea-608f-45d5-a916-9a18ae999407": {
           "display_id": 1622,
