@@ -48,14 +48,14 @@
         "prefix_sha256": "75e62af207437405c7c0292c3ecc35c1e80a87ef1a9953202d92cb6ee96daa52"
       },
       "u7IC": {
-        "sequence": 4,
-        "tip_oid": "6dfa1eee02447bdfd3ef340c04d1677a17f94bc2",
-        "prefix_sha256": "7b3156d80b5bb40558ac24e31a5324497a1737cc58f060f0f691d3de0c674e82"
+        "sequence": 5,
+        "tip_oid": "5afa9ab9539418d6744f1ff3e09cdb005954e35d",
+        "prefix_sha256": "fbc3c912627da90412419cd14b5e5d7f05f1a2c46b23aa1219815bb9f1658ecd"
       }
     }
   },
   "next_display_id": 84,
-  "next_comment_id": 1602,
+  "next_comment_id": 1603,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -13004,11 +13004,20 @@
       "priority": "medium",
       "created_by": "u7IC",
       "created_at": "2026-09-15T00:49:55.217770155Z",
-      "updated_at": "2026-09-15T01:26:34.513323913Z",
+      "updated_at": "2026-09-15T02:23:03.110075654Z",
       "labels": [
         "feature"
       ],
       "comments": {
+        "b953bb2a-7cfe-4469-9d27-2facd5de596f": {
+          "display_id": 1602,
+          "author": "u7IC",
+          "content": "Commit 950cfba48 fixes hosted required-tool omissions without weakening grounding: the adapter emits a retry-safe provider-compliance failure, and the developer loop restates the exact tool-only prerequisite on bounded retries. The duplicated temporary stream diagnostic was removed. Verified 31 compatible-provider tests, 81 peritus-agent target tests, strict clippy, formatting, and exact-revision live OpenCode Zen runs: HarnessBench 001-file completed with native success/oracle 1.0/process 1.0; 002-exec completed with native success/oracle 1.0/process 0.9.",
+          "created_at": "2026-09-15T02:23:03.095257351Z",
+          "kind": "result",
+          "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAyC8LrdVSggPwG7fubYnBcXtpeOXmrST6uqk4lYMjI/f8D5TD1njQYYzbXfPP69Kweoh7+3hujDjelTPPJhntCw=="
+        },
         "cd820eab-df55-4def-89b5-0cbae947bac5": {
           "display_id": 1600,
           "author": "u7IC",
