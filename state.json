@@ -48,14 +48,14 @@
         "prefix_sha256": "75e62af207437405c7c0292c3ecc35c1e80a87ef1a9953202d92cb6ee96daa52"
       },
       "u7IC": {
-        "sequence": 92,
-        "tip_oid": "1dcaf0c21cd74f0c033775243869599a2d4aa567",
-        "prefix_sha256": "f3a182f88fe0ee48d906665e17700b83749007fa565528fde2a4f0637edecd3e"
+        "sequence": 93,
+        "tip_oid": "e5802356b603c4d3c582f992063bb5621399acec",
+        "prefix_sha256": "8b60d9e1c3d482d75afa18867c304a3296b392e856756c1264651fa6e7743f40"
       }
     }
   },
   "next_display_id": 85,
-  "next_comment_id": 1688,
+  "next_comment_id": 1689,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -13009,7 +13009,7 @@
       "priority": "medium",
       "created_by": "u7IC",
       "created_at": "2026-09-15T00:49:55.217770155Z",
-      "updated_at": "2026-09-15T22:37:31.197705636Z",
+      "updated_at": "2026-09-15T22:45:40.470156797Z",
       "labels": [
         "feature"
       ],
@@ -13589,6 +13589,15 @@
           "kind": "result",
           "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAyKzQn1ot/TFgU2zKrPxezlSAD2g/7sEhBiGaSKSPOKb5Tf62/rCQR1B+mSi84cKWnYuQomzLpuuBUnetiKWWDg=="
+        },
+        "bc75a562-419a-4752-ba22-6c485ce44d2e": {
+          "display_id": 1688,
+          "author": "u7IC",
+          "content": "Original082 Compose repair qualified at79872e752/fec7a7e: all7 original checks pass; only allowed Compose/report changes, policy/validator/README/env defaults byte-intact. Actual offline validator exit0 retained; native writer/reviewer DeepSeek. Evidence index now through82; no new causal host fault or paid repeat. Runner follow-up validation is underway in an isolated worktree.",
+          "created_at": "2026-09-15T22:45:40.463715977Z",
+          "kind": "result",
+          "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA2teh07MlyAGn9IjbH6gshxBfROyXbmr8DQkfQsj9SUGEol+zVqEzhqw2IiUZTelXhZY/5zd4sjKurVHhKetrDw=="
         },
         "c09fa920-62b0-437a-a98d-b69fbb292d87": {
           "display_id": 1687,
