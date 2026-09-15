@@ -30,7 +30,9 @@ fn exact_output_passes_without_treating_command_products_as_required() {
 
     assert_eq!(record.exit_code, Some(0));
     assert!(
-        record.output.contains(&format!("{}: present", Path::new("polyglot/main.py.c").display()))
+        record
+            .output
+            .contains(&format!("{}: present", Path::new("polyglot").join("main.py.c").display()))
     );
     assert!(!record.output.contains("cmain: present"));
 }

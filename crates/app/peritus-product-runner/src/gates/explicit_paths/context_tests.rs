@@ -30,7 +30,11 @@ fn conditional_troubleshooting_commands_do_not_create_output_requirements() {
     let record = run(root.path(), transcript, &[PathBuf::from("out/review.txt")]);
 
     assert_eq!(record.exit_code, Some(0), "{}", record.output);
-    assert!(record.output.contains(&format!("{}: present", Path::new("out/review.txt").display())));
+    assert!(
+        record
+            .output
+            .contains(&format!("{}: present", Path::new("out").join("review.txt").display()))
+    );
     assert!(!record.output.contains("client.compatibility:"));
 }
 
@@ -57,7 +61,7 @@ fn output_verbs_do_not_leak_into_later_verification_sentences() {
     assert_eq!(required.exit_code, Some(1));
     assert!(required.output.contains(&format!(
         "required explicit output path is missing: {}",
-        Path::new("tests/checks").display()
+        Path::new("tests").join("checks").display()
     )));
 }
 
@@ -72,7 +76,11 @@ fn slash_separated_prose_is_not_mistaken_for_an_output_path() {
     let record = run(root.path(), transcript, &[PathBuf::from("out/titles.txt")]);
 
     assert_eq!(record.exit_code, Some(0), "{}", record.output);
-    assert!(record.output.contains(&format!("{}: present", Path::new("out/titles.txt").display())));
+    assert!(
+        record
+            .output
+            .contains(&format!("{}: present", Path::new("out").join("titles.txt").display()))
+    );
     assert!(!record.output.contains("leading/trailing"));
 }
 
@@ -113,7 +121,9 @@ fn unquoted_extensionless_relative_path_remains_required_in_path_context() {
 
     assert_eq!(record.exit_code, Some(0), "{}", record.output);
     assert!(
-        record.output.contains(&format!("{}: present", Path::new("artifacts/release").display()))
+        record
+            .output
+            .contains(&format!("{}: present", Path::new("artifacts").join("release").display()))
     );
 }
 

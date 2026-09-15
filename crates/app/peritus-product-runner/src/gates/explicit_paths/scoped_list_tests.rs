@@ -38,7 +38,7 @@ fn scoped_output_list_does_not_accept_only_workspace_root_copies() {
     assert!(
         record
             .output
-            .contains(&format!("{}: MISSING", Path::new("exports/summary.json").display()))
+            .contains(&format!("{}: MISSING", Path::new("exports").join("summary.json").display()))
     );
 }
 
