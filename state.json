@@ -48,14 +48,14 @@
         "prefix_sha256": "75e62af207437405c7c0292c3ecc35c1e80a87ef1a9953202d92cb6ee96daa52"
       },
       "u7IC": {
-        "sequence": 48,
-        "tip_oid": "fdda5b8fa584fc9b234acda56c9832f2a9efd49d",
-        "prefix_sha256": "09164be5299f2bc31b3dc41b2671befd3ff273914618d185fb59c2bc221bac45"
+        "sequence": 49,
+        "tip_oid": "99ddc51fdc626e276d06d8b1a520c8b0949ecc99",
+        "prefix_sha256": "d672809f25853fdc689baa1ac8b42ac331470384220d386e8300c1dd76760c2a"
       }
     }
   },
   "next_display_id": 84,
-  "next_comment_id": 1645,
+  "next_comment_id": 1646,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -13008,7 +13008,7 @@
       "priority": "medium",
       "created_by": "u7IC",
       "created_at": "2026-09-15T00:49:55.217770155Z",
-      "updated_at": "2026-09-15T15:21:43.070777918Z",
+      "updated_at": "2026-09-15T15:27:15.901511972Z",
       "labels": [
         "feature"
       ],
@@ -13291,6 +13291,15 @@
           "kind": "result",
           "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAuRr3zg1KRE2qE6V+Kcd6yz30DhOfGwSCzySTM8GDaXTgm4DuJ50DHUZvnybJMKeGYpdXbI9EOzwgPZlMhhYICQ=="
+        },
+        "aa92ea11-ed12-46fc-b6be-059dd1c2c96f": {
+          "display_id": 1645,
+          "author": "u7IC",
+          "content": "Original044 qualified/completed243.196s native,279.427s whole CLI. Only workflow/design-notes authored changes plus2 interpreter caches;4 protected code/test/requirements/CI_NOTES files byte-intact. Actual YAML parse,2 pytest tests and normalize_percent smoke0.125 pass. Native YAML/offline dependency/compile/test/exact-output checks and review pass; every original evaluator check including path-filter simulation passes. Required3.10/3.11 matrix configured; actual local interpreter3.14.7, no false claim both local versions executed. No repository CI runner changed/launched and no new host root defect established. Original/native/observation/integrity/investigation artifacts retained, draftPR82 body updated. Original045 now live session78961 on frozen d50/SHAf1e and saved OpenCode Zen/DeepSeek. Continue045-106, affected earlier revisits including020, scopedDRY and final combined/provider validation.",
+          "created_at": "2026-09-15T15:27:15.895396439Z",
+          "kind": "result",
+          "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAErrJqTz2Od+pp2TovR28OPqF+xurni1NOQSae/rEe4Kw/giD0jhwbryVnn19ahSp7NBYwZjvw9OqjoUb2RgMBg=="
         },
         "ad82356c-34a3-4ee9-b1c6-2fae9384c179": {
           "display_id": 1618,
