@@ -48,14 +48,14 @@
         "prefix_sha256": "75e62af207437405c7c0292c3ecc35c1e80a87ef1a9953202d92cb6ee96daa52"
       },
       "u7IC": {
-        "sequence": 79,
-        "tip_oid": "16792467d4dca4969c45a64bf4b2f69886608cd4",
-        "prefix_sha256": "09f64a3e902d2414ea8ed82472297f3814957e58f713de6eddc1ae4d5b9dc064"
+        "sequence": 80,
+        "tip_oid": "8028e48345b26deea3cf5191478daa7778187977",
+        "prefix_sha256": "c5fc8fedfacb1420b36c370bbb103a9074b4004b1b1cdde18329f14ff36aceb5"
       }
     }
   },
   "next_display_id": 84,
-  "next_comment_id": 1676,
+  "next_comment_id": 1677,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -13008,7 +13008,7 @@
       "priority": "medium",
       "created_by": "u7IC",
       "created_at": "2026-09-15T00:49:55.217770155Z",
-      "updated_at": "2026-09-15T20:32:16.894988772Z",
+      "updated_at": "2026-09-15T20:46:43.621744227Z",
       "labels": [
         "feature"
       ],
@@ -13435,6 +13435,15 @@
           "kind": "result",
           "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAueGOWhQQ6AFg9mcP6x91PqXmJlxfl0ExykVRqKV7xf47j1dVbRlQtkBiVmSji42EwZdnLKr5vfoz5sNHRTLwAA=="
+        },
+        "a5eb192b-3d74-46f8-8325-ee5a114840fe": {
+          "display_id": 1676,
+          "author": "u7IC",
+          "content": "Original073 inspected/archived on f264fc5e1: native qualifies614.416s,45 requests/75 tools/25 compactions/1 brief provider retry, two artifacts/three intact fixtures. Missing driver/raw/subgroup and claim retention0.038 vs0.031/no-rerun limits reconcile; original9/10 private syntax keywords miss absent driver. CSV/argv recovery retained. Newline tool suspicion disproved by all requests omitting newline and exact request/disk hash; latest reads corrected while review retains stale Advisory. No new mechanical host patch or paid repeat. Index through73 and draft PR82 updated; proceeding original074 sequentially.",
+          "created_at": "2026-09-15T20:46:43.615221132Z",
+          "kind": "result",
+          "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAMpBTj3woJ8GxJVy83aG1cZZkVc9OCtqdCVyvwNTPI4dCmwaAKb2Vd0ARdLoJYxmH1e6/1x44nNjGDd1oGScfDA=="
         },
         "a724efc9-7777-4579-b981-7f4331ea954b": {
           "display_id": 1664,
