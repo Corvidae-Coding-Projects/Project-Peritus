@@ -48,14 +48,14 @@
         "prefix_sha256": "75e62af207437405c7c0292c3ecc35c1e80a87ef1a9953202d92cb6ee96daa52"
       },
       "u7IC": {
-        "sequence": 91,
-        "tip_oid": "e421d56623a6c86dbe274607484af392e7ba3d36",
-        "prefix_sha256": "2b866ae65707a9251d44df2068268b01bdee580f25ccb1a76135c22307fd6198"
+        "sequence": 92,
+        "tip_oid": "1dcaf0c21cd74f0c033775243869599a2d4aa567",
+        "prefix_sha256": "f3a182f88fe0ee48d906665e17700b83749007fa565528fde2a4f0637edecd3e"
       }
     }
   },
   "next_display_id": 85,
-  "next_comment_id": 1687,
+  "next_comment_id": 1688,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -13009,7 +13009,7 @@
       "priority": "medium",
       "created_by": "u7IC",
       "created_at": "2026-09-15T00:49:55.217770155Z",
-      "updated_at": "2026-09-15T22:32:22.647743930Z",
+      "updated_at": "2026-09-15T22:37:31.197705636Z",
       "labels": [
         "feature"
       ],
@@ -13589,6 +13589,15 @@
           "kind": "result",
           "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAyKzQn1ot/TFgU2zKrPxezlSAD2g/7sEhBiGaSKSPOKb5Tf62/rCQR1B+mSi84cKWnYuQomzLpuuBUnetiKWWDg=="
+        },
+        "c09fa920-62b0-437a-a98d-b69fbb292d87": {
+          "display_id": 1687,
+          "author": "u7IC",
+          "content": "Original081 inspected and archived at79872e752/fec7a7e: native qualified, all9 original checks pass, three requested outputs plus retained server log/two byte-intact fixtures. Actual mock-site GET/POST/detail/confirm and model JSON verifier/current independent review prove flow; no screenshot/OCR, retries or tool errors. Both writer/reviewer DeepSeek; no new host patch/output-oracle edit/repeat. Index81; next082 offline compose repair. Pushed runner patch has Foundation/pre-Cargo/Verus policy green; hosted full matrix still running.",
+          "created_at": "2026-09-15T22:37:31.182979779Z",
+          "kind": "result",
+          "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAUXv0t8fgf0aT76tDMx6ucXkoXDvnQirFAfDitdRjkryLRYkbrgKpDis6jyiZkuFWwBDzsnmQtEy92SuFTJXHDg=="
         },
         "ca758ed5-c17c-49a9-b67a-c81fcbcec7b6": {
           "display_id": 1653,
