@@ -48,14 +48,14 @@
         "prefix_sha256": "75e62af207437405c7c0292c3ecc35c1e80a87ef1a9953202d92cb6ee96daa52"
       },
       "u7IC": {
-        "sequence": 69,
-        "tip_oid": "985a26edf7b8442797eea9bd578ff8f4dffcd5bc",
-        "prefix_sha256": "1444cb0bd5538b778bb91821490db3f2225abe18596707fc602c0c06b0fc8dfd"
+        "sequence": 70,
+        "tip_oid": "8fa0ba0464773ca9ebf8b93197bd48ac211ed0eb",
+        "prefix_sha256": "7fd56289b0301cc87f266adde7dd64e6fe2a7d6dfdfd0b6e3fb7e900ef4b6eca"
       }
     }
   },
   "next_display_id": 84,
-  "next_comment_id": 1666,
+  "next_comment_id": 1667,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -13008,7 +13008,7 @@
       "priority": "medium",
       "created_by": "u7IC",
       "created_at": "2026-09-15T00:49:55.217770155Z",
-      "updated_at": "2026-09-15T19:21:28.597532983Z",
+      "updated_at": "2026-09-15T19:26:19.063177541Z",
       "labels": [
         "feature"
       ],
@@ -13300,6 +13300,15 @@
           "kind": "result",
           "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAK6tStHvIKlyxca7S1XKjqF+FJSEQts25I3oyglJYPaUjLerV6GO9OEN2zwaW0GxvrIgnPgMAsG66VDVjAlVDDw=="
+        },
+        "8d0a4d12-ee77-4005-9847-e3fb89c27ab2": {
+          "display_id": 1666,
+          "author": "u7IC",
+          "content": "Original063 qualifies at frozen f264fc5e1/8cf986a32db;2 exact artifacts/2 protected fixtures intact,all3 original checks pass. Two root groups/eight clustered alerts and three true-noise dispositions reconcile after model-owned verifier parse recovery. Native review retains ambiguous wording advisory but misses real summary5xx service attribution (orders-api source versus checkout-web claim); exact source/output evidence saved. Semantic model/review limitation, no mechanical harness cause or task-specific gate/output repair/paid repeat. Evidence index/draftPR82 through063. Continue originals064-106, earlier affected revisits, DRY and final validation.",
+          "created_at": "2026-09-15T19:26:19.056655040Z",
+          "kind": "result",
+          "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAc3qwRp/iQf+41Iij0h1md3GhzyGJH2y+JhXIRpWJ2NKpQsJG4OqM+DkFtBBBTTnEmBJ0mPI8GoNSMMNBY5z2DA=="
         },
         "9183d317-4a6e-4cbc-9eed-8db91fa465dc": {
           "display_id": 1625,
