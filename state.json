@@ -48,14 +48,14 @@
         "prefix_sha256": "75e62af207437405c7c0292c3ecc35c1e80a87ef1a9953202d92cb6ee96daa52"
       },
       "u7IC": {
-        "sequence": 13,
-        "tip_oid": "37b25ea88fac0915c4451737ef349c7237d395eb",
-        "prefix_sha256": "f44d9ab8d5bee4ba9f4c3b592261a41c19b8e02b5016570669cd4aabe5cd0982"
+        "sequence": 14,
+        "tip_oid": "388f4c8a381116079f5566194cbf635bbe01bb58",
+        "prefix_sha256": "4cc360f18c0927b903f2c4f2855a88cb94a0725eb80ebe05bc6910458188aa0b"
       }
     }
   },
   "next_display_id": 84,
-  "next_comment_id": 1610,
+  "next_comment_id": 1611,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -13008,7 +13008,7 @@
       "priority": "medium",
       "created_by": "u7IC",
       "created_at": "2026-09-15T00:49:55.217770155Z",
-      "updated_at": "2026-09-15T06:27:37.945781916Z",
+      "updated_at": "2026-09-15T06:42:47.796613239Z",
       "labels": [
         "feature"
       ],
@@ -13021,6 +13021,15 @@
           "kind": "result",
           "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA7jywXIFf43ZXF+O0A5O0+lwSUZ83pGUHhA6jNO9SZwaKameJICXiM5oufwqZZ1U7W8Pef/QFNWuUe1rDXheUAw=="
+        },
+        "65fd2759-942f-43b2-a28b-783f37929255": {
+          "display_id": 1610,
+          "author": "u7IC",
+          "content": "Full source-stamped workspace build and executable identity check passed at 6c319bdc10c59390c204464c7e42e2a1d3119d77; binary SHA-256 9cf4921a72ddc03cd04759f7f07ed75e8952a712e18c1d473304d2d5ba24ca69. A live Codex text request returned READY with usage; Codex and Claude live account-runtime qualification passed without changing the configured DeepSeek route. Task 013 attempt 1 was an unstamped-build setup mistake; its result is retained. Verified attempt 2 fails before dispatch because the preserved configured profile lacks image input (zero model requests/tools), with no manufactured images or capability changes. Task 014 is live in native PID 986651, official CLI session 80741; latest inspected view retains complete recent exchanges within 32768 input tokens. PR 82 remains OPEN/DRAFT with all fixes pushed. Remaining task coverage begins with active task 014, then 015–106, plus final affected-case and provider product-flow checks, DRY review, and combined validation.",
+          "created_at": "2026-09-15T06:42:47.790516977Z",
+          "kind": "result",
+          "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAK0ARX73d2POTIsFlmFyrUEASRklLM88q5gqWHuuVGgdDe51YASy/gSjAbj4vPs3E3S/WuLjBi+nZFIv0S5HtBA=="
         },
         "844a70a2-6f8d-4f4b-9895-4f7019404876": {
           "display_id": 1607,
