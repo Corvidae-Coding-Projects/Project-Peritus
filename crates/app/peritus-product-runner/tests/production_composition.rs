@@ -7,14 +7,19 @@ use std::{
     collections::VecDeque,
     fs,
     path::Path,
-    sync::{Arc, Mutex, atomic::AtomicBool},
+    sync::{
+        Arc, Mutex,
+        atomic::{AtomicBool, Ordering},
+    },
 };
 
 use peritus_product_runner::{
     PRODUCT_RUN_MAX_ELAPSED, ProductDeliveryScope, ProductRunInput, ProductRunPhase, ProductRunner,
     RoleProviders, RunObserver,
 };
-use peritus_provider_core::{CancellationToken, ModelProvider};
+use peritus_provider_core::{
+    BoxFuture, CancellationToken, ModelProvider, OwnedModelStream, ProviderCoreError,
+};
 use peritus_run_settlement::{RunDisposition, SettlementCause};
 use peritus_types::{RunId, WorkspaceId};
 
@@ -23,6 +28,31 @@ use support::{
     named_tool_response, patch_arguments, profile, read_arguments, text_response, tool_response,
     write_arguments,
 };
+
+struct CorrectionRecordingProvider {
+    inner: ScriptedProvider,
+    observed: Arc<AtomicBool>,
+}
+
+impl ModelProvider for CorrectionRecordingProvider {
+    fn profile(&self) -> &peritus_model_protocol::ProviderProfile {
+        self.inner.profile()
+    }
+
+    fn start(
+        &self,
+        request: peritus_model_protocol::ModelRequest,
+        cancellation: CancellationToken,
+    ) -> BoxFuture<'_, Result<OwnedModelStream, ProviderCoreError>> {
+        let bytes = request.canonical_bytes().expect("fixture request encoding");
+        if String::from_utf8_lossy(&bytes).contains(
+            "The harness rejected the previous terminal response during validate developer terminal",
+        ) {
+            self.observed.store(true, Ordering::SeqCst);
+        }
+        self.inner.start(request, cancellation)
+    }
+}
 
 #[test]
 fn product_run_future_leaves_room_for_composing_callers() {
@@ -137,7 +167,10 @@ mod tests {
 }
 ";
             let write_arguments = write_arguments("src/lib.rs", implemented);
-            let writer: Arc<dyn ModelProvider> = Arc::new(ScriptedProvider {
+            let correction_observed = Arc::new(AtomicBool::new(false));
+            let writer: Arc<dyn ModelProvider> = Arc::new(CorrectionRecordingProvider {
+                observed: Arc::clone(&correction_observed),
+                inner: ScriptedProvider {
                 profile: profile([0x81; 16], "writer"),
                 responses: Mutex::new(VecDeque::from([
                     named_tool_response("workspace_list", list_arguments("", 3)),
@@ -152,10 +185,14 @@ mod tests {
                     named_tool_response("workspace_list", list_arguments("", 3)),
                     named_tool_response("workspace_read", read_arguments("src/lib.rs")),
                     tool_response(write_arguments),
+                    text_response(b"Added the tested answer API."),
+                    named_tool_response("workspace_list", list_arguments("", 3)),
+                    named_tool_response("workspace_read", read_arguments("src/lib.rs")),
                     text_response(
                         br#"{"kind":"complete","run_instructions":"cargo test","summary":"Added the tested answer API."}"#,
                     ),
                 ])),
+                },
             });
             let reviewer: Arc<dyn ModelProvider> = Arc::new(ScriptedProvider {
                 profile: profile([0x82; 16], "reviewer"),
@@ -205,6 +242,7 @@ mod tests {
             .await
             .expect("production run");
             assert!(outcome.settlement().is_accepted());
+            assert!(correction_observed.load(Ordering::SeqCst), "workspace progress must preserve the malformed-terminal correction");
             let output = outcome.candidate().expect("accepted candidate");
 
             assert_eq!(output.changed_paths, vec![Path::new("src/lib.rs").to_owned()]);

@@ -123,7 +123,8 @@ pub async fn complete_developer_turn(
                 if current != checkpoint {
                     checkpoint = current;
                     unproductive_terminals = 0;
-                    (correction, pending_question) = (None, None);
+                    correction = Some(correction::rejected_terminal(&error));
+                    pending_question = None;
                     continue;
                 }
                 unproductive_terminals = unproductive_terminals.saturating_add(1);
