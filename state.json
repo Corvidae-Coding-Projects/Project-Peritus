@@ -48,14 +48,14 @@
         "prefix_sha256": "75e62af207437405c7c0292c3ecc35c1e80a87ef1a9953202d92cb6ee96daa52"
       },
       "u7IC": {
-        "sequence": 70,
-        "tip_oid": "8fa0ba0464773ca9ebf8b93197bd48ac211ed0eb",
-        "prefix_sha256": "7fd56289b0301cc87f266adde7dd64e6fe2a7d6dfdfd0b6e3fb7e900ef4b6eca"
+        "sequence": 71,
+        "tip_oid": "005df34d4ac60b5a678b140520c39f2892d247f7",
+        "prefix_sha256": "ec49a0779f9472e05c522ebc04286d4f2837f32fc073622bb5725b837a7ef6f6"
       }
     }
   },
   "next_display_id": 84,
-  "next_comment_id": 1667,
+  "next_comment_id": 1668,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -13008,7 +13008,7 @@
       "priority": "medium",
       "created_by": "u7IC",
       "created_at": "2026-09-15T00:49:55.217770155Z",
-      "updated_at": "2026-09-15T19:26:19.063177541Z",
+      "updated_at": "2026-09-15T19:34:39.015915656Z",
       "labels": [
         "feature"
       ],
@@ -13273,6 +13273,15 @@
           "kind": "result",
           "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAUyLvpTbUiTQRtvdCvhByPqVysGkr+zxd+2baz1b5PD+vt4SBvAKHhE1hUPE/nLO9c62gnu4VKLjEA2DJlzsSBg=="
+        },
+        "82931e1b-d300-4f00-ba63-53849c991c19": {
+          "display_id": 1667,
+          "author": "u7IC",
+          "content": "Original064 qualifies at frozen f264fc5e1/8cf986a32db with two artifacts/six byte-intact inputs/all3 original checks pass. Correct auth-gateway issuer/JWKS cause, dependency path and DB/CDN red herrings; observed/inferred sections and mitigation/verification present. Private unpublished incident-ID/verify-keyword deductions retained without tuning. Native review misses issuance/universal partner-token-failure overclaim; exact claim metadata and narrower structural verifier scope preserved, no mechanical harness cause/new host patch/paid repeat. Evidence index/draftPR82 through064; continue originals065-106 and earlier revisits, DRY/final compatibility.",
+          "created_at": "2026-09-15T19:34:39.009241325Z",
+          "kind": "result",
+          "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA7X8BqW079hBL3zImJR7tZibEW0bwH1y/vpQNpZCtxauTqyPnA3J46xlxJ9CiZV7xvmTOjFdGvyZ2ZuKBQKiLDQ=="
         },
         "844a70a2-6f8d-4f4b-9895-4f7019404876": {
           "display_id": 1607,
