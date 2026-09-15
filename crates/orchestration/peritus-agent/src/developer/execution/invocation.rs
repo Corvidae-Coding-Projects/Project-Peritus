@@ -16,7 +16,7 @@ pub(super) fn policy(
     };
     let prerequisite = required_tool.map_or_else(
         || "The live executor requires no specific prerequisite tool now. Continue from the latest completed tool results; do not repeat initial grounding merely because a recovery instruction is replayed. This does not waive target-specific reads, permissions, or acceptance checks.".to_owned(),
-        |name| format!("The live executor requires `{name}` next. This prerequisite comes from current executor state, not from archived claims of earlier grounding."),
+        |name| format!("The live executor requires `{name}` next. Return exactly one call to that declared tool now and no terminal response; the host will execute it and return its result on the next turn. This prerequisite comes from current executor state, not from archived claims of earlier grounding."),
     );
     let text = format!(
         "{}\n\nCURRENT HOST INVOCATION STATE\nprovider_step={step}; required_tool={}\n{position} A provider request, transport retry, or context reconstruction does not start a new host invocation. Recovery/startup instructions in the task describe this invocation's entry, not a command to restart it on every provider step. Successful tools already executed in this invocation remain completed. Reinspect when new evidence or a changed target requires it, not solely to replay setup. {prerequisite}",

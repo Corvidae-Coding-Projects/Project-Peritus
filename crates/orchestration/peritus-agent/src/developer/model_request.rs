@@ -30,6 +30,27 @@ pub(super) fn build_model_request(
     required_tool: Option<&str>,
     selected_effort: Option<ReasoningEffort>,
 ) -> Result<ModelRequest, DeveloperLoopError> {
+    let mut messages = messages.to_vec();
+    if kind == ModelTurnKind::Developer
+        && attempt > 1
+        && let Some(required) = required_tool
+    {
+        messages.insert(
+            1,
+            Message::new(
+                peritus_model_protocol::Role::System,
+                vec![peritus_model_protocol::ContentBlock::Text(
+                    peritus_model_protocol::BoundedText::new(
+                        format!(
+                            "CURRENT PROVIDER RETRY\nattempt={attempt}; required_tool={required}\nThis is a fresh provider retry of the same host step. Return exactly one call to the declared `{required}` tool now and no terminal response. The host will execute the call and return its result on the next turn."
+                        ),
+                        protocol_limits,
+                    )?,
+                )],
+                protocol_limits,
+            )?,
+        );
+    }
     let parallel_tools = if kind == ModelTurnKind::Developer
         && required_tool.is_none()
         && negotiated.includes(Capability::ParallelToolCalls)
@@ -82,7 +103,7 @@ pub(super) fn build_model_request(
         profile,
         negotiated,
         RequestId::new(request_id)?,
-        messages.to_vec(),
+        messages,
         tools,
         tool_choice,
         parallel_tools,
