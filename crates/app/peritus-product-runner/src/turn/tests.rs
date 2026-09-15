@@ -236,6 +236,8 @@ fn external_effect_writer_attempts_scoped_prerequisites_before_escalating() {
 #[test]
 fn reviewer_rechecks_conserved_finding_locations_after_fixes() {
     let prompt = reviewer_user(&ReviewerPrompt {
+        system: &reviewer_system(Duration::from_secs(235)),
+        tools: &[],
         transcript: "task",
         diff: "diff",
         gates: "gates",
@@ -247,7 +249,8 @@ fn reviewer_rechecks_conserved_finding_locations_after_fixes() {
             effect_requirement: crate::delivery_requirement::ExternalEffectRequirement::Optional,
         },
         correction: None,
-    });
+    })
+    .unwrap();
 
     assert!(prompt.contains("Developer command observations"));
     assert!(prompt.contains("python check.py"));
@@ -261,6 +264,8 @@ fn reviewer_rechecks_conserved_finding_locations_after_fixes() {
 fn reviewer_bounds_oversized_initial_evidence_before_provider_compaction() {
     let oversized = "evidence".repeat(100_000);
     let prompt = reviewer_user(&ReviewerPrompt {
+        system: &reviewer_system(Duration::from_secs(235)),
+        tools: &[],
         transcript: "literal task",
         diff: &oversized,
         gates: &oversized,
@@ -272,7 +277,8 @@ fn reviewer_bounds_oversized_initial_evidence_before_provider_compaction() {
             effect_requirement: crate::delivery_requirement::ExternalEffectRequirement::Optional,
         },
         correction: None,
-    });
+    })
+    .unwrap();
 
     assert!(prompt.len() < 320 * 1024, "review prompt bytes: {}", prompt.len());
     assert!(prompt.contains("Peritus bounded reviewer evidence"));
@@ -289,6 +295,8 @@ fn live_operational_delivery_rejects_helper_files_as_the_whole_result() {
         Duration::from_mins(10),
     );
     let reviewer = reviewer_user(&ReviewerPrompt {
+        system: &reviewer_system(Duration::from_secs(235)),
+        tools: &[],
         transcript: "Configure the local service so that I can connect to it.",
         diff: "setup.sh changed",
         gates: "checks passed",
@@ -300,7 +308,8 @@ fn live_operational_delivery_rejects_helper_files_as_the_whole_result() {
             effect_requirement: requirement,
         },
         correction: None,
-    });
+    })
+    .unwrap();
 
     for prompt in [&writer, &reviewer] {
         assert!(prompt.contains("live"));
@@ -308,4 +317,27 @@ fn live_operational_delivery_rejects_helper_files_as_the_whole_result() {
         assert!(prompt.contains("external_effect"));
         assert!(prompt.contains("verification"));
     }
+}
+
+#[test]
+fn reviewer_rejects_a_profile_that_would_erase_the_authoritative_request() {
+    let error = reviewer_user(&ReviewerPrompt {
+        system: &reviewer_system(Duration::from_secs(235)),
+        tools: &[],
+        transcript: "Preserve this exact requested behavior.",
+        diff: "candidate",
+        gates: "gate evidence",
+        developer_evidence: "",
+        prior: "",
+        max_input_tokens: 8_000,
+        delivery: ReviewDelivery {
+            scope: ProductDeliveryScope::WorkspaceChanges,
+            effect_requirement: crate::delivery_requirement::ExternalEffectRequirement::Optional,
+        },
+        correction: None,
+    })
+    .unwrap_err();
+
+    assert!(matches!(error, DeveloperLoopError::Context(_)));
+    assert!(error.to_string().contains("no initial evidence headroom"));
 }
