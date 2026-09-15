@@ -48,14 +48,14 @@
         "prefix_sha256": "75e62af207437405c7c0292c3ecc35c1e80a87ef1a9953202d92cb6ee96daa52"
       },
       "u7IC": {
-        "sequence": 11,
-        "tip_oid": "ebb2245d1361e5e3c1464482e382596a9be13cc1",
-        "prefix_sha256": "5d2a193a0764aa7bea981f5c0aa9a5f637dd2c75e84b242402b5f6d1264caeee"
+        "sequence": 12,
+        "tip_oid": "c8921d0bc5f90d637fd264fc94e05667e9e80c5a",
+        "prefix_sha256": "c06881571a2276e9a15d71769976bae28e7cfb5dc77d8b8bbeb928a3aa932add"
       }
     }
   },
   "next_display_id": 84,
-  "next_comment_id": 1608,
+  "next_comment_id": 1609,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -13008,7 +13008,7 @@
       "priority": "medium",
       "created_by": "u7IC",
       "created_at": "2026-09-15T00:49:55.217770155Z",
-      "updated_at": "2026-09-15T05:54:10.536696617Z",
+      "updated_at": "2026-09-15T06:04:55.818486652Z",
       "labels": [
         "feature"
       ],
@@ -13075,6 +13075,15 @@
           "kind": "result",
           "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAPKE9p3qj0gSz+hVxB+C7TwWD4saZHdHgFdzJTMqh/Dos/W79HFJ5wF1GOcKq6x7uIPC2hBnRgmj3lyI+mdb6BA=="
+        },
+        "f2049fb7-1163-4016-8568-a54fe1c684d9": {
+          "display_id": 1608,
+          "author": "u7IC",
+          "content": "Reproduced a strict completion-parser defect: a forbidden outer JSON object could be accepted through a nested valid-looking object. The regression fails on 69f0d5b22 and passes after consuming valid containers whole and decoding the original top-level text. Nested wrappers, arrays, and duplicate fields are rejected; mixed prose, earlier examples, and literal quoted JSON still work. All 321 product-runner tests passed (3 existing ignored), strict all-target/all-feature Clippy passed, formatting and diff checks passed, and the affected-package build passed. Live task 012 used the unchanged 69f0d5b22 binary and reached its native deadline; investigation evidence is retained.",
+          "created_at": "2026-09-15T06:04:55.812190599Z",
+          "kind": "result",
+          "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABATHT1hS9mid9TqSu31lK6cnrdO91wA4G049c2bMw6lJ0Ht3RoamvXNLA2hfD2P9yi+84Zrhj2f7G/NGHSQEu4Dg=="
         },
         "facc4f71-4d58-4ac6-87ba-252bcdd39d52": {
           "display_id": 1606,
