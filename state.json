@@ -48,14 +48,14 @@
         "prefix_sha256": "75e62af207437405c7c0292c3ecc35c1e80a87ef1a9953202d92cb6ee96daa52"
       },
       "u7IC": {
-        "sequence": 8,
-        "tip_oid": "b243bc0af7ae9f8de194e9a0582ff436f43ba489",
-        "prefix_sha256": "4a7f75af4554a7d0ca20dbaa8b818e8414948b59d6b487480278f1c396cd0042"
+        "sequence": 9,
+        "tip_oid": "ec461383cb2cfae2e78c8292cb8930ebebc5b0a8",
+        "prefix_sha256": "2c9995eb50b37eb39529fb9c452e233a330f824a82739f9507dc03b3456f07b4"
       }
     }
   },
   "next_display_id": 84,
-  "next_comment_id": 1605,
+  "next_comment_id": 1606,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -13008,7 +13008,7 @@
       "priority": "medium",
       "created_by": "u7IC",
       "created_at": "2026-09-15T00:49:55.217770155Z",
-      "updated_at": "2026-09-15T04:14:16.310551422Z",
+      "updated_at": "2026-09-15T05:21:41.450537900Z",
       "labels": [
         "feature"
       ],
@@ -13021,6 +13021,15 @@
           "kind": "result",
           "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA7jywXIFf43ZXF+O0A5O0+lwSUZ83pGUHhA6jNO9SZwaKameJICXiM5oufwqZZ1U7W8Pef/QFNWuUe1rDXheUAw=="
+        },
+        "a3a99356-3df3-4732-af44-170a6173d941": {
+          "display_id": 1605,
+          "author": "u7IC",
+          "content": "Pushed four additional fixes: malformed-terminal correction retention after workspace edits, current-round and in-place-edit contract guidance, active command-progress bounds without lifecycle metadata, and shared provider selection. Composed retry regression fails on old code and passes with the fix. Product-runner, benchmark, and agent tests pass; strict Clippy all-target/all-feature checks pass; fmt and diff checks pass. Task 010 passed native qualification and all nine external checks. Task 011 attempt 3 fixed two layers but stalled after malformed completion recovery; fresh live validation follows the exact committed rebuild. Draft PR 82 remains open against develop.",
+          "created_at": "2026-09-15T05:21:41.435824589Z",
+          "kind": "result",
+          "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAueGOWhQQ6AFg9mcP6x91PqXmJlxfl0ExykVRqKV7xf47j1dVbRlQtkBiVmSji42EwZdnLKr5vfoz5sNHRTLwAA=="
         },
         "b953bb2a-7cfe-4469-9d27-2facd5de596f": {
           "display_id": 1602,
