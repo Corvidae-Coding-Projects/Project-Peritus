@@ -107,9 +107,12 @@ impl BenchmarkSession {
     }
 
     fn render_through(&self, last: usize) -> String {
-        let mut rendered = String::new();
+        let mut rendered = format!(
+            "Current user round: {}. The conversation below is chronological. Earlier rounds provide history and continuing requirements; the current round controls any changed state or superseding instruction. Preserve earlier requirements that the current round does not replace.\n\n",
+            last + 1,
+        );
         for (index, turn) in self.stored.turns.iter().take(last + 1).enumerate() {
-            if !rendered.is_empty() {
+            if index > 0 {
                 rendered.push_str("\n\n");
             }
             let _ = write!(rendered, "User round {}:\n{}", index + 1, turn.prompt);
@@ -201,6 +204,9 @@ mod tests {
         .expect("second turn");
 
         assert_eq!(second.revision(), 2);
+        assert!(second.render().starts_with("Current user round: 2."));
+        assert!(first.render().starts_with("Current user round: 1."));
+        assert!(second.trace_inputs()[0].1.starts_with("Current user round: 1."));
         assert!(second.render().contains("remember blue orchard"));
         assert!(second.render().contains("recall the prior phrase"));
         assert_eq!(second.trace_inputs().len(), 2);
