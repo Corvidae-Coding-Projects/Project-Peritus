@@ -48,13 +48,13 @@
         "prefix_sha256": "75e62af207437405c7c0292c3ecc35c1e80a87ef1a9953202d92cb6ee96daa52"
       },
       "u7IC": {
-        "sequence": 86,
-        "tip_oid": "8dcd196ef7dcd842a612d5dff9a07409dd7b46c6",
-        "prefix_sha256": "a5e8a22dd8174fff2baf0b606123b3e1d474c735313be4e44934cfc9e3f2a030"
+        "sequence": 87,
+        "tip_oid": "54e209e3483c9addcd48749c5ac5d3cc952eb718",
+        "prefix_sha256": "d1aa575ec8f3e4b67434e8297a6d860385f2c9d10387c525c232a55bc25362a5"
       }
     }
   },
-  "next_display_id": 84,
+  "next_display_id": 85,
   "next_comment_id": 1683,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
@@ -117,6 +117,7 @@
     "b25f016a-c241-4f3e-99a1-d7540e07883e": 80,
     "b46fadc4-8cd4-48dc-8f36-bd78e9ee2e8c": 13,
     "b6f5371d-b205-4d62-a3e9-74c962cf12f0": 63,
+    "bcddb360-5e7e-4b3a-81b4-b6c1302e74fd": 84,
     "be287235-44b0-49cd-b238-d64fe12e32f1": 37,
     "c5882fd5-3d6c-4147-8819-5fa65d1e860c": 74,
     "cc972bf7-aa67-423d-babd-1ab1068a0f90": 69,
@@ -14077,6 +14078,18 @@
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAdKyvhS1hwch7CMJE62ESoHoCtEMQrXOIm/VAVbncGs997/C6JGQLold6jUCfQkxDpl3qb2uck8a/X6tWp1o8Dw=="
         }
       }
+    },
+    "bcddb360-5e7e-4b3a-81b4-b6c1302e74fd": {
+      "uuid": "bcddb360-5e7e-4b3a-81b4-b6c1302e74fd",
+      "display_id": 84,
+      "title": "Repair PR82 source-layout and cross-platform runner failures",
+      "description": "Authorized runner work alongside live DeepSeek originals. Six source files exceed existing400 soft limit and cascade through Candidate policy, Foundation policy, edge CLI tests and two Linux H0 checks. Windows explicit-path assertions assume slash diagnostics. Split responsibilities, preserve semantics/all tests, assert exact native path rendering, validate full policy/affected matrix, land on existing draftPR82 and watch all checks. Separate worktree and target protect frozen benchmark executable.",
+      "status": "open",
+      "priority": "high",
+      "parent_uuid": "a6fde681-2598-4b91-b824-d011ade3c601",
+      "created_by": "u7IC",
+      "created_at": "2026-09-15T22:18:45.813526163Z",
+      "updated_at": "2026-09-15T22:18:45.813526163Z"
     },
     "be287235-44b0-49cd-b238-d64fe12e32f1": {
       "uuid": "be287235-44b0-49cd-b238-d64fe12e32f1",
