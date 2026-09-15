@@ -48,14 +48,14 @@
         "prefix_sha256": "75e62af207437405c7c0292c3ecc35c1e80a87ef1a9953202d92cb6ee96daa52"
       },
       "u7IC": {
-        "sequence": 51,
-        "tip_oid": "2afb5f7d939d77c6c98a2842a6fa320a35f49db3",
-        "prefix_sha256": "d08432379e91435e3bc778c39a34612d63a09c0d22b2c5577f4e1e1df34408d6"
+        "sequence": 52,
+        "tip_oid": "8a6137e814245712346011844dbb16550e40634a",
+        "prefix_sha256": "643d759c4ca6c76e42c635405c1cab76a1b09b3913c690cc5bd0a97d2394530c"
       }
     }
   },
   "next_display_id": 84,
-  "next_comment_id": 1648,
+  "next_comment_id": 1649,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -13008,7 +13008,7 @@
       "priority": "medium",
       "created_by": "u7IC",
       "created_at": "2026-09-15T00:49:55.217770155Z",
-      "updated_at": "2026-09-15T15:39:58.993540053Z",
+      "updated_at": "2026-09-15T15:46:16.518065430Z",
       "labels": [
         "feature"
       ],
@@ -13354,6 +13354,15 @@
           "kind": "result",
           "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAyKzQn1ot/TFgU2zKrPxezlSAD2g/7sEhBiGaSKSPOKb5Tf62/rCQR1B+mSi84cKWnYuQomzLpuuBUnetiKWWDg=="
+        },
+        "cbfed7c2-304b-4adf-a04b-21e4c1c87bc4": {
+          "display_id": 1648,
+          "author": "u7IC",
+          "content": "Original047 qualified/completed288.912s native/340.465s whole CLI,22 native requests25 tools4 required-tool retries8 compactions0 failover; proxy18 requests preserved separately. Only required review_findings.json changed,4 original fixtures byte-intact. Nine concrete findings cover9 diff hunks under public severity rubric; JSON/source/output/public obligations/native review pass. Original severity8/9 and test7/9 checks fail: greedy archived API lookup takes earlier auth finding, admin test lacks2 private keyword spellings despite explicit admin=true unauthorized regression. Original results/output/evaluator unchanged. Retain unproved statement-stacking prose claim separately; no semantic-perfect claim or new causal host defect. Archives/investigation and draftPR82 updated. Original048 now live session56856, frozen d50/SHAf1e configured OpenCode Zen/DeepSeek. Continue048-106, earlier affected revisits including020, scopedDRY and final combined/provider validation.",
+          "created_at": "2026-09-15T15:46:16.512221584Z",
+          "kind": "result",
+          "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAIkVlLJhO5Z0P4p1D9Pd8LfDO8KRXk1tfxNWV3w/RspAWiqZ4VqV25UMOy1NaAZh7Ceanpf7GqkXRre/B2jKrDg=="
         },
         "ccd507eb-65a0-434c-a212-bbc1f4dc2f28": {
           "display_id": 1603,
