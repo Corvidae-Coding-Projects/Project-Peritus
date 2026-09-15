@@ -48,14 +48,14 @@
         "prefix_sha256": "75e62af207437405c7c0292c3ecc35c1e80a87ef1a9953202d92cb6ee96daa52"
       },
       "u7IC": {
-        "sequence": 24,
-        "tip_oid": "6344b2015ca79c4c7911d1ca9856cd8746fc2fbb",
-        "prefix_sha256": "4d43db6829c9180fc910222b7df37a352830822ee125f9befa45c9ad2f885c99"
+        "sequence": 25,
+        "tip_oid": "e4b16eb0f9e34957cca210e9ddff1f3840458293",
+        "prefix_sha256": "d3afc546cd18a1699a6623632e32e81cfc25c91eaa184ed0fca3994386227b4a"
       }
     }
   },
   "next_display_id": 84,
-  "next_comment_id": 1621,
+  "next_comment_id": 1622,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -13008,7 +13008,7 @@
       "priority": "medium",
       "created_by": "u7IC",
       "created_at": "2026-09-15T00:49:55.217770155Z",
-      "updated_at": "2026-09-15T10:42:33.528834174Z",
+      "updated_at": "2026-09-15T11:06:30.194676048Z",
       "labels": [
         "feature"
       ],
@@ -13174,6 +13174,15 @@
           "kind": "result",
           "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAPKE9p3qj0gSz+hVxB+C7TwWD4saZHdHgFdzJTMqh/Dos/W79HFJ5wF1GOcKq6x7uIPC2hBnRgmj3lyI+mdb6BA=="
+        },
+        "e4c2da97-f019-4bba-a4ae-2b6fbe95bb1f": {
+          "display_id": 1621,
+          "author": "u7IC",
+          "content": "Committed and pushed 384a4f52fab013cf866ac47f055610a484a6a8e3 to existing draft PR 82 targeting develop. Root fix: preserve configured recent complete exchanges up to the active model hard capacity so source/result reads can coexist; optional archive evidence remains under soft target and existing history window/protocol closure enforced. Authentic task-025 views alternate outputs/source; production estimator proves both complete exchanges fit at 30729/32768. Generic regression fails before and passes after including exact result/publication/restart. Combined 509 parent tests pass (3 existing ignored), two isolated child probes pass, strict Clippy/format/diff and full source-stamped workspace build pass. Binary SHA-256 8c6671323f9e6f9a784d89106cd8d1d96b3c6b0da2ce8b6babc5d6774dcd7378. Original 025 unsuccessful at deadline; all six inputs intact, exact three reports and action-table checks pass. Oracle removes underscores but requires followup_emails containing underscore, impossible match; oracle/task/fixtures untouched. Latest native Codex/Claude flow running, affected 025 rerun pending, original 026–106 and final affected/provider/DRY validation remain.",
+          "created_at": "2026-09-15T11:06:30.164091996Z",
+          "kind": "result",
+          "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAiwaK3Xjv98Yx+ZuoCPaUdZWoGULSCOismhf7BHbkea7MFf6U0xsJI3v01VFHFNf+CWhHsVc48JdquweXGvARBg=="
         },
         "ef2e3f1a-f8e7-47fa-a00d-526285735f07": {
           "display_id": 1615,
