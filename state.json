@@ -48,14 +48,14 @@
         "prefix_sha256": "75e62af207437405c7c0292c3ecc35c1e80a87ef1a9953202d92cb6ee96daa52"
       },
       "u7IC": {
-        "sequence": 84,
-        "tip_oid": "c15af52eaf931687ad6636a7cfac6415d1bc1042",
-        "prefix_sha256": "0e4a246797bec79b172f7e8f4fa50f4861581e60bbe7e2ff2ca0d5c310c75e80"
+        "sequence": 85,
+        "tip_oid": "69513b83e4e66730dec61597cff1ca178259a660",
+        "prefix_sha256": "63b4edb8fee414510f5c47a55d14c40d59448364b02b6bdb6051e7cd0c21a590"
       }
     }
   },
   "next_display_id": 84,
-  "next_comment_id": 1681,
+  "next_comment_id": 1682,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -13008,7 +13008,7 @@
       "priority": "medium",
       "created_by": "u7IC",
       "created_at": "2026-09-15T00:49:55.217770155Z",
-      "updated_at": "2026-09-15T21:52:10.951120173Z",
+      "updated_at": "2026-09-15T22:03:48.279385266Z",
       "labels": [
         "feature"
       ],
@@ -13687,6 +13687,15 @@
           "kind": "result",
           "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAqoG7+UM6G3AV4Kujqez1oQ0kQzHiQc0qarRGqhoMVT5p4IrF2ZeDALOjT16JX17qVOHlb75GXI5Q072GDccfDg=="
+        },
+        "f156330c-5747-478d-8f65-1ec2867e3367": {
+          "display_id": 1681,
+          "author": "u7IC",
+          "content": "Original 077 inspected and archived at c19e64a2a/47aa0fd. Deadline, no candidate or outputs; all four inputs unchanged. Initial archive commands succeed; later executable duplication in args causes retained errors. Python inspection recovers but no writes occur. No new causal host fault confirmed, no output/oracle edits or paid repeat. Evidence index through 77; next original 078 API cursor/retry.",
+          "created_at": "2026-09-15T22:03:48.272999631Z",
+          "kind": "result",
+          "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABApl4KRyZRZYh0r5TBVSRvBRQUAFKDNaZKntMOSK5ouCjw7abn6DRGN1M/XgOvJnFmo2xvp0DrpO8MSVk/wpmcCg=="
         },
         "f2049fb7-1163-4016-8568-a54fe1c684d9": {
           "display_id": 1608,
