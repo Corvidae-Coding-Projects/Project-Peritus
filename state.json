@@ -48,14 +48,14 @@
         "prefix_sha256": "75e62af207437405c7c0292c3ecc35c1e80a87ef1a9953202d92cb6ee96daa52"
       },
       "u7IC": {
-        "sequence": 39,
-        "tip_oid": "92e02434efe22290aab6ce0a97c6f0d5b15a5da7",
-        "prefix_sha256": "220858f65592abb0a6ef7cef1dcdb2f03e63278631f4b761aeb587fa90de771c"
+        "sequence": 40,
+        "tip_oid": "ae3693529078e87b784f219dedf159022f9d31a1",
+        "prefix_sha256": "616cf503aefa3cb2d88d0f02c1c68a1849235b946a8c018766230d8bf3aab080"
       }
     }
   },
   "next_display_id": 84,
-  "next_comment_id": 1636,
+  "next_comment_id": 1637,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -13008,7 +13008,7 @@
       "priority": "medium",
       "created_by": "u7IC",
       "created_at": "2026-09-15T00:49:55.217770155Z",
-      "updated_at": "2026-09-15T12:53:51.075820124Z",
+      "updated_at": "2026-09-15T13:07:57.405814833Z",
       "labels": [
         "feature"
       ],
@@ -13291,6 +13291,15 @@
           "kind": "result",
           "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAPKE9p3qj0gSz+hVxB+C7TwWD4saZHdHgFdzJTMqh/Dos/W79HFJ5wF1GOcKq6x7uIPC2hBnRgmj3lyI+mdb6BA=="
+        },
+        "e0b71013-0df9-4878-a1d4-e7cdc794e73b": {
+          "display_id": 1636,
+          "author": "u7IC",
+          "content": "Original037 complete/archived/inspected on frozen e5cc04bde: native deadline750.002s, candidate changed only and gates/obligations/review incomplete with no recorded gate/review detail.31requests/44tools/3retries/9compactions; four inputs byte-intact, exactly two requested outputs changed. Independent all11 case IDs/canonical case+line codes/AM2 mixed aggregation pass; original decisions and reason codes11/11. Real model-output omissions leave secondary exception/base clauses missing on T104/T108/mixedT110 and all3 lines; retain these actual errors, not only oracle quirks. T107 most-specific AM1 primary differs from base-clause ground truth, while absentEX1 remains a limit. Checkpoint31 had no tool errors/omitted entries and26397/32768 estimate; no positive generic source cause established from delayed writes/deadline. No artifact repair/budget inflation/rerun applied. Original038 now live session66320, frozen exe unchanged. PR82 remains pushed draft; originals001-037 inspected,039-106 plus affected revisits020/final DRY/provider/combined validation remain.",
+          "created_at": "2026-09-15T13:07:57.399196095Z",
+          "kind": "result",
+          "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAUvhgtkSlVBjuNUkBIOG0BKxhyO1SJIN3cfQW1bIK11LqN02KTc5hJvedPPEEBv/f0KFOiPmu68pO4TQL/oZmCw=="
         },
         "e4c2da97-f019-4bba-a4ae-2b6fbe95bb1f": {
           "display_id": 1621,
