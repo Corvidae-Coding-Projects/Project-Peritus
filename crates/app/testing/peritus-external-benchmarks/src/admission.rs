@@ -111,7 +111,7 @@ fn prepare_admission(spec: AdmissionSpec) -> Result<AdmittedInvocation, Benchmar
     )?;
     let trace_path = conversation.current_trace_path();
     trace::prepare(&trace_path)?;
-    let provider_plan = crate::providers::ProviderPlan::load(&spec.model_id)?;
+    let provider_plan = crate::providers::ProviderPlan::for_harness()?;
     let declared_provider_routes = provider_plan.declared_routes();
     let writer = provider_plan.writer_label();
     let reviewer = provider_plan.reviewer_label();

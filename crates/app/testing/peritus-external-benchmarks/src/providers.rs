@@ -64,10 +64,18 @@ pub struct ProviderPlan {
 }
 
 impl ProviderPlan {
-    pub(crate) fn load(model_id: &str) -> Result<Self, BenchmarkError> {
+    pub(crate) fn for_harness() -> Result<Self, BenchmarkError> {
+        Self::load(None)
+    }
+
+    pub(crate) fn for_model(model_id: &str) -> Result<Self, BenchmarkError> {
+        Self::load(Some(model_id))
+    }
+
+    fn load(configured_model: Option<&str>) -> Result<Self, BenchmarkError> {
         match ProviderSource::from_environment()? {
             ProviderSource::AccountRuntimes => Self::account_runtimes(),
-            ProviderSource::Configured => Self::configured(Some(model_id)),
+            ProviderSource::Configured => Self::configured(configured_model),
         }
     }
 
@@ -161,7 +169,7 @@ impl ProviderPlan {
             && configured_model != model_id
         {
             return Err(BenchmarkError::Provider(format!(
-                "configured provider uses model {configured_model:?}, but benchmark invocation requested {model_id:?}; set the harness model and RUBRIC_MODEL to the exact configured model ID"
+                "configured provider uses model {configured_model:?}, but rubric invocation requested {model_id:?}; set RUBRIC_MODEL to the exact configured model ID"
             )));
         }
         let fallbacks = if selected.automatic_failover() {

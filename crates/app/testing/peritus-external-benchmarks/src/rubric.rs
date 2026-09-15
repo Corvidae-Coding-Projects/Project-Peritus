@@ -58,8 +58,9 @@ pub async fn complete(body: &[u8]) -> Result<Value, BenchmarkError> {
         Vec::new()
     };
     let cancellation = CancellationToken::new();
-    let provider =
-        providers::ProviderPlan::load(&request.model)?.authenticate_writer(&cancellation).await?;
+    let provider = providers::ProviderPlan::for_model(&request.model)?
+        .authenticate_writer(&cancellation)
+        .await?;
     let profile = provider.profile();
     let response_model = profile.model().as_str().to_owned();
     let requested = RequestedCapabilities::new(
