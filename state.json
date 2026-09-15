@@ -48,14 +48,14 @@
         "prefix_sha256": "75e62af207437405c7c0292c3ecc35c1e80a87ef1a9953202d92cb6ee96daa52"
       },
       "u7IC": {
-        "sequence": 44,
-        "tip_oid": "e162d2b42bab7bd0e15dd8cf79f33392e8b828bf",
-        "prefix_sha256": "5f23fb76e53d47738b2bdb0fade051c7d1fde4a082fad0b152a43d559f6219ce"
+        "sequence": 45,
+        "tip_oid": "25d4b7bc8e2d0f6bc2d2798bd388f8424fd7b920",
+        "prefix_sha256": "e7e80683bcafa32470e21b1b91db95176ed45dc5ccf30a1d29c52a990a5c997f"
       }
     }
   },
   "next_display_id": 84,
-  "next_comment_id": 1641,
+  "next_comment_id": 1642,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -13008,7 +13008,7 @@
       "priority": "medium",
       "created_by": "u7IC",
       "created_at": "2026-09-15T00:49:55.217770155Z",
-      "updated_at": "2026-09-15T14:14:43.565072033Z",
+      "updated_at": "2026-09-15T14:38:51.556709586Z",
       "labels": [
         "feature"
       ],
@@ -13201,6 +13201,15 @@
           "kind": "result",
           "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA31clR3MCiEBnqWlJM4EWJyx13EDy3/ImiePjnA3/RfJxHv+rpXRL890h5HkSEfyewmulqY2QEa1zMOcXeYqHBw=="
+        },
+        "8aea345b-3e1f-4310-9627-36b3fd78884b": {
+          "display_id": 1641,
+          "author": "u7IC",
+          "content": "Original042 archived: native deadline1020.001s, self_checked and incomplete; all6 protected fixtures byte-intact. Actual original5 pytest tests/native compile-JSON checks pass; CLI converts4 samples with audit5 PII drops/5 preserved extras. Confirmed output-path gate falsely requires root client.py from audit-next-to-client.py reference despite requested nested implementation present. Generic neighbor-reference regression fails before; patch distinguishes next-to/adjacent-to/beside/alongside anchors, preserves independent explicit/missing output requirements. All26 path regressions pass,513 combined package tests pass with3 existing ignored; strict all-feature/all-target Clippy/fmt/diff pass. Source-layout487/480 lines. No original task/oracle/model output edits. Original error/audit private checks remain failed; no oracle-tailored changes. Pre-commit diff/security/target-build review passes; rebuild frozen revision, qualify provider compatibility, revisit042, continue043-106 then scoped DRY/final validation on draft82.",
+          "created_at": "2026-09-15T14:38:51.541729510Z",
+          "kind": "result",
+          "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAK6tStHvIKlyxca7S1XKjqF+FJSEQts25I3oyglJYPaUjLerV6GO9OEN2zwaW0GxvrIgnPgMAsG66VDVjAlVDDw=="
         },
         "9183d317-4a6e-4cbc-9eed-8db91fa465dc": {
           "display_id": 1625,
