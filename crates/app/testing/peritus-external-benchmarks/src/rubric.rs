@@ -64,7 +64,7 @@ pub async fn complete(body: &[u8]) -> Result<Value, BenchmarkError> {
     let response_model = profile.model().as_str().to_owned();
     let requested = RequestedCapabilities::new(
         &required_capabilities,
-        &[Capability::Streaming],
+        &[Capability::Streaming, Capability::UsageDetail],
         profile.limits(),
     )
     .map_err(|error| BenchmarkError::Provider(error.to_string()))?;
