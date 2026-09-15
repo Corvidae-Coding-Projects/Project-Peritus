@@ -98,10 +98,11 @@ impl LocalMemory {
             for previous in chosen.iter().rev() {
                 candidate.extend(exchanges::messages(previous));
             }
-            // Keep the newest complete exchange when it fits the active provider. The
-            // compaction target limits older history, not the latest tool result.
-            let limit = if chosen.is_empty() { capacity } else { target };
-            if estimate_developer_request_tokens(&candidate, tools) > limit {
+            // Preserve the configured recent exchanges when they fit the active provider,
+            // so source and result reads can coexist for comparison. The soft target
+            // bounds optional retrieved evidence; the recent window and hard capacity
+            // still bound complete protocol history.
+            if estimate_developer_request_tokens(&candidate, tools) > capacity {
                 break;
             }
             recent = recent.saturating_add(group.messages.len());

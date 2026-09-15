@@ -101,6 +101,42 @@ fn recent_completed_exchange_uses_provider_headroom_above_compaction_target() {
 }
 
 #[test]
+fn recent_source_and_result_remain_available_for_comparison() {
+    let fixture = Fixture::new();
+    let mut memory = fixture.open();
+    begin(&mut memory, "source-result-comparison");
+    memory.config.retrieved_evidence_max_tokens = 0;
+    let policy = message(peritus_model_protocol::Role::System, "Compare source and result.");
+    observation(&mut memory, "source-read", "AUTHORITATIVE_SOURCE_FACT", false);
+    observation(&mut memory, "result-read", "CANDIDATE_RESULT_FACT", false);
+    let complete = memory.prepare_view_with_policy(&profile(32_768), &[], Some(&policy)).unwrap();
+    let capacity = estimate_developer_request_tokens(&complete, &[]);
+    let view = memory.prepare_view_with_policy(&profile(capacity), &[], Some(&policy)).unwrap();
+
+    assert!(estimate_developer_request_tokens(&view, &[]) <= capacity);
+    for (call_id, fact) in
+        [("source-read", "AUTHORITATIVE_SOURCE_FACT"), ("result-read", "CANDIDATE_RESULT_FACT")]
+    {
+        let expected = canonical(&serde_json::json!({"diagnostic": fact}));
+        assert!(
+            view.iter().flat_map(peritus_model_protocol::Message::content).any(|block| {
+                matches!(block, peritus_model_protocol::ContentBlock::ToolResult(output)
+                if output.call_id().expose_for_wire() == call_id && output.output() == &expected)
+            }),
+            "source and result must coexist when their complete exchanges fit"
+        );
+    }
+    memory.publish(&view).unwrap();
+    drop(memory);
+    let mut recovered = fixture.open();
+    recovered.config.retrieved_evidence_max_tokens = 0;
+    assert_eq!(
+        recovered.prepare_view_with_policy(&profile(capacity), &[], Some(&policy)).unwrap(),
+        view
+    );
+}
+
+#[test]
 fn required_working_closure_uses_provider_headroom_and_survives_restart() {
     let fixture = Fixture::new();
     let mut memory = fixture.open();
