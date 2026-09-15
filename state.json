@@ -48,14 +48,14 @@
         "prefix_sha256": "75e62af207437405c7c0292c3ecc35c1e80a87ef1a9953202d92cb6ee96daa52"
       },
       "u7IC": {
-        "sequence": 100,
-        "tip_oid": "4b8d26a629e433924060e4d183bcd4a068de2f53",
-        "prefix_sha256": "5c88431af0f0f1573222ae608f2dbade31731aea6a48fa13f103a6a71caecadc"
+        "sequence": 101,
+        "tip_oid": "1b82abe36254bc917533669ddd94fbed10edea19",
+        "prefix_sha256": "9b2d3e7433e815e86648a26db89a7611f2d5c5853128a58f58e521fcdfb2608d"
       }
     }
   },
   "next_display_id": 85,
-  "next_comment_id": 1696,
+  "next_comment_id": 1697,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -14161,7 +14161,7 @@
       "parent_uuid": "a6fde681-2598-4b91-b824-d011ade3c601",
       "created_by": "u7IC",
       "created_at": "2026-09-15T22:18:45.813526163Z",
-      "updated_at": "2026-09-15T23:04:20.511576431Z",
+      "updated_at": "2026-09-15T23:14:47.896881067Z",
       "comments": {
         "52a89bab-06d2-47c9-96b4-201d0bed105b": {
           "display_id": 1689,
@@ -14180,6 +14180,15 @@
           "kind": "result",
           "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABACZnIy/Uol9RkIqrdu4ra3UnmJIxlSONr6gTF9Qk3u/XlZT8m6kz8GSCKoc98XjcHeNv+D9g1EeUM6bMmOPx7Ag=="
+        },
+        "906a4320-21eb-4d0d-a5e7-1e63ab731c0e": {
+          "display_id": 1696,
+          "author": "u7IC",
+          "content": "Exact-source Foundation Windows app-runner job104595955315/run35032841110 PASS on d12f76d73. Raw completed-job log retained at /tmp/peritus-pr82-windows-native-path-pass.log:332 product-runner tests pass0fail3existing ignored; all43 explicit-path regressions pass, including each of6 repaired assertion tests. runner-native-path-d12f76d73.validation.json updated with exact assertions/job/source. Overall snapshot201pass235pending3skip0fail; duplicate GateAWindows and remaining matrix pending, issue stays open.",
+          "created_at": "2026-09-15T23:14:47.889762358Z",
+          "kind": "result",
+          "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABABzR16zkrohagkhw5UQaEOoMPl8TgTbbcgIMjXZsg1MbcyKvtFfuc1gvByoBKeNmFs+yBlsMpqNTsNEfnp1UVAQ=="
         },
         "ba542660-fcf9-45c7-956f-23d3d54725ba": {
           "display_id": 1690,
