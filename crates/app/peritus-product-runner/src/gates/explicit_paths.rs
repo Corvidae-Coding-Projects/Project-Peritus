@@ -140,7 +140,10 @@ fn extract(root: &Path, transcript: &str) -> PathRequirements {
                 output_context(&words[..index]) && !conditional_clause(&words[..index]);
             let quoted_bare_name =
                 required_output && path_noun_context(&words[..index]) && explicitly_delimited(word);
-            let Some(relative) = parse_path(root, word, required_output, quoted_bare_name) else {
+            let relative_path_context = path_context(&words[..index]);
+            let Some(relative) =
+                parse_path(root, word, required_output, quoted_bare_name, relative_path_context)
+            else {
                 continue;
             };
             line_mentions.push((index, relative, required_output));
@@ -199,6 +202,7 @@ fn parse_path(
     raw: &str,
     required_output: bool,
     quoted_bare_name: bool,
+    relative_path_context: bool,
 ) -> Option<PathBuf> {
     if prose_abbreviation(raw) || unresolved_placeholder(raw) {
         return None;
@@ -220,6 +224,13 @@ fn parse_path(
         path.strip_prefix(root).ok()?.to_path_buf()
     } else {
         if !required_output || (!token.contains('/') && !token.contains('.') && !quoted_bare_name) {
+            return None;
+        }
+        if token.contains('/')
+            && !token.contains('.')
+            && !explicitly_delimited(raw)
+            && !relative_path_context
+        {
             return None;
         }
         path.to_path_buf()
@@ -298,6 +309,14 @@ fn output_context(words: &[&str]) -> bool {
 fn path_noun_context(words: &[&str]) -> bool {
     let start = words.len().saturating_sub(6);
     words[start..].iter().any(|word| path_noun(word))
+}
+
+fn path_context(words: &[&str]) -> bool {
+    words.iter().rev().take(3).any(|word| {
+        output_verb(word)
+            || path_noun(word)
+            || matches!(normalized(word).as_str(), "at" | "in" | "into" | "to" | "under")
+    })
 }
 
 fn conditional_clause(words: &[&str]) -> bool {

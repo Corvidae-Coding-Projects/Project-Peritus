@@ -264,3 +264,29 @@ fn output_verbs_do_not_leak_into_later_verification_sentences() {
     assert_eq!(required.exit_code, Some(1));
     assert!(required.output.contains("required explicit output path is missing: tests/checks"));
 }
+
+#[test]
+fn slash_separated_prose_is_not_mistaken_for_an_output_path() {
+    let root = tempfile::tempdir().expect("root");
+    fs::create_dir(root.path().join("out")).expect("output directory");
+    fs::write(root.path().join("out/titles.txt"), "first\nsecond\n").expect("output");
+    let transcript = "Write the titles to out/titles.txt: UTF-8, one title per line, with no extra \
+        leading/trailing whitespace.";
+
+    let record = run(root.path(), transcript, &[PathBuf::from("out/titles.txt")]);
+
+    assert_eq!(record.exit_code, Some(0), "{}", record.output);
+    assert!(record.output.contains("out/titles.txt: present"));
+    assert!(!record.output.contains("leading/trailing"));
+}
+
+#[test]
+fn unquoted_extensionless_relative_path_remains_required_in_path_context() {
+    let root = tempfile::tempdir().expect("root");
+    fs::create_dir_all(root.path().join("artifacts/release")).expect("output directory");
+
+    let record = run(root.path(), "Write the output to artifacts/release.", &[]);
+
+    assert_eq!(record.exit_code, Some(0), "{}", record.output);
+    assert!(record.output.contains("artifacts/release: present"));
+}
