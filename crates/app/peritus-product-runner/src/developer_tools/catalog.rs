@@ -126,9 +126,16 @@ fn definition(
     schema: &str,
 ) -> Result<ToolDefinition, ProductRunnerError> {
     let limits = ProtocolLimits::PRODUCTION;
+    let description = if matches!(name, "run_command" | "command_start") {
+        format!(
+            "{description} cwd must be a workspace-relative directory, such as in/project. Omit cwd or use . for the workspace root; absolute paths are rejected."
+        )
+    } else {
+        description.to_owned()
+    };
     Ok(ToolDefinition::new(
         ToolName::new(name.to_owned()).map_err(|error| protocol(&error))?,
-        Some(BoundedText::new(description.to_owned(), limits).map_err(|error| protocol(&error))?),
+        Some(BoundedText::new(description, limits).map_err(|error| protocol(&error))?),
         JsonSchema::parse(schema, SchemaDialect::Draft202012, JsonBounds::schema(limits))
             .map_err(|error| protocol(&error))?,
         // These portable schemas contain optional fields. Provider strict decoding is a
@@ -193,6 +200,10 @@ mod tests {
         assert!(description("run_command").contains("C4 router and C2 process lifecycle"));
         assert!(description("command_start").contains("stable handle"));
         assert!(description("command_start").contains("command_recover"));
+        for name in ["run_command", "command_start"] {
+            assert!(description(name).contains("cwd must be a workspace-relative directory"));
+            assert!(description(name).contains("Omit cwd or use ."));
+        }
         for name in [
             "command_poll",
             "command_stdin",

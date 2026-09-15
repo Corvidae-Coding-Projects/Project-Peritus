@@ -29,14 +29,16 @@ sends one minimal real request through both configured account runtimes before e
 Admission prepares the workspace, trace, evidence, and separate recovery paths before model work.
 After admission an unconditional settlement guard emits exactly one atomic `invocation.json`, or a
 recovery report if primary publication fails. Product errors, timeouts, cancellation, trace
-projection failures, and unwinds therefore remain scoreable. Only the verified `accepted`
-disposition sets `success=true`; a retained candidate never becomes native or upstream success by
-itself.
+projection failures, and unwinds therefore remain available to the upstream scorer. The adapter
+process exits unsuccessfully for every rejected native report so a retained candidate cannot be
+mistaken for a successful adapter run. Only the verified `accepted` disposition sets
+`success=true`.
 
 Trace projection validates response, tool, compaction, retry, and provider-switch frames. Retry or
 switch metadata closes an incomplete projected response while remaining separate from the
-conversation transcript, so diagnostics stay readable without fabricating a successful model
-round.
+conversation transcript. If cancellation cuts off a final response, all earlier completed rounds
+remain available for usage and process evidence while the native report still fails closed on the
+incomplete response.
 
 ## Generic capability regressions
 

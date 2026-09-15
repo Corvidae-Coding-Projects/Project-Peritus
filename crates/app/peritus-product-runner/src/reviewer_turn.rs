@@ -39,23 +39,14 @@ pub async fn complete(
         check_cancelled(input)?;
         crate::failover::bypass_open_circuit(input, "reviewer", cycle, accounting, &mut providers)?;
         invocation = invocation.saturating_add(1);
-        let prompt = turn::reviewer_user(&turn::ReviewerPrompt {
-            transcript: &input.conversation.stable_request_context(),
-            diff: evidence.diff,
-            gates: evidence.gates,
-            developer_evidence: evidence.developer_commands,
-            prior: evidence.prior,
-            max_input_tokens: providers.current().profile().limits().max_input_tokens(),
-            delivery: turn::ReviewDelivery {
-                scope: input.delivery_scope,
-                effect_requirement:
-                    crate::delivery_requirement::ExternalEffectRequirement::from_task(
-                        input.delivery_scope,
-                        &input.task,
-                    ),
-            },
-            correction: correction.as_deref(),
-        });
+        let request = prepare_request(
+            input,
+            &evidence,
+            providers.current().profile().limits().max_input_tokens(),
+            correction.as_deref(),
+            accounting.remaining(),
+            memory.as_ref(),
+        )?;
         let media = match input.media(evidence.conversation, providers.current().profile()) {
             Ok(media) => media,
             Err(error) if let Some(switch) = providers.advance_for_capability(&error) => {
@@ -64,7 +55,7 @@ pub async fn complete(
             }
             Err(error) => return Err(error),
         };
-        let (prompt, attachments) = media.into_parts(prompt);
+        let (prompt, attachments) = media.into_parts(request.prompt);
         let mut tools = input.configure_tools(
             WorkspaceDeveloperTools::read_only(input.workspace_root.clone())
                 .with_task_contract(evidence.conversation),
@@ -76,11 +67,10 @@ pub async fn complete(
                     "{}-invocation-{invocation}",
                     turn::request_name(input.run_id, "reviewer", cycle),
                 ),
-                system: turn::reviewer_system(accounting.remaining())
-                    + input.delivery_instructions(),
+                system: request.system,
                 prompt,
                 attachments,
-                tools: read_only_definitions()?,
+                tools: request.tools,
                 limits: reviewer_limits()?,
                 cancellation: input.provider_cancellation.clone(),
             },
@@ -126,6 +116,49 @@ pub async fn complete(
             }
         }
     }
+}
+
+struct ReviewRequest {
+    system: String,
+    prompt: String,
+    tools: Vec<peritus_model_protocol::ToolDefinition>,
+}
+
+fn prepare_request(
+    input: &ProductRunInput,
+    evidence: &ReviewEvidence<'_>,
+    max_input_tokens: u64,
+    correction: Option<&str>,
+    remaining: std::time::Duration,
+    memory: Option<&crate::local_context::LocalContextHandle>,
+) -> Result<ReviewRequest, ProductRunnerError> {
+    let system = turn::reviewer_system(remaining) + input.delivery_instructions();
+    let tools = read_only_definitions()?;
+    let mut budget_tools = tools.clone();
+    if let Some(memory) = memory {
+        budget_tools
+            .extend(memory.tool_definitions().map_err(|error| turn::developer_error(&error))?);
+    }
+    let prompt = turn::reviewer_user(&turn::ReviewerPrompt {
+        system: &system,
+        tools: &budget_tools,
+        transcript: &input.conversation.stable_request_context(),
+        diff: evidence.diff,
+        gates: evidence.gates,
+        developer_evidence: evidence.developer_commands,
+        prior: evidence.prior,
+        max_input_tokens,
+        delivery: turn::ReviewDelivery {
+            scope: input.delivery_scope,
+            effect_requirement: crate::delivery_requirement::ExternalEffectRequirement::from_task(
+                input.delivery_scope,
+                &input.task,
+            ),
+        },
+        correction,
+    })
+    .map_err(|error| turn::developer_error(&error))?;
+    Ok(ReviewRequest { system, prompt, tools })
 }
 
 fn grounded_submission(

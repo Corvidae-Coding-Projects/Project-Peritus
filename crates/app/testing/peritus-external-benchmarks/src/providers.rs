@@ -1,7 +1,9 @@
 //! Credential-owning provider composition used by benchmark runs.
 
-use std::{sync::Arc, time::Duration};
+use std::{env, sync::Arc, time::Duration};
 
+use peritus_daemon::DaemonComponents;
+use peritus_launcher::{AppLayout, ProductBootstrap};
 use peritus_model_protocol::{
     CancellationKind, Capability, CapabilityMatrix, CapabilityProvenance, ModelLimits, ModelName,
     OutputLimitEnforcement, ProviderName, ProviderProfile, ResumeKind, StateMode, WireDialect,
@@ -17,49 +19,205 @@ use peritus_types::ProviderProfileId;
 
 use crate::{BenchmarkError, evidence::ProviderRouteReport};
 
-pub const WRITER_MODEL: &str = "gpt-5.6-sol";
-pub const REVIEWER_MODEL: &str = "sonnet";
+const PROVIDER_SOURCE_ENV: &str = "PERITUS_BENCHMARK_PROVIDER_SOURCE";
+const WRITER_MODEL: &str = "gpt-5.6-sol";
+const REVIEWER_MODEL: &str = "sonnet";
 
 pub struct AuthenticatedProviders {
     pub roles: RoleProviders,
     pub routes: Vec<ProviderRouteReport>,
 }
 
-pub fn declared_routes() -> Result<Vec<ProviderRouteReport>, BenchmarkError> {
-    Ok(vec![
-        declared_route(
-            "writer",
-            &profile([0xB1; 16], "openai", WRITER_MODEL, WireDialect::OpenAiCodexRuntime)?,
-        ),
-        declared_route(
-            "reviewer",
-            &profile([0xB2; 16], "anthropic", REVIEWER_MODEL, WireDialect::AnthropicClaudeRuntime)?,
-        ),
-    ])
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum ProviderSource {
+    AccountRuntimes,
+    Configured,
+}
+
+impl ProviderSource {
+    fn from_environment() -> Result<Self, BenchmarkError> {
+        let Some(value) = env::var_os(PROVIDER_SOURCE_ENV) else {
+            return Ok(Self::AccountRuntimes);
+        };
+        let value = value.into_string().map_err(|_| {
+            BenchmarkError::Arguments(format!("{PROVIDER_SOURCE_ENV} is not UTF-8"))
+        })?;
+        Self::parse(Some(&value))
+    }
+
+    fn parse(value: Option<&str>) -> Result<Self, BenchmarkError> {
+        match value {
+            None | Some("account-runtimes") => Ok(Self::AccountRuntimes),
+            Some("configured") => Ok(Self::Configured),
+            Some(other) => Err(BenchmarkError::Arguments(format!(
+                "{PROVIDER_SOURCE_ENV} must be account-runtimes or configured, not {other:?}"
+            ))),
+        }
+    }
+}
+
+pub struct ProviderPlan {
+    writer: Arc<dyn ModelProvider>,
+    reviewer: Arc<dyn ModelProvider>,
+    fixer: Arc<dyn ModelProvider>,
+    fallbacks: Vec<Arc<dyn ModelProvider>>,
+}
+
+impl ProviderPlan {
+    pub(crate) fn for_harness() -> Result<Self, BenchmarkError> {
+        Self::load(None)
+    }
+
+    pub(crate) fn for_model(model_id: &str) -> Result<Self, BenchmarkError> {
+        Self::load(Some(model_id))
+    }
+
+    fn load(configured_model: Option<&str>) -> Result<Self, BenchmarkError> {
+        match ProviderSource::from_environment()? {
+            ProviderSource::AccountRuntimes => Self::account_runtimes(),
+            ProviderSource::Configured => Self::configured(configured_model),
+        }
+    }
+
+    pub(crate) fn declared_routes(&self) -> Vec<ProviderRouteReport> {
+        vec![
+            declared_route("writer", self.writer.as_ref()),
+            declared_route("reviewer", self.reviewer.as_ref()),
+        ]
+    }
+
+    pub(crate) fn writer_label(&self) -> String {
+        provider_label(self.writer.as_ref())
+    }
+
+    pub(crate) fn reviewer_label(&self) -> String {
+        provider_label(self.reviewer.as_ref())
+    }
+
+    pub(crate) async fn authenticate(
+        self,
+        cancellation: &CancellationToken,
+    ) -> Result<AuthenticatedProviders, BenchmarkError> {
+        let requirement = provider_requirement()?;
+        let writer_qualification = qualify(self.writer.as_ref(), requirement, cancellation).await?;
+        let reviewer_qualification = if Arc::ptr_eq(&self.writer, &self.reviewer) {
+            writer_qualification
+        } else {
+            qualify(self.reviewer.as_ref(), requirement, cancellation).await?
+        };
+        let routes = vec![
+            route_report("writer", self.writer.as_ref(), writer_qualification),
+            route_report("reviewer", self.reviewer.as_ref(), reviewer_qualification),
+        ];
+        Ok(AuthenticatedProviders {
+            roles: RoleProviders {
+                writer: self.writer,
+                reviewer: self.reviewer,
+                fixer: self.fixer,
+                fallbacks: self.fallbacks,
+            },
+            routes,
+        })
+    }
+
+    pub(crate) async fn authenticate_writer(
+        self,
+        cancellation: &CancellationToken,
+    ) -> Result<Arc<dyn ModelProvider>, BenchmarkError> {
+        qualify(self.writer.as_ref(), provider_requirement()?, cancellation).await?;
+        Ok(self.writer)
+    }
+
+    fn account_runtimes() -> Result<Self, BenchmarkError> {
+        let writer: Arc<dyn ModelProvider> = codex()?;
+        let reviewer: Arc<dyn ModelProvider> = claude()?;
+        Ok(Self {
+            writer: Arc::clone(&writer),
+            reviewer: Arc::clone(&reviewer),
+            fixer: Arc::clone(&writer),
+            fallbacks: vec![writer, reviewer],
+        })
+    }
+
+    fn configured(model_id: Option<&str>) -> Result<Self, BenchmarkError> {
+        let layout = AppLayout::discover()
+            .and_then(AppLayout::prepare)
+            .map_err(|error| configured_error("prepare Peritus application directories", error))?;
+        let prepared = ProductBootstrap::new(layout)
+            .prepare()
+            .map_err(|error| configured_error("load Peritus provider selection", error))?;
+        let selected = prepared.state().providers();
+        let kind = selected.default().ok_or_else(|| {
+            BenchmarkError::Provider(
+                "configured benchmark provider source requires a default Peritus provider"
+                    .to_owned(),
+            )
+        })?;
+        let profile_id = ProviderProfileId::new(kind.profile_identity()).map_err(|_| {
+            BenchmarkError::Provider("configured provider identity is invalid".to_owned())
+        })?;
+        let components = DaemonComponents::build(prepared.daemon_config())
+            .map_err(|error| configured_error("construct configured provider registry", error))?;
+        let registry = components.providers();
+        let provider = registry.current_provider(profile_id).ok_or_else(|| {
+            BenchmarkError::Provider(
+                "default Peritus provider is absent or has multiple active revisions".to_owned(),
+            )
+        })?;
+        let configured_model = provider.profile().model().as_str();
+        if let Some(model_id) = model_id
+            && configured_model != model_id
+        {
+            return Err(BenchmarkError::Provider(format!(
+                "configured provider uses model {configured_model:?}, but rubric invocation requested {model_id:?}; set RUBRIC_MODEL to the exact configured model ID"
+            )));
+        }
+        let fallbacks = if selected.automatic_failover() {
+            registry
+                .keys()
+                .into_iter()
+                .filter_map(|key| registry.provider(key.profile_id(), key.revision()))
+                .collect()
+        } else {
+            Vec::new()
+        };
+        Ok(Self {
+            writer: Arc::clone(&provider),
+            reviewer: Arc::clone(&provider),
+            fixer: Arc::clone(&provider),
+            fallbacks,
+        })
+    }
 }
 
 pub async fn authenticated(
     cancellation: &CancellationToken,
 ) -> Result<AuthenticatedProviders, BenchmarkError> {
-    let writer = codex()?;
-    let reviewer = claude()?;
-    let requirement = ProviderRequirement::new(false, 1, true)
-        .map_err(|error| BenchmarkError::Provider(error.to_string()))?;
-    let writer_qualification =
-        verify_live_provider(writer.as_ref(), requirement, cancellation.clone())
-            .await
-            .map_err(|error| BenchmarkError::Provider(error.to_string()))?;
-    let reviewer_qualification =
-        verify_live_provider(reviewer.as_ref(), requirement, cancellation.clone())
-            .await
-            .map_err(|error| BenchmarkError::Provider(error.to_string()))?;
-    let routes = vec![
-        route_report("writer", writer.as_ref(), writer_qualification),
-        route_report("reviewer", reviewer.as_ref(), reviewer_qualification),
-    ];
-    let writer: Arc<dyn ModelProvider> = writer;
-    let reviewer: Arc<dyn ModelProvider> = reviewer;
-    Ok(AuthenticatedProviders { roles: authorized_roles(writer, reviewer), routes })
+    let plan = ProviderPlan::for_harness()?;
+    plan.authenticate(cancellation).await
+}
+
+async fn qualify(
+    provider: &dyn ModelProvider,
+    requirement: ProviderRequirement,
+    cancellation: &CancellationToken,
+) -> Result<ProviderQualification, BenchmarkError> {
+    verify_live_provider(provider, requirement, cancellation.clone())
+        .await
+        .map_err(|error| BenchmarkError::Provider(error.to_string()))
+}
+
+fn provider_requirement() -> Result<ProviderRequirement, BenchmarkError> {
+    ProviderRequirement::new(false, 1, true)
+        .map_err(|error| BenchmarkError::Provider(error.to_string()))
+}
+
+fn configured_error(operation: &'static str, error: impl std::fmt::Display) -> BenchmarkError {
+    BenchmarkError::Provider(format!("{operation}: {error}"))
+}
+
+fn provider_label(provider: &dyn ModelProvider) -> String {
+    format!("{}/{}", provider.profile().provider().as_str(), provider.profile().model().as_str())
 }
 
 fn route_report(
@@ -80,12 +238,13 @@ fn route_report(
     }
 }
 
-fn declared_route(role: &'static str, profile: &ProviderProfile) -> ProviderRouteReport {
+fn declared_route(role: &'static str, provider: &dyn ModelProvider) -> ProviderRouteReport {
+    let profile = provider.profile();
     ProviderRouteReport {
         role,
         provider: profile.provider().as_str().to_owned(),
         model: profile.model().as_str().to_owned(),
-        route: route_name(ProviderRoute::from_dialect(profile.dialect())),
+        route: route_name(provider.route()),
         availability: availability_name(ProviderAvailability::Unchecked),
         text: true,
         image_input: profile.capabilities().supports(Capability::ImageInput),
@@ -109,29 +268,6 @@ const fn availability_name(availability: ProviderAvailability) -> &'static str {
         ProviderAvailability::LiveCanary => "live_canary",
         ProviderAvailability::Unavailable => "unavailable",
     }
-}
-
-fn authorized_roles(
-    writer: Arc<dyn ModelProvider>,
-    reviewer: Arc<dyn ModelProvider>,
-) -> RoleProviders {
-    RoleProviders {
-        writer: Arc::clone(&writer),
-        reviewer: Arc::clone(&reviewer),
-        fixer: Arc::clone(&writer),
-        fallbacks: vec![writer, reviewer],
-    }
-}
-
-pub async fn codex_authenticated(
-    cancellation: &CancellationToken,
-) -> Result<Arc<CodexRuntimeProvider>, BenchmarkError> {
-    let provider = codex()?;
-    provider
-        .require_authenticated(cancellation)
-        .await
-        .map_err(|error| BenchmarkError::Provider(error.to_string()))?;
-    Ok(provider)
 }
 
 fn codex() -> Result<Arc<CodexRuntimeProvider>, BenchmarkError> {
@@ -204,60 +340,4 @@ fn process_limits() -> Result<ProcessLimits, BenchmarkError> {
 }
 
 #[cfg(test)]
-mod tests {
-    use peritus_model_protocol::ModelRequest;
-    use peritus_provider_core::{BoxFuture, OwnedModelStream, ProviderCoreError};
-
-    use super::*;
-
-    struct StubProvider(ProviderProfile);
-
-    impl ModelProvider for StubProvider {
-        fn profile(&self) -> &ProviderProfile {
-            &self.0
-        }
-
-        fn start(
-            &self,
-            _request: ModelRequest,
-            _cancellation: CancellationToken,
-        ) -> BoxFuture<'_, Result<OwnedModelStream, ProviderCoreError>> {
-            Box::pin(async {
-                Err(ProviderCoreError::configuration(
-                    "benchmark_provider_test",
-                    "provider invocation is outside this composition test",
-                ))
-            })
-        }
-    }
-
-    #[test]
-    fn every_authenticated_route_is_an_explicit_fallback_candidate() {
-        let writer: Arc<dyn ModelProvider> = Arc::new(StubProvider(
-            profile([0xC1; 16], "openai", "writer", WireDialect::OpenAiCodexRuntime)
-                .expect("writer profile"),
-        ));
-        let reviewer: Arc<dyn ModelProvider> = Arc::new(StubProvider(
-            profile([0xC2; 16], "anthropic", "reviewer", WireDialect::AnthropicClaudeRuntime)
-                .expect("reviewer profile"),
-        ));
-        let writer_id = writer.profile().profile_id();
-        let reviewer_id = reviewer.profile().profile_id();
-
-        let roles = authorized_roles(writer, reviewer);
-
-        assert_eq!(roles.writer.profile().profile_id(), writer_id);
-        assert_eq!(roles.fixer.profile().profile_id(), writer_id);
-        assert_eq!(roles.reviewer.profile().profile_id(), reviewer_id);
-        assert!(roles.writer.profile().capabilities().supports(Capability::ImageInput));
-        assert!(!roles.reviewer.profile().capabilities().supports(Capability::ImageInput));
-        assert_eq!(
-            roles
-                .fallbacks
-                .iter()
-                .map(|provider| provider.profile().profile_id())
-                .collect::<Vec<_>>(),
-            vec![writer_id, reviewer_id],
-        );
-    }
-}
+mod tests;

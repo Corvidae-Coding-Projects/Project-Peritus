@@ -37,12 +37,34 @@ pub fn discover_explicit(
         .collect::<BTreeSet<_>>()
         .into_iter()
         .collect();
-    attach(root, paths, profile)
+    attach(root, paths, profile, super::requests_visual_inspection(task))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn non_visual_explicit_image_file_work_does_not_require_image_input() {
+        let root = tempfile::tempdir().expect("folder");
+        std::fs::write(root.path().join("photo.jpg"), b"image bytes to checksum").expect("file");
+        let task = "Compute the SHA-256 checksum of photo.jpg with the workspace tools.";
+
+        let images =
+            discover_explicit(root.path(), task, &super::super::tests::profile(false), &[])
+                .expect("file work needs no vision");
+        let (prompt, attachments) = images.into_parts(task.to_owned());
+
+        assert!(prompt.starts_with(task));
+        assert!(prompt.contains("cannot inspect image pixels"));
+        assert!(prompt.contains("scoped file and command tools"));
+        assert!(prompt.contains("photo.jpg"));
+        assert!(attachments.is_empty());
+        assert_eq!(
+            std::fs::read(root.path().join("photo.jpg")).unwrap(),
+            b"image bytes to checksum"
+        );
+    }
 
     #[test]
     fn greeting_never_discovers_or_attaches_unmentioned_images() {

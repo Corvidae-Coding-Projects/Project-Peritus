@@ -128,10 +128,13 @@ fn prepare(
                 "folder memory requires file, conversation or task validity; no Git candidate exists",
             ));
         }
-        if operation.files.len() > memory.limits.links()
-            || (!matches!(operation.validity, Validity::Files) && !operation.files.is_empty())
-        {
+        if operation.files.len() > memory.limits.links() {
             return Err(error("invalid file validity declaration"));
+        }
+        if !matches!(operation.validity, Validity::Files) && !operation.files.is_empty() {
+            return Err(error(
+                "file paths require validity=files; candidate, conversation and task validity require empty files",
+            ));
         }
         for path in &operation.files {
             if path.len() > 4096 {

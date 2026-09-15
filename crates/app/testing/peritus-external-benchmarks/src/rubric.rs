@@ -1,4 +1,4 @@
-//! Local text and image rubric completion through the credential-owning Codex router.
+//! Local text and image rubric completion through the selected credential-owning provider.
 
 use base64::Engine as _;
 use peritus_model_protocol::{
@@ -7,7 +7,7 @@ use peritus_model_protocol::{
     ReasoningPolicy, ReducedItem, RequestId, RequestOptions, RequestedCapabilities,
     ResponseReducer, Role, StructuredOutput, TerminalOutcome, ToolChoice, negotiate,
 };
-use peritus_provider_core::{CancellationToken, ModelProvider};
+use peritus_provider_core::CancellationToken;
 use serde::Deserialize;
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
@@ -15,6 +15,7 @@ use sha2::{Digest, Sha256};
 use crate::{BenchmarkError, providers};
 
 const MAX_REQUEST_BYTES: usize = 32 * 1024 * 1024;
+const MAX_RUBRIC_OUTPUT_TOKENS: u64 = 8_192;
 
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -57,11 +58,14 @@ pub async fn complete(body: &[u8]) -> Result<Value, BenchmarkError> {
         Vec::new()
     };
     let cancellation = CancellationToken::new();
-    let provider = providers::codex_authenticated(&cancellation).await?;
+    let provider = providers::ProviderPlan::for_model(&request.model)?
+        .authenticate_writer(&cancellation)
+        .await?;
     let profile = provider.profile();
+    let response_model = profile.model().as_str().to_owned();
     let requested = RequestedCapabilities::new(
         &required_capabilities,
-        &[Capability::Streaming],
+        &[Capability::Streaming, Capability::UsageDetail],
         profile.limits(),
     )
     .map_err(|error| BenchmarkError::Provider(error.to_string()))?;
@@ -78,8 +82,14 @@ pub async fn complete(body: &[u8]) -> Result<Value, BenchmarkError> {
         RequestOptions::new(
             StructuredOutput::Text,
             ReasoningPolicy::Disabled,
-            GenerationConfig::new(8_192, Vec::new(), None, None, None)
-                .map_err(|error| BenchmarkError::Provider(error.to_string()))?,
+            GenerationConfig::new(
+                rubric_output_tokens(profile.limits().max_output_tokens()),
+                Vec::new(),
+                None,
+                None,
+                None,
+            )
+            .map_err(|error| BenchmarkError::Provider(error.to_string()))?,
             CachePolicy::Disabled,
             PersistencePolicy::LOCAL_FIRST,
             None,
@@ -98,10 +108,18 @@ pub async fn complete(body: &[u8]) -> Result<Value, BenchmarkError> {
     {
         reducer.push(event).map_err(|error| BenchmarkError::Provider(error.to_string()))?;
     }
-    response(&reducer)
+    response(&reducer, &response_model)
 }
 
-fn response(reducer: &ResponseReducer) -> Result<Value, BenchmarkError> {
+const fn rubric_output_tokens(provider_limit: u64) -> u64 {
+    if provider_limit < MAX_RUBRIC_OUTPUT_TOKENS {
+        provider_limit
+    } else {
+        MAX_RUBRIC_OUTPUT_TOKENS
+    }
+}
+
+fn response(reducer: &ResponseReducer, model: &str) -> Result<Value, BenchmarkError> {
     if !matches!(reducer.terminal(), Some(TerminalOutcome::Succeeded { .. })) {
         return Err(BenchmarkError::Provider(format!(
             "rubric provider terminal was {:?}",
@@ -131,7 +149,7 @@ fn response(reducer: &ResponseReducer) -> Result<Value, BenchmarkError> {
         "id": "peritus-local-rubric",
         "object": "chat.completion",
         "created": 0,
-        "model": providers::WRITER_MODEL,
+        "model": model,
         "choices": [{
             "index": 0,
             "message": {"role": "assistant", "content": content},
@@ -288,5 +306,11 @@ mod tests {
             "surprise": true
         }));
         assert!(value.is_err());
+    }
+
+    #[test]
+    fn rubric_output_respects_the_selected_model_limit() {
+        assert_eq!(rubric_output_tokens(4_096), 4_096);
+        assert_eq!(rubric_output_tokens(32_000), MAX_RUBRIC_OUTPUT_TOKENS);
     }
 }

@@ -306,9 +306,72 @@ fn hosted_required_tool_choice_rejects_missing_or_different_calls() {
             let mut failed = false;
             while let Some(event) = stream.pull().await.expect("pull") {
                 assert!(!matches!(event.event(), ModelEvent::ResponseCompleted));
-                failed |= matches!(event.event(), ModelEvent::ResponseFailed(_));
+                if let ModelEvent::ResponseFailed(failure) = event.event() {
+                    assert_eq!(
+                        failure.category(),
+                        peritus_model_protocol::FailureCategory::Provider
+                    );
+                    assert_eq!(
+                        failure.retryability(),
+                        peritus_model_protocol::Retryability::SafeNewRequest
+                    );
+                    assert_eq!(
+                        failure.diagnostic().code(),
+                        "compatible.stream.required_tool_choice_missing"
+                    );
+                    failed = true;
+                }
             }
             assert!(failed, "step {step}");
         }
+    });
+}
+
+#[test]
+fn hosted_specific_tool_choice_accepts_multiple_calls_of_only_that_tool() {
+    block_on(async {
+        let bytes = String::from_utf8(success(HostedService::DeepSeek, 2))
+            .expect("fixture UTF-8")
+            .replace(
+                r#"\"tool_calls\":[{\"function\":{\"arguments\":\"{}\",\"name\":\"peritus_connection_check\"},\"id\":\"check-call\",\"index\":0,\"type\":\"function\"}]"#,
+                r#"\"tool_calls\":[{\"function\":{\"arguments\":\"{}\",\"name\":\"peritus_connection_check\"},\"id\":\"check-call\",\"index\":0,\"type\":\"function\"},{\"function\":{\"arguments\":\"{}\",\"name\":\"peritus_connection_check\"},\"id\":\"check-call-2\",\"index\":1,\"type\":\"function\"}]"#,
+            )
+            .into_bytes();
+        let profile =
+            chat_profile(&[Capability::Streaming, Capability::ToolCalls, Capability::UsageDetail]);
+        let stream = crate::stream::CompatibleStream::new(
+            Box::new(
+                MemoryByteStream::new(
+                    bytes.chunks(11).map(<[u8]>::to_vec).collect(),
+                    HttpLimits::PRODUCTION,
+                )
+                .expect("body"),
+            ),
+            peritus_provider_core::FramingLimits::PRODUCTION,
+            profile.provider().clone(),
+            profile.model().clone(),
+            WireDialect::CompatibleChatCompletions,
+            false,
+            true,
+            true,
+            ProtocolLimits::PRODUCTION,
+            Vec::new(),
+        )
+        .expect("stream")
+        .with_hosted_service(Some(HostedService::DeepSeek))
+        .with_tool_choice(peritus_model_protocol::ToolChoice::Specific(
+            peritus_model_protocol::ToolName::new("peritus_connection_check".to_owned())
+                .expect("name"),
+        ));
+        let mut stream =
+            peritus_provider_core::OwnedModelStream::new(stream, CancellationToken::new());
+        let mut completed = false;
+        let mut failed = false;
+        while let Some(event) = stream.pull().await.expect("pull") {
+            completed |= matches!(event.event(), ModelEvent::ResponseCompleted);
+            failed |= matches!(event.event(), ModelEvent::ResponseFailed(_));
+        }
+        assert!(completed);
+        assert!(!failed);
     });
 }

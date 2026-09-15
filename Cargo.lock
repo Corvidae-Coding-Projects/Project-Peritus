@@ -2480,6 +2480,8 @@ dependencies = [
  "base64",
  "html5ever",
  "markup5ever_rcdom",
+ "peritus-daemon",
+ "peritus-launcher",
  "peritus-model-protocol",
  "peritus-obligations",
  "peritus-process",

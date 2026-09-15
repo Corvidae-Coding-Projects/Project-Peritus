@@ -13,11 +13,13 @@ struct RecordingContext {
     raw_outputs: Vec<String>,
     invocations: Vec<String>,
     checkpoint: Vec<Message>,
+    checkpoint_history: Vec<Vec<Message>>,
     generations: usize,
     batches: usize,
     fail_at: Option<&'static str>,
     source_metadata: Option<CanonicalJson>,
     ignore_invocation_policy: bool,
+    omit_tool_history: bool,
 }
 
 impl RecordingContext {
@@ -75,6 +77,9 @@ impl DeveloperContextPort for RecordingContext {
         assert!(request.profile.limits().max_input_tokens() > 0);
         assert!(!request.messages.is_empty());
         let mut view = self.view.clone();
+        if self.omit_tool_history {
+            view.retain(|message| !matches!(message.role(), Role::Assistant | Role::Tool));
+        }
         if !self.ignore_invocation_policy {
             view[0] = request.invocation_policy.clone();
         }
@@ -87,6 +92,7 @@ impl DeveloperContextPort for RecordingContext {
     fn checkpoint(&mut self, messages: &[Message]) -> Result<(), DeveloperLoopError> {
         self.reject("checkpoint")?;
         self.checkpoint = messages.to_vec();
+        self.checkpoint_history.push(messages.to_vec());
         self.generations += 1;
         Ok(())
     }
