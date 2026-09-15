@@ -4,6 +4,7 @@ use serde::Deserialize;
 
 use peritus_tools_shell::ExecInput;
 
+use crate::model_output::{TypedObjectError, last_typed_object};
 use crate::{ProductDeliveryScope, ProductRunnerError, ProductRunnerErrorKind};
 
 #[derive(Deserialize)]
@@ -24,7 +25,19 @@ pub(super) enum TerminalTurn {
 }
 
 pub(super) fn parse(value: &str) -> Result<TerminalTurn, ProductRunnerError> {
-    let wire = last_terminal_object(value)?;
+    let wire: TerminalWire = match last_typed_object(value) {
+        Ok(wire) => wire,
+        Err(TypedObjectError::Missing) => {
+            return Err(invalid("developer response contains no JSON"));
+        }
+        Err(TypedObjectError::Invalid(detail)) => {
+            return Err(ProductRunnerError::new(
+                ProductRunnerErrorKind::InvalidModelOutput,
+                "parse developer terminal",
+                detail,
+            ));
+        }
+    };
     match (wire.kind.as_str(), wire.summary, wire.run_instructions, wire.message) {
         ("complete", Some(summary), Some(run_instructions), None)
             if !summary.trim().is_empty() && !run_instructions.trim().is_empty() =>
@@ -36,35 +49,6 @@ pub(super) fn parse(value: &str) -> Result<TerminalTurn, ProductRunnerError> {
         }
         _ => Err(invalid("developer terminal fields do not match its kind")),
     }
-}
-
-fn last_terminal_object(value: &str) -> Result<TerminalWire, ProductRunnerError> {
-    let mut found_object_start = false;
-    let mut last_error = None;
-    for (start, character) in value.char_indices().rev() {
-        if character != '{' {
-            continue;
-        }
-        found_object_start = true;
-        let mut values =
-            serde_json::Deserializer::from_str(&value[start..]).into_iter::<TerminalWire>();
-        match values.next() {
-            Some(Ok(wire)) => return Ok(wire),
-            Some(Err(error)) => last_error = Some(error),
-            None => {}
-        }
-    }
-    if !found_object_start {
-        return Err(invalid("developer response contains no JSON"));
-    }
-    Err(ProductRunnerError::new(
-        ProductRunnerErrorKind::InvalidModelOutput,
-        "parse developer terminal",
-        last_error.map_or_else(
-            || "developer response has incomplete JSON".to_owned(),
-            |error| error.to_string(),
-        ),
-    ))
 }
 
 pub(super) fn validate_run_instructions(

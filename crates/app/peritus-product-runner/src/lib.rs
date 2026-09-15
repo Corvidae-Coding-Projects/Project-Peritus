@@ -32,6 +32,8 @@ pub(crate) mod gates;
 #[cfg(not(verus_only))]
 mod local_context;
 #[cfg(not(verus_only))]
+mod model_output;
+#[cfg(not(verus_only))]
 mod progress;
 #[cfg(not(verus_only))]
 pub mod qualification;
