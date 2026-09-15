@@ -48,14 +48,14 @@
         "prefix_sha256": "75e62af207437405c7c0292c3ecc35c1e80a87ef1a9953202d92cb6ee96daa52"
       },
       "u7IC": {
-        "sequence": 52,
-        "tip_oid": "8a6137e814245712346011844dbb16550e40634a",
-        "prefix_sha256": "643d759c4ca6c76e42c635405c1cab76a1b09b3913c690cc5bd0a97d2394530c"
+        "sequence": 53,
+        "tip_oid": "e0d1fd4c17e823f6db3252c90eea6e6216e1d2aa",
+        "prefix_sha256": "e4f04e6b300e2c533cb775d85f14126090058fb9dfa70b618d8ba0250d717036"
       }
     }
   },
   "next_display_id": 84,
-  "next_comment_id": 1649,
+  "next_comment_id": 1650,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -13008,7 +13008,7 @@
       "priority": "medium",
       "created_by": "u7IC",
       "created_at": "2026-09-15T00:49:55.217770155Z",
-      "updated_at": "2026-09-15T15:46:16.518065430Z",
+      "updated_at": "2026-09-15T15:59:57.966783083Z",
       "labels": [
         "feature"
       ],
@@ -13435,6 +13435,15 @@
           "kind": "result",
           "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAr8mKEvRCm6gZsxw5C4iNzmxEfrVh8UHGmj9vPiPXOOunNNBbRW4Yz6Dnun8NG8kYRklJfOs19i7IjDaCjm1GAA=="
+        },
+        "fb9b0fe1-972c-4fce-bf7d-5fb12db5113a": {
+          "display_id": 1649,
+          "author": "u7IC",
+          "content": "Original048 deadline750.001s native/788.204s whole CLI, adapter false;42 native requests73 tools4 retries19 compactions0 failover, proxy39 receipts retained separately. Native candidate/qualification review_pending with gates/obligations/review incomplete; oracle pass does not replace this failure. Exactly5 required artifacts changed,3 protected fixtures byte-intact. Every original evaluator check passes:6 shipped product issues, reverted/deferred/docs/advisories excluded, exact status/commit/duplicate accounting,4 migrations, supplied date and embargo safety. Reviewer recovered3 faulty assertion scripts and final actual cross-artifact/notes/embargo command passed. Known deadline preserved with additional interrupted final-stream trace detail. No new causal host defect, generated output/evaluator repair, limit inflation or paid repeat merely for qualification. Archives/investigation and draftPR82 updated. Original049 now live session66787 on frozen d50/SHAf1e configured OpenCode Zen/DeepSeek. Continue049-106, earlier affected revisits including020, scopedDRY and final combined/provider validation.",
+          "created_at": "2026-09-15T15:59:57.960389599Z",
+          "kind": "result",
+          "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAF29fjcNV++9Pk3vf9PNkPx5Ssn29Al1zmuPXeDwbosi6v62uSqOzd/jlRrYpn3KP/hcLUheQryNDmwNWVPTWCA=="
         },
         "fdada134-123b-4b4e-9a99-0c6defe18871": {
           "display_id": 1647,
