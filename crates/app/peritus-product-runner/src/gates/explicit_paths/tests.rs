@@ -452,3 +452,29 @@ fn output_format_and_schema_fields_are_not_file_deliverables() {
         assert_eq!(run(root.path(), transcript, &[]).exit_code, Some(1));
     }
 }
+
+#[test]
+fn neighboring_file_references_are_not_additional_output_targets() {
+    let root = tempfile::tempdir().expect("root");
+    fs::create_dir_all(root.path().join("in/parser")).expect("project");
+    for name in ["processor.rs", "audit.json"] {
+        fs::write(root.path().join("in/parser").join(name), "candidate").expect("candidate");
+    }
+    let expected =
+        vec![PathBuf::from("in/parser/audit.json"), PathBuf::from("in/parser/processor.rs")];
+    for relation in ["next to", "adjacent to", "beside", "alongside"] {
+        let transcript = format!(
+            "Update `{0}/in/parser/processor.rs`.\nWrite `{0}/in/parser/audit.json`.\n\
+             The program writes the audit file {relation} `processor.rs`.",
+            root.path().display(),
+        );
+        assert_eq!(required_outputs(root.path(), &transcript), expected, "{transcript}");
+        assert_eq!(run(root.path(), &transcript, &expected).exit_code, Some(0));
+        // Referencing a neighbor must not suppress a separate explicit output instruction.
+        let explicit = format!("{transcript}\nUpdate the file `processor.rs`.");
+        assert_eq!(run(root.path(), &explicit, &expected).exit_code, Some(1));
+    }
+    let neighboring = "Create `audit.json` next to `processor.rs`.";
+    assert_eq!(required_outputs(root.path(), neighboring), vec![PathBuf::from("audit.json")]);
+    assert_eq!(run(root.path(), neighboring, &[]).exit_code, Some(1));
+}

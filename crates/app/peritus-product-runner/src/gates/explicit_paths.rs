@@ -360,7 +360,14 @@ fn output_context(words: &[&str]) -> bool {
         return false;
     }
     let trailing = &context[trigger + 1..];
-    if trailing.last().is_some_and(|word| normalized(word) == "from") {
+    // A neighboring path identifies an existing location anchor, not another output.
+    let neighboring_anchor = trailing
+        .last()
+        .is_some_and(|word| matches!(normalized(word).as_str(), "beside" | "alongside"))
+        || trailing.len() >= 2
+            && normalized(trailing[trailing.len() - 1]) == "to"
+            && matches!(normalized(trailing[trailing.len() - 2]).as_str(), "next" | "adjacent");
+    if neighboring_anchor || trailing.last().is_some_and(|word| normalized(word) == "from") {
         return false;
     }
     !ambiguous_addition_verb(context[trigger])
