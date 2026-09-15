@@ -48,14 +48,14 @@
         "prefix_sha256": "75e62af207437405c7c0292c3ecc35c1e80a87ef1a9953202d92cb6ee96daa52"
       },
       "u7IC": {
-        "sequence": 53,
-        "tip_oid": "e0d1fd4c17e823f6db3252c90eea6e6216e1d2aa",
-        "prefix_sha256": "e4f04e6b300e2c533cb775d85f14126090058fb9dfa70b618d8ba0250d717036"
+        "sequence": 54,
+        "tip_oid": "fe7d780696d9fa48cdc8bf094ed6891f1615633e",
+        "prefix_sha256": "731c28a71fb82ba3a0ed556b3333344a776815de1716881dce42376cf8eab4e9"
       }
     }
   },
   "next_display_id": 84,
-  "next_comment_id": 1650,
+  "next_comment_id": 1651,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -13008,7 +13008,7 @@
       "priority": "medium",
       "created_by": "u7IC",
       "created_at": "2026-09-15T00:49:55.217770155Z",
-      "updated_at": "2026-09-15T15:59:57.966783083Z",
+      "updated_at": "2026-09-15T16:23:12.202664754Z",
       "labels": [
         "feature"
       ],
@@ -13228,6 +13228,15 @@
           "kind": "result",
           "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA31clR3MCiEBnqWlJM4EWJyx13EDy3/ImiePjnA3/RfJxHv+rpXRL890h5HkSEfyewmulqY2QEa1zMOcXeYqHBw=="
+        },
+        "85984f17-d852-4b47-96d2-b33a7702a452": {
+          "display_id": 1650,
+          "author": "u7IC",
+          "content": "Original049 completed/qualified1297.615s native,1347.233s whole CLI;39 native requests74 tools2 required-tool retries23 compactions0 failover, proxy37 receipts distinct. Four exact requested out artifacts plus root verify_clean.py helper retained in raw candidate;3 protected inputs byte-intact.13 accepted12 rejected1 valid duplicate,total4047.52; locale/date/FX/refund sign/priority validation before dedup/headers/source-row accounting exact. Native verification recovered invalid-date and full-ledger checker errors, final command exit0. Authentic reviewer independently confirms rows and retains Advisory/open helper derives expectations from own pipeline; do not claim helper-alone independent proof. All22 original evaluator checks pass; original truncated-rubric recovery wording preserved separately from full native successful command. No new causal host defect or generated-output/evaluator repair, limit inflation or paid repeat for pass. Archives/investigation and draftPR82 updated. Original050 now live session95007 on frozen d50/SHAf1e configured OpenCode Zen/DeepSeek. Continue050-106, earlier affected revisits including020, scopedDRY and final combined/provider validation.",
+          "created_at": "2026-09-15T16:23:12.188357240Z",
+          "kind": "result",
+          "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABApRoHSyGKSmT++AggbvW/NxWUFd3X55SBNT7XiTcJrzTCmvTGQn/W/Cb9t4zGWcm7+PoR56QwrUASM2Yc9kgABg=="
         },
         "8aea345b-3e1f-4310-9627-36b3fd78884b": {
           "display_id": 1641,
