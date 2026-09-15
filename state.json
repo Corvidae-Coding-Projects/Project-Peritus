@@ -48,14 +48,14 @@
         "prefix_sha256": "75e62af207437405c7c0292c3ecc35c1e80a87ef1a9953202d92cb6ee96daa52"
       },
       "u7IC": {
-        "sequence": 82,
-        "tip_oid": "b34d36cc5f600cbcd9dabf1dd9ad0c7b8a48f1a4",
-        "prefix_sha256": "f274d61a23dfa91fc2f5e1ba6dd0dc55fb5c82dfab5270f815881f206187f3f1"
+        "sequence": 83,
+        "tip_oid": "c74d790f16c2855d6c28f4fd27c22f71f63ee50e",
+        "prefix_sha256": "4ab46ce8381bbc4256e01679f357c4a4e7fb5a8ce09bf5d15bffca9761aab346"
       }
     }
   },
   "next_display_id": 84,
-  "next_comment_id": 1679,
+  "next_comment_id": 1680,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -13008,7 +13008,7 @@
       "priority": "medium",
       "created_by": "u7IC",
       "created_at": "2026-09-15T00:49:55.217770155Z",
-      "updated_at": "2026-09-15T21:27:47.011447281Z",
+      "updated_at": "2026-09-15T21:36:01.163557310Z",
       "labels": [
         "feature"
       ],
@@ -13309,6 +13309,15 @@
           "kind": "result",
           "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA2ApW9/z2IV57KUayByBtYp7FuZSkzT+oIcEoKiqBzh+H2W2X9cH2yiGvlkSZkBTiQIuTB4OdzPOoRVnJmhH0Dg=="
+        },
+        "6c70c709-4412-4a93-a851-b23e777d5209": {
+          "display_id": 1679,
+          "author": "u7IC",
+          "content": "Affected075 revisit fully terminal and archived at c19e64a2a/47aa0fd: native qualified, exact path gate checks only out/ plus three artifacts, no root duplicates, all nine fixture inputs byte-intact. Paired exact gate evidence corroborates the generic repair. Retained actual model checker StopIteration and shell rejection plus later successful direct wc/grep; original16/17 checks pass, denied EDGE-1 citation remains missing in A-05 CSV and fresh review misses that semantic issue. Index retains both attempts; PR82 and repair validation updated. No further paid repeat or output/oracle edits. Next original076.",
+          "created_at": "2026-09-15T21:36:01.148164907Z",
+          "kind": "result",
+          "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABALOqVWrMoLjrV2jW4Eyd750YixluELGzPS8HuNCWdb3Zn42LScebEya1DYgR/QVoT64dpHCf90gSUdU/liEkgDw=="
         },
         "6f4f06ea-1297-4e07-8582-cce63dfaffec": {
           "display_id": 1651,
