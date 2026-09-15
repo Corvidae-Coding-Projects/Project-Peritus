@@ -48,14 +48,14 @@
         "prefix_sha256": "75e62af207437405c7c0292c3ecc35c1e80a87ef1a9953202d92cb6ee96daa52"
       },
       "u7IC": {
-        "sequence": 74,
-        "tip_oid": "426818b1eae0dcde8263583f8750bbfaca52cff5",
-        "prefix_sha256": "299d2b14a605cd6f7fdb1c44e4197ee3fcf80990da33f8464b4c2e1d1945bd35"
+        "sequence": 75,
+        "tip_oid": "07d1c620c27fc2817b901bb03f551421460b26c1",
+        "prefix_sha256": "6c34bfc5e6d227a398daad2c427d9eefea255bb2767e238d3d44034326a9c2e4"
       }
     }
   },
   "next_display_id": 84,
-  "next_comment_id": 1671,
+  "next_comment_id": 1672,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -13008,7 +13008,7 @@
       "priority": "medium",
       "created_by": "u7IC",
       "created_at": "2026-09-15T00:49:55.217770155Z",
-      "updated_at": "2026-09-15T19:59:30.686083292Z",
+      "updated_at": "2026-09-15T20:07:42.512739169Z",
       "labels": [
         "feature"
       ],
@@ -13201,6 +13201,15 @@
           "kind": "result",
           "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA6wihnSHSNVfa//sdlHE+MpYR05iEPV24esVNkH7U+bY+hnsYZORvxZ2wBlvBnmYKSnUU61qlLBJFr1XjVMk0BA=="
+        },
+        "5954887c-742c-43ee-9061-4928cd746d6a": {
+          "display_id": 1671,
+          "author": "u7IC",
+          "content": "Original068 inspected/archived on f264fc5e1: native qualifies395.616s, 20 requests/41 tools/9 compactions/1 required-tool retry, three artifacts/three intact fixtures. Planned5500 <=5800 with compliance600 reserved, dependencies/exclusion/release claims and31-check verifier/native review pass. Original11/12; remaining substring falsely flags no copy will promise mobile app. Output/oracle unchanged, no new host patch or paid repeat. Index through68 and draft PR82 updated; proceeding original069 sequentially.",
+          "created_at": "2026-09-15T20:07:42.506658119Z",
+          "kind": "result",
+          "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAkuU9f9hEFdcCHvEnQYDo7iiyfbfjSGmZBGdF1Xq2QgDhvu9D0/tGXCF/cR9m3oVI/dJ/OlWB3f+QsW6wu2CyDg=="
         },
         "5cb977dd-1fc1-446c-be2d-65ac460b0eae": {
           "display_id": 1612,
