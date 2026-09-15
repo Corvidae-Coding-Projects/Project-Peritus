@@ -48,14 +48,14 @@
         "prefix_sha256": "75e62af207437405c7c0292c3ecc35c1e80a87ef1a9953202d92cb6ee96daa52"
       },
       "u7IC": {
-        "sequence": 10,
-        "tip_oid": "fabac429282db03e826f57ffea241cd4b653a2bd",
-        "prefix_sha256": "7456edeaacd473ece276be7ac02926c5f2f14b74f44b74da663e5d836ba7029d"
+        "sequence": 11,
+        "tip_oid": "ebb2245d1361e5e3c1464482e382596a9be13cc1",
+        "prefix_sha256": "5d2a193a0764aa7bea981f5c0aa9a5f637dd2c75e84b242402b5f6d1264caeee"
       }
     }
   },
   "next_display_id": 84,
-  "next_comment_id": 1607,
+  "next_comment_id": 1608,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -13008,7 +13008,7 @@
       "priority": "medium",
       "created_by": "u7IC",
       "created_at": "2026-09-15T00:49:55.217770155Z",
-      "updated_at": "2026-09-15T05:52:20.085469422Z",
+      "updated_at": "2026-09-15T05:54:10.536696617Z",
       "labels": [
         "feature"
       ],
@@ -13021,6 +13021,15 @@
           "kind": "result",
           "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA7jywXIFf43ZXF+O0A5O0+lwSUZ83pGUHhA6jNO9SZwaKameJICXiM5oufwqZZ1U7W8Pef/QFNWuUe1rDXheUAw=="
+        },
+        "844a70a2-6f8d-4f4b-9895-4f7019404876": {
+          "display_id": 1607,
+          "author": "u7IC",
+          "content": "Committed 78fd358a6 (checkpoint budgeted required-tool retries) and 69f0d5b22 (share tool-observation digest formatting), then pushed both to feature/harnessbench-deepseek-hardening. Draft PR 82 is OPEN against develop with exact head 69f0d5b22a7ffe26e524f8196a8c76c586b984e7. The branch includes current develop 4a86246c63dd1d23edc87a3d4395998763edaaa8. Committed-source workspace rebuild passed. Generated local provider/tracking files remain untracked and excluded. Remaining investigation starts at task 012.",
+          "created_at": "2026-09-15T05:54:10.505119505Z",
+          "kind": "result",
+          "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA31clR3MCiEBnqWlJM4EWJyx13EDy3/ImiePjnA3/RfJxHv+rpXRL890h5HkSEfyewmulqY2QEa1zMOcXeYqHBw=="
         },
         "a3a99356-3df3-4732-af44-170a6173d941": {
           "display_id": 1605,
