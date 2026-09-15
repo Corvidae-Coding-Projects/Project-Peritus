@@ -48,14 +48,14 @@
         "prefix_sha256": "75e62af207437405c7c0292c3ecc35c1e80a87ef1a9953202d92cb6ee96daa52"
       },
       "u7IC": {
-        "sequence": 89,
-        "tip_oid": "d4ce1b707f7ca05c6cbe19de945e04e3c052bf01",
-        "prefix_sha256": "a66736a61f3539f820ef273e1d667425629e5a010a5bdb0b48376c3c4f81af40"
+        "sequence": 90,
+        "tip_oid": "7b86f8a35c1ead13638b98f24ee07f2058106ad0",
+        "prefix_sha256": "0631d4f941b712a8dc32f5693b0970806faaa314b0424d7f9604c52468e74b58"
       }
     }
   },
   "next_display_id": 85,
-  "next_comment_id": 1685,
+  "next_comment_id": 1686,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -13009,7 +13009,7 @@
       "priority": "medium",
       "created_by": "u7IC",
       "created_at": "2026-09-15T00:49:55.217770155Z",
-      "updated_at": "2026-09-15T22:23:09.054701943Z",
+      "updated_at": "2026-09-15T22:32:22.647743930Z",
       "labels": [
         "feature"
       ],
@@ -13238,6 +13238,15 @@
           "kind": "result",
           "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAkuU9f9hEFdcCHvEnQYDo7iiyfbfjSGmZBGdF1Xq2QgDhvu9D0/tGXCF/cR9m3oVI/dJ/OlWB3f+QsW6wu2CyDg=="
+        },
+        "5b66fa7f-bafe-46a1-a6a6-ec2a789b99cd": {
+          "display_id": 1685,
+          "author": "u7IC",
+          "content": "Original080 archived and inspected at c19e64a2a/47aa0fd: qualified, four artifacts/five byte-intact inputs,24 requests49 tools13 compactions1 retry. Exact canonical JSON/YAML and public priority/conflicts confirmed by model source recomputation and independent review. Original7/9 checks pass: unrequested terminal CSV newline and private flat conflict-source keys differ from equivalent nested winner.source. No oracle/model-output edits or repeat. Index80; user-authorized runner patch79872e752 now fast-forwarded onto the same branch, all-package rebuild/freeze and push next before081.",
+          "created_at": "2026-09-15T22:32:22.632753595Z",
+          "kind": "result",
+          "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA3ctZIm4p8wCw2CA0LLLDZqmxAYHsAP4tegzJbsK57EuuxnQN7RsoPGwtiYH4RbVmlkjXwiPfmPWYG/0zzjopDA=="
         },
         "5cb977dd-1fc1-446c-be2d-65ac460b0eae": {
           "display_id": 1612,
