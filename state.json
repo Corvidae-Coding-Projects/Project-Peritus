@@ -48,14 +48,14 @@
         "prefix_sha256": "75e62af207437405c7c0292c3ecc35c1e80a87ef1a9953202d92cb6ee96daa52"
       },
       "u7IC": {
-        "sequence": 27,
-        "tip_oid": "816b011163f021ef469d45af7536ba8286f90e09",
-        "prefix_sha256": "9ce6206090e1f92a86055eaa2b76f779ec6802960691e513502628089cffdcff"
+        "sequence": 28,
+        "tip_oid": "6d8fdb7482275e323f22e531f2dbe86a209aab08",
+        "prefix_sha256": "4f2456a30213291c9c3047deea125212dfbaa4f918e9f7271e78c3368403335c"
       }
     }
   },
   "next_display_id": 84,
-  "next_comment_id": 1624,
+  "next_comment_id": 1625,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -13008,7 +13008,7 @@
       "priority": "medium",
       "created_by": "u7IC",
       "created_at": "2026-09-15T00:49:55.217770155Z",
-      "updated_at": "2026-09-15T11:24:55.398600319Z",
+      "updated_at": "2026-09-15T11:30:57.729114502Z",
       "labels": [
         "feature"
       ],
@@ -13021,6 +13021,15 @@
           "kind": "result",
           "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA4PPftFIuRoZuKxhYEDKs8LJE1A+rV7BdBHaub8yK+WJZVzdTRaZv3HeSEMK4vTBi9UOOXIo7Fj4aWnvbtaOBBQ=="
+        },
+        "0d9afd86-f033-4741-9653-0af91606de52": {
+          "display_id": 1624,
+          "author": "u7IC",
+          "content": "Original task 027 completed on frozen 384a4f52fab013cf866ac47f055610a484a6a8e3: native gates/obligations/review satisfied, both inputs byte-identical, exact summary/risk CSV output paths. All six supplied-policy conflicts present; independent extraction confirms all six quoted fields occur exactly in contract. Three original oracle failures concern label synonyms and 30-day versus 30 days; public prompt specifies no label vocabulary, no tailoring applied. Model detected/repaired/reverified its own CSV quoting defect. No new general harness bug established. Evidence archived with quote-validation.json and investigation. Draft PR 82 updated against develop; original 028 is running sequentially on same frozen source, original 028–106 and affected/final provider/DRY validation remain.",
+          "created_at": "2026-09-15T11:30:57.722720217Z",
+          "kind": "result",
+          "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA8AUaAQADSS9FjHm/uJNNSxZMQT/khQNdZ7+MJiVG6D3c9H2VJVB5wHwBFHUQo4wJ6c/J90AhH+fHDMOifQboDg=="
         },
         "1e1afa8c-809e-4d17-8e81-26a75e9c593b": {
           "display_id": 1604,
