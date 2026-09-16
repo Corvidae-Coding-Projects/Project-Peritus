@@ -57,8 +57,28 @@ static PERSISTENCE_FAULTS: std::sync::Mutex<Vec<([u8; 16], PersistenceFaultPoint
     std::sync::Mutex::new(Vec::new());
 
 #[cfg(test)]
+static PERSISTENT_PERSISTENCE_FAULTS: std::sync::Mutex<Vec<([u8; 16], PersistenceFaultPoint)>> =
+    std::sync::Mutex::new(Vec::new());
+
+#[cfg(test)]
 pub fn inject_persistence_fault(run_id: RunId, point: PersistenceFaultPoint) {
     PERSISTENCE_FAULTS.lock().expect("persistence fault lock").push((run_id.into_bytes(), point));
+}
+
+#[cfg(test)]
+pub fn inject_persistent_persistence_fault(run_id: RunId, point: PersistenceFaultPoint) {
+    PERSISTENT_PERSISTENCE_FAULTS
+        .lock()
+        .expect("persistent persistence fault lock")
+        .push((run_id.into_bytes(), point));
+}
+
+#[cfg(test)]
+pub fn clear_persistent_persistence_fault(run_id: RunId, point: PersistenceFaultPoint) {
+    PERSISTENT_PERSISTENCE_FAULTS
+        .lock()
+        .expect("persistent persistence fault lock")
+        .retain(|candidate| candidate != &(run_id.into_bytes(), point));
 }
 
 #[cfg(test)]
@@ -66,6 +86,21 @@ fn check_persistence_fault(
     run_id: RunId,
     point: PersistenceFaultPoint,
 ) -> Result<(), ProductRunServiceError> {
+    if PERSISTENT_PERSISTENCE_FAULTS
+        .lock()
+        .map_err(|_| {
+            ProductRunServiceError::internal(
+                "read the persistent persistence fault schedule",
+                "the test fault lock was poisoned",
+            )
+        })?
+        .contains(&(run_id.into_bytes(), point))
+    {
+        return Err(ProductRunServiceError::persistence(
+            persistence_fault_operation(point),
+            "injected persistent persistence failure",
+        ));
+    }
     let mut faults = PERSISTENCE_FAULTS.lock().map_err(|_| {
         ProductRunServiceError::internal(
             "read the persistence fault schedule",
