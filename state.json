@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1499,
-        "tip_oid": "c0291123bb7063b815dac45268ec6a2e46122d3d",
-        "prefix_sha256": "4383b124655814ef45d679ee89b00a876d5e5ae890be22ece80f7b4f53385734"
+        "sequence": 1500,
+        "tip_oid": "55c5ee8449c40a598fb438df1f0d17a86cb3fcad",
+        "prefix_sha256": "21191946e86eb5335b8b93bc1fe38ca6271a5df06ee758fa0417cc946a8ba106"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 87,
-  "next_comment_id": 1728,
+  "next_comment_id": 1729,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -9797,7 +9797,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-16T14:32:25.393355747Z",
-      "updated_at": "2026-09-16T15:51:39.815254944Z",
+      "updated_at": "2026-09-16T16:15:34.473332210Z",
       "labels": [
         "bug"
       ],
@@ -9819,6 +9819,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAY0BkDMAvq32wp3I44xxMxTT2gmsPnImYUv7W340NwkefQpAUuD8rLmF/JU5kHQ39aj9+hJ6YG8nkoB2FB+y7BQ=="
+        },
+        "e78dbd5e-800c-47e0-a2e4-bad6b73ccf16": {
+          "display_id": 1728,
+          "author": "6ME5",
+          "content": "Committed a047d71c7 fix(product-run): require explicit retry after restart. Restored nonterminal product runs now remain RecoveryRequired until an explicit retry, preventing provider or tool replay when a post-effect persistence write failed. Added persistent fault injection and a restart regression covering the exact effect/failure window. Validation: cargo fmt --all -- --check; CARGO_BUILD_JOBS=2 cargo clippy -p peritus-daemon --all-targets --all-features -- -D warnings; focused replay regression passed; product-run recovery tests passed 9 with 1 ignored subprocess fixture; complete peritus-daemon package passed 230 tests with 3 existing environment-dependent unit tests ignored.",
+          "created_at": "2026-09-16T16:15:34.459856607Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAoi5wUxmiSeNeEukWvQQ49VKnwDzo6sAj4nZzzF2KlGrGT/J0i2qbBXcccFc9hOnxnZX0eRThGlWYsPNl/dBhDg=="
         }
       }
     },
