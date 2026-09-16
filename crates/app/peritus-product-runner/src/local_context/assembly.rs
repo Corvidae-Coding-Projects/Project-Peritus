@@ -98,7 +98,11 @@ impl LocalMemory {
             for previous in chosen.iter().rev() {
                 candidate.extend(exchanges::messages(previous));
             }
-            if estimate_developer_request_tokens(&candidate, tools) > target {
+            // Preserve the configured recent exchanges when they fit the active provider,
+            // so source and result reads can coexist for comparison. The soft target
+            // bounds optional retrieved evidence; the recent window and hard capacity
+            // still bound complete protocol history.
+            if estimate_developer_request_tokens(&candidate, tools) > capacity {
                 break;
             }
             recent = recent.saturating_add(group.messages.len());

@@ -22,7 +22,7 @@ use crate::{
     evidence::{
         BenchmarkSuite, ProductObservation, QualificationReport, RelocatablePaths, ResourceReport,
     },
-    providers, trace, workspace,
+    trace, workspace,
 };
 
 pub async fn run_harnessbench(
@@ -36,6 +36,7 @@ pub async fn execute(
 ) -> Result<crate::evidence::InvocationReport, BenchmarkError> {
     let AdmittedInvocation {
         mut guard,
+        provider_plan,
         prompt,
         conversation,
         evidence_dir,
@@ -57,7 +58,7 @@ pub async fn execute(
     guard.seed_mut().baseline = Some(baseline.clone());
 
     let cancellation = CancellationToken::new();
-    let authenticated = match providers::authenticated(&cancellation).await {
+    let authenticated = match provider_plan.authenticate(&cancellation).await {
         Ok(value) => value,
         Err(error) => return guard.fail(SettlementCause::Provider, &error),
     };
@@ -93,16 +94,46 @@ pub async fn execute(
         Ok(value) => value,
         Err(error) => return guard.fail(SettlementCause::Adapter, &error),
     };
-    if let Err(error) =
-        retain_evidence(&mut guard, &conversation, &observations, &evidence_dir, sandbox.as_deref())
-    {
-        return guard.finalize(crate::settlement::TerminalFacts::failure(
+    let retained = retain_evidence(
+        &mut guard,
+        &conversation,
+        &observations,
+        &evidence_dir,
+        sandbox.as_deref(),
+    );
+    let facts = product_terminal_facts(&guard, result, snapshot.clone());
+    settle_retained_facts(&mut guard, facts, snapshot, retained)
+}
+
+fn settle_retained_facts(
+    guard: &mut crate::settlement::InvocationGuard,
+    mut facts: crate::settlement::TerminalFacts,
+    snapshot: candidate::CandidateSnapshot,
+    retained: Result<Option<BenchmarkError>, BenchmarkError>,
+) -> Result<crate::evidence::InvocationReport, BenchmarkError> {
+    let facts = match retained {
+        Err(error) => crate::settlement::TerminalFacts::failure(
             SettlementCause::Adapter,
             Some(snapshot),
             &error,
-        ));
-    }
-    settle_product_result(&mut guard, result, snapshot)
+        ),
+        Ok(Some(error)) if facts.qualified => crate::settlement::TerminalFacts::failure(
+            SettlementCause::Adapter,
+            Some(snapshot),
+            &error,
+        ),
+        Ok(Some(error)) => {
+            // Cancellation and provider failure can interrupt a valid final stream. Keep the
+            // known native failure primary while making the incomplete evidence explicit.
+            facts.failure = Some(facts.failure.take().map_or_else(
+                || format!("Additional trace detail: {error}"),
+                |failure| format!("{failure} Additional trace detail: {error}"),
+            ));
+            facts
+        }
+        Ok(None) => facts,
+    };
+    guard.finalize(facts)
 }
 
 fn retain_evidence(
@@ -111,7 +142,7 @@ fn retain_evidence(
     observations: &ObservationCapture,
     evidence_dir: &Path,
     sandbox: Option<&Path>,
-) -> Result<(), BenchmarkError> {
+) -> Result<Option<BenchmarkError>, BenchmarkError> {
     let last_update = observations.lock().ok().and_then(|mut value| value.take());
     if let Some(update) = last_update {
         guard.seed_mut().resources = ResourceReport::from(update.progress);
@@ -126,7 +157,7 @@ fn retain_evidence(
         BenchmarkSuite::TerminalBench => {
             guard.seed_mut().usage =
                 trace::summarize_usage(&guard.seed().trace_path, &conversation.render())?;
-            Ok(())
+            Ok(None)
         }
     }
 }
@@ -135,21 +166,19 @@ fn retain_harness_evidence(
     guard: &mut crate::settlement::InvocationGuard,
     trace_inputs: &[(PathBuf, String)],
     sandbox: Option<&Path>,
-) -> Result<(), BenchmarkError> {
+) -> Result<Option<BenchmarkError>, BenchmarkError> {
     let usage_proxy = guard.seed().usage_proxy.clone().ok_or_else(|| {
         BenchmarkError::Workspace("Harness-Bench usage proxy was not admitted".to_owned())
     })?;
-    guard.seed_mut().projected_responses = trace::publish_harnessbench(
+    let trace_evidence = trace::publish_harnessbench(
         trace_inputs,
         &usage_proxy,
         &guard.seed().task_id,
         &guard.seed().session_id,
         &guard.seed().harness_model_id,
     )?;
-    guard.seed_mut().usage = trace::summarize_usage(
-        &guard.seed().trace_path,
-        &trace_inputs.last().map_or_else(String::new, |(_, prompt)| prompt.clone()),
-    )?;
+    guard.seed_mut().projected_responses = trace_evidence.projected_responses;
+    guard.seed_mut().usage = trace_evidence.usage;
     let sandbox = sandbox.ok_or_else(|| {
         BenchmarkError::Workspace("Harness-Bench sandbox was not admitted".to_owned())
     })?;
@@ -161,16 +190,19 @@ fn retain_harness_evidence(
         &usage_proxy,
         guard.seed().last_observation_path.as_deref(),
     )?);
-    Ok(())
+    if let Some(path) = trace_evidence.incomplete_response {
+        return Ok(Some(BenchmarkError::trace(path, "provider response has no terminal event")));
+    }
+    Ok(None)
 }
 
-fn settle_product_result(
-    guard: &mut crate::settlement::InvocationGuard,
+fn product_terminal_facts(
+    guard: &crate::settlement::InvocationGuard,
     result: Result<ProductRunOutcome, ProductRunnerError>,
     snapshot: candidate::CandidateSnapshot,
-) -> Result<crate::evidence::InvocationReport, BenchmarkError> {
+) -> crate::settlement::TerminalFacts {
     match result {
-        Ok(outcome) => settle_verified_outcome(guard, &outcome, snapshot),
+        Ok(outcome) => verified_outcome_facts(guard, &outcome, snapshot),
         Err(error) => {
             let cause = product_error_cause(&error);
             let snapshot = (!snapshot.changed_paths.is_empty()).then_some(snapshot);
@@ -178,16 +210,16 @@ fn settle_product_result(
             let mut facts =
                 crate::settlement::TerminalFacts::failure(cause, snapshot, &benchmark_error);
             facts.failure_kind = Some(format!("{:?}", error.kind()).to_lowercase());
-            guard.finalize(facts)
+            facts
         }
     }
 }
 
-fn settle_verified_outcome(
-    guard: &mut crate::settlement::InvocationGuard,
+fn verified_outcome_facts(
+    guard: &crate::settlement::InvocationGuard,
     outcome: &ProductRunOutcome,
     snapshot: candidate::CandidateSnapshot,
-) -> Result<crate::evidence::InvocationReport, BenchmarkError> {
+) -> crate::settlement::TerminalFacts {
     let settlement = outcome.settlement();
     let candidate = settlement.checkpoint().map(|_| snapshot);
     let qualification = if settlement.is_accepted() {
@@ -217,7 +249,7 @@ fn settle_verified_outcome(
         }
         Some(detail)
     });
-    guard.finalize(crate::settlement::TerminalFacts {
+    crate::settlement::TerminalFacts {
         cause: settlement.cause(),
         snapshot: candidate,
         qualified: settlement.is_accepted(),
@@ -226,7 +258,7 @@ fn settle_verified_outcome(
         failure_kind: (!settlement.is_accepted())
             .then(|| format!("{:?}", settlement.disposition()).to_ascii_lowercase()),
         failure,
-    })
+    }
 }
 
 const fn candidate_stage_name(stage: CandidateStage) -> &'static str {
@@ -306,12 +338,4 @@ pub fn run_id(session_id: &str, task_id: &str) -> Result<RunId, BenchmarkError> 
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn run_identity_is_stable_and_task_scoped() {
-        assert_eq!(run_id("session", "task").unwrap(), run_id("session", "task").unwrap());
-        assert_ne!(run_id("session", "task").unwrap(), run_id("session", "other").unwrap());
-    }
-}
+mod tests;

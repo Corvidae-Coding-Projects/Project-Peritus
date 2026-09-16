@@ -5,7 +5,7 @@ use std::{fs, path::PathBuf};
 use peritus_agent::{
     DeveloperLoopError, DeveloperToolEffect, DeveloperToolExecutor, DeveloperToolObservation,
 };
-use peritus_model_protocol::CompletedToolCall;
+use peritus_model_protocol::{CompletedToolCall, Message};
 use serde_json::Value;
 
 use super::{
@@ -271,6 +271,11 @@ impl DeveloperToolExecutor for WorkspaceDeveloperTools {
             self.inspection_progress.observe(call.name().as_str(), &arguments, &value);
         }
         observation(&value, is_error)
+    }
+
+    fn observe_model_context(&mut self, messages: &[Message]) -> Result<(), DeveloperLoopError> {
+        self.inspection_progress.observe_model_context(messages);
+        Ok(())
     }
 
     fn completion_blocker(&self) -> Option<String> {

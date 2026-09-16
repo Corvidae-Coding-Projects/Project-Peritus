@@ -57,7 +57,8 @@ pub(super) fn tool_payload(
 }
 
 pub fn checkpoint(path: &Path, payload: &[u8]) -> Result<(), DeveloperLoopError> {
-    super::append(path, 6, payload).map_err(|_| failure("persist local checkpoint trace"))
+    super::append(path, super::DeveloperTraceFrameKind::LocalMemoryCheckpoint.tag(), payload)
+        .map_err(|_| failure("persist local checkpoint trace"))
 }
 
 /// Replays only completed, explicitly scoped frames. A torn tail is never treated as an effect.
@@ -95,7 +96,9 @@ pub fn observations(
         if size > length - position {
             return Ok(true);
         }
-        if header[0] == 7 {
+        if super::DeveloperTraceFrameKind::from_tag(header[0])
+            == Some(super::DeveloperTraceFrameKind::LocalMemoryObservation)
+        {
             if size > 64 * 1024 * 1024 {
                 return Err(failure("scoped tool trace exceeds frame bound"));
             }

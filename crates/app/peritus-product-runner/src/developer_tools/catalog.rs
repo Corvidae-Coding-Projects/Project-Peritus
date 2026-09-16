@@ -6,22 +6,27 @@ use peritus_model_protocol::{
 
 use crate::{ProductRunnerError, ProductRunnerErrorKind};
 
+const WORKSPACE_LIST_SCHEMA: &str = r#"{"additionalProperties":false,"properties":{"depth":{"type":"integer"},"path":{"type":"string"}},"type":"object"}"#;
+const WORKSPACE_SEARCH_SCHEMA: &str = r#"{"additionalProperties":false,"properties":{"max_results":{"type":"integer"},"path":{"type":"string"},"query":{"type":"string"}},"required":["query"],"type":"object"}"#;
+const WORKSPACE_READ_SCHEMA: &str = r#"{"additionalProperties":false,"properties":{"end_line":{"type":"integer"},"path":{"type":"string"},"start_line":{"type":"integer"}},"required":["path"],"type":"object"}"#;
+const COMMAND_HANDLE_SCHEMA: &str = r#"{"additionalProperties":false,"properties":{"handle":{"type":"string"}},"required":["handle"],"type":"object"}"#;
+
 pub fn definitions() -> Result<Vec<ToolDefinition>, ProductRunnerError> {
     definitions_from(&[
         (
             "workspace_list",
             "List files and directories below one workspace-relative path with current byte size and permission metadata. The result reports the exact workspace_root, path semantics, and observed execution_resources including the recommended build parallelism. When the task names an absolute path below that root, remove the exact root prefix once instead of repeating the root directory. Call this first in every fresh writer or fixer turn; mutation and process tools remain locked until a successful listing and a targeted file read.",
-            r#"{"additionalProperties":false,"properties":{"depth":{"type":"integer"},"path":{"type":"string"}},"type":"object"}"#,
+            WORKSPACE_LIST_SCHEMA,
         ),
         (
             "workspace_search",
             "Search text files for a literal string and return matching lines.",
-            r#"{"additionalProperties":false,"properties":{"max_results":{"type":"integer"},"path":{"type":"string"},"query":{"type":"string"}},"required":["query"],"type":"object"}"#,
+            WORKSPACE_SEARCH_SCHEMA,
         ),
         (
             "workspace_read",
             "Read a bounded line range plus current byte size and permission metadata from one workspace-relative text file. Call this after workspace_list and read the exact current target before changing an existing file.",
-            r#"{"additionalProperties":false,"properties":{"end_line":{"type":"integer"},"path":{"type":"string"},"start_line":{"type":"integer"}},"required":["path"],"type":"object"}"#,
+            WORKSPACE_READ_SCHEMA,
         ),
         (
             "workspace_write",
@@ -51,7 +56,7 @@ pub fn definitions() -> Result<Vec<ToolDefinition>, ProductRunnerError> {
         (
             "command_poll",
             "Poll a command_start handle. Returns bounded progress while running or the stable terminal result with captured output.",
-            r#"{"additionalProperties":false,"properties":{"handle":{"type":"string"}},"required":["handle"],"type":"object"}"#,
+            COMMAND_HANDLE_SCHEMA,
         ),
         (
             "command_stdin",
@@ -71,12 +76,12 @@ pub fn definitions() -> Result<Vec<ToolDefinition>, ProductRunnerError> {
         (
             "command_cancel",
             "Cancel an active command and its owned process tree, then return its latest state.",
-            r#"{"additionalProperties":false,"properties":{"handle":{"type":"string"}},"required":["handle"],"type":"object"}"#,
+            COMMAND_HANDLE_SCHEMA,
         ),
         (
             "command_recover",
             "Reconcile an active command handle with its durable C2 process state after an interrupted poll or control operation.",
-            r#"{"additionalProperties":false,"properties":{"handle":{"type":"string"}},"required":["handle"],"type":"object"}"#,
+            COMMAND_HANDLE_SCHEMA,
         ),
     ])
 }
@@ -87,17 +92,17 @@ pub fn read_only_definitions() -> Result<Vec<ToolDefinition>, ProductRunnerError
         (
             "workspace_list",
             "List files and directories below one workspace-relative path with current byte size and permission metadata. The result reports the exact workspace_root and confirms that every workspace tool path is relative to it; remove that exact prefix once from absolute in-workspace paths.",
-            r#"{"additionalProperties":false,"properties":{"depth":{"type":"integer"},"path":{"type":"string"}},"type":"object"}"#,
+            WORKSPACE_LIST_SCHEMA,
         ),
         (
             "workspace_search",
             "Search text files for a literal string and return matching lines.",
-            r#"{"additionalProperties":false,"properties":{"max_results":{"type":"integer"},"path":{"type":"string"},"query":{"type":"string"}},"required":["query"],"type":"object"}"#,
+            WORKSPACE_SEARCH_SCHEMA,
         ),
         (
             "workspace_read",
             "Read a bounded line range plus current byte size and permission metadata from one workspace-relative text file.",
-            r#"{"additionalProperties":false,"properties":{"end_line":{"type":"integer"},"path":{"type":"string"},"start_line":{"type":"integer"}},"required":["path"],"type":"object"}"#,
+            WORKSPACE_READ_SCHEMA,
         ),
     ])
 }
@@ -126,9 +131,16 @@ fn definition(
     schema: &str,
 ) -> Result<ToolDefinition, ProductRunnerError> {
     let limits = ProtocolLimits::PRODUCTION;
+    let description = if matches!(name, "run_command" | "command_start") {
+        format!(
+            "{description} cwd must be a workspace-relative directory, such as in/project. Omit cwd or use . for the workspace root; absolute paths are rejected."
+        )
+    } else {
+        description.to_owned()
+    };
     Ok(ToolDefinition::new(
         ToolName::new(name.to_owned()).map_err(|error| protocol(&error))?,
-        Some(BoundedText::new(description.to_owned(), limits).map_err(|error| protocol(&error))?),
+        Some(BoundedText::new(description, limits).map_err(|error| protocol(&error))?),
         JsonSchema::parse(schema, SchemaDialect::Draft202012, JsonBounds::schema(limits))
             .map_err(|error| protocol(&error))?,
         // These portable schemas contain optional fields. Provider strict decoding is a
@@ -193,6 +205,10 @@ mod tests {
         assert!(description("run_command").contains("C4 router and C2 process lifecycle"));
         assert!(description("command_start").contains("stable handle"));
         assert!(description("command_start").contains("command_recover"));
+        for name in ["run_command", "command_start"] {
+            assert!(description(name).contains("cwd must be a workspace-relative directory"));
+            assert!(description(name).contains("Omit cwd or use ."));
+        }
         for name in [
             "command_poll",
             "command_stdin",

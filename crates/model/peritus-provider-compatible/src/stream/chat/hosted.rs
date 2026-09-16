@@ -5,6 +5,9 @@ use peritus_model_protocol::{ItemId, ItemKind, ModelEvent, StreamFragment};
 use peritus_provider_core::{ProviderCoreError, SseFrame, hosted::HostedService};
 use serde_json::Value;
 
+pub(super) const REQUIRED_TOOL_CHOICE_MISSING: &str =
+    "hosted provider did not return the required tool choice";
+
 pub(super) struct CompletedChoice {
     pub(super) wire_reason: String,
     pub(super) accounting_seen: bool,
@@ -42,16 +45,14 @@ impl ChatDecoder {
         use peritus_model_protocol::ToolChoice;
         let valid = match &self.tool_choice {
             ToolChoice::Specific(name) => {
-                self.tools.len() == 1 && self.tools.values().all(|tool| &tool.name == name)
+                !self.tools.is_empty() && self.tools.values().all(|tool| &tool.name == name)
             }
             ToolChoice::Required => !self.tools.is_empty(),
             ToolChoice::None => self.tools.is_empty(),
             ToolChoice::Auto => true,
         };
         if !valid {
-            return Err(error::malformed(
-                "hosted provider did not return the required tool choice",
-            ));
+            return Err(error::malformed(REQUIRED_TOOL_CHOICE_MISSING));
         }
         Ok(())
     }

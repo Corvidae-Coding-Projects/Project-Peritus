@@ -52,6 +52,14 @@ python3 /absolute/path/to/Project-Peritus/benchmarks/external/harnessbench/rubri
 The bridge forwards bounded rubric requests to the native Rust adapter, which uses the logged-in
 official `codex` executable as a model router. The bridge does not read or copy account credentials.
 
+To investigate a model selected in Peritus provider setup, set
+`PERITUS_BENCHMARK_PROVIDER_SOURCE=configured` for both the bridge and every `run-task` command,
+and set the harness `model` and `RUBRIC_MODEL` values to the exact configured model ID. This mode
+loads the current default provider through the same daemon registry and operating-system credential
+store as the product. It rejects a mismatched model ID instead of silently spending tokens on a
+different model. Without the variable, the established Codex writer and Claude reviewer route is
+preserved.
+
 HarnessBench gives each task its own outer adapter timeout but its generic CLI does not pass that
 number as an argument. Point Peritus at the pinned unchanged task catalog with
 `PERITUS_HARNESSBENCH_TASKS_DIR`. The native adapter reads the current task's top-level

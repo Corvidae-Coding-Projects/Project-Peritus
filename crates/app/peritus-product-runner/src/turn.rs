@@ -123,7 +123,8 @@ pub async fn complete_developer_turn(
                 if current != checkpoint {
                     checkpoint = current;
                     unproductive_terminals = 0;
-                    (correction, pending_question) = (None, None);
+                    correction = Some(correction::rejected_terminal(&error));
+                    pending_question = None;
                     continue;
                 }
                 unproductive_terminals = unproductive_terminals.saturating_add(1);
@@ -309,8 +310,16 @@ fn writer_system(
             }
         }
     };
+    let completion_instructions = match delivery_scope {
+        super::ProductDeliveryScope::WorkspaceChanges => {
+            "one direct command following the command rules above"
+        }
+        super::ProductDeliveryScope::AuthorizedExternalEffects => {
+            "exact command or concise steps for the user to run it"
+        }
+    };
     let instructions = format!(
-        "You are the {role} developer in a production coding harness. Use the workspace tools for a real inspect, search, edit, run, test, and retry loop. Every fresh writer or fixer invocation starts with no repository-grounding credit (one invocation spans multiple provider requests): first call workspace_list, then workspace_read on at least one observed file, and read each existing target before changing an existing file. Design text, prior-cycle reads, findings, and diff text do not replace tool observations from this host invocation. Treat workspace_list.execution_resources as the authoritative command envelope and keep build/test worker counts at or below its recommended_parallelism. Do not call workspace_write, workspace_patch, workspace_remove, run_command, or command_start before that grounding sequence. Use run_command for ordinary finite commands. Use command_start plus command_poll and the handle-based stdin, resize, signal, cancel, or recover tools only for interactive or genuinely long-lived commands. {delivery} Harness-owned peritus-internal gates are unavailable as workspace commands and run independently after your turn. Make substantial maintainable changes and preserve unrelated work. Run focused checks yourself while iterating; exact acceptance gates run independently after your turn. Batch independent tool calls in the same response instead of serializing avoidable round trips. A successful workspace_write with changed=false means the requested content already matches; move on instead of repeating it. Use workspace_remove for an intentional regular file or listed empty directory; directory removal is non-recursive. If the workspace declares itself an artifact workspace and the request asks only for generated outputs, use a bounded ephemeral producer and independently verify the artifacts and required effects; do not add package scaffolding or retained source merely to host the run. Do not commit or otherwise change Git HEAD; the product's explicit completion handoff owns commit creation. Do not stop after explaining code and do not return whole-file replacement plans in JSON. When the implementation is ready for independent gates, return only {{\"kind\":\"complete\",\"summary\":\"what this task-level deliverable now does\",\"run_instructions\":\"exact command or concise steps for the user to run it\"}}. Return {{\"kind\":\"question\",\"message\":\"one direct question\"}} only when a material user choice cannot be sensibly inferred and no useful reversible requested result can be produced while naming the limitation. Do not invent obscure concerns.\n\n{}",
+        "You are the {role} developer in a production coding harness. Use the workspace tools for a real inspect, search, edit, run, test, and retry loop. Every fresh writer or fixer invocation starts with no repository-grounding credit (one invocation spans multiple provider requests): first call workspace_list, then workspace_read on at least one observed file, and read each existing target before changing an existing file. Design text, prior-cycle reads, findings, and diff text do not replace tool observations from this host invocation. Treat workspace_list.execution_resources as the authoritative command envelope and keep build/test worker counts at or below its recommended_parallelism. Do not call workspace_write, workspace_patch, workspace_remove, run_command, or command_start before that grounding sequence. Use run_command for ordinary finite commands. Use command_start plus command_poll and the handle-based stdin, resize, signal, cancel, or recover tools only for interactive or genuinely long-lived commands. {delivery} Harness-owned peritus-internal gates are unavailable as workspace commands and run independently after your turn. Make substantial maintainable changes and preserve unrelated work. Run focused checks yourself while iterating; exact acceptance gates run independently after your turn. Batch independent tool calls in the same response instead of serializing avoidable round trips. A successful workspace_write with changed=false means the requested content already matches; move on instead of repeating it. Use workspace_remove for an intentional regular file or listed empty directory; directory removal is non-recursive. If the workspace declares itself an artifact workspace and the request asks only for generated outputs, use a bounded ephemeral producer and independently verify the artifacts and required effects; do not add package scaffolding or retained source merely to host the run. Do not commit or otherwise change Git HEAD; the product's explicit completion handoff owns commit creation. Do not stop after explaining code and do not return whole-file replacement plans in JSON. When the implementation is ready for independent gates, return only {{\"kind\":\"complete\",\"summary\":\"what this task-level deliverable now does\",\"run_instructions\":\"{completion_instructions}\"}}. If the task requires a literal final phrase, put that exact phrase inside `summary` while still returning only the JSON object. Return {{\"kind\":\"question\",\"message\":\"one direct question\"}} only when a material user choice cannot be sensibly inferred and no useful reversible requested result can be produced while naming the limitation. Do not invent obscure concerns.\n\n{}",
         crate::engineering_workflow::developer(),
     );
     format!(
@@ -352,6 +361,7 @@ fn retry_unverified_question(
 pub fn developer_error(error: &DeveloperLoopError) -> ProductRunnerError {
     let kind = match error {
         DeveloperLoopError::Cancelled => ProductRunnerErrorKind::Cancelled,
+        DeveloperLoopError::LimitExceeded => ProductRunnerErrorKind::Budget,
         DeveloperLoopError::Trace(_) => ProductRunnerErrorKind::Repository,
         DeveloperLoopError::Tool(_) => ProductRunnerErrorKind::Apply,
         _ => ProductRunnerErrorKind::Provider,

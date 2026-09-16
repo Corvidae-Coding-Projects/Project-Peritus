@@ -242,6 +242,7 @@ impl CompatibleStream {
         category: FailureCategory,
         code: &'static str,
         digest: peritus_types::Sha256Digest,
+        retryability: Retryability,
     ) -> Result<(), ProviderCoreError> {
         let failure = error::failure(
             &self.provider,
@@ -256,7 +257,7 @@ impl CompatibleStream {
             } else {
                 OutcomeCertainty::AcceptedPartial
             },
-            Retryability::Never,
+            retryability,
             Some(200),
             self.decoder.response_id().cloned(),
             None,
@@ -278,7 +279,32 @@ impl CompatibleStream {
             FailureCategory::Transport,
             "compatible.stream.interrupted",
             peritus_codec::sha256(b"compatible-stream-interrupted"),
+            Retryability::Never,
         )
+    }
+
+    fn process_parsed(
+        &mut self,
+        parsed: Result<Vec<SseItem>, ProviderCoreError>,
+        digest: peritus_types::Sha256Digest,
+    ) -> Result<(), ProviderCoreError> {
+        if let Err(error) = parsed.and_then(|items| self.process(items)) {
+            let (category, code, retryability) = if chat::required_tool_choice_missing(&error) {
+                (
+                    FailureCategory::Provider,
+                    "compatible.stream.required_tool_choice_missing",
+                    Retryability::SafeNewRequest,
+                )
+            } else {
+                (
+                    FailureCategory::MalformedPayload,
+                    "compatible.stream.malformed",
+                    Retryability::Never,
+                )
+            };
+            self.fail(category, code, digest, retryability)?;
+        }
+        Ok(())
     }
 }
 
@@ -297,34 +323,22 @@ impl ModelStream for CompatibleStream {
                 }
                 match self.body.next(cancellation).await {
                     Ok(Some(chunk)) => {
-                        let invalid = self
-                            .parser
-                            .push(&chunk)
-                            .map_or(true, |items| self.process(items).is_err());
-                        if invalid {
-                            self.fail(
-                                FailureCategory::MalformedPayload,
-                                "compatible.stream.malformed",
-                                peritus_codec::sha256(&chunk),
-                            )?;
-                        }
+                        let parsed = self.parser.push(&chunk);
+                        self.process_parsed(parsed, peritus_codec::sha256(&chunk))?;
                     }
                     Ok(None) => {
                         self.body_finished = true;
-                        let invalid =
-                            self.parser.finish().map_or(true, |items| self.process(items).is_err());
-                        if invalid {
-                            self.fail(
-                                FailureCategory::MalformedPayload,
-                                "compatible.stream.malformed",
-                                peritus_codec::sha256(b"compatible-final-frame"),
-                            )?;
-                        }
+                        let parsed = self.parser.finish();
+                        self.process_parsed(
+                            parsed,
+                            peritus_codec::sha256(b"compatible-final-frame"),
+                        )?;
                         if !self.terminal {
                             self.fail(
                                 FailureCategory::IncompleteStream,
                                 "compatible.stream.incomplete",
                                 peritus_codec::sha256(b"compatible-stream-incomplete"),
+                                Retryability::Never,
                             )?;
                         }
                     }

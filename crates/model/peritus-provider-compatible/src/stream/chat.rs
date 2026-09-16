@@ -16,6 +16,12 @@ use super::responses::FrameEvents;
 use crate::error;
 use fields::{append, integer, string, validate_top_level};
 
+pub(super) fn required_tool_choice_missing(error: &ProviderCoreError) -> bool {
+    error.kind() == peritus_provider_core::ProviderCoreErrorKind::MalformedStream
+        && error.operation() == "compatible_stream"
+        && error.detail() == hosted::REQUIRED_TOOL_CHOICE_MISSING
+}
+
 pub(super) struct ChatDecoder {
     pub(super) service: Option<peritus_provider_core::hosted::HostedService>,
     provider: ProviderName,

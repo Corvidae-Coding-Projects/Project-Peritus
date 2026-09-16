@@ -1,6 +1,6 @@
 //! Shared production invocation switch; legacy mode is explicit and never an error fallback.
 
-use super::{LocalContextHandle, MemoryTools, memory_tool_definitions};
+use super::{LocalContextHandle, MemoryTools};
 use crate::{budget::RunAccounting, trace::accounting::AccountingTrace};
 use peritus_agent::{
     DeveloperLoop, DeveloperLoopError, DeveloperLoopOutcome, DeveloperLoopRequest,
@@ -29,7 +29,7 @@ pub async fn run_live_invocation(
     let mut trace = AccountingTrace::new(accounting.trace_path, accounting.accounting);
     match memory {
         Some(memory) => {
-            request.tools.extend(memory_tool_definitions()?);
+            request.tools.extend(memory.tool_definitions()?);
             trace.trace =
                 trace.trace.with_memory_scope(memory.scope_digest()?, memory.next_invocation()?);
             let mut port = memory.clone();

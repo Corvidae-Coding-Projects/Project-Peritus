@@ -15,6 +15,56 @@ use serde_json::{Map, Value};
 use crate::failover::ProviderSwitch;
 use crate::{ProductRunnerError, ProductRunnerErrorKind};
 
+/// Stable record kinds in the product runner's length-framed developer trace.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum DeveloperTraceFrameKind {
+    /// One canonical provider event envelope.
+    ProviderEnvelope,
+    /// One legacy unscoped tool observation.
+    ToolObservation,
+    /// One context-compaction record.
+    ContextCompaction,
+    /// One scheduled provider retry.
+    RetryScheduled,
+    /// One provider failover transition.
+    ProviderSwitch,
+    /// One role-scoped local-memory checkpoint.
+    LocalMemoryCheckpoint,
+    /// One role-scoped tool observation retained for local-memory recovery.
+    LocalMemoryObservation,
+}
+
+impl DeveloperTraceFrameKind {
+    /// Decodes a stable trace tag.
+    #[must_use]
+    pub const fn from_tag(tag: u8) -> Option<Self> {
+        match tag {
+            1 => Some(Self::ProviderEnvelope),
+            2 => Some(Self::ToolObservation),
+            3 => Some(Self::ContextCompaction),
+            4 => Some(Self::RetryScheduled),
+            5 => Some(Self::ProviderSwitch),
+            6 => Some(Self::LocalMemoryCheckpoint),
+            7 => Some(Self::LocalMemoryObservation),
+            _ => None,
+        }
+    }
+
+    /// Returns the stable trace tag.
+    #[must_use]
+    pub const fn tag(self) -> u8 {
+        match self {
+            Self::ProviderEnvelope => 1,
+            Self::ToolObservation => 2,
+            Self::ContextCompaction => 3,
+            Self::RetryScheduled => 4,
+            Self::ProviderSwitch => 5,
+            Self::LocalMemoryCheckpoint => 6,
+            Self::LocalMemoryObservation => 7,
+        }
+    }
+}
+
 /// Length-framed append-only trace stored beside the daemon's product-run record.
 pub struct FileDeveloperTrace {
     path: PathBuf,
@@ -66,13 +116,16 @@ pub fn record_provider_switch(
     ];
     let payload = serde_json::to_vec(&Value::Object(fields.into_iter().collect::<Map<_, _>>()))
         .map_err(|error| repository(error.to_string()))?;
-    append(path, 5, &payload).map_err(|error| repository(error.to_string()))
+    append(path, DeveloperTraceFrameKind::ProviderSwitch.tag(), &payload)
+        .map_err(|error| repository(error.to_string()))
 }
 
 impl DeveloperTrace for FileDeveloperTrace {
     fn record(&mut self, event: DeveloperTraceEvent<'_>) -> Result<(), DeveloperLoopError> {
         let (tag, payload) = match event {
-            DeveloperTraceEvent::ProviderEnvelope(bytes) => (1_u8, bytes.to_vec()),
+            DeveloperTraceEvent::ProviderEnvelope(bytes) => {
+                (DeveloperTraceFrameKind::ProviderEnvelope, bytes.to_vec())
+            }
             DeveloperTraceEvent::ToolObservation { call, observation } => {
                 if let Some(mut scope) = self.memory_scope {
                     scope.observed = scope.observed.checked_add(1).ok_or_else(|| {
@@ -81,7 +134,12 @@ impl DeveloperTrace for FileDeveloperTrace {
                         )
                     })?;
                     let payload = local_memory::tool_payload(scope, call, observation)?;
-                    append(&self.path, 7, &payload).map_err(|error| trace(&error))?;
+                    append(
+                        &self.path,
+                        DeveloperTraceFrameKind::LocalMemoryObservation.tag(),
+                        &payload,
+                    )
+                    .map_err(|error| trace(&error))?;
                     self.memory_scope = Some(scope);
                     return Ok(());
                 }
@@ -95,7 +153,7 @@ impl DeveloperTrace for FileDeveloperTrace {
                 let payload =
                     serde_json::to_vec(&Value::Object(fields.into_iter().collect::<Map<_, _>>()))
                         .map_err(|error| DeveloperLoopError::Trace(error.to_string()))?;
-                (2, payload)
+                (DeveloperTraceFrameKind::ToolObservation, payload)
             }
             DeveloperTraceEvent::ContextCompaction(record) => {
                 let fields = [
@@ -121,7 +179,7 @@ impl DeveloperTrace for FileDeveloperTrace {
                 let payload =
                     serde_json::to_vec(&Value::Object(fields.into_iter().collect::<Map<_, _>>()))
                         .map_err(|error| DeveloperLoopError::Trace(error.to_string()))?;
-                (3, payload)
+                (DeveloperTraceFrameKind::ContextCompaction, payload)
             }
             DeveloperTraceEvent::RetryScheduled(record) => {
                 let fields = [
@@ -139,10 +197,10 @@ impl DeveloperTrace for FileDeveloperTrace {
                 let payload =
                     serde_json::to_vec(&Value::Object(fields.into_iter().collect::<Map<_, _>>()))
                         .map_err(|error| DeveloperLoopError::Trace(error.to_string()))?;
-                (4, payload)
+                (DeveloperTraceFrameKind::RetryScheduled, payload)
             }
         };
-        append(&self.path, tag, &payload).map_err(|error| trace(&error))
+        append(&self.path, tag.tag(), &payload).map_err(|error| trace(&error))
     }
 }
 

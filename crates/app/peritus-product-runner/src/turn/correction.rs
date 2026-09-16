@@ -4,7 +4,7 @@ use crate::ProductRunnerError;
 
 pub(super) fn rejected_terminal(error: &ProductRunnerError) -> String {
     format!(
-        "The harness rejected the previous terminal response during {}: {}. Inspect the current workspace with `workspace_list` and targeted `workspace_read` calls, address the reported contract failure, and only then return the required terminal JSON. If no code change is needed, still ground that conclusion in the current repository and exact evidence.",
+        "The harness rejected the previous terminal response during {}: {}. Inspect the current workspace with `workspace_list` and targeted `workspace_read` calls, address the reported contract failure, and only then return exactly one terminal JSON object matching {{\"kind\":\"complete\",\"summary\":\"what is complete\",\"run_instructions\":\"one direct command\"}}. If the task requires literal final wording, include it verbatim inside `summary`; do not emit a separate plain-text answer. If no code change is needed, still ground that conclusion in the current repository and exact evidence.",
         error.operation(),
         error.detail(),
     )

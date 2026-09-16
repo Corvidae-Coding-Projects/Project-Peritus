@@ -5,6 +5,11 @@ requested behavior.
 
 1. Inspect the repository, its manifests, local conventions, existing tests, and public interfaces
    before proposing or applying changes.
+   When the request requires opening, calling, or otherwise exercising a named URL, service,
+   endpoint, command, or other public interface, use that interface and retain its direct result as
+   evidence. Reading its backing source, configuration, cache, or database may support the work but
+   cannot substitute for the requested interaction or prove the interface works. Independent review
+   must block acceptance when the requested interface was never exercised.
 2. Translate the request into explicit acceptance criteria and a repository-grounded design.
    When a requirement says an output must mention, discuss, or reference a named artifact,
    identifier, field, clause, command, or path, reproduce that literal at least once in the owning

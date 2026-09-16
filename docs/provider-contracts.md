@@ -42,7 +42,9 @@ Together and Fireworks explicitly reject context overflow instead of accepting s
 truncation. Required tool-calling behavior is checked by the connection test. DeepSeek documents that
 thinking mode rejects forced tool choices. Named Chat routes therefore offer only the required
 tool with automatic wire choice and enforce the original required call in the stream decoder.
-A missing or different call fails before acceptance; thinking is not disabled to make it pass.
+A missing or different call fails before acceptance as a bounded safe-new-request provider
+failure. Developer-loop retries restate the exact prerequisite so a weaker model can correct the
+miss without accepting terminal text or disabling thinking.
 The application's portable tool schemas contain optional fields and no longer unconditionally
 request provider strict decoding. Host argument, permission, and grounding checks still run.
 Google accepts the portable object schemas through its JSON-schema fields and returns each

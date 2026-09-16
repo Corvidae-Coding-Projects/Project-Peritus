@@ -26,11 +26,20 @@ pub(in crate::local_context) fn execute(
     let Ok(request) = serde_json::from_slice::<Read>(bytes) else {
         return Ok(rejected(memory, "invalid read schema"));
     };
-    if !(256..=memory.config.max_read_bytes).contains(&request.max_bytes)
-        || request.observation_ids.len() > 32
-        || request.query.as_ref().is_some_and(|query| query.is_empty() || query.len() > 256)
-    {
-        return Ok(rejected(memory, "read bounds rejected"));
+    if !(256..=memory.config.max_read_bytes).contains(&request.max_bytes) {
+        return Ok(rejected(
+            memory,
+            &format!("max_bytes must be within 256..={}", memory.config.max_read_bytes),
+        ));
+    }
+    if request.observation_ids.len() > 32 {
+        return Ok(rejected(memory, "observation_ids must contain at most 32 handles"));
+    }
+    if request.query.as_ref().is_some_and(|query| query.is_empty() || query.len() > 256) {
+        return Ok(rejected(
+            memory,
+            "query must be null for explicit handles/state, or a nonempty search of at most 256 bytes",
+        ));
     }
     // Validate all supplied scopes before touching any source bytes.
     let ids = match request

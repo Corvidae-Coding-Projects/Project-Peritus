@@ -3,6 +3,7 @@
 use std::{collections::BTreeMap, path::Path};
 
 use peritus_model_protocol::{ModelEvent, ProtocolLimits, UsageCounters, decode_event_envelope};
+use peritus_product_runner::DeveloperTraceFrameKind;
 use serde_json::{Value, json};
 
 use super::{bounded, frames::Frame, metadata};
@@ -21,6 +22,11 @@ pub(super) struct ToolCall {
     pub id: String,
     pub name: String,
     pub arguments: String,
+}
+
+pub(super) struct ProjectedTrace {
+    pub rounds: Vec<Round>,
+    pub incomplete_response: bool,
 }
 
 struct ActiveResponse {
@@ -43,30 +49,35 @@ pub(super) fn project(
     path: &Path,
     frames: &[Frame],
     initial_user_prompt: &str,
-) -> Result<Vec<Round>, BenchmarkError> {
+) -> Result<ProjectedTrace, BenchmarkError> {
     let mut history = vec![json!({"role": "user", "content": initial_user_prompt})];
     let mut rounds = Vec::new();
     let mut active: Option<ActiveResponse> = None;
     for frame in frames {
-        match frame.tag {
-            1 => {
+        match frame.kind {
+            DeveloperTraceFrameKind::ProviderEnvelope => {
                 let envelope = decode_event_envelope(&frame.payload, ProtocolLimits::PRODUCTION)
                     .map_err(|error| BenchmarkError::trace(path, error.to_string()))?;
                 apply_event(path, envelope.event(), &mut history, &mut rounds, &mut active)?;
             }
-            2 => apply_observation(path, &frame.payload, &mut history)?,
-            3 => metadata::validate(path, frame.tag, &frame.payload)?,
-            4 | 5 => {
-                metadata::validate(path, frame.tag, &frame.payload)?;
+            DeveloperTraceFrameKind::ToolObservation => {
+                apply_observation(path, &frame.payload, &mut history)?;
+            }
+            DeveloperTraceFrameKind::LocalMemoryObservation => {
+                metadata::validate(path, frame.kind, &frame.payload)?;
+                apply_observation(path, &frame.payload, &mut history)?;
+            }
+            DeveloperTraceFrameKind::ContextCompaction
+            | DeveloperTraceFrameKind::LocalMemoryCheckpoint => {
+                metadata::validate(path, frame.kind, &frame.payload)?;
+            }
+            DeveloperTraceFrameKind::RetryScheduled | DeveloperTraceFrameKind::ProviderSwitch => {
+                metadata::validate(path, frame.kind, &frame.payload)?;
                 active = None;
             }
-            _ => return Err(BenchmarkError::trace(path, "trace frame tag was not validated")),
         }
     }
-    if active.is_some() {
-        return Err(BenchmarkError::trace(path, "provider response has no terminal event"));
-    }
-    Ok(rounds)
+    Ok(ProjectedTrace { rounds, incomplete_response: active.is_some() })
 }
 
 fn apply_event(
@@ -209,6 +220,8 @@ fn apply_observation(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use peritus_model_protocol::{EventEnvelope, encode_event_envelope};
+    use peritus_types::Sha256Digest;
 
     #[test]
     fn tool_arguments_decode_after_split_utf8_fragments_are_reassembled() {
@@ -226,5 +239,68 @@ mod tests {
         let calls = finalize_calls(Path::new("trace"), vec![call]).expect("complete UTF-8");
 
         assert_eq!(calls[0].arguments, "{\"subject\":\"café\"}");
+    }
+
+    #[test]
+    fn local_memory_frames_remain_projectable_benchmark_evidence() {
+        let checkpoint = serde_json::to_vec(&json!({
+            "schema_version": 2,
+            "scope": vec![1_u8; 32],
+            "generation": 1,
+            "manifest_sha256": vec![2_u8; 32],
+            "manifest_bytes": 64,
+            "view_sha256": vec![3_u8; 32],
+            "state_revision": 1,
+            "estimated_input_tokens": 12,
+            "validation": {"state_revision": 1}
+        }))
+        .expect("checkpoint JSON");
+        let observation = serde_json::to_vec(&json!({
+            "schema_version": 1,
+            "scope": vec![1_u8; 32],
+            "invocation": 1,
+            "tool_sequence": 1,
+            "call_id": "call-1",
+            "name": "workspace_read",
+            "arguments": "{\"path\":\"in/input.txt\"}",
+            "output": "{\"text\":\"value\"}",
+            "is_error": false
+        }))
+        .expect("observation JSON");
+        let frames = [
+            Frame { kind: DeveloperTraceFrameKind::LocalMemoryCheckpoint, payload: checkpoint },
+            Frame { kind: DeveloperTraceFrameKind::LocalMemoryObservation, payload: observation },
+        ];
+
+        let projected = project(Path::new("trace"), &frames, "task").expect("project trace");
+
+        assert!(projected.rounds.is_empty());
+        assert!(!projected.incomplete_response);
+    }
+
+    #[test]
+    fn completed_rounds_survive_a_trailing_incomplete_response() {
+        let frames = [
+            event_frame(1, ModelEvent::ResponseStarted { response_id: None, model: None }),
+            event_frame(2, ModelEvent::ResponseCompleted),
+            event_frame(3, ModelEvent::ResponseStarted { response_id: None, model: None }),
+        ];
+
+        let projected = project(Path::new("trace"), &frames, "task").expect("project trace");
+
+        assert_eq!(projected.rounds.len(), 1);
+        assert!(projected.incomplete_response);
+    }
+
+    fn event_frame(sequence: u64, event: ModelEvent) -> Frame {
+        let digest = u8::try_from(sequence).expect("test sequence");
+        let envelope =
+            EventEnvelope::new(sequence, None, None, Sha256Digest::new([digest; 32]), event)
+                .expect("event envelope");
+        Frame {
+            kind: DeveloperTraceFrameKind::ProviderEnvelope,
+            payload: encode_event_envelope(&envelope, ProtocolLimits::PRODUCTION)
+                .expect("event encoding"),
+        }
     }
 }
