@@ -361,6 +361,7 @@ fn retry_unverified_question(
 pub fn developer_error(error: &DeveloperLoopError) -> ProductRunnerError {
     let kind = match error {
         DeveloperLoopError::Cancelled => ProductRunnerErrorKind::Cancelled,
+        DeveloperLoopError::LimitExceeded => ProductRunnerErrorKind::Budget,
         DeveloperLoopError::Trace(_) => ProductRunnerErrorKind::Repository,
         DeveloperLoopError::Tool(_) => ProductRunnerErrorKind::Apply,
         _ => ProductRunnerErrorKind::Provider,

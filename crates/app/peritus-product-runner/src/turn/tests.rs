@@ -2,6 +2,15 @@ use super::*;
 use crate::execution::ProductDeliveryScope;
 
 #[test]
+fn developer_loop_exhaustion_is_a_local_budget_failure() {
+    let error = developer_error(&DeveloperLoopError::LimitExceeded);
+
+    assert_eq!(error.kind(), ProductRunnerErrorKind::Budget);
+    assert_eq!(error.operation(), "execute D0 developer loop");
+    assert!(error.detail().contains("developer loop limit was exhausted"));
+}
+
+#[test]
 fn rejected_terminal_correction_requires_fresh_repository_grounding() {
     let error = ProductRunnerError::new(
         ProductRunnerErrorKind::InvalidModelOutput,
