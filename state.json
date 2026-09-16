@@ -48,14 +48,14 @@
         "prefix_sha256": "75e62af207437405c7c0292c3ecc35c1e80a87ef1a9953202d92cb6ee96daa52"
       },
       "u7IC": {
-        "sequence": 108,
-        "tip_oid": "3f045945447fca48a56c227a854b07a62584f0f1",
-        "prefix_sha256": "b0b8c4d8fb94e126f3e48d21754de1379846ef25b38cc444418bdab4413fb010"
+        "sequence": 109,
+        "tip_oid": "60d69d8fd189882705f6292b0539139a8abeea8e",
+        "prefix_sha256": "416cc81abbf600fa4d5c0216b56dc2e8363956646cd29db94fe051a7477e0cd5"
       }
     }
   },
   "next_display_id": 85,
-  "next_comment_id": 1704,
+  "next_comment_id": 1705,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -13009,7 +13009,7 @@
       "priority": "medium",
       "created_by": "u7IC",
       "created_at": "2026-09-15T00:49:55.217770155Z",
-      "updated_at": "2026-09-15T23:59:50.328289095Z",
+      "updated_at": "2026-09-16T00:20:10.807487258Z",
       "labels": [
         "feature"
       ],
@@ -13427,6 +13427,15 @@
           "kind": "result",
           "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABApRoHSyGKSmT++AggbvW/NxWUFd3X55SBNT7XiTcJrzTCmvTGQn/W/Cb9t4zGWcm7+PoR56QwrUASM2Yc9kgABg=="
+        },
+        "88dff754-099c-482e-b1cf-d26d6469f67c": {
+          "display_id": 1704,
+          "author": "u7IC",
+          "content": "Original093 qualified at d12f76d73/3de54b2 after three review cycles: four exact artifacts, three intact inputs, 14/16 original checks. Independent public-rule recomputation confirms session boundaries/stitching/dedup/reject accounting. Verifier FAIL at exit0 is retained; strict CSV gate plus review catches comma/quote defects and requires actual repairs. Terminal command-format recovery is separate, no validator bug reproduced. Private campaign carry-over and bot-count/list interpretations remain unchanged. Evidence/index through093; originals094-106, affected020 revisit, DRY and final provider validation remain.",
+          "created_at": "2026-09-16T00:20:10.789094391Z",
+          "kind": "result",
+          "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAExXKqsT7iJMVStNCEkOR66OepnI1Dvb+rpC/5tIJLfWz2460xCFxhTQfEhgUGY8zY3gJAD5VUwEmAFa0fdgRDQ=="
         },
         "8a05c5bd-1516-4e79-b2d2-357f4488dfbd": {
           "display_id": 1698,
