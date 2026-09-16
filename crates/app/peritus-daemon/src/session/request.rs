@@ -109,7 +109,7 @@ where
             AppRequestPayload::Subscribe(value) => match subscriptions.open(value, limits) {
                 Ok(started) => AppResponsePayload::SubscriptionStarted(started),
                 Err(error) => AppResponsePayload::Error(AppProtocolError::new(
-                    public_error_code(&error),
+                    subscription_error_code(&error),
                     None,
                 )),
             },
@@ -138,10 +138,10 @@ where
                                     cancellation,
                                 )
                                 .await;
-                            daemon_error_payload(&error)
+                            artifact_error_payload(&error)
                         }
                     },
-                    Err(error) => daemon_error_payload(&error),
+                    Err(error) => artifact_error_payload(&error),
                 }
             }
             AppRequestPayload::BeginArtifactUpload(metadata) => {
@@ -156,7 +156,7 @@ where
                     .and_then(|()| artifacts.register_upload(metadata))
                 {
                     Ok(()) => acknowledged(&request),
-                    Err(error) => daemon_error_payload(&error),
+                    Err(error) => artifact_error_payload(&error),
                 }
             }
             AppRequestPayload::UploadArtifactChunk(chunk) => {
@@ -165,7 +165,7 @@ where
                     .await
                 {
                     Ok(()) => acknowledged(&request),
-                    Err(error) => daemon_error_payload(&error),
+                    Err(error) => artifact_error_payload(&error),
                 }
             }
             AppRequestPayload::CompleteArtifactUpload(completion) => {
@@ -178,7 +178,7 @@ where
                         artifacts.remove(transfer_id);
                         acknowledged(&request)
                     }
-                    Err(error) => daemon_error_payload(&error),
+                    Err(error) => artifact_error_payload(&error),
                 }
             }
             AppRequestPayload::Interact(value) => {
@@ -287,7 +287,7 @@ where
                         artifacts.remove(transfer_id);
                         acknowledged(&request)
                     }
-                    Err(error) => daemon_error_payload(&error),
+                    Err(error) => artifact_error_payload(&error),
                 }
             }
             AppRequestPayload::AttachTerminal(binding) => {
@@ -341,6 +341,7 @@ where
         }
         _ => (None, None),
     };
+    let payload = constrain_error_diagnostic(payload, limits.max_diagnostic_bytes());
     let response = AppResponseEnvelope::new(
         request.context(),
         request.request_id(),
@@ -367,7 +368,7 @@ mod response;
 mod workbench;
 use response::terminal_error_payload;
 use response::{
-    acknowledged, canonical_request_frame, daemon_error_payload, product_run_collection,
-    product_run_error, product_run_projection, prompt_error_payload, public_error_code,
-    terminal_operation,
+    acknowledged, artifact_error_payload, canonical_request_frame, constrain_error_diagnostic,
+    product_run_collection, product_run_error, product_run_projection, prompt_error_payload,
+    subscription_error_code, terminal_operation,
 };

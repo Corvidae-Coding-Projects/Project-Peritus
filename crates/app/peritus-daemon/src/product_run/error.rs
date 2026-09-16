@@ -55,10 +55,25 @@ impl ProductRunServiceError {
     pub(super) fn invalid_data(operation: &'static str, error: impl std::fmt::Display) -> Self {
         Self::Context {
             code: AppErrorCode::MalformedFrame,
-            retry: RetryDisposition::Never,
+            retry: RetryDisposition::NewRequest,
             subsystem: ResponsibleSubsystem::Command,
             operation,
-            detail: format!("{error}. Correct the input before retrying"),
+            detail: format!("{error}. Submit a new request with corrected input"),
+        }
+    }
+
+    pub(super) fn invalid_provider_output(
+        operation: &'static str,
+        error: impl std::fmt::Display,
+    ) -> Self {
+        Self::Context {
+            code: AppErrorCode::MalformedFrame,
+            retry: RetryDisposition::AfterRecovery,
+            subsystem: ResponsibleSubsystem::Provider,
+            operation,
+            detail: format!(
+                "{error}. The configured provider returned invalid UTF-8; verify the endpoint and model compatibility before trying again"
+            ),
         }
     }
 
@@ -92,9 +107,19 @@ impl ProductRunServiceError {
                 ResponsibleSubsystem::Command,
                 self.default_diagnostic(),
             ),
-            Self::ProviderUnavailable
-            | Self::WorkspaceUnavailable
-            | Self::Control(ControlError::StaleRevision) => (
+            Self::ProviderUnavailable => (
+                AppErrorCode::InvalidIdentifier,
+                RetryDisposition::NewRequest,
+                ResponsibleSubsystem::Provider,
+                self.default_diagnostic(),
+            ),
+            Self::WorkspaceUnavailable => (
+                AppErrorCode::InvalidIdentifier,
+                RetryDisposition::NewRequest,
+                ResponsibleSubsystem::Workspace,
+                self.default_diagnostic(),
+            ),
+            Self::Control(ControlError::StaleRevision) => (
                 AppErrorCode::StaleRevision,
                 RetryDisposition::NewRequest,
                 ResponsibleSubsystem::Command,
@@ -102,7 +127,7 @@ impl ProductRunServiceError {
             ),
             Self::InvalidMessage | Self::Control(ControlError::InvalidInput) => (
                 AppErrorCode::MalformedFrame,
-                RetryDisposition::Never,
+                RetryDisposition::NewRequest,
                 ResponsibleSubsystem::Command,
                 self.default_diagnostic(),
             ),
@@ -114,7 +139,7 @@ impl ProductRunServiceError {
             ),
             Self::GitRequired | Self::EffortUnsupported => (
                 AppErrorCode::MissingRequiredFeature,
-                RetryDisposition::Never,
+                RetryDisposition::NewRequest,
                 ResponsibleSubsystem::Negotiation,
                 self.default_diagnostic(),
             ),
@@ -132,7 +157,7 @@ impl ProductRunServiceError {
             ),
             Self::Control(ControlError::UnsupportedSchema) => (
                 AppErrorCode::UnsupportedSchema,
-                RetryDisposition::Never,
+                RetryDisposition::Reconnect,
                 ResponsibleSubsystem::Negotiation,
                 self.default_diagnostic(),
             ),
@@ -212,7 +237,7 @@ impl From<crate::product_control::ControlStoreError> for ProductRunServiceError 
             ),
             ControlStoreError::PermissionDenied => Self::Context {
                 code: AppErrorCode::ReadOnly,
-                retry: RetryDisposition::Never,
+                retry: RetryDisposition::AfterRecovery,
                 subsystem: ResponsibleSubsystem::Command,
                 operation: "authorize the workspace operation",
                 detail: "Workspace writes are disabled by the effective permission policy. Review /permissions before retrying".to_owned(),
@@ -290,5 +315,48 @@ mod tests {
         assert!(message.contains("replace the durable product-run record"));
         assert!(message.contains("Permission denied"));
         assert!(message.contains("Restore write access"));
+    }
+
+    #[test]
+    fn provider_and_workspace_failures_keep_distinct_public_ownership() {
+        for (failure, subsystem) in [
+            (ProductRunServiceError::ProviderUnavailable, ResponsibleSubsystem::Provider),
+            (ProductRunServiceError::WorkspaceUnavailable, ResponsibleSubsystem::Workspace),
+        ] {
+            let AppResponsePayload::Error(error) = failure.response() else {
+                panic!("error response");
+            };
+            assert_eq!(error.code(), AppErrorCode::InvalidIdentifier);
+            assert_eq!(error.retry(), RetryDisposition::NewRequest);
+            assert_eq!(error.subsystem(), subsystem);
+        }
+    }
+
+    #[test]
+    fn invalid_provider_output_is_not_mislabeled_as_command_input() {
+        let error = ProductRunServiceError::invalid_provider_output(
+            "decode streamed assistant text",
+            "source decoder rejected invalid bytes",
+        );
+        let AppResponsePayload::Error(error) = error.response() else {
+            panic!("error response");
+        };
+        assert_eq!(error.code(), AppErrorCode::MalformedFrame);
+        assert_eq!(error.retry(), RetryDisposition::AfterRecovery);
+        assert_eq!(error.subsystem(), ResponsibleSubsystem::Provider);
+        assert!(error.diagnostic().unwrap().as_str().contains("invalid UTF-8"));
+    }
+
+    #[test]
+    fn unsupported_control_schema_requires_a_new_protocol_relationship() {
+        let AppResponsePayload::Error(error) = ProductRunServiceError::Control(
+            peritus_product_runner::control::ControlError::UnsupportedSchema,
+        )
+        .response() else {
+            panic!("error response");
+        };
+        assert_eq!(error.code(), AppErrorCode::UnsupportedSchema);
+        assert_eq!(error.retry(), RetryDisposition::Reconnect);
+        assert_eq!(error.subsystem(), ResponsibleSubsystem::Negotiation);
     }
 }

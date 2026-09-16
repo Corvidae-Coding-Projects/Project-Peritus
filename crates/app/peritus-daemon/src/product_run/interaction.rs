@@ -91,7 +91,7 @@ impl InteractionOptions {
             Ok(text) => text.len(),
             Err(error) if error.error_len().is_none() => error.valid_up_to(),
             Err(error) => {
-                return Err(ProductRunServiceError::invalid_data(
+                return Err(ProductRunServiceError::invalid_provider_output(
                     "decode streamed assistant text",
                     error,
                 ));
@@ -111,7 +111,10 @@ impl InteractionOptions {
         }
         let text =
             String::from_utf8(self.pending_utf8.drain(..valid).collect()).map_err(|error| {
-                ProductRunServiceError::invalid_data("assemble streamed assistant text", error)
+                ProductRunServiceError::invalid_provider_output(
+                    "assemble streamed assistant text",
+                    error,
+                )
             })?;
         if text.is_empty() {
             return Ok(());
@@ -375,5 +378,22 @@ mod tests {
 
         assert!(options.activities.is_empty());
         assert!(options.pending_utf8.len() <= 3);
+    }
+
+    #[test]
+    fn invalid_provider_utf8_retains_provider_classification() {
+        let mut options =
+            InteractionOptions::new(ProductInteractionMode::Chat, ProductRoleModels::default());
+
+        let error = options.text(b"valid\xff").unwrap_err();
+        let ProductRunServiceError::Context { code, retry, subsystem, operation, detail } = error
+        else {
+            panic!("classified provider error");
+        };
+        assert_eq!(code, peritus_app_protocol::AppErrorCode::MalformedFrame);
+        assert_eq!(retry, peritus_app_protocol::RetryDisposition::AfterRecovery);
+        assert_eq!(subsystem, peritus_app_protocol::ResponsibleSubsystem::Provider);
+        assert_eq!(operation, "decode streamed assistant text");
+        assert!(detail.contains("invalid UTF-8"));
     }
 }

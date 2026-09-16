@@ -130,6 +130,62 @@ fn disconnected_submission_and_unknown_delivery_retain_user_text() {
 }
 
 #[test]
+fn rejected_chat_open_restores_navigation_and_shows_the_daemon_error() {
+    use peritus_app_protocol::{ProductProviderSelection, ProductRunPhase, ProductRunSnapshot};
+
+    let mut model = model();
+    let run_id = RunId::new([0x31; 16]).expect("run");
+    let workspace = WorkspaceId::new([4; 16]).expect("workspace");
+    let provider = model.chat_providers().expect("providers").writer();
+    model.accept_product_runs(vec![
+        ProductRunSnapshot::new(
+            run_id,
+            workspace,
+            ProductProviderSelection::new(provider, provider, provider),
+            ProductRunPhase::Failed,
+            1,
+            "failed run".to_owned(),
+            "failed".to_owned(),
+            String::new(),
+            String::new(),
+            String::new(),
+            String::new(),
+        )
+        .expect("snapshot"),
+    ]);
+    let effects = model.open_selected_conversation();
+    let [Effect::Send(AppMessage::Request(request))] = effects.as_slice() else {
+        panic!("conversation query");
+    };
+    let error = peritus_app_protocol::AppProtocolError::classified(
+        peritus_app_protocol::AppErrorCode::InvalidIdentifier,
+        peritus_app_protocol::RetryDisposition::NewRequest,
+        peritus_app_protocol::ResponsibleSubsystem::Workspace,
+        Some(
+            peritus_app_protocol::AppDiagnostic::new(
+                "Workspace directory is no longer readable.".to_owned(),
+                64,
+            )
+            .unwrap(),
+        ),
+    );
+
+    model.handle_message(AppMessage::Response(peritus_app_protocol::AppResponseEnvelope::new(
+        request.context(),
+        request.request_id(),
+        request.correlation_id(),
+        peritus_app_protocol::AppResponsePayload::Error(error),
+    )));
+
+    assert_eq!(model.chat.run_id, None);
+    assert!(model.editor.is_some(), "failed open restores the run message composer");
+    let notice = model.notice.as_ref().expect("visible failure");
+    assert_eq!(notice.level, NoticeLevel::Error);
+    assert!(notice.text.contains("Workspace directory is no longer readable"));
+    assert!(notice.text.contains("subsystem: workspace"));
+}
+
+#[test]
 fn control_c_exits_idle_chat_with_or_without_a_draft() {
     for draft in ["", "hello"] {
         let mut model = model();

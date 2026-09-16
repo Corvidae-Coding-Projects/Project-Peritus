@@ -44,6 +44,7 @@ impl AppModel {
             }
             self.chat.run_id = None;
             self.open_product_message_composer();
+            self.notice(NoticeLevel::Error, error.actionable_message());
             return Vec::new();
         }
         if let Some(PendingRequest::ChatSubmit { run_id, text }) = pending

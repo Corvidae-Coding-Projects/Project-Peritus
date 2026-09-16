@@ -102,6 +102,14 @@ impl AppProtocolError {
         self.codec_source
     }
 
+    /// Constrains optional prose to a negotiated peer limit without changing machine fields or
+    /// discarding a retained codec source.
+    #[must_use]
+    pub fn constrained_diagnostic(mut self, max_bytes: usize) -> Self {
+        self.diagnostic = self.diagnostic.and_then(|value| value.constrained(max_bytes));
+        self
+    }
+
     /// Returns useful prose followed by the stable troubleshooting fields.
     #[must_use]
     pub fn actionable_message(&self) -> String {
@@ -125,34 +133,34 @@ impl AppProtocolError {
 const fn default_explanation(code: AppErrorCode) -> &'static str {
     match code {
         AppErrorCode::UnsupportedFormat => {
-            "The request uses an unsupported data format. Upgrade the older Peritus component and retry."
+            "The request uses an unsupported data format. Upgrade the older Peritus component, reconnect, and submit it again."
         }
         AppErrorCode::UnsupportedFamily => {
-            "The request type is unsupported here. Upgrade the older Peritus component and retry."
+            "The request type is unsupported here. Upgrade the older Peritus component, reconnect, and submit it again."
         }
         AppErrorCode::UnsupportedSchema => {
-            "The request uses an unsupported schema version. Upgrade the older Peritus component and retry."
+            "The request uses an unsupported schema version. Upgrade the older Peritus component, reconnect, and submit it again."
         }
         AppErrorCode::UnknownTag => {
-            "The request contains an unknown protocol value. Upgrade the older Peritus component and retry."
+            "The request contains an unknown protocol value. Upgrade the older Peritus component, reconnect, and submit it again."
         }
         AppErrorCode::MalformedFrame => {
-            "The request contains invalid data. Correct the request before retrying."
+            "The request contains invalid data. Submit a corrected request."
         }
         AppErrorCode::TruncatedFrame => {
             "The request ended before all expected data arrived. Reconnect and retry."
         }
         AppErrorCode::TrailingBytes => {
-            "The request contains unexpected trailing data. Correct the request before retrying."
+            "The request contains unexpected trailing data. Submit a corrected request."
         }
         AppErrorCode::LimitExceeded => {
-            "The request exceeds a configured limit. Reduce its size or free capacity before retrying."
+            "The request exceeds a configured limit. Reduce its size and submit a new request."
         }
         AppErrorCode::InvalidIdentifier => {
-            "The requested item does not exist or its identifier is invalid. Refresh current state before retrying."
+            "The requested item does not exist or its identifier is invalid. Refresh current state and submit a new request."
         }
         AppErrorCode::InvalidVersion => {
-            "The request contains an invalid version. Refresh current state before retrying."
+            "The request contains an invalid version. Refresh current state and submit a new request."
         }
         AppErrorCode::IncompatibleVersion => {
             "The client and daemon versions are incompatible. Upgrade the older Peritus component."
@@ -161,7 +169,7 @@ const fn default_explanation(code: AppErrorCode) -> &'static str {
             "The connected component does not support a required feature. Change the request or upgrade it."
         }
         AppErrorCode::InvalidLimits => {
-            "The requested resource limits are invalid. Correct them before retrying."
+            "The requested resource limits are invalid. Submit a new request with corrected limits."
         }
         AppErrorCode::SessionMismatch => {
             "The request belongs to another daemon session. Reconnect and retry."
@@ -176,13 +184,13 @@ const fn default_explanation(code: AppErrorCode) -> &'static str {
             "The request used outdated state. Refresh current state and submit a new request."
         }
         AppErrorCode::InvalidCommandFrame => {
-            "The command is not registered. Correct the command before retrying."
+            "The command is not registered. Submit a new request with the correct command."
         }
         AppErrorCode::CommandBindingMismatch => {
-            "The command does not match its request metadata. Rebuild the request before retrying."
+            "The command does not match its request metadata. Rebuild and submit a new request."
         }
         AppErrorCode::InvalidEventRange => {
-            "The requested event range is invalid. Refresh the event cursor before retrying."
+            "The requested event range is invalid. Refresh the event cursor and submit a new request."
         }
         AppErrorCode::SubscriptionState => {
             "The event subscription is in the wrong state for this operation. Reconnect before retrying."
@@ -221,14 +229,14 @@ const fn default_explanation(code: AppErrorCode) -> &'static str {
             "Terminal data arrived out of order. Reattach the terminal."
         }
         AppErrorCode::ReadOnly => {
-            "This connection or workspace is read-only. Change permissions before retrying."
+            "This connection or workspace is read-only. Change permissions and wait for recovery before trying again."
         }
         AppErrorCode::NotReady => {
             "The daemon is not ready. Wait for recovery, inspect daemon status, then retry."
         }
         AppErrorCode::Cancelled => "The operation was cancelled. Start a new request to continue.",
         AppErrorCode::Internal => {
-            "Peritus hit an internal failure. Inspect the daemon log, restart Peritus, and retry."
+            "Peritus hit an internal failure. Inspect the daemon log and wait for recovery before trying again."
         }
     }
 }
@@ -282,5 +290,21 @@ mod tests {
             AppProtocolError::new(AppErrorCode::SessionMismatch, None).actionable_message();
         assert!(message.contains("another daemon session"));
         assert!(message.contains("code: session-mismatch"));
+    }
+
+    #[test]
+    fn constraining_diagnostic_preserves_machine_fields_and_utf8() {
+        let error = AppProtocolError::classified(
+            AppErrorCode::Internal,
+            RetryDisposition::AfterRecovery,
+            ResponsibleSubsystem::Provider,
+            Some(AppDiagnostic::new("éabcdef".to_owned(), 16).unwrap()),
+        )
+        .constrained_diagnostic(6);
+
+        assert_eq!(error.code(), AppErrorCode::Internal);
+        assert_eq!(error.retry(), RetryDisposition::AfterRecovery);
+        assert_eq!(error.subsystem(), ResponsibleSubsystem::Provider);
+        assert_eq!(error.diagnostic().map(AppDiagnostic::as_str), Some("éa..."));
     }
 }

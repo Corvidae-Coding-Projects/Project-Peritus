@@ -3,7 +3,7 @@
 use super::{
     AppErrorCode, AppProtocolError, AppProtocolLimits, AppRequestEnvelope, AppRequestPayload,
     AppResponsePayload, ArtifactClient, AuthorityHandle, ProductRunService, acknowledged,
-    daemon_error_payload,
+    artifact_error_payload,
 };
 
 pub(super) async fn respond(
@@ -44,7 +44,7 @@ pub(super) async fn respond(
                                 cancellation,
                             )
                             .await;
-                        daemon_error_payload(&error)
+                        artifact_error_payload(&error)
                     }
                 },
                 Err(error) => AppResponsePayload::Error(error),
@@ -85,7 +85,7 @@ pub(super) async fn respond(
                                 cancellation,
                             )
                             .await;
-                        daemon_error_payload(&error)
+                        artifact_error_payload(&error)
                     }
                 },
                 Err(error) => AppResponsePayload::Error(error),
