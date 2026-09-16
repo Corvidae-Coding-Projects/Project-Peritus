@@ -8,7 +8,7 @@ const TOKEN_ESTIMATE_BYTES: u64 = 3;
 const REVIEW_INPUT_SHARE_PERCENT: u64 = 50;
 // Initial evidence must leave space for independently requested workspace observations, in
 // addition to the system policy and tool catalog charged by the request estimator.
-pub(super) const REVIEW_REQUEST_SHARE_PERCENT: u64 = 75;
+const REVIEW_REQUEST_SHARE_PERCENT: u64 = 75;
 const MAX_REVIEW_EVIDENCE_BYTES: usize = 384 * 1024;
 const BASE_SECTION_CAPS: [usize; 6] =
     [64 * 1024, 144 * 1024, 48 * 1024, 80 * 1024, 32 * 1024, 16 * 1024];
@@ -48,9 +48,13 @@ pub(super) fn project(
     ReviewerEvidence { transcript, diff, gates, developer, prior, correction }
 }
 
+pub(super) const fn request_target(max_input_tokens: u64) -> u64 {
+    max_input_tokens.saturating_mul(REVIEW_REQUEST_SHARE_PERCENT) / 100
+}
+
 fn evidence_budget(max_input_tokens: u64, framing_tokens: u64) -> usize {
     let evidence_tokens = max_input_tokens.saturating_mul(REVIEW_INPUT_SHARE_PERCENT) / 100;
-    let request_tokens = max_input_tokens.saturating_mul(REVIEW_REQUEST_SHARE_PERCENT) / 100;
+    let request_tokens = request_target(max_input_tokens);
     let bytes = evidence_tokens
         .min(request_tokens.saturating_sub(framing_tokens))
         .saturating_mul(TOKEN_ESTIMATE_BYTES);

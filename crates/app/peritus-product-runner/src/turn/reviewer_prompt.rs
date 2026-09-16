@@ -43,8 +43,7 @@ pub fn reviewer_user(prompt: &ReviewerPrompt<'_>) -> Result<String, DeveloperLoo
         })
         .collect::<Result<Vec<_>, _>>()?;
     let framing_tokens = estimate_developer_request_tokens(&messages, prompt.tools);
-    let request_target =
-        prompt.max_input_tokens.saturating_mul(evidence::REVIEW_REQUEST_SHARE_PERCENT) / 100;
+    let request_target = evidence::request_target(prompt.max_input_tokens);
     if framing_tokens >= request_target {
         return Err(DeveloperLoopError::Context(format!(
             "reviewer policy and tool framing use {framing_tokens} estimated tokens; the {}-token profile has no initial evidence headroom within the {request_target}-token review target",
