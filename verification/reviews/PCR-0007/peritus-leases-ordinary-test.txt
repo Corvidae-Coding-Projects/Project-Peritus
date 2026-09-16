@@ -1,0 +1,97 @@
+candidate_commit=1440209e50c851b228e6948db3e5389e22bcc55b
+candidate_tree=86fd9fe3d21a79655a02234ddc96c33515c6ad1f
+command=cargo test --package peritus-leases --all-targets --all-features --locked
+started_at=2026-09-16T17:57:09Z
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.14s
+     Running unittests src/lib.rs (target/debug/deps/peritus_leases-815aa7db2d153749)
+
+running 7 tests
+test transition::boundary_tests::acquisition_cannot_create_active_state_at_maximum_version ... ok
+test transition::boundary_tests::boundary_reconciliation_retires_before_the_reserved_final_fence_step ... ok
+test transition::boundary_tests::claim_version_exhaustion_and_corrupt_active_max_fail_closed ... ok
+test transition::boundary_tests::final_representable_version_is_reserved_for_fencing ... ok
+test transition::boundary_tests::generated_boundary_retirements_match_independent_reference ... ok
+test transition::boundary_tests::generation_exhaustion_retires_without_wrapping ... ok
+test transition::retired_tests::every_retired_phase_command_edge_rejects_without_state_change ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/authority_intersection.rs (target/debug/deps/authority_intersection-7e87e7b7e60d5f77)
+
+running 4 tests
+test capability_use_observation_must_equal_lease_observation ... ok
+test every_exact_scope_dimension_fails_closed ... ok
+test exact_policy_use_and_current_claim_produce_one_move_only_logical_use ... ok
+test old_generation_policy_use_is_rejected_after_fence_and_reacquire ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/cas_adversarial_fixtures.rs (target/debug/deps/cas_adversarial_fixtures-197a0739dc4a091d)
+
+running 7 tests
+test duplicate_claims_remain_separate_unprivileged_identity_observations ... ok
+test failure_after_commit_before_ack_resolves_the_exact_command ... ok
+test failure_before_commit_requires_reobservation_without_resolution ... ok
+test forged_malformed_and_corrupt_observations_fail_closed ... ok
+test indeterminate_observation_resolves_to_a_definite_non_commit ... ok
+test reused_command_with_a_different_plan_is_rejected ... ok
+test stale_snapshot_is_returned_only_as_unprivileged_conflict_evidence ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/cas_contract.rs (target/debug/deps/cas_contract-f846473028c6a967)
+
+running 8 tests
+test borrowed_port_can_claim_an_authorize_use_plan_without_reconstructing_it ... ok
+test conflict_not_applied_and_indeterminate_have_distinct_recovery_paths ... ok
+test every_port_failure_has_a_stable_code_and_recovery_class ... ok
+test exact_applied_claim_remains_an_unprivileged_observation ... ok
+test indeterminate_port_outcome_is_resolved_under_the_same_command_id ... ok
+test reconciliation_evidence_only_record_substitution_fails_full_plan_matching ... ok
+test revoke_evidence_only_record_substitution_fails_full_plan_matching ... ok
+test stale_authoritative_plan_and_identity_corruption_fail_closed ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/extended_model_traces.rs (target/debug/deps/extended_model_traces-c3af040c220fd36b)
+
+running 1 test
+test generated_extended_transitions_refine_independent_model ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/failure_contract.rs (target/debug/deps/failure_contract-e65647dcc4022615)
+
+running 1 test
+test every_lease_error_variant_has_a_stable_code_and_recovery_class ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/model_traces.rs (target/debug/deps/model_traces-6d91505ec729f1b9)
+
+running 1 test
+test generated_traces_refine_independent_model_after_success_and_rejection ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/phase_matrix.rs (target/debug/deps/phase_matrix-ff34144e704773ed)
+
+running 1 test
+test every_publicly_reachable_phase_command_edge_is_explicit ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/transitions.rs (target/debug/deps/transitions-cc3cc207e157e941)
+
+running 6 tests
+test competing_acquisitions_and_renewals_require_one_cas_winner ... ok
+test dirty_and_indeterminate_reconciliation_quarantine_without_guessing ... ok
+test every_reconciliation_correlation_mismatch_rejects_without_state_change ... ok
+test expiry_equality_fences_and_safe_reconciliation_unblocks_new_holder ... ok
+test ordinary_time_regression_and_early_expiry_fail_closed ... ok
+test release_holder_loss_revocation_and_discontinuity_all_fence ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+finished_at=2026-09-16T17:57:09Z
+exit_status=0

@@ -1,0 +1,45 @@
+candidate_commit=1440209e50c851b228e6948db3e5389e22bcc55b
+candidate_tree=86fd9fe3d21a79655a02234ddc96c33515c6ad1f
+command=cargo test --package peritus-provider-compatible --all-targets --all-features --locked
+started_at=2026-09-16T17:57:49Z
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.17s
+     Running unittests src/lib.rs (target/debug/deps/peritus_provider_compatible-3be134f0bf9574ef)
+
+running 32 tests
+test tests::client::explicitly_mapped_request_identity_is_preserved_on_http_failure ... ok
+test tests::client::production_client_sends_exact_endpoint_and_bearer_header ... ok
+test tests::client::production_client_uses_the_separately_validated_chat_dialect ... ok
+test tests::client::unsupported_request_rejects_before_credentials_and_transport ... ok
+test tests::config::config_requires_an_exact_operation_path_and_safe_header_auth ... ok
+test tests::config::dialect_and_capability_contracts_are_exact_and_fail_closed ... ok
+test tests::conformance::runner::production_adapter_passes_all_provider_cases_with_fresh_subjects ... ok
+test tests::fixtures::fixture_inventory_and_digests_are_complete_and_exact ... ok
+test tests::hosted::connection_failures_identify_the_stage_and_preserve_http_without_provider_body ... ok
+test tests::hosted::every_named_chat_contract_completes_generation_tools_usage_and_reasoning_replay ... ok
+test tests::hosted::hosted_contract_cannot_be_attached_to_an_unrelated_endpoint ... ok
+test tests::hosted::hosted_required_tool_choice_rejects_missing_or_different_calls ... ok
+test tests::hosted::hosted_specific_tool_choice_accepts_multiple_calls_of_only_that_tool ... ok
+test tests::hosted::opencode::batched_choice_fragments_remain_service_specific_and_single_choice ... ok
+test tests::hosted::opencode::live_zen_deepseek_replay_completes_connection_with_nullable_tool_roles ... ok
+test tests::hosted::opencode::zen_gateway_batched_choice_fragments_complete_the_tool_round_trip ... ok
+test tests::hosted::openrouter::openrouter_accounting_cannot_carry_output_unknown_fields_or_repeated_finishes ... ok
+test tests::hosted::openrouter::openrouter_error_with_http_200_never_qualifies_a_connection ... ok
+test tests::request::both_dialects_have_distinct_stable_golden_requests ... ok
+test tests::request::chat_usage_projection_matches_request_negotiation ... ok
+test tests::request::streaming_is_rejected_before_wire_projection_when_not_negotiated ... ok
+test tests::retry::ambiguous_submission_never_blindly_retries ... ok
+test tests::retry::explicitly_mapped_429_and_5xx_rejections_retry_through_real_http ... ok
+test tests::stream::both_compatible_dialects_heal_only_complete_tool_objects ... ok
+test tests::stream::both_dialects_keep_tool_argument_fragments_as_ordered_text ... ok
+test tests::stream::chat_refusal_has_its_own_item_and_http_success_errors_are_terminal_failures ... ok
+test tests::stream::chat_text_accepts_null_tool_calls_without_accepting_malformed_calls ... ok
+test tests::stream::chat_tool_deltas_accept_absent_roles_but_reject_role_changes ... ok
+test tests::stream::compatible_structured_healing_does_not_change_ordinary_text ... ok
+test tests::stream::corrupt_incomplete_and_unknown_critical_streams_fail_closed ... ok
+test tests::stream::responses_and_chat_fragmented_success_normalize_terminal_usage_and_text ... ok
+test tests::stream::responses_unknown_ancillary_is_preserved_bounded ... ok
+
+test result: ok. 32 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.61s
+
+finished_at=2026-09-16T17:57:51Z
+exit_status=0

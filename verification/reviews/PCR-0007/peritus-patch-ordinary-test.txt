@@ -1,0 +1,48 @@
+candidate_commit=1440209e50c851b228e6948db3e5389e22bcc55b
+candidate_tree=86fd9fe3d21a79655a02234ddc96c33515c6ad1f
+command=cargo test --package peritus-patch --all-targets --all-features --locked
+started_at=2026-09-16T17:57:13Z
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.13s
+     Running unittests src/lib.rs (target/debug/deps/peritus_patch-e0aca7a9a7d8f1b5)
+
+running 14 tests
+test path::tests::accepts_normal_unicode_and_leading_dash_paths ... ok
+test path::tests::rejects_traversal_aliases_devices_and_metadata ... ok
+test set::tests::canonical_identity_does_not_depend_on_input_order ... ok
+test transaction::tests::binding_mismatch_is_reported_without_effects ... ok
+test transaction::tests::corrupt_manifest_is_quarantined_and_never_success ... ok
+test transaction::tests::failure_after_directory_creation_restores_absence ... ok
+test transaction::tests::failure_after_first_install_rolls_back_all_targets ... ok
+test transaction::tests::nonempty_created_directory_is_indeterminate_not_restored ... ok
+test transaction::tests::oversized_observation_never_matches_a_forged_empty_digest ... ok
+test transaction::tests::parseable_same_length_manifest_tamper_is_quarantined_without_workspace_effect ... ok
+test transaction::tests::prepared_transaction_recovers_without_touching_workspace ... ok
+test transaction::tests::restart_recognizes_a_fully_installed_transaction ... ok
+test transaction::tests::restart_recovers_a_partial_install_to_all_preimages ... ok
+test transaction::tests::restart_removes_directory_created_before_first_target_effect ... ok
+
+test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests/model.rs (target/debug/deps/model-a29528594d5cb524)
+
+running 4 tests
+test duplicate_and_ancestor_targets_are_rejected ... ok
+test line_endings_are_explicit_and_part_of_final_identity ... ok
+test rejects_recovery_manifest_directory_overflow_during_planning ... ok
+test stale_workspace_tuple_never_produces_a_plan ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.64s
+
+     Running tests/transaction.rs (target/debug/deps/transaction-a1c34cd482e0ad2a)
+
+running 5 tests
+test applies_create_replace_and_delete_as_one_real_transaction ... ok
+test rejects_one_bad_preimage_before_any_target_changes ... ok
+test rejects_oversized_preimage_before_application ... ok
+test rejects_symlink_targets_without_following_them ... ok
+test rejects_targets_inside_a_nested_git_worktree ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+finished_at=2026-09-16T17:57:17Z
+exit_status=0

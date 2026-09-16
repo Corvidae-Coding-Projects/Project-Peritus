@@ -57,28 +57,8 @@ static PERSISTENCE_FAULTS: std::sync::Mutex<Vec<([u8; 16], PersistenceFaultPoint
     std::sync::Mutex::new(Vec::new());
 
 #[cfg(test)]
-static PERSISTENT_PERSISTENCE_FAULTS: std::sync::Mutex<Vec<([u8; 16], PersistenceFaultPoint)>> =
-    std::sync::Mutex::new(Vec::new());
-
-#[cfg(test)]
 pub fn inject_persistence_fault(run_id: RunId, point: PersistenceFaultPoint) {
     PERSISTENCE_FAULTS.lock().expect("persistence fault lock").push((run_id.into_bytes(), point));
-}
-
-#[cfg(test)]
-pub fn inject_persistent_persistence_fault(run_id: RunId, point: PersistenceFaultPoint) {
-    PERSISTENT_PERSISTENCE_FAULTS
-        .lock()
-        .expect("persistent persistence fault lock")
-        .push((run_id.into_bytes(), point));
-}
-
-#[cfg(test)]
-pub fn clear_persistent_persistence_fault(run_id: RunId, point: PersistenceFaultPoint) {
-    PERSISTENT_PERSISTENCE_FAULTS
-        .lock()
-        .expect("persistent persistence fault lock")
-        .retain(|candidate| candidate != &(run_id.into_bytes(), point));
 }
 
 #[cfg(test)]
@@ -86,35 +66,12 @@ fn check_persistence_fault(
     run_id: RunId,
     point: PersistenceFaultPoint,
 ) -> Result<(), ProductRunServiceError> {
-    if PERSISTENT_PERSISTENCE_FAULTS
-        .lock()
-        .map_err(|_| {
-            ProductRunServiceError::internal(
-                "read the persistent persistence fault schedule",
-                "the test fault lock was poisoned",
-            )
-        })?
-        .contains(&(run_id.into_bytes(), point))
-    {
-        return Err(ProductRunServiceError::persistence(
-            persistence_fault_operation(point),
-            "injected persistent persistence failure",
-        ));
-    }
-    let mut faults = PERSISTENCE_FAULTS.lock().map_err(|_| {
-        ProductRunServiceError::internal(
-            "read the persistence fault schedule",
-            "the test fault lock was poisoned",
-        )
-    })?;
+    let mut faults = PERSISTENCE_FAULTS.lock().map_err(|_| ProductRunServiceError::Unavailable)?;
     if let Some(index) =
         faults.iter().position(|candidate| candidate == &(run_id.into_bytes(), point))
     {
         faults.remove(index);
-        return Err(ProductRunServiceError::persistence(
-            persistence_fault_operation(point),
-            "injected persistence failure",
-        ));
+        return Err(ProductRunServiceError::Unavailable);
     }
     Ok(())
 }
@@ -124,10 +81,9 @@ pub(super) fn persist_record(
     record: &RunRecord,
 ) -> Result<(), ProductRunServiceError> {
     let result = write_record(directory, record);
-    if let Err(error) = &result
+    if result.is_err()
         && let Some(options) = &record.interaction
     {
-        options.record_persistence_failure(error.describe());
         options.persistence_failed.store(true, std::sync::atomic::Ordering::Release);
         record.cancelled.store(true, std::sync::atomic::Ordering::Release);
         let _ = record.provider_cancellation.cancel();
@@ -142,45 +98,30 @@ fn write_record(directory: &Path, record: &RunRecord) -> Result<(), ProductRunSe
         if record.interaction.as_ref().is_some_and(|options| options.workbench.is_some()) {
             workbench_directory = directory
                 .parent()
-                .ok_or_else(|| {
-                    ProductRunServiceError::internal(
-                        "resolve the workbench run directory",
-                        "the configured product-run directory has no parent",
-                    )
-                })?
+                .ok_or(ProductRunServiceError::Unavailable)?
                 .join("workbench-v1")
                 .join("runs");
-            fs::create_dir_all(&workbench_directory).map_err(|error| {
-                ProductRunServiceError::persistence("create the workbench run directory", error)
-            })?;
+            fs::create_dir_all(&workbench_directory)
+                .map_err(|_| ProductRunServiceError::Unavailable)?;
             workbench_directory.as_path()
         } else {
             directory
         };
     let persisted = PersistedRecord::from_record(record)?;
-    let bytes = serde_json::to_vec_pretty(&persisted).map_err(|error| {
-        ProductRunServiceError::persistence("serialize the product-run record", error)
-    })?;
+    let bytes =
+        serde_json::to_vec_pretty(&persisted).map_err(|_| ProductRunServiceError::Unavailable)?;
     let path = directory.join(format!("{}.json", persisted.run_id));
     let temporary = path.with_extension("json.new");
-    let mut file = fs::File::create(&temporary).map_err(|error| {
-        ProductRunServiceError::persistence("create the product-run temporary record", error)
-    })?;
+    let mut file = fs::File::create(&temporary).map_err(|_| ProductRunServiceError::Unavailable)?;
     #[cfg(test)]
     check_persistence_fault(record.request.run_id(), PersistenceFaultPoint::BeforeWrite)?;
-    file.write_all(&bytes).map_err(|error| {
-        ProductRunServiceError::persistence("write the product-run temporary record", error)
-    })?;
+    file.write_all(&bytes).map_err(|_| ProductRunServiceError::Unavailable)?;
     #[cfg(test)]
     check_persistence_fault(record.request.run_id(), PersistenceFaultPoint::BeforeFileSync)?;
-    file.sync_all().map_err(|error| {
-        ProductRunServiceError::persistence("sync the product-run temporary record", error)
-    })?;
+    file.sync_all().map_err(|_| ProductRunServiceError::Unavailable)?;
     #[cfg(test)]
     check_persistence_fault(record.request.run_id(), PersistenceFaultPoint::BeforeRename)?;
-    fs::rename(temporary, path).map_err(|error| {
-        ProductRunServiceError::persistence("replace the durable product-run record", error)
-    })?;
+    fs::rename(temporary, path).map_err(|_| ProductRunServiceError::Unavailable)?;
     #[cfg(test)]
     check_persistence_fault(record.request.run_id(), PersistenceFaultPoint::AfterRename)?;
     #[cfg(unix)]
@@ -190,22 +131,11 @@ fn write_record(directory: &Path, record: &RunRecord) -> Result<(), ProductRunSe
             record.request.run_id(),
             PersistenceFaultPoint::BeforeDirectorySync,
         )?;
-        fs::File::open(directory).and_then(|file| file.sync_all()).map_err(|error| {
-            ProductRunServiceError::persistence("sync the product-run directory", error)
-        })?;
+        fs::File::open(directory)
+            .and_then(|file| file.sync_all())
+            .map_err(|_| ProductRunServiceError::Unavailable)?;
     }
     Ok(())
-}
-
-#[cfg(test)]
-const fn persistence_fault_operation(point: PersistenceFaultPoint) -> &'static str {
-    match point {
-        PersistenceFaultPoint::BeforeWrite => "write the product-run temporary record",
-        PersistenceFaultPoint::BeforeFileSync => "sync the product-run temporary record",
-        PersistenceFaultPoint::BeforeRename => "replace the durable product-run record",
-        PersistenceFaultPoint::AfterRename => "complete durable product-run replacement",
-        PersistenceFaultPoint::BeforeDirectorySync => "sync the product-run directory",
-    }
 }
 
 pub(super) fn load_records(directory: &Path) -> Result<BTreeMap<RunId, RunRecord>, DaemonError> {

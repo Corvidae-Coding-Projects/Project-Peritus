@@ -175,42 +175,10 @@ impl AppErrorCode {
     #[must_use]
     pub const fn default_retry(self) -> RetryDisposition {
         match self {
-            Self::UnsupportedFormat
-            | Self::UnsupportedFamily
-            | Self::UnsupportedSchema
-            | Self::UnknownTag
-            | Self::TruncatedFrame
-            | Self::IncompatibleVersion
-            | Self::SessionMismatch
-            | Self::SubscriptionState
-            | Self::SubscriptionGap
-            | Self::IllegalAcknowledgement => RetryDisposition::Reconnect,
-            Self::MalformedFrame
-            | Self::TrailingBytes
-            | Self::LimitExceeded
-            | Self::InvalidIdentifier
-            | Self::InvalidVersion
-            | Self::MissingRequiredFeature
-            | Self::InvalidLimits
-            | Self::IdempotencyConflict
-            | Self::StaleRevision
-            | Self::InvalidCommandFrame
-            | Self::CommandBindingMismatch
-            | Self::InvalidEventRange
-            | Self::ArtifactState
-            | Self::ArtifactOrdering
-            | Self::ArtifactSize
-            | Self::ArtifactDigest
-            | Self::PromptMismatch
-            | Self::PromptStale
-            | Self::TerminalState
-            | Self::TerminalOrdering
-            | Self::Cancelled => RetryDisposition::NewRequest,
-            Self::IdempotencyCapacity
-            | Self::Backpressure
-            | Self::ReadOnly
-            | Self::NotReady
-            | Self::Internal => RetryDisposition::AfterRecovery,
+            Self::Backpressure | Self::NotReady => RetryDisposition::AfterRecovery,
+            Self::SubscriptionGap | Self::SessionMismatch => RetryDisposition::Reconnect,
+            Self::StaleRevision => RetryDisposition::NewRequest,
+            _ => RetryDisposition::Never,
         }
     }
 
@@ -325,10 +293,6 @@ pub enum ResponsibleSubsystem {
     Terminal = 8,
     /// Daemon readiness and lifecycle.
     Daemon = 9,
-    /// Configured model provider and provider-returned data.
-    Provider = 10,
-    /// Selected workspace identity and availability.
-    Workspace = 11,
     /// Internal invariant handling.
     Internal = 255,
 }
@@ -353,8 +317,6 @@ impl ResponsibleSubsystem {
             7 => Some(Self::Prompt),
             8 => Some(Self::Terminal),
             9 => Some(Self::Daemon),
-            10 => Some(Self::Provider),
-            11 => Some(Self::Workspace),
             255 => Some(Self::Internal),
             _ => None,
         }
@@ -373,12 +335,25 @@ impl ResponsibleSubsystem {
             Self::Prompt => "prompt",
             Self::Terminal => "terminal",
             Self::Daemon => "daemon",
-            Self::Provider => "provider",
-            Self::Workspace => "workspace",
             Self::Internal => "internal",
         }
     }
 }
 
 #[cfg(test)]
-mod tests;
+mod tests {
+    use super::*;
+
+    #[test]
+    fn assigned_error_tags_round_trip() {
+        for code in [
+            AppErrorCode::UnsupportedFormat,
+            AppErrorCode::IdempotencyConflict,
+            AppErrorCode::ArtifactDigest,
+            AppErrorCode::Internal,
+        ] {
+            assert_eq!(AppErrorCode::from_tag(code.tag()), Some(code));
+        }
+        assert_eq!(AppErrorCode::from_tag(0), None);
+    }
+}

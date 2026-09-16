@@ -175,6 +175,7 @@ fn abrupt_cancel_survives_process_termination() {
             ProductRunPhase::Cancelled,
         );
         *restarted.inner.records.write().expect("restore ownership") = records;
+        restarted.resume_interrupted().await;
         assert!(writer.requests.lock().expect("no restarted requests").is_empty());
         restarted.shutdown(Duration::from_secs(5)).await;
     });

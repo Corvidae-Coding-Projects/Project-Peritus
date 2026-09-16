@@ -1,0 +1,14 @@
+schema=peritus.independent-finding-evidence.v1
+finding_id=FINDING-0005
+candidate_commit=1440209e50c851b228e6948db3e5389e22bcc55b
+candidate_tree=86fd9fe3d21a79655a02234ddc96c33515c6ad1f
+regression=crates/app/peritus-launcher/src/workspace_setup/managed/tests.rs::trust_uses_the_exact_selected_linked_worktree_head
+repair=crates/runtime/peritus-git/src/repository.rs
+repair=crates/runtime/peritus-git/src/baseline.rs
+installed_probe_provider=OpenCode Zen / deepseek-v4-flash
+installed_probe_tools=workspace_read,workspace_search
+installed_probe_selected_version=0.0.3
+installed_probe_result=passed
+ordinary_gate=peritus-git-ordinary-test.txt
+verus_gate=peritus-git-verus-verify.txt
+result=fixed

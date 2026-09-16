@@ -3,7 +3,7 @@
 use super::*;
 
 #[test]
-fn daemon_restart_waits_for_explicit_retry_before_continuing_writer() {
+fn daemon_restart_automatically_resumes_writer_and_accepts_its_new_effect() {
     interaction::block_on(restart_scenario(false));
 }
 
@@ -75,8 +75,9 @@ async fn restart_scenario(user_cancelled: bool) {
         .lock()
         .expect("writer scripts")
         .extend(complete_writer(CORRECT).into_iter().skip(4));
+    restarted.resume_interrupted().await;
+    let terminal = wait_for_terminal(&restarted, run_id).await;
     if user_cancelled {
-        let terminal = wait_for_terminal(&restarted, run_id).await;
         assert_eq!(terminal.phase(), ProductRunPhase::Cancelled);
         assert_eq!(writer.requests.lock().expect("writer requests").len(), pending_request_count);
         assert_eq!(
@@ -84,21 +85,6 @@ async fn restart_scenario(user_cancelled: bool) {
             incorrect
         );
     } else {
-        tokio::time::sleep(Duration::from_millis(100)).await;
-        assert_eq!(
-            writer.requests.lock().expect("writer requests").len(),
-            pending_request_count,
-            "restart must wait for an explicit retry before invoking the provider",
-        );
-        let stopped = restarted
-            .query(ProductRunQuery::exact(run_id))
-            .expect("query restored run")
-            .into_iter()
-            .next()
-            .expect("restored snapshot");
-        assert!(stopped.status().contains("explicit retry"), "{}", stopped.status());
-        restarted.retry(run_id).await.expect("explicit retry");
-        let terminal = wait_for_terminal(&restarted, run_id).await;
         assert_eq!(terminal.phase(), ProductRunPhase::Complete, "{}", terminal.summary());
         assert_eq!(
             fs::read_to_string(repository.path().join("src/lib.rs")).expect("edit"),

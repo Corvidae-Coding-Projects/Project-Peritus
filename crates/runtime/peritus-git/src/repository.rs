@@ -199,14 +199,6 @@ impl GitRepository {
         RepositoryLocation { git_dir: &self.identity.common_dir, work_tree: None }
     }
 
-    pub(crate) fn selected_location(&self) -> RepositoryLocation<'_> {
-        if self.identity.bare {
-            self.common_location()
-        } else {
-            Self::worktree_location(&self.identity.repository_root, &self.identity.git_dir)
-        }
-    }
-
     pub(crate) const fn worktree_location<'a>(
         root: &'a Path,
         git_dir: &'a Path,
@@ -224,23 +216,6 @@ impl GitRepository {
         self.runner.checked(
             self.control_cwd(),
             Some(self.common_location()),
-            access,
-            operation,
-            arguments,
-            stdin,
-        )
-    }
-
-    pub(crate) fn checked_selected_command(
-        &self,
-        operation: Operation,
-        access: CommandAccess,
-        arguments: &[OsString],
-        stdin: Option<&[u8]>,
-    ) -> Result<crate::command::CommandOutput, GitError> {
-        self.runner.checked(
-            self.control_cwd(),
-            Some(self.selected_location()),
             access,
             operation,
             arguments,

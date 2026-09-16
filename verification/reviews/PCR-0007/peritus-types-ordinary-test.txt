@@ -1,0 +1,73 @@
+candidate_commit=1440209e50c851b228e6948db3e5389e22bcc55b
+candidate_tree=86fd9fe3d21a79655a02234ddc96c33515c6ad1f
+command=cargo test --package peritus-types --all-targets --all-features --locked
+started_at=2026-09-16T17:58:27Z
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.13s
+     Running unittests src/lib.rs (target/debug/deps/peritus_types-e26d207f27de5717)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/capability.rs (target/debug/deps/capability-36be5502adea0915)
+
+running 5 tests
+test accepts_the_complete_grammar_and_length_boundaries ... ok
+test canonical_comparison_is_exact_ascii_lexicographic_order ... ok
+test rejects_empty_overlong_and_empty_segments ... ok
+test rejects_invalid_segment_starts ... ok
+test rejects_non_ascii_and_disallowed_ascii ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/digest.rs (target/debug/deps/digest-deda06a81d129d7c)
+
+running 1 test
+test digest_preserves_every_exact_byte_pattern ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/errors.rs (target/debug/deps/errors-94859eafa81ed5de)
+
+running 1 test
+test error_codes_are_stable_and_category_specific ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/ids.rs (target/debug/deps/ids-d13054263cd0ebda)
+
+running 3 tests
+test every_byte_position_can_make_an_identifier_nonzero ... ok
+test every_nominal_identifier_enforces_the_shared_boundary ... ok
+test identifiers_have_value_semantics_and_nominal_types ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/numbers.rs (target/debug/deps/numbers-471f38a3a516bd78)
+
+running 3 tests
+test event_sequences_are_one_based_and_checked ... ok
+test generations_are_one_based_and_checked ... ok
+test revision_numbers_are_one_based_and_checked ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/resource.rs (target/debug/deps/resource-c8be8911532fed9a)
+
+running 3 tests
+test addition_is_exact_or_reports_overflow ... ok
+test subtraction_is_exact_or_reports_underflow ... ok
+test zero_and_all_resource_dimensions_are_representable ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/revision.rs (target/debug/deps/revision-0f0dfa6e8108fc3b)
+
+running 2 tests
+test changing_any_component_changes_tuple_identity ... ok
+test revision_tuple_preserves_every_nominal_component ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+finished_at=2026-09-16T17:58:27Z
+exit_status=0

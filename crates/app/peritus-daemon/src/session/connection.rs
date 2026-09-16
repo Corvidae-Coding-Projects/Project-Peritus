@@ -36,7 +36,7 @@ pub async fn run_connection(
 ) -> Result<(), DaemonError> {
     let peer = connection.peer();
     let mut frames = connection.into_framed(AppProtocolLimits::PRODUCTION);
-    let Some(first) = frames.read_or_eof().await? else { return Ok(()) };
+    let first = frames.read().await?;
     let AppMessage::ClientHello(client) = first else {
         return Err(invalid("first application frame is not ClientHello"));
     };
@@ -65,7 +65,7 @@ pub async fn run_connection(
         loop {
             let action = {
                 let mut changed = Box::pin(stop.changed());
-                let mut message = Box::pin(frames.read_or_eof());
+                let mut message = Box::pin(frames.read());
                 let mut delivery = Box::pin(delivery_tick.tick());
                 let mut heartbeat = Box::pin(heartbeat_tick.tick());
                 poll_fn(|poll_context| {
@@ -92,8 +92,7 @@ pub async fn run_connection(
                     }
                 }
                 ConnectionAction::Message(message) => match message? {
-                    None => return Ok(()),
-                    Some(AppMessage::Request(request)) => {
+                    AppMessage::Request(request) => {
                         if request.context() != context.protocol() {
                             write_error(&mut frames, &request, AppErrorCode::SessionMismatch)
                                 .await?;
@@ -145,7 +144,7 @@ pub async fn run_connection(
                             return Ok(());
                         }
                     }
-                    Some(AppMessage::Control(control)) => {
+                    AppMessage::Control(control) => {
                         if control.context() != context.protocol() {
                             return Err(invalid(
                                 "control frame does not match the negotiated context",
@@ -153,9 +152,7 @@ pub async fn run_connection(
                         }
                         handle_control(&mut subscriptions, &mut heartbeat, control.payload())?;
                     }
-                    Some(_) => {
-                        return Err(invalid("post-negotiation frame has an illegal family"));
-                    }
+                    _ => return Err(invalid("post-negotiation frame has an illegal family")),
                 },
                 ConnectionAction::Delivery => {
                     subscriptions
@@ -237,7 +234,7 @@ where
 
 enum ConnectionAction {
     Stop(Result<(), watch::error::RecvError>),
-    Message(Result<Option<AppMessage>, DaemonError>),
+    Message(Result<AppMessage, DaemonError>),
     Delivery,
     Heartbeat,
 }

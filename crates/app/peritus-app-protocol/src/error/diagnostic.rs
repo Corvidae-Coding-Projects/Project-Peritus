@@ -34,28 +34,6 @@ impl AppDiagnostic {
     pub fn into_string(self) -> String {
         self.0
     }
-
-    /// Constrains this diagnostic to a peer's negotiated UTF-8 byte ceiling.
-    ///
-    /// A ceiling too small to retain even one complete character removes the optional diagnostic;
-    /// machine-readable error fields remain available to the peer.
-    #[must_use]
-    pub fn constrained(mut self, max_bytes: usize) -> Option<Self> {
-        if self.0.len() <= max_bytes {
-            return Some(self);
-        }
-        let suffix = if max_bytes >= 4 { "..." } else { "" };
-        let mut end = max_bytes.saturating_sub(suffix.len());
-        while end > 0 && !self.0.is_char_boundary(end) {
-            end -= 1;
-        }
-        if end == 0 && suffix.is_empty() {
-            return None;
-        }
-        self.0.truncate(end);
-        self.0.push_str(suffix);
-        Some(self)
-    }
 }
 
 /// Failure to construct bounded diagnostic prose.

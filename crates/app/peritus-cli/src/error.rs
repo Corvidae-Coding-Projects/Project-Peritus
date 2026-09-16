@@ -65,7 +65,18 @@ impl CliError {
     }
 
     pub(crate) fn rejected(error: &AppProtocolError) -> Self {
-        Self::new(ExitCategory::Rejected, "execute daemon request", error.actionable_message())
+        let diagnostic =
+            error.diagnostic().map_or_else(String::new, |value| format!(": {}", value.as_str()));
+        Self::new(
+            ExitCategory::Rejected,
+            "execute daemon request",
+            format!(
+                "{} (subsystem={}, retry={}){diagnostic}",
+                error.code().as_str(),
+                error.subsystem().as_str(),
+                error.retry().as_str(),
+            ),
+        )
     }
 
     pub(crate) fn remote_failure(operation: &'static str, detail: impl Into<String>) -> Self {

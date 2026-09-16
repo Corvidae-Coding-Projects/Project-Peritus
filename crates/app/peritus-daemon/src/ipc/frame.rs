@@ -35,28 +35,8 @@ where
     ///
     /// Returns a transport error for truncation/I/O failure or invalid input for malformed A3.
     pub async fn read(&mut self) -> Result<AppMessage, DaemonError> {
-        self.read_or_eof().await?.ok_or_else(|| {
-            transport_read(std::io::Error::new(
-                std::io::ErrorKind::UnexpectedEof,
-                "authenticated local stream closed before an application frame",
-            ))
-        })
-    }
-
-    /// Reads one frame, treating an EOF exactly on a frame boundary as a clean disconnect.
-    ///
-    /// # Errors
-    ///
-    /// Returns a transport error for a partial frame or I/O failure and invalid input for
-    /// malformed A3. A connection that closes between frames returns `Ok(None)`.
-    pub async fn read_or_eof(&mut self) -> Result<Option<AppMessage>, DaemonError> {
         let mut header = [0_u8; HEADER_LEN];
-        match self.stream.read(&mut header[..1]).await {
-            Ok(0) => return Ok(None),
-            Ok(_) => {}
-            Err(error) => return Err(transport_read(error)),
-        }
-        self.stream.read_exact(&mut header[1..]).await.map_err(transport_read)?;
+        self.stream.read_exact(&mut header).await.map_err(transport_read)?;
         if header[..4] != MAGIC {
             return Err(protocol("PRTS frame magic is invalid"));
         }
@@ -81,7 +61,7 @@ where
         frame.extend_from_slice(&header);
         frame.resize(HEADER_LEN + payload_len, 0);
         self.stream.read_exact(&mut frame[HEADER_LEN..]).await.map_err(transport_read)?;
-        decode_app_message(&frame, self.limits).map(Some).map_err(|error| {
+        decode_app_message(&frame, self.limits).map_err(|error| {
             DaemonError::with_source(
                 DaemonErrorCode::InvalidInput,
                 DaemonRecovery::CorrectRequest,
@@ -139,28 +119,4 @@ fn protocol(detail: &'static str) -> DaemonError {
         "read application frame",
         detail,
     )
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[tokio::test]
-    async fn frame_boundary_eof_is_a_clean_disconnect() {
-        let (client, server) = tokio::io::duplex(64);
-        drop(client);
-        let mut frames = AppFrameStream::new(server, AppProtocolLimits::PRODUCTION);
-        assert!(frames.read_or_eof().await.unwrap().is_none());
-    }
-
-    #[tokio::test]
-    async fn partial_header_is_a_transport_failure() {
-        let (mut client, server) = tokio::io::duplex(64);
-        client.write_all(&MAGIC[..1]).await.unwrap();
-        drop(client);
-        let mut frames = AppFrameStream::new(server, AppProtocolLimits::PRODUCTION);
-        let error = frames.read_or_eof().await.unwrap_err();
-        assert_eq!(error.code_kind(), DaemonErrorCode::Transport);
-        assert_eq!(error.operation(), "read application frame");
-    }
 }

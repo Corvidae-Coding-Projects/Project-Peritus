@@ -1,0 +1,40 @@
+candidate_commit=1440209e50c851b228e6948db3e5389e22bcc55b
+candidate_tree=86fd9fe3d21a79655a02234ddc96c33515c6ad1f
+command=cargo test --package peritus-provider-google --all-targets --all-features --locked
+started_at=2026-09-16T17:57:52Z
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.18s
+     Running unittests src/lib.rs (target/debug/deps/peritus_provider_google-15b479627a9405ce)
+
+running 27 tests
+test client::tests::connect_retries_but_maybe_sent_transport_does_not ... ok
+test client::tests::explicit_rate_rejection_retries_but_authentication_does_not ... ok
+test client::tests::generate_numeric_error_envelope_remains_rate_limited_without_quota_evidence ... ok
+test client::tests::missing_streaming_stops_before_credentials_and_transport ... ok
+test client::tests::opencode_generate_content_preserves_prefix_and_native_stream ... ok
+test client::tests::opencode_google_connection_check_uses_portable_schemas_and_matching_function_results ... ok
+test client::tests::sends_header_auth_and_exact_stable_v1_routes_for_both_dialects ... ok
+test client::tests::successful_non_sse_shape_is_malformed ... ok
+test conformance_tests::runner::production_google_passes_all_cases_with_fresh_subjects ... ok
+test error::tests::rate_quota_auth_and_transient_statuses_remain_distinct ... ok
+test fixture_tests::every_manifest_artifact_has_an_exact_sha256_inventory_entry ... ok
+test fixture_tests::manifest_is_stable_v1_only_and_covers_failure_contracts ... ok
+test profile::tests::accepts_both_explicit_stable_v1_dialects ... ok
+test profile::tests::unsupported_exact_resume_is_rejected_by_the_profile ... ok
+test request::tests::forced_streaming_requires_exact_negotiation ... ok
+test request::tests::minimal_requests_match_both_checked_golden_shapes ... ok
+test request::tests::rich_tools_media_schema_cache_and_thought_replay_are_exact ... ok
+test request::tests::system_audio_and_document_inputs_follow_each_dialect_shape ... ok
+test stream::tests::ancillary_unknown_is_preserved_and_sse_error_is_terminal ... ok
+test stream::tests::both_google_dialects_heal_structured_output_but_leave_public_prose_untouched ... ok
+test stream::tests::cancellation_discards_buffered_provider_output ... ok
+test stream::tests::corrupt_incomplete_and_unknown_critical_fail_closed ... ok
+test stream::tests::fragmented_interactions_text_usage_cache_and_metadata_are_ordered ... ok
+test stream::tests::generate_content_unwraps_audited_string_encoded_tool_arguments ... ok
+test stream::tests::generate_text_tool_thinking_signature_and_final_usage_normalize ... ok
+test stream::tests::interactions_heals_completed_arguments_with_audit_and_rejects_truncation ... ok
+test stream::tests::tool_argument_fragments_close_only_after_complete_json ... ok
+
+test result: ok. 27 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.68s
+
+finished_at=2026-09-16T17:57:53Z
+exit_status=0

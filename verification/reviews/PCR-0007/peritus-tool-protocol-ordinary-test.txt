@@ -1,0 +1,31 @@
+candidate_commit=1440209e50c851b228e6948db3e5389e22bcc55b
+candidate_tree=86fd9fe3d21a79655a02234ddc96c33515c6ad1f
+command=cargo test --package peritus-tool-protocol --all-targets --all-features --locked
+started_at=2026-09-16T17:58:23Z
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.14s
+     Running unittests src/lib.rs (target/debug/deps/peritus_tool_protocol-bef35e2334e30f96)
+
+running 1 test
+test verified::tests::bounds_reject_each_missing_fact ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/protocol_envelopes.rs (target/debug/deps/protocol_envelopes-c0f8ccf39d266b37)
+
+running 11 tests
+test canonical_json_and_schema_fixtures_are_byte_stable ... ok
+test canonical_json_rejects_duplicate_keys_at_every_depth ... ok
+test common_envelope_decoder_enforces_transport_bounds_and_header ... ok
+test complete_schema_validation_rejects_wrong_and_extra_values ... ok
+test descriptor_and_prepared_generation_is_deterministic ... ok
+test every_public_envelope_has_stable_versioned_bytes ... ok
+test json_limit_construction_can_only_narrow_production_ceilings ... ok
+test progress_and_terminal_output_enforce_narrowed_call_bounds ... ok
+test protocol_error_rejects_an_over_limit_path ... ok
+test recursive_schema_error_paths_are_utf8_safely_bounded ... ok
+test schema_compatibility_allows_only_additive_optional_properties ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+finished_at=2026-09-16T17:58:23Z
+exit_status=0

@@ -143,27 +143,19 @@ impl PersistedRecord {
             .map_err(|_| ProductRunServiceError::InvalidMessage)?;
         let loaded_phase =
             ProductRunPhase::from_tag(phase_tag).ok_or(ProductRunServiceError::InvalidMessage)?;
-        let (phase, status) = if loaded_phase.terminal()
-            && loaded_phase != ProductRunPhase::RecoveryRequired
-        {
-            (loaded_phase, self.status)
-        } else if self.user_cancelled {
-            (ProductRunPhase::Cancelled, "Run cancelled".to_owned())
-        } else if loaded_phase == ProductRunPhase::RecoveryRequired {
-            let status = if self.status
-                == "Daemon restart interrupted this run; continuing automatically"
-            {
-                "Daemon restart interrupted this run; explicit retry is required to avoid replaying an indeterminate effect".to_owned()
+        let (phase, status) =
+            if loaded_phase.terminal() && loaded_phase != ProductRunPhase::RecoveryRequired {
+                (loaded_phase, self.status)
+            } else if self.user_cancelled {
+                (ProductRunPhase::Cancelled, "Run cancelled".to_owned())
+            } else if loaded_phase == ProductRunPhase::RecoveryRequired {
+                (loaded_phase, self.status)
             } else {
-                self.status
-            };
-            (loaded_phase, status)
-        } else {
-            (
+                (
                     ProductRunPhase::RecoveryRequired,
-                    "Daemon restart interrupted this run; explicit retry is required to avoid replaying an indeterminate effect".to_owned(),
+                    "Daemon restart interrupted this run; retry is available".to_owned(),
                 )
-        };
+            };
         let mut messages = self
             .messages
             .into_iter()

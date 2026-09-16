@@ -1,0 +1,25 @@
+candidate_commit=1440209e50c851b228e6948db3e5389e22bcc55b
+candidate_tree=86fd9fe3d21a79655a02234ddc96c33515c6ad1f
+command=cargo test --package peritus-tools-quality --all-targets --all-features --locked
+started_at=2026-09-16T17:58:26Z
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.17s
+     Running unittests src/lib.rs (target/debug/deps/peritus_tools_quality-d889009440db5e7e)
+
+running 12 tests
+test acceptance::tests::all_execution_relevant_fields_change_the_binding ... ok
+test catalog::tests::catalog_refines_b1_classes_exactly ... ok
+test discovery::cargo::tests::invalid_manifest_is_not_discovery_success ... ok
+test discovery::just::tests::finds_only_public_zero_argument_recipes ... ok
+test discovery::tests::real_temporary_project_discovers_cargo_and_just_surfaces ... ok
+test error::tests::diagnostic_cap_preserves_utf8_boundaries ... ok
+test parser::tests::json_parser_never_passes_invalid_or_incomplete_output ... ok
+test parser::tests::json_success_requires_an_explicit_true_member ... ok
+test result::tests::contradictory_failure_envelopes_are_malformed_and_never_retryable ... ok
+test result::tests::malformed_or_open_terminal_values_fail_closed ... ok
+test result::tests::status_failure_and_structured_outcome_matrix_is_closed ... ok
+test result::tests::structured_quality_terminal_decodes_all_required_provenance ... ok
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+finished_at=2026-09-16T17:58:26Z
+exit_status=0
