@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1500,
-        "tip_oid": "55c5ee8449c40a598fb438df1f0d17a86cb3fcad",
-        "prefix_sha256": "21191946e86eb5335b8b93bc1fe38ca6271a5df06ee758fa0417cc946a8ba106"
+        "sequence": 1502,
+        "tip_oid": "2932ab2841f211ece6ad614d3173c2d0bebf7d72",
+        "prefix_sha256": "ab1cd4b97c54b5d3481767674ad8e15d066c44f4f464a33fda3ecf28e331c445"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 87,
-  "next_comment_id": 1729,
+  "next_comment_id": 1731,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -9797,7 +9797,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-16T14:32:25.393355747Z",
-      "updated_at": "2026-09-16T16:15:34.473332210Z",
+      "updated_at": "2026-09-16T21:53:16.818004121Z",
       "labels": [
         "bug"
       ],
@@ -9810,6 +9810,24 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAtgfTaLkroO7ak1g+3do5mpREX53tAk3BFEn4+I79y5/UjN6edRwol0RU7KaWmcdntFvFEIpQuUWlOLmIJ67eAQ=="
+        },
+        "1a5f4490-721c-41f3-bb82-6bd27c51078c": {
+          "display_id": 1729,
+          "author": "6ME5",
+          "content": "Committed 810e36466 fix(launcher): bind managed worktree to selected view. Reproduced linked-worktree selection choosing the primary checkout HEAD before the fix; focused regression passes after routing baseline resolution through the selected worktree Git context. Validation: cargo fmt --all -- --check; strict Clippy for peritus-git and peritus-launcher; complete peritus-git and peritus-launcher tests passed 52 tests total.",
+          "created_at": "2026-09-16T16:35:12.951412293Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABATvD2UvIA4ZDPOG7og1l62B9nOqtiWFocGKgXefgtN8R9Gd17a3PJrKHE5qC9Mwb3IcOq9fxInYgHIWAaqfC4Dw=="
+        },
+        "1f1f121b-0dfa-4482-b846-72387f03ebc7": {
+          "display_id": 1730,
+          "author": "6ME5",
+          "content": "Candidate eb187b0f0 freezes the Windows-portable persistence-cause assertion and enrolls the fresh PCR-0008 reviewer. Validation: targeted Linux and Windows/Wine regression passed; strict peritus-daemon Clippy, full peritus-daemon ordinary tests, and peritus-daemon Verus verification passed; verify-trust now reports only the three expected unapproved candidate fingerprints.",
+          "created_at": "2026-09-16T21:53:16.804366187Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABANfdu7TEZBGF/QRZLCKvEAmFxz+TEDWbA8izW1EhHwYo2Y2mwmu9zF5YSroXfWpfLhvofxio/MA8hl0vaqNuHBg=="
         },
         "77b9b87d-1c04-4fab-9f31-c659a6c60591": {
           "display_id": 1726,
