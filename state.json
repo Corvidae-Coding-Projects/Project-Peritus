@@ -48,9 +48,9 @@
         "prefix_sha256": "75e62af207437405c7c0292c3ecc35c1e80a87ef1a9953202d92cb6ee96daa52"
       },
       "u7IC": {
-        "sequence": 114,
-        "tip_oid": "636a90173b0f97ddb6391ec47183f90d3c2c10ce",
-        "prefix_sha256": "7a4403723b6384c28c798c3e27596f71a10f991cac2b67d603039dddcfde1da4"
+        "sequence": 115,
+        "tip_oid": "da0f10a1f22e35a609f5aa515f3c0dbd5407a461",
+        "prefix_sha256": "e06a007ca19165cca911e02c4a1832e1ccda382038f1b747fc9b89b060d5ad0a"
       }
     }
   },
@@ -14255,12 +14255,13 @@
       "display_id": 84,
       "title": "Repair PR82 source-layout and cross-platform runner failures",
       "description": "Authorized runner work alongside live DeepSeek originals. Six source files exceed existing400 soft limit and cascade through Candidate policy, Foundation policy, edge CLI tests and two Linux H0 checks. Windows explicit-path assertions assume slash diagnostics. Split responsibilities, preserve semantics/all tests, assert exact native path rendering, validate full policy/affected matrix, land on existing draftPR82 and watch all checks. Separate worktree and target protect frozen benchmark executable.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "a6fde681-2598-4b91-b824-d011ade3c601",
       "created_by": "u7IC",
       "created_at": "2026-09-15T22:18:45.813526163Z",
-      "updated_at": "2026-09-16T00:56:03.350626805Z",
+      "updated_at": "2026-09-16T00:58:06.792957615Z",
+      "closed_at": "2026-09-16T00:58:06.791120142Z",
       "comments": {
         "12f95a33-7e95-4fc2-9483-1d66723821a2": {
           "display_id": 1709,
