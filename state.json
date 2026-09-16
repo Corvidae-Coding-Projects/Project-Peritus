@@ -48,14 +48,14 @@
         "prefix_sha256": "75e62af207437405c7c0292c3ecc35c1e80a87ef1a9953202d92cb6ee96daa52"
       },
       "u7IC": {
-        "sequence": 113,
-        "tip_oid": "34f0402c7a66a2b9c076021f255bf6bed7862188",
-        "prefix_sha256": "b4599f84779413f04845fb0b520cd447513dc3fc4d2765394129602702846b7d"
+        "sequence": 114,
+        "tip_oid": "636a90173b0f97ddb6391ec47183f90d3c2c10ce",
+        "prefix_sha256": "7a4403723b6384c28c798c3e27596f71a10f991cac2b67d603039dddcfde1da4"
       }
     }
   },
   "next_display_id": 85,
-  "next_comment_id": 1709,
+  "next_comment_id": 1710,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -14260,8 +14260,17 @@
       "parent_uuid": "a6fde681-2598-4b91-b824-d011ade3c601",
       "created_by": "u7IC",
       "created_at": "2026-09-15T22:18:45.813526163Z",
-      "updated_at": "2026-09-15T23:15:36.238324836Z",
+      "updated_at": "2026-09-16T00:56:03.350626805Z",
       "comments": {
+        "12f95a33-7e95-4fc2-9483-1d66723821a2": {
+          "display_id": 1709,
+          "author": "u7IC",
+          "content": "Runner repair is fully verified at d12f76d734ce94d0a39c88f944ebb8e3394dedd5: all seven GitHub workflows completed successfully,576 passing checks,zero pending/failures,three existing skips. Both Windows matrices pass all six repaired assertions and42 applicable path regressions;43 Linux include one existing Unix-only symlink case.996 combined parent tests, strict four-package Clippy, full policy and all-workspace source-stamped rebuild pass locally. Final immutable hosted snapshots and validation record retained. Same OPEN DRAFT PR82 against develop; no workflow/threshold/provider/benchmark weakening.",
+          "created_at": "2026-09-16T00:56:03.344477453Z",
+          "kind": "result",
+          "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAiv4iKo197hc0G7/i9EFW1PrugBTue7pOcFJpE5H7zoFWdzwrm1EfxuGFwW2vidksUSr+sm4lmSK+u/GUyfRWBA=="
+        },
         "52a89bab-06d2-47c9-96b4-201d0bed105b": {
           "display_id": 1689,
           "author": "u7IC",
