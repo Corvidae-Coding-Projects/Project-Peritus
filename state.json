@@ -48,14 +48,14 @@
         "prefix_sha256": "75e62af207437405c7c0292c3ecc35c1e80a87ef1a9953202d92cb6ee96daa52"
       },
       "u7IC": {
-        "sequence": 107,
-        "tip_oid": "a29e4b69fd5ac6987bc77f4f2d474a35e7ab091d",
-        "prefix_sha256": "c5ca63894273d2cac88f7134dbab77335542cc9de41e26558cf04b44324727ab"
+        "sequence": 108,
+        "tip_oid": "3f045945447fca48a56c227a854b07a62584f0f1",
+        "prefix_sha256": "b0b8c4d8fb94e126f3e48d21754de1379846ef25b38cc444418bdab4413fb010"
       }
     }
   },
   "next_display_id": 85,
-  "next_comment_id": 1703,
+  "next_comment_id": 1704,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -13009,7 +13009,7 @@
       "priority": "medium",
       "created_by": "u7IC",
       "created_at": "2026-09-15T00:49:55.217770155Z",
-      "updated_at": "2026-09-15T23:52:32.663572561Z",
+      "updated_at": "2026-09-15T23:59:50.328289095Z",
       "labels": [
         "feature"
       ],
@@ -13625,6 +13625,15 @@
           "kind": "result",
           "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAIjKQ+w2TuNfGKk0skX0U/nwWpz2/ubw+vCqr0vGUsOShZAOnXHO6BC8F9/Lx90FEo9IGId2HNSfwHQODTLY0Aw=="
+        },
+        "b683e830-af25-44a6-a521-08e3adc249ee": {
+          "display_id": 1703,
+          "author": "u7IC",
+          "content": "Original092 qualified at d12f76d73/3de54b2 with four exact artifacts, six intact inputs, 12/16 original checks. Strict native CSV gate plus review exposed two quoting defects after initial writer recovery; second-cycle repair passes without parent intervention. All drift identities reconcile; private severity/wording and six reject records versus five unique rows remain recorded. No new reproduced host fault or paid repeat. Evidence/index updated through092; originals093-106, affected020 revisit, DRY and final provider validation remain.",
+          "created_at": "2026-09-15T23:59:50.321518200Z",
+          "kind": "result",
+          "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAer3jd9db/36hmvKOa2GUCMY6F4FU7R+IDFhb/BPQ/uenhqvJKveTFKpB6FVPgw6ZbF8f6FRf45fxKx/Y/2gMCw=="
         },
         "b70383a9-85b4-47ca-8b02-cb63959159dd": {
           "display_id": 1609,
