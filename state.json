@@ -48,14 +48,14 @@
         "prefix_sha256": "75e62af207437405c7c0292c3ecc35c1e80a87ef1a9953202d92cb6ee96daa52"
       },
       "u7IC": {
-        "sequence": 122,
-        "tip_oid": "7b27bd06e24619ed9b1326cef628cb29f291fd27",
-        "prefix_sha256": "365cde1e12b36c874d4ca97125670aad3376b2c0d646a1df0c4f81f3dbfeac4d"
+        "sequence": 123,
+        "tip_oid": "a26ae625bb98220bb61159596425b67a3838320a",
+        "prefix_sha256": "bb213d39105e09a2f23085f594f66b9a38bb8f1d50a2e5500f8db966498b815a"
       }
     }
   },
   "next_display_id": 85,
-  "next_comment_id": 1717,
+  "next_comment_id": 1718,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -13009,7 +13009,7 @@
       "priority": "medium",
       "created_by": "u7IC",
       "created_at": "2026-09-15T00:49:55.217770155Z",
-      "updated_at": "2026-09-16T01:56:24.796004505Z",
+      "updated_at": "2026-09-16T02:09:07.698688961Z",
       "labels": [
         "feature"
       ],
@@ -13778,6 +13778,15 @@
           "kind": "result",
           "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAUXv0t8fgf0aT76tDMx6ucXkoXDvnQirFAfDitdRjkryLRYkbrgKpDis6jyiZkuFWwBDzsnmQtEy92SuFTJXHDg=="
+        },
+        "c9183370-24aa-4e3e-8dad-4daf77ff3c29": {
+          "display_id": 1717,
+          "author": "u7IC",
+          "content": "Original 104 archived and independently inspected: all four original checks pass, native review_pending at deadline. Five eligible IDs, two ignored, one first-copy-preserving duplicate, latest statuses and eight ledger records correct. Actual host polling receipts show 31 seconds, but the model substitutes May04 fixture date for Sep16 host dates in state/rollup; this real artifact error remains unmodified. Four static fixtures and eight injected updates intact. Raw native changes preserve five externally injected inputs separately from three outputs. Valid shell-input rejection recovered; no new causal code fault, expanded budget or paid repeat. Evidence index through 104. Next 105 remains the original two-round resume test on the same DeepSeek source.",
+          "created_at": "2026-09-16T02:09:07.683720279Z",
+          "kind": "result",
+          "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABASPkoPL+FPu6ktvO+cZa6VmKY/BQuzKVa4nSOl3WGKc+A/2i3zy7Jpyl39Jw7Py8GpoejqIn7tHuM2ZzYoFoRBg=="
         },
         "ca758ed5-c17c-49a9-b67a-c81fcbcec7b6": {
           "display_id": 1653,
