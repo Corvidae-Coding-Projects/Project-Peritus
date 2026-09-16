@@ -48,14 +48,14 @@
         "prefix_sha256": "75e62af207437405c7c0292c3ecc35c1e80a87ef1a9953202d92cb6ee96daa52"
       },
       "u7IC": {
-        "sequence": 112,
-        "tip_oid": "adb81a224f3c20c41591b486338217349d208dca",
-        "prefix_sha256": "49ed81c06ac09ca767ee4a91bb23b0cba410a0fa93c652a76c767a9a474b4e85"
+        "sequence": 113,
+        "tip_oid": "34f0402c7a66a2b9c076021f255bf6bed7862188",
+        "prefix_sha256": "b4599f84779413f04845fb0b520cd447513dc3fc4d2765394129602702846b7d"
       }
     }
   },
   "next_display_id": 85,
-  "next_comment_id": 1708,
+  "next_comment_id": 1709,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -13009,7 +13009,7 @@
       "priority": "medium",
       "created_by": "u7IC",
       "created_at": "2026-09-15T00:49:55.217770155Z",
-      "updated_at": "2026-09-16T00:43:10.355029100Z",
+      "updated_at": "2026-09-16T00:52:18.088323854Z",
       "labels": [
         "feature"
       ],
@@ -13310,6 +13310,15 @@
           "kind": "result",
           "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAMZXpq6Hb7symQ19fZtoEik6s0V8UVpU4peMNFDyXaEP+RexAlExKEUBQL7pz5ZWO18n692GQVJvgfq6xhq9pBA=="
+        },
+        "61470613-ba86-4310-a40b-eb4ccc9253d7": {
+          "display_id": 1708,
+          "author": "u7IC",
+          "content": "Original097 failed honestly: native459002ms deadline on first provider request, zero tools/candidate/output, seven intact inputs. Configured routes remain DeepSeek, but no completed response/usage supports observed API model or token count; original unknown-api result archived unchanged from actual path. No-terminal-event trace detail follows cancellation, not a separate demonstrated provider fault. External archive helper accepts explicit official paths; product/original results untouched. No budget extension or repeat. Evidence/index through097; originals098-106, affected020 revisit, DRY and final compatibility remain.",
+          "created_at": "2026-09-16T00:52:18.081561074Z",
+          "kind": "result",
+          "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA8G99cickeetJzgDpSm6OZQl8R+nakdPqI9RpAFLITjqu5oJrNVuhIGc7bdAKDNjhpj+4KTvIbd7oeXBzFcmWCA=="
         },
         "6159b2ac-483b-4670-a058-94995bc9c7e9": {
           "display_id": 1646,
