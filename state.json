@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1491,
-        "tip_oid": "de6dbf8edbcaec0b2e285b44b6013d3a60ef3131",
-        "prefix_sha256": "adefcb82829cb914d9ed85f1219bbe543a9764fea56f1cdd7d688e65d4872539"
+        "sequence": 1492,
+        "tip_oid": "1c39d912ee8a3c2b8802ac266353891714858d1f",
+        "prefix_sha256": "5ffbaa520140b36ca053d61e23f160655d8c49f1ad5f355fdbe4a2b475445612"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 86,
-  "next_comment_id": 1725,
+  "next_comment_id": 1726,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -16474,7 +16474,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-16T04:33:35.654836720Z",
-      "updated_at": "2026-09-16T04:37:18.769312282Z",
+      "updated_at": "2026-09-16T08:44:42.704738976Z",
       "labels": [
         "release"
       ],
@@ -16487,6 +16487,15 @@
           "kind": "progress",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA8I28iSlNQ15xHIrP6MTBBhfO22tMKn84HWRUyAHdoNG0nNW8ycL0wVbVTk3ASMKvoT0d5xtFArBpfEw8PsonBw=="
+        },
+        "dab12de6-7a9d-46cb-8025-51a6edef60f8": {
+          "display_id": 1725,
+          "author": "6ME5",
+          "content": "Published Peritus v0.0.3. PR #83 merged to main at 848ddff93071137373d27f83e32bf7c4d52f85e7; all seven exact-commit workflows completed successfully; signed tag v0.0.3 resolves to the merge commit; release workflow 35063287609 completed successfully; GitHub release is public and Latest with 75 uploaded assets.",
+          "created_at": "2026-09-16T08:44:42.688009288Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAgiEfjBshngRyd3IMrpI5MYeudjx51OGpSK1tAuW71ROj8FJS4N9eYZcSyQTcSRugBs7k49K+2qtOPFAAkPx8BA=="
         }
       }
     },
