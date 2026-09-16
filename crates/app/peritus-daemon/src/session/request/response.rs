@@ -6,11 +6,11 @@ use crate::{
     terminal::{TerminalBridgeError, TerminalBridgeErrorKind},
 };
 use peritus_app_protocol::{
-    AppErrorCode, AppMessage, AppProtocolError, AppProtocolLimits, AppRequestEnvelope,
-    AppResponsePayload, OperationAcknowledgement, encode_app_message,
+    AppDiagnostic, AppErrorCode, AppMessage, AppProtocolError, AppProtocolLimits,
+    AppRequestEnvelope, AppResponsePayload, OperationAcknowledgement, encode_app_message,
 };
 
-pub(super) const fn product_run_error(error: ProductRunServiceError) -> AppResponsePayload {
+pub(super) fn product_run_error(error: ProductRunServiceError) -> AppResponsePayload {
     error.response()
 }
 
@@ -60,7 +60,7 @@ pub(super) fn prompt_error_payload(error: &DaemonError) -> AppResponsePayload {
         _ if error.code_kind() == DaemonErrorCode::RecoveryRequired => AppErrorCode::PromptStale,
         _ => public_error_code(error),
     };
-    AppResponsePayload::Error(AppProtocolError::new(code, None))
+    AppResponsePayload::Error(AppProtocolError::new(code, daemon_diagnostic(error)))
 }
 
 pub(super) const fn terminal_operation(
@@ -102,6 +102,23 @@ pub(super) const fn public_error_code(error: &DaemonError) -> AppErrorCode {
     }
 }
 
-pub(super) const fn daemon_error_payload(error: &DaemonError) -> AppResponsePayload {
-    AppResponsePayload::Error(AppProtocolError::new(public_error_code(error), None))
+pub(super) fn daemon_error_payload(error: &DaemonError) -> AppResponsePayload {
+    AppResponsePayload::Error(AppProtocolError::new(
+        public_error_code(error),
+        daemon_diagnostic(error),
+    ))
+}
+
+fn daemon_diagnostic(error: &DaemonError) -> Option<AppDiagnostic> {
+    const MAX_BYTES: usize = 1_024;
+    let mut value = format!("{}: {}", error.operation(), error.detail());
+    if value.len() > MAX_BYTES {
+        let mut end = MAX_BYTES - 3;
+        while !value.is_char_boundary(end) {
+            end -= 1;
+        }
+        value.truncate(end);
+        value.push_str("...");
+    }
+    AppDiagnostic::new(value, MAX_BYTES).ok()
 }

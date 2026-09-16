@@ -54,16 +54,7 @@ impl AppModel {
         if let Some(PendingRequest::Prompt(prompt_id)) = pending {
             self.set_prompt_phase(*prompt_id, PromptPhase::Failed);
         }
-        self.notice(
-            NoticeLevel::Error,
-            format!(
-                "{} / {} / retry {}{}",
-                error.subsystem().as_str(),
-                error.code().as_str(),
-                error.retry().as_str(),
-                error.diagnostic().map(|value| format!(": {}", value.as_str())).unwrap_or_default()
-            ),
-        );
+        self.notice(NoticeLevel::Error, error.actionable_message());
         Vec::new()
     }
     pub(super) fn handle_response(&mut self, response: &AppResponseEnvelope) -> Vec<Effect> {

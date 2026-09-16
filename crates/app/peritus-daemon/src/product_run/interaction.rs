@@ -23,6 +23,7 @@ mod tool_activity;
 pub(super) struct InteractionOptions {
     pub(super) workbench: Option<peritus_product_runner::control::ControlOperation>,
     pub(super) persistence_failed: Arc<std::sync::atomic::AtomicBool>,
+    persistence_error: Arc<std::sync::RwLock<Option<String>>>,
     pub(super) mode: ProductInteractionMode,
     pub(super) models: ProductRoleModels,
     pub(super) incorporated: u64,
@@ -38,6 +39,7 @@ impl InteractionOptions {
         Self {
             workbench: None,
             persistence_failed: Arc::new(std::sync::atomic::AtomicBool::new(false)),
+            persistence_error: Arc::new(std::sync::RwLock::new(None)),
             mode,
             models,
             incorporated: 0,
@@ -49,6 +51,16 @@ impl InteractionOptions {
         }
     }
 
+    pub(super) fn record_persistence_failure(&self, error: String) {
+        if let Ok(mut stored) = self.persistence_error.write() {
+            *stored = Some(error);
+        }
+    }
+
+    pub(super) fn persistence_failure(&self) -> Option<String> {
+        self.persistence_error.read().ok().and_then(|stored| stored.clone())
+    }
+
     pub(super) fn append(
         &mut self,
         kind: ProductActivityKind,
@@ -57,7 +69,12 @@ impl InteractionOptions {
     ) -> Result<(), ProductRunServiceError> {
         let text = bounded(text);
         let activity = ProductActivity::new(self.next_sequence, kind, text, bounded(detail))
-            .map_err(|_| ProductRunServiceError::InvalidMessage)?;
+            .map_err(|error| {
+                ProductRunServiceError::invalid_data(
+                    "construct public conversation activity",
+                    error,
+                )
+            })?;
         self.next_sequence =
             self.next_sequence.checked_add(1).ok_or(ProductRunServiceError::Unavailable)?;
         if self.activities.len() == MAX_PRODUCT_ACTIVITIES {
@@ -73,10 +90,29 @@ impl InteractionOptions {
         let valid = match std::str::from_utf8(&self.pending_utf8) {
             Ok(text) => text.len(),
             Err(error) if error.error_len().is_none() => error.valid_up_to(),
-            Err(_) => return Err(ProductRunServiceError::InvalidMessage),
+            Err(error) => {
+                return Err(ProductRunServiceError::invalid_data(
+                    "decode streamed assistant text",
+                    error,
+                ));
+            }
         };
-        let text = String::from_utf8(self.pending_utf8.drain(..valid).collect())
-            .map_err(|_| ProductRunServiceError::InvalidMessage)?;
+        if !self.streaming_text
+            && std::str::from_utf8(&self.pending_utf8[..valid])
+                .is_ok_and(|text| text.chars().all(char::is_whitespace))
+        {
+            // Some compatible providers begin a post-tool response with standalone whitespace.
+            // Keep a small prefix so it can join the first real text delta, but never let an
+            // unbounded whitespace stream consume memory or create an invalid empty activity.
+            if valid > 256 {
+                self.pending_utf8.drain(..valid);
+            }
+            return Ok(());
+        }
+        let text =
+            String::from_utf8(self.pending_utf8.drain(..valid).collect()).map_err(|error| {
+                ProductRunServiceError::invalid_data("assemble streamed assistant text", error)
+            })?;
         if text.is_empty() {
             return Ok(());
         }
@@ -107,7 +143,12 @@ impl InteractionOptions {
                         format!("{}{piece}", last.text()),
                         String::new(),
                     )
-                    .map_err(|_| ProductRunServiceError::InvalidMessage)?,
+                    .map_err(|error| {
+                        ProductRunServiceError::invalid_data(
+                            "extend public assistant activity",
+                            error,
+                        )
+                    })?,
                 );
             } else {
                 self.append(ProductActivityKind::Assistant, piece, "")?;
@@ -179,16 +220,40 @@ impl ProductRunService {
         let records = self.inner.records.read().map_err(|_| ProductRunServiceError::Unavailable)?;
         let record = records.get(&query.run_id()).ok_or(ProductRunServiceError::NotFound)?;
         let options = record.interaction.as_ref().ok_or(ProductRunServiceError::InvalidState)?;
-        if options.persistence_failed.load(std::sync::atomic::Ordering::Acquire) {
-            return Err(ProductRunServiceError::Unavailable);
-        }
+        let persistence_failure = options.persistence_failure();
+        let mut snapshot = live_snapshot(record)?;
+        let mut activities = options.activities.clone();
+        let input_revision = if let Some(detail) = persistence_failure {
+            snapshot = super::snapshot::replace_snapshot(
+                &snapshot,
+                peritus_app_protocol::ProductRunPhase::RecoveryRequired,
+                "Stopped because run history could not be saved",
+                &detail,
+            )?;
+            if activities.len() == MAX_PRODUCT_ACTIVITIES {
+                activities.remove(0);
+            }
+            activities.push(
+                ProductActivity::new(
+                    options.next_sequence,
+                    ProductActivityKind::Error,
+                    "Peritus stopped this run because its conversation history was not durable"
+                        .to_owned(),
+                    bounded(&detail),
+                )
+                .map_err(|_| ProductRunServiceError::InvalidMessage)?,
+            );
+            self.record_input_revision(record).unwrap_or(options.incorporated)
+        } else {
+            self.record_input_revision(record)?
+        };
         ProductInteractionSnapshot::new(
-            live_snapshot(record)?,
+            snapshot,
             options.mode,
             options.models.clone(),
-            self.record_input_revision(record)?,
+            input_revision,
             options.incorporated,
-            options.activities.clone(),
+            activities,
             super::snapshot::delivery_settlement(record),
         )
         .map_err(|_| ProductRunServiceError::InvalidMessage)
@@ -281,4 +346,34 @@ fn bounded(text: &str) -> String {
         end -= 1;
     }
     format!("{}...", &text[..end])
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn standalone_leading_whitespace_waits_for_real_assistant_text() {
+        let mut options =
+            InteractionOptions::new(ProductInteractionMode::Chat, ProductRoleModels::default());
+
+        options.text(b"\n").expect("leading whitespace");
+        assert!(options.activities.is_empty());
+        options.text(b"The values match.").expect("assistant text");
+
+        assert_eq!(options.activities.len(), 1);
+        assert_eq!(options.activities[0].kind(), ProductActivityKind::Assistant);
+        assert_eq!(options.activities[0].text(), "\nThe values match.");
+    }
+
+    #[test]
+    fn whitespace_only_stream_is_bounded_without_a_public_empty_activity() {
+        let mut options =
+            InteractionOptions::new(ProductInteractionMode::Chat, ProductRoleModels::default());
+
+        options.text(&vec![b' '; MAX_PRODUCT_ACTIVITY_BYTES * 2]).expect("whitespace stream");
+
+        assert!(options.activities.is_empty());
+        assert!(options.pending_utf8.len() <= 3);
+    }
 }

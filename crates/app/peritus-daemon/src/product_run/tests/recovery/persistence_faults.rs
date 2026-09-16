@@ -147,10 +147,11 @@ fn product_record_fault_boundaries_preserve_an_old_or_complete_new_record() {
                 )
                 .expect("replacement snapshot");
                 inject_persistence_fault(run_id, point);
-                assert!(matches!(
-                    persist_record(&service.inner.directory, record),
-                    Err(ProductRunServiceError::Unavailable)
-                ));
+                let error = persist_record(&service.inner.directory, record)
+                    .expect_err("injected persistence fault");
+                assert!(matches!(error, ProductRunServiceError::Context { .. }));
+                assert!(error.describe().contains("product-run"));
+                assert!(error.describe().contains("injected persistence failure"));
             }
             let observed: serde_json::Value =
                 serde_json::from_slice(&fs::read(&record_path).expect("canonical record bytes"))
@@ -160,6 +161,81 @@ fn product_record_fault_boundaries_preserve_an_old_or_complete_new_record() {
             assert_eq!(observed["status"].as_str(), Some(expected), "fault point {point:?}");
             service.shutdown(Duration::from_secs(5)).await;
         }
+    });
+}
+
+#[test]
+fn interaction_persistence_failure_is_visible_and_terminal_in_memory() {
+    interaction::block_on(async {
+        use super::super::super::persistence::{PersistenceFaultPoint, inject_persistence_fault};
+        use super::super::super::{persist_record, replace_snapshot};
+        use peritus_app_protocol::{
+            ProductActivityKind, ProductInteractionMode, ProductInteractionRequest,
+            ProductRoleModels, ProductRunConversationQuery,
+        };
+
+        let repository = repository();
+        let state = tempfile::tempdir().expect("state");
+        let writer = stalled(0x91, "writer");
+        let reviewer = scripted(0x92, "reviewer", clean_review());
+        let fixer = scripted(0x93, "fixer", Vec::new());
+        let run_id = RunId::new([0x94; 16]).expect("run");
+        let workspace_id = WorkspaceId::new([0x95; 16]).expect("workspace");
+        let service =
+            service(state.path(), repository.path(), workspace_id, [&writer, &reviewer, &fixer]);
+        let request = ProductRunRequest::new(
+            run_id,
+            workspace_id,
+            ProductProviderSelection::new(
+                writer.profile.profile_id(),
+                reviewer.profile.profile_id(),
+                fixer.profile.profile_id(),
+            ),
+            "Exercise a visible conversation persistence failure.".to_owned(),
+        )
+        .expect("request");
+        service
+            .interact(ProductInteractionRequest::new(
+                request,
+                ProductInteractionMode::Chat,
+                ProductRoleModels::default(),
+            ))
+            .await
+            .expect("start interaction");
+        tokio::time::timeout(Duration::from_secs(5), async {
+            while writer.requests.lock().expect("writer requests").is_empty() {
+                tokio::task::yield_now().await;
+            }
+        })
+        .await
+        .expect("provider boundary");
+
+        {
+            let mut records = service.inner.records.write().expect("records");
+            let record = records.get_mut(&run_id).expect("run");
+            record.snapshot = replace_snapshot(
+                &record.snapshot,
+                ProductRunPhase::Writing,
+                "Responding to the conversation",
+                record.snapshot.summary(),
+            )
+            .expect("working snapshot");
+            inject_persistence_fault(run_id, PersistenceFaultPoint::BeforeWrite);
+            let error =
+                persist_record(&service.inner.directory, record).expect_err("persistence failure");
+            assert!(error.describe().contains("write the product-run temporary record"));
+        }
+
+        let visible = service
+            .query_interaction(ProductRunConversationQuery::new(run_id))
+            .expect("in-memory recovery projection");
+        assert_eq!(visible.snapshot().phase(), ProductRunPhase::RecoveryRequired);
+        assert!(visible.snapshot().status().contains("could not be saved"));
+        let failure = visible.activities().last().expect("visible persistence failure");
+        assert_eq!(failure.kind(), ProductActivityKind::Error);
+        assert!(failure.detail().contains("write the product-run temporary record"));
+        assert!(failure.detail().contains("restart Peritus"));
+        service.shutdown(Duration::from_secs(5)).await;
     });
 }
 

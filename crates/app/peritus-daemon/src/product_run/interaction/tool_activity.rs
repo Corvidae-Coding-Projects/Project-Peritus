@@ -60,7 +60,9 @@ pub(super) fn finished(
             bounded(&format!("{verb} {}", pending.summary)),
             detail,
         )
-        .map_err(|_| ProductRunServiceError::InvalidMessage)?;
+        .map_err(|error| {
+            ProductRunServiceError::invalid_data("complete public tool activity", error)
+        })?;
         options.streaming_text = false;
         return Ok(());
     }

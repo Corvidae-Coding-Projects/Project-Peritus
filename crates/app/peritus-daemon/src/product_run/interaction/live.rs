@@ -153,11 +153,23 @@ impl DeveloperInteraction for LiveConversation {
         &self,
         role: DeveloperModelRole,
     ) -> Result<Option<Arc<dyn peritus_provider_core::ModelProvider>>, DeveloperLoopError> {
-        let records = self.service.inner.records.read().map_err(|_| port_error())?;
-        let record = records.get(&self.run_id).ok_or_else(port_error)?;
-        let options = record.interaction.as_ref().ok_or_else(port_error)?;
+        let records = self.service.inner.records.read().map_err(|_| {
+            port_internal("select the run provider", "the product-run record lock was poisoned")
+        })?;
+        let record = records.get(&self.run_id).ok_or_else(|| {
+            port_internal("select the run provider", "the product-run record was not found")
+        })?;
+        let options = record.interaction.as_ref().ok_or_else(|| {
+            port_internal("select the run provider", "the run has no interaction state")
+        })?;
         if options.persistence_failed.load(std::sync::atomic::Ordering::Acquire) {
-            return Err(port_error());
+            return Err(port_internal(
+                "select the run provider",
+                options
+                    .persistence_failure()
+                    .as_deref()
+                    .unwrap_or("the previous persistence operation failed"),
+            ));
         }
         let providers = record.request.providers();
         let (profile, choice) = match role {
@@ -165,20 +177,37 @@ impl DeveloperInteraction for LiveConversation {
             DeveloperModelRole::Reviewer => (providers.reviewer(), options.models.reviewer()),
             DeveloperModelRole::Fixer => (providers.fixer(), options.models.fixer()),
         };
-        self.service.select_provider(profile, choice).map(Some).map_err(|_| port_error())
+        self.service
+            .select_provider(profile, choice)
+            .map(Some)
+            .map_err(|error| port_error("select the run provider", error))
     }
 
     fn input(&self) -> Result<DeveloperInput, DeveloperLoopError> {
         // Admission holds the write lock until persistence succeeds. A model cannot observe an
         // input revision halfway through its durable receive transaction.
-        let records = self.service.inner.records.read().map_err(|_| port_error())?;
-        let record = records.get(&self.run_id).ok_or_else(port_error)?;
+        let records = self.service.inner.records.read().map_err(|_| {
+            port_internal(
+                "read the governing conversation",
+                "the product-run record lock was poisoned",
+            )
+        })?;
+        let record = records.get(&self.run_id).ok_or_else(|| {
+            port_internal("read the governing conversation", "the product-run record was not found")
+        })?;
         if record.interaction.as_ref().is_some_and(|options| {
             options.persistence_failed.load(std::sync::atomic::Ordering::Acquire)
         }) {
-            return Err(port_error());
+            let detail = record
+                .interaction
+                .as_ref()
+                .and_then(InteractionOptions::persistence_failure)
+                .unwrap_or_else(|| "the previous persistence operation failed".to_owned());
+            return Err(port_internal("read the governing conversation", &detail));
         }
-        self.service.record_input(record).map_err(|_| port_error())
+        self.service
+            .record_input(record)
+            .map_err(|error| port_error("read the governing conversation", error))
     }
     fn prepare_request(
         &self,
@@ -211,7 +240,9 @@ impl DeveloperInteraction for LiveConversation {
             .with_controls(false, |store| {
                 store.complete_goal_request(&start, goal_role(role), request_id, usage)
             })
-            .map_err(|_| port_error())?;
+            .map_err(|error| {
+                port_error("commit model request usage to durable control state", error.into())
+            })?;
         Ok(control_flow(admission))
     }
 
@@ -236,7 +267,9 @@ impl DeveloperInteraction for LiveConversation {
                     effect == DeveloperToolEffect::MutationCapable,
                 )
             })
-            .map_err(|_| port_error())?;
+            .map_err(|error| {
+                port_error("reserve a tool call in durable control state", error.into())
+            })?;
         Ok(control_flow(admission))
     }
 
@@ -254,7 +287,9 @@ impl DeveloperInteraction for LiveConversation {
             .with_controls(false, |store| {
                 store.complete_goal_tool(&start, goal_role(role), invocation, sequence)
             })
-            .map_err(|_| port_error())?;
+            .map_err(|error| {
+                port_error("commit a tool result to durable control state", error.into())
+            })?;
         Ok(control_flow(admission))
     }
 
@@ -323,6 +358,11 @@ const fn control_flow(
     }
 }
 #[cfg(not(verus_only))]
-fn port_error() -> DeveloperLoopError {
-    DeveloperLoopError::Trace("durable conversation activity unavailable".to_owned())
+fn port_error(operation: &'static str, error: ProductRunServiceError) -> DeveloperLoopError {
+    DeveloperLoopError::Trace(format!("{operation}: {error}"))
+}
+
+#[cfg(not(verus_only))]
+fn port_internal(operation: &'static str, detail: &str) -> DeveloperLoopError {
+    DeveloperLoopError::Trace(format!("{operation}: {detail}"))
 }

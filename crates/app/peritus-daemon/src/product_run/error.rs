@@ -1,8 +1,14 @@
 //! Product-run service and configuration failures.
 
 use crate::{DaemonError, DaemonErrorCode, DaemonRecovery};
+use peritus_app_protocol::{
+    AppDiagnostic, AppErrorCode, AppProtocolError, AppResponsePayload, ResponsibleSubsystem,
+    RetryDisposition,
+};
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+const MAX_PUBLIC_DIAGNOSTIC_BYTES: usize = 1_024;
+
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum ProductRunServiceError {
     Control(peritus_product_runner::control::ControlError),
     Duplicate,
@@ -14,39 +20,229 @@ pub enum ProductRunServiceError {
     InvalidState,
     InvalidMessage,
     Unavailable,
+    Context {
+        code: AppErrorCode,
+        retry: RetryDisposition,
+        subsystem: ResponsibleSubsystem,
+        operation: &'static str,
+        detail: String,
+    },
 }
 
 impl ProductRunServiceError {
-    pub(crate) const fn response(self) -> peritus_app_protocol::AppResponsePayload {
-        use peritus_app_protocol::{AppErrorCode as Code, AppProtocolError, AppResponsePayload};
+    pub(super) fn persistence(operation: &'static str, error: impl std::fmt::Display) -> Self {
+        Self::Context {
+            code: AppErrorCode::Internal,
+            retry: RetryDisposition::AfterRecovery,
+            subsystem: ResponsibleSubsystem::Daemon,
+            operation,
+            detail: format!(
+                "{error}. Peritus stopped the run because its conversation history was not durable. Restore write access to the Peritus state directory, restart Peritus, then retry"
+            ),
+        }
+    }
+
+    pub(super) fn internal(operation: &'static str, detail: impl Into<String>) -> Self {
+        Self::Context {
+            code: AppErrorCode::Internal,
+            retry: RetryDisposition::AfterRecovery,
+            subsystem: ResponsibleSubsystem::Daemon,
+            operation,
+            detail: detail.into(),
+        }
+    }
+
+    pub(super) fn invalid_data(operation: &'static str, error: impl std::fmt::Display) -> Self {
+        Self::Context {
+            code: AppErrorCode::MalformedFrame,
+            retry: RetryDisposition::Never,
+            subsystem: ResponsibleSubsystem::Command,
+            operation,
+            detail: format!("{error}. Correct the input before retrying"),
+        }
+    }
+
+    pub(super) fn describe(&self) -> String {
+        match self {
+            Self::Context { operation, detail, .. } => format!("{operation}: {detail}"),
+            _ => self.default_diagnostic().to_owned(),
+        }
+    }
+
+    pub(crate) fn response(self) -> AppResponsePayload {
         use peritus_product_runner::control::ControlError;
-        let code = match self {
+        let (code, retry, subsystem, diagnostic) = match self {
+            Self::Context { code, retry, subsystem, operation, detail } => {
+                let diagnostic = bounded_diagnostic(format!("{operation}: {detail}"));
+                return AppResponsePayload::Error(AppProtocolError::classified(
+                    code, retry, subsystem, diagnostic,
+                ));
+            }
             Self::Duplicate
             | Self::InvalidState
-            | Self::Control(ControlError::IdempotencyConflict) => Code::IdempotencyConflict,
-            Self::NotFound | Self::Control(ControlError::NotFound) => Code::InvalidIdentifier,
+            | Self::Control(ControlError::IdempotencyConflict) => (
+                AppErrorCode::IdempotencyConflict,
+                RetryDisposition::NewRequest,
+                ResponsibleSubsystem::Command,
+                self.default_diagnostic(),
+            ),
+            Self::NotFound | Self::Control(ControlError::NotFound) => (
+                AppErrorCode::InvalidIdentifier,
+                RetryDisposition::NewRequest,
+                ResponsibleSubsystem::Command,
+                self.default_diagnostic(),
+            ),
             Self::ProviderUnavailable
             | Self::WorkspaceUnavailable
-            | Self::Control(ControlError::StaleRevision) => Code::StaleRevision,
-            Self::InvalidMessage | Self::Control(ControlError::InvalidInput) => {
-                Code::MalformedFrame
-            }
-            Self::Unavailable => Code::Backpressure,
-            Self::GitRequired | Self::EffortUnsupported => Code::MissingRequiredFeature,
-            Self::Control(ControlError::Capacity) => Code::LimitExceeded,
-            Self::Control(ControlError::ScopeMismatch) => Code::SessionMismatch,
-            Self::Control(ControlError::UnsupportedSchema) => Code::UnsupportedSchema,
+            | Self::Control(ControlError::StaleRevision) => (
+                AppErrorCode::StaleRevision,
+                RetryDisposition::NewRequest,
+                ResponsibleSubsystem::Command,
+                self.default_diagnostic(),
+            ),
+            Self::InvalidMessage | Self::Control(ControlError::InvalidInput) => (
+                AppErrorCode::MalformedFrame,
+                RetryDisposition::Never,
+                ResponsibleSubsystem::Command,
+                self.default_diagnostic(),
+            ),
+            Self::Unavailable => (
+                AppErrorCode::Internal,
+                RetryDisposition::AfterRecovery,
+                ResponsibleSubsystem::Daemon,
+                self.default_diagnostic(),
+            ),
+            Self::GitRequired | Self::EffortUnsupported => (
+                AppErrorCode::MissingRequiredFeature,
+                RetryDisposition::Never,
+                ResponsibleSubsystem::Negotiation,
+                self.default_diagnostic(),
+            ),
+            Self::Control(ControlError::Capacity) => (
+                AppErrorCode::LimitExceeded,
+                RetryDisposition::AfterRecovery,
+                ResponsibleSubsystem::Daemon,
+                self.default_diagnostic(),
+            ),
+            Self::Control(ControlError::ScopeMismatch) => (
+                AppErrorCode::SessionMismatch,
+                RetryDisposition::Reconnect,
+                ResponsibleSubsystem::Session,
+                self.default_diagnostic(),
+            ),
+            Self::Control(ControlError::UnsupportedSchema) => (
+                AppErrorCode::UnsupportedSchema,
+                RetryDisposition::Never,
+                ResponsibleSubsystem::Negotiation,
+                self.default_diagnostic(),
+            ),
         };
-        AppResponsePayload::Error(AppProtocolError::new(code, None))
+        AppResponsePayload::Error(AppProtocolError::classified(
+            code,
+            retry,
+            subsystem,
+            bounded_diagnostic(diagnostic.to_owned()),
+        ))
+    }
+
+    const fn default_diagnostic(&self) -> &'static str {
+        use peritus_product_runner::control::ControlError;
+        match self {
+            Self::Duplicate => "This run identifier is already in use. Start a new run.",
+            Self::NotFound | Self::Control(ControlError::NotFound) => {
+                "The requested run no longer exists. Refresh the run list and try again."
+            }
+            Self::ProviderUnavailable => {
+                "The selected provider or model is unavailable. Check provider settings and refresh the model list."
+            }
+            Self::EffortUnsupported => {
+                "The selected reasoning effort is unsupported by this provider. Choose another effort or use the provider default."
+            }
+            Self::WorkspaceUnavailable => {
+                "The workspace is unavailable. Reopen an existing readable workspace and try again."
+            }
+            Self::GitRequired => {
+                "This operation requires a Git workspace. Initialize Git or open a Git repository."
+            }
+            Self::InvalidState | Self::Control(ControlError::IdempotencyConflict) => {
+                "The request conflicts with the run's current state. Refresh the run before retrying."
+            }
+            Self::InvalidMessage | Self::Control(ControlError::InvalidInput) => {
+                "The request contains invalid conversation or command data. Correct it and submit a new request."
+            }
+            Self::Unavailable => {
+                "The daemon could not access required run state. Inspect the daemon log, restart Peritus, and retry."
+            }
+            Self::Control(ControlError::StaleRevision) => {
+                "The request used an outdated revision. Refresh the conversation and submit a new request."
+            }
+            Self::Control(ControlError::Capacity) => {
+                "The run reached a configured capacity limit. Finish or remove existing work before retrying."
+            }
+            Self::Control(ControlError::ScopeMismatch) => {
+                "The request belongs to a different workspace or session. Reopen the workspace and retry."
+            }
+            Self::Control(ControlError::UnsupportedSchema) => {
+                "Stored control state uses an unsupported schema. Upgrade Peritus or reconcile the stored state."
+            }
+            Self::Context { .. } => "The operation failed.",
+        }
     }
 }
 impl From<crate::product_control::ControlStoreError> for ProductRunServiceError {
     fn from(value: crate::product_control::ControlStoreError) -> Self {
+        use crate::product_control::ControlStoreError;
         match value {
-            crate::product_control::ControlStoreError::Control(error) => Self::Control(error),
-            _ => Self::Unavailable,
+            ControlStoreError::Control(error) => Self::Control(error),
+            ControlStoreError::Journal(error) => Self::internal(
+                "access the durable control journal",
+                format!("{error}. Reconcile the control journal before admitting more effects"),
+            ),
+            ControlStoreError::Io(error) => Self::internal(
+                "access durable control storage",
+                format!("{error}. Check state-directory ownership and whether another daemon is running, then restart Peritus"),
+            ),
+            ControlStoreError::Workspace(error) => Self::internal(
+                "apply the workspace operation",
+                format!("{error}. Inspect the workspace and permissions before retrying"),
+            ),
+            ControlStoreError::Runner(error) => Self::internal(
+                "authorize the workspace operation",
+                format!("{error}. Inspect the run state before retrying"),
+            ),
+            ControlStoreError::PermissionDenied => Self::Context {
+                code: AppErrorCode::ReadOnly,
+                retry: RetryDisposition::Never,
+                subsystem: ResponsibleSubsystem::Command,
+                operation: "authorize the workspace operation",
+                detail: "Workspace writes are disabled by the effective permission policy. Review /permissions before retrying".to_owned(),
+            },
+            ControlStoreError::Corrupt(detail) => Self::internal(
+                "validate durable control state",
+                format!("{detail}. Reconcile the stored control state before retrying"),
+            ),
         }
     }
+}
+
+impl std::fmt::Display for ProductRunServiceError {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str(&self.describe())
+    }
+}
+
+impl std::error::Error for ProductRunServiceError {}
+
+fn bounded_diagnostic(mut value: String) -> Option<AppDiagnostic> {
+    if value.len() > MAX_PUBLIC_DIAGNOSTIC_BYTES {
+        let mut end = MAX_PUBLIC_DIAGNOSTIC_BYTES.saturating_sub(3);
+        while !value.is_char_boundary(end) {
+            end = end.saturating_sub(1);
+        }
+        value.truncate(end);
+        value.push_str("...");
+    }
+    AppDiagnostic::new(value, MAX_PUBLIC_DIAGNOSTIC_BYTES).ok()
 }
 
 pub(super) fn filesystem(error: std::io::Error) -> DaemonError {
@@ -66,4 +262,33 @@ pub(super) fn invalid(detail: &'static str) -> DaemonError {
         "configure product runs",
         detail,
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn unavailable_run_state_is_not_mislabeled_as_subscription_backpressure() {
+        let AppResponsePayload::Error(error) = ProductRunServiceError::Unavailable.response()
+        else {
+            panic!("error response");
+        };
+        assert_eq!(error.code(), AppErrorCode::Internal);
+        assert_eq!(error.subsystem(), ResponsibleSubsystem::Daemon);
+        assert_eq!(error.retry(), RetryDisposition::AfterRecovery);
+        assert!(error.diagnostic().unwrap().as_str().contains("daemon log"));
+    }
+
+    #[test]
+    fn persistence_error_keeps_operation_cause_and_recovery_action() {
+        let error = ProductRunServiceError::persistence(
+            "replace the durable product-run record",
+            std::io::Error::from_raw_os_error(13),
+        );
+        let message = error.describe();
+        assert!(message.contains("replace the durable product-run record"));
+        assert!(message.contains("Permission denied"));
+        assert!(message.contains("Restore write access"));
+    }
 }
