@@ -14,6 +14,10 @@ Release `0.0.2` retains that same version-1 journal schema and the original `0.0
 marker. It does not add a journal migration. Application-owned stores remain governed by their
 own opening and recovery contracts; this is not a claim that the full H4 upgrade drills passed.
 
+Release `0.0.3` also retains the version-1 journal schema and the original `0.0.1` migration
+marker. It does not add a journal migration. Application-owned stores remain governed by their
+own opening and recovery contracts; this is not a claim that the full H4 upgrade drills passed.
+
 ## Authority and protected data
 
 The release operator may replace package-owned binaries, helpers, manifests, and supervisor

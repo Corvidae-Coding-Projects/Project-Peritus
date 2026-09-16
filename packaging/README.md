@@ -1,6 +1,7 @@
 # Installation
 
-No public release is available yet. Use [Install from source](#install-from-source) until the first release is published.
+Install the latest public release below, select a specific published version, or use
+[Install from source](#install-from-source) for development builds.
 
 ## System requirements
 

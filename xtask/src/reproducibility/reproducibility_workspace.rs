@@ -7,7 +7,7 @@ const REVIEWED_POLICY: &str = r#"
 resolver = "3"
 
 [workspace.package]
-version = "0.0.2"
+version = "0.0.3"
 edition = "2024"
 rust-version = "1.97.1"
 license = "MIT"

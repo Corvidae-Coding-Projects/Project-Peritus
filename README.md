@@ -36,8 +36,8 @@ for how we preserve failures and distinguish product defects from evaluator prob
 
 ## Install
 
-No public release is available yet. The commands below will work after the first release is published.
-For now, use the [source installation instructions](packaging/README.md#install-from-source).
+Install the latest public release with the command for your platform below. To select an older
+release or install from source, see the [installation instructions](packaging/README.md).
 
 ### Linux and macOS
 
