@@ -352,6 +352,45 @@ mod tests {
     }
 
     #[test]
+    fn trust_uses_the_exact_selected_linked_worktree_head() {
+        let temporary = tempfile::tempdir().expect("temporary root");
+        let source = initialized_repository(temporary.path());
+        fs::write(source.join("file.txt"), "selected worktree\n").expect("write selected revision");
+        git(&source, &["commit", "--quiet", "-am", "selected revision"]);
+        let selected_head = git_stdout(&source, &["rev-parse", "HEAD"]);
+        let selected = temporary.path().join("selected");
+        git(
+            &source,
+            &[
+                "worktree",
+                "add",
+                "--quiet",
+                "--detach",
+                selected.to_str().expect("selected path"),
+                &selected_head,
+            ],
+        );
+        git(&source, &["reset", "--quiet", "--hard", "HEAD^"]);
+        let primary_head = git_stdout(&source, &["rev-parse", "HEAD"]);
+        assert_ne!(selected_head, primary_head);
+
+        let repository = DiscoveredRepository::open(&selected).expect("linked worktree");
+        assert_eq!(repository.root_text(), selected.to_str().expect("selected path"));
+        let layout = AppLayout::for_test(&temporary.path().join("application"))
+            .prepare()
+            .expect("application layout");
+        let trusted = trust(&layout, &repository, new_profile(&repository).expect("profile"))
+            .expect("trusted workspace");
+        let managed = Path::new(trusted.managed_root().expect("managed root"));
+
+        assert_eq!(git_stdout(managed, &["rev-parse", "HEAD"]), selected_head);
+        assert_eq!(
+            fs::read_to_string(managed.join("file.txt")).expect("managed file"),
+            "selected worktree\n"
+        );
+    }
+
+    #[test]
     fn moved_source_repository_is_reported_as_repairable() {
         let temporary = tempfile::tempdir().expect("temporary root");
         let source = initialized_repository(temporary.path());
@@ -377,5 +416,16 @@ mod tests {
         let status =
             Command::new("git").current_dir(root).args(arguments).status().expect("run git");
         assert!(status.success(), "git {arguments:?} failed with {status}");
+    }
+
+    fn git_stdout(root: &Path, arguments: &[&str]) -> String {
+        let output =
+            Command::new("git").current_dir(root).args(arguments).output().expect("run git");
+        assert!(
+            output.status.success(),
+            "git {arguments:?} failed: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        String::from_utf8(output.stdout).expect("Git stdout UTF-8").trim().to_owned()
     }
 }
