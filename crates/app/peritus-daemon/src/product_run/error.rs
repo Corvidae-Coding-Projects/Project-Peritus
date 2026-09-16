@@ -137,10 +137,16 @@ impl ProductRunServiceError {
                 ResponsibleSubsystem::Daemon,
                 self.default_diagnostic(),
             ),
-            Self::GitRequired | Self::EffortUnsupported => (
+            Self::GitRequired => (
                 AppErrorCode::MissingRequiredFeature,
                 RetryDisposition::NewRequest,
-                ResponsibleSubsystem::Negotiation,
+                ResponsibleSubsystem::Workspace,
+                self.default_diagnostic(),
+            ),
+            Self::EffortUnsupported => (
+                AppErrorCode::MissingRequiredFeature,
+                RetryDisposition::NewRequest,
+                ResponsibleSubsystem::Provider,
                 self.default_diagnostic(),
             ),
             Self::Control(ControlError::Capacity) => (
@@ -329,6 +335,30 @@ mod tests {
             assert_eq!(error.code(), AppErrorCode::InvalidIdentifier);
             assert_eq!(error.retry(), RetryDisposition::NewRequest);
             assert_eq!(error.subsystem(), subsystem);
+        }
+    }
+
+    #[test]
+    fn product_prerequisite_failures_keep_distinct_public_ownership() {
+        for (failure, subsystem, diagnostic) in [
+            (
+                ProductRunServiceError::GitRequired,
+                ResponsibleSubsystem::Workspace,
+                "requires a Git workspace",
+            ),
+            (
+                ProductRunServiceError::EffortUnsupported,
+                ResponsibleSubsystem::Provider,
+                "unsupported by this provider",
+            ),
+        ] {
+            let AppResponsePayload::Error(error) = failure.response() else {
+                panic!("error response");
+            };
+            assert_eq!(error.code(), AppErrorCode::MissingRequiredFeature);
+            assert_eq!(error.retry(), RetryDisposition::NewRequest);
+            assert_eq!(error.subsystem(), subsystem);
+            assert!(error.diagnostic().unwrap().as_str().contains(diagnostic));
         }
     }
 

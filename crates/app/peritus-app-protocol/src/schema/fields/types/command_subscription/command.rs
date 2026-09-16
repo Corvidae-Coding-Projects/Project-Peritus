@@ -134,7 +134,7 @@ pub(in crate::schema::fields::types) const COMMAND_TYPES: &[AppTypeDescriptor] =
                 CanonicalWireType::U8,
                 &[],
                 "ResponsibleSubsystem",
-                "ResponsibleSubsystem",
+                "\"codec\" | \"negotiation\" | \"session\" | \"command\" | \"subscription\" | \"artifact\" | \"prompt\" | \"terminal\" | \"daemon\" | \"provider\" | \"workspace\" | \"internal\"",
                 J::Enum(&[
                     "codec",
                     "negotiation",
@@ -145,6 +145,8 @@ pub(in crate::schema::fields::types) const COMMAND_TYPES: &[AppTypeDescriptor] =
                     "prompt",
                     "terminal",
                     "daemon",
+                    "provider",
+                    "workspace",
                     "internal",
                 ]),
                 true,
