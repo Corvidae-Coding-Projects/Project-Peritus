@@ -48,14 +48,14 @@
         "prefix_sha256": "75e62af207437405c7c0292c3ecc35c1e80a87ef1a9953202d92cb6ee96daa52"
       },
       "u7IC": {
-        "sequence": 110,
-        "tip_oid": "124e6f2a418ede6f78a0175c5f1400eed9633f77",
-        "prefix_sha256": "4ea4fa9d075b80493738c4b43787f94075a5f84f161ae66190448384f3e4fee4"
+        "sequence": 111,
+        "tip_oid": "ce17574bc5fbfd01195f61861de8cd8d38f4574a",
+        "prefix_sha256": "30181120e8bf93620116b5615cb530758992a974e6ca150f45deb3752c6cec3c"
       }
     }
   },
   "next_display_id": 85,
-  "next_comment_id": 1706,
+  "next_comment_id": 1707,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -13009,7 +13009,7 @@
       "priority": "medium",
       "created_by": "u7IC",
       "created_at": "2026-09-15T00:49:55.217770155Z",
-      "updated_at": "2026-09-16T00:28:38.443311331Z",
+      "updated_at": "2026-09-16T00:37:53.399686276Z",
       "labels": [
         "feature"
       ],
@@ -13850,6 +13850,15 @@
           "kind": "result",
           "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABApl4KRyZRZYh0r5TBVSRvBRQUAFKDNaZKntMOSK5ouCjw7abn6DRGN1M/XgOvJnFmo2xvp0DrpO8MSVk/wpmcCg=="
+        },
+        "f1567035-1919-4f4d-9b7b-8e2961b93de4": {
+          "display_id": 1706,
+          "author": "u7IC",
+          "content": "Original095 remains unsuccessful: native459002ms deadline, review_pending candidate and incomplete final obligations/review. Two exact artifacts/eight intact inputs; verifier SyntaxError recovered, deterministic artifact gates pass. Original9/10 checks and all11 decisions do not replace native qualification. Real stale CFO-exception claim in C005 and misleading non-storm scope in C003 retained; C008 correctly empty policy sentinel. No output/oracle edit, budget extension or paid repeat. Evidence/index through095; originals096-106, affected020 revisit, DRY/final compatibility remain. CI527 passing/30 pending/zero failures.",
+          "created_at": "2026-09-16T00:37:53.393028114Z",
+          "kind": "result",
+          "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAe83rkFtttkYeZJdyqyYfu0r0V0n+P2wD9DrbLZiAKMnBSIXktqMkLm25H0cA2CvuRlUo3psgLk1jXeVyLaxcBQ=="
         },
         "f2049fb7-1163-4016-8568-a54fe1c684d9": {
           "display_id": 1608,
