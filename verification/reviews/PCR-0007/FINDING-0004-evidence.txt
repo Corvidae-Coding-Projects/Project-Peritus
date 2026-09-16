@@ -1,0 +1,16 @@
+schema=peritus.independent-finding-evidence.v1
+finding_id=FINDING-0004
+candidate_commit=1440209e50c851b228e6948db3e5389e22bcc55b
+candidate_tree=86fd9fe3d21a79655a02234ddc96c33515c6ad1f
+regression=crates/app/peritus-daemon/src/product_run/error.rs::product_prerequisite_failures_keep_distinct_public_ownership
+regression=crates/app/peritus-app-protocol/tests/wire_matrix.rs::provider_and_workspace_error_allocations_round_trip_through_public_response_wire
+schema_check=crates/app/peritus-app-protocol/tests/schema_assets.rs::checked_in_schema_and_fixture_assets_match_rust_metadata
+repair=crates/app/peritus-app-protocol/src/schema/fields/types/command_subscription/command.rs
+repair=app-protocol/generated/peritus-app-v1.schema.json
+repair=app-protocol/generated/peritus-app-v1.ts
+repair=app-protocol/generated/peritus-app-v1.registry.md
+ordinary_gate=peritus-app-protocol-ordinary-test.txt
+ordinary_gate=peritus-daemon-ordinary-test.txt
+verus_gate=peritus-app-protocol-verus-verify.txt
+verus_gate=peritus-daemon-verus-verify.txt
+result=fixed

@@ -1,0 +1,2148 @@
+schema = "peritus.verification.proof-impact-verdict"
+schema_version = 1
+id = "VERDICT-PCR-0007"
+pcr_id = "PCR-0007"
+reviewer = "ACTOR-0008"
+reviewer_principal = "Corvidae-Coding-Projects/Project-Peritus/session/61/task/root/pcr7_final_review_sol"
+authorization_base_commit = "958e3f078eca5031427053710c771aef536d6195"
+implementation_commit = "d7f710e6e0da2c7577a0d7af0f89f376b01a418f"
+implementation_tree = "7d077975141a4ab6df6400f6eda34baf8d522390"
+source_transitions_sha256 = "088ab4e4e6f414dc0a58ea0312aadc03a2d9737968110f313a1acc0957a02d8c"
+gate_evidence_sha256 = "62fb403fff7961df0142523ce343dfe797f2875fdc4361aaa73d0d07d4d56d3b"
+finding_set_sha256 = "1b38d410178ee213b78e691084aac8dc00f25290139f8f82e1fe788f02b731ed"
+artifact_inventory_sha256 = "76fa52ff32c874b13bb409fb409c7ec6e020660b11b9df46768e83f8eb95a08a"
+decision = "approved"
+reviewed_at = "2026-09-16T18:49:17Z"
+
+[review_report]
+path = "verification/reviews/PCR-0007/review-report.md"
+sha256 = "1bd3f0e16dfc9d074c2a57b2828946fa235394ce0f6e0a37de188ea8381c5921"
+
+[[gate_evidence]]
+kind = "ordinary-test"
+owning_crate = "peritus-agent"
+command = "cargo test --package peritus-agent --all-targets --all-features --locked"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-agent-ordinary-test.txt"
+sha256 = "d55c9efdc18482485ccfbde0e4430570826bda380f77d339795a2b86f03281b9"
+
+[[gate_evidence]]
+kind = "ordinary-test"
+owning_crate = "peritus-app-protocol"
+command = "cargo test --package peritus-app-protocol --all-targets --all-features --locked"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-app-protocol-ordinary-test.txt"
+sha256 = "ad72a2bd934afd546815cb457443158ff7f2e4b7ab9724f216649ca1b926e6b7"
+
+[[gate_evidence]]
+kind = "ordinary-test"
+owning_crate = "peritus-approval"
+command = "cargo test --package peritus-approval --all-targets --all-features --locked"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-approval-ordinary-test.txt"
+sha256 = "a067704095d4752884a6d6360af2ed470fcb9a255efe52a7a2cd21605274ac0c"
+
+[[gate_evidence]]
+kind = "ordinary-test"
+owning_crate = "peritus-artifact-store"
+command = "cargo test --package peritus-artifact-store --all-targets --all-features --locked"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-artifact-store-ordinary-test.txt"
+sha256 = "4f843a596688edb9b6c741182eabebb353a9df102ed2acc14aa25a4df4e157c3"
+
+[[gate_evidence]]
+kind = "ordinary-test"
+owning_crate = "peritus-budget"
+command = "cargo test --package peritus-budget --all-targets --all-features --locked"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-budget-ordinary-test.txt"
+sha256 = "8257115dfbfa5eb304bcaa703bbb24613f93701eb9f1e8fafa59a136b6a90f48"
+
+[[gate_evidence]]
+kind = "ordinary-test"
+owning_crate = "peritus-codec"
+command = "cargo test --package peritus-codec --all-targets --all-features --locked"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-codec-ordinary-test.txt"
+sha256 = "f0abb47fcd6bec7490d45ba7c52a43999638bceb21ecb74becbeeebb5a7da629"
+
+[[gate_evidence]]
+kind = "ordinary-test"
+owning_crate = "peritus-collaboration"
+command = "cargo test --package peritus-collaboration --all-targets --all-features --locked"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-collaboration-ordinary-test.txt"
+sha256 = "ce1168d5166308694bf3517fa0c4446755aed9fe0081ff0dcfadca1e9351db80"
+
+[[gate_evidence]]
+kind = "ordinary-test"
+owning_crate = "peritus-context"
+command = "cargo test --package peritus-context --all-targets --all-features --locked"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-context-ordinary-test.txt"
+sha256 = "14211224811038063acf525917281d162da8e923ab0cfdd17795b71c643b864c"
+
+[[gate_evidence]]
+kind = "ordinary-test"
+owning_crate = "peritus-daemon"
+command = "cargo test --package peritus-daemon --all-targets --all-features --locked"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-daemon-ordinary-test.txt"
+sha256 = "c5018bc73b6e9afbfb853d1b5b323df38b398b9c0bfb4de77822c0e875b51580"
+
+[[gate_evidence]]
+kind = "ordinary-test"
+owning_crate = "peritus-debugger"
+command = "cargo test --package peritus-debugger --all-targets --all-features --locked"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-debugger-ordinary-test.txt"
+sha256 = "135192f642391e9693ebbf19a9c38c801a8d5a375c011538070dba1d19331189"
+
+[[gate_evidence]]
+kind = "ordinary-test"
+owning_crate = "peritus-eval"
+command = "cargo test --package peritus-eval --all-targets --all-features --locked"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-eval-ordinary-test.txt"
+sha256 = "46aa23d13b40fd308c53f662e1e3b835f6ca36826980a8ae1431f3d3993a7a8f"
+
+[[gate_evidence]]
+kind = "ordinary-test"
+owning_crate = "peritus-evidence"
+command = "cargo test --package peritus-evidence --all-targets --all-features --locked"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-evidence-ordinary-test.txt"
+sha256 = "986c3bac640af2ccd3b490931146bdcd474e27c7d2e4648ade0cf8a22a4fb78e"
+
+[[gate_evidence]]
+kind = "ordinary-test"
+owning_crate = "peritus-evolution"
+command = "cargo test --package peritus-evolution --all-targets --all-features --locked"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-evolution-ordinary-test.txt"
+sha256 = "c3ed53119d1c05f1f5341d5d8857e90bbdd34ac7a97d88ada7e2c30eebe13173"
+
+[[gate_evidence]]
+kind = "ordinary-test"
+owning_crate = "peritus-gates"
+command = "cargo test --package peritus-gates --all-targets --all-features --locked"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-gates-ordinary-test.txt"
+sha256 = "bc9fd1b0bbca8b44db9f8279a258b307c01779671a1e18d9d8755358e7e22e0d"
+
+[[gate_evidence]]
+kind = "ordinary-test"
+owning_crate = "peritus-git"
+command = "cargo test --package peritus-git --all-targets --all-features --locked"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-git-ordinary-test.txt"
+sha256 = "01c9efb77474e7a63a64df5ea21d1203924743993f5148e9d827a65ea4f84ccb"
+
+[[gate_evidence]]
+kind = "ordinary-test"
+owning_crate = "peritus-harness"
+command = "cargo test --package peritus-harness --all-targets --all-features --locked"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-harness-ordinary-test.txt"
+sha256 = "87e3ecf0ee9a1bc4887d62c9d99ba00c9c39be6c34f3ad740939adf6b72b0a6c"
+
+[[gate_evidence]]
+kind = "ordinary-test"
+owning_crate = "peritus-journal"
+command = "cargo test --package peritus-journal --all-targets --all-features --locked"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-journal-ordinary-test.txt"
+sha256 = "742a6c268764387f3d5aaadf726e5a8da2e620778e3840c2f16a9845a350899b"
+
+[[gate_evidence]]
+kind = "ordinary-test"
+owning_crate = "peritus-kernel"
+command = "cargo test --package peritus-kernel --all-targets --all-features --locked"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-kernel-ordinary-test.txt"
+sha256 = "768a10b6a0b7e6c85c98d77db083606cd42b1b40ffc5f5c5a7aecb2d523f5d37"
+
+[[gate_evidence]]
+kind = "ordinary-test"
+owning_crate = "peritus-leases"
+command = "cargo test --package peritus-leases --all-targets --all-features --locked"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-leases-ordinary-test.txt"
+sha256 = "9221b3a92e5c5b6bff8a17e7224f009c906cf2cdb62daa3fec8559d45b7a0716"
+
+[[gate_evidence]]
+kind = "ordinary-test"
+owning_crate = "peritus-local-socket"
+command = "cargo test --package peritus-local-socket --all-targets --all-features --locked"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-local-socket-ordinary-test.txt"
+sha256 = "3e4aead93d1ba58922c84fe97f4dc3776a5d68cc21578cbe580c692d1f31603c"
+
+[[gate_evidence]]
+kind = "ordinary-test"
+owning_crate = "peritus-mcp"
+command = "cargo test --package peritus-mcp --all-targets --all-features --locked"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-mcp-ordinary-test.txt"
+sha256 = "0f99623d6909c3c6a878985bed866a20847e861a04436506893ee6640d72bed1"
+
+[[gate_evidence]]
+kind = "ordinary-test"
+owning_crate = "peritus-memory"
+command = "cargo test --package peritus-memory --all-targets --all-features --locked"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-memory-ordinary-test.txt"
+sha256 = "c2c13f0e86eece6e20bd0b2ed4a7244987ebe27f7901601cc2a6f389d61ef781"
+
+[[gate_evidence]]
+kind = "ordinary-test"
+owning_crate = "peritus-migrations"
+command = "cargo test --package peritus-migrations --all-targets --all-features --locked"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-migrations-ordinary-test.txt"
+sha256 = "e6a97d4bf2f731a67d15c7c40103cd0e36e9561ff8bf88fcd3922ba65e5034a7"
+
+[[gate_evidence]]
+kind = "ordinary-test"
+owning_crate = "peritus-model-protocol"
+command = "cargo test --package peritus-model-protocol --all-targets --all-features --locked"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-model-protocol-ordinary-test.txt"
+sha256 = "bf7c8c2097c9b8d3e45bda9eea80f83321b8fd54dde227887ac6d799a1c18c00"
+
+[[gate_evidence]]
+kind = "ordinary-test"
+owning_crate = "peritus-network"
+command = "cargo test --package peritus-network --all-targets --all-features --locked"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-network-ordinary-test.txt"
+sha256 = "9c6d6b893a76b8d6b106c7ff6020dd2eb8f229f03fee60a57ac4ad214416d486"
+
+[[gate_evidence]]
+kind = "ordinary-test"
+owning_crate = "peritus-obligations"
+command = "cargo test --package peritus-obligations --all-targets --all-features --locked"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-obligations-ordinary-test.txt"
+sha256 = "bf4df0cf6f05844ea137e87cdcd6604d94c5506e31a2c5dc5babff251192f587"
+
+[[gate_evidence]]
+kind = "ordinary-test"
+owning_crate = "peritus-orchestrator"
+command = "cargo test --package peritus-orchestrator --all-targets --all-features --locked"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-orchestrator-ordinary-test.txt"
+sha256 = "216459db9be787434fde559b218a9dc4ffda0d53d14c9dd3207213875db24a94"
+
+[[gate_evidence]]
+kind = "ordinary-test"
+owning_crate = "peritus-patch"
+command = "cargo test --package peritus-patch --all-targets --all-features --locked"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-patch-ordinary-test.txt"
+sha256 = "7965682ac51a9ff964567943ab436018c278d8d05abacadbf630c19808e9f017"
+
+[[gate_evidence]]
+kind = "ordinary-test"
+owning_crate = "peritus-plugin-host"
+command = "cargo test --package peritus-plugin-host --all-targets --all-features --locked"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-plugin-host-ordinary-test.txt"
+sha256 = "8cc3042256e05138f9b302860124bfa7630e05b7f23b3b9fc63fe44f9253b866"
+
+[[gate_evidence]]
+kind = "ordinary-test"
+owning_crate = "peritus-plugin-sdk"
+command = "cargo test --package peritus-plugin-sdk --all-targets --all-features --locked"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-plugin-sdk-ordinary-test.txt"
+sha256 = "8f2004cd135d9bdc7527ee32f1641ff02c2b2aa2e7b19d596fac48d3f6b5c882"
+
+[[gate_evidence]]
+kind = "ordinary-test"
+owning_crate = "peritus-policy"
+command = "cargo test --package peritus-policy --all-targets --all-features --locked"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-policy-ordinary-test.txt"
+sha256 = "b27f152073e93e9099155df13a98a5d25ddbc0fb62645f24abe90df39be6f7b8"
+
+[[gate_evidence]]
+kind = "ordinary-test"
+owning_crate = "peritus-process"
+command = "cargo test --package peritus-process --all-targets --all-features --locked"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-process-ordinary-test.txt"
+sha256 = "47c946c2849f899b3d6e01162e64dc7d52f5aa179c58403b696b98d7e04a7147"
+
+[[gate_evidence]]
+kind = "ordinary-test"
+owning_crate = "peritus-product-runner"
+command = "cargo test --package peritus-product-runner --all-targets --all-features --locked"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-product-runner-ordinary-test.txt"
+sha256 = "fdea3fc162e9b1f0059ac2926910a386821f9227b74547162083836dcd8021c9"
+
+[[gate_evidence]]
+kind = "ordinary-test"
+owning_crate = "peritus-product-state"
+command = "cargo test --package peritus-product-state --all-targets --all-features --locked"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-product-state-ordinary-test.txt"
+sha256 = "f6dced2f620f597f83deb43aa5f15b4074a0e85f00493cdb3b657c24db692dc5"
+
+[[gate_evidence]]
+kind = "ordinary-test"
+owning_crate = "peritus-projection"
+command = "cargo test --package peritus-projection --all-targets --all-features --locked"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-projection-ordinary-test.txt"
+sha256 = "bc69311ef28ce75f9fe7b9e5b92d1ca1ee1ed88f71a9b04d9d100ab9ddd004a1"
+
+[[gate_evidence]]
+kind = "ordinary-test"
+owning_crate = "peritus-protocol"
+command = "cargo test --package peritus-protocol --all-targets --all-features --locked"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-protocol-ordinary-test.txt"
+sha256 = "7264dc5e91296a14518695f01201b58f0a81e8ee7efc82d00027686cc6f68f16"
+
+[[gate_evidence]]
+kind = "ordinary-test"
+owning_crate = "peritus-provider-anthropic"
+command = "cargo test --package peritus-provider-anthropic --all-targets --all-features --locked"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-provider-anthropic-ordinary-test.txt"
+sha256 = "438f2c710aa1e0221833528bbad156867214b82bb3a6a903c4c8c5a6ed6300a2"
+
+[[gate_evidence]]
+kind = "ordinary-test"
+owning_crate = "peritus-provider-compatible"
+command = "cargo test --package peritus-provider-compatible --all-targets --all-features --locked"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-provider-compatible-ordinary-test.txt"
+sha256 = "e453c8265e1f2b2356a714a1ed3c18a75e4cdb6becd57fc5f9c8b56822dff6ca"
+
+[[gate_evidence]]
+kind = "ordinary-test"
+owning_crate = "peritus-provider-core"
+command = "cargo test --package peritus-provider-core --all-targets --all-features --locked"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-provider-core-ordinary-test.txt"
+sha256 = "ea4f2631814ec8a41125a4e564d47a7c542ecefa0390a194dfad10e4cca286fe"
+
+[[gate_evidence]]
+kind = "ordinary-test"
+owning_crate = "peritus-provider-google"
+command = "cargo test --package peritus-provider-google --all-targets --all-features --locked"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-provider-google-ordinary-test.txt"
+sha256 = "7bc78499c5303ca8b4b965d8ac8c70695d3f0002fe639afef8aa8bfa7e2692f4"
+
+[[gate_evidence]]
+kind = "ordinary-test"
+owning_crate = "peritus-provider-openai"
+command = "cargo test --package peritus-provider-openai --all-targets --all-features --locked"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-provider-openai-ordinary-test.txt"
+sha256 = "66035200548b8abdeb2d70bc08e03a9b1f50b4e47f92957a40c32fb4f7114c5e"
+
+[[gate_evidence]]
+kind = "ordinary-test"
+owning_crate = "peritus-quality-policy"
+command = "cargo test --package peritus-quality-policy --all-targets --all-features --locked"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-quality-policy-ordinary-test.txt"
+sha256 = "5ad7b3c8862052a3c7530436ab4f3d92ade26df867e86a4c0f831b6dd8bd8032"
+
+[[gate_evidence]]
+kind = "ordinary-test"
+owning_crate = "peritus-release-policy"
+command = "cargo test --package peritus-release-policy --all-targets --all-features --locked"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-release-policy-ordinary-test.txt"
+sha256 = "7e6ab4a0866160ee2f0868c44ce14aec2f096a4cc1350d4b8ed78137d8b9209e"
+
+[[gate_evidence]]
+kind = "ordinary-test"
+owning_crate = "peritus-review"
+command = "cargo test --package peritus-review --all-targets --all-features --locked"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-review-ordinary-test.txt"
+sha256 = "0102d53db4c4a5b5ae5921a226406a25e700d6080d2bc4ac6a2105b1224feb9e"
+
+[[gate_evidence]]
+kind = "ordinary-test"
+owning_crate = "peritus-role"
+command = "cargo test --package peritus-role --all-targets --all-features --locked"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-role-ordinary-test.txt"
+sha256 = "59aab2971d43c82b6da13712997c12aeb6fbc7c123d0c0e15e4232bf0bfcef91"
+
+[[gate_evidence]]
+kind = "ordinary-test"
+owning_crate = "peritus-run-knowledge"
+command = "cargo test --package peritus-run-knowledge --all-targets --all-features --locked"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-run-knowledge-ordinary-test.txt"
+sha256 = "288aece3f397fe415e5a6e864d9aa8a6710b89dc0ecc67b82f2636d6b9dc6a91"
+
+[[gate_evidence]]
+kind = "ordinary-test"
+owning_crate = "peritus-run-settlement"
+command = "cargo test --package peritus-run-settlement --all-targets --all-features --locked"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-run-settlement-ordinary-test.txt"
+sha256 = "20a15dc65415652bd231e2bce251b4080735739e011716ddb9bc4fb03c754d40"
+
+[[gate_evidence]]
+kind = "ordinary-test"
+owning_crate = "peritus-sandbox"
+command = "cargo test --package peritus-sandbox --all-targets --all-features --locked"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-sandbox-ordinary-test.txt"
+sha256 = "326cefe57b032ce535a83296e69dc5f6c6841fc7245cc5db0f2f887a488e7fbd"
+
+[[gate_evidence]]
+kind = "ordinary-test"
+owning_crate = "peritus-sandbox-linux"
+command = "cargo test --package peritus-sandbox-linux --all-targets --all-features --locked"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-sandbox-linux-ordinary-test.txt"
+sha256 = "1d54b120e93ae761d7adb299841e8d77b3b8f59e79a2a3c75a30accea1aa02e6"
+
+[[gate_evidence]]
+kind = "ordinary-test"
+owning_crate = "peritus-sandbox-macos"
+command = "cargo test --package peritus-sandbox-macos --all-targets --all-features --locked"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-sandbox-macos-ordinary-test.txt"
+sha256 = "b3bc310ac76635f96e266dd5768a4c0e55954872dd014df8815b436a017fe2fe"
+
+[[gate_evidence]]
+kind = "ordinary-test"
+owning_crate = "peritus-sandbox-windows"
+command = "cargo test --package peritus-sandbox-windows --all-targets --all-features --locked"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-sandbox-windows-ordinary-test.txt"
+sha256 = "d8557fb26aa74f56c26486d38253d070629c6ecf3bcff7ffcd155ae11a9dc1c8"
+
+[[gate_evidence]]
+kind = "ordinary-test"
+owning_crate = "peritus-scheduler"
+command = "cargo test --package peritus-scheduler --all-targets --all-features --locked"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-scheduler-ordinary-test.txt"
+sha256 = "dbde8d66172208fbef52c9fbf8e058c8b024d25edbc51425d07dd08c19336399"
+
+[[gate_evidence]]
+kind = "ordinary-test"
+owning_crate = "peritus-secrets"
+command = "cargo test --package peritus-secrets --all-targets --all-features --locked"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-secrets-ordinary-test.txt"
+sha256 = "2f68336e944d4ed29fcd6345371904ea9747727fc26e171ec91d4f0f139bdfc9"
+
+[[gate_evidence]]
+kind = "ordinary-test"
+owning_crate = "peritus-security-policy"
+command = "cargo test --package peritus-security-policy --all-targets --all-features --locked"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-security-policy-ordinary-test.txt"
+sha256 = "60f8bd4036d86200d471a6faba849e18e43d1945068e40daca77a6898699d6b0"
+
+[[gate_evidence]]
+kind = "ordinary-test"
+owning_crate = "peritus-spec"
+command = "cargo test --package peritus-spec --all-targets --all-features --locked"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-spec-ordinary-test.txt"
+sha256 = "9e40282cf397b3f90685527da852c214fbbc58435f166185429d3b6996bb55b6"
+
+[[gate_evidence]]
+kind = "ordinary-test"
+owning_crate = "peritus-tcb"
+command = "cargo test --package peritus-tcb --all-targets --all-features --locked"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-tcb-ordinary-test.txt"
+sha256 = "75bd8a49483a32bf8d640eda3b5c36fc103801b8e4e9face2d367aa1ebf19663"
+
+[[gate_evidence]]
+kind = "ordinary-test"
+owning_crate = "peritus-telemetry"
+command = "cargo test --package peritus-telemetry --all-targets --all-features --locked"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-telemetry-ordinary-test.txt"
+sha256 = "f9d762889cf91cdfaecbd896e22a3584abdbb5581ad1dc5121c177c645ea2138"
+
+[[gate_evidence]]
+kind = "ordinary-test"
+owning_crate = "peritus-tool-protocol"
+command = "cargo test --package peritus-tool-protocol --all-targets --all-features --locked"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-tool-protocol-ordinary-test.txt"
+sha256 = "27209a1855137ac2639cc4ee23f6d7d525377217049041295cf8f33ac13a7ceb"
+
+[[gate_evidence]]
+kind = "ordinary-test"
+owning_crate = "peritus-tool-router"
+command = "cargo test --package peritus-tool-router --all-targets --all-features --locked"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-tool-router-ordinary-test.txt"
+sha256 = "e46bb731ed248cd0d6819fee264d03f4c0df8b805b2a5c9859fad5cdbbfd00f9"
+
+[[gate_evidence]]
+kind = "ordinary-test"
+owning_crate = "peritus-tools-fs"
+command = "cargo test --package peritus-tools-fs --all-targets --all-features --locked"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-tools-fs-ordinary-test.txt"
+sha256 = "1c5f7c03a7989f2c46a25e77b3a2cbcb32e20e74f0d09d59dd6cd1a7125452c4"
+
+[[gate_evidence]]
+kind = "ordinary-test"
+owning_crate = "peritus-tools-git"
+command = "cargo test --package peritus-tools-git --all-targets --all-features --locked"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-tools-git-ordinary-test.txt"
+sha256 = "42bc99f4c746fcdff34213f40e76ecd2402bf0655cb5f7895a89bfdc554bd56e"
+
+[[gate_evidence]]
+kind = "ordinary-test"
+owning_crate = "peritus-tools-quality"
+command = "cargo test --package peritus-tools-quality --all-targets --all-features --locked"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-tools-quality-ordinary-test.txt"
+sha256 = "765732be8381c6c854f16eb54a26bbe2e8a47526b3ce34384dae054af471cf2f"
+
+[[gate_evidence]]
+kind = "ordinary-test"
+owning_crate = "peritus-tools-shell"
+command = "cargo test --package peritus-tools-shell --all-targets --all-features --locked"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-tools-shell-ordinary-test.txt"
+sha256 = "cc46b66dc11f55d0f7fe47781f9d73da2c1cea905fc008a8f155c6a1c058615f"
+
+[[gate_evidence]]
+kind = "ordinary-test"
+owning_crate = "peritus-trace"
+command = "cargo test --package peritus-trace --all-targets --all-features --locked"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-trace-ordinary-test.txt"
+sha256 = "1abb5e9214ef80723186cdf1165f5c53435efdaed0dba0132b8961656aea611f"
+
+[[gate_evidence]]
+kind = "ordinary-test"
+owning_crate = "peritus-types"
+command = "cargo test --package peritus-types --all-targets --all-features --locked"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-types-ordinary-test.txt"
+sha256 = "3a3ec580954f9719c7deac93490ccbc84c7522035d96a6ccb1705b69ce56ba57"
+
+[[gate_evidence]]
+kind = "ordinary-test"
+owning_crate = "peritus-workspace"
+command = "cargo test --package peritus-workspace --all-targets --all-features --locked"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-workspace-ordinary-test.txt"
+sha256 = "99e1a6dfb264ca030fb2cb962f84c9998fc4f2ce81d8bdfe212d76084d5f834d"
+
+[[gate_evidence]]
+kind = "verus-verify"
+owning_crate = "peritus-agent"
+command = "cargo verus verify --package peritus-agent --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-agent-verus-verify.txt"
+sha256 = "895e238cb862d8442d82b80c69615152aae2e82ebe98a7528714dcb44164abd7"
+
+[[gate_evidence]]
+kind = "verus-verify"
+owning_crate = "peritus-app-protocol"
+command = "cargo verus verify --package peritus-app-protocol --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-app-protocol-verus-verify.txt"
+sha256 = "faa34e010c803a2f2f4600077dfa7e86eb60daba7617e7d5b0027fe517060bce"
+
+[[gate_evidence]]
+kind = "verus-verify"
+owning_crate = "peritus-approval"
+command = "cargo verus verify --package peritus-approval --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-approval-verus-verify.txt"
+sha256 = "97b1408f747071e74034b097ae9286563c03d579f876b166250fc7272001f701"
+
+[[gate_evidence]]
+kind = "verus-verify"
+owning_crate = "peritus-artifact-store"
+command = "cargo verus verify --package peritus-artifact-store --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-artifact-store-verus-verify.txt"
+sha256 = "5d949ba9f528775668b4aea8303505fb7e8e15ef455b7d6794a1ebcc38b91e06"
+
+[[gate_evidence]]
+kind = "verus-verify"
+owning_crate = "peritus-budget"
+command = "cargo verus verify --package peritus-budget --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-budget-verus-verify.txt"
+sha256 = "e6db38ea4328b7422011a2a8e3a6117c7818e80cde3bbe874134a9ca80122905"
+
+[[gate_evidence]]
+kind = "verus-verify"
+owning_crate = "peritus-codec"
+command = "cargo verus verify --package peritus-codec --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-codec-verus-verify.txt"
+sha256 = "ccd17baef099ce235c0ae9c53f52c4e8b8509593476cb316bde33188eb16be54"
+
+[[gate_evidence]]
+kind = "verus-verify"
+owning_crate = "peritus-collaboration"
+command = "cargo verus verify --package peritus-collaboration --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-collaboration-verus-verify.txt"
+sha256 = "1167bd25b5d8f1feb7fb87320f5dcc5025f74144e86a0a591fb3d5216dc4eb7b"
+
+[[gate_evidence]]
+kind = "verus-verify"
+owning_crate = "peritus-context"
+command = "cargo verus verify --package peritus-context --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-context-verus-verify.txt"
+sha256 = "c5f8ac0e7d7db079a842b86bfa2176650f357172bd6cc0064c9da5d9f3f161ca"
+
+[[gate_evidence]]
+kind = "verus-verify"
+owning_crate = "peritus-daemon"
+command = "cargo verus verify --package peritus-daemon --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-daemon-verus-verify.txt"
+sha256 = "4407ec2d2e7056be09d524db77194ea4ccdcce4528f1bd879b96d1a1075b8c93"
+
+[[gate_evidence]]
+kind = "verus-verify"
+owning_crate = "peritus-debugger"
+command = "cargo verus verify --package peritus-debugger --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-debugger-verus-verify.txt"
+sha256 = "28e387f3d7ff9b092cf03226b55f3a4c37e3cc9de2671cd11c94f2cfc1c54354"
+
+[[gate_evidence]]
+kind = "verus-verify"
+owning_crate = "peritus-eval"
+command = "cargo verus verify --package peritus-eval --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-eval-verus-verify.txt"
+sha256 = "cebdc34b733b42cdba409e14c83176122dd11a694d4b2ad378f4694e1bc7d48f"
+
+[[gate_evidence]]
+kind = "verus-verify"
+owning_crate = "peritus-evidence"
+command = "cargo verus verify --package peritus-evidence --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-evidence-verus-verify.txt"
+sha256 = "7b50bf29cdfdff043381a3cabb26b5c34be412df5d491f003923ce4f8c0b2140"
+
+[[gate_evidence]]
+kind = "verus-verify"
+owning_crate = "peritus-evolution"
+command = "cargo verus verify --package peritus-evolution --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-evolution-verus-verify.txt"
+sha256 = "fb1ee0305f99155c012f23021e9b0e2f56bac4bfaedc1867d7a2d089d5c0d516"
+
+[[gate_evidence]]
+kind = "verus-verify"
+owning_crate = "peritus-gates"
+command = "cargo verus verify --package peritus-gates --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-gates-verus-verify.txt"
+sha256 = "518aa99de4c2cf97c86655a02be33ef5ef7b5f366f577fe75c63bce2673cd45f"
+
+[[gate_evidence]]
+kind = "verus-verify"
+owning_crate = "peritus-git"
+command = "cargo verus verify --package peritus-git --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-git-verus-verify.txt"
+sha256 = "860a78a484a52d84e57c201a3f3700aa0b294c110efe711994e86d70aaf977cd"
+
+[[gate_evidence]]
+kind = "verus-verify"
+owning_crate = "peritus-harness"
+command = "cargo verus verify --package peritus-harness --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-harness-verus-verify.txt"
+sha256 = "17784e11f1c7b7fcc99b2049bef008eb95e0969844d08709951a3927cc8edf19"
+
+[[gate_evidence]]
+kind = "verus-verify"
+owning_crate = "peritus-journal"
+command = "cargo verus verify --package peritus-journal --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-journal-verus-verify.txt"
+sha256 = "72ba7cc8dc7339b3b5d2eb6e315815f8dabba719f2447778a0182a847043a75f"
+
+[[gate_evidence]]
+kind = "verus-verify"
+owning_crate = "peritus-kernel"
+command = "cargo verus verify --package peritus-kernel --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-kernel-verus-verify.txt"
+sha256 = "1afe8657a0678d981c175d27b3b6973f8ba3aa72ca0bba6f6855354fed098737"
+
+[[gate_evidence]]
+kind = "verus-verify"
+owning_crate = "peritus-leases"
+command = "cargo verus verify --package peritus-leases --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-leases-verus-verify.txt"
+sha256 = "5580ebf6b8d0ff46c2544cf3f0dfa7887584e2a5340b9aefb91cfa87e3be434f"
+
+[[gate_evidence]]
+kind = "verus-verify"
+owning_crate = "peritus-local-socket"
+command = "cargo verus verify --package peritus-local-socket --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-local-socket-verus-verify.txt"
+sha256 = "458feb4c725b217dcbe52fbd5f3b5af906c99e7777821d04320569b9de29f524"
+
+[[gate_evidence]]
+kind = "verus-verify"
+owning_crate = "peritus-mcp"
+command = "cargo verus verify --package peritus-mcp --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-mcp-verus-verify.txt"
+sha256 = "ffdd189488aa251a72287d8c24dfc8ea0780403be53bc605813ff9b29d103658"
+
+[[gate_evidence]]
+kind = "verus-verify"
+owning_crate = "peritus-memory"
+command = "cargo verus verify --package peritus-memory --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-memory-verus-verify.txt"
+sha256 = "6520a71edbdaf51f4ee5a0b7b7b3053052dc2506a0c645d1c776c0722c86fce2"
+
+[[gate_evidence]]
+kind = "verus-verify"
+owning_crate = "peritus-migrations"
+command = "cargo verus verify --package peritus-migrations --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-migrations-verus-verify.txt"
+sha256 = "b06eb6e1ee3e185252614bb5f4479b68236fff77cf8a8087c865fe04e58bca1d"
+
+[[gate_evidence]]
+kind = "verus-verify"
+owning_crate = "peritus-model-protocol"
+command = "cargo verus verify --package peritus-model-protocol --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-model-protocol-verus-verify.txt"
+sha256 = "433150c887f6366321e1ed85467a8a5dfc2e1850c15463595da2942e4c2ad76e"
+
+[[gate_evidence]]
+kind = "verus-verify"
+owning_crate = "peritus-network"
+command = "cargo verus verify --package peritus-network --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-network-verus-verify.txt"
+sha256 = "f9ce8aeed484379c3356f784b7b948ff7d94eee310e48b813038c50d2a81d3c2"
+
+[[gate_evidence]]
+kind = "verus-verify"
+owning_crate = "peritus-obligations"
+command = "cargo verus verify --package peritus-obligations --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-obligations-verus-verify.txt"
+sha256 = "a7f9984d4cc2d64001dde8ca48860742c0241fb080800c42403a226bc64897c7"
+
+[[gate_evidence]]
+kind = "verus-verify"
+owning_crate = "peritus-orchestrator"
+command = "cargo verus verify --package peritus-orchestrator --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-orchestrator-verus-verify.txt"
+sha256 = "a41dc2be1e487453388e0af6983c7bc412c7fac20cc0110213d9564a74088a57"
+
+[[gate_evidence]]
+kind = "verus-verify"
+owning_crate = "peritus-patch"
+command = "cargo verus verify --package peritus-patch --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-patch-verus-verify.txt"
+sha256 = "b259c885063f4b63974c0b845c928a0ab71f82a09e7d4c95f3a08ddc103243e9"
+
+[[gate_evidence]]
+kind = "verus-verify"
+owning_crate = "peritus-plugin-host"
+command = "cargo verus verify --package peritus-plugin-host --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-plugin-host-verus-verify.txt"
+sha256 = "aefe5b51868a2ee091fc9f76235d0c4b2b8ad97d8cea22114554b64419c8ebec"
+
+[[gate_evidence]]
+kind = "verus-verify"
+owning_crate = "peritus-plugin-sdk"
+command = "cargo verus verify --package peritus-plugin-sdk --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-plugin-sdk-verus-verify.txt"
+sha256 = "a13394d9e1b4426b465ee3d85cca14b2b5f9f71740587e696aaab6760ed81df9"
+
+[[gate_evidence]]
+kind = "verus-verify"
+owning_crate = "peritus-policy"
+command = "cargo verus verify --package peritus-policy --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-policy-verus-verify.txt"
+sha256 = "550eb778a577ebfee4325a92184e5751fecd115b711d91679e9847d53874c0dd"
+
+[[gate_evidence]]
+kind = "verus-verify"
+owning_crate = "peritus-process"
+command = "cargo verus verify --package peritus-process --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-process-verus-verify.txt"
+sha256 = "b6db58815f12135fa033dabed548f76a48c4887216cd98b5e5e4a6a1f06029b5"
+
+[[gate_evidence]]
+kind = "verus-verify"
+owning_crate = "peritus-product-runner"
+command = "cargo verus verify --package peritus-product-runner --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-product-runner-verus-verify.txt"
+sha256 = "314c77927503c75805f821f814dcd5bfdcfda54ca65681e4ddf19cc16797229c"
+
+[[gate_evidence]]
+kind = "verus-verify"
+owning_crate = "peritus-product-state"
+command = "cargo verus verify --package peritus-product-state --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-product-state-verus-verify.txt"
+sha256 = "f86014269fd8e0c52378bf9b54414a7b92fd2273d7ea895a0fef8ea905e82a10"
+
+[[gate_evidence]]
+kind = "verus-verify"
+owning_crate = "peritus-projection"
+command = "cargo verus verify --package peritus-projection --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-projection-verus-verify.txt"
+sha256 = "493b1861933bfb9cad328d9d86091804106116be3b831bc4c62f663356d4847e"
+
+[[gate_evidence]]
+kind = "verus-verify"
+owning_crate = "peritus-protocol"
+command = "cargo verus verify --package peritus-protocol --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-protocol-verus-verify.txt"
+sha256 = "94fb5c04f36f1a965691e9deeae8a1e3c7b80b262aa357e3f76782db288d566a"
+
+[[gate_evidence]]
+kind = "verus-verify"
+owning_crate = "peritus-provider-anthropic"
+command = "cargo verus verify --package peritus-provider-anthropic --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-provider-anthropic-verus-verify.txt"
+sha256 = "75e89ecd12e4ad7975b10a039404ba20fa6df73f027f798f471eb9235a0f9f7a"
+
+[[gate_evidence]]
+kind = "verus-verify"
+owning_crate = "peritus-provider-compatible"
+command = "cargo verus verify --package peritus-provider-compatible --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-provider-compatible-verus-verify.txt"
+sha256 = "2fe8ef64c2fb97ede223c86a4675056031afed91ba7a3754b8fc8dcdd0f2df6b"
+
+[[gate_evidence]]
+kind = "verus-verify"
+owning_crate = "peritus-provider-core"
+command = "cargo verus verify --package peritus-provider-core --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-provider-core-verus-verify.txt"
+sha256 = "6284b018138caf81afd8330148820c39690a2f24b7995e9e613e78afb5dc6e57"
+
+[[gate_evidence]]
+kind = "verus-verify"
+owning_crate = "peritus-provider-google"
+command = "cargo verus verify --package peritus-provider-google --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-provider-google-verus-verify.txt"
+sha256 = "489ba9c553bea79924c28a1c9ba9efd7d96162fa62dde10d8fe55dbffe4a0245"
+
+[[gate_evidence]]
+kind = "verus-verify"
+owning_crate = "peritus-provider-openai"
+command = "cargo verus verify --package peritus-provider-openai --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-provider-openai-verus-verify.txt"
+sha256 = "446c5983008a485f3e23ed382ae46474cba26e15a0abc142bf65b926624843f8"
+
+[[gate_evidence]]
+kind = "verus-verify"
+owning_crate = "peritus-quality-policy"
+command = "cargo verus verify --package peritus-quality-policy --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-quality-policy-verus-verify.txt"
+sha256 = "79cbe070d966345d103652c1eea4ac70cda81d104cb33cc98c446987b6ade052"
+
+[[gate_evidence]]
+kind = "verus-verify"
+owning_crate = "peritus-release-policy"
+command = "cargo verus verify --package peritus-release-policy --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-release-policy-verus-verify.txt"
+sha256 = "b2942c2aedaa0eb4799e70a450dcb8bd2d3bac79ac63f4b1e559e7ea66679dc9"
+
+[[gate_evidence]]
+kind = "verus-verify"
+owning_crate = "peritus-review"
+command = "cargo verus verify --package peritus-review --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-review-verus-verify.txt"
+sha256 = "f0c3816cb78360902b521ff784ec422cae58038e489971a2642c7ac2ad20beff"
+
+[[gate_evidence]]
+kind = "verus-verify"
+owning_crate = "peritus-role"
+command = "cargo verus verify --package peritus-role --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-role-verus-verify.txt"
+sha256 = "cc14bf3df76d4888d7839831512449286099a4972eedef26db280e6116acf5d3"
+
+[[gate_evidence]]
+kind = "verus-verify"
+owning_crate = "peritus-run-knowledge"
+command = "cargo verus verify --package peritus-run-knowledge --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-run-knowledge-verus-verify.txt"
+sha256 = "7f8e91473c97ec2a5af4e3c58516b444bab50d16e8fcbba6987f7885082a3753"
+
+[[gate_evidence]]
+kind = "verus-verify"
+owning_crate = "peritus-run-settlement"
+command = "cargo verus verify --package peritus-run-settlement --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-run-settlement-verus-verify.txt"
+sha256 = "deaf5b400172be27e88904b7d71ee0f36137fc4a0c025678234f440a5c6da767"
+
+[[gate_evidence]]
+kind = "verus-verify"
+owning_crate = "peritus-sandbox"
+command = "cargo verus verify --package peritus-sandbox --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-sandbox-verus-verify.txt"
+sha256 = "76ceb495d2d92698d161341d7049b0fae5c2d36e70149cdaa2a1c4403f3f44ca"
+
+[[gate_evidence]]
+kind = "verus-verify"
+owning_crate = "peritus-sandbox-linux"
+command = "cargo verus verify --package peritus-sandbox-linux --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-sandbox-linux-verus-verify.txt"
+sha256 = "d3d597691226c6485469f6e18da92566aadef8d1f2f1f4111fed3a005e2638f2"
+
+[[gate_evidence]]
+kind = "verus-verify"
+owning_crate = "peritus-sandbox-macos"
+command = "cargo verus verify --package peritus-sandbox-macos --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-sandbox-macos-verus-verify.txt"
+sha256 = "f5ca95cb712dd7afe30ec6a58179e9cad2374f62314d93c122c94a78b4926320"
+
+[[gate_evidence]]
+kind = "verus-verify"
+owning_crate = "peritus-sandbox-windows"
+command = "cargo verus verify --package peritus-sandbox-windows --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-sandbox-windows-verus-verify.txt"
+sha256 = "8ea2a5508f012da1e951fc4e98275a8576f159b0bb9f62e66e72afdfc61bbd3b"
+
+[[gate_evidence]]
+kind = "verus-verify"
+owning_crate = "peritus-scheduler"
+command = "cargo verus verify --package peritus-scheduler --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-scheduler-verus-verify.txt"
+sha256 = "4073e437c7b895ec7d98c12d3baa2e4323129b0dfa0c92cb387f236f2aadf6e6"
+
+[[gate_evidence]]
+kind = "verus-verify"
+owning_crate = "peritus-secrets"
+command = "cargo verus verify --package peritus-secrets --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-secrets-verus-verify.txt"
+sha256 = "8a4e1663e5c57ea30824809dd511c408ccb3508407320c7afcfca64bebae4baf"
+
+[[gate_evidence]]
+kind = "verus-verify"
+owning_crate = "peritus-security-policy"
+command = "cargo verus verify --package peritus-security-policy --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-security-policy-verus-verify.txt"
+sha256 = "92f3ec91603d0e76e26655698fb7a7398c8bddab109f890e896a54d9db1d50af"
+
+[[gate_evidence]]
+kind = "verus-verify"
+owning_crate = "peritus-spec"
+command = "cargo verus verify --package peritus-spec --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-spec-verus-verify.txt"
+sha256 = "2f4ad6c267c13b4ef539fb1d86d855450aad3bc796da2eedb90315c788ba0a81"
+
+[[gate_evidence]]
+kind = "verus-verify"
+owning_crate = "peritus-tcb"
+command = "cargo verus verify --package peritus-tcb --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --rlimit 20"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-tcb-verus-verify.txt"
+sha256 = "c5fd6a8f64c0c0390ee97e2d497ffa304358e8ef365b491a9bf5f7cc4f99e658"
+
+[[gate_evidence]]
+kind = "verus-verify"
+owning_crate = "peritus-telemetry"
+command = "cargo verus verify --package peritus-telemetry --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-telemetry-verus-verify.txt"
+sha256 = "74a19c84da98dc86f8b85de96052a262dfc68acfa28b29ed267345f4a4df2c0c"
+
+[[gate_evidence]]
+kind = "verus-verify"
+owning_crate = "peritus-tool-protocol"
+command = "cargo verus verify --package peritus-tool-protocol --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-tool-protocol-verus-verify.txt"
+sha256 = "8cf04de35e7843b8483a97ab7df65f5a236c63ac89c473dea2944765ce5863ce"
+
+[[gate_evidence]]
+kind = "verus-verify"
+owning_crate = "peritus-tool-router"
+command = "cargo verus verify --package peritus-tool-router --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-tool-router-verus-verify.txt"
+sha256 = "d5fd3915e3194587a8c5023fb7b1bf5ef9beb5e596b145ccb5bf75d77fd1dc12"
+
+[[gate_evidence]]
+kind = "verus-verify"
+owning_crate = "peritus-tools-fs"
+command = "cargo verus verify --package peritus-tools-fs --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-tools-fs-verus-verify.txt"
+sha256 = "b531e96361be45e89c657bc4fb1ef340b68a619cc4bd9d9f02d4cd1c0ecf2b7f"
+
+[[gate_evidence]]
+kind = "verus-verify"
+owning_crate = "peritus-tools-git"
+command = "cargo verus verify --package peritus-tools-git --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-tools-git-verus-verify.txt"
+sha256 = "a78b824160bd19ce472709dd49dcc9af4abdf8d2de2dbe9f30a6be68f210f028"
+
+[[gate_evidence]]
+kind = "verus-verify"
+owning_crate = "peritus-tools-quality"
+command = "cargo verus verify --package peritus-tools-quality --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-tools-quality-verus-verify.txt"
+sha256 = "bf387c7dd188b11ebd6a6668b9090357437697fa9b31b03be89f74cdc07c6e93"
+
+[[gate_evidence]]
+kind = "verus-verify"
+owning_crate = "peritus-tools-shell"
+command = "cargo verus verify --package peritus-tools-shell --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-tools-shell-verus-verify.txt"
+sha256 = "2c7fbc420303896497d28f27802db2b879c38250396d00815e4cfced473c726b"
+
+[[gate_evidence]]
+kind = "verus-verify"
+owning_crate = "peritus-trace"
+command = "cargo verus verify --package peritus-trace --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-trace-verus-verify.txt"
+sha256 = "8ffc3a55b9fa74e1366a93b7f22fa37cbf52a80dd03af7a7ccc30b2909984e70"
+
+[[gate_evidence]]
+kind = "verus-verify"
+owning_crate = "peritus-types"
+command = "cargo verus verify --package peritus-types --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-types-verus-verify.txt"
+sha256 = "8ff0450fd6f2af602f0f08c7c59cf583c7fcc7d12c48df09f653cca7a2ba01f6"
+
+[[gate_evidence]]
+kind = "verus-verify"
+owning_crate = "peritus-workspace"
+command = "cargo verus verify --package peritus-workspace --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20"
+result = "passed"
+
+[gate_evidence.output]
+path = "verification/reviews/PCR-0007/peritus-workspace-verus-verify.txt"
+sha256 = "1c0c3c3116516ee1104bfc9671c3463cbe3a04be0422b95701bb99c3b159c52a"
+
+[[findings]]
+id = "FINDING-0001"
+severity = "high"
+blocking = true
+disposition = "fixed"
+
+[findings.detail]
+path = "verification/reviews/PCR-0007/FINDING-0001-detail.md"
+sha256 = "b6418ec6ef5daf64a693db5b395ab6c67ee8258b4a12b9d7dac6e6e9baecfef4"
+
+[findings.evidence]
+path = "verification/reviews/PCR-0007/FINDING-0001-evidence.txt"
+sha256 = "157d60743ea74fe1f8728f516b3ea1e75e122c7c8add80d7f13d7b13ae72df08"
+
+[[findings]]
+id = "FINDING-0002"
+severity = "medium"
+blocking = true
+disposition = "fixed"
+
+[findings.detail]
+path = "verification/reviews/PCR-0007/FINDING-0002-detail.md"
+sha256 = "6bcb77e91708a3e9a660306879c455cc05ae71eae6756a5f6da46ba18c7d8717"
+
+[findings.evidence]
+path = "verification/reviews/PCR-0007/FINDING-0002-evidence.txt"
+sha256 = "e75ab265287789a027451f23f196201102c8d47df1f66ff8d3b3cea30599d64a"
+
+[[findings]]
+id = "FINDING-0003"
+severity = "medium"
+blocking = true
+disposition = "fixed"
+
+[findings.detail]
+path = "verification/reviews/PCR-0007/FINDING-0003-detail.md"
+sha256 = "cf0d487bffb0105e702f584ee617da8ac935c61d9ecfc598202c359b9dd57ed0"
+
+[findings.evidence]
+path = "verification/reviews/PCR-0007/FINDING-0003-evidence.txt"
+sha256 = "ed0ea79b2da8aa66bb6bab9136dc35dba74e6f6fa383ae757691252c1440fc62"
+
+[[findings]]
+id = "FINDING-0004"
+severity = "medium"
+blocking = true
+disposition = "fixed"
+
+[findings.detail]
+path = "verification/reviews/PCR-0007/FINDING-0004-detail.md"
+sha256 = "3b2ee156d86267ae49d7f0c392eb1e40dbe0ec28207afd811881898bdc1c8c86"
+
+[findings.evidence]
+path = "verification/reviews/PCR-0007/FINDING-0004-evidence.txt"
+sha256 = "e0ece40762fbee6b4593503874aced25066243ba797ab7ecfe8ca2275b61b46e"
+
+[[findings]]
+id = "FINDING-0005"
+severity = "high"
+blocking = true
+disposition = "fixed"
+
+[findings.detail]
+path = "verification/reviews/PCR-0007/FINDING-0005-detail.md"
+sha256 = "3dd121a3c7dd664e907b0a2d576332966b7aa199de50e0bfd97d2391bf161d42"
+
+[findings.evidence]
+path = "verification/reviews/PCR-0007/FINDING-0005-evidence.txt"
+sha256 = "a7a7a019036ffc45c47746e8d5230db1a1569e1fd2bfa26984e15a1195950d04"
+
+[[findings]]
+id = "FINDING-0006"
+severity = "medium"
+blocking = true
+disposition = "fixed"
+
+[findings.detail]
+path = "verification/reviews/PCR-0007/FINDING-0006-detail.md"
+sha256 = "8fa5b990c1d9e9256a4cb8d0d4356ebc2ff554d2154b91e211f637660b62541f"
+
+[findings.evidence]
+path = "verification/reviews/PCR-0007/FINDING-0006-evidence.txt"
+sha256 = "e77915ec03a6f732691d1e071256fa79175ffbf300f295c2596b533e2d34dc2a"
+
+[[artifacts]]
+kind = "review-report"
+path = "verification/reviews/PCR-0007/review-report.md"
+sha256 = "1bd3f0e16dfc9d074c2a57b2828946fa235394ce0f6e0a37de188ea8381c5921"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-agent-ordinary-test.txt"
+sha256 = "d55c9efdc18482485ccfbde0e4430570826bda380f77d339795a2b86f03281b9"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-agent-verus-verify.txt"
+sha256 = "895e238cb862d8442d82b80c69615152aae2e82ebe98a7528714dcb44164abd7"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-app-protocol-ordinary-test.txt"
+sha256 = "ad72a2bd934afd546815cb457443158ff7f2e4b7ab9724f216649ca1b926e6b7"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-app-protocol-verus-verify.txt"
+sha256 = "faa34e010c803a2f2f4600077dfa7e86eb60daba7617e7d5b0027fe517060bce"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-approval-ordinary-test.txt"
+sha256 = "a067704095d4752884a6d6360af2ed470fcb9a255efe52a7a2cd21605274ac0c"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-approval-verus-verify.txt"
+sha256 = "97b1408f747071e74034b097ae9286563c03d579f876b166250fc7272001f701"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-artifact-store-ordinary-test.txt"
+sha256 = "4f843a596688edb9b6c741182eabebb353a9df102ed2acc14aa25a4df4e157c3"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-artifact-store-verus-verify.txt"
+sha256 = "5d949ba9f528775668b4aea8303505fb7e8e15ef455b7d6794a1ebcc38b91e06"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-budget-ordinary-test.txt"
+sha256 = "8257115dfbfa5eb304bcaa703bbb24613f93701eb9f1e8fafa59a136b6a90f48"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-budget-verus-verify.txt"
+sha256 = "e6db38ea4328b7422011a2a8e3a6117c7818e80cde3bbe874134a9ca80122905"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-codec-ordinary-test.txt"
+sha256 = "f0abb47fcd6bec7490d45ba7c52a43999638bceb21ecb74becbeeebb5a7da629"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-codec-verus-verify.txt"
+sha256 = "ccd17baef099ce235c0ae9c53f52c4e8b8509593476cb316bde33188eb16be54"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-collaboration-ordinary-test.txt"
+sha256 = "ce1168d5166308694bf3517fa0c4446755aed9fe0081ff0dcfadca1e9351db80"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-collaboration-verus-verify.txt"
+sha256 = "1167bd25b5d8f1feb7fb87320f5dcc5025f74144e86a0a591fb3d5216dc4eb7b"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-context-ordinary-test.txt"
+sha256 = "14211224811038063acf525917281d162da8e923ab0cfdd17795b71c643b864c"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-context-verus-verify.txt"
+sha256 = "c5f8ac0e7d7db079a842b86bfa2176650f357172bd6cc0064c9da5d9f3f161ca"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-daemon-ordinary-test.txt"
+sha256 = "c5018bc73b6e9afbfb853d1b5b323df38b398b9c0bfb4de77822c0e875b51580"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-daemon-verus-verify.txt"
+sha256 = "4407ec2d2e7056be09d524db77194ea4ccdcce4528f1bd879b96d1a1075b8c93"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-debugger-ordinary-test.txt"
+sha256 = "135192f642391e9693ebbf19a9c38c801a8d5a375c011538070dba1d19331189"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-debugger-verus-verify.txt"
+sha256 = "28e387f3d7ff9b092cf03226b55f3a4c37e3cc9de2671cd11c94f2cfc1c54354"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-eval-ordinary-test.txt"
+sha256 = "46aa23d13b40fd308c53f662e1e3b835f6ca36826980a8ae1431f3d3993a7a8f"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-eval-verus-verify.txt"
+sha256 = "cebdc34b733b42cdba409e14c83176122dd11a694d4b2ad378f4694e1bc7d48f"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-evidence-ordinary-test.txt"
+sha256 = "986c3bac640af2ccd3b490931146bdcd474e27c7d2e4648ade0cf8a22a4fb78e"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-evidence-verus-verify.txt"
+sha256 = "7b50bf29cdfdff043381a3cabb26b5c34be412df5d491f003923ce4f8c0b2140"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-evolution-ordinary-test.txt"
+sha256 = "c3ed53119d1c05f1f5341d5d8857e90bbdd34ac7a97d88ada7e2c30eebe13173"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-evolution-verus-verify.txt"
+sha256 = "fb1ee0305f99155c012f23021e9b0e2f56bac4bfaedc1867d7a2d089d5c0d516"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-gates-ordinary-test.txt"
+sha256 = "bc9fd1b0bbca8b44db9f8279a258b307c01779671a1e18d9d8755358e7e22e0d"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-gates-verus-verify.txt"
+sha256 = "518aa99de4c2cf97c86655a02be33ef5ef7b5f366f577fe75c63bce2673cd45f"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-git-ordinary-test.txt"
+sha256 = "01c9efb77474e7a63a64df5ea21d1203924743993f5148e9d827a65ea4f84ccb"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-git-verus-verify.txt"
+sha256 = "860a78a484a52d84e57c201a3f3700aa0b294c110efe711994e86d70aaf977cd"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-harness-ordinary-test.txt"
+sha256 = "87e3ecf0ee9a1bc4887d62c9d99ba00c9c39be6c34f3ad740939adf6b72b0a6c"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-harness-verus-verify.txt"
+sha256 = "17784e11f1c7b7fcc99b2049bef008eb95e0969844d08709951a3927cc8edf19"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-journal-ordinary-test.txt"
+sha256 = "742a6c268764387f3d5aaadf726e5a8da2e620778e3840c2f16a9845a350899b"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-journal-verus-verify.txt"
+sha256 = "72ba7cc8dc7339b3b5d2eb6e315815f8dabba719f2447778a0182a847043a75f"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-kernel-ordinary-test.txt"
+sha256 = "768a10b6a0b7e6c85c98d77db083606cd42b1b40ffc5f5c5a7aecb2d523f5d37"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-kernel-verus-verify.txt"
+sha256 = "1afe8657a0678d981c175d27b3b6973f8ba3aa72ca0bba6f6855354fed098737"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-leases-ordinary-test.txt"
+sha256 = "9221b3a92e5c5b6bff8a17e7224f009c906cf2cdb62daa3fec8559d45b7a0716"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-leases-verus-verify.txt"
+sha256 = "5580ebf6b8d0ff46c2544cf3f0dfa7887584e2a5340b9aefb91cfa87e3be434f"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-local-socket-ordinary-test.txt"
+sha256 = "3e4aead93d1ba58922c84fe97f4dc3776a5d68cc21578cbe580c692d1f31603c"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-local-socket-verus-verify.txt"
+sha256 = "458feb4c725b217dcbe52fbd5f3b5af906c99e7777821d04320569b9de29f524"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-mcp-ordinary-test.txt"
+sha256 = "0f99623d6909c3c6a878985bed866a20847e861a04436506893ee6640d72bed1"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-mcp-verus-verify.txt"
+sha256 = "ffdd189488aa251a72287d8c24dfc8ea0780403be53bc605813ff9b29d103658"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-memory-ordinary-test.txt"
+sha256 = "c2c13f0e86eece6e20bd0b2ed4a7244987ebe27f7901601cc2a6f389d61ef781"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-memory-verus-verify.txt"
+sha256 = "6520a71edbdaf51f4ee5a0b7b7b3053052dc2506a0c645d1c776c0722c86fce2"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-migrations-ordinary-test.txt"
+sha256 = "e6a97d4bf2f731a67d15c7c40103cd0e36e9561ff8bf88fcd3922ba65e5034a7"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-migrations-verus-verify.txt"
+sha256 = "b06eb6e1ee3e185252614bb5f4479b68236fff77cf8a8087c865fe04e58bca1d"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-model-protocol-ordinary-test.txt"
+sha256 = "bf7c8c2097c9b8d3e45bda9eea80f83321b8fd54dde227887ac6d799a1c18c00"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-model-protocol-verus-verify.txt"
+sha256 = "433150c887f6366321e1ed85467a8a5dfc2e1850c15463595da2942e4c2ad76e"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-network-ordinary-test.txt"
+sha256 = "9c6d6b893a76b8d6b106c7ff6020dd2eb8f229f03fee60a57ac4ad214416d486"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-network-verus-verify.txt"
+sha256 = "f9ce8aeed484379c3356f784b7b948ff7d94eee310e48b813038c50d2a81d3c2"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-obligations-ordinary-test.txt"
+sha256 = "bf4df0cf6f05844ea137e87cdcd6604d94c5506e31a2c5dc5babff251192f587"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-obligations-verus-verify.txt"
+sha256 = "a7f9984d4cc2d64001dde8ca48860742c0241fb080800c42403a226bc64897c7"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-orchestrator-ordinary-test.txt"
+sha256 = "216459db9be787434fde559b218a9dc4ffda0d53d14c9dd3207213875db24a94"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-orchestrator-verus-verify.txt"
+sha256 = "a41dc2be1e487453388e0af6983c7bc412c7fac20cc0110213d9564a74088a57"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-patch-ordinary-test.txt"
+sha256 = "7965682ac51a9ff964567943ab436018c278d8d05abacadbf630c19808e9f017"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-patch-verus-verify.txt"
+sha256 = "b259c885063f4b63974c0b845c928a0ab71f82a09e7d4c95f3a08ddc103243e9"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-plugin-host-ordinary-test.txt"
+sha256 = "8cc3042256e05138f9b302860124bfa7630e05b7f23b3b9fc63fe44f9253b866"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-plugin-host-verus-verify.txt"
+sha256 = "aefe5b51868a2ee091fc9f76235d0c4b2b8ad97d8cea22114554b64419c8ebec"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-plugin-sdk-ordinary-test.txt"
+sha256 = "8f2004cd135d9bdc7527ee32f1641ff02c2b2aa2e7b19d596fac48d3f6b5c882"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-plugin-sdk-verus-verify.txt"
+sha256 = "a13394d9e1b4426b465ee3d85cca14b2b5f9f71740587e696aaab6760ed81df9"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-policy-ordinary-test.txt"
+sha256 = "b27f152073e93e9099155df13a98a5d25ddbc0fb62645f24abe90df39be6f7b8"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-policy-verus-verify.txt"
+sha256 = "550eb778a577ebfee4325a92184e5751fecd115b711d91679e9847d53874c0dd"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-process-ordinary-test.txt"
+sha256 = "47c946c2849f899b3d6e01162e64dc7d52f5aa179c58403b696b98d7e04a7147"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-process-verus-verify.txt"
+sha256 = "b6db58815f12135fa033dabed548f76a48c4887216cd98b5e5e4a6a1f06029b5"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-product-runner-ordinary-test.txt"
+sha256 = "fdea3fc162e9b1f0059ac2926910a386821f9227b74547162083836dcd8021c9"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-product-runner-verus-verify.txt"
+sha256 = "314c77927503c75805f821f814dcd5bfdcfda54ca65681e4ddf19cc16797229c"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-product-state-ordinary-test.txt"
+sha256 = "f6dced2f620f597f83deb43aa5f15b4074a0e85f00493cdb3b657c24db692dc5"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-product-state-verus-verify.txt"
+sha256 = "f86014269fd8e0c52378bf9b54414a7b92fd2273d7ea895a0fef8ea905e82a10"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-projection-ordinary-test.txt"
+sha256 = "bc69311ef28ce75f9fe7b9e5b92d1ca1ee1ed88f71a9b04d9d100ab9ddd004a1"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-projection-verus-verify.txt"
+sha256 = "493b1861933bfb9cad328d9d86091804106116be3b831bc4c62f663356d4847e"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-protocol-ordinary-test.txt"
+sha256 = "7264dc5e91296a14518695f01201b58f0a81e8ee7efc82d00027686cc6f68f16"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-protocol-verus-verify.txt"
+sha256 = "94fb5c04f36f1a965691e9deeae8a1e3c7b80b262aa357e3f76782db288d566a"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-provider-anthropic-ordinary-test.txt"
+sha256 = "438f2c710aa1e0221833528bbad156867214b82bb3a6a903c4c8c5a6ed6300a2"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-provider-anthropic-verus-verify.txt"
+sha256 = "75e89ecd12e4ad7975b10a039404ba20fa6df73f027f798f471eb9235a0f9f7a"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-provider-compatible-ordinary-test.txt"
+sha256 = "e453c8265e1f2b2356a714a1ed3c18a75e4cdb6becd57fc5f9c8b56822dff6ca"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-provider-compatible-verus-verify.txt"
+sha256 = "2fe8ef64c2fb97ede223c86a4675056031afed91ba7a3754b8fc8dcdd0f2df6b"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-provider-core-ordinary-test.txt"
+sha256 = "ea4f2631814ec8a41125a4e564d47a7c542ecefa0390a194dfad10e4cca286fe"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-provider-core-verus-verify.txt"
+sha256 = "6284b018138caf81afd8330148820c39690a2f24b7995e9e613e78afb5dc6e57"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-provider-google-ordinary-test.txt"
+sha256 = "7bc78499c5303ca8b4b965d8ac8c70695d3f0002fe639afef8aa8bfa7e2692f4"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-provider-google-verus-verify.txt"
+sha256 = "489ba9c553bea79924c28a1c9ba9efd7d96162fa62dde10d8fe55dbffe4a0245"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-provider-openai-ordinary-test.txt"
+sha256 = "66035200548b8abdeb2d70bc08e03a9b1f50b4e47f92957a40c32fb4f7114c5e"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-provider-openai-verus-verify.txt"
+sha256 = "446c5983008a485f3e23ed382ae46474cba26e15a0abc142bf65b926624843f8"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-quality-policy-ordinary-test.txt"
+sha256 = "5ad7b3c8862052a3c7530436ab4f3d92ade26df867e86a4c0f831b6dd8bd8032"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-quality-policy-verus-verify.txt"
+sha256 = "79cbe070d966345d103652c1eea4ac70cda81d104cb33cc98c446987b6ade052"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-release-policy-ordinary-test.txt"
+sha256 = "7e6ab4a0866160ee2f0868c44ce14aec2f096a4cc1350d4b8ed78137d8b9209e"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-release-policy-verus-verify.txt"
+sha256 = "b2942c2aedaa0eb4799e70a450dcb8bd2d3bac79ac63f4b1e559e7ea66679dc9"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-review-ordinary-test.txt"
+sha256 = "0102d53db4c4a5b5ae5921a226406a25e700d6080d2bc4ac6a2105b1224feb9e"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-review-verus-verify.txt"
+sha256 = "f0c3816cb78360902b521ff784ec422cae58038e489971a2642c7ac2ad20beff"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-role-ordinary-test.txt"
+sha256 = "59aab2971d43c82b6da13712997c12aeb6fbc7c123d0c0e15e4232bf0bfcef91"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-role-verus-verify.txt"
+sha256 = "cc14bf3df76d4888d7839831512449286099a4972eedef26db280e6116acf5d3"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-run-knowledge-ordinary-test.txt"
+sha256 = "288aece3f397fe415e5a6e864d9aa8a6710b89dc0ecc67b82f2636d6b9dc6a91"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-run-knowledge-verus-verify.txt"
+sha256 = "7f8e91473c97ec2a5af4e3c58516b444bab50d16e8fcbba6987f7885082a3753"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-run-settlement-ordinary-test.txt"
+sha256 = "20a15dc65415652bd231e2bce251b4080735739e011716ddb9bc4fb03c754d40"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-run-settlement-verus-verify.txt"
+sha256 = "deaf5b400172be27e88904b7d71ee0f36137fc4a0c025678234f440a5c6da767"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-sandbox-linux-ordinary-test.txt"
+sha256 = "1d54b120e93ae761d7adb299841e8d77b3b8f59e79a2a3c75a30accea1aa02e6"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-sandbox-linux-verus-verify.txt"
+sha256 = "d3d597691226c6485469f6e18da92566aadef8d1f2f1f4111fed3a005e2638f2"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-sandbox-macos-ordinary-test.txt"
+sha256 = "b3bc310ac76635f96e266dd5768a4c0e55954872dd014df8815b436a017fe2fe"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-sandbox-macos-verus-verify.txt"
+sha256 = "f5ca95cb712dd7afe30ec6a58179e9cad2374f62314d93c122c94a78b4926320"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-sandbox-ordinary-test.txt"
+sha256 = "326cefe57b032ce535a83296e69dc5f6c6841fc7245cc5db0f2f887a488e7fbd"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-sandbox-verus-verify.txt"
+sha256 = "76ceb495d2d92698d161341d7049b0fae5c2d36e70149cdaa2a1c4403f3f44ca"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-sandbox-windows-ordinary-test.txt"
+sha256 = "d8557fb26aa74f56c26486d38253d070629c6ecf3bcff7ffcd155ae11a9dc1c8"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-sandbox-windows-verus-verify.txt"
+sha256 = "8ea2a5508f012da1e951fc4e98275a8576f159b0bb9f62e66e72afdfc61bbd3b"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-scheduler-ordinary-test.txt"
+sha256 = "dbde8d66172208fbef52c9fbf8e058c8b024d25edbc51425d07dd08c19336399"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-scheduler-verus-verify.txt"
+sha256 = "4073e437c7b895ec7d98c12d3baa2e4323129b0dfa0c92cb387f236f2aadf6e6"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-secrets-ordinary-test.txt"
+sha256 = "2f68336e944d4ed29fcd6345371904ea9747727fc26e171ec91d4f0f139bdfc9"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-secrets-verus-verify.txt"
+sha256 = "8a4e1663e5c57ea30824809dd511c408ccb3508407320c7afcfca64bebae4baf"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-security-policy-ordinary-test.txt"
+sha256 = "60f8bd4036d86200d471a6faba849e18e43d1945068e40daca77a6898699d6b0"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-security-policy-verus-verify.txt"
+sha256 = "92f3ec91603d0e76e26655698fb7a7398c8bddab109f890e896a54d9db1d50af"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-spec-ordinary-test.txt"
+sha256 = "9e40282cf397b3f90685527da852c214fbbc58435f166185429d3b6996bb55b6"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-spec-verus-verify.txt"
+sha256 = "2f4ad6c267c13b4ef539fb1d86d855450aad3bc796da2eedb90315c788ba0a81"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-tcb-ordinary-test.txt"
+sha256 = "75bd8a49483a32bf8d640eda3b5c36fc103801b8e4e9face2d367aa1ebf19663"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-tcb-verus-verify.txt"
+sha256 = "c5fd6a8f64c0c0390ee97e2d497ffa304358e8ef365b491a9bf5f7cc4f99e658"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-telemetry-ordinary-test.txt"
+sha256 = "f9d762889cf91cdfaecbd896e22a3584abdbb5581ad1dc5121c177c645ea2138"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-telemetry-verus-verify.txt"
+sha256 = "74a19c84da98dc86f8b85de96052a262dfc68acfa28b29ed267345f4a4df2c0c"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-tool-protocol-ordinary-test.txt"
+sha256 = "27209a1855137ac2639cc4ee23f6d7d525377217049041295cf8f33ac13a7ceb"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-tool-protocol-verus-verify.txt"
+sha256 = "8cf04de35e7843b8483a97ab7df65f5a236c63ac89c473dea2944765ce5863ce"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-tool-router-ordinary-test.txt"
+sha256 = "e46bb731ed248cd0d6819fee264d03f4c0df8b805b2a5c9859fad5cdbbfd00f9"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-tool-router-verus-verify.txt"
+sha256 = "d5fd3915e3194587a8c5023fb7b1bf5ef9beb5e596b145ccb5bf75d77fd1dc12"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-tools-fs-ordinary-test.txt"
+sha256 = "1c5f7c03a7989f2c46a25e77b3a2cbcb32e20e74f0d09d59dd6cd1a7125452c4"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-tools-fs-verus-verify.txt"
+sha256 = "b531e96361be45e89c657bc4fb1ef340b68a619cc4bd9d9f02d4cd1c0ecf2b7f"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-tools-git-ordinary-test.txt"
+sha256 = "42bc99f4c746fcdff34213f40e76ecd2402bf0655cb5f7895a89bfdc554bd56e"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-tools-git-verus-verify.txt"
+sha256 = "a78b824160bd19ce472709dd49dcc9af4abdf8d2de2dbe9f30a6be68f210f028"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-tools-quality-ordinary-test.txt"
+sha256 = "765732be8381c6c854f16eb54a26bbe2e8a47526b3ce34384dae054af471cf2f"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-tools-quality-verus-verify.txt"
+sha256 = "bf387c7dd188b11ebd6a6668b9090357437697fa9b31b03be89f74cdc07c6e93"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-tools-shell-ordinary-test.txt"
+sha256 = "cc46b66dc11f55d0f7fe47781f9d73da2c1cea905fc008a8f155c6a1c058615f"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-tools-shell-verus-verify.txt"
+sha256 = "2c7fbc420303896497d28f27802db2b879c38250396d00815e4cfced473c726b"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-trace-ordinary-test.txt"
+sha256 = "1abb5e9214ef80723186cdf1165f5c53435efdaed0dba0132b8961656aea611f"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-trace-verus-verify.txt"
+sha256 = "8ffc3a55b9fa74e1366a93b7f22fa37cbf52a80dd03af7a7ccc30b2909984e70"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-types-ordinary-test.txt"
+sha256 = "3a3ec580954f9719c7deac93490ccbc84c7522035d96a6ccb1705b69ce56ba57"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-types-verus-verify.txt"
+sha256 = "8ff0450fd6f2af602f0f08c7c59cf583c7fcc7d12c48df09f653cca7a2ba01f6"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-workspace-ordinary-test.txt"
+sha256 = "99e1a6dfb264ca030fb2cb962f84c9998fc4f2ce81d8bdfe212d76084d5f834d"
+
+[[artifacts]]
+kind = "gate-output"
+path = "verification/reviews/PCR-0007/peritus-workspace-verus-verify.txt"
+sha256 = "1c0c3c3116516ee1104bfc9671c3463cbe3a04be0422b95701bb99c3b159c52a"
+
+[[artifacts]]
+kind = "finding-detail"
+path = "verification/reviews/PCR-0007/FINDING-0001-detail.md"
+sha256 = "b6418ec6ef5daf64a693db5b395ab6c67ee8258b4a12b9d7dac6e6e9baecfef4"
+
+[[artifacts]]
+kind = "finding-detail"
+path = "verification/reviews/PCR-0007/FINDING-0002-detail.md"
+sha256 = "6bcb77e91708a3e9a660306879c455cc05ae71eae6756a5f6da46ba18c7d8717"
+
+[[artifacts]]
+kind = "finding-detail"
+path = "verification/reviews/PCR-0007/FINDING-0003-detail.md"
+sha256 = "cf0d487bffb0105e702f584ee617da8ac935c61d9ecfc598202c359b9dd57ed0"
+
+[[artifacts]]
+kind = "finding-detail"
+path = "verification/reviews/PCR-0007/FINDING-0004-detail.md"
+sha256 = "3b2ee156d86267ae49d7f0c392eb1e40dbe0ec28207afd811881898bdc1c8c86"
+
+[[artifacts]]
+kind = "finding-detail"
+path = "verification/reviews/PCR-0007/FINDING-0005-detail.md"
+sha256 = "3dd121a3c7dd664e907b0a2d576332966b7aa199de50e0bfd97d2391bf161d42"
+
+[[artifacts]]
+kind = "finding-detail"
+path = "verification/reviews/PCR-0007/FINDING-0006-detail.md"
+sha256 = "8fa5b990c1d9e9256a4cb8d0d4356ebc2ff554d2154b91e211f637660b62541f"
+
+[[artifacts]]
+kind = "finding-evidence"
+path = "verification/reviews/PCR-0007/FINDING-0001-evidence.txt"
+sha256 = "157d60743ea74fe1f8728f516b3ea1e75e122c7c8add80d7f13d7b13ae72df08"
+
+[[artifacts]]
+kind = "finding-evidence"
+path = "verification/reviews/PCR-0007/FINDING-0002-evidence.txt"
+sha256 = "e75ab265287789a027451f23f196201102c8d47df1f66ff8d3b3cea30599d64a"
+
+[[artifacts]]
+kind = "finding-evidence"
+path = "verification/reviews/PCR-0007/FINDING-0003-evidence.txt"
+sha256 = "ed0ea79b2da8aa66bb6bab9136dc35dba74e6f6fa383ae757691252c1440fc62"
+
+[[artifacts]]
+kind = "finding-evidence"
+path = "verification/reviews/PCR-0007/FINDING-0004-evidence.txt"
+sha256 = "e0ece40762fbee6b4593503874aced25066243ba797ab7ecfe8ca2275b61b46e"
+
+[[artifacts]]
+kind = "finding-evidence"
+path = "verification/reviews/PCR-0007/FINDING-0005-evidence.txt"
+sha256 = "a7a7a019036ffc45c47746e8d5230db1a1569e1fd2bfa26984e15a1195950d04"
+
+[[artifacts]]
+kind = "finding-evidence"
+path = "verification/reviews/PCR-0007/FINDING-0006-evidence.txt"
+sha256 = "e77915ec03a6f732691d1e071256fa79175ffbf300f295c2596b533e2d34dc2a"

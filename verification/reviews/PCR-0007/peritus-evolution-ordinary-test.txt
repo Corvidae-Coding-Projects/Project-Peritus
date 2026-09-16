@@ -1,0 +1,82 @@
+candidate_commit=1440209e50c851b228e6948db3e5389e22bcc55b
+candidate_tree=86fd9fe3d21a79655a02234ddc96c33515c6ad1f
+command=cargo test --package peritus-evolution --all-targets --all-features --locked
+started_at=2026-09-16T17:56:57Z
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.21s
+     Running unittests src/lib.rs (target/debug/deps/peritus_evolution-516ff00bc2772282)
+
+running 5 tests
+test change::manifest::tests::citation_limit_applies_to_the_whole_manifest ... ok
+test qualification::promotion::setup::tests::qualification_campaign_genesis_round_trips_canonical_wire ... ok
+test selection::tests::executable_change_requires_review_even_without_a_policy_kind ... ok
+test selection::tests::failed_and_unavailable_rejection_sections_have_distinct_digests ... ok
+test selection::tests::selection_rejects_assessment_from_another_policy ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/attribution_selection.rs (target/debug/deps/attribution_selection-a7f3cf25ac4833ff)
+
+running 2 tests
+test duplicate_objectives_are_rejected_and_unavailable_denies ... ok
+test frozen_objective_order_is_policy_order_not_enum_order ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/domain_campaign.rs (target/debug/deps/domain_campaign-dfc202ef33855d32)
+
+running 2 tests
+test command_constructor_rejects_a_head_without_sequence ... ok
+test only_truthful_campaign_outcomes_are_terminal ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/durability_restart.rs (target/debug/deps/durability_restart-90a30703531ece59)
+
+running 2 tests
+test ordinary_campaign_and_pointer_commits_replay_exact_checkpoints ... ok
+test stale_campaign_cas_does_not_replace_the_committed_head ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests/production_conformance.rs (target/debug/deps/production_conformance-33b6c5213112fcc6)
+
+running 1 test
+test a2_evolution_catalog_executes_against_production_public_apis ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/promotion_authority.rs (target/debug/deps/promotion_authority-0fcab5dec96f99d0)
+
+running 3 tests
+test authorization_digest_binds_every_authority_observation ... ok
+test independent_authority_and_history_limits_fail_closed ... ok
+test malformed_genesis_and_stale_shape_commands_fail_before_authority ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/publication_integration.rs (target/debug/deps/publication_integration-a2ab57775bd894cd)
+
+running 2 tests
+test empty_artifacts_and_malformed_publication_payloads_fail_closed ... ok
+test finalized_artifact_and_publication_recover_after_restart ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests/replay_wire.rs (target/debug/deps/replay_wire-80679b1fcd2aa123)
+
+running 1 test
+test six_f0_frames_round_trip_and_reject_malformed_bytes ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/verified_refinement.rs (target/debug/deps/verified_refinement-c93c2862cdcae78e)
+
+running 3 tests
+test evaluator_isolation_requires_every_checked_boundary_fact ... ok
+test promotion_safety_is_a_conjunction_not_a_score ... ok
+test rollback_replay_and_terminal_refinements_fail_closed ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+finished_at=2026-09-16T17:56:58Z
+exit_status=0

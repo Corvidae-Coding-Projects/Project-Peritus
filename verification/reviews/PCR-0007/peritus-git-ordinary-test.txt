@@ -1,0 +1,48 @@
+candidate_commit=1440209e50c851b228e6948db3e5389e22bcc55b
+candidate_tree=86fd9fe3d21a79655a02234ddc96c33515c6ad1f
+command=cargo test --package peritus-git --all-targets --all-features --locked
+started_at=2026-09-16T17:56:58Z
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.14s
+     Running unittests src/lib.rs (target/debug/deps/peritus_git-310fb40036e9e670)
+
+running 6 tests
+test name::tests::validates_portable_names ... ok
+test object_id::tests::accepts_exact_sha1_and_sha256 ... ok
+test object_id::tests::rejects_wrong_algorithm_length_and_uppercase ... ok
+test reconcile::tests::reason_encoding_is_order_sensitive_and_total ... ok
+test status::porcelain::tests::parses_headers_and_all_simple_record_classes ... ok
+test status::porcelain::tests::rejects_unterminated_and_malformed_records ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/git_lifecycle.rs (target/debug/deps/git_lifecycle-4b741f095b40f18b)
+
+running 6 tests
+test candidate_snapshot_restart_and_restore_preserve_head_and_history ... ok
+test opens_resolves_and_manages_an_exact_detached_worktree ... ok
+test opens_sha256_repository_when_supported_by_git ... ok
+test parses_real_unmerged_index_as_indeterminate_reconciliation ... ok
+test parses_tracked_untracked_ignored_and_renamed_status ... ok
+test recovers_trusted_worktree_at_advanced_detached_head_without_losing_changes ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.57s
+
+     Running tests/git_safety.rs (target/debug/deps/git_safety-d2534eb1e63cb888)
+
+running 4 tests
+test attached_head_at_same_commit_is_not_accepted_as_managed_topology ... ok
+test configured_external_filter_is_rejected_before_execution_or_staging ... ok
+test recovers_existing_exact_worktree_after_interrupted_registration ... ok
+test status_overrides_local_submodule_ignore_configuration ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.44s
+
+     Running tests/snapshot_quarantine.rs (target/debug/deps/snapshot_quarantine-87c4f0efe13cc65f)
+
+running 1 test
+test divergent_snapshot_reference_is_atomically_quarantined ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.13s
+
+finished_at=2026-09-16T17:56:59Z
+exit_status=0

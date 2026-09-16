@@ -61,7 +61,7 @@ fn proof_impact_inventory_reports_current_bytes_without_approving_them() {
 #[test]
 fn policy_commands_discover_the_workspace_from_a_member_directory() {
     let output = Command::new(env!("CARGO_BIN_EXE_xtask"))
-        .arg("all")
+        .arg("architecture-check")
         .current_dir(env!("CARGO_MANIFEST_DIR"))
         .output()
         .expect("xtask binary must execute from its package directory");
@@ -69,5 +69,9 @@ fn policy_commands_discover_the_workspace_from_a_member_directory() {
         output.status.success(),
         "xtask failed from a member directory: {}",
         String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stdout).contains("architecture-check passed"),
+        "xtask did not run the requested root-dependent policy command"
     );
 }
