@@ -48,14 +48,14 @@
         "prefix_sha256": "75e62af207437405c7c0292c3ecc35c1e80a87ef1a9953202d92cb6ee96daa52"
       },
       "u7IC": {
-        "sequence": 109,
-        "tip_oid": "60d69d8fd189882705f6292b0539139a8abeea8e",
-        "prefix_sha256": "416cc81abbf600fa4d5c0216b56dc2e8363956646cd29db94fe051a7477e0cd5"
+        "sequence": 110,
+        "tip_oid": "124e6f2a418ede6f78a0175c5f1400eed9633f77",
+        "prefix_sha256": "4ea4fa9d075b80493738c4b43787f94075a5f84f161ae66190448384f3e4fee4"
       }
     }
   },
   "next_display_id": 85,
-  "next_comment_id": 1705,
+  "next_comment_id": 1706,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -13009,7 +13009,7 @@
       "priority": "medium",
       "created_by": "u7IC",
       "created_at": "2026-09-15T00:49:55.217770155Z",
-      "updated_at": "2026-09-16T00:20:10.807487258Z",
+      "updated_at": "2026-09-16T00:28:38.443311331Z",
       "labels": [
         "feature"
       ],
@@ -13823,6 +13823,15 @@
           "kind": "result",
           "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAZH2wejRC1u49/3XvUHtjL48BAtAOVK41LJJN9YQ23zhCNsG2UE/ne0nduOyfRmYc579L2S0LBWLi8om0zuZZBg=="
+        },
+        "ef2db9a0-93d7-4467-a85a-c8bad79ddd35": {
+          "display_id": 1705,
+          "author": "u7IC",
+          "content": "Original094 qualified at d12f76d73/3de54b2: four exact outputs, seven intact inputs, 19/20 original checks. Independent numeric/policy reconciliation passes; CSV gate and review require a real quoted-clause repair in cycle2. Only private non-comparable substring fails against semantically correct not comparable notes; stronger unsupported retention-decline language remains recorded as a limit. No new causal host patch or paid repeat. Evidence/index through094. Foundation workflow fully green; GateA/Native Product still pending without failures.",
+          "created_at": "2026-09-16T00:28:38.436898967Z",
+          "kind": "result",
+          "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAkvq3j6ZZYcybv346/WtwgnF4iE111rhZlh7wXT2noeVFLXOSwqkWhluEv5x+YnplZ4r2kYkBjXBCFrmpnYWfDQ=="
         },
         "ef2e3f1a-f8e7-47fa-a00d-526285735f07": {
           "display_id": 1615,
