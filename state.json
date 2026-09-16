@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1488,
-        "tip_oid": "c980e3f3929d7ee2c3cc77b8c8d95f3dc3bc1c25",
-        "prefix_sha256": "9e1d19269e44e56a6019de2271fad90bc8fbf721f50f328fbf4e6f9b352bb85a"
+        "sequence": 1489,
+        "tip_oid": "1c9c4237371e659a9174a435b06160c566bbcd0c",
+        "prefix_sha256": "ea511229507e214b7a54eef699c14688f6ba4a4f0d7ebcb8f323c399d5d9c7c1"
       },
       "NWAR": {
         "sequence": 39,
@@ -48,13 +48,13 @@
         "prefix_sha256": "75e62af207437405c7c0292c3ecc35c1e80a87ef1a9953202d92cb6ee96daa52"
       },
       "u7IC": {
-        "sequence": 130,
-        "tip_oid": "168ce7694d0c5f3ff1dcec06c77070d85f9f0304",
-        "prefix_sha256": "07ad44d917cb30fc34bc46a92a886d075638940659e2089a2f5398a07a50c1f3"
+        "sequence": 131,
+        "tip_oid": "44c442fab89819879ebb9404b92912451a7f1176",
+        "prefix_sha256": "8372c977c4a173a24cbc647cd722add8d4e759945b23c5df20129e0602351136"
       }
     }
   },
-  "next_display_id": 85,
+  "next_display_id": 86,
   "next_comment_id": 1724,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
@@ -133,6 +133,7 @@
     "eb5c64d1-b12e-4ec5-8bae-6c66adc80c81": 75,
     "ec4c6d0c-2cbb-40b9-8be2-4ac69e7fc750": 32,
     "edda35ab-7441-4598-95a8-a13cc6d161d8": 82,
+    "edeb1fcd-4798-4b01-b961-7ca4168230fd": 85,
     "ef6ed3ab-52cd-436a-aa6e-d5d098c89f6c": 8,
     "f27888a7-5366-4703-a68a-9f17b1adad81": 20,
     "f350243c-7824-4375-a9c4-63dd3e976f1a": 49,
@@ -165,10 +166,6 @@
     "82": {
       "agent_id": "cF43",
       "claimed_at": "2026-09-14T12:54:21.024350060Z"
-    },
-    "83": {
-      "agent_id": "u7IC",
-      "claimed_at": "2026-09-15T03:51:59.744138038Z"
     }
   },
   "issues": {
@@ -16467,6 +16464,17 @@
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgOKRgeUjEgIo0z/f08WidINkSAV9VStOf178iyhtZrx8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAHqFJ+UDBrG42/ISZgyEW3sjifg0KtG4tQytlDv1T2uRub0s+c02Bp+4afs6DvNVol5RjqoHSL3x4YjVjmozAAA=="
         }
       }
+    },
+    "edeb1fcd-4798-4b01-b961-7ca4168230fd": {
+      "uuid": "edeb1fcd-4798-4b01-b961-7ca4168230fd",
+      "display_id": 85,
+      "title": "Prepare and publish Peritus v0.0.3",
+      "description": "Synchronize workspace version 0.0.3 on current develop, document changes since v0.0.2, validate, promote develop to main, tag the exact merge, qualify the staged release, verify assets, and publish only after the repository Ready gate and separate owner publication authority.",
+      "status": "open",
+      "priority": "high",
+      "created_by": "6ME5",
+      "created_at": "2026-09-16T04:33:35.654836720Z",
+      "updated_at": "2026-09-16T04:33:35.654836720Z"
     },
     "ef6ed3ab-52cd-436a-aa6e-d5d098c89f6c": {
       "uuid": "ef6ed3ab-52cd-436a-aa6e-d5d098c89f6c",
