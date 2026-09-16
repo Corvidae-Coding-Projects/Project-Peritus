@@ -48,14 +48,14 @@
         "prefix_sha256": "75e62af207437405c7c0292c3ecc35c1e80a87ef1a9953202d92cb6ee96daa52"
       },
       "u7IC": {
-        "sequence": 126,
-        "tip_oid": "14bc193aa187258eb7ad40a5c7c6a841691bc254",
-        "prefix_sha256": "341ca26ee28c33b245b043edc186251885549cfa8558546101346385a38816a2"
+        "sequence": 127,
+        "tip_oid": "096dbfe228d1a59e48a94bd4e9dd10e08a6f500a",
+        "prefix_sha256": "541c2d6b02c63beb2b58dd5351efc520199fe922c87b049d1f07f29d45465960"
       }
     }
   },
   "next_display_id": 85,
-  "next_comment_id": 1721,
+  "next_comment_id": 1722,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -13009,7 +13009,7 @@
       "priority": "medium",
       "created_by": "u7IC",
       "created_at": "2026-09-15T00:49:55.217770155Z",
-      "updated_at": "2026-09-16T02:42:08.366960130Z",
+      "updated_at": "2026-09-16T02:51:06.126890711Z",
       "labels": [
         "feature"
       ],
@@ -13949,6 +13949,15 @@
           "kind": "result",
           "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAqoG7+UM6G3AV4Kujqez1oQ0kQzHiQc0qarRGqhoMVT5p4IrF2ZeDALOjT16JX17qVOHlb75GXI5Q072GDccfDg=="
+        },
+        "f0804f73-bd4d-48ea-9b32-870b7c9cf5af": {
+          "display_id": 1721,
+          "author": "u7IC",
+          "content": "Final affected020 revisit at e5f252f70: every original check passes and independent unzip/tar member reads verify all5 byte sizes/hashes/order/uniqueness; all3 inputs intact. Unchanged native deadline leaves review_pending and unsuccessful qualification;9native requests/8completed proxy responses retained. Original command-guidance conflict does not recur in observed commands; model Python syntax failure recovered. All3 historical attempts preserved. Starting final account-runtime provider smoke; no further paid benchmark repeat.",
+          "created_at": "2026-09-16T02:51:06.120410068Z",
+          "kind": "result",
+          "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAfVQOkDX5Yo8gMRGSA5R+kGbhJT9AIeDgi8xlLP4IYOWA3NcYsIzVruyrW3vA4Ua850ahbG9SGojeudmG1y/NCA=="
         },
         "f0b0b549-1cf5-41f8-bc9a-f900fc0b8d70": {
           "display_id": 1716,
