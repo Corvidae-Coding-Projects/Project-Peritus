@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1497,
-        "tip_oid": "4ae9f45df52acd8e3b87dc752744af2ac12966f1",
-        "prefix_sha256": "88dd425168b204b7d3e7a63d737c2221d7945ac1267cf30861a0f460a6d4b6bb"
+        "sequence": 1498,
+        "tip_oid": "3eaf80b4bf4c1e116ee4c96c23bece95e6737345",
+        "prefix_sha256": "246f071f15eafa12b832855b6e3c7f98976fee9d704b180d99064c6a1ba9be87"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 87,
-  "next_comment_id": 1726,
+  "next_comment_id": 1727,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -9797,10 +9797,21 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-16T14:32:25.393355747Z",
-      "updated_at": "2026-09-16T14:32:52.226064541Z",
+      "updated_at": "2026-09-16T15:26:26.526286893Z",
       "labels": [
         "bug"
-      ]
+      ],
+      "comments": {
+        "77b9b87d-1c04-4fab-9f31-c659a6c60591": {
+          "display_id": 1726,
+          "author": "6ME5",
+          "content": "Committed 3ec233d63 fix(product): make runtime failures actionable. Validation: cargo fmt --check; strict Clippy for peritus-app-protocol, peritus-daemon, peritus-tui, and peritus-cli; daemon library 185 passed/3 ignored; protocol 63 passed; TUI 143 passed; CLI 13 passed; installed 0.0.3 live DeepSeek tool run completed; injected product-run directory permission failure stopped visibly with the exact failed operation, OS cause, and recovery action; saved provider configuration unchanged.",
+          "created_at": "2026-09-16T15:26:26.511481289Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAY0BkDMAvq32wp3I44xxMxTT2gmsPnImYUv7W340NwkefQpAUuD8rLmF/JU5kHQ39aj9+hJ6YG8nkoB2FB+y7BQ=="
+        }
+      }
     },
     "52028605-f0c2-43fe-b0ae-0e0db829553f": {
       "uuid": "52028605-f0c2-43fe-b0ae-0e0db829553f",
