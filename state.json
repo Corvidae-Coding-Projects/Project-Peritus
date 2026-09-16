@@ -48,14 +48,14 @@
         "prefix_sha256": "75e62af207437405c7c0292c3ecc35c1e80a87ef1a9953202d92cb6ee96daa52"
       },
       "u7IC": {
-        "sequence": 117,
-        "tip_oid": "8ee97f7cc3effdf6f365aa8fac51994b816c3453",
-        "prefix_sha256": "3647f0a2b753221b8a3b14afa996b80f55100e4d3a93a935157fb69f7a5f33c1"
+        "sequence": 118,
+        "tip_oid": "dd3ba5d7279973ddb28a74a820f9d79c1da1a93f",
+        "prefix_sha256": "4f414d6ac361f7046cbe54b8f2e0412fcc0bdef295aa4cce3d02e40847330617"
       }
     }
   },
   "next_display_id": 85,
-  "next_comment_id": 1712,
+  "next_comment_id": 1713,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -13009,7 +13009,7 @@
       "priority": "medium",
       "created_by": "u7IC",
       "created_at": "2026-09-15T00:49:55.217770155Z",
-      "updated_at": "2026-09-16T01:14:22.136336136Z",
+      "updated_at": "2026-09-16T01:25:47.232575601Z",
       "labels": [
         "feature"
       ],
@@ -13436,6 +13436,15 @@
           "kind": "result",
           "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAUyLvpTbUiTQRtvdCvhByPqVysGkr+zxd+2baz1b5PD+vt4SBvAKHhE1hUPE/nLO9c62gnu4VKLjEA2DJlzsSBg=="
+        },
+        "7e477939-17c9-491e-9ed0-a59f05ef33da": {
+          "display_id": 1712,
+          "author": "u7IC",
+          "content": "Original100 archived and inspected:13/16 original checks pass; all public document sets, completeness flags and six missing rows correct;17 inputs intact; native review_pending after local DeveloperLoopError::LimitExceeded. Confirmed generic bug: shared developer_error labels LimitExceeded as Provider and emits misleading provider recovery advice. Focused regression reproduced Provider versus expected Budget. Root repair in progress with unchanged limits; historical outcome retained, no paid repeat. DRY read-only inspection recorded two schema/limit-calculation duplication candidates for final pass.",
+          "created_at": "2026-09-16T01:25:47.215733703Z",
+          "kind": "result",
+          "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA8hsN1MAYwOz0UdjW0cVsXG0VF+zGLmRG8UYSPsNReQ+MXIa6yK1C8qIXq1a0AoaPEItr/1VsTandp+gCDxjhAA=="
         },
         "82931e1b-d300-4f00-ba63-53849c991c19": {
           "display_id": 1667,
