@@ -48,14 +48,14 @@
         "prefix_sha256": "75e62af207437405c7c0292c3ecc35c1e80a87ef1a9953202d92cb6ee96daa52"
       },
       "u7IC": {
-        "sequence": 118,
-        "tip_oid": "dd3ba5d7279973ddb28a74a820f9d79c1da1a93f",
-        "prefix_sha256": "4f414d6ac361f7046cbe54b8f2e0412fcc0bdef295aa4cce3d02e40847330617"
+        "sequence": 119,
+        "tip_oid": "716963c916fc3084ce0895e4311e7aa53c161bb4",
+        "prefix_sha256": "d81982348c838f2bbdd0fc0bad349e4a15984f56aaa77c2f1094df8a0dc301cd"
       }
     }
   },
   "next_display_id": 85,
-  "next_comment_id": 1713,
+  "next_comment_id": 1714,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -13009,7 +13009,7 @@
       "priority": "medium",
       "created_by": "u7IC",
       "created_at": "2026-09-15T00:49:55.217770155Z",
-      "updated_at": "2026-09-16T01:25:47.232575601Z",
+      "updated_at": "2026-09-16T01:30:26.541092122Z",
       "labels": [
         "feature"
       ],
@@ -13679,6 +13679,15 @@
           "kind": "result",
           "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAIjKQ+w2TuNfGKk0skX0U/nwWpz2/ubw+vCqr0vGUsOShZAOnXHO6BC8F9/Lx90FEo9IGId2HNSfwHQODTLY0Aw=="
+        },
+        "b4c2e9b6-90a4-4ab5-bd4f-b90d5d2e43ca": {
+          "display_id": 1713,
+          "author": "u7IC",
+          "content": "Delivered70f8e9be0 fix: classify developer loop exhaustion as a budget limit. Shared LimitExceeded->Budget mapping with unchanged ceilings and provider settings. Regression reproduced Provider versus Budget before; passes after. Validation:440 parent affected-package tests pass,0 fail,3 existing ignored; two child summaries excluded. Formatting, strict two-package all-target/all-feature Clippy and both package builds pass. Same branch pushed to draft PR82/develop. Full source-stamped workspace rebuild and new hosted checks running; all-green576-check runner evidence remains explicitly scoped to d12f76d73. Original100 archived honestly as incomplete review, evidence index through100. Next101 waits for verified rebuilt source.",
+          "created_at": "2026-09-16T01:30:26.534404688Z",
+          "kind": "result",
+          "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAZDw3BH8IAc4CmDg8MWnU09LtwAHnnTR7aTRqADOKEr/jj7sDMe7TkspAm+vHgDmuogUgvvsY9mg7kCVTEoe1CQ=="
         },
         "b683e830-af25-44a6-a521-08e3adc249ee": {
           "display_id": 1703,
