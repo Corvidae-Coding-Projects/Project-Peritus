@@ -48,14 +48,14 @@
         "prefix_sha256": "75e62af207437405c7c0292c3ecc35c1e80a87ef1a9953202d92cb6ee96daa52"
       },
       "u7IC": {
-        "sequence": 111,
-        "tip_oid": "ce17574bc5fbfd01195f61861de8cd8d38f4574a",
-        "prefix_sha256": "30181120e8bf93620116b5615cb530758992a974e6ca150f45deb3752c6cec3c"
+        "sequence": 112,
+        "tip_oid": "adb81a224f3c20c41591b486338217349d208dca",
+        "prefix_sha256": "49ed81c06ac09ca767ee4a91bb23b0cba410a0fa93c652a76c767a9a474b4e85"
       }
     }
   },
   "next_display_id": 85,
-  "next_comment_id": 1707,
+  "next_comment_id": 1708,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -13009,7 +13009,7 @@
       "priority": "medium",
       "created_by": "u7IC",
       "created_at": "2026-09-15T00:49:55.217770155Z",
-      "updated_at": "2026-09-16T00:37:53.399686276Z",
+      "updated_at": "2026-09-16T00:43:10.355029100Z",
       "labels": [
         "feature"
       ],
@@ -13220,6 +13220,15 @@
           "kind": "result",
           "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA8ZQTu2whzRvHc/p/hTKAz1cWHPX1m/rgO1OavPtXHD1N9aM9U6WeFZwFWkvYbPVpBi3FepkcaUlxhUskZxd0BQ=="
+        },
+        "4517da90-9bb5-44ec-b1a5-8157f3cfde5a": {
+          "display_id": 1707,
+          "author": "u7IC",
+          "content": "Original096 qualified at d12f76d73/3de54b2: sole output/seven intact fixtures; all14 IDs and source clauses/verbatim quotes independently verified. Original7/8 checks pass,13/14 status/fact hits. Q14 answered-versus-insufficient status remains. Fabrication scan flags historical allowed phrases in evidence although answers reject them. Working-memory source-link rejection and recovered verifier-list assumption retained; no new host fault or repeat. Evidence/index through096; originals097-106, affected020 revisit, DRY and final compatibility remain.",
+          "created_at": "2026-09-16T00:43:10.324380499Z",
+          "kind": "result",
+          "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAHigoqNSsZPPIn6Spz73f/QtinlYYZ67on09UcB+LhhD/An2d3M7cwJjTjHxhtigeLmagp6ux77YxDGcikevQAg=="
         },
         "469e5ae1-1968-46db-bf71-e5905c3baca1": {
           "display_id": 1670,
