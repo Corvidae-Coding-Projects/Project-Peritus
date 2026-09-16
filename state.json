@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1494,
-        "tip_oid": "9393676e50c70b157f90c80b18e39b63d1a68d0d",
-        "prefix_sha256": "b0fb1db2738012b1a35924c47aac902e674b1281801535e586e9b521ed809cfc"
+        "sequence": 1495,
+        "tip_oid": "e2ad9c1038499dc2bd5ad96f57cad5222c6e6578",
+        "prefix_sha256": "f9c127c75729557db4bd097edc2b6d64c0e73fb75e52ce7adf2f4962d90cc510"
       },
       "NWAR": {
         "sequence": 39,
@@ -54,7 +54,7 @@
       }
     }
   },
-  "next_display_id": 86,
+  "next_display_id": 87,
   "next_comment_id": 1726,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
@@ -88,6 +88,7 @@
     "4f7e1673-73ed-4ec2-9f53-aa0aef4a7a14": 62,
     "4fb07c6c-0d6b-4458-8aa8-0ae9d6bd810a": 38,
     "510ed474-3a7b-4e60-ba8d-0ea5c67e9eca": 59,
+    "52013031-bd19-49e9-9b11-6d9cd89156cc": 86,
     "52028605-f0c2-43fe-b0ae-0e0db829553f": 47,
     "5451d33a-0a54-49ff-98d0-eec32c2b67a5": 28,
     "5542a0ec-9091-4c82-b341-df0b119bc0b1": 3,
@@ -9782,6 +9783,17 @@
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAOhtUd3M4FGhorNlRunHIbCnkTEy3UJyJu017R6NArTVeqj/zV2yYfcvFJHanaDjxo7b0fPOEa1/rneRqqZYlAQ=="
         }
       }
+    },
+    "52013031-bd19-49e9-9b11-6d9cd89156cc": {
+      "uuid": "52013031-bd19-49e9-9b11-6d9cd89156cc",
+      "display_id": 86,
+      "title": "Make installed-product errors actionable and qualify live DeepSeek durability",
+      "description": "Use GitHub issue #84 as the full peritus-to-peritusd-to-provider-to-tool-to-durable-state reproducer. Drive the installed product with the configured OpenCode Zen DeepSeek account, preserve provider credentials, replace user-facing catch-all errors across CLI/TUI/daemon/provider/persistence/control boundaries with operation-scoped source-preserving redaction-safe diagnostics and recovery guidance, add failure-path regressions, and validate the installed flow.",
+      "status": "open",
+      "priority": "high",
+      "created_by": "6ME5",
+      "created_at": "2026-09-16T14:32:25.393355747Z",
+      "updated_at": "2026-09-16T14:32:25.393355747Z"
     },
     "52028605-f0c2-43fe-b0ae-0e0db829553f": {
       "uuid": "52028605-f0c2-43fe-b0ae-0e0db829553f",
