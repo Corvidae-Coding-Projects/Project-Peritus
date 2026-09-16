@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1489,
-        "tip_oid": "1c9c4237371e659a9174a435b06160c566bbcd0c",
-        "prefix_sha256": "ea511229507e214b7a54eef699c14688f6ba4a4f0d7ebcb8f323c399d5d9c7c1"
+        "sequence": 1490,
+        "tip_oid": "8ea18e3b91c41c65b8eb210ca47ceaf8e0304b78",
+        "prefix_sha256": "03f8d0905d4d446c537d9819849ff957cbcdac258b658d201fcd93c2e84bd72d"
       },
       "NWAR": {
         "sequence": 39,
@@ -16474,7 +16474,10 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-16T04:33:35.654836720Z",
-      "updated_at": "2026-09-16T04:33:35.654836720Z"
+      "updated_at": "2026-09-16T04:34:02.132489133Z",
+      "labels": [
+        "release"
+      ]
     },
     "ef6ed3ab-52cd-436a-aa6e-d5d098c89f6c": {
       "uuid": "ef6ed3ab-52cd-436a-aa6e-d5d098c89f6c",
