@@ -186,6 +186,25 @@ fn registered_owner_is_preserved_while_fresh_reviewer_is_appended() {
 }
 
 #[test]
+fn authorized_chain_may_precede_append_only_protected_actor_bytes() {
+    let mut fixture = Fixture::new();
+    for transition in &mut fixture.change.source_changes {
+        transition.previous.as_mut().expect("existing actor transition").sha256 = "a".repeat(64);
+    }
+    let (_, diagnostics) = fixture.diagnostics();
+    assert!(diagnostics.is_empty(), "{diagnostics:#?}");
+}
+
+#[test]
+fn candidate_actor_bytes_must_match_the_declared_current_snapshot() {
+    let mut fixture = Fixture::new();
+    fixture.change.source_changes[0].current.as_mut().expect("candidate actor snapshot").sha256 =
+        "a".repeat(64);
+    let (_, diagnostics) = fixture.diagnostics();
+    assert!(diagnostics.iter().any(|item| item.message().contains("does not exactly bind")));
+}
+
+#[test]
 fn protected_reviewer_cannot_be_reused_for_a_new_candidate() {
     let mut fixture = Fixture::new();
     fixture.change.reviewer = "ACTOR-0002".to_owned();

@@ -36,8 +36,6 @@ impl CandidateActors {
         verdict: &ProofImpactVerdict,
         diagnostics: &mut Vec<Diagnostic>,
     ) -> Option<Self> {
-        let protected_actor_bytes =
-            manifest_file::read_bytes(root, Path::new(ACTORS_PATH), diagnostics);
         let protected_provenance =
             manifest_file::read_json(root, Path::new(PROVENANCE_PATH), diagnostics);
         if !git::tree_object_exists(root, &verdict.implementation_tree, MANIFEST, diagnostics) {
@@ -55,11 +53,7 @@ impl CandidateActors {
             PROVENANCE_PATH,
             diagnostics,
         );
-        let (Some(protected_actor_bytes), Some((protected_provenance, protected_provenance_bytes))) =
-            (protected_actor_bytes, protected_provenance)
-        else {
-            return None;
-        };
+        let (protected_provenance, _) = protected_provenance?;
         let (Some((actors, actor_bytes)), Some((provenance, provenance_bytes))) =
             (candidate_actors, candidate_provenance)
         else {
@@ -75,20 +69,8 @@ impl CandidateActors {
             change,
             diagnostics,
         );
-        validate_pcr_binding(
-            change,
-            ACTORS_PATH,
-            &protected_actor_bytes,
-            &actor_bytes,
-            diagnostics,
-        );
-        validate_pcr_binding(
-            change,
-            PROVENANCE_PATH,
-            &protected_provenance_bytes,
-            &provenance_bytes,
-            diagnostics,
-        );
+        validate_pcr_binding(change, ACTORS_PATH, &actor_bytes, diagnostics);
+        validate_pcr_binding(change, PROVENANCE_PATH, &provenance_bytes, diagnostics);
         validate_reviewer_principal(&actors, change, verdict, diagnostics);
         Some(Self { actors, provenance, provenance_sha256 })
     }
@@ -247,16 +229,15 @@ fn validate_reviewer_principal(
 fn validate_pcr_binding(
     change: &ProofImpactChange,
     path: &str,
-    protected_bytes: &[u8],
     candidate_bytes: &[u8],
     diagnostics: &mut Vec<Diagnostic>,
 ) {
     let matching: Vec<_> =
         change.source_changes.iter().filter(|source| source.source_file == path).collect();
     let exact = matching.len() == 1
-        && matching.first().is_some_and(|transition| {
-            transition_matches(transition, protected_bytes, candidate_bytes)
-        });
+        && matching
+            .first()
+            .is_some_and(|transition| transition_current_matches(transition, candidate_bytes));
     if !exact {
         diagnostics.push(Diagnostic::at(
             MANIFEST,
@@ -266,15 +247,9 @@ fn validate_pcr_binding(
     }
 }
 
-fn transition_matches(
-    transition: &ProofSourceChange,
-    protected_bytes: &[u8],
-    candidate_bytes: &[u8],
-) -> bool {
-    transition.previous.as_ref().map(|snapshot| snapshot.sha256.as_str())
-        == Some(sha256_hex(protected_bytes).as_str())
-        && transition.current.as_ref().map(|snapshot| snapshot.sha256.as_str())
-            == Some(sha256_hex(candidate_bytes).as_str())
+fn transition_current_matches(transition: &ProofSourceChange, candidate_bytes: &[u8]) -> bool {
+    transition.current.as_ref().map(|snapshot| snapshot.sha256.as_str())
+        == Some(sha256_hex(candidate_bytes).as_str())
 }
 
 fn same_actor_except_provenance_digest(left: &ActorEntry, right: &ActorEntry) -> bool {
