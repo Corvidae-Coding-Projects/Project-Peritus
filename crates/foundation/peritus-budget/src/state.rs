@@ -146,6 +146,11 @@ impl BudgetLedger {
             && self.accounts[0].phase == BudgetAccountPhase::Open
     }
 
+    /// Exact propagation of a changed account's consumption delta along every finite parent path.
+    pub closed spec fn spec_all_ancestor_deltas(&self, after: &BudgetLedger) -> bool {
+        crate::refinement_model::all_ancestor_deltas(self, after)
+    }
+
     /// Opaque total refinement relation for one command result.
     ///
     /// Successful results name the unique admitted successor and exact receipt. Rejected results
@@ -164,7 +169,7 @@ impl BudgetLedger {
                     transition.spec_ledger(),
                     transition.spec_receipt(),
                 ),
-            ),
+            ) && self.spec_all_ancestor_deltas(&transition.spec_ledger()),
             Err(error) => crate::reachability::budget_step(
                 self,
                 command,
@@ -178,16 +183,20 @@ impl BudgetLedger {
         command: crate::BudgetCommand,
         transition: BudgetTransition,
     )
-        requires crate::reachability::budget_step(
-            self,
-            command,
-            crate::reachability::BudgetStepOutcome::Accepted(
-                transition.spec_ledger(),
-                transition.spec_receipt(),
+        requires
+            crate::model::ledger_well_formed(self),
+            crate::reachability::complete_refinement(self, &transition.spec_ledger()),
+            crate::reachability::budget_step(
+                self,
+                command,
+                crate::reachability::BudgetStepOutcome::Accepted(
+                    transition.spec_ledger(),
+                    transition.spec_receipt(),
+                ),
             ),
-        ),
         ensures self.spec_transition_result(command, Ok(transition)),
     {
+        crate::refinement_model::all_ancestor_deltas_follow(self, &transition.spec_ledger());
     }
 
     pub(crate) proof fn rejected_result_is_exact(

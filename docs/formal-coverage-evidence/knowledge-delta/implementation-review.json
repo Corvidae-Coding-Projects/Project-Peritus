@@ -1,0 +1,54 @@
+{
+  "verdict": "PASS_BOUNDED",
+  "shared_run_knowledge_modified_by_this_increment": false,
+  "isolated_workspace": "/tmp/peritus-parent-readiness-review.q25p5n7e",
+  "frozen_package": "/tmp/peritus-sol-knowledge-delta-source-01",
+  "preimage_package": "/tmp/peritus-parent-knowledge-delta-preimage/crates/orchestration/peritus-run-knowledge",
+  "changed_file_count": 12,
+  "full_package_file_count": 30,
+  "source_manifests": {
+    "full": "/tmp/peritus-sol-knowledge-delta-full-source-01.sha256",
+    "full_manifest_sha256": "7168179420a6b1f17b2fcddbede94040c0f340d1063a2124ea7e1d258bb2e0ed",
+    "changed": "/tmp/peritus-sol-knowledge-delta-changed-source-01.sha256",
+    "changed_manifest_sha256": "a5aec4665f698fe9a8a02450ca9f00d9c61f4317e606c122bd08867a4e60ddc2"
+  },
+  "diff": {
+    "path": "/tmp/peritus-sol-knowledge-delta-full-01.patch",
+    "sha256": "250af261d4782f3a589fc8548ab8d694d04aabda2766514de507ccae56edd267"
+  },
+  "verification": {
+    "strict_verus": "214 verified, 0 errors",
+    "default_tests": "20 passed, 0 failed",
+    "all_feature_tests": "20 passed, 0 failed",
+    "strict_clippy": "passed with -D warnings for all features and targets",
+    "rustfmt": "passed",
+    "source_layout": "passed for 4278 source files"
+  },
+  "proved": [
+    "plan_delta_packet returns Ok iff the input-defined delta_inputs_valid predicate holds",
+    "admission binds equal roles, exact current candidate identity, current normalized SameRevision freshness, and valid prior clarification targets",
+    "each successful packet entry matches its current section by identity and exactly equals the input-defined Navigation, CurrentReference, or ChangedFact classification",
+    "CurrentReference requires exact prior-plan reuse and exact first-matching prior material including kind, section digest bytes, ordered sources, and ordered dependencies",
+    "successful output role, candidate, ordered entries, changed/current/navigation counts, their partition, and invalidated-prior count match input-defined models",
+    "DeltaPacket getters and semantic Clone preserve all public packet content",
+    "actual plan_invalidation entries, reuse lookup, dependency propagation, and invalidation counts correspond to the deterministic input plan model"
+  ],
+  "tested": [
+    "role mismatch precedes candidate, freshness, and clarification-target errors",
+    "candidate mismatch precedes freshness and clarification-target errors",
+    "current staleness precedes prior clarification-target validation",
+    "a fresh current snapshot exposes InvalidClarificationTarget",
+    "late section-digest byte changes classify ChangedFact",
+    "dependency membership changes classify ChangedFact",
+    "late source-identity byte changes classify ChangedFact",
+    "navigation-only authority classifies Navigation",
+    "packet getters, accounting partition, prior invalidation count, and Clone are preserved"
+  ],
+  "limits": [
+    "the public theorem proves exact success admission and complete successful output; exact KnowledgeError payloads for every failure are covered by production ordering and deterministic regressions, not a single public error-value theorem",
+    "context, persistence, and downstream product-resume caller correspondence remain separately audited follow-up work",
+    "lineage time and generic numeric bounds were not expanded beyond existing type and constructor invariants",
+    "the parent-authored material and authority leaf increment remains subject to the separately arranged independent source review",
+    "this does not prove unrelated lifecycle commands or all system admission paths"
+  ]
+}

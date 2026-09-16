@@ -84,9 +84,7 @@ fn protocol() -> ExitCode {
 }
 
 const fn completed_attempt_exit(product_accepted: bool) -> ExitCode {
-    match product_accepted {
-        true | false => ExitCode::SUCCESS,
-    }
+    if product_accepted { ExitCode::SUCCESS } else { ExitCode::FAILURE }
 }
 
 fn rubric(runtime: &tokio::runtime::Runtime) -> ExitCode {
@@ -118,8 +116,8 @@ mod tests {
     use super::*;
 
     #[test]
-    fn completed_external_attempt_is_scoreable_even_when_product_rejects_it() {
+    fn rejected_external_attempt_fails_the_adapter_process() {
         assert_eq!(completed_attempt_exit(true), ExitCode::SUCCESS);
-        assert_eq!(completed_attempt_exit(false), ExitCode::SUCCESS);
+        assert_eq!(completed_attempt_exit(false), ExitCode::FAILURE);
     }
 }

@@ -157,7 +157,11 @@ impl WorkspaceDeveloperTools {
         reject_destructive_command(program, &args)?;
         self.resources.authorize(program, &args)?;
         let cwd = match string(arguments, "cwd") {
-            Some(value) if !value.is_empty() => checked(&self.root, value, false)?,
+            Some(value) if !value.is_empty() => checked(&self.root, value, false).map_err(|error| {
+                tool(format!(
+                    "command cwd must be a normal workspace-relative directory; omit cwd for the workspace root: {error}"
+                ))
+            })?,
             _ => self.root.clone(),
         };
         let requested_timeout_seconds = bounded_u64(

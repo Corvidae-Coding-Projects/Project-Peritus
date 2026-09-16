@@ -55,6 +55,15 @@ pub struct PlatformCredentialStore {
 }
 
 impl PlatformCredentialStore {
+    /// Opens the persisted provider-credential namespace shared by setup and daemon requests.
+    ///
+    /// Opaque provider references do not encode a service name. Changing this namespace would
+    /// make already saved provider credentials unreachable.
+    #[must_use]
+    pub fn providers() -> Self {
+        Self { service: "org.corvidae-coding.peritus.providers".to_owned() }
+    }
+
     /// Creates a portable service namespace.
     ///
     /// # Errors
@@ -221,4 +230,17 @@ const fn unavailable(detail: &'static str) -> SecretError {
         RecoveryClass::Retry,
         detail,
     )
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn provider_namespace_preserves_existing_credential_references() {
+        // These names are a persisted storage contract: references contain no namespace to
+        // migrate or infer if setup and daemon construction ever diverge again.
+        assert_eq!(
+            super::PlatformCredentialStore::providers().service,
+            "org.corvidae-coding.peritus.providers"
+        );
+    }
 }

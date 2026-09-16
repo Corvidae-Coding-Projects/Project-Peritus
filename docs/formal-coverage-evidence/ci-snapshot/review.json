@@ -1,0 +1,39 @@
+{
+  "schema": "peritus.independent-ci-snapshot-review",
+  "schema_version": 1,
+  "reviewed_head": "1aa9282ff2cfcbf8fac325f11f157f408d33ee30",
+  "reviewed_tree": "3e5febb6c672bf24e86a1c8823f2e931fb33aef1",
+  "hash_manifest": "/tmp/peritus-ci-snapshot-independent-review.sha256",
+  "reviewed_file_count": 13,
+  "verdict": "READY",
+  "scope": "bounded independent review of proof-scope snapshotting, compiler observations, formal audit inventory, strict shard integration, and workflow artifact retention",
+  "commands": [
+    {
+      "command": "CARGO_BUILD_JOBS=2 cargo test -p xtask --lib ci_shard::proof_scope -- --nocapture",
+      "result": "passed",
+      "passed": 26,
+      "failed": 0,
+      "ignored": 0,
+      "filtered_out": 390
+    },
+    {
+      "command": "CARGO_BUILD_JOBS=2 cargo test -p xtask --lib formal_inventory -- --nocapture",
+      "result": "passed",
+      "passed": 5,
+      "failed": 0,
+      "ignored": 0,
+      "filtered_out": 411
+    }
+  ],
+  "findings": [],
+  "cleanup_failure_artifact_caveat": "If remove_dir_all fails, old files can remain, including an old complete summary, and the workflow's always-running artifact upload can retain them. No new success summary is produced and the strict job fails; consumers must not treat artifacts from a failed job as successful proof evidence.",
+  "explicit_limits": [
+    "Endpoint snapshot equality does not detect inputs changed and restored during execution.",
+    "External compiler, dependency, macro, solver, and trusted status-producer authority remain separate trust work.",
+    "CARGO_MANIFEST_DIR data context intentionally requires disjoint package roots and package-local static source references.",
+    "Compiler selection is not proof discharge and does not establish full production correspondence.",
+    "The dirty local app-runner checkpoint is not final committed proof and was not used as acceptance evidence.",
+    "This review did not run a full-workspace proof capture because unrelated agents were modifying agent and quality Rust files."
+  ],
+  "repository_files_changed_by_review": false
+}

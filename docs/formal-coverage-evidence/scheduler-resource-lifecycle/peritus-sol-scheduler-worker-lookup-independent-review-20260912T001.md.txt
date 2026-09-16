@@ -1,0 +1,76 @@
+# Independent source review: scheduler worker lookup correction 001 to 002
+
+Date: 2026-09-12  
+Mode: read-only two-file review; no builds or source edits  
+Verdict: **PASS**
+
+The correction removes the immutable316 worker-update performance caveat for normal canonical
+production states without changing public APIs, successful phase updates, command error ordering,
+or the existing exact worker-update/frame contract. I found no code or proof blocker.
+
+## Exact identity
+
+- Preimage: `/tmp/peritus-sol-scheduler-command-final-source-001`, previously reviewed as the
+  immutable316 checkpoint.
+- Corrected package: `/tmp/peritus-sol-scheduler-command-final-source-002`, 95 files.
+- Corrected relative manifest:
+  `/tmp/peritus-sol-scheduler-command-final-source-002-relative.sha256`, SHA-256
+  `0222f43c477c81025f9517b133a2bf805bf27de85a61695d670edd5ec6e4f837`; all 95 entries
+  independently passed `sha256sum -c`.
+- Exact patch: `/tmp/peritus-sol-scheduler-command-final-001-to-002.patch`, SHA-256
+  `b557f55f88e8de567facf1ee7c096f337edbe4d667e54a49ca5fbe2323c2869a`. An independent
+  `git diff --no-index` regeneration was byte-identical.
+- Inventory: `/tmp/peritus-sol-scheduler-command-final-001-to-002.inventory.txt`, SHA-256
+  `6286875c03b6f517108e72edcc8728ef531d3988eb9787d5b745ed0decf6da03`.
+- Worker evidence manifest: `/tmp/peritus-sol-scheduler-worker-lookup-evidence-001.sha256`,
+  SHA-256 `9de83580f858fb3e887ee5d1ba3a0e33e607d52664328718d9b2cf85d5c1feb2`; all 14 entries
+  independently passed checksum verification.
+
+Independent directory comparison confirms exactly two changed paths:
+
+1. `src/state/lookup.rs`
+2. `src/state/mutation/worker_update.rs`
+
+## Behavior and proof review
+
+`SchedulerState::worker_index` contains the same binary-search loop previously embedded in the
+public `worker` getter. Its postcondition proves every returned index is in bounds and identifies
+the requested worker. The public `worker` method now calls that helper and reconstructs its prior
+exact `Some` contract. Its signature, visibility, `must_use` behavior, returned reference, and
+`None` behavior are unchanged.
+
+`set_worker_phase` now calls `worker_index` first. On a hit it passes the proved in-bounds matching
+index to the existing verified `set_worker_phase_at` mutation. That mutation retains the same
+phase update, worker-sequence relation, reservation invariant/readiness preservation, and binding,
+work, reservation, and used-dispatch frames already reviewed at checkpoint316.
+
+On binary miss, the prior complete linear loop still runs. This preserves the unconditional
+private-helper result contract even though the current proof does not establish binary-search
+`None` completeness. For canonical sorted unique production state, an existing worker follows the
+binary path. The public SetWorkerAvailable, DrainWorker, RemoveWorker, and LoseWorker routes first
+perform the existing public worker lookup, so unknown-worker errors return before the mutator and
+retained workers use the binary hit path. No error kind, diagnostic string, precedence, event
+payload, or public state-transition API changed.
+
+The correction report's phrase that runtime behavior is preserved for *arbitrary* unvalidated
+decoded state is slightly broader than the code guarantees: with duplicate matching worker IDs,
+the binary search may update a different duplicate than the old first-match linear scan. The
+formal private-helper contract still holds, and canonical public state rejects duplicate worker
+IDs, so this wording issue is not a production blocker.
+
+No executable guard, public precondition, assumption, proof escape, lint suppression, or adjacent
+contract expansion was added. The correction does not claim a formal asymptotic theorem. It does
+restore binary-first lookup on normal retained-worker updates; the fallback remains linear only
+after a binary miss.
+
+## Qualification attribution and remaining integration condition
+
+I did not rerun Verus, tests, Clippy, format, API, or layout checks. The worker-supplied artifacts,
+whose identities were independently verified, report strict Verus 317 verified/0 errors; 25/0
+tests in default, no-default, and all-feature profiles; and passing Clippy, format, ordinary API,
+and layout gates.
+
+This PASS closes only the worker-lookup caveat identified in the immutable316 review. The separate
+resource/selection performance correction still must be layered over the common scheduler244
+base and the combined package qualified. All original finite scheduler proof limits recorded in
+the immutable316 review remain unchanged.

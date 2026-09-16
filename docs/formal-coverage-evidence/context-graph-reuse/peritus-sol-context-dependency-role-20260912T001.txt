@@ -1,0 +1,17 @@
+Cargo.toml: OK
+README.md: OK
+src/capability_view/validation.rs: OK
+src/capability_view.rs: OK
+src/context_class.rs: OK
+src/context_policy/model.rs: OK
+src/context_policy/tables.rs: OK
+src/context_policy.rs: OK
+src/error.rs: OK
+src/harness_role.rs: OK
+src/independence.rs: OK
+src/lib.rs: OK
+src/presentation.rs: OK
+src/verified.rs: OK
+tests/policy_boundaries.rs: OK
+tests/reviewer_independence.rs: OK
+tests/role_matrix.rs: OK

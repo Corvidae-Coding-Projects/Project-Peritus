@@ -4,6 +4,83 @@ use super::{super::*, support::*};
 use serde_json::Value;
 
 #[test]
+fn advertised_context_read_bounds_match_default_execution() {
+    let fixture = Fixture::new();
+    let mut memory = fixture.open();
+    begin(&mut memory, "advertised-read-bounds");
+    let definition = tools::definitions()
+        .unwrap()
+        .into_iter()
+        .find(|tool| tool.name().as_str() == "context_read")
+        .unwrap();
+    let schema: Value = serde_json::from_slice(definition.parameters().canonical_bytes()).unwrap();
+    let maximum = schema["properties"]["max_bytes"]["maximum"].as_u64().unwrap();
+    let request = serde_json::json!({
+        "observation_ids": [], "query": null, "cursor": null,
+        "offset": 0, "max_bytes": maximum
+    });
+    let result = tools::read::execute(&mut memory, request.to_string().as_bytes()).unwrap();
+    assert!(result.get("rejected").is_none(), "advertised maximum rejected: {result}");
+    assert_eq!(usize::try_from(maximum).unwrap(), memory.config.max_read_bytes);
+    assert_eq!(schema["properties"]["query"]["minLength"], 1);
+}
+
+#[test]
+fn configured_context_read_schema_admits_the_actual_boundary_and_rejects_more() {
+    for maximum in [8192, 16384, 65536] {
+        let fixture = Fixture::new();
+        let mut memory = fixture.open();
+        begin(&mut memory, "configured-read-bounds");
+        memory.config.max_read_bytes = maximum;
+        let definition = tools::definitions_with_config(&memory.config)
+            .unwrap()
+            .into_iter()
+            .find(|tool| tool.name().as_str() == "context_read")
+            .unwrap();
+        let schema: Value =
+            serde_json::from_slice(definition.parameters().canonical_bytes()).unwrap();
+        assert_eq!(schema["properties"]["max_bytes"]["maximum"], maximum);
+        let mut request = serde_json::json!({
+            "observation_ids": [], "query": null, "cursor": null,
+            "offset": 0, "max_bytes": maximum
+        });
+        let result = tools::read::execute(&mut memory, request.to_string().as_bytes()).unwrap();
+        assert!(result.get("rejected").is_none(), "{result}");
+        assert!(result.to_string().len() <= maximum);
+        request["max_bytes"] = (maximum + 1).into();
+        let rejected = tools::read::execute(&mut memory, request.to_string().as_bytes()).unwrap();
+        assert!(rejected["rejected"].as_str().unwrap().contains(&maximum.to_string()));
+        assert_eq!(memory.retrieval_calls, 1);
+    }
+}
+
+#[test]
+fn rejected_context_reads_explain_bounds_and_null_query_recovery() {
+    let fixture = Fixture::new();
+    let mut memory = fixture.open();
+    begin(&mut memory, "read-bound-recovery");
+    memory.config.max_read_bytes = 8192;
+    let mut request = serde_json::json!({
+        "observation_ids": [], "query": null, "cursor": null,
+        "offset": 0, "max_bytes": 20000
+    });
+    let result = tools::read::execute(&mut memory, request.to_string().as_bytes()).unwrap();
+    let detail = result["rejected"].as_str().unwrap();
+    assert!(detail.contains("256..=8192"), "{detail}");
+    assert_eq!(memory.retrieval_calls, 0);
+    request["max_bytes"] = Value::from(8192);
+    request["query"] = Value::from("");
+    let result = tools::read::execute(&mut memory, request.to_string().as_bytes()).unwrap();
+    let detail = result["rejected"].as_str().unwrap();
+    assert!(detail.contains("null"), "{detail}");
+    assert_eq!(memory.retrieval_calls, 0);
+    request["query"] = Value::Null;
+    let repaired = tools::read::execute(&mut memory, request.to_string().as_bytes()).unwrap();
+    assert!(repaired.get("rejected").is_none(), "{repaired}");
+    assert_eq!(memory.retrieval_calls, 1);
+}
+
+#[test]
 fn bounded_pages_report_unreturned_handles_and_state_cursors_are_revision_bound() {
     let fixture = Fixture::new();
     let mut memory = fixture.open();

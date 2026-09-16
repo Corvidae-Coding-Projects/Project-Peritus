@@ -126,6 +126,69 @@ fn both_compatible_dialects_heal_only_complete_tool_objects() {
 }
 
 #[test]
+fn chat_text_accepts_null_tool_calls_without_accepting_malformed_calls() {
+    block_on(async {
+        let fixture = String::from_utf8(fixture("chat-success.sse")).expect("fixture UTF-8");
+        for tools in ["null", "\"\"", "7", "{}", "[null]"] {
+            let bytes = fixture
+                .replace("\"content\":", &format!("\"tool_calls\":{tools},\"content\":"))
+                .into_bytes();
+            let events = collect_bytes(bytes, WireDialect::CompatibleChatCompletions, false).await;
+            assert_eq!(
+                events.iter().any(|event| matches!(event.event(), ModelEvent::ResponseCompleted)),
+                tools == "null",
+                "tool_calls {tools}"
+            );
+            assert_eq!(
+                events.iter().any(|event| matches!(event.event(), ModelEvent::ResponseFailed(_))),
+                tools != "null",
+                "tool_calls {tools}"
+            );
+            assert!(
+                !events
+                    .iter()
+                    .any(|event| matches!(event.event(), ModelEvent::ToolCallStarted { .. }))
+            );
+        }
+    });
+}
+
+#[test]
+fn chat_tool_deltas_accept_absent_roles_but_reject_role_changes() {
+    block_on(async {
+        let fixture = String::from_utf8(fixture("chat-tool.sse"))
+            .expect("fixture UTF-8")
+            .replace("\"role\":\"assistant\",", "");
+        for role in ["null", "\"assistant\"", "\"user\"", "\"\"", "7", "{}"] {
+            let bytes = fixture
+                .replace("\"tool_calls\":[", &format!("\"role\":{role},\"tool_calls\":["))
+                .into_bytes();
+            let events = collect_bytes(bytes, WireDialect::CompatibleChatCompletions, true).await;
+            let accepted = matches!(role, "null" | "\"assistant\"");
+            assert_eq!(
+                events.iter().any(|event| matches!(event.event(), ModelEvent::ResponseCompleted)),
+                accepted,
+                "role {role}"
+            );
+            assert_eq!(
+                events.iter().any(|event| matches!(event.event(), ModelEvent::ResponseFailed(_))),
+                !accepted,
+                "role {role}"
+            );
+            if accepted {
+                assert_eq!(
+                    events
+                        .iter()
+                        .filter(|event| matches!(event.event(), ModelEvent::ToolCallStarted { .. }))
+                        .count(),
+                    1
+                );
+            }
+        }
+    });
+}
+
+#[test]
 fn both_dialects_keep_tool_argument_fragments_as_ordered_text() {
     block_on(async {
         for (name, dialect) in [

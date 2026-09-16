@@ -1,0 +1,4 @@
+    Blocking waiting for file lock on build directory
+    Checking peritus-quality-policy v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/foundation/peritus-quality-policy)
+verification results:: 235 verified, 0 errors
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 3.08s

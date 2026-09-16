@@ -1,0 +1,90 @@
+[
+  {
+    "label": "clippy",
+    "command": [
+      "cargo",
+      "clippy",
+      "--locked",
+      "--package",
+      "xtask",
+      "--all-targets",
+      "--all-features",
+      "--",
+      "-D",
+      "warnings"
+    ],
+    "exit_code": 0,
+    "stdout": "/tmp/peritus-parent-xtask-evidence-clippy.log",
+    "stderr": "/tmp/peritus-parent-xtask-evidence-clippy.err"
+  },
+  {
+    "label": "inventory",
+    "command": [
+      "cargo",
+      "run",
+      "--locked",
+      "--package",
+      "xtask",
+      "--",
+      "formal-inventory"
+    ],
+    "exit_code": 0,
+    "stdout": "/tmp/peritus-parent-xtask-evidence-inventory.json",
+    "stderr": "/tmp/peritus-parent-xtask-evidence-inventory.err"
+  },
+  {
+    "label": "fmt",
+    "command": [
+      "cargo",
+      "fmt",
+      "--package",
+      "xtask",
+      "--",
+      "--check"
+    ],
+    "exit_code": 0,
+    "stdout": "/tmp/peritus-parent-xtask-evidence-fmt.log",
+    "stderr": "/tmp/peritus-parent-xtask-evidence-fmt.err"
+  },
+  {
+    "label": "api",
+    "command": [
+      "/home/doll/Project-Peritus/.worktrees/formal-coverage/target/debug/xtask",
+      "ordinary-api-check"
+    ],
+    "exit_code": 0,
+    "stdout": "/tmp/peritus-parent-xtask-evidence-api.log",
+    "stderr": "/tmp/peritus-parent-xtask-evidence-api.err"
+  },
+  {
+    "label": "layout",
+    "command": [
+      "/home/doll/Project-Peritus/.worktrees/formal-coverage/target/debug/xtask",
+      "source-layout-check"
+    ],
+    "exit_code": 0,
+    "stdout": "/tmp/peritus-parent-xtask-evidence-layout.log",
+    "stderr": "/tmp/peritus-parent-xtask-evidence-layout.err"
+  },
+  {
+    "label": "docs",
+    "command": [
+      "/home/doll/Project-Peritus/.worktrees/formal-coverage/target/debug/xtask",
+      "docs-check"
+    ],
+    "exit_code": 0,
+    "stdout": "/tmp/peritus-parent-xtask-evidence-docs.log",
+    "stderr": "/tmp/peritus-parent-xtask-evidence-docs.err"
+  },
+  {
+    "label": "diff",
+    "command": [
+      "git",
+      "diff",
+      "--check"
+    ],
+    "exit_code": 0,
+    "stdout": "/tmp/peritus-parent-xtask-evidence-diff.log",
+    "stderr": "/tmp/peritus-parent-xtask-evidence-diff.err"
+  }
+]

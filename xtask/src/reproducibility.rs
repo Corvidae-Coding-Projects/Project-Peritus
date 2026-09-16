@@ -40,11 +40,13 @@ mod reproducibility_workspace_tests;
 mod verification_commands;
 mod verus_commands;
 mod workflow_actionlint;
+mod workflow_authority;
 mod workflow_ci;
 mod workflow_command_contracts;
 mod workflow_command_policy;
 mod workflow_command_syntax;
 mod workflow_commands;
+mod workflow_discovery;
 mod workflow_files;
 mod workflow_governance;
 mod workflow_governance_jobs;
@@ -55,6 +57,10 @@ mod workflow_policy;
 mod workflow_run;
 mod workflow_rust_matrix;
 mod workflow_timeout;
+
+#[cfg(test)]
+#[path = "reproducibility/workflow_authority_tests.rs"]
+mod workflow_authority_tests;
 
 pub(crate) use evidence_command::is_exact_package_gate as is_exact_evidence_command;
 

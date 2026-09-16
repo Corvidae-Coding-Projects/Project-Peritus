@@ -1,0 +1,1223 @@
+   Compiling unicode-ident v1.0.24
+   Compiling equivalent v1.0.2
+   Compiling cfg-if v1.0.4
+   Compiling proc-macro2 v1.0.107
+   Compiling indexmap v2.14.0
+   Compiling quote v1.0.47
+   Compiling typenum v1.20.1
+   Compiling syn v2.0.119
+   Compiling syn v3.0.3
+   Compiling synstructure v0.13.2
+   Compiling verus_syn v0.0.0-2026-08-02-0125 (https://github.com/verus-lang/verus.git?rev=92f466f247f45128c630d1c843fd6e27d2115587#92f466f2)
+   Compiling verus_builtin v0.0.0-2026-08-09-0044 (https://github.com/verus-lang/verus.git?rev=92f466f247f45128c630d1c843fd6e27d2115587#92f466f2)
+   Compiling hybrid-array v0.4.14
+   Compiling crypto-common v0.2.2
+   Compiling block-buffer v0.12.1
+   Compiling digest v0.11.3
+   Compiling cpufeatures v0.3.0
+   Compiling bitflags v2.13.1
+   Compiling sha2 v0.11.0
+   Compiling libc v0.2.189
+   Compiling verus_prettyplease v0.0.0-2026-08-09-0044 (https://github.com/verus-lang/verus.git?rev=92f466f247f45128c630d1c843fd6e27d2115587#92f466f2)
+   Compiling serde_core v1.0.229
+   Compiling verus_state_machines_macros v0.0.0-2026-08-02-0125 (https://github.com/verus-lang/verus.git?rev=92f466f247f45128c630d1c843fd6e27d2115587#92f466f2)
+   Compiling verus_builtin_macros v0.0.0-2026-08-09-0044 (https://github.com/verus-lang/verus.git?rev=92f466f247f45128c630d1c843fd6e27d2115587#92f466f2)
+   Compiling linux-raw-sys v0.12.1
+   Compiling rustix v1.1.4
+   Compiling vstd v0.0.0-2026-08-09-0044 (https://github.com/verus-lang/verus.git?rev=92f466f247f45128c630d1c843fd6e27d2115587#92f466f2)
+   Compiling subtle v2.6.1
+   Compiling once_cell v1.21.4
+   Compiling smallvec v1.15.2
+   Compiling serde_derive v1.0.229
+   Compiling peritus-types v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/foundation/peritus-types)
+   Compiling peritus-codec v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/foundation/peritus-codec)
+   Compiling peritus-policy v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/foundation/peritus-policy)
+   Compiling peritus-spec v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/foundation/peritus-spec)
+   Compiling peritus-quality-policy v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/foundation/peritus-quality-policy)
+   Compiling peritus-budget v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/foundation/peritus-budget)
+   Compiling fastrand v2.5.0
+   Compiling serde v1.0.229
+   Compiling curve25519-dalek-derive v0.1.1
+   Compiling peritus-kernel v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/foundation/peritus-kernel)
+   Compiling signature v3.0.0
+   Compiling ed25519 v3.0.0
+   Compiling curve25519-dalek v5.0.0
+   Compiling peritus-protocol v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/foundation/peritus-protocol)
+   Compiling libsqlite3-sys v0.38.2
+   Compiling fallible-iterator v0.3.0
+   Compiling fallible-streaming-iterator v0.1.9
+   Compiling rusqlite v0.40.2
+   Compiling ed25519-dalek v3.0.0
+   Compiling fs4 v1.1.0
+   Compiling peritus-artifact-store v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/state/peritus-artifact-store)
+   Compiling peritus-approval v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/state/peritus-approval)
+   Compiling peritus-leases v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/state/peritus-leases)
+   Compiling winnow v1.0.4
+   Compiling peritus-journal v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/state/peritus-journal)
+   Compiling getrandom v0.4.3
+   Compiling tempfile v3.27.0
+   Compiling itoa v1.0.18
+   Compiling toml_parser v1.1.3+spec-1.1.0
+   Compiling toml_datetime v1.1.1+spec-1.1.0
+   Compiling serde_spanned v1.1.1
+   Compiling toml_writer v1.1.2+spec-1.1.0
+   Compiling toml v1.1.4+spec-1.1.0
+   Compiling zeroize v1.9.0
+   Compiling zmij v1.0.23
+   Compiling memchr v2.8.3
+   Compiling foldhash v0.2.0
+   Compiling pin-project-lite v0.2.17
+   Compiling hashbrown v0.17.1
+   Compiling serde_json v1.0.149
+   Compiling ipnet v2.12.1
+   Compiling log v0.4.34
+   Compiling futures-core v0.3.34
+   Compiling peritus-tool-protocol v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/tools/peritus-tool-protocol)
+   Compiling peritus-tool-router v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/tools/peritus-tool-router)
+   Compiling errno v0.3.14
+   Compiling signal-hook-registry v1.4.8
+   Compiling slab v0.4.12
+   Compiling zerofrom-derive v0.1.7
+   Compiling yoke-derive v0.8.2
+   Compiling base64 v0.22.1
+   Compiling zerofrom v0.1.8
+   Compiling stable_deref_trait v1.2.1
+   Compiling yoke v0.8.3
+   Compiling peritus-test-support v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/app/testing/peritus-test-support)
+   Compiling zerovec-derive v0.11.6
+   Compiling atomic-waker v1.1.2
+   Compiling bytes v1.12.1
+   Compiling zerovec v0.11.8
+   Compiling tracing-core v0.1.36
+   Compiling displaydoc v0.2.7
+   Compiling tracing-attributes v0.1.31
+   Compiling memoffset v0.9.1
+   Compiling futures-macro v0.3.34
+   Compiling tracing v0.1.44
+   Compiling futures-task v0.3.34
+   Compiling nix v0.31.3
+   Compiling futures-util v0.3.34
+   Compiling mio v1.2.2
+   Compiling socket2 v0.6.5
+   Compiling tokio-macros v2.7.2
+   Compiling io-lifetimes v2.0.4
+   Compiling io-lifetimes v3.0.1
+   Compiling tinystr v0.8.4
+   Compiling writeable v0.6.4
+   Compiling tokio v1.53.1
+   Compiling litemap v0.8.3
+   Compiling icu_locale_core v2.3.0
+   Compiling io-extras v0.19.0
+   Compiling fs-set-times v0.20.3
+   Compiling zerotrie v0.2.5
+   Compiling potential_utf v0.1.6
+   Compiling http v1.5.0
+   Compiling rustix-linux-procfs v0.1.1
+   Compiling ambient-authority v0.0.2
+   Compiling maybe-owned v0.3.4
+   Compiling utf8_iter v1.0.4
+   Compiling icu_collections v2.3.0
+   Compiling cap-primitives v4.0.3
+   Compiling icu_provider v2.3.1
+   Compiling aws-lc-sys v0.44.0
+   Compiling rustls-pki-types v1.15.1
+   Compiling aws-lc-rs v1.18.0
+   Compiling icu_normalizer_data v2.3.0
+   Compiling cap-std v4.0.3
+   Compiling icu_properties_data v2.3.0
+   Compiling http-body v1.1.0
+   Compiling thiserror-impl v1.0.69
+   Compiling percent-encoding v2.3.2
+   Compiling futures-sink v0.3.34
+   Compiling untrusted v0.9.0
+   Compiling rustls-webpki v0.103.15
+   Compiling thiserror v1.0.69
+   Compiling tokio-util v0.7.19
+   Compiling icu_properties v2.3.0
+   Compiling cap-fs-ext v4.0.3
+   Compiling icu_normalizer v2.3.0
+   Compiling peritus-sandbox v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/runtime/peritus-sandbox)
+   Compiling peritus-patch v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/runtime/peritus-patch)
+   Compiling peritus-git v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/runtime/peritus-git)
+   Compiling fnv v1.0.7
+   Compiling try-lock v0.2.5
+   Compiling tower-service v0.3.3
+   Compiling want v0.3.1
+   Compiling h2 v0.4.19
+   Compiling nix v0.28.0
+   Compiling idna_adapter v1.2.2
+   Compiling rustls v0.23.43
+   Compiling anyhow v1.0.104
+   Compiling httparse v1.10.1
+   Compiling filedescriptor v0.8.3
+   Compiling futures-channel v0.3.34
+   Compiling serial2 v0.2.38
+   Compiling downcast-rs v1.2.1
+   Compiling shell-words v1.1.1
+   Compiling portable-pty v0.9.0
+   Compiling hyper v1.11.0
+   Compiling idna v1.1.0
+   Compiling peritus-workspace v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/runtime/peritus-workspace)
+   Compiling form_urlencoded v1.2.2
+   Compiling process-wrap v9.1.0
+   Compiling sync_wrapper v1.0.2
+   Compiling openssl-probe v0.2.1
+   Compiling tower-layer v0.3.3
+   Compiling rustls-native-certs v0.8.4
+   Compiling tower v0.5.3
+   Compiling url v2.5.8
+   Compiling hyper-util v0.1.20
+   Compiling tokio-rustls v0.26.4
+   Compiling peritus-projection v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/state/peritus-projection)
+   Compiling peritus-role v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/orchestration/peritus-role)
+   Compiling peritus-run-settlement v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/orchestration/peritus-run-settlement)
+   Compiling peritus-evidence v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/state/peritus-evidence)
+   Compiling hyper-rustls v0.27.9
+   Compiling tower-http v0.6.11
+   Compiling rustls-platform-verifier v0.7.0
+   Compiling peritus-process v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/runtime/peritus-process)
+   Compiling http-body-util v0.1.5
+   Compiling reqwest v0.13.4
+   Compiling peritus-model-protocol v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/model/peritus-model-protocol)
+   Compiling peritus-provider-core v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/model/peritus-provider-core)
+   Compiling peritus-run-knowledge v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/orchestration/peritus-run-knowledge)
+   Compiling peritus-context v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/orchestration/peritus-context)
+   Compiling parking v2.2.1
+   Compiling generic-array v0.14.7
+   Compiling peritus-memory v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/orchestration/peritus-memory)
+   Compiling peritus-conformance v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/app/testing/peritus-conformance)
+   Compiling peritus-agent v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/orchestration/peritus-agent)
+   Compiling enumflags2_derive v0.7.12
+   Compiling toml_edit v0.25.13+spec-1.1.0
+   Compiling num-traits v0.2.19
+   Compiling crossbeam-utils v0.8.22
+   Compiling futures-io v0.3.34
+   Compiling concurrent-queue v2.5.0
+   Compiling proc-macro-crate v3.5.0
+   Compiling zvariant_utils v4.2.0
+   Compiling crypto-common v0.1.7
+   Compiling event-listener v5.4.2
+   Compiling event-listener-strategy v0.5.4
+   Compiling zvariant_derive v5.15.0
+   Compiling futures-lite v2.6.1
+   Compiling endi v1.1.1
+   Compiling num-integer v0.1.47
+   Compiling enumflags2 v0.7.12
+   Compiling zcheapstr v1.1.0
+   Compiling block-padding v0.3.3
+   Compiling block-buffer v0.10.4
+   Compiling polling v3.11.0
+   Compiling async-task v4.7.1
+   Compiling async-io v2.6.0
+   Compiling digest v0.10.7
+   Compiling inout v0.1.4
+   Compiling zvariant v5.15.0
+   Compiling async-channel v2.5.0
+   Compiling zbus_names v4.3.4
+   Compiling cipher v0.4.4
+   Compiling async-signal v0.2.14
+   Compiling num-bigint v0.4.8
+   Compiling async-lock v3.4.2
+   Compiling piper v0.2.5
+   Compiling peritus-tools-quality v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/tools/peritus-tools-quality)
+   Compiling cpufeatures v0.2.17
+   Compiling blocking v1.7.0
+   Compiling async-process v2.5.0
+   Compiling num-rational v0.4.2
+   Compiling zbus_macros v5.19.0
+   Compiling hmac v0.12.1
+   Compiling async-executor v1.14.0
+   Compiling num-iter v0.1.46
+   Compiling async-broadcast v0.7.2
+   Compiling num-complex v0.4.6
+   Compiling peritus-tools-shell v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/tools/peritus-tools-shell)
+   Compiling ordered-stream v0.2.0
+   Compiling uuid v1.25.0
+   Compiling serde_repr v0.1.21
+   Compiling async-trait v0.1.92
+   Compiling async-recursion v1.1.1
+   Compiling hex v0.4.3
+   Compiling simd-adler32 v0.3.10
+   Compiling zbus v5.19.0
+   Compiling num v0.4.3
+   Compiling hkdf v0.12.4
+   Compiling sha2 v0.10.9
+   Compiling aes v0.8.4
+   Compiling cbc v0.1.2
+   Compiling getrandom v0.2.17
+   Compiling adler2 v2.0.1
+   Compiling keyring-core v1.0.0
+   Compiling crc32fast v1.5.1
+   Compiling miniz_oxide v0.9.1
+   Compiling thiserror-impl v2.0.20
+   Compiling thiserror v2.0.20
+   Compiling flate2 v1.1.10
+   Compiling miniz_oxide v0.8.9
+   Compiling fdeflate v0.3.7
+   Compiling peritus-scheduler v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/orchestration/peritus-scheduler)
+   Compiling secret-service v5.1.0
+   Compiling zbus-secret-service-keyring-store v1.0.1
+   Compiling keyring v4.1.6
+   Compiling peritus-obligations v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/orchestration/peritus-obligations)
+   Compiling weezl v0.1.12
+   Compiling byteorder-lite v0.1.0
+   Compiling pxfm v0.1.30
+   Compiling zune-core v0.5.3
+   Compiling color_quant v1.1.0
+   Compiling quick-error v2.0.1
+   Compiling image-webp v0.2.4
+   Compiling moxcms v0.8.1
+   Compiling gif v0.14.2
+   Compiling zune-jpeg v0.5.15
+   Compiling peritus-gates v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/orchestration/peritus-gates)
+   Compiling peritus-secrets v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/runtime/peritus-secrets)
+   Compiling peritus-collaboration v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/orchestration/peritus-collaboration)
+   Compiling png v0.18.1
+   Compiling landlock v0.4.7
+   Compiling peritus-review v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/orchestration/peritus-review)
+   Compiling peritus-network v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/runtime/peritus-network)
+   Compiling seccompiler v0.5.0
+   Compiling hashlink v0.12.1
+   Compiling arraydeque v0.5.1
+   Compiling bytemuck v1.25.2
+   Compiling yaml-rust2 v0.12.0
+   Compiling image v0.25.10
+   Compiling peritus-sandbox-linux v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/runtime/peritus-sandbox-linux)
+   Compiling peritus-orchestrator v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/orchestration/peritus-orchestrator)
+   Compiling peritus-provider-anthropic v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/model/peritus-provider-anthropic)
+   Compiling peritus-provider-openai v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/model/peritus-provider-openai)
+   Compiling peritus-product-runner v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/app/peritus-product-runner)
+   Compiling peritus-tools-git v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/tools/peritus-tools-git)
+   Compiling peritus-tools-fs v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/tools/peritus-tools-fs)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 2m 09s
+     Running unittests src/lib.rs (target/peritus-sol-kernel-copy-consumers-01/debug/deps/peritus_agent-a6920f032ec73cc1)
+
+running 10 tests
+test control::tests::resume_rejects_missing_recovery_before_missing_saved_phase_without_mutation ... ok
+test developer::usage::tests::independent_response_usage_adds_without_double_counting_reasoning ... ok
+test developer::execution::provider_turn::progress::tests::ready_results_and_streaming_text_do_not_get_wait_notices ... ok
+test control::tests::control_updates_handle_stale_saved_phase_without_an_unstated_invariant ... ok
+test developer::usage::tests::explicit_total_preserves_derived_counter_overflow_rejection ... ok
+test developer::usage::tests::missing_usage_is_inert_but_an_explicit_zero_is_an_observation ... ok
+test developer::usage::tests::rejected_usage_preserves_every_previously_accepted_counter ... ok
+test reducer::tests::replay_rejects_correctly_fenced_failure_events_after_terminal_state ... ok
+test developer::execution::provider_turn::progress::tests::failed_observation_cancels_the_owned_pending_request ... ok
+test developer::execution::provider_turn::progress::tests::notice_arrives_while_the_same_provider_future_is_still_pending ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/budgets.rs (target/peritus-sol-kernel-copy-consumers-01/debug/deps/budgets-e7b64d915f19a44f)
+
+running 2 tests
+test checked_limits_reject_zero_and_hard_ceiling_overflow ... ok
+test transition_exhaustion_is_explicit_failure_not_completion ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/control_matrix.rs (target/peritus-sol-kernel-copy-consumers-01/debug/deps/control_matrix-4d237f08f2b67c8f)
+
+running 2 tests
+test cancellation_phase_completion_does_not_claim_outstanding_tool_termination ... ok
+test every_active_phase_pauses_resumes_and_cancels_explicitly ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/control_rejections.rs (target/peritus-sol-kernel-copy-consumers-01/debug/deps/control_rejections-b7361311e8f47762)
+
+running 3 tests
+test phase_tags_and_terminal_detection_remain_const_and_stable ... ok
+test resume_and_pause_rejections_keep_existing_classification_and_state ... ok
+test cancelling_rejects_reentry_and_terminal_outer_guard_keeps_precedence ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/developer_loop.rs (target/peritus-sol-kernel-copy-consumers-01/debug/deps/developer_loop-f9a3e773f7200780)
+
+running 40 tests
+test accounting_tests::dropping_an_inflight_response_retains_accepted_accounting_without_a_terminal ... ok
+test accounting_tests::ordinary_developer_requests_negotiate_usage_when_supported ... ok
+test grounding_tests::developer_loop_continues_an_early_terminal_in_the_same_grounding_session ... ok
+test interaction_tests::exact_prepared_request_is_checked_before_send_and_stale_context_is_rebuilt ... ok
+test local_context_tests::lifecycle::failed_invocation_retains_observations_and_a_new_provider_requires_fresh_grounding ... ok
+test context_tests::developer_loop_returns_context_when_compaction_cannot_fit_the_request ... ok
+test context_tests::developer_loop_negotiates_automatic_prompt_caching ... ok
+test interaction_tests::host_handoff_stops_the_batch_and_returns_without_another_model_request ... ok
+test developer_loop_uses_the_negotiated_parallel_tool_width ... ok
+test local_context_tests::lifecycle::no_progress_failure_preserves_the_complete_batch_before_stopping ... ok
+test interaction_tests::images::exact_current_images_follow_governing_input_and_withdrawal_discards_the_stale_image ... ok
+test interaction_tests::images::unsupported_live_image_input_rejects_before_incorporation_and_provider_send ... ok
+test developer_loop_executes_a_tool_and_returns_its_observation_to_the_next_model_turn ... ok
+test interaction_tests::tool_identity::developer_loop_passes_its_stable_request_prefix_to_both_tool_boundaries ... ok
+test local_context_tests::lifecycle::stale_local_invocation_policy_stops_before_publication_or_provider_dispatch ... ok
+test interaction_tests::steering_skips_remaining_calls_and_reaches_the_next_model_request ... ok
+test interaction_tests::cancellation_between_calls_prevents_the_remaining_effects ... ok
+test developer_loop_returns_executor_progress_feedback_to_the_same_session ... ok
+test local_context_tests::observation_ingestion_failure_preserves_trace_and_stops_the_tool_batch ... ok
+test retry_tests::developer_loop_preserves_a_nonretryable_provider_terminal ... ok
+test local_context_tests::metadata::host_metadata_overwrites_forgery_after_archival_and_counts_in_request_budget ... ok
+test local_context_tests::local_context_keeps_host_completion_and_progress_corrections ... ok
+test local_context_tests::old_exchanges_above_the_legacy_trigger_remain_under_local_policy ... ok
+test local_context_tests::oversized_local_view_never_selects_legacy_compaction_or_publishes ... ok
+test local_context_tests::open_assembly_and_checkpoint_failures_stop_before_any_provider_request ... ok
+test local_context_tests::proposal_persistence_failure_prevents_tool_execution ... ok
+test retry_tests::cancellation::dropped_loop_cleans_up_pending_start_and_stream_without_cancelling_caller ... ok
+test retry_tests::cancellation::explicit_stop_cancels_pending_start_and_stream_without_retry ... ok
+test reasoning_tests::developer_loop_preserves_opaque_reasoning_on_the_next_tool_result_request ... ok
+test context_tests::developer_loop_bounds_an_oversized_tool_result_before_model_history ... ok
+test local_context_tests::exact_diagnostic_is_ingested_before_model_visible_output_limiting ... ok
+test context_tests::developer_loop_compacts_an_impossible_recent_complete_exchange ... ok
+test context_tests::developer_loop_accounts_image_tiles_instead_of_compressed_transfer_bytes ... ok
+test context_tests::developer_loop_falls_back_when_semantic_compaction_is_unusable ... ok
+test retry_tests::developer_loop_cancels_during_a_planned_retry_wait ... ok
+test context_tests::framing::context_pressure_with_malformed_compaction_framing_preserves_completed_work ... ok
+test context_tests::developer_loop_compacts_old_complete_tool_exchanges_with_digest_evidence ... ok
+test retry_tests::interrupted_stream_recovers_automatically_without_repeating_completed_tools ... ok
+test interaction_tests::input_received_during_retry_is_incorporated_before_the_next_provider_request ... ok
+test retry_tests::developer_loop_retries_a_recoverable_malformed_provider_turn ... ok
+
+test result: ok. 40 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.99s
+
+     Running tests/phase_transitions.rs (target/peritus-sol-kernel-copy-consumers-01/debug/deps/phase_transitions-92664e0212e9ba53)
+
+running 4 tests
+test phase_tag_projection_contains_exactly_the_possible_phase_pairs ... ok
+test command_phase_rejections_keep_error_precedence_and_original_state ... ok
+test failure_and_exhaustion_terminate_supported_nonterminal_paths_and_replay ... ok
+test actual_normal_command_path_uses_each_expected_phase_edge_and_replays ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/replay_completion.rs (target/peritus-sol-kernel-copy-consumers-01/debug/deps/replay_completion-c45fcc7d571d61cc)
+
+running 6 tests
+test partial_model_terminal_cannot_become_success_and_rejection_is_non_mutating ... ok
+test pause_resume_and_cancel_are_explicit ... ok
+test completion_requires_explicit_proposal_then_commit_and_replays_exactly ... ok
+test provider_retry_restarts_a_safe_new_request_and_replays_the_backward_phase_edge ... ok
+test provider_retry_closes_in_flight_work_and_replays_exact_resume ... ok
+test protocol_records_recover_pure_retry_events_and_replay_exactly ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/runtime_budget.rs (target/peritus-sol-kernel-copy-consumers-01/debug/deps/runtime_budget-de33c03ac8fb16e2)
+
+running 4 tests
+test missing_final_usage_stays_active_until_conservative_ambiguity_consumes_the_ceiling ... ok
+test tool_effect_time_uses_the_same_verified_b1_lifecycle ... ok
+test model_attempt_charges_attempt_tokens_cost_and_time_then_admits_one_retry ... ok
+test regressing_interim_usage_is_rejected_without_changing_high_water_accounting ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/runtime_context.rs (target/peritus-sol-kernel-copy-consumers-01/debug/deps/runtime_context-eafbb910b551a0ff)
+
+running 1 test
+test selected_memory_stays_untrusted_evidence_and_renders_as_a_separate_message ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/runtime_driver.rs (target/peritus-sol-kernel-copy-consumers-01/debug/deps/runtime_driver-275300d5ed3f286d)
+
+running 5 tests
+test exact_provider_duplicate_is_recorded_without_reapplying_semantics ... ok
+test out_of_order_provider_stream_becomes_explicit_protocol_failure ... ok
+test crash_restores_exact_provider_prefix_before_resuming_at_the_next_cursor ... ok
+test fake_provider_completion_is_durable_and_restarts_from_exact_state ... ok
+test crash_after_tool_dispatch_is_classified_indeterminate_without_redispatch ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running tests/runtime_model.rs (target/peritus-sol-kernel-copy-consumers-01/debug/deps/runtime_model-ee97baaa00b5113f)
+
+running 2 tests
+test local_cancel_propagates_to_the_owned_provider_stream ... ok
+test each_envelope_waits_for_durable_ack_before_reduction_or_next_pull ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/runtime_tools.rs (target/peritus-sol-kernel-copy-consumers-01/debug/deps/runtime_tools-ee034a4fdf065e93)
+
+running 2 tests
+test authorized_fake_inspection_runs_once_and_results_return_to_context ... ok
+test complete_inspect_edit_run_test_loop_reaches_only_a_completion_proposal ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.10s
+
+     Running tests/tool_ordering.rs (target/peritus-sol-kernel-copy-consumers-01/debug/deps/tool_ordering-c0416a1b3a2cf556)
+
+running 3 tests
+test unordered_and_parallel_mutation_batches_are_rejected_without_state_change ... ok
+test indeterminate_result_is_renderable_but_cannot_claim_gate_ready_completion ... ok
+test parallel_terminal_arrival_retains_proposal_order ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/peritus-sol-kernel-copy-consumers-01/debug/deps/peritus_journal-0a83948662dd7a92)
+
+running 40 tests
+test idempotency::tests::replay_requires_all_request_digest_bytes_to_match ... ok
+test sqlite::history::tests::shared_history_node_bounds_reject_malformed_encodings ... ok
+test sqlite::tests::application_tests::application_workspace_digest_is_checked_on_input_and_recovery ... ok
+test sqlite::history::tests::shared_history_rejects_hash_consistent_noncanonical_tree_shapes ... ok
+test sqlite::history::tests::shared_history_never_accepts_or_overwrites_a_corrupt_reused_node ... ok
+test sqlite::tests::application_tests::application_ledger_survives_idempotency_and_terminal_settlement ... ok
+test sqlite::tests::aggregate_replay_tests::aggregate_replay_rejects_orphaned_events ... ok
+test sqlite::history::tests::shared_history_failed_append_rolls_back_nodes_event_history_and_current_state ... ok
+test sqlite::tests::application_tests::application_catalogs_retain_exact_metadata ... ok
+test sqlite::tests::lost_acknowledgement_resolves_and_exact_retry_does_not_append ... ok
+test sqlite::tests::application_tests::global_tail_is_bounded_and_reports_retention_bounds ... ok
+test sqlite::tests::failed_second_insert_rolls_back_first_event_and_head ... ok
+test sqlite::query::aggregate::tests::aggregate_checkpoint_snapshot_preserves_absence_and_input_rejection ... ok
+test sqlite::tests::application_tests::application_prompt_target_settles_exactly_once_after_durable_registration ... ok
+test sqlite::query::aggregate::tests::aggregate_replay_snapshot_does_not_mix_concurrent_committed_heads_and_rows ... ok
+test sqlite::tests::hardened_connection_and_atomic_full_batch_are_observable ... ok
+test sqlite::history::tests::shared_history_repeated_node_is_reread_and_failed_statements_release_before_retry ... ok
+test sqlite::tests::missing_artifact_fails_before_authoritative_rows_exist ... ok
+test sqlite::tests::aggregate_replay_tests::aggregate_replay_checks_complete_head_not_only_hash ... ok
+test sqlite::query::aggregate::tests::aggregate_checkpoint_snapshot_rejects_corruption_in_either_component ... ok
+test sqlite::tests::observation_tests::failed_and_lost_acknowledgement_appends_invalidate_observations ... ok
+test sqlite::tests::observation_tests::mutable_owner_ledgers_do_not_invalidate_unchanged_aggregate_history ... ok
+test sqlite::tests::aggregate_replay_tests::aggregate_replay_rejects_self_consistent_hash_with_broken_predecessor ... ok
+test sqlite::tests::outbox_tests::aggregate_append_atomically_acknowledges_exact_claimed_directive ... ok
+test sqlite::tests::aggregate_replay_tests::aggregate_replay_rechecks_old_frame_bytes_and_sequence_gaps ... ok
+test sqlite::query::aggregate::tests::aggregate_checkpoint_snapshot_keeps_history_and_state_at_the_same_commit ... ok
+test sqlite::tests::observation_tests::external_write_between_planning_check_and_append_is_rejected_without_new_rows ... ok
+test sqlite::tests::stale_head_rejects_every_row_in_the_later_plan ... ok
+test sqlite::tests::outbox_tests::stale_fence_cannot_acknowledge_a_reclaimed_outbox_row ... ok
+test sqlite::tests::recovery_tests::authority_epoch_cas_is_monotonic_across_restart_and_overflow_is_typed ... ok
+test sqlite::tests::recovery_tests::restart_preserves_exact_frames_and_command_resolution ... ok
+test sqlite::tests::recovery_tests::corruption_in_payload_or_head_is_detected ... ok
+test sqlite::tests::observation_tests::guarded_receipt_extends_only_its_own_instance_and_append_generation ... ok
+test sqlite::tests::recovery_tests::integrity_rejects_state_history_gaps_and_current_row_rewinds ... ok
+test sqlite::tests::storage_tests::rejected_open_does_not_leave_partial_schema_installation ... ok
+test sqlite::tests::aggregate_replay_tests::aggregate_replay_retains_exact_interleaved_records_across_restart ... ok
+test sqlite::history::tests::shared_history_rejects_missing_corrupt_and_wrong_root_nodes ... ok
+test sqlite::tests::storage_tests::page_ceiling_returns_exact_storage_exhaustion_without_partial_append ... ok
+test sqlite::history::tests::shared_history_sqlite_retention_is_bounded_below_full_growing_values ... ok
+test sqlite::history::tests::shared_history_preserves_empty_leaf_branch_and_maximum_values_after_restart ... ok
+
+test result: ok. 40 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.96s
+
+     Running tests/approval_registry.rs (target/peritus-sol-kernel-copy-consumers-01/debug/deps/approval_registry-970871e659ca28e4)
+
+running 4 tests
+test approval_use_augments_a_multi_aggregate_append_atomically ... ok
+test signed_approval_rejects_same_revision_wrong_digest_and_commits_exact_snapshot ... ok
+test exact_approval_use_retry_returns_the_original_atomic_batch ... ok
+test approval_use_rejects_stale_registry_and_state_without_partial_activation ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.14s
+
+     Running tests/authority_adapters.rs (target/peritus-sol-kernel-copy-consumers-01/debug/deps/authority_adapters-043dc4ffa9247de8)
+
+running 2 tests
+test registry_rejects_non_increasing_currentness ... ok
+test authority_clock_rejects_stale_allocation_and_survives_restart ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/b1_adapters.rs (target/peritus-sol-kernel-copy-consumers-01/debug/deps/b1_adapters-560512d374d2b180)
+
+running 3 tests
+test lease_mint_and_acquisition_follow_the_verified_version_cas ... ok
+test held_budget_cancellation_requires_and_consumes_a_current_durable_non_activation_observation ... ok
+test capability_use_is_exposed_only_with_its_exact_durable_successor ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/conformance.rs (target/peritus-sol-kernel-copy-consumers-01/debug/deps/conformance-eb81c23ab45ad5eb)
+
+running 1 test
+test production_journal_passes_a2_commit_restart_and_cas_conformance ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests/kernel_replay.rs (target/peritus-sol-kernel-copy-consumers-01/debug/deps/kernel_replay-782452f8f3348d7a)
+
+running 1 test
+test genesis_and_transition_recover_exactly_after_journal_restart ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/state_history.rs (target/peritus-sol-kernel-copy-consumers-01/debug/deps/state_history-ceb442ae0858c5da)
+
+running 2 tests
+test older_command_replay_returns_its_original_batch_without_rolling_back_current_state ... ok
+test read_only_snapshot_does_not_initialize_and_is_consistent_during_later_commits ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running unittests src/lib.rs (target/peritus-sol-kernel-copy-consumers-01/debug/deps/peritus_process-e59860e4e2c11d8f)
+
+running 17 tests
+test native::observation::tests::native_lifecycle_validation_rejects_duplicate_and_out_of_order_phases ... ok
+test consumption::tests::recovery::claim_without_manifest_is_an_explicit_indeterminate_recovery_entry ... ok
+test output::window::tests::preserves_stream_bytes_without_exceeding_the_combined_tail_limit ... ok
+test platform::resource::macos::tests::libproc_counts_preserve_optional_failures_and_buffer_bounds ... ok
+test consumption::tests::recovery::claim_manifest_digest_mismatch_blocks_probe_and_terminal_classification ... ok
+test platform::resource::macos::tests::libproc_query_clears_stale_errno_before_observing_empty_group ... ok
+test platform::resource::macos::tests::libproc_zero_with_error_is_unavailable_not_a_sampled_zero ... ok
+test terminal::canonical_tests::complete_terminal_encoding_round_trips ... ok
+test terminal::canonical_tests::corrupt_stream_accounting_is_rejected_during_decode ... ok
+test consumption::tests::recovery::quarantined_process_records_remain_visible_after_reopen ... ok
+test consumption::tests::recovery::interrupted_manifest_replacement_restores_previous_and_removes_staging ... ok
+test consumption::tests::recovery::completed_manifest_replacement_discards_stale_previous ... ok
+test consumption::tests::recovery::unmatched_storage_fault_occurrence_is_a_negative_control ... ok
+test consumption::tests::recovery::complete_terminal_and_artifact_publication_survive_reopen ... ok
+test consumption::tests::recovery::zero_retained_publication_completion_is_durable_and_idempotent ... ok
+test terminal::canonical_tests::terminal_digest_binds_every_durable_fact_group ... ok
+test consumption::tests::recovery::manifest_storage_faults_are_reached_truthful_and_recoverable ... ok
+
+test result: ok. 17 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running unittests src/bin/peritus-native-helper-fixture.rs (target/peritus-sol-kernel-copy-consumers-01/debug/deps/peritus_native_helper_fixture-2dd2316038d187fa)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/bin/peritus-process-fixture.rs (target/peritus-sol-kernel-copy-consumers-01/debug/deps/peritus_process_fixture-c60edd173f9b731b)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/native_process_probe.rs (target/peritus-sol-kernel-copy-consumers-01/debug/deps/native_process_probe-45a863d9f827f2d5)
+
+running 3 tests
+test incomplete_birth_identity_is_never_live_or_terminable ... ok
+test linux_probe_reports_a_missing_pid_as_exactly_absent ... ok
+test linux_probe_matches_birth_token_and_terminates_only_the_exact_isolated_group ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/process_conformance.rs (target/peritus-sol-kernel-copy-consumers-01/debug/deps/process_conformance-679e1e58df95f47b)
+
+running 1 test
+test production_process_passes_complete_a2_suite_with_fresh_case_subjects ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.68s
+
+     Running tests/process_integration.rs (target/peritus-sol-kernel-copy-consumers-01/debug/deps/process_integration-415f89c4ed713c1f)
+
+running 25 tests
+test regressions::process_lifecycle::inherited_environment_authority_cannot_bind_a_literal_value ... ok
+test regressions::process_lifecycle::post_spawn_control_failure_reaps_and_persists_terminal_failure ... ok
+test non_dispatched_action_is_rejected_before_durable_consumption ... ok
+test native_backend::rejection::invalid_prepared_session_is_released_and_cannot_be_replayed ... ok
+test exact_committed_authority_launches_separate_bounded_pipe_streams ... ok
+test native_backend::rejection::preparation_failure_is_durable_and_cannot_be_replayed ... ok
+test control_lifecycle::cancellation_publishes_one_terminal_owned_tree_result ... ok
+test native_backend::lifecycle::exact_restricted_authority_runs_through_the_helper_and_releases_the_session ... ok
+test native_backend::lifecycle::restricted_helper_receives_the_exact_protected_anonymous_handle ... ok
+test native_backend::rejection::prepared_session_is_released_before_spawn_failure_is_published ... ok
+test control_lifecycle::interrupt_signal_is_ordered_and_does_not_become_cancellation ... ok
+test native_backend::rejection::invalid_prepared_session_cleanup_failure_remains_durably_incomplete ... ok
+test regressions::process_lifecycle::output_limit_terminates_and_reaps_the_owned_process ... ok
+test native_backend::rejection::descriptor_drift_never_calls_prepare_or_consumes_authority ... ok
+test native_backend::lifecycle::restricted_pty_keeps_binary_helper_protocol_off_the_terminal_stream ... ok
+test regressions::disk_sampling_does_not_follow_workspace_symlink_cycles ... ok
+test native_backend::lifecycle::native_supervisor_resource_poll_uses_the_owned_resource_limit_path ... ok
+test regressions::artifact_failure_preserves_terminal_and_retry_resumes_per_stream ... ok
+test regressions::process_lifecycle::cancellation_after_output_preserves_first_reason_and_accounting ... ok
+test regressions::zero_output_artifact_publication_is_complete_and_idempotent ... ok
+test regressions::process_lifecycle::output_limit_reaps_a_descendant_holding_the_stream_open ... ok
+test regressions::process_lifecycle::process_count_overrun_is_observed_cancelled_and_classified ... ok
+test regressions::process_lifecycle::root_exit_cleans_descendant_before_waiting_for_pipe_eof ... ok
+test regressions::process_lifecycle::resize_authority_rejects_pipe_and_denied_pty_without_stopping_owner ... ok
+test holder_quiescence_requires_exact_terminal_correlated_manifests ... ok
+
+test result: ok. 25 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.20s
+
+     Running unittests src/lib.rs (target/peritus-sol-kernel-copy-consumers-01/debug/deps/peritus_product_runner-3224cbb3dda0d546)
+
+running 287 tests
+test attachment::decode::tests::prior_default_image_output_is_conserved_in_animation_budget ... ok
+test budget::tests::exact_numeric_ceilings_are_admitted_and_rejections_keep_their_priority ... ok
+test budget::tests::replacement_subtracts_before_adding_and_rejects_missing_prior_contributions ... ok
+test budget::tests::successful_probe_closes_a_run_scoped_provider_circuit ... ok
+test attachment::tests::provider_capability_and_exact_encoded_byte_bound_are_enforced ... ok
+test budget::tests::work_events_accumulate_without_a_successful_role_outcome ... ok
+test budget::tests::provider_failovers_are_counted_separately_from_same_provider_retries ... ok
+test budget::tests::caller_run_horizon_is_bounded_and_drives_elapsed_budget ... ok
+test context_config::sandbox_wire::tests::platform_fields_are_exact_and_roundtrip_without_widening ... ok
+test budget::tests::streaming_usage_replaces_each_response_snapshot_and_survives_failure ... ok
+test budget::tests::workspace_growth_and_peak_memory_are_observed_at_effect_boundaries ... ok
+test budget::tests::later_explicit_total_replaces_the_derived_total_without_double_counting ... ok
+test budget::tests::memory_and_workspace_growth_have_distinct_hard_failures ... ok
+test budget::resource_probe::tests::workspace_growth_ignores_git_storage_and_does_not_follow_links ... ok
+test attachment::tests::signatures_without_pixels_and_truncated_pixels_are_not_images ... ok
+test budget::tests::completed_work_is_retained_when_a_hard_ceiling_rejects_the_next_boundary ... ok
+test budget::tests::rejected_model_request_preserves_prior_usage_and_every_counter ... ok
+test budget::tests::usage_replacement_rejection_preserves_totals_and_the_retained_response ... ok
+test attachment::tests::all_supported_formats_decode_and_retain_exact_original_bytes_and_digest ... ok
+test control::brief::tests::incorporated_brief_edits_become_new_corrections_without_rewriting_prior_sources ... ok
+test control::checkpoint::tests::same_run_can_advance_the_exact_owned_postimage_but_another_run_cannot ... ok
+test control::brief::tests::ordinary_queue_edits_refresh_exact_brief_revision_but_not_unrelated_fields ... ok
+test control::brief::tests::brief_edits_share_immutable_queue_sources_and_do_not_release_a_held_requirement ... ok
+test control::files::tests::refresh_preserves_original_version_and_fences_previous_context_generation ... ok
+test control::goal::tests::missing_usage_is_unknown_not_zero_and_cost_has_independent_provenance ... ok
+test control::goal::tests::graphical_evidence_is_independent_fresh_and_revision_fenced ... ok
+test control::goal::tests::pause_boundaries_do_not_admit_mutation_or_complete_from_model_text ... ok
+test control::goal::tests::request_budget_is_reserved_before_admission_and_survives_resume ... ok
+test control::files::tests::historical_files_retain_bytes_and_references_without_reusing_refresh_consent ... ok
+test control::identity::tests::exact_encoding_and_nonzero_validation_survive_explicit_deserialization ... ok
+test control::goal::tests::only_fresh_strict_settlement_achieves_goal ... ok
+test control::inputs::tests::editing_preserves_old_text_and_incorporated_text_requires_a_new_correction ... ok
+test control::images::tests::empty_image_state_preserves_legacy_bytes_and_reference_operation_cannot_be_rebound ... ok
+test control::permissions::tests::narrowing_is_durable_and_broadening_above_host_rejects ... ok
+test control::tests::deserialization_cannot_construct_reserved_identifiers_or_unbounded_text ... ok
+test control::inputs::tests::dependency_order_hold_withdraw_and_incorporation_reject_invalid_plans_without_mutation ... ok
+test control::inputs::tests::request_capture_excludes_held_dependencies_and_tracks_every_mutation ... ok
+test control::inputs::tests::historical_snapshot_preserves_context_but_holds_all_inherited_pending_work ... ok
+test delivery_requirement::tests::artifact_requests_and_workspace_scope_do_not_gain_an_effect_requirement ... ok
+test delivery_requirement::tests::background_and_politeness_do_not_hide_a_promised_runtime_result ... ok
+test delivery_requirement::tests::coordinated_build_and_install_requires_the_installed_result ... ok
+test delivery_requirement::tests::live_operational_requests_require_effect_evidence ... ok
+test design::artifact::tests::operational_design_requires_live_effect_and_fresh_verification ... ok
+test control::tests::state_and_receipt_roundtrip_but_reject_changed_owner_and_unknown_generation ... ok
+test design::artifact::tests::large_workspace_inventory_is_bounded_without_blocking_design ... ok
+test control::files::tests::text_is_exact_and_invalid_ranges_binary_or_rebound_sources_reject ... ok
+test design::artifact::tests::rendered_design_preserves_the_request_and_observed_inventory ... ok
+test design::tests::design_requires_a_real_markdown_document ... ok
+test design::tests::artifact_workspace_marker_selects_the_deterministic_design_path ... ok
+test design::tests::rejected_design_retry_explains_the_exact_heading_contract ... ok
+test control::files::tests::snapshot_or_held_references_cannot_refresh_and_deselection_retains_history ... ok
+test developer_tools::access_policy::tests::existing_private_read_exclusions_do_not_change_process_authority ... ok
+test developer_tools::access_policy::tests::hard_constraint_allows_read_but_blocks_file_and_unconfined_process_writes ... ok
+test developer_tools::access_policy::tests::ordinary_repository_request_keeps_normal_access ... ok
+test control::images::tests::aggregate_limit_and_invalid_metadata_reject_without_dropping_any_selection ... ok
+test developer_tools::access_policy::tests::opaque_query_contract_blocks_implementation_reads_and_hidden_state ... ok
+test developer_tools::command_budget::tests::late_command_is_clamped_before_the_completion_reserve ... ok
+test design::tests::design_keeps_literal_values_and_scoped_rules_authoritative ... ok
+test developer_tools::command_budget::tests::command_is_refused_once_only_the_completion_reserve_remains ... ok
+test developer_tools::command_budget::tests::ordinary_command_keeps_its_requested_timeout ... ok
+test control::review::tests::anchors_reject_line_only_and_unsafe_path_identity ... ok
+test control::review::tests::leave_alone_is_a_revisioned_input_and_stays_protected_until_dismissed ... ok
+test developer_tools::command_runtime::compactor::tests::missing_or_directory_weights_never_allocate_process_authority ... ok
+test developer_tools::command_runtime::compactor::tests::compiled_compactor_contract_admits_exact_inputs_only ... ok
+test developer_tools::catalog::tests::mutating_catalog_declares_fresh_grounding_protocol ... ok
+test developer_tools::command_runtime::folder_patch::tests::plan_cannot_be_committed_by_another_runtime_with_the_same_run_id ... ok
+test developer_tools::arguments::tests::every_catalog_schema_is_supported_and_read_only_definitions_agree ... ok
+test developer_tools::arguments::tests::invalid_fields_are_rejected_instead_of_defaulted_or_coerced ... ok
+test developer_tools::command_runtime::plan::tests::executable_resolution_rejects_dangling_symlinks ... ok
+test developer_tools::command_runtime::preview::tests::controlled_preview_fixture ... ignored, subprocess fixture; invoked by the owned-preview test
+test developer_tools::command_runtime::ordinal::tests::legacy_shell_and_compactor_identities_are_preserved_including_gaps ... ok
+test attachment::tests::complete_animation_frames_are_validated_with_an_exact_count_bound ... ok
+test developer_tools::command_runtime::tests::command_restart_fixture ... ok
+test developer_tools::command_runtime::ordinal::tests::malformed_store_and_exhaustion_fail_without_resetting_identity ... ok
+test developer_tools::command_runtime::tests::idempotency_keys_are_stable_and_fixed_width ... ok
+test developer_tools::evidence::tests::evidence_retains_recent_bounded_command_observations ... ok
+test developer_tools::command_runtime::plan::tests::executable_resolution_preserves_multicall_name_and_normalizes_parent ... ok
+test developer_tools::evidence::tests::only_explicit_successful_purposes_become_acceptance_evidence ... ok
+test developer_tools::executor::inspection_progress::tests::identical_and_alternating_inspections_warn_then_stop ... ok
+test developer_tools::executor::receipt_tests::append_effect_counter_fixture ... ignored, subprocess fixture invoked by the duplicate-effect regression
+test developer_tools::command_runtime::result::tests::stream_projection_preserves_head_and_tail ... ok
+test developer_tools::executor::inspection_progress::tests::new_evidence_and_noninspection_work_reset_the_cycle ... ok
+test developer_tools::command_runtime::ordinal::tests::separate_runs_retain_independent_high_water_marks ... ok
+test developer_tools::command_runtime::ordinal::tests::reopening_and_stale_local_counters_do_not_reuse_reservations ... ok
+test developer_tools::executor::tests::access::folder_private_state_is_excluded_from_read_list_and_search_even_after_contract_refresh ... ok
+test developer_tools::executor::receipt_tests::completed_workspace_effect_replays_without_a_second_write ... ok
+
+running 1 test
+test developer_tools::executor::tests::access::read_only_tools_reject_undeclared_mutation_and_process_calls ... ok
+test developer_tools::executor::receipt_tests::append_effect_counter_fixture ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 286 filtered out; finished in 0.00s
+
+test developer_tools::executor::tests::admission::bad_write_is_repairable_in_the_same_invocation_without_enrollment_or_effect ... ok
+test developer_tools::command_runtime::ordinal::tests::invalid_and_exhausted_stored_counters_are_never_reset ... ok
+test developer_tools::executor::tests::admission::live_permission_narrowing_precedes_reads_scope_receipts_and_process_effects ... ok
+test developer_tools::executor::tests::admission::malformed_command_is_rejected_before_a_receipt_or_process_can_start ... ok
+test developer_tools::executor::tests::checkpoint::changed_write_captures_the_exact_preimage_before_the_effect ... ok
+test developer_tools::executor::tests::admission::absent_manifest_read_does_not_change_progress_or_block_greenfield_creation ... ok
+test developer_tools::executor::tests::checkpoint::checkpoint_failure_aborts_the_workspace_effect_and_unchanged_writes_skip_capture ... ok
+test developer_tools::executor::tests::checkpoint::empty_directory_capture_precedes_removal_with_an_explicit_kind ... ok
+test developer_tools::executor::tests::checkpoint::intervening_change_that_refuses_patch_never_reports_an_owned_mutation ... ok
+test control::images::tests::count_limit_is_exact_and_held_input_cannot_be_released_past_the_limit ... ok
+test developer_tools::executor::tests::command::command_created_file_fixture ... ok
+test developer_tools::command_runtime::ordinal::tests::independent_threads_reserve_distinct_numbers ... ok
+test developer_tools::executor::tests::command::command_output_fixture ... ok
+test developer_tools::executor::tests::command::command_stdin_fixture ... ok
+test developer_tools::executor::tests::command::command_timeout_fixture ... ok
+test control::inputs::tests::malformed_import_and_capacity_fail_closed ... ok
+test bundle::tests::diff_includes_untracked_text_files ... ok
+test candidate::tests::candidate_keeps_tracked_build_paths_but_omits_untracked_build_products ... ok
+test bundle::tests::diff_reports_exact_permissions_separately_from_git_mode ... ok
+test developer_tools::executor::tests::command::missing_executable_returns_scoped_prerequisite_recovery_guidance ... ok
+test bundle::tests::diff_includes_changes_committed_after_the_run_baseline ... ok
+test candidate::tests::candidate_survives_restart_and_includes_new_modified_and_deleted_files ... ok
+test candidate::tests::candidate_includes_changes_committed_after_the_run_baseline ... ok
+test developer_tools::command_runtime::folder_patch::tests::real_authority_applies_only_the_exact_c1_folder_patch_bytes ... ok
+test developer_tools::executor::tests::exact_remove_preserves_late_external_evidence_and_blocks_shell_deletion ... ok
+test developer_tools::executor::tests::existing_files_cannot_be_mutated_before_they_are_read ... ok
+test developer_tools::executor::tests::inspection::repeated_successful_listings_warn_and_block_without_resetting_grounding ... ok
+test developer_tools::executor::tests::long_inspection_sequence_returns_one_concrete_delivery_nudge ... ok
+test candidate::tests::candidate_expands_dirty_files_inside_an_untracked_nested_repository ... ok
+test developer_tools::executor::tests::task_contract_keeps_opaque_implementation_out_of_tool_evidence ... ok
+test developer_tools::executor::tests::workspace_reads_report_exact_posix_permissions ... ok
+test developer_tools::executor::tests::inspection::read_only_inspection_and_real_delivery_do_not_exhaust_the_nudge_budget ... ok
+test developer_tools::grounding::tests::empty_directory_removal_requires_exact_listing_evidence ... ok
+test developer_tools::grounding::tests::existing_target_requires_repository_and_target_observation ... ok
+test developer_tools::grounding::tests::observed_empty_repository_allows_new_files ... ok
+test developer_tools::executor::tests::workspace_remove_deletes_only_an_observed_empty_directory ... ok
+test developer_tools::executor::tests::workspace_write_reports_and_preserves_an_unchanged_file ... ok
+test developer_tools::receipt::tests::append_after_truncated_tail_remains_replayable_after_another_restart ... ok
+test developer_tools::receipt::tests::complete_corrupt_frame_fails_closed_without_truncation ... ok
+test developer_tools::receipt::tests::completed_effect_replays_and_conflicting_request_is_refused ... ok
+test developer_tools::receipt::tests::durable_receipt_state_rejects_inconsistent_result_fields ... ok
+test developer_tools::receipt::tests::interrupted_command_is_durably_ambiguous_and_never_relaunched ... ok
+test developer_tools::receipt::tests::interrupted_non_command_effect_remains_executable ... ok
+test developer_tools::ownership::tests::ignored_folder_does_not_inherit_parent_repository_ownership ... ok
+test bundle::tests::diff_projects_dirty_nested_repository_files_into_outer_context ... ok
+test developer_tools::receipt::tests::receipt_process_child_fixture ... ignored, subprocess fixture; invoked by process_termination_preserves_receipt_decisions
+test developer_tools::receipt::tests::receipt_read_errors_are_not_treated_as_an_empty_ledger ... ok
+test developer_tools::ownership::tests::late_external_file_is_not_owned_by_the_product_run ... ok
+test developer_tools::receipt::tests::repeated_provider_call_id_never_executes_a_second_effect ... ok
+test developer_tools::receipt::tests::reused_provider_call_id_conflicts_on_each_identity_dimension ... ok
+test developer_tools::resources::tests::admitted_commands_receive_cross_language_parallelism_defaults ... ok
+test developer_tools::receipt::tests::record_byte_bound_accepts_exact_limit_and_rejects_one_byte_over ... ok
+test developer_tools::resources::tests::common_build_job_flags_are_recognized_without_inspecting_shell_text ... ok
+test developer_tools::resources::tests::excessive_explicit_parallelism_is_rejected_before_spawn ... ok
+test developer_tools::resources::tests::linux_resource_formats_are_parsed_conservatively ... ok
+test engineering_workflow::tests::reviewer_rejects_correlated_exact_extraction_evidence ... ok
+test execution::acceptance::tests::external_effect_evidence_needs_an_action_and_a_fresh_verification ... ok
+test execution::acceptance::tests::external_evidence_never_weakens_the_default_workspace_scope ... ok
+test execution::acceptance::tests::partial_handoffs_do_not_label_failed_or_interrupted_gates_as_successful ... ok
+test developer_tools::receipt::tests::process_termination_preserves_receipt_decisions ... ok
+test engineering_workflow::tests::embedded_workflow_carries_the_hard_source_limit_for_every_role ... ok
+test execution::checkpoint::tests::changed_candidate_stales_prior_gate_evidence ... ok
+test control::tests::restore_capacity::applied_restore_invalidates_context_with_a_full_input_ledger ... ok
+test execution::deadline::tests::active_window_always_preserves_a_finalization_reserve ... ok
+test execution::deadline::tests::model_turns_stop_before_finalization_time_is_consumed ... ok
+test execution::checkpoint::tests::conversation_revision_stales_prior_evidence ... ok
+test execution::checkpoint::tests::fresh_reversion_clears_an_old_workspace_candidate ... ok
+test execution::fix_progress::tests::a_changed_blocker_identity_starts_a_fresh_attempt_budget ... ok
+test execution::checkpoint::tests::retry_preserves_a_clean_review_when_failed_gates_are_reacquired ... ok
+test execution::fix_progress::tests::candidate_change_resets_the_unchanged_count ... ok
+test execution::obligations::tests::exact_public_text_becomes_a_qualified_requirement_only_after_review ... ok
+test execution::obligations::tests::failed_obligation_routes_only_candidate_defects_to_the_fixer ... ok
+test execution::fix_progress::tests::candidate_permission_change_counts_as_fixer_progress ... ok
+test execution::fix_progress::tests::changing_candidate_does_not_hide_a_persistent_blocker ... ok
+test execution::resume::tests::conversation_change_restarts_at_design ... ok
+test execution::resume::tests::durable_resume_rejects_an_unknown_version ... ok
+test execution::fix_progress::tests::two_unchanged_fixer_cycles_exhaust_progress ... ok
+test execution::settlement::tests::incomplete_candidate_names_each_missing_acceptance_boundary ... ok
+test execution::settlement::tests::qualified_candidate_has_no_remaining_work ... ok
+test failover::tests::capability_and_circuit_bypasses_do_not_reopen_provider_circuits ... ok
+test failover::tests::progress_continues_bounded_segments_but_never_overrides_integrity_or_policy ... ok
+test failover::tests::same_provider_role_recovery_is_transient_and_finite ... ok
+test failover::tests::transient_terminals_allow_failover_but_policy_terminals_do_not ... ok
+test gates::artifact_csv::tests::accepts_quoted_commas_quotes_and_newlines ... ok
+test gates::artifact_csv::tests::gate_checks_only_changed_csv_artifacts ... ok
+test gates::artifact_csv::tests::rejects_backslash_escaped_quotes_from_the_benchmark_regression ... ok
+test gates::artifact_csv::tests::rejects_ragged_rows ... ok
+test gates::deliverable_inventory::tests::accepts_exact_single_file_inventory ... ok
+test gates::deliverable_inventory::tests::does_not_close_inventory_for_negated_or_ambiguous_language ... ok
+test gates::deliverable_inventory::tests::rejects_compiler_byproduct_beside_requested_single_file ... ok
+test execution::resume::tests::durable_resume_retains_candidate_and_reacquires_effectful_gates ... ok
+test gates::explicit_paths::tests::alternative_output_paths_require_one_member_instead_of_every_member ... ok
+test execution::resume::tests::provider_retry_reuses_valid_design_and_resumes_review ... ok
+test gates::explicit_paths::tests::arithmetic_addition_does_not_make_a_later_example_input_an_output ... ok
+test gates::explicit_paths::tests::conditional_deliverables_are_not_universal_requirements ... ok
+test gates::explicit_paths::tests::attendee_email_is_not_mistaken_for_an_output_path ... ok
+test gates::explicit_paths::tests::command_interpreter_is_not_mistaken_for_an_output_path ... ok
+test gates::explicit_paths::tests::descriptive_extension_is_not_a_literal_path_but_a_dotfile_is ... ok
+test gates::explicit_paths::tests::conditional_troubleshooting_commands_do_not_create_output_requirements ... ok
+test gates::explicit_paths::tests::exact_output_passes_without_treating_command_products_as_required ... ok
+test gates::explicit_paths::tests::missing_nested_output_rejects_same_basename_at_workspace_root ... ok
+test gates::explicit_paths::tests::output_verbs_do_not_leak_into_later_verification_sentences ... ok
+test gates::explicit_paths::tests::generated_filename_placeholders_are_not_literal_output_paths ... ok
+test gates::explicit_paths::tests::prose_abbreviation_is_not_an_output_path ... ok
+test gates::explicit_paths::tests::quoted_extensionless_executable_is_a_required_output ... ok
+test gates::explicit_paths::tests::read_only_and_negated_paths_are_not_required_outputs ... ok
+test gates::json_structure::tests::rejects_malformed_json ... ok
+test gates::json_structure::tests::validates_only_changed_json_files_in_the_project ... ok
+test gates::source_layout::tests::ignores_unchanged_and_generated_sources ... ok
+test gates::source_layout::tests::product_scope_keeps_first_party_files_strict_and_skips_late_imports ... ok
+test gates::source_layout::tests::rejects_a_rust_source_file_over_the_hard_limit ... ok
+test gates::tests::artifact_layout_checks_candidate_sources_without_rejecting_untouched_vendor_code ... ok
+test gates::tests::explicit_nested_output_cannot_be_satisfied_at_the_workspace_root ... ok
+test execution::resume::tests::report_retry_reuses_every_completed_execution_phase ... ok
+test gates::yaml_structure::tests::rejects_malformed_yaml ... ok
+test gates::yaml_structure::tests::validates_only_changed_yaml_files_in_the_project ... ok
+test gates::sqlite_migration::tests::executes_forward_twice_postcheck_and_rollback ... ok
+test gates::sqlite_migration::tests::rejects_a_migration_that_fails_on_the_second_run ... ok
+test developer_tools::executor::receipt_tests::reused_provider_call_id_cannot_dispatch_a_second_external_effect ... ok
+test developer_tools::command_runtime::preview::tests::owned_preview_launches_accepts_input_and_stops_explicitly ... ok
+test developer_tools::receipt::tests::ledger_byte_bound_accepts_exact_limit_and_rejects_one_byte_over ... ok
+test developer_tools::executor::tests::command::active_command_created_files_are_owned_after_terminal_observation ... ok
+test developer_tools::executor::tests::checkpoint::successful_command_seals_only_changed_scoped_paths_from_its_exact_receipt ... ok
+test developer_tools::executor::tests::command::active_commands_cancel_the_owned_process_tree ... ok
+test developer_tools::executor::tests::command::active_commands_accept_terminal_input_and_reach_a_stable_result ... ok
+test attachment::tests::complete_selection_rejects_count_aggregate_and_changed_provider_without_omission ... ok
+test developer_tools::executor::tests::command::commands_accept_a_workspace_reached_through_a_filesystem_alias ... ok
+test developer_tools::executor::tests::command::signal::active_commands_deliver_interrupt_signal_to_the_owned_process ... ok
+test developer_tools::executor::tests::command::command_created_files_can_be_removed_without_owning_unrelated_late_files ... ok
+test developer_tools::executor::tests::command::control::rejected_pipe_controls_preserve_the_active_command_handle ... ok
+test local_context::storage::tests::a_missing_artifact_aborts_the_entire_c0_transaction ... ok
+test gates::tests::nested_rust_target_cannot_be_satisfied_by_unrelated_root_tests ... ok
+test local_context::storage::tests::checkpoint_roots_and_exact_artifacts_survive_restart ... ok
+test local_context::storage::tests::unpublished_candidate_and_stale_generation_preserve_previous_checkpoint ... ok
+test local_context::tests::folder::folder_memory_rejects_candidate_claims_and_private_file_dependencies ... ok
+test local_context::semantic::tests::valid_local_proposal_uses_the_same_source_scope_and_atomic_update_validation ... ok
+test local_context::tests::invocation::invocation_policy_is_included_in_capacity_and_origin_checks ... ok
+test local_context::tests::a_precise_file_dependency_survives_unrelated_edits_and_invalidates_on_change ... ok
+test local_context::semantic::tests::malformed_output_timeout_and_missing_local_runtime_use_deterministic_state ... ok
+test local_context::tests::folder::folder_memory_reopens_and_file_validity_tracks_only_explicit_dependencies ... ok
+test local_context::tests::later_literal_correction_is_pinned_and_prepared_failure_keeps_the_published_view ... ok
+test local_context::tools::secret_text::tests::credential_shapes_are_rejected_without_rejecting_security_guidance ... ok
+test progress::tests::checkpoint_changes_when_candidate_permissions_change ... ok
+test progress::tests::checkpoint_changes_only_when_candidate_content_changes ... ok
+test review::tests::durable_clean_review_round_trip_can_continue_with_the_next_review ... ok
+test review::tests::durable_ledger_round_trip_preserves_a_fixer_proposal ... ok
+test review::tests::reviewer_boolean_is_rejected_and_advisory_remains_nonblocking ... ok
+test reviewer_turn::tests::rejected_review_requires_fresh_authoritative_reads ... ok
+test local_context::tests::invocation::current_policy_replaces_checkpoint_state_without_erasing_completed_tools ... ok
+test progress::tests::checkpoint_changes_when_the_task_creates_a_commit ... ok
+test turn::tests::external_effect_completion_may_retain_concise_steps ... ok
+test turn::tests::external_effect_writer_attempts_scoped_prerequisites_before_escalating ... ok
+test turn::tests::fresh_provider_recovery_requires_new_repository_grounding ... ok
+test turn::tests::live_operational_delivery_rejects_helper_files_as_the_whole_result ... ok
+test developer_tools::executor::tests::workspace_tools_inspect_edit_search_and_execute_without_a_shell ... ok
+test turn::tests::rejected_terminal_correction_requires_fresh_repository_grounding ... ok
+test turn::tests::reviewer_checks_literal_request_independently_of_the_design ... ok
+test turn::tests::reviewer_rechecks_conserved_finding_locations_after_fixes ... ok
+test turn::tests::unchanged_question_is_challenged_with_confirmed_workspace_capabilities ... ok
+test turn::tests::workspace_completion_requires_a_direct_run_command ... ok
+test turn::tests::writer_batches_tools_and_respects_artifact_workspaces ... ok
+test workspace_delivery::scope::tests::a_directory_declaration_cannot_conceal_undeclared_descendant_effects ... ok
+test workspace_delivery::scope::tests::a_scoped_file_replaced_by_a_symlink_fails_before_reading_the_destination ... ok
+test local_context::tests::reviewer::failed_reviewer_observations_remain_readable_without_derived_memory ... ok
+test workspace_delivery::scope::tests::exact_file_baseline_survives_reopen_without_inventory_or_rebaselining ... ok
+test workspace_delivery::scope::tests::enrollment_is_not_progress_but_creation_edit_deletion_and_reversion_are ... ok
+test workspace_delivery::scope::tests::scope_rejects_protected_traversal_torn_and_forged_records ... ok
+test workspace_filter::tests::recognizes_common_language_build_and_cache_trees ... ok
+test workspace_media::folder::tests::greeting_never_discovers_or_attaches_unmentioned_images ... ok
+test local_context::tests::reasoning::assistant_reasoning_survives_local_archive_and_recovery_without_becoming_instructions ... ok
+test workspace_media::folder::tests::only_explicit_non_private_paths_are_attached ... ok
+test workspace_media::tests::manifest_paths_use_provider_neutral_separators ... ok
+test workspace_media::tests::image_task_fails_explicitly_for_a_text_only_provider ... ok
+test workspace_media::tests::mentioned_source_directory_does_not_attach_descendant_screenshots ... ok
+test workspace_media::tests::mentioned_image_directory_attaches_the_complete_bounded_collection ... ok
+test workspace_media::tests::mentioned_workspace_image_is_attached_with_its_path ... ok
+test workspace_media::tests::unrelated_image_is_not_added_to_a_text_task ... ok
+test workspace_media::tests::verifier_reference_image_does_not_attach_unrelated_workspace_media ... ok
+test workspace_delivery::scope::tests::full_file_changes_beyond_the_preview_invalidate_freshness ... ok
+test local_context::tests::recovery::reused_provider_call_ids_are_distinct_completed_episodes ... ok
+test local_context::tests::capacity::optional_working_entries_leave_room_for_policy_tools_and_message_framing ... ok
+test local_context::tests::retrieval::exact_read_and_search_find_diagnostics_beyond_any_prefix_preview ... ok
+test local_context::tests::inspection::inspection_keeps_exact_published_view_and_reports_unpublished_tail ... ok
+test turn::evidence::tests::projection_bounds_first_turn_and_preserves_each_section ... ok
+test local_context::tests::recovery::checkpoint_and_uncovered_pending_proposal_survive_without_claiming_execution ... ok
+test local_context::tests::capacity::required_working_closure_uses_provider_headroom_and_survives_restart ... ok
+test local_context::tests::updates_survive_observation_bookkeeping_and_reject_stale_or_forged_operations ... ok
+test local_context::tests::recovery::a_trace_committed_before_memory_is_ingested_once_after_restart ... ok
+test turn::tests::reviewer_bounds_oversized_initial_evidence_before_provider_compaction ... ok
+test local_context::storage::tests::ownership_and_scope_fail_closed ... ok
+test attachment::tests::image_dimensions_reject_a_small_encoded_bomb_before_pixel_decode ... ok
+test developer_tools::command_runtime::tests::commands_after_failed_start_and_runtime_reopen_execute_once_with_fresh_identities ... ok
+test turn::evidence::tests::smaller_provider_profiles_receive_smaller_evidence_packets ... ok
+test local_context::tests::retrieval::bounded_pages_report_unreturned_handles_and_state_cursors_are_revision_bound ... ok
+
+running 1 test
+test developer_tools::executor::receipt_tests::append_effect_counter_fixture ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 286 filtered out; finished in 0.00s
+
+test developer_tools::executor::receipt_tests::disconnect::disconnect_retry_cannot_relaunch_a_durably_pending_command ... ok
+test local_context::tests::a_source_backed_failed_cause_survives_repeated_view_reductions ... ok
+test developer_tools::command_runtime::ordinal::tests::transient_writer_contention_waits_for_a_durable_reservation ... ok
+test developer_tools::executor::tests::command::structured_commands_drain_and_bound_both_output_streams ... ok
+test developer_tools::executor::tests::command::structured_commands_shrink_to_preserve_the_product_completion_reserve ... ok
+test developer_tools::executor::tests::command::structured_commands_time_out_without_freezing_the_agent ... ok
+
+test result: ok. 284 passed; 0 failed; 3 ignored; 0 measured; 0 filtered out; finished in 1.30s
+
+     Running tests/checkpoint_resume.rs (target/peritus-sol-kernel-copy-consumers-01/debug/deps/checkpoint_resume-dc22caa0a310f580)
+
+running 9 tests
+test effect_identity::resumed_writer_keeps_distinct_effects_with_local_memory_disabled ... ok
+test provider_failure_after_mutation_returns_the_exact_candidate ... ok
+test effect_identity::resumed_writer_can_issue_a_different_first_effect_at_the_same_conversation_revision ... ok
+test cancellation_during_review_preserves_a_pending_review_candidate ... ok
+test early_failure_after_durable_restore_retains_exact_candidate_paths ... ok
+test failing_gates_remain_a_candidate_when_the_fixer_provider_fails ... ok
+test reviewer_failure_resumes_review_without_design_writer_or_gates ... ok
+test deadline_cutoff_still_runs_finalization ... ok
+test failure_during_fix_resumes_the_fixer_then_rechecks_and_accepts ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.60s
+
+     Running tests/external_effects.rs (target/peritus-sol-kernel-copy-consumers-01/debug/deps/external_effects-959f5e47ddd3eed7)
+
+running 3 tests
+test external_effect_command_fixture ... ok
+test authorized_external_effects_complete_without_a_synthetic_workspace_diff ... ok
+test operational_request_needs_a_live_effect_even_when_supporting_files_change ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.96s
+
+     Running tests/in_place_recovery.rs (target/peritus-sol-kernel-copy-consumers-01/debug/deps/in_place_recovery-173c6faa23c2061c)
+
+running 2 tests
+test material_progress_cannot_restart_a_safety_terminal_or_switch_providers ... ok
+test absent_reads_do_not_replenish_recovery_and_failed_roles_are_fully_accounted ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.23s
+
+     Running tests/production_composition.rs (target/peritus-sol-kernel-copy-consumers-01/debug/deps/production_composition-6d36d1d76101f2b3)
+
+running 4 tests
+test product_run_future_leaves_room_for_composing_callers ... ok
+test provider_failure_before_first_response_retains_an_empty_trace ... ok
+test exact_target_tool_edit_and_typed_review_are_required_for_completion ... ok
+test fixer_cannot_erase_a_finding_without_fresh_reviewer_confirmation ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.50s
+
+     Running tests/provider_failover.rs (target/peritus-sol-kernel-copy-consumers-01/debug/deps/provider_failover-bdafbaf4982b18c7)
+
+running 1 test
+test unavailable_selected_provider_uses_consented_fallbacks_for_each_role ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.81s
+
+     Running tests/role_recovery.rs (target/peritus-sol-kernel-copy-consumers-01/debug/deps/role_recovery-de48c04860342bae)
+
+running 1 test
+test roles_restart_after_exhausted_empty_and_interrupted_responses ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.89s
+
+     Running unittests src/lib.rs (target/peritus-sol-kernel-copy-consumers-01/debug/deps/peritus_protocol-d6278d822e3c3e0f)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/bin/peritus-protocol-codegen.rs (target/peritus-sol-kernel-copy-consumers-01/debug/deps/peritus_protocol_codegen-3b5486b6a541e6fe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/acceptance.rs (target/peritus-sol-kernel-copy-consumers-01/debug/deps/acceptance-dc97b743d443530b)
+
+running 2 tests
+test contract_digest_rejects_any_corrupted_advertised_value ... ok
+test complete_contract_roundtrips_and_reconstructs_checked_domain ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/agent.rs (target/peritus-sol-kernel-copy-consumers-01/debug/deps/agent-86c81de52e32a7bd)
+
+running 5 tests
+test configured_opaque_bound_is_enforced ... ok
+test sequence_and_predecessor_must_describe_the_same_causal_head ... ok
+test all_agent_families_round_trip_exactly ... ok
+test truncation_unknown_tags_digest_mismatch_and_trailing_bytes_are_rejected ... ok
+test debug_output_redacts_all_opaque_payload_bytes ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/budget.rs (target/peritus-sol-kernel-copy-consumers-01/debug/deps/budget-c130064e6b2d66b6)
+
+running 2 tests
+test amounts_and_every_budget_command_roundtrip ... ok
+test snapshots_receipts_and_failures_remain_inert_data ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/compatibility.rs (target/peritus-sol-kernel-copy-consumers-01/debug/deps/compatibility-5600f3c949b8be75)
+
+running 6 tests
+test checked_in_agent_frames_are_exact_and_decodable ... ok
+test family_registry_is_nonzero_unique_and_strictly_ordered ... ok
+test f0_family_allocations_are_frozen ... ok
+test lifecycle_registry_is_complete_unique_and_nonzero ... ok
+test checked_in_compatibility_frames_are_exact_and_decodable ... ok
+test checked_in_client_artifacts_are_exact_generator_output ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests/lifecycle.rs (target/peritus-sol-kernel-copy-consumers-01/debug/deps/lifecycle-a427cd2cbb1b6b36)
+
+running 5 tests
+test envelope_preserves_revision_and_causal_predecessor ... ok
+test error_record_and_malformed_values_are_closed ... ok
+test every_command_variant_roundtrips ... ok
+test every_phase_roundtrips ... ok
+test every_event_kind_and_subject_roundtrips_as_inert_data ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/policy.rs (target/peritus-sol-kernel-copy-consumers-01/debug/deps/policy-d180795c92cb530f)
+
+running 3 tests
+test complete_policy_definition_roundtrips_through_checked_constructors ... ok
+test amendment_digest_is_verified_before_domain_conversion ... ok
+test action_digest_binds_every_action_field ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/registry_roles.rs (target/peritus-sol-kernel-copy-consumers-01/debug/deps/registry_roles-938209a33103fc09)
+
+running 2 tests
+test every_registered_family_has_one_stable_role ... ok
+test registered_command_and_event_roles_are_complete_and_disjoint ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/peritus-sol-kernel-copy-consumers-01/debug/deps/peritus_tool_router-a38133a7e8361a31)
+
+running 3 tests
+test verified::tests::authority_rejects_each_independent_missing_fact ... ok
+test verified::tests::rejection_and_replay_never_admit_second_effect ... ok
+test verified::tests::operation_refinement_rejects_each_independent_mismatch ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/production_conformance.rs (target/peritus-sol-kernel-copy-consumers-01/debug/deps/production_conformance-dc141253cdcf723f)
+
+running 1 test
+test production_router_passes_all_eight_a2_tool_cases ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.23s
+
+     Running tests/router_authority.rs (target/peritus-sol-kernel-copy-consumers-01/debug/deps/router_authority-6d56607a75338d3b)
+
+running 6 tests
+test authority_rejection_never_calls_dispatcher ... ok
+test rejected_control_restores_active_execution_ownership ... ok
+test conflicting_and_non_idempotent_replay_never_repeat_effect ... ok
+test exact_authority_dispatches_once_and_exact_replay_returns_cached_result ... ok
+test exact_replay_still_requires_exact_authority_without_redispatch ... ok
+test wrong_prepared_digest_never_calls_dispatcher ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running tests/router_lifecycle.rs (target/peritus-sol-kernel-copy-consumers-01/debug/deps/router_lifecycle-1b780f07b46b88b2)
+
+running 3 tests
+test recovery_progress_and_terminal_are_accepted_as_one_update ... ok
+test synchronous_result_cannot_claim_unobserved_progress ... ok
+test progress_then_typed_poll_failure_closes_with_observed_count ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running unittests src/lib.rs (target/peritus-sol-kernel-copy-consumers-01/debug/deps/peritus_tools_fs-e5045a727052760e)
+
+running 1 test
+test verified::tests::independent_bounds_fail_closed ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/filesystem_tools.rs (target/peritus-sol-kernel-copy-consumers-01/debug/deps/filesystem_tools-dfebd06968be4c66)
+
+running 4 tests
+test every_mutation_form_compiles_to_one_canonical_patch_set ... ok
+test descriptor_catalog_is_complete_canonical_and_deterministic ... ok
+test immutable_inspection_refuses_symlink_traversal ... ok
+test immutable_discover_read_metadata_and_search_are_real_and_bounded ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s
+
+     Running tests/fs_dispatch.rs (target/peritus-sol-kernel-copy-consumers-01/debug/deps/fs_dispatch-3bb2c3f17a0dc424)
+
+running 3 tests
+test authorized_preimage_conflict_is_failed_without_effect ... ok
+test router_dispatches_create_and_write_through_target_owned_gateway ... ok
+test router_dispatches_remove_replace_and_atomic_multi_file_patch ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.46s
+
+     Running unittests src/lib.rs (target/peritus-sol-kernel-copy-consumers-01/debug/deps/peritus_tools_git-91b2dd9afb1c2dd5)
+
+running 1 test
+test verified::tests::diff_dimensions_are_independent ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/git_dispatch.rs (target/peritus-sol-kernel-copy-consumers-01/debug/deps/git_dispatch-4154966be322154e)
+
+running 1 test
+test router_dispatches_candidate_snapshot_and_history_preserving_rollback ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.33s
+
+     Running tests/git_tools.rs (target/peritus-sol-kernel-copy-consumers-01/debug/deps/git_tools-86c93d2120375a4c)
+
+running 3 tests
+test descriptor_catalog_is_complete_canonical_and_deterministic ... ok
+test merge_is_typed_unsupported_and_never_mutates_refs ... ok
+test structured_status_diff_history_and_snapshot_use_real_git_observations ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.10s
+
+     Running unittests src/lib.rs (target/peritus-sol-kernel-copy-consumers-01/debug/deps/peritus_tools_shell-d8d66e31e1bd0456)
+
+running 9 tests
+test input::tests::direct_command_line_rejects_shell_syntax_and_markup ... ok
+test input::tests::structured_argv_rejects_shell_command_mode ... ok
+test error::tests::diagnostic_cap_preserves_utf8_boundaries ... ok
+test input::tests::script_is_one_literal_argument ... ok
+test input::tests::structured_argv_keeps_arguments_literal ... ok
+test render::tests::escapes_controls_and_labels_tail_truncation ... ok
+test input::tests::direct_command_line_becomes_literal_argv ... ok
+test execution::terminal::tests::exec_and_script_accept_counted_truncation_but_not_incomplete_output ... ok
+test catalog::tests::descriptors_are_stable_and_distinct ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests tests/fixtures/native_helper.rs (target/peritus-sol-kernel-copy-consumers-01/debug/deps/peritus_c4_native_helper_fixture-8101b5f59f384407)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests tests/fixtures/process_fixture.rs (target/peritus-sol-kernel-copy-consumers-01/debug/deps/peritus_c4_process_fixture-e8026d58d4411ad3)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/execution_integration.rs (target/peritus-sol-kernel-copy-consumers-01/debug/deps/execution_integration-e532c0c2d160d615)
+
+running 2 tests
+test shell_exec_runs_literal_argv_accepts_stdin_and_publishes_output_artifacts ... ok
+test quality_run_emits_candidate_evidence_and_invalid_json_never_passes ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.10s
+
+     Running unittests src/lib.rs (target/peritus-sol-kernel-copy-consumers-01/debug/deps/peritus_workspace-e5ef7582ac596625)
+
+running 12 tests
+test scoped_inspection::read::tests::nonexistent_last_line_and_oversized_selected_lines_reject_without_partial_result ... ok
+test scoped_inspection::read::tests::range_scanning_is_chunk_independent_and_preserves_original_line_terminators ... ok
+test verified::tests::authority_gate_rejects_every_missing_fact ... ok
+test scoped_inspection::read::tests::replaced_file_identity_and_changed_same_length_content_invalidate_the_observation ... ok
+test reconcile::tests::post_fence_classification_never_guesses_safety ... ok
+test verified::tests::resource_identity_rejects_each_independent_mismatch ... ok
+test scoped_inspection::tests::races::an_open_capability_rejects_a_replaced_root_before_publishing_source_bytes ... ok
+test scoped_inspection::tests::symlinks_at_every_component_and_replaced_roots_cannot_read_an_outside_file ... ok
+test scoped_inspection::tests::races::fifo_socket_and_directory_reject_as_non_regular_files_without_waiting_for_a_writer ... FAILED
+test scoped_inspection::tests::exact_bytes_ranges_and_full_source_digests_are_independent_and_never_truncated ... ok
+test scoped_inspection::tests::races::concurrent_intermediate_symlink_swaps_never_publish_outside_bytes ... ok
+test scoped_inspection::tests::empty_files_large_ranged_files_and_invalid_bounds_have_explicit_results ... ok
+
+failures:
+
+---- scoped_inspection::tests::races::fifo_socket_and_directory_reject_as_non_regular_files_without_waiting_for_a_writer stdout ----
+
+thread 'scoped_inspection::tests::races::fifo_socket_and_directory_reject_as_non_regular_files_without_waiting_for_a_writer' (13051) panicked at crates/runtime/peritus-workspace/src/scoped_inspection/tests/races.rs:13:81:
+socket: Os { code: 1, kind: PermissionDenied, message: "Operation not permitted" }
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    scoped_inspection::tests::races::fifo_socket_and_directory_reject_as_non_regular_files_without_waiting_for_a_writer
+
+test result: FAILED. 11 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.32s
+
+error: test failed, to rerun pass `-p peritus-workspace --lib`

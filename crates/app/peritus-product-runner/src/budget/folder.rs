@@ -1,6 +1,6 @@
 //! Direct-folder accounting without recursive directory inventory.
 use super::{
-    BTreeSet, Duration, Instant, ProductRunProgress, ProductRunnerError, RunAccounting,
+    AccountingState, BTreeSet, Duration, Instant, ProductRunnerError, RunAccounting,
     RunResourceProbe, validate_run_horizon,
 };
 impl RunAccounting {
@@ -10,8 +10,7 @@ impl RunAccounting {
         Ok(Self {
             started: Instant::now(),
             max_elapsed,
-            progress: ProductRunProgress::default(),
-            response_usage: peritus_agent::DeveloperUsage::default(),
+            state: AccountingState::default(),
             resources: RunResourceProbe::process_only(),
             unavailable_providers: BTreeSet::new(),
         })

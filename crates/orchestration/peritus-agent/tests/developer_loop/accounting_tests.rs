@@ -4,6 +4,44 @@ use peritus_agent::DeveloperAccountingEvent;
 use peritus_model_protocol::{ModelEvent, UsageCounters, UsageObservation, UsageScope};
 use std::task::Poll;
 
+#[test]
+fn ordinary_developer_requests_negotiate_usage_when_supported() {
+    use peritus_model_protocol::Capability;
+    block_on(async {
+        for usage_supported in [true, false] {
+            let mut capabilities = vec![Capability::ToolCalls];
+            if usage_supported {
+                capabilities.push(Capability::UsageDetail);
+            }
+            let provider = ScriptedProvider {
+                profile: fixtures::profile_with_capabilities(&capabilities),
+                responses: Mutex::new(VecDeque::from([text_response()])),
+                requests: Mutex::new(Vec::new()),
+            };
+            DeveloperLoop::run(
+                &provider,
+                DeveloperLoopRequest {
+                    request_prefix: "usage-negotiation".to_owned(),
+                    system: "Answer the question.".to_owned(),
+                    prompt: "Say ok.".to_owned(),
+                    attachments: Vec::new(),
+                    tools: vec![read_tool()],
+                    limits: DeveloperLoopLimits::new(2, 2).expect("limits"),
+                    cancellation: CancellationToken::new(),
+                },
+                &mut RecordingTool::default(),
+                &mut RecordingTrace::default(),
+            )
+            .await
+            .expect("ordinary developer request");
+            let requests = provider.requests.lock().expect("requests");
+            assert_eq!(requests.len(), 1);
+            assert_eq!(requests[0].negotiated().includes(Capability::UsageDetail), usage_supported);
+            drop(requests);
+        }
+    });
+}
+
 struct SuspendedProvider(ProviderProfile);
 struct SuspendedStream(VecDeque<EventEnvelope>);
 

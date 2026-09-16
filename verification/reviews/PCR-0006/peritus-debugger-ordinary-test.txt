@@ -1,0 +1,79 @@
+{"candidate_commit": "65f16e2933b70305de865750931bb05fe9afb64d", "candidate_tree": "ae2a43f9a9b73f5fec944d39cf165a8b3ec4df20", "environment": {"CARGO_BUILD_JOBS": "1", "CCACHE_DISABLE": "1", "RUST_TEST_THREADS": "1"}, "gate": {"command": "cargo test --package peritus-debugger --all-targets --all-features --locked", "invocation": ["cargo", "test", "--package", "peritus-debugger", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "output": "019-peritus-debugger-ordinary-test.log", "owning_crate": "peritus-debugger", "started_at": "2026-09-13T15:19:55.596168Z"}, "plan_sha256": "7fc101b7f8284fbe3818461a8166d73d3425f369120b43c1cbf1b43809a6b7c9"}
+
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.23s
+     Running unittests src/lib.rs (target/debug/deps/peritus_debugger-944e930f3b5fcc74)
+
+running 5 tests
+test model::runner::tests::cancellation_and_event_budget_stop_before_admission ... ok
+test model::runner::tests::malformed_stream_and_provider_failure_are_retryable_protocol_errors ... ok
+test model::runner::tests::output_shape_and_schema_fail_closed ... ok
+test model::runner::tests::strict_structured_proposal_is_the_only_success_shape ... ok
+test runtime::publication::tests::staged_report_and_pre_admitted_evidence_reconcile_to_one_publication ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running tests/domain_primitives.rs (target/debug/deps/domain_primitives-2c14209e35fe25dc)
+
+running 12 tests
+test artifact_ranges_are_nonempty_half_open ... ok
+test confidence_retains_counters_and_never_implies_acceptance ... ok
+test limits_only_tighten_and_fit_c0_b3_boundaries ... ok
+test nominal_identity_rejects_zero_and_derives_deterministically ... ok
+test refinement_bounded_analysis ... ok
+test refinement_citation_containment ... ok
+test refinement_non_authority ... ok
+test refinement_replay_equivalence ... ok
+test refinement_report_validity ... ok
+test refinement_selection_containment ... ok
+test taxonomy_is_complete_unique_and_strict ... ok
+test unsupported_claim_retains_only_digest_and_reason ... ok
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/durability_journal.rs (target/debug/deps/durability_journal-93ce8991b603a3d6)
+
+running 4 tests
+test absent_job_has_no_phantom_checkpoint_or_history ... ok
+test commit_is_idempotent_and_replay_matches_the_atomic_checkpoint ... ok
+test model_outbox_start_and_failure_settlement_share_one_claim_fence ... ok
+test reused_command_identity_with_different_content_is_rejected ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running tests/durability_reducer.rs (target/debug/deps/durability_reducer-bc1cee84965f34cb)
+
+running 3 tests
+test cancellation_is_terminal_and_wins_before_effect_execution ... ok
+test report_recovery_distinguishes_staging_commit_admission_and_settlement ... ok
+test retry_is_a_separate_bounded_transition_and_recovery_action ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/model_validation.rs (target/debug/deps/model_validation-a6c97f93371036a5)
+
+running 3 tests
+test strict_schema_is_stable_parseable_and_closed ... ok
+test v1_fixture_digest_manifest_matches_exact_bytes ... ok
+test v1_proposal_fixtures_are_bounded_canonical_json ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/production_conformance.rs (target/debug/deps/production_conformance-ea5fd263e5bc7556)
+
+running 1 test
+test production_debugger_passes_all_thirteen_a2_cases ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/replay_wire.rs (target/debug/deps/replay_wire-31e905eeace1eaa3)
+
+running 4 tests
+test event_replay_reconstructs_the_exact_successor_chain ... ok
+test families_82_83_and_84_round_trip_through_semantic_checks ... ok
+test frozen_family_corpus_matches_exact_canonical_bytes ... ok
+test wire_rejects_corruption_instead_of_partially_activating_it ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+GATE DRIVER RESULT: {"command": "cargo test --package peritus-debugger --all-targets --all-features --locked", "command_exit_code": 0, "elapsed_seconds": 0.416, "exit_code": 0, "finished_at": "2026-09-13T15:19:56.012641Z", "invocation": ["cargo", "test", "--package", "peritus-debugger", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "output": "019-peritus-debugger-ordinary-test.log", "owning_crate": "peritus-debugger", "result": "passed", "started_at": "2026-09-13T15:19:55.596168Z"}

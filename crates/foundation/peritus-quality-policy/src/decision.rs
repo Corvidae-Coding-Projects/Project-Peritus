@@ -266,8 +266,10 @@ impl AcceptanceDecision {
         review_cycle_limit: u16,
     ) -> (decision: Self)
         ensures
-            decision.spec_is_acceptable() ==> checks.spec_complete(),
-            decision.spec_is_acceptable() ==> decision.spec_unmet_conditions().len() == 0,
+            decision.spec_is_acceptable() == (
+                checks.spec_complete() && unmet@.len() == 0
+            ),
+            decision.spec_checks_complete() == checks.spec_complete(),
             decision.spec_unmet_conditions() == unmet@,
             decision.spec_gate_attempt_limit() == gate_attempt_limit,
             decision.spec_review_cycle_limit() == review_cycle_limit,

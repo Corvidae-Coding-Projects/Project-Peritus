@@ -36,3 +36,19 @@ fn every_registered_family_has_one_stable_role() {
         Some(MessageRole::CommandEnvelope)
     );
 }
+
+#[test]
+fn scheduler_roles_accept_both_registered_schema_versions() {
+    for (tag, role) in
+        [(70, MessageRole::Command), (71, MessageRole::Event), (72, MessageRole::State)]
+    {
+        let family = FAMILIES.iter().find(|family| family.tag == tag).expect("scheduler family");
+        assert_eq!(family.role(), role);
+        assert_eq!(family.schema_version, 2);
+        assert_eq!(family.supported_schema_versions, &[1, 2]);
+        assert!(family.supports(1));
+        assert!(family.supports(2));
+        assert!(!family.supports(0));
+        assert!(!family.supports(3));
+    }
+}

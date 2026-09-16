@@ -1,9 +1,11 @@
 //! Durable host qualification, with exact artifacts and no real model or external effects.
 
 use serde_json::Value;
+mod capacity;
 mod folder;
 mod inspection;
 mod invocation;
+mod reasoning;
 mod recovery;
 mod retrieval;
 mod reviewer;
@@ -65,6 +67,35 @@ fn updates_survive_observation_bookkeeping_and_reject_stale_or_forged_operations
             .is_some()
     );
     assert_eq!(state, memory.state);
+}
+
+#[test]
+fn file_validity_rejection_explains_a_repair_without_committing_the_bad_update() {
+    let fixture = Fixture::new();
+    let mut memory = fixture.open();
+    begin(&mut memory, "file-validity-repair");
+    let id = observation(&mut memory, "read", "file evidence", false);
+    let mut proposal = update(memory.model_revision, id, "file-fact", "Current input is relevant.");
+    proposal["operations"][0]["files"] = Value::Array(vec![Value::from("input.txt")]);
+    let state = memory.state.clone();
+    let revision = memory.model_revision;
+    let rejected = tools::update::execute(&mut memory, proposal.to_string().as_bytes()).unwrap();
+    assert_eq!(memory.state, state);
+    assert_eq!(memory.model_revision, revision);
+    let detail = rejected["rejected"].as_str().expect("rejection detail");
+    assert!(detail.contains("validity=files"), "{detail}");
+    assert!(detail.contains("empty files"), "{detail}");
+
+    proposal["operations"][0]["validity"] = Value::from("files");
+    let repaired = tools::update::execute(&mut memory, proposal.to_string().as_bytes()).unwrap();
+    assert!(repaired.get("rejected").is_none(), "{repaired}");
+    assert_eq!(memory.state.entries(memory.state.binding()).unwrap().len(), 1);
+    std::fs::write(fixture.workspace.path().join("input.txt"), "changed").unwrap();
+    memory.refresh().unwrap();
+    assert_eq!(
+        memory.state.entries(memory.state.binding()).unwrap()[0].status(),
+        WorkingEntryStatus::Stale
+    );
 }
 
 #[test]

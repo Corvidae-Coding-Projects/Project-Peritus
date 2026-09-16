@@ -35,6 +35,11 @@ pub struct PlatformIdentity {
 }
 
 impl PlatformIdentity {
+    /// Exact admission predicate for one native target identity.
+    pub open spec fn inputs_valid(profile_digest: Sha256Digest) -> bool {
+        crate::validation::spec_digest_nonzero(profile_digest)
+    }
+
     /// Creates one exact native target identity.
     ///
     /// # Errors
@@ -44,22 +49,52 @@ impl PlatformIdentity {
         operating_system: OperatingSystem,
         architecture: Architecture,
         profile_digest: Sha256Digest,
-    ) -> Result<Self, ConstructionError> {
-        super::require_digest(profile_digest)?;
+    ) -> (result: Result<Self, ConstructionError>)
+        ensures
+            result.is_ok() == Self::inputs_valid(profile_digest),
+            match result {
+                Ok(value) => value.spec_operating_system() == operating_system
+                    && value.spec_architecture() == architecture
+                    && value.spec_profile_digest() == profile_digest,
+                Err(error) => error.spec_kind() == ConstructionErrorKind::ZeroDigest,
+            },
+    {
+        crate::validation::require_digest(profile_digest)?;
         Ok(Self { operating_system, architecture, profile_digest })
     }
 
     /// Returns the operating-system family.
     #[must_use]
-    pub const fn operating_system(&self) -> OperatingSystem { self.operating_system }
+    pub const fn operating_system(&self) -> (value: OperatingSystem)
+        ensures value == self.spec_operating_system()
+    {
+        self.operating_system
+    }
 
     /// Returns the processor architecture.
     #[must_use]
-    pub const fn architecture(&self) -> Architecture { self.architecture }
+    pub const fn architecture(&self) -> (value: Architecture)
+        ensures value == self.spec_architecture()
+    {
+        self.architecture
+    }
 
     /// Returns the reviewed platform-profile digest.
     #[must_use]
-    pub const fn profile_digest(&self) -> Sha256Digest { self.profile_digest }
+    pub const fn profile_digest(&self) -> (digest: Sha256Digest)
+        ensures digest == self.spec_profile_digest()
+    {
+        self.profile_digest
+    }
+
+    /// Logical view of the operating-system family.
+    pub closed spec fn spec_operating_system(&self) -> OperatingSystem { self.operating_system }
+
+    /// Logical view of the processor architecture.
+    pub closed spec fn spec_architecture(&self) -> Architecture { self.architecture }
+
+    /// Logical view of the reviewed platform-profile digest.
+    pub closed spec fn spec_profile_digest(&self) -> Sha256Digest { self.profile_digest }
 }
 
 /// Exact Linux, macOS, and Windows release target matrix.
@@ -71,6 +106,17 @@ pub struct PlatformMatrix {
 }
 
 impl PlatformMatrix {
+    /// Exact admission predicate for the canonical three-slot platform matrix.
+    pub open spec fn inputs_valid(
+        linux: PlatformIdentity,
+        macos: PlatformIdentity,
+        windows: PlatformIdentity,
+    ) -> bool {
+        linux.spec_operating_system() == OperatingSystem::Linux
+            && macos.spec_operating_system() == OperatingSystem::MacOs
+            && windows.spec_operating_system() == OperatingSystem::Windows
+    }
+
     /// Creates a complete tier-one matrix in canonical Linux/macOS/Windows order.
     ///
     /// # Errors
@@ -80,7 +126,16 @@ impl PlatformMatrix {
         linux: PlatformIdentity,
         macos: PlatformIdentity,
         windows: PlatformIdentity,
-    ) -> Result<Self, ConstructionError> {
+    ) -> (result: Result<Self, ConstructionError>)
+        ensures
+            result.is_ok() == Self::inputs_valid(linux, macos, windows),
+            match result {
+                Ok(value) => value.spec_linux() == linux
+                    && value.spec_macos() == macos
+                    && value.spec_windows() == windows,
+                Err(error) => error.spec_kind() == ConstructionErrorKind::InvalidPlatformMatrix,
+            },
+    {
         if matches!(linux.operating_system(), OperatingSystem::Linux)
             && matches!(macos.operating_system(), OperatingSystem::MacOs)
             && matches!(windows.operating_system(), OperatingSystem::Windows)
@@ -93,15 +148,36 @@ impl PlatformMatrix {
 
     /// Returns the exact Linux target.
     #[must_use]
-    pub const fn linux(&self) -> PlatformIdentity { self.linux }
+    pub const fn linux(&self) -> (value: PlatformIdentity)
+        ensures value == self.spec_linux()
+    {
+        self.linux
+    }
 
     /// Returns the exact macOS target.
     #[must_use]
-    pub const fn macos(&self) -> PlatformIdentity { self.macos }
+    pub const fn macos(&self) -> (value: PlatformIdentity)
+        ensures value == self.spec_macos()
+    {
+        self.macos
+    }
 
     /// Returns the exact Windows target.
     #[must_use]
-    pub const fn windows(&self) -> PlatformIdentity { self.windows }
+    pub const fn windows(&self) -> (value: PlatformIdentity)
+        ensures value == self.spec_windows()
+    {
+        self.windows
+    }
+
+    /// Logical view of the exact Linux target.
+    pub closed spec fn spec_linux(&self) -> PlatformIdentity { self.linux }
+
+    /// Logical view of the exact macOS target.
+    pub closed spec fn spec_macos(&self) -> PlatformIdentity { self.macos }
+
+    /// Logical view of the exact Windows target.
+    pub closed spec fn spec_windows(&self) -> PlatformIdentity { self.windows }
 }
 
 } // verus!

@@ -2,13 +2,16 @@
 
 use peritus_release_artifacts::{ReleaseBinding, Sha256Digest, digest_bytes};
 use peritus_release_policy::{
-    QualificationSlice, ReleaseCandidate, ReleaseEvidence, ReleaseVerdict, evaluate_release,
+    QualificationSlice, RELEASE_QUALIFICATION_CHECK_COUNT, ReleaseCandidate, ReleaseEvidence,
+    ReleaseQualificationAdmission, ReleaseQualificationCheck, evaluate_release,
 };
 
 use crate::{
     DeterministicReleasePolicy, EvidenceDisposition, EvidenceKind, PolicyDecision, PolicyFailure,
     ReleasePolicyInput,
 };
+
+pub const LOCAL_RELEASE_QUALIFICATION_CHECK_COUNT: usize = RELEASE_QUALIFICATION_CHECK_COUNT - 1;
 
 /// Exact H4 digests admitted before the verified policy may run.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -148,21 +151,48 @@ impl VerifiedReleasePolicyAdapter {
             }
         })
     }
+
+    pub(crate) fn evaluate_with_admission(
+        &self,
+        input: &ReleasePolicyInput,
+        local_checks: [ReleaseQualificationCheck; LOCAL_RELEASE_QUALIFICATION_CHECK_COUNT],
+    ) -> (PolicyDecision, ReleaseQualificationAdmission) {
+        let input_validation = self.validate_input(input);
+        let input_check = if input_validation.is_ok() {
+            ReleaseQualificationCheck::Satisfied
+        } else {
+            ReleaseQualificationCheck::NotSatisfied
+        };
+        let decision = evaluate_release(self.candidate, self.evaluated_at, &self.evidence);
+        let checks = [
+            local_checks[0],
+            local_checks[1],
+            local_checks[2],
+            local_checks[3],
+            local_checks[4],
+            local_checks[5],
+            local_checks[6],
+            input_check,
+        ];
+        let admission = ReleaseQualificationAdmission::evaluate(&decision, checks);
+        let policy_decision = match input_validation {
+            Err(code) => PolicyDecision::Unavailable { failure: PolicyFailure::known(code) },
+            Ok(()) if decision.is_ready() => PolicyDecision::Ready,
+            Ok(()) => PolicyDecision::NotReady {
+                failures: vec![PolicyFailure::known("release-policy.not-ready")],
+            },
+        };
+        (policy_decision, admission)
+    }
 }
 
 impl DeterministicReleasePolicy for VerifiedReleasePolicyAdapter {
     fn evaluate(&self, input: &ReleasePolicyInput) -> PolicyDecision {
-        if let Err(code) = self.validate_input(input) {
-            return PolicyDecision::Unavailable { failure: PolicyFailure::known(code) };
-        }
-        let decision = evaluate_release(self.candidate, self.evaluated_at, &self.evidence);
-        if decision.verdict() == ReleaseVerdict::Ready {
-            PolicyDecision::Ready
-        } else {
-            PolicyDecision::NotReady {
-                failures: vec![PolicyFailure::known("release-policy.not-ready")],
-            }
-        }
+        self.evaluate_with_admission(
+            input,
+            [ReleaseQualificationCheck::Satisfied; LOCAL_RELEASE_QUALIFICATION_CHECK_COUNT],
+        )
+        .0
     }
 }
 

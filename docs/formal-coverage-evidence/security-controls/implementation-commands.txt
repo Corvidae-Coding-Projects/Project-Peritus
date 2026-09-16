@@ -1,0 +1,14 @@
+# working directory: /home/doll/Project-Peritus/.worktrees/formal-coverage
+# strict proof, successful
+CARGO_BUILD_JOBS=2 CCACHE_DISABLE=1 CARGO_TARGET_DIR=/tmp/peritus-sol-security-input-verus-target cargo verus verify --package peritus-security-policy --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20
+# focused package tests, successful disk-backed retry
+CARGO_BUILD_JOBS=1 CCACHE_DISABLE=1 CARGO_TARGET_DIR=/home/doll/Project-Peritus/.worktrees/formal-coverage/target/sol-security-input cargo test --locked --all-features --package peritus-security-policy
+# package all-target Clippy, successful
+CARGO_BUILD_JOBS=1 CCACHE_DISABLE=1 CARGO_TARGET_DIR=/home/doll/Project-Peritus/.worktrees/formal-coverage/target/sol-security-input cargo clippy --locked --all-features --all-targets --package peritus-security-policy -- -D warnings
+# package format check, successful
+cargo fmt --check --package peritus-security-policy
+# repository source layout gate, successful; target was inactive after this run
+CARGO_BUILD_JOBS=1 CCACHE_DISABLE=1 CARGO_TARGET_DIR=/tmp/peritus-sol-readiness-test-final-target cargo xtask source-layout-check
+# failed environmental attempts retained separately
+CARGO_BUILD_JOBS=2 CCACHE_DISABLE=1 CARGO_TARGET_DIR=/tmp/peritus-sol-security-input-test-target cargo test --locked --all-features --package peritus-security-policy
+CARGO_BUILD_JOBS=1 CCACHE_DISABLE=1 CARGO_TARGET_DIR=/tmp/peritus-sol-readiness-test-final-target cargo test --locked --all-features --package peritus-security-policy

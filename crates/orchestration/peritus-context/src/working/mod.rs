@@ -8,13 +8,22 @@ use vstd::prelude::*;
 verus! {
 mod binding;
 mod delta;
+mod delta_model;
+mod delta_reducer;
 mod entry;
 mod error;
 mod evidence;
 mod event;
+mod invalidation;
+mod invalidation_environment;
+mod invalidation_model;
 mod limits;
 mod protocol;
 mod state;
+mod state_access;
+mod state_model;
+mod state_revision;
+mod staleness;
 mod validation;
 mod validity;
 
@@ -38,4 +47,4 @@ pub use wire::{WorkingCodecError, decode_working_event, decode_working_state, en
 #[cfg(not(verus_only))]
 mod selection;
 #[cfg(not(verus_only))]
-pub use selection::{WorkingRenderView, render_working_state};
+pub use selection::{WorkingRenderView, render_working_state, render_working_state_with_headroom};

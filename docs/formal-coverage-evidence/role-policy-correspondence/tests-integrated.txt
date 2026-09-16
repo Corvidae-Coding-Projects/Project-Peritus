@@ -1,0 +1,44 @@
+   Compiling peritus-role v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/orchestration/peritus-role)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.61s
+     Running unittests src/lib.rs (target/formal-knowledge-integrated/debug/deps/peritus_role-dcda3353b268cc9c)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/policy_boundaries.rs (target/formal-knowledge-integrated/debug/deps/policy_boundaries-cf2e9cf61c4448f1)
+
+running 4 tests
+test cloned_review_context_keeps_private_and_mutating_material_excluded ... ok
+test context_errors_retain_first_pair_and_complete_payload ... ok
+test independence_projection_keeps_all_combinations_distinct ... ok
+test operation_permission_and_pair_errors_preserve_input_order ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/reviewer_independence.rs (target/formal-knowledge-integrated/debug/deps/reviewer_independence-2085101f6a4a1dfa)
+
+running 1 test
+test projection_preserves_every_contract_fact_and_requires_fresh_context ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/role_matrix.rs (target/formal-knowledge-integrated/debug/deps/role_matrix-d99b51dc931abd55)
+
+running 7 tests
+test checked_context_sets_reject_empty_duplicates_and_unordered_values ... ok
+test harness_roles_map_exactly_to_b1 ... ok
+test every_required_and_contributable_class_is_visible ... ok
+test every_b1_role_has_an_explicit_non_widening_profile ... ok
+test public_capability_constructor_rejects_widening_and_noncanonical_values ... ok
+test checked_capability_views_preserve_exact_role_and_operation_membership ... ok
+test writer_fixer_and_reviewer_separation_remains_exact ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests peritus_role
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

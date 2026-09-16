@@ -3,23 +3,106 @@
 use crate::{ContextError, ContextErrorKind, ContextLimits, ContextNode, ContextNodeId};
 use vstd::prelude::*;
 
+mod cycle;
+mod cycle_count_init;
+mod cycle_count_model;
+mod cycle_count_update;
+mod cycle_counts;
+mod cycle_edge_model;
+mod cycle_model;
+mod cycle_proofs;
+mod model;
+mod validation;
+
 verus! {
 
 /// Immutable canonical directed acyclic graph of context nodes.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq)]
 pub struct ContextGraph {
     nodes: Vec<ContextNode>,
     limits: ContextLimits,
 }
 
 impl ContextGraph {
+    /// Logical view of every node in canonical storage order.
+    pub closed spec fn spec_nodes(&self) -> Seq<ContextNode> { self.nodes@ }
+
+    /// Logical view of the bounds used at construction.
+    pub closed spec fn spec_limits(&self) -> ContextLimits { self.limits }
+
+    /// First exact node index for a supplied stable identity.
+    pub open spec fn spec_node_index(&self, id: ContextNodeId) -> Option<nat> {
+        model::first_node_index_from(self.spec_nodes(), id, 0)
+    }
+
+    /// Whether an exact node identity occurs in this graph.
+    pub open spec fn spec_contains_node(&self, id: ContextNodeId) -> bool {
+        self.spec_node_index(id).is_some()
+    }
+
+    /// Canonical identities and exact dependency resolution checked before cycle analysis.
+    pub open spec fn spec_base_well_formed(&self) -> bool {
+        0 < self.spec_nodes().len() <= self.spec_limits().spec_max_nodes()
+            && model::nodes_canonical(self.spec_nodes())
+            && model::dependencies_exist(self.spec_nodes())
+    }
+
+    /// Whether construction validated the exact traversal and produced a finite DAG certificate.
+    pub open spec fn spec_is_well_formed(&self) -> bool {
+        self.spec_base_well_formed()
+            && cycle_model::acyclic(self.spec_nodes())
+    }
+
     /// Validates canonical identity order, dependency existence, and acyclicity.
     ///
     /// # Errors
     ///
     /// Returns a stable error for an empty/oversized graph, duplicate or unordered IDs, missing
     /// dependencies, or any dependency cycle.
-    pub fn new(nodes: Vec<ContextNode>, limits: ContextLimits) -> Result<Self, ContextError> {
+    pub fn new(
+        nodes: Vec<ContextNode>,
+        limits: ContextLimits,
+    ) -> (result: Result<Self, ContextError>)
+        ensures
+            result.is_ok() <==> 0 < nodes@.len() <= limits.spec_max_nodes()
+                && model::nodes_canonical(nodes@)
+                && model::dependencies_exist(nodes@)
+                && cycle_model::acyclic(nodes@),
+            match result {
+                Ok(graph) => graph.spec_nodes() == nodes@
+                    && graph.spec_limits() == limits
+                    && graph.spec_is_well_formed(),
+                Err(error) => if nodes@.len() == 0 {
+                    error.spec_is_plain(ContextErrorKind::EmptyCollection)
+                } else if nodes@.len() > limits.spec_max_nodes() {
+                    error.spec_is_numbers(
+                        ContextErrorKind::TooManyNodes,
+                        limits.spec_max_nodes() as u64,
+                        nodes@.len() as u64,
+                    )
+                } else if !model::nodes_canonical(nodes@) {
+                    match model::first_node_order_error(nodes@, 1) {
+                        Some((kind, id)) => error.spec_is_node(kind, id),
+                        None => false,
+                    }
+                } else if !model::dependencies_exist(nodes@) {
+                    match model::first_missing_dependency(nodes@, 0) {
+                        Some((owner, missing)) => error.spec_is_nodes(
+                            ContextErrorKind::MissingDependency,
+                            owner,
+                            missing,
+                        ),
+                        None => false,
+                    }
+                } else if let Some(cycle_node) =
+                    cycle_model::canonical_cycle_node(nodes@)
+                {
+                    error.spec_is_node(ContextErrorKind::DependencyCycle, cycle_node)
+                } else {
+                    false
+                },
+            },
+    {
         if nodes.is_empty() {
             return Err(ContextError::plain(ContextErrorKind::EmptyCollection));
         }
@@ -30,49 +113,10 @@ impl ContextGraph {
                 nodes.len() as u64,
             ));
         }
-        let mut index = 1;
-        while index < nodes.len()
-            invariant 1 <= index <= nodes.len(),
-            decreases nodes.len() - index,
-        {
-            if nodes[index - 1].id() == nodes[index].id() {
-                return Err(ContextError::node(ContextErrorKind::DuplicateValue, nodes[index].id()));
-            }
-            if nodes[index - 1].id() > nodes[index].id() {
-                return Err(ContextError::node(
-                    ContextErrorKind::NonCanonicalOrder,
-                    nodes[index].id(),
-                ));
-            }
-            index += 1;
-        }
+        validation::validate_node_order(nodes.as_slice())?;
+        validation::validate_dependencies(nodes.as_slice())?;
 
-        index = 0;
-        while index < nodes.len()
-            invariant index <= nodes.len(),
-            decreases nodes.len() - index,
-        {
-            let dependencies = nodes[index].dependencies();
-            let mut dependency_index = 0;
-            while dependency_index < dependencies.len()
-                invariant
-                    dependency_index <= dependencies.len(),
-                    index < nodes@.len(),
-                decreases dependencies.len() - dependency_index,
-            {
-                if find_node_index(nodes.as_slice(), dependencies[dependency_index]).is_none() {
-                    return Err(ContextError::nodes(
-                        ContextErrorKind::MissingDependency,
-                        nodes[index].id(),
-                        dependencies[dependency_index],
-                    ));
-                }
-                dependency_index += 1;
-            }
-            index += 1;
-        }
-
-        if let Some(cycle_node) = cycle_member(nodes.as_slice()) {
+        if let Some(cycle_node) = cycle::cycle_member(nodes.as_slice()) {
             return Err(ContextError::node(ContextErrorKind::DependencyCycle, cycle_node));
         }
         Ok(Self { nodes, limits })
@@ -80,11 +124,15 @@ impl ContextGraph {
 
     /// Borrows nodes in canonical identity order.
     #[must_use]
-    pub const fn nodes(&self) -> &[ContextNode] { self.nodes.as_slice() }
+    pub const fn nodes(&self) -> (nodes: &[ContextNode])
+        ensures nodes@ == self.spec_nodes(),
+    { self.nodes.as_slice() }
 
     /// Returns the construction limits.
     #[must_use]
-    pub const fn limits(&self) -> ContextLimits { self.limits }
+    pub const fn limits(&self) -> (limits: ContextLimits)
+        ensures limits == self.spec_limits(),
+    { self.limits }
 
     /// Finds one node by stable identity.
     #[must_use]
@@ -92,131 +140,52 @@ impl ContextGraph {
         clippy::option_if_let_else,
         reason = "explicit matching stays within Verus's supported executable subset"
     )]
-    pub fn node(&self, id: ContextNodeId) -> Option<&ContextNode> {
-        match find_node_index(self.nodes.as_slice(), id) {
-            Some(index) => Some(&self.nodes[index]),
+    pub fn node(&self, id: ContextNodeId) -> (result: Option<&ContextNode>)
+        ensures match result {
+            Some(node) => node.spec_id().spec_matches(&id)
+                && self.spec_contains_node(id),
+            None => !self.spec_contains_node(id),
+        },
+    {
+        proof {
+            reveal(ContextGraph::spec_nodes);
+            reveal(ContextGraph::spec_node_index);
+        }
+        match validation::find_node_index(self.nodes.as_slice(), id) {
+            Some(index) => {
+                assert(self.spec_nodes()[index as int].spec_id().spec_matches(&id));
+                Some(&self.nodes[index])
+            }
             None => None,
         }
     }
 
-    pub(crate) fn index_of(&self, id: ContextNodeId) -> Option<usize> {
-        find_node_index(self.nodes.as_slice(), id)
+    pub(crate) fn index_of(&self, id: ContextNodeId) -> (result: Option<usize>)
+        ensures match result {
+            Some(index) => index < self.spec_nodes().len()
+                && self.spec_node_index(id) == Some(index as nat),
+            None => self.spec_node_index(id).is_none(),
+        },
+    {
+        proof {
+            reveal(ContextGraph::spec_nodes);
+            reveal(ContextGraph::spec_node_index);
+        }
+        validation::find_node_index(self.nodes.as_slice(), id)
     }
 }
 
-fn find_node_index(nodes: &[ContextNode], id: ContextNodeId) -> (result: Option<usize>)
-    ensures match result { Some(index) => index < nodes.len(), None => true },
-{
-    let mut index = 0;
-    while index < nodes.len()
-        invariant index <= nodes.len(),
-        decreases nodes.len() - index,
+impl Clone for ContextGraph {
+    fn clone(&self) -> (result: Self)
+        ensures
+            ContextNode::sequence_clone_equivalent(self.spec_nodes(), result.spec_nodes()),
+            result.spec_limits() == self.spec_limits(),
     {
-        if nodes[index].id() == id {
-            return Some(index);
-        }
-        if nodes[index].id() > id {
-            return None;
-        }
-        index += 1;
-    }
-    None
-}
-
-fn cycle_member(nodes: &[ContextNode]) -> Option<ContextNodeId> {
-    let mut indegree = vec![0usize; nodes.len()];
-    let mut node_index = 0;
-    while node_index < nodes.len()
-        invariant
-            node_index <= nodes.len(),
-            indegree.len() == nodes.len(),
-        decreases nodes.len() - node_index,
-    {
-        let dependencies = nodes[node_index].dependencies();
-        let mut dependency_index = 0;
-        while dependency_index < dependencies.len()
-            invariant
-                dependency_index <= dependencies.len(),
-                indegree.len() == nodes.len(),
-                node_index < nodes@.len(),
-            decreases dependencies.len() - dependency_index,
-        {
-            let Some(target) = find_node_index(nodes, dependencies[dependency_index]) else {
-                return Some(nodes[node_index].id());
-            };
-            let Some(next) = indegree[target].checked_add(1) else {
-                return Some(nodes[target].id());
-            };
-            indegree[target] = next;
-            dependency_index += 1;
-        }
-        node_index += 1;
-    }
-
-    let mut removed = vec![false; nodes.len()];
-    let mut removed_count = 0usize;
-    while removed_count < nodes.len()
-        invariant
-            removed_count <= nodes.len(),
-            indegree.len() == nodes.len(),
-            removed.len() == nodes.len(),
-        decreases nodes.len() - removed_count,
-    {
-        let mut found = None;
-        node_index = 0;
-        while node_index < nodes.len()
-            invariant
-                node_index <= nodes.len(),
-                indegree.len() == nodes.len(),
-                removed.len() == nodes.len(),
-            decreases nodes.len() - node_index,
-        {
-            if !removed[node_index] && indegree[node_index] == 0 {
-                found = Some(node_index);
-                break;
-            }
-            node_index += 1;
-        }
-        let Some(index) = found else { break };
-        if index >= nodes.len() {
-            return None;
-        }
-        removed[index] = true;
-        removed_count += 1;
-        let dependencies = nodes[index].dependencies();
-        let mut dependency_index = 0;
-        while dependency_index < dependencies.len()
-            invariant
-                dependency_index <= dependencies.len(),
-                indegree.len() == nodes.len(),
-                index < nodes@.len(),
-            decreases dependencies.len() - dependency_index,
-        {
-            let Some(target) = find_node_index(nodes, dependencies[dependency_index]) else {
-                return Some(nodes[index].id());
-            };
-            let Some(next) = indegree[target].checked_sub(1) else {
-                return Some(nodes[target].id());
-            };
-            indegree[target] = next;
-            dependency_index += 1;
+        Self {
+            nodes: ContextNode::clone_sequence(self.nodes.as_slice()),
+            limits: self.limits,
         }
     }
-    if removed_count != nodes.len() {
-        node_index = 0;
-        while node_index < nodes.len()
-            invariant
-                node_index <= nodes.len(),
-                removed.len() == nodes.len(),
-            decreases nodes.len() - node_index,
-        {
-            if !removed[node_index] {
-                return Some(nodes[node_index].id());
-            }
-            node_index += 1;
-        }
-    }
-    None
 }
 
 } // verus!

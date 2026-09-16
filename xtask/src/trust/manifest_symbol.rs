@@ -1,6 +1,17 @@
+#[path = "manifest_symbol/owner.rs"]
+mod owner;
+
+use super::lexer::DeclarationOwner;
+use crate::api_contract::{FunctionDeclaration, function_declarations};
 use crate::error::Diagnostic;
 use std::fs;
 use std::path::Path;
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(super) struct OwnedFunctionDeclaration {
+    pub(super) path: String,
+    pub(super) declaration: FunctionDeclaration,
+}
 
 pub(super) fn validate_symbol(
     manifest: &Path,
@@ -26,33 +37,73 @@ pub(super) fn validate_symbol(
     let Some(source) = source else { return };
     let final_segment = segments.last().expect("validated symbol has segments");
     let contents = fs::read_to_string(source).unwrap_or_default();
-    let Some(module) = module_symbol(owning_crate, source) else { return };
-    let candidates: Vec<_> = super::lexer::declaration_paths(&contents, final_segment)
-        .into_iter()
-        .map(|owners| {
-            owners.into_iter().fold(module.clone(), |mut path, owner| {
-                path.push_str("::");
-                path.push_str(&owner);
-                path
-            }) + "::"
-                + final_segment
-        })
-        .collect();
-    if !candidates.iter().any(|candidate| candidate == symbol) {
-        let remedy = if candidates.is_empty() {
-            "name an actual file-level or associated function declaration in the recorded source"
-                .to_owned()
+    let candidates = owned_function_declarations(owning_crate, source, &contents, final_segment);
+    let matching = candidates.iter().filter(|candidate| candidate.path == symbol).count();
+    if matching != 1 {
+        let declared: Vec<_> = candidates.iter().map(|candidate| candidate.path.as_str()).collect();
+        let remedy = if declared.is_empty() {
+            "name an actual non-local function declaration in the recorded source".to_owned()
+        } else if matching > 1 {
+            format!(
+                "retain one unambiguous declaration for `{symbol}`; {matching} exact declarations were found"
+            )
         } else {
-            format!("use one exact declared symbol path: {}", candidates.join(", "))
+            format!("use one exact declared symbol path: {}", declared.join(", "))
         };
         diagnostics.push(Diagnostic::at(
             manifest,
             format!(
-                "entry `{id}` symbol `{symbol}` does not match its source module path or associated-item owner"
+                "entry `{id}` symbol `{symbol}` does not match exactly one source module path and associated-item owner"
             ),
             remedy,
         ));
     }
+}
+
+pub(super) fn owned_function_declarations(
+    owning_crate: &str,
+    source: &Path,
+    contents: &str,
+    name: &str,
+) -> Vec<OwnedFunctionDeclaration> {
+    let Some(module) = module_symbol(owning_crate, source) else { return Vec::new() };
+    let parsed = function_declarations(contents, name);
+    super::lexer::declaration_paths(contents, name)
+        .into_iter()
+        .filter_map(|(owners, ordinal)| {
+            let declaration = parsed.get(ordinal).copied()?;
+            if declaration.nested {
+                return None;
+            }
+            let mut path = module.clone();
+            let mut inline_modules = Vec::new();
+            for owner in owners {
+                match owner {
+                    DeclarationOwner::Module(name) => {
+                        path.push_str("::");
+                        path.push_str(&name);
+                        inline_modules.push(name);
+                    }
+                    DeclarationOwner::Trait(name) => {
+                        path.push_str("::");
+                        path.push_str(&name);
+                    }
+                    DeclarationOwner::Impl(self_type) => {
+                        path = owner::resolve(
+                            owning_crate,
+                            source,
+                            contents,
+                            &inline_modules,
+                            &self_type,
+                        )?;
+                    }
+                }
+            }
+            path.push_str("::");
+            path.push_str(name);
+            Some(OwnedFunctionDeclaration { path, declaration })
+        })
+        .collect()
 }
 
 pub(super) fn source_line_exists(path: &Path, line: u64) -> bool {

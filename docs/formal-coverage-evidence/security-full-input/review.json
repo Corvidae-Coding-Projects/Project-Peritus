@@ -1,0 +1,42 @@
+{
+  "schema": "peritus.formal-coverage.increment-review",
+  "schema_version": 1,
+  "status": "reviewed-bounded-increment-not-obligation-discharge",
+  "recorded_at": "2026-09-12T20:36:55.812002+00:00",
+  "base_commit": "1aa9282ff2cfcbf8fac325f11f157f408d33ee30",
+  "implementation": "/root/sol_readiness_correspondence",
+  "reviewer": "/root",
+  "review_provenance": "Independent source review through Codex collaboration in thread 01a08ab8-4887-7c63-8c75-7b8541cbbe4c; not external signature or protected proof-impact authorization.",
+  "reviewed_source_manifest_sha256": "7329b4fc9207ed2e5c1e812367524c29d3a448be68d5ffff534c885078e51bd1",
+  "reviewer_verdict": "PASS for raw Ready iff all seven exact stored-input predicates and actual phase correspondence.",
+  "results": {
+    "implementation_strict_verified": 192,
+    "independent_strict_verified": 192,
+    "proof_errors": 0,
+    "implementation_tests_passed": 7,
+    "independent_tests_passed": 7,
+    "clippy": "passed",
+    "format": "passed"
+  },
+  "remaining_limits": [
+    "Supplied observation truth, digest contents and actor authenticity are not proved.",
+    "Ordinary constructor admission and end-to-end qualification remain separate work.",
+    "No obligation discharge, final committed CI attestation or protected review authorization."
+  ],
+  "artifacts": {
+    "audit.md": "726d48b38b0d8c453ae27704f6bf2422438ca0dd3a56f2ff51c06e19d38ecd80",
+    "clippy.txt": "ede8a1d476c9680c3d3eb14fe539c8a6926b5f5c7e47c1f9eefd5c996b8c0c66",
+    "diff-check.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "environment.txt": "c43348b4a7a313b0937ecd53bbf6b38503e8eb78a9a59d1ae09eaa22135936f9",
+    "forbidden-scan.txt": "54065e9ad6805a5f26ab5db03f28566118eef7fae3ea2ed5c72b3bc17bd87b6d",
+    "format.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "implementation-commands.txt": "dc612f59a098b2ef0a45e4f382f33c66d5d9a7c9d7845ec747188a031eecc587",
+    "implementation-manifest.txt": "eb8b31fade9d440f07ed68f59f3c81cb1f5d4a0f1450740a2964e75ecc1dee6e",
+    "independent-commands.txt": "41c420cff2f94d76e9998bc6c329535f26976b810a2659677d7f81c94a56544c",
+    "source-sha256.txt": "7329b4fc9207ed2e5c1e812367524c29d3a448be68d5ffff534c885078e51bd1",
+    "tests-implementation.txt": "bb22ec0a5e8f0879c19fac684dad82648d7cccc5670d2ffe20a6e95c9e797aec",
+    "tests-independent.txt": "9b530361b2cc4473ae9dc8c6cc390bc1f5cf862491a5316c9bd18f6c89d09994",
+    "verus-implementation.txt": "61c5cc3603c76f644a3ffee882a66b23d1a07afe92c06502f69d04ddacf84dec",
+    "verus-independent.txt": "e9d6a15e1feaa1f76d1147c4394c0ff35700b184e2c2d20d261657bafcc8fe20"
+  }
+}

@@ -1,0 +1,51 @@
+Baseline identity check (exit 0; 64 files)
+CWD=/tmp/peritus-parent-release377-source-exact
+sha256sum -c /tmp/peritus-parent-release377-source-exact.sha256
+
+Strict proof (exit 0; 377 verified, 0 errors)
+CWD=/tmp/peritus-sol-release-candidate-contracts-workspace-01
+CARGO_TARGET_DIR=/home/doll/Project-Peritus/.worktrees/formal-coverage/target/peritus-sol-release-candidate-contracts CARGO_BUILD_JOBS=2 CCACHE_DISABLE=1 cargo verus verify --package peritus-release-policy --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20
+
+Default package tests (exit 0; 33 total, including doc test)
+CWD=/tmp/peritus-sol-release-candidate-contracts-workspace-01
+CARGO_TARGET_DIR=/home/doll/Project-Peritus/.worktrees/formal-coverage/target/peritus-sol-release-candidate-contracts CARGO_BUILD_JOBS=2 CCACHE_DISABLE=1 cargo test --package peritus-release-policy --locked
+
+All-feature package tests (exit 0; 33 total, including doc test)
+CWD=/tmp/peritus-sol-release-candidate-contracts-workspace-01
+CARGO_TARGET_DIR=/home/doll/Project-Peritus/.worktrees/formal-coverage/target/peritus-sol-release-candidate-contracts CARGO_BUILD_JOBS=2 CCACHE_DISABLE=1 cargo test --package peritus-release-policy --all-features --locked
+
+Strict all-target Clippy (exit 0)
+CWD=/tmp/peritus-sol-release-candidate-contracts-workspace-01
+CARGO_TARGET_DIR=/home/doll/Project-Peritus/.worktrees/formal-coverage/target/peritus-sol-release-candidate-contracts CARGO_BUILD_JOBS=2 CCACHE_DISABLE=1 cargo clippy --package peritus-release-policy --all-targets --all-features --locked -- -D warnings
+
+Format check (exit 0)
+CWD=/tmp/peritus-sol-release-candidate-contracts-workspace-01
+cargo fmt --all --check
+
+Ordinary API scanner (exit 0; 3499 files, 14684 entry points)
+CWD=/tmp/peritus-sol-release-candidate-contracts-workspace-01
+CARGO_TARGET_DIR=/home/doll/Project-Peritus/.worktrees/formal-coverage/target/peritus-sol-release-candidate-contracts CARGO_BUILD_JOBS=2 CCACHE_DISABLE=1 cargo run --locked --package xtask -- ordinary-api-check
+
+Repository source layout (exit 1 only for unrelated pre-existing scheduler reservations.rs at 415 lines)
+CWD=/tmp/peritus-sol-release-candidate-contracts-workspace-01
+CARGO_TARGET_DIR=/home/doll/Project-Peritus/.worktrees/formal-coverage/target/peritus-sol-release-candidate-contracts CARGO_BUILD_JOBS=2 CCACHE_DISABLE=1 cargo run --locked --package xtask -- source-layout-check
+
+Focused release-policy layout (exit 0; direct line-count audit)
+CWD=/tmp/peritus-sol-release-candidate-contracts-workspace-01
+wc -l crates/foundation/peritus-release-policy/src/candidate.rs crates/foundation/peritus-release-policy/src/candidate/construction.rs crates/foundation/peritus-release-policy/src/candidate/git.rs crates/foundation/peritus-release-policy/src/candidate/platform.rs crates/foundation/peritus-release-policy/src/candidate/version.rs crates/foundation/peritus-release-policy/src/identity.rs crates/foundation/peritus-release-policy/src/validation.rs crates/foundation/peritus-release-policy/tests/construction.rs
+
+Negative proof control (exit 101; 373 verified, 4 errors)
+CWD=/tmp/peritus-sol-release-candidate-contracts-workspace-01
+Mutation: in validation::require_revision only, change the Err postcondition from ZeroRevision to ZeroDigest; runtime body unchanged.
+CARGO_TARGET_DIR=/home/doll/Project-Peritus/.worktrees/formal-coverage/target/peritus-sol-release-candidate-contracts-negative CARGO_BUILD_JOBS=2 CCACHE_DISABLE=1 cargo verus verify --package peritus-release-policy --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20
+Restoration: copy /tmp/peritus-sol-release-candidate-negative-validation-positive.rs back over crates/foundation/peritus-release-policy/src/validation.rs and compare SHA-256 identities.
+
+Derived Clone verifier-client probe (exit 0; dependency 377/0, probe 13/0)
+CWD=/tmp/peritus-sol-release-candidate-contracts-workspace-01
+Probe source: /tmp/peritus-sol-release-candidate-clone-derived-probe.rs, copied temporarily to crates/foundation/peritus-release-policy/examples/clone_derived_probe.rs and removed after verification.
+CARGO_TARGET_DIR=/home/doll/Project-Peritus/.worktrees/formal-coverage/target/peritus-sol-release-candidate-clone-probe CARGO_BUILD_JOBS=2 CCACHE_DISABLE=1 cargo verus verify --package peritus-release-policy --locked --check-toolchain --fwd-verus-args-to roots --example clone_derived_probe -- --no-cheating --rlimit 20
+The probe calls the actual production-derived .clone() on CandidateId, PrincipalId, ReviewId, FindingId, GitCommitId, PlatformIdentity, PlatformMatrix, ReleaseVersion, ToolchainIdentity, ProfileIdentity, SchemaIdentity, and ReleaseCandidate, asserting whole-value and complete field-view equality.
+
+Frozen final package verification (exit 0; 65 files)
+CWD=/tmp/peritus-sol-release-candidate-contracts-source-01
+sha256sum -c /tmp/peritus-sol-release-candidate-final-full-package.sha256

@@ -2,6 +2,7 @@
 //! This crate coordinates concrete provider calls, managed-worktree edits, repository gates, and
 //! an independent review/fix cycle. It owns no UI and grants no authority; the daemon supplies
 //! already-resolved provider and workspace capabilities.
+mod accounting;
 pub mod attachment;
 #[cfg(not(verus_only))]
 mod budget;
@@ -31,6 +32,8 @@ pub(crate) mod gates;
 #[cfg(not(verus_only))]
 mod local_context;
 #[cfg(not(verus_only))]
+mod model_output;
+#[cfg(not(verus_only))]
 mod progress;
 #[cfg(not(verus_only))]
 pub mod qualification;
@@ -55,3 +58,5 @@ mod workspace_media;
 mod api;
 mod api_parity;
 pub use api::*;
+#[cfg(not(verus_only))]
+pub use trace::DeveloperTraceFrameKind;

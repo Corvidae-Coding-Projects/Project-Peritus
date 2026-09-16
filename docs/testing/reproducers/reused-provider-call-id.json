@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "id": "effect-receipt-reused-provider-call-id",
+  "classification": "product_defect",
+  "invariant": "A provider call ID identifies at most one effect request across the durable ledger.",
+  "original": {
+    "revision": "f836798e12fb69dae836dcc8757722bd09056ed1",
+    "platform": "linux-x86_64",
+    "finding_source": "mutation-guided receipt review",
+    "independent_reproducer": "primary agent isolated old-revision clone with three fresh test processes",
+    "fresh_fixture_repetitions": 3,
+    "command": "CARGO_BUILD_JOBS=2 cargo test --locked --offline -p peritus-product-runner developer_tools::executor::receipt_tests::reused_provider_call_id_cannot_dispatch_a_second_external_effect -- --exact --nocapture",
+    "exit_code": 101,
+    "failure_signature": "effect counter left effect\\neffect\\n, right effect\\n"
+  },
+  "reproducer": {
+    "path": "crates/app/peritus-product-runner/src/developer_tools/executor/receipt_tests.rs",
+    "test": "reused_provider_call_id_cannot_dispatch_a_second_external_effect",
+    "fault_schedule": ["execute a real child command under provider call ID reused-call", "submit the exact same completed call again", "read independently synced effect counter"],
+    "required_reachability": ["first child exits successfully", "second request reaches receipt admission", "effect counter is read after both decisions"],
+    "oracle": "independent append-only effect counter and refusal observation",
+    "minimization": "the exact same completed call is submitted twice; one submission cannot expose identity reuse and no different argument is needed"
+  },
+  "fix": {
+    "revision": "310db7e7c42415156f4d1af3737f872be32861b1",
+    "owner": "EffectReceiptLedger begin",
+    "root_cause": "provider call IDs were compared only within an ordinal, allowing the same identity to authorize a later ordinal"
+  },
+  "fixed_replay": {
+    "command": "CARGO_BUILD_JOBS=2 cargo test --locked --offline -p peritus-product-runner developer_tools::executor::receipt_tests::reused_provider_call_id_cannot_dispatch_a_second_external_effect -- --exact --nocapture",
+    "expected": "exit 0; one effect line; second call refused as repeated identity"
+  },
+  "negative_control": "distinct provider call IDs may authorize later ordinals; same-ordinal tool or digest conflicts remain refused",
+  "cleanup": "test waits for each exact child; temporary workspace and ledger removed",
+  "limitations": ["local child command is a deterministic external-effect surrogate"]
+}

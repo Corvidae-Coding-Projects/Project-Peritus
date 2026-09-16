@@ -1,14 +1,12 @@
 //! Bounded observations for canonical H4 release evidence.
 
 mod aggregate;
+mod observation;
 
 pub use self::aggregate::ReleaseEvidence;
+pub use self::observation::EvidenceObservation;
 
-use crate::{
-    ConstructionError, ConstructionErrorKind, EvidenceRequirement, EvidenceSourceKind,
-    ReleaseCandidate,
-};
-use peritus_types::Sha256Digest;
+use crate::{ConstructionError, ConstructionErrorKind, ReleaseCandidate};
 use vstd::prelude::*;
 
 verus! {
@@ -24,6 +22,32 @@ pub struct EvidenceBinding {
 }
 
 impl EvidenceBinding {
+    /// Exact constructor admission over sequence, revision, and validity interval.
+    pub open spec fn inputs_valid(
+        observed_at: u64,
+        expires_at: u64,
+        sequence: u64,
+        source_revision: u64,
+    ) -> bool {
+        sequence > 0 && source_revision > 0 && observed_at <= expires_at
+    }
+
+    /// Exact failure precedence for rejected binding inputs.
+    pub open spec fn construction_error(
+        observed_at: u64,
+        expires_at: u64,
+        sequence: u64,
+        source_revision: u64,
+        error: ConstructionError,
+    ) -> bool {
+        if sequence == 0 || source_revision == 0 {
+            error.spec_kind() == ConstructionErrorKind::ZeroRevision
+        } else {
+            observed_at > expires_at
+                && error.spec_kind() == ConstructionErrorKind::InvalidValidityInterval
+        }
+    }
+
     /// Creates a checked evidence binding.
     ///
     /// Times are monotonic release-clock ticks. They are not interpreted as wall-clock time by the
@@ -38,7 +62,20 @@ impl EvidenceBinding {
         expires_at: u64,
         sequence: u64,
         source_revision: u64,
-    ) -> Result<Self, ConstructionError> {
+    ) -> (result: Result<Self, ConstructionError>)
+        ensures
+            result.is_ok() == Self::inputs_valid(
+                observed_at, expires_at, sequence, source_revision),
+            match result {
+                Ok(value) => value.spec_candidate() == candidate
+                    && value.spec_observed_at() == observed_at
+                    && value.spec_expires_at() == expires_at
+                    && value.spec_sequence() == sequence
+                    && value.spec_source_revision() == source_revision,
+                Err(error) => Self::construction_error(
+                    observed_at, expires_at, sequence, source_revision, error),
+            },
+    {
         if sequence == 0 || source_revision == 0 {
             return Err(ConstructionError::new(ConstructionErrorKind::ZeroRevision));
         }
@@ -111,11 +148,7 @@ impl EvidenceBinding {
         candidate: ReleaseCandidate,
         evaluated_at: u64,
     ) -> bool {
-        crate::candidate::digest_bytes_equal_from(
-            self.spec_candidate().spec_manifest_digest().spec_bytes(),
-            candidate.spec_manifest_digest().spec_bytes(),
-            0,
-        )
+        crate::candidate::candidate_matches_exactly(self.spec_candidate(), candidate)
             && self.spec_source_revision() == candidate.spec_source_revision()
             && self.spec_observed_at() <= evaluated_at
             && evaluated_at <= self.spec_expires_at()
@@ -123,18 +156,14 @@ impl EvidenceBinding {
 
     /// Returns whether this binding is exact and current for an evaluation.
     #[must_use]
-    pub fn is_current_for(
+    pub const fn is_current_for(
         &self,
         candidate: ReleaseCandidate,
         evaluated_at: u64,
     ) -> (current: bool)
-        ensures current ==> self.spec_is_current_for(candidate, evaluated_at)
+        ensures current == self.spec_is_current_for(candidate, evaluated_at)
     {
-        let current = self.candidate() == candidate
-            && crate::candidate::digests_equal(
-                self.candidate().manifest_digest(),
-                candidate.manifest_digest(),
-            )
+        let current = crate::candidate::candidate_matches(&self.candidate(), &candidate)
             && self.source_revision() == candidate.source_revision()
             && self.observed_at() <= evaluated_at
             && evaluated_at <= self.expires_at();
@@ -146,206 +175,72 @@ impl EvidenceBinding {
 
     /// Returns whether candidate or producing-revision identity differs.
     #[must_use]
-    pub fn is_mismatched(&self, candidate: ReleaseCandidate) -> bool {
-        self.candidate != candidate || self.source_revision != candidate.source_revision()
+    pub const fn is_mismatched(&self, candidate: ReleaseCandidate) -> (mismatched: bool)
+        ensures mismatched == self.spec_is_mismatched(candidate)
+    {
+        let mismatched = !crate::candidate::candidate_matches(&self.candidate(), &candidate)
+            || self.source_revision() != candidate.source_revision();
+        proof {
+            reveal(EvidenceBinding::spec_is_mismatched);
+        }
+        mismatched
+    }
+
+    /// Specification predicate for candidate or source-revision mismatch.
+    pub open spec fn spec_is_mismatched(&self, candidate: ReleaseCandidate) -> bool {
+        !crate::candidate::candidate_matches_exactly(self.spec_candidate(), candidate)
+            || self.spec_source_revision() != candidate.spec_source_revision()
     }
 
     /// Returns whether only the time window makes the otherwise exact binding stale.
     #[must_use]
-    pub fn is_stale_at(&self, candidate: ReleaseCandidate, evaluated_at: u64) -> bool {
-        self.candidate == candidate
-            && self.source_revision == candidate.source_revision()
-            && (evaluated_at < self.observed_at || evaluated_at > self.expires_at)
-    }
-}
-
-/// One immutable artifact observation for a closed H4 evidence requirement.
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-pub struct EvidenceObservation {
-    requirement: EvidenceRequirement,
-    source_kind: EvidenceSourceKind,
-    binding: EvidenceBinding,
-    artifact_digest: Sha256Digest,
-    attestation_digest: Sha256Digest,
-    reviewed: bool,
-    signed: bool,
-}
-
-impl EvidenceObservation {
-    /// Creates one checked evidence observation.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`ConstructionErrorKind::ZeroDigest`] for an artifact placeholder, or for a signed
-    /// observation whose attestation digest is a placeholder.
-    #[allow(clippy::too_many_arguments, reason = "evidence authenticity and status remain explicit inputs")]
-    pub fn new(
-        requirement: EvidenceRequirement,
-        source_kind: EvidenceSourceKind,
-        binding: EvidenceBinding,
-        artifact_digest: Sha256Digest,
-        attestation_digest: Sha256Digest,
-        reviewed: bool,
-        signed: bool,
-    ) -> Result<Self, ConstructionError> {
-        crate::candidate::require_digest(artifact_digest)?;
-        if signed {
-            crate::candidate::require_digest(attestation_digest)?;
-        }
-        Ok(Self {
-            requirement,
-            source_kind,
-            binding,
-            artifact_digest,
-            attestation_digest,
-            reviewed,
-            signed,
-        })
-    }
-
-    /// Returns the closed evidence requirement.
-    #[must_use]
-    pub const fn requirement(&self) -> (requirement: EvidenceRequirement)
-        ensures requirement == self.spec_requirement()
-    {
-        self.requirement
-    }
-
-    /// Returns the authenticated source class.
-    #[must_use]
-    pub const fn source_kind(&self) -> (source_kind: EvidenceSourceKind)
-        ensures source_kind == self.spec_source_kind()
-    {
-        self.source_kind
-    }
-
-    /// Returns the exact candidate/time/sequence/revision binding.
-    #[must_use]
-    pub const fn binding(&self) -> (binding: EvidenceBinding)
-        ensures binding == self.spec_binding()
-    {
-        self.binding
-    }
-
-    /// Returns the retained artifact digest.
-    #[must_use]
-    pub const fn artifact_digest(&self) -> Sha256Digest { self.artifact_digest }
-
-    /// Returns the detached attestation digest.
-    #[must_use]
-    pub const fn attestation_digest(&self) -> Sha256Digest { self.attestation_digest }
-
-    /// Returns whether independent review was completed.
-    #[must_use]
-    pub const fn reviewed(&self) -> (reviewed: bool)
-        ensures reviewed == self.spec_reviewed()
-    {
-        self.reviewed
-    }
-
-    /// Returns whether the source authenticated the observation.
-    #[must_use]
-    pub const fn signed(&self) -> (signed: bool)
-        ensures signed == self.spec_signed()
-    {
-        self.signed
-    }
-
-    /// Logical view of the closed evidence requirement.
-    pub closed spec fn spec_requirement(&self) -> EvidenceRequirement { self.requirement }
-
-    /// Logical view of the authenticated source class.
-    pub closed spec fn spec_source_kind(&self) -> EvidenceSourceKind { self.source_kind }
-
-    /// Logical view of the exact candidate, time, sequence, and revision binding.
-    pub closed spec fn spec_binding(&self) -> EvidenceBinding { self.binding }
-
-    /// Logical view of whether independent review was completed.
-    pub closed spec fn spec_reviewed(&self) -> bool { self.reviewed }
-
-    /// Logical view of whether the source authenticated the observation.
-    pub closed spec fn spec_signed(&self) -> bool { self.signed }
-
-    /// Specification predicate for evidence permitted to contribute to readiness.
-    pub open spec fn spec_contributes_to(
+    pub const fn is_stale_at(
         &self,
-        requirement: EvidenceRequirement,
+        candidate: ReleaseCandidate,
+        evaluated_at: u64,
+    ) -> (stale: bool)
+        ensures stale == self.spec_is_stale_at(candidate, evaluated_at)
+    {
+        let stale = crate::candidate::candidate_matches(&self.candidate(), &candidate)
+            && self.source_revision() == candidate.source_revision()
+            && (evaluated_at < self.observed_at || evaluated_at > self.expires_at)
+        ;
+        proof {
+            reveal(EvidenceBinding::spec_is_stale_at);
+        }
+        stale
+    }
+
+    /// Specification predicate for a stale otherwise exact binding.
+    pub open spec fn spec_is_stale_at(
+        &self,
         candidate: ReleaseCandidate,
         evaluated_at: u64,
     ) -> bool {
-        self.spec_requirement() == requirement
-            && self.spec_source_kind() == requirement.spec_source_kind()
-            && self.spec_binding().spec_is_current_for(candidate, evaluated_at)
-            && self.spec_reviewed()
-            && self.spec_signed()
+        crate::candidate::candidate_matches_exactly(self.spec_candidate(), candidate)
+            && self.spec_source_revision() == candidate.spec_source_revision()
+            && (evaluated_at < self.spec_observed_at() || evaluated_at > self.spec_expires_at())
     }
+}
 
-    /// Returns whether this observation may contribute to one required assessment.
-    #[must_use]
-    pub fn contributes_to(
-        &self,
-        requirement: EvidenceRequirement,
-        candidate: ReleaseCandidate,
-        evaluated_at: u64,
-    ) -> (contributes: bool)
-        ensures contributes ==> self.spec_contributes_to(requirement, candidate, evaluated_at)
-    {
-        let observed_requirement = self.requirement();
-        let observed_source_kind = self.source_kind();
-        let required_source_kind = requirement.source_kind();
-        let binding = self.binding();
-        let current = binding.is_current_for(candidate, evaluated_at);
-        let reviewed = self.reviewed();
-        let signed = self.signed();
-        if !crate::catalog::requirements_equal(observed_requirement, requirement)
-            || !crate::catalog::source_kinds_equal(observed_source_kind, required_source_kind)
-            || !current
-            || !reviewed
-            || !signed
-        {
-            return false;
-        }
-        proof {
-            reveal(EvidenceObservation::spec_contributes_to);
-            reveal(EvidenceRequirement::spec_source_kind);
-            assert(self.spec_requirement() == requirement);
-            assert(self.spec_source_kind() == requirement.spec_source_kind());
-            assert(binding == self.spec_binding());
-            assert(binding.spec_is_current_for(candidate, evaluated_at));
-            assert(self.spec_binding().spec_is_current_for(candidate, evaluated_at));
-            assert(self.spec_reviewed());
-            assert(self.spec_signed());
-            assert(self.spec_contributes_to(requirement, candidate, evaluated_at));
-        }
-        true
-    }
+/// Logical equality of every field in two evidence bindings.
+pub open spec fn bindings_match(left: EvidenceBinding, right: EvidenceBinding) -> bool {
+    crate::candidate::candidate_matches_exactly(left.spec_candidate(), right.spec_candidate())
+        && left.spec_observed_at() == right.spec_observed_at()
+        && left.spec_expires_at() == right.spec_expires_at()
+        && left.spec_sequence() == right.spec_sequence()
+        && left.spec_source_revision() == right.spec_source_revision()
+}
 
-    /// Proves that noncurrent evidence cannot contribute to readiness.
-    pub proof fn noncurrent_evidence_cannot_contribute(
-        &self,
-        requirement: EvidenceRequirement,
-        candidate: ReleaseCandidate,
-        evaluated_at: u64,
-    )
-        requires !self.spec_binding().spec_is_current_for(candidate, evaluated_at),
-        ensures !self.spec_contributes_to(requirement, candidate, evaluated_at),
-    {
-        reveal(EvidenceObservation::spec_contributes_to);
-    }
-
-    /// Proves that a wrong requirement or source class cannot contribute to readiness.
-    pub proof fn mismatched_evidence_cannot_contribute(
-        &self,
-        requirement: EvidenceRequirement,
-        candidate: ReleaseCandidate,
-        evaluated_at: u64,
-    )
-        requires self.spec_requirement() != requirement
-            || self.spec_source_kind() != requirement.spec_source_kind(),
-        ensures !self.spec_contributes_to(requirement, candidate, evaluated_at),
-    {
-        reveal(EvidenceObservation::spec_contributes_to);
-    }
+/// Executable equality of every field in two evidence bindings.
+pub const fn bindings_equal(left: &EvidenceBinding, right: &EvidenceBinding) -> (equal: bool)
+    ensures equal == bindings_match(*left, *right),
+{
+    crate::candidate::candidate_matches(&left.candidate(), &right.candidate())
+        && left.observed_at() == right.observed_at()
+        && left.expires_at() == right.expires_at()
+        && left.sequence() == right.sequence()
+        && left.source_revision() == right.source_revision()
 }
 
 } // verus!

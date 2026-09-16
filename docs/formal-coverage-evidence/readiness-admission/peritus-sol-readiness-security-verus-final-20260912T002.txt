@@ -1,0 +1,3 @@
+    Checking peritus-security-policy v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/foundation/peritus-security-policy)
+verification results:: 164 verified, 0 errors
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.64s

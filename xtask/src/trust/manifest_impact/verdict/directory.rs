@@ -7,7 +7,7 @@ use crate::trust::manifest_model::{ProofImpactDocument, ProofImpactVerdict};
 use std::collections::BTreeMap;
 use std::fs;
 use std::io;
-use std::path::{Component, Path, PathBuf};
+use std::path::{Path, PathBuf};
 
 pub(super) fn validate(
     root: &Path,
@@ -38,7 +38,9 @@ pub(super) fn validate(
     let mut present = Vec::new();
     collect_review_files(root, !referenced.is_empty(), &mut present, diagnostics);
     for relative in present {
-        if repository_path(&relative).is_none_or(|path| !referenced.contains_key(&path)) {
+        if manifest_file::repository_path(&relative)
+            .is_none_or(|path| !referenced.contains_key(&path))
+        {
             diagnostics.push(Diagnostic::at(
                 &relative,
                 "detached review file is not referenced by exactly one PCR artifact inventory",
@@ -46,19 +48,6 @@ pub(super) fn validate(
             ));
         }
     }
-}
-
-fn repository_path(path: &Path) -> Option<String> {
-    let mut encoded = String::new();
-    for component in path.components() {
-        let Component::Normal(segment) = component else { return None };
-        let segment = segment.to_str()?;
-        if !encoded.is_empty() {
-            encoded.push('/');
-        }
-        encoded.push_str(segment);
-    }
-    (!encoded.is_empty()).then_some(encoded)
 }
 
 fn collect_review_files(
@@ -157,7 +146,7 @@ fn review_inventory_error(
 
 #[cfg(test)]
 mod tests {
-    use super::repository_path;
+    use crate::trust::manifest_file::repository_path;
     use std::path::PathBuf;
 
     #[test]

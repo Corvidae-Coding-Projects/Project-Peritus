@@ -1,0 +1,44 @@
+{"candidate_commit": "65f16e2933b70305de865750931bb05fe9afb64d", "candidate_tree": "ae2a43f9a9b73f5fec944d39cf165a8b3ec4df20", "environment": {"CARGO_BUILD_JOBS": "1", "CCACHE_DISABLE": "1", "RUST_TEST_THREADS": "1"}, "gate": {"command": "cargo test --package peritus-migrations --all-targets --all-features --locked", "invocation": ["cargo", "test", "--package", "peritus-migrations", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "output": "045-peritus-migrations-ordinary-test.log", "owning_crate": "peritus-migrations", "started_at": "2026-09-13T15:20:18.694242Z"}, "plan_sha256": "7fc101b7f8284fbe3818461a8166d73d3425f369120b43c1cbf1b43809a6b7c9"}
+
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.17s
+     Running unittests src/lib.rs (target/debug/deps/peritus_migrations-05eb5442fc86e098)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/apply_recovery.rs (target/debug/deps/apply_recovery-448be8d9733def01)
+
+running 9 tests
+test abandoned_backup_temporary_is_replaced_on_retry ... ok
+test applied_history_digest_drift_is_terminal ... ok
+test apply_failure_requires_and_supports_explicit_backup_restore ... ok
+test completed_backup_survives_interrupted_apply_start ... ok
+test corrupted_durable_backup_blocks_schema_apply ... ok
+test landed_ambiguous_commit_remains_applying_and_reconciles_applied_after_restart ... ok
+test migration_owner_lock_rejects_concurrent_engine ... ok
+test pre_backup_failure_is_restart_visible_without_schema_progress ... ok
+test successful_risky_apply_creates_backup_and_records_version ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running tests/initial_install.rs (target/debug/deps/initial_install-e575cfd28109e81c)
+
+running 2 tests
+test fresh_schema_is_complete_and_adopted_once_without_upgrade_or_backup ... ok
+test initial_schema_accepts_all_release_aggregate_families_and_shared_history ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+     Running tests/planning.rs (target/debug/deps/planning-7540f5db548bcf91)
+
+running 4 tests
+test planning_rejects_insufficient_space_and_reverse_or_incompatible_ranges ... ok
+test planning_rejects_reverse_ranges_and_checked_capacity_overflow ... ok
+test production_registry_contains_only_the_initial_release_schema ... ok
+test source_digest_drift_and_registry_gaps_are_rejected ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+GATE DRIVER RESULT: {"command": "cargo test --package peritus-migrations --all-targets --all-features --locked", "command_exit_code": 0, "elapsed_seconds": 0.365, "exit_code": 0, "finished_at": "2026-09-13T15:20:19.060409Z", "invocation": ["cargo", "test", "--package", "peritus-migrations", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "output": "045-peritus-migrations-ordinary-test.log", "owning_crate": "peritus-migrations", "result": "passed", "started_at": "2026-09-13T15:20:18.694242Z"}

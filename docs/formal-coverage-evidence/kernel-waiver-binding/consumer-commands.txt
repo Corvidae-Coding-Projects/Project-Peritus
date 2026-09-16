@@ -1,0 +1,17 @@
+CARGO_BUILD_JOBS=2 CARGO_TARGET_DIR=/home/doll/Project-Peritus/.worktrees/formal-coverage/target/peritus-sol-kernel-copy-consumers-01 CCACHE_DISABLE=1 cargo clippy --locked --all-features --all-targets -p peritus-protocol -p peritus-journal -p peritus-agent -p peritus-product-runner -p peritus-process -p peritus-workspace -p peritus-tool-router -p peritus-tools-fs -p peritus-tools-git -p peritus-tools-shell -- -D warnings
+CARGO_BUILD_JOBS=2 CARGO_TARGET_DIR=/home/doll/Project-Peritus/.worktrees/formal-coverage/target/peritus-sol-kernel-copy-consumers-01 CCACHE_DISABLE=1 cargo test --locked --all-features -p peritus-protocol -p peritus-journal -p peritus-agent -p peritus-product-runner -p peritus-process -p peritus-workspace -p peritus-tool-router -p peritus-tools-fs -p peritus-tools-git -p peritus-tools-shell
+CARGO_BUILD_JOBS=2 CARGO_TARGET_DIR=/home/doll/Project-Peritus/.worktrees/formal-coverage/target/peritus-sol-kernel-copy-consumers-01 CCACHE_DISABLE=1 cargo test --locked --all-features -p peritus-workspace
+cargo fmt --all -- --check
+
+Changed-path test targets reached in the bounded ten-package run:
+- peritus-agent: runtime_tools
+- peritus-journal: kernel_replay
+- peritus-process: process_integration
+- peritus-product-runner: library suite
+- peritus-protocol: lifecycle
+- peritus-tool-router: production_conformance
+- peritus-tools-fs: fs_dispatch
+- peritus-tools-git: git_dispatch
+- peritus-tools-shell: execution_integration
+
+The ten-package command stopped at the peritus-workspace library Unix-socket test because the syscall sandbox returned EPERM. The separate full peritus-workspace command ran outside that syscall sandbox and passed its library, authorized_gateway, production_conformance, workspace_registration, and doctest targets.

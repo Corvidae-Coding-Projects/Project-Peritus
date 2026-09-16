@@ -1,0 +1,42 @@
+//! Temporary independent comparison harness; not production source or a permanent test.
+mod support;
+use peritus_obligations::{AlternativeBranchId, AlternativeGroupId, DirectEvidence, EvidenceBinding,
+    ObligationLimits, ObligationSpec, PublicTaskSource, RequirementDraft, RequirementEvidence,
+    RequirementLedger, qualify};
+use peritus_spec::RequirementId;
+use peritus_types::Sha256Digest;
+use std::{hint::black_box, time::Instant};
+use support::{candidate,digest};
+
+fn id(index: usize) -> RequirementId {
+    let mut bytes=[0;32];
+    bytes[24..].copy_from_slice(&(index as u64 + 1).to_be_bytes());
+    RequirementId::new(Sha256Digest::new(bytes))
+}
+
+#[test]
+fn bounded_incomplete_branch_scaling() {
+    let limits=ObligationLimits::production();
+    let source=PublicTaskSource::new(vec![b'x'],1,limits).unwrap();
+    let candidate=candidate(11,1,1);
+    let group=AlternativeGroupId::new(digest(40));
+    let a=AlternativeBranchId::new(digest(41));
+    let b=AlternativeBranchId::new(digest(42));
+    for size in [64,128,256] {
+        let drafts=(0..size).map(|index|RequirementDraft::new(id(index),0,1,
+            ObligationSpec::Alternative{group_id:group,branch_id:if index<size/2{a}else{b}},Vec::new())).collect();
+        let ledger=RequirementLedger::extract(&source,drafts,limits).unwrap();
+        let evidence=(0..size).map(|index|RequirementEvidence::Direct(DirectEvidence::new(
+            EvidenceBinding::new(id(index),ledger.digest(),candidate,digest(90),Vec::new(),limits).unwrap(),
+            index!=size/2-1 && index!=size-1))).collect::<Vec<_>>();
+        let start=Instant::now();
+        for _ in 0..3 {
+            let report=qualify(black_box(&ledger),black_box(&candidate),&[],black_box(&evidence)).unwrap();
+            assert!(!report.qualified());
+            assert_eq!(report.required_count(),1);
+            assert_eq!(report.incomplete_alternatives(),&[group]);
+            black_box(report);
+        }
+        println!("SCALING n={size} repeats=3 elapsed_ns={}",start.elapsed().as_nanos());
+    }
+}

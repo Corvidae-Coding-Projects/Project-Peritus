@@ -1,0 +1,209 @@
+    Checking peritus-types v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-scheduler-gap3/crates/foundation/peritus-types)
+   Compiling serde v1.0.229
+   Compiling rustix v1.1.4
+    Checking peritus-codec v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-scheduler-gap3/crates/foundation/peritus-codec)
+    Checking peritus-policy v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-scheduler-gap3/crates/foundation/peritus-policy)
+    Checking peritus-spec v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-scheduler-gap3/crates/foundation/peritus-spec)
+    Checking tempfile v3.27.0
+    Checking peritus-budget v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-scheduler-gap3/crates/foundation/peritus-budget)
+    Checking peritus-quality-policy v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-scheduler-gap3/crates/foundation/peritus-quality-policy)
+    Checking peritus-kernel v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-scheduler-gap3/crates/foundation/peritus-kernel)
+    Checking peritus-protocol v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-scheduler-gap3/crates/foundation/peritus-protocol)
+    Checking peritus-approval v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-scheduler-gap3/crates/state/peritus-approval)
+    Checking peritus-leases v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-scheduler-gap3/crates/state/peritus-leases)
+    Checking fs4 v1.1.0
+    Checking peritus-artifact-store v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-scheduler-gap3/crates/state/peritus-artifact-store)
+    Checking peritus-journal v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-scheduler-gap3/crates/state/peritus-journal)
+    Checking allocator-api2 v0.2.21
+    Checking hashbrown v0.17.1
+    Checking indexmap v2.14.0
+    Checking peritus-test-support v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-scheduler-gap3/crates/app/testing/peritus-test-support)
+    Checking mio v1.2.2
+    Checking peritus-run-settlement v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-scheduler-gap3/crates/orchestration/peritus-run-settlement)
+    Checking tokio v1.53.1
+    Checking peritus-projection v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-scheduler-gap3/crates/state/peritus-projection)
+    Checking peritus-model-protocol v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-scheduler-gap3/crates/model/peritus-model-protocol)
+    Checking peritus-evidence v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-scheduler-gap3/crates/state/peritus-evidence)
+    Checking peritus-role v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-scheduler-gap3/crates/orchestration/peritus-role)
+    Checking peritus-sandbox v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-scheduler-gap3/crates/runtime/peritus-sandbox)
+    Checking tokio-util v0.7.19
+    Checking h2 v0.4.19
+    Checking hyper v1.11.0
+    Checking tower v0.5.3
+    Checking hyper-util v0.1.20
+    Checking tokio-rustls v0.26.4
+    Checking process-wrap v9.1.0
+    Checking hyper-rustls v0.27.9
+    Checking tower-http v0.6.11
+    Checking reqwest v0.13.4
+    Checking peritus-run-knowledge v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-scheduler-gap3/crates/orchestration/peritus-run-knowledge)
+    Checking peritus-provider-core v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-scheduler-gap3/crates/model/peritus-provider-core)
+    Checking fs-set-times v0.20.3
+    Checking rustix-linux-procfs v0.1.1
+    Checking peritus-git v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-scheduler-gap3/crates/runtime/peritus-git)
+    Checking cap-primitives v4.0.3
+    Checking peritus-process v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-scheduler-gap3/crates/runtime/peritus-process)
+    Checking peritus-patch v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-scheduler-gap3/crates/runtime/peritus-patch)
+    Checking cap-std v4.0.3
+    Checking cap-fs-ext v4.0.3
+    Checking peritus-context v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-scheduler-gap3/crates/orchestration/peritus-context)
+    Checking peritus-workspace v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-scheduler-gap3/crates/runtime/peritus-workspace)
+    Checking peritus-scheduler v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-scheduler-gap3/crates/orchestration/peritus-scheduler)
+    Checking peritus-conformance v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-scheduler-gap3/crates/app/testing/peritus-conformance)
+    Checking peritus-tool-protocol v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-scheduler-gap3/crates/tools/peritus-tool-protocol)
+    Checking peritus-tool-router v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-scheduler-gap3/crates/tools/peritus-tool-router)
+   Compiling zvariant_utils v4.2.0
+   Compiling zvariant_derive v5.15.0
+    Checking enumflags2 v0.7.12
+   Compiling zcheapstr v1.1.0
+    Checking polling v3.11.0
+   Compiling zvariant v5.15.0
+    Checking async-io v2.6.0
+    Checking peritus-memory v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-scheduler-gap3/crates/orchestration/peritus-memory)
+    Checking async-signal v0.2.14
+   Compiling zbus_names v4.3.4
+    Checking async-process v2.5.0
+   Compiling zbus_macros v5.19.0
+    Checking zbus v5.19.0
+    Checking secret-service v5.1.0
+    Checking peritus-obligations v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-scheduler-gap3/crates/orchestration/peritus-obligations)
+    Checking zbus-secret-service-keyring-store v1.0.1
+    Checking keyring v4.1.6
+    Checking peritus-review v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-scheduler-gap3/crates/orchestration/peritus-review)
+    Checking peritus-secrets v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-scheduler-gap3/crates/runtime/peritus-secrets)
+    Checking peritus-agent v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-scheduler-gap3/crates/orchestration/peritus-agent)
+    Checking peritus-network v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-scheduler-gap3/crates/runtime/peritus-network)
+    Checking peritus-tools-quality v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-scheduler-gap3/crates/tools/peritus-tools-quality)
+    Checking peritus-collaboration v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-scheduler-gap3/crates/orchestration/peritus-collaboration)
+    Checking peritus-gates v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-scheduler-gap3/crates/orchestration/peritus-gates)
+    Checking peritus-harness v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-scheduler-gap3/crates/orchestration/peritus-harness)
+    Checking peritus-orchestrator v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-scheduler-gap3/crates/orchestration/peritus-orchestrator)
+    Checking landlock v0.4.7
+    Checking seccompiler v0.5.0
+    Checking peritus-sandbox-linux v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-scheduler-gap3/crates/runtime/peritus-sandbox-linux)
+    Checking peritus-app-protocol v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-scheduler-gap3/crates/app/peritus-app-protocol)
+    Checking hashlink v0.12.1
+    Checking yaml-rust2 v0.12.0
+    Checking peritus-provider-openai v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-scheduler-gap3/crates/model/peritus-provider-openai)
+    Checking peritus-provider-anthropic v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-scheduler-gap3/crates/model/peritus-provider-anthropic)
+    Checking peritus-tools-shell v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-scheduler-gap3/crates/tools/peritus-tools-shell)
+    Checking peritus-trace v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-scheduler-gap3/crates/observe/peritus-trace)
+    Checking peritus-eval v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-scheduler-gap3/crates/analysis/peritus-eval)
+    Checking peritus-product-runner v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-scheduler-gap3/crates/app/peritus-product-runner)
+    Checking peritus-debugger v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-scheduler-gap3/crates/analysis/peritus-debugger)
+    Checking peritus-local-socket v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-scheduler-gap3/crates/runtime/peritus-local-socket)
+   Compiling parking_lot_core v0.9.12
+    Checking either v1.18.0
+    Checking scopeguard v1.2.0
+    Checking lock_api v0.4.14
+    Checking parking_lot v0.12.5
+    Checking peritus-evolution v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-scheduler-gap3/crates/analysis/peritus-evolution)
+    Checking peritus-security-policy v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-scheduler-gap3/crates/foundation/peritus-security-policy)
+    Checking peritus-telemetry v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-scheduler-gap3/crates/observe/peritus-telemetry)
+    Checking peritus-migrations v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-scheduler-gap3/crates/state/peritus-migrations)
+   Compiling rustversion v1.0.23
+    Checking peritus-tools-fs v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-scheduler-gap3/crates/tools/peritus-tools-fs)
+    Checking peritus-tools-git v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-scheduler-gap3/crates/tools/peritus-tools-git)
+   Compiling ident_case v1.0.1
+   Compiling strsim v0.11.1
+   Compiling darling_core v0.24.1
+    Checking peritus-security-qualification v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-scheduler-gap3/crates/app/testing/peritus-security-qualification)
+   Compiling heck v0.5.0
+   Compiling unicode-segmentation v1.13.3
+   Compiling signal-hook v0.3.18
+   Compiling convert_case v0.10.0
+   Compiling strum_macros v0.28.0
+    Checking castaway v0.2.4
+   Compiling darling_macro v0.24.1
+    Checking itertools v0.14.0
+    Checking peritus-provider-google v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-scheduler-gap3/crates/model/peritus-provider-google)
+    Checking peritus-provider-compatible v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-scheduler-gap3/crates/model/peritus-provider-compatible)
+    Checking hashbrown v0.16.1
+    Checking peritus-release-policy v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-scheduler-gap3/crates/foundation/peritus-release-policy)
+    Checking static_assertions v1.1.0
+    Checking unicode-width v0.2.2
+   Compiling instability v0.3.13
+    Checking ryu v1.0.23
+    Checking compact_str v0.9.1
+    Checking unicode-truncate v2.0.1
+    Checking kasuari v0.4.12
+   Compiling darling v0.24.1
+    Checking strum v0.28.0
+   Compiling derive_more-impl v2.1.1
+    Checking lru v0.18.2
+   Compiling litrs v1.0.0
+   Compiling siphasher v1.0.3
+   Compiling indoc v2.0.7
+   Compiling phf_shared v0.13.1
+   Compiling document-features v0.2.12
+    Checking ratatui-core v0.1.2
+    Checking signal-hook-mio v0.2.5
+    Checking derive_more v2.1.1
+    Checking peritus-daemon v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-scheduler-gap3/crates/app/peritus-daemon)
+    Checking peritus-benchmarks v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-scheduler-gap3/crates/app/testing/peritus-benchmarks)
+   Compiling fastrand v2.5.0
+   Compiling phf_generator v0.13.1
+    Checking crossterm v0.29.0
+    Checking line-clipping v0.3.8
+    Checking ratatui-widgets v0.3.2
+    Checking ratatui-crossterm v0.1.2
+    Checking peritus-release-artifacts v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-scheduler-gap3/crates/app/testing/peritus-release-artifacts)
+    Checking ed25519-compact v2.3.1
+    Checking ratatui v0.30.2
+   Compiling string_cache_codegen v0.6.1
+   Compiling phf_codegen v0.13.1
+    Checking peritus-platform-qualification v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-scheduler-gap3/crates/app/testing/peritus-platform-qualification)
+   Compiling libfuzzer-sys v0.4.13
+    Checking new_debug_unreachable v1.0.6
+   Compiling web_atoms v0.2.6
+    Checking peritus-resilience v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-scheduler-gap3/crates/app/testing/peritus-resilience)
+   Compiling alloca v0.4.0
+    Checking half v2.4.1
+    Checking regex-syntax v0.8.11
+    Checking clap_lex v1.1.0
+    Checking precomputed-hash v0.1.1
+    Checking anstyle v1.0.14
+    Checking ciborium-io v0.2.2
+    Checking arbitrary v1.4.2
+    Checking ciborium-ll v0.2.2
+    Checking clap_builder v4.6.6
+    Checking string_cache v0.9.0
+    Checking regex-automata v0.4.18
+    Checking peritus-tui v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-scheduler-gap3/crates/app/peritus-tui)
+    Checking phf v0.13.1
+    Checking itertools v0.13.0
+    Checking peritus-product-state v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-scheduler-gap3/crates/app/peritus-product-state)
+    Checking cast v0.3.0
+    Checking same-file v1.0.6
+    Checking walkdir v2.5.0
+    Checking criterion-plot v0.8.2
+    Checking regex v1.13.1
+    Checking clap v4.6.6
+    Checking ciborium v0.2.2
+    Checking tendril v0.5.1
+    Checking tinytemplate v1.2.1
+    Checking page_size v0.6.0
+    Checking anes v0.1.6
+    Checking oorandom v11.1.5
+    Checking criterion v0.8.2
+    Checking markup5ever v0.39.0
+    Checking peritus-provider-onboarding v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-scheduler-gap3/crates/app/peritus-provider-onboarding)
+    Checking peritus-bug-discovery v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-scheduler-gap3/crates/app/testing/peritus-bug-discovery)
+    Checking peritus-release-qualification v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-scheduler-gap3/crates/app/testing/peritus-release-qualification)
+    Checking peritus-performance-qualification v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-scheduler-gap3/crates/app/testing/peritus-performance-qualification)
+    Checking peritus-external-benchmarks v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-scheduler-gap3/crates/app/testing/peritus-external-benchmarks)
+    Checking peritus-launcher v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-scheduler-gap3/crates/app/peritus-launcher)
+    Checking html5ever v0.39.0
+    Checking xml5ever v0.39.0
+    Checking peritus-resilience-qualification v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-scheduler-gap3/crates/app/testing/peritus-resilience-qualification)
+    Checking peritus-sandbox-windows v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-scheduler-gap3/crates/runtime/peritus-sandbox-windows)
+    Checking markup5ever_rcdom v0.39.0+unofficial
+    Checking xtask v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-scheduler-gap3/xtask)
+    Checking peritus-sandbox-macos v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-scheduler-gap3/crates/runtime/peritus-sandbox-macos)
+    Checking peritus-plugin-sdk v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-scheduler-gap3/crates/extensions/peritus-plugin-sdk)
+    Checking peritus-cli v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-scheduler-gap3/crates/app/peritus-cli)
+    Checking peritus-plugin-host v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-scheduler-gap3/crates/extensions/peritus-plugin-host)
+    Checking peritus-mcp v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-scheduler-gap3/crates/extensions/peritus-mcp)
+    Checking peritus-tcb v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-scheduler-gap3/crates/foundation/peritus-tcb)
+    Checking peritus-release-operator v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-scheduler-gap3/crates/app/testing/peritus-release-operator)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 3m 02s

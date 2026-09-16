@@ -52,14 +52,45 @@ pub struct ObligationError {
 }
 
 impl ObligationError {
-    pub(crate) const fn plain(kind: ObligationErrorKind) -> Self {
+    /// Exact error category.
+    pub closed spec fn spec_kind(&self) -> ObligationErrorKind { self.kind }
+    /// Exact optional requirement identity.
+    pub closed spec fn spec_requirement_id(&self) -> Option<RequirementId> { self.requirement_id }
+    /// Exact optional expected bound.
+    pub closed spec fn spec_expected(&self) -> Option<u64> { self.expected }
+    /// Exact optional actual value.
+    pub closed spec fn spec_actual(&self) -> Option<u64> { self.actual }
+
+    /// A category-only error with no hidden identity or numeric detail.
+    pub open spec fn spec_plain(&self, kind: ObligationErrorKind) -> bool {
+        self.spec_kind() == kind && self.spec_requirement_id().is_none()
+            && self.spec_expected().is_none() && self.spec_actual().is_none()
+    }
+
+    /// An error retaining exactly one requirement identity.
+    pub open spec fn spec_requirement(&self, kind: ObligationErrorKind, id: RequirementId) -> bool {
+        self.spec_kind() == kind && self.spec_requirement_id() == Some(id)
+            && self.spec_expected().is_none() && self.spec_actual().is_none()
+    }
+
+    /// An error retaining the exact expected and actual numeric details.
+    pub open spec fn spec_numbers(&self, kind: ObligationErrorKind, expected: u64, actual: u64) -> bool {
+        self.spec_kind() == kind && self.spec_requirement_id().is_none()
+            && self.spec_expected() == Some(expected) && self.spec_actual() == Some(actual)
+    }
+
+    pub(crate) const fn plain(kind: ObligationErrorKind) -> (value: Self)
+        ensures value.spec_plain(kind),
+    {
         Self { kind, requirement_id: None, expected: None, actual: None }
     }
 
     pub(crate) const fn requirement(
         kind: ObligationErrorKind,
         requirement_id: RequirementId,
-    ) -> Self {
+    ) -> (value: Self)
+        ensures value.spec_requirement(kind, requirement_id),
+    {
         Self { kind, requirement_id: Some(requirement_id), expected: None, actual: None }
     }
 
@@ -67,25 +98,35 @@ impl ObligationError {
         kind: ObligationErrorKind,
         expected: u64,
         actual: u64,
-    ) -> Self {
+    ) -> (value: Self)
+        ensures value.spec_numbers(kind, expected, actual),
+    {
         Self { kind, requirement_id: None, expected: Some(expected), actual: Some(actual) }
     }
 
     /// Stable failure category.
     #[must_use]
-    pub const fn kind(&self) -> ObligationErrorKind { self.kind }
+    pub const fn kind(&self) -> (value: ObligationErrorKind)
+        ensures value == self.spec_kind(),
+    { self.kind }
 
     /// Relevant requirement identity, when one exists.
     #[must_use]
-    pub const fn requirement_id(&self) -> Option<RequirementId> { self.requirement_id }
+    pub const fn requirement_id(&self) -> (value: Option<RequirementId>)
+        ensures value == self.spec_requirement_id(),
+    { self.requirement_id }
 
     /// Expected bound, when present.
     #[must_use]
-    pub const fn expected(&self) -> Option<u64> { self.expected }
+    pub const fn expected(&self) -> (value: Option<u64>)
+        ensures value == self.spec_expected(),
+    { self.expected }
 
     /// Actual value, when present.
     #[must_use]
-    pub const fn actual(&self) -> Option<u64> { self.actual }
+    pub const fn actual(&self) -> (value: Option<u64>)
+        ensures value == self.spec_actual(),
+    { self.actual }
 }
 
 } // verus!

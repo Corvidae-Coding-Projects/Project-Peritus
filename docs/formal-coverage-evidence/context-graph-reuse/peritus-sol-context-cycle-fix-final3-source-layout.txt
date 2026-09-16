@@ -1,0 +1,3 @@
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.15s
+     Running `/home/doll/Project-Peritus/.worktrees/formal-coverage/target/sol-context-xtask-001/debug/xtask source-layout-check`
+source-layout-check passed: 4415 source file(s)

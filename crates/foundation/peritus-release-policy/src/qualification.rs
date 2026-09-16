@@ -77,9 +77,23 @@ impl QualificationObservation {
         signature_digest: Sha256Digest,
         signer: PrincipalId,
         reviewed: bool,
-    ) -> Result<Self, ConstructionError> {
-        crate::candidate::require_digest(report_digest)?;
-        crate::candidate::require_digest(signature_digest)?;
+    ) -> (result: Result<Self, ConstructionError>)
+        ensures
+            result.is_ok() == (crate::validation::spec_digest_nonzero(report_digest)
+                && crate::validation::spec_digest_nonzero(signature_digest)),
+            match result {
+                Ok(value) => value.spec_slice() == slice
+                    && value.spec_binding() == binding
+                    && value.spec_verdict() == verdict
+                    && value.spec_report_digest() == report_digest
+                    && value.spec_signature_digest() == signature_digest
+                    && value.spec_signer() == signer
+                    && value.spec_reviewed() == reviewed,
+                Err(error) => error.spec_kind() == crate::ConstructionErrorKind::ZeroDigest,
+            },
+    {
+        crate::validation::require_digest(report_digest)?;
+        crate::validation::require_digest(signature_digest)?;
         Ok(Self { slice, binding, verdict, report_digest, signature_digest, signer, reviewed })
     }
 
@@ -109,15 +123,27 @@ impl QualificationObservation {
 
     /// Returns the canonical report digest.
     #[must_use]
-    pub const fn report_digest(&self) -> Sha256Digest { self.report_digest }
+    pub const fn report_digest(&self) -> (digest: Sha256Digest)
+        ensures digest == self.spec_report_digest()
+    {
+        self.report_digest
+    }
 
     /// Returns the detached signature digest.
     #[must_use]
-    pub const fn signature_digest(&self) -> Sha256Digest { self.signature_digest }
+    pub const fn signature_digest(&self) -> (digest: Sha256Digest)
+        ensures digest == self.spec_signature_digest()
+    {
+        self.signature_digest
+    }
 
     /// Returns the admitted signer identity.
     #[must_use]
-    pub const fn signer(&self) -> PrincipalId { self.signer }
+    pub const fn signer(&self) -> (signer: PrincipalId)
+        ensures signer == self.spec_signer()
+    {
+        self.signer
+    }
 
     /// Returns whether independent review was completed.
     #[must_use]
@@ -135,6 +161,15 @@ impl QualificationObservation {
 
     /// Logical view of the slice's fail-closed verdict.
     pub closed spec fn spec_verdict(&self) -> QualificationVerdict { self.verdict }
+
+    /// Logical view of the canonical report digest.
+    pub closed spec fn spec_report_digest(&self) -> Sha256Digest { self.report_digest }
+
+    /// Logical view of the detached signature digest.
+    pub closed spec fn spec_signature_digest(&self) -> Sha256Digest { self.signature_digest }
+
+    /// Logical view of the admitted signer identity.
+    pub closed spec fn spec_signer(&self) -> PrincipalId { self.signer }
 
     /// Logical view of whether independent review was completed.
     pub closed spec fn spec_reviewed(&self) -> bool { self.reviewed }

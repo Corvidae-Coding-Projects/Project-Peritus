@@ -1,7 +1,7 @@
 //! Verified public requirement obligations, qualification evidence, and failure ownership.
 
 mod browser;
-mod canonical;
+pub(crate) mod canonical;
 mod condition;
 mod error;
 mod evidence;
@@ -10,6 +10,8 @@ mod identity;
 mod ledger;
 mod lifecycle;
 mod limits;
+mod matching;
+mod order;
 mod path;
 mod performance;
 mod provenance;
@@ -34,6 +36,8 @@ pub use performance::{
 };
 pub use provenance::{ClauseProvenance, PublicClause, PublicTaskSource};
 pub use qualification::{EvidenceVerdict, QualificationReport, qualify};
+#[cfg(verus_only)]
+pub use qualification::{qualification_error, qualification_inputs_valid, qualification_satisfied};
 pub use requirement::{ObligationSpec, RequirementClass, RequirementEntry};
 pub use schema::{SchemaDirection, SchemaEvidence, SchemaField, SchemaRequirement};
 pub use verified::{

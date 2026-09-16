@@ -1,0 +1,15 @@
+{
+  "command": [
+    "/home/doll/Project-Peritus/.worktrees/formal-coverage/target/debug/xtask",
+    "ci-shard",
+    "verus-verify-strict",
+    "app-runner"
+  ],
+  "exit_code": 1,
+  "elapsed_seconds": 71.09,
+  "cpu_affinity": [
+    0,
+    1
+  ],
+  "cargo_build_jobs": 1
+}

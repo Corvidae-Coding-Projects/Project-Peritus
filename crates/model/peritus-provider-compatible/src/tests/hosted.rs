@@ -1,4 +1,7 @@
-//! Synthetic SDK/API contract fixtures; provenance: docs/provider-contracts.md (2026-09-10).
+//! Synthetic contracts and sanitized live Zen replay; provenance: docs/provider-contracts.md.
+
+mod opencode;
+mod openrouter;
 
 use super::support::{StaticCredential, block_on, chat_profile, credential_reference};
 use crate::{CompatibleAuth, CompatibleClient, CompatibleConfig, CompatibleProfile};
@@ -19,6 +22,7 @@ struct ContractTransport {
     service: HostedService,
     requests: Mutex<Vec<Value>>,
     fail_at: Option<usize>,
+    response: fn(HostedService, usize) -> Vec<u8>,
 }
 
 impl HttpTransport for ContractTransport {
@@ -72,7 +76,7 @@ impl HttpTransport for ContractTransport {
                 br#"{"error":{"message":"secret-provider-body","code":"insufficient_quota"}}"#
                     .to_vec()
             } else {
-                success(self.service, step)
+                (self.response)(self.service, step)
             };
             let limits = HttpLimits::PRODUCTION;
             HttpResponse::new(
@@ -138,6 +142,13 @@ fn success(service: HostedService, step: usize) -> Vec<u8> {
             Value::Null,
         ));
     }
+    if service == HostedService::OpenCodeZen {
+        // Zen may stream more than one cumulative usage snapshot before its terminal accounting.
+        let mut usage = chunk(step, serde_json::json!({}), Value::Null);
+        usage["usage"] =
+            serde_json::json!({"prompt_tokens":1,"completion_tokens":1,"total_tokens":2});
+        chunks.push(usage);
+    }
     let reason = if step == 2 { "tool_calls" } else { "stop" };
     let mut last = chunk(step, serde_json::json!({}), serde_json::json!(reason));
     let usage = serde_json::json!({"prompt_tokens":2,"completion_tokens":3,"total_tokens":5});
@@ -167,8 +178,20 @@ fn client(
     service: HostedService,
     fail_at: Option<usize>,
 ) -> (CompatibleClient, Arc<ContractTransport>) {
-    let transport =
-        Arc::new(ContractTransport { service, fail_at, requests: Mutex::new(Vec::new()) });
+    client_with_responses(service, fail_at, success)
+}
+
+fn client_with_responses(
+    service: HostedService,
+    fail_at: Option<usize>,
+    response: fn(HostedService, usize) -> Vec<u8>,
+) -> (CompatibleClient, Arc<ContractTransport>) {
+    let transport = Arc::new(ContractTransport {
+        service,
+        fail_at,
+        response,
+        requests: Mutex::new(Vec::new()),
+    });
     let config = CompatibleConfig::new(
         Endpoint::new(
             service
@@ -202,7 +225,7 @@ fn client(
 }
 
 #[test]
-fn every_named_chat_contract_completes_generation_tools_and_reasoning_replay() {
+fn every_named_chat_contract_completes_generation_tools_usage_and_reasoning_replay() {
     block_on(async {
         for service in HostedService::ALL {
             let (client, transport) = client(service, None);
@@ -246,99 +269,6 @@ fn hosted_contract_cannot_be_attached_to_an_unrelated_endpoint() {
 }
 
 #[test]
-fn openrouter_error_with_http_200_never_qualifies_a_connection() {
-    block_on(async {
-        let body = MemoryByteStream::new(
-            vec![
-                b"data: {\"error\":{\"code\":402,\"message\":\"secret-provider-body\"}}\n\n"
-                    .to_vec(),
-            ],
-            HttpLimits::PRODUCTION,
-        )
-        .expect("body");
-        let profile = chat_profile(&[Capability::Streaming]);
-        let stream = crate::stream::CompatibleStream::new(
-            Box::new(body),
-            peritus_provider_core::FramingLimits::PRODUCTION,
-            profile.provider().clone(),
-            profile.model().clone(),
-            WireDialect::CompatibleChatCompletions,
-            false,
-            false,
-            false,
-            ProtocolLimits::PRODUCTION,
-            Vec::new(),
-        )
-        .expect("stream")
-        .with_hosted_service(Some(HostedService::OpenRouter));
-        let mut stream =
-            peritus_provider_core::OwnedModelStream::new(stream, CancellationToken::new());
-        let event = stream.pull().await.expect("pull").expect("failure");
-        assert!(
-            matches!(event.event(), ModelEvent::ResponseFailed(failure) if failure.category() == peritus_model_protocol::FailureCategory::QuotaExhausted)
-        );
-        assert!(!format!("{event:?}").contains("secret-provider-body"));
-        assert!(stream.pull().await.expect("end").is_none());
-    });
-}
-
-#[test]
-fn openrouter_accounting_cannot_carry_output_unknown_fields_or_repeated_finishes() {
-    block_on(async {
-        for mutation in 0..5 {
-            let mut accounting =
-                chunk(1, serde_json::json!({"content":""}), serde_json::json!("stop"));
-            accounting["usage"] =
-                serde_json::json!({"prompt_tokens":2,"completion_tokens":3,"total_tokens":5});
-            match mutation {
-                0 => {
-                    accounting["choices"][0]["delta"]["content"] = serde_json::json!("late output");
-                }
-                1 => accounting["choices"][0]["finish_reason"] = serde_json::json!("length"),
-                2 => accounting["choices"][0]["unmapped"] = serde_json::json!(true),
-                3 => accounting["choices"][0]["delta"]["tool_calls"] = serde_json::json!([]),
-                _ => {}
-            }
-            let mut bytes = format!(
-                "data: {}\n\ndata: {}\n\ndata: {accounting}\n\n",
-                chunk(1, serde_json::json!({"content":"ok"}), Value::Null),
-                chunk(1, serde_json::json!({}), serde_json::json!("stop"))
-            );
-            if mutation == 4 {
-                writeln!(bytes, "data: {accounting}\n").expect("fixture formatting");
-            }
-            bytes.push_str("data: [DONE]\n\n");
-            let profile = chat_profile(&[Capability::Streaming, Capability::UsageDetail]);
-            let stream = crate::stream::CompatibleStream::new(
-                Box::new(
-                    MemoryByteStream::new(vec![bytes.into_bytes()], HttpLimits::PRODUCTION)
-                        .expect("body"),
-                ),
-                peritus_provider_core::FramingLimits::PRODUCTION,
-                profile.provider().clone(),
-                profile.model().clone(),
-                WireDialect::CompatibleChatCompletions,
-                false,
-                false,
-                true,
-                ProtocolLimits::PRODUCTION,
-                Vec::new(),
-            )
-            .expect("stream")
-            .with_hosted_service(Some(HostedService::OpenRouter));
-            let mut stream =
-                peritus_provider_core::OwnedModelStream::new(stream, CancellationToken::new());
-            let mut failed = false;
-            while let Some(event) = stream.pull().await.expect("pull") {
-                assert!(!matches!(event.event(), ModelEvent::ResponseCompleted));
-                failed |= matches!(event.event(), ModelEvent::ResponseFailed(_));
-            }
-            assert!(failed, "mutation {mutation}");
-        }
-    });
-}
-
-#[test]
 fn hosted_required_tool_choice_rejects_missing_or_different_calls() {
     block_on(async {
         for step in [1, 2] {
@@ -376,9 +306,72 @@ fn hosted_required_tool_choice_rejects_missing_or_different_calls() {
             let mut failed = false;
             while let Some(event) = stream.pull().await.expect("pull") {
                 assert!(!matches!(event.event(), ModelEvent::ResponseCompleted));
-                failed |= matches!(event.event(), ModelEvent::ResponseFailed(_));
+                if let ModelEvent::ResponseFailed(failure) = event.event() {
+                    assert_eq!(
+                        failure.category(),
+                        peritus_model_protocol::FailureCategory::Provider
+                    );
+                    assert_eq!(
+                        failure.retryability(),
+                        peritus_model_protocol::Retryability::SafeNewRequest
+                    );
+                    assert_eq!(
+                        failure.diagnostic().code(),
+                        "compatible.stream.required_tool_choice_missing"
+                    );
+                    failed = true;
+                }
             }
             assert!(failed, "step {step}");
         }
+    });
+}
+
+#[test]
+fn hosted_specific_tool_choice_accepts_multiple_calls_of_only_that_tool() {
+    block_on(async {
+        let bytes = String::from_utf8(success(HostedService::DeepSeek, 2))
+            .expect("fixture UTF-8")
+            .replace(
+                r#"\"tool_calls\":[{\"function\":{\"arguments\":\"{}\",\"name\":\"peritus_connection_check\"},\"id\":\"check-call\",\"index\":0,\"type\":\"function\"}]"#,
+                r#"\"tool_calls\":[{\"function\":{\"arguments\":\"{}\",\"name\":\"peritus_connection_check\"},\"id\":\"check-call\",\"index\":0,\"type\":\"function\"},{\"function\":{\"arguments\":\"{}\",\"name\":\"peritus_connection_check\"},\"id\":\"check-call-2\",\"index\":1,\"type\":\"function\"}]"#,
+            )
+            .into_bytes();
+        let profile =
+            chat_profile(&[Capability::Streaming, Capability::ToolCalls, Capability::UsageDetail]);
+        let stream = crate::stream::CompatibleStream::new(
+            Box::new(
+                MemoryByteStream::new(
+                    bytes.chunks(11).map(<[u8]>::to_vec).collect(),
+                    HttpLimits::PRODUCTION,
+                )
+                .expect("body"),
+            ),
+            peritus_provider_core::FramingLimits::PRODUCTION,
+            profile.provider().clone(),
+            profile.model().clone(),
+            WireDialect::CompatibleChatCompletions,
+            false,
+            true,
+            true,
+            ProtocolLimits::PRODUCTION,
+            Vec::new(),
+        )
+        .expect("stream")
+        .with_hosted_service(Some(HostedService::DeepSeek))
+        .with_tool_choice(peritus_model_protocol::ToolChoice::Specific(
+            peritus_model_protocol::ToolName::new("peritus_connection_check".to_owned())
+                .expect("name"),
+        ));
+        let mut stream =
+            peritus_provider_core::OwnedModelStream::new(stream, CancellationToken::new());
+        let mut completed = false;
+        let mut failed = false;
+        while let Some(event) = stream.pull().await.expect("pull") {
+            completed |= matches!(event.event(), ModelEvent::ResponseCompleted);
+            failed |= matches!(event.event(), ModelEvent::ResponseFailed(_));
+        }
+        assert!(completed);
+        assert!(!failed);
     });
 }

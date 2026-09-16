@@ -1,0 +1,116 @@
+# Independent source review: peritus-scheduler checkpoint 244
+
+Date: 2026-09-12
+Reviewer task: read-only exact-source review
+Verdict: **PASS WITH MATERIAL PERFORMANCE RISK**
+Shipping approval: **not granted by this review**
+
+The logical source review found no confirmed runtime correctness or security defect in the bounded reservation-correspondence increment. The checkpoint materially proves capacity and ownership invariant preservation through the actual verified reservation mutators. It does not prove complete scheduler behavior. A valid dense-resource input shape exposes a source-established performance risk in the new capacity implementation; that risk is being reproduced and addressed separately and prevents treating this source verdict as shipping approval.
+
+## Exact source identity
+
+The reviewed package is exactly "/tmp/peritus-parent-scheduler244-complete-source", 75 files. Its package-relative manifest "/tmp/peritus-parent-scheduler244-complete-source.sha256" has SHA-256 "812d4eabac5f6b131baa156cc970eee34a7c45a40a79c36433cdb65493e84f40"; all 75 entries independently passed sha256sum -c.
+
+The worker changed-file manifest has SHA-256 "8dd79a7ce9d301664e27fe595dc7a0351c9d5d13aa54a3f017a5205dcc0aa830". Its workspace-relative paths were normalized to package-relative paths in "/tmp/peritus-sol-scheduler244-independent-changed45-package-relative.sha256"; all 45 entries passed against the complete frozen package.
+
+The exact base was reconstructed from commit "1aa9282ff2cfcbf8fac325f11f157f408d33ee30". The base-to-frozen patch is "/tmp/peritus-sol-scheduler244-base-to-frozen-final.patch", 9,001 lines, SHA-256 "8ab377859ecf8cd66bfff58d3a937421dc3e70e58ef615969719fe2a979bcc5f". "/tmp/peritus-sol-scheduler244-diff-path-check.py" and its rerun prove the patch's changed-path set exactly equals the normalized 45-file manifest.
+
+Parent restoration and base-comparison evidence were inspected:
+- "/tmp/peritus-parent-scheduler244-restoration.json": "236d8fa4631b3fd74ac3b04ed4a3f81f8a62fad1b9af88bf54b93235ba6584d3"
+- "/tmp/peritus-parent-scheduler244-base-comparison.json": "64f9c0da75156155995402e199e47e4ecd058c655e4e85893ea8d92adf36d4fc"
+- "/tmp/peritus-parent-scheduler244-shared-qualification.json": "7ba865f162acf50691a21de0615c4299427efad460aa1f6636f82100f548ec09"
+
+## Source-reviewed behavior
+
+### Resource and reservation invariants
+
+"src/resource/capacity.rs" connects executable quantity and fits_within to exact sequence specifications. "src/verified/reservations.rs:79-202" defines uniqueness of reservation dispatch/work identities, worker and work identity uniqueness, exact reservation-to-worker ownership, exact reservation-to-work owner/revision/request/attempt binding, active-reservation limit, global resource bounds, worker concurrency, and worker-local resource bounds.
+
+"src/selection/capacity.rs" uses u128 for live sums. Given the production active-reservation maximum of 4,096 and u64 resource quantities, the implementation and proof bound intermediate values without overflow. Insertion/removal and stable work/worker mutations preserve the mathematical invariant. "src/verified/reservations/readiness.rs:10-54" additionally binds live reservations to Reserved, Running, or Cancelling work and to retained dispatch history.
+
+### Selection
+
+"src/selection/model.rs:50-133" defines an admitted work/worker pair from actual state: queued work, available worker, full owner identity equality, supported work class, global capacity, worker concurrency, and worker-local capacity. The internal selector in "src/selection.rs:186-357" proves that a returned pair satisfies this relation when the input state satisfies the reservation invariant.
+
+Runtime ordering remains aged work first, then priority descending, enqueue ordinal ascending, and WorkId lexical order, with the first feasible worker in sorted worker order. The unchanged fairness test checks this ordering against a reference implementation. This checkpoint does not formally prove selected-minimum ordering, first-worker selection, None iff no admitted pair, or bounded fairness. The public select_next contract exposes only the weaker selection_is_feasible, which does not itself include queued phase, available worker state, or supported class.
+
+### Dispatch and reservation mutation
+
+"src/reducer/apply/dispatch.rs:10-134" defines exact input-based dispatch admission: reducer readiness, the selected pair relation, unused dispatch identity, active bound, dispatch ordinal, and next attempt. "src/state/mutation/reserve.rs:12-136" and its preparation/proof modules establish that a successful selected reservation binds work, dispatch, worker, owner, candidate revision, resource request, incremented attempt, used-dispatch retention, and dispatch-ordinal advancement while preserving readiness.
+
+The production rejection order remains phase, active limit, duplicate dispatch, history limit, no feasible pair, attempt overflow, attempt bound, ordinal overflow, then admission disappeared. Source inspection found this consistent with the reachable pre-change ordering and error kinds. Ordinary tests cover active limit, duplicate dispatch, history limit, no feasible pair, and rollback. The public reserve_next contract proves conditional invariant preservation only; it does not prove exact Result, rejection payload, or complete success output semantics.
+
+Reservation history insertion uses an executable ordered slot. The local mirror "/tmp/peritus-sol-scheduler244-reservation-slot-check.py" matched Python bisect_left in 110,240 exhaustive/random cases. This is finite test evidence, not a theorem. The proof states exact insertion at an existential valid position but does not prove canonical ordering or uniqueness of the resulting history.
+
+The reservation constructor specification covers work, dispatch, worker, owner, attempt, revision, and resources. It omits dispatch token and started == false, although the production body sets both. Clone equivalence includes token and started state.
+
+### Clone transport
+
+Exact semantic Clone contracts exist for ResourceVector, WorkSpec, WorkRecord, WorkerDescriptor, WorkerRecord, SchedulerReservation, and SchedulerTerminal. Reservation cloning includes dispatch token and started state.
+
+SchedulerBinding::clone formally covers limits and capacity only; it does not specify run ID, scheduler ID, or candidate revision. SchedulerState::reservation_clone_equivalent covers binding limits/capacity, workers, work, reservations, and used dispatches, but omits binding identities/revision, scheduler phase, sequence, event, digest, dispatch/enqueue ordinals, used commands, and terminal. Bodies copy those fields and ordinary replay/equality tests exercise them, but the formal contract only transports what the reservation reducer proof currently needs.
+
+### Acknowledge and release transitions
+
+The actual acknowledge and release wrappers were inspected through "src/state/mutation/reservation_update.rs", "src/state/mutation/work_update.rs:290-363", and "src/reducer/apply.rs:185-311". Acknowledge-start and Complete, Fail, Cancellation acknowledgement, Abandon, and WorkerLoss transitions preserve reservation readiness/invariants under their stated conditions. Tests demonstrate capacity release, unrelated reservation retention, replacement dispatch, late old-dispatch rejection, and replay.
+
+The checkpoint does not formally establish exact lookup success/failure, exact target state frame, started == true plus Running after acknowledgement, exact removed reservation identity, exact retry/terminal/cause/phase values, or exact Result and error payload for those transitions. "src/work/phase.rs:18-53" is intentionally a minimal relation: Reserved, Running, and Cancelling retain reservations. It does not characterize started state or all lifecycle phases.
+
+### Public boundary and escape review
+
+The actual unchanged reducer, decoder, wire, durability, session, runtime, and daemon callers were inspected. Production command processing still goes through start/decide, durable session commit, and dispatch acknowledgement/failure/retry paths. select_next_for_dispatch is the internal production selector; repository uses of public select_next found by inspection are tests.
+
+Unchanged wire-state validation rejects noncanonical or duplicate collections and checks resource vectors, reservation ownership/capacity, started versus Reserved/Running, ordinals, and digest. This is runtime evidence for admitted serialized state, not a formal decoder theorem.
+
+No changed source contains assume, admit, axiom, external_body, trusted escape, verifier assumption, unsafe code, or newly added public executable precondition. Mutation modules remain crate-private. The WorkTerminal lint annotation is the narrow cfg_attr(verus_keep_ghost, allow(missing_docs, reason = ...)) needed for generated ghost projections. Other changed-file allows are limited to argument-count and test-only lint cases.
+
+The direct SchedulerError negative proof control fails because SchedulerError, error::reject, and ErrorKind are ignored outside the current Verus boundary. This accurately limits the checkpoint; it does not establish that a future supported wrapper is impossible.
+
+## Material performance risk
+
+The prior implementation aggregated live reservations into ResourceVector values with merge-style checked_add, then used binary lookup. Checkpoint 244's "src/resource/capacity.rs:53-143" performs a linear scan for every quantity lookup. "src/selection/capacity.rs:49-326" performs one such lookup per reservation per requested resource kind for global and worker checks.
+
+A valid dense shape has R active reservations, each with D ascending unique resource kinds, one queued request with Q=D kinds, and a capacity vector over the same D kinds. The checkpoint's selection capacity path performs work proportional to Q times R times repeated linear scans through D entries, and selection can repeat that work across queued work and workers. The independent static named-kind comparison model, "/tmp/peritus-sol-scheduler244-capacity-cost-model-v2.py", reports:
+- R=64, D=Q=8: 981 baseline vs 2,340 checkpoint comparisons, 2.39x
+- R=256, D=Q=64: 32,840 vs 534,560, 16.28x
+- R=4,096, D=Q=256: 2,094,858 vs 134,774,912, 64.34x
+
+This is a source-level operation-count model, not a wall-clock benchmark or asymptotic theorem. A separate worker is running fresh-target A/B/C measurements and implementing any substantiated correction. A suitable correction is verified ordered binary lookup or precomputed per-kind totals while preserving the exact predicates and rejection order.
+
+## Feasible open proof work
+
+The following production contracts remain feasible and are not discharged by checkpoint 244:
+
+1. Exact public reserve_next success/failure iff, complete DispatchRejection payload and precedence, exact returned decision and state frame.
+2. Complete dispatch output fields, including token and initial started state; exact final reservations, history, ordinal, bypass counters, and unaffected fields.
+3. Selector chosen-minimum/order theorem, exact first feasible worker, None iff no admitted pair, full public select_next admission relation, and bounded fairness.
+4. Exact sorted insertion and history canonicality/uniqueness, including identity ordering.
+5. mark_reservation_started found iff, exact target update, Running/started relation, and full frame.
+6. Work/worker mutators found iff, exact phase/cause/terminal values, and complete frames.
+7. Release helpers' exact matching reservation/work binding, result iff, exact removed record, and terminal/retry/phase correspondence.
+8. Actual apply/decide/replay composition, exact errors and rollback, event/sequence/digest output, and proof that worker/work insertion establishes reducer readiness.
+9. Full semantic Clone contracts for every SchedulerBinding and SchedulerState field and transport through decide/wire paths.
+10. Complete WorkPhase/start invariant, including Reserved iff not started, Running iff started, Cancelling semantics, and exclusion of live reservations from all other phases.
+11. Constructor/getter and exact lookup contracts for scheduler limits/binding, workers, work, reservations, and their identity/canonicality assumptions.
+12. All-command state/event frames, replay composition, OBL-0150/effect termination, and formal fairness.
+13. Resolution and measured validation of the dense-resource performance risk above.
+
+## Evidence and command attribution
+
+Commands independently executed by this reviewer are recorded verbatim in "/tmp/peritus-sol-scheduler244-independent-review-commands-20260912T001.txt", SHA-256 "87965d3e9b2a19d76b6e3ff1e5ffc9881d1bba8ee901e838c925d0431c960b29". They cover source identity, exact base reconstruction, patch/path equality, escape/lint scans, the reservation-slot finite check, and the static capacity cost model.
+
+Compiler and package commands were not rerun by this reviewer. Parent-supplied, independently generated evidence was inspected and identity-checked:
+- strict Verus: 244 verified, 0 errors; log SHA-256 "7b2731271557b09d142cf3e1fd5e3b3fd47ba9909197ba1221edabe94f87fb03"
+- all-feature scheduler tests: 24 passed; log SHA-256 "cf2534687d4fdeef7aa85ea919205299bcb3b81b463f7365205b47ba6a952f82"
+- four dependent gate/product-obligation tests: passed; log SHA-256 "37e9b57d616b01392bc2f02876a7115848196efa77f2093fb71c2b17141615f2"
+- API scanner: 3,512 files and 14,689 ordinary-safe executable entry points; log SHA-256 "2a8b60289b7e5041deef088f05f3dad328757edb0bc21839fbfeec3eecea2365"
+- source layout: 4,413 files passed; log SHA-256 "e9fffd07cfcfb8df53f955a2e77a651518138ccca2a7f807ad09b2099899e4df"
+- docs: 216 passed; log SHA-256 "527ae68ea0aac78975d273cd4c130073d2b71ea554133e48fbe7fcbec9634e91"
+
+The worker evidence manifest "/tmp/peritus-sol-scheduler-reservation-evidence-final2.sha256" has SHA-256 "5297c033a3b8da6e184ad632833f94843db16dccc01116ee0886986e6c1ad52d"; every listed artifact independently passed its checksum.
+
+## Reviewed files
+
+All 45 changed files were read: src/binding.rs, src/identity.rs, src/limits.rs, src/reducer/apply.rs, src/reducer/apply/control.rs, src/reducer/apply/dispatch.rs, src/resource.rs, src/resource/capacity.rs, src/selection.rs, src/selection/capacity.rs, src/selection/capacity/refinement.rs, src/selection/model.rs, src/state.rs, src/state/clone_impl.rs, src/state/mutation.rs, src/state/mutation/reservation_update.rs, src/state/mutation/reserve.rs, src/state/mutation/reserve/prepare.rs, src/state/mutation/reserve/proof.rs, src/state/mutation/reserve/proof/readiness.rs, src/state/mutation/work_update.rs, src/state/mutation/worker_update.rs, src/state/terminal.rs, src/verified.rs, all ten src/verified/reservations* files, src/work.rs, src/work/class.rs, src/work/clone_impl.rs, src/work/phase.rs, src/work/record.rs, src/work/terminal.rs, src/worker.rs, src/worker/clone_impl.rs, tests/reservation_preservation.rs, and tests/support/mod.rs.
+
+The unchanged production boundaries and tests inspected were src/lib.rs, src/reducer.rs, src/reducer/apply/worker_control.rs, src/state/validation.rs, src/wire/domain.rs, src/wire/state.rs, src/durability.rs, src/session.rs, src/runtime.rs, tests/selection_fairness.rs, tests/domain_transitions.rs, tests/resource_invariants.rs, tests/replay_codec.rs, tests/durability_restart.rs, tests/session.rs, crates/app/peritus-daemon/src/domain/dispatch.rs, and crates/app/peritus-daemon/src/qualification/dependency/scheduler.rs.

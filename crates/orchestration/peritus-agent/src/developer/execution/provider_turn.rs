@@ -2,22 +2,92 @@
 use super::super::{
     DeveloperAccountingEvent, DeveloperActivity, DeveloperControlFlow, DeveloperInteraction,
     DeveloperLoopError, DeveloperLoopRequest, DeveloperModelRole, DeveloperRequestAdmission,
-    DeveloperTrace, DeveloperTraceEvent, DeveloperUsage,
+    DeveloperToolExecutor, DeveloperTrace, DeveloperTraceEvent, DeveloperUsage,
     model_request::{ModelTurnKind, build_model_request},
     retry::DeveloperRetryPlanner,
 };
-use super::{successful, terminal_error, usable};
+use super::{ContextSession, prepare_messages, successful, terminal_error, usable};
 use crate::{ModelAdvance, ModelSession};
 use peritus_model_protocol::{Message, ModelEvent, ModelRequest, ProtocolLimits};
 use peritus_provider_core::{CancellationToken, ModelProvider, cancel_first};
 
 mod progress;
 
+pub(super) struct RetryContext<'a, 'port> {
+    pub(super) context: &'a mut ContextSession<'port>,
+    pub(super) tools: &'a mut dyn DeveloperToolExecutor,
+    pub(super) governing_input: Option<&'a Message>,
+    pub(super) compactions: &'a mut u16,
+}
+
+impl RetryContext<'_, '_> {
+    fn prepare(
+        owner: Option<&mut Self>,
+        request: &DeveloperLoopRequest,
+        messages: &[Message],
+        profile: &peritus_model_protocol::ProviderProfile,
+        position: (u16, ModelTurnKind, u8, Option<&str>),
+        trace: &mut dyn DeveloperTrace,
+    ) -> Result<Option<Vec<Message>>, DeveloperLoopError> {
+        let (step, kind, attempt, required_tool) = position;
+        if kind != ModelTurnKind::Developer || attempt == 1 {
+            return Ok(None);
+        }
+        let Some(required_tool) = required_tool else { return Ok(None) };
+        let owner = owner.ok_or_else(|| {
+            DeveloperLoopError::Context("required-tool retry has no context owner".to_owned())
+        })?;
+        owner.assemble(request, messages, profile, (step, attempt, required_tool), trace).map(Some)
+    }
+
+    fn assemble(
+        &mut self,
+        request: &DeveloperLoopRequest,
+        messages: &[Message],
+        profile: &peritus_model_protocol::ProviderProfile,
+        position: (u16, u8, &str),
+        trace: &mut dyn DeveloperTrace,
+    ) -> Result<Vec<Message>, DeveloperLoopError> {
+        let (step, attempt, required_tool) = position;
+        let policy = super::invocation::retry_policy(request, step, attempt, required_tool)?;
+        let mut messages = messages.to_vec();
+        messages[0] = policy.clone();
+        let count = if self.context.is_local() {
+            u16::from(self.context.prepare(
+                &mut messages,
+                &request.tools,
+                profile,
+                &policy,
+                self.governing_input,
+            )?)
+        } else {
+            let records = prepare_messages(
+                &mut messages,
+                &request.tools,
+                profile,
+                request.limits.max_output_tokens(),
+                ProtocolLimits::PRODUCTION,
+                if self.governing_input.is_some() { 3 } else { 2 },
+            )?;
+            for record in &records {
+                trace.record(DeveloperTraceEvent::ContextCompaction(record))?;
+            }
+            u16::try_from(records.len()).map_err(|_| DeveloperLoopError::LimitExceeded)?
+        };
+        for _ in 0..count {
+            trace.account(DeveloperAccountingEvent::Compaction)?;
+        }
+        *self.compactions =
+            self.compactions.checked_add(count).ok_or(DeveloperLoopError::LimitExceeded)?;
+        Ok(messages)
+    }
+}
+
 #[allow(clippy::too_many_arguments, reason = "one logical turn keeps its checked request inputs")]
 pub(super) async fn complete_turn(
     provider: &dyn ModelProvider,
     request: &DeveloperLoopRequest,
-    messages: &[Message],
+    messages: &mut Vec<Message>,
     profile: &peritus_model_protocol::ProviderProfile,
     negotiated: peritus_model_protocol::NegotiatedCapabilities,
     protocol_limits: ProtocolLimits,
@@ -28,6 +98,7 @@ pub(super) async fn complete_turn(
     usage: &mut DeveloperUsage,
     trace: &mut dyn DeveloperTrace,
     interaction: Option<(&dyn DeveloperInteraction, DeveloperModelRole, u64)>,
+    mut retry_context: Option<RetryContext<'_, '_>>,
 ) -> Result<Option<ModelSession>, DeveloperLoopError> {
     let maximum = request.limits.max_attempts_per_turn();
     let retry_prefix = match kind {
@@ -48,6 +119,16 @@ pub(super) async fn complete_turn(
             // outer context owner before building another request from the stale transcript.
             return Ok(None);
         }
+        if let Some(prepared) = RetryContext::prepare(
+            retry_context.as_mut(),
+            request,
+            messages,
+            profile,
+            (turn, kind, attempt, required_tool),
+            trace,
+        )? {
+            *messages = prepared;
+        }
         let model_request = build_model_request(
             request,
             messages,
@@ -60,18 +141,11 @@ pub(super) async fn complete_turn(
             required_tool,
             provider.reasoning_effort(),
         )?;
-        if let Some((port, role, revision)) = interaction {
-            match port.prepare_role_request(role, revision, &model_request)? {
-                DeveloperRequestAdmission::Accepted => {}
-                DeveloperRequestAdmission::Stale => return Ok(None),
-                DeveloperRequestAdmission::Stopped => {
-                    return Err(DeveloperLoopError::Cancelled);
-                }
-            }
-            port.observe(DeveloperActivity::ModelStarted {
-                model: profile.model().as_str(),
-                reasoning: model_request.options().reasoning(),
-            })?;
+        if let Some(owner) = retry_context.as_mut() {
+            owner.tools.observe_model_context(model_request.messages())?;
+        }
+        if !admit_role_request(interaction, profile, &model_request)? {
+            return Ok(None);
         }
         let admitted_request_id = model_request.request_id().expose_for_wire().to_owned();
         trace.account(DeveloperAccountingEvent::ModelRequest { retry: attempt > 1 })?;
@@ -123,6 +197,24 @@ pub(super) async fn complete_turn(
         }
     }
     Err(DeveloperLoopError::EmptyResponse)
+}
+
+fn admit_role_request(
+    interaction: Option<(&dyn DeveloperInteraction, DeveloperModelRole, u64)>,
+    profile: &peritus_model_protocol::ProviderProfile,
+    request: &ModelRequest,
+) -> Result<bool, DeveloperLoopError> {
+    let Some((port, role, revision)) = interaction else { return Ok(true) };
+    match port.prepare_role_request(role, revision, request)? {
+        DeveloperRequestAdmission::Accepted => {}
+        DeveloperRequestAdmission::Stale => return Ok(false),
+        DeveloperRequestAdmission::Stopped => return Err(DeveloperLoopError::Cancelled),
+    }
+    port.observe(DeveloperActivity::ModelStarted {
+        model: profile.model().as_str(),
+        reasoning: request.options().reasoning(),
+    })?;
+    Ok(true)
 }
 
 async fn drive(

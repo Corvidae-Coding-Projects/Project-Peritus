@@ -1,0 +1,114 @@
+{"candidate_commit": "65f16e2933b70305de865750931bb05fe9afb64d", "candidate_tree": "ae2a43f9a9b73f5fec944d39cf165a8b3ec4df20", "environment": {"CARGO_BUILD_JOBS": "1", "CCACHE_DISABLE": "1", "RUST_TEST_THREADS": "1"}, "gate": {"command": "cargo test --package peritus-eval --all-targets --all-features --locked", "invocation": ["cargo", "test", "--package", "peritus-eval", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "output": "021-peritus-eval-ordinary-test.log", "owning_crate": "peritus-eval", "started_at": "2026-09-13T15:19:56.759266Z"}, "plan_sha256": "7fc101b7f8284fbe3818461a8166d73d3425f369120b43c1cbf1b43809a6b7c9"}
+
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.20s
+     Running unittests src/lib.rs (target/debug/deps/peritus_eval-823a976a1ba79f1e)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/accounting_properties.rs (target/debug/deps/accounting_properties-de4252a0bde7fd5f)
+
+running 2 tests
+test exact_duplicates_are_idempotent_and_conflicting_terminals_quarantine ... ok
+test ledger_conserves_every_expected_rollout_and_retains_attempts ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/cancellation.rs (target/debug/deps/cancellation-0812436817ab5ec5)
+
+running 1 test
+test cancellation_waits_for_each_external_rollout_before_terminal_completion ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/dataset_profile.rs (target/debug/deps/dataset_profile-410bc30b08421af7)
+
+running 4 tests
+test canonical_dataset_is_reproducible_and_keeps_evaluator_roots_sealed ... ok
+test cross_corpus_candidate_evaluator_collision_is_rejected ... ok
+test extended_provider_snapshot_binds_supported_and_unknown_reasoning_replay ... ok
+test frozen_profile_and_plan_inputs_are_stable ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/durability_effects.rs (target/debug/deps/durability_effects-e3acf0f5c1a5fbb0)
+
+running 1 test
+test cancellation_settlement_atomically_acknowledges_the_existing_effect_and_restarts ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests/durability_restart.rs (target/debug/deps/durability_restart-eeac4be333d0385f)
+
+running 1 test
+test genesis_commit_is_idempotent_and_restart_replay_matches_checkpoint ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/execution_isolation.rs (target/debug/deps/execution_isolation-a4133ba935a5e381)
+
+running 3 tests
+test candidate_failure_is_infrastructure_and_skips_evaluator ... ok
+test evaluator_outage_never_masquerades_as_task_failure ... ok
+test evaluator_runs_only_after_finalized_candidate_output ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/planning_scheduling.rs (target/debug/deps/planning_scheduling-6a5eac48a52db3c7)
+
+running 2 tests
+test complete_plan_is_deterministic_and_pair_seeds_match ... ok
+test planned_rollout_builds_exact_d3_coordination_work ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/production_conformance.rs (target/debug/deps/production_conformance-93d34e87d302c314)
+
+running 1 test
+test production_evaluation_satisfies_the_complete_a2_catalog ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests/publication_integration.rs (target/debug/deps/publication_integration-757e00bd00231307)
+
+running 1 test
+test complete_campaign_publishes_evidence_and_replays_without_duplicate_effects ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.08s
+
+     Running tests/replay_wire.rs (target/debug/deps/replay_wire-b3e15e3df973f72d)
+
+running 2 tests
+test families_85_86_and_87_round_trip_through_semantic_checks ... ok
+test frozen_wire_corpus_is_byte_exact_and_malformed_frames_reject ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/report_analysis.rs (target/debug/deps/report_analysis-806e153f686a15c6)
+
+running 2 tests
+test complete_ledger_produces_deterministic_non_authoritative_report ... ok
+test incomplete_ledger_cannot_begin_analysis ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/statistics_vectors.rs (target/debug/deps/statistics_vectors-bbc8a158717061f7)
+
+running 3 tests
+test paired_bootstrap_and_sign_diagnostic_are_reproducible ... ok
+test pass_at_k_matches_exact_combinatorial_edges ... ok
+test wilson_distribution_and_stability_retain_raw_inputs ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/verified_refinement.rs (target/debug/deps/verified_refinement-8b2cd51614b34a9f)
+
+running 2 tests
+test accounting_and_statistical_preconditions_match_runtime_boundaries ... ok
+test frozen_ledger_transition_replay_and_non_authority_roots_are_exact_conjunctions ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+GATE DRIVER RESULT: {"command": "cargo test --package peritus-eval --all-targets --all-features --locked", "command_exit_code": 0, "elapsed_seconds": 0.516, "exit_code": 0, "finished_at": "2026-09-13T15:19:57.275887Z", "invocation": ["cargo", "test", "--package", "peritus-eval", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "output": "021-peritus-eval-ordinary-test.log", "owning_crate": "peritus-eval", "result": "passed", "started_at": "2026-09-13T15:19:56.759266Z"}

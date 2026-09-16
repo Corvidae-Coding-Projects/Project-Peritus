@@ -2,6 +2,15 @@ use super::*;
 use crate::execution::ProductDeliveryScope;
 
 #[test]
+fn developer_loop_exhaustion_is_a_local_budget_failure() {
+    let error = developer_error(&DeveloperLoopError::LimitExceeded);
+
+    assert_eq!(error.kind(), ProductRunnerErrorKind::Budget);
+    assert_eq!(error.operation(), "execute D0 developer loop");
+    assert!(error.detail().contains("developer loop limit was exhausted"));
+}
+
+#[test]
 fn rejected_terminal_correction_requires_fresh_repository_grounding() {
     let error = ProductRunnerError::new(
         ProductRunnerErrorKind::InvalidModelOutput,
@@ -15,6 +24,10 @@ fn rejected_terminal_correction_requires_fresh_repository_grounding() {
     assert!(prompt.contains("workspace_list"));
     assert!(prompt.contains("workspace_read"));
     assert!(prompt.contains("If no code change is needed"));
+    assert!(prompt.contains("exactly one terminal JSON object"));
+    assert!(prompt.contains("literal final wording"));
+    assert!(prompt.contains("inside `summary`"));
+    assert!(prompt.contains("do not emit a separate plain-text answer"));
     assert!(prompt.contains(error.detail()));
 }
 
@@ -169,6 +182,9 @@ fn writer_batches_tools_and_respects_artifact_workspaces() {
     assert!(prompt.contains("apply only explicitly named transformations"));
     assert!(prompt.contains("return exactly one direct command"));
     assert!(prompt.contains("no prose, Markdown, quotes"));
+    assert!(prompt.contains("literal final phrase"));
+    assert!(prompt.contains("inside `summary`"));
+    assert!(prompt.contains("returning only the JSON object"));
 }
 
 #[test]
@@ -229,6 +245,8 @@ fn external_effect_writer_attempts_scoped_prerequisites_before_escalating() {
 #[test]
 fn reviewer_rechecks_conserved_finding_locations_after_fixes() {
     let prompt = reviewer_user(&ReviewerPrompt {
+        system: &reviewer_system(Duration::from_secs(235)),
+        tools: &[],
         transcript: "task",
         diff: "diff",
         gates: "gates",
@@ -240,7 +258,8 @@ fn reviewer_rechecks_conserved_finding_locations_after_fixes() {
             effect_requirement: crate::delivery_requirement::ExternalEffectRequirement::Optional,
         },
         correction: None,
-    });
+    })
+    .unwrap();
 
     assert!(prompt.contains("Developer command observations"));
     assert!(prompt.contains("python check.py"));
@@ -254,6 +273,8 @@ fn reviewer_rechecks_conserved_finding_locations_after_fixes() {
 fn reviewer_bounds_oversized_initial_evidence_before_provider_compaction() {
     let oversized = "evidence".repeat(100_000);
     let prompt = reviewer_user(&ReviewerPrompt {
+        system: &reviewer_system(Duration::from_secs(235)),
+        tools: &[],
         transcript: "literal task",
         diff: &oversized,
         gates: &oversized,
@@ -265,7 +286,8 @@ fn reviewer_bounds_oversized_initial_evidence_before_provider_compaction() {
             effect_requirement: crate::delivery_requirement::ExternalEffectRequirement::Optional,
         },
         correction: None,
-    });
+    })
+    .unwrap();
 
     assert!(prompt.len() < 320 * 1024, "review prompt bytes: {}", prompt.len());
     assert!(prompt.contains("Peritus bounded reviewer evidence"));
@@ -282,6 +304,8 @@ fn live_operational_delivery_rejects_helper_files_as_the_whole_result() {
         Duration::from_mins(10),
     );
     let reviewer = reviewer_user(&ReviewerPrompt {
+        system: &reviewer_system(Duration::from_secs(235)),
+        tools: &[],
         transcript: "Configure the local service so that I can connect to it.",
         diff: "setup.sh changed",
         gates: "checks passed",
@@ -293,7 +317,8 @@ fn live_operational_delivery_rejects_helper_files_as_the_whole_result() {
             effect_requirement: requirement,
         },
         correction: None,
-    });
+    })
+    .unwrap();
 
     for prompt in [&writer, &reviewer] {
         assert!(prompt.contains("live"));
@@ -301,4 +326,27 @@ fn live_operational_delivery_rejects_helper_files_as_the_whole_result() {
         assert!(prompt.contains("external_effect"));
         assert!(prompt.contains("verification"));
     }
+}
+
+#[test]
+fn reviewer_rejects_a_profile_that_would_erase_the_authoritative_request() {
+    let error = reviewer_user(&ReviewerPrompt {
+        system: &reviewer_system(Duration::from_secs(235)),
+        tools: &[],
+        transcript: "Preserve this exact requested behavior.",
+        diff: "candidate",
+        gates: "gate evidence",
+        developer_evidence: "",
+        prior: "",
+        max_input_tokens: 8_000,
+        delivery: ReviewDelivery {
+            scope: ProductDeliveryScope::WorkspaceChanges,
+            effect_requirement: crate::delivery_requirement::ExternalEffectRequirement::Optional,
+        },
+        correction: None,
+    })
+    .unwrap_err();
+
+    assert!(matches!(error, DeveloperLoopError::Context(_)));
+    assert!(error.to_string().contains("no initial evidence headroom"));
 }

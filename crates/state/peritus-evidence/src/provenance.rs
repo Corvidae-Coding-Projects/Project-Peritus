@@ -143,7 +143,7 @@ impl JournalProvenance {
 pub(crate) fn schema_digest(family: u16, version: u16) -> Result<Sha256Digest, EvidenceError> {
     let registered = FAMILIES
         .iter()
-        .find(|candidate| candidate.tag == family && candidate.schema_version == version)
+        .find(|candidate| candidate.tag == family && candidate.supports(version))
         .ok_or_else(|| invalid("journal frame family/schema is unsupported"))?;
     let mut bytes = b"peritus-evidence-frame-schema-v1\0".to_vec();
     put_u16(&mut bytes, family);
@@ -159,4 +159,19 @@ fn invalid(detail: &'static str) -> EvidenceError {
         "validate journal provenance",
         detail,
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::schema_digest;
+
+    #[test]
+    fn scheduler_schema_digests_cover_supported_versions_only() {
+        let legacy = schema_digest(71, 1).expect("scheduler event schema one");
+        let current = schema_digest(71, 2).expect("scheduler event schema two");
+        assert_ne!(legacy, current);
+        assert!(schema_digest(71, 0).is_err());
+        assert!(schema_digest(71, 3).is_err());
+        assert!(schema_digest(3, 2).is_err());
+    }
 }

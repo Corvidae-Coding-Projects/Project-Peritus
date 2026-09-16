@@ -2,7 +2,7 @@
 
 use peritus_codec::sha256;
 use peritus_role::{ContextClass, MemoryVisibility, RoleProfile};
-use crate::{AuthorityClass, ContentKind, ContextGraph, ContextLimits, ContextNode, ContextNodeId,
+use crate::{AuthorityClass, ContentKind, ContextErrorKind, ContextGraph, ContextLimits, ContextNode, ContextNodeId,
     ContextNodeMetadata, ContextPlanId, Provenance, RenderPlan, RequirementMode, RoleVisibility,
     SelectionPolicy, TokenBudget, TrustClass, bind_context_content, build_render_plan, select_context};
 use super::{WorkingBinding, WorkingEntry, WorkingEntryKind, WorkingEntryStatus, WorkingError, WorkingState};
@@ -31,6 +31,18 @@ impl WorkingRenderView {
 /// # Errors
 /// Rejects scope drift, invalid graph/role projections, zero capacity, or required-root overflow.
 pub fn render_working_state(state: &WorkingState, binding: WorkingBinding, max_tokens: u64) -> Result<WorkingRenderView, WorkingError> {
+    render_working_state_with_headroom(state, binding, max_tokens, max_tokens)
+}
+
+/// Renders working records with a preferred allocation and a hard available-input ceiling.
+///
+/// Only required roots and their complete dependencies may enlarge the preferred allocation.
+/// Optional records cannot consume extra headroom. No stored entry or source is modified.
+///
+/// # Errors
+/// Rejects the same invalid projections as [`render_working_state`], or required closure that
+/// exceeds `available_tokens`. Hosts must reserve complete request framing before calling.
+pub fn render_working_state_with_headroom(state: &WorkingState, binding: WorkingBinding, preferred_tokens: u64, available_tokens: u64) -> Result<WorkingRenderView, WorkingError> {
     let entries = state.entries(binding)?;
     if entries.is_empty() { return Ok(WorkingRenderView { plan: None, omitted: Vec::new() }); }
     let profile = RoleProfile::for_harness_role(binding.role());
@@ -42,9 +54,6 @@ pub fn render_working_state(state: &WorkingState, binding: WorkingBinding, max_t
     let mut nodes = Vec::with_capacity(entries.len());
     for entry in entries { nodes.push(node(entry, binding, limits)?); }
     let graph = ContextGraph::new(nodes, limits).map_err(|_| WorkingError::DependencyCycle)?;
-    let budget = TokenBudget::new(max_tokens, 0, 0).map_err(|_| WorkingError::Capacity)?;
-    let bytes = usize::try_from(max_tokens.saturating_mul(3)).map_err(|_| WorkingError::Capacity)?;
-    let policy = SelectionPolicy::new(profile, budget, state.limits().entries(), bytes).map_err(|_| WorkingError::Capacity)?;
     let mut identity = b"peritus-working-render-v1".to_vec();
     identity.extend_from_slice(binding.run().as_bytes());
     identity.extend_from_slice(binding.workspace().as_bytes());
@@ -52,8 +61,25 @@ pub fn render_working_state(state: &WorkingState, binding: WorkingBinding, max_t
     identity.extend_from_slice(format!("{:?}", binding.role()).as_bytes());
     identity.extend_from_slice(&binding.conversation_revision().to_be_bytes());
     identity.extend_from_slice(&state.revision().to_be_bytes());
-    identity.extend_from_slice(&max_tokens.to_be_bytes());
-    let plan = select_context(&graph, &policy, ContextPlanId::new(sha256(&identity))).map_err(|_| WorkingError::Capacity)?;
+    let mut allocation = preferred_tokens.min(available_tokens);
+    let plan = loop {
+        let budget = TokenBudget::new(allocation, 0, 0).map_err(|_| WorkingError::Capacity)?;
+        let bytes = usize::try_from(allocation.saturating_mul(3)).map_err(|_| WorkingError::Capacity)?;
+        let policy = SelectionPolicy::new(profile.clone(), budget, state.limits().entries(), bytes).map_err(|_| WorkingError::Capacity)?;
+        let mut plan_identity = identity.clone();
+        plan_identity.extend_from_slice(&allocation.to_be_bytes());
+        match select_context(&graph, &policy, ContextPlanId::new(sha256(&plan_identity))) {
+            Ok(plan) => break plan,
+            Err(error) if error.kind() == ContextErrorKind::RequiredTokenBudgetExceeded => {
+                let needed = error.actual().ok_or(WorkingError::Capacity)?;
+                if needed <= allocation || needed > available_tokens { return Err(WorkingError::Capacity); }
+                // Each retry admits at least one more required closure; optional selection has
+                // not begun. The existing selector owns dependency and accounting semantics.
+                allocation = needed;
+            }
+            Err(_) => return Err(WorkingError::Capacity),
+        }
+    };
     let omitted = entries.iter().filter(|entry| !plan.contains(entry.id())).map(WorkingEntry::id).collect();
     let rendered = build_render_plan(&graph, &plan).map_err(|_| WorkingError::BindingMismatch)?;
     Ok(WorkingRenderView { plan: Some(rendered), omitted })

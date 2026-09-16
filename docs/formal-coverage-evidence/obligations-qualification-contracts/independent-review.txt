@@ -1,0 +1,42 @@
+# Independent review: obligation qualification contracts
+
+Reviewer: `/root/sol_readiness_correspondence`  
+Review mode: immutable source and supplied-evidence inspection only; no compiler, verifier, test, lint, or formatting command was rerun.  
+Frozen source: `/tmp/peritus-parent-obligations-contracts-source-01`.
+
+## Identity and provenance
+
+- Reviewed baseline: `/tmp/peritus-sol-obligations-performance-source-01`, 51 package files. Its manifest `/tmp/peritus-sol-obligations-performance-full-package.sha256` has SHA-256 `0ca196662727368857d6dfbd0386b2edf97da307db9e3e536240192fd4f13fec`.
+- Reviewed candidate: 56 package files. `/tmp/peritus-parent-obligations-contracts-full-package.sha256` has SHA-256 `548fbb7cf5485c65354c41152cb10fc365d419a77c7740dc566ad0bb00f6dd17`; every entry was rechecked against the frozen source.
+- Exact set comparison is 48 unchanged files, three modified files, five added files, and no removed files. The eight differing paths exactly match `/tmp/peritus-parent-obligations-contracts-changed-source.sha256`, whose SHA-256 is `8dd783300ffba244a1863a76b8b23606e0209f20960e52a5b2f12f38ab772452`.
+- The supplied eight-path patch `/tmp/peritus-parent-obligations-contracts-source.patch` has SHA-256 `4cdd39ec097925a73e4a094b1b81546065f2db134e43d76550efbd1e29ef453c` and corresponds to the inspected baseline/candidate delta.
+- All 59 entries in `/tmp/peritus-parent-obligations-contracts-direct-dependencies.sha256` (peritus-spec, peritus-types, and peritus-run-settlement) were rechecked against the current shared dependency source and matched. The manifest SHA-256 is `99a38fda29e44b2af37b03ee91cede5c62abc26835088f7764ab20bf42af730f`.
+- The supplied evidence manifest `/tmp/peritus-parent-obligations-contracts-evidence.sha256` has SHA-256 `2f6e891c221ffccaded2891c7170427978ae3eb19e7dca548654177780a0486f`; all 28 listed files were rechecked successfully.
+
+## Source verdict
+
+**Bounded PASS.** I found no correctness, runtime-equivalence, public-API, or proof-scope blocker in the eight-path increment.
+
+The public `qualify` boundary now connects both outcomes to actual inputs. `Ok(report)` retains the pre-existing exact `report_refines` relation for all report fields and additionally proves the stored `qualified` bit equivalent to the new universal `qualification_satisfied` predicate. `Err(error)` proves `qualification_error`, which preserves the existing production precedence and every stored payload field: condition order before evidence checks; evidence length before evidence order; evidence order before unknown identity; equal versus descending first bad adjacent pair; exact maximum/actual lengths; and the first unknown requirement identity.
+
+The error predicates are exact rather than kind-only because `ObligationError::spec_plain`, `spec_requirement`, and `spec_numbers` constrain all four stored fields. The validator loops establish a prefix of strict adjacent order, so `first_order_failure` identifies the same earliest conflicting/descending pair reached by the executable loops. The unknown-identity predicate requires all earlier values to be known and retains the actual evidence identity. No runtime guard or error priority changed.
+
+The verdict theorem is input-defined rather than an assertion over cached booleans. For ordinary entries, it quantifies the actual ledger sequence, uses the existing exact condition/evidence lookup and typed verdict model, requires satisfying current evidence for every active non-alternative entry, and requires every consulted conditional observation to be resolved. For alternatives, it quantifies actual represented groups and requires one actual branch whose every actual member has a `Satisfied` verdict. First-seen group enumeration is proved equivalent to the per-entry universal predicate, and count/list induction connects these predicates to the exact fields the production evaluator already constructs.
+
+The report has no newly dropped output. `report_refines` still binds required/satisfied/missing/stale/invalid counts, ordered unsatisfied requirement IDs, ordered unresolved condition IDs, ordered first-seen incomplete groups, and the qualified bit. `QualificationReport::spec_refines` adds the universal equivalence as a conjunction, so it does not weaken those earlier output contracts. The production body still validates, invokes the same evaluator, and returns the same report; naming the result and invoking an erased proof do not alter ordinary execution. New admission/completion modules and exports are `cfg(verus_only)`. I found no assume/admit/axiom/external-body escape, new lint suppression, alternate executable, or public executable precondition in the increment.
+
+The direct gate caller stores the complete report and authorizes its gate only through `report.qualified()`. The product runner also consumes `qualified()` and renders all five numeric report counts. The new contract therefore reaches the actual raw verdict used by these callers, while the truth and policy used to construct supplied observations remain outside this increment.
+
+## Supplied qualification evidence inspected
+
+- Strict pinned library evidence records 361 verified / 0 errors on unchanged production/proof bytes in `/tmp/peritus-parent-obligations-contracts-restored-verus-pre-const.log`. The final post-test-helper run reused that verified library metadata; `/tmp/peritus-parent-obligations-contracts-restored-verus.log` is therefore cache evidence rather than an independent fresh 361-item proof. The supplied report states this accurately.
+- The external client log records 2 verified / 0 errors while importing the exported predicates and calling the public boundary without added preconditions.
+- Default and all-feature package logs each record 32 passing tests. The added runtime matrix covers all 256 combinations of two ordinary obligations, four condition states, and two two-member branches, plus exact admission-error precedence/payload cases.
+- Strict Clippy, formatting, ordinary API, and source-layout logs report success. The API/layout counts come from the isolated older workspace snapshot, so they are not final shared-tree gate evidence.
+- Replacing the actual unknown-requirement error with a kind-only error is rejected at 360 verified / 1 error, directly demonstrating payload custody. Removing the resolved-condition conjunct is also rejected at 360/1, but only by reaching the pinned rlimit. That second result is refusal to certify, not a semantic counterexample. The report states this boundary correctly.
+
+## Limits and remaining feasible work
+
+This checkpoint proves deterministic qualification of supplied typed evidence. It does not prove that observations are truthful, that ordinary SHA-256 execution is authentic, that an external effect occurred, or that callers derive evidence under a sound policy. The current product-runner adapter, for example, synthesizes DirectEvidence from its gate/review booleans; the qualification theorem precisely classifies those supplied values but does not validate their origin.
+
+Complete first-error and payload contracts for `RequirementLedger::extract` remain the principal feasible adjacent gap: its public success relation is exact, but its error branch is still unconstrained. Whole-ledger hashing, source observation, all downstream caller policies, final obligation/trust records, and hosted enforcement also remain outside this review. No obligation discharge or end-to-end release claim follows from this bounded PASS.

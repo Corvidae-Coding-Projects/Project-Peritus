@@ -47,6 +47,8 @@ pub(super) fn inspect(
     let name = attribute_name(tokens);
     let allowed = name.as_deref().is_some_and(|name| SIMPLE.contains(&name))
         || name.as_deref().is_some_and(trust_accounted)
+        || audited_direct_verification(tokens)
+        || audited_ghost_documentation(tokens)
         || audited_repr(tokens)
         || deserialize_imported && serde::audited(tokens, serialize_imported)
         || name.as_deref() == Some("default") && tokens.len() == 1
@@ -102,7 +104,7 @@ fn audited_serde_declaration(tokens: &[Token], derive: &str) -> bool {
 pub(super) fn is_expansion_name(name: &str) -> bool {
     SIMPLE.contains(&name)
         || DERIVES.contains(&name)
-        || matches!(name, "derive" | "repr" | "serde" | "default" | "ignore")
+        || matches!(name, "derive" | "repr" | "serde" | "default" | "ignore" | "cfg_attr")
 }
 
 pub(super) fn unsupported(line: usize, name: &str) -> Violation {
@@ -144,6 +146,64 @@ fn audited_repr(tokens: &[Token]) -> bool {
         && punctuation_is(&tokens[1], '(')
         && identifier_is(&tokens[2], "u8")
         && punctuation_is(&tokens[3], ')')
+}
+
+// The pinned Verus toolchain uses this marker to verify ordinary Rust declarations
+// without routing them through `verus!` and synthesizing undocumented enum projections.
+fn audited_direct_verification(tokens: &[Token]) -> bool {
+    tokens.len() == 9
+        && identifier_is(&tokens[0], "cfg_attr")
+        && punctuation_is(&tokens[1], '(')
+        && identifier_is(&tokens[2], "verus_keep_ghost")
+        && punctuation_is(&tokens[3], ',')
+        && identifier_is(&tokens[4], "verifier")
+        && punctuation_is(&tokens[5], ':')
+        && punctuation_is(&tokens[6], ':')
+        && identifier_is(&tokens[7], "verify")
+        && punctuation_is(&tokens[8], ')')
+}
+
+// The pinned Verus enum expansion synthesizes undocumented ghost projection methods.
+// Permit only documentation lint metadata in that expansion; neither ordinary Rust
+// documentation checks nor executable attributes/contracts can change through this form.
+fn audited_ghost_documentation(tokens: &[Token]) -> bool {
+    if tokens.len() < 13
+        || !identifier_is(&tokens[0], "cfg_attr")
+        || !punctuation_is(&tokens[1], '(')
+        || matching_group(tokens, 1, '(', ')') != Some(tokens.len())
+    {
+        return false;
+    }
+    let arguments = without_trailing_comma(&tokens[2..tokens.len() - 1]);
+    if arguments.len() < 3
+        || !identifier_is(&arguments[0], "verus_keep_ghost")
+        || !punctuation_is(&arguments[1], ',')
+    {
+        return false;
+    }
+    let attribute = &arguments[2..];
+    if attribute.len() < 4
+        || !identifier_is(&attribute[0], "allow")
+        || !punctuation_is(&attribute[1], '(')
+        || matching_group(attribute, 1, '(', ')') != Some(attribute.len())
+    {
+        return false;
+    }
+    let lint = without_trailing_comma(&attribute[2..attribute.len() - 1]);
+    lint.len() == 5
+        && identifier_is(&lint[0], "missing_docs")
+        && punctuation_is(&lint[1], ',')
+        && identifier_is(&lint[2], "reason")
+        && punctuation_is(&lint[3], '=')
+        && matches!(&lint[4].kind, TokenKind::StringLiteral(Some(reason)) if !reason.trim().is_empty())
+}
+
+fn without_trailing_comma(tokens: &[Token]) -> &[Token] {
+    if tokens.last().is_some_and(|token| punctuation_is(token, ',')) {
+        &tokens[..tokens.len() - 1]
+    } else {
+        tokens
+    }
 }
 
 fn attribute_name(tokens: &[Token]) -> Option<String> {

@@ -1,0 +1,2022 @@
+diff -ruN /tmp/peritus-parent-knowledge-delta-preimage/crates/orchestration/peritus-run-knowledge/src/delta/material.rs /tmp/peritus-sol-knowledge-delta-source-01/src/delta/material.rs
+--- /tmp/peritus-parent-knowledge-delta-preimage/crates/orchestration/peritus-run-knowledge/src/delta/material.rs	1969-12-31 18:00:00.000000000 -0600
++++ /tmp/peritus-sol-knowledge-delta-source-01/src/delta/material.rs	2026-09-12 17:07:14.097571488 -0500
+@@ -0,0 +1,61 @@
++//! Complete executable material comparisons for delta-packet reuse.
++
++use crate::{KnowledgeSection, KnowledgeSectionId, SourceDigest};
++use peritus_run_settlement::CandidateIdentity;
++use vstd::prelude::*;
++
++verus! {
++
++pub(super) fn candidates_match(left: &CandidateIdentity, right: &CandidateIdentity) -> (same: bool)
++    ensures same == crate::model::candidates_match(left, right),
++{
++    left.same_candidate(right) && left.checkpoint_sequence() == right.checkpoint_sequence()
++}
++
++pub(super) fn same_material(previous: &KnowledgeSection, current: &KnowledgeSection) -> (same: bool)
++    ensures same == crate::model::section_material_matches(previous, current),
++{
++    previous.kind().matches(current.kind())
++        && crate::identity::bytes_equal(
++            previous.section_digest().as_bytes(), current.section_digest().as_bytes())
++        && sources_match(previous.binding().sources(), current.binding().sources())
++        && dependencies_match(previous.dependencies(), current.dependencies())
++}
++
++fn sources_match(left: &[SourceDigest], right: &[SourceDigest]) -> (same: bool)
++    ensures same == crate::model::sources_match(left@, right@),
++{
++    if left.len() != right.len() { return false; }
++    let mut index = 0;
++    while index < left.len()
++        invariant
++            left.len() == right.len(),
++            index <= left.len(),
++            forall |prior: int| 0 <= prior < index ==> left@[prior].spec_matches(&right@[prior]),
++        decreases left.len() - index,
++    {
++        if !left[index].matches(&right[index]) { return false; }
++        index += 1;
++    }
++    true
++}
++
++fn dependencies_match(left: &[KnowledgeSectionId], right: &[KnowledgeSectionId]) -> (same: bool)
++    ensures same == crate::model::dependencies_match(left@, right@),
++{
++    if left.len() != right.len() { return false; }
++    let mut index = 0;
++    while index < left.len()
++        invariant
++            left.len() == right.len(),
++            index <= left.len(),
++            forall |prior: int| 0 <= prior < index ==> left@[prior].spec_matches(&right@[prior]),
++        decreases left.len() - index,
++    {
++        if !left[index].matches(&right[index]) { return false; }
++        index += 1;
++    }
++    true
++}
++
++} // verus!
+diff -ruN /tmp/peritus-parent-knowledge-delta-preimage/crates/orchestration/peritus-run-knowledge/src/delta/packet.rs /tmp/peritus-sol-knowledge-delta-source-01/src/delta/packet.rs
+--- /tmp/peritus-parent-knowledge-delta-preimage/crates/orchestration/peritus-run-knowledge/src/delta/packet.rs	1969-12-31 18:00:00.000000000 -0600
++++ /tmp/peritus-sol-knowledge-delta-source-01/src/delta/packet.rs	2026-09-12 17:17:18.673635840 -0500
+@@ -0,0 +1,243 @@
++//! Delta-packet values, exact field views, and semantic cloning.
++
++#[cfg(verus_only)]
++use crate::{InvalidationRequest, RunKnowledgeSnapshot};
++use crate::KnowledgeSectionId;
++use peritus_role::HarnessRole;
++use peritus_run_settlement::CandidateIdentity;
++use vstd::prelude::*;
++
++verus! {
++
++/// How one section enters a role's next provider-neutral context packet.
++#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
++pub enum DeltaDelivery {
++    /// Exact authoritative material changed and must be delivered again.
++    ChangedFact,
++    /// Exact authoritative material remains current and may be referenced.
++    CurrentReference,
++    /// Non-authoritative navigation text may be delivered only as navigation.
++    Navigation,
++}
++
++/// One deterministic role-packet entry.
++#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
++pub struct DeltaEntry {
++    section_id: KnowledgeSectionId,
++    delivery: DeltaDelivery,
++}
++
++impl DeltaEntry {
++    /// Logical view of the exact section identity.
++    pub closed spec fn spec_section_id(&self) -> KnowledgeSectionId { self.section_id }
++
++    /// Logical view of the exact delivery classification.
++    pub closed spec fn spec_delivery(&self) -> DeltaDelivery { self.delivery }
++
++    pub(super) const fn new(
++        section_id: KnowledgeSectionId,
++        delivery: DeltaDelivery,
++    ) -> (result: Self)
++        ensures
++            result.spec_section_id() == section_id,
++            result.spec_delivery() == delivery,
++    {
++        Self { section_id, delivery }
++    }
++
++    /// Stable section identity.
++    #[must_use]
++    pub const fn section_id(self) -> (id: KnowledgeSectionId)
++        ensures id == self.spec_section_id(),
++    { self.section_id }
++
++    /// Required packet representation.
++    #[must_use]
++    pub const fn delivery(self) -> (delivery: DeltaDelivery)
++        ensures delivery == self.spec_delivery(),
++    { self.delivery }
++}
++
++/// Product-visible packet reuse counters.
++#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
++pub struct DeltaAccounting {
++    changed_facts: usize,
++    current_references: usize,
++    navigation_sections: usize,
++    invalidated_prior_sections: usize,
++}
++
++impl DeltaAccounting {
++    /// Logical count of authoritative facts that changed.
++    pub closed spec fn spec_changed_facts(&self) -> nat { self.changed_facts as nat }
++
++    /// Logical count of authoritative current references.
++    pub closed spec fn spec_current_references(&self) -> nat { self.current_references as nat }
++
++    /// Logical count of navigation-only sections.
++    pub closed spec fn spec_navigation_sections(&self) -> nat { self.navigation_sections as nat }
++
++    /// Logical count of invalidated prior sections.
++    pub closed spec fn spec_invalidated_prior_sections(&self) -> nat {
++        self.invalidated_prior_sections as nat
++    }
++
++    pub(super) const fn new(
++        changed_facts: usize,
++        current_references: usize,
++        navigation_sections: usize,
++        invalidated_prior_sections: usize,
++    ) -> (result: Self)
++        ensures
++            result.spec_changed_facts() == changed_facts as nat,
++            result.spec_current_references() == current_references as nat,
++            result.spec_navigation_sections() == navigation_sections as nat,
++            result.spec_invalidated_prior_sections() == invalidated_prior_sections as nat,
++    {
++        Self {
++            changed_facts,
++            current_references,
++            navigation_sections,
++            invalidated_prior_sections,
++        }
++    }
++
++    /// Authoritative facts that must be delivered again.
++    #[must_use]
++    pub const fn changed_facts(self) -> (count: usize)
++        ensures count as nat == self.spec_changed_facts(),
++    { self.changed_facts }
++
++    /// Authoritative facts safely reused by reference.
++    #[must_use]
++    pub const fn current_references(self) -> (count: usize)
++        ensures count as nat == self.spec_current_references(),
++    { self.current_references }
++
++    /// Navigation-only sections in the packet.
++    #[must_use]
++    pub const fn navigation_sections(self) -> (count: usize)
++        ensures count as nat == self.spec_navigation_sections(),
++    { self.navigation_sections }
++
++    /// Prior sections invalidated before the packet was built.
++    #[must_use]
++    pub const fn invalidated_prior_sections(self) -> (count: usize)
++        ensures count as nat == self.spec_invalidated_prior_sections(),
++    {
++        self.invalidated_prior_sections
++    }
++}
++
++/// Complete provider-neutral delta packet for one writer, reviewer, or fixer.
++#[derive(Debug, Eq, PartialEq)]
++pub struct DeltaPacket {
++    role: HarnessRole,
++    candidate: CandidateIdentity,
++    entries: Vec<DeltaEntry>,
++    accounting: DeltaAccounting,
++}
++
++impl DeltaPacket {
++    /// Logical target role.
++    pub closed spec fn spec_role(&self) -> HarnessRole { self.role }
++
++    /// Logical current candidate observation.
++    pub closed spec fn spec_candidate(&self) -> CandidateIdentity { self.candidate }
++
++    /// Logical ordered packet entries.
++    pub closed spec fn spec_entries(&self) -> Seq<DeltaEntry> { self.entries@ }
++
++    /// Logical packet accounting.
++    pub closed spec fn spec_accounting(&self) -> DeltaAccounting { self.accounting }
++
++    pub(super) const fn new(
++        role: HarnessRole,
++        candidate: CandidateIdentity,
++        entries: Vec<DeltaEntry>,
++        accounting: DeltaAccounting,
++    ) -> (result: Self)
++        ensures
++            result.spec_role() == role,
++            result.spec_candidate() == candidate,
++            result.spec_entries() == entries@,
++            result.spec_accounting() == accounting,
++    {
++        Self { role, candidate, entries, accounting }
++    }
++
++    /// Complete input-defined successful packet result.
++    pub open spec fn spec_refines(
++        &self,
++        previous: &RunKnowledgeSnapshot,
++        current: &RunKnowledgeSnapshot,
++        request: &InvalidationRequest,
++    ) -> bool {
++        &&& crate::model::delta_inputs_valid(previous, current, request)
++        &&& self.spec_role() == current.spec_role()
++        &&& crate::model::candidates_match(
++            &self.spec_candidate(), &current.spec_candidate())
++        &&& crate::model::all_delta_entries_exact(
++            previous, current, request, self.spec_entries())
++        &&& self.spec_accounting().spec_changed_facts()
++            == crate::model::changed_fact_count(self.spec_entries())
++        &&& self.spec_accounting().spec_current_references()
++            == crate::model::current_reference_count(self.spec_entries())
++        &&& self.spec_accounting().spec_navigation_sections()
++            == crate::model::navigation_count(self.spec_entries())
++        &&& self.spec_accounting().spec_changed_facts()
++            + self.spec_accounting().spec_current_references()
++            + self.spec_accounting().spec_navigation_sections()
++            == self.spec_entries().len()
++        &&& self.spec_accounting().spec_invalidated_prior_sections()
++            == crate::model::invalidated_prior_count(previous, request)
++    }
++
++    /// Complete semantic content preserved by cloning.
++    pub open spec fn clone_equivalent(left: &Self, right: &Self) -> bool {
++        left.spec_role() == right.spec_role()
++            && crate::model::candidates_match(
++                &left.spec_candidate(), &right.spec_candidate())
++            && left.spec_entries() == right.spec_entries()
++            && left.spec_accounting() == right.spec_accounting()
++    }
++
++    /// Target role.
++    #[must_use]
++    pub const fn role(&self) -> (role: HarnessRole)
++        ensures role == self.spec_role(),
++    { self.role }
++
++    /// Exact current candidate.
++    #[must_use]
++    pub const fn candidate(&self) -> (candidate: &CandidateIdentity)
++        ensures *candidate == self.spec_candidate(),
++    { &self.candidate }
++
++    /// Canonically ordered packet entries.
++    #[must_use]
++    pub const fn entries(&self) -> (entries: &[DeltaEntry])
++        ensures entries@ == self.spec_entries(),
++    { self.entries.as_slice() }
++
++    /// Reuse, refresh, and navigation counts.
++    #[must_use]
++    pub const fn accounting(&self) -> (accounting: DeltaAccounting)
++        ensures accounting == self.spec_accounting(),
++    { self.accounting }
++}
++
++impl Clone for DeltaPacket {
++    fn clone(&self) -> (result: Self)
++        ensures Self::clone_equivalent(self, &result),
++    {
++        Self {
++            role: self.role,
++            candidate: self.candidate,
++            entries: self.entries.clone(),
++            accounting: self.accounting,
++        }
++    }
++}
++
++} // verus!
+diff -ruN /tmp/peritus-parent-knowledge-delta-preimage/crates/orchestration/peritus-run-knowledge/src/delta.rs /tmp/peritus-sol-knowledge-delta-source-01/src/delta.rs
+--- /tmp/peritus-parent-knowledge-delta-preimage/crates/orchestration/peritus-run-knowledge/src/delta.rs	2026-09-12 16:20:15.252073925 -0500
++++ /tmp/peritus-sol-knowledge-delta-source-01/src/delta.rs	2026-09-12 17:19:34.945551949 -0500
+@@ -1,104 +1,20 @@
+ //! Role-specific changed-fact and current-reference packet planning.
+ 
++mod material;
++mod packet;
++
++pub use packet::{DeltaAccounting, DeltaDelivery, DeltaEntry, DeltaPacket};
++
+ use crate::{
+-    InvalidationRequest, KnowledgeAuthority, KnowledgeError, KnowledgeErrorKind,
+-    KnowledgeSection, KnowledgeSectionId, ReuseDecision, RunKnowledgeSnapshot,
++    InvalidationRequest, KnowledgeError, KnowledgeErrorKind, KnowledgeSection, RunKnowledgeSnapshot,
+     plan_invalidation,
+ };
+-use peritus_role::HarnessRole;
+-use peritus_run_settlement::CandidateIdentity;
++#[cfg(verus_only)]
++use crate::KnowledgeSectionId;
+ use vstd::prelude::*;
+ 
+ verus! {
+ 
+-/// How one section enters a role's next provider-neutral context packet.
+-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+-pub enum DeltaDelivery {
+-    /// Exact authoritative material changed and must be delivered again.
+-    ChangedFact,
+-    /// Exact authoritative material remains current and may be referenced.
+-    CurrentReference,
+-    /// Non-authoritative navigation text may be delivered only as navigation.
+-    Navigation,
+-}
+-
+-/// One deterministic role-packet entry.
+-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+-pub struct DeltaEntry {
+-    section_id: KnowledgeSectionId,
+-    delivery: DeltaDelivery,
+-}
+-
+-impl DeltaEntry {
+-    const fn new(section_id: KnowledgeSectionId, delivery: DeltaDelivery) -> Self {
+-        Self { section_id, delivery }
+-    }
+-
+-    /// Stable section identity.
+-    #[must_use]
+-    pub const fn section_id(self) -> KnowledgeSectionId { self.section_id }
+-
+-    /// Required packet representation.
+-    #[must_use]
+-    pub const fn delivery(self) -> DeltaDelivery { self.delivery }
+-}
+-
+-/// Product-visible packet reuse counters.
+-#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+-pub struct DeltaAccounting {
+-    changed_facts: usize,
+-    current_references: usize,
+-    navigation_sections: usize,
+-    invalidated_prior_sections: usize,
+-}
+-
+-impl DeltaAccounting {
+-    /// Authoritative facts that must be delivered again.
+-    #[must_use]
+-    pub const fn changed_facts(self) -> usize { self.changed_facts }
+-
+-    /// Authoritative facts safely reused by reference.
+-    #[must_use]
+-    pub const fn current_references(self) -> usize { self.current_references }
+-
+-    /// Navigation-only sections in the packet.
+-    #[must_use]
+-    pub const fn navigation_sections(self) -> usize { self.navigation_sections }
+-
+-    /// Prior sections invalidated before the packet was built.
+-    #[must_use]
+-    pub const fn invalidated_prior_sections(self) -> usize {
+-        self.invalidated_prior_sections
+-    }
+-}
+-
+-/// Complete provider-neutral delta packet for one writer, reviewer, or fixer.
+-#[derive(Clone, Debug, Eq, PartialEq)]
+-pub struct DeltaPacket {
+-    role: HarnessRole,
+-    candidate: CandidateIdentity,
+-    entries: Vec<DeltaEntry>,
+-    accounting: DeltaAccounting,
+-}
+-
+-impl DeltaPacket {
+-    /// Target role.
+-    #[must_use]
+-    pub const fn role(&self) -> HarnessRole { self.role }
+-
+-    /// Exact current candidate.
+-    #[must_use]
+-    pub const fn candidate(&self) -> &CandidateIdentity { &self.candidate }
+-
+-    /// Canonically ordered packet entries.
+-    #[must_use]
+-    pub const fn entries(&self) -> &[DeltaEntry] { self.entries.as_slice() }
+-
+-    /// Reuse, refresh, and navigation counts.
+-    #[must_use]
+-    pub const fn accounting(&self) -> DeltaAccounting { self.accounting }
+-}
+-
+ /// Builds the next role packet from prior and current grounded snapshots.
+ ///
+ /// # Errors
+@@ -109,22 +25,69 @@
+     previous: &RunKnowledgeSnapshot,
+     current: &RunKnowledgeSnapshot,
+     request: &InvalidationRequest,
+-) -> Result<DeltaPacket, KnowledgeError> {
+-    if previous.role() != current.role() {
++) -> (result: Result<DeltaPacket, KnowledgeError>)
++    ensures
++        result.is_ok() == crate::model::delta_inputs_valid(previous, current, request),
++        match result {
++            Ok(packet) => packet.spec_refines(previous, current, request),
++            Err(_) => true,
++        },
++{
++    if !crate::binding::roles_match(previous.role(), current.role()) {
++        assert(!crate::model::delta_inputs_valid(previous, current, request));
+         return Err(KnowledgeError::plain(KnowledgeErrorKind::RoleMismatch));
+     }
+-    if current.candidate() != request.state().candidate() {
++    let candidate_matches = material::candidates_match(
++        current.candidate(), request.state().candidate());
++    if !candidate_matches {
++        assert(!crate::model::delta_inputs_valid(previous, current, request));
+         return Err(KnowledgeError::plain(KnowledgeErrorKind::CurrentSnapshotStale));
+     }
+-    let current_request = InvalidationRequest::same_revision(request.state().clone());
++    validate_current_snapshot(current, request)?;
++    let prior_plan = plan_invalidation(previous, request)?;
++    assert(crate::model::delta_inputs_valid(previous, current, request));
++    Ok(build_delta_packet(previous, current, request, &prior_plan))
++}
++
++fn validate_current_snapshot(
++    current: &RunKnowledgeSnapshot,
++    request: &InvalidationRequest,
++) -> (result: Result<(), KnowledgeError>)
++    ensures result.is_ok()
++        == crate::model::current_snapshot_fresh(current, &request.spec_state()),
++{
++    let cloned_state = request.state().clone();
++    let current_request = InvalidationRequest::same_revision(cloned_state);
++    assert(crate::model::normalized_same_revision(
++        &current_request, request.spec_state()));
++    assert(crate::model::clarification_targets_valid(current, &current_request));
+     let current_plan = plan_invalidation(current, &current_request)?;
++    proof {
++        crate::model::plan_matches_exact_entries(
++            current, &current_request, current_plan.spec_entries());
++        crate::model::current_plan_all_reuse_matches_freshness(
++            current,
++            &current_request,
++            request.spec_state(),
++            current_plan.spec_entries(),
++        );
++    }
+     let current_entries = current_plan.entries();
+     let mut current_index = 0;
+     while current_index < current_entries.len()
+-        invariant current_index <= current_entries.len(),
++        invariant
++            current_index <= current_entries.len(),
++            current_entries@ == current_plan.spec_entries(),
++            crate::model::all_actual_entries_reused(current_plan.spec_entries())
++                == crate::model::current_snapshot_fresh(current, &request.spec_state()),
++            forall |prior: int| 0 <= prior < current_index ==>
++                #[trigger] current_entries@[prior].spec_decision().spec_is_reuse(),
+         decreases current_entries.len() - current_index,
+     {
+-        if current_entries[current_index].decision() != ReuseDecision::Reuse {
++        if !current_entries[current_index].decision().is_reuse() {
++            assert(!crate::model::all_actual_entries_reused(current_plan.spec_entries())) by {
++                let witness = current_index as int;
++            }
+             return Err(KnowledgeError::section(
+                 KnowledgeErrorKind::CurrentSnapshotStale,
+                 current_entries[current_index].section_id(),
+@@ -132,8 +95,29 @@
+         }
+         current_index += 1;
+     }
++    Ok(())
++}
+ 
+-    let prior_plan = plan_invalidation(previous, request)?;
++fn build_delta_packet(
++    previous: &RunKnowledgeSnapshot,
++    current: &RunKnowledgeSnapshot,
++    request: &InvalidationRequest,
++    prior_plan: &crate::InvalidationPlan,
++) -> (packet: DeltaPacket)
++    requires
++        crate::model::delta_inputs_valid(previous, current, request),
++        prior_plan.spec_refines(previous, request),
++    ensures packet.spec_refines(previous, current, request),
++{
++    proof {
++        crate::model::plan_matches_exact_entries(
++            previous, request, prior_plan.spec_entries());
++        crate::model::plan_invalidated_count_matches(
++            prior_plan.spec_entries(),
++            crate::model::exact_plan_entries(
++                previous, request, previous.spec_sections().len()),
++        );
++    }
+     let sections = current.sections();
+     let mut entries = Vec::with_capacity(sections.len());
+     let mut changed_facts = 0usize;
+@@ -143,58 +127,131 @@
+     while index < sections.len()
+         invariant
+             index <= sections.len(),
++            sections@ == current.spec_sections(),
++            prior_plan.spec_refines(previous, request),
+             entries.len() == index,
+-            changed_facts <= index,
+-            current_references <= index,
+-            navigation_sections <= index,
++            crate::model::all_delta_entries_exact_prefix(
++                previous, current, request, entries@),
++            changed_facts as nat == crate::model::changed_fact_count(entries@),
++            current_references as nat == crate::model::current_reference_count(entries@),
++            navigation_sections as nat == crate::model::navigation_count(entries@),
++            changed_facts + current_references + navigation_sections == index,
+         decreases sections.len() - index,
+     {
+         let section = &sections[index];
+-        let delivery = if section.authority() == KnowledgeAuthority::NavigationOnly {
+-            navigation_sections += 1;
+-            DeltaDelivery::Navigation
+-        } else if prior_plan.is_reused(section.id()) && prior_material_matches(previous, section) {
+-            current_references += 1;
+-            DeltaDelivery::CurrentReference
+-        } else {
+-            changed_facts += 1;
+-            DeltaDelivery::ChangedFact
+-        };
+-        entries.push(DeltaEntry::new(section.id(), delivery));
++        let ghost prior_entries = entries@;
++        let delivery = classify_delivery(previous, request, prior_plan, section);
++        match delivery {
++            DeltaDelivery::CurrentReference => {
++                current_references += 1;
++            }
++            DeltaDelivery::ChangedFact => {
++                changed_facts += 1;
++            }
++            DeltaDelivery::Navigation => {
++                navigation_sections += 1;
++            }
++        }
++        let entry = DeltaEntry::new(section.id(), delivery);
++        entries.push(entry);
++        proof {
++            crate::model::delta_counts_after_push(prior_entries, entry);
++        }
++        assert(entries@ == prior_entries.push(entry));
++        proof {
++            KnowledgeSectionId::matches_reflexive(&section.spec_id());
++            crate::model::delta_prefix_after_push(
++                previous, current, request, prior_entries, entry);
++        }
+         index += 1;
+     }
+-    Ok(DeltaPacket {
+-        role: current.role(),
+-        candidate: *current.candidate(),
++    let accounting = DeltaAccounting::new(
++        changed_facts,
++        current_references,
++        navigation_sections,
++        prior_plan.accounting().invalidated(),
++    );
++    let packet = DeltaPacket::new(
++        current.role(),
++        *current.candidate(),
+         entries,
+-        accounting: DeltaAccounting {
+-            changed_facts,
+-            current_references,
+-            navigation_sections,
+-            invalidated_prior_sections: prior_plan.accounting().invalidated(),
+-        },
+-    })
++        accounting,
++    );
++    proof {
++        crate::model::delta_prefix_complete(
++            previous, current, request, packet.spec_entries());
++    }
++    assert(packet.spec_refines(previous, current, request));
++    packet
+ }
+ 
+-fn same_material(previous: &KnowledgeSection, current: &KnowledgeSection) -> bool {
+-    previous.kind() == current.kind()
+-        && previous.section_digest() == current.section_digest()
+-        && previous.binding().sources() == current.binding().sources()
+-        && previous.dependencies() == current.dependencies()
++fn classify_delivery(
++    previous: &RunKnowledgeSnapshot,
++    _request: &InvalidationRequest,
++    prior_plan: &crate::InvalidationPlan,
++    section: &KnowledgeSection,
++) -> (delivery: DeltaDelivery)
++    requires prior_plan.spec_refines(previous, _request),
++    ensures delivery == crate::model::delta_delivery(previous, section, _request),
++{
++    if section.authority().is_navigation_only() {
++        return DeltaDelivery::Navigation;
++    }
++    let prior_reused = prior_plan.is_reused(section.id());
++    proof {
++        crate::model::plan_matches_exact_entries(
++            previous, _request, prior_plan.spec_entries());
++        crate::model::plan_reuse_matches(
++            prior_plan.spec_entries(),
++            crate::model::exact_plan_entries(
++                previous, _request, previous.spec_sections().len()),
++            section.spec_id(),
++        );
++    }
++    if prior_reused && prior_material_matches(previous, section) {
++        DeltaDelivery::CurrentReference
++    } else {
++        DeltaDelivery::ChangedFact
++    }
+ }
+ 
+ fn prior_material_matches(
+     previous: &RunKnowledgeSnapshot,
+     current: &KnowledgeSection,
+-) -> bool {
++) -> (same: bool)
++    ensures same == crate::model::first_prior_material_matches(previous.spec_sections(), current),
++{
+     let sections = previous.sections();
+     let mut index = 0;
+     while index < sections.len()
+-        invariant index <= sections.len(),
++        invariant
++            index <= sections.len(),
++            sections@ == previous.spec_sections(),
++            forall |prior: int| 0 <= prior < index ==>
++                !sections@[prior].spec_id().spec_matches(&current.spec_id()),
+         decreases sections.len() - index,
+     {
+-        if sections[index].id() == current.id() {
+-            return same_material(&sections[index], current);
++        if sections[index].id().matches(&current.id()) {
++            let same = material::same_material(&sections[index], current);
++            assert(same == crate::model::first_prior_material_matches(sections@, current)) by {
++                if same {
++                    let witness = index as int;
++                } else {
++                    assert forall |other: int| 0 <= other < sections.len()
++                        && sections@[other].spec_id().spec_matches(&current.spec_id())
++                        && (forall |prior: int| 0 <= prior < other ==>
++                            !sections@[prior].spec_id().spec_matches(&current.spec_id())) implies
++                        !crate::model::section_material_matches(&sections@[other], current) by {
++                        if other < index {
++                        } else if other > index {
++                            assert(sections@[index as int].spec_id().spec_matches(&current.spec_id()));
++                        } else {
++                            assert(other == index);
++                        }
++                    }
++                }
++            }
++            return same;
+         }
+         index += 1;
+     }
+diff -ruN /tmp/peritus-parent-knowledge-delta-preimage/crates/orchestration/peritus-run-knowledge/src/identity.rs /tmp/peritus-sol-knowledge-delta-source-01/src/identity.rs
+--- /tmp/peritus-parent-knowledge-delta-preimage/crates/orchestration/peritus-run-knowledge/src/identity.rs	2026-09-12 16:20:15.252221285 -0500
++++ /tmp/peritus-sol-knowledge-delta-source-01/src/identity.rs	2026-09-12 17:09:58.588677305 -0500
+@@ -70,6 +70,29 @@
+         bytes_equal(self.as_bytes(), other.as_bytes())
+     }
+ 
++    /// Reverses exact section-identity equality inside proofs.
++    pub(crate) proof fn matches_symmetric(left: &Self, right: &Self)
++        requires left.spec_matches(right),
++        ensures right.spec_matches(left),
++    {
++        assert(left.spec_bytes() == right.spec_bytes());
++    }
++
++    /// Establishes exact section-identity equality with itself inside proofs.
++    pub(crate) proof fn matches_reflexive(value: &Self)
++        ensures value.spec_matches(value),
++    {
++    }
++
++    /// Composes exact section-identity equality inside proofs.
++    pub(crate) proof fn matches_transitive(left: &Self, middle: &Self, right: &Self)
++        requires left.spec_matches(middle), middle.spec_matches(right),
++        ensures left.spec_matches(right),
++    {
++        assert(left.spec_bytes() == middle.spec_bytes());
++        assert(middle.spec_bytes() == right.spec_bytes());
++    }
++
+     pub(crate) fn canonical_order(&self, other: &Self) -> (order: Ordering)
+         ensures order == self.spec_order(other),
+     {
+diff -ruN /tmp/peritus-parent-knowledge-delta-preimage/crates/orchestration/peritus-run-knowledge/src/kind.rs /tmp/peritus-sol-knowledge-delta-source-01/src/kind.rs
+--- /tmp/peritus-parent-knowledge-delta-preimage/crates/orchestration/peritus-run-knowledge/src/kind.rs	2026-09-12 16:20:15.252288331 -0500
++++ /tmp/peritus-sol-knowledge-delta-source-01/src/kind.rs	2026-09-12 17:10:29.981888350 -0500
+@@ -101,9 +101,20 @@
+         )
+     }
+ 
++    /// Exact authority classification fixed by semantic kind.
++    pub open spec fn spec_authority(self) -> KnowledgeAuthority {
++        if self == Self::CompactedToolObservation || self == Self::NavigationSummary {
++            KnowledgeAuthority::NavigationOnly
++        } else {
++            KnowledgeAuthority::Authoritative
++        }
++    }
++
+     /// Evidence authority fixed by the semantic kind.
+     #[must_use]
+-    pub const fn authority(self) -> KnowledgeAuthority {
++    pub const fn authority(self) -> (authority: KnowledgeAuthority)
++        ensures authority == self.spec_authority(),
++    {
+         match self {
+             Self::CompactedToolObservation | Self::NavigationSummary => {
+                 KnowledgeAuthority::NavigationOnly
+@@ -122,4 +133,14 @@
+     NavigationOnly,
+ }
+ 
++impl KnowledgeAuthority {
++    /// Whether this authority is restricted to navigation-only material.
++    #[must_use]
++    pub const fn is_navigation_only(self) -> (navigation: bool)
++        ensures navigation == (self == Self::NavigationOnly),
++    {
++        matches!(self, Self::NavigationOnly)
++    }
++}
++
+ } // verus!
+diff -ruN /tmp/peritus-parent-knowledge-delta-preimage/crates/orchestration/peritus-run-knowledge/src/model/delta/correspondence.rs /tmp/peritus-sol-knowledge-delta-source-01/src/model/delta/correspondence.rs
+--- /tmp/peritus-parent-knowledge-delta-preimage/crates/orchestration/peritus-run-knowledge/src/model/delta/correspondence.rs	1969-12-31 18:00:00.000000000 -0600
++++ /tmp/peritus-sol-knowledge-delta-source-01/src/model/delta/correspondence.rs	2026-09-12 17:13:42.382181786 -0500
+@@ -0,0 +1,248 @@
++//! Correspondence between executable invalidation plans and the exact model.
++
++use super::*;
++use crate::{KnowledgeSection, KnowledgeSectionId, PlannedKnowledge, ReuseDecision, RunKnowledgeSnapshot};
++use vstd::prelude::*;
++
++verus! {
++
++/// Semantically equal plan sequences make the same exact identity reuse decision.
++pub proof fn plan_reuse_matches(
++    left: Seq<PlannedKnowledge>,
++    right: Seq<(KnowledgeSectionId, ReuseDecision)>,
++    id: KnowledgeSectionId,
++)
++    requires plan_entries_match(left, right),
++    ensures crate::model::plan_reuses(left, id) == modeled_plan_reuses(right, id),
++{
++    if crate::model::plan_reuses(left, id) {
++        let index = choose |index: int| 0 <= index < left.len()
++            && left[index].spec_section_id().spec_matches(&id)
++            && left[index].spec_decision().spec_is_reuse();
++        plan_entry_match_at(left, right, index);
++        KnowledgeSectionId::matches_symmetric(
++            &left[index].spec_section_id(), &right[index].0);
++        KnowledgeSectionId::matches_transitive(
++            &right[index].0, &left[index].spec_section_id(), &id);
++        assert(modeled_plan_reuses(right, id)) by {
++            let witness = index;
++        }
++    }
++    if modeled_plan_reuses(right, id) {
++        let index = choose |index: int| 0 <= index < right.len()
++            && right[index].0.spec_matches(&id)
++            && right[index].1.spec_is_reuse();
++        plan_entry_match_at(left, right, index);
++        KnowledgeSectionId::matches_transitive(
++            &left[index].spec_section_id(), &right[index].0, &id);
++        assert(crate::model::plan_reuses(left, id)) by {
++            let witness = index;
++        }
++    }
++}
++
++/// Semantically equal plan sequences agree on whether every entry is reusable.
++pub proof fn plan_all_reuse_matches(
++    left: Seq<PlannedKnowledge>,
++    right: Seq<(KnowledgeSectionId, ReuseDecision)>,
++)
++    requires plan_entries_match(left, right),
++    ensures all_actual_entries_reused(left) == all_entries_reused(right),
++{
++    if all_actual_entries_reused(left) {
++        assert forall |index: int| 0 <= index < right.len() implies
++            #[trigger] right[index].1.spec_is_reuse() by {
++            plan_entry_match_at(left, right, index);
++        }
++    }
++    if all_entries_reused(right) {
++        assert forall |index: int| 0 <= index < left.len() implies
++            #[trigger] left[index].spec_decision().spec_is_reuse() by {
++            plan_entry_match_at(left, right, index);
++        }
++    }
++}
++
++/// Semantically equal plan sequences have the same invalidation count.
++pub proof fn plan_invalidated_count_matches(
++    left: Seq<PlannedKnowledge>,
++    right: Seq<(KnowledgeSectionId, ReuseDecision)>,
++)
++    requires plan_entries_match(left, right),
++    ensures crate::model::invalidated_count(left) == modeled_invalidated_count(right),
++{
++    assert(plan_decisions_match(left, right)) by {
++        assert forall |index: int| 0 <= index < left.len() implies
++            #[trigger] left[index].spec_decision() == right[index].1 by {
++            plan_entry_match_at(left, right, index);
++        }
++    }
++    decision_counts_match(left, right);
++}
++
++spec fn plan_decisions_match(
++    left: Seq<PlannedKnowledge>,
++    right: Seq<(KnowledgeSectionId, ReuseDecision)>,
++) -> bool {
++    left.len() == right.len()
++        && forall |index: int| 0 <= index < left.len() ==>
++            #[trigger] left[index].spec_decision() == right[index].1
++}
++
++proof fn decision_counts_match(
++    left: Seq<PlannedKnowledge>,
++    right: Seq<(KnowledgeSectionId, ReuseDecision)>,
++)
++    requires plan_decisions_match(left, right),
++    ensures crate::model::invalidated_count(left) == modeled_invalidated_count(right),
++    decreases left.len(),
++{
++    if left.len() > 0 {
++        assert(left.len() == right.len());
++        assert(right.len() > 0);
++        assert(plan_decisions_match(left.drop_last(), right.drop_last())) by {
++            assert(left.drop_last().len() == right.drop_last().len());
++            assert forall |index: int| 0 <= index < left.drop_last().len() implies
++                #[trigger] left.drop_last()[index].spec_decision()
++                    == right.drop_last()[index].1 by {
++                assert(left.drop_last()[index] == left[index]);
++                assert(right.drop_last()[index] == right[index]);
++            }
++        }
++        decision_counts_match(left.drop_last(), right.drop_last());
++        assert(left.last().spec_decision() == right.last().1);
++    }
++}
++
++proof fn dependency_invalidation_matches(
++    section: &KnowledgeSection,
++    actual: Seq<PlannedKnowledge>,
++    model: Seq<(KnowledgeSectionId, ReuseDecision)>,
++)
++    requires plan_entries_match(actual, model),
++    ensures crate::model::dependency_was_invalidated(section, actual)
++        == modeled_dependency_was_invalidated(section, model),
++{
++    if crate::model::dependency_was_invalidated(section, actual) {
++        let dependency = choose |dependency: int|
++            #![trigger section.spec_dependencies()[dependency]]
++            exists |entry: int| #![auto]
++            0 <= dependency < section.spec_dependencies().len()
++                && 0 <= entry < actual.len()
++                && crate::model::entry_invalidates_dependency(
++                    actual[entry], section.spec_dependencies()[dependency]);
++        let entry = choose |entry: int|
++            0 <= dependency < section.spec_dependencies().len()
++                && 0 <= entry < actual.len()
++                && crate::model::entry_invalidates_dependency(
++                    actual[entry], section.spec_dependencies()[dependency]);
++        plan_entry_match_at(actual, model, entry);
++        KnowledgeSectionId::matches_symmetric(
++            &actual[entry].spec_section_id(), &model[entry].0);
++        KnowledgeSectionId::matches_transitive(
++            &model[entry].0,
++            &actual[entry].spec_section_id(),
++            &section.spec_dependencies()[dependency],
++        );
++        assert(modeled_dependency_was_invalidated(section, model)) by {
++            let dependency_witness = dependency;
++            let entry_witness = entry;
++        }
++    }
++    if modeled_dependency_was_invalidated(section, model) {
++        let dependency = choose |dependency: int|
++            #![trigger section.spec_dependencies()[dependency]]
++            exists |entry: int| #![auto]
++            0 <= dependency < section.spec_dependencies().len()
++                && 0 <= entry < model.len()
++                && model[entry].0.spec_matches(
++                    &section.spec_dependencies()[dependency])
++                && !model[entry].1.spec_is_reuse();
++        let entry = choose |entry: int|
++            0 <= dependency < section.spec_dependencies().len()
++                && 0 <= entry < model.len()
++                && model[entry].0.spec_matches(
++                    &section.spec_dependencies()[dependency])
++                && !model[entry].1.spec_is_reuse();
++        plan_entry_match_at(actual, model, entry);
++        KnowledgeSectionId::matches_transitive(
++            &actual[entry].spec_section_id(),
++            &model[entry].0,
++            &section.spec_dependencies()[dependency],
++        );
++        assert(crate::model::entry_invalidates_dependency(
++            actual[entry], section.spec_dependencies()[dependency]));
++        assert(crate::model::dependency_was_invalidated(section, actual)) by {
++            assert(exists |dependency_witness: int, entry_witness: int|
++                0 <= dependency_witness < section.spec_dependencies().len()
++                    && 0 <= entry_witness < actual.len()
++                    && crate::model::entry_invalidates_dependency(
++                        actual[entry_witness],
++                        section.spec_dependencies()[dependency_witness],
++                    )) by {
++                let dependency_witness = dependency;
++                let entry_witness = entry;
++            }
++        }
++    }
++}
++
++/// Exact prefixes produced by the actual planner match the deterministic model.
++pub proof fn plan_matches_exact_entries(
++    snapshot: &RunKnowledgeSnapshot,
++    request: &InvalidationRequest,
++    entries: Seq<PlannedKnowledge>,
++)
++    requires
++        entries.len() <= snapshot.spec_sections().len(),
++        crate::model::entries_are_exact_prefix(snapshot, request, entries),
++    ensures plan_entries_match(
++        entries,
++        exact_plan_entries(snapshot, request, entries.len()),
++    ),
++    decreases entries.len(),
++{
++    if entries.len() > 0 {
++        let index = entries.len() - 1;
++        let prior = entries.drop_last();
++        assert(entries.take(index as int) == prior);
++        assert(crate::model::entries_are_exact_prefix(snapshot, request, prior)) by {
++            assert forall |prior_index: int| 0 <= prior_index < prior.len() implies
++                prior[prior_index].spec_section_id().spec_matches(
++                    &snapshot.spec_sections()[prior_index].spec_id())
++                && prior[prior_index].spec_decision() == crate::model::planned_decision(
++                    snapshot,
++                    &snapshot.spec_sections()[prior_index],
++                    request,
++                    prior.take(prior_index),
++                ) by {
++                assert(prior[prior_index] == entries[prior_index]);
++                assert(prior.take(prior_index) == entries.take(prior_index));
++            }
++        }
++        plan_matches_exact_entries(snapshot, request, prior);
++        let model_prior = exact_plan_entries(snapshot, request, index as nat);
++        assert(plan_entries_match(prior, model_prior));
++        dependency_invalidation_matches(
++            &snapshot.spec_sections()[index as int],
++            prior,
++            model_prior,
++        );
++        assert(entries[index as int].spec_decision() == crate::model::planned_decision(
++            snapshot,
++            &snapshot.spec_sections()[index as int],
++            request,
++            prior,
++        ));
++        assert(entries[index as int].spec_decision() == modeled_planned_decision(
++            snapshot,
++            &snapshot.spec_sections()[index as int],
++            request,
++            model_prior,
++        ));
++        assert(entries == prior.push(entries[index as int]));
++        plan_entries_after_push(snapshot, request, prior, entries[index as int]);
++    }
++}
++
++} // verus!
+diff -ruN /tmp/peritus-parent-knowledge-delta-preimage/crates/orchestration/peritus-run-knowledge/src/model/delta/plan.rs /tmp/peritus-sol-knowledge-delta-source-01/src/model/delta/plan.rs
+--- /tmp/peritus-parent-knowledge-delta-preimage/crates/orchestration/peritus-run-knowledge/src/model/delta/plan.rs	1969-12-31 18:00:00.000000000 -0600
++++ /tmp/peritus-sol-knowledge-delta-source-01/src/model/delta/plan.rs	2026-09-12 17:13:42.098179877 -0500
+@@ -0,0 +1,389 @@
++//! Exact deterministic invalidation-plan model and normalized freshness.
++
++use super::plan_all_reuse_matches;
++use crate::{
++    CurrentKnowledgeState, InvalidationRequest, KnowledgeSection, KnowledgeSectionId,
++    PlannedKnowledge, ReuseDecision, RunKnowledgeSnapshot,
++};
++use vstd::prelude::*;
++
++verus! {
++
++/// Exact deterministic plan prefix computed solely from a snapshot and request.
++pub open spec fn exact_plan_entries(
++    snapshot: &RunKnowledgeSnapshot,
++    request: &InvalidationRequest,
++    end: nat,
++) -> Seq<(KnowledgeSectionId, ReuseDecision)>
++    decreases end,
++{
++    if end == 0 {
++        Seq::empty()
++    } else {
++        let prior = exact_plan_entries(snapshot, request, (end - 1) as nat);
++        let index = end - 1;
++        prior.push((
++            snapshot.spec_sections()[index as int].spec_id(),
++            modeled_planned_decision(
++                snapshot,
++                &snapshot.spec_sections()[index as int],
++                request,
++                prior,
++            ),
++        ))
++    }
++}
++
++/// Pointwise semantic equality of exact plan entries.
++pub open spec fn plan_entries_match(
++    left: Seq<PlannedKnowledge>,
++    right: Seq<(KnowledgeSectionId, ReuseDecision)>,
++) -> bool {
++    left.len() == right.len()
++        && forall |index: int| 0 <= index < left.len() ==>
++            #[trigger] left[index].spec_section_id().spec_matches(
++                &right[index].0)
++            && left[index].spec_decision() == right[index].1
++}
++
++/// Selects the exact semantic correspondence at one plan position.
++pub proof fn plan_entry_match_at(
++    actual: Seq<PlannedKnowledge>,
++    model: Seq<(KnowledgeSectionId, ReuseDecision)>,
++    index: int,
++)
++    requires
++        plan_entries_match(actual, model),
++        0 <= index < actual.len(),
++    ensures
++        actual[index].spec_section_id().spec_matches(&model[index].0),
++        actual[index].spec_decision() == model[index].1,
++{
++}
++
++/// Extends one exact modeled plan prefix by its next input-defined entry.
++pub proof fn plan_entries_after_push(
++    snapshot: &RunKnowledgeSnapshot,
++    request: &InvalidationRequest,
++    prior: Seq<PlannedKnowledge>,
++    entry: PlannedKnowledge,
++)
++    requires
++        prior.len() < snapshot.spec_sections().len(),
++        plan_entries_match(
++            prior,
++            exact_plan_entries(snapshot, request, prior.len()),
++        ),
++        entry.spec_section_id().spec_matches(
++            &snapshot.spec_sections()[prior.len() as int].spec_id()),
++        entry.spec_decision() == modeled_planned_decision(
++            snapshot,
++            &snapshot.spec_sections()[prior.len() as int],
++            request,
++            exact_plan_entries(snapshot, request, prior.len()),
++        ),
++    ensures plan_entries_match(
++        prior.push(entry),
++        exact_plan_entries(snapshot, request, prior.len() + 1),
++    ),
++{
++    let model_prior = exact_plan_entries(snapshot, request, prior.len());
++    assert forall |index: int| 0 <= index < prior.push(entry).len() implies
++        #[trigger] prior.push(entry)[index].spec_section_id().spec_matches(
++            &exact_plan_entries(snapshot, request, prior.len() + 1)[index].0)
++        && prior.push(entry)[index].spec_decision()
++            == exact_plan_entries(snapshot, request, prior.len() + 1)[index].1 by {
++        if index < prior.len() {
++            plan_entry_match_at(prior, model_prior, index);
++            assert(prior.push(entry)[index] == prior[index]);
++            assert(exact_plan_entries(
++                snapshot, request, prior.len() + 1)[index] == model_prior[index]);
++        } else {
++            assert(index == prior.len());
++            assert(prior.push(entry)[index] == entry);
++        }
++    }
++}
++
++/// Every entry in one exact invalidation plan remains reusable.
++pub open spec fn all_entries_reused(
++    entries: Seq<(KnowledgeSectionId, ReuseDecision)>,
++) -> bool {
++    forall |index: int| 0 <= index < entries.len() ==>
++        #[trigger] entries[index].1.spec_is_reuse()
++}
++
++/// Every entry produced by the executable planner remains reusable.
++pub open spec fn all_actual_entries_reused(entries: Seq<PlannedKnowledge>) -> bool {
++    forall |index: int| 0 <= index < entries.len() ==>
++        #[trigger] entries[index].spec_decision().spec_is_reuse()
++}
++
++/// Whether an input-defined dependency was invalidated in an earlier model prefix.
++pub open spec fn modeled_dependency_was_invalidated(
++    section: &KnowledgeSection,
++    entries: Seq<(KnowledgeSectionId, ReuseDecision)>,
++) -> bool {
++    exists |dependency: int, entry: int|
++        0 <= dependency < section.spec_dependencies().len()
++            && 0 <= entry < entries.len()
++            && entries[entry].0.spec_matches(
++                &section.spec_dependencies()[dependency])
++            && !entries[entry].1.spec_is_reuse()
++}
++
++/// Exact input-defined decision after dependency invalidation propagation.
++pub open spec fn modeled_planned_decision(
++    snapshot: &RunKnowledgeSnapshot,
++    section: &KnowledgeSection,
++    request: &InvalidationRequest,
++    prior_entries: Seq<(KnowledgeSectionId, ReuseDecision)>,
++) -> ReuseDecision {
++    let direct = crate::model::direct_decision(snapshot, section, request);
++    if direct == ReuseDecision::Reuse
++        && modeled_dependency_was_invalidated(section, prior_entries)
++    {
++        ReuseDecision::Invalidate(crate::InvalidationReason::DependencyInvalidated)
++    } else {
++        direct
++    }
++}
++
++/// A current state contains every source bound to this section.
++pub open spec fn section_sources_current(
++    section: &KnowledgeSection,
++    state: &CurrentKnowledgeState,
++) -> bool {
++    forall |index: int| 0 <= index < section.spec_binding().spec_sources().len() ==>
++        crate::model::source_is_current(
++            state.spec_sources(),
++            #[trigger] section.spec_binding().spec_sources()[index],
++        )
++}
++
++/// Exact freshness inputs checked for each section by a normalized same-revision plan.
++pub open spec fn current_section_fresh(
++    snapshot: &RunKnowledgeSnapshot,
++    section: &KnowledgeSection,
++    state: &CurrentKnowledgeState,
++) -> bool {
++    let binding = section.spec_binding();
++    let candidate = state.spec_candidate();
++    &&& binding.spec_candidate().spec_same_lineage(&candidate)
++    &&& binding.spec_role() == snapshot.spec_role()
++    &&& binding.spec_creation_sequence() <= candidate.spec_checkpoint_sequence()
++    &&& section_sources_current(section, state)
++    &&& (!section.spec_kind().spec_depends_on_conversation()
++        || binding.spec_candidate().spec_conversation_revision()
++            == candidate.spec_conversation_revision())
++    &&& (!section.spec_kind().spec_depends_on_candidate()
++        || binding.spec_candidate().spec_same_candidate(&candidate))
++}
++
++/// Every current snapshot section is fresh against the supplied current observation.
++pub open spec fn current_snapshot_fresh(
++    snapshot: &RunKnowledgeSnapshot,
++    state: &CurrentKnowledgeState,
++) -> bool {
++    forall |index: int| 0 <= index < snapshot.spec_sections().len() ==>
++        current_section_fresh(
++            snapshot,
++            #[trigger] &snapshot.spec_sections()[index],
++            state,
++        )
++}
++
++/// A request synthesized for current-state validation preserves only the observation.
++pub open spec fn normalized_same_revision(
++    request: &InvalidationRequest,
++    state: CurrentKnowledgeState,
++) -> bool {
++    &&& request.spec_state().spec_candidate() == state.spec_candidate()
++    &&& request.spec_state().spec_sources() == state.spec_sources()
++    &&& request.spec_change() == crate::KnowledgeChange::SameRevision
++    &&& request.spec_affected_sections().len() == 0
++}
++
++/// Normalized current-state validation checks exactly one section's freshness inputs.
++pub proof fn normalized_direct_reuse_matches_freshness(
++    snapshot: &RunKnowledgeSnapshot,
++    section: &KnowledgeSection,
++    request: &InvalidationRequest,
++    state: CurrentKnowledgeState,
++)
++    requires normalized_same_revision(request, state),
++    ensures crate::model::direct_reuse_inputs(snapshot, section, request)
++        == current_section_fresh(snapshot, section, &state),
++{
++}
++
++proof fn all_reused_after_push(
++    entries: Seq<(KnowledgeSectionId, ReuseDecision)>,
++    entry: (KnowledgeSectionId, ReuseDecision),
++)
++    ensures all_entries_reused(entries.push(entry))
++        == (all_entries_reused(entries) && entry.1.spec_is_reuse()),
++{
++    if all_entries_reused(entries.push(entry)) {
++        assert forall |index: int| 0 <= index < entries.len() implies
++            #[trigger] entries[index].1.spec_is_reuse() by {
++            assert(entries.push(entry)[index] == entries[index]);
++        }
++        assert(entries.push(entry).last() == entry);
++    }
++    if all_entries_reused(entries) && entry.1.spec_is_reuse() {
++        assert forall |index: int| 0 <= index < entries.push(entry).len() implies
++            #[trigger] entries.push(entry)[index].1.spec_is_reuse() by {
++            if index < entries.len() {
++                assert(entries.push(entry)[index] == entries[index]);
++            } else {
++                assert(index == entries.len());
++                assert(entries.push(entry)[index] == entry);
++            }
++        }
++    }
++}
++
++proof fn all_reused_excludes_dependency_invalidation(
++    section: &KnowledgeSection,
++    entries: Seq<(KnowledgeSectionId, ReuseDecision)>,
++)
++    requires all_entries_reused(entries),
++    ensures !modeled_dependency_was_invalidated(section, entries),
++{
++    if modeled_dependency_was_invalidated(section, entries) {
++        let dependency = choose |dependency: int|
++            #![trigger section.spec_dependencies()[dependency]]
++            exists |entry: int| #![auto]
++            0 <= dependency < section.spec_dependencies().len()
++                && 0 <= entry < entries.len()
++                && entries[entry].0.spec_matches(
++                    &section.spec_dependencies()[dependency])
++                && !entries[entry].1.spec_is_reuse();
++        let entry = choose |entry: int|
++            0 <= dependency < section.spec_dependencies().len()
++                && 0 <= entry < entries.len()
++                && entries[entry].0.spec_matches(
++                    &section.spec_dependencies()[dependency])
++                && !entries[entry].1.spec_is_reuse();
++        assert(entries[entry].1.spec_is_reuse());
++    }
++}
++
++/// A normalized exact plan is entirely reusable exactly when its input prefix is fresh.
++pub proof fn normalized_plan_reuse_matches_freshness(
++    snapshot: &RunKnowledgeSnapshot,
++    request: &InvalidationRequest,
++    state: CurrentKnowledgeState,
++    end: nat,
++)
++    requires
++        normalized_same_revision(request, state),
++        end <= snapshot.spec_sections().len(),
++    ensures all_entries_reused(exact_plan_entries(snapshot, request, end))
++        == (forall |index: int| 0 <= index < end ==>
++            current_section_fresh(
++                snapshot,
++                #[trigger] &snapshot.spec_sections()[index],
++                &state,
++            )),
++    decreases end,
++{
++    if end > 0 {
++        let prior = exact_plan_entries(snapshot, request, (end - 1) as nat);
++        let index = end - 1;
++        let section = &snapshot.spec_sections()[index as int];
++        let decision = modeled_planned_decision(snapshot, section, request, prior);
++        normalized_plan_reuse_matches_freshness(snapshot, request, state, index as nat);
++        normalized_direct_reuse_matches_freshness(snapshot, section, request, state);
++        crate::model::direct_decision_reuses_iff_inputs(snapshot, section, request);
++        all_reused_after_push(prior, (section.spec_id(), decision));
++        if all_entries_reused(prior) {
++            all_reused_excludes_dependency_invalidation(section, prior);
++        }
++        assert(decision.spec_is_reuse()
++            == (crate::model::direct_reuse_inputs(snapshot, section, request)
++                && !modeled_dependency_was_invalidated(section, prior)));
++        if all_entries_reused(exact_plan_entries(snapshot, request, end)) {
++            assert(all_entries_reused(prior));
++            assert(decision.spec_is_reuse());
++            assert(crate::model::direct_reuse_inputs(snapshot, section, request));
++            assert forall |entry_index: int| 0 <= entry_index < end implies
++                current_section_fresh(
++                    snapshot,
++                    #[trigger] &snapshot.spec_sections()[entry_index],
++                    &state,
++                ) by {
++                if entry_index < index {
++                } else {
++                    assert(entry_index == index);
++                }
++            }
++        }
++        if forall |entry_index: int| 0 <= entry_index < end ==>
++            current_section_fresh(
++                snapshot,
++                #[trigger] &snapshot.spec_sections()[entry_index],
++                &state,
++            )
++        {
++            assert forall |entry_index: int| 0 <= entry_index < index implies
++                current_section_fresh(
++                    snapshot,
++                    #[trigger] &snapshot.spec_sections()[entry_index],
++                    &state,
++                ) by {
++            }
++            assert(all_entries_reused(prior));
++            assert(current_section_fresh(snapshot, section, &state));
++            assert(crate::model::direct_reuse_inputs(snapshot, section, request));
++            assert(decision.spec_is_reuse());
++            assert(all_entries_reused(exact_plan_entries(snapshot, request, end)));
++        }
++    }
++}
++
++/// An executable normalized plan is fully reusable exactly for a fresh snapshot.
++pub proof fn current_plan_all_reuse_matches_freshness(
++    snapshot: &RunKnowledgeSnapshot,
++    request: &InvalidationRequest,
++    state: CurrentKnowledgeState,
++    entries: Seq<PlannedKnowledge>,
++)
++    requires
++        normalized_same_revision(request, state),
++        plan_entries_match(
++            entries,
++            exact_plan_entries(snapshot, request, snapshot.spec_sections().len()),
++        ),
++    ensures all_actual_entries_reused(entries) == current_snapshot_fresh(snapshot, &state),
++{
++    let model = exact_plan_entries(snapshot, request, snapshot.spec_sections().len());
++    plan_all_reuse_matches(entries, model);
++    normalized_plan_reuse_matches_freshness(
++        snapshot, request, state, snapshot.spec_sections().len());
++}
++
++/// Exact prior-plan reuse result for one current section identity.
++pub open spec fn exact_plan_reuses(
++    snapshot: &RunKnowledgeSnapshot,
++    request: &InvalidationRequest,
++    id: KnowledgeSectionId,
++) -> bool {
++    modeled_plan_reuses(
++        exact_plan_entries(snapshot, request, snapshot.spec_sections().len()),
++        id,
++    )
++}
++
++/// Whether the deterministic model plan reuses one exact section identity.
++pub open spec fn modeled_plan_reuses(
++    entries: Seq<(KnowledgeSectionId, ReuseDecision)>,
++    id: KnowledgeSectionId,
++) -> bool {
++    exists |index: int| 0 <= index < entries.len()
++        && entries[index].0.spec_matches(&id)
++        && entries[index].1.spec_is_reuse()
++}
++
++} // verus!
+diff -ruN /tmp/peritus-parent-knowledge-delta-preimage/crates/orchestration/peritus-run-knowledge/src/model/delta.rs /tmp/peritus-sol-knowledge-delta-source-01/src/model/delta.rs
+--- /tmp/peritus-parent-knowledge-delta-preimage/crates/orchestration/peritus-run-knowledge/src/model/delta.rs	1969-12-31 18:00:00.000000000 -0600
++++ /tmp/peritus-sol-knowledge-delta-source-01/src/model/delta.rs	2026-09-12 17:16:43.102396708 -0500
+@@ -0,0 +1,255 @@
++//! Input-defined delta-packet admission, classification, and accounting.
++
++#[cfg(verus_only)]
++mod correspondence;
++#[cfg(verus_only)]
++mod plan;
++
++#[cfg(verus_only)]
++pub use correspondence::{
++    plan_all_reuse_matches, plan_invalidated_count_matches, plan_matches_exact_entries,
++    plan_reuse_matches,
++};
++#[cfg(verus_only)]
++pub use plan::{
++    all_actual_entries_reused, all_entries_reused, current_plan_all_reuse_matches_freshness,
++    current_section_fresh, current_snapshot_fresh, exact_plan_entries, exact_plan_reuses,
++    modeled_dependency_was_invalidated, modeled_plan_reuses, modeled_planned_decision,
++    normalized_direct_reuse_matches_freshness, normalized_plan_reuse_matches_freshness,
++    normalized_same_revision, plan_entries_after_push, plan_entries_match, plan_entry_match_at,
++    section_sources_current,
++};
++
++#[cfg(verus_only)]
++use crate::{
++    DeltaDelivery, DeltaEntry, InvalidationRequest, KnowledgeAuthority, KnowledgeSection,
++    KnowledgeSectionId, ReuseDecision, RunKnowledgeSnapshot,
++};
++use vstd::prelude::*;
++
++verus! {
++
++/// Complete input-defined admission conditions for delta packet planning.
++pub open spec fn delta_inputs_valid(
++    previous: &RunKnowledgeSnapshot,
++    current: &RunKnowledgeSnapshot,
++    request: &InvalidationRequest,
++) -> bool {
++    &&& previous.spec_role() == current.spec_role()
++    &&& super::candidates_match(
++        &current.spec_candidate(),
++        &request.spec_state().spec_candidate(),
++    )
++    &&& current_snapshot_fresh(current, &request.spec_state())
++    &&& super::clarification_targets_valid(previous, request)
++}
++
++/// Exact input-defined delivery class for one current section.
++pub open spec fn delta_delivery(
++    previous: &RunKnowledgeSnapshot,
++    current: &KnowledgeSection,
++    request: &InvalidationRequest,
++) -> DeltaDelivery {
++    if current.spec_kind().spec_authority() == KnowledgeAuthority::NavigationOnly {
++        DeltaDelivery::Navigation
++    } else if exact_plan_reuses(previous, request, current.spec_id())
++        && super::first_prior_material_matches(previous.spec_sections(), current)
++    {
++        DeltaDelivery::CurrentReference
++    } else {
++        DeltaDelivery::ChangedFact
++    }
++}
++
++/// Packet entries correspond position-for-position to every current section.
++pub open spec fn all_delta_entries_exact(
++    previous: &RunKnowledgeSnapshot,
++    current: &RunKnowledgeSnapshot,
++    request: &InvalidationRequest,
++    entries: Seq<DeltaEntry>,
++) -> bool {
++    entries.len() == current.spec_sections().len()
++        && forall |index: int| 0 <= index < entries.len() ==>
++            #[trigger] entries[index].spec_section_id().spec_matches(
++                &current.spec_sections()[index].spec_id())
++            && entries[index].spec_delivery()
++                == delta_delivery(previous, &current.spec_sections()[index], request)
++}
++
++/// A constructed packet prefix exactly classifies the corresponding current sections.
++pub open spec fn all_delta_entries_exact_prefix(
++    previous: &RunKnowledgeSnapshot,
++    current: &RunKnowledgeSnapshot,
++    request: &InvalidationRequest,
++    entries: Seq<DeltaEntry>,
++) -> bool {
++    entries.len() <= current.spec_sections().len()
++        && forall |index: int| 0 <= index < entries.len() ==>
++            #[trigger] entries[index].spec_section_id().spec_matches(
++                &current.spec_sections()[index].spec_id())
++            && entries[index].spec_delivery()
++                == delta_delivery(previous, &current.spec_sections()[index], request)
++}
++
++/// Selects one exact classification from a constructed packet prefix.
++pub proof fn delta_prefix_entry_at(
++    previous: &RunKnowledgeSnapshot,
++    current: &RunKnowledgeSnapshot,
++    request: &InvalidationRequest,
++    entries: Seq<DeltaEntry>,
++    index: int,
++)
++    requires
++        all_delta_entries_exact_prefix(previous, current, request, entries),
++        0 <= index < entries.len(),
++    ensures
++        entries[index].spec_section_id().spec_matches(
++            &current.spec_sections()[index].spec_id()),
++        entries[index].spec_delivery()
++            == delta_delivery(previous, &current.spec_sections()[index], request),
++{
++}
++
++/// Extends an exact packet prefix by the next classified current section.
++pub proof fn delta_prefix_after_push(
++    previous: &RunKnowledgeSnapshot,
++    current: &RunKnowledgeSnapshot,
++    request: &InvalidationRequest,
++    prior: Seq<DeltaEntry>,
++    entry: DeltaEntry,
++)
++    requires
++        all_delta_entries_exact_prefix(previous, current, request, prior),
++        prior.len() < current.spec_sections().len(),
++        entry.spec_section_id().spec_matches(
++            &current.spec_sections()[prior.len() as int].spec_id()),
++        entry.spec_delivery() == delta_delivery(
++            previous,
++            &current.spec_sections()[prior.len() as int],
++            request,
++        ),
++    ensures all_delta_entries_exact_prefix(
++        previous, current, request, prior.push(entry)),
++{
++    assert forall |index: int| 0 <= index < prior.push(entry).len() implies
++        #[trigger] prior.push(entry)[index].spec_section_id().spec_matches(
++            &current.spec_sections()[index].spec_id())
++        && prior.push(entry)[index].spec_delivery()
++            == delta_delivery(previous, &current.spec_sections()[index], request) by {
++        if index < prior.len() {
++            delta_prefix_entry_at(previous, current, request, prior, index);
++            assert(prior.push(entry)[index] == prior[index]);
++        } else {
++            assert(index == prior.len());
++            assert(prior.push(entry)[index] == entry);
++        }
++    }
++}
++
++/// A prefix covering every current section is the complete exact packet sequence.
++pub proof fn delta_prefix_complete(
++    previous: &RunKnowledgeSnapshot,
++    current: &RunKnowledgeSnapshot,
++    request: &InvalidationRequest,
++    entries: Seq<DeltaEntry>,
++)
++    requires
++        all_delta_entries_exact_prefix(previous, current, request, entries),
++        entries.len() == current.spec_sections().len(),
++    ensures all_delta_entries_exact(previous, current, request, entries),
++{
++    assert forall |index: int| 0 <= index < entries.len() implies
++        #[trigger] entries[index].spec_section_id().spec_matches(
++            &current.spec_sections()[index].spec_id())
++        && entries[index].spec_delivery()
++            == delta_delivery(previous, &current.spec_sections()[index], request) by {
++        delta_prefix_entry_at(previous, current, request, entries, index);
++    }
++}
++
++/// Number of authoritative sections whose material must be delivered again.
++pub open spec fn changed_fact_count(entries: Seq<DeltaEntry>) -> nat
++    decreases entries.len(),
++{
++    if entries.len() == 0 {
++        0
++    } else {
++        changed_fact_count(entries.drop_last())
++            + if entries.last().spec_delivery() == DeltaDelivery::ChangedFact {
++                1nat
++            } else {
++                0nat
++            }
++    }
++}
++
++/// Number of authoritative sections safely represented by a current reference.
++pub open spec fn current_reference_count(entries: Seq<DeltaEntry>) -> nat
++    decreases entries.len(),
++{
++    if entries.len() == 0 {
++        0
++    } else {
++        current_reference_count(entries.drop_last())
++            + if entries.last().spec_delivery() == DeltaDelivery::CurrentReference {
++                1nat
++            } else {
++                0nat
++            }
++    }
++}
++
++/// Number of navigation-only sections in the packet.
++pub open spec fn navigation_count(entries: Seq<DeltaEntry>) -> nat
++    decreases entries.len(),
++{
++    if entries.len() == 0 {
++        0
++    } else {
++        navigation_count(entries.drop_last())
++            + if entries.last().spec_delivery() == DeltaDelivery::Navigation {
++                1nat
++            } else {
++                0nat
++            }
++    }
++}
++
++/// Input-defined count of sections invalidated by the prior snapshot plan.
++pub open spec fn invalidated_prior_count(
++    previous: &RunKnowledgeSnapshot,
++    request: &InvalidationRequest,
++) -> nat {
++    modeled_invalidated_count(exact_plan_entries(
++        previous, request, previous.spec_sections().len()))
++}
++
++/// Number of invalidated entries in one deterministic model plan.
++pub open spec fn modeled_invalidated_count(
++    entries: Seq<(KnowledgeSectionId, ReuseDecision)>,
++) -> nat
++    decreases entries.len(),
++{
++    if entries.len() == 0 {
++        0
++    } else {
++        modeled_invalidated_count(entries.drop_last())
++            + if !entries.last().1.spec_is_reuse() { 1nat } else { 0nat }
++    }
++}
++
++/// Appending one packet entry updates every exact delivery count.
++pub proof fn delta_counts_after_push(entries: Seq<DeltaEntry>, entry: DeltaEntry)
++    ensures
++        changed_fact_count(entries.push(entry)) == changed_fact_count(entries)
++            + if entry.spec_delivery() == DeltaDelivery::ChangedFact { 1nat } else { 0nat },
++        current_reference_count(entries.push(entry)) == current_reference_count(entries)
++            + if entry.spec_delivery() == DeltaDelivery::CurrentReference { 1nat } else { 0nat },
++        navigation_count(entries.push(entry)) == navigation_count(entries)
++            + if entry.spec_delivery() == DeltaDelivery::Navigation { 1nat } else { 0nat },
++{
++    assert(entries.push(entry).drop_last() == entries);
++    assert(entries.push(entry).last() == entry);
++}
++
++} // verus!
+diff -ruN /tmp/peritus-parent-knowledge-delta-preimage/crates/orchestration/peritus-run-knowledge/src/model/material.rs /tmp/peritus-sol-knowledge-delta-source-01/src/model/material.rs
+--- /tmp/peritus-parent-knowledge-delta-preimage/crates/orchestration/peritus-run-knowledge/src/model/material.rs	1969-12-31 18:00:00.000000000 -0600
++++ /tmp/peritus-sol-knowledge-delta-source-01/src/model/material.rs	2026-09-12 16:32:33.317933049 -0500
+@@ -0,0 +1,44 @@
++//! Exact material equality used by production delta-packet planning.
++
++#[cfg(verus_only)]
++use crate::{KnowledgeSection, KnowledgeSectionId, SourceDigest};
++use vstd::prelude::*;
++
++verus! {
++
++/// Same ordered source identities and all corresponding content-digest bytes.
++pub open spec fn sources_match(left: Seq<SourceDigest>, right: Seq<SourceDigest>) -> bool {
++    left.len() == right.len()
++        && forall |index: int| 0 <= index < left.len() ==>
++            #[trigger] left[index].spec_matches(&right[index])
++}
++
++/// Same ordered dependency identities, including every identity byte.
++pub open spec fn dependencies_match(
++    left: Seq<KnowledgeSectionId>, right: Seq<KnowledgeSectionId>,
++) -> bool {
++    left.len() == right.len()
++        && forall |index: int| 0 <= index < left.len() ==>
++            #[trigger] left[index].spec_matches(&right[index])
++}
++
++/// Same semantic content for reuse after separate identity and freshness checks.
++pub open spec fn section_material_matches(previous: &KnowledgeSection, current: &KnowledgeSection) -> bool {
++    &&& previous.spec_kind() == current.spec_kind()
++    &&& previous.spec_section_digest().spec_bytes() == current.spec_section_digest().spec_bytes()
++    &&& sources_match(previous.spec_binding().spec_sources(), current.spec_binding().spec_sources())
++    &&& dependencies_match(previous.spec_dependencies(), current.spec_dependencies())
++}
++
++/// Exact result at the first matching section identity in the supplied snapshot.
++pub open spec fn first_prior_material_matches(
++    sections: Seq<KnowledgeSection>, current: &KnowledgeSection,
++) -> bool {
++    exists |index: int| 0 <= index < sections.len()
++        && sections[index].spec_id().spec_matches(&current.spec_id())
++        && (forall |prior: int| 0 <= prior < index ==>
++            !#[trigger] sections[prior].spec_id().spec_matches(&current.spec_id()))
++        && section_material_matches(&sections[index], current)
++}
++
++} // verus!
+diff -ruN /tmp/peritus-parent-knowledge-delta-preimage/crates/orchestration/peritus-run-knowledge/src/model.rs /tmp/peritus-sol-knowledge-delta-source-01/src/model.rs
+--- /tmp/peritus-parent-knowledge-delta-preimage/crates/orchestration/peritus-run-knowledge/src/model.rs	2026-09-12 16:20:15.252669966 -0500
++++ /tmp/peritus-sol-knowledge-delta-source-01/src/model.rs	2026-09-12 17:13:42.286181141 -0500
+@@ -1,6 +1,11 @@
+ //! Input-defined logical model for run-knowledge freshness and reuse.
+ 
+ mod closure;
++mod delta;
++mod material;
++
++#[cfg(verus_only)]
++pub use material::{dependencies_match, first_prior_material_matches, section_material_matches, sources_match};
+ mod topology;
+ 
+ #[cfg(verus_only)]
+@@ -8,6 +13,20 @@
+     exact_plan_is_transitively_closed, transitive_dependency_invalidation_propagates,
+ };
+ #[cfg(verus_only)]
++pub use delta::{
++    all_actual_entries_reused, all_delta_entries_exact, all_delta_entries_exact_prefix,
++    all_entries_reused, changed_fact_count,
++    current_reference_count, current_snapshot_fresh, delta_delivery,
++    delta_counts_after_push, delta_inputs_valid, exact_plan_entries,
++    exact_plan_reuses, invalidated_prior_count, navigation_count,
++    current_plan_all_reuse_matches_freshness, delta_prefix_after_push, delta_prefix_complete,
++    delta_prefix_entry_at, normalized_plan_reuse_matches_freshness, normalized_same_revision,
++    plan_all_reuse_matches,
++    plan_entries_after_push, plan_entries_match, plan_invalidated_count_matches,
++    plan_matches_exact_entries,
++    plan_reuse_matches,
++};
++#[cfg(verus_only)]
+ pub use topology::{
+     canonical_implies_unique, clone_equivalent_preserves_snapshot_topology,
+     dependencies_precede, dependencies_precede_through,
+@@ -32,11 +51,8 @@
+     left: &peritus_run_settlement::CandidateIdentity,
+     right: &peritus_run_settlement::CandidateIdentity,
+ ) -> bool {
+-    &&& left.spec_run_id() == right.spec_run_id()
+-    &&& left.spec_workspace_id() == right.spec_workspace_id()
+-    &&& left.spec_candidate_digest() == right.spec_candidate_digest()
+-    &&& left.spec_conversation_revision() == right.spec_conversation_revision()
+-    &&& left.spec_checkpoint_sequence() == right.spec_checkpoint_sequence()
++    left.spec_same_candidate(right)
++        && left.spec_checkpoint_sequence() == right.spec_checkpoint_sequence()
+ }
+ 
+ /// Whether an exact source identity and digest occurs in the supplied current catalog.
+diff -ruN /tmp/peritus-parent-knowledge-delta-preimage/crates/orchestration/peritus-run-knowledge/src/section.rs /tmp/peritus-sol-knowledge-delta-source-01/src/section.rs
+--- /tmp/peritus-parent-knowledge-delta-preimage/crates/orchestration/peritus-run-knowledge/src/section.rs	2026-09-12 16:20:15.252888203 -0500
++++ /tmp/peritus-sol-knowledge-delta-source-01/src/section.rs	2026-09-12 16:32:33.317795232 -0500
+@@ -173,11 +173,15 @@
+ 
+     /// Fixed evidence authority of this section kind.
+     #[must_use]
+-    pub const fn authority(&self) -> KnowledgeAuthority { self.kind.authority() }
++    pub const fn authority(&self) -> (authority: KnowledgeAuthority)
++        ensures authority == self.spec_kind().spec_authority(),
++    { self.kind.authority() }
+ 
+     /// Whether this section may satisfy a typed authoritative evidence requirement.
+     #[must_use]
+-    pub const fn can_satisfy_authoritative_evidence(&self) -> bool {
++    pub const fn can_satisfy_authoritative_evidence(&self) -> (allowed: bool)
++        ensures allowed == (self.spec_kind().spec_authority() == KnowledgeAuthority::Authoritative),
++    {
+         crate::verified::authoritative_evidence_allowed(self.authority())
+     }
+ }
+diff -ruN /tmp/peritus-parent-knowledge-delta-preimage/crates/orchestration/peritus-run-knowledge/tests/delta_packet.rs /tmp/peritus-sol-knowledge-delta-source-01/tests/delta_packet.rs
+--- /tmp/peritus-parent-knowledge-delta-preimage/crates/orchestration/peritus-run-knowledge/tests/delta_packet.rs	1969-12-31 18:00:00.000000000 -0600
++++ /tmp/peritus-sol-knowledge-delta-source-01/tests/delta_packet.rs	2026-09-12 17:20:46.202030980 -0500
+@@ -0,0 +1,222 @@
++//! Public delta-packet admission, identity, classification, and cloning boundaries.
++
++mod support;
++
++use peritus_role::HarnessRole;
++use peritus_run_knowledge::{
++    CurrentKnowledgeState, DeltaDelivery, DeltaPacket, InvalidationRequest, KnowledgeBinding,
++    KnowledgeChange, KnowledgeErrorKind, KnowledgeSection, KnowledgeSectionId, SourceDigest,
++    plan_delta_packet,
++};
++use peritus_run_settlement::CandidateIdentity;
++use peritus_types::{RunId, Sha256Digest, WorkspaceId};
++use support::{FixtureRevision, candidate, digest, limits, section_id, snapshot, source_id, state};
++
++fn delivery(packet: &DeltaPacket, id: KnowledgeSectionId) -> DeltaDelivery {
++    packet
++        .entries()
++        .iter()
++        .find(|entry| entry.section_id() == id)
++        .expect("packet section")
++        .delivery()
++}
++
++fn replace_section(
++    base: &peritus_run_knowledge::RunKnowledgeSnapshot,
++    target: KnowledgeSectionId,
++    replacement_digest: Sha256Digest,
++    replacement_sources: Option<&[SourceDigest]>,
++    replacement_dependencies: Option<&[KnowledgeSectionId]>,
++) -> peritus_run_knowledge::RunKnowledgeSnapshot {
++    let sections = base
++        .sections()
++        .iter()
++        .map(|section| {
++            if section.id() != target {
++                return section.clone();
++            }
++            let binding = KnowledgeBinding::new(
++                *section.binding().candidate(),
++                section.binding().role(),
++                section.binding().creation_sequence(),
++                replacement_sources
++                    .map_or_else(|| section.binding().sources().to_vec(), <[SourceDigest]>::to_vec),
++                limits(),
++            )
++            .expect("replacement binding");
++            KnowledgeSection::new(
++                section.id(),
++                section.kind(),
++                replacement_digest,
++                binding,
++                replacement_dependencies.map_or_else(
++                    || section.dependencies().to_vec(),
++                    <[KnowledgeSectionId]>::to_vec,
++                ),
++                limits(),
++            )
++            .expect("replacement section")
++        })
++        .collect();
++    peritus_run_knowledge::RunKnowledgeSnapshot::new(
++        *base.candidate(),
++        base.role(),
++        base.repository_inventory(),
++        base.relevant_file_map(),
++        base.requirement_ledger(),
++        sections,
++        limits(),
++    )
++    .expect("replacement snapshot")
++}
++
++fn late_digest_candidate() -> CandidateIdentity {
++    let mut bytes = [20; 32];
++    bytes[31] = 21;
++    CandidateIdentity::new(
++        RunId::new([41; 16]).expect("run id"),
++        WorkspaceId::new([42; 16]).expect("workspace id"),
++        Sha256Digest::new(bytes),
++        1,
++        1,
++    )
++    .expect("late-byte candidate")
++}
++
++#[test]
++fn delta_admission_preserves_error_precedence() {
++    let identity = candidate(20, 1, 1);
++    let writer = snapshot(identity, HarnessRole::Writer, 11, FixtureRevision::Baseline);
++    let reviewer = snapshot(identity, HarnessRole::Reviewer, 11, FixtureRevision::Baseline);
++    let invalid_target = section_id(9);
++    let wrong_candidate_request = InvalidationRequest::new(
++        state(late_digest_candidate(), 13),
++        KnowledgeChange::UserClarification,
++        vec![invalid_target],
++    )
++    .expect("structurally valid request");
++
++    assert_eq!(
++        plan_delta_packet(&reviewer, &writer, &wrong_candidate_request)
++            .expect_err("role mismatch has priority")
++            .kind(),
++        KnowledgeErrorKind::RoleMismatch,
++    );
++    assert_eq!(
++        plan_delta_packet(&writer, &writer, &wrong_candidate_request)
++            .expect_err("candidate mismatch precedes target validation")
++            .kind(),
++        KnowledgeErrorKind::CurrentSnapshotStale,
++    );
++
++    let stale_current_request = InvalidationRequest::new(
++        state(identity, 13),
++        KnowledgeChange::UserClarification,
++        vec![invalid_target],
++    )
++    .expect("structurally valid stale request");
++    assert_eq!(
++        plan_delta_packet(&writer, &writer, &stale_current_request)
++            .expect_err("current freshness precedes prior target validation")
++            .kind(),
++        KnowledgeErrorKind::CurrentSnapshotStale,
++    );
++
++    let invalid_target_request = InvalidationRequest::new(
++        state(identity, 11),
++        KnowledgeChange::UserClarification,
++        vec![invalid_target],
++    )
++    .expect("structurally valid target request");
++    assert_eq!(
++        plan_delta_packet(&writer, &writer, &invalid_target_request)
++            .expect_err("invalid prior target")
++            .kind(),
++        KnowledgeErrorKind::InvalidClarificationTarget,
++    );
++}
++
++#[test]
++fn exact_late_bytes_and_dependency_material_drive_changed_facts() {
++    let identity = candidate(20, 1, 1);
++    let previous = snapshot(identity, HarnessRole::Writer, 11, FixtureRevision::Baseline);
++
++    let mut late_section_digest = [3; 32];
++    late_section_digest[31] = 4;
++    let changed_digest = replace_section(
++        &previous,
++        section_id(3),
++        Sha256Digest::new(late_section_digest),
++        None,
++        None,
++    );
++    let request =
++        InvalidationRequest::new(state(identity, 11), KnowledgeChange::SameRevision, Vec::new())
++            .expect("same revision request");
++    let packet = plan_delta_packet(&previous, &changed_digest, &request).expect("digest delta");
++    assert_eq!(delivery(&packet, section_id(3)), DeltaDelivery::ChangedFact);
++    assert_eq!(delivery(&packet, section_id(1)), DeltaDelivery::CurrentReference);
++
++    let changed_dependency =
++        replace_section(&previous, section_id(4), digest(4), None, Some(&[section_id(1)]));
++    let packet =
++        plan_delta_packet(&previous, &changed_dependency, &request).expect("dependency delta");
++    assert_eq!(delivery(&packet, section_id(4)), DeltaDelivery::ChangedFact);
++}
++
++#[test]
++fn exact_source_identity_and_authority_control_delivery() {
++    let identity = candidate(20, 1, 1);
++    let previous = snapshot(identity, HarnessRole::Writer, 11, FixtureRevision::Baseline);
++    let mut late_source_bytes = [1; 16];
++    late_source_bytes[15] = 2;
++    let late_source = SourceDigest::new(
++        peritus_run_knowledge::KnowledgeSourceId::new(late_source_bytes)
++            .expect("late-byte source id"),
++        digest(11),
++    );
++    let current = replace_section(&previous, section_id(1), digest(1), Some(&[late_source]), None);
++    let request_state = CurrentKnowledgeState::new(
++        identity,
++        vec![
++            SourceDigest::new(source_id(1), digest(11)),
++            late_source,
++            SourceDigest::new(source_id(2), digest(12)),
++        ],
++        limits(),
++    )
++    .expect("current source state");
++    let request =
++        InvalidationRequest::new(request_state, KnowledgeChange::SameRevision, Vec::new())
++            .expect("same revision request");
++    let packet = plan_delta_packet(&previous, &current, &request).expect("source identity delta");
++
++    assert_eq!(delivery(&packet, section_id(1)), DeltaDelivery::ChangedFact);
++    assert_eq!(delivery(&packet, section_id(5)), DeltaDelivery::Navigation);
++    assert_eq!(delivery(&packet, section_id(8)), DeltaDelivery::Navigation);
++}
++
++#[test]
++fn packet_getters_accounting_and_clone_preserve_complete_public_result() {
++    let identity = candidate(20, 1, 1);
++    let previous = snapshot(identity, HarnessRole::Fixer, 11, FixtureRevision::Baseline);
++    let current = snapshot(identity, HarnessRole::Fixer, 13, FixtureRevision::SourceChanged);
++    let request =
++        InvalidationRequest::new(state(identity, 13), KnowledgeChange::SourceChanged, Vec::new())
++            .expect("source request");
++    let packet = plan_delta_packet(&previous, &current, &request).expect("delta packet");
++    let cloned = packet.clone();
++
++    assert_eq!(cloned, packet);
++    assert_eq!(packet.role(), HarnessRole::Fixer);
++    assert_eq!(packet.candidate(), current.candidate());
++    assert_eq!(packet.entries().len(), current.sections().len());
++    let accounting = packet.accounting();
++    assert_eq!(
++        accounting.changed_facts()
++            + accounting.current_references()
++            + accounting.navigation_sections(),
++        packet.entries().len(),
++    );
++    assert_eq!(accounting.invalidated_prior_sections(), 6);
++}

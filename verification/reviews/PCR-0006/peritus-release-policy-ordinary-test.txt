@@ -1,0 +1,85 @@
+{"candidate_commit": "65f16e2933b70305de865750931bb05fe9afb64d", "candidate_tree": "ae2a43f9a9b73f5fec944d39cf165a8b3ec4df20", "environment": {"CARGO_BUILD_JOBS": "1", "CCACHE_DISABLE": "1", "RUST_TEST_THREADS": "1"}, "gate": {"command": "cargo test --package peritus-release-policy --all-targets --all-features --locked", "invocation": ["cargo", "test", "--package", "peritus-release-policy", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "output": "085-peritus-release-policy-ordinary-test.log", "owning_crate": "peritus-release-policy", "started_at": "2026-09-13T15:21:14.347083Z"}, "plan_sha256": "7fc101b7f8284fbe3818461a8166d73d3425f369120b43c1cbf1b43809a6b7c9"}
+
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.16s
+     Running unittests src/lib.rs (target/debug/deps/peritus_release_policy-7bc79be2ebedd6fa)
+
+running 3 tests
+test catalog::tests::criterion_twenty_four_requires_every_release_artifact_class ... ok
+test catalog::tests::stable_catalog_ids_are_contiguous ... ok
+test error::tests::every_error_kind_has_a_stable_h4_code ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/acceptance.rs (target/debug/deps/acceptance-4bc022f51cf83baf)
+
+running 4 tests
+test complete_exact_evidence_is_ready_without_publication_authority ... ok
+test decision_is_bound_to_the_exact_candidate_and_time ... ok
+test every_final_qualification_check_is_required_for_admission ... ok
+test every_required_artifact_fails_closed_when_removed ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests/catalog.rs (target/debug/deps/catalog-7c55ef942dec9fdc)
+
+running 3 tests
+test every_criterion_has_at_least_one_required_artifact ... ok
+test evidence_catalog_has_stable_unique_ids_and_sources ... ok
+test production_catalog_is_exactly_twenty_five_stable_items ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/construction.rs (target/debug/deps/construction-e4edfedbd7f21c65)
+
+running 8 tests
+test digest_bound_candidate_components_preserve_fields_and_reject_zero ... ok
+test evidence_collection_bound_is_enforced ... ok
+test invalid_time_and_source_revision_bindings_are_rejected ... ok
+test late_nonzero_identity_bytes_are_preserved_exactly ... ok
+test platform_slots_are_nominal_not_positional_guesswork ... ok
+test revision_bound_components_and_platform_matrix_preserve_every_field ... ok
+test revision_errors_precede_later_digest_errors ... ok
+test zero_nominal_identities_are_rejected ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/fail_closed.rs (target/debug/deps/fail_closed-3547060af7a9f2bb)
+
+running 4 tests
+test every_complete_candidate_identity_component_is_checked ... ok
+test mismatched_candidate_evidence_is_diagnosed_and_excluded ... ok
+test stale_evidence_is_diagnosed_and_cannot_contribute ... ok
+test wrong_source_unreviewed_unsigned_and_conflict_are_distinct ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/permutation.rs (target/debug/deps/permutation-8a9e5ef7ce728211)
+
+running 1 test
+test evidence_permutations_preserve_verdict_digest_and_diagnostics ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/qualifications.rs (target/debug/deps/qualifications-ef6331090169cd7c)
+
+running 4 tests
+test conflicting_current_qualification_reports_block_release ... ok
+test every_h_slice_is_required ... ok
+test explicit_not_ready_qualification_blocks_release ... ok
+test stale_and_unreviewed_qualifications_never_count_as_ready ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/reviews_and_findings.rs (target/debug/deps/reviews_and_findings-b7d58e27cdd59034)
+
+running 5 tests
+test ignored_and_quarantined_findings_are_never_release_ready ... ok
+test independent_review_quorum_is_mandatory ... ok
+test independent_waiver_can_resolve_a_nonblocking_finding ... ok
+test self_review_changes_required_and_shared_context_each_block ... ok
+test unresolved_release_blocker_cannot_be_waived ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+GATE DRIVER RESULT: {"command": "cargo test --package peritus-release-policy --all-targets --all-features --locked", "command_exit_code": 0, "elapsed_seconds": 0.315, "exit_code": 0, "finished_at": "2026-09-13T15:21:14.663269Z", "invocation": ["cargo", "test", "--package", "peritus-release-policy", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "output": "085-peritus-release-policy-ordinary-test.log", "owning_crate": "peritus-release-policy", "result": "passed", "started_at": "2026-09-13T15:21:14.347083Z"}

@@ -1,7 +1,7 @@
 use base64::Engine as _;
 use peritus_model_protocol::{
-    ContentBlock, MediaInput, Message, ModelRequest, ParallelToolPolicy, Role, StructuredOutput,
-    ToolChoice,
+    Capability, ContentBlock, MediaInput, Message, ModelRequest, ParallelToolPolicy, Role,
+    StructuredOutput, ToolChoice,
 };
 use peritus_provider_core::ProviderCoreError;
 use serde_json::{Map, Value};
@@ -23,7 +23,13 @@ pub(super) fn encode_hosted(
     wire.insert("model".to_owned(), string(request.model().as_str()));
     wire.insert("messages".to_owned(), Value::Array(messages(request, service)?));
     wire.insert("stream".to_owned(), Value::Bool(true));
-    wire.insert("stream_options".to_owned(), object([("include_usage", Value::Bool(true))]));
+    wire.insert(
+        "stream_options".to_owned(),
+        object([(
+            "include_usage",
+            Value::Bool(request.negotiated().includes(Capability::UsageDetail)),
+        )]),
+    );
     wire.insert("max_completion_tokens".to_owned(), Value::from(generation.max_output_tokens()));
     add_tools(&mut wire, request)?;
     wire.insert("parallel_tool_calls".to_owned(), Value::Bool(parallel(request)));

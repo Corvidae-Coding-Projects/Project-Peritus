@@ -14,34 +14,22 @@ use crate::trust::manifest_model::{ProofImpactDocument, ProofImpactVerdict};
 use std::collections::BTreeSet;
 use std::path::Path;
 
-pub(super) fn validate(
+pub(super) fn is_phase(
     context: &ManifestContext<'_>,
     current: &ProofImpactDocument,
     diagnostics: &mut Vec<Diagnostic>,
 ) -> Result<bool, XtaskError> {
-    let Some(change) = current.changes.last() else { return Ok(false) };
-    let Some(reference) = &change.verdict else { return Ok(false) };
-    let Some(verdict) = manifest_file::read_toml::<ProofImpactVerdict>(
-        context.root,
-        Path::new(&reference.path),
-        diagnostics,
-    ) else {
-        return Ok(false);
-    };
-    if !review_base::full_commit(&verdict.authorization_base_commit) {
-        return Ok(false);
-    }
-    let Some(base) = review_base::load_base_manifest(
-        context.root,
-        &verdict.authorization_base_commit,
-        diagnostics,
-    )?
-    else {
-        return Ok(false);
-    };
-    if current.sources != base.sources {
-        return Ok(false);
-    }
+    Ok(load(context, current, diagnostics)?.is_some())
+}
+
+pub(super) fn validate(
+    context: &ManifestContext<'_>,
+    current: &ProofImpactDocument,
+    enforce_review_base: bool,
+    diagnostics: &mut Vec<Diagnostic>,
+) -> Result<bool, XtaskError> {
+    let Some(phase) = load(context, current, diagnostics)? else { return Ok(false) };
+    let AuthorizationPhase { change, verdict, base } = phase;
     if !one_complete_authorization(&base, current) {
         diagnostics.push(error("authorization requires exactly one appended immutable review"));
         return Ok(true);
@@ -71,8 +59,47 @@ pub(super) fn validate(
         change,
         diagnostics,
     )?;
-    review_base::validate(context.root, current, diagnostics)?;
+    if enforce_review_base {
+        review_base::validate(context.root, current, diagnostics)?;
+    }
     Ok(true)
+}
+
+struct AuthorizationPhase<'a> {
+    change: &'a super::ProofImpactChange,
+    verdict: ProofImpactVerdict,
+    base: ProofImpactDocument,
+}
+
+fn load<'a>(
+    context: &ManifestContext<'_>,
+    current: &'a ProofImpactDocument,
+    diagnostics: &mut Vec<Diagnostic>,
+) -> Result<Option<AuthorizationPhase<'a>>, XtaskError> {
+    let Some(change) = current.changes.last() else { return Ok(None) };
+    let Some(reference) = &change.verdict else { return Ok(None) };
+    let Some(verdict) = manifest_file::read_toml::<ProofImpactVerdict>(
+        context.root,
+        Path::new(&reference.path),
+        diagnostics,
+    ) else {
+        return Ok(None);
+    };
+    if !review_base::full_commit(&verdict.authorization_base_commit) {
+        return Ok(None);
+    }
+    let Some(base) = review_base::load_base_manifest(
+        context.root,
+        &verdict.authorization_base_commit,
+        diagnostics,
+    )?
+    else {
+        return Ok(None);
+    };
+    if current.sources != base.sources {
+        return Ok(None);
+    }
+    Ok(Some(AuthorizationPhase { change, verdict, base }))
 }
 
 fn validate_baseline_tree(
@@ -126,7 +153,17 @@ fn error(message: &str) -> Diagnostic {
 
 #[cfg(test)]
 mod tests {
-    use super::authorization_path;
+    use super::{authorization_path, is_phase, one_complete_authorization};
+    use crate::trust::manifest_context::ManifestContext;
+    use crate::trust::manifest_model::{
+        ProofImpactChange, ProofImpactKind, ProofImpactPackage, ProofImpactSnapshot,
+        ProofImpactSource, ProofImpactStatus, ProofImpactVerdict, ProofImpactVerdictArtifactRef,
+        ProofImpactVerdictDecision, ProofImpactVerdictRef, ProofSourceChange,
+    };
+    use crate::trust::manifest_tests::{Fixture, cargo, policy};
+    use std::fs;
+    use std::path::Path;
+    use std::process::Command;
 
     #[test]
     fn authorization_cannot_change_application_or_formal_policy() {
@@ -152,5 +189,136 @@ mod tests {
         ] {
             assert!(authorization_path(path), "{path}");
         }
+    }
+
+    #[test]
+    fn unchanged_protected_inventory_selects_the_authorization_phase() {
+        let fixture = Fixture::new();
+        fixture.write(
+            "verification/proof-impact.toml",
+            "schema = 'peritus.verification.proof-impact'\nschema_version = 1\nbaseline = 'A1'\nhash_algorithm = 'sha256-raw-bytes-v1'\nsources = []\nchanges = []\n",
+        );
+        git(fixture.path(), &["init", "--quiet"]);
+        git(fixture.path(), &["config", "user.name", "Peritus Test"]);
+        git(fixture.path(), &["config", "user.email", "peritus-test@example.invalid"]);
+        git(fixture.path(), &["config", "commit.gpgsign", "false"]);
+        git(fixture.path(), &["add", "verification/proof-impact.toml"]);
+        git(fixture.path(), &["commit", "--quiet", "-m", "protected"]);
+        let base = stdout(fixture.path(), &["rev-parse", "HEAD"]);
+
+        let mut current: crate::trust::manifest_model::ProofImpactDocument = toml::from_str(
+            &fs::read_to_string(fixture.path().join("verification/proof-impact.toml"))
+                .expect("protected manifest"),
+        )
+        .expect("protected manifest schema");
+        let verdict_path = "verification/reviews/PCR-0005.toml";
+        current.changes.push(authorization_change(verdict_path));
+        let verdict = authorization_verdict(&base);
+        fixture.write(verdict_path, &toml::to_string(&verdict).expect("serialize verdict fixture"));
+        assert!(one_complete_authorization(
+            &toml::from_str(
+                &fs::read_to_string(fixture.path().join("verification/proof-impact.toml"))
+                    .expect("protected manifest")
+            )
+            .expect("protected manifest schema"),
+            &current,
+        ));
+
+        let policy = policy();
+        let cargo = cargo(&fixture);
+        let context = ManifestContext::new(fixture.path(), &policy, &cargo);
+        let mut diagnostics = Vec::new();
+        assert!(is_phase(&context, &current, &mut diagnostics).expect("classify authorization"));
+        assert!(diagnostics.is_empty(), "unexpected classification diagnostics: {diagnostics:?}");
+
+        current.sources.push(ProofImpactSource {
+            source_file: "crate/src/lib.rs".to_owned(),
+            sha256: "a".repeat(64),
+            affected_packages: vec![ProofImpactPackage {
+                package: "crate".to_owned(),
+                verification_class: "V".to_owned(),
+            }],
+            change_id: "PCR-0005".to_owned(),
+        });
+        assert!(!is_phase(&context, &current, &mut diagnostics).expect("reject implementation"));
+    }
+
+    fn authorization_change(verdict_path: &str) -> ProofImpactChange {
+        ProofImpactChange {
+            id: "PCR-0005".to_owned(),
+            status: ProofImpactStatus::Approved,
+            change_kinds: vec![
+                ProofImpactKind::Executable,
+                ProofImpactKind::Specification,
+                ProofImpactKind::Precondition,
+                ProofImpactKind::Postcondition,
+                ProofImpactKind::Proof,
+            ],
+            source_changes: vec![ProofSourceChange {
+                source_file: "crate/src/lib.rs".to_owned(),
+                previous: None,
+                current: Some(ProofImpactSnapshot {
+                    sha256: "a".repeat(64),
+                    affected_packages: vec![ProofImpactPackage {
+                        package: "crate".to_owned(),
+                        verification_class: "V".to_owned(),
+                    }],
+                }),
+            }],
+            rationale: "authorize exact frozen candidate".to_owned(),
+            impact: "records complete independent review".to_owned(),
+            evidence: Vec::new(),
+            owner: "ACTOR-0001".to_owned(),
+            reviewer: "ACTOR-0002".to_owned(),
+            review_date: "2026-09-13".to_owned(),
+            verdict: Some(ProofImpactVerdictRef {
+                path: verdict_path.to_owned(),
+                sha256: "b".repeat(64),
+            }),
+        }
+    }
+
+    fn authorization_verdict(base: &str) -> ProofImpactVerdict {
+        let empty = ProofImpactVerdictArtifactRef { path: String::new(), sha256: String::new() };
+        ProofImpactVerdict {
+            schema: "peritus.verification.proof-impact-verdict".to_owned(),
+            schema_version: 1,
+            id: "VERDICT-PCR-0005".to_owned(),
+            pcr_id: "PCR-0005".to_owned(),
+            reviewer: "ACTOR-0002".to_owned(),
+            reviewer_principal: "fixture-reviewer".to_owned(),
+            authorization_base_commit: base.to_owned(),
+            implementation_commit: "1".repeat(40),
+            implementation_tree: "2".repeat(40),
+            source_transitions_sha256: "3".repeat(64),
+            gate_evidence_sha256: "4".repeat(64),
+            finding_set_sha256: "5".repeat(64),
+            artifact_inventory_sha256: "6".repeat(64),
+            decision: ProofImpactVerdictDecision::Approved,
+            reviewed_at: "2026-09-13T00:00:00Z".to_owned(),
+            review_report: empty,
+            gate_evidence: Vec::new(),
+            findings: Vec::new(),
+            artifacts: Vec::new(),
+        }
+    }
+
+    fn git(root: &Path, arguments: &[&str]) {
+        let output = Command::new("git")
+            .args(arguments)
+            .current_dir(root)
+            .output()
+            .expect("Git fixture command");
+        assert!(output.status.success(), "Git failed: {}", String::from_utf8_lossy(&output.stderr));
+    }
+
+    fn stdout(root: &Path, arguments: &[&str]) -> String {
+        let output = Command::new("git")
+            .args(arguments)
+            .current_dir(root)
+            .output()
+            .expect("Git fixture command");
+        assert!(output.status.success(), "Git failed: {}", String::from_utf8_lossy(&output.stderr));
+        String::from_utf8(output.stdout).expect("Git output UTF-8").trim().to_owned()
     }
 }

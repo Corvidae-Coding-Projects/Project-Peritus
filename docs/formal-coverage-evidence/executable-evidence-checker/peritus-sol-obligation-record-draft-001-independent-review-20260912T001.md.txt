@@ -1,0 +1,59 @@
+# Independent review: obligation-record draft 001
+
+## Verdict
+
+**FAIL as an appendable registry fragment; conditional PASS after three bounded corrections.**
+
+The 16 records accurately describe the reviewed production contracts and retain `in-progress` status, but draft 001 cannot be appended to `verification/obligations.toml` as written. The registry schema rejects all 16 `source_line` keys. One settlement statement also overstates the initial-checkpoint rule. The tracking text should identify `#75` as the local Crosslink issue so it cannot be mistaken for a nonexistent GitHub issue.
+
+## Exact reviewed inputs
+
+- Draft: `/tmp/peritus-sol-obligation-record-draft-001.toml`
+  - SHA-256: `27c1ee7ed0b69bd25272471d6827fd4bea6bae9f81fc5c08a63d8b390c72dbfb`
+- Mapping: `/tmp/peritus-sol-obligation-record-mapping-001.md`
+  - SHA-256: `f595e2289416dc45c7ad2f4612ac4cc423851fabe499022167ad237a8c2facab`
+- Source/evidence identity manifest: `/tmp/peritus-sol-obligation-record-inputs-001.sha256`
+  - 72 entries; all verified from `/home/doll/Project-Peritus/.worktrees/formal-coverage`.
+
+## Required corrections
+
+1. Remove every `source_line` key from the 16 draft entries. `ObligationEntry` has `#[serde(deny_unknown_fields)]` and no `source_line` member, so current registry deserialization would reject draft 001. Line references may remain in the mapping note.
+2. Replace the `OBL-0220` statement with wording that covers both actual admitted cases, for example: `SettlementReducer observation preserves terminal state, accepts exactly an initial checkpoint or a valid strictly advancing successor before settlement, stores that exact checkpoint on success, and preserves the complete reducer with the exact modeled error on rejection.` The current implementation admits the first checkpoint when no predecessor exists; only later checkpoints must advance.
+3. In the mapping, call `#75` the open **local Crosslink issue** and distinguish standalone TOML syntax parsing from the still-pending registry-schema/checker run. Local `crosslink issue list` reports Crosslink `#75` open, and `validate_issue` accepts local `#N` references. No current GitHub issue 75 is asserted or required.
+
+## Content review
+
+- IDs `OBL-0209` through `OBL-0224` are unique, contiguous, and do not collide with the current registry. All dependencies resolve to existing or earlier draft IDs. Every record uses owner `ACTOR-0001`, issue `#75`, and status `in-progress`; none supplies reviewer or review-date fields or implies discharge.
+- All 16 named source files and all 40 evidence source/symbol locators exist in the reviewed source snapshot. `ACTOR-0001` exists in `verification/actors.toml`.
+- `OBL-0209` through `OBL-0212` match the exact nominal-ID, capability-name, checked-addition, and seven-field revision constructor contracts. `OBL-0211` correctly does not claim subtraction.
+- `OBL-0213` names the verified `RequirementLedger::extract_preimage` kernel and limits the claim to exact admission and successful-state correspondence. It does not claim exact extraction error payloads. `OBL-0214` names the actual canonical byte encoder called by the ordinary public extraction wrapper; the ordinary SHA-256 implementation remains outside that proof claim.
+- `OBL-0215` matches the qualification input-validity iff, exact report accounting, alternative completion, and first-error contracts and its gate/product-runner callers.
+- `OBL-0216` through `OBL-0218` match snapshot construction, invalidation closure, and delta-packet result/error contracts. The mapping correctly records that `plan_delta_packet` has no non-test production caller in the current tree; the record does not invent production provenance.
+- `OBL-0219` and `OBL-0221` match checkpoint construction and terminal settlement. `OBL-0220` matches the implementation after the initial-versus-successor wording correction above.
+- `OBL-0222` and `OBL-0224` accurately describe atomic updates in `AccountingState::apply_usage` and `AccountingState::apply_work`, including complete rollback on selected overflow. The mapping correctly limits this to the named in-memory kernels and caller routing before later ceiling checks; it does not claim whole-event transaction, persistence, or budget-enforcement atomicity.
+- `OBL-0223` matches `DeveloperUsage::apply_observation`. The public `observe` wrapper copies every `UsageCounters` field into `UsageObservation`, calls the verified kernel, and maps rejection to `LimitExceeded`; provider-turn code supplies the session high-water observation.
+
+## Boundaries retained
+
+The draft remains a registration proposal. It does not establish proof discharge, SHA-256 authenticity, live delta-packet emission, daemon transaction/persistence atomicity, provider truthfulness, host-resource measurement, complete budget enforcement, or product-run liveness. Compiler and test logs were inspected as supplied evidence; this review ran no compiler, test, or verifier command.
+
+## Read-only commands executed
+
+```text
+sha256sum /tmp/peritus-sol-obligation-record-draft-001.toml /tmp/peritus-sol-obligation-record-mapping-001.md
+cd /home/doll/Project-Peritus/.worktrees/formal-coverage && sha256sum -c /tmp/peritus-sol-obligation-record-inputs-001.sha256
+crosslink issue list
+rg/sed reads of the registry schema, issue validator, 16 source contracts, their production callers, evidence symbols, actors, and current obligation IDs
+Python read-only TOML/ID/dependency/source/evidence inventory checks
+```
+
+## Corrected draft 002 follow-up
+
+Reviewed `/tmp/peritus-sol-obligation-record-draft-002.toml` (SHA-256 `7cfc8b9ae0b714d2cdc002940a263f2d10d64d27326721d05e71b95b1add231e`) and `/tmp/peritus-sol-obligation-record-mapping-002.md` (SHA-256 `4158ea536681af6032aeec967459f61ab5b64b1d254114008dd6e87dc07b3ea8`). The 001-to-002 draft delta removes exactly the 16 unsupported `source_line` keys. Mapping 002 correctly identifies local Crosslink issue `#75` and retains line locators separately.
+
+Two blockers remain before append:
+
+1. `OBL-0220` still contains the overstrong “accepts exactly a valid strictly advancing checkpoint” statement. It must distinguish the unconditionally admissible initial checkpoint from a validated advancing successor.
+2. `/tmp/peritus-sol-obligation-record-inputs-002.sha256` does not currently verify: its live `.crosslink/issues.db` entry expected `dc8d52b2f1642c1c9d0716aded55f4877e1ba1be83c5ed2c85d217d597fc815a`, while the reviewed worktree database hashed to `4509e97901e5d25c005d1c0289f71cc1cf86ed425c7d8275067abeb246e8e25f`. The extracted row JSON (`25b8de8c...`) and text record (`d31fa17a...`) still match and carry the relevant provenance. A mutable live SQLite file should be removed from the durable identity manifest or replaced by an immutable copied snapshot explicitly identified as such.
+
+Aside from those two items, draft 002 receives a bounded content/source **PASS** under the guarantees and limits above.

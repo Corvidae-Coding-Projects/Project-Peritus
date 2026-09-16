@@ -1,0 +1,75 @@
+{
+  "fixture": "canonical ascending chain; node i depends on i-1",
+  "timed_region": "actual ContextGraph::new only; node construction and Vec clone excluded",
+  "warmup": "one untimed ContextGraph::new before each size",
+  "qualification": "bounded wall-clock measurements, not an asymptotic theorem",
+  "source_identity": {
+    "prior55_check": "/tmp/peritus-sol-context-perf-pre-source-check.log",
+    "frozen481_check": "/tmp/peritus-sol-context-perf-final-source-check.log",
+    "optimized524_check": "/tmp/peritus-sol-context-perf-optimized-final3-source-check.log"
+  },
+  "rows": [
+    {
+      "nodes": 64,
+      "prior55_median_ns": 17966,
+      "frozen481_median_ns": 362466,
+      "optimized524_median_ns": 8641,
+      "frozen_over_prior": 20.175108538350216,
+      "optimized_over_prior": 0.4809640431926973,
+      "frozen_over_optimized": 41.94722833005439
+    },
+    {
+      "nodes": 128,
+      "prior55_median_ns": 69865,
+      "frozen481_median_ns": 2720550,
+      "optimized524_median_ns": 28346,
+      "frozen_over_prior": 38.94009876189794,
+      "optimized_over_prior": 0.40572532741716166,
+      "frozen_over_optimized": 95.97650462146335
+    },
+    {
+      "nodes": 256,
+      "prior55_median_ns": 275454,
+      "frozen481_median_ns": 17503230,
+      "optimized524_median_ns": 104513,
+      "frozen_over_prior": 63.54320503604958,
+      "optimized_over_prior": 0.37942088334168317,
+      "frozen_over_optimized": 167.4741898137074
+    },
+    {
+      "nodes": 512,
+      "prior55_median_ns": 1094272,
+      "frozen481_median_ns": 137086391,
+      "optimized524_median_ns": 403093,
+      "frozen_over_prior": 125.276339886244,
+      "optimized_over_prior": 0.36836636594923383,
+      "frozen_over_optimized": 340.08626049075525
+    },
+    {
+      "nodes": 1024,
+      "prior55_median_ns": 3589992,
+      "frozen481_median_ns": 1113008751,
+      "optimized524_median_ns": 1828238,
+      "frozen_over_prior": 310.0309836345039,
+      "optimized_over_prior": 0.5092596306621296,
+      "frozen_over_optimized": 608.7876693297044
+    },
+    {
+      "nodes": 2048,
+      "prior55_median_ns": 14187887,
+      "frozen481_median_ns": 8942616019,
+      "optimized524_median_ns": 6809582,
+      "frozen_over_prior": 630.2993545832442,
+      "optimized_over_prior": 0.4799574453898597,
+      "frozen_over_optimized": 1313.2400812560888
+    }
+  ],
+  "prior_optimized_without_frozen": [
+    {
+      "nodes": 4096,
+      "prior55_median_ns": 57382212,
+      "optimized524_median_ns": 20236190,
+      "optimized_over_prior": 0.3526561506551891
+    }
+  ]
+}

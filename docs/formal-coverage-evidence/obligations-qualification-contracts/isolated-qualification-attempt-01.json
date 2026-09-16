@@ -1,0 +1,104 @@
+{
+  "cwd": "/tmp/peritus-parent-obligations-proof.6ib_z8mo",
+  "source_files": 56,
+  "manifest_sha256": "3433501644a8d21eafff070e62e1710b06a65fb2c1ca752621190c6e216c23f4",
+  "environment": {
+    "CARGO_BUILD_JOBS": "2",
+    "CCACHE_DISABLE": "1",
+    "CARGO_TARGET_DIR": "/home/doll/Project-Peritus/.worktrees/formal-coverage/target/formal-obligations-parent"
+  },
+  "commands": [
+    {
+      "label": "client",
+      "command": [
+        "cargo",
+        "verus",
+        "verify",
+        "--package",
+        "peritus-obligations",
+        "--all-features",
+        "--locked",
+        "--check-toolchain",
+        "--fwd-verus-args-to",
+        "roots",
+        "--example",
+        "qualification_contract_probe",
+        "--",
+        "--no-cheating",
+        "--rlimit",
+        "20"
+      ],
+      "log": "/tmp/peritus-parent-obligations-contracts-client.log",
+      "exit_code": 0,
+      "proof_results": [
+        "verification results:: 2 verified, 0 errors"
+      ]
+    },
+    {
+      "label": "negative-error-payload",
+      "command": [
+        "cargo",
+        "verus",
+        "verify",
+        "--package",
+        "peritus-obligations",
+        "--all-features",
+        "--locked",
+        "--check-toolchain",
+        "--fwd-verus-args-to",
+        "roots",
+        "--",
+        "--no-cheating",
+        "--rlimit",
+        "20"
+      ],
+      "log": "/tmp/peritus-parent-obligations-contracts-negative-error-payload.log",
+      "exit_code": 101,
+      "proof_results": [
+        "verification results:: 360 verified, 1 errors"
+      ]
+    },
+    {
+      "label": "negative-universal-condition",
+      "command": [
+        "cargo",
+        "verus",
+        "verify",
+        "--package",
+        "peritus-obligations",
+        "--all-features",
+        "--locked",
+        "--check-toolchain",
+        "--fwd-verus-args-to",
+        "roots",
+        "--",
+        "--no-cheating",
+        "--rlimit",
+        "20"
+      ],
+      "log": "/tmp/peritus-parent-obligations-contracts-negative-universal-condition.log",
+      "exit_code": 101,
+      "proof_results": [
+        "verification results:: 360 verified, 1 errors"
+      ]
+    }
+  ],
+  "mutations": [
+    {
+      "label": "negative-error-payload",
+      "path": "crates/orchestration/peritus-obligations/src/qualification/validation.rs",
+      "before": "return Err(ObligationError::requirement(\n                    ObligationErrorKind::UnknownRequirement,\n                    id,\n                ));",
+      "after": "return Err(ObligationError::plain(ObligationErrorKind::UnknownRequirement));",
+      "preimage_sha256": "3c3f40521488e89c6b26e4c7d3d10d0a7fa3b23b9f356e0fc452abbbd6034985",
+      "mutant_sha256": "ad93d7967a62b7f8cfbc32c2bc05186ee89c7510cad0dd7ba2c18ea43104204d"
+    },
+    {
+      "label": "negative-universal-condition",
+      "path": "crates/orchestration/peritus-obligations/src/qualification/completion.rs",
+      "before": "&&& ordinary::all_conditions_resolved(ledger.spec_entries(), conditions)",
+      "after": "&&& true",
+      "preimage_sha256": "898f1b1c975c6ecaec1585d94509e7110c480eabc94440f74002a1680328ad6a",
+      "mutant_sha256": "c9b09ae80cbc29893721b561736252b886b746bb0c0abca830ddcba39e773620"
+    }
+  ]
+}

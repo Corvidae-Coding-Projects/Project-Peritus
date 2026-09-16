@@ -1,0 +1,26 @@
+{"candidate_commit": "65f16e2933b70305de865750931bb05fe9afb64d", "candidate_tree": "ae2a43f9a9b73f5fec944d39cf165a8b3ec4df20", "environment": {"CARGO_BUILD_JOBS": "1", "CCACHE_DISABLE": "1", "RUST_TEST_THREADS": "1"}, "gate": {"command": "cargo test --package peritus-run-settlement --all-targets --all-features --locked", "invocation": ["cargo", "test", "--package", "peritus-run-settlement", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "output": "093-peritus-run-settlement-ordinary-test.log", "owning_crate": "peritus-run-settlement", "started_at": "2026-09-13T15:21:18.195014Z"}, "plan_sha256": "7fc101b7f8284fbe3818461a8166d73d3425f369120b43c1cbf1b43809a6b7c9"}
+
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.16s
+     Running unittests src/lib.rs (target/debug/deps/peritus_run_settlement-da77784b7e8125be)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/reducer.rs (target/debug/deps/reducer-da2e1de07eeb88ed)
+
+running 9 tests
+test accepted_requires_a_fully_qualified_current_candidate ... ok
+test cancellation_recovery_and_user_wait_retain_a_qualified_candidate_without_accepting_it ... ok
+test candidate_comparison_uses_every_identity_byte_and_ignores_only_checkpoint_sequence ... ok
+test candidate_is_delivered_without_being_accepted ... ok
+test every_stable_tag_round_trips_and_unknown_tags_reject ... ok
+test every_terminal_cause_is_expressible_with_and_without_a_candidate ... ok
+test evidence_from_another_candidate_is_rejected_or_stale ... ok
+test reducer_rejects_nonadvancing_regressing_and_post_terminal_updates ... ok
+test rejected_observations_and_terminal_updates_preserve_the_complete_reducer ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+GATE DRIVER RESULT: {"command": "cargo test --package peritus-run-settlement --all-targets --all-features --locked", "command_exit_code": 0, "elapsed_seconds": 0.215, "exit_code": 0, "finished_at": "2026-09-13T15:21:18.410518Z", "invocation": ["cargo", "test", "--package", "peritus-run-settlement", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "output": "093-peritus-run-settlement-ordinary-test.log", "owning_crate": "peritus-run-settlement", "result": "passed", "started_at": "2026-09-13T15:21:18.195014Z"}

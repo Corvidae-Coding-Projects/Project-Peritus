@@ -1,0 +1,34 @@
+# Scheduler OBL-0149 frozen 244 checkpoint
+
+Implementer: `/root/sol_runtime_phase`
+
+## Exact preimage for the next increment
+
+- Complete scheduler package root: `/tmp/peritus-sol-scheduler-frozen244-package`
+- Full package manifest: `/tmp/peritus-sol-scheduler-frozen244-full-package.sha256`, SHA256 `919ab489e892fbe2a32f824c7c5bb6a5fac278fcd77e7b5fe460e2354a1134b9`
+- Exact 45 changed/untracked source manifest: `/tmp/peritus-sol-scheduler-reservation-source-final.sha256`, SHA256 `8dd79a7ce9d301664e27fe595dc7a0351c9d5d13aa54a3f017a5205dcc0aa830`
+- Changed-source copy preserving repository-relative paths: `/tmp/peritus-sol-scheduler-frozen244`
+- Qualification and boundary evidence: `/tmp/peritus-sol-scheduler-reservation-evidence-final2.sha256`, SHA256 `5297c033a3b8da6e184ad632833f94843db16dccc01116ee0886986e6c1ad52d`
+
+The source copy was made only after the final changed-source manifest was generated. All 45 files validate from `/tmp/peritus-sol-scheduler-frozen244` against that manifest.
+
+## Proved production slice
+
+The strict proof binds actual ResourceVector quantities and fits checks, actual selection loops, the production reservation insertion path, exact dispatch identity/history/ordinal updates, semantic SchedulerState clone transport, start acknowledgement, and the five reservation release paths to the actual-state OBL-0149 capacity and ownership invariant. A minimal reducer-readiness relation additionally binds every live reservation to Reserved/Running/Cancelling work and retained dispatch history. Actual `reserve_next` returns an owned deterministic rejection enum and the ordinary wrapper reconstructs the existing SchedulerError kind/detail in the original order.
+
+Meaningful ordinary regressions cover multi-worker and multi-resource saturation, every release outcome followed by replacement dispatch and replay, retry with fresh dispatch identity and replay, late old-dispatch rejection/rollback, and exact dispatch error precedence/rollback.
+
+## Qualification
+
+- Strict Verus, all features, locked, `--no-cheating --rlimit 20`: 244 verified, 0 errors. Log `/tmp/peritus-sol-scheduler-reservation-verus-final.log`.
+- Default-feature tests: 24 passed, 0 failed. Log `/tmp/peritus-sol-scheduler-reservation-tests-final.log`.
+- No-default-feature tests: 24 passed, 0 failed. Log `/tmp/peritus-sol-scheduler-reservation-tests-no-default-final.log`.
+- All-target/all-feature Clippy with `-D warnings`, workspace fmt, ordinary API check, source layout, and scheduler `git diff --check` pass.
+
+## Boundaries at this checkpoint
+
+- The complete `SchedulerError` envelope is outside pinned Verus and contains `String` plus `Option<Box<dyn Error + Send + Sync>>`. Exact failed direct-signature diagnostic: `/tmp/peritus-sol-scheduler-reservation-verus-81.log`.
+- The checkpoint does not prove the full all-command `decide`/`apply`/`replay` composition or effect termination.
+- Worker/work insertion is not yet composed into the top-level preservation theorem.
+- The minimal active-work relation is insufficient as a complete WorkPhase lifecycle invariant.
+- OBL-0150 remains open.

@@ -3,7 +3,7 @@
 use crate::{
     ActivePhase, AgentBinding, AgentCommand, AgentCommandKind, AgentCounters, AgentErrorCode,
     AgentEvent, AgentEventKind, AgentFailureKind, AgentLimits, AgentOperation, AgentPhase,
-    AgentRecovery, AgentRejection, AgentTurnState, TerminalKind, ToolResultStatus, ToolSlotPhase,
+    AgentRecovery, AgentRejection, AgentTurnState, ToolResultStatus, ToolSlotPhase,
 };
 use peritus_types::{CommandId, EventId, EventSequence, RevisionNumber, Sha256Digest};
 use std::collections::BTreeSet;
@@ -214,11 +214,44 @@ pub fn replay(events: &[AgentEvent]) -> Result<AgentTurnState, AgentRejection> {
 )]
 fn apply_kind(state: &mut AgentTurnState, kind: &AgentCommandKind) -> Result<(), AgentRejection> {
     match kind {
+        AgentCommandKind::Paused => {
+            crate::control::pause(&mut state.phase, &mut state.paused_from)
+                .map_err(|error| control_rejection(state, error))?;
+            return Ok(());
+        }
+        AgentCommandKind::Resumed { recovery_checked } => {
+            crate::control::resume(&mut state.phase, &mut state.paused_from, *recovery_checked)
+                .map_err(|error| control_rejection(state, error))?;
+            return Ok(());
+        }
+        AgentCommandKind::CancellationRequested => {
+            crate::control::request_cancellation(&mut state.phase, &mut state.paused_from)
+                .map_err(|error| control_rejection(state, error))?;
+            return Ok(());
+        }
+        AgentCommandKind::CancellationFinished => {
+            crate::control::finish_cancellation(&mut state.phase)
+                .map_err(|error| control_rejection(state, error))?;
+            return Ok(());
+        }
+        _ => {}
+    }
+
+    let successor_phase = crate::verified::command_phase_transition(
+        state.phase,
+        kind,
+        state.model.in_flight(),
+        state.completion.is_some(),
+    )
+    .map_err(|error| phase_transition_rejection(state, error))?;
+
+    // Keep the original phase in rejection metadata; commit the verified successor only after
+    // every command-specific state update succeeds.
+    match kind {
         AgentCommandKind::ContextPrepared(context) => {
             require(state, AgentPhase::Active(ActivePhase::PreparingContext))?;
             state.counters.context_cycle(state.limits).map_err(|error| scoped(state, error))?;
             state.context = Some(*context);
-            state.phase = AgentPhase::Active(ActivePhase::RequestingModel);
         }
         AgentCommandKind::ModelRequestStarted { call_id, request_digest } => {
             require(state, AgentPhase::Active(ActivePhase::RequestingModel))?;
@@ -232,7 +265,6 @@ fn apply_kind(state: &mut AgentTurnState, kind: &AgentCommandKind) -> Result<(),
                 ));
             }
             crate::state::set_model_started(state, *call_id, *request_digest);
-            state.phase = AgentPhase::Active(ActivePhase::StreamingResponse);
         }
         AgentCommandKind::ProviderEventObserved(record) => observe_provider(state, record)?,
         AgentCommandKind::ProviderRetryScheduled(record) => schedule_retry(state, *record)?,
@@ -249,7 +281,6 @@ fn apply_kind(state: &mut AgentTurnState, kind: &AgentCommandKind) -> Result<(),
             state.counters.add_tools(count, state.limits).map_err(|error| scoped(state, error))?;
             crate::state::set_model_terminal(state, *terminal);
             state.tools = Some(batch);
-            state.phase = AgentPhase::Active(ActivePhase::ProposedToolCalls);
         }
         AgentCommandKind::CompletionProposed { terminal, proposal } => {
             propose_completion(state, *terminal, proposal.clone())?;
@@ -257,7 +288,6 @@ fn apply_kind(state: &mut AgentTurnState, kind: &AgentCommandKind) -> Result<(),
         AgentCommandKind::AuthorizationStarted => {
             require(state, AgentPhase::Active(ActivePhase::ProposedToolCalls))?;
             crate::tools::set_awaiting(tools_mut(state)?);
-            state.phase = AgentPhase::Active(ActivePhase::AwaitingAuthorization);
         }
         AgentCommandKind::ToolAuthorized { ordinal, authority_digest } => {
             require(state, AgentPhase::Active(ActivePhase::AwaitingAuthorization))?;
@@ -296,23 +326,18 @@ fn apply_kind(state: &mut AgentTurnState, kind: &AgentCommandKind) -> Result<(),
             if !batch.all_terminal() || state.counters.active_tool_calls() != 0 {
                 return Err(invalid(state, "tool batch is not terminal"));
             }
-            state.phase = AgentPhase::Active(ActivePhase::RecordingResults);
         }
         AgentCommandKind::ResultsRecorded { transcript_digest } => {
             record_results(state, *transcript_digest)?;
         }
-        AgentCommandKind::Paused => pause(state)?,
-        AgentCommandKind::Resumed { recovery_checked } => resume(state, *recovery_checked)?,
-        AgentCommandKind::CancellationRequested => {
-            if state.phase.is_terminal() || state.phase == AgentPhase::Cancelling {
-                return Err(illegal(state));
-            }
-            state.paused_from = None;
-            state.phase = AgentPhase::Cancelling;
-        }
-        AgentCommandKind::CancellationFinished => {
-            require(state, AgentPhase::Cancelling)?;
-            state.phase = AgentPhase::Terminal(TerminalKind::Cancelled);
+        AgentCommandKind::Paused
+        | AgentCommandKind::Resumed { .. }
+        | AgentCommandKind::CancellationRequested
+        | AgentCommandKind::CancellationFinished => {
+            return Err(phase_transition_rejection(
+                state,
+                crate::verified::PhaseTransitionRejection::ControlCommand,
+            ));
         }
         AgentCommandKind::Failed(failure) => fail(state, failure.clone(), false)?,
         AgentCommandKind::Exhausted(failure) => fail(state, failure.clone(), true)?,
@@ -321,9 +346,9 @@ fn apply_kind(state: &mut AgentTurnState, kind: &AgentCommandKind) -> Result<(),
             if state.completion.is_none() {
                 return Err(ineligible(state, "completion proposal is absent"));
             }
-            state.phase = AgentPhase::Terminal(TerminalKind::Completed);
         }
     }
+    state.phase = successor_phase;
     Ok(())
 }
 
@@ -378,7 +403,6 @@ fn schedule_retry(
         ));
     }
     crate::state::schedule_retry(state, record);
-    state.phase = AgentPhase::Active(ActivePhase::RequestingModel);
     Ok(())
 }
 
@@ -415,7 +439,6 @@ fn propose_completion(
     }
     crate::state::set_model_terminal(state, terminal);
     state.completion = Some(proposal);
-    state.phase = AgentPhase::Active(ActivePhase::ProposedCompletion);
     Ok(())
 }
 
@@ -449,7 +472,7 @@ fn deny_tool(
     Ok(())
 }
 
-fn begin_execution(state: &mut AgentTurnState) -> Result<(), AgentRejection> {
+fn begin_execution(state: &AgentTurnState) -> Result<(), AgentRejection> {
     require(state, AgentPhase::Active(ActivePhase::AwaitingAuthorization))?;
     if tools(state)?
         .slots()
@@ -458,7 +481,6 @@ fn begin_execution(state: &mut AgentTurnState) -> Result<(), AgentRejection> {
     {
         return Err(invalid(state, "authorization decisions are incomplete"));
     }
-    state.phase = AgentPhase::Active(ActivePhase::ExecutingTools);
     Ok(())
 }
 
@@ -522,36 +544,44 @@ fn record_results(state: &mut AgentTurnState, digest: Sha256Digest) -> Result<()
     state.tool_transcript_digest = Some(digest);
     state.tools = None;
     state.model = crate::ModelState::default();
-    state.phase = AgentPhase::Active(ActivePhase::PreparingContext);
     Ok(())
 }
 
-const fn pause(state: &mut AgentTurnState) -> Result<(), AgentRejection> {
-    let AgentPhase::Active(active) = state.phase else {
-        return Err(illegal(state));
-    };
-    state.paused_from = Some(active);
-    state.phase = AgentPhase::Paused;
-    Ok(())
-}
-
-fn resume(state: &mut AgentTurnState, checked: bool) -> Result<(), AgentRejection> {
-    require(state, AgentPhase::Paused)?;
-    if !checked {
-        return Err(AgentRejection::new(
+const fn phase_transition_rejection(
+    state: &AgentTurnState,
+    error: crate::verified::PhaseTransitionRejection,
+) -> AgentRejection {
+    match error {
+        crate::verified::PhaseTransitionRejection::IllegalPhase
+        | crate::verified::PhaseTransitionRejection::ControlCommand => illegal(state),
+        crate::verified::PhaseTransitionRejection::ProviderNotInFlight => reject(
+            state,
             AgentErrorCode::InvalidCommand,
-            AgentOperation::Reduce,
+            AgentRecovery::ResumeProvider,
+            "provider retry requires an in-flight model call",
+        ),
+        crate::verified::PhaseTransitionRejection::CompletionAbsent => {
+            ineligible(state, "completion proposal is absent")
+        }
+    }
+}
+
+const fn control_rejection(
+    state: &AgentTurnState,
+    error: crate::control::ControlRejection,
+) -> AgentRejection {
+    match error {
+        crate::control::ControlRejection::IllegalPhase => illegal(state),
+        crate::control::ControlRejection::RecoveryUnchecked => reject(
+            state,
+            AgentErrorCode::InvalidCommand,
             AgentRecovery::RestartTurn,
             "resume requires completed recovery checks",
-        )
-        .at(state.binding.turn_id(), state.phase));
+        ),
+        crate::control::ControlRejection::NoResumablePhase => {
+            invalid(state, "paused state has no resumable phase")
+        }
     }
-    let active = state
-        .paused_from
-        .take()
-        .ok_or_else(|| invalid(state, "paused state has no resumable phase"))?;
-    state.phase = AgentPhase::Active(active);
-    Ok(())
 }
 
 fn fail(
@@ -564,7 +594,6 @@ fn fail(
     }
     state.failure = Some(failure);
     state.completion = None;
-    state.phase = AgentPhase::Terminal(TerminalKind::Failed);
     Ok(())
 }
 
@@ -627,3 +656,6 @@ const fn replay_error(detail: &'static str) -> AgentRejection {
         detail,
     )
 }
+
+#[cfg(test)]
+mod tests;

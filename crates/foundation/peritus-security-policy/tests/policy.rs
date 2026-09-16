@@ -4,8 +4,10 @@ use peritus_security_policy::{
     AcceptanceCriterion, ArtifactObservation, CriterionObservation, EvidenceArtifactKind,
     FindingLifecycle, FindingObservation, FindingSeverity, IndependentSecurityReview,
     IntegratedCandidate, InventoryKind, InventoryObservation, RequirementObservation,
-    ReviewCompletion, ReviewScope, ReviewerIdentity, SecurityControlOutcome, SecurityEvidence,
-    SecurityRequirement, SecurityVerdict, UnmetSecurityCondition, evaluate_security_readiness,
+    ReviewCompletion, ReviewScope, ReviewerIdentity, SECURITY_QUALIFICATION_PROBE_COUNT,
+    SecurityControlOutcome, SecurityEvidence, SecurityQualificationAdmission,
+    SecurityQualificationOutcome, SecurityRequirement, SecurityVerdict, UnmetSecurityCondition,
+    evaluate_security_readiness,
 };
 use peritus_types::{
     AcceptanceSpecId, ActorId, FindingId, Generation, HarnessId, PolicyId, ProviderProfileId,
@@ -20,6 +22,75 @@ fn complete_exact_candidate_is_security_ready_without_release_authority() {
     assert_eq!(decision.verdict(), SecurityVerdict::Ready);
     assert!(decision.is_ready());
     assert!(decision.unmet_conditions().is_empty());
+}
+
+#[test]
+fn every_native_probe_outcome_is_required_for_final_admission() {
+    let candidate = candidate(17);
+    let decision =
+        evaluate_security_readiness(candidate, &complete_evidence(candidate, Vec::new()));
+    let complete = [SecurityQualificationOutcome::Passed; SECURITY_QUALIFICATION_PROBE_COUNT];
+    assert!(SecurityQualificationAdmission::evaluate(&decision, &complete).is_ready());
+
+    for index in 0..SECURITY_QUALIFICATION_PROBE_COUNT {
+        let mut failed = complete;
+        failed[index] = SecurityQualificationOutcome::Failed;
+        assert!(!SecurityQualificationAdmission::evaluate(&decision, &failed).is_ready());
+    }
+}
+
+#[test]
+fn every_required_security_dimension_fails_closed_when_removed() {
+    let candidate = candidate(7);
+
+    for requirement in SecurityRequirement::ALL {
+        let evidence = evidence_except(
+            candidate,
+            Some(MissingDimension::Requirement(requirement)),
+            Vec::new(),
+        );
+        let decision = evaluate_security_readiness(candidate, &evidence);
+        assert!(!decision.is_ready());
+        assert!(
+            decision
+                .unmet_conditions()
+                .contains(&UnmetSecurityCondition::MissingRequirement(requirement))
+        );
+    }
+
+    for criterion in AcceptanceCriterion::ALL {
+        let evidence =
+            evidence_except(candidate, Some(MissingDimension::Criterion(criterion)), Vec::new());
+        let decision = evaluate_security_readiness(candidate, &evidence);
+        assert!(!decision.is_ready());
+        assert!(
+            decision
+                .unmet_conditions()
+                .contains(&UnmetSecurityCondition::MissingCriterion(criterion))
+        );
+    }
+
+    for kind in InventoryKind::ALL {
+        let evidence =
+            evidence_except(candidate, Some(MissingDimension::Inventory(kind)), Vec::new());
+        let decision = evaluate_security_readiness(candidate, &evidence);
+        assert!(!decision.is_ready());
+        assert!(
+            decision.unmet_conditions().contains(&UnmetSecurityCondition::MissingInventory(kind))
+        );
+    }
+
+    for kind in EvidenceArtifactKind::ALL {
+        let evidence =
+            evidence_except(candidate, Some(MissingDimension::Artifact(kind)), Vec::new());
+        let decision = evaluate_security_readiness(candidate, &evidence);
+        assert!(!decision.is_ready());
+        assert!(
+            decision
+                .unmet_conditions()
+                .contains(&UnmetSecurityCondition::MissingEvidenceArtifact(kind))
+        );
+    }
 }
 
 #[test]
@@ -85,8 +156,27 @@ fn complete_evidence(
     candidate: IntegratedCandidate,
     findings: Vec<FindingObservation>,
 ) -> SecurityEvidence {
+    evidence_except(candidate, None, findings)
+}
+
+#[derive(Clone, Copy)]
+enum MissingDimension {
+    Requirement(SecurityRequirement),
+    Criterion(AcceptanceCriterion),
+    Inventory(InventoryKind),
+    Artifact(EvidenceArtifactKind),
+}
+
+fn evidence_except(
+    candidate: IntegratedCandidate,
+    missing: Option<MissingDimension>,
+    findings: Vec<FindingObservation>,
+) -> SecurityEvidence {
     let requirements = SecurityRequirement::ALL
         .into_iter()
+        .filter(|requirement| {
+            !matches!(missing, Some(MissingDimension::Requirement(value)) if value == *requirement)
+        })
         .enumerate()
         .map(|(index, requirement)| {
             RequirementObservation::new(
@@ -99,6 +189,9 @@ fn complete_evidence(
         .collect();
     let criteria = AcceptanceCriterion::ALL
         .into_iter()
+        .filter(|criterion| {
+            !matches!(missing, Some(MissingDimension::Criterion(value)) if value == *criterion)
+        })
         .enumerate()
         .map(|(index, criterion)| {
             CriterionObservation::new(
@@ -111,6 +204,9 @@ fn complete_evidence(
         .collect();
     let inventories = InventoryKind::ALL
         .into_iter()
+        .filter(
+            |kind| !matches!(missing, Some(MissingDimension::Inventory(value)) if value == *kind),
+        )
         .enumerate()
         .map(|(index, kind)| {
             InventoryObservation::new(
@@ -123,6 +219,9 @@ fn complete_evidence(
         .collect();
     let artifacts = EvidenceArtifactKind::ALL
         .into_iter()
+        .filter(
+            |kind| !matches!(missing, Some(MissingDimension::Artifact(value)) if value == *kind),
+        )
         .enumerate()
         .map(|(index, kind)| {
             ArtifactObservation::new(

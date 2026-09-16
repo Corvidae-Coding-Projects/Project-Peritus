@@ -3,8 +3,8 @@ use peritus_quality_policy::{
     FindingDisposition, FindingObservation, ReviewCycleOrdinal, ReviewObservation,
     ReviewerIdentity, ReviewerIndependenceFailure, UnmetCondition, evaluate_acceptance,
 };
-use peritus_spec::{FindingSeverity, ReviewerIndependence};
-use peritus_types::{ActorId, ReviewCycleId};
+use peritus_spec::{FindingSeverity, ReviewCategory, ReviewerIndependence};
+use peritus_types::{ActorId, ReviewCycleId, Sha256Digest};
 
 #[test]
 fn missing_category_and_quorum_are_reported_together() {
@@ -191,4 +191,119 @@ fn open_blocker_rejects_but_current_resolution_satisfies_blocker_policy() {
         Vec::new(),
     );
     assert!(evaluate_acceptance(&contract, revision, &resolved).is_acceptable());
+}
+
+#[test]
+fn every_required_review_category_identity_byte_must_match() {
+    let fixture = Fixture::new();
+    let contract = fixture.contract(ContractOptions::basic());
+    let revision = fixture.revision();
+
+    for byte in 0..Sha256Digest::LENGTH {
+        let mut changed_bytes = fixture.category_a.digest().into_bytes();
+        changed_bytes[byte] ^= 1;
+        let changed = ReviewCategory::new(Sha256Digest::new(changed_bytes));
+        let mut categories = vec![changed, fixture.category_b];
+        categories.sort();
+        let evidence = fixture.evidence_set(
+            &contract,
+            revision,
+            vec![fixture.review(revision, 70, 80, categories, Vec::new(), 130, true)],
+            Vec::new(),
+            Vec::new(),
+        );
+        let decision = evaluate_acceptance(&contract, revision, &evidence);
+        assert!(!decision.is_acceptable());
+        assert!(
+            decision.unmet_conditions().contains(&UnmetCondition::UnknownReviewCategory(changed))
+        );
+        assert!(
+            decision
+                .unmet_conditions()
+                .contains(&UnmetCondition::MissingReviewCategory(fixture.category_a))
+        );
+    }
+}
+
+#[test]
+fn independence_uses_all_actor_and_provenance_identity_bytes() {
+    let fixture = Fixture::new();
+    let mut options = ContractOptions::basic();
+    options.quorum = 2;
+    options.independence = ReviewerIndependence::new(true, true, true, true, true, true);
+    let contract = fixture.contract(options);
+    let revision = fixture.revision();
+    let first_actor_bytes = [0x10; 16];
+    let first_provenance_bytes = [0xA5; Sha256Digest::LENGTH];
+
+    for byte in 0..Sha256Digest::LENGTH {
+        let mut second_actor_bytes = first_actor_bytes;
+        second_actor_bytes[byte % first_actor_bytes.len()] ^= 1;
+        let mut second_provenance_bytes = first_provenance_bytes;
+        second_provenance_bytes[byte] ^= 1;
+        let reviews = [
+            (70, 1, first_actor_bytes, first_provenance_bytes, fixture.category_a),
+            (71, 2, second_actor_bytes, second_provenance_bytes, fixture.category_b),
+        ]
+        .into_iter()
+        .map(|(cycle, ordinal, actor_bytes, provenance_bytes, category)| {
+            let provenance = Sha256Digest::new(provenance_bytes);
+            ReviewObservation::new(
+                ReviewCycleId::new(bytes(cycle)).expect("cycle"),
+                ReviewCycleOrdinal::new(ordinal).expect("ordinal"),
+                revision,
+                ReviewerIdentity::new(
+                    ActorId::new(actor_bytes).expect("actor"),
+                    provenance,
+                    provenance,
+                    digest(200),
+                    provenance,
+                    provenance,
+                    true,
+                ),
+                vec![category],
+                Vec::new(),
+                digest(cycle),
+            )
+            .expect("review")
+        })
+        .collect();
+        let evidence = fixture.evidence_set(&contract, revision, reviews, Vec::new(), Vec::new());
+        let decision = evaluate_acceptance(&contract, revision, &evidence);
+        assert!(
+            decision.is_acceptable(),
+            "distinct identity byte {byte}: {:?}",
+            decision.unmet_conditions()
+        );
+    }
+}
+
+#[test]
+fn every_current_review_participates_in_independence_checks() {
+    let fixture = Fixture::new();
+    let mut options = ContractOptions::basic();
+    options.independence = ReviewerIndependence::new(true, true, true, false, false, false);
+    let contract = fixture.contract(options);
+    let revision = fixture.revision();
+    let reviews = [(70, 80, 130), (71, 81, 140), (72, 82, 140)]
+        .into_iter()
+        .map(|(cycle, actor, provenance)| {
+            fixture.review(
+                revision,
+                cycle,
+                actor,
+                vec![fixture.category_a, fixture.category_b],
+                Vec::new(),
+                provenance,
+                true,
+            )
+        })
+        .collect();
+    let evidence = fixture.evidence_set(&contract, revision, reviews, Vec::new(), Vec::new());
+    let decision = evaluate_acceptance(&contract, revision, &evidence);
+    assert!(!decision.is_acceptable());
+    assert_eq!(
+        decision.unmet_conditions(),
+        &[UnmetCondition::ReviewerIndependence(ReviewerIndependenceFailure::DistinctContexts)]
+    );
 }

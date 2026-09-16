@@ -90,7 +90,9 @@ impl NdjsonParser {
                 frames.push(frame);
             }
         }
-        if self.pending.len() > self.limits.max_frame_bytes {
+        // A trailing CR may be the first byte of a split CRLF delimiter. Complete lines and
+        // finish use the same trimming rule; the hard pending-buffer ceiling still applies.
+        if strip_carriage_return(&self.pending).len() > self.limits.max_frame_bytes {
             return Err(limit("unterminated NDJSON record exceeds the frame byte bound"));
         }
         Ok(frames)

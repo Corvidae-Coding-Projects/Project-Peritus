@@ -11,8 +11,6 @@ use peritus_types::ResourceId;
 
 use crate::OnboardingError;
 
-const SERVICE: &str = "org.corvidae-coding.peritus.providers";
-
 /// Sensitive provider material that zeroizes its allocation on drop.
 pub struct DirectCredential(SecretMaterial);
 
@@ -96,7 +94,7 @@ impl DirectProviderDraft {
         credential: &DirectCredential,
     ) -> Result<DirectProviderProfile, OnboardingError> {
         let resource_id = random_resource_id()?;
-        let store = PlatformCredentialStore::new(SERVICE.to_owned())?;
+        let store = PlatformCredentialStore::providers();
         let reference = store.store(resource_id, &credential.0)?;
         let profile = DirectProviderProfile::new(
             self.kind,
@@ -123,7 +121,7 @@ impl DirectProviderDraft {
 /// Returns a malformed-reference or credential-store removal failure.
 pub fn remove_direct_credential(profile: &DirectProviderProfile) -> Result<(), OnboardingError> {
     let reference = parse_credential_reference(profile.credential_reference())?;
-    PlatformCredentialStore::new(SERVICE.to_owned())?.remove(reference.resource_id())?;
+    PlatformCredentialStore::providers().remove(reference.resource_id())?;
     Ok(())
 }
 

@@ -15,21 +15,21 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 static FIXTURE_ID: AtomicU64 = AtomicU64::new(0);
 
-struct Fixture(PathBuf);
+pub(super) struct Fixture(PathBuf);
 
 impl Fixture {
-    fn new() -> Self {
+    pub(super) fn new() -> Self {
         let id = FIXTURE_ID.fetch_add(1, Ordering::Relaxed);
         let path = env::temp_dir().join(format!("peritus-trust-manifest-{}-{id}", process::id()));
         fs::create_dir_all(&path).expect("fixture root must be created");
         Self(path)
     }
 
-    fn path(&self) -> &Path {
+    pub(super) fn path(&self) -> &Path {
         &self.0
     }
 
-    fn write(&self, relative: &str, contents: &str) {
+    pub(super) fn write(&self, relative: &str, contents: &str) {
         let path = self.0.join(relative);
         fs::create_dir_all(path.parent().expect("fixture file must have a parent"))
             .expect("fixture directory must be created");
@@ -43,7 +43,7 @@ impl Drop for Fixture {
     }
 }
 
-fn policy() -> ArchitecturePolicy {
+pub(super) fn policy() -> ArchitecturePolicy {
     ArchitecturePolicy {
         schema: 3,
         soft_source_lines: 400,
@@ -78,7 +78,7 @@ fn policy() -> ArchitecturePolicy {
     }
 }
 
-fn cargo(fixture: &Fixture) -> CargoMetadata {
+pub(super) fn cargo(fixture: &Fixture) -> CargoMetadata {
     CargoMetadata {
         workspace_members: vec!["tcb".to_owned(), "types".to_owned()],
         packages: [
@@ -115,7 +115,7 @@ fn cargo(fixture: &Fixture) -> CargoMetadata {
     }
 }
 
-fn write_fixture(fixture: &Fixture, trust_entries: &str) {
+pub(super) fn write_fixture(fixture: &Fixture, trust_entries: &str) {
     for (path, contents) in [
         ("Cargo.toml", "[workspace]\nresolver='3'\n"),
         ("Cargo.lock", "version = 4\n"),
@@ -299,7 +299,7 @@ fn validate_fixture(
     validate(fixture.path(), &policy(), &cargo(fixture), &sources(fixture), &[], false, diagnostics)
 }
 
-fn trust_entry() -> &'static str {
+pub(super) fn trust_entry() -> &'static str {
     r##"[{
 id = "TRUST-0001",
 symbol = "peritus_tcb::audited",
@@ -341,7 +341,7 @@ revisit_by = "2099-08-20"
 }]"##
 }
 
-fn excluded_obligation() -> &'static str {
+pub(super) fn excluded_obligation() -> &'static str {
     r##"[{
 id = "OBL-0001",
 kind = "contract",
@@ -358,7 +358,7 @@ exclusion_id = "EXCL-0001"
 }]"##
 }
 
-fn write_coverage_documents(fixture: &Fixture, exclusions: &str, obligations: &str) {
+pub(super) fn write_coverage_documents(fixture: &Fixture, exclusions: &str, obligations: &str) {
     fixture.write(
         "verification/exclusions.toml",
         &format!(
@@ -385,5 +385,12 @@ fn occurrence() -> TrustedOccurrence {
 
 #[path = "manifest_tests/adversarial.rs"]
 mod adversarial;
+#[path = "manifest_tests/candidate.rs"]
+mod candidate;
+pub(super) use candidate::make_cargo_metadata_runnable;
 #[path = "manifest_tests/core.rs"]
 mod core;
+#[path = "manifest_tests/evidence.rs"]
+mod evidence;
+#[path = "manifest_tests/method_owners.rs"]
+mod method_owners;

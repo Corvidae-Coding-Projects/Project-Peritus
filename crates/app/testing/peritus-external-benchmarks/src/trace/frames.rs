@@ -7,11 +7,12 @@ use std::{
 };
 
 use crate::BenchmarkError;
+use peritus_product_runner::DeveloperTraceFrameKind;
 
 const MAX_FRAME_BYTES: u64 = 32 * 1024 * 1024;
 
 pub(super) struct Frame {
-    pub tag: u8,
+    pub kind: DeveloperTraceFrameKind,
     pub payload: Vec<u8>,
 }
 
@@ -28,9 +29,8 @@ pub(super) fn read(path: &Path) -> Result<Vec<Frame>, BenchmarkError> {
             Ok(_) => unreachable!("one-byte read returned more than one byte"),
             Err(error) => return Err(BenchmarkError::filesystem("read trace tag", path, error)),
         }
-        if !matches!(tag[0], 1..=5) {
-            return Err(BenchmarkError::trace(path, "trace contains an unknown frame tag"));
-        }
+        let kind = DeveloperTraceFrameKind::from_tag(tag[0])
+            .ok_or_else(|| BenchmarkError::trace(path, "trace contains an unknown frame tag"))?;
         let mut length = [0_u8; 8];
         read_exact(&mut reader, &mut length, path, "trace frame length")?;
         let length = u64::from_le_bytes(length);
@@ -41,7 +41,7 @@ pub(super) fn read(path: &Path) -> Result<Vec<Frame>, BenchmarkError> {
             .map_err(|_| BenchmarkError::trace(path, "trace frame length is not representable"))?;
         let mut payload = vec![0_u8; length];
         read_exact(&mut reader, &mut payload, path, "trace frame payload")?;
-        frames.push(Frame { tag: tag[0], payload });
+        frames.push(Frame { kind, payload });
     }
     Ok(frames)
 }
@@ -78,5 +78,24 @@ mod tests {
         let truncated = root.path().join("truncated.trace");
         fs::write(&truncated, [1_u8, 3, 0, 0, 0, 0, 0, 0, 0, b'a']).expect("trace");
         assert!(read(&truncated).is_err());
+    }
+
+    #[test]
+    fn accepts_every_product_trace_frame_kind() {
+        let root = tempfile::tempdir().expect("temporary trace");
+        let path = root.path().join("known.trace");
+        let mut bytes = Vec::new();
+        for tag in 1_u8..=7 {
+            bytes.push(tag);
+            bytes.extend_from_slice(&0_u64.to_le_bytes());
+        }
+        fs::write(&path, bytes).expect("known trace");
+
+        let frames = read(&path).expect("known trace kinds");
+
+        assert_eq!(frames.len(), 7);
+        for (frame, tag) in frames.iter().zip(1_u8..=7) {
+            assert_eq!(frame.kind.tag(), tag);
+        }
     }
 }

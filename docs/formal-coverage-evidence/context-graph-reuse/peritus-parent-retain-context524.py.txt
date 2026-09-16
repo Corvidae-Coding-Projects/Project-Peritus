@@ -1,0 +1,104 @@
+import datetime
+import hashlib
+import json
+from pathlib import Path
+import shutil
+
+root = Path('/home/doll/Project-Peritus/.worktrees/formal-coverage')
+dest = root / 'docs/formal-coverage-evidence/context-graph-reuse'
+sha = lambda p: hashlib.sha256(Path(p).read_bytes()).hexdigest()
+manifest = Path('/tmp/peritus-parent-context55-to-524-full-package.sha256')
+expected = {n: d for d, n in (line.split('  ', 1) for line in manifest.read_text().splitlines())}
+package = root / 'crates/orchestration/peritus-context'
+assert len(expected) == 72
+assert {str(p.relative_to(package)) for p in package.rglob('*') if p.is_file()} == expected.keys()
+for name, digest in expected.items():
+    assert sha(package / name) == digest, name
+qualification_path = Path('/tmp/peritus-parent-context524-qualification-integrated.json')
+qualification = json.loads(qualification_path.read_text())
+assert (qualification['prior_files_checked'], qualification['final_files_checked'], qualification['changed_files']) == (55, 72, 25)
+assert len(qualification['commands']) == 8 and all(row['exit_code'] == 0 for row in qualification['commands'])
+files = {}
+
+def retain(source):
+    source = Path(source)
+    name = source.name
+    if source.suffix in {'.rs', '.py', '.md'}:
+        name += '.txt'
+    elif source.suffix == '.log':
+        name = name[:-4] + '.txt'
+    if name in files:
+        assert sha(files[name]) == sha(source), name
+    files[name] = str(source)
+
+for evidence in [Path('/tmp/peritus-sol-context-final-evidence-20260913T004133Z.sha256'),
+                 Path('/tmp/peritus-sol-context-cycle-fix-final3-evidence.sha256')]:
+    for line in evidence.read_text().splitlines():
+        digest, source = line.split('  ', 1)
+        assert sha(source) == digest, source
+        retain(source)
+    retain(evidence)
+for name in ['peritus-parent-context524-independent-review.md',
+             'peritus-parent-context524-integrate.py',
+             'peritus-parent-context55-to-524-full-package.sha256',
+             'peritus-parent-context55-to-524-changed.sha256',
+             'peritus-parent-context55-to-524.patch',
+             'peritus-parent-context-final3-dependency-source.sha256',
+             'peritus-parent-context-final3-source-evidence-check.json',
+             'peritus-parent-context-final3-performance-source-check.json']:
+    retain(Path('/tmp') / name)
+retain(qualification_path)
+retain(__file__)
+for row in qualification['commands']:
+    retain(row['log'])
+assert not dest.exists()
+dest.mkdir()
+for name, source in files.items():
+    shutil.copyfile(source, dest / name)
+(dest / 'audit.md').write_text('''# Reviewed context graph and reusable selection correspondence
+
+The original twenty-path increment connects actual graph admission to canonical identities, dependency existence, semantic acyclicity and exact first-error diagnostics. Its reusable-context construction preserves candidate/checkpoint/role/link binding, all digest bytes, actor and context-class visibility, packet order and complete cloned section provenance. Independent source review found these bounded guarantees sound but rejected the introduced cycle-traversal performance regression.
+
+The thirteen-path repair restores actual edge-driven dependent counts, proves their initialization and updates, and connects zero-count selection to the same canonical elimination order and residual diagnostic. Parent independently read the complete repair and actual constructor/metadata/cycle callers, verified all prior/intermediate/final and supplied evidence identities, and checked 205 direct dependency/spec files against the worker workspace. The combined shared change is 25 paths, with 55 prior and 72 final package files. Guarded integration preserves all 72 final identities.
+
+Integrated strict pinned verification passed 524/0. Both default and all-feature suites passed 56 tests, and 30 focused product-runner context tests passed; the accompanying agent lib filter selected zero tests and is not counted as caller evidence. Strict Clippy, formatting, ordinary API (3535 files / 14696 entries) and source layout (4436 files) passed. Final valid-chain measurements from 64 through 4096 nodes are faster than prior55 at every measured size. At 1024 nodes the repaired median is 1.828238 ms versus 3.589992 ms before the proof increment and 1113.008751 ms in the rejected intermediate. All measured production/package bytes were checked, with only the identical external probe added. These are bounded measurements, not a complexity theorem or universal workload claim.
+
+The retained Verus warnings identify missing derived-Clone specifications in unchanged compaction, selection, rendering and working-state types; no suppressions were added and those operations are not claimed proved here. Complete selection/compaction/working-state correspondence, digest authenticity, external observation provenance, final registers and hosted CI remain separate requirements. This checkpoint closes the reviewed graph/reuse performance blocker, not the entire formal-coverage goal.
+''')
+record = {
+    'schema': 'peritus.formal-coverage.increment-review', 'schema_version': 1,
+    'status': 'reviewed-bounded-increment-not-obligation-discharge',
+    'recorded_at': datetime.datetime.now(datetime.timezone.utc).isoformat(),
+    'base_commit': '1aa9282ff2cfcbf8fac325f11f157f408d33ee30',
+    'original_source_reviewer': '/root/sol_acceptance_completion',
+    'repair_author': '/root/sol_acceptance_completion', 'repair_source_reviewer': '/root',
+    'prior_source_files': 55, 'intermediate_source_files': 67, 'source_files': 72,
+    'combined_changed_files': 25, 'repair_changed_files': 13,
+    'full_package_manifest_sha256': sha(manifest),
+    'results': {'parent_integrated_strict_verified': 524, 'proof_errors': 0,
+        'parent_default_tests': 56, 'parent_all_features_tests': 56,
+        'parent_product_runner_context_tests': 30, 'parent_agent_lib_filter_selected_tests': 0,
+        'parent_clippy': 'passed', 'parent_format': 'passed',
+        'parent_api': 'passed 3535 files / 14696 entries', 'parent_layout': 'passed 4436 files',
+        'bounded_chain_performance': 'recovered; final faster than prior55 at every measured size',
+        'final_head_hosted_ci': 'not run'},
+    'artifact_original_paths': files,
+    'artifacts': {p.name: sha(p) for p in sorted(dest.iterdir()) if p.is_file()},
+}
+(dest / 'review.json').write_text(json.dumps(record, indent=2) + '\n')
+audit = root / 'docs/formal-coverage-audit.md'
+text = audit.read_text()
+anchor = '## Completion evidence still required\n'
+heading = '## Context graph and reuse integration\n'
+assert heading not in text and text.count(anchor) == 1
+text = text.replace(anchor, heading + '''
+The [context graph/reuse review](formal-coverage-evidence/context-graph-reuse/review.json) covers actual canonical graph admission, semantic cycle detection, exact diagnostics and reusable-section binding/visibility/provenance. Independent review rejected an intermediate cycle-traversal slowdown. A separately reviewed repair restores maintained dependent counts while proving the same elimination result; the final measured chains are faster than the prior implementation.
+
+The parent integrated 25 paths after checking 55 prior and 72 final package identities. Integrated strict verification, both 56-test package profiles, 30 product-runner context tests, Clippy, formatting, API and layout passed. All final source identities remain intact. The raw warnings and review explicitly retain the open selection/compaction/working-state and external provenance boundaries; final records and hosted qualification are still required.
+
+''' + anchor)
+audit.write_text(text)
+for name, digest in record['artifacts'].items():
+    assert sha(dest / name) == digest, name
+print(json.dumps({'path': str(dest), 'artifacts': len(record['artifacts']),
+                  'review_sha256': sha(dest / 'review.json')}, indent=2))

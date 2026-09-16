@@ -18,6 +18,7 @@ use help::HELP;
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum Command {
     All,
+    Discovery { operation: crate::discovery::Operation },
     Architecture,
     Documentation,
     Formatting,
@@ -26,6 +27,8 @@ enum Command {
     Reproducibility,
     Toolchain,
     Trust,
+    FormalInventory,
+    ProofImpactInventory,
     CiShard { operation: crate::ci_shard::Operation, shard: &'static str },
     ProductPackage,
     ProductInstall,
@@ -120,7 +123,8 @@ pub(crate) fn execute(
     }
 
     match command {
-        Command::All => execute_all(root, output)?,
+        Command::Discovery { operation } => crate::discovery::run(root, operation)?,
+        Command::All => all::execute(root, output)?,
         Command::Architecture => {
             let policy = metadata::architecture_policy(root)?;
             let (packages, files) = architecture::check(root, &policy)?;
@@ -183,12 +187,12 @@ pub(crate) fn execute(
                 &format!("verify-trust passed: {files} source file(s) scanned\n"),
             )?;
         }
+        Command::FormalInventory => write_output(output, &crate::formal_inventory::render(root)?)?,
+        Command::ProofImpactInventory => {
+            write_output(output, &trust::proof_impact_inventory(root)?)?;
+        }
         Command::CiShard { operation, shard } => {
-            let packages = crate::ci_shard::run(root, operation, shard)?;
-            write_output(
-                output,
-                &format!("CI shard `{shard}` passed {operation:?} for {packages} package(s)\n"),
-            )?;
+            execute_ci_shard(root, operation, shard, output)?;
         }
         Command::ProductPackage
         | Command::ProductInstall
@@ -214,6 +218,19 @@ pub(crate) fn execute(
     Ok(())
 }
 
+fn execute_ci_shard(
+    root: &Path,
+    operation: crate::ci_shard::Operation,
+    shard: &str,
+    output: &mut dyn Write,
+) -> Result<(), XtaskError> {
+    let packages = crate::ci_shard::run(root, operation, shard)?;
+    write_output(
+        output,
+        &format!("CI shard `{shard}` passed {operation:?} for {packages} package(s)\n"),
+    )
+}
+
 fn execute_release_stage(root: &Path, output: &mut dyn Write) -> Result<(), XtaskError> {
     crate::release::stage_draft(root)?;
     write_output(
@@ -231,26 +248,6 @@ fn execute_release_bootstrap(
     write_output(output, &format!("public release bootstrap passed: {}\n", package.display()))
 }
 
-fn execute_all(root: &Path, output: &mut dyn Write) -> Result<(), XtaskError> {
-    let policy = metadata::architecture_policy(root)?;
-    let (packages, files) = architecture::check(root, &policy)?;
-    let api = api_contract::check(root, &policy)?;
-    let documentation = crate::documentation::check(root)?;
-    let trust_files = trust::check_local(root, &policy)?;
-    let tools = metadata::toolchain_policy(root)?;
-    let actions = reproducibility::check(root, &tools)?;
-    write_output(
-        output,
-        &format!(
-            "all checks passed: {packages} package(s), {files} source file(s), \
-             {} formal-boundary file(s), {} ordinary-safe executable entry point(s), \
-             {trust_files} trust-scanned file(s), {documentation} documentation file(s), \
-             {actions} pinned action(s)\n",
-            api.files, api.executable_entry_points
-        ),
-    )
-}
-
 fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Command, XtaskError> {
     let mut args = args.into_iter();
     let first = args.next();
@@ -266,6 +263,9 @@ fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Command, XtaskError
     if let Some(operation) = name.and_then(crate::release::rebuild::Operation::parse) {
         return Ok(Command::ReleaseRebuild { operation });
     }
+    if let Some(operation) = name.and_then(crate::discovery::Operation::parse) {
+        return Ok(Command::Discovery { operation });
+    }
     match name {
         Some("all") => Ok(Command::All),
         Some("architecture-check") => Ok(Command::Architecture),
@@ -276,6 +276,8 @@ fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Command, XtaskError
         Some("reproducibility-check") => Ok(Command::Reproducibility),
         Some("toolchain-check") => Ok(Command::Toolchain),
         Some("verify-trust") => Ok(Command::Trust),
+        Some("formal-inventory") => Ok(Command::FormalInventory),
+        Some("proof-impact-inventory") => Ok(Command::ProofImpactInventory),
         Some("product-package") => Ok(Command::ProductPackage),
         Some("product-install") => Ok(Command::ProductInstall),
         Some("product-package-smoke") => Ok(Command::ProductPackageSmoke),
@@ -341,6 +343,7 @@ fn write_output(output: &mut dyn Write, message: &str) -> Result<(), XtaskError>
         .map_err(|error| XtaskError::io("write", Path::new("<stdout>"), error))
 }
 
+pub(crate) mod all;
 mod help;
 mod product;
 mod shard_args;

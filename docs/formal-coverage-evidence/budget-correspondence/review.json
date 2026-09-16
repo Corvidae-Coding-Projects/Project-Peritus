@@ -1,0 +1,39 @@
+{
+  "schema": "peritus.formal-coverage.review-checkpoint",
+  "schema_version": 1,
+  "status": "reviewed-bounded-mapping-not-obligation-discharge",
+  "audit_base": "1aa9282ff2cfcbf8fac325f11f157f408d33ee30",
+  "review_date": "2026-09-12",
+  "auditor": "/root",
+  "reviewer": "/root/sol_runtime_phase",
+  "review_provenance": "Independent source-review message in the active Codex collaboration thread; this does not authenticate an external principal or authorize proof-impact changes.",
+  "scope": "INV-012 and OBL-0104 through OBL-0106: named budget contracts, actual reducer and validator composition, production consumers, and limits stated in audit.md.",
+  "verdict": "ready as a bounded correspondence audit; formal register entries remain in-progress",
+  "review_findings": [
+    "The registered unfolding lemma alone is not the executable proof. Public BudgetLedger::transition and transition::apply bind actual production inputs/results through verified validation and command dispatch.",
+    "Conservation covers five dimensions; ledger_conserves uses an inequality, while available_is_exact establishes the exact equation including available capacity.",
+    "OBL-0105 wording requires an explicit overrun case: OverrunFaulted charges reserve minus prior observed, stores accounted observed at reserve, and retains larger cumulative usage as final_reported.",
+    "OBL-0106 names immediate-parent propagation. Actual recursive lineage charging supplies the finite path, but an explicit whole-path theorem/registered correspondence remains to be completed.",
+    "Durable CAS, observation authenticity, external resource usage and downstream getter/port correspondence remain separate work; no exclusion is justified by this checkpoint."
+  ],
+  "verification": {
+    "budget_verified": 447,
+    "types_dependency_verified": 210,
+    "verus_errors": 0,
+    "ordinary_tests_passed": 27,
+    "source_manifest_entries": 142
+  },
+  "limits": [
+    "Independent review checked named contracts and call sites, not every body of all 104 budget source files.",
+    "audit.md is preserved byte-for-byte at its original pre-review checkpoint and therefore retains its original review-pending statement; this record supplies the subsequent bounded review.",
+    "Source hashes cover the listed checkpoint files, not atomic compiler input custody or a clean committed candidate.",
+    "The review does not discharge an obligation, approve a proof-impact reduction, create an exclusion or change GitHub permissions."
+  ],
+  "artifacts": {
+    "audit.md": "16abc36cdc1e22253849cb491e1388055f1f0628c9d8853818191b919ec9709e",
+    "source-sha256.txt": "dbe82e4764839081fd79397a3cb231ae65d6493319bc192c5ec64c6129e5b819",
+    "commands.txt": "04b4c20497f375cea66a466c62409d01113d03a2489fb35f00ed807c8320a872",
+    "verus-output.txt": "9c2edaaafe548ab46a87ba5a57c8671f78fd525475cbe0ac2146d8964505c654",
+    "ordinary-tests.txt": "813c12c1da007dbe8217bb44568a3a01714b6b0fcd9582fc01dc319ad4544ac6"
+  }
+}

@@ -36,6 +36,15 @@ fn explicit_not_ready_qualification_blocks_release() {
         .expect("not-ready qualification"),
     );
     let decision = inputs.evaluate();
+    let assessment = decision
+        .qualifications()
+        .iter()
+        .find(|assessment| assessment.slice() == QualificationSlice::H0Security)
+        .expect("H0 assessment");
+    assert_eq!(assessment.ready_count(), 0);
+    assert_eq!(assessment.not_ready_count(), 1);
+    assert_eq!(assessment.stale_count(), 0);
+    assert_eq!(assessment.unreviewed_count(), 0);
     assert!(
         decision
             .diagnostics()
@@ -76,6 +85,14 @@ fn stale_and_unreviewed_qualifications_never_count_as_ready() {
         .expect("unreviewed qualification"),
     ]);
     let decision = inputs.evaluate();
+    let assessment = decision
+        .qualifications()
+        .iter()
+        .find(|assessment| assessment.slice() == QualificationSlice::H3Performance)
+        .expect("H3 assessment");
+    assert_eq!(assessment.ready_count(), 0);
+    assert_eq!(assessment.stale_count(), 1);
+    assert_eq!(assessment.unreviewed_count(), 1);
     assert!(
         decision
             .diagnostics()
@@ -105,6 +122,13 @@ fn conflicting_current_qualification_reports_block_release() {
         .expect("conflicting qualification"),
     );
     let decision = inputs.evaluate();
+    let assessment = decision
+        .qualifications()
+        .iter()
+        .find(|assessment| assessment.slice() == QualificationSlice::H2Platform)
+        .expect("H2 assessment");
+    assert_eq!(assessment.ready_count(), 2);
+    assert!(assessment.is_conflicting());
     assert!(
         decision
             .diagnostics()

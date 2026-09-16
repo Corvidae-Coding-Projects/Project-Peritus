@@ -31,7 +31,23 @@ pub struct PresentationProfile {
 }
 
 impl PresentationProfile {
-    pub(crate) const fn new(style: PresentationStyle) -> Self {
+    /// Exact stored style.
+    pub closed spec fn spec_style(&self) -> PresentationStyle { self.style }
+    /// Exact stored separate provenance segments.
+    pub closed spec fn spec_separate_provenance_segments(&self) -> bool { self.separate_provenance_segments }
+    /// Exact stored include selection reasons.
+    pub closed spec fn spec_include_selection_reasons(&self) -> bool { self.include_selection_reasons }
+    /// Exact stored include token accounting.
+    pub closed spec fn spec_include_token_accounting(&self) -> bool { self.include_token_accounting }
+    /// Exact provider-neutral profile for a chosen style.
+    pub open spec fn spec_for_style(&self, style: PresentationStyle) -> bool {
+        self.spec_style() == style && self.spec_separate_provenance_segments()
+            && self.spec_include_selection_reasons() && self.spec_include_token_accounting()
+    }
+
+    pub(crate) const fn new(style: PresentationStyle) -> (profile: Self)
+        ensures profile.spec_for_style(style),
+    {
         Self {
             style,
             separate_provenance_segments: true,
@@ -42,21 +58,29 @@ impl PresentationProfile {
 
     /// Returns the organization style.
     #[must_use]
-    pub const fn style(&self) -> PresentationStyle { self.style }
+    pub const fn style(&self) -> (value: PresentationStyle)
+        ensures value == self.spec_style(),
+    { self.style }
 
     /// Whether provenance boundaries must remain separate model segments.
     #[must_use]
-    pub const fn separate_provenance_segments(&self) -> bool {
+    pub const fn separate_provenance_segments(&self) -> (value: bool)
+        ensures value == self.spec_separate_provenance_segments(),
+    {
         self.separate_provenance_segments
     }
 
     /// Whether omission and ranking reasons are retained for inspection.
     #[must_use]
-    pub const fn include_selection_reasons(&self) -> bool { self.include_selection_reasons }
+    pub const fn include_selection_reasons(&self) -> (value: bool)
+        ensures value == self.spec_include_selection_reasons(),
+    { self.include_selection_reasons }
 
     /// Whether exact token accounting is attached to the render plan.
     #[must_use]
-    pub const fn include_token_accounting(&self) -> bool { self.include_token_accounting }
+    pub const fn include_token_accounting(&self) -> (value: bool)
+        ensures value == self.spec_include_token_accounting(),
+    { self.include_token_accounting }
 }
 
 } // verus!

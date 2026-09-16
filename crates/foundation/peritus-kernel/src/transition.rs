@@ -28,6 +28,11 @@ pub struct KernelTransition {
 }
 
 impl KernelTransition {
+    /// Specification view of the exact next aggregate.
+    pub closed spec fn spec_aggregate(&self) -> KernelAggregate { self.aggregate }
+    /// Specification view of the exact emitted event.
+    pub closed spec fn spec_event(&self) -> KernelEvent { self.event }
+
     pub(crate) const fn new(
         aggregate: KernelAggregate,
         event: KernelEvent,
@@ -36,10 +41,15 @@ impl KernelTransition {
         ensures
             result.aggregate == aggregate,
             result.event == event,
+            result.spec_aggregate() == aggregate,
+            result.spec_event() == event,
             result.acceptance_outcome == acceptance_outcome,
             result.aggregate.head_event_id == aggregate.head_event_id,
             result.aggregate.last_sequence == aggregate.last_sequence,
             result.aggregate.revision == aggregate.revision,
+            result.aggregate.spec_revision() == aggregate.spec_revision(),
+            result.aggregate.spec_reviews() == aggregate.spec_reviews(),
+            result.aggregate.spec_waivers() == aggregate.spec_waivers(),
             result.event.id == event.id,
             result.event.command_id == event.command_id,
             result.event.sequence == event.sequence,

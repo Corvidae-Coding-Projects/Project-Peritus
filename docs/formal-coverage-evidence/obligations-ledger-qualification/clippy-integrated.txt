@@ -1,0 +1,5 @@
+    Checking peritus-types v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/foundation/peritus-types)
+    Checking peritus-run-settlement v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/orchestration/peritus-run-settlement)
+    Checking peritus-spec v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/foundation/peritus-spec)
+    Checking peritus-obligations v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/orchestration/peritus-obligations)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 2.17s

@@ -55,7 +55,7 @@ impl KernelReplayDriver for ReplayDriver {
         }
         let command = capsule
             .command()
-            .cloned()
+            .copied()
             .ok_or_else(|| KernelReplayFailure::new("transition command missing"))?;
         let contract = contract_dto()
             .try_into_domain(CodecLimits::PRODUCTION)
@@ -110,7 +110,7 @@ fn genesis_and_transition_recover_exactly_after_journal_restart() {
         );
         let command = KernelCommand::PauseSession;
         let transition = before
-            .reduce(pause_envelope, command.clone(), ReducerInputs::new(&contract))
+            .reduce(pause_envelope, command, ReducerInputs::new(&contract))
             .into_result()
             .expect("pause transition");
         let transition_event = transition.event();

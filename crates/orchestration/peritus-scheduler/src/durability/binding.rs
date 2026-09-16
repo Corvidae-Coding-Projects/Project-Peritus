@@ -11,6 +11,8 @@ pub fn validate(
     let event = transition.event();
     let state = transition.state();
     let mismatches = [
+        command.semantics() != event.semantics(),
+        command.semantics() != state.binding().semantics(),
         command.event_id() != event.id(),
         command.command_id() != event.command_id(),
         command.run_id() != event.run_id(),

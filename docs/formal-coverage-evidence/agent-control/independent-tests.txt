@@ -1,0 +1,50 @@
+    Blocking waiting for file lock on build directory
+   Compiling peritus-quality-policy v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/foundation/peritus-quality-policy)
+warning: unused import: `diagnostics`
+ --> crates/foundation/peritus-quality-policy/src/evaluator/authority/blockers.rs:3:13
+  |
+3 | use super::{diagnostics, waiver};
+  |             ^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `diagnostics`
+ --> crates/foundation/peritus-quality-policy/src/evaluator/authority/supplied.rs:3:13
+  |
+3 | use super::{diagnostics, waiver};
+  |             ^^^^^^^^^^^
+
+warning: unused variable: `resolution`
+  --> crates/foundation/peritus-quality-policy/src/evaluator/authority/blockers.rs:75:66
+   |
+75 |                         FindingDisposition::Resolved { revision: resolution, .. } => {
+   |                                                                  ^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_resolution`
+   |
+   = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+   Compiling peritus-kernel v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/foundation/peritus-kernel)
+warning: `peritus-quality-policy` (lib) generated 3 warnings (run `cargo fix --lib -p peritus-quality-policy` to apply 3 suggestions)
+   Compiling peritus-protocol v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/foundation/peritus-protocol)
+   Compiling peritus-journal v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/state/peritus-journal)
+   Compiling peritus-projection v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/state/peritus-projection)
+   Compiling peritus-tool-router v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/tools/peritus-tool-router)
+   Compiling peritus-evidence v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/state/peritus-evidence)
+   Compiling peritus-agent v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/orchestration/peritus-agent)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 6.48s
+     Running tests/control_matrix.rs (target/debug/deps/control_matrix-6d669f4adb190ff6)
+
+running 2 tests
+test cancellation_phase_completion_does_not_claim_outstanding_tool_termination ... ok
+test every_active_phase_pauses_resumes_and_cancels_explicitly ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/control_rejections.rs (target/debug/deps/control_rejections-ddc702549ad9f9d6)
+
+running 3 tests
+test phase_tags_and_terminal_detection_remain_const_and_stable ... ok
+test resume_and_pause_rejections_keep_existing_classification_and_state ... ok
+test cancelling_rejects_reentry_and_terminal_outer_guard_keeps_precedence ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

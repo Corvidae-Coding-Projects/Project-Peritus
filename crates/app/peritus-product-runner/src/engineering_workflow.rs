@@ -21,6 +21,11 @@ requested behavior.
    Independent review must treat any implementation or hidden-state observation in the retained
    tool trace as acceptance-blocking contamination even when the final artifact later uses only the
    public interface.
+   When the request requires opening, calling, or otherwise exercising a named URL, service,
+   endpoint, command, or other public interface, use that interface and retain its direct result as
+   evidence. Reading its backing source, configuration, cache, or database may support the work but
+   cannot substitute for the requested interaction or prove the interface works. Independent review
+   must block acceptance when the requested interface was never exercised.
    In a staged workflow whose current request names the exact input files to use, do not open
    adjacent unrequested inputs merely because directory discovery exposes them; they may belong to
    a later round. Read newly introduced inputs when the request introduces them, then reconcile

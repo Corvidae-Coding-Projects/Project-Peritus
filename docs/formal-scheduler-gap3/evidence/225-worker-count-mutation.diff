@@ -1,0 +1,11 @@
+--- a/crates/orchestration/peritus-scheduler/src/selection/capacity.rs
++++ b/crates/orchestration/peritus-scheduler/src/selection/capacity.rs
+@@ -88,7 +88,7 @@
+             assert(suffix.drop_first()
+                 =~= reservations@.subrange(previous_cursor as int, reservations@.len() as int));
+         }
+-        if reservations[cursor].worker_id().same(&worker) {
++        if !reservations[cursor].worker_id().same(&worker) {
+             proof { assert(result < usize::MAX); }
+             result += 1;
+         }

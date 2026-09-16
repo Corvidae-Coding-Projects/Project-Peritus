@@ -51,7 +51,9 @@ impl RunDisposition {
 
     /// Whether strict automated qualification accepted the candidate.
     #[must_use]
-    pub const fn is_accepted(self) -> bool { matches!(self, Self::Accepted) }
+    pub const fn is_accepted(self) -> (accepted: bool)
+        ensures accepted == (self == Self::Accepted),
+    { matches!(self, Self::Accepted) }
 }
 
 } // verus!

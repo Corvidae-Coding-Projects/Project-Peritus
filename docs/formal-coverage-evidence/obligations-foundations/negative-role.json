@@ -1,0 +1,23 @@
+{
+  "command": [
+    "cargo",
+    "verus",
+    "verify",
+    "--package",
+    "peritus-obligations",
+    "--all-features",
+    "--locked",
+    "--check-toolchain",
+    "--fwd-verus-args-to",
+    "roots",
+    "--",
+    "--no-cheating",
+    "--rlimit",
+    "20"
+  ],
+  "mutation": "PathMention::clone replaces the original role with Reference",
+  "original_sha256": "ebd021b2103e4fd78787bd34f6d31bfcd5d0590d3e041f2a7747095c4af2c42c",
+  "mutant_sha256": "b8d1ba1e7ee5a724a44bbec73922be17c5271b9e24d1311db1e9f3ca69790ca5",
+  "negative_exit": 101,
+  "restored_exit": 0
+}

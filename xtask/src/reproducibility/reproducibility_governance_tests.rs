@@ -9,8 +9,23 @@ fn canonical_team_workflow_retains_every_gate_and_stable_status() {
     let (action_count, diagnostics) =
         validate(PATH, DocumentKind::Workflow, &canonical_governance());
 
-    assert_eq!(action_count, 14);
+    assert_eq!(action_count, 15);
     assert!(diagnostics.is_empty(), "unexpected diagnostics: {diagnostics:?}");
+}
+
+#[test]
+fn proof_selection_artifacts_cannot_be_skipped_or_detached_from_the_candidate() {
+    for (before, after) in [
+        ("${{ always() && matrix.operation == 'verus-verify-strict' }}", "false"),
+        ("formal-scope-${{ github.sha }}-${{ matrix.shard }}", "unbound-report"),
+        ("path: candidate/target/formal-scope/${{ matrix.shard }}", "path: old-report"),
+        ("if-no-files-found: error", "if-no-files-found: ignore"),
+    ] {
+        let altered = canonical_governance().replace(before, after);
+        assert_ne!(altered, canonical_governance());
+        let (_, diagnostics) = validate(PATH, DocumentKind::Workflow, &altered);
+        assert_message(&diagnostics, "does not retain every hardcoded job and final status");
+    }
 }
 
 #[test]

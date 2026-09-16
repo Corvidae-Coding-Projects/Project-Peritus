@@ -1,0 +1,78 @@
+    Checking peritus-scheduler v0.0.2 (/tmp/peritus-sol-scheduler-post244-source-001/crates/orchestration/peritus-scheduler)
+error: unused variable: `id`
+   --> crates/orchestration/peritus-scheduler/src/state/mutation/reservation_update.rs:126:5
+    |
+126 |     id: DispatchId,
+    |     ^^ help: if this is intentional, prefix it with an underscore: `_id`
+    |
+    = note: `-D unused-variables` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(unused_variables)]`
+
+error: unused variable: `id`
+  --> crates/orchestration/peritus-scheduler/src/state/mutation/work_update.rs:81:5
+   |
+81 |     id: WorkId,
+   |     ^^ help: if this is intentional, prefix it with an underscore: `_id`
+
+error: unused variable: `id`
+  --> crates/orchestration/peritus-scheduler/src/state/mutation/worker_update.rs:42:5
+   |
+42 |     id: WorkerId,
+   |     ^^ help: if this is intentional, prefix it with an underscore: `_id`
+
+error: this `let...else` may be rewritten with the `?` operator
+   --> crates/orchestration/peritus-scheduler/src/state/clone_impl.rs:215:5
+    |
+215 |     let Some(terminal) = value else { return None; };
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `let terminal = value?;`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#question_mark
+    = note: `-D clippy::question-mark` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::question_mark)]`
+
+error: consider adding a `;` to the last statement for consistent formatting
+   --> crates/orchestration/peritus-scheduler/src/state/mutation/reservation_update.rs:154:5
+    |
+154 |     proof {
+    |     ^^^^^ help: add a `;` here: `proof;`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#semicolon_if_nothing_returned
+    = note: `-D clippy::semicolon-if-nothing-returned` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::semicolon_if_nothing_returned)]`
+
+error: this could be a `const fn`
+   --> crates/orchestration/peritus-scheduler/src/state/mutation/scheduler_phase.rs:171:1
+    |
+171 | / pub fn apply_phase_command(
+172 | |     state: &mut SchedulerState,
+173 | |     command: &SchedulerCommandKind,
+174 | | ) -> (outcome: PhaseCommandOutcome)
+...   |
+211 | | }
+    | |_^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#missing_const_for_fn
+    = note: `-D clippy::missing-const-for-fn` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::missing_const_for_fn)]`
+help: make the function `const`
+    |
+171 | pub const fn apply_phase_command(
+    |     +++++
+
+error: consider adding a `;` to the last statement for consistent formatting
+   --> crates/orchestration/peritus-scheduler/src/state/mutation/work_update.rs:129:5
+    |
+129 |     proof {
+    |     ^^^^^ help: add a `;` here: `proof;`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#semicolon_if_nothing_returned
+
+error: consider adding a `;` to the last statement for consistent formatting
+  --> crates/orchestration/peritus-scheduler/src/state/mutation/worker_update.rs:69:5
+   |
+69 |     proof {
+   |     ^^^^^ help: add a `;` here: `proof;`
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#semicolon_if_nothing_returned
+
+error: could not compile `peritus-scheduler` (lib) due to 8 previous errors

@@ -1,0 +1,17 @@
+{"candidate_commit": "65f16e2933b70305de865750931bb05fe9afb64d", "candidate_tree": "ae2a43f9a9b73f5fec944d39cf165a8b3ec4df20", "environment": {"CARGO_BUILD_JOBS": "1", "CCACHE_DISABLE": "1", "RUST_TEST_THREADS": "1"}, "gate": {"command": "cargo test --package peritus-local-socket --all-targets --all-features --locked", "invocation": ["cargo", "test", "--package", "peritus-local-socket", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "output": "039-peritus-local-socket-ordinary-test.log", "owning_crate": "peritus-local-socket", "started_at": "2026-09-13T15:20:15.957089Z"}, "plan_sha256": "7fc101b7f8284fbe3818461a8166d73d3425f369120b43c1cbf1b43809a6b7c9"}
+
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.16s
+     Running unittests src/lib.rs (target/debug/deps/peritus_local_socket-492ba6b0068b6a8b)
+
+running 6 tests
+test path::tests::long_unicode_paths_are_stable_and_isolated_by_the_complete_original_path ... ok
+test path::tests::preserves_existing_paths_through_each_platform_boundary ... ok
+test path::tests::rejects_invalid_paths_without_turning_them_into_valid_runtime_names ... ok
+test unix::tests::cleanup_preserves_replacements_and_nonempty_directories ... ok
+test unix::tests::ordinary_clients_round_trip_at_a_short_private_runtime_address ... ok
+test unix::tests::refuses_symlinks_wrong_owner_and_broad_permissions_without_repair ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+GATE DRIVER RESULT: {"command": "cargo test --package peritus-local-socket --all-targets --all-features --locked", "command_exit_code": 0, "elapsed_seconds": 0.216, "exit_code": 0, "finished_at": "2026-09-13T15:20:16.173663Z", "invocation": ["cargo", "test", "--package", "peritus-local-socket", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "output": "039-peritus-local-socket-ordinary-test.log", "owning_crate": "peritus-local-socket", "result": "passed", "started_at": "2026-09-13T15:20:15.957089Z"}

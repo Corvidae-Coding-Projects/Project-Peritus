@@ -151,7 +151,9 @@ impl SseParser {
             remainder.pop();
             self.process_line(strip_carriage_return(&remainder), &mut items)?;
         }
-        if self.pending.len() > self.limits.max_frame_bytes {
+        // Do not count a possible split CRLF delimiter as payload. A subsequent non-LF byte
+        // makes the CR interior content again and the complete-line bound still rejects it.
+        if strip_carriage_return(&self.pending).len() > self.limits.max_frame_bytes {
             return Err(limit("unterminated SSE line exceeds the frame byte bound"));
         }
         Ok(items)

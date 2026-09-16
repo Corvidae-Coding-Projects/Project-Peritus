@@ -1,0 +1,2868 @@
+note: automatically chose triggers for this expression:
+  --> crates/foundation/peritus-policy/src/amendment/preview.rs:39:24
+   |
+39 |                       && exists |revision: RevisionTuple,
+   |  ________________________^
+40 | |                         ceiling: crate::AuthorityCeiling,
+41 | |                         layers: Seq<RestrictionLayer>| {
+42 | |                         &&& crate::amendment_model::revision_is_exact_successor(
+...  |
+64 | |                         ) == Some((error.spec_kind(), error.spec_dimension()))
+65 | |                     }
+   | |_____________________^
+
+note:   trigger 1 of 1:
+  --> crates/foundation/peritus-policy/src/amendment/preview.rs:47:29
+   |
+47 |                           &&& ceiling.spec_is_revision_rebind_of(
+   |  _____________________________^
+48 | |                             &base.spec_ceiling_value(),
+49 | |                             revision,
+50 | |                         )
+   | |_________________________^
+...
+60 |                           &&& crate::definition::construction::policy_definition_validation_error(
+   |  _____________________________^
+61 | |                             proposal.spec_successor_policy_id_value(),
+62 | |                             &ceiling,
+63 | |                             layers,
+64 | |                         ) == Some((error.spec_kind(), error.spec_dimension()))
+   | |_________________________^
+
+note: automatically chose triggers for this expression:
+   --> crates/foundation/peritus-policy/src/amendment/preview.rs:101:9
+    |
+101 | /         exists |witness_revision: RevisionTuple,
+102 | |             witness_ceiling: crate::AuthorityCeiling,
+103 | |             witness_layers: Seq<RestrictionLayer>| {
+104 | |             &&& crate::amendment_model::revision_is_exact_successor(
+...   |
+126 | |             ) == Some((error.spec_kind(), error.spec_dimension()))
+127 | |         },
+    | |_________^
+
+note:   trigger 1 of 1:
+   --> crates/foundation/peritus-policy/src/amendment/preview.rs:109:17
+    |
+109 |               &&& witness_ceiling.spec_is_revision_rebind_of(
+    |  _________________^
+110 | |                 &base.spec_ceiling_value(),
+111 | |                 witness_revision,
+112 | |             )
+    | |_____________^
+...
+122 |               &&& crate::definition::construction::policy_definition_validation_error(
+    |  _________________^
+123 | |                 proposal.spec_successor_policy_id_value(),
+124 | |                 &witness_ceiling,
+125 | |                 witness_layers,
+126 | |             ) == Some((error.spec_kind(), error.spec_dimension()))
+    | |_____________^
+
+note:   trigger 1 of 2:
+   --> crates/foundation/peritus-policy/src/amendment/preview.rs:109:17
+    |
+109 |               &&& witness_ceiling.spec_is_revision_rebind_of(
+    |  _________________^
+110 | |                 &base.spec_ceiling_value(),
+111 | |                 witness_revision,
+112 | |             )
+    | |_____________^
+...
+122 |               &&& crate::definition::construction::policy_definition_validation_error(
+    |  _________________^
+123 | |                 proposal.spec_successor_policy_id_value(),
+124 | |                 &witness_ceiling,
+125 | |                 witness_layers,
+126 | |             ) == Some((error.spec_kind(), error.spec_dimension()))
+    | |_____________^
+
+note:   trigger 2 of 2:
+   --> crates/foundation/peritus-policy/src/amendment/preview.rs:109:17
+    |
+109 |               &&& witness_ceiling.spec_is_revision_rebind_of(
+    |  _________________^
+110 | |                 &base.spec_ceiling_value(),
+111 | |                 witness_revision,
+112 | |             )
+    | |_____________^
+...
+122 |               &&& crate::definition::construction::policy_definition_validation_error(
+    |  _________________^
+123 | |                 proposal.spec_successor_policy_id_value(),
+124 | |                 &witness_ceiling,
+125 | |                 witness_layers,
+126 | |             ) == Some((error.spec_kind(), error.spec_dimension()))
+    | |_____________^
+
+note: automatically chose triggers for this expression:
+   --> crates/foundation/peritus-policy/src/amendment/preview.rs:129:12
+    |
+129 |       assert(exists |witness_revision: RevisionTuple,
+    |  ____________^
+130 | |         witness_ceiling: crate::AuthorityCeiling,
+131 | |         witness_layers: Seq<RestrictionLayer>| {
+132 | |         &&& witness_revision == revision
+...   |
+157 | |         ) == Some((error.spec_kind(), error.spec_dimension()))
+158 | |     });
+    | |_____^
+
+note:   trigger 1 of 1:
+   --> crates/foundation/peritus-policy/src/amendment/preview.rs:140:13
+    |
+140 |           &&& witness_ceiling.spec_is_revision_rebind_of(
+    |  _____________^
+141 | |             &base.spec_ceiling_value(),
+142 | |             witness_revision,
+143 | |         )
+    | |_________^
+...
+153 |           &&& crate::definition::construction::policy_definition_validation_error(
+    |  _____________^
+154 | |             proposal.spec_successor_policy_id_value(),
+155 | |             &witness_ceiling,
+156 | |             witness_layers,
+157 | |         ) == Some((error.spec_kind(), error.spec_dimension()))
+    | |_________^
+
+note: automatically chose triggers for this expression:
+  --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:15:59
+   |
+15 |           crate::selector::SelectorValues::Exact(values) => exists |index: int|
+   |  ___________________________________________________________^
+16 | |             0 <= index < values@.len() && !boundary.spec_contains_actor(values@[index]),
+   | |_______________________________________________________________________________________^
+
+note:   trigger 1 of 1:
+  --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:16:73
+   |
+16 |             0 <= index < values@.len() && !boundary.spec_contains_actor(values@[index]),
+   |                                                                         ^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:26:59
+   |
+26 |           crate::selector::SelectorValues::Exact(values) => exists |index: int|
+   |  ___________________________________________________________^
+27 | |             0 <= index < values@.len() && !boundary.spec_contains_role(values@[index]),
+   | |______________________________________________________________________________________^
+
+note:   trigger 1 of 1:
+  --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:27:72
+   |
+27 |             0 <= index < values@.len() && !boundary.spec_contains_role(values@[index]),
+   |                                                                        ^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:37:59
+   |
+37 |           crate::selector::SelectorValues::Exact(values) => exists |index: int|
+   |  ___________________________________________________________^
+38 | |             0 <= index < values@.len() && !boundary.spec_contains_environment(values@[index]),
+   | |_____________________________________________________________________________________________^
+
+note:   trigger 1 of 1:
+  --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:38:79
+   |
+38 |             0 <= index < values@.len() && !boundary.spec_contains_environment(values@[index]),
+   |                                                                               ^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:47:25
+   |
+47 |           Some(values) => exists |index: int|
+   |  _________________________^
+48 | |             0 <= index < values.spec_values().len()
+49 | |                 && !boundary.spec_contains_permission(&values.spec_values()[index]),
+   | |___________________________________________________________________________________^
+
+note:   trigger 1 of 1:
+  --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:49:56
+   |
+49 |                 && !boundary.spec_contains_permission(&values.spec_values()[index]),
+   |                                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:119:20
+    |
+119 |               assert(exists |witness: int| 0 <= witness < values@.len()
+    |  ____________________^
+120 | |                 && !boundary.spec_contains_actor(values@[witness])) by {
+    | |__________________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:120:50
+    |
+120 |                 && !boundary.spec_contains_actor(values@[witness])) by {
+    |                                                  ^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:128:24
+    |
+128 |                   assert(exists |witness: int| 0 <= witness < values@.len()
+    |  ________________________^
+129 | |                     && !boundary.spec_contains_actor(values@[witness]));
+    | |______________________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:129:54
+    |
+129 |                     && !boundary.spec_contains_actor(values@[witness]));
+    |                                                      ^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:114:13
+    |
+114 | /             forall |prior: int| 0 <= prior < index ==>
+115 | |                 boundary.spec_contains_actor(values@[prior]),
+    | |____________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:115:46
+    |
+115 |                 boundary.spec_contains_actor(values@[prior]),
+    |                                              ^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:157:20
+    |
+157 |               assert(exists |witness: int| 0 <= witness < values@.len()
+    |  ____________________^
+158 | |                 && !boundary.spec_contains_role(values@[witness])) by {
+    | |_________________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:158:49
+    |
+158 |                 && !boundary.spec_contains_role(values@[witness])) by {
+    |                                                 ^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:166:24
+    |
+166 |                   assert(exists |witness: int| 0 <= witness < values@.len()
+    |  ________________________^
+167 | |                     && !boundary.spec_contains_role(values@[witness]));
+    | |_____________________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:167:53
+    |
+167 |                     && !boundary.spec_contains_role(values@[witness]));
+    |                                                     ^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:152:13
+    |
+152 | /             forall |prior: int| 0 <= prior < index ==>
+153 | |                 boundary.spec_contains_role(values@[prior]),
+    | |___________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:153:45
+    |
+153 |                 boundary.spec_contains_role(values@[prior]),
+    |                                             ^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:195:20
+    |
+195 |               assert(exists |witness: int| 0 <= witness < values@.len()
+    |  ____________________^
+196 | |                 && !boundary.spec_contains_environment(values@[witness])) by {
+    | |________________________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:196:56
+    |
+196 |                 && !boundary.spec_contains_environment(values@[witness])) by {
+    |                                                        ^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:204:24
+    |
+204 |                   assert(exists |witness: int| 0 <= witness < values@.len()
+    |  ________________________^
+205 | |                     && !boundary.spec_contains_environment(values@[witness]));
+    | |____________________________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:205:60
+    |
+205 |                     && !boundary.spec_contains_environment(values@[witness]));
+    |                                                            ^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:190:13
+    |
+190 | /             forall |prior: int| 0 <= prior < index ==>
+191 | |                 boundary.spec_contains_environment(values@[prior]),
+    | |__________________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:191:52
+    |
+191 |                 boundary.spec_contains_environment(values@[prior]),
+    |                                                    ^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:234:20
+    |
+234 |               assert(exists |witness: int| 0 <= witness < values@.len()
+    |  ____________________^
+235 | |                 && !boundary.spec_contains_permission(&values@[witness])) by {
+    | |________________________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:235:56
+    |
+235 |                 && !boundary.spec_contains_permission(&values@[witness])) by {
+    |                                                        ^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:244:24
+    |
+244 |                   assert(exists |witness: int| 0 <= witness < values@.len()
+    |  ________________________^
+245 | |                     && !boundary.spec_contains_permission(&values@[witness]));
+    | |____________________________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:245:60
+    |
+245 |                     && !boundary.spec_contains_permission(&values@[witness]));
+    |                                                            ^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:229:13
+    |
+229 | /             forall |prior: int| 0 <= prior < index ==>
+230 | |                 boundary.spec_contains_permission(&values@[prior]),
+    | |__________________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:230:52
+    |
+230 |                 boundary.spec_contains_permission(&values@[prior]),
+    |                                                    ^^^^^^^^^^^^^^
+
+note: Verus printed one or more automatically chosen quantifier triggers
+      because it had low confidence in the chosen triggers.
+      To suppress these messages, do one of the following:
+        (1) manually annotate a single desired trigger using #[trigger]
+            (example: forall|i: int, j: int| f(i) && #[trigger] g(i) && #[trigger] h(j)),
+        (2) manually annotate multiple desired triggers using #![trigger ...]
+            (example: forall|i: int| #![trigger f(i)] #![trigger g(i)] f(i) && g(i)),
+        (3) accept the automatically chosen trigger using #![auto]
+            (example: forall|i: int, j: int| #![auto] f(i) && g(i) && h(j))
+        (4) use the --triggers-mode silent command-line option to suppress all printing of triggers.
+      (Note: triggers are used by the underlying SMT theorem prover to instantiate quantifiers;
+      the theorem prover instantiates a quantifier whenever some expression matches the
+      pattern specified by one of the quantifier's triggers.)
+   --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:229:13
+    |
+229 | /             forall |prior: int| 0 <= prior < index ==>
+230 | |                 boundary.spec_contains_permission(&values@[prior]),
+    | |__________________________________________________________________^
+
+note: function body check has been running for 2 seconds
+      reporting errors as they are discovered (they may not be in source order)
+  --> crates/foundation/peritus-budget/src/reachability/functionality.rs:23:7
+   |
+23 |   proof fn activation_candidates_equal(
+   |  _______^
+24 | |     left_before: &BudgetLedger,
+25 | |     right_before: &BudgetLedger,
+26 | |     activation: crate::Activation,
+...  |
+30 | |     right_receipt: BudgetReceipt,
+31 | | )
+   | |_^
+
+note: function body check finished in 5 seconds
+  --> crates/foundation/peritus-budget/src/reachability/functionality.rs:23:7
+   |
+23 |   proof fn activation_candidates_equal(
+   |  _______^
+24 | |     left_before: &BudgetLedger,
+25 | |     right_before: &BudgetLedger,
+26 | |     activation: crate::Activation,
+...  |
+30 | |     right_receipt: BudgetReceipt,
+31 | | )
+   | |_^
+
+note: function body check has been running for 2 seconds
+      reporting errors as they are discovered (they may not be in source order)
+   --> crates/foundation/peritus-budget/src/reachability/functionality/finalization.rs:176:1
+    |
+176 | / pub(super) proof fn cancellation_candidates_equal(
+177 | |     left_before: &BudgetLedger,
+178 | |     right_before: &BudgetLedger,
+179 | |     reference: ReservationReference,
+...   |
+183 | |     right_receipt: BudgetReceipt,
+184 | | )
+    | |_^
+
+note: function body check finished in 2 seconds
+   --> crates/foundation/peritus-budget/src/reachability/functionality/finalization.rs:176:1
+    |
+176 | / pub(super) proof fn cancellation_candidates_equal(
+177 | |     left_before: &BudgetLedger,
+178 | |     right_before: &BudgetLedger,
+179 | |     reference: ReservationReference,
+...   |
+183 | |     right_receipt: BudgetReceipt,
+184 | | )
+    | |_^
+
+note: function body check has been running for 2 seconds
+      reporting errors as they are discovered (they may not be in source order)
+  --> crates/foundation/peritus-budget/src/reachability/functionality/finalization/full.rs:16:1
+   |
+16 | / pub(in crate::reachability::functionality) proof fn full_finalization_candidates_equal(
+17 | |     left_before: &BudgetLedger,
+18 | |     right_before: &BudgetLedger,
+19 | |     command: BudgetCommand,
+...  |
+26 | |     right_receipt: BudgetReceipt,
+27 | | )
+   | |_^
+
+note: function body check finished in 7 seconds
+  --> crates/foundation/peritus-budget/src/reachability/functionality/finalization/full.rs:16:1
+   |
+16 | / pub(in crate::reachability::functionality) proof fn full_finalization_candidates_equal(
+17 | |     left_before: &BudgetLedger,
+18 | |     right_before: &BudgetLedger,
+19 | |     command: BudgetCommand,
+...  |
+26 | |     right_receipt: BudgetReceipt,
+27 | | )
+   | |_^
+
+note: function body check has been running for 2 seconds
+      reporting errors as they are discovered (they may not be in source order)
+   --> crates/foundation/peritus-budget/src/reachability/functionality/lifecycle.rs:150:1
+    |
+150 | / pub(super) proof fn close_candidates_equal(
+151 | |     left_before: &BudgetLedger,
+152 | |     right_before: &BudgetLedger,
+153 | |     budget_id: peritus_types::BudgetId,
+...   |
+157 | |     right_receipt: BudgetReceipt,
+158 | | )
+    | |_^
+
+note: function body check finished in 12 seconds
+   --> crates/foundation/peritus-budget/src/reachability/functionality/lifecycle.rs:150:1
+    |
+150 | / pub(super) proof fn close_candidates_equal(
+151 | |     left_before: &BudgetLedger,
+152 | |     right_before: &BudgetLedger,
+153 | |     budget_id: peritus_types::BudgetId,
+...   |
+157 | |     right_receipt: BudgetReceipt,
+158 | | )
+    | |_^
+
+note: function body check has been running for 2 seconds
+      reporting errors as they are discovered (they may not be in source order)
+  --> crates/foundation/peritus-budget/src/reachability/functionality/observation/applied.rs:18:1
+   |
+18 | / pub(super) proof fn applied_candidates_equal(
+19 | |     left_before: &BudgetLedger,
+20 | |     right_before: &BudgetLedger,
+21 | |     observation: UsageObservation,
+...  |
+29 | |     right_budget: BudgetId,
+30 | | )
+   | |_^
+
+note: function body check finished in 5 seconds
+  --> crates/foundation/peritus-budget/src/reachability/functionality/observation/applied.rs:18:1
+   |
+18 | / pub(super) proof fn applied_candidates_equal(
+19 | |     left_before: &BudgetLedger,
+20 | |     right_before: &BudgetLedger,
+21 | |     observation: UsageObservation,
+...  |
+29 | |     right_budget: BudgetId,
+30 | | )
+   | |_^
+
+note: function body check has been running for 2 seconds
+      reporting errors as they are discovered (they may not be in source order)
+  --> crates/foundation/peritus-budget/src/reachability/functionality/operations.rs:9:1
+   |
+ 9 | / pub(super) proof fn begin_candidates_equal(
+10 | |     left_before: &BudgetLedger,
+11 | |     right_before: &BudgetLedger,
+12 | |     request: crate::BudgetRequest,
+...  |
+16 | |     right_receipt: BudgetReceipt,
+17 | | )
+   | |_^
+
+note: function body check finished in 2 seconds
+  --> crates/foundation/peritus-budget/src/reachability/functionality/operations.rs:9:1
+   |
+ 9 | / pub(super) proof fn begin_candidates_equal(
+10 | |     left_before: &BudgetLedger,
+11 | |     right_before: &BudgetLedger,
+12 | |     request: crate::BudgetRequest,
+...  |
+16 | |     right_receipt: BudgetReceipt,
+17 | | )
+   | |_^
+
+note: function body check has been running for 2 seconds
+      reporting errors as they are discovered (they may not be in source order)
+   --> crates/foundation/peritus-budget/src/reachability/functionality/release.rs:228:1
+    |
+228 | / pub(super) proof fn reservation_accounting_functional(
+229 | |     left_before: &BudgetLedger,
+230 | |     right_before: &BudgetLedger,
+231 | |     left_after: &BudgetLedger,
+...   |
+238 | |     right_released_amount: BudgetAmounts,
+239 | | )
+    | |_^
+
+note: function body check finished in 9 seconds
+   --> crates/foundation/peritus-budget/src/reachability/functionality/release.rs:228:1
+    |
+228 | / pub(super) proof fn reservation_accounting_functional(
+229 | |     left_before: &BudgetLedger,
+230 | |     right_before: &BudgetLedger,
+231 | |     left_after: &BudgetLedger,
+...   |
+238 | |     right_released_amount: BudgetAmounts,
+239 | | )
+    | |_^
+
+note: function body check has been running for 2 seconds
+      reporting errors as they are discovered (they may not be in source order)
+  --> crates/foundation/peritus-budget/src/transition/reconciliation/observation/terminal.rs:80:1
+   |
+80 | / pub(in crate::transition) fn apply_overrun_validated(
+81 | |     ledger: &mut BudgetLedger,
+82 | |     reservation_index: usize,
+83 | |     observation: UsageObservation,
+84 | | ) -> (result: Result<BudgetReceipt, BudgetError>)
+   | |________________________________________________^
+
+note: function body check finished in 3 seconds
+  --> crates/foundation/peritus-budget/src/transition/reconciliation/observation/terminal.rs:80:1
+   |
+80 | / pub(in crate::transition) fn apply_overrun_validated(
+81 | |     ledger: &mut BudgetLedger,
+82 | |     reservation_index: usize,
+83 | |     observation: UsageObservation,
+84 | | ) -> (result: Result<BudgetReceipt, BudgetError>)
+   | |________________________________________________^
+
+note: function body check has been running for 2 seconds
+      reporting errors as they are discovered (they may not be in source order)
+  --> crates/foundation/peritus-budget/src/reachability/functionality/observation/overrun.rs:84:7
+   |
+84 |   proof fn active_overrun_accounts_equal(
+   |  _______^
+85 | |     left_before: &BudgetLedger,
+86 | |     right_before: &BudgetLedger,
+87 | |     observation: UsageObservation,
+...  |
+96 | |     right_effect_index: int,
+97 | | )
+   | |_^
+
+note: function body check finished in 6 seconds
+  --> crates/foundation/peritus-budget/src/reachability/functionality/observation/overrun.rs:84:7
+   |
+84 |   proof fn active_overrun_accounts_equal(
+   |  _______^
+85 | |     left_before: &BudgetLedger,
+86 | |     right_before: &BudgetLedger,
+87 | |     observation: UsageObservation,
+...  |
+96 | |     right_effect_index: int,
+97 | | )
+   | |_^
+
+note: function body check has been running for 2 seconds
+      reporting errors as they are discovered (they may not be in source order)
+   --> crates/foundation/peritus-budget/src/reachability/functionality/observation/overrun.rs:201:7
+    |
+201 |   proof fn active_overrun_candidates_equal(
+    |  _______^
+202 | |     left_before: &BudgetLedger,
+203 | |     right_before: &BudgetLedger,
+204 | |     observation: UsageObservation,
+...   |
+213 | |     right_effect_index: int,
+214 | | )
+    | |_^
+
+note: function body check finished in 3 seconds
+   --> crates/foundation/peritus-budget/src/reachability/functionality/observation/overrun.rs:201:7
+    |
+201 |   proof fn active_overrun_candidates_equal(
+    |  _______^
+202 | |     left_before: &BudgetLedger,
+203 | |     right_before: &BudgetLedger,
+204 | |     observation: UsageObservation,
+...   |
+213 | |     right_effect_index: int,
+214 | | )
+    | |_^
+
+note: automatically chose triggers for this expression:
+  --> crates/foundation/peritus-kernel/src/aggregate/lookup.rs:96:21
+   |
+96 |               None => forall |index: int| 0 <= index < self.runs@.len()
+   |  _____________________^
+97 | |                 ==> !crate::identity::run_ids_equal(self.runs@[index].id, id),
+   | |_____________________________________________________________________________^
+
+note:   trigger 1 of 1:
+  --> crates/foundation/peritus-kernel/src/aggregate/lookup.rs:97:53
+   |
+97 |                 ==> !crate::identity::run_ids_equal(self.runs@[index].id, id),
+   |                                                     ^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/foundation/peritus-kernel/src/aggregate/lookup.rs:104:17
+    |
+104 | /                 forall |prior: int| 0 <= prior < index
+105 | |                     ==> !crate::identity::run_ids_equal(self.runs@[prior].id, id),
+    | |_________________________________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/foundation/peritus-kernel/src/aggregate/lookup.rs:105:57
+    |
+105 |                     ==> !crate::identity::run_ids_equal(self.runs@[prior].id, id),
+    |                                                         ^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/foundation/peritus-kernel/src/aggregate/lookup.rs:173:21
+    |
+173 |               None => forall |index: int| 0 <= index < self.reviews@.len() ==>
+    |  _____________________^
+174 | |                 !crate::identity::review_cycle_ids_equal(self.reviews@[index].spec_id(), id),
+    | |____________________________________________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/foundation/peritus-kernel/src/aggregate/lookup.rs:174:58
+    |
+174 |                 !crate::identity::review_cycle_ids_equal(self.reviews@[index].spec_id(), id),
+    |                                                          ^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/foundation/peritus-kernel/src/aggregate/lookup.rs:181:17
+    |
+181 | /                 forall |prior: int| 0 <= prior < index ==>
+182 | |                     !crate::identity::review_cycle_ids_equal(
+183 | |                         self.reviews@[prior].spec_id(), id),
+    | |___________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/foundation/peritus-kernel/src/aggregate/lookup.rs:183:25
+    |
+183 |                         self.reviews@[prior].spec_id(), id),
+    |                         ^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/foundation/peritus-kernel/src/aggregate/lookup.rs:199:21
+    |
+199 |               None => forall |index: int| 0 <= index < self.waivers@.len() ==>
+    |  _____________________^
+200 | |                 !peritus_quality_policy::finding_ids_match(
+201 | |                     self.waivers@[index].spec_finding_id(), id),
+    | |_______________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/foundation/peritus-kernel/src/aggregate/lookup.rs:201:21
+    |
+201 |                     self.waivers@[index].spec_finding_id(), id),
+    |                     ^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/foundation/peritus-kernel/src/aggregate/lookup.rs:208:17
+    |
+208 | /                 forall |prior: int| 0 <= prior < index ==>
+209 | |                     !peritus_quality_policy::finding_ids_match(
+210 | |                         self.waivers@[prior].spec_finding_id(), id),
+    | |___________________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/foundation/peritus-kernel/src/aggregate/lookup.rs:210:25
+    |
+210 |                         self.waivers@[prior].spec_finding_id(), id),
+    |                         ^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/foundation/peritus-kernel/src/inputs.rs:45:9
+   |
+45 | /         exists |evidence: &'a AcceptanceEvidence,
+46 | |             waiver_index: int,
+47 | |             review_index: int,
+48 | |             finding_index: int|
+...  |
+65 | |             && evidence.spec_reviews()[review_index].spec_cycle_id().spec_bytes()@
+66 | |                 == review_cycle_id.spec_bytes()@
+   | |________________________________________________^
+
+note:   trigger 1 of 2:
+  --> crates/foundation/peritus-kernel/src/inputs.rs:50:16
+   |
+50 |               && peritus_quality_policy::current_waiver_at(
+   |  ________________^
+51 | |                 evidence.spec_waivers(), finding_id, revision, waiver_index)
+   | |____________________________________________________________________________^
+...
+58 |               && peritus_quality_policy::current_finding_at(
+   |  ________________^
+59 | |                 evidence.spec_reviews(),
+60 | |                 finding_id,
+61 | |                 revision,
+62 | |                 review_index,
+63 | |                 finding_index,
+64 | |             )
+   | |_____________^
+
+note:   trigger 2 of 2:
+  --> crates/foundation/peritus-kernel/src/inputs.rs:50:16
+   |
+50 |               && peritus_quality_policy::current_waiver_at(
+   |  ________________^
+51 | |                 evidence.spec_waivers(), finding_id, revision, waiver_index)
+   | |____________________________________________________________________________^
+...
+58 |               && peritus_quality_policy::current_finding_at(
+   |  ________________^
+59 | |                 evidence.spec_reviews(),
+60 | |                 finding_id,
+61 | |                 revision,
+62 | |                 review_index,
+63 | |                 finding_index,
+64 | |             )
+   | |_____________^
+
+note: automatically chose triggers for this expression:
+   --> crates/foundation/peritus-kernel/src/inputs.rs:93:16
+    |
+ 93 |           assert(exists |candidate_evidence: &'a AcceptanceEvidence,
+    |  ________________^
+ 94 | |             candidate_waiver: int,
+ 95 | |             candidate_review: int,
+ 96 | |             candidate_finding: int|
+...   |
+113 | |             && candidate_evidence.spec_reviews()[candidate_review].spec_cycle_id().spec_bytes()@
+114 | |                 == review_cycle_id.spec_bytes()@) by {
+    | |________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/foundation/peritus-kernel/src/inputs.rs:98:16
+    |
+ 98 |               && peritus_quality_policy::current_waiver_at(
+    |  ________________^
+ 99 | |                 candidate_evidence.spec_waivers(), finding_id, revision, candidate_waiver)
+    | |__________________________________________________________________________________________^
+...
+106 |               && peritus_quality_policy::current_finding_at(
+    |  ________________^
+107 | |                 candidate_evidence.spec_reviews(),
+108 | |                 finding_id,
+109 | |                 revision,
+110 | |                 candidate_review,
+111 | |                 candidate_finding,
+112 | |             )
+    | |_____________^
+
+note: automatically chose triggers for this expression:
+   --> crates/foundation/peritus-kernel/src/model.rs:101:5
+    |
+101 | /     exists |before_index: int, after_index: int| {
+102 | |         &&& 0 <= before_index < before.runs@.len()
+103 | |         &&& 0 <= after_index < after.runs@.len()
+104 | |         &&& crate::identity::run_ids_equal(before.runs@[before_index].id, id)
+...   |
+109 | |         &&& after.runs@[after_index].acceptance == AcceptancePhase::Accepted
+110 | |     }
+    | |_____^
+
+note:   trigger 1 of 1:
+   --> crates/foundation/peritus-kernel/src/model.rs:104:44
+    |
+104 |         &&& crate::identity::run_ids_equal(before.runs@[before_index].id, id)
+    |                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+105 |         &&& crate::identity::run_ids_equal(after.runs@[after_index].id, id)
+    |                                            ^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/foundation/peritus-kernel/src/model.rs:119:5
+    |
+119 | /     exists |before_index: int, after_index: int| {
+120 | |         &&& 0 <= before_index < before.runs@.len()
+121 | |         &&& 0 <= after_index < after.runs@.len()
+122 | |         &&& crate::identity::run_ids_equal(before.runs@[before_index].id, id)
+...   |
+127 | |         &&& after.runs@[after_index].acceptance == AcceptancePhase::NeedsChanges
+128 | |     }
+    | |_____^
+
+note:   trigger 1 of 1:
+   --> crates/foundation/peritus-kernel/src/model.rs:122:44
+    |
+122 |         &&& crate::identity::run_ids_equal(before.runs@[before_index].id, id)
+    |                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+123 |         &&& crate::identity::run_ids_equal(after.runs@[after_index].id, id)
+    |                                            ^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/foundation/peritus-kernel/src/model.rs:174:13
+    |
+174 |           ==> exists |before_index: int| {
+    |  _____________^
+175 | |             &&& 0 <= before_index < before.runs@.len()
+176 | |             &&& crate::identity::run_ids_equal(
+177 | |                 before.runs@[before_index].id,
+...   |
+180 | |             &&& before.runs@[before_index].phase == RunPhase::Accepted
+181 | |         }
+    | |_________^
+
+note:   trigger 1 of 1:
+   --> crates/foundation/peritus-kernel/src/model.rs:177:17
+    |
+177 |                 before.runs@[before_index].id,
+    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note:   trigger 1 of 1:
+  --> crates/foundation/peritus-kernel/src/inputs.rs:50:16
+   |
+50 |               && peritus_quality_policy::current_waiver_at(
+   |  ________________^
+51 | |                 evidence.spec_waivers(), finding_id, revision, waiver_index)
+   | |____________________________________________________________________________^
+...
+58 |               && peritus_quality_policy::current_finding_at(
+   |  ________________^
+59 | |                 evidence.spec_reviews(),
+60 | |                 finding_id,
+61 | |                 revision,
+62 | |                 review_index,
+63 | |                 finding_index,
+64 | |             )
+   | |_____________^
+
+note: automatically chose triggers for this expression:
+  --> crates/foundation/peritus-kernel/src/reducer/waiver_correspondence.rs:18:5
+   |
+18 | /     exists |waiver_index: int, review_index: int|
+19 | |         0 <= waiver_index < before.spec_waivers().len()
+20 | |         && peritus_quality_policy::finding_ids_match(
+21 | |             before.spec_waivers()[waiver_index].spec_finding_id(), finding_id)
+...  |
+31 | |             before.spec_waivers()[waiver_index].spec_review_cycle_id(),
+32 | |         )
+   | |_________^
+
+note:   trigger 1 of 1:
+  --> crates/foundation/peritus-kernel/src/reducer/waiver_correspondence.rs:21:13
+   |
+21 |             before.spec_waivers()[waiver_index].spec_finding_id(), finding_id)
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+24 |         && before.spec_reviews()[review_index].spec_id().spec_bytes()@
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/foundation/peritus-kernel/src/reducer/waiver_correspondence.rs:41:5
+   |
+41 | /     exists |waiver_index: int, review_index: int|
+42 | |         0 <= waiver_index < after.spec_waivers().len()
+43 | |         && peritus_quality_policy::finding_ids_match(
+44 | |             after.spec_waivers()[waiver_index].spec_finding_id(), finding_id)
+...  |
+54 | |             after.spec_waivers()[waiver_index].spec_review_cycle_id(),
+55 | |         )
+   | |_________^
+
+note:   trigger 1 of 1:
+  --> crates/foundation/peritus-kernel/src/reducer/waiver_correspondence.rs:44:13
+   |
+44 |             after.spec_waivers()[waiver_index].spec_finding_id(), finding_id)
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+47 |         && after.spec_reviews()[review_index].spec_id().spec_bytes()@
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/foundation/peritus-kernel/src/reducer/refinement.rs:87:24
+   |
+87 |                   assert(exists |left: int, right: int| {
+   |  ________________________^
+88 | |                     &&& 0 <= left < before.runs@.len()
+89 | |                     &&& 0 <= right < after.runs@.len()
+90 | |                     &&& crate::identity::run_ids_equal(before.runs@[left].id, id)
+...  |
+95 | |                     &&& after.runs@[right].acceptance == AcceptancePhase::Accepted
+96 | |                 });
+   | |_________________^
+
+note:   trigger 1 of 1:
+  --> crates/foundation/peritus-kernel/src/reducer/refinement.rs:90:56
+   |
+90 |                     &&& crate::identity::run_ids_equal(before.runs@[left].id, id)
+   |                                                        ^^^^^^^^^^^^^^^^^^
+91 |                     &&& crate::identity::run_ids_equal(after.runs@[right].id, id)
+   |                                                        ^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/foundation/peritus-kernel/src/reducer/refinement.rs:127:24
+    |
+127 |                   assert(exists |left: int, right: int| {
+    |  ________________________^
+128 | |                     &&& 0 <= left < before.runs@.len()
+129 | |                     &&& 0 <= right < after.runs@.len()
+130 | |                     &&& crate::identity::run_ids_equal(before.runs@[left].id, id)
+...   |
+135 | |                     &&& after.runs@[right].acceptance == AcceptancePhase::NeedsChanges
+136 | |                 });
+    | |_________________^
+
+note:   trigger 1 of 1:
+   --> crates/foundation/peritus-kernel/src/reducer/refinement.rs:130:56
+    |
+130 |                     &&& crate::identity::run_ids_equal(before.runs@[left].id, id)
+    |                                                        ^^^^^^^^^^^^^^^^^^
+131 |                     &&& crate::identity::run_ids_equal(after.runs@[right].id, id)
+    |                                                        ^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/foundation/peritus-kernel/src/reducer/refinement.rs:199:24
+    |
+199 |                   assert(exists |prior: int| {
+    |  ________________________^
+200 | |                     &&& 0 <= prior < before.runs@.len()
+201 | |                     &&& crate::identity::run_ids_equal(
+202 | |                         before.runs@[prior].id,
+...   |
+205 | |                     &&& before.runs@[prior].phase == RunPhase::Accepted
+206 | |                 });
+    | |_________________^
+
+note:   trigger 1 of 1:
+   --> crates/foundation/peritus-kernel/src/reducer/refinement.rs:202:25
+    |
+202 |                         before.runs@[prior].id,
+    |                         ^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/foundation/peritus-kernel/src/reducer/refinement.rs:167:21
+    |
+167 |                   ==> exists |before_index: int| {
+    |  _____________________^
+168 | |                     &&& 0 <= before_index < before.runs@.len()
+169 | |                     &&& crate::identity::run_ids_equal(
+170 | |                         before.runs@[before_index].id,
+...   |
+173 | |                     &&& before.runs@[before_index].phase == RunPhase::Accepted
+174 | |                 },
+    | |_________________^
+
+note:   trigger 1 of 1:
+   --> crates/foundation/peritus-kernel/src/reducer/refinement.rs:170:25
+    |
+170 |                         before.runs@[before_index].id,
+    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: Verus printed one or more automatically chosen quantifier triggers
+      because it had low confidence in the chosen triggers.
+      To suppress these messages, do one of the following:
+        (1) manually annotate a single desired trigger using #[trigger]
+            (example: forall|i: int, j: int| f(i) && #[trigger] g(i) && #[trigger] h(j)),
+        (2) manually annotate multiple desired triggers using #![trigger ...]
+            (example: forall|i: int| #![trigger f(i)] #![trigger g(i)] f(i) && g(i)),
+        (3) accept the automatically chosen trigger using #![auto]
+            (example: forall|i: int, j: int| #![auto] f(i) && g(i) && h(j))
+        (4) use the --triggers-mode silent command-line option to suppress all printing of triggers.
+      (Note: triggers are used by the underlying SMT theorem prover to instantiate quantifiers;
+      the theorem prover instantiates a quantifier whenever some expression matches the
+      pattern specified by one of the quantifier's triggers.)
+  --> crates/foundation/peritus-kernel/src/reducer/waiver_correspondence.rs:41:5
+   |
+41 | /     exists |waiver_index: int, review_index: int|
+42 | |         0 <= waiver_index < after.spec_waivers().len()
+43 | |         && peritus_quality_policy::finding_ids_match(
+44 | |             after.spec_waivers()[waiver_index].spec_finding_id(), finding_id)
+...  |
+54 | |             after.spec_waivers()[waiver_index].spec_review_cycle_id(),
+55 | |         )
+   | |_________^
+
+note: automatically chose triggers for this expression:
+   --> crates/state/peritus-leases/src/binding/use_projection.rs:151:16
+    |
+151 |               && forall |index: int| 0 <= index < permissions.len() ==>
+    |  ________________^
+152 | |                 self.scope_permissions@[index].matches_permission(&permissions[index])
+    | |______________________________________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/state/peritus-leases/src/binding/use_projection.rs:152:68
+    |
+152 |                 self.scope_permissions@[index].matches_permission(&permissions[index])
+    |                                                                    ^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/state/peritus-leases/src/binding/duplication.rs:37:16
+   |
+37 |               && forall |index: int| 0 <= index < source.scope_permissions@.len() ==>
+   |  ________________^
+38 | |                 self.scope_permissions@[index]
+39 | |                     .exactly_duplicates(&source.scope_permissions@[index])
+40 | |             && self.revision == source.revision
+...  |
+51 | |             && self.successor_issuance_digest == source.successor_issuance_digest
+52 | |             && self.successor_issuance_command_id == source.successor_issuance_command_id
+   | |_________________________________________________________________________________________^
+
+note:   trigger 1 of 2:
+  --> crates/state/peritus-leases/src/binding/duplication.rs:38:17
+   |
+38 |                 self.scope_permissions@[index]
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note:   trigger 2 of 2:
+  --> crates/state/peritus-leases/src/binding/duplication.rs:39:42
+   |
+39 |                     .exactly_duplicates(&source.scope_permissions@[index])
+   |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/state/peritus-leases/src/binding/duplication.rs:64:17
+   |
+64 | /                 forall |prior: int| 0 <= prior < index ==>
+65 | |                     scope_permissions@[prior]
+66 | |                         .exactly_duplicates(&self.scope_permissions@[prior]),
+   | |____________________________________________________________________________^
+
+note:   trigger 1 of 1:
+  --> crates/state/peritus-leases/src/binding/duplication.rs:65:21
+   |
+65 |                     scope_permissions@[prior]
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/state/peritus-leases/src/binding/duplication.rs:98:13
+   |
+98 |             assert forall |permission_index: int|
+   |             ^^^^^^
+
+note:   trigger 1 of 2:
+   --> crates/state/peritus-leases/src/binding/duplication.rs:100:21
+    |
+100 |                     duplicate.scope_permissions@[permission_index]
+    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note:   trigger 2 of 2:
+   --> crates/state/peritus-leases/src/binding/duplication.rs:101:46
+    |
+101 |                         .exactly_duplicates(&self.scope_permissions@[permission_index]) by {
+    |                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/state/peritus-leases/src/binding/use_projection.rs:57:17
+   |
+57 | /                 forall |prior: int| 0 <= prior < index ==>
+58 | |                     scope_permissions@[prior].matches_permission(&source_permissions@[prior]),
+   | |_____________________________________________________________________________________________^
+
+note:   trigger 1 of 2:
+  --> crates/state/peritus-leases/src/binding/use_projection.rs:58:21
+   |
+58 |                     scope_permissions@[prior].matches_permission(&source_permissions@[prior]),
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note:   trigger 2 of 2:
+  --> crates/state/peritus-leases/src/binding/use_projection.rs:58:67
+   |
+58 |                     scope_permissions@[prior].matches_permission(&source_permissions@[prior]),
+   |                                                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/state/peritus-leases/src/binding/use_projection.rs:68:13
+   |
+68 |             assert forall |permission_index: int|
+   |             ^^^^^^
+
+note:   trigger 1 of 2:
+  --> crates/state/peritus-leases/src/binding/use_projection.rs:70:21
+   |
+70 |                     scope_permissions@[permission_index]
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note:   trigger 2 of 2:
+  --> crates/state/peritus-leases/src/binding/use_projection.rs:71:46
+   |
+71 |                         .matches_permission(&source_permissions@[permission_index]) by {
+   |                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/state/peritus-leases/src/port/equality/binding/use_projection.rs:251:13
+    |
+251 | /             forall |prior: int| 0 <= prior < index ==>
+252 | |                 permission_fields_match(
+253 | |                     &left.scope_permissions@[prior],
+254 | |                     &right.scope_permissions@[prior],
+255 | |                 ),
+    | |_________________^
+
+note:   trigger 1 of 2:
+   --> crates/state/peritus-leases/src/port/equality/binding/use_projection.rs:253:22
+    |
+253 |                     &left.scope_permissions@[prior],
+    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note:   trigger 2 of 2:
+   --> crates/state/peritus-leases/src/port/equality/binding/use_projection.rs:254:22
+    |
+254 |                     &right.scope_permissions@[prior],
+    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/state/peritus-leases/src/port/equality/binding/use_projection.rs:268:9
+    |
+268 |         assert forall |permission_index: int|
+    |         ^^^^^^
+
+note:   trigger 1 of 2:
+   --> crates/state/peritus-leases/src/port/equality/binding/use_projection.rs:271:22
+    |
+271 |                     &left.scope_permissions@[permission_index],
+    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note:   trigger 2 of 2:
+   --> crates/state/peritus-leases/src/port/equality/binding/use_projection.rs:272:22
+    |
+272 |                     &right.scope_permissions@[permission_index],
+    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: Verus printed one or more automatically chosen quantifier triggers
+      because it had low confidence in the chosen triggers.
+      To suppress these messages, do one of the following:
+        (1) manually annotate a single desired trigger using #[trigger]
+            (example: forall|i: int, j: int| f(i) && #[trigger] g(i) && #[trigger] h(j)),
+        (2) manually annotate multiple desired triggers using #![trigger ...]
+            (example: forall|i: int| #![trigger f(i)] #![trigger g(i)] f(i) && g(i)),
+        (3) accept the automatically chosen trigger using #![auto]
+            (example: forall|i: int, j: int| #![auto] f(i) && g(i) && h(j))
+        (4) use the --triggers-mode silent command-line option to suppress all printing of triggers.
+      (Note: triggers are used by the underlying SMT theorem prover to instantiate quantifiers;
+      the theorem prover instantiates a quantifier whenever some expression matches the
+      pattern specified by one of the quantifier's triggers.)
+  --> crates/state/peritus-leases/src/binding/duplication.rs:37:16
+   |
+37 |               && forall |index: int| 0 <= index < source.scope_permissions@.len() ==>
+   |  ________________^
+38 | |                 self.scope_permissions@[index]
+39 | |                     .exactly_duplicates(&source.scope_permissions@[index])
+40 | |             && self.revision == source.revision
+...  |
+51 | |             && self.successor_issuance_digest == source.successor_issuance_digest
+52 | |             && self.successor_issuance_command_id == source.successor_issuance_command_id
+   | |_________________________________________________________________________________________^
+
+    Checking peritus-scheduler v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-scheduler-gap3/crates/orchestration/peritus-scheduler)
+note: function body check has been running for 2 seconds
+      reporting errors as they are discovered (they may not be in source order)
+  --> crates/orchestration/peritus-scheduler/src/reducer/apply/cancellation/non_resurrection.rs:75:1
+   |
+75 | / pub(super) proof fn root_cancellation_cannot_resurrect(
+76 | |     before: &SchedulerState,
+77 | |     cancelled: &SchedulerState,
+78 | |     after_late_completion: &SchedulerState,
+...  |
+90 | |     later_outcome: CompleteCommandOutcome,
+91 | | )
+   | |_^
+
+note: function body check finished in 3 seconds
+  --> crates/orchestration/peritus-scheduler/src/reducer/apply/cancellation/non_resurrection.rs:75:1
+   |
+75 | / pub(super) proof fn root_cancellation_cannot_resurrect(
+76 | |     before: &SchedulerState,
+77 | |     cancelled: &SchedulerState,
+78 | |     after_late_completion: &SchedulerState,
+...  |
+90 | |     later_outcome: CompleteCommandOutcome,
+91 | | )
+   | |_^
+
+note: function body check has been running for 2 seconds
+      reporting errors as they are discovered (they may not be in source order)
+   --> crates/orchestration/peritus-scheduler/src/resource/addition/merge.rs:256:1
+    |
+256 | / pub(super) fn merge_entries(
+257 | |     left_vector: &ResourceVector,
+258 | |     right_vector: &ResourceVector,
+259 | | ) -> (outcome: MergeOutcome)
+    | |___________________________^
+
+note: function body check finished in 3 seconds
+   --> crates/orchestration/peritus-scheduler/src/resource/addition/merge.rs:256:1
+    |
+256 | / pub(super) fn merge_entries(
+257 | |     left_vector: &ResourceVector,
+258 | |     right_vector: &ResourceVector,
+259 | | ) -> (outcome: MergeOutcome)
+    | |___________________________^
+
+error: invariant not satisfied at end of loop body
+  --> crates/orchestration/peritus-scheduler/src/selection/capacity.rs:73:13
+   |
+73 | /             result as int
+74 | |                 == crate::verified::worker_count(
+75 | |                     reservations@.subrange(cursor as int, reservations@.len() as int),
+76 | |                     worker,
+77 | |                 ),
+   | |_________________^
+
+note: automatically chose triggers for this expression:
+   --> crates/orchestration/peritus-scheduler/src/state/lookup.rs:128:50
+    |
+128 |               None => self.spec_work_ordered() ==> forall |index: int|
+    |  __________________________________________________^
+129 | |                 0 <= index < self.spec_work().len() ==>
+130 | |                     self.spec_work()[index].spec_definition().spec_id() != id,
+    | |_____________________________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/orchestration/peritus-scheduler/src/state/lookup.rs:130:21
+    |
+130 |                     self.spec_work()[index].spec_definition().spec_id() != id,
+    |                     ^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/orchestration/peritus-scheduler/src/reducer/apply/cancellation.rs:31:5
+   |
+31 | /     forall |values: Set<WorkId>| values.contains(root) && parent_closed(work, values)
+32 | |         ==> values.contains(id)
+   | |_______________________________^
+
+note:   trigger 1 of 1:
+  --> crates/orchestration/peritus-scheduler/src/reducer/apply/cancellation.rs:31:59
+   |
+31 |     forall |values: Set<WorkId>| values.contains(root) && parent_closed(work, values)
+   |                                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/orchestration/peritus-scheduler/src/reducer/apply/cancellation/update.rs:102:5
+    |
+102 | /     exists |states: Seq<Seq<WorkRecord>>| {
+103 | |         &&& states.len() == affected.len() + 1
+104 | |         &&& states[0] == before
+105 | |         &&& states[affected.len() as int] == after
+...   |
+113 | |     }
+    | |_____^
+
+note:   trigger 1 of 1:
+   --> crates/orchestration/peritus-scheduler/src/reducer/apply/cancellation/update.rs:103:13
+    |
+103 |         &&& states.len() == affected.len() + 1
+    |             ^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/orchestration/peritus-scheduler/src/reducer/apply/cancellation/update.rs:127:9
+    |
+127 | /         exists |processed: int| {
+128 | |             &&& 0 <= processed < affected.len()
+129 | |             &&& cancellation_updates_match(
+130 | |                 before, after, reservations, affected.take(processed),
+...   |
+135 | |                 target_exists(before, affected[prior])
+136 | |         }
+    | |_________^
+
+note:   trigger 1 of 1:
+   --> crates/orchestration/peritus-scheduler/src/reducer/apply/cancellation/update.rs:133:40
+    |
+133 |             &&& !target_exists(before, affected[processed])
+    |                                        ^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/orchestration/peritus-scheduler/src/reducer/apply/cancellation.rs:47:5
+   |
+47 |     assert forall |values: Set<WorkId>| values.contains(root) && parent_closed(work, values)
+   |     ^^^^^^
+
+note:   trigger 1 of 1:
+  --> crates/orchestration/peritus-scheduler/src/reducer/apply/cancellation.rs:47:66
+   |
+47 |     assert forall |values: Set<WorkId>| values.contains(root) && parent_closed(work, values)
+   |                                                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/orchestration/peritus-scheduler/src/reducer/apply/cancellation.rs:56:9
+   |
+56 |         forall |id: WorkId| reached@.contains(id) == reachable(work@, root, id),
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note:   trigger 1 of 1:
+  --> crates/orchestration/peritus-scheduler/src/reducer/apply/cancellation.rs:56:29
+   |
+56 |         forall |id: WorkId| reached@.contains(id) == reachable(work@, root, id),
+   |                             ^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/orchestration/peritus-scheduler/src/reducer/apply/cancellation.rs:87:17
+   |
+87 |                 forall |id: WorkId| reached@.contains(id) ==> reachable(work@, root, id),
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note:   trigger 1 of 1:
+  --> crates/orchestration/peritus-scheduler/src/reducer/apply/cancellation.rs:87:37
+   |
+87 |                 forall |id: WorkId| reached@.contains(id) ==> reachable(work@, root, id),
+   |                                     ^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/orchestration/peritus-scheduler/src/reducer/apply/cancellation.rs:127:17
+    |
+127 |                 assert forall |id: WorkId| reachable(work@, root, id) implies
+    |                 ^^^^^^
+
+note:   trigger 1 of 1:
+   --> crates/orchestration/peritus-scheduler/src/reducer/apply/cancellation.rs:128:21
+    |
+128 |                     reached@.contains(id) by {
+    |                     ^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/orchestration/peritus-scheduler/src/reducer/apply/cancellation.rs:72:13
+   |
+72 |             forall |id: WorkId| reached@.contains(id) ==> reachable(work@, root, id),
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note:   trigger 1 of 1:
+  --> crates/orchestration/peritus-scheduler/src/reducer/apply/cancellation.rs:72:33
+   |
+72 |             forall |id: WorkId| reached@.contains(id) ==> reachable(work@, root, id),
+   |                                 ^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/orchestration/peritus-scheduler/src/reducer/apply/cancellation.rs:156:54
+    |
+156 |           forall |id: WorkId| result@.contains(id) ==> exists |index: int|
+    |  ______________________________________________________^
+157 | |             0 <= index < work.len() && work@[index].spec_definition().spec_id() == id,
+    | |_____________________________________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/orchestration/peritus-scheduler/src/reducer/apply/cancellation.rs:157:40
+    |
+157 |             0 <= index < work.len() && work@[index].spec_definition().spec_id() == id,
+    |                                        ^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/orchestration/peritus-scheduler/src/reducer/apply/cancellation.rs:177:13
+    |
+177 | /             forall |id: WorkId| reached@.contains(id)
+178 | |                 == (id == root || (descendants && reachable(work@, root, id))),
+    | |______________________________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/orchestration/peritus-scheduler/src/reducer/apply/cancellation.rs:177:33
+    |
+177 |             forall |id: WorkId| reached@.contains(id)
+    |                                 ^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/orchestration/peritus-scheduler/src/reducer/apply/cancellation.rs:241:65
+    |
+241 |           assert forall |id: WorkId| result@.contains(id) implies exists |at: int|
+    |  _________________________________________________________________^
+242 | |             0 <= at < work.len() && work@[at].spec_definition().spec_id() == id by {
+    | |_______________________________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/orchestration/peritus-scheduler/src/reducer/apply/cancellation.rs:242:37
+    |
+242 |             0 <= at < work.len() && work@[at].spec_definition().spec_id() == id by {
+    |                                     ^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/orchestration/peritus-scheduler/src/reducer/apply/cancellation/ids.rs:17:9
+   |
+17 |         forall |index: int| 0 <= index < at ==> values@[index].spec_precedes(&id),
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note:   trigger 1 of 1:
+  --> crates/orchestration/peritus-scheduler/src/reducer/apply/cancellation/ids.rs:17:49
+   |
+17 |         forall |index: int| 0 <= index < at ==> values@[index].spec_precedes(&id),
+   |                                                 ^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/orchestration/peritus-scheduler/src/reducer/apply/cancellation/ids.rs:18:9
+   |
+18 |         forall |index: int| at <= index < values.len() ==> !values@[index].spec_precedes(&id),
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note:   trigger 1 of 1:
+  --> crates/orchestration/peritus-scheduler/src/reducer/apply/cancellation/ids.rs:18:61
+   |
+18 |         forall |index: int| at <= index < values.len() ==> !values@[index].spec_precedes(&id),
+   |                                                             ^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/orchestration/peritus-scheduler/src/reducer/apply/cancellation/ids.rs:40:17
+   |
+40 |                 assert forall |index: int| 0 <= index <= middle implies
+   |                 ^^^^^^
+
+note:   trigger 1 of 1:
+  --> crates/orchestration/peritus-scheduler/src/reducer/apply/cancellation/ids.rs:41:21
+   |
+41 |                     values@[index].spec_precedes(&id) by {
+   |                     ^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/orchestration/peritus-scheduler/src/reducer/apply/cancellation/ids.rs:47:17
+   |
+47 |                 assert forall |index: int| middle <= index < values.len() implies
+   |                 ^^^^^^
+
+note:   trigger 1 of 1:
+  --> crates/orchestration/peritus-scheduler/src/reducer/apply/cancellation/ids.rs:48:22
+   |
+48 |                     !values@[index].spec_precedes(&id) by {
+   |                      ^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/orchestration/peritus-scheduler/src/reducer/apply/cancellation/ids.rs:26:13
+   |
+26 |             forall |index: int| 0 <= index < low ==> values@[index].spec_precedes(&id),
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note:   trigger 1 of 1:
+  --> crates/orchestration/peritus-scheduler/src/reducer/apply/cancellation/ids.rs:26:54
+   |
+26 |             forall |index: int| 0 <= index < low ==> values@[index].spec_precedes(&id),
+   |                                                      ^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/orchestration/peritus-scheduler/src/reducer/apply/cancellation/ids.rs:27:13
+   |
+27 |             forall |index: int| high <= index < values.len() ==> !values@[index].spec_precedes(&id),
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note:   trigger 1 of 1:
+  --> crates/orchestration/peritus-scheduler/src/reducer/apply/cancellation/ids.rs:27:67
+   |
+27 |             forall |index: int| high <= index < values.len() ==> !values@[index].spec_precedes(&id),
+   |                                                                   ^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/orchestration/peritus-scheduler/src/reducer/apply/cancellation/non_resurrection.rs:22:5
+   |
+22 | /     exists |reservation_index: int, work_index: int| {
+23 | |         &&& 0 <= reservation_index < state.spec_reservations().len()
+24 | |         &&& state.spec_reservations()[reservation_index].spec_dispatch_id() == dispatch_id
+25 | |         &&& state.spec_reservations()[reservation_index].spec_work_id() == root
+...  |
+28 | |         &&& state.spec_work()[work_index].spec_phase() != WorkPhase::Terminal
+29 | |     }
+   | |_____^
+
+note:   trigger 1 of 1:
+  --> crates/orchestration/peritus-scheduler/src/reducer/apply/cancellation/non_resurrection.rs:24:13
+   |
+24 |         &&& state.spec_reservations()[reservation_index].spec_dispatch_id() == dispatch_id
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+27 |         &&& state.spec_work()[work_index].spec_definition().spec_id() == root
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/orchestration/peritus-scheduler/src/state/mutation/reservation_command/contracts.rs:90:14
+    |
+ 90 |           ) => exists |reservation_index: int, work_index: int, removed: SchedulerReservation|
+    |  ______________^
+ 91 | |             reservation_at(before, reservation_index, *dispatch_id)
+ 92 | |                 && work_at(
+ 93 | |                     before,
+...   |
+105 | |                     &removed,
+106 | |                 ),
+    | |_________________^
+
+note:   trigger 1 of 1:
+   --> crates/orchestration/peritus-scheduler/src/state/mutation/reservation_command/contracts.rs:98:20
+    |
+ 98 |                   && before.spec_work()[work_index].spec_phase() == WorkPhase::Running
+    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ 99 |                   && super::super::terminal_release_matches(
+    |  ____________________^
+100 | |                     before,
+101 | |                     after,
+102 | |                     *dispatch_id,
+...   |
+105 | |                     &removed,
+106 | |                 ),
+    | |_________________^
+
+note: automatically chose triggers for this expression:
+   --> crates/orchestration/peritus-scheduler/src/state/mutation/reservation_command/contracts.rs:171:14
+    |
+171 |           ) => exists |reservation_index: int, work_index: int, removed: SchedulerReservation|
+    |  ______________^
+172 | |             reservation_at(before, reservation_index, *dispatch_id)
+173 | |                 && work_at(
+174 | |                     before,
+...   |
+185 | |                     &removed,
+186 | |                 ),
+    | |_________________^
+
+note:   trigger 1 of 1:
+   --> crates/orchestration/peritus-scheduler/src/state/mutation/reservation_command/contracts.rs:178:20
+    |
+178 |                   && before.spec_work()[work_index].spec_phase() == WorkPhase::Cancelling
+    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+179 |                   && super::super::terminal_release_matches(
+    |  ____________________^
+180 | |                     before,
+181 | |                     after,
+182 | |                     *dispatch_id,
+...   |
+185 | |                     &removed,
+186 | |                 ),
+    | |_________________^
+
+note: automatically chose triggers for this expression:
+  --> crates/orchestration/peritus-scheduler/src/state/mutation/reservation_command/contracts/non_resurrection.rs:33:9
+   |
+33 | /         exists |reservation_index: int, work_index: int| {
+34 | |             &&& 0 <= reservation_index < cancelled.spec_reservations().len()
+35 | |             &&& cancelled.spec_reservations()[reservation_index].spec_dispatch_id() == dispatch_id
+36 | |             &&& cancelled.spec_reservations()[reservation_index].spec_work_id() == work_id
+...  |
+39 | |             &&& cancelled.spec_work()[work_index].spec_phase() == WorkPhase::Cancelling
+40 | |         },
+   | |_________^
+
+note:   trigger 1 of 1:
+  --> crates/orchestration/peritus-scheduler/src/state/mutation/reservation_command/contracts/non_resurrection.rs:35:17
+   |
+35 |             &&& cancelled.spec_reservations()[reservation_index].spec_dispatch_id() == dispatch_id
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+38 |             &&& cancelled.spec_work()[work_index].spec_definition().spec_id() == work_id
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/orchestration/peritus-scheduler/src/reducer/apply/cancellation/non_resurrection.rs:204:20
+    |
+204 |               assert(exists |target_reservation: int, target_work: int| {
+    |  ____________________^
+205 | |                 &&& 0 <= target_reservation < cancelled.spec_reservations().len()
+206 | |                 &&& cancelled.spec_reservations()[target_reservation].spec_dispatch_id()
+207 | |                     == dispatch_id
+...   |
+211 | |                 &&& cancelled.spec_work()[target_work].spec_phase() == WorkPhase::Cancelling
+212 | |             }) by {
+    | |_____________^
+
+note:   trigger 1 of 1:
+   --> crates/orchestration/peritus-scheduler/src/reducer/apply/cancellation/non_resurrection.rs:206:21
+    |
+206 |                 &&& cancelled.spec_reservations()[target_reservation].spec_dispatch_id()
+    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+210 |                 &&& cancelled.spec_work()[target_work].spec_definition().spec_id() == root
+    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/orchestration/peritus-scheduler/src/reducer/apply/cancellation/update/trace.rs:31:12
+   |
+31 |       assert(exists |candidate: Seq<Seq<WorkRecord>>| {
+   |  ____________^
+32 | |         &&& candidate.len() == 1
+33 | |         &&& candidate[0] == work
+34 | |         &&& candidate[0] == work
+...  |
+42 | |     }) by {
+   | |_____^
+
+note:   trigger 1 of 1:
+  --> crates/orchestration/peritus-scheduler/src/reducer/apply/cancellation/update/trace.rs:32:13
+   |
+32 |         &&& candidate.len() == 1
+   |             ^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/orchestration/peritus-scheduler/src/reducer/apply/cancellation/update/trace.rs:69:18
+   |
+69 |       let states = choose |states: Seq<Seq<WorkRecord>>| {
+   |  __________________^
+70 | |         &&& states.len() == affected.len() + 1
+71 | |         &&& states[0] == before
+72 | |         &&& states[affected.len() as int] == middle
+...  |
+80 | |     };
+   | |_____^
+
+note:   trigger 1 of 1:
+  --> crates/orchestration/peritus-scheduler/src/reducer/apply/cancellation/update/trace.rs:70:13
+   |
+70 |         &&& states.len() == affected.len() + 1
+   |             ^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/orchestration/peritus-scheduler/src/reducer/apply/cancellation/update/trace.rs:104:12
+    |
+104 |       assert(exists |candidate: Seq<Seq<WorkRecord>>| {
+    |  ____________^
+105 | |         &&& candidate.len() == affected.push(id).len() + 1
+106 | |         &&& candidate[0] == before
+107 | |         &&& candidate[affected.push(id).len() as int] == after
+...   |
+116 | |     }) by {
+    | |_____^
+
+note:   trigger 1 of 1:
+   --> crates/orchestration/peritus-scheduler/src/reducer/apply/cancellation/update/trace.rs:106:13
+    |
+106 |         &&& candidate[0] == before
+    |             ^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/orchestration/peritus-scheduler/src/reducer/apply/cancellation/update/trace.rs:218:12
+    |
+218 |       assert(exists |witness: int| {
+    |  ____________^
+219 | |         &&& 0 <= witness <= affected.len()
+220 | |         &&& cancellation_updates_match(
+221 | |             before,
+...   |
+229 | |             target_exists(before, affected[prior])
+230 | |     }) by {
+    | |_____^
+
+note:   trigger 1 of 1:
+   --> crates/orchestration/peritus-scheduler/src/reducer/apply/cancellation/update/trace.rs:227:36
+    |
+227 |         &&& !target_exists(before, affected[witness])
+    |                                    ^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/orchestration/peritus-scheduler/src/reducer/apply/cancellation/update/trace.rs:320:18
+    |
+320 |       let states = choose |states: Seq<Seq<WorkRecord>>| {
+    |  __________________^
+321 | |         &&& states.len() == affected.len() + 1
+322 | |         &&& states[0] == before
+323 | |         &&& states[affected.len() as int] == after
+...   |
+328 | |     };
+    | |_____^
+
+note:   trigger 1 of 1:
+   --> crates/orchestration/peritus-scheduler/src/reducer/apply/cancellation/update/trace.rs:321:13
+    |
+321 |         &&& states.len() == affected.len() + 1
+    |             ^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/orchestration/peritus-scheduler/src/reducer/apply/control/finalization.rs:60:5
+   |
+60 | /     forall |index: int| 0 <= index < state.spec_work().len() ==>
+61 | |         state.spec_work()[index].spec_phase() == WorkPhase::Terminal
+   | |____________________________________________________________________^
+
+note:   trigger 1 of 1:
+  --> crates/orchestration/peritus-scheduler/src/reducer/apply/control/finalization.rs:61:9
+   |
+61 |         state.spec_work()[index].spec_phase() == WorkPhase::Terminal
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/orchestration/peritus-scheduler/src/reducer/apply/control/finalization.rs:141:13
+    |
+141 | /             forall |prior: int| 0 <= prior < index ==>
+142 | |                 work@[prior].spec_phase() == WorkPhase::Terminal,
+    | |________________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/orchestration/peritus-scheduler/src/reducer/apply/control/finalization.rs:142:17
+    |
+142 |                 work@[prior].spec_phase() == WorkPhase::Terminal,
+    |                 ^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/orchestration/peritus-scheduler/src/reducer/apply/loss/release_one.rs:108:5
+    |
+108 | /     exists |work_index: int, removed: SchedulerReservation| {
+109 | |         &&& 0 <= work_index < before.spec_work().len()
+110 | |         &&& outcome_matches(before.spec_work()[work_index], dispatch_id, outcome)
+111 | |         &&& release_effect_matches(
+...   |
+114 | |     }
+    | |_____^
+
+note:   trigger 1 of 1:
+   --> crates/orchestration/peritus-scheduler/src/reducer/apply/loss/release_one.rs:110:29
+    |
+110 |           &&& outcome_matches(before.spec_work()[work_index], dispatch_id, outcome)
+    |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+111 |           &&& release_effect_matches(
+    |  _____________^
+112 | |             before, after, dispatch_id, failure_digest, outcome, &removed,
+113 | |         )
+    | |_________^
+
+note: automatically chose triggers for this expression:
+  --> crates/orchestration/peritus-scheduler/src/reducer/apply/loss/batch.rs:69:5
+   |
+69 | /     exists |states: Seq<SchedulerState>| {
+70 | |         &&& outcomes.len() == plan.len()
+71 | |         &&& states.len() == plan.len() + 1
+72 | |         &&& states[0] == *before
+...  |
+82 | |     }
+   | |_____^
+
+note:   trigger 1 of 1:
+  --> crates/orchestration/peritus-scheduler/src/reducer/apply/loss/batch.rs:71:13
+   |
+71 |         &&& states.len() == plan.len() + 1
+   |             ^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/orchestration/peritus-scheduler/src/reducer/apply/loss/batch/state_frame.rs:90:18
+    |
+ 90 |       let states = choose |states: Seq<SchedulerState>| {
+    |  __________________^
+ 91 | |         &&& outcomes.len() == plan.len()
+ 92 | |         &&& states.len() == plan.len() + 1
+ 93 | |         &&& states[0] == *before
+...   |
+103 | |     };
+    | |_____^
+
+note:   trigger 1 of 1:
+  --> crates/orchestration/peritus-scheduler/src/reducer/apply/loss/batch/state_frame.rs:92:13
+   |
+92 |         &&& states.len() == plan.len() + 1
+   |             ^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/orchestration/peritus-scheduler/src/reducer/apply/loss/batch/trace.rs:135:13
+    |
+135 |       ensures exists |removed: SchedulerReservation| {
+    |  _____________^
+136 | |         crate::state::mutation::exact_reservation_removal_matches(
+137 | |             before.spec_reservations(),
+138 | |             after.spec_reservations(),
+...   |
+142 | |     },
+    | |_____^
+
+note:   trigger 1 of 1:
+   --> crates/orchestration/peritus-scheduler/src/reducer/apply/loss/batch/trace.rs:136:9
+    |
+136 | /         crate::state::mutation::exact_reservation_removal_matches(
+137 | |             before.spec_reservations(),
+138 | |             after.spec_reservations(),
+139 | |             dispatch_id,
+140 | |             Some(removed),
+141 | |         )
+    | |_________^
+
+note: automatically chose triggers for this expression:
+   --> crates/orchestration/peritus-scheduler/src/reducer/apply/loss/batch/trace.rs:196:19
+    |
+196 |       let removed = choose |removed: SchedulerReservation| {
+    |  ___________________^
+197 | |         crate::state::mutation::exact_reservation_removal_matches(
+198 | |             before.spec_reservations(),
+199 | |             after.spec_reservations(),
+...   |
+203 | |     };
+    | |_____^
+
+note:   trigger 1 of 1:
+   --> crates/orchestration/peritus-scheduler/src/reducer/apply/loss/batch/trace.rs:197:9
+    |
+197 | /         crate::state::mutation::exact_reservation_removal_matches(
+198 | |             before.spec_reservations(),
+199 | |             after.spec_reservations(),
+200 | |             plan[index].0,
+201 | |             Some(removed),
+202 | |         )
+    | |_________^
+
+note: automatically chose triggers for this expression:
+  --> crates/orchestration/peritus-scheduler/src/reducer/apply/loss/batch/trace.rs:66:17
+   |
+66 |       let prior = choose |states: Seq<SchedulerState>| {
+   |  _________________^
+67 | |         &&& states.len() == plan.take(index).len() + 1
+68 | |         &&& states[0] == *initial
+69 | |         &&& states[plan.take(index).len() as int] == *middle
+...  |
+79 | |     };
+   | |_____^
+
+note:   trigger 1 of 1:
+  --> crates/orchestration/peritus-scheduler/src/reducer/apply/loss/batch/trace.rs:68:13
+   |
+68 |         &&& states[0] == *initial
+   |             ^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/orchestration/peritus-scheduler/src/state/lookup.rs:95:53
+   |
+95 |               None => self.spec_workers_ordered() ==> forall |index: int|
+   |  _____________________________________________________^
+96 | |                 0 <= index < self.spec_workers().len() ==>
+97 | |                     self.spec_workers()[index].spec_descriptor().spec_id() != id,
+   | |________________________________________________________________________________^
+
+note:   trigger 1 of 1:
+  --> crates/orchestration/peritus-scheduler/src/state/lookup.rs:97:21
+   |
+97 |                     self.spec_workers()[index].spec_descriptor().spec_id() != id,
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/orchestration/peritus-scheduler/src/reducer/apply/loss/batch/worker_target.rs:72:9
+   |
+72 | /         forall |index: int| 0 <= index < state.spec_workers().len() ==>
+73 | |             state.spec_workers()[index].spec_descriptor().spec_id() != worker_id,
+   | |________________________________________________________________________________^
+
+note:   trigger 1 of 1:
+  --> crates/orchestration/peritus-scheduler/src/reducer/apply/loss/batch/worker_target.rs:73:13
+   |
+73 |             state.spec_workers()[index].spec_descriptor().spec_id() != worker_id,
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/orchestration/peritus-scheduler/src/state/lookup.rs:216:58
+    |
+216 |               None => self.spec_reservations_ordered() ==> forall |index: int|
+    |  __________________________________________________________^
+217 | |                 0 <= index < self.spec_reservations().len() ==>
+218 | |                     self.spec_reservations()[index].spec_dispatch_id() != id,
+    | |____________________________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/orchestration/peritus-scheduler/src/state/lookup.rs:218:21
+    |
+218 |                     self.spec_reservations()[index].spec_dispatch_id() != id,
+    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/orchestration/peritus-scheduler/src/reducer/apply/loss/release_one/lookup_proofs.rs:20:9
+   |
+20 | /         forall |index: int| 0 <= index < state.spec_reservations().len() ==>
+21 | |             state.spec_reservations()[index].spec_dispatch_id() != dispatch_id,
+   | |______________________________________________________________________________^
+
+note:   trigger 1 of 1:
+  --> crates/orchestration/peritus-scheduler/src/reducer/apply/loss/release_one/lookup_proofs.rs:21:13
+   |
+21 |             state.spec_reservations()[index].spec_dispatch_id() != dispatch_id,
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/orchestration/peritus-scheduler/src/reducer/apply/loss/release_one/lookup_proofs.rs:40:9
+   |
+40 | /         forall |index: int| 0 <= index < state.spec_work().len() ==>
+41 | |             state.spec_work()[index].spec_definition().spec_id() != work_id,
+   | |___________________________________________________________________________^
+
+note:   trigger 1 of 1:
+  --> crates/orchestration/peritus-scheduler/src/reducer/apply/loss/release_one/lookup_proofs.rs:41:13
+   |
+41 |             state.spec_work()[index].spec_definition().spec_id() != work_id,
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/orchestration/peritus-scheduler/src/reducer/apply/loss/release_one/lookup_proofs.rs:83:12
+   |
+83 |       assert(exists |index: int, released: SchedulerReservation| {
+   |  ____________^
+84 | |         &&& 0 <= index < before.spec_work().len()
+85 | |         &&& outcome_matches(before.spec_work()[index], dispatch_id, outcome)
+86 | |         &&& release_effect_matches(
+...  |
+89 | |     }) by {
+   | |_____^
+
+note:   trigger 1 of 1:
+  --> crates/orchestration/peritus-scheduler/src/reducer/apply/loss/release_one/lookup_proofs.rs:85:29
+   |
+85 |           &&& outcome_matches(before.spec_work()[index], dispatch_id, outcome)
+   |                               ^^^^^^^^^^^^^^^^^^^^^^^^^
+86 |           &&& release_effect_matches(
+   |  _____________^
+87 | |             before, after, dispatch_id, failure_digest, outcome, &released,
+88 | |         )
+   | |_________^
+
+note: automatically chose triggers for this expression:
+   --> crates/orchestration/peritus-scheduler/src/resource/subtraction.rs:149:13
+    |
+149 | /             forall |prior: int| 0 <= prior < index ==>
+150 | |                 left.0@[prior].spec_quantity().spec_value()
+151 | |                     >= other.spec_quantity(left.0@[prior].spec_kind()),
+    | |______________________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/orchestration/peritus-scheduler/src/resource/subtraction.rs:150:17
+    |
+150 |                 left.0@[prior].spec_quantity().spec_value()
+    |                 ^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/orchestration/peritus-scheduler/src/resource/subtraction.rs:217:13
+    |
+217 | /             forall |prior: int| 0 <= prior < other_index ==>
+218 | |                 left.spec_quantity(other.0@[prior].spec_kind()) != 0,
+    | |____________________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/orchestration/peritus-scheduler/src/resource/subtraction.rs:218:36
+    |
+218 |                 left.spec_quantity(other.0@[prior].spec_kind()) != 0,
+    |                                    ^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/orchestration/peritus-scheduler/src/selection/capacity/refinement.rs:102:9
+    |
+102 | /         forall |kind: ResourceKind|
+103 | |             crate::verified::reservation_quantity(state.spec_reservations(), kind)
+104 | |                     + crate::verified::vector_quantity(request.spec_entries(), kind)
+105 | |                 <= state.spec_binding().spec_capacity().spec_quantity(kind),
+    | |___________________________________________________________________________^
+
+note:   trigger 1 of 2:
+   --> crates/orchestration/peritus-scheduler/src/selection/capacity/refinement.rs:103:13
+    |
+103 |             crate::verified::reservation_quantity(state.spec_reservations(), kind)
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note:   trigger 2 of 2:
+   --> crates/orchestration/peritus-scheduler/src/selection/capacity/refinement.rs:104:23
+    |
+104 |                     + crate::verified::vector_quantity(request.spec_entries(), kind)
+    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/orchestration/peritus-scheduler/src/selection/capacity/refinement.rs:150:9
+    |
+150 | /         forall |kind: ResourceKind|
+151 | |             crate::verified::worker_quantity(
+152 | |                 state.spec_reservations(),
+153 | |                 state.spec_workers()[worker_index].spec_descriptor().spec_id(),
+...   |
+156 | |                 <= state.spec_workers()[worker_index].spec_descriptor()
+157 | |                     .spec_capacity().spec_quantity(kind),
+    | |________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/orchestration/peritus-scheduler/src/selection/capacity/refinement.rs:155:17
+    |
+155 |             ) + crate::verified::vector_quantity(request.spec_entries(), kind)
+    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/orchestration/peritus-scheduler/src/state/clone_impl.rs:41:9
+   |
+41 |         assert forall |index: int| 0 <= index < left.spec_workers().len() implies
+   |         ^^^^^^
+
+note:   trigger 1 of 2:
+  --> crates/orchestration/peritus-scheduler/src/state/clone_impl.rs:42:13
+   |
+42 |             left.spec_workers()[index].spec_descriptor().spec_id()
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note:   trigger 2 of 2:
+  --> crates/orchestration/peritus-scheduler/src/state/clone_impl.rs:43:20
+   |
+43 |                 == right.spec_workers()[index].spec_descriptor().spec_id() by {
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/orchestration/peritus-scheduler/src/state/clone_impl.rs:48:9
+   |
+48 |         assert forall |index: int| 0 <= index < left.spec_work().len() implies
+   |         ^^^^^^
+
+note:   trigger 1 of 2:
+  --> crates/orchestration/peritus-scheduler/src/state/clone_impl.rs:49:13
+   |
+49 |             left.spec_work()[index].spec_definition().spec_id()
+   |             ^^^^^^^^^^^^^^^^^^^^^^^
+
+note:   trigger 2 of 2:
+  --> crates/orchestration/peritus-scheduler/src/state/clone_impl.rs:50:20
+   |
+50 |                 == right.spec_work()[index].spec_definition().spec_id() by {
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/orchestration/peritus-scheduler/src/state/clone_impl.rs:55:9
+   |
+55 |         assert forall |index: int| 0 <= index < left.spec_reservations().len() implies
+   |         ^^^^^^
+
+note:   trigger 1 of 2:
+  --> crates/orchestration/peritus-scheduler/src/state/clone_impl.rs:56:13
+   |
+56 |             left.spec_reservations()[index].spec_dispatch_id()
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note:   trigger 2 of 2:
+  --> crates/orchestration/peritus-scheduler/src/state/clone_impl.rs:57:20
+   |
+57 |                 == right.spec_reservations()[index].spec_dispatch_id() by {
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/orchestration/peritus-scheduler/src/state/lookup.rs:253:17
+    |
+253 |                 assert forall |index: int| self.spec_reservations_ordered()
+    |                 ^^^^^^
+
+note:   trigger 1 of 1:
+   --> crates/orchestration/peritus-scheduler/src/state/lookup.rs:255:24
+    |
+255 |                     && self.spec_reservations()[index].spec_dispatch_id() == id implies
+    |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/orchestration/peritus-scheduler/src/state/lookup.rs:231:54
+    |
+231 |                   self.spec_reservations_ordered() ==> forall |index: int|
+    |  ______________________________________________________^
+232 | |                     0 <= index < self.spec_reservations().len()
+233 | |                         && self.spec_reservations()[index].spec_dispatch_id() == id ==>
+234 | |                             base <= index < base + size,
+    | |_______________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/orchestration/peritus-scheduler/src/state/lookup.rs:233:28
+    |
+233 |                         && self.spec_reservations()[index].spec_dispatch_id() == id ==>
+    |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/orchestration/peritus-scheduler/src/state/lookup.rs:165:17
+    |
+165 |                 assert forall |index: int| self.spec_work_ordered()
+    |                 ^^^^^^
+
+note:   trigger 1 of 1:
+   --> crates/orchestration/peritus-scheduler/src/state/lookup.rs:167:24
+    |
+167 |                     && self.spec_work()[index].spec_definition().spec_id() == id implies
+    |                        ^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/orchestration/peritus-scheduler/src/state/lookup.rs:143:46
+    |
+143 |                   self.spec_work_ordered() ==> forall |index: int|
+    |  ______________________________________________^
+144 | |                     0 <= index < self.spec_work().len()
+145 | |                         && self.spec_work()[index].spec_definition().spec_id() == id ==>
+146 | |                             base <= index < base + size,
+    | |_______________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/orchestration/peritus-scheduler/src/state/lookup.rs:145:28
+    |
+145 |                         && self.spec_work()[index].spec_definition().spec_id() == id ==>
+    |                            ^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/orchestration/peritus-scheduler/src/state/lookup.rs:18:53
+   |
+18 |               None => self.spec_workers_ordered() ==> forall |index: int|
+   |  _____________________________________________________^
+19 | |                 0 <= index < self.spec_workers().len() ==>
+20 | |                     self.spec_workers()[index].spec_descriptor().spec_id() != id,
+   | |________________________________________________________________________________^
+
+note:   trigger 1 of 1:
+  --> crates/orchestration/peritus-scheduler/src/state/lookup.rs:20:21
+   |
+20 |                     self.spec_workers()[index].spec_descriptor().spec_id() != id,
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/orchestration/peritus-scheduler/src/state/lookup.rs:55:17
+   |
+55 |                 assert forall |index: int| self.spec_workers_ordered()
+   |                 ^^^^^^
+
+note:   trigger 1 of 1:
+  --> crates/orchestration/peritus-scheduler/src/state/lookup.rs:57:24
+   |
+57 |                     && self.spec_workers()[index].spec_descriptor().spec_id() == id implies
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/orchestration/peritus-scheduler/src/state/lookup.rs:33:49
+   |
+33 |                   self.spec_workers_ordered() ==> forall |index: int|
+   |  _________________________________________________^
+34 | |                     0 <= index < self.spec_workers().len()
+35 | |                         && self.spec_workers()[index].spec_descriptor().spec_id() == id ==>
+36 | |                             base <= index < base + size,
+   | |_______________________________________________________^
+
+note:   trigger 1 of 1:
+  --> crates/orchestration/peritus-scheduler/src/state/lookup.rs:35:28
+   |
+35 |                         && self.spec_workers()[index].spec_descriptor().spec_id() == id ==>
+   |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/orchestration/peritus-scheduler/src/state/mutation/insertion_slots.rs:86:13
+   |
+86 |             (forall |index: int| 0 <= index < at ==> !id.spec_precedes(&values@[index]))
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note:   trigger 1 of 1:
+  --> crates/orchestration/peritus-scheduler/src/state/mutation/insertion_slots.rs:86:73
+   |
+86 |             (forall |index: int| 0 <= index < at ==> !id.spec_precedes(&values@[index]))
+   |                                                                         ^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/orchestration/peritus-scheduler/src/state/mutation/insertion_slots.rs:87:16
+   |
+87 |               && (forall |index: int| at <= index < values@.len() ==>
+   |  ________________^
+88 | |                 id.spec_precedes(&values@[index]))
+   | |__________________________________________________^
+
+note:   trigger 1 of 1:
+  --> crates/orchestration/peritus-scheduler/src/state/mutation/insertion_slots.rs:88:35
+   |
+88 |                 id.spec_precedes(&values@[index]))
+   |                                   ^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/orchestration/peritus-scheduler/src/state/ordering.rs:144:13
+    |
+144 |             forall |index: int| 0 <= index < at ==> !id.spec_precedes(&values[index]),
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note:   trigger 1 of 1:
+   --> crates/orchestration/peritus-scheduler/src/state/ordering.rs:144:72
+    |
+144 |             forall |index: int| 0 <= index < at ==> !id.spec_precedes(&values[index]),
+    |                                                                        ^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/orchestration/peritus-scheduler/src/state/ordering.rs:145:13
+    |
+145 |             forall |index: int| at <= index < values.len() ==> id.spec_precedes(&values[index]),
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note:   trigger 1 of 1:
+   --> crates/orchestration/peritus-scheduler/src/state/ordering.rs:145:82
+    |
+145 |             forall |index: int| at <= index < values.len() ==> id.spec_precedes(&values[index]),
+    |                                                                                  ^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/orchestration/peritus-scheduler/src/state/mutation/insertion_slots.rs:14:13
+   |
+14 | /             (forall |index: int| 0 <= index < at ==>
+15 | |                 values@[index].spec_dispatch_id().spec_precedes(&id))
+   | |_____________________________________________________________________^
+
+note:   trigger 1 of 1:
+  --> crates/orchestration/peritus-scheduler/src/state/mutation/insertion_slots.rs:15:17
+   |
+15 |                 values@[index].spec_dispatch_id().spec_precedes(&id))
+   |                 ^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/orchestration/peritus-scheduler/src/state/mutation/insertion_slots.rs:16:16
+   |
+16 |               && (forall |index: int| at <= index < values@.len() ==>
+   |  ________________^
+17 | |                 !values@[index].spec_dispatch_id().spec_precedes(&id))
+   | |______________________________________________________________________^
+
+note:   trigger 1 of 1:
+  --> crates/orchestration/peritus-scheduler/src/state/mutation/insertion_slots.rs:17:18
+   |
+17 |                 !values@[index].spec_dispatch_id().spec_precedes(&id))
+   |                  ^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/orchestration/peritus-scheduler/src/state/ordering.rs:110:13
+    |
+110 |             forall |index: int| 0 <= index < values.len() ==> values[index].spec_dispatch_id() != value.spec_dispatch_id(),
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note:   trigger 1 of 1:
+   --> crates/orchestration/peritus-scheduler/src/state/ordering.rs:110:63
+    |
+110 |             forall |index: int| 0 <= index < values.len() ==> values[index].spec_dispatch_id() != value.spec_dispatch_id(),
+    |                                                               ^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/orchestration/peritus-scheduler/src/state/ordering.rs:111:13
+    |
+111 | /             forall |index: int| 0 <= index < at ==>
+112 | |                 values[index].spec_dispatch_id().spec_precedes(&value.spec_dispatch_id()),
+    | |_________________________________________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/orchestration/peritus-scheduler/src/state/ordering.rs:112:17
+    |
+112 |                 values[index].spec_dispatch_id().spec_precedes(&value.spec_dispatch_id()),
+    |                 ^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/orchestration/peritus-scheduler/src/state/ordering.rs:113:13
+    |
+113 | /             forall |index: int| at <= index < values.len() ==>
+114 | |                 !values[index].spec_dispatch_id().spec_precedes(&value.spec_dispatch_id()),
+    | |__________________________________________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/orchestration/peritus-scheduler/src/state/ordering.rs:114:18
+    |
+114 |                 !values[index].spec_dispatch_id().spec_precedes(&value.spec_dispatch_id()),
+    |                  ^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/orchestration/peritus-scheduler/src/state/mutation.rs:91:20
+   |
+91 |                   && (forall |index: int| 0 <= index < old(state).spec_reservations().len() ==>
+   |  ____________________^
+92 | |                     old(state).spec_reservations()[index].spec_dispatch_id() != value.spec_dispatch_id())
+   | |_________________________________________________________________________________________________________^
+
+note:   trigger 1 of 1:
+  --> crates/orchestration/peritus-scheduler/src/state/mutation.rs:92:21
+   |
+92 |                     old(state).spec_reservations()[index].spec_dispatch_id() != value.spec_dispatch_id())
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/orchestration/peritus-scheduler/src/state/mutation.rs:103:16
+    |
+103 |               && (forall |index: int| 0 <= index < before.len() ==>
+    |  ________________^
+104 | |                 before[index].spec_dispatch_id() != value.spec_dispatch_id())
+    | |_____________________________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/orchestration/peritus-scheduler/src/state/mutation.rs:104:17
+    |
+104 |                 before[index].spec_dispatch_id() != value.spec_dispatch_id())
+    |                 ^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/orchestration/peritus-scheduler/src/state/mutation/dependency_action.rs:49:5
+   |
+49 | /     forall |index: int| 0 <= index < dependencies.len() ==>
+50 | |         dependency_succeeded(work, dependencies[index])
+   | |_______________________________________________________^
+
+note:   trigger 1 of 1:
+  --> crates/orchestration/peritus-scheduler/src/state/mutation/dependency_action.rs:50:36
+   |
+50 |         dependency_succeeded(work, dependencies[index])
+   |                                    ^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/orchestration/peritus-scheduler/src/state/mutation/dependency_action.rs:54:5
+   |
+54 | /     forall |index: int| 0 <= index < dependencies.len() ==>
+55 | |         !dependency_failed(work, dependencies[index])
+   | |_____________________________________________________^
+
+note:   trigger 1 of 1:
+  --> crates/orchestration/peritus-scheduler/src/state/mutation/dependency_action.rs:55:34
+   |
+55 |         !dependency_failed(work, dependencies[index])
+   |                                  ^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/orchestration/peritus-scheduler/src/state/mutation/dependency_action.rs:67:13
+   |
+67 |           &&& forall |prior: int| 0 <= prior < index ==>
+   |  _____________^
+68 | |             !dependency_failed(work, dependencies[prior])
+   | |_________________________________________________________^
+
+note:   trigger 1 of 1:
+  --> crates/orchestration/peritus-scheduler/src/state/mutation/dependency_action.rs:68:38
+   |
+68 |             !dependency_failed(work, dependencies[prior])
+   |                                      ^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/orchestration/peritus-scheduler/src/state/mutation/dependency_action.rs:129:25
+    |
+129 |                       &&& forall |prior: int| 0 <= prior < index ==>
+    |  _________________________^
+130 | |                         !dependency_failed(
+131 | |                             state.spec_work(),
+132 | |                             record.spec_definition().spec_dependencies()[prior],
+133 | |                         )
+    | |_________________________^
+
+note:   trigger 1 of 1:
+   --> crates/orchestration/peritus-scheduler/src/state/mutation/dependency_action.rs:132:29
+    |
+132 | ...                   record.spec_definition().spec_dependencies()[prior],
+    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/orchestration/peritus-scheduler/src/state/mutation/dependency_action.rs:150:25
+    |
+150 |                       &&& forall |prior: int| 0 <= prior < index ==>
+    |  _________________________^
+151 | |                         !dependency_failed(
+152 | |                             state.spec_work(),
+153 | |                             record.spec_definition().spec_dependencies()[prior],
+154 | |                         )
+    | |_________________________^
+
+note:   trigger 1 of 1:
+   --> crates/orchestration/peritus-scheduler/src/state/mutation/dependency_action.rs:153:29
+    |
+153 | ...                   record.spec_definition().spec_dependencies()[prior],
+    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/orchestration/peritus-scheduler/src/state/mutation/dependency_action.rs:225:20
+    |
+225 |               assert(exists |index: int| index == found
+    |  ____________________^
+226 | |                 && 0 <= index < state.spec_work().len()
+227 | |                 && state.spec_work()[index].spec_definition().spec_id() == dependency
+228 | |                 && terminal_succeeded(state.spec_work()[index]));
+    | |_______________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/orchestration/peritus-scheduler/src/state/mutation/dependency_action.rs:227:20
+    |
+227 |                 && state.spec_work()[index].spec_definition().spec_id() == dependency
+    |                    ^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/orchestration/peritus-scheduler/src/state/mutation/dependency_action.rs:233:20
+    |
+233 |               assert(exists |index: int| index == found
+    |  ____________________^
+234 | |                 && 0 <= index < state.spec_work().len()
+235 | |                 && state.spec_work()[index].spec_definition().spec_id() == dependency
+236 | |                 && terminal_failed(state.spec_work()[index]));
+    | |____________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/orchestration/peritus-scheduler/src/state/mutation/dependency_action.rs:235:20
+    |
+235 |                 && state.spec_work()[index].spec_definition().spec_id() == dependency
+    |                    ^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/orchestration/peritus-scheduler/src/state/mutation/dependency_action.rs:394:44
+    |
+394 |   ...                   && forall |prior: int| 0 <= prior < failed_at ==>
+    |  __________________________^
+395 | | ...                       !dependency_failed(
+396 | | ...                           state.spec_work(), spec_dependencies[prior],
+397 | | ...                       ));
+    | |___________________________^
+
+note:   trigger 1 of 1:
+   --> crates/orchestration/peritus-scheduler/src/state/mutation/dependency_action.rs:396:68
+    |
+396 | ...                   state.spec_work(), spec_dependencies[prior],
+    |                                          ^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/orchestration/peritus-scheduler/src/state/mutation/dependency_action.rs:365:43
+    |
+365 |               state.spec_work_ordered() ==> forall |prior: int| 0 <= prior < index ==>
+    |  ___________________________________________^
+366 | |                 !dependency_failed(state.spec_work(), spec_dependencies[prior]),
+    | |_______________________________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/orchestration/peritus-scheduler/src/state/mutation/dependency_action.rs:366:55
+    |
+366 |                 !dependency_failed(state.spec_work(), spec_dependencies[prior]),
+    |                                                       ^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/orchestration/peritus-scheduler/src/state/mutation/dependency_action.rs:367:59
+    |
+367 |               state.spec_work_ordered() ==> (all_success == (forall |prior: int|
+    |  ___________________________________________________________^
+368 | |                 0 <= prior < index ==>
+369 | |                     dependency_succeeded(state.spec_work(), spec_dependencies[prior]))),
+    | |______________________________________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/orchestration/peritus-scheduler/src/state/mutation/dependency_action.rs:369:61
+    |
+369 |                     dependency_succeeded(state.spec_work(), spec_dependencies[prior]))),
+    |                                                             ^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/orchestration/peritus-scheduler/src/state/mutation/entity_insertion/slots.rs:14:13
+   |
+14 | /             (forall |index: int| 0 <= index < at ==>
+15 | |                 values@[index].spec_descriptor().spec_id().spec_precedes(&id))
+   | |______________________________________________________________________________^
+
+note:   trigger 1 of 1:
+  --> crates/orchestration/peritus-scheduler/src/state/mutation/entity_insertion/slots.rs:15:17
+   |
+15 |                 values@[index].spec_descriptor().spec_id().spec_precedes(&id))
+   |                 ^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/orchestration/peritus-scheduler/src/state/mutation/entity_insertion/slots.rs:16:16
+   |
+16 |               && (forall |index: int| at <= index < values@.len() ==>
+   |  ________________^
+17 | |                 !values@[index].spec_descriptor().spec_id().spec_precedes(&id))
+   | |_______________________________________________________________________________^
+
+note:   trigger 1 of 1:
+  --> crates/orchestration/peritus-scheduler/src/state/mutation/entity_insertion/slots.rs:17:18
+   |
+17 |                 !values@[index].spec_descriptor().spec_id().spec_precedes(&id))
+   |                  ^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/orchestration/peritus-scheduler/src/state/mutation/entity_insertion/slots.rs:85:13
+   |
+85 | /             (forall |index: int| 0 <= index < at ==>
+86 | |                 values@[index].spec_definition().spec_id().spec_precedes(&id))
+   | |______________________________________________________________________________^
+
+note:   trigger 1 of 1:
+  --> crates/orchestration/peritus-scheduler/src/state/mutation/entity_insertion/slots.rs:86:17
+   |
+86 |                 values@[index].spec_definition().spec_id().spec_precedes(&id))
+   |                 ^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/orchestration/peritus-scheduler/src/state/mutation/entity_insertion/slots.rs:87:16
+   |
+87 |               && (forall |index: int| at <= index < values@.len() ==>
+   |  ________________^
+88 | |                 !values@[index].spec_definition().spec_id().spec_precedes(&id))
+   | |_______________________________________________________________________________^
+
+note:   trigger 1 of 1:
+  --> crates/orchestration/peritus-scheduler/src/state/mutation/entity_insertion/slots.rs:88:18
+   |
+88 |                 !values@[index].spec_definition().spec_id().spec_precedes(&id))
+   |                  ^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/orchestration/peritus-scheduler/src/state/ordering.rs:78:13
+   |
+78 | /             forall |index: int| 0 <= index < at ==>
+79 | |                 values[index].spec_definition().spec_id().spec_precedes(&value.spec_definition().spec_id()),
+   | |___________________________________________________________________________________________________________^
+
+note:   trigger 1 of 1:
+  --> crates/orchestration/peritus-scheduler/src/state/ordering.rs:79:17
+   |
+79 |                 values[index].spec_definition().spec_id().spec_precedes(&value.spec_definition().spec_id()),
+   |                 ^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/orchestration/peritus-scheduler/src/state/ordering.rs:80:13
+   |
+80 | /             forall |index: int| at <= index < values.len() ==>
+81 | |                 !values[index].spec_definition().spec_id().spec_precedes(&value.spec_definition().spec_id()),
+   | |____________________________________________________________________________________________________________^
+
+note:   trigger 1 of 1:
+  --> crates/orchestration/peritus-scheduler/src/state/ordering.rs:81:18
+   |
+81 |                 !values[index].spec_definition().spec_id().spec_precedes(&value.spec_definition().spec_id()),
+   |                  ^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/orchestration/peritus-scheduler/src/state/ordering.rs:45:13
+   |
+45 | /             forall |index: int| 0 <= index < at ==>
+46 | |                 values[index].spec_descriptor().spec_id().spec_precedes(&value.spec_descriptor().spec_id()),
+   | |___________________________________________________________________________________________________________^
+
+note:   trigger 1 of 1:
+  --> crates/orchestration/peritus-scheduler/src/state/ordering.rs:46:17
+   |
+46 |                 values[index].spec_descriptor().spec_id().spec_precedes(&value.spec_descriptor().spec_id()),
+   |                 ^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/orchestration/peritus-scheduler/src/state/ordering.rs:47:13
+   |
+47 | /             forall |index: int| at <= index < values.len() ==>
+48 | |                 !values[index].spec_descriptor().spec_id().spec_precedes(&value.spec_descriptor().spec_id()),
+   | |____________________________________________________________________________________________________________^
+
+note:   trigger 1 of 1:
+  --> crates/orchestration/peritus-scheduler/src/state/ordering.rs:48:18
+   |
+48 |                 !values[index].spec_descriptor().spec_id().spec_precedes(&value.spec_descriptor().spec_id()),
+   |                  ^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/orchestration/peritus-scheduler/src/state/mutation/entity_insertion/slots.rs:49:17
+   |
+49 |                 assert forall |index: int| 0 <= index < base implies
+   |                 ^^^^^^
+
+note:   trigger 1 of 1:
+  --> crates/orchestration/peritus-scheduler/src/state/mutation/entity_insertion/slots.rs:50:21
+   |
+50 |                     values@[index].spec_descriptor().spec_id().spec_precedes(&id) by {
+   |                     ^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/orchestration/peritus-scheduler/src/state/mutation/entity_insertion/slots.rs:61:17
+   |
+61 |                 assert forall |index: int| base + size <= index < values@.len() implies
+   |                 ^^^^^^
+
+note:   trigger 1 of 1:
+  --> crates/orchestration/peritus-scheduler/src/state/mutation/entity_insertion/slots.rs:62:22
+   |
+62 |                     !values@[index].spec_descriptor().spec_id().spec_precedes(&id) by {
+   |                      ^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/orchestration/peritus-scheduler/src/state/mutation/entity_insertion/slots.rs:31:17
+   |
+31 | /                 (forall |index: int| 0 <= index < base ==>
+32 | |                     values@[index].spec_descriptor().spec_id().spec_precedes(&id))
+   | |__________________________________________________________________________________^
+
+note:   trigger 1 of 1:
+  --> crates/orchestration/peritus-scheduler/src/state/mutation/entity_insertion/slots.rs:32:21
+   |
+32 |                     values@[index].spec_descriptor().spec_id().spec_precedes(&id))
+   |                     ^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/orchestration/peritus-scheduler/src/state/mutation/entity_insertion/slots.rs:33:20
+   |
+33 |                   && (forall |index: int| base + size <= index < values@.len() ==>
+   |  ____________________^
+34 | |                     !values@[index].spec_descriptor().spec_id().spec_precedes(&id))
+   | |___________________________________________________________________________________^
+
+note:   trigger 1 of 1:
+  --> crates/orchestration/peritus-scheduler/src/state/mutation/entity_insertion/slots.rs:34:22
+   |
+34 |                     !values@[index].spec_descriptor().spec_id().spec_precedes(&id))
+   |                      ^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/orchestration/peritus-scheduler/src/state/mutation/entity_insertion/slots.rs:120:17
+    |
+120 |                 assert forall |index: int| 0 <= index < base implies
+    |                 ^^^^^^
+
+note:   trigger 1 of 1:
+   --> crates/orchestration/peritus-scheduler/src/state/mutation/entity_insertion/slots.rs:121:21
+    |
+121 |                     values@[index].spec_definition().spec_id().spec_precedes(&id) by {
+    |                     ^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/orchestration/peritus-scheduler/src/state/mutation/entity_insertion/slots.rs:132:17
+    |
+132 |                 assert forall |index: int| base + size <= index < values@.len() implies
+    |                 ^^^^^^
+
+note:   trigger 1 of 1:
+   --> crates/orchestration/peritus-scheduler/src/state/mutation/entity_insertion/slots.rs:133:22
+    |
+133 |                     !values@[index].spec_definition().spec_id().spec_precedes(&id) by {
+    |                      ^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/orchestration/peritus-scheduler/src/state/mutation/entity_insertion/slots.rs:102:17
+    |
+102 | /                 (forall |index: int| 0 <= index < base ==>
+103 | |                     values@[index].spec_definition().spec_id().spec_precedes(&id))
+    | |__________________________________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/orchestration/peritus-scheduler/src/state/mutation/entity_insertion/slots.rs:103:21
+    |
+103 |                     values@[index].spec_definition().spec_id().spec_precedes(&id))
+    |                     ^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/orchestration/peritus-scheduler/src/state/mutation/entity_insertion/slots.rs:104:20
+    |
+104 |                   && (forall |index: int| base + size <= index < values@.len() ==>
+    |  ____________________^
+105 | |                     !values@[index].spec_definition().spec_id().spec_precedes(&id))
+    | |___________________________________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/orchestration/peritus-scheduler/src/state/mutation/entity_insertion/slots.rs:105:22
+    |
+105 |                     !values@[index].spec_definition().spec_id().spec_precedes(&id))
+    |                      ^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/orchestration/peritus-scheduler/src/state/mutation/insertion_slots.rs:100:17
+    |
+100 |                 assert forall |later: int| SchedulerState::dispatch_ids_ordered(values@)
+    |                 ^^^^^^
+
+note:   trigger 1 of 1:
+   --> crates/orchestration/peritus-scheduler/src/state/mutation/insertion_slots.rs:102:43
+    |
+102 |                         id.spec_precedes(&values@[later]) by {
+    |                                           ^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/orchestration/peritus-scheduler/src/state/mutation/insertion_slots.rs:95:13
+   |
+95 |             forall |prior: int| 0 <= prior < index ==> !id.spec_precedes(&values@[prior]),
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note:   trigger 1 of 1:
+  --> crates/orchestration/peritus-scheduler/src/state/mutation/insertion_slots.rs:95:75
+   |
+95 |             forall |prior: int| 0 <= prior < index ==> !id.spec_precedes(&values@[prior]),
+   |                                                                           ^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/orchestration/peritus-scheduler/src/state/mutation/insertion_slots.rs:49:17
+   |
+49 |                 assert forall |index: int| 0 <= index < base implies
+   |                 ^^^^^^
+
+note:   trigger 1 of 1:
+  --> crates/orchestration/peritus-scheduler/src/state/mutation/insertion_slots.rs:50:21
+   |
+50 |                     values@[index].spec_dispatch_id().spec_precedes(&id) by {
+   |                     ^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/orchestration/peritus-scheduler/src/state/mutation/insertion_slots.rs:61:17
+   |
+61 |                 assert forall |index: int| base + size <= index < values@.len() implies
+   |                 ^^^^^^
+
+note:   trigger 1 of 1:
+  --> crates/orchestration/peritus-scheduler/src/state/mutation/insertion_slots.rs:62:22
+   |
+62 |                     !values@[index].spec_dispatch_id().spec_precedes(&id) by {
+   |                      ^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/orchestration/peritus-scheduler/src/state/mutation/insertion_slots.rs:31:17
+   |
+31 | /                 (forall |index: int| 0 <= index < base ==>
+32 | |                     values@[index].spec_dispatch_id().spec_precedes(&id))
+   | |_________________________________________________________________________^
+
+note:   trigger 1 of 1:
+  --> crates/orchestration/peritus-scheduler/src/state/mutation/insertion_slots.rs:32:21
+   |
+32 |                     values@[index].spec_dispatch_id().spec_precedes(&id))
+   |                     ^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/orchestration/peritus-scheduler/src/state/mutation/insertion_slots.rs:33:20
+   |
+33 |                   && (forall |index: int| base + size <= index < values@.len() ==>
+   |  ____________________^
+34 | |                     !values@[index].spec_dispatch_id().spec_precedes(&id))
+   | |__________________________________________________________________________^
+
+note:   trigger 1 of 1:
+  --> crates/orchestration/peritus-scheduler/src/state/mutation/insertion_slots.rs:34:22
+   |
+34 |                     !values@[index].spec_dispatch_id().spec_precedes(&id))
+   |                      ^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/orchestration/peritus-scheduler/src/state/mutation/reservation_command/contracts/non_resurrection/classification.rs:39:5
+   |
+39 | /     exists |reservation_index: int, work_index: int| {
+40 | |         &&& 0 <= reservation_index < state.spec_reservations().len()
+41 | |         &&& state.spec_reservations()[reservation_index].spec_dispatch_id() == dispatch_id
+42 | |         &&& state.spec_reservations()[reservation_index].spec_work_id() == work_id
+...  |
+45 | |         &&& state.spec_work()[work_index].spec_phase() == WorkPhase::Cancelling
+46 | |     }
+   | |_____^
+
+note:   trigger 1 of 1:
+  --> crates/orchestration/peritus-scheduler/src/state/mutation/reservation_command/contracts/non_resurrection/classification.rs:41:13
+   |
+41 |         &&& state.spec_reservations()[reservation_index].spec_dispatch_id() == dispatch_id
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+44 |         &&& state.spec_work()[work_index].spec_definition().spec_id() == work_id
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/orchestration/peritus-scheduler/src/state/mutation/reservation_command/contracts/non_resurrection.rs:108:22
+    |
+108 |       let work_index = choose |work_index: int| {
+    |  ______________________^
+109 | |         &&& 0 <= work_index < after_late_completion.spec_work().len()
+110 | |         &&& after_late_completion.spec_work()[work_index].spec_definition().spec_id() == work_id
+111 | |         &&& after_late_completion.spec_work()[work_index].spec_phase() == WorkPhase::Cancelling
+112 | |     };
+    | |_____^
+
+note:   trigger 1 of 1:
+   --> crates/orchestration/peritus-scheduler/src/state/mutation/reservation_command/contracts/non_resurrection.rs:110:13
+    |
+110 |         &&& after_late_completion.spec_work()[work_index].spec_definition().spec_id() == work_id
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/orchestration/peritus-scheduler/src/state/mutation/reservation_command/contracts/non_resurrection.rs:144:33
+    |
+144 |               let rejected_work = choose |candidate: int| {
+    |  _________________________________^
+145 | |                 &&& super::reservation_at(
+146 | |                     after_late_completion, rejected_reservation, dispatch_id,
+...   |
+153 | |                     != WorkPhase::Cancelling
+154 | |             };
+    | |_____________^
+
+note:   trigger 1 of 1:
+   --> crates/orchestration/peritus-scheduler/src/state/mutation/reservation_command/contracts/non_resurrection.rs:148:21
+    |
+148 |                   &&& super::work_at(
+    |  _____________________^
+149 | |                     after_late_completion, candidate,
+150 | |                     after_late_completion.spec_reservations()[rejected_reservation].spec_work_id(),
+151 | |                 )
+    | |_________________^
+
+note: automatically chose triggers for this expression:
+  --> crates/orchestration/peritus-scheduler/src/state/mutation/reservation_command/contracts/non_resurrection/classification.rs:89:22
+   |
+89 |       let work_index = choose |work_index: int| {
+   |  ______________________^
+90 | |         &&& 0 <= work_index < before.spec_work().len()
+91 | |         &&& before.spec_work()[work_index].spec_definition().spec_id() == work_id
+92 | |         &&& before.spec_work()[work_index].spec_phase() == WorkPhase::Cancelling
+93 | |     };
+   | |_____^
+
+note:   trigger 1 of 1:
+  --> crates/orchestration/peritus-scheduler/src/state/mutation/reservation_command/contracts/non_resurrection/classification.rs:91:13
+   |
+91 |         &&& before.spec_work()[work_index].spec_definition().spec_id() == work_id
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/orchestration/peritus-scheduler/src/state/mutation/work_update/release/phase_relation.rs:86:5
+   |
+86 |     assert forall |index: int| 0 <= index < before.spec_work().len() implies
+   |     ^^^^^^
+
+note:   trigger 1 of 2:
+  --> crates/orchestration/peritus-scheduler/src/state/mutation/work_update/release/phase_relation.rs:87:9
+   |
+87 |         after.spec_work()[index].spec_definition().spec_id()
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^
+
+note:   trigger 2 of 2:
+  --> crates/orchestration/peritus-scheduler/src/state/mutation/work_update/release/phase_relation.rs:88:16
+   |
+88 |             == before.spec_work()[index].spec_definition().spec_id() by {
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/orchestration/peritus-scheduler/src/state/mutation/work_update/release/terminal_relation.rs:101:5
+    |
+101 |     assert forall |index: int| 0 <= index < before.spec_work().len() implies
+    |     ^^^^^^
+
+note:   trigger 1 of 2:
+   --> crates/orchestration/peritus-scheduler/src/state/mutation/work_update/release/terminal_relation.rs:102:9
+    |
+102 |         after.spec_work()[index].spec_definition().spec_id()
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^
+
+note:   trigger 2 of 2:
+   --> crates/orchestration/peritus-scheduler/src/state/mutation/work_update/release/terminal_relation.rs:103:16
+    |
+103 |             == before.spec_work()[index].spec_definition().spec_id() by {
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/orchestration/peritus-scheduler/src/state/mutation/worker_update.rs:111:9
+    |
+111 |         assert forall |index: int| 0 <= index < before.spec_workers().len() implies
+    |         ^^^^^^
+
+note:   trigger 1 of 2:
+   --> crates/orchestration/peritus-scheduler/src/state/mutation/worker_update.rs:112:13
+    |
+112 |             after.spec_workers()[index].spec_descriptor().spec_id()
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note:   trigger 2 of 2:
+   --> crates/orchestration/peritus-scheduler/src/state/mutation/worker_update.rs:113:20
+    |
+113 |                 == before.spec_workers()[index].spec_descriptor().spec_id() by {
+    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: Verus printed one or more automatically chosen quantifier triggers
+      because it had low confidence in the chosen triggers.
+      To suppress these messages, do one of the following:
+        (1) manually annotate a single desired trigger using #[trigger]
+            (example: forall|i: int, j: int| f(i) && #[trigger] g(i) && #[trigger] h(j)),
+        (2) manually annotate multiple desired triggers using #![trigger ...]
+            (example: forall|i: int| #![trigger f(i)] #![trigger g(i)] f(i) && g(i)),
+        (3) accept the automatically chosen trigger using #![auto]
+            (example: forall|i: int, j: int| #![auto] f(i) && g(i) && h(j))
+        (4) use the --triggers-mode silent command-line option to suppress all printing of triggers.
+      (Note: triggers are used by the underlying SMT theorem prover to instantiate quantifiers;
+      the theorem prover instantiates a quantifier whenever some expression matches the
+      pattern specified by one of the quantifier's triggers.)
+  --> crates/orchestration/peritus-scheduler/src/state/ordering.rs:47:13
+   |
+47 | /             forall |index: int| at <= index < values.len() ==>
+48 | |                 !values[index].spec_descriptor().spec_id().spec_precedes(&value.spec_descriptor().spec_id()),
+   | |____________________________________________________________________________________________________________^
+
+verification results:: 627 verified, 1 errors
+error: could not compile `peritus-scheduler` (lib) due to 1 previous error

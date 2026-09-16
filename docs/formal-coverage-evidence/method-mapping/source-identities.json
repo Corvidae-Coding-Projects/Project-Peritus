@@ -1,0 +1,45 @@
+{
+  "base_commit": "bb2f1ccdcc7a09da6c6a47d281ecadf76a6cc959",
+  "sources": [
+    {
+      "path": "verification/obligations.toml",
+      "before_sha256": "d048a2c0fd50e64d2838885d6992aaa38e8930e1537f6a3f2b958f7876faed04",
+      "after_sha256": "6796854430d100cee4a8440f786d995f55540461cf285dbcae806d5fe0a02aeb"
+    },
+    {
+      "path": "xtask/src/ci_shard/proof_scope/report/tests.rs",
+      "before_sha256": "7ec6c8b6e999b8e25b1b9a57cec359fb0b809c31ffb2fa72547f6bfb79561a30",
+      "after_sha256": "0f0bf9361098a2cdab8e2dcc1ca93e7607fb96a64ea3ffdb7d9e64f7a2221a5a"
+    },
+    {
+      "path": "xtask/src/trust/manifest_symbol.rs",
+      "before_sha256": "7c17d39007bd3a9a0d7a99186a296bba3814e22fd262474ba5d82f0f34b92aeb",
+      "after_sha256": "00617c0b8a19945b81a1c77f8ecf5314f0d0bb9d79e0d995e1f76da93bfe3948"
+    },
+    {
+      "path": "xtask/src/trust/manifest_symbol/owner.rs",
+      "before_sha256": null,
+      "after_sha256": "888c171ede0ddae297b93c2075269e7a8c117bf252e325f0961743d15ee9c7ca"
+    },
+    {
+      "path": "xtask/src/trust/manifest_tests.rs",
+      "before_sha256": "55374d2f0c0f5573349db78f6139211b5b80b0c2aa5cb0132963574b8e54fe2f",
+      "after_sha256": "ad99fcb12d335ad5fad7859ef9d86cfdea475ad5770eeef138b8458e454afa93"
+    },
+    {
+      "path": "xtask/src/trust/manifest_tests/method_owners.rs",
+      "before_sha256": null,
+      "after_sha256": "d8a1508f8e383ea1426ca6e7ce569400e6fc0d5e21ef361cac9772c582c710a2"
+    },
+    {
+      "path": "xtask/src/trust_lexer.rs",
+      "before_sha256": "45637154eaf7eb1ca2cb1eb52d14ae98ffea7cf95b24c655b175b7a183ff595b",
+      "after_sha256": "a54fee1a5d25f4edde17b04eb8d90e314b1a27d9d3bd82a814b0831eac3690db"
+    },
+    {
+      "path": "xtask/src/trust_lexer/declarations.rs",
+      "before_sha256": null,
+      "after_sha256": "7b09703862c06d560fc242f320d56f698591615394af66bd951c403a96410692"
+    }
+  ]
+}

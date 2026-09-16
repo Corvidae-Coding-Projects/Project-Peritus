@@ -37,12 +37,11 @@ impl RegisteredEventFrame {
                     "event frame family is not registered by B3",
                 )
             })?;
-        if registered.schema_version != header.schema_version()
-            || registered.role() != MessageRole::Event
+        if !registered.supports(header.schema_version()) || registered.role() != MessageRole::Event
         {
             return Err(reject(
                 SubscriptionErrorKind::InvalidInput,
-                "frame is not a current registered B3 event",
+                "frame is not a supported registered B3 event",
             ));
         }
         let digest = sha256(&bytes);

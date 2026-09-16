@@ -115,15 +115,24 @@ impl SecurityChecks {
         blockers_clear: CheckResult,
         evidence_complete: CheckResult,
     ) -> (checks: Self)
-        ensures checks.spec_complete() == crate::model::security_ready(
-            candidate_bound.spec_complete(),
-            requirements_complete.spec_complete(),
-            criteria_complete.spec_complete(),
-            inventories_complete.spec_complete(),
-            independent_review_complete.spec_complete(),
-            blockers_clear.spec_complete(),
-            evidence_complete.spec_complete(),
-        ),
+        ensures
+            checks.spec_candidate_bound() == candidate_bound.spec_complete(),
+            checks.spec_requirements_complete() == requirements_complete.spec_complete(),
+            checks.spec_criteria_complete() == criteria_complete.spec_complete(),
+            checks.spec_inventories_complete() == inventories_complete.spec_complete(),
+            checks.spec_independent_review_complete()
+                == independent_review_complete.spec_complete(),
+            checks.spec_blockers_clear() == blockers_clear.spec_complete(),
+            checks.spec_evidence_complete() == evidence_complete.spec_complete(),
+            checks.spec_complete() == crate::model::security_ready(
+                candidate_bound.spec_complete(),
+                requirements_complete.spec_complete(),
+                criteria_complete.spec_complete(),
+                inventories_complete.spec_complete(),
+                independent_review_complete.spec_complete(),
+                blockers_clear.spec_complete(),
+                evidence_complete.spec_complete(),
+            ),
     {
         Self {
             candidate_bound,
@@ -205,20 +214,44 @@ impl SecurityDecision {
         checks: SecurityChecks,
     ) -> (decision: Self)
         ensures
-            decision.spec_is_ready() ==> checks.spec_complete(),
-            decision.spec_is_ready() ==> decision.spec_unmet_conditions().len() == 0,
+            (decision.spec_verdict() == SecurityVerdict::Ready)
+                == (unmet@.len() == 0 && checks.spec_complete()),
+            decision.spec_is_ready() == (unmet@.len() == 0 && checks.spec_complete()),
+            decision.spec_checks_complete() == checks.spec_complete(),
+            decision.spec_candidate_bound() == checks.spec_candidate_bound(),
+            decision.spec_requirements_complete() == checks.spec_requirements_complete(),
+            decision.spec_criteria_complete() == checks.spec_criteria_complete(),
+            decision.spec_inventories_complete() == checks.spec_inventories_complete(),
+            decision.spec_independent_review_complete()
+                == checks.spec_independent_review_complete(),
+            decision.spec_blockers_clear() == checks.spec_blockers_clear(),
+            decision.spec_evidence_complete() == checks.spec_evidence_complete(),
             decision.spec_unmet_conditions() == unmet@,
     {
         let ready = unmet.is_empty() && checks.is_complete();
         let verdict = if ready { SecurityVerdict::Ready } else { SecurityVerdict::NotReady };
         let decision = Self { verdict, unmet, checks };
+        reveal(SecurityDecision::spec_verdict);
         reveal(SecurityDecision::spec_is_ready);
+        reveal(SecurityDecision::spec_checks_complete);
+        reveal(SecurityDecision::spec_candidate_bound);
+        reveal(SecurityDecision::spec_requirements_complete);
+        reveal(SecurityDecision::spec_criteria_complete);
+        reveal(SecurityDecision::spec_inventories_complete);
+        reveal(SecurityDecision::spec_independent_review_complete);
+        reveal(SecurityDecision::spec_blockers_clear);
+        reveal(SecurityDecision::spec_evidence_complete);
+        reveal(SecurityDecision::spec_unmet_conditions);
         decision
     }
 
     /// Returns the H0-only readiness disposition.
     #[must_use]
-    pub const fn verdict(&self) -> SecurityVerdict { self.verdict }
+    pub const fn verdict(&self) -> (verdict: SecurityVerdict)
+        ensures verdict == self.spec_verdict(),
+    {
+        self.verdict
+    }
 
     /// Returns true exactly when every phase is complete and no unmet condition remains.
     #[must_use]
@@ -240,6 +273,9 @@ impl SecurityDecision {
             && self.unmet@.len() == 0
             && self.checks.spec_complete()
     }
+
+    /// Specification view of the raw H0 verdict stored by the evaluator.
+    pub closed spec fn spec_verdict(&self) -> SecurityVerdict { self.verdict }
 
     /// Specification view of unmet conditions.
     pub closed spec fn spec_unmet_conditions(&self) -> Seq<UnmetSecurityCondition> { self.unmet@ }

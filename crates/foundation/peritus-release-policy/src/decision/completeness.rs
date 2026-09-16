@@ -1,27 +1,84 @@
 //! Executable refinements of final assessment completeness.
 
 use super::{CriterionAssessment, EvidenceAssessment, QualificationAssessment};
+#[cfg(verus_only)]
+use super::{Diagnostic, FindingAssessment, ReviewAssessment};
 use vstd::prelude::*;
 
 verus! {
 
+pub(crate) open spec fn evaluation_components_ready(
+    criteria: &[CriterionAssessment; 25],
+    evidence: &[EvidenceAssessment; 44],
+    qualifications: &[QualificationAssessment; 4],
+    reviews: ReviewAssessment,
+    findings: FindingAssessment,
+    diagnostics: Seq<Diagnostic>,
+) -> bool {
+    spec_criteria_complete(criteria)
+        && spec_evidence_complete(evidence)
+        && spec_qualifications_complete(qualifications)
+        && reviews.spec_is_satisfied()
+        && findings.spec_is_satisfied()
+        && diagnostics.len() == 0
+}
+
+pub(crate) open spec fn spec_criteria_complete(
+    values: &[CriterionAssessment; 25],
+) -> bool {
+    values[0].spec_is_satisfied() && values[1].spec_is_satisfied()
+        && values[2].spec_is_satisfied() && values[3].spec_is_satisfied()
+        && values[4].spec_is_satisfied() && values[5].spec_is_satisfied()
+        && values[6].spec_is_satisfied() && values[7].spec_is_satisfied()
+        && values[8].spec_is_satisfied() && values[9].spec_is_satisfied()
+        && values[10].spec_is_satisfied() && values[11].spec_is_satisfied()
+        && values[12].spec_is_satisfied() && values[13].spec_is_satisfied()
+        && values[14].spec_is_satisfied() && values[15].spec_is_satisfied()
+        && values[16].spec_is_satisfied() && values[17].spec_is_satisfied()
+        && values[18].spec_is_satisfied() && values[19].spec_is_satisfied()
+        && values[20].spec_is_satisfied() && values[21].spec_is_satisfied()
+        && values[22].spec_is_satisfied() && values[23].spec_is_satisfied()
+        && values[24].spec_is_satisfied()
+}
+
+pub(crate) open spec fn spec_evidence_complete(
+    values: &[EvidenceAssessment; 44],
+) -> bool {
+    values[0].spec_is_satisfied() && values[1].spec_is_satisfied()
+        && values[2].spec_is_satisfied() && values[3].spec_is_satisfied()
+        && values[4].spec_is_satisfied() && values[5].spec_is_satisfied()
+        && values[6].spec_is_satisfied() && values[7].spec_is_satisfied()
+        && values[8].spec_is_satisfied() && values[9].spec_is_satisfied()
+        && values[10].spec_is_satisfied() && values[11].spec_is_satisfied()
+        && values[12].spec_is_satisfied() && values[13].spec_is_satisfied()
+        && values[14].spec_is_satisfied() && values[15].spec_is_satisfied()
+        && values[16].spec_is_satisfied() && values[17].spec_is_satisfied()
+        && values[18].spec_is_satisfied() && values[19].spec_is_satisfied()
+        && values[20].spec_is_satisfied() && values[21].spec_is_satisfied()
+        && values[22].spec_is_satisfied() && values[23].spec_is_satisfied()
+        && values[24].spec_is_satisfied() && values[25].spec_is_satisfied()
+        && values[26].spec_is_satisfied() && values[27].spec_is_satisfied()
+        && values[28].spec_is_satisfied() && values[29].spec_is_satisfied()
+        && values[30].spec_is_satisfied() && values[31].spec_is_satisfied()
+        && values[32].spec_is_satisfied() && values[33].spec_is_satisfied()
+        && values[34].spec_is_satisfied() && values[35].spec_is_satisfied()
+        && values[36].spec_is_satisfied() && values[37].spec_is_satisfied()
+        && values[38].spec_is_satisfied() && values[39].spec_is_satisfied()
+        && values[40].spec_is_satisfied() && values[41].spec_is_satisfied()
+        && values[42].spec_is_satisfied() && values[43].spec_is_satisfied()
+}
+
+pub(crate) open spec fn spec_qualifications_complete(
+    values: &[QualificationAssessment; 4],
+) -> bool {
+    values[0].spec_is_satisfied() && values[1].spec_is_satisfied()
+        && values[2].spec_is_satisfied() && values[3].spec_is_satisfied()
+}
+
 pub(super) const fn criteria_complete(
     values: &[CriterionAssessment; 25],
 ) -> (complete: bool)
-    ensures complete == (
-        values[0].spec_is_satisfied() && values[1].spec_is_satisfied()
-            && values[2].spec_is_satisfied() && values[3].spec_is_satisfied()
-            && values[4].spec_is_satisfied() && values[5].spec_is_satisfied()
-            && values[6].spec_is_satisfied() && values[7].spec_is_satisfied()
-            && values[8].spec_is_satisfied() && values[9].spec_is_satisfied()
-            && values[10].spec_is_satisfied() && values[11].spec_is_satisfied()
-            && values[12].spec_is_satisfied() && values[13].spec_is_satisfied()
-            && values[14].spec_is_satisfied() && values[15].spec_is_satisfied()
-            && values[16].spec_is_satisfied() && values[17].spec_is_satisfied()
-            && values[18].spec_is_satisfied() && values[19].spec_is_satisfied()
-            && values[20].spec_is_satisfied() && values[21].spec_is_satisfied()
-            && values[22].spec_is_satisfied() && values[23].spec_is_satisfied()
-            && values[24].spec_is_satisfied())
+    ensures complete == spec_criteria_complete(values)
 {
     values[0].is_satisfied() && values[1].is_satisfied()
         && values[2].is_satisfied() && values[3].is_satisfied()
@@ -41,29 +98,7 @@ pub(super) const fn criteria_complete(
 pub(super) const fn evidence_complete(
     values: &[EvidenceAssessment; 44],
 ) -> (complete: bool)
-    ensures complete == (
-        values[0].spec_is_satisfied() && values[1].spec_is_satisfied()
-            && values[2].spec_is_satisfied() && values[3].spec_is_satisfied()
-            && values[4].spec_is_satisfied() && values[5].spec_is_satisfied()
-            && values[6].spec_is_satisfied() && values[7].spec_is_satisfied()
-            && values[8].spec_is_satisfied() && values[9].spec_is_satisfied()
-            && values[10].spec_is_satisfied() && values[11].spec_is_satisfied()
-            && values[12].spec_is_satisfied() && values[13].spec_is_satisfied()
-            && values[14].spec_is_satisfied() && values[15].spec_is_satisfied()
-            && values[16].spec_is_satisfied() && values[17].spec_is_satisfied()
-            && values[18].spec_is_satisfied() && values[19].spec_is_satisfied()
-            && values[20].spec_is_satisfied() && values[21].spec_is_satisfied()
-            && values[22].spec_is_satisfied() && values[23].spec_is_satisfied()
-            && values[24].spec_is_satisfied() && values[25].spec_is_satisfied()
-            && values[26].spec_is_satisfied() && values[27].spec_is_satisfied()
-            && values[28].spec_is_satisfied() && values[29].spec_is_satisfied()
-            && values[30].spec_is_satisfied() && values[31].spec_is_satisfied()
-            && values[32].spec_is_satisfied() && values[33].spec_is_satisfied()
-            && values[34].spec_is_satisfied() && values[35].spec_is_satisfied()
-            && values[36].spec_is_satisfied() && values[37].spec_is_satisfied()
-            && values[38].spec_is_satisfied() && values[39].spec_is_satisfied()
-            && values[40].spec_is_satisfied() && values[41].spec_is_satisfied()
-            && values[42].spec_is_satisfied() && values[43].spec_is_satisfied())
+    ensures complete == spec_evidence_complete(values)
 {
     values[0].is_satisfied() && values[1].is_satisfied()
         && values[2].is_satisfied() && values[3].is_satisfied()
@@ -92,9 +127,7 @@ pub(super) const fn evidence_complete(
 pub(super) const fn qualifications_complete(
     values: &[QualificationAssessment; 4],
 ) -> (complete: bool)
-    ensures complete == (
-        values[0].spec_is_satisfied() && values[1].spec_is_satisfied()
-            && values[2].spec_is_satisfied() && values[3].spec_is_satisfied())
+    ensures complete == spec_qualifications_complete(values)
 {
     values[0].is_satisfied() && values[1].is_satisfied()
         && values[2].is_satisfied() && values[3].is_satisfied()

@@ -1,0 +1,50 @@
+{"candidate_commit": "65f16e2933b70305de865750931bb05fe9afb64d", "candidate_tree": "ae2a43f9a9b73f5fec944d39cf165a8b3ec4df20", "environment": {"CARGO_BUILD_JOBS": "1", "CCACHE_DISABLE": "1", "RUST_TEST_THREADS": "1"}, "gate": {"command": "cargo test --package peritus-kernel --all-targets --all-features --locked", "invocation": ["cargo", "test", "--package", "peritus-kernel", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "output": "035-peritus-kernel-ordinary-test.log", "owning_crate": "peritus-kernel", "started_at": "2026-09-13T15:20:14.081275Z"}, "plan_sha256": "7fc101b7f8284fbe3818461a8166d73d3425f369120b43c1cbf1b43809a6b7c9"}
+
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.17s
+     Running unittests src/lib.rs (target/debug/deps/peritus_kernel-fe92ab921684d3f9)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/adversarial.rs (target/debug/deps/adversarial-abc295031e06652c)
+
+running 6 tests
+test acceptance_rejects_missing_stale_and_untracked_evidence ... ok
+test action_authorization_requires_the_exact_capability_use ... ok
+test incomplete_current_evidence_enters_fixer_state_without_implicit_success ... ok
+test revision_forks_and_replayed_identities_preserve_the_aggregate ... ok
+test run_and_attempt_admission_fail_closed_on_budget_inputs ... ok
+test waiver_grant_rejects_a_finding_from_another_review_cycle ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/lifecycle_trace.rs (target/debug/deps/lifecycle_trace-4711b108d0ef5073)
+
+running 1 test
+test complete_writer_action_review_acceptance_trace_is_causal ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/reference_model.rs (target/debug/deps/reference_model-644c2089732765a3)
+
+running 1 test
+test generated_traces_match_reference_after_each_step_and_first_rejection ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/transition_matrix.rs (target/debug/deps/transition_matrix-f63aaa3814f6d1c8)
+
+running 7 tests
+test approved_exact_revision_waiver_can_participate_in_acceptance ... ok
+test attempt_turn_and_action_families_cover_progress_failure_and_rejection ... ok
+test missing_parents_and_illegal_child_edges_fail_without_events ... ok
+test needs_changes_attempt_resumes_only_through_the_explicit_fixer_edge ... ok
+test review_waiver_and_acceptance_families_cover_terminal_and_illegal_edges ... ok
+test run_pause_resume_and_all_non_acceptance_terminal_edges_are_explicit ... ok
+test session_and_run_control_matrix_accepts_only_declared_edges ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+GATE DRIVER RESULT: {"command": "cargo test --package peritus-kernel --all-targets --all-features --locked", "command_exit_code": 0, "elapsed_seconds": 0.265, "exit_code": 0, "finished_at": "2026-09-13T15:20:14.346736Z", "invocation": ["cargo", "test", "--package", "peritus-kernel", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "output": "035-peritus-kernel-ordinary-test.log", "owning_crate": "peritus-kernel", "result": "passed", "started_at": "2026-09-13T15:20:14.081275Z"}

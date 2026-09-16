@@ -1,25 +1,68 @@
 //! Dependency validation and conservative transitive invalidation.
 
-use super::{WorkingEntry, WorkingEntryStatus, WorkingEnvironment, WorkingError, WorkingState};
+pub(super) use super::invalidation::invalidate_entries;
+#[cfg(verus_only)]
+pub(super) use super::invalidation_model::{spec_invalidation_result, spec_status_view, spec_unusable};
+use super::{WorkingEntry, WorkingEntryStatus, WorkingError, WorkingState};
 use crate::ContextNodeId;
 use vstd::prelude::*;
 
 verus! {
+pub(super) open spec fn spec_find_entry_from(
+    entries: Seq<WorkingEntry>,
+    id: ContextNodeId,
+    start: int,
+) -> Option<int>
+    decreases entries.len() - start,
+{
+    if start < 0 || start >= entries.len() {
+        None
+    } else if entries[start].spec_id().spec_matches(&id) {
+        Some(start)
+    } else {
+        spec_find_entry_from(entries, id, start + 1)
+    }
+}
+
 pub(super) fn find_entry(entries: &[WorkingEntry], id: ContextNodeId) -> (found: Option<usize>)
-    ensures match found { Some(index) => index < entries.len(), None => true },
+    ensures match found {
+        Some(index) => index < entries.len()
+            && Some(index as int) == spec_find_entry_from(entries@, id, 0),
+        None => spec_find_entry_from(entries@, id, 0) == None,
+    },
 {
     let mut index = 0;
     while index < entries.len()
-        invariant index <= entries.len(),
+        invariant
+            index <= entries.len(),
+            spec_find_entry_from(entries@, id, index as int)
+                == spec_find_entry_from(entries@, id, 0),
         decreases entries.len() - index,
     {
-        if entries[index].id() == id { return Some(index); }
+        let candidate = entries[index].id();
+        if candidate.matches(&id) {
+            reveal_with_fuel(spec_find_entry_from, 1);
+            assert(candidate == entries@[index as int].spec_id());
+            assert(spec_find_entry_from(entries@, id, index as int) == Some(index as int));
+            return Some(index);
+        }
+        reveal_with_fuel(spec_find_entry_from, 1);
+        assert(candidate == entries@[index as int].spec_id());
+        assert(spec_find_entry_from(entries@, id, index as int)
+            == spec_find_entry_from(entries@, id, index as int + 1));
         index += 1;
     }
+    reveal_with_fuel(spec_find_entry_from, 1);
+    assert(spec_find_entry_from(entries@, id, index as int).is_none());
     None
 }
 
-pub(super) fn validate_references(state: &WorkingState, entry: &WorkingEntry) -> Result<(), WorkingError> {
+pub(super) fn validate_references(
+    state: &WorkingState,
+    entry: &WorkingEntry,
+) -> (result: Result<(), WorkingError>)
+    ensures result.is_err() ==> result.unwrap_err().spec_is_delta_error(),
+{
     let links = entry.links();
     let supports = links.supports();
     let contradicts = links.contradicts();
@@ -43,7 +86,9 @@ pub(super) fn validate_references(state: &WorkingState, entry: &WorkingEntry) ->
 }
 
 /// Kahn elimination over dependency and supersession edges. No recursion or unbounded stack.
-pub(super) fn validate_graph(entries: &[WorkingEntry]) -> Result<(), WorkingError> {
+pub(super) fn validate_graph(entries: &[WorkingEntry]) -> (result: Result<(), WorkingError>)
+    ensures result.is_err() ==> result.unwrap_err().spec_is_delta_error(),
+{
     let mut incoming = vec![0usize; entries.len()];
     let mut index = 0;
     while index < entries.len()
@@ -112,62 +157,10 @@ fn edges(entry: &WorkingEntry) -> Vec<ContextNodeId> {
     edges
 }
 
-pub(super) fn invalidate_entries(entries: &[WorkingEntry], environment: &WorkingEnvironment, through: u64) -> Vec<WorkingEntry> {
-    let mut result = Vec::new();
-    let mut position = 0;
-    while position < entries.len()
-        invariant position <= entries.len(), result.len() == position,
-        decreases entries.len() - position,
-    {
-        result.push(entries[position].clone());
-        position += 1;
-    }
-    let mut pass = 0;
-    while pass < entries.len()
-        invariant pass <= entries.len(), result.len() == entries.len(),
-        decreases entries.len() - pass,
-    {
-        let mut changed = false;
-        let mut index = 0;
-        while index < result.len()
-            invariant index <= result.len(), result.len() == entries.len(),
-            decreases result.len() - index,
-        {
-            if result[index].status == WorkingEntryStatus::Stale
-                && !result[index].validity.holds(environment)
-            {
-                result[index].stale_through = through;
-            }
-            if !unusable(result[index].status)
-                && (!result[index].validity.holds(environment) || stale_dependency(&result, &result[index]))
-            {
-                result[index].status = WorkingEntryStatus::Stale;
-                result[index].stale_through = through;
-                changed = true;
-            }
-            index += 1;
-        }
-        if !changed { break; }
-        pass += 1;
-    }
-    result
-}
-
-fn stale_dependency(entries: &[WorkingEntry], entry: &WorkingEntry) -> bool {
-    let dependencies = entry.links.depends_on();
-    let mut index = 0;
-    while index < dependencies.len()
-        invariant index <= dependencies.len(),
-        decreases dependencies.len() - index,
-    {
-        let Some(target) = find_entry(entries, dependencies[index]) else { return true; };
-        if unusable(entries[target].status) { return true; }
-        index += 1;
-    }
-    false
-}
-
-pub(super) const fn unusable(status: WorkingEntryStatus) -> bool {
+pub(super) const fn unusable(status: WorkingEntryStatus) -> (unusable: bool)
+    ensures unusable == spec_unusable(status),
+{
     matches!(status, WorkingEntryStatus::Stale | WorkingEntryStatus::Superseded)
 }
+
 }

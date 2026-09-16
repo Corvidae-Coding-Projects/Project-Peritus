@@ -14,6 +14,51 @@ use std::{
     sync::{Arc, atomic::AtomicBool},
 };
 
+#[cfg(test)]
+pub struct FinishBarrier {
+    reached: tokio::sync::Notify,
+    release: tokio::sync::Notify,
+}
+
+#[cfg(test)]
+impl FinishBarrier {
+    pub async fn reached(&self) {
+        self.reached.notified().await;
+    }
+
+    pub fn release(&self) {
+        self.release.notify_one();
+    }
+}
+
+#[cfg(test)]
+static FINISH_BARRIERS: std::sync::LazyLock<
+    std::sync::Mutex<std::collections::BTreeMap<[u8; 16], Arc<FinishBarrier>>>,
+> = std::sync::LazyLock::new(|| std::sync::Mutex::new(std::collections::BTreeMap::new()));
+
+#[cfg(test)]
+pub fn inject_finish_barrier(run_id: RunId) -> Arc<FinishBarrier> {
+    let barrier = Arc::new(FinishBarrier {
+        reached: tokio::sync::Notify::new(),
+        release: tokio::sync::Notify::new(),
+    });
+    FINISH_BARRIERS
+        .lock()
+        .expect("finish barrier lock")
+        .insert(run_id.into_bytes(), Arc::clone(&barrier));
+    barrier
+}
+
+#[cfg(test)]
+async fn pause_before_finish(run_id: RunId) {
+    let barrier =
+        FINISH_BARRIERS.lock().ok().and_then(|mut values| values.remove(&run_id.into_bytes()));
+    if let Some(barrier) = barrier {
+        barrier.reached.notify_one();
+        barrier.release.notified().await;
+    }
+}
+
 impl ProductRunService {
     #[allow(
         clippy::too_many_arguments,
@@ -99,6 +144,8 @@ impl ProductRunService {
                     Some(mode) => ProductRunner::converse(input, mode, observer).await,
                     None => ProductRunner::run(input, observer).await,
                 };
+                #[cfg(test)]
+                pause_before_finish(run_id).await;
                 service.finish(run_id, result);
                 if service.pending_interactive_input(run_id) {
                     let _ = service.retry(run_id).await;

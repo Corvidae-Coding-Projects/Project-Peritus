@@ -1,0 +1,47 @@
+{
+  "schema": "peritus.formal-coverage.review-checkpoint",
+  "schema_version": 1,
+  "status": "reviewed-increment-not-obligation-discharge",
+  "audit_base": "1aa9282ff2cfcbf8fac325f11f157f408d33ee30",
+  "review_date": "2026-09-12",
+  "implementation_agent": "/root/sol_acceptance_completion",
+  "implementation_model": "gpt-5.6-sol",
+  "implementation_reasoning_effort": "xhigh",
+  "reviewer": "/root",
+  "scope": "Exact final/unexpected approval semantics, no diagnostic growth on complete evaluator phases, and input-defined acceptance equivalence for the actual evaluator and decision constructor.",
+  "review_procedure": [
+    "Read independent approval predicates, executable lookup/approval routines, evaluator input contract and decision constructor postconditions.",
+    "Reviewed new no-growth invariants in freshness, gates, artifacts, review coverage, supplied waiver and blocker phases against their actual diagnostic mutations.",
+    "Checked existing canonical uniqueness justifies preserved ordinary unexpected-approval behavior after using existential witness accumulation.",
+    "Read late-byte identity, priority and valid-admission regression additions; independently reran the combined quality-policy/kernel all-target/all-feature suite.",
+    "Checked all fourteen final source hashes and reviewed the successful strict verifier, test, Clippy and formatter output."
+  ],
+  "results": {
+    "quality_policy_verified": 235,
+    "verus_errors": 0,
+    "implementation_tests_passed": 40,
+    "independent_quality_tests_passed": 40,
+    "independent_kernel_tests_passed": 14,
+    "strict_clippy": "passed",
+    "package_format": "passed"
+  },
+  "independent_test_command": "CCACHE_DIR=/tmp/peritus-formal-scope-ccache cargo +1.97.1 test --locked --all-features --all-targets --package peritus-quality-policy --package peritus-kernel",
+  "limits": [
+    "The fourteen-file manifest identifies this increment; it is not the complete compiler-input snapshot or a committed candidate identity.",
+    "Input-defined acceptance and checks completeness are equivalent to the actual evaluator result; complete inputs imply empty diagnostics. Complete exact diagnostic order/multiplicity for every failing phase is not claimed.",
+    "Final approval failure selection and its exact single diagnostic append are proved. Unexpected approval completeness and diagnostic growth/preservation are proved; exact actor values are additionally regression-tested.",
+    "Binding here compares AcceptanceSpecId. The kernel separately checks its stored contract digest/binding in preflight.",
+    "The predicate evaluates supplied canonical typed observations; it does not authenticate actors, signatures, external observations or digest provenance.",
+    "The concurrent workspace source-layout run reported two over-budget release-policy files outside this increment; global layout compliance remains pending.",
+    "Prior changes in shared files have separate retained review history. No obligation discharge, exclusion or proof-impact approval is created."
+  ],
+  "artifacts": {
+    "source-sha256.txt": "cb24c627a4e430aeb3333f98ae7e5386b4fa729d7dc9d4872a4ccf75a8b47a55",
+    "verus-output.txt": "9e4f8a32fe15d82d08f324dc94a15fc429769ffe3d75672f4db72953a3b928fb",
+    "implementation-tests.txt": "50467e0db845574637341303d4bb8dc9dcbdd3a6c38faeaaf2494732ac87a75b",
+    "independent-integration-tests.txt": "b537336cbc67cef2d81c8e7aedd8eebab2da271afffec4a3ff4e3bbff4ec8e6b",
+    "clippy-output.txt": "85e64d124a6c1f5226deaa411fc94fb48094c28a8056b750908b38f69709e067",
+    "format-output.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "implementation-commands.txt": "393ee7cbf10634650959883db4130d4ff07ef38bd3aff4a6a643fd3bd4a4fdc3"
+  }
+}

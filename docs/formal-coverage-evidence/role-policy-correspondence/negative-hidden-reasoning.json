@@ -1,0 +1,28 @@
+{
+  "mutation": "actual reviewer visible table admits HiddenReasoning",
+  "path": "/tmp/peritus-parent-obligations-proof.6ib_z8mo/crates/orchestration/peritus-role/src/context_policy/tables.rs",
+  "original_sha256": "9e0148ee986c3c5cb193d6e61e39184e095f96b623d80bf931196e0cb40ee440",
+  "mutated_sha256": "70b8758f4e398b40ba58e71f613dedee100ee67df7e6a907b56f79701fe94794",
+  "command": [
+    "cargo",
+    "verus",
+    "verify",
+    "--package",
+    "peritus-role",
+    "--all-features",
+    "--locked",
+    "--check-toolchain",
+    "--fwd-verus-args-to",
+    "roots",
+    "--",
+    "--no-cheating",
+    "--rlimit",
+    "20"
+  ],
+  "cwd": "/tmp/peritus-parent-obligations-proof.6ib_z8mo",
+  "exit_code": 101,
+  "log": "/tmp/peritus-parent-role-policy-negative-hidden-reasoning2.log",
+  "restored_all17_source_hashes": true,
+  "restored_exit_code": 0,
+  "restored_log": "/tmp/peritus-parent-role-policy-verus14-restored.log"
+}

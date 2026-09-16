@@ -7,6 +7,7 @@
 mod canonical;
 mod command;
 mod completion;
+mod control;
 #[cfg(not(verus_only))]
 mod developer;
 mod developer_interaction;
@@ -20,6 +21,7 @@ mod reducer;
 mod runtime;
 mod state;
 mod tools;
+mod usage;
 mod verified;
 
 #[cfg(feature = "protocol-bridge")]
@@ -46,15 +48,19 @@ pub use identity::{AgentBinding, ModelCallId, ProfileRevision, SafeText, ToolOrd
 pub use limits::{AgentCounters, AgentLimitDimension, AgentLimits};
 pub use phase::{ActivePhase, AgentPhase, TerminalKind};
 pub use reducer::{AgentTransition, reduce, replay, start};
+#[cfg(all(not(verus_only), feature = "protocol-bridge"))]
+pub use runtime::{
+    AGENT_STATE_NAMESPACE, AgentDriver, AgentDriverError, AgentDurabilityError, AgentReplay,
+    CommittedAgentStep, ProviderAdvance, RecoveryReport, TransitionIdentity, agent_aggregate_key,
+    agent_state_key, commit_agent_transition, load_agent_replay,
+};
 #[cfg(not(verus_only))]
 pub use runtime::{
-    AGENT_STATE_NAMESPACE, AgentBudgetError, AgentBudgetPlan, AgentBudgetPort,
-    AgentBudgetPortError, AgentBudgetReservation, AgentBudgetState, AgentDriver, AgentDriverError,
-    AgentDurabilityError, AgentReplay, CommittedAgentStep, ContextDriveError, ContextPreparation,
-    MemorySelection, ModelAdvance, ModelDriveError, ModelSession, ProviderAdvance, RecoveryReport,
-    RuntimeToolPhase, RuntimeToolSlot, ToolBatchCoordinator, ToolDispatchAdvance, ToolDriveError,
-    ToolInvocationPlan, TransitionIdentity, agent_aggregate_key, agent_state_key,
-    commit_agent_transition, load_agent_replay, prepare_context, render_messages,
+    AgentBudgetError, AgentBudgetPlan, AgentBudgetPort, AgentBudgetPortError,
+    AgentBudgetReservation, AgentBudgetState, ContextDriveError, ContextPreparation,
+    MemorySelection, ModelAdvance, ModelDriveError, ModelSession, RuntimeToolPhase,
+    RuntimeToolSlot, ToolBatchCoordinator, ToolDispatchAdvance, ToolDriveError, ToolInvocationPlan,
+    prepare_context, render_messages,
 };
 pub use state::{AgentFailure, AgentFailureKind, AgentTurnState, ModelState};
 pub use tools::{

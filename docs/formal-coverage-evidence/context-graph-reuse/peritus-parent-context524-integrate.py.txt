@@ -1,0 +1,72 @@
+import hashlib
+import json
+import os
+from pathlib import Path
+import shutil
+import subprocess
+
+root = Path('/home/doll/Project-Peritus/.worktrees/formal-coverage')
+package = Path('crates/orchestration/peritus-context')
+frozen = Path('/tmp/peritus-sol-context-cycle-fix-final-source-003/peritus-context')
+prefix = '/tmp/peritus-parent-context524-'
+sha = lambda p: hashlib.sha256(p.read_bytes()).hexdigest()
+
+def manifest(path):
+    return {str(Path(name)): digest for digest, name in
+            (line.split('  ', 1) for line in Path(path).read_text().splitlines())}
+
+def check(base, entries):
+    observed = {str(p.relative_to(base)) for p in base.rglob('*') if p.is_file()}
+    assert observed == entries.keys(), (str(base), observed - entries.keys(), entries.keys() - observed)
+    for name, digest in entries.items():
+        assert sha(base / name) == digest, name
+
+prior = manifest('/tmp/peritus-sol-context-preimage-full-package-20260913T004133Z.sha256')
+final = manifest('/tmp/peritus-parent-context55-to-524-full-package.sha256')
+changed = manifest('/tmp/peritus-parent-context55-to-524-changed.sha256')
+assert len(prior) == 55 and len(final) == 72 and len(changed) == 25
+assert prior.keys() <= final.keys()
+assert changed.keys() == {name for name in final if final[name] != prior.get(name)}
+assert sha(Path('/tmp/peritus-sol-context-original481-independent-review-20260913T001.md')) == 'a097ed3b5be302964c17f9beeda5cc6ea5578f068532fb56b1eb8fa89e83c4aa'
+assert Path(prefix + 'independent-review.md').is_file()
+check(root / package, prior)
+check(frozen, final)
+for name, digest in manifest('/tmp/peritus-parent-context-final3-dependency-source.sha256').items():
+    assert sha(root / name) == digest, name
+for name in changed:
+    dest = root / package / name
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(frozen / name, dest)
+check(root / package, final)
+env = dict(os.environ, CARGO_BUILD_JOBS='1', CCACHE_DISABLE='1', CARGO_TARGET_DIR=str(root / 'target'))
+result = {'cwd': str(root), 'prior_files_checked': 55, 'final_files_checked': 72,
+          'changed_files': 25, 'parent_review_sha256': sha(Path(prefix + 'independent-review.md')),
+          'environment': {k: env[k] for k in ['CARGO_BUILD_JOBS', 'CCACHE_DISABLE', 'CARGO_TARGET_DIR']},
+          'commands': []}
+record = Path(prefix + 'qualification-integrated.json')
+commands = [
+    ('verus', ['cargo', 'verus', 'verify', '--package', 'peritus-context', '--all-features', '--locked',
+               '--check-toolchain', '--fwd-verus-args-to', 'roots', '--', '--no-cheating', '--rlimit', '20', '--num-threads', '2']),
+    ('tests-default', ['cargo', 'test', '--package', 'peritus-context', '--locked']),
+    ('tests-all', ['cargo', 'test', '--package', 'peritus-context', '--all-features', '--locked']),
+    ('clippy', ['cargo', 'clippy', '--package', 'peritus-context', '--all-targets', '--all-features', '--locked', '--', '-D', 'warnings']),
+    ('fmt', ['cargo', 'fmt', '--package', 'peritus-context', '--', '--check']),
+    ('caller-tests', ['cargo', 'test', '--package', 'peritus-agent', '--package', 'peritus-product-runner', '--all-features', '--lib', '--locked', 'context']),
+    ('api', [str(root / 'target/debug/xtask'), 'ordinary-api-check']),
+    ('layout', [str(root / 'target/debug/xtask'), 'source-layout-check']),
+]
+record.write_text(json.dumps(result, indent=2) + '\n')
+for label, command in commands:
+    check(root / package, final)
+    log = Path(prefix + label + '-integrated.log')
+    print('START ' + label, flush=True)
+    with log.open('w') as out:
+        run = subprocess.run(command, cwd=root, env=env, stdout=out, stderr=subprocess.STDOUT, timeout=600)
+    check(root / package, final)
+    result['commands'].append({'label': label, 'command': command, 'log': str(log), 'exit_code': run.returncode})
+    record.write_text(json.dumps(result, indent=2) + '\n')
+    print(label + ' exit=' + str(run.returncode), flush=True)
+    if run.returncode:
+        print(log.read_text()[-6000:], flush=True)
+        raise SystemExit(run.returncode)
+print('Integrated context qualification passed; all72 final identities retained.', flush=True)

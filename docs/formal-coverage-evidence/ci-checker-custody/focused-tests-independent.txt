@@ -1,0 +1,14 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.13s
+     Running unittests src/lib.rs (target/formal-api-parent/debug/deps/xtask-88f979add953e9b2)
+
+running 7 tests
+test reproducibility::workflow_authority_tests::canonical_authority_workflow_is_exact_and_pinned ... ok
+test reproducibility::workflow_authority_tests::candidate_actions_permissions_and_failure_masking_are_rejected ... ok
+test reproducibility::workflow_authority_tests::candidate_cannot_select_or_build_its_own_checker ... ok
+test reproducibility::workflow_authority_tests::checker_build_inputs_cannot_drift_before_candidate_metadata ... ok
+test reproducibility::workflow_authority_tests::both_policy_passes_are_mandatory_and_ordered ... ok
+test reproducibility::workflow_authority_tests::checker_source_only_drift_fails_while_unrelated_drift_preserves_custody ... ok
+test reproducibility::workflow_authority_tests::revision_custody_and_pre_metadata_guards_cannot_be_relaxed ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 418 filtered out; finished in 0.08s
+

@@ -1,8 +1,8 @@
 //! Final H0 report and explicit non-authorizing readiness verdict.
 
 use peritus_security_policy::{
-    IndependentSecurityReview, SecurityDecision, SecurityVerdict, UnmetSecurityCondition,
-    evaluate_security_readiness,
+    IndependentSecurityReview, SecurityDecision, SecurityQualificationAdmission,
+    UnmetSecurityCondition, evaluate_security_readiness,
 };
 use peritus_types::Sha256Digest;
 
@@ -63,6 +63,7 @@ pub struct QualificationReport {
     run: QualificationRun,
     manifest: EvidenceManifest,
     policy_decision: SecurityDecision,
+    admission: SecurityQualificationAdmission,
     verdict: ReadinessVerdict,
 }
 
@@ -92,10 +93,9 @@ impl QualificationReport {
             .extend(policy_decision.unmet_conditions().iter().copied().map(NotReadyReason::Policy));
         reasons.sort();
         reasons.dedup();
-        let verdict = if reasons.is_empty()
-            && policy_decision.verdict() == SecurityVerdict::Ready
-            && run.all_passed()
-        {
+        let admission =
+            SecurityQualificationAdmission::evaluate(&policy_decision, &run.admission_outcomes());
+        let verdict = if admission.is_ready() {
             ReadinessVerdict::Ready(ReadinessEvidence {
                 candidate_source_digest: run.candidate().source_digest(),
                 evidence_manifest_digest: manifest.digest(),
@@ -104,7 +104,7 @@ impl QualificationReport {
         } else {
             ReadinessVerdict::NotReady(reasons)
         };
-        Ok(Self { run, manifest, policy_decision, verdict })
+        Ok(Self { run, manifest, policy_decision, admission, verdict })
     }
 
     /// Borrows the complete native campaign.
@@ -134,6 +134,6 @@ impl QualificationReport {
     /// Reports H0 readiness without conferring H4 release authority.
     #[must_use]
     pub const fn is_ready(&self) -> bool {
-        matches!(self.verdict, ReadinessVerdict::Ready(_))
+        matches!(self.verdict, ReadinessVerdict::Ready(_)) && self.admission.is_ready()
     }
 }

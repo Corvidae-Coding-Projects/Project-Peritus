@@ -34,6 +34,18 @@ pub struct FindingObservation {
 }
 
 impl FindingObservation {
+    /// Specification view of the supplied finding identity.
+    pub closed spec fn spec_finding_id(&self) -> FindingId { self.finding_id }
+
+    /// Specification view of the supplied finding severity.
+    pub closed spec fn spec_severity(&self) -> FindingSeverity { self.severity }
+
+    /// Specification view of the complete supplied disposition.
+    pub closed spec fn spec_disposition(&self) -> FindingDisposition { self.disposition }
+
+    /// Specification view of the supplied finding digest.
+    pub closed spec fn spec_finding_digest(&self) -> Sha256Digest { self.finding_digest }
+
     /// Creates a normalized finding observation.
     #[must_use]
     pub const fn new(
@@ -41,25 +53,39 @@ impl FindingObservation {
         severity: FindingSeverity,
         disposition: FindingDisposition,
         finding_digest: Sha256Digest,
-    ) -> Self {
+    ) -> (finding: Self)
+        ensures
+            finding.spec_finding_id() == finding_id,
+            finding.spec_severity() == severity,
+            finding.spec_disposition() == disposition,
+            finding.spec_finding_digest() == finding_digest,
+    {
         Self { finding_id, severity, disposition, finding_digest }
     }
 
     /// Returns the stable finding identity.
     #[must_use]
-    pub const fn finding_id(&self) -> FindingId { self.finding_id }
+    pub const fn finding_id(&self) -> (id: FindingId)
+        ensures id == self.spec_finding_id(),
+    { self.finding_id }
 
     /// Returns the normalized severity.
     #[must_use]
-    pub const fn severity(&self) -> FindingSeverity { self.severity }
+    pub const fn severity(&self) -> (severity: FindingSeverity)
+        ensures severity == self.spec_severity(),
+    { self.severity }
 
     /// Returns the current disposition.
     #[must_use]
-    pub const fn disposition(&self) -> FindingDisposition { self.disposition }
+    pub const fn disposition(&self) -> (disposition: FindingDisposition)
+        ensures disposition == self.spec_disposition(),
+    { self.disposition }
 
     /// Returns the digest of the normalized finding record.
     #[must_use]
-    pub const fn finding_digest(&self) -> Sha256Digest { self.finding_digest }
+    pub const fn finding_digest(&self) -> (digest: Sha256Digest)
+        ensures digest == self.spec_finding_digest(),
+    { self.finding_digest }
 }
 
 } // verus!

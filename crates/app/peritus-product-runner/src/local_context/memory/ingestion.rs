@@ -79,8 +79,12 @@ impl LocalMemory {
         &mut self,
         message: &Message,
     ) -> Result<u64, DeveloperLoopError> {
+        // Assistant reasoning is bounded protocol replay, retained exactly with its exchange.
+        // It is never projected into authoritative instructions or derived working entries.
         if message.content().iter().any(|block| {
-            matches!(block, ContentBlock::Reasoning(_) | ContentBlock::ProviderExtension(_))
+            matches!(block, ContentBlock::ProviderExtension(_))
+                || (matches!(block, ContentBlock::Reasoning(_))
+                    && message.role() != Role::Assistant)
         }) {
             return Err(error("opaque provider content is not local working memory"));
         }

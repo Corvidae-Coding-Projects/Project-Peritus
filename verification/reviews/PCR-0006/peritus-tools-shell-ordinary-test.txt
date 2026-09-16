@@ -1,0 +1,40 @@
+{"candidate_commit": "65f16e2933b70305de865750931bb05fe9afb64d", "candidate_tree": "ae2a43f9a9b73f5fec944d39cf165a8b3ec4df20", "environment": {"CARGO_BUILD_JOBS": "1", "CCACHE_DISABLE": "1", "RUST_TEST_THREADS": "1"}, "gate": {"command": "cargo test --package peritus-tools-shell --all-targets --all-features --locked", "invocation": ["cargo", "test", "--package", "peritus-tools-shell", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "output": "125-peritus-tools-shell-ordinary-test.log", "owning_crate": "peritus-tools-shell", "started_at": "2026-09-13T15:21:59.352695Z"}, "plan_sha256": "7fc101b7f8284fbe3818461a8166d73d3425f369120b43c1cbf1b43809a6b7c9"}
+
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.18s
+     Running unittests src/lib.rs (target/debug/deps/peritus_tools_shell-abe59b74d88d14e5)
+
+running 9 tests
+test catalog::tests::descriptors_are_stable_and_distinct ... ok
+test error::tests::diagnostic_cap_preserves_utf8_boundaries ... ok
+test execution::terminal::tests::exec_and_script_accept_counted_truncation_but_not_incomplete_output ... ok
+test input::tests::direct_command_line_becomes_literal_argv ... ok
+test input::tests::direct_command_line_rejects_shell_syntax_and_markup ... ok
+test input::tests::script_is_one_literal_argument ... ok
+test input::tests::structured_argv_keeps_arguments_literal ... ok
+test input::tests::structured_argv_rejects_shell_command_mode ... ok
+test render::tests::escapes_controls_and_labels_tail_truncation ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests tests/fixtures/native_helper.rs (target/debug/deps/peritus_c4_native_helper_fixture-e337be3a8a37073b)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests tests/fixtures/process_fixture.rs (target/debug/deps/peritus_c4_process_fixture-57c83bed5d4b1280)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/execution_integration.rs (target/debug/deps/execution_integration-3d685457e9077b91)
+
+running 2 tests
+test quality_run_emits_candidate_evidence_and_invalid_json_never_passes ... ok
+test shell_exec_runs_literal_argv_accepts_stdin_and_publishes_output_artifacts ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.17s
+
+
+GATE DRIVER RESULT: {"command": "cargo test --package peritus-tools-shell --all-targets --all-features --locked", "command_exit_code": 0, "elapsed_seconds": 0.465, "exit_code": 0, "finished_at": "2026-09-13T15:21:59.819040Z", "invocation": ["cargo", "test", "--package", "peritus-tools-shell", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "output": "125-peritus-tools-shell-ordinary-test.log", "owning_crate": "peritus-tools-shell", "result": "passed", "started_at": "2026-09-13T15:21:59.352695Z"}

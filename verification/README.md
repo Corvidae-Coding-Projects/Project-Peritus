@@ -100,10 +100,15 @@ Trust and exclusion entries contain `evidence`, an array of tables with exactly 
 | `command` | string | Exact locked command that executes or verifies the evidence. |
 
 Every evidence location must exist and every command must select the owning package without a
-focused verification mode, ignored failure, or skip. A Cargo test locator must name an
-unconditionally compiled `#[test]`; a Cargo-Verus locator must name an exact proof/spec item. An
-evidence record is a locator, not a claim that the command passed; CI and release evidence record
-the actual result separately.
+focused verification mode, ignored failure, or skip. A Cargo test locator must name a non-ignored
+`#[test]` enabled unconditionally or only by its conventional enclosing `#[cfg(test)]`; other
+conditional compilation and `cfg_attr` remain ineligible. A Cargo-Verus locator must resolve to
+exactly one unconditionally compiled, non-local function inside `verus!`; executable, proof, and spec modes
+are parsed with the pinned Verus signature grammar. The static manifest check establishes only
+that source eligibility. The strict CI proof-scope run separately requires the same executable or
+proof symbol to have a successful compiler query in its declared mode and every spec symbol to
+appear in the compiler selection inventory. An evidence record is a locator, not a claim that the
+command passed; CI and release evidence record the actual result separately.
 
 ### Trusted-construct manifest
 

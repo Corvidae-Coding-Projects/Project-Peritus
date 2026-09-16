@@ -94,6 +94,14 @@ impl Fixture {
     }
 
     pub fn contract(&self, options: ContractOptions) -> AcceptanceContract {
+        self.contract_with_gate_ids(options, &[self.gate_id])
+    }
+
+    pub fn contract_with_gate_ids(
+        &self,
+        options: ContractOptions,
+        gate_ids: &[GateId],
+    ) -> AcceptanceContract {
         let plan = GateExecutionPlan::new(
             content(10),
             EnvironmentId::new(bytes(11)).expect("environment"),
@@ -105,9 +113,15 @@ impl Fixture {
             GateFreshnessScope::ExactRevisionTuple,
         )
         .expect("gate plan");
-        let gate = GateDefinition::new(self.gate_id, plan, Vec::new(), vec![self.gate_evidence])
-            .expect("gate");
-        let graph = GateGraph::new(vec![gate]).expect("gate graph");
+        let gates = gate_ids
+            .iter()
+            .map(|id| {
+                let required_evidence =
+                    if *id == self.gate_id { vec![self.gate_evidence] } else { Vec::new() };
+                GateDefinition::new(*id, plan, Vec::new(), required_evidence).expect("gate")
+            })
+            .collect();
+        let graph = GateGraph::new(gates).expect("gate graph");
         let review = ReviewPolicy::new(
             vec![self.category_a, self.category_b],
             options.quorum,

@@ -2,6 +2,8 @@
 
 #![cfg(unix)]
 
+#[path = "native_controller/cleanup.rs"]
+mod cleanup;
 #[path = "native_controller/diagnostics.rs"]
 mod diagnostics;
 #[path = "native_controller/drain.rs"]
@@ -155,6 +157,10 @@ impl NativeFixture {
     }
 
     fn factory(&self) -> NativeResilienceFactory {
+        self.factory_with_limits(NativeControllerLimits::default())
+    }
+
+    fn factory_with_limits(&self, limits: NativeControllerLimits) -> NativeResilienceFactory {
         let candidate_digest = file_digest(&self.controller);
         NativeResilienceFactory::new(
             &self.controller,
@@ -168,7 +174,7 @@ impl NativeFixture {
                 candidate_digest,
             ),
             QualificationConfig::default(),
-            NativeControllerLimits::default(),
+            limits,
         )
         .expect("native H1 factory")
     }

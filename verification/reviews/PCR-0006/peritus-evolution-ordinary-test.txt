@@ -1,0 +1,80 @@
+{"candidate_commit": "65f16e2933b70305de865750931bb05fe9afb64d", "candidate_tree": "ae2a43f9a9b73f5fec944d39cf165a8b3ec4df20", "environment": {"CARGO_BUILD_JOBS": "1", "CCACHE_DISABLE": "1", "RUST_TEST_THREADS": "1"}, "gate": {"command": "cargo test --package peritus-evolution --all-targets --all-features --locked", "invocation": ["cargo", "test", "--package", "peritus-evolution", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "output": "025-peritus-evolution-ordinary-test.log", "owning_crate": "peritus-evolution", "started_at": "2026-09-13T15:19:59.085998Z"}, "plan_sha256": "7fc101b7f8284fbe3818461a8166d73d3425f369120b43c1cbf1b43809a6b7c9"}
+
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.23s
+     Running unittests src/lib.rs (target/debug/deps/peritus_evolution-f4407f7ccc6846b8)
+
+running 5 tests
+test change::manifest::tests::citation_limit_applies_to_the_whole_manifest ... ok
+test qualification::promotion::setup::tests::qualification_campaign_genesis_round_trips_canonical_wire ... ok
+test selection::tests::executable_change_requires_review_even_without_a_policy_kind ... ok
+test selection::tests::failed_and_unavailable_rejection_sections_have_distinct_digests ... ok
+test selection::tests::selection_rejects_assessment_from_another_policy ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/attribution_selection.rs (target/debug/deps/attribution_selection-a56c1fdeb59e8183)
+
+running 2 tests
+test duplicate_objectives_are_rejected_and_unavailable_denies ... ok
+test frozen_objective_order_is_policy_order_not_enum_order ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/domain_campaign.rs (target/debug/deps/domain_campaign-c49b3b8d66178d48)
+
+running 2 tests
+test command_constructor_rejects_a_head_without_sequence ... ok
+test only_truthful_campaign_outcomes_are_terminal ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/durability_restart.rs (target/debug/deps/durability_restart-ff175764f7a05be2)
+
+running 2 tests
+test ordinary_campaign_and_pointer_commits_replay_exact_checkpoints ... ok
+test stale_campaign_cas_does_not_replace_the_committed_head ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests/production_conformance.rs (target/debug/deps/production_conformance-f87c99f805552f53)
+
+running 1 test
+test a2_evolution_catalog_executes_against_production_public_apis ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/promotion_authority.rs (target/debug/deps/promotion_authority-dad513b89bbf8cb1)
+
+running 3 tests
+test authorization_digest_binds_every_authority_observation ... ok
+test independent_authority_and_history_limits_fail_closed ... ok
+test malformed_genesis_and_stale_shape_commands_fail_before_authority ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/publication_integration.rs (target/debug/deps/publication_integration-d1740ab673129fd7)
+
+running 2 tests
+test empty_artifacts_and_malformed_publication_payloads_fail_closed ... ok
+test finalized_artifact_and_publication_recover_after_restart ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests/replay_wire.rs (target/debug/deps/replay_wire-45b4b487f18971f1)
+
+running 1 test
+test six_f0_frames_round_trip_and_reject_malformed_bytes ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/verified_refinement.rs (target/debug/deps/verified_refinement-90e52b1635ebade4)
+
+running 3 tests
+test evaluator_isolation_requires_every_checked_boundary_fact ... ok
+test promotion_safety_is_a_conjunction_not_a_score ... ok
+test rollback_replay_and_terminal_refinements_fail_closed ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+GATE DRIVER RESULT: {"command": "cargo test --package peritus-evolution --all-targets --all-features --locked", "command_exit_code": 0, "elapsed_seconds": 0.415, "exit_code": 0, "finished_at": "2026-09-13T15:19:59.502015Z", "invocation": ["cargo", "test", "--package", "peritus-evolution", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "output": "025-peritus-evolution-ordinary-test.log", "owning_crate": "peritus-evolution", "result": "passed", "started_at": "2026-09-13T15:19:59.085998Z"}

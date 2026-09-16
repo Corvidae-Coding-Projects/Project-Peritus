@@ -129,12 +129,7 @@ impl EffectReceiptLedger {
                             | "command_cancel"
                     ) =>
                 {
-                    let record = ReceiptRecord {
-                        state: ReceiptState::Ambiguous,
-                        output: None,
-                        is_error: None,
-                        ..existing
-                    };
+                    let record = ReceiptRecord { state: ReceiptState::Ambiguous, ..existing };
                     self.append(&record)?;
                     self.entries.insert(ordinal, record.clone());
                     Ok(ReceiptDecision::Refuse {
@@ -145,12 +140,9 @@ impl EffectReceiptLedger {
                 ReceiptState::Started => Ok(ReceiptDecision::Execute),
             };
         }
-        if self.entries.values().any(|record| {
-            record.call_id == call.id().expose_for_wire()
-                && (record.tool != call.name().as_str() || record.request_sha256 != digest)
-        }) {
+        if self.entries.values().any(|record| record.call_id == call.id().expose_for_wire()) {
             return Ok(ReceiptDecision::Refuse {
-                detail: "provider reused one tool-call ID for conflicting effect requests"
+                detail: "provider reused one tool-call ID for more than one effect request"
                     .to_owned(),
                 ambiguous: false,
             });
@@ -236,6 +228,17 @@ impl EffectReceiptLedger {
             self.accept_loaded(record)?;
             offset = end;
         }
+        if offset != bytes.len() {
+            let file = OpenOptions::new().write(true).open(&self.path).map_err(|error| {
+                tool(format!("open effect receipts for tail recovery: {error}"))
+            })?;
+            file.set_len(
+                u64::try_from(offset)
+                    .map_err(|_| tool("effect receipt recovery offset exceeds this platform"))?,
+            )
+            .and_then(|()| file.sync_data())
+            .map_err(|error| tool(format!("recover truncated effect receipt tail: {error}")))?;
+        }
         self.loaded = true;
         Ok(())
     }
@@ -243,6 +246,15 @@ impl EffectReceiptLedger {
     fn accept_loaded(&mut self, record: ReceiptRecord) -> Result<(), DeveloperLoopError> {
         if record.version != FORMAT_VERSION || record.scope != self.scope {
             return Ok(());
+        }
+        let fields_are_consistent = match &record.state {
+            ReceiptState::Started | ReceiptState::Ambiguous => {
+                record.output.is_none() && record.is_error.is_none()
+            }
+            ReceiptState::Completed => record.output.is_some() && record.is_error.is_some(),
+        };
+        if !fields_are_consistent {
+            return Err(tool("effect receipt state fields are inconsistent"));
         }
         if let Some(previous) = self.entries.get(&record.ordinal)
             && (previous.tool != record.tool
@@ -320,60 +332,5 @@ fn ambiguous(scope: &str, ordinal: u32, call_id: &str) -> String {
 }
 
 #[cfg(test)]
-mod tests {
-    use peritus_model_protocol::{CanonicalJson, JsonBounds, ProtocolLimits, ToolCallId, ToolName};
-
-    use super::*;
-
-    #[test]
-    fn completed_effect_replays_and_conflicting_request_is_refused() {
-        let directory = tempfile::tempdir().expect("state");
-        let path = directory.path().join("effects.bin");
-        let original = call("call-1", "workspace_write", r#"{"content":"one","path":"a"}"#);
-        let mut first = EffectReceiptLedger::new(path.clone(), "writer-1".to_owned());
-        assert!(matches!(first.begin(&original).expect("start"), ReceiptDecision::Execute));
-        let mut output = serde_json::Map::new();
-        output.insert("changed".to_owned(), Value::Bool(true));
-        first.complete(&Value::Object(output), false).expect("complete");
-
-        let mut replay = EffectReceiptLedger::new(path.clone(), "writer-1".to_owned());
-        assert!(matches!(
-            replay.begin(&original).expect("replay"),
-            ReceiptDecision::Replay { is_error: false, .. }
-        ));
-        let conflicting = call("call-2", "workspace_write", r#"{"content":"two","path":"a"}"#);
-        let mut conflict = EffectReceiptLedger::new(path, "writer-1".to_owned());
-        assert!(matches!(
-            conflict.begin(&conflicting).expect("conflict"),
-            ReceiptDecision::Refuse { detail, ambiguous: false } if detail.contains("differs")
-        ));
-    }
-
-    #[test]
-    fn interrupted_command_is_durably_ambiguous_and_never_relaunched() {
-        let directory = tempfile::tempdir().expect("state");
-        let path = directory.path().join("effects.bin");
-        let call = call("call-1", "run_command", r#"{"args":[],"program":"example"}"#);
-        let mut first = EffectReceiptLedger::new(path.clone(), "writer-1".to_owned());
-        assert!(matches!(first.begin(&call).expect("start"), ReceiptDecision::Execute));
-
-        for _ in 0..2 {
-            let mut recovered = EffectReceiptLedger::new(path.clone(), "writer-1".to_owned());
-            assert!(matches!(
-                recovered.begin(&call).expect("recover"),
-                ReceiptDecision::Refuse { detail, ambiguous: true }
-                    if detail.contains("ambiguous prior command outcome")
-            ));
-        }
-    }
-
-    fn call(id: &str, name: &str, arguments: &str) -> CompletedToolCall {
-        CompletedToolCall::new(
-            ToolCallId::new(id.to_owned()).expect("call ID"),
-            ToolName::new(name.to_owned()).expect("tool name"),
-            CanonicalJson::parse(arguments, JsonBounds::value(ProtocolLimits::PRODUCTION))
-                .expect("arguments"),
-        )
-        .expect("completed call")
-    }
-}
+#[path = "receipt/tests.rs"]
+mod tests;

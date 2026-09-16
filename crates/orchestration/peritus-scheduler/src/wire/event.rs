@@ -3,11 +3,14 @@ use peritus_codec::{
 };
 use peritus_types::EventSequence;
 
-use crate::{LossOutcome, SchedulerEvent, SchedulerEventKind};
+use crate::{LossOutcome, SchedulerEvent, SchedulerEventKind, SchedulerSemantics};
 
-/// Canonical family-71 schema-v1 scheduler event frame.
+/// Canonical family-71 schema-v2 scheduler event frame.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct SchedulerEventFrame(SchedulerEvent);
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(super) struct SchedulerEventFrameV1(SchedulerEvent);
 
 impl SchedulerEventFrame {
     /// Wraps one immutable event.
@@ -24,47 +27,92 @@ impl SchedulerEventFrame {
 
 impl CanonicalEncode for SchedulerEventFrame {
     const FAMILY: u16 = 71;
-    const SCHEMA_VERSION: u16 = 1;
+    const SCHEMA_VERSION: u16 = 2;
     fn encode_payload(&self, writer: &mut CanonicalWriter) -> Result<(), CodecError> {
-        let event = &self.0;
-        super::write_id(writer, event.id().as_bytes())?;
-        super::write_id(writer, event.command_id().as_bytes())?;
-        writer.write_u64(event.sequence().get())?;
-        super::write_option_id(writer, event.previous_event(), peritus_types::EventId::into_bytes)?;
-        super::write_id(writer, event.run_id().as_bytes())?;
-        super::write_revision(writer, event.revision())?;
-        super::write_digest(writer, event.prior_state_digest())?;
-        super::write_digest(writer, event.successor_state_digest())?;
-        write_kind(writer, event.kind())
+        encode_payload(&self.0, SchedulerSemantics::StrictRecoveryQueueV2, writer)
     }
 }
 
 impl CanonicalDecode for SchedulerEventFrame {
     const FAMILY: u16 = 71;
-    const SCHEMA_VERSION: u16 = 1;
+    const SCHEMA_VERSION: u16 = 2;
     fn decode_payload(reader: &mut CanonicalReader<'_>) -> Result<Self, CodecError> {
-        let id = super::read_event_id(reader)?;
-        let command = super::read_command_id(reader)?;
-        let offset = reader.offset();
-        let sequence = EventSequence::new(reader.read_u64()?)
-            .map_err(|_| CodecError::at(CodecErrorKind::InvalidDomainValue, offset))?;
-        let previous =
-            reader.read_option_tag()?.then(|| super::read_event_id(reader)).transpose()?;
-        if (sequence.get() == 1) != previous.is_none() {
-            return Err(super::invalid(reader));
-        }
-        Ok(Self(SchedulerEvent::from_wire(
-            id,
-            command,
-            sequence,
-            previous,
-            super::read_run_id(reader)?,
-            super::read_revision(reader)?,
-            super::read_digest(reader)?,
-            super::read_digest(reader)?,
-            read_kind(reader)?,
-        )))
+        decode_payload(reader, SchedulerSemantics::StrictRecoveryQueueV2).map(Self)
     }
+}
+
+impl SchedulerEventFrameV1 {
+    pub(super) const fn new(event: SchedulerEvent) -> Self {
+        Self(event)
+    }
+
+    pub(super) fn into_event(self) -> SchedulerEvent {
+        self.0
+    }
+}
+
+impl CanonicalEncode for SchedulerEventFrameV1 {
+    const FAMILY: u16 = 71;
+    const SCHEMA_VERSION: u16 = 1;
+
+    fn encode_payload(&self, writer: &mut CanonicalWriter) -> Result<(), CodecError> {
+        encode_payload(&self.0, SchedulerSemantics::LegacyQueueV1, writer)
+    }
+}
+
+impl CanonicalDecode for SchedulerEventFrameV1 {
+    const FAMILY: u16 = 71;
+    const SCHEMA_VERSION: u16 = 1;
+
+    fn decode_payload(reader: &mut CanonicalReader<'_>) -> Result<Self, CodecError> {
+        decode_payload(reader, SchedulerSemantics::LegacyQueueV1).map(Self)
+    }
+}
+
+fn encode_payload(
+    event: &SchedulerEvent,
+    semantics: SchedulerSemantics,
+    writer: &mut CanonicalWriter,
+) -> Result<(), CodecError> {
+    if event.semantics() != semantics {
+        return Err(CodecError::at(CodecErrorKind::WrongSchemaVersion, 8));
+    }
+    super::write_id(writer, event.id().as_bytes())?;
+    super::write_id(writer, event.command_id().as_bytes())?;
+    writer.write_u64(event.sequence().get())?;
+    super::write_option_id(writer, event.previous_event(), peritus_types::EventId::into_bytes)?;
+    super::write_id(writer, event.run_id().as_bytes())?;
+    super::write_revision(writer, event.revision())?;
+    super::write_digest(writer, event.prior_state_digest())?;
+    super::write_digest(writer, event.successor_state_digest())?;
+    write_kind(writer, event.kind())
+}
+
+fn decode_payload(
+    reader: &mut CanonicalReader<'_>,
+    semantics: SchedulerSemantics,
+) -> Result<SchedulerEvent, CodecError> {
+    let id = super::read_event_id(reader)?;
+    let command = super::read_command_id(reader)?;
+    let offset = reader.offset();
+    let sequence = EventSequence::new(reader.read_u64()?)
+        .map_err(|_| CodecError::at(CodecErrorKind::InvalidDomainValue, offset))?;
+    let previous = reader.read_option_tag()?.then(|| super::read_event_id(reader)).transpose()?;
+    if (sequence.get() == 1) != previous.is_none() {
+        return Err(super::invalid(reader));
+    }
+    Ok(SchedulerEvent::from_wire(
+        semantics,
+        id,
+        command,
+        sequence,
+        previous,
+        super::read_run_id(reader)?,
+        super::read_revision(reader)?,
+        super::read_digest(reader)?,
+        super::read_digest(reader)?,
+        read_kind(reader, semantics)?,
+    ))
 }
 
 fn write_kind(writer: &mut CanonicalWriter, kind: &SchedulerEventKind) -> Result<(), CodecError> {
@@ -149,10 +197,15 @@ fn write_kind(writer: &mut CanonicalWriter, kind: &SchedulerEventKind) -> Result
     }
 }
 
-fn read_kind(reader: &mut CanonicalReader<'_>) -> Result<SchedulerEventKind, CodecError> {
+fn read_kind(
+    reader: &mut CanonicalReader<'_>,
+    semantics: SchedulerSemantics,
+) -> Result<SchedulerEventKind, CodecError> {
     let offset = reader.offset();
     match reader.read_u8()? {
-        1 => Ok(SchedulerEventKind::SchedulerStarted { binding: super::read_binding(reader)? }),
+        1 => Ok(SchedulerEventKind::SchedulerStarted {
+            binding: super::read_binding(reader, semantics)?,
+        }),
         2 => Ok(SchedulerEventKind::WorkerRegistered {
             descriptor: super::read_descriptor(reader, super::production_limits())?,
         }),

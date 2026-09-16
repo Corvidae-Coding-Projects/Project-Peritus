@@ -7,6 +7,7 @@ use peritus_review::{
 use serde::Deserialize;
 use serde::Serialize;
 
+use crate::model_output::{TypedObjectError, last_typed_object};
 use crate::{ProductRunnerError, ProductRunnerErrorKind};
 
 #[derive(Deserialize)]
@@ -31,15 +32,19 @@ struct FindingWire {
 }
 
 pub fn parse(value: &str, cycle: u32) -> Result<ProductReviewSubmission, ProductRunnerError> {
-    let start = value.find('{').ok_or_else(|| invalid("review contains no JSON object"))?;
-    let end = value.rfind('}').ok_or_else(|| invalid("review contains no complete JSON object"))?;
-    let review: ReviewWire = serde_json::from_str(&value[start..=end]).map_err(|error| {
-        ProductRunnerError::new(
-            ProductRunnerErrorKind::InvalidModelOutput,
-            "parse typed reviewer result",
-            error.to_string(),
-        )
-    })?;
+    let review: ReviewWire = match last_typed_object(value) {
+        Ok(review) => review,
+        Err(TypedObjectError::Missing) => {
+            return Err(invalid("review contains no JSON object"));
+        }
+        Err(TypedObjectError::Invalid(detail)) => {
+            return Err(ProductRunnerError::new(
+                ProductRunnerErrorKind::InvalidModelOutput,
+                "parse typed reviewer result",
+                detail,
+            ));
+        }
+    };
     let findings = review
         .findings
         .into_iter()
@@ -251,6 +256,17 @@ fn invalid_owned(detail: String) -> ProductRunnerError {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn reviewer_selects_final_typed_object_after_braced_evidence() {
+        let response = r#"Observed output {'key': 'value'}.
+{"summary":"Layer 2 fixed; gates pass.","findings":[]}"#;
+
+        let submission = parse(response, 1).expect("typed review");
+
+        assert_eq!(submission.summary(), "Layer 2 fixed; gates pass.");
+        assert!(submission.findings().is_empty());
+    }
 
     #[test]
     fn reviewer_boolean_is_rejected_and_advisory_remains_nonblocking() {

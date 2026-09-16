@@ -10,6 +10,15 @@ use std::{
 use peritus_gates::GateExecutionRecord;
 
 mod alternatives;
+mod extraction;
+mod language;
+mod removals;
+
+use extraction::extract;
+use language::{
+    clause_start, conditional_clause, explicitly_delimited, negation, normalized, output_context,
+    output_verb, path_context, path_noun_context,
+};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 struct PathMention {
@@ -21,6 +30,7 @@ struct PathMention {
 struct PathRequirements {
     mentions: Vec<PathMention>,
     alternatives: Vec<Vec<PathBuf>>,
+    removals: Vec<removals::Removal>,
 }
 
 pub(super) fn run(root: &Path, transcript: &str, changed_paths: &[PathBuf]) -> GateExecutionRecord {
@@ -101,6 +111,8 @@ pub(super) fn run(root: &Path, transcript: &str, changed_paths: &[PathBuf]) -> G
         }
     }
 
+    removals::check_all(root, &requirements.removals, &mut checked, &mut failures);
+
     failures.sort();
     failures.dedup();
     let mut output = if checked.is_empty() {
@@ -126,46 +138,21 @@ pub(super) fn run(root: &Path, transcript: &str, changed_paths: &[PathBuf]) -> G
     }
 }
 
-fn extract(root: &Path, transcript: &str) -> PathRequirements {
-    let mut paths = BTreeMap::<PathBuf, bool>::new();
-    let mut alternatives = Vec::new();
-    for line in transcript.lines() {
-        let words = line.split_whitespace().collect::<Vec<_>>();
-        let mut line_mentions = Vec::new();
-        for (index, word) in words.iter().enumerate() {
-            if descriptive_extension(word, words.get(index + 1).copied()) {
-                continue;
-            }
-            let required_output =
-                output_context(&words[..index]) && !conditional_clause(&words[..index]);
-            let quoted_bare_name =
-                required_output && path_noun_context(&words[..index]) && explicitly_delimited(word);
-            let Some(relative) = parse_path(root, word, required_output, quoted_bare_name) else {
-                continue;
-            };
-            line_mentions.push((index, relative, required_output));
-        }
-        let line_alternatives = alternatives::groups(&words, &line_mentions);
-        let alternative_paths =
-            line_alternatives.iter().flatten().cloned().collect::<BTreeSet<_>>();
-        alternatives.extend(line_alternatives);
-        for (_, relative, required_output) in line_mentions {
-            let individually_required = required_output && !alternative_paths.contains(&relative);
-            paths
-                .entry(relative)
-                .and_modify(|required| *required |= individually_required)
-                .or_insert(individually_required);
-        }
-    }
-    alternatives.sort();
-    alternatives.dedup();
-    PathRequirements {
-        mentions: paths
-            .into_iter()
-            .map(|(relative, required_output)| PathMention { relative, required_output })
-            .collect(),
-        alternatives,
-    }
+fn list_item_path_index(words: &[&str]) -> Option<usize> {
+    let marker = *words.first()?;
+    let numbered = marker
+        .strip_suffix('.')
+        .is_some_and(|number| !number.is_empty() && number.chars().all(|ch| ch.is_ascii_digit()));
+    (words.len() > 1 && (matches!(marker, "-" | "*" | "+") || numbered)).then_some(1)
+}
+
+fn output_list_directory(root: &Path, words: &[&str]) -> Option<PathBuf> {
+    words.iter().enumerate().rev().find_map(|(index, word)| {
+        let word = path_token(word);
+        (trim_delimiters(word).ends_with('/') && path_context(&words[..index]))
+            .then(|| parse_path(root, word, true, false, true))
+            .flatten()
+    })
 }
 
 pub(super) fn required_outputs(root: &Path, transcript: &str) -> Vec<PathBuf> {
@@ -199,7 +186,9 @@ fn parse_path(
     raw: &str,
     required_output: bool,
     quoted_bare_name: bool,
+    relative_path_context: bool,
 ) -> Option<PathBuf> {
+    let raw = path_token(raw);
     if prose_abbreviation(raw) || unresolved_placeholder(raw) {
         return None;
     }
@@ -222,6 +211,13 @@ fn parse_path(
         if !required_output || (!token.contains('/') && !token.contains('.') && !quoted_bare_name) {
             return None;
         }
+        if token.contains('/')
+            && !token.contains('.')
+            && !explicitly_delimited(raw)
+            && !relative_path_context
+        {
+            return None;
+        }
         path.to_path_buf()
     };
     if relative.as_os_str().is_empty()
@@ -231,7 +227,11 @@ fn parse_path(
     {
         return None;
     }
-    Some(relative)
+    let relative = relative
+        .components()
+        .filter(|component| *component != Component::CurDir)
+        .collect::<PathBuf>();
+    (!relative.as_os_str().is_empty()).then_some(relative)
 }
 
 fn unresolved_placeholder(raw: &str) -> bool {
@@ -278,112 +278,31 @@ fn trim_delimiters(raw: &str) -> &str {
     })
 }
 
-fn output_context(words: &[&str]) -> bool {
-    // An output verb authorizes paths in its clause, not a later verification instruction.
-    let start = words.len().saturating_sub(12).max(clause_start(words));
-    let context = &words[start..];
-    let Some(trigger) = context.iter().rposition(|word| output_verb(word)) else {
-        return false;
+fn path_token(raw: &str) -> &str {
+    let Some(opening) = raw.chars().next().filter(|ch| matches!(ch, '`' | '\'' | '"')) else {
+        return raw;
     };
-    let negation_start = trigger.saturating_sub(2);
-    if context[negation_start..trigger].iter().any(|word| negation(word)) {
-        return false;
-    }
-    let trailing = &context[trigger + 1..];
-    !ambiguous_addition_verb(context[trigger])
-        || trailing.len() <= 3
-        || trailing.iter().any(|word| path_noun(word))
-}
-
-fn path_noun_context(words: &[&str]) -> bool {
-    let start = words.len().saturating_sub(6);
-    words[start..].iter().any(|word| path_noun(word))
-}
-
-fn conditional_clause(words: &[&str]) -> bool {
-    words[clause_start(words)..]
-        .iter()
-        .any(|word| matches!(normalized(word).as_str(), "if" | "unless"))
-}
-
-fn clause_start(words: &[&str]) -> usize {
-    words
-        .iter()
-        .rposition(|word| word.ends_with(['.', '?', '!', ';']) && !prose_abbreviation(word))
-        .map_or(0, |index| index + 1)
-}
-
-fn path_noun(word: &str) -> bool {
-    matches!(
-        normalized(word).as_str(),
-        "artifact"
-            | "binary"
-            | "directory"
-            | "executable"
-            | "file"
-            | "folder"
-            | "program"
-            | "script"
-    )
-}
-
-fn ambiguous_addition_verb(word: &str) -> bool {
-    matches!(normalized(word).as_str(), "add" | "adds")
-}
-
-fn explicitly_delimited(raw: &str) -> bool {
-    let token = raw.trim_end_matches(['.', ',', ';', ':']);
-    let Some(opening) = token.chars().next() else {
-        return false;
+    let after_opening = &raw[opening.len_utf8()..];
+    let Some(closing) = after_opening.find(opening).filter(|index| *index > 0) else {
+        return raw;
     };
-    let Some(closing) = token.chars().last() else {
-        return false;
-    };
-    token.len() > opening.len_utf8()
-        && matches!((opening, closing), ('`', '`') | ('\'', '\'') | ('"', '"'))
-}
-
-fn output_verb(word: &str) -> bool {
-    matches!(
-        normalized(word).as_str(),
-        "write"
-            | "writes"
-            | "create"
-            | "creates"
-            | "save"
-            | "saves"
-            | "produce"
-            | "produces"
-            | "generate"
-            | "generates"
-            | "emit"
-            | "emits"
-            | "place"
-            | "places"
-            | "put"
-            | "output"
-            | "implement"
-            | "implements"
-            | "complete"
-            | "completes"
-            | "update"
-            | "updates"
-            | "modify"
-            | "modifies"
-            | "edit"
-            | "edits"
-            | "add"
-            | "adds"
-    )
-}
-
-fn negation(word: &str) -> bool {
-    matches!(normalized(word).as_str(), "not" | "never" | "without" | "avoid" | "dont")
-}
-
-fn normalized(word: &str) -> String {
-    word.chars().filter(char::is_ascii_alphanumeric).flat_map(char::to_lowercase).collect()
+    let end = opening.len_utf8() + closing + opening.len_utf8();
+    // A prose dash after a closed literal is not part of its path. Dashes inside the
+    // delimiters, unclosed literals, and concatenated path suffixes keep their bytes.
+    if raw[end..].starts_with(['—', '–']) { &raw[..end] } else { raw }
 }
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+#[path = "explicit_paths/removal_tests.rs"]
+mod removal_tests;
+
+#[cfg(test)]
+#[path = "explicit_paths/scoped_list_tests.rs"]
+mod scoped_list_tests;
+
+#[cfg(test)]
+#[path = "explicit_paths/context_tests.rs"]
+mod context_tests;

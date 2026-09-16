@@ -171,6 +171,12 @@ impl LocalStore {
         }
         Ok(bytes)
     }
+
+    pub(super) fn read_digest(&self, digest: [u8; 32]) -> Result<Vec<u8>, DeveloperLoopError> {
+        self.artifacts
+            .read(ArtifactDigest::from_sha256(Sha256Digest::new(digest)), MAX_ARTIFACT_BYTES)
+            .map_err(|_| error("artifact unavailable or digest mismatch"))
+    }
 }
 
 fn lock_owner(owner: &File) -> Result<(), DeveloperLoopError> {

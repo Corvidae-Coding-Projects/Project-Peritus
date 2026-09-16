@@ -4,10 +4,10 @@ mod support;
 
 use peritus_kernel::{
     AcceptanceOutcome, AcceptancePhase, CommandEnvelope, KernelAggregate, KernelCommand,
-    KernelErrorKind, KernelEventKind, KernelOutcome, ReducerInputs, RunPhase,
+    KernelErrorKind, KernelEventKind, KernelOutcome, ReducerInputs, RunPhase, WaiverPhase,
 };
-use peritus_types::{CommandId, EventId, ReviewCycleId};
-use support::lifecycle::{evaluating_acceptance, proposed_action};
+use peritus_types::{CommandId, EventId, FindingId, ReviewCycleId};
+use support::lifecycle::{evaluating_acceptance, next, proposed_action, submitted_review};
 use support::{Fixture, applied, bytes, digest, execute};
 
 #[test]
@@ -186,6 +186,40 @@ fn incomplete_current_evidence_enters_fixer_state_without_implicit_success() {
     let run = state.run(fixture.run_id).expect("run");
     assert_eq!(run.phase(), RunPhase::Fixing);
     assert_eq!(run.acceptance(), AcceptancePhase::NeedsChanges);
+}
+
+#[test]
+fn waiver_grant_rejects_a_finding_from_another_review_cycle() {
+    let fixture = Fixture::new();
+    let contract = fixture.waiver_contract();
+    let finding_id = FindingId::new(bytes(91)).expect("finding");
+    let requested = next(
+        submitted_review(&fixture, &contract),
+        74,
+        KernelCommand::RequestWaiver {
+            run_id: fixture.run_id,
+            review_id: fixture.review_id,
+            finding_id,
+        },
+        ReducerInputs::new(&contract),
+    );
+    let other_review_id = ReviewCycleId::new(bytes(90)).expect("other review");
+    let evidence = fixture.waiver_evidence_for_review(&contract, finding_id, other_review_id);
+
+    assert_rejected(
+        &requested,
+        execute(
+            requested.clone(),
+            75,
+            KernelCommand::GrantWaiver { finding_id },
+            ReducerInputs::new(&contract).with_acceptance_evidence(&evidence),
+        ),
+        KernelErrorKind::AuthorityMismatch,
+    );
+    assert_eq!(
+        requested.waiver(finding_id).expect("requested waiver").phase(),
+        WaiverPhase::Requested,
+    );
 }
 
 fn assert_replayed_identities_are_rejected(

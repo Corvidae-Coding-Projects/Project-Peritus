@@ -2,78 +2,15 @@
 
 #![allow(missing_docs, reason = "Verus generates ghost enum projection methods")]
 
+mod reviewer;
+
 use crate::{EvidenceCollection, EvidenceError, EvidenceErrorKind, IntegratedCandidate};
 use peritus_types::{ActorId, FindingId, Sha256Digest};
 use vstd::prelude::*;
 
 verus! {
 
-/// External reviewer identity and independence facts.
-#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub struct ReviewerIdentity {
-    actor: ActorId,
-    organization: Sha256Digest,
-    context: Sha256Digest,
-}
-
-impl ReviewerIdentity {
-    /// Creates exact reviewer identity evidence.
-    #[must_use]
-    pub const fn new(
-        actor: ActorId,
-        organization: Sha256Digest,
-        context: Sha256Digest,
-    ) -> Self {
-        Self { actor, organization, context }
-    }
-
-    /// Returns the stable reviewer actor.
-    #[must_use]
-    pub const fn actor(&self) -> ActorId { self.actor }
-
-    /// Returns the external organization identity digest.
-    #[must_use]
-    pub const fn organization(&self) -> Sha256Digest { self.organization }
-
-    /// Returns the fresh review-context digest.
-    #[must_use]
-    pub const fn context(&self) -> Sha256Digest { self.context }
-}
-
-/// Review completion state supplied by the external review boundary.
-#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub enum ReviewCompletion {
-    /// The agreed review scope was not completed.
-    Incomplete,
-    /// The complete scope was reviewed and a final report was issued.
-    Completed,
-}
-
-/// Mandatory independent external-review scope.
-#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub enum ReviewScope {
-    /// Native sandbox and escape-focused testing on every tier-one platform.
-    SandboxEscape,
-    /// Capability, writer, reviewer, fixer, plugin, and MCP authority isolation.
-    AuthorityIsolation,
-    /// Sealed evaluation, profile protection, promotion, and rollback isolation.
-    EvolutionAndPromotion,
-    /// Dependency, artifact, SBOM, provenance, license, and signature integrity.
-    SupplyChain,
-    /// Unsafe-code and trusted-computing-base inventory completeness.
-    UnsafeAndTrustedComputingBase,
-}
-
-impl ReviewScope {
-    /// Complete canonical independent-review scope.
-    pub const ALL: [Self; 5] = [
-        Self::SandboxEscape,
-        Self::AuthorityIsolation,
-        Self::EvolutionAndPromotion,
-        Self::SupplyChain,
-        Self::UnsafeAndTrustedComputingBase,
-    ];
-}
+pub use reviewer::{ReviewCompletion, ReviewScope, ReviewerIdentity};
 
 /// Stable security finding severity.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -93,8 +30,14 @@ pub enum FindingSeverity {
 impl FindingSeverity {
     /// Reports whether this severity blocks H0 readiness while unresolved.
     #[must_use]
-    pub const fn is_release_blocking(self) -> bool {
+    pub const fn is_release_blocking(self) -> (blocking: bool)
+        ensures blocking == self.spec_is_release_blocking()
+    {
         matches!(self, Self::Critical | Self::High)
+    }
+
+    pub open spec fn spec_is_release_blocking(self) -> bool {
+        self == Self::Critical || self == Self::High
     }
 }
 
@@ -124,11 +67,23 @@ impl FindingLifecycle {
 
     /// Reports whether resolution carries nonempty remediation and retest evidence.
     #[must_use]
-    pub const fn has_resolution_evidence(self) -> bool {
+    pub const fn has_resolution_evidence(self) -> (complete: bool)
+        ensures complete == self.spec_has_resolution_evidence()
+    {
         match self {
             Self::Resolved { remediation_digest, retest_digest } => {
                 crate::binding::digest_present(remediation_digest)
                     && crate::binding::digest_present(retest_digest)
+            }
+            Self::Open | Self::AcceptedRisk { .. } => false,
+        }
+    }
+
+    pub open spec fn spec_has_resolution_evidence(self) -> bool {
+        match self {
+            Self::Resolved { remediation_digest, retest_digest } => {
+                crate::binding::digest_is_present(remediation_digest)
+                    && crate::binding::digest_is_present(retest_digest)
             }
             Self::Open | Self::AcceptedRisk { .. } => false,
         }
@@ -170,14 +125,26 @@ impl FindingObservation {
 
     /// Returns finding severity.
     #[must_use]
-    pub const fn severity(&self) -> FindingSeverity { self.severity }
+    pub const fn severity(&self) -> (severity: FindingSeverity)
+        ensures severity == self.spec_severity()
+    {
+        self.severity
+    }
 
     /// Returns the complete lifecycle state.
     #[must_use]
-    pub const fn lifecycle(&self) -> FindingLifecycle { self.lifecycle }
+    pub const fn lifecycle(&self) -> (lifecycle: FindingLifecycle)
+        ensures lifecycle == self.spec_lifecycle()
+    {
+        self.lifecycle
+    }
 
     /// Specification view of the finding candidate.
     pub closed spec fn spec_candidate(&self) -> IntegratedCandidate { self.candidate }
+
+    pub closed spec fn spec_severity(&self) -> FindingSeverity { self.severity }
+
+    pub closed spec fn spec_lifecycle(&self) -> FindingLifecycle { self.lifecycle }
 }
 
 /// Independently produced security review and canonical finding register.
@@ -288,19 +255,35 @@ impl IndependentSecurityReview {
 
     /// Returns external reviewer identity evidence.
     #[must_use]
-    pub const fn reviewer(&self) -> ReviewerIdentity { self.reviewer }
+    pub const fn reviewer(&self) -> (reviewer: ReviewerIdentity)
+        ensures reviewer == self.spec_reviewer()
+    {
+        self.reviewer
+    }
 
     /// Returns the candidate-producing actor.
     #[must_use]
-    pub const fn producer_actor(&self) -> ActorId { self.producer_actor }
+    pub const fn producer_actor(&self) -> (actor: ActorId)
+        ensures actor == self.spec_producer_actor()
+    {
+        self.producer_actor
+    }
 
     /// Returns the candidate-producing organization identity.
     #[must_use]
-    pub const fn producer_organization(&self) -> Sha256Digest { self.producer_organization }
+    pub const fn producer_organization(&self) -> (organization: Sha256Digest)
+        ensures organization == self.spec_producer_organization()
+    {
+        self.producer_organization
+    }
 
     /// Returns review completion state.
     #[must_use]
-    pub const fn completion(&self) -> ReviewCompletion { self.completion }
+    pub const fn completion(&self) -> (completion: ReviewCompletion)
+        ensures completion == self.spec_completion()
+    {
+        self.completion
+    }
 
     /// Borrows independently reviewed scopes in canonical order.
     #[must_use]
@@ -312,7 +295,11 @@ impl IndependentSecurityReview {
 
     /// Returns the immutable external report digest.
     #[must_use]
-    pub const fn report_digest(&self) -> Sha256Digest { self.report_digest }
+    pub const fn report_digest(&self) -> (digest: Sha256Digest)
+        ensures digest == self.spec_report_digest()
+    {
+        self.report_digest
+    }
 
     /// Borrows findings in stable finding-ID order.
     #[must_use]
@@ -324,13 +311,34 @@ impl IndependentSecurityReview {
 
     /// Reports actor and organization independence from the candidate producer.
     #[must_use]
-    pub fn independent_from_producer(&self) -> bool {
-        self.reviewer.actor != self.producer_actor
-            && self.reviewer.organization != self.producer_organization
+    pub const fn independent_from_producer(&self) -> (independent: bool)
+        ensures independent == self.spec_independent_from_producer()
+    {
+        !crate::binding::actor_ids_equal(self.reviewer.actor(), self.producer_actor())
+            && !crate::binding::digests_equal(
+                self.reviewer.organization(),
+                self.producer_organization(),
+            )
     }
 
     /// Specification view of the reviewed candidate.
     pub closed spec fn spec_candidate(&self) -> IntegratedCandidate { self.candidate }
+    pub closed spec fn spec_reviewer(&self) -> ReviewerIdentity { self.reviewer }
+    pub closed spec fn spec_producer_actor(&self) -> ActorId { self.producer_actor }
+    pub closed spec fn spec_producer_organization(&self) -> Sha256Digest {
+        self.producer_organization
+    }
+    pub closed spec fn spec_completion(&self) -> ReviewCompletion { self.completion }
+    pub closed spec fn spec_report_digest(&self) -> Sha256Digest { self.report_digest }
+    pub open spec fn spec_independent_from_producer(&self) -> bool {
+        !crate::binding::actor_same(
+            self.spec_reviewer().spec_actor(),
+            self.spec_producer_actor(),
+        ) && !crate::binding::digest_same(
+            self.spec_reviewer().spec_organization(),
+            self.spec_producer_organization(),
+        )
+    }
     /// Specification view of reviewed scopes.
     pub closed spec fn spec_scopes(&self) -> Seq<ReviewScope> { self.scopes@ }
     /// Specification view of finding observations.

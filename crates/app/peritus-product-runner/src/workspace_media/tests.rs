@@ -7,6 +7,33 @@ use peritus_types::ProviderProfileId;
 use super::*;
 
 #[test]
+fn non_visual_image_file_work_does_not_require_image_input() {
+    let root = tempfile::tempdir().expect("workspace");
+    fs::write(root.path().join("photo.jpg"), b"image bytes to checksum").expect("file");
+    let task = "Compute the SHA-256 checksum of photo.jpg with the workspace tools.";
+
+    let images = discover(root.path(), task, &profile(false)).expect("file work needs no vision");
+    let (prompt, attachments) = images.into_parts(task.to_owned());
+
+    assert!(prompt.starts_with(task));
+    assert!(prompt.contains("cannot inspect image pixels"));
+    assert!(prompt.contains("scoped file and command tools"));
+    assert!(prompt.contains("photo.jpg"));
+    assert!(attachments.is_empty());
+    assert_eq!(fs::read(root.path().join("photo.jpg")).unwrap(), b"image bytes to checksum");
+}
+
+#[test]
+fn direct_visual_file_requests_still_require_image_input() {
+    let root = tempfile::tempdir().expect("workspace");
+    fs::write(root.path().join("photo.jpg"), b"image bytes").expect("file");
+    for task in ["Describe photo.jpg", "Inspect `photo.jpg`", "Classify photo.jpg"] {
+        assert!(discover(root.path(), task, &profile(false)).is_err(), "{task}");
+        assert!(discover_explicit(root.path(), task, &profile(false), &[]).is_err(), "{task}");
+    }
+}
+
+#[test]
 fn mentioned_workspace_image_is_attached_with_its_path() {
     let root = tempfile::tempdir().expect("workspace");
     fs::create_dir(root.path().join("in")).expect("input directory");

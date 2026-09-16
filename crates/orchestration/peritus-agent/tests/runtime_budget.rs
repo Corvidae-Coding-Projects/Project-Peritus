@@ -132,6 +132,53 @@ fn tool_effect_time_uses_the_same_verified_b1_lifecycle() {
     );
 }
 
+#[test]
+fn regressing_interim_usage_is_rejected_without_changing_high_water_accounting() {
+    let revision = revision();
+    let root = budget_id(60);
+    let mut port =
+        LedgerBudgetPort::new(root, revision, BudgetAmounts::from_units(100, 50, 1_000, 1, 0));
+    let mut reservation = AgentBudgetReservation::begin(
+        &mut port,
+        plan(
+            61,
+            root,
+            revision,
+            action_id(62),
+            digest(63),
+            BudgetAmounts::from_units(100, 50, 1_000, 0, 0),
+            false,
+        ),
+    )
+    .expect("reserve");
+    reservation.activate(&mut port, digest(64)).expect("activate");
+    reservation
+        .observe_model(
+            &mut port,
+            digest(65),
+            UsageCounters::new(Some(20), None, None, Some(10), None, None, Some(30), Some(7)),
+            200,
+            UsageFinality::Interim,
+        )
+        .expect("first high-water observation");
+    let high_water = reservation.last_usage();
+    let consumed = port.ledger().account(root).expect("account").consumed();
+
+    reservation
+        .observe_model(
+            &mut port,
+            digest(66),
+            UsageCounters::new(Some(10), None, None, Some(5), None, None, Some(15), Some(3)),
+            100,
+            UsageFinality::Interim,
+        )
+        .expect_err("cumulative provider usage cannot move backwards");
+
+    assert_eq!(reservation.state(), AgentBudgetState::Active);
+    assert_eq!(reservation.last_usage(), high_water);
+    assert_eq!(port.ledger().account(root).expect("account").consumed(), consumed);
+}
+
 #[allow(clippy::too_many_arguments)]
 fn plan(
     reservation: u8,

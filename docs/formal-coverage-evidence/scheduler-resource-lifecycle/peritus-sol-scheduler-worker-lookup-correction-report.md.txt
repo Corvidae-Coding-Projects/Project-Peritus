@@ -1,0 +1,50 @@
+# Scheduler worker lookup correction
+
+## Source identity
+
+- Immutable preimage: `/tmp/peritus-sol-scheduler-command-final-source-001` (95 files), portable manifest SHA-256 `2930562b537b2c81eea3f2d1861032837402679d6836f837d68d1b5ea1687c1c`.
+- Immutable corrected package: `/tmp/peritus-sol-scheduler-command-final-source-002` (95 files).
+- Corrected portable manifest: `/tmp/peritus-sol-scheduler-command-final-source-002-relative.sha256`, SHA-256 `0222f43c477c81025f9517b133a2bf805bf27de85a61695d670edd5ec6e4f837`.
+- Exact preimage-to-correction patch: `/tmp/peritus-sol-scheduler-command-final-001-to-002.patch`, SHA-256 `b557f55f88e8de567facf1ee7c096f337edbe4d667e54a49ca5fbe2323c2869a`.
+- Exact changed-path inventory: `/tmp/peritus-sol-scheduler-command-final-001-to-002.inventory.txt`, SHA-256 `6286875c03b6f517108e72edcc8728ef531d3988eb9787d5b745ed0decf6da03`.
+
+Exactly two package files differ from the reviewed 316-proof preimage:
+
+1. `src/state/lookup.rs`
+2. `src/state/mutation/worker_update.rs`
+
+## Behavior
+
+`SchedulerState::worker_index` now owns the existing production binary-search implementation and proves that every returned index is in bounds and has the requested worker identity. The public `worker` lookup calls this helper without changing its API or result contract.
+
+`set_worker_phase` tries `worker_index` before mutation and delegates an exact hit to the already verified indexed mutation helper. It retains the prior linear scan only after a binary-search miss. That fallback preserves the exact unconditional private-helper contract and runtime behavior for arbitrary unvalidated decoded state; valid canonically sorted production state takes the binary path for an existing worker. Existing worker-not-found behavior, phase assignment, state frames, command error precedence, and public APIs are unchanged.
+
+This correction removes the introduced unconditional linear scan from normal worker phase updates. It does not formally prove an asymptotic complexity bound or prove binary-search miss completeness from the current scheduler ready invariant.
+
+## Exact qualification
+
+All commands ran from `/tmp/peritus-sol-scheduler-post244-source-001` using the disk-backed target `/home/doll/Project-Peritus/.worktrees/formal-coverage/target/sol-scheduler-post244`, `CARGO_BUILD_JOBS=1`, and `CCACHE_DISABLE=1` for compilation commands.
+
+```text
+cargo verus verify --package peritus-scheduler --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20 --num-threads 2
+cargo test --package peritus-scheduler --locked
+cargo test --package peritus-scheduler --no-default-features --locked
+cargo test --package peritus-scheduler --all-features --locked
+cargo clippy --package peritus-scheduler --all-targets --all-features --locked -- -D warnings
+cargo fmt -p peritus-scheduler -- --check
+/home/doll/Project-Peritus/.worktrees/formal-coverage/target/debug/xtask ordinary-api-check
+/home/doll/Project-Peritus/.worktrees/formal-coverage/target/debug/xtask source-layout-check
+```
+
+Results on the exact frozen corrected source:
+
+- strict Verus: 317 verified, 0 errors;
+- default tests: 25 passed, 0 failed;
+- no-default-feature tests: 25 passed, 0 failed;
+- all-feature tests: 25 passed, 0 failed;
+- Clippy with warnings denied: passed;
+- rustfmt check: passed;
+- ordinary API check: 3,532 formal-boundary files and 14,697 ordinary-safe executable entry points, passed;
+- source layout check: 4,433 source files, passed.
+
+The first logged strict attempt, `/tmp/peritus-sol-scheduler-worker-lookup-verus-001.log`, stopped in `libsqlite3-sys` before scheduler verification because `ccache` attempted to write under a read-only home cache. It is retained as an environment diagnostic and is not proof evidence. The exact successful source was rerun with `CCACHE_DISABLE=1` in `/tmp/peritus-sol-scheduler-worker-lookup-verus-003.log`.

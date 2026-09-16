@@ -74,3 +74,60 @@ fn developer_loop_continues_an_early_terminal_in_the_same_grounding_session() {
         drop(requests);
     });
 }
+
+#[test]
+fn required_tool_retries_restate_the_exact_host_prerequisite() {
+    block_on(async {
+        let provider = ScriptedProvider {
+            profile: profile(),
+            responses: Mutex::new(VecDeque::from([
+                fixtures::recoverable_failure_response(),
+                tool_response(),
+                text_response(),
+            ])),
+            requests: Mutex::new(Vec::new()),
+        };
+        let mut tools = GroundingTool::default();
+        let mut trace = RecordingTrace::default();
+        let outcome = DeveloperLoop::run(
+            &provider,
+            DeveloperLoopRequest {
+                request_prefix: "required-tool-retry-test".to_owned(),
+                system: "Inspect before completing.".to_owned(),
+                prompt: "Read src/lib.rs and report.".to_owned(),
+                attachments: Vec::new(),
+                tools: vec![read_tool()],
+                limits: DeveloperLoopLimits::new(4, 4).expect("limits"),
+                cancellation: CancellationToken::new(),
+            },
+            &mut tools,
+            &mut trace,
+        )
+        .await
+        .expect("required tool retry recovers");
+
+        assert_eq!(outcome.text, "implementation inspected");
+        assert_eq!(outcome.retries, 1);
+        assert_eq!(tools.calls, 1);
+        let requests = provider.requests.lock().expect("requests");
+        assert_eq!(requests.len(), 3);
+        assert!(matches!(requests[0].tool_choice(), ToolChoice::Specific(_)));
+        assert!(matches!(requests[1].tool_choice(), ToolChoice::Specific(_)));
+        assert!(requests[1].messages().iter().any(|message| {
+            message.role() == Role::System
+                && message.content().iter().any(|block| {
+                    matches!(block, ContentBlock::Text(text)
+                        if text.expose_for_wire().contains("CURRENT PROVIDER RETRY")
+                            && text.expose_for_wire().contains("required_tool=workspace_read")
+                            && text.expose_for_wire().contains("exactly one call"))
+                })
+        }));
+        assert!(!requests[0].messages().iter().any(|message| {
+            message.content().iter().any(|block| {
+                matches!(block, ContentBlock::Text(text)
+                    if text.expose_for_wire().contains("CURRENT PROVIDER RETRY"))
+            })
+        }));
+        drop(requests);
+    });
+}

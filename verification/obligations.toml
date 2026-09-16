@@ -16,7 +16,7 @@ symbol = "peritus_kernel::reducer::reducer_result_refines"
 status = "in-progress"
 dependencies = ["OBL-0114", "OBL-0117"]
 live_issue = "#7"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/foundation/peritus-kernel/src/reducer.rs", symbol = "peritus_kernel::reducer::reducer_result_refines", command = "cargo verus verify --package peritus-kernel --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "refinement-test", source_file = "crates/foundation/peritus-kernel/tests/reference_model.rs", symbol = "peritus_kernel::tests::reference_model::generated_traces_match_reference_after_each_step_and_first_rejection", command = "cargo test --package peritus-kernel --all-targets --all-features --locked" },
@@ -32,7 +32,7 @@ symbol = "peritus_kernel::model::causal_transition_refines"
 status = "in-progress"
 dependencies = ["OBL-0115"]
 live_issue = "#7"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/foundation/peritus-kernel/src/aggregate.rs", symbol = "peritus_kernel::aggregate::KernelAggregate::genesis_result_refines", command = "cargo verus verify --package peritus-kernel --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "verus-proof", source_file = "crates/foundation/peritus-kernel/src/reducer.rs", symbol = "peritus_kernel::reducer::reducer_result_refines", command = "cargo verus verify --package peritus-kernel --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
@@ -49,7 +49,7 @@ symbol = "peritus_kernel::model::no_new_accepted_run"
 status = "in-progress"
 dependencies = ["INV-003", "INV-004", "OBL-0113", "OBL-0116"]
 live_issue = "#7"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/foundation/peritus-kernel/src/proofs.rs", symbol = "peritus_kernel::proofs::accepted_step_requires_acceptance_event", command = "cargo verus verify --package peritus-kernel --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "property-test", source_file = "crates/foundation/peritus-kernel/tests/transition_matrix.rs", symbol = "peritus_kernel::tests::transition_matrix::run_pause_resume_and_all_non_acceptance_terminal_edges_are_explicit", command = "cargo test --package peritus-kernel --all-targets --all-features --locked" },
@@ -66,7 +66,7 @@ symbol = "peritus_kernel::aggregate::validation::parents_are_valid"
 status = "in-progress"
 dependencies = ["OBL-0117"]
 live_issue = "#7"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "refinement-test", source_file = "crates/foundation/peritus-kernel/tests/transition_matrix.rs", symbol = "peritus_kernel::tests::transition_matrix::missing_parents_and_illegal_child_edges_fail_without_events", command = "cargo test --package peritus-kernel --all-targets --all-features --locked" },
   { kind = "refinement-test", source_file = "crates/foundation/peritus-kernel/tests/reference_model.rs", symbol = "peritus_kernel::tests::reference_model::generated_traces_match_reference_after_each_step_and_first_rejection", command = "cargo test --package peritus-kernel --all-targets --all-features --locked" },
@@ -82,7 +82,7 @@ symbol = "peritus_quality_policy::evidence::AcceptanceEvidence::spec_all_current
 status = "in-progress"
 dependencies = ["OBL-0111", "OBL-0113"]
 live_issue = "#6"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/foundation/peritus-quality-policy/src/proofs/freshness.rs", symbol = "peritus_quality_policy::proofs::freshness::freshness_implies_exact_revision", command = "cargo verus verify --package peritus-quality-policy --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "property-test", source_file = "crates/foundation/peritus-quality-policy/tests/cases/freshness.rs", symbol = "peritus_quality_policy::tests::cases::freshness::one_field_revision_drift_is_stale_for_every_tuple_dimension", command = "cargo test --package peritus-quality-policy --all-targets --all-features --locked" },
@@ -98,7 +98,7 @@ symbol = "peritus_quality_policy::evaluator::accepted_evaluation_contract"
 status = "in-progress"
 dependencies = ["INV-003", "INV-011", "OBL-0113"]
 live_issue = "#6"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/foundation/peritus-quality-policy/src/evaluator.rs", symbol = "peritus_quality_policy::evaluator::accepted_evaluation_contract", command = "cargo verus verify --package peritus-quality-policy --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "property-test", source_file = "crates/foundation/peritus-quality-policy/tests/cases/happy_path.rs", symbol = "peritus_quality_policy::tests::cases::happy_path::complete_exact_revision_evidence_is_acceptable", command = "cargo test --package peritus-quality-policy --all-targets --all-features --locked" },
@@ -114,7 +114,7 @@ symbol = "peritus_spec::gate::GateGraph::invariant"
 status = "in-progress"
 dependencies = ["OBL-0112"]
 live_issue = "#6"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/foundation/peritus-spec/src/gate_model.rs", symbol = "peritus_spec::gate_model::gate_execution_order_is_valid", command = "cargo verus verify --package peritus-spec --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "verus-proof", source_file = "crates/foundation/peritus-spec/src/gate_model.rs", symbol = "peritus_spec::gate_model::valid_graph_has_dependency_order_certificate", command = "cargo verus verify --package peritus-spec --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
@@ -131,7 +131,7 @@ symbol = "peritus_leases::model::concrete::concrete_exclusive"
 status = "in-progress"
 dependencies = ["OBL-0103", "OBL-0107"]
 live_issue = "#5"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/state/peritus-leases/src/proofs/exclusivity.rs", symbol = "peritus_leases::proofs::exclusivity::two_concrete_current_claims_are_identical_in_holder_and_generation", command = "cargo verus verify --package peritus-leases --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "verus-proof", source_file = "crates/state/peritus-leases/src/proofs/fencing.rs", symbol = "peritus_leases::proofs::fencing::concrete_fence_invalidates_previous_claim", command = "cargo verus verify --package peritus-leases --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
@@ -147,7 +147,7 @@ symbol = "peritus_policy::model::role_permits"
 status = "in-progress"
 dependencies = []
 live_issue = "#5"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/foundation/peritus-policy/src/proofs/role_separation.rs", symbol = "peritus_policy::proofs::role_separation::reviewer_cannot_mutate", command = "cargo verus verify --package peritus-policy --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "verus-proof", source_file = "crates/foundation/peritus-policy/src/proofs/role_separation.rs", symbol = "peritus_policy::proofs::role_separation::evaluator_cannot_mutate", command = "cargo verus verify --package peritus-policy --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
@@ -166,7 +166,7 @@ symbol = "peritus_policy::model::capability_use_success"
 status = "in-progress"
 dependencies = ["INV-007", "OBL-0101", "OBL-0103"]
 live_issue = "#5"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/foundation/peritus-policy/src/proofs/scope.rs", symbol = "peritus_policy::proofs::scope::identical_scope_dimensions_are_preserved", command = "cargo verus verify --package peritus-policy --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "verus-proof", source_file = "crates/foundation/peritus-policy/src/proofs/refinement.rs", symbol = "peritus_policy::proofs::refinement::one_success_decrements_once", command = "cargo verus verify --package peritus-policy --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
@@ -183,7 +183,7 @@ symbol = "peritus_approval::model::inv_009"
 status = "in-progress"
 dependencies = ["INV-008", "OBL-0103", "OBL-0109", "OBL-0110"]
 live_issue = "#5"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/state/peritus-approval/src/proofs/refinement.rs", symbol = "peritus_approval::proofs::refinement::reachable_preserves_inv_009", command = "cargo verus verify --package peritus-approval --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "verus-proof", source_file = "crates/state/peritus-approval/src/proofs/binding.rs", symbol = "peritus_approval::proofs::binding::consume_once_preserves_digest", command = "cargo verus verify --package peritus-approval --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
@@ -199,7 +199,7 @@ symbol = "peritus_budget::reachability::complete_refinement"
 status = "in-progress"
 dependencies = ["OBL-0104", "OBL-0105", "OBL-0106"]
 live_issue = "#5"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/foundation/peritus-budget/src/reachability.rs", symbol = "peritus_budget::reachability::accepted_step_is_valid_and_complete", command = "cargo verus verify --package peritus-budget --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "verus-proof", source_file = "crates/foundation/peritus-budget/src/reachability/total.rs", symbol = "peritus_budget::reachability::total::rejected_is_budget_step", command = "cargo verus verify --package peritus-budget --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
@@ -215,7 +215,7 @@ symbol = "peritus_policy::monotonicity_model::decision_respects_allowed_query_se
 status = "in-progress"
 dependencies = ["OBL-0100", "OBL-0102"]
 live_issue = "#5"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/foundation/peritus-policy/src/proofs/monotonicity.rs", symbol = "peritus_policy::proofs::monotonicity::evaluator_cannot_broaden_allowed_queries", command = "cargo verus verify --package peritus-policy --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "verus-proof", source_file = "crates/foundation/peritus-policy/src/amendment/preview.rs", symbol = "peritus_policy::amendment::preview::preview_amendment_result_is_exact", command = "cargo verus verify --package peritus-policy --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
@@ -231,7 +231,7 @@ symbol = "peritus_policy::proofs::monotonicity::deny_wins"
 status = "in-progress"
 dependencies = []
 live_issue = "#5"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/foundation/peritus-policy/src/proofs/monotonicity.rs", symbol = "peritus_policy::proofs::monotonicity::deny_wins", command = "cargo verus verify --package peritus-policy --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
 ]
@@ -246,7 +246,7 @@ symbol = "peritus_policy::proofs::scope::independent_atoms_do_not_imply_cartesia
 status = "in-progress"
 dependencies = []
 live_issue = "#5"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/foundation/peritus-policy/src/proofs/scope.rs", symbol = "peritus_policy::proofs::scope::independent_atoms_do_not_imply_cartesian_authority", command = "cargo verus verify --package peritus-policy --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
 ]
@@ -261,7 +261,7 @@ symbol = "peritus_policy::amendment::preview::preview_amendment_result_is_exact"
 status = "in-progress"
 dependencies = []
 live_issue = "#5"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/foundation/peritus-policy/src/amendment/preview.rs", symbol = "peritus_policy::amendment::preview::preview_amendment_result_is_exact", command = "cargo verus verify --package peritus-policy --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
 ]
@@ -276,7 +276,7 @@ symbol = "peritus_policy::time::AuthorityTimeState::spec_accepts"
 status = "in-progress"
 dependencies = []
 live_issue = "#5"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/foundation/peritus-policy/src/proofs/refinement.rs", symbol = "peritus_policy::proofs::refinement::accepted_time_never_regresses", command = "cargo verus verify --package peritus-policy --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "verus-proof", source_file = "crates/foundation/peritus-policy/src/time.rs", symbol = "peritus_policy::time::AuthorityTimeState::spec_accepts", command = "cargo verus verify --package peritus-policy --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
@@ -292,7 +292,7 @@ symbol = "peritus_budget::model::ledger_well_formed"
 status = "in-progress"
 dependencies = []
 live_issue = "#5"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/foundation/peritus-budget/src/reachability.rs", symbol = "peritus_budget::reachability::accepted_step_is_valid_and_complete", command = "cargo verus verify --package peritus-budget --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
 ]
@@ -307,7 +307,7 @@ symbol = "peritus_budget::model::ledger_high_water_monotonic"
 status = "in-progress"
 dependencies = []
 live_issue = "#5"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/foundation/peritus-budget/src/reachability/reducer_proofs/observation.rs", symbol = "peritus_budget::reachability::reducer_proofs::observation::observation_refines", command = "cargo verus verify --package peritus-budget --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
 ]
@@ -322,7 +322,7 @@ symbol = "peritus_budget::refinement_model::ancestor_consumption_propagates"
 status = "in-progress"
 dependencies = []
 live_issue = "#5"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/foundation/peritus-budget/src/reachability.rs", symbol = "peritus_budget::reachability::accepted_step_is_valid_and_complete", command = "cargo verus verify --package peritus-budget --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "verus-proof", source_file = "crates/foundation/peritus-budget/src/reachability/guards.rs", symbol = "peritus_budget::reachability::guards::request_capacity_from_available", command = "cargo verus verify --package peritus-budget --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
@@ -338,7 +338,7 @@ symbol = "peritus_leases::proofs::fencing::concrete_fence_invalidates_previous_c
 status = "in-progress"
 dependencies = []
 live_issue = "#5"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/state/peritus-leases/src/proofs/fencing.rs", symbol = "peritus_leases::proofs::fencing::concrete_fence_invalidates_previous_claim", command = "cargo verus verify --package peritus-leases --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "verus-proof", source_file = "crates/state/peritus-leases/src/proofs/fencing.rs", symbol = "peritus_leases::proofs::fencing::accepted_boundary_fence_is_terminal", command = "cargo verus verify --package peritus-leases --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
@@ -354,7 +354,7 @@ symbol = "peritus_leases::model::exact_authority_intersection"
 status = "in-progress"
 dependencies = ["INV-007", "INV-008"]
 live_issue = "#5"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/state/peritus-leases/src/proofs/authority.rs", symbol = "peritus_leases::proofs::authority::exact_intersection_is_no_broader_than_both_inputs", command = "cargo verus verify --package peritus-leases --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "verus-proof", source_file = "crates/state/peritus-leases/src/proofs/authority.rs", symbol = "peritus_leases::proofs::authority::executable_logical_use_remains_bound_to_current_claim", command = "cargo verus verify --package peritus-leases --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
@@ -370,7 +370,7 @@ symbol = "peritus_approval::state::use_specification::consume_once_result_relati
 status = "in-progress"
 dependencies = []
 live_issue = "#5"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/state/peritus-approval/src/proofs/binding.rs", symbol = "peritus_approval::proofs::binding::consume_once_preserves_digest", command = "cargo verus verify --package peritus-approval --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "verus-proof", source_file = "crates/state/peritus-approval/src/state/specification.rs", symbol = "peritus_approval::state::specification::consume_once_refines", command = "cargo verus verify --package peritus-approval --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
@@ -386,7 +386,7 @@ symbol = "peritus_approval::proofs::replay::terminal_state_cannot_change"
 status = "in-progress"
 dependencies = []
 live_issue = "#5"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/state/peritus-approval/src/proofs/replay.rs", symbol = "peritus_approval::proofs::replay::exact_replay_is_idempotent", command = "cargo verus verify --package peritus-approval --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "verus-proof", source_file = "crates/state/peritus-approval/src/proofs/replay.rs", symbol = "peritus_approval::proofs::replay::terminal_state_cannot_change", command = "cargo verus verify --package peritus-approval --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
@@ -402,7 +402,7 @@ symbol = "peritus_spec::contract::ContractBinding::invariant"
 status = "in-progress"
 dependencies = []
 live_issue = "#6"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/foundation/peritus-spec/src/contract.rs", symbol = "peritus_spec::contract::ContractBinding::invariant", command = "cargo verus verify --package peritus-spec --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "refinement-test", source_file = "crates/foundation/peritus-spec/tests/binding.rs", symbol = "peritus_spec::tests::binding::binding_requires_the_tuple_to_name_the_exact_contract", command = "cargo test --package peritus-spec --all-targets --all-features --locked" },
@@ -418,7 +418,7 @@ symbol = "peritus_spec::gate::GateGraph::new"
 status = "in-progress"
 dependencies = []
 live_issue = "#6"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/foundation/peritus-spec/src/gate.rs", symbol = "peritus_spec::gate::GateGraph::invariant", command = "cargo verus verify --package peritus-spec --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "verus-proof", source_file = "crates/foundation/peritus-spec/src/gate_model.rs", symbol = "peritus_spec::gate_model::valid_graph_has_dependency_order_certificate", command = "cargo verus verify --package peritus-spec --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
@@ -434,7 +434,7 @@ symbol = "peritus_quality_policy::evaluator::evaluate_acceptance"
 status = "in-progress"
 dependencies = ["OBL-0111"]
 live_issue = "#6"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/foundation/peritus-quality-policy/src/evaluator.rs", symbol = "peritus_quality_policy::evaluator::accepted_evaluation_contract", command = "cargo verus verify --package peritus-quality-policy --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "property-test", source_file = "crates/foundation/peritus-quality-policy/tests/cases/happy_path.rs", symbol = "peritus_quality_policy::tests::cases::happy_path::complete_exact_revision_evidence_is_acceptable", command = "cargo test --package peritus-quality-policy --all-targets --all-features --locked" },
@@ -450,7 +450,7 @@ symbol = "peritus_kernel::reducer::reducer_result_refines"
 status = "in-progress"
 dependencies = []
 live_issue = "#7"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/foundation/peritus-kernel/src/reducer.rs", symbol = "peritus_kernel::reducer::reducer_result_refines", command = "cargo verus verify --package peritus-kernel --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
 ]
@@ -465,7 +465,7 @@ symbol = "peritus_kernel::aggregate::KernelAggregate::genesis_result_refines"
 status = "in-progress"
 dependencies = []
 live_issue = "#7"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/foundation/peritus-kernel/src/aggregate.rs", symbol = "peritus_kernel::aggregate::KernelAggregate::genesis_result_refines", command = "cargo verus verify --package peritus-kernel --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "verus-proof", source_file = "crates/foundation/peritus-kernel/src/model.rs", symbol = "peritus_kernel::model::causal_transition_refines", command = "cargo verus verify --package peritus-kernel --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
@@ -481,7 +481,7 @@ symbol = "peritus_kernel::proofs::accepted_step_requires_acceptance_event"
 status = "in-progress"
 dependencies = ["OBL-0113"]
 live_issue = "#7"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/foundation/peritus-kernel/src/proofs.rs", symbol = "peritus_kernel::proofs::accepted_step_requires_acceptance_event", command = "cargo verus verify --package peritus-kernel --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "verus-proof", source_file = "crates/foundation/peritus-kernel/src/reducer.rs", symbol = "peritus_kernel::reducer::reducer_result_refines", command = "cargo verus verify --package peritus-kernel --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
@@ -497,7 +497,7 @@ symbol = "peritus_kernel::aggregate::validation::is_valid"
 status = "in-progress"
 dependencies = []
 live_issue = "#7"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "refinement-test", source_file = "crates/foundation/peritus-kernel/tests/transition_matrix.rs", symbol = "peritus_kernel::tests::transition_matrix::missing_parents_and_illegal_child_edges_fail_without_events", command = "cargo test --package peritus-kernel --all-targets --all-features --locked" },
   { kind = "property-test", source_file = "crates/foundation/peritus-kernel/tests/adversarial.rs", symbol = "peritus_kernel::tests::adversarial::revision_forks_and_replayed_identities_preserve_the_aggregate", command = "cargo test --package peritus-kernel --all-targets --all-features --locked" },
@@ -513,7 +513,7 @@ symbol = "peritus_journal::verified::committed_state_successor"
 status = "in-progress"
 dependencies = ["OBL-0114", "OBL-0115", "OBL-0117"]
 live_issue = "#9"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/state/peritus-journal/src/verified.rs", symbol = "peritus_journal::verified::committed_state_successor", command = "cargo verus verify --package peritus-journal --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "refinement-test", source_file = "crates/state/peritus-journal/tests/kernel_replay.rs", symbol = "peritus_journal::tests::kernel_replay::genesis_and_transition_recover_exactly_after_journal_restart", command = "cargo test --package peritus-journal --all-targets --all-features --locked" },
@@ -529,7 +529,7 @@ symbol = "peritus_journal::verified::committed_state_successor"
 status = "in-progress"
 dependencies = ["OBL-0103", "OBL-0105", "OBL-0106", "OBL-0107", "OBL-0110"]
 live_issue = "#9"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/state/peritus-journal/src/verified.rs", symbol = "peritus_journal::verified::committed_state_successor", command = "cargo verus verify --package peritus-journal --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "refinement-test", source_file = "crates/state/peritus-journal/tests/b1_adapters.rs", symbol = "peritus_journal::tests::b1_adapters::capability_use_is_exposed_only_with_its_exact_durable_successor", command = "cargo test --package peritus-journal --all-targets --all-features --locked" },
@@ -548,7 +548,7 @@ symbol = "peritus_journal::verified::registry_advance"
 status = "in-progress"
 dependencies = ["OBL-0107"]
 live_issue = "#9"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/state/peritus-journal/src/verified.rs", symbol = "peritus_journal::verified::registry_advance", command = "cargo verus verify --package peritus-journal --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "refinement-test", source_file = "crates/state/peritus-journal/tests/authority_adapters.rs", symbol = "peritus_journal::tests::authority_adapters::registry_rejects_non_increasing_currentness", command = "cargo test --package peritus-journal --all-targets --all-features --locked" },
@@ -565,7 +565,7 @@ symbol = "peritus_journal::verified::authority_epoch_successor"
 status = "in-progress"
 dependencies = ["OBL-0103"]
 live_issue = "#9"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/state/peritus-journal/src/verified.rs", symbol = "peritus_journal::verified::authority_epoch_successor", command = "cargo verus verify --package peritus-journal --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "refinement-test", source_file = "crates/state/peritus-journal/tests/authority_adapters.rs", symbol = "peritus_journal::tests::authority_adapters::authority_clock_rejects_stale_allocation_and_survives_restart", command = "cargo test --package peritus-journal --all-targets --all-features --locked" },
@@ -581,7 +581,7 @@ symbol = "peritus_evidence::verified::revisions_equal"
 status = "in-progress"
 dependencies = ["OBL-0111", "OBL-0113"]
 live_issue = "#9"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/state/peritus-evidence/src/verified.rs", symbol = "peritus_evidence::verified::revision_fields_match", command = "cargo verus verify --package peritus-evidence --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "refinement-test", source_file = "crates/state/peritus-evidence/tests/admission.rs", symbol = "peritus_evidence::tests::admission::valid_admission_is_atomic_idempotent_and_survives_restart", command = "cargo test --package peritus-evidence --all-targets --all-features --locked" },
@@ -599,7 +599,7 @@ symbol = "peritus_workspace::refinement::accepted_target_is_exact_authorized_res
 status = "in-progress"
 dependencies = ["OBL-0101", "OBL-0108", "OBL-0114", "OBL-0119"]
 live_issue = "#10"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/runtime/peritus-workspace/src/refinement.rs", symbol = "peritus_workspace::refinement::accepted_target_is_exact_authorized_resource", command = "cargo verus verify --package peritus-workspace --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "property-test", source_file = "crates/runtime/peritus-workspace/src/verified.rs", symbol = "peritus_workspace::verified::tests::resource_identity_rejects_each_independent_mismatch", command = "cargo test --package peritus-workspace --all-targets --all-features --locked" },
@@ -616,7 +616,7 @@ symbol = "peritus_workspace::refinement::permit_implies_complete_committed_autho
 status = "in-progress"
 dependencies = ["OBL-0103", "OBL-0108", "OBL-0114", "OBL-0118", "OBL-0119"]
 live_issue = "#10"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/runtime/peritus-workspace/src/refinement.rs", symbol = "peritus_workspace::refinement::permit_implies_complete_committed_authority", command = "cargo verus verify --package peritus-workspace --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "property-test", source_file = "crates/runtime/peritus-workspace/src/verified.rs", symbol = "peritus_workspace::verified::tests::authority_gate_rejects_every_missing_fact", command = "cargo test --package peritus-workspace --all-targets --all-features --locked" },
@@ -633,7 +633,7 @@ symbol = "peritus_workspace::refinement::safe_assessment_requires_exact_complete
 status = "in-progress"
 dependencies = ["OBL-0107", "OBL-0119"]
 live_issue = "#10"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/runtime/peritus-workspace/src/refinement.rs", symbol = "peritus_workspace::refinement::safe_assessment_requires_exact_complete_post_fence_observation", command = "cargo verus verify --package peritus-workspace --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "refinement-test", source_file = "crates/runtime/peritus-workspace/src/reconcile_tests.rs", symbol = "peritus_workspace::reconcile_tests::post_fence_classification_never_guesses_safety", command = "cargo test --package peritus-workspace --all-targets --all-features --locked" },
@@ -650,7 +650,7 @@ symbol = "peritus_process::refinement::terminal_result_implies_unique_owned_comp
 status = "in-progress"
 dependencies = ["OBL-0129"]
 live_issue = "#11"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/runtime/peritus-process/src/refinement.rs", symbol = "peritus_process::refinement::terminal_result_implies_unique_owned_completion", command = "cargo verus verify --package peritus-process --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "refinement-test", source_file = "crates/runtime/peritus-process/tests/process_integration/control_lifecycle.rs", symbol = "peritus_process::tests::process_integration::control_lifecycle::cancellation_publishes_one_terminal_owned_tree_result", command = "cargo test --package peritus-process --all-targets --all-features --locked" },
@@ -667,7 +667,7 @@ symbol = "peritus_process::refinement::permit_implies_complete_execution_authori
 status = "in-progress"
 dependencies = ["OBL-0103", "OBL-0108", "OBL-0114", "OBL-0118", "OBL-0119"]
 live_issue = "#11"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/runtime/peritus-process/src/refinement.rs", symbol = "peritus_process::refinement::permit_implies_complete_execution_authority", command = "cargo verus verify --package peritus-process --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "refinement-test", source_file = "crates/runtime/peritus-process/tests/process_integration.rs", symbol = "peritus_process::tests::process_integration::exact_committed_authority_launches_separate_bounded_pipe_streams", command = "cargo test --package peritus-process --all-targets --all-features --locked" },
@@ -684,7 +684,7 @@ symbol = "peritus_process::refinement::holder_evidence_implies_exact_complete_qu
 status = "in-progress"
 dependencies = ["OBL-0107", "OBL-0119"]
 live_issue = "#11"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/runtime/peritus-process/src/refinement.rs", symbol = "peritus_process::refinement::holder_evidence_implies_exact_complete_quiescence", command = "cargo verus verify --package peritus-process --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "refinement-test", source_file = "crates/runtime/peritus-process/tests/process_integration.rs", symbol = "peritus_process::tests::process_integration::holder_quiescence_requires_exact_terminal_correlated_manifests", command = "cargo test --package peritus-process --all-targets --all-features --locked" },
@@ -700,7 +700,7 @@ symbol = "peritus_sandbox::refinement::checked_plan_is_no_broader_than_contract"
 status = "in-progress"
 dependencies = []
 live_issue = "#11"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/runtime/peritus-sandbox/src/refinement.rs", symbol = "peritus_sandbox::refinement::checked_plan_is_no_broader_than_contract", command = "cargo verus verify --package peritus-sandbox --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "verus-proof", source_file = "crates/runtime/peritus-sandbox/src/refinement.rs", symbol = "peritus_sandbox::refinement::admitted_backend_covers_required_features", command = "cargo verus verify --package peritus-sandbox --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
@@ -719,7 +719,7 @@ symbol = "peritus_process::refinement::terminal_result_implies_unique_owned_comp
 status = "in-progress"
 dependencies = []
 live_issue = "#11"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/runtime/peritus-process/src/refinement.rs", symbol = "peritus_process::refinement::terminal_result_implies_unique_owned_completion", command = "cargo verus verify --package peritus-process --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "refinement-test", source_file = "crates/runtime/peritus-process/tests/process_integration/control_lifecycle.rs", symbol = "peritus_process::tests::process_integration::control_lifecycle::cancellation_publishes_one_terminal_owned_tree_result", command = "cargo test --package peritus-process --all-targets --all-features --locked" },
@@ -736,7 +736,7 @@ symbol = "peritus_process::refinement::native_preparation_implies_complete_bindi
 status = "in-progress"
 dependencies = ["OBL-0126", "OBL-0128"]
 live_issue = "#12"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/runtime/peritus-process/src/refinement.rs", symbol = "peritus_process::refinement::native_preparation_implies_complete_binding", command = "cargo verus verify --package peritus-process --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "refinement-test", source_file = "crates/runtime/peritus-process/tests/process_integration/native_backend/lifecycle.rs", symbol = "peritus_process::tests::process_integration::native_backend::lifecycle::exact_restricted_authority_runs_through_the_helper_and_releases_the_session", command = "cargo test --package peritus-process --all-targets --all-features --locked" },
@@ -752,7 +752,7 @@ symbol = "peritus_network::refinement::managed_network_allow_implies_checked_all
 status = "in-progress"
 dependencies = ["OBL-0128"]
 live_issue = "#12"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/runtime/peritus-network/src/refinement.rs", symbol = "peritus_network::refinement::managed_network_allow_implies_checked_allow", command = "cargo verus verify --package peritus-network --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "property-test", source_file = "crates/runtime/peritus-network/tests/network/policy.rs", symbol = "peritus_network::tests::network::policy::canonical_matching_denies_and_special_addresses_are_narrowed", command = "cargo test --package peritus-network --all-targets --all-features --locked" },
@@ -769,7 +769,7 @@ symbol = "peritus_secrets::refinement::delivered_secret_implies_exact_live_lease
 status = "in-progress"
 dependencies = ["OBL-0128"]
 live_issue = "#12"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/runtime/peritus-secrets/src/refinement.rs", symbol = "peritus_secrets::refinement::delivered_secret_implies_exact_live_lease", command = "cargo verus verify --package peritus-secrets --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "refinement-test", source_file = "crates/runtime/peritus-secrets/tests/secrets.rs", symbol = "peritus_secrets::tests::secrets::leases_reject_drift_expiry_reuse_and_revocation", command = "cargo test --package peritus-secrets --all-targets --all-features --locked" },
@@ -786,7 +786,7 @@ symbol = "peritus_process::refinement::complete_native_teardown_releases_every_r
 status = "in-progress"
 dependencies = ["INV-013", "OBL-0129"]
 live_issue = "#12"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/runtime/peritus-process/src/refinement.rs", symbol = "peritus_process::refinement::complete_native_teardown_releases_every_resource", command = "cargo verus verify --package peritus-process --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "refinement-test", source_file = "crates/runtime/peritus-process/tests/process_integration/native_backend/lifecycle.rs", symbol = "peritus_process::tests::process_integration::native_backend::lifecycle::exact_restricted_authority_runs_through_the_helper_and_releases_the_session", command = "cargo test --package peritus-process --all-targets --all-features --locked" },
@@ -802,7 +802,7 @@ symbol = "peritus_process::refinement::invalid_native_preparation_has_no_effect"
 status = "in-progress"
 dependencies = ["OBL-0126", "OBL-0128"]
 live_issue = "#12"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/runtime/peritus-process/src/refinement.rs", symbol = "peritus_process::refinement::invalid_native_preparation_has_no_effect", command = "cargo verus verify --package peritus-process --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "property-test", source_file = "crates/runtime/peritus-process/tests/process_integration/native_backend/rejection.rs", symbol = "peritus_process::tests::process_integration::native_backend::rejection::descriptor_drift_never_calls_prepare_or_consumes_authority", command = "cargo test --package peritus-process --all-targets --all-features --locked" },
@@ -819,7 +819,7 @@ symbol = "peritus_tool_router::verified::tool_operation_refinement_complete"
 status = "in-progress"
 dependencies = []
 live_issue = "#13"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/tools/peritus-tool-router/src/verified.rs", symbol = "peritus_tool_router::verified::tool_operation_refinement_complete", command = "cargo verus verify --package peritus-tool-router --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "refinement-test", source_file = "crates/tools/peritus-tool-router/src/verified.rs", symbol = "peritus_tool_router::verified::tests::operation_refinement_rejects_each_independent_mismatch", command = "cargo test --package peritus-tool-router --all-targets --all-features --locked" },
@@ -835,7 +835,7 @@ symbol = "peritus_tool_router::verified::tool_authority_complete"
 status = "in-progress"
 dependencies = ["OBL-0103", "OBL-0108", "OBL-0114", "OBL-0118", "OBL-0119"]
 live_issue = "#13"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/tools/peritus-tool-router/src/verified.rs", symbol = "peritus_tool_router::verified::tool_authority_complete", command = "cargo verus verify --package peritus-tool-router --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "refinement-test", source_file = "crates/tools/peritus-tool-router/tests/router_authority.rs", symbol = "peritus_tool_router::tests::router_authority::authority_rejection_never_calls_dispatcher", command = "cargo test --package peritus-tool-router --all-targets --all-features --locked" },
@@ -852,7 +852,7 @@ symbol = "peritus_role::capability_view::CapabilityView::spec_is_narrow"
 status = "in-progress"
 dependencies = ["INV-006"]
 live_issue = "#15"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/orchestration/peritus-role/src/capability_view.rs", symbol = "peritus_role::capability_view::CapabilityView::spec_is_narrow", command = "cargo verus verify --package peritus-role --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "property-test", source_file = "crates/orchestration/peritus-role/tests/role_matrix.rs", symbol = "peritus_role::tests::role_matrix::every_b1_role_has_an_explicit_non_widening_profile", command = "cargo test --package peritus-role --all-targets --all-features --locked" },
@@ -868,7 +868,7 @@ symbol = "peritus_memory::retrieval::output::MemoryCandidate::spec_is_quoted_evi
 status = "in-progress"
 dependencies = ["INV-006"]
 live_issue = "#15"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/orchestration/peritus-memory/src/retrieval/output.rs", symbol = "peritus_memory::retrieval::output::MemoryCandidate::spec_is_quoted_evidence", command = "cargo verus verify --package peritus-memory --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "property-test", source_file = "crates/orchestration/peritus-memory/tests/poisoning.rs", symbol = "peritus_memory::tests::poisoning::instruction_like_payloads_retain_source_and_quote_boundary", command = "cargo test --package peritus-memory --all-targets --all-features --locked" },
@@ -884,7 +884,7 @@ symbol = "peritus_context::provenance::Provenance::spec_permits_authority"
 status = "in-progress"
 dependencies = ["INV-006", "INV-021"]
 live_issue = "#15"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/orchestration/peritus-context/src/provenance.rs", symbol = "peritus_context::provenance::Provenance::spec_permits_authority", command = "cargo verus verify --package peritus-context --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "property-test", source_file = "crates/orchestration/peritus-context/tests/poisoning.rs", symbol = "peritus_context::tests::poisoning::instruction_like_payloads_from_every_non_authoritative_source_stay_evidence", command = "cargo test --package peritus-context --all-targets --all-features --locked" },
@@ -900,7 +900,7 @@ symbol = "peritus_context::content::ContentKind::spec_is_compaction_protected"
 status = "in-progress"
 dependencies = ["OBL-0138"]
 live_issue = "#15"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/orchestration/peritus-context/src/content.rs", symbol = "peritus_context::content::ContentKind::spec_is_compaction_protected", command = "cargo verus verify --package peritus-context --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "refinement-test", source_file = "crates/orchestration/peritus-context/tests/compaction_matrix.rs", symbol = "peritus_context::tests::compaction_matrix::protected_and_mixed_context_sources_are_rejected", command = "cargo test --package peritus-context --all-targets --all-features --locked" },
@@ -916,7 +916,7 @@ symbol = "peritus_context::budget::TokenAccounting::spec_is_bounded"
 status = "in-progress"
 dependencies = []
 live_issue = "#15"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/orchestration/peritus-context/src/budget.rs", symbol = "peritus_context::budget::TokenAccounting::spec_is_bounded", command = "cargo verus verify --package peritus-context --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "property-test", source_file = "crates/orchestration/peritus-context/tests/selection_matrix.rs", symbol = "peritus_context::tests::selection_matrix::token_budget_checks_boundaries_and_reports_each_component", command = "cargo test --package peritus-context --all-targets --all-features --locked" },
@@ -932,7 +932,7 @@ symbol = "peritus_memory::tombstone::MemoryTombstone::spec_dominates"
 status = "in-progress"
 dependencies = ["INV-021"]
 live_issue = "#15"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/orchestration/peritus-memory/src/tombstone.rs", symbol = "peritus_memory::tombstone::MemoryTombstone::spec_dominates", command = "cargo verus verify --package peritus-memory --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "refinement-test", source_file = "crates/orchestration/peritus-memory/tests/index_rebuild.rs", symbol = "peritus_memory::tests::index_rebuild::tombstone_dominates_records_at_or_below_its_revision", command = "cargo test --package peritus-memory --all-targets --all-features --locked" },
@@ -948,7 +948,7 @@ symbol = "peritus_memory::retrieval::output::RetrievalPlan::spec_is_bounded"
 status = "in-progress"
 dependencies = ["INV-021"]
 live_issue = "#15"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/orchestration/peritus-memory/src/retrieval/output.rs", symbol = "peritus_memory::retrieval::output::RetrievalPlan::spec_is_bounded", command = "cargo verus verify --package peritus-memory --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "property-test", source_file = "crates/orchestration/peritus-memory/tests/retrieval_matrix.rs", symbol = "peritus_memory::tests::retrieval_matrix::budget_and_result_limits_explain_every_unselected_candidate", command = "cargo test --package peritus-memory --all-targets --all-features --locked" },
@@ -964,7 +964,7 @@ symbol = "peritus_review::verified::executable::findings_are_conserved"
 status = "in-progress"
 dependencies = ["INV-003", "INV-004"]
 live_issue = "#18"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/orchestration/peritus-review/src/verified.rs", symbol = "peritus_review::verified::missing_conservation_cannot_complete", command = "cargo verus verify --package peritus-review --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "property-test", source_file = "crates/orchestration/peritus-review/tests/domain_engine.rs", symbol = "peritus_review::tests::domain_engine::fixer_evidence_needs_independent_current_reviewer_confirmation", command = "cargo test --package peritus-review --all-targets --all-features --locked" },
@@ -981,7 +981,7 @@ symbol = "peritus_review::verified::exact_freshness"
 status = "in-progress"
 dependencies = ["INV-003"]
 live_issue = "#18"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/orchestration/peritus-review/src/verified.rs", symbol = "peritus_review::verified::stale_evidence_is_not_fresh", command = "cargo verus verify --package peritus-review --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "property-test", source_file = "crates/orchestration/peritus-review/tests/domain_engine.rs", symbol = "peritus_review::tests::domain_engine::external_waiver_is_consumed_exactly_and_revision_advance_resets_current_truth", command = "cargo test --package peritus-review --all-targets --all-features --locked" },
@@ -997,7 +997,7 @@ symbol = "peritus_review::verified::complete_quorum"
 status = "in-progress"
 dependencies = ["INV-004", "OBL-0138"]
 live_issue = "#18"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/orchestration/peritus-review/src/verified.rs", symbol = "peritus_review::verified::missing_fresh_context_breaks_quorum", command = "cargo verus verify --package peritus-review --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "property-test", source_file = "crates/orchestration/peritus-review/tests/domain_engine.rs", symbol = "peritus_review::tests::domain_engine::independent_quorum_dimensions_and_truthful_completion", command = "cargo test --package peritus-review --all-targets --all-features --locked" },
@@ -1014,7 +1014,7 @@ symbol = "peritus_review::verified::executable::no_implicit_success"
 status = "in-progress"
 dependencies = ["INV-005", "INV-010", "OBL-0144"]
 live_issue = "#18"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/orchestration/peritus-review/src/verified.rs", symbol = "peritus_review::verified::missing_quorum_cannot_complete", command = "cargo verus verify --package peritus-review --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "verus-proof", source_file = "crates/orchestration/peritus-review/src/verified.rs", symbol = "peritus_review::verified::bounded_cycle_successor", command = "cargo verus verify --package peritus-review --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
@@ -1032,7 +1032,7 @@ symbol = "peritus_review::verified::executable::replay_equivalent"
 status = "in-progress"
 dependencies = ["OBL-0115", "OBL-0143", "OBL-0145"]
 live_issue = "#18"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/orchestration/peritus-review/src/verified.rs", symbol = "peritus_review::verified::replay_is_reflexive", command = "cargo verus verify --package peritus-review --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "refinement-test", source_file = "crates/orchestration/peritus-review/tests/durability_restart.rs", symbol = "peritus_review::tests::durability_restart::durability_restart_idempotency_conflict_and_checkpoint_corruption", command = "cargo test --package peritus-review --all-targets --all-features --locked" },
@@ -1049,7 +1049,7 @@ symbol = "peritus_review::wire::fixture_tests::canonical_binary_corpus_is_exact_
 status = "in-progress"
 dependencies = ["OBL-0146"]
 live_issue = "#18"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "refinement-test", source_file = "crates/orchestration/peritus-review/src/wire/fixture_tests.rs", symbol = "peritus_review::wire::fixture_tests::canonical_binary_corpus_is_exact_and_rejects_closed_tag_or_trailing_corruption", command = "cargo test --package peritus-review --all-targets --all-features --locked" },
 ]
@@ -1064,7 +1064,7 @@ symbol = "peritus_review::verified::legal_reducer_step"
 status = "in-progress"
 dependencies = ["INV-010", "OBL-0143", "OBL-0145"]
 live_issue = "#18"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/orchestration/peritus-review/src/verified.rs", symbol = "peritus_review::verified::stale_sequence_rejects_reducer_step", command = "cargo verus verify --package peritus-review --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "verus-proof", source_file = "crates/orchestration/peritus-review/src/verified.rs", symbol = "peritus_review::verified::reviewer_resolution_requires_confirmation", command = "cargo verus verify --package peritus-review --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
@@ -1081,7 +1081,7 @@ symbol = "peritus_scheduler::verified::reservations_fit"
 status = "in-progress"
 dependencies = ["INV-003", "INV-005"]
 live_issue = "#19"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/orchestration/peritus-scheduler/src/verified.rs", symbol = "peritus_scheduler::verified::conservation_preserves_capacity", command = "cargo verus verify --package peritus-scheduler --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "property-test", source_file = "crates/orchestration/peritus-scheduler/tests/resource_invariants.rs", symbol = "peritus_scheduler::tests::resource_invariants::resource_addition_and_subtraction_are_exact_and_checked", command = "cargo test --package peritus-scheduler --all-targets --all-features --locked" },
@@ -1097,7 +1097,7 @@ symbol = "peritus_scheduler::selection::select_next"
 status = "in-progress"
 dependencies = ["OBL-0149"]
 live_issue = "#19"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/orchestration/peritus-scheduler/src/verified.rs", symbol = "peritus_scheduler::verified::saturated_bypass_stays_bounded", command = "cargo verus verify --package peritus-scheduler --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "verus-proof", source_file = "crates/orchestration/peritus-scheduler/src/verified.rs", symbol = "peritus_scheduler::verified::missing_dependency_success_blocks", command = "cargo verus verify --package peritus-scheduler --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
@@ -1114,7 +1114,7 @@ symbol = "peritus_scheduler::verified::no_implicit_success"
 status = "in-progress"
 dependencies = ["INV-005", "OBL-0149", "OBL-0150"]
 live_issue = "#19"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/orchestration/peritus-scheduler/src/verified.rs", symbol = "peritus_scheduler::verified::completion_requires_quiescence", command = "cargo verus verify --package peritus-scheduler --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "refinement-test", source_file = "crates/orchestration/peritus-scheduler/tests/domain_transitions.rs", symbol = "peritus_scheduler::tests::domain_transitions::pause_drain_and_terminal_truth_are_closed_and_explicit", command = "cargo test --package peritus-scheduler --all-targets --all-features --locked" },
@@ -1130,7 +1130,7 @@ symbol = "peritus_scheduler::verified::replay_equivalent"
 status = "in-progress"
 dependencies = ["OBL-0115", "OBL-0151"]
 live_issue = "#19"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "refinement-test", source_file = "crates/orchestration/peritus-scheduler/tests/durability_restart.rs", symbol = "peritus_scheduler::tests::durability_restart::commit_restart_resolution_and_conflicting_command_are_exact", command = "cargo test --package peritus-scheduler --all-targets --all-features --locked" },
 ]
@@ -1145,7 +1145,7 @@ symbol = "peritus_collaboration::verified::executable::causal_graph_is_valid"
 status = "in-progress"
 dependencies = ["INV-002", "OBL-0149"]
 live_issue = "#19"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/orchestration/peritus-collaboration/src/verified.rs", symbol = "peritus_collaboration::verified::child_requires_parent", command = "cargo verus verify --package peritus-collaboration --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "verus-proof", source_file = "crates/orchestration/peritus-collaboration/src/verified.rs", symbol = "peritus_collaboration::verified::all_join_rejects_missing", command = "cargo verus verify --package peritus-collaboration --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
@@ -1162,7 +1162,7 @@ symbol = "peritus_collaboration::verified::executable::cancellation_dominates"
 status = "in-progress"
 dependencies = ["INV-005", "OBL-0153"]
 live_issue = "#19"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/orchestration/peritus-collaboration/src/verified.rs", symbol = "peritus_collaboration::verified::cancellation_excludes_success", command = "cargo verus verify --package peritus-collaboration --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "verus-proof", source_file = "crates/orchestration/peritus-collaboration/src/verified.rs", symbol = "peritus_collaboration::verified::pending_directive_blocks_completion", command = "cargo verus verify --package peritus-collaboration --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
@@ -1179,7 +1179,7 @@ symbol = "peritus_collaboration::verified::executable::replay_equivalent"
 status = "in-progress"
 dependencies = ["OBL-0115", "OBL-0153", "OBL-0154"]
 live_issue = "#19"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/orchestration/peritus-collaboration/src/verified.rs", symbol = "peritus_collaboration::verified::replay_claim_requires_equality", command = "cargo verus verify --package peritus-collaboration --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "refinement-test", source_file = "crates/orchestration/peritus-collaboration/tests/durability_restart.rs", symbol = "peritus_collaboration::tests::durability_restart::exact_transition_survives_restart_and_resolves_idempotently", command = "cargo test --package peritus-collaboration --all-targets --all-features --locked" },
@@ -1195,7 +1195,7 @@ symbol = "peritus_orchestrator::verified::roles_are_separated"
 status = "in-progress"
 dependencies = ["INV-003", "INV-004", "OBL-0153"]
 live_issue = "#19"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/orchestration/peritus-orchestrator/src/verified.rs", symbol = "peritus_orchestrator::verified::writer_fixer_alias_breaks_separation", command = "cargo verus verify --package peritus-orchestrator --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "verus-proof", source_file = "crates/orchestration/peritus-orchestrator/src/verified.rs", symbol = "peritus_orchestrator::verified::reused_child_run_breaks_freshness", command = "cargo verus verify --package peritus-orchestrator --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
@@ -1213,7 +1213,7 @@ symbol = "peritus_orchestrator::verified::transition_is_legal"
 status = "in-progress"
 dependencies = ["INV-005", "OBL-0115", "OBL-0156"]
 live_issue = "#19"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/orchestration/peritus-orchestrator/src/verified.rs", symbol = "peritus_orchestrator::verified::counter_over_limit_is_rejected", command = "cargo verus verify --package peritus-orchestrator --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "verus-proof", source_file = "crates/orchestration/peritus-orchestrator/src/verified.rs", symbol = "peritus_orchestrator::verified::reducer_step_emits_exactly_one_event", command = "cargo verus verify --package peritus-orchestrator --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
@@ -1231,7 +1231,7 @@ symbol = "peritus_orchestrator::verified::terminal_is_truthful"
 status = "in-progress"
 dependencies = ["INV-005", "OBL-0145", "OBL-0157"]
 live_issue = "#19"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/orchestration/peritus-orchestrator/src/verified.rs", symbol = "peritus_orchestrator::verified::certificate_alone_cannot_accept", command = "cargo verus verify --package peritus-orchestrator --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "verus-proof", source_file = "crates/orchestration/peritus-orchestrator/src/verified.rs", symbol = "peritus_orchestrator::verified::evaluation_without_begin_cannot_accept", command = "cargo verus verify --package peritus-orchestrator --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
@@ -1249,7 +1249,7 @@ symbol = "peritus_orchestrator::verified::cancellation_dominates"
 status = "in-progress"
 dependencies = ["INV-005", "OBL-0154", "OBL-0158"]
 live_issue = "#19"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/orchestration/peritus-orchestrator/src/verified.rs", symbol = "peritus_orchestrator::verified::cancelled_run_cannot_accept_late_success", command = "cargo verus verify --package peritus-orchestrator --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "verus-proof", source_file = "crates/orchestration/peritus-orchestrator/src/verified.rs", symbol = "peritus_orchestrator::verified::live_child_blocks_terminal", command = "cargo verus verify --package peritus-orchestrator --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
@@ -1267,7 +1267,7 @@ symbol = "peritus_orchestrator::replay::OrchestratorReplay::rebuild"
 status = "in-progress"
 dependencies = ["OBL-0115", "OBL-0157", "OBL-0159"]
 live_issue = "#19"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/orchestration/peritus-orchestrator/src/verified.rs", symbol = "peritus_orchestrator::verified::replay_claim_requires_equality", command = "cargo verus verify --package peritus-orchestrator --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "refinement-test", source_file = "crates/orchestration/peritus-orchestrator/src/integration_tests/durability.rs", symbol = "peritus_orchestrator::integration_tests::durability::every_lifecycle_commit_restarts_to_the_exact_checkpoint", command = "cargo test --package peritus-orchestrator --all-targets --all-features --locked" },
@@ -1284,7 +1284,7 @@ symbol = "peritus_orchestrator::wire::fixture_tests::canonical_corpus_is_exact_a
 status = "in-progress"
 dependencies = ["OBL-0158", "OBL-0160"]
 live_issue = "#19"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "refinement-test", source_file = "crates/orchestration/peritus-orchestrator/src/wire/fixture_tests.rs", symbol = "peritus_orchestrator::wire::fixture_tests::canonical_corpus_is_exact_and_rejects_corruption", command = "cargo test --package peritus-orchestrator --all-targets --all-features --locked" },
   { kind = "refinement-test", source_file = "crates/orchestration/peritus-orchestrator/src/wire/fixture_tests/observation_binding.rs", symbol = "peritus_orchestrator::wire::fixture_tests::observation_binding::checkpoint_rejects_stale_gate_snapshot_and_review_binding", command = "cargo test --package peritus-orchestrator --all-targets --all-features --locked" },
@@ -1301,7 +1301,7 @@ symbol = "peritus_harness::domain::verified::protected_assets_are_invariant"
 status = "in-progress"
 dependencies = ["INV-003", "OBL-0156"]
 live_issue = "#20"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/orchestration/peritus-harness/src/domain/verified.rs", symbol = "peritus_harness::domain::verified::protected_invariance_reflexive", command = "cargo verus verify --package peritus-harness --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "property-test", source_file = "crates/orchestration/peritus-harness/tests/domain_revision.rs", symbol = "peritus_harness::tests::domain_revision::every_structural_change_to_a_protected_asset_rejects", command = "cargo test --package peritus-harness --all-targets --all-features --locked" },
@@ -1318,7 +1318,7 @@ symbol = "peritus_harness::domain::verified::topological_order_is_complete"
 status = "in-progress"
 dependencies = ["INV-003", "INV-017"]
 live_issue = "#20"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/orchestration/peritus-harness/src/domain/verified.rs", symbol = "peritus_harness::domain::verified::earlier_dependency_is_legal", command = "cargo verus verify --package peritus-harness --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "property-test", source_file = "crates/orchestration/peritus-harness/tests/domain_graph.rs", symbol = "peritus_harness::tests::domain_graph::transitive_authority_and_incompatible_protected_dependencies_reject", command = "cargo test --package peritus-harness --all-targets --all-features --locked" },
@@ -1335,7 +1335,7 @@ symbol = "peritus_harness::domain::verified::graph_digest_is_bound"
 status = "in-progress"
 dependencies = ["INV-017", "OBL-0162"]
 live_issue = "#20"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/orchestration/peritus-harness/src/domain/verified.rs", symbol = "peritus_harness::domain::verified::digest_binding_reflexive", command = "cargo verus verify --package peritus-harness --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "verus-proof", source_file = "crates/orchestration/peritus-harness/src/domain/verified.rs", symbol = "peritus_harness::domain::verified::direct_predecessor_is_ancestor", command = "cargo verus verify --package peritus-harness --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
@@ -1348,11 +1348,11 @@ kind = "contract"
 statement = "A strict E1 manifest and recursive inventory activate only checked bounded component content, and each deterministic C1 plan is confined to the exact owned target set with artifact, preimage, revision, snapshot, and rollback-reason bindings."
 owning_crate = "peritus-harness"
 source_file = "crates/orchestration/peritus-harness/src/materialization/planner.rs"
-symbol = "peritus_harness::materialization::planner::MaterializationPlan::build"
+symbol = "peritus_harness::materialization::plan_model::MaterializationPlan::build"
 status = "in-progress"
 dependencies = ["INV-017", "OBL-0162", "OBL-0163"]
 live_issue = "#20"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "refinement-test", source_file = "crates/orchestration/peritus-harness/tests/manifest_document.rs", symbol = "peritus_harness::tests::manifest_document::strict_manifest_retains_exact_bytes_and_checked_declaration", command = "cargo test --package peritus-harness --all-targets --all-features --locked" },
   { kind = "refinement-test", source_file = "crates/orchestration/peritus-harness/tests/materialization_safety.rs", symbol = "peritus_harness::tests::materialization_safety::deterministic_plan_round_trips_exact_artifact_and_snapshot_bindings", command = "cargo test --package peritus-harness --all-targets --all-features --locked" },
@@ -1368,7 +1368,7 @@ symbol = "peritus_harness::durability::commit::commit_harness_settlement"
 status = "in-progress"
 dependencies = ["OBL-0115", "OBL-0163", "OBL-0164"]
 live_issue = "#20"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "refinement-test", source_file = "crates/orchestration/peritus-harness/tests/durability_restart.rs", symbol = "peritus_harness::tests::durability_restart::atomic_genesis_commit_is_idempotent_and_restart_replay_matches_checkpoint", command = "cargo test --package peritus-harness --all-targets --all-features --locked" },
   { kind = "refinement-test", source_file = "crates/orchestration/peritus-harness/tests/durability_restart.rs", symbol = "peritus_harness::tests::durability_restart::checked_restart_recreates_plan_and_atomically_settles_exact_claim", command = "cargo test --package peritus-harness --all-targets --all-features --locked" },
@@ -1384,7 +1384,7 @@ symbol = "peritus_harness::tests::replay_wire::canonical_corpus_is_exact_and_rej
 status = "in-progress"
 dependencies = ["OBL-0163", "OBL-0165"]
 live_issue = "#20"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "refinement-test", source_file = "crates/orchestration/peritus-harness/tests/replay_wire.rs", symbol = "peritus_harness::tests::replay_wire::canonical_corpus_is_exact_and_rejects_corruption", command = "cargo test --package peritus-harness --all-targets --all-features --locked" },
   { kind = "refinement-test", source_file = "crates/orchestration/peritus-harness/tests/replay_wire.rs", symbol = "peritus_harness::tests::replay_wire::replay_projection_matches_live_state_and_rejects_duplicate_genesis", command = "cargo test --package peritus-harness --all-targets --all-features --locked" },
@@ -1400,7 +1400,7 @@ symbol = "peritus_harness::runtime::binding::GoverningHarnessBinding::new"
 status = "in-progress"
 dependencies = ["OBL-0156", "OBL-0164", "OBL-0165"]
 live_issue = "#20"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "refinement-test", source_file = "crates/orchestration/peritus-harness/src/runtime/binding.rs", symbol = "peritus_harness::runtime::binding::tests::exact_binding_retains_the_shared_tuple_and_rejects_drift", command = "cargo test --package peritus-harness --all-targets --all-features --locked" },
 ]
@@ -1415,7 +1415,7 @@ symbol = "peritus_debugger::verified::selection_containment"
 status = "in-progress"
 dependencies = ["OBL-0115", "OBL-0167"]
 live_issue = "#21"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/analysis/peritus-debugger/src/verified.rs", symbol = "peritus_debugger::verified::selection_containment", command = "cargo verus verify --package peritus-debugger --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "refinement-test", source_file = "crates/analysis/peritus-debugger/tests/domain_primitives.rs", symbol = "peritus_debugger::tests::domain_primitives::refinement_selection_containment", command = "cargo test --package peritus-debugger --all-targets --all-features --locked" },
@@ -1431,7 +1431,7 @@ symbol = "peritus_debugger::verified::citation_containment"
 status = "in-progress"
 dependencies = ["OBL-0173"]
 live_issue = "#21"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/analysis/peritus-debugger/src/verified.rs", symbol = "peritus_debugger::verified::citation_containment", command = "cargo verus verify --package peritus-debugger --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "refinement-test", source_file = "crates/analysis/peritus-debugger/tests/domain_primitives.rs", symbol = "peritus_debugger::tests::domain_primitives::refinement_citation_containment", command = "cargo test --package peritus-debugger --all-targets --all-features --locked" },
@@ -1447,7 +1447,7 @@ symbol = "peritus_debugger::verified::report_validity"
 status = "in-progress"
 dependencies = ["OBL-0173", "OBL-0168"]
 live_issue = "#21"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/analysis/peritus-debugger/src/verified.rs", symbol = "peritus_debugger::verified::report_validity", command = "cargo verus verify --package peritus-debugger --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "refinement-test", source_file = "crates/analysis/peritus-debugger/tests/domain_primitives.rs", symbol = "peritus_debugger::tests::domain_primitives::refinement_report_validity", command = "cargo test --package peritus-debugger --all-targets --all-features --locked" },
@@ -1463,7 +1463,7 @@ symbol = "peritus_debugger::verified::replay_equivalence"
 status = "in-progress"
 dependencies = ["OBL-0115", "OBL-0173"]
 live_issue = "#21"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/analysis/peritus-debugger/src/verified.rs", symbol = "peritus_debugger::verified::replay_equivalence", command = "cargo verus verify --package peritus-debugger --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "refinement-test", source_file = "crates/analysis/peritus-debugger/tests/domain_primitives.rs", symbol = "peritus_debugger::tests::domain_primitives::refinement_replay_equivalence", command = "cargo test --package peritus-debugger --all-targets --all-features --locked" },
@@ -1479,7 +1479,7 @@ symbol = "peritus_debugger::verified::bounded_analysis"
 status = "in-progress"
 dependencies = ["OBL-0173", "OBL-0169", "OBL-0170"]
 live_issue = "#21"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/analysis/peritus-debugger/src/verified.rs", symbol = "peritus_debugger::verified::bounded_analysis", command = "cargo verus verify --package peritus-debugger --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "refinement-test", source_file = "crates/analysis/peritus-debugger/tests/domain_primitives.rs", symbol = "peritus_debugger::tests::domain_primitives::refinement_bounded_analysis", command = "cargo test --package peritus-debugger --all-targets --all-features --locked" },
@@ -1495,7 +1495,7 @@ symbol = "peritus_debugger::verified::non_authority"
 status = "in-progress"
 dependencies = ["INV-003", "INV-004", "OBL-0169"]
 live_issue = "#21"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/analysis/peritus-debugger/src/verified.rs", symbol = "peritus_debugger::verified::non_authority", command = "cargo verus verify --package peritus-debugger --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "refinement-test", source_file = "crates/analysis/peritus-debugger/tests/domain_primitives.rs", symbol = "peritus_debugger::tests::domain_primitives::refinement_non_authority", command = "cargo test --package peritus-debugger --all-targets --all-features --locked" },
@@ -1511,7 +1511,7 @@ symbol = "peritus_eval::verified::frozen_profile_spec"
 status = "in-progress"
 dependencies = ["OBL-0167"]
 live_issue = "#23"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/analysis/peritus-eval/src/verified.rs", symbol = "peritus_eval::verified::frozen_profile_spec", command = "cargo verus verify --package peritus-eval --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "refinement-test", source_file = "crates/analysis/peritus-eval/tests/verified_refinement.rs", symbol = "peritus_eval::tests::verified_refinement::frozen_ledger_transition_replay_and_non_authority_roots_are_exact_conjunctions", command = "cargo test --package peritus-eval --all-targets --all-features --locked" },
@@ -1527,7 +1527,7 @@ symbol = "peritus_eval::verified::ledger_validity_spec"
 status = "in-progress"
 dependencies = ["OBL-0174"]
 live_issue = "#23"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/analysis/peritus-eval/src/verified.rs", symbol = "peritus_eval::verified::ledger_validity_spec", command = "cargo verus verify --package peritus-eval --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "refinement-test", source_file = "crates/analysis/peritus-eval/tests/verified_refinement.rs", symbol = "peritus_eval::tests::verified_refinement::frozen_ledger_transition_replay_and_non_authority_roots_are_exact_conjunctions", command = "cargo test --package peritus-eval --all-targets --all-features --locked" },
@@ -1543,7 +1543,7 @@ symbol = "peritus_eval::verified::statistical_validity_spec"
 status = "in-progress"
 dependencies = ["OBL-0175"]
 live_issue = "#23"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/analysis/peritus-eval/src/verified.rs", symbol = "peritus_eval::verified::statistical_validity_spec", command = "cargo verus verify --package peritus-eval --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "refinement-test", source_file = "crates/analysis/peritus-eval/tests/verified_refinement.rs", symbol = "peritus_eval::tests::verified_refinement::accounting_and_statistical_preconditions_match_runtime_boundaries", command = "cargo test --package peritus-eval --all-targets --all-features --locked" },
@@ -1559,7 +1559,7 @@ symbol = "peritus_eval::verified::transition_validity_spec"
 status = "in-progress"
 dependencies = ["OBL-0115", "OBL-0175"]
 live_issue = "#23"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/analysis/peritus-eval/src/verified.rs", symbol = "peritus_eval::verified::transition_validity_spec", command = "cargo verus verify --package peritus-eval --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "refinement-test", source_file = "crates/analysis/peritus-eval/tests/cancellation.rs", symbol = "peritus_eval::tests::cancellation::cancellation_waits_for_each_external_rollout_before_terminal_completion", command = "cargo test --package peritus-eval --all-targets --all-features --locked" },
@@ -1575,7 +1575,7 @@ symbol = "peritus_eval::verified::replay_refinement_spec"
 status = "in-progress"
 dependencies = ["OBL-0115", "OBL-0177"]
 live_issue = "#23"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/analysis/peritus-eval/src/verified.rs", symbol = "peritus_eval::verified::replay_refinement_spec", command = "cargo verus verify --package peritus-eval --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "refinement-test", source_file = "crates/analysis/peritus-eval/tests/durability_restart.rs", symbol = "peritus_eval::tests::durability_restart::genesis_commit_is_idempotent_and_restart_replay_matches_checkpoint", command = "cargo test --package peritus-eval --all-targets --all-features --locked" },
@@ -1591,7 +1591,7 @@ symbol = "peritus_eval::tests::replay_wire::frozen_wire_corpus_is_byte_exact_and
 status = "in-progress"
 dependencies = ["OBL-0178"]
 live_issue = "#23"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "refinement-test", source_file = "crates/analysis/peritus-eval/tests/replay_wire.rs", symbol = "peritus_eval::tests::replay_wire::frozen_wire_corpus_is_byte_exact_and_malformed_frames_reject", command = "cargo test --package peritus-eval --all-targets --all-features --locked" },
 ]
@@ -1606,7 +1606,7 @@ symbol = "peritus_eval::verified::non_authority_spec"
 status = "in-progress"
 dependencies = ["OBL-0174", "OBL-0176", "OBL-0178"]
 live_issue = "#23"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/analysis/peritus-eval/src/verified.rs", symbol = "peritus_eval::verified::non_authority_spec", command = "cargo verus verify --package peritus-eval --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "refinement-test", source_file = "crates/analysis/peritus-eval/tests/verified_refinement.rs", symbol = "peritus_eval::tests::verified_refinement::frozen_ledger_transition_replay_and_non_authority_roots_are_exact_conjunctions", command = "cargo test --package peritus-eval --all-targets --all-features --locked" },
@@ -1622,7 +1622,7 @@ symbol = "peritus_evolution::verified::evaluator_isolation"
 status = "in-progress"
 dependencies = ["OBL-0167", "OBL-0174", "OBL-0176"]
 live_issue = "#23"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/analysis/peritus-evolution/src/verified.rs", symbol = "peritus_evolution::verified::evaluator_isolation", command = "cargo verus verify --package peritus-evolution --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "refinement-test", source_file = "crates/analysis/peritus-evolution/tests/verified_refinement.rs", symbol = "peritus_evolution::tests::verified_refinement::evaluator_isolation_requires_every_checked_boundary_fact", command = "cargo test --package peritus-evolution --all-targets --all-features --locked" },
@@ -1638,7 +1638,7 @@ symbol = "peritus_evolution::verified::promotion_safety"
 status = "in-progress"
 dependencies = ["INV-018", "OBL-0181", "OBL-0185"]
 live_issue = "#23"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/analysis/peritus-evolution/src/verified.rs", symbol = "peritus_evolution::verified::promotion_safety", command = "cargo verus verify --package peritus-evolution --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "refinement-test", source_file = "crates/analysis/peritus-evolution/tests/verified_refinement.rs", symbol = "peritus_evolution::tests::verified_refinement::promotion_safety_is_a_conjunction_not_a_score", command = "cargo test --package peritus-evolution --all-targets --all-features --locked" },
@@ -1654,7 +1654,7 @@ symbol = "peritus_evolution::verified::deny_wins"
 status = "in-progress"
 dependencies = ["OBL-0176", "INV-018"]
 live_issue = "#23"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/analysis/peritus-evolution/src/verified.rs", symbol = "peritus_evolution::verified::deny_wins", command = "cargo verus verify --package peritus-evolution --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "refinement-test", source_file = "crates/analysis/peritus-evolution/tests/attribution_selection.rs", symbol = "peritus_evolution::tests::attribution_selection::duplicate_objectives_are_rejected_and_unavailable_denies", command = "cargo test --package peritus-evolution --all-targets --all-features --locked" },
@@ -1670,7 +1670,7 @@ symbol = "peritus_evolution::verified::rollback_legality"
 status = "in-progress"
 dependencies = ["INV-019"]
 live_issue = "#23"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/analysis/peritus-evolution/src/verified.rs", symbol = "peritus_evolution::verified::rollback_legality", command = "cargo verus verify --package peritus-evolution --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "refinement-test", source_file = "crates/analysis/peritus-evolution/tests/verified_refinement.rs", symbol = "peritus_evolution::tests::verified_refinement::rollback_replay_and_terminal_refinements_fail_closed", command = "cargo test --package peritus-evolution --all-targets --all-features --locked" },
@@ -1686,7 +1686,7 @@ symbol = "peritus_evolution::verified::pointer_conservation"
 status = "in-progress"
 dependencies = ["INV-019", "OBL-0182"]
 live_issue = "#23"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/analysis/peritus-evolution/src/verified.rs", symbol = "peritus_evolution::verified::pointer_conservation", command = "cargo verus verify --package peritus-evolution --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "refinement-test", source_file = "crates/analysis/peritus-evolution/tests/verified_refinement.rs", symbol = "peritus_evolution::tests::verified_refinement::rollback_replay_and_terminal_refinements_fail_closed", command = "cargo test --package peritus-evolution --all-targets --all-features --locked" },
@@ -1702,7 +1702,7 @@ symbol = "peritus_evolution::verified::replay_refinement"
 status = "in-progress"
 dependencies = ["OBL-0115", "OBL-0183"]
 live_issue = "#23"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/analysis/peritus-evolution/src/verified.rs", symbol = "peritus_evolution::verified::replay_refinement", command = "cargo verus verify --package peritus-evolution --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "refinement-test", source_file = "crates/analysis/peritus-evolution/tests/durability_restart.rs", symbol = "peritus_evolution::tests::durability_restart::ordinary_campaign_and_pointer_commits_replay_exact_checkpoints", command = "cargo test --package peritus-evolution --all-targets --all-features --locked" },
@@ -1714,11 +1714,11 @@ kind = "refinement"
 statement = "C0 adds exact approve-once consumption to an existing multi-aggregate append in one transaction; stale registry or approval-state CAS leaves every supplied aggregate head and state projection unchanged."
 owning_crate = "peritus-journal"
 source_file = "crates/state/peritus-journal/src/domain/approval_use.rs"
-symbol = "peritus_journal::domain::approval_use::SqliteJournal::commit_approval_use"
+symbol = "peritus_journal::sqlite::connection::SqliteJournal::commit_approval_use"
 status = "in-progress"
 dependencies = ["OBL-0115"]
 live_issue = "#23"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "refinement-test", source_file = "crates/state/peritus-journal/tests/approval_registry.rs", symbol = "peritus_journal::tests::approval_registry::approval_use_augments_a_multi_aggregate_append_atomically", command = "cargo test --package peritus-journal --all-targets --all-features --locked" },
   { kind = "refinement-test", source_file = "crates/state/peritus-journal/tests/approval_registry.rs", symbol = "peritus_journal::tests::approval_registry::approval_use_rejects_stale_registry_and_state_without_partial_activation", command = "cargo test --package peritus-journal --all-targets --all-features --locked" },
@@ -1734,7 +1734,7 @@ symbol = "peritus_evolution::tests::replay_wire::six_f0_frames_round_trip_and_re
 status = "in-progress"
 dependencies = ["OBL-0184"]
 live_issue = "#23"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "refinement-test", source_file = "crates/analysis/peritus-evolution/tests/replay_wire.rs", symbol = "peritus_evolution::tests::replay_wire::six_f0_frames_round_trip_and_reject_malformed_bytes", command = "cargo test --package peritus-evolution --all-targets --all-features --locked" },
 ]
@@ -1749,7 +1749,7 @@ symbol = "peritus_conformance::tests::conformance::evolution_catalog::evolution_
 status = "in-progress"
 dependencies = ["INV-018", "INV-019", "OBL-0182", "OBL-0186"]
 live_issue = "#23"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "refinement-test", source_file = "crates/app/testing/peritus-conformance/tests/conformance/evolution_catalog.rs", symbol = "peritus_conformance::tests::conformance::evolution_catalog::evolution_catalog_runs_all_fourteen_cases", command = "cargo test --package peritus-conformance --all-targets --all-features --locked" },
 ]
@@ -1764,7 +1764,7 @@ symbol = "peritus_evolution::durability::activation::commit_atomic_activation"
 status = "in-progress"
 dependencies = ["INV-019", "OBL-0183", "OBL-0184", "OBL-0185"]
 live_issue = "#23"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "refinement-test", source_file = "crates/analysis/peritus-evolution/tests/promotion_authority.rs", symbol = "peritus_evolution::tests::promotion_authority::authorization_digest_binds_every_authority_observation", command = "cargo test --package peritus-evolution --all-targets --all-features --locked" },
 ]
@@ -1779,7 +1779,7 @@ symbol = "peritus_app_protocol::verified::negotiation_safe_spec"
 status = "in-progress"
 dependencies = ["OBL-0189"]
 live_issue = "#24"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/app/peritus-app-protocol/src/verified/mod.rs", symbol = "peritus_app_protocol::verified::negotiation_safe_spec", command = "cargo verus verify --package peritus-app-protocol --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "refinement-test", source_file = "crates/app/peritus-app-protocol/tests/verified_refinement.rs", symbol = "peritus_app_protocol::tests::verified_refinement::negotiation_predicates_cover_success_and_failure_boundaries", command = "cargo test --package peritus-app-protocol --all-targets --all-features --locked" },
@@ -1795,7 +1795,7 @@ symbol = "peritus_app_protocol::verified::delivery_advances_spec"
 status = "in-progress"
 dependencies = ["OBL-0192"]
 live_issue = "#24"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/app/peritus-app-protocol/src/verified/mod.rs", symbol = "peritus_app_protocol::verified::legal_ack_never_exceeds_delivery", command = "cargo verus verify --package peritus-app-protocol --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "refinement-test", source_file = "crates/app/peritus-app-protocol/tests/verified_refinement.rs", symbol = "peritus_app_protocol::tests::verified_refinement::delivery_and_ack_predicates_enforce_contiguous_monotonic_progress", command = "cargo test --package peritus-app-protocol --all-targets --all-features --locked" },
@@ -1811,7 +1811,7 @@ symbol = "peritus_app_protocol::verified::chunk_accepted_spec"
 status = "in-progress"
 dependencies = ["OBL-0193"]
 live_issue = "#24"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/app/peritus-app-protocol/src/verified/mod.rs", symbol = "peritus_app_protocol::verified::accepted_chunk_fits", command = "cargo verus verify --package peritus-app-protocol --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "refinement-test", source_file = "crates/app/peritus-app-protocol/tests/verified_refinement.rs", symbol = "peritus_app_protocol::tests::verified_refinement::transfer_predicates_conserve_exact_size", command = "cargo test --package peritus-app-protocol --all-targets --all-features --locked" },
@@ -1827,7 +1827,7 @@ symbol = "peritus_app_protocol::verified::terminal_output_spec"
 status = "in-progress"
 dependencies = ["OBL-0195"]
 live_issue = "#24"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/app/peritus-app-protocol/src/verified/mod.rs", symbol = "peritus_app_protocol::verified::terminal_exit_spec", command = "cargo verus verify --package peritus-app-protocol --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "refinement-test", source_file = "crates/app/peritus-app-protocol/tests/verified_refinement.rs", symbol = "peritus_app_protocol::tests::verified_refinement::terminal_and_bound_predicates_reject_post_terminal_or_excess_input", command = "cargo test --package peritus-app-protocol --all-targets --all-features --locked" },
@@ -1843,7 +1843,7 @@ symbol = "peritus_app_protocol::verified::within_bound_spec"
 status = "in-progress"
 dependencies = ["OBL-0197"]
 live_issue = "#24"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/app/peritus-app-protocol/src/verified/mod.rs", symbol = "peritus_app_protocol::verified::within_bound_spec", command = "cargo verus verify --package peritus-app-protocol --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "refinement-test", source_file = "crates/app/peritus-app-protocol/tests/verified_refinement.rs", symbol = "peritus_app_protocol::tests::verified_refinement::terminal_and_bound_predicates_reject_post_terminal_or_excess_input", command = "cargo test --package peritus-app-protocol --all-targets --all-features --locked" },
@@ -1859,7 +1859,7 @@ symbol = "peritus_app_protocol::version::negotiation::negotiate"
 status = "in-progress"
 dependencies = []
 live_issue = "#24"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "refinement-test", source_file = "crates/app/peritus-app-protocol/tests/negotiation.rs", symbol = "peritus_app_protocol::tests::negotiation::negotiation_matrix_is_deterministic_and_explicit", command = "cargo test --package peritus-app-protocol --all-targets --all-features --locked" },
 ]
@@ -1874,7 +1874,7 @@ symbol = "peritus_app_protocol::command::binding::CommandBinding::new"
 status = "in-progress"
 dependencies = []
 live_issue = "#24"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "refinement-test", source_file = "crates/app/peritus-app-protocol/tests/command_binding.rs", symbol = "peritus_app_protocol::tests::command_binding::binding_preserves_exact_b3_frames_and_rejects_revision_drift", command = "cargo test --package peritus-app-protocol --all-targets --all-features --locked" },
 ]
@@ -1889,7 +1889,7 @@ symbol = "peritus_app_protocol::command::idempotency::IdempotencyWindow::admit"
 status = "in-progress"
 dependencies = ["OBL-0190"]
 live_issue = "#24"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "refinement-test", source_file = "crates/app/peritus-app-protocol/tests/idempotency.rs", symbol = "peritus_app_protocol::tests::idempotency::window_distinguishes_new_replay_conflict_capacity_and_removal", command = "cargo test --package peritus-app-protocol --all-targets --all-features --locked" },
 ]
@@ -1900,11 +1900,11 @@ kind = "invariant"
 statement = "A3 at-least-once subscriptions preserve exact event/frame identity across redelivery, enforce cumulative acknowledgement legality, make retention gaps and snapshot requirements explicit, and apply bounded backpressure without loss."
 owning_crate = "peritus-app-protocol"
 source_file = "crates/app/peritus-app-protocol/src/subscription/transitions.rs"
-symbol = "peritus_app_protocol::subscription::transitions::SubscriptionState::deliver"
+symbol = "peritus_app_protocol::subscription::state::SubscriptionState::deliver"
 status = "in-progress"
 dependencies = []
 live_issue = "#24"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "refinement-test", source_file = "crates/app/peritus-app-protocol/tests/subscription_traces.rs", symbol = "peritus_app_protocol::tests::subscription_traces::resume_redelivery_ack_gap_and_backpressure_are_explicit", command = "cargo test --package peritus-app-protocol --all-targets --all-features --locked" },
 ]
@@ -1919,7 +1919,7 @@ symbol = "peritus_app_protocol::artifact::state::ArtifactTransferState::accept_c
 status = "in-progress"
 dependencies = []
 live_issue = "#24"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "refinement-test", source_file = "crates/app/peritus-app-protocol/tests/artifact_traces.rs", symbol = "peritus_app_protocol::tests::artifact_traces::chunks_conserve_order_size_digest_and_terminal_state", command = "cargo test --package peritus-app-protocol --all-targets --all-features --locked" },
 ]
@@ -1934,7 +1934,7 @@ symbol = "peritus_app_protocol::prompt::state::PromptState::answer"
 status = "in-progress"
 dependencies = []
 live_issue = "#24"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "refinement-test", source_file = "crates/app/peritus-app-protocol/tests/prompt_freshness.rs", symbol = "peritus_app_protocol::tests::prompt_freshness::answers_require_complete_binding_and_live_revision", command = "cargo test --package peritus-app-protocol --all-targets --all-features --locked" },
 ]
@@ -1949,7 +1949,7 @@ symbol = "peritus_app_protocol::terminal::state::TerminalState::accept_output"
 status = "in-progress"
 dependencies = []
 live_issue = "#24"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "refinement-test", source_file = "crates/app/peritus-app-protocol/tests/terminal_traces.rs", symbol = "peritus_app_protocol::tests::terminal_traces::terminal_attach_stream_resize_detach_cancel_and_exit_ordering_is_exact", command = "cargo test --package peritus-app-protocol --all-targets --all-features --locked" },
 ]
@@ -1964,7 +1964,7 @@ symbol = "peritus_app_protocol::daemon::shutdown::ShutdownState::complete"
 status = "in-progress"
 dependencies = []
 live_issue = "#24"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "refinement-test", source_file = "crates/app/peritus-app-protocol/tests/daemon_controls.rs", symbol = "peritus_app_protocol::tests::daemon_controls::readiness_heartbeat_diagnostics_and_shutdown_report_truthful_states", command = "cargo test --package peritus-app-protocol --all-targets --all-features --locked" },
 ]
@@ -1979,7 +1979,7 @@ symbol = "peritus_app_protocol::wire::decode_app_message"
 status = "in-progress"
 dependencies = ["OBL-0190", "OBL-0192", "OBL-0193", "OBL-0194", "OBL-0195", "OBL-0196"]
 live_issue = "#24"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "refinement-test", source_file = "crates/app/peritus-app-protocol/tests/wire_matrix.rs", symbol = "peritus_app_protocol::tests::wire_matrix::all_six_families_round_trip_and_reject_malformed_frames", command = "cargo test --package peritus-app-protocol --all-targets --all-features --locked" },
 ]
@@ -1994,7 +1994,7 @@ symbol = "peritus_conformance::tests::conformance::protocol_catalog::protocol_ca
 status = "in-progress"
 dependencies = ["INV-023", "INV-024", "INV-025", "INV-026", "INV-027", "OBL-0197"]
 live_issue = "#24"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "refinement-test", source_file = "crates/app/testing/peritus-conformance/tests/conformance/protocol_catalog.rs", symbol = "peritus_conformance::tests::conformance::protocol_catalog::protocol_catalog_runs_all_sixteen_cases", command = "cargo test --package peritus-conformance --all-targets --all-features --locked" },
 ]
@@ -2009,7 +2009,7 @@ symbol = "peritus_app_protocol::tests::schema_assets::checked_in_schema_and_fixt
 status = "in-progress"
 dependencies = ["OBL-0197"]
 live_issue = "#24"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "refinement-test", source_file = "crates/app/peritus-app-protocol/tests/schema_assets.rs", symbol = "peritus_app_protocol::tests::schema_assets::checked_in_schema_and_fixture_assets_match_rust_metadata", command = "cargo test --package peritus-app-protocol --all-targets --all-features --locked" },
 ]
@@ -2024,7 +2024,7 @@ symbol = "peritus_daemon::verified::mutation_admitted"
 status = "in-progress"
 dependencies = ["OBL-0196"]
 live_issue = "#25"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/app/peritus-daemon/src/verified.rs", symbol = "peritus_daemon::verified::mutation_admitted", command = "cargo verus verify --package peritus-daemon --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "refinement-test", source_file = "crates/app/peritus-daemon/src/verified.rs", symbol = "peritus_daemon::verified::tests::executable_readiness_predicates_match_the_closed_admission_matrix", command = "cargo test --package peritus-daemon --all-targets --all-features --locked" },
@@ -2040,7 +2040,7 @@ symbol = "peritus_daemon::verified::startup_transition"
 status = "in-progress"
 dependencies = []
 live_issue = "#25"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/app/peritus-daemon/src/verified.rs", symbol = "peritus_daemon::verified::startup_transition", command = "cargo verus verify --package peritus-daemon --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "refinement-test", source_file = "crates/app/peritus-daemon/src/verified.rs", symbol = "peritus_daemon::verified::tests::executable_startup_relation_admits_only_exact_successors", command = "cargo test --package peritus-daemon --all-targets --all-features --locked" },
@@ -2052,11 +2052,11 @@ kind = "contract"
 statement = "G0 startup binds one protected state root, exact C0 store identity, durable authority epoch, canonical current public credential registry, recovered workspace/process/application state, production harness pointer, outbox, and authenticated local endpoint before read-write admission."
 owning_crate = "peritus-daemon"
 source_file = "crates/app/peritus-daemon/src/startup/runtime/runner.rs"
-symbol = "peritus_daemon::startup::runtime::runner::DaemonRuntime::start"
+symbol = "peritus_daemon::startup::runtime::DaemonRuntime::start"
 status = "in-progress"
 dependencies = ["INV-028", "INV-029"]
 live_issue = "#25"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "refinement-test", source_file = "crates/app/peritus-daemon/tests/runtime.rs", symbol = "peritus_daemon::tests::runtime::runtime_accepts_authenticated_negotiation_and_status", command = "cargo test --package peritus-daemon --all-targets --all-features --locked" },
   { kind = "refinement-test", source_file = "crates/app/peritus-daemon/src/startup/registry/tests.rs", symbol = "peritus_daemon::startup::registry::tests::exact_restart_is_idempotent", command = "cargo test --package peritus-daemon --all-targets --all-features --locked" },
@@ -2072,7 +2072,7 @@ symbol = "peritus_orchestrator::durability::acknowledgement::commit_claimed_dire
 status = "in-progress"
 dependencies = []
 live_issue = "#25"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "refinement-test", source_file = "crates/orchestration/peritus-orchestrator/src/integration_tests/durability.rs", symbol = "peritus_orchestrator::integration_tests::durability::claimed_directive_acknowledgement_commits_with_outbox_settlement", command = "cargo test --package peritus-orchestrator --all-targets --all-features --locked" },
   { kind = "refinement-test", source_file = "crates/orchestration/peritus-orchestrator/src/integration_tests/durability.rs", symbol = "peritus_orchestrator::integration_tests::durability::stale_claim_fence_rolls_back_the_whole_e0_append", command = "cargo test --package peritus-orchestrator --all-targets --all-features --locked" },
@@ -2088,7 +2088,7 @@ symbol = "peritus_daemon::prompt::registry::PromptBroker::prepare_answer"
 status = "in-progress"
 dependencies = ["OBL-0194", "OBL-0200"]
 live_issue = "#25"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "refinement-test", source_file = "crates/app/peritus-daemon/src/prompt/tests.rs", symbol = "peritus_daemon::prompt::tests::prepared_answer_remains_awaiting_until_durable_settlement", command = "cargo test --package peritus-daemon --all-targets --all-features --locked" },
   { kind = "refinement-test", source_file = "crates/app/peritus-daemon/src/prompt/tests.rs", symbol = "peritus_daemon::prompt::tests::cancellation_is_inert_until_its_target_settles", command = "cargo test --package peritus-daemon --all-targets --all-features --locked" },
@@ -2104,7 +2104,7 @@ symbol = "peritus_orchestrator::reducer::apply::directives::publish"
 status = "in-progress"
 dependencies = ["OBL-0201"]
 live_issue = "#25"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "refinement-test", source_file = "crates/orchestration/peritus-orchestrator/src/integration_tests/cancellation.rs", symbol = "peritus_orchestrator::integration_tests::cancellation::pause_acknowledges_every_live_child_and_resumes_only_exact_heads", command = "cargo test --package peritus-orchestrator --all-targets --all-features --locked" },
 ]
@@ -2119,7 +2119,7 @@ symbol = "peritus_conformance::tests::conformance::daemon_catalog::daemon_catalo
 status = "in-progress"
 dependencies = ["INV-028", "INV-029", "OBL-0200", "OBL-0201", "OBL-0202", "OBL-0203", "OBL-0205", "OBL-0206"]
 live_issue = "#25"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "refinement-test", source_file = "crates/app/testing/peritus-conformance/tests/conformance/daemon_catalog.rs", symbol = "peritus_conformance::tests::conformance::daemon_catalog::daemon_catalog_runs_all_twenty_eight_cases", command = "cargo test --package peritus-conformance --all-targets --all-features --locked" },
   { kind = "refinement-test", source_file = "crates/app/testing/peritus-conformance/tests/conformance/daemon_catalog.rs", symbol = "peritus_conformance::tests::conformance::daemon_catalog::daemon_catalog_rejects_read_only_mutation_admission", command = "cargo test --package peritus-conformance --all-targets --all-features --locked" },
@@ -2135,7 +2135,7 @@ symbol = "peritus_gates::durability::lifecycle::commit_gate_lifecycle_transition
 status = "in-progress"
 dependencies = []
 live_issue = "#25"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "refinement-test", source_file = "crates/orchestration/peritus-gates/src/tests/pause.rs", symbol = "peritus_gates::tests::pause::active_pause_is_canonical_durable_idempotent_and_restart_safe", command = "cargo test --package peritus-gates --all-targets --all-features --locked" },
 ]
@@ -2150,7 +2150,7 @@ symbol = "peritus_review::durability::commit_review_transition"
 status = "in-progress"
 dependencies = []
 live_issue = "#25"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "refinement-test", source_file = "crates/orchestration/peritus-review/tests/durability_restart.rs", symbol = "peritus_review::tests::durability_restart::pause_resume_is_canonical_durable_idempotent_and_authority_neutral", command = "cargo test --package peritus-review --all-targets --all-features --locked" },
 ]
@@ -2165,7 +2165,7 @@ symbol = "peritus_security_policy::proofs::readiness_implies_all_security_obliga
 status = "in-progress"
 dependencies = ["INV-007", "INV-008", "OBL-0182"]
 live_issue = "#32"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/foundation/peritus-security-policy/src/proofs.rs", symbol = "peritus_security_policy::proofs::readiness_implies_all_security_obligations", command = "cargo verus verify --package peritus-security-policy --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "refinement-test", source_file = "crates/foundation/peritus-security-policy/tests/policy.rs", symbol = "peritus_security_policy::tests::policy::complete_exact_candidate_is_security_ready_without_release_authority", command = "cargo test --package peritus-security-policy --all-targets --all-features --locked" },
@@ -2181,7 +2181,7 @@ symbol = "peritus_security_qualification::runner::QualificationRunner::run"
 status = "in-progress"
 dependencies = ["INV-030"]
 live_issue = "#32"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "refinement-test", source_file = "crates/app/testing/peritus-security-qualification/tests/catalog.rs", symbol = "peritus_security_qualification::tests::catalog::production_catalog_covers_every_literal_requirement_and_criterion", command = "cargo test --package peritus-security-qualification --all-targets --all-features --locked" },
   { kind = "refinement-test", source_file = "crates/app/testing/peritus-security-qualification/tests/qualification.rs", symbol = "peritus_security_qualification::tests::qualification::full_native_campaign_and_independent_review_can_reach_h0_ready", command = "cargo test --package peritus-security-qualification --all-targets --all-features --locked" },
@@ -2197,7 +2197,7 @@ symbol = "peritus_release_policy::decision::ReleaseDecision::ready_implies_final
 status = "in-progress"
 dependencies = ["INV-030", "OBL-0207"]
 live_issue = "#33"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/foundation/peritus-release-policy/src/decision.rs", symbol = "peritus_release_policy::decision::ReleaseDecision::ready_implies_final_obligations", command = "cargo verus verify --package peritus-release-policy --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "refinement-test", source_file = "crates/foundation/peritus-release-policy/tests/acceptance.rs", symbol = "peritus_release_policy::tests::acceptance::complete_exact_evidence_is_ready_without_publication_authority", command = "cargo test --package peritus-release-policy --all-targets --all-features --locked" },
@@ -2213,8 +2213,344 @@ symbol = "peritus_release_qualification::verified_policy::VerifiedReleasePolicyA
 status = "in-progress"
 dependencies = ["INV-031"]
 live_issue = "#34"
-owner = "ACTOR-0001"
+owner = "ACTOR-0005"
 evidence = [
   { kind = "refinement-test", source_file = "crates/app/testing/peritus-release-qualification/src/verified_policy/tests.rs", symbol = "peritus_release_qualification::verified_policy::tests::exact_composition_reaches_verified_policy_and_remains_not_ready_without_evidence", command = "cargo test --package peritus-release-qualification --all-targets --all-features --locked" },
   { kind = "refinement-test", source_file = "crates/app/testing/peritus-release-qualification/src/verified_policy/tests.rs", symbol = "peritus_release_qualification::verified_policy::tests::digest_drift_never_reaches_verified_policy", command = "cargo test --package peritus-release-qualification --all-targets --all-features --locked" },
+]
+
+# Proposed append-only entries for verification/obligations.toml.
+# Source snapshot: feature/formal-coverage at the time recorded in the companion mapping note.
+
+[[entries]]
+id = "OBL-0209"
+kind = "contract"
+statement = "The common 16-byte nominal-identifier constructor accepts exactly nonzero byte arrays and preserves every supplied byte on success; the all-zero reserved value is rejected."
+owning_crate = "peritus-types"
+source_file = "crates/foundation/peritus-types/src/ids/base.rs"
+symbol = "peritus_types::ids::base::OpaqueIdentifier::new"
+status = "in-progress"
+dependencies = []
+live_issue = "#75"
+owner = "ACTOR-0005"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/foundation/peritus-types/src/ids/base.rs", symbol = "peritus_types::ids::base::OpaqueIdentifier::new", command = "cargo verus verify --package peritus-types --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "property-test", source_file = "crates/foundation/peritus-types/tests/ids.rs", symbol = "peritus_types::tests::ids::every_nominal_identifier_enforces_the_shared_boundary", command = "cargo test --package peritus-types --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0210"
+kind = "contract"
+statement = "CapabilityName construction accepts exactly the bounded lowercase ASCII hierarchical grammar and preserves the complete supplied character sequence on success."
+owning_crate = "peritus-types"
+source_file = "crates/foundation/peritus-types/src/capability.rs"
+symbol = "peritus_types::capability::CapabilityName::new"
+status = "in-progress"
+dependencies = []
+live_issue = "#75"
+owner = "ACTOR-0005"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/foundation/peritus-types/src/capability.rs", symbol = "peritus_types::capability::CapabilityName::new", command = "cargo verus verify --package peritus-types --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "property-test", source_file = "crates/foundation/peritus-types/tests/capability.rs", symbol = "peritus_types::tests::capability::accepts_the_complete_grammar_and_length_boundaries", command = "cargo test --package peritus-types --all-targets --all-features --locked" },
+  { kind = "property-test", source_file = "crates/foundation/peritus-types/tests/capability.rs", symbol = "peritus_types::tests::capability::rejects_non_ascii_and_disallowed_ascii", command = "cargo test --package peritus-types --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0211"
+kind = "contract"
+statement = "ResourceQuantity checked addition returns the exact mathematical sum when representable, reports only overflow when the sum exceeds u64, and never reports underflow."
+owning_crate = "peritus-types"
+source_file = "crates/foundation/peritus-types/src/resource.rs"
+symbol = "peritus_types::resource::ResourceQuantity::checked_add"
+status = "in-progress"
+dependencies = []
+live_issue = "#75"
+owner = "ACTOR-0005"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/foundation/peritus-types/src/resource.rs", symbol = "peritus_types::resource::ResourceQuantity::checked_add", command = "cargo verus verify --package peritus-types --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "property-test", source_file = "crates/foundation/peritus-types/tests/resource.rs", symbol = "peritus_types::tests::resource::addition_is_exact_or_reports_overflow", command = "cargo test --package peritus-types --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0212"
+kind = "contract"
+statement = "RevisionTuple construction retains exactly all seven supplied authority-context components, so changing any component changes tuple identity."
+owning_crate = "peritus-types"
+source_file = "crates/foundation/peritus-types/src/revision.rs"
+symbol = "peritus_types::revision::RevisionTuple::new"
+status = "in-progress"
+dependencies = ["OBL-0209"]
+live_issue = "#75"
+owner = "ACTOR-0005"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/foundation/peritus-types/src/revision.rs", symbol = "peritus_types::revision::RevisionTuple::new", command = "cargo verus verify --package peritus-types --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "property-test", source_file = "crates/foundation/peritus-types/tests/revision.rs", symbol = "peritus_types::tests::revision::changing_any_component_changes_tuple_identity", command = "cargo test --package peritus-types --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0213"
+kind = "refinement"
+statement = "The verified requirement-ledger extraction kernel succeeds exactly for valid source, draft, and limit inputs and, on success, retains the exact source identity, conversation revision, limits, canonical entries, source spans, specifications, and path roles."
+owning_crate = "peritus-obligations"
+source_file = "crates/orchestration/peritus-obligations/src/ledger.rs"
+symbol = "peritus_obligations::ledger::RequirementLedger::extract_preimage"
+status = "in-progress"
+dependencies = ["OBL-0209"]
+live_issue = "#75"
+owner = "ACTOR-0005"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/orchestration/peritus-obligations/src/ledger.rs", symbol = "peritus_obligations::ledger::RequirementLedger::extract_preimage", command = "cargo verus verify --package peritus-obligations --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "refinement-test", source_file = "crates/orchestration/peritus-obligations/tests/ledger_qualification_correspondence.rs", symbol = "peritus_obligations::tests::ledger_qualification_correspondence::extraction_copies_binary_spans_and_matches_the_complete_identity", command = "cargo test --package peritus-obligations --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0214"
+kind = "refinement"
+statement = "The production ledger encoder emits exactly the versioned canonical byte sequence modeled for the ledger fields and ordered entries before the ordinary SHA-256 boundary consumes it."
+owning_crate = "peritus-obligations"
+source_file = "crates/orchestration/peritus-obligations/src/canonical/encode.rs"
+symbol = "peritus_obligations::canonical::encode::ledger_bytes"
+status = "in-progress"
+dependencies = ["OBL-0213"]
+live_issue = "#75"
+owner = "ACTOR-0005"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/orchestration/peritus-obligations/src/canonical/encode.rs", symbol = "peritus_obligations::canonical::encode::ledger_bytes", command = "cargo verus verify --package peritus-obligations --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "refinement-test", source_file = "crates/orchestration/peritus-obligations/tests/canonical_encoding.rs", symbol = "peritus_obligations::tests::canonical_encoding::public_extraction_retains_the_existing_canonical_digest", command = "cargo test --package peritus-obligations --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0215"
+kind = "refinement"
+statement = "Qualification succeeds exactly for valid ordered condition and evidence inputs; success reports the exact input-defined requirement, condition, evidence, and alternative-branch accounting, while rejection identifies the exact first validation error and payload."
+owning_crate = "peritus-obligations"
+source_file = "crates/orchestration/peritus-obligations/src/qualification.rs"
+symbol = "peritus_obligations::qualification::qualify"
+status = "in-progress"
+dependencies = ["OBL-0213"]
+live_issue = "#75"
+owner = "ACTOR-0005"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/orchestration/peritus-obligations/src/qualification.rs", symbol = "peritus_obligations::qualification::qualify", command = "cargo verus verify --package peritus-obligations --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "refinement-test", source_file = "crates/orchestration/peritus-obligations/tests/qualification_contracts.rs", symbol = "peritus_obligations::tests::qualification_contracts::qualification_keeps_first_error_and_every_payload_field", command = "cargo test --package peritus-obligations --all-targets --all-features --locked" },
+  { kind = "refinement-test", source_file = "crates/orchestration/peritus-obligations/tests/qualification_contracts.rs", symbol = "peritus_obligations::tests::qualification_contracts::qualification_requires_every_active_member_and_one_whole_alternative_branch", command = "cargo test --package peritus-obligations --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0216"
+kind = "invariant"
+statement = "RunKnowledgeSnapshot construction succeeds exactly for a supported role, bounded canonical section sequence, exact candidate and role bindings, nonfuture observations, backward-resolving dependencies, and correctly typed required base sections; every rejection preserves the modeled first error and payload."
+owning_crate = "peritus-run-knowledge"
+source_file = "crates/orchestration/peritus-run-knowledge/src/snapshot.rs"
+symbol = "peritus_run_knowledge::snapshot::RunKnowledgeSnapshot::new"
+status = "in-progress"
+dependencies = ["OBL-0209"]
+live_issue = "#75"
+owner = "ACTOR-0005"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/orchestration/peritus-run-knowledge/src/snapshot.rs", symbol = "peritus_run_knowledge::snapshot::RunKnowledgeSnapshot::new", command = "cargo verus verify --package peritus-run-knowledge --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "refinement-test", source_file = "crates/orchestration/peritus-run-knowledge/tests/snapshot_admission.rs", symbol = "peritus_run_knowledge::tests::snapshot_admission::snapshot_retains_section_order_then_lineage_role_time_dependency_error_priority", command = "cargo test --package peritus-run-knowledge --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0217"
+kind = "refinement"
+statement = "Invalidation planning succeeds exactly for valid clarification targets and returns one canonical decision per section with exact reuse accounting and transitive invalidation closure; invalid targets return the modeled exact error and payload."
+owning_crate = "peritus-run-knowledge"
+source_file = "crates/orchestration/peritus-run-knowledge/src/plan.rs"
+symbol = "peritus_run_knowledge::plan::plan_invalidation"
+status = "in-progress"
+dependencies = ["OBL-0216"]
+live_issue = "#75"
+owner = "ACTOR-0005"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/orchestration/peritus-run-knowledge/src/plan.rs", symbol = "peritus_run_knowledge::plan::plan_invalidation", command = "cargo verus verify --package peritus-run-knowledge --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "refinement-test", source_file = "crates/orchestration/peritus-run-knowledge/tests/knowledge_matrix.rs", symbol = "peritus_run_knowledge::tests::knowledge_matrix::clarification_invalidation_closes_transitively_over_prior_entries", command = "cargo test --package peritus-run-knowledge --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0218"
+kind = "refinement"
+statement = "Delta packet planning succeeds exactly when prior and current snapshots share a role, the current snapshot matches current observations, and both invalidation plans are valid; success binds every packet entry, delivery class, source, and accounting value, while failure preserves exact error precedence and payload."
+owning_crate = "peritus-run-knowledge"
+source_file = "crates/orchestration/peritus-run-knowledge/src/delta.rs"
+symbol = "peritus_run_knowledge::delta::plan_delta_packet"
+status = "in-progress"
+dependencies = ["OBL-0217"]
+live_issue = "#75"
+owner = "ACTOR-0005"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/orchestration/peritus-run-knowledge/src/delta.rs", symbol = "peritus_run_knowledge::delta::plan_delta_packet", command = "cargo verus verify --package peritus-run-knowledge --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "refinement-test", source_file = "crates/orchestration/peritus-run-knowledge/tests/delta_packet.rs", symbol = "peritus_run_knowledge::tests::delta_packet::delta_admission_preserves_error_precedence", command = "cargo test --package peritus-run-knowledge --all-targets --all-features --locked" },
+  { kind = "refinement-test", source_file = "crates/orchestration/peritus-run-knowledge/tests/delta_packet.rs", symbol = "peritus_run_knowledge::tests::delta_packet::exact_late_bytes_and_dependency_material_drive_changed_facts", command = "cargo test --package peritus-run-knowledge --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0219"
+kind = "contract"
+statement = "CandidateCheckpoint construction succeeds exactly when every evidence binding is current or validly stale for the exact candidate and the declared stage is supported; success retains all inputs and rejection returns the modeled first error kind."
+owning_crate = "peritus-run-settlement"
+source_file = "crates/orchestration/peritus-run-settlement/src/checkpoint.rs"
+symbol = "peritus_run_settlement::checkpoint::CandidateCheckpoint::new"
+status = "in-progress"
+dependencies = ["OBL-0209"]
+live_issue = "#75"
+owner = "ACTOR-0005"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/orchestration/peritus-run-settlement/src/checkpoint.rs", symbol = "peritus_run_settlement::checkpoint::CandidateCheckpoint::new", command = "cargo verus verify --package peritus-run-settlement --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "refinement-test", source_file = "crates/orchestration/peritus-run-settlement/tests/reducer.rs", symbol = "peritus_run_settlement::tests::reducer::evidence_from_another_candidate_is_rejected_or_stale", command = "cargo test --package peritus-run-settlement --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0220"
+kind = "invariant"
+statement = "SettlementReducer observation preserves terminal state, accepts exactly an initial checkpoint or a valid strictly advancing successor before settlement, stores that exact checkpoint on success, and preserves the complete reducer with the exact modeled error on rejection."
+owning_crate = "peritus-run-settlement"
+source_file = "crates/orchestration/peritus-run-settlement/src/reducer.rs"
+symbol = "peritus_run_settlement::reducer::SettlementReducer::observe"
+status = "in-progress"
+dependencies = ["OBL-0219"]
+live_issue = "#75"
+owner = "ACTOR-0005"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/orchestration/peritus-run-settlement/src/reducer.rs", symbol = "peritus_run_settlement::reducer::SettlementReducer::observe", command = "cargo verus verify --package peritus-run-settlement --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "refinement-test", source_file = "crates/orchestration/peritus-run-settlement/tests/reducer.rs", symbol = "peritus_run_settlement::tests::reducer::reducer_rejects_nonadvancing_regressing_and_post_terminal_updates", command = "cargo test --package peritus-run-settlement --all-targets --all-features --locked" },
+  { kind = "refinement-test", source_file = "crates/orchestration/peritus-run-settlement/tests/reducer.rs", symbol = "peritus_run_settlement::tests::reducer::rejected_observations_and_terminal_updates_preserve_the_complete_reducer", command = "cargo test --package peritus-run-settlement --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0221"
+kind = "invariant"
+statement = "SettlementReducer terminal settlement preserves the retained checkpoint, succeeds exactly once, records the exact requested cause and disposition derived from the retained checkpoint, and preserves the complete reducer with AlreadySettled on repetition."
+owning_crate = "peritus-run-settlement"
+source_file = "crates/orchestration/peritus-run-settlement/src/reducer.rs"
+symbol = "peritus_run_settlement::reducer::SettlementReducer::settle"
+status = "in-progress"
+dependencies = ["OBL-0219"]
+live_issue = "#75"
+owner = "ACTOR-0005"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/orchestration/peritus-run-settlement/src/reducer.rs", symbol = "peritus_run_settlement::reducer::SettlementReducer::settle", command = "cargo verus verify --package peritus-run-settlement --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "refinement-test", source_file = "crates/orchestration/peritus-run-settlement/tests/reducer.rs", symbol = "peritus_run_settlement::tests::reducer::every_terminal_cause_is_expressible_with_and_without_a_candidate", command = "cargo test --package peritus-run-settlement --all-targets --all-features --locked" },
+  { kind = "refinement-test", source_file = "crates/orchestration/peritus-run-settlement/tests/reducer.rs", symbol = "peritus_run_settlement::tests::reducer::rejected_observations_and_terminal_updates_preserve_the_complete_reducer", command = "cargo test --package peritus-run-settlement --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0222"
+kind = "invariant"
+statement = "Product-run usage accounting atomically replaces the current response high-water contribution: success updates every usage total by exact subtraction then addition while preserving nonusage fields, and either overflow category preserves the complete accounting state with exact precedence."
+owning_crate = "peritus-product-runner"
+source_file = "crates/app/peritus-product-runner/src/accounting/usage.rs"
+symbol = "peritus_product_runner::accounting::AccountingState::apply_usage"
+status = "in-progress"
+dependencies = []
+live_issue = "#75"
+owner = "ACTOR-0005"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/app/peritus-product-runner/src/accounting/usage.rs", symbol = "peritus_product_runner::accounting::AccountingState::apply_usage", command = "cargo verus verify --package peritus-product-runner --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "refinement-test", source_file = "crates/app/peritus-product-runner/src/budget/tests.rs", symbol = "peritus_product_runner::budget::tests::usage_replacement_rejection_preserves_totals_and_the_retained_response", command = "cargo test --package peritus-product-runner --all-targets --all-features --locked" },
+  { kind = "refinement-test", source_file = "crates/app/peritus-product-runner/src/budget/tests.rs", symbol = "peritus_product_runner::budget::tests::replacement_subtracts_before_adding_and_rejects_missing_prior_contributions", command = "cargo test --package peritus-product-runner --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0223"
+kind = "invariant"
+statement = "Developer usage accumulation publishes every counter from an accepted provider observation in one state replacement, treats absent usage as inert, preserves explicit-zero observations, rejects every arithmetic overflow, and preserves the complete prior usage state on rejection."
+owning_crate = "peritus-agent"
+source_file = "crates/orchestration/peritus-agent/src/usage.rs"
+symbol = "peritus_agent::usage::DeveloperUsage::apply_observation"
+status = "in-progress"
+dependencies = []
+live_issue = "#75"
+owner = "ACTOR-0005"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/orchestration/peritus-agent/src/usage.rs", symbol = "peritus_agent::usage::DeveloperUsage::apply_observation", command = "cargo verus verify --package peritus-agent --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "refinement-test", source_file = "crates/orchestration/peritus-agent/src/developer/usage.rs", symbol = "peritus_agent::developer::usage::tests::rejected_usage_preserves_every_previously_accepted_counter", command = "cargo test --package peritus-agent --all-targets --all-features --locked" },
+  { kind = "refinement-test", source_file = "crates/orchestration/peritus-agent/src/developer/usage.rs", symbol = "peritus_agent::developer::usage::tests::explicit_total_preserves_derived_counter_overflow_rejection", command = "cargo test --package peritus-agent --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0224"
+kind = "invariant"
+statement = "Product-run work accounting atomically increments exactly the counters selected by each actual work event, resets only the per-response high-water snapshot when a new model request starts, preserves every unrelated field, and preserves the complete prior state if any selected counter would overflow."
+owning_crate = "peritus-product-runner"
+source_file = "crates/app/peritus-product-runner/src/accounting/work.rs"
+symbol = "peritus_product_runner::accounting::AccountingState::apply_work"
+status = "in-progress"
+dependencies = []
+live_issue = "#75"
+owner = "ACTOR-0005"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/app/peritus-product-runner/src/accounting/work.rs", symbol = "peritus_product_runner::accounting::AccountingState::apply_work", command = "cargo verus verify --package peritus-product-runner --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "refinement-test", source_file = "crates/app/peritus-product-runner/src/budget/tests.rs", symbol = "peritus_product_runner::budget::tests::rejected_model_request_preserves_prior_usage_and_every_counter", command = "cargo test --package peritus-product-runner --all-targets --all-features --locked" },
+  { kind = "refinement-test", source_file = "crates/app/peritus-product-runner/src/budget/tests.rs", symbol = "peritus_product_runner::budget::tests::work_events_accumulate_without_a_successful_role_outcome", command = "cargo test --package peritus-product-runner --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0225"
+kind = "refinement"
+statement = "Every successful C6 context selection is independently rechecked against the exact graph: selected identities are present and unique, visible dependency closure is complete, render order is canonical, omissions name unique optional roots, and selected token and byte totals equal the source nodes."
+owning_crate = "peritus-context"
+source_file = "crates/orchestration/peritus-context/src/verified.rs"
+symbol = "peritus_context::verified::plan_is_exact"
+status = "in-progress"
+dependencies = ["OBL-0138", "OBL-0140"]
+live_issue = "#80"
+owner = "ACTOR-0005"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/orchestration/peritus-context/src/verified.rs", symbol = "peritus_context::verified::plan_is_exact", command = "cargo verus verify --package peritus-context --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "refinement-test", source_file = "crates/orchestration/peritus-context/tests/selection_matrix.rs", symbol = "peritus_context::tests::selection_matrix::optional_omission_uses_the_first_capacity_failure_and_names_only_the_root", command = "cargo test --package peritus-context --all-targets --all-features --locked" },
+  { kind = "refinement-test", source_file = "crates/orchestration/peritus-context/tests/selection_certificate.rs", symbol = "peritus_context::tests::selection_certificate::optional_atomicity_ranking_and_first_error_precedence_cannot_be_substituted", command = "cargo test --package peritus-context --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0226"
+kind = "contract"
+statement = "Validated C6 compaction retains the exact policy and canonical source ranges from its proposal, and atomic replacement retains those audit fields while installing a replacement whose token estimate is strictly smaller than the exact removed total."
+owning_crate = "peritus-context"
+source_file = "crates/orchestration/peritus-context/src/compaction/replacement.rs"
+symbol = "peritus_context::compaction::replacement::AppliedCompaction::spec_matches_validation"
+status = "in-progress"
+dependencies = ["OBL-0139", "OBL-0225"]
+live_issue = "#80"
+owner = "ACTOR-0005"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/orchestration/peritus-context/src/compaction/replacement.rs", symbol = "peritus_context::compaction::replacement::replace_validated_compaction", command = "cargo verus verify --package peritus-context --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "refinement-test", source_file = "crates/orchestration/peritus-context/tests/compaction_matrix.rs", symbol = "peritus_context::tests::compaction_matrix::replacement_separates_lineage_and_rewrites_live_dependencies", command = "cargo test --package peritus-context --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0227"
+kind = "refinement"
+statement = "The C6 working-state reducer applies exact bound events in durable order, rejects the first invalid event without exposing a partial result, and canonical snapshot plus suffix replay equals uninterrupted execution while retaining stale and superseded evidence."
+owning_crate = "peritus-context"
+source_file = "crates/orchestration/peritus-context/src/working/event.rs"
+symbol = "peritus_context::working::event::replay_working_events"
+status = "in-progress"
+dependencies = ["OBL-0138", "OBL-0225"]
+live_issue = "#80"
+owner = "ACTOR-0005"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/orchestration/peritus-context/src/working/event.rs", symbol = "peritus_context::working::event::replay_success_prefix", command = "cargo verus verify --package peritus-context --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "refinement-test", source_file = "crates/orchestration/peritus-context/tests/working_replay.rs", symbol = "peritus_context::tests::working_replay::snapshot_plus_committed_suffix_matches_uninterrupted_execution", command = "cargo test --package peritus-context --all-targets --all-features --locked" },
+  { kind = "refinement-test", source_file = "crates/orchestration/peritus-context/tests/working_replay.rs", symbol = "peritus_context::tests::working_replay::rejected_reducers_and_partial_replay_leave_the_exact_input_state_unchanged", command = "cargo test --package peritus-context --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0228"
+kind = "refinement"
+statement = "Product local-context assembly binds every selected working entry's supporting and contradicting observation handles into the exact provider-view validation record. Schema-v2 checkpoints bind the encoded provider view to its selection, profile revision, tool policy, render policy, accounting, scope, generation, and event frontier; retry or restart reconstructs byte-equal messages and equal validation while stale or corrupt state fails closed."
+owning_crate = "peritus-product-runner"
+source_file = "crates/app/peritus-product-runner/src/local_context/assembly/working.rs"
+symbol = "peritus_product_runner::local_context::assembly::working::append"
+status = "in-progress"
+dependencies = ["OBL-0227"]
+live_issue = "#80"
+owner = "ACTOR-0005"
+evidence = [
+  { kind = "refinement-test", source_file = "crates/app/peritus-product-runner/src/local_context/tests/capacity.rs", symbol = "peritus_product_runner::tests::capacity::retry_and_restart_preserve_the_exact_selected_working_view_and_sources", command = "cargo test --package peritus-product-runner --all-targets --all-features --locked" },
+  { kind = "refinement-test", source_file = "crates/app/peritus-product-runner/src/local_context/tests/recovery.rs", symbol = "peritus_product_runner::tests::recovery::restart_rejects_semantically_changed_v2_views_with_valid_outer_hashes", command = "cargo test --package peritus-product-runner --all-targets --all-features --locked" },
+  { kind = "refinement-test", source_file = "crates/app/peritus-product-runner/src/local_context/tests/recovery.rs", symbol = "peritus_product_runner::tests::recovery::authentic_v1_only_checkpoint_lineage_still_recovers", command = "cargo test --package peritus-product-runner --all-targets --all-features --locked" },
+  { kind = "refinement-test", source_file = "crates/app/peritus-product-runner/src/local_context/tests/recovery.rs", symbol = "peritus_product_runner::tests::recovery::restart_rejects_schema_v1_downgrade_after_schema_v2", command = "cargo test --package peritus-product-runner --all-targets --all-features --locked" },
+  { kind = "refinement-test", source_file = "crates/app/peritus-product-runner/src/local_context/tests/inspection.rs", symbol = "peritus_product_runner::tests::inspection::inspection_and_recovery_reject_the_same_corrupt_legacy_accounting", command = "cargo test --package peritus-product-runner --all-targets --all-features --locked" },
 ]

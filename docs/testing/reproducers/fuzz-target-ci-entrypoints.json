@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "id": "fuzz-target-ci-entrypoints-cross-platform",
+  "classification": "product_defect",
+  "invariant": "Ordinary all-targets test shards complete on supported CI hosts without linking or executing libFuzzer targets, while explicit Unix fuzz runs retain their libFuzzer entry points.",
+  "original": {
+    "revision": "04d01c874f2b370ef75b687b51946b3b9501bccc",
+    "platform": "github-hosted windows-2025 MSVC and local x86_64-pc-windows-gnu",
+    "finding_source": "Foundation verification run 34666907375 job 103480584267",
+    "independent_reproducer": "three detached old-revision builds with fresh Windows GNU target directories, plus one bounded fresh Linux all-targets run",
+    "fresh_fixture_repetitions": 3,
+    "command": "cargo test --locked --offline --target x86_64-pc-windows-gnu --package peritus-bug-discovery --all-targets --all-features --no-run",
+    "exit_code": 101,
+    "failure_signature": "Windows GNU tried to build libfuzzer-sys and failed before the package; hosted MSVC linked no-main fuzz test binaries and failed with LNK1561; Linux all-targets launched an unbounded fuzz loop"
+  },
+  "reproducer": {
+    "path": "crates/app/testing/peritus-bug-discovery/Cargo.toml",
+    "tests": ["Foundation Rust test testing (windows-2025)", "peritus-bug-discovery all-targets/all-features", "explicit SSE libFuzzer smoke"],
+    "fault_schedule": ["enable every package feature", "select every Cargo target", "compile the testing shard on Windows or run it on Unix"],
+    "required_reachability": ["fuzzing feature enabled", "fuzz binary selected as a test target", "platform-specific entry-point or dependency boundary reached"],
+    "oracle": "Cargo exit status and exact dependency, linker, or bounded-timeout diagnostic",
+    "minimization": "one fuzz package, one enabled fuzz feature, and one selected fuzz binary are sufficient; omitting all-features or the binary hides the target-boundary defect"
+  },
+  "fix": {
+    "revision": "dcc2d72a90ecacebfa2c6bdeda35963b771fdab2",
+    "owner": "peritus-bug-discovery fuzz target packaging",
+    "root_cause": "libfuzzer-sys was unconditional across operating systems and the fuzz entry modules remained active when Cargo forced binary test-harness builds"
+  },
+  "fixed_replay": {
+    "command": "cargo test --locked --offline --target x86_64-pc-windows-gnu --package peritus-bug-discovery --all-targets --all-features --no-run",
+    "expected": "exit 0; all four Windows fuzz binaries link without libfuzzer-sys; the native all-targets suite exits 0; an explicit Unix fuzz run still executes libFuzzer"
+  },
+  "negative_control": "cargo run --locked --package peritus-bug-discovery --bin sse --features fuzzing -- -runs=1 still enters libFuzzer and completes its bounded run",
+  "cleanup": "all detached old-revision worktrees and fresh task-owned build directories are removed after evidence capture",
+  "limitations": ["hosted MSVC reproduction was one failing runner; three fresh independent repetitions used the Windows GNU cross target", "fuzz campaigns remain hosted on Ubuntu"]
+}

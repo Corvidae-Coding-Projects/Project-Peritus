@@ -1,0 +1,39 @@
+{"candidate_commit": "65f16e2933b70305de865750931bb05fe9afb64d", "candidate_tree": "ae2a43f9a9b73f5fec944d39cf165a8b3ec4df20", "environment": {"CARGO_BUILD_JOBS": "1", "CCACHE_DISABLE": "1", "RUST_TEST_THREADS": "1"}, "gate": {"command": "cargo test --package peritus-codec --all-targets --all-features --locked", "invocation": ["cargo", "test", "--package", "peritus-codec", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "output": "011-peritus-codec-ordinary-test.log", "owning_crate": "peritus-codec", "started_at": "2026-09-13T15:17:50.372068Z"}, "plan_sha256": "7fc101b7f8284fbe3818461a8166d73d3425f369120b43c1cbf1b43809a6b7c9"}
+
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.17s
+     Running unittests src/lib.rs (target/debug/deps/peritus_codec-e85858a7c2a3dbf5)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/frame.rs (target/debug/deps/frame-1d08d551fa0a8b74)
+
+running 4 tests
+test every_header_and_payload_truncation_is_rejected ... ok
+test frame_rejects_reserved_fields_and_resource_overruns ... ok
+test malformed_headers_and_trailing_data_fail_exactly ... ok
+test version_one_frame_has_exact_header_and_round_trips ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/message.rs (target/debug/deps/message-390abe27851fdb89)
+
+running 2 tests
+test typed_decode_rejects_wrong_family_schema_and_payload_trailing_bytes ... ok
+test typed_messages_round_trip_and_hash_complete_frames ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/primitives.rs (target/debug/deps/primitives-9a3eb5efedfbc9ac)
+
+running 4 tests
+test exact_limits_succeed_and_one_over_fails_without_partial_write ... ok
+test invalid_closed_tags_utf8_and_trailing_bytes_are_rejected ... ok
+test nesting_limit_is_exact_for_reader_and_writer ... ok
+test primitive_encoding_is_fixed_width_big_endian_and_round_trips ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+GATE DRIVER RESULT: {"command": "cargo test --package peritus-codec --all-targets --all-features --locked", "command_exit_code": 0, "elapsed_seconds": 0.265, "exit_code": 0, "finished_at": "2026-09-13T15:17:50.637238Z", "invocation": ["cargo", "test", "--package", "peritus-codec", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "output": "011-peritus-codec-ordinary-test.log", "owning_crate": "peritus-codec", "result": "passed", "started_at": "2026-09-13T15:17:50.372068Z"}

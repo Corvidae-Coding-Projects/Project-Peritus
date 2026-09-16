@@ -7,7 +7,7 @@ use std::collections::BTreeMap;
 
 use peritus_model_protocol::{
     EventId, FinishReason, ItemId, ItemKind, ModelEvent, ModelName, ProtocolLimits, ProviderName,
-    ResponseId, StreamFragment,
+    ResponseId, StreamFragment, UsageCounters, UsageObservation, UsageScope,
 };
 use peritus_provider_core::{ProviderCoreError, SseFrame};
 use serde_json::{Map, Value};
@@ -15,6 +15,12 @@ use serde_json::{Map, Value};
 use super::responses::FrameEvents;
 use crate::error;
 use fields::{append, integer, string, validate_top_level};
+
+pub(super) fn required_tool_choice_missing(error: &ProviderCoreError) -> bool {
+    error.kind() == peritus_provider_core::ProviderCoreErrorKind::MalformedStream
+        && error.operation() == "compatible_stream"
+        && error.detail() == hosted::REQUIRED_TOOL_CHOICE_MISSING
+}
 
 pub(super) struct ChatDecoder {
     pub(super) service: Option<peritus_provider_core::hosted::HostedService>,
@@ -34,6 +40,7 @@ pub(super) struct ChatDecoder {
     refusal_bytes: Vec<u8>,
     tools: BTreeMap<u32, ToolState>,
     finish: Option<hosted::CompletedChoice>,
+    usage: Option<Box<UsageCounters>>,
 }
 
 impl ChatDecoder {
@@ -63,6 +70,7 @@ impl ChatDecoder {
             refusal_bytes: Vec::new(),
             tools: BTreeMap::new(),
             finish: None,
+            usage: None,
         }
     }
 
@@ -114,31 +122,14 @@ impl ChatDecoder {
             self.response_id = Some(id.clone());
             events.push(ModelEvent::ResponseStarted { response_id: Some(id), model: Some(model) });
         }
-        let choices = value
-            .get("choices")
-            .and_then(Value::as_array)
-            .ok_or_else(|| error::malformed("Chat-compatible chunk omitted choices"))?;
-        if choices.len() > 1 {
-            return Err(error::malformed("Chat-compatible multiple choices are not mapped"));
-        }
-        if let Some(choice) = choices.first() {
-            let accounting = self.service
-                == Some(peritus_provider_core::hosted::HostedService::OpenRouter)
-                && self.finish.is_some()
-                && value.get("usage").is_some_and(|value| !value.is_null());
-            if accounting {
-                self.accounting(choice)?;
-            } else {
-                self.choice(choice, &mut events)?;
-            }
-        }
+        self.decode_choices(&value, &mut events)?;
         if let Some(usage) = value.get("usage").filter(|value| !value.is_null()) {
             if !self.allow_usage {
                 return Err(error::malformed(
                     "Chat-compatible usage was not declared by the profile",
                 ));
             }
-            events.push(ModelEvent::Usage(fields::usage(usage)?));
+            self.observe_usage(usage, &mut events)?;
         }
         if value.get("provider_metadata").is_some() {
             let metadata = value
@@ -152,7 +143,7 @@ impl ChatDecoder {
             if let Some(usage) = metadata.get("usage").filter(|value| !value.is_null())
                 && self.allow_usage
             {
-                events.push(ModelEvent::Usage(fields::usage(usage)?));
+                self.observe_usage(usage, &mut events)?;
             }
             events.push(super::ancillary::event(
                 &serde_json::json!({"x_groq":metadata}),
@@ -180,7 +171,28 @@ impl ChatDecoder {
         {
             return Err(error::malformed("Chat-compatible DONE preceded a mapped finish"));
         }
-        Ok(vec![ModelEvent::ResponseCompleted])
+        let mut events = Vec::with_capacity(usize::from(self.usage.is_some()) + 1);
+        if let Some(usage) = self.usage.as_deref() {
+            events.push(ModelEvent::Usage(UsageObservation::new(UsageScope::Final, *usage, None)));
+        }
+        events.push(ModelEvent::ResponseCompleted);
+        Ok(events)
+    }
+
+    fn observe_usage(
+        &mut self,
+        value: &Value,
+        events: &mut Vec<ModelEvent>,
+    ) -> Result<(), ProviderCoreError> {
+        let observation = fields::usage(value)?;
+        let counters = observation.counters();
+        if let Some(usage) = self.usage.as_deref_mut() {
+            *usage = counters;
+        } else {
+            self.usage = Some(Box::new(counters));
+        }
+        events.push(ModelEvent::Usage(observation));
+        Ok(())
     }
 
     fn choice(
@@ -219,7 +231,8 @@ impl ChatDecoder {
                 return Err(error::malformed("Chat-compatible delta field was unmapped"));
             }
         }
-        if let Some(role) = delta.get("role")
+        // Some Chat providers explicitly emit null for an absent role on tool deltas.
+        if let Some(role) = delta.get("role").filter(|value| !value.is_null())
             && role.as_str() != Some("assistant")
         {
             return Err(error::malformed("Chat-compatible delta role was not assistant"));
@@ -260,7 +273,7 @@ impl ChatDecoder {
                 .map_err(|_| error::limit("Chat-compatible refusal fragment exceeded bounds"))?;
             events.push(ModelEvent::RefusalDelta { item_id: item, fragment });
         }
-        if let Some(tools) = delta.get("tool_calls") {
+        if let Some(tools) = delta.get("tool_calls").filter(|value| !value.is_null()) {
             if !self.allow_tools {
                 return Err(error::malformed(
                     "Chat-compatible tools were not declared by the profile",

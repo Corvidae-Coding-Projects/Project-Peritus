@@ -1,0 +1,47 @@
+{
+  "schema": "peritus.formal-coverage.increment-review",
+  "schema_version": 1,
+  "status": "reviewed-bounded-increment-not-obligation-discharge",
+  "recorded_at": "2026-09-12T20:56:50.647100+00:00",
+  "base_commit": "1aa9282ff2cfcbf8fac325f11f157f408d33ee30",
+  "implementation": "/root/sol_acceptance_completion",
+  "reviewer": "/root",
+  "reviewer_verdict": "PASS for exact ordered planner prefix, direct predicates, prior-entry propagation and accounting; full transitive closure and constructor invariants remain open.",
+  "reviewed_source_manifest_sha256": "dba2f9cb5bb1f6ef8eca9a06f70f7e98357638c042a9b97b3cb7477e12f2a714",
+  "results": {
+    "implementation_strict_verified": 162,
+    "independent_strict_verified": 162,
+    "proof_errors": 0,
+    "implementation_tests_passed": 14,
+    "independent_tests_passed": 14,
+    "package_clippy": "passed",
+    "format": "passed",
+    "source_layout": "passed at frozen checkpoint",
+    "consumer_tests": "passed",
+    "consumer_clippy": "failed on concurrent scheduler diagnostics; final integration pending",
+    "existing_clone_warnings": 1
+  },
+  "remaining_limits": [
+    "Canonical/topological constructor invariant and full transitive closure remain open.",
+    "Public invalidation reason getter contract requires strengthening.",
+    "Delta, rendering, authority classification, hashing and persistence remain separate work.",
+    "No protected approval, obligation discharge or final committed CI attestation."
+  ],
+  "artifacts": {
+    "audit.md": "60ac56064d5e6f48f141cff5686d10fb084b6a89271dd333719640e91825e106",
+    "clippy.txt": "f236456be8f1b16c00ed744feeb4f4ae0a914de6f6514a3933d65273dd90adf5",
+    "consumer-clippy-transient-failure.txt": "a23109df50dce507a8419e0ac7b47466e0cf15dc01dcde6ee01b3ad3a4333665",
+    "consumer-tests.txt": "378fb10455f10bc56255907b727a47271535bb9b9582da4336df48e3d302139c",
+    "format.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "implementation-commands.txt": "45a31f93399b5b9d05422593da9cc3ec0a35f5993453085685d5a0f65211ebfb",
+    "implementation-manifest.txt": "1de20bb920df979a03df60007df9beaff2874aad0f5fe9e47c360ac33d5b9c32",
+    "independent-commands.txt": "3cb03004ad85cbb1845f8511c51abeac03de1e17d5b4feb01793da36bbb7107c",
+    "source-layout.txt": "b3c9dbbb413008026a6935bc7fd3626c48980ad6e292997b109ebf50b8082cd1",
+    "source-sha256.txt": "dba2f9cb5bb1f6ef8eca9a06f70f7e98357638c042a9b97b3cb7477e12f2a714",
+    "tests-all-features.txt": "7bd29c353cd14478b4735be6f493899c2679fd11b516a7f238b3c9834d1cde2f",
+    "tests-default.txt": "24be17c7c7d28ae27412169b0471dd4a628e9baf81a28da9372b3537ffdf1ee9",
+    "tests-independent.txt": "be5f78101865d18e58eb4b27762192e1f2dbee761a1d7c26014b4e552ba5ec93",
+    "verus-implementation.txt": "7575aba44316169790639fbddee7edd5fbd50c9969d74ddeb00aeb1261b86dec",
+    "verus-independent.txt": "10504f1df4c2a96951ef0a04575b8fc72d0d8cad9d772cc2fb373ce45e315496"
+  }
+}

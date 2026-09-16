@@ -2,7 +2,7 @@ use super::support::{named_tool_response, text_response};
 use super::*;
 use peritus_app_protocol::{
     ProductActivityKind, ProductInteractionMode, ProductInteractionRequest, ProductRoleModels,
-    ProductRunConversationQuery,
+    ProductRunContinuation, ProductRunConversationQuery,
 };
 
 pub(super) fn block_on(future: impl Future<Output = ()>) {
@@ -168,6 +168,75 @@ fn public_start_message_is_visible_before_a_stalled_provider_finishes() {
 }
 
 #[test]
+fn follow_up_admitted_at_finalization_is_processed_once() {
+    block_on(async {
+        let repository = repository();
+        let state = tempfile::tempdir().expect("state");
+        let writer = scripted(
+            0x66,
+            "chat",
+            vec![text_response(b"First reply."), text_response(b"Follow-up considered.")],
+        );
+        let reviewer = scripted(0x67, "review", Vec::new());
+        let fixer = scripted(0x68, "fix", Vec::new());
+        let workspace_id = WorkspaceId::new([0x69; 16]).expect("workspace");
+        let run_id = RunId::new([0x6a; 16]).expect("run");
+        let service =
+            service(state.path(), repository.path(), workspace_id, [&writer, &reviewer, &fixer]);
+        let barrier = super::super::execution::inject_finish_barrier(run_id);
+        let request = ProductRunRequest::new(
+            run_id,
+            workspace_id,
+            ProductProviderSelection::new(
+                writer.profile.profile_id(),
+                reviewer.profile.profile_id(),
+                fixer.profile.profile_id(),
+            ),
+            "Hello".to_owned(),
+        )
+        .expect("request");
+        service
+            .interact(ProductInteractionRequest::new(
+                request,
+                ProductInteractionMode::Chat,
+                ProductRoleModels::default(),
+            ))
+            .await
+            .expect("start chat");
+        tokio::time::timeout(Duration::from_secs(5), barrier.reached())
+            .await
+            .expect("runner reached finalization barrier");
+        let admitted = service
+            .continue_run(
+                &ProductRunContinuation::new(run_id, "One follow-up".to_owned())
+                    .expect("continuation"),
+            )
+            .await
+            .expect("admit follow-up");
+        assert!(!admitted.phase().terminal());
+        barrier.release();
+
+        let terminal = wait_for_terminal(&service, run_id).await;
+        assert_eq!(terminal.phase(), ProductRunPhase::WaitingForUser);
+        let conversation = service
+            .query_interaction(ProductRunConversationQuery::new(run_id))
+            .expect("conversation");
+        assert_eq!((conversation.received(), conversation.incorporated()), (2, 2));
+        assert_eq!(writer.requests.lock().expect("requests").len(), 2);
+        assert_eq!(
+            conversation
+                .activities()
+                .iter()
+                .filter(|activity| activity.kind() == ProductActivityKind::User
+                    && activity.text() == "One follow-up")
+                .count(),
+            1
+        );
+        service.shutdown(Duration::from_secs(5)).await;
+    });
+}
+
+#[test]
 fn interactive_build_narrates_stages_without_changing_terminal_contracts() {
     block_on(pipeline_scenario(ProductInteractionMode::Build));
 }
@@ -243,6 +312,28 @@ async fn pipeline_scenario(mode: ProductInteractionMode) {
     ] {
         assert!(public.contains(&message), "missing stage: {message}; {public:?}");
     }
+    if mode == ProductInteractionMode::Chat {
+        let requests_before = writer.requests.lock().expect("requests").len();
+        {
+            let mut records = service.inner.records.write().expect("run records");
+            let record = records.get_mut(&run_id).expect("complete chat record");
+            record
+                .conversation
+                .append(
+                    peritus_app_protocol::ProductConversationRole::User,
+                    "Durable input awaiting explicit continuation".to_owned(),
+                )
+                .expect("append recovery-shaped pending input");
+        }
+        assert!(
+            matches!(
+                service.retry(run_id).await,
+                Err(crate::product_run::ProductRunServiceError::InvalidState)
+            ),
+            "generic retry must not reopen a complete chat with pending input",
+        );
+        assert_eq!(writer.requests.lock().expect("requests").len(), requests_before);
+    }
     service.shutdown(Duration::from_secs(5)).await;
 }
 
@@ -276,61 +367,5 @@ async fn pending_idle_input_is_restarted_without_claiming_prior_incorporation(
     assert!(!service.pending_interactive_input(run_id));
 }
 
-#[test]
-fn planning_and_review_cannot_execute_a_provider_requested_write() {
-    block_on(async {
-        for mode in [ProductInteractionMode::Plan, ProductInteractionMode::Review] {
-            read_only_write_attempt(mode).await;
-        }
-    });
-}
-async fn read_only_write_attempt(mode: ProductInteractionMode) {
-    let repository = repository();
-    let original = fs::read(repository.path().join("src/lib.rs")).expect("source");
-    let state = tempfile::tempdir().expect("state");
-    let writer = scripted(
-        0x41,
-        "plan",
-        vec![
-            named_tool_response(
-                "workspace_write",
-                br#"{"path":"src/lib.rs","content":"unauthorized"}"#.to_vec(),
-            ),
-            text_response(b"I will only discuss the plan."),
-        ],
-    );
-    let reviewer = if mode == ProductInteractionMode::Review {
-        Arc::clone(&writer)
-    } else {
-        scripted(0x42, "review", Vec::new())
-    };
-    let fixer = scripted(0x43, "fix", Vec::new());
-    let workspace_id = WorkspaceId::new([0x44; 16]).expect("workspace");
-    let run_id = RunId::new([0x45; 16]).expect("run");
-    let service =
-        service(state.path(), repository.path(), workspace_id, [&writer, &reviewer, &fixer]);
-    let request = ProductRunRequest::new(
-        run_id,
-        workspace_id,
-        ProductProviderSelection::new(
-            writer.profile.profile_id(),
-            reviewer.profile.profile_id(),
-            fixer.profile.profile_id(),
-        ),
-        "Discuss a plan".to_owned(),
-    )
-    .expect("request");
-    service
-        .interact(ProductInteractionRequest::new(request, mode, ProductRoleModels::default()))
-        .await
-        .expect("start plan");
-    let _ = wait_for_terminal(&service, run_id).await;
-    assert_eq!(fs::read(repository.path().join("src/lib.rs")).expect("retained source"), original);
-    assert!(!repository.path().join(".design").exists());
-    let snapshot =
-        service.query_interaction(ProductRunConversationQuery::new(run_id)).expect("activity");
-    assert!(
-        snapshot.activities().iter().all(|activity| !activity.detail().contains("unauthorized"))
-    );
-    service.shutdown(Duration::from_secs(5)).await;
-}
+#[path = "interaction/read_only.rs"]
+mod read_only;

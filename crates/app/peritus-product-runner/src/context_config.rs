@@ -82,7 +82,7 @@ pub struct LocalContextConfig {
     pub trigger_percent: u8,
     /// Recent message preference; complete exchanges and semantic pins take precedence.
     pub retain_recent_messages: usize,
-    /// Maximum tokens allocated to structured working entries.
+    /// Preferred token ceiling for working entries; required closure may borrow input headroom.
     pub working_state_max_tokens: u64,
     /// Maximum tokens allocated to automatically retrieved older observations.
     pub retrieved_evidence_max_tokens: u64,

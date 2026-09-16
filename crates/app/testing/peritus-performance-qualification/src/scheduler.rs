@@ -9,8 +9,8 @@ use peritus_kernel::CommandEnvelope;
 use peritus_protocol::CommandEnvelopeDto;
 use peritus_scheduler::{
     ResourceEntry, ResourceKind, ResourceQuantity, ResourceVector, SchedulerBinding,
-    SchedulerCommand, SchedulerCommandFrame, SchedulerCommandKind, SchedulerId, SchedulerLimits,
-    SchedulerState, decide, start,
+    SchedulerCommand, SchedulerCommandKind, SchedulerId, SchedulerLimits, SchedulerState, decide,
+    encode_scheduler_command, start,
 };
 use peritus_types::{
     AcceptanceSpecId, ActorId, CommandId, EventId, Generation, HarnessId, PolicyId,
@@ -69,14 +69,10 @@ impl SchedulerRun {
         identities: &mut IdentitySource,
         kind: SchedulerCommandKind,
     ) -> Result<(), SubjectError> {
-        let command = SchedulerCommand::new(
+        let command = SchedulerCommand::from_state(
+            &self.state,
             identities.next(CommandId::new)?,
             identities.next(EventId::new)?,
-            self.state.run_id(),
-            self.state.sequence().get(),
-            Some(self.state.last_event_id()),
-            self.state.state_digest(),
-            self.state.binding().revision(),
             kind,
         )?;
         let transition = decide(&self.state, &command)?;
@@ -111,8 +107,7 @@ fn submit(
         command.expected_previous_event(),
         command.revision(),
     );
-    let command_bytes =
-        encode_message(&SchedulerCommandFrame::from_command(command), CodecLimits::PRODUCTION)?;
+    let command_bytes = encode_scheduler_command(command, CodecLimits::PRODUCTION)?;
     submit_frames(client, identities, envelope, command_bytes)
 }
 

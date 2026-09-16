@@ -1,0 +1,45 @@
+{
+  "schema": "peritus.formal-coverage.increment-review",
+  "schema_version": 1,
+  "status": "reviewed-bounded-increment-not-obligation-discharge",
+  "recorded_at": "2026-09-12T20:50:53.782073+00:00",
+  "base_commit": "1aa9282ff2cfcbf8fac325f11f157f408d33ee30",
+  "implementation": "/root/sol_readiness_correspondence",
+  "reviewer": "/root",
+  "review_provenance": "Independent source review through Codex collaboration in thread 01a08ab8-4887-7c63-8c75-7b8541cbbe4c; not external signature or protected proof-impact authorization.",
+  "reviewer_verdict": "PASS for exact supplied qualification/review/finding folds and raw Ready correspondence to those plus stored criterion/artifact state and diagnostics.",
+  "reviewed_source_manifest_sha256": "f98b2c661b7eeedb775274b492f12a5f0fcdf9b25c8469a9319decf0c9c92978",
+  "results": {
+    "implementation_strict_verified": 327,
+    "independent_strict_verified": 327,
+    "proof_errors": 0,
+    "implementation_tests_passed": 29,
+    "independent_tests_passed": 29,
+    "clippy": "passed",
+    "format": "passed",
+    "repository_source_layout": "failed on concurrent unrelated source; final integration pending"
+  },
+  "remaining_limits": [
+    "Full declarative all-input Ready iff and ordinary constructor admission are incomplete.",
+    "Finite fold correspondence is not yet a declarative quorum/complete policy discharge.",
+    "External execution/authenticity and release effects not proved.",
+    "No final clean-commit attestation or protected proof-impact authorization."
+  ],
+  "artifacts": {
+    "audit.md": "d968b89bc88182ab34effc116999449a014487ef3a6bf41d296aea46cbdb5ba6",
+    "clippy.txt": "d0761326ea188884d168ff7e98fa38193fa31ed997fff6d01cf8a96cc0802bc2",
+    "diff-check.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "environment.txt": "c43348b4a7a313b0937ecd53bbf6b38503e8eb78a9a59d1ae09eaa22135936f9",
+    "forbidden-scan.txt": "54065e9ad6805a5f26ab5db03f28566118eef7fae3ea2ed5c72b3bc17bd87b6d",
+    "format.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "implementation-commands.txt": "4e0312132bcbbf130436e460891e9b679aec536c9d60e9fae86b65d823ef384c",
+    "implementation-manifest.txt": "a5a3e063d2604826e0bb2413b0bf484df50a2924af692be58d82ba766136c97e",
+    "independent-commands.txt": "6f2bd674bfa3e1a51d0a037ec890ae2e4f79cf53fdf1b5048f322329b949f610",
+    "source-layout-transient-failure.txt": "05dcfdb569d8cffd2623d6e5ad47f8b72e5c399eda96564689f7a001cfdd2ca7",
+    "source-sha256.txt": "f98b2c661b7eeedb775274b492f12a5f0fcdf9b25c8469a9319decf0c9c92978",
+    "tests-implementation.txt": "d2f9f88eac30107feddffc77338beb05c7070f9aaeac429ad19796c9ec6e2adf",
+    "tests-independent.txt": "c2d2c6ef291d3471368b4ebea76cd9f1ae805bec979d251bdf7beb49ee6f6b11",
+    "verus-implementation.txt": "af5d8632c8ef7408f2eeb5d316e0bff62389615f9087b1adcfc689b7c4a25da2",
+    "verus-independent.txt": "f0772c4ef45cbd5ced56a345ec1b2265e89e870ff35bd9a467788fc08cc3846c"
+  }
+}

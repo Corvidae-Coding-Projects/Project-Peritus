@@ -3,8 +3,8 @@
 use peritus_types::{ActorId, RevisionTuple, RunId, Sha256Digest};
 
 use crate::{
-    AttemptNumber, DispatchId, SchedulerPhase, SchedulerState, SchedulerTerminalKind, WorkId,
-    WorkPhase, WorkerId, WorkerPhase,
+    AttemptNumber, DispatchId, SchedulerPhase, SchedulerSemantics, SchedulerState,
+    SchedulerTerminalKind, WorkId, WorkPhase, WorkerId, WorkerPhase,
 };
 
 /// Projected worker row.
@@ -121,6 +121,7 @@ impl ProjectedReservation {
 /// Projected run summary.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ProjectedScheduler {
+    semantics: SchedulerSemantics,
     run_id: RunId,
     revision: RevisionTuple,
     phase: SchedulerPhase,
@@ -129,6 +130,11 @@ pub struct ProjectedScheduler {
     state_digest: Sha256Digest,
 }
 impl ProjectedScheduler {
+    /// Returns the immutable queue and recovery semantics.
+    #[must_use]
+    pub const fn semantics(&self) -> SchedulerSemantics {
+        self.semantics
+    }
     /// Returns run.
     #[must_use]
     pub const fn run_id(&self) -> RunId {
@@ -174,6 +180,7 @@ impl SchedulerProjection {
     #[must_use]
     pub fn from_state(state: &SchedulerState) -> Self {
         let scheduler = ProjectedScheduler {
+            semantics: state.binding().semantics(),
             run_id: state.run_id(),
             revision: state.binding().revision(),
             phase: state.phase(),

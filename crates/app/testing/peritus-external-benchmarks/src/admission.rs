@@ -22,6 +22,7 @@ const PRODUCT_PROTOCOL_VERSION: u32 = 1;
 /// Fully prepared invocation. Constructing this value is the admission boundary.
 pub struct AdmittedInvocation {
     pub guard: InvocationGuard,
+    pub provider_plan: crate::providers::ProviderPlan,
     pub prompt: String,
     pub conversation: BenchmarkSession,
     pub evidence_dir: PathBuf,
@@ -110,7 +111,10 @@ fn prepare_admission(spec: AdmissionSpec) -> Result<AdmittedInvocation, Benchmar
     )?;
     let trace_path = conversation.current_trace_path();
     trace::prepare(&trace_path)?;
-    let declared_provider_routes = crate::providers::declared_routes()?;
+    let provider_plan = crate::providers::ProviderPlan::for_harness()?;
+    let declared_provider_routes = provider_plan.declared_routes();
+    let writer = provider_plan.writer_label();
+    let reviewer = provider_plan.reviewer_label();
     let config_digest = config_digest(&spec, &workspace);
     let invocation_name =
         format!("{}-turn-{:04}", &config_digest[..16], conversation.turn_number());
@@ -138,8 +142,8 @@ fn prepare_admission(spec: AdmissionSpec) -> Result<AdmittedInvocation, Benchmar
         workspace: workspace.clone(),
         trace_path,
         conversation_turn: conversation.turn_number(),
-        writer: format!("openai/{}", crate::providers::WRITER_MODEL),
-        reviewer: format!("anthropic/{}", crate::providers::REVIEWER_MODEL),
+        writer,
+        reviewer,
         run_id,
         workspace_id: workspace_id(&workspace)?,
         baseline: None,
@@ -154,6 +158,7 @@ fn prepare_admission(spec: AdmissionSpec) -> Result<AdmittedInvocation, Benchmar
     };
     Ok(AdmittedInvocation {
         guard: InvocationGuard::new(seed, publisher),
+        provider_plan,
         prompt,
         conversation,
         evidence_dir,

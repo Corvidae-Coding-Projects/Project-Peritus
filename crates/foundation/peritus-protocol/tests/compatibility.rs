@@ -43,8 +43,33 @@ fn family_registry_is_nonzero_unique_and_strictly_ordered() {
         assert_ne!(family.tag, 0);
         assert_ne!(family.schema_version, 0);
         assert!(!family.name.is_empty());
+        assert!(!family.supported_schema_versions.is_empty());
+        assert!(family.supported_schema_versions.contains(&family.schema_version));
+        assert!(family.supported_schema_versions.iter().all(|version| *version != 0));
+        assert!(
+            family.supported_schema_versions.windows(2).all(|versions| versions[0] < versions[1])
+        );
         if index > 0 {
             assert!(FAMILIES[index - 1].tag < family.tag);
+        }
+    }
+}
+
+#[test]
+fn scheduler_families_dual_read_v1_v2_while_other_families_remain_v1_only() {
+    for family in FAMILIES {
+        if (70..=72).contains(&family.tag) {
+            assert_eq!(family.schema_version, 2);
+            assert_eq!(family.supported_schema_versions, &[1, 2]);
+            assert!(family.supports(1));
+            assert!(family.supports(2));
+            assert!(!family.supports(0));
+            assert!(!family.supports(3));
+        } else {
+            assert_eq!(family.schema_version, 1);
+            assert_eq!(family.supported_schema_versions, &[1]);
+            assert!(family.supports(1));
+            assert!(!family.supports(2));
         }
     }
 }

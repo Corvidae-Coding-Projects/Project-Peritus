@@ -1,0 +1,1588 @@
+GAP-02 FINDING-0001 EVIDENCE BUNDLE
+schema=peritus.independent-finding-evidence.v1
+encoding=length-delimited-raw-bytes
+entry-metadata-bytes=151
+{"bytes":1626,"finding_id":"FINDING-0001","label":"focused-old-source-red","sha256":"db3d7eb14cf3769ebb744993d1c970fc75486fc6b3ee1f95bfe0d4d70e9a37e8"}
+entry-raw-begin
+   Compiling peritus-resilience v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/app/testing/peritus-resilience)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 2.32s
+     Running tests/native_controller.rs (target/debug/deps/native_controller-d1f71c40831a6d26)
+
+running 2 tests
+
+thread 'cleanup_response_queued_after_controller_exit_does_not_wait_twice' (1038307) panicked at crates/app/testing/peritus-resilience/tests/native_controller.rs:75:5:
+cleanup race failure: [Subject { phase: Cleanup, error: SubjectError { code: Supervision, context: QualificationText("native controller was released"), retryable: false } }]
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test cleanup_response_queued_after_controller_exit_does_not_wait_twice ... FAILED
+
+thread 'oversized_queued_cleanup_response_preserves_the_output_limit_error' (1038308) panicked at crates/app/testing/peritus-resilience/tests/native_controller.rs:107:5:
+queued oversized response lost its limit diagnostic: [Subject { phase: Cleanup, error: SubjectError { code: Supervision, context: QualificationText("native controller was released"), retryable: false } }]
+test oversized_queued_cleanup_response_preserves_the_output_limit_error ... FAILED
+
+failures:
+
+failures:
+    cleanup_response_queued_after_controller_exit_does_not_wait_twice
+    oversized_queued_cleanup_response_preserves_the_output_limit_error
+
+test result: FAILED. 0 passed; 2 failed; 0 ignored; 0 measured; 9 filtered out; finished in 0.16s
+
+error: test failed, to rerun pass `-p peritus-resilience --test native_controller`
+
+entry-raw-end
+entry-metadata-bytes=148
+{"bytes":571,"finding_id":"FINDING-0001","label":"focused-repair-green","sha256":"841667ba5b3c8d321c2948f891be39e8d88586747bdf3f5d758449d8b946a87e"}
+entry-raw-begin
+   Compiling peritus-resilience v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/app/testing/peritus-resilience)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 2.31s
+     Running tests/native_controller.rs (target/debug/deps/native_controller-d1f71c40831a6d26)
+
+running 2 tests
+test cleanup_response_queued_after_controller_exit_does_not_wait_twice ... ok
+test oversized_queued_cleanup_response_preserves_the_output_limit_error ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 9 filtered out; finished in 0.16s
+
+
+entry-raw-end
+entry-metadata-bytes=147
+{"bytes":135984,"finding_id":"FINDING-0001","label":"hosted-macos-red","sha256":"c8f6fb6df51be69bad74ae090ad5a04a1cdf571d455a9d27f1edfe1d152b9546"}
+entry-raw-begin
+﻿2026-09-13T13:07:50.0573050Z Current runner version: '2.337.0'
+2026-09-13T13:07:50.0598940Z ##[group]Runner Image Provisioner
+2026-09-13T13:07:50.0599720Z Hosted Compute Agent
+2026-09-13T13:07:50.0600120Z Version: 20260828.587
+2026-09-13T13:07:50.0600600Z Commit: abac92662cab4cc7352de4f9f9d2e2419aad9c29
+2026-09-13T13:07:50.0601170Z Build Date: 2026-08-28T16:44:25Z
+2026-09-13T13:07:50.0601650Z Worker ID: {bb76e0dc-df66-48ea-ba76-cf5060fea76c}
+2026-09-13T13:07:50.0602140Z Azure Region: westus
+2026-09-13T13:07:50.0602700Z ##[endgroup]
+2026-09-13T13:07:50.0605910Z ##[group]Operating System
+2026-09-13T13:07:50.0607300Z macOS
+2026-09-13T13:07:50.0608140Z 15.7.9
+2026-09-13T13:07:50.0608580Z 24G830
+2026-09-13T13:07:50.0608990Z ##[endgroup]
+2026-09-13T13:07:50.0609390Z ##[group]Runner Image
+2026-09-13T13:07:50.0609990Z Image: macos-15-arm64
+2026-09-13T13:07:50.0610410Z Version: 20260907.0337.1
+2026-09-13T13:07:50.0611930Z Included Software: https://github.com/actions/runner-images/blob/macos-15-arm64/20260907.0337/images/macos/macos-15-arm64-Readme.md
+2026-09-13T13:07:50.0615730Z Image Release: https://github.com/actions/runner-images/releases/tag/macos-15-arm64%2F20260907.0337
+2026-09-13T13:07:50.0617650Z ##[endgroup]
+2026-09-13T13:07:50.0619930Z ##[group]GITHUB_TOKEN Permissions
+2026-09-13T13:07:50.0625190Z Contents: read
+2026-09-13T13:07:50.0625600Z Metadata: read
+2026-09-13T13:07:50.0626140Z ##[endgroup]
+2026-09-13T13:07:50.0628680Z Secret source: Actions
+2026-09-13T13:07:50.0629730Z Cache mode: write
+2026-09-13T13:07:50.0630330Z Prepare workflow directory
+2026-09-13T13:07:50.1149040Z Prepare all required actions
+2026-09-13T13:07:50.1191390Z Getting action download info
+2026-09-13T13:07:50.5498600Z Download action repository 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1' (SHA:3d3c42e5aac5ba805825da76410c181273ba90b1)
+2026-09-13T13:07:50.8333450Z Download action repository 'dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772' (SHA:6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772)
+2026-09-13T13:07:51.2290740Z Complete job name: Rust shard test testing (macos-15)
+2026-09-13T13:07:51.2816120Z ##[group]Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+2026-09-13T13:07:51.2816980Z with:
+2026-09-13T13:07:51.2817370Z   repository: Corvidae-Coding-Projects/Project-Peritus
+2026-09-13T13:07:51.2817860Z   ref: 09b2706d5076069e8585f0d6b976bdd001b1d13d
+2026-09-13T13:07:51.2818280Z   path: candidate
+2026-09-13T13:07:51.2818610Z   fetch-depth: 0
+2026-09-13T13:07:51.2818950Z   persist-credentials: false
+2026-09-13T13:07:51.2821600Z   token: ***
+2026-09-13T13:07:51.2821920Z   ssh-strict: true
+2026-09-13T13:07:51.2822250Z   ssh-user: git
+2026-09-13T13:07:51.2822570Z   clean: true
+2026-09-13T13:07:51.2822900Z   sparse-checkout-cone-mode: true
+2026-09-13T13:07:51.2823290Z   fetch-tags: false
+2026-09-13T13:07:51.2823630Z   show-progress: true
+2026-09-13T13:07:51.2823960Z   lfs: false
+2026-09-13T13:07:51.2824280Z   submodules: false
+2026-09-13T13:07:51.2824620Z   set-safe-directory: true
+2026-09-13T13:07:51.2824990Z   allow-unsafe-pr-checkout: false
+2026-09-13T13:07:51.2825550Z env:
+2026-09-13T13:07:51.2825870Z   CARGO_BUILD_JOBS: 2
+2026-09-13T13:07:51.2826220Z   RUST_VERSION: 1.97.1
+2026-09-13T13:07:51.2826560Z   RUSTUP_TOOLCHAIN: 1.97.1
+2026-09-13T13:07:51.2826950Z   ACTIONLINT_VERSION: 1.7.12
+2026-09-13T13:07:51.2827540Z   ACTIONLINT_LINUX_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
+2026-09-13T13:07:51.2828150Z   VERUS_VERSION: 0.2026.08.09.92f466f
+2026-09-13T13:07:51.2828750Z   VERUS_LINUX_SHA256: 2f5a41c553f424aacdd732339e9d125563716a0b003c27730f75d6f81a282cef
+2026-09-13T13:07:51.2829530Z   PERITUS_PROOF_IMPACT_BASE: 8e8cbb1bcf0de9787d86c7be3d6fc1f2079f3493
+2026-09-13T13:07:51.2830120Z ##[endgroup]
+2026-09-13T13:07:51.6399430Z Syncing repository: Corvidae-Coding-Projects/Project-Peritus
+2026-09-13T13:07:51.6401770Z ##[group]Getting Git version info
+2026-09-13T13:07:51.6402480Z Working directory is '/Users/runner/work/Project-Peritus/Project-Peritus/candidate'
+2026-09-13T13:07:51.6403420Z [command]/opt/homebrew/bin/git version
+2026-09-13T13:07:51.6970790Z git version 2.55.0
+2026-09-13T13:07:51.7023150Z ##[endgroup]
+2026-09-13T13:07:51.7042860Z Copying '/Users/runner/.gitconfig' to '/Users/runner/work/_temp/60bacbaf-e4fc-4d32-822f-c83a1fc3729f/.gitconfig'
+2026-09-13T13:07:51.7045980Z Temporarily overriding HOME='/Users/runner/work/_temp/60bacbaf-e4fc-4d32-822f-c83a1fc3729f' before making global git config changes
+2026-09-13T13:07:51.7048770Z Adding repository directory to the temporary git global config as a safe directory
+2026-09-13T13:07:51.7051780Z [command]/opt/homebrew/bin/git config --global --add safe.directory /Users/runner/work/Project-Peritus/Project-Peritus/candidate
+2026-09-13T13:07:51.7196240Z ##[group]Determining repository object format
+2026-09-13T13:07:51.7197460Z ##[endgroup]
+2026-09-13T13:07:51.7198090Z ##[group]Initializing the repository
+2026-09-13T13:07:51.7201960Z [command]/opt/homebrew/bin/git init /Users/runner/work/Project-Peritus/Project-Peritus/candidate
+2026-09-13T13:07:51.7521370Z hint: Using 'master' as the name for the initial branch. This default branch name
+2026-09-13T13:07:51.7522330Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+2026-09-13T13:07:51.7523140Z hint: to use in all of your new repositories, which will suppress this warning,
+2026-09-13T13:07:51.7523770Z hint: call:
+2026-09-13T13:07:51.7524090Z hint:
+2026-09-13T13:07:51.7524830Z hint: 	git config --global init.defaultBranch <name>
+2026-09-13T13:07:51.7525380Z hint:
+2026-09-13T13:07:51.7525880Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2026-09-13T13:07:51.7526640Z hint: 'development'. The just-created branch can be renamed via this command:
+2026-09-13T13:07:51.7527240Z hint:
+2026-09-13T13:07:51.7527600Z hint: 	git branch -m <name>
+2026-09-13T13:07:51.7527980Z hint:
+2026-09-13T13:07:51.7528440Z hint: Disable this message with "git config set advice.defaultBranchName false"
+2026-09-13T13:07:51.7539200Z Initialized empty Git repository in /Users/runner/work/Project-Peritus/Project-Peritus/candidate/.git/
+2026-09-13T13:07:51.7551130Z [command]/opt/homebrew/bin/git remote add origin https://github.com/Corvidae-Coding-Projects/Project-Peritus
+2026-09-13T13:07:51.7634250Z ##[endgroup]
+2026-09-13T13:07:51.7634980Z ##[group]Disabling automatic garbage collection
+2026-09-13T13:07:51.7635820Z [command]/opt/homebrew/bin/git config --local gc.auto 0
+2026-09-13T13:07:51.7697960Z ##[endgroup]
+2026-09-13T13:07:51.7698790Z ##[group]Setting up auth
+2026-09-13T13:07:51.7699210Z Removing SSH command configuration
+2026-09-13T13:07:51.7701580Z [command]/opt/homebrew/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-09-13T13:07:51.7758270Z [command]/opt/homebrew/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-09-13T13:07:51.8701090Z Removing HTTP extra header
+2026-09-13T13:07:51.8703680Z [command]/opt/homebrew/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-09-13T13:07:51.8764180Z [command]/opt/homebrew/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-09-13T13:07:52.0172390Z Removing includeIf entries pointing to credentials config files
+2026-09-13T13:07:52.0274950Z [command]/opt/homebrew/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-09-13T13:07:52.0646610Z [command]/opt/homebrew/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-09-13T13:07:52.1891260Z [command]/opt/homebrew/bin/git config --file /Users/runner/work/_temp/git-credentials-767ad134-762c-4490-ae8c-caa181477888.config http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2026-09-13T13:07:52.1979560Z [command]/opt/homebrew/bin/git config --local includeIf.gitdir:/Users/runner/work/Project-Peritus/Project-Peritus/candidate/.git.path /Users/runner/work/_temp/git-credentials-767ad134-762c-4490-ae8c-caa181477888.config
+2026-09-13T13:07:52.2048780Z [command]/opt/homebrew/bin/git config --local includeIf.gitdir:/Users/runner/work/Project-Peritus/Project-Peritus/candidate/.git/worktrees/*.path /Users/runner/work/_temp/git-credentials-767ad134-762c-4490-ae8c-caa181477888.config
+2026-09-13T13:07:52.2125620Z [command]/opt/homebrew/bin/git config --local includeIf.gitdir:/github/workspace/candidate/.git.path /github/runner_temp/git-credentials-767ad134-762c-4490-ae8c-caa181477888.config
+2026-09-13T13:07:52.2169530Z [command]/opt/homebrew/bin/git config --local includeIf.gitdir:/github/workspace/candidate/.git/worktrees/*.path /github/runner_temp/git-credentials-767ad134-762c-4490-ae8c-caa181477888.config
+2026-09-13T13:07:52.2230720Z ##[endgroup]
+2026-09-13T13:07:52.2231470Z ##[group]Fetching the repository
+2026-09-13T13:07:52.2235220Z [command]/opt/homebrew/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules origin +refs/heads/*:refs/remotes/origin/* +refs/tags/*:refs/tags/*
+2026-09-13T13:07:58.9586190Z From https://github.com/Corvidae-Coding-Projects/Project-Peritus
+2026-09-13T13:07:58.9644510Z  * [new branch]        crosslink/agents/4jyS   -> origin/crosslink/agents/4jyS
+2026-09-13T13:07:58.9645760Z  * [new branch]        crosslink/agents/6ME5   -> origin/crosslink/agents/6ME5
+2026-09-13T13:07:58.9646670Z  * [new branch]        crosslink/agents/NWAR   -> origin/crosslink/agents/NWAR
+2026-09-13T13:07:58.9647550Z  * [new branch]        crosslink/agents/QWDj   -> origin/crosslink/agents/QWDj
+2026-09-13T13:07:58.9648420Z  * [new branch]        crosslink/agents/krvx   -> origin/crosslink/agents/krvx
+2026-09-13T13:07:58.9649280Z  * [new branch]        crosslink/agents/p0bJ   -> origin/crosslink/agents/p0bJ
+2026-09-13T13:07:58.9650200Z  * [new branch]        crosslink/checkpoint    -> origin/crosslink/checkpoint
+2026-09-13T13:07:58.9651010Z  * [new branch]        crosslink/meta          -> origin/crosslink/meta
+2026-09-13T13:07:58.9654480Z  * [new branch]        crosslink/reconciliation/archives/3786966b64114f540626c54062e1e101/00ebdf579d1e148f98597ee16a7d4b2b -> origin/crosslink/reconciliation/archives/3786966b64114f540626c54062e1e101/00ebdf579d1e148f98597ee16a7d4b2b
+2026-09-13T13:07:58.9660580Z  * [new branch]        crosslink/reconciliation/archives/3786966b64114f540626c54062e1e101/1041651192f9837b9752223be502a163 -> origin/crosslink/reconciliation/archives/3786966b64114f540626c54062e1e101/1041651192f9837b9752223be502a163
+2026-09-13T13:07:58.9663540Z  * [new branch]        crosslink/reconciliation/archives/3786966b64114f540626c54062e1e101/16cc78cf197859ef729a83cc2b83a1d4 -> origin/crosslink/reconciliation/archives/3786966b64114f540626c54062e1e101/16cc78cf197859ef729a83cc2b83a1d4
+2026-09-13T13:07:58.9666150Z  * [new branch]        crosslink/reconciliation/archives/3786966b64114f540626c54062e1e101/17dd2f8b4cbeb3d2c05eb45822a4e559 -> origin/crosslink/reconciliation/archives/3786966b64114f540626c54062e1e101/17dd2f8b4cbeb3d2c05eb45822a4e559
+2026-09-13T13:07:58.9669860Z  * [new branch]        crosslink/reconciliation/archives/3786966b64114f540626c54062e1e101/19b3440544e9c67c0d034f74e0403682 -> origin/crosslink/reconciliation/archives/3786966b64114f540626c54062e1e101/19b3440544e9c67c0d034f74e0403682
+2026-09-13T13:07:58.9672490Z  * [new branch]        crosslink/reconciliation/archives/3786966b64114f540626c54062e1e101/1c1dbcde8b3f98fafb05e6ae9aefb746 -> origin/crosslink/reconciliation/archives/3786966b64114f540626c54062e1e101/1c1dbcde8b3f98fafb05e6ae9aefb746
+2026-09-13T13:07:58.9675640Z  * [new branch]        crosslink/reconciliation/archives/3786966b64114f540626c54062e1e101/77757a8730294807cbce5ab1d3a619fc -> origin/crosslink/reconciliation/archives/3786966b64114f540626c54062e1e101/77757a8730294807cbce5ab1d3a619fc
+2026-09-13T13:07:58.9682940Z  * [new branch]        crosslink/reconciliation/archives/3786966b64114f540626c54062e1e101/7a3d014b076f7fdf90cac3302e5c4fff -> origin/crosslink/reconciliation/archives/3786966b64114f540626c54062e1e101/7a3d014b076f7fdf90cac3302e5c4fff
+2026-09-13T13:07:58.9688820Z  * [new branch]        crosslink/reconciliation/archives/3786966b64114f540626c54062e1e101/7e70db6507579b9e26b6024a899d7555 -> origin/crosslink/reconciliation/archives/3786966b64114f540626c54062e1e101/7e70db6507579b9e26b6024a899d7555
+2026-09-13T13:07:58.9693690Z  * [new branch]        crosslink/reconciliation/archives/3786966b64114f540626c54062e1e101/a00d6ecba42c50273cd5d709400e5d47 -> origin/crosslink/reconciliation/archives/3786966b64114f540626c54062e1e101/a00d6ecba42c50273cd5d709400e5d47
+2026-09-13T13:07:58.9696150Z  * [new branch]        crosslink/reconciliation/archives/3786966b64114f540626c54062e1e101/a328815d7b384db8259cef18a5d7917e -> origin/crosslink/reconciliation/archives/3786966b64114f540626c54062e1e101/a328815d7b384db8259cef18a5d7917e
+2026-09-13T13:07:58.9698490Z  * [new branch]        crosslink/reconciliation/archives/3786966b64114f540626c54062e1e101/ab3c1398af98d2d71581346a8545d427 -> origin/crosslink/reconciliation/archives/3786966b64114f540626c54062e1e101/ab3c1398af98d2d71581346a8545d427
+2026-09-13T13:07:58.9700880Z  * [new branch]        crosslink/reconciliation/archives/3786966b64114f540626c54062e1e101/bd68acb412473f39db32df27fa7e7d16 -> origin/crosslink/reconciliation/archives/3786966b64114f540626c54062e1e101/bd68acb412473f39db32df27fa7e7d16
+2026-09-13T13:07:58.9703230Z  * [new branch]        crosslink/reconciliation/archives/3786966b64114f540626c54062e1e101/c033bdc25838852d0bf50a3bd166e1a2 -> origin/crosslink/reconciliation/archives/3786966b64114f540626c54062e1e101/c033bdc25838852d0bf50a3bd166e1a2
+2026-09-13T13:07:58.9705560Z  * [new branch]        crosslink/reconciliation/archives/3786966b64114f540626c54062e1e101/c579f7c4c0002a273db1cd746a206cca -> origin/crosslink/reconciliation/archives/3786966b64114f540626c54062e1e101/c579f7c4c0002a273db1cd746a206cca
+2026-09-13T13:07:58.9708090Z  * [new branch]        crosslink/reconciliation/archives/3786966b64114f540626c54062e1e101/c8d7e58ec93bcda7c4dbd1b52ddb629a -> origin/crosslink/reconciliation/archives/3786966b64114f540626c54062e1e101/c8d7e58ec93bcda7c4dbd1b52ddb629a
+2026-09-13T13:07:58.9710290Z  * [new branch]        crosslink/reconciliation/archives/3786966b64114f540626c54062e1e101/ce0142f6c99f63af74e06e7c7dae665e -> origin/crosslink/reconciliation/archives/3786966b64114f540626c54062e1e101/ce0142f6c99f63af74e06e7c7dae665e
+2026-09-13T13:07:58.9712550Z  * [new branch]        crosslink/reconciliation/archives/3786966b64114f540626c54062e1e101/d27a978add34e25880172afe1a23f271 -> origin/crosslink/reconciliation/archives/3786966b64114f540626c54062e1e101/d27a978add34e25880172afe1a23f271
+2026-09-13T13:07:58.9714660Z  * [new branch]        crosslink/reconciliation/archives/3786966b64114f540626c54062e1e101/d74e8202d74f39d22a7296dcc910996e -> origin/crosslink/reconciliation/archives/3786966b64114f540626c54062e1e101/d74e8202d74f39d22a7296dcc910996e
+2026-09-13T13:07:58.9716800Z  * [new branch]        crosslink/reconciliation/archives/3786966b64114f540626c54062e1e101/debeb920da33b5d90ff3968f5458c28c -> origin/crosslink/reconciliation/archives/3786966b64114f540626c54062e1e101/debeb920da33b5d90ff3968f5458c28c
+2026-09-13T13:07:58.9719030Z  * [new branch]        crosslink/reconciliation/archives/3786966b64114f540626c54062e1e101/e86bc4023961d47923d9048fda70ef19 -> origin/crosslink/reconciliation/archives/3786966b64114f540626c54062e1e101/e86bc4023961d47923d9048fda70ef19
+2026-09-13T13:07:58.9721150Z  * [new branch]        crosslink/reconciliation/archives/b97085c45fea61d075bac903854869ee/00ebdf579d1e148f98597ee16a7d4b2b -> origin/crosslink/reconciliation/archives/b97085c45fea61d075bac903854869ee/00ebdf579d1e148f98597ee16a7d4b2b
+2026-09-13T13:07:58.9723320Z  * [new branch]        crosslink/reconciliation/archives/b97085c45fea61d075bac903854869ee/1041651192f9837b9752223be502a163 -> origin/crosslink/reconciliation/archives/b97085c45fea61d075bac903854869ee/1041651192f9837b9752223be502a163
+2026-09-13T13:07:58.9725450Z  * [new branch]        crosslink/reconciliation/archives/b97085c45fea61d075bac903854869ee/19b3440544e9c67c0d034f74e0403682 -> origin/crosslink/reconciliation/archives/b97085c45fea61d075bac903854869ee/19b3440544e9c67c0d034f74e0403682
+2026-09-13T13:07:58.9727800Z  * [new branch]        crosslink/reconciliation/archives/b97085c45fea61d075bac903854869ee/1c1dbcde8b3f98fafb05e6ae9aefb746 -> origin/crosslink/reconciliation/archives/b97085c45fea61d075bac903854869ee/1c1dbcde8b3f98fafb05e6ae9aefb746
+2026-09-13T13:07:58.9730380Z  * [new branch]        crosslink/reconciliation/archives/b97085c45fea61d075bac903854869ee/77757a8730294807cbce5ab1d3a619fc -> origin/crosslink/reconciliation/archives/b97085c45fea61d075bac903854869ee/77757a8730294807cbce5ab1d3a619fc
+2026-09-13T13:07:58.9732540Z  * [new branch]        crosslink/reconciliation/archives/b97085c45fea61d075bac903854869ee/7a3d014b076f7fdf90cac3302e5c4fff -> origin/crosslink/reconciliation/archives/b97085c45fea61d075bac903854869ee/7a3d014b076f7fdf90cac3302e5c4fff
+2026-09-13T13:07:58.9734670Z  * [new branch]        crosslink/reconciliation/archives/b97085c45fea61d075bac903854869ee/a328815d7b384db8259cef18a5d7917e -> origin/crosslink/reconciliation/archives/b97085c45fea61d075bac903854869ee/a328815d7b384db8259cef18a5d7917e
+2026-09-13T13:07:58.9736790Z  * [new branch]        crosslink/reconciliation/archives/b97085c45fea61d075bac903854869ee/bd68acb412473f39db32df27fa7e7d16 -> origin/crosslink/reconciliation/archives/b97085c45fea61d075bac903854869ee/bd68acb412473f39db32df27fa7e7d16
+2026-09-13T13:07:58.9738910Z  * [new branch]        crosslink/reconciliation/archives/b97085c45fea61d075bac903854869ee/c033bdc25838852d0bf50a3bd166e1a2 -> origin/crosslink/reconciliation/archives/b97085c45fea61d075bac903854869ee/c033bdc25838852d0bf50a3bd166e1a2
+2026-09-13T13:07:58.9741020Z  * [new branch]        crosslink/reconciliation/archives/b97085c45fea61d075bac903854869ee/c8d7e58ec93bcda7c4dbd1b52ddb629a -> origin/crosslink/reconciliation/archives/b97085c45fea61d075bac903854869ee/c8d7e58ec93bcda7c4dbd1b52ddb629a
+2026-09-13T13:07:58.9743320Z  * [new branch]        crosslink/reconciliation/archives/b97085c45fea61d075bac903854869ee/ce0142f6c99f63af74e06e7c7dae665e -> origin/crosslink/reconciliation/archives/b97085c45fea61d075bac903854869ee/ce0142f6c99f63af74e06e7c7dae665e
+2026-09-13T13:07:58.9745460Z  * [new branch]        crosslink/reconciliation/archives/b97085c45fea61d075bac903854869ee/d74e8202d74f39d22a7296dcc910996e -> origin/crosslink/reconciliation/archives/b97085c45fea61d075bac903854869ee/d74e8202d74f39d22a7296dcc910996e
+2026-09-13T13:07:58.9793780Z  * [new branch]        crosslink/reconciliation/current -> origin/crosslink/reconciliation/current
+2026-09-13T13:07:58.9795240Z  * [new branch]        crosslink/reconciliation/generations/3786966b64114f540626c54062e1e101/descriptor -> origin/crosslink/reconciliation/generations/3786966b64114f540626c54062e1e101/descriptor
+2026-09-13T13:07:58.9797320Z  * [new branch]        crosslink/reconciliation/generations/3786966b64114f540626c54062e1e101/targets/17dd2f8b4cbeb3d2c05eb45822a4e559 -> origin/crosslink/reconciliation/generations/3786966b64114f540626c54062e1e101/targets/17dd2f8b4cbeb3d2c05eb45822a4e559
+2026-09-13T13:07:58.9799640Z  * [new branch]        crosslink/reconciliation/generations/3786966b64114f540626c54062e1e101/targets/1c1dbcde8b3f98fafb05e6ae9aefb746 -> origin/crosslink/reconciliation/generations/3786966b64114f540626c54062e1e101/targets/1c1dbcde8b3f98fafb05e6ae9aefb746
+2026-09-13T13:07:58.9802070Z  * [new branch]        crosslink/reconciliation/generations/3786966b64114f540626c54062e1e101/targets/77757a8730294807cbce5ab1d3a619fc -> origin/crosslink/reconciliation/generations/3786966b64114f540626c54062e1e101/targets/77757a8730294807cbce5ab1d3a619fc
+2026-09-13T13:07:58.9804400Z  * [new branch]        crosslink/reconciliation/generations/3786966b64114f540626c54062e1e101/targets/a328815d7b384db8259cef18a5d7917e -> origin/crosslink/reconciliation/generations/3786966b64114f540626c54062e1e101/targets/a328815d7b384db8259cef18a5d7917e
+2026-09-13T13:07:58.9806840Z  * [new branch]        crosslink/reconciliation/generations/3786966b64114f540626c54062e1e101/targets/ab3c1398af98d2d71581346a8545d427 -> origin/crosslink/reconciliation/generations/3786966b64114f540626c54062e1e101/targets/ab3c1398af98d2d71581346a8545d427
+2026-09-13T13:07:58.9809760Z  * [new branch]        crosslink/reconciliation/generations/3786966b64114f540626c54062e1e101/targets/c033bdc25838852d0bf50a3bd166e1a2 -> origin/crosslink/reconciliation/generations/3786966b64114f540626c54062e1e101/targets/c033bdc25838852d0bf50a3bd166e1a2
+2026-09-13T13:07:58.9812490Z  * [new branch]        crosslink/reconciliation/generations/3786966b64114f540626c54062e1e101/targets/d27a978add34e25880172afe1a23f271 -> origin/crosslink/reconciliation/generations/3786966b64114f540626c54062e1e101/targets/d27a978add34e25880172afe1a23f271
+2026-09-13T13:07:58.9814650Z  * [new branch]        crosslink/reconciliation/generations/b97085c45fea61d075bac903854869ee/descriptor -> origin/crosslink/reconciliation/generations/b97085c45fea61d075bac903854869ee/descriptor
+2026-09-13T13:07:58.9816790Z  * [new branch]        crosslink/reconciliation/generations/b97085c45fea61d075bac903854869ee/targets/1c1dbcde8b3f98fafb05e6ae9aefb746 -> origin/crosslink/reconciliation/generations/b97085c45fea61d075bac903854869ee/targets/1c1dbcde8b3f98fafb05e6ae9aefb746
+2026-09-13T13:07:58.9819130Z  * [new branch]        crosslink/reconciliation/generations/b97085c45fea61d075bac903854869ee/targets/77757a8730294807cbce5ab1d3a619fc -> origin/crosslink/reconciliation/generations/b97085c45fea61d075bac903854869ee/targets/77757a8730294807cbce5ab1d3a619fc
+2026-09-13T13:07:58.9821480Z  * [new branch]        crosslink/reconciliation/generations/b97085c45fea61d075bac903854869ee/targets/a328815d7b384db8259cef18a5d7917e -> origin/crosslink/reconciliation/generations/b97085c45fea61d075bac903854869ee/targets/a328815d7b384db8259cef18a5d7917e
+2026-09-13T13:07:58.9824210Z  * [new branch]        crosslink/reconciliation/generations/b97085c45fea61d075bac903854869ee/targets/c033bdc25838852d0bf50a3bd166e1a2 -> origin/crosslink/reconciliation/generations/b97085c45fea61d075bac903854869ee/targets/c033bdc25838852d0bf50a3bd166e1a2
+2026-09-13T13:07:58.9825720Z  * [new branch]        develop                 -> origin/develop
+2026-09-13T13:07:58.9826530Z  * [new branch]        docs/harnessbench-readme-results -> origin/docs/harnessbench-readme-results
+2026-09-13T13:07:58.9827360Z  * [new branch]        docs/issue-17-changelog -> origin/docs/issue-17-changelog
+2026-09-13T13:07:58.9828110Z  * [new branch]        docs/issue-18-changelog -> origin/docs/issue-18-changelog
+2026-09-13T13:07:58.9828840Z  * [new branch]        docs/issue-19-changelog -> origin/docs/issue-19-changelog
+2026-09-13T13:07:58.9829560Z  * [new branch]        docs/issue-20-changelog -> origin/docs/issue-20-changelog
+2026-09-13T13:07:58.9830320Z  * [new branch]        feature/a2-test-conformance -> origin/feature/a2-test-conformance
+2026-09-13T13:07:58.9831140Z  * [new branch]        feature/a3-app-protocol -> origin/feature/a3-app-protocol
+2026-09-13T13:07:58.9831950Z  * [new branch]        feature/b1-authority-foundation -> origin/feature/b1-authority-foundation
+2026-09-13T13:07:58.9832880Z  * [new branch]        feature/b2-acceptance-specification -> origin/feature/b2-acceptance-specification
+2026-09-13T13:07:58.9833830Z  * [new branch]        feature/b3-domain-protocol-codec -> origin/feature/b3-domain-protocol-codec
+2026-09-13T13:07:58.9834870Z  * [new branch]        feature/c0-journal-projections-artifacts -> origin/feature/c0-journal-projections-artifacts
+2026-09-13T13:07:58.9835930Z  * [new branch]        feature/c1-git-workspace-patch -> origin/feature/c1-git-workspace-patch
+2026-09-13T13:07:58.9836950Z  * [new branch]        feature/c2-process-sandbox-backplane -> origin/feature/c2-process-sandbox-backplane
+2026-09-13T13:07:58.9837990Z  * [new branch]        feature/c3-platform-security-backends -> origin/feature/c3-platform-security-backends
+2026-09-13T13:07:58.9838840Z  * [new branch]        feature/c4-tool-system  -> origin/feature/c4-tool-system
+2026-09-13T13:07:58.9839590Z  * [new branch]        feature/c5-model-providers -> origin/feature/c5-model-providers
+2026-09-13T13:07:58.9840680Z  * [new branch]        feature/c6-context-memory -> origin/feature/c6-context-memory
+2026-09-13T13:07:58.9841390Z  * [new branch]        feature/d0-agent-loop   -> origin/feature/d0-agent-loop
+2026-09-13T13:07:58.9842200Z  * [new branch]        feature/d1-c7-gates-observability -> origin/feature/d1-c7-gates-observability
+2026-09-13T13:07:58.9843050Z  * [new branch]        feature/d2-review-engine -> origin/feature/d2-review-engine
+2026-09-13T13:07:58.9843900Z  * [new branch]        feature/d3-e0-actor-orchestration -> origin/feature/d3-e0-actor-orchestration
+2026-09-13T13:07:58.9844840Z  * [new branch]        feature/e1-harness-materialization -> origin/feature/e1-harness-materialization
+2026-09-13T13:07:58.9845650Z  * [new branch]        feature/e3-evaluation   -> origin/feature/e3-evaluation
+2026-09-13T13:07:58.9846550Z  * [new branch]        feature/external-adapter-provider-recovery -> origin/feature/external-adapter-provider-recovery
+2026-09-13T13:07:58.9848140Z  * [new branch]        feature/f0-evolution    -> origin/feature/f0-evolution
+2026-09-13T13:07:58.9849020Z  * [new branch]        feature/first-release-packaging -> origin/feature/first-release-packaging
+2026-09-13T13:07:58.9849840Z  * [new branch]        feature/formal-coverage -> origin/feature/formal-coverage
+2026-09-13T13:07:58.9850520Z  * [new branch]        feature/g0-daemon       -> origin/feature/g0-daemon
+2026-09-13T13:07:58.9851260Z  * [new branch]        feature/g4-complete     -> origin/feature/g4-complete
+2026-09-13T13:07:58.9852070Z  * [new branch]        feature/g4-conversational-runs -> origin/feature/g4-conversational-runs
+2026-09-13T13:07:58.9852820Z  * [new branch]        feature/h0-h4-release   -> origin/feature/h0-h4-release
+2026-09-13T13:07:58.9853630Z  * [new branch]        feature/h1-h3-qualification -> origin/feature/h1-h3-qualification
+2026-09-13T13:07:58.9854740Z  * [new branch]        feature/h3-integrated-runner -> origin/feature/h3-integrated-runner
+2026-09-13T13:07:58.9855640Z  * [new branch]        feature/local-working-memory -> origin/feature/local-working-memory
+2026-09-13T13:07:58.9856490Z  * [new branch]        feature/message-editor-navigation -> origin/feature/message-editor-navigation
+2026-09-13T13:07:58.9857480Z  * [new branch]        feature/proactive-bug-discovery -> origin/feature/proactive-bug-discovery
+2026-09-13T13:07:58.9858310Z  * [new branch]        feature/product-experience -> origin/feature/product-experience
+2026-09-13T13:07:58.9859080Z  * [new branch]        feature/readme-install  -> origin/feature/readme-install
+2026-09-13T13:07:58.9860140Z  * [new branch]        feature/s5-product-runner-settlement-resume -> origin/feature/s5-product-runner-settlement-resume
+2026-09-13T13:07:58.9861230Z  * [new branch]        feature/s6-durable-candidate-handoff -> origin/feature/s6-durable-candidate-handoff
+2026-09-13T13:07:58.9862520Z  * [new branch]        feature/s7-general-capability-fixtures -> origin/feature/s7-general-capability-fixtures
+2026-09-13T13:07:58.9863650Z  * [new branch]        feature/typed-requirement-obligations -> origin/feature/typed-requirement-obligations
+2026-09-13T13:07:58.9864740Z  * [new branch]        feature/verified-run-settlement -> origin/feature/verified-run-settlement
+2026-09-13T13:07:58.9865670Z  * [new branch]        fix/macos-network-test-bounds -> origin/fix/macos-network-test-bounds
+2026-09-13T13:07:58.9866670Z  * [new branch]        fix/native-preparation-budget -> origin/fix/native-preparation-budget
+2026-09-13T13:07:58.9867650Z  * [new branch]        fix/opencode-live-compatibility -> origin/fix/opencode-live-compatibility
+2026-09-13T13:07:58.9868650Z  * [new branch]        fix/opencode-repeated-usage -> origin/fix/opencode-repeated-usage
+2026-09-13T13:07:58.9869730Z  * [new branch]        fix/product-run-recovery-execution -> origin/fix/product-run-recovery-execution
+2026-09-13T13:07:58.9870640Z  * [new branch]        fix/release-build-capacity -> origin/fix/release-build-capacity
+2026-09-13T13:07:58.9871800Z  * [new branch]        fix/release-ci-daemon-budget -> origin/fix/release-ci-daemon-budget
+2026-09-13T13:07:58.9872750Z  * [new branch]        fix/release-compilation-stages -> origin/fix/release-compilation-stages
+2026-09-13T13:07:58.9874780Z  * [new branch]        fix/release-compilation-timeouts -> origin/fix/release-compilation-timeouts
+2026-09-13T13:07:58.9877690Z  * [new branch]        fix/release-signing-agent -> origin/fix/release-signing-agent
+2026-09-13T13:07:58.9878960Z  * [new branch]        main                    -> origin/main
+2026-09-13T13:07:58.9879800Z  * [new branch]        proof/a2-proof-impact-authorization -> origin/proof/a2-proof-impact-authorization
+2026-09-13T13:07:58.9880560Z  * [new tag]           v0.0.1                  -> v0.0.1
+2026-09-13T13:07:58.9881180Z  * [new tag]           v0.0.2                  -> v0.0.2
+2026-09-13T13:07:58.9882970Z [command]/opt/homebrew/bin/git rev-parse --verify --quiet 09b2706d5076069e8585f0d6b976bdd001b1d13d^{object}
+2026-09-13T13:07:58.9884740Z [command]/opt/homebrew/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules origin 09b2706d5076069e8585f0d6b976bdd001b1d13d
+2026-09-13T13:07:59.5523380Z From https://github.com/Corvidae-Coding-Projects/Project-Peritus
+2026-09-13T13:07:59.5625870Z  * branch              09b2706d5076069e8585f0d6b976bdd001b1d13d -> FETCH_HEAD
+2026-09-13T13:07:59.5797490Z [command]/opt/homebrew/bin/git rev-parse --verify --quiet 09b2706d5076069e8585f0d6b976bdd001b1d13d^{object}
+2026-09-13T13:07:59.5801650Z 09b2706d5076069e8585f0d6b976bdd001b1d13d
+2026-09-13T13:07:59.5809410Z ##[endgroup]
+2026-09-13T13:07:59.5816060Z ##[group]Determining the checkout info
+2026-09-13T13:07:59.5820560Z ##[endgroup]
+2026-09-13T13:07:59.5822240Z [command]/opt/homebrew/bin/git sparse-checkout disable
+2026-09-13T13:07:59.5853970Z [command]/opt/homebrew/bin/git config --local --unset-all extensions.worktreeConfig
+2026-09-13T13:07:59.5877270Z ##[group]Checking out the ref
+2026-09-13T13:07:59.5886270Z [command]/opt/homebrew/bin/git checkout --progress --force 09b2706d5076069e8585f0d6b976bdd001b1d13d
+2026-09-13T13:08:00.6117010Z HEAD is now at 09b2706d Merge d0e4f0cf0943c7194adaaeabcb11fc70badc3fe8 into 8e8cbb1bcf0de9787d86c7be3d6fc1f2079f3493
+2026-09-13T13:08:00.6221510Z ##[endgroup]
+2026-09-13T13:08:00.6443270Z [command]/opt/homebrew/bin/git log -1 --format=%H
+2026-09-13T13:08:00.6560550Z 09b2706d5076069e8585f0d6b976bdd001b1d13d
+2026-09-13T13:08:00.6581210Z ##[group]Removing auth
+2026-09-13T13:08:00.6581930Z Removing SSH command configuration
+2026-09-13T13:08:00.6589960Z [command]/opt/homebrew/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-09-13T13:08:00.6721370Z [command]/opt/homebrew/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-09-13T13:08:00.8132260Z Removing HTTP extra header
+2026-09-13T13:08:00.8134440Z [command]/opt/homebrew/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-09-13T13:08:00.8200730Z [command]/opt/homebrew/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-09-13T13:08:00.9777200Z Removing includeIf entries pointing to credentials config files
+2026-09-13T13:08:00.9798770Z [command]/opt/homebrew/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-09-13T13:08:00.9824770Z includeif.gitdir:/Users/runner/work/Project-Peritus/Project-Peritus/candidate/.git.path
+2026-09-13T13:08:00.9849960Z includeif.gitdir:/Users/runner/work/Project-Peritus/Project-Peritus/candidate/.git/worktrees/*.path
+2026-09-13T13:08:00.9862080Z includeif.gitdir:/github/workspace/candidate/.git.path
+2026-09-13T13:08:00.9867120Z includeif.gitdir:/github/workspace/candidate/.git/worktrees/*.path
+2026-09-13T13:08:00.9877120Z [command]/opt/homebrew/bin/git config --local --get-all includeif.gitdir:/Users/runner/work/Project-Peritus/Project-Peritus/candidate/.git.path
+2026-09-13T13:08:00.9884770Z /Users/runner/work/_temp/git-credentials-767ad134-762c-4490-ae8c-caa181477888.config
+2026-09-13T13:08:00.9889110Z [command]/opt/homebrew/bin/git config --local --unset includeif.gitdir:/Users/runner/work/Project-Peritus/Project-Peritus/candidate/.git.path \/Users\/runner\/work\/_temp\/git\-credentials\-767ad134\-762c\-4490\-ae8c\-caa181477888\.config
+2026-09-13T13:08:00.9974780Z [command]/opt/homebrew/bin/git config --local --get-all includeif.gitdir:/Users/runner/work/Project-Peritus/Project-Peritus/candidate/.git/worktrees/*.path
+2026-09-13T13:08:01.0045920Z /Users/runner/work/_temp/git-credentials-767ad134-762c-4490-ae8c-caa181477888.config
+2026-09-13T13:08:01.0057080Z [command]/opt/homebrew/bin/git config --local --unset includeif.gitdir:/Users/runner/work/Project-Peritus/Project-Peritus/candidate/.git/worktrees/*.path \/Users\/runner\/work\/_temp\/git\-credentials\-767ad134\-762c\-4490\-ae8c\-caa181477888\.config
+2026-09-13T13:08:01.0146620Z [command]/opt/homebrew/bin/git config --local --get-all includeif.gitdir:/github/workspace/candidate/.git.path
+2026-09-13T13:08:01.0218970Z /github/runner_temp/git-credentials-767ad134-762c-4490-ae8c-caa181477888.config
+2026-09-13T13:08:01.0228000Z [command]/opt/homebrew/bin/git config --local --unset includeif.gitdir:/github/workspace/candidate/.git.path \/github\/runner_temp\/git\-credentials\-767ad134\-762c\-4490\-ae8c\-caa181477888\.config
+2026-09-13T13:08:01.0310900Z [command]/opt/homebrew/bin/git config --local --get-all includeif.gitdir:/github/workspace/candidate/.git/worktrees/*.path
+2026-09-13T13:08:01.0455100Z /github/runner_temp/git-credentials-767ad134-762c-4490-ae8c-caa181477888.config
+2026-09-13T13:08:01.0471840Z [command]/opt/homebrew/bin/git config --local --unset includeif.gitdir:/github/workspace/candidate/.git/worktrees/*.path \/github\/runner_temp\/git\-credentials\-767ad134\-762c\-4490\-ae8c\-caa181477888\.config
+2026-09-13T13:08:01.0588230Z [command]/opt/homebrew/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-09-13T13:08:01.1630680Z Removing credentials config '/Users/runner/work/_temp/git-credentials-767ad134-762c-4490-ae8c-caa181477888.config'
+2026-09-13T13:08:01.1638560Z ##[endgroup]
+2026-09-13T13:08:01.1935920Z ##[group]Run git -C candidate diff --no-ext-diff --no-textconv --exit-code 6ca5f56d2ab12e93f155d684b33f4a86c2f877b8 -- .cargo/config.toml .gitattributes
+2026-09-13T13:08:01.1936960Z [36;1mgit -C candidate diff --no-ext-diff --no-textconv --exit-code 6ca5f56d2ab12e93f155d684b33f4a86c2f877b8 -- .cargo/config.toml .gitattributes[0m
+2026-09-13T13:08:01.2014140Z shell: /bin/bash --noprofile --norc -e -o pipefail {0}
+2026-09-13T13:08:01.2014470Z env:
+2026-09-13T13:08:01.2014690Z   CARGO_BUILD_JOBS: 2
+2026-09-13T13:08:01.2014950Z   RUST_VERSION: 1.97.1
+2026-09-13T13:08:01.2015220Z   RUSTUP_TOOLCHAIN: 1.97.1
+2026-09-13T13:08:01.2015420Z   ACTIONLINT_VERSION: 1.7.12
+2026-09-13T13:08:01.2015750Z   ACTIONLINT_LINUX_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
+2026-09-13T13:08:01.2016170Z   VERUS_VERSION: 0.2026.08.09.92f466f
+2026-09-13T13:08:01.2016540Z   VERUS_LINUX_SHA256: 2f5a41c553f424aacdd732339e9d125563716a0b003c27730f75d6f81a282cef
+2026-09-13T13:08:01.2017110Z   PERITUS_PROOF_IMPACT_BASE: 8e8cbb1bcf0de9787d86c7be3d6fc1f2079f3493
+2026-09-13T13:08:01.2017450Z ##[endgroup]
+2026-09-13T13:08:01.2855500Z ##[group]Run dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772
+2026-09-13T13:08:01.2856570Z with:
+2026-09-13T13:08:01.2857020Z   toolchain: 1.97.1
+2026-09-13T13:08:01.2857490Z   components: clippy,rustfmt
+2026-09-13T13:08:01.2858020Z env:
+2026-09-13T13:08:01.2858400Z   CARGO_BUILD_JOBS: 2
+2026-09-13T13:08:01.2858880Z   RUST_VERSION: 1.97.1
+2026-09-13T13:08:01.2859710Z   RUSTUP_TOOLCHAIN: 1.97.1
+2026-09-13T13:08:01.2860270Z   ACTIONLINT_VERSION: 1.7.12
+2026-09-13T13:08:01.2861340Z   ACTIONLINT_LINUX_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
+2026-09-13T13:08:01.2862400Z   VERUS_VERSION: 0.2026.08.09.92f466f
+2026-09-13T13:08:01.2862800Z   VERUS_LINUX_SHA256: 2f5a41c553f424aacdd732339e9d125563716a0b003c27730f75d6f81a282cef
+2026-09-13T13:08:01.2863250Z   PERITUS_PROOF_IMPACT_BASE: 8e8cbb1bcf0de9787d86c7be3d6fc1f2079f3493
+2026-09-13T13:08:01.2863560Z   RUSTUP_MAX_RETRIES: 10
+2026-09-13T13:08:01.2863730Z ##[endgroup]
+2026-09-13T13:08:01.2950260Z ##[start-action display=Parse toolchain version;id=__dtolnay_rust-toolchain.parse]
+2026-09-13T13:08:01.3068350Z ##[group]Run if [[ -z $toolchain ]]; then
+2026-09-13T13:08:01.3068690Z [36;1mif [[ -z $toolchain ]]; then[0m
+2026-09-13T13:08:01.3069210Z [36;1m  # GitHub does not enforce `required: true` inputs itself. https://github.com/actions/runner/issues/1070[0m
+2026-09-13T13:08:01.3069650Z [36;1m  echo "'toolchain' is a required input" >&2[0m
+2026-09-13T13:08:01.3069950Z [36;1m  exit 1[0m
+2026-09-13T13:08:01.3070250Z [36;1melif [[ $toolchain =~ ^stable' '[0-9]+' '(year|month|week|day)s?' 'ago$ ]]; then[0m
+2026-09-13T13:08:01.3070590Z [36;1m  if [[ macOS == macOS ]]; then[0m
+2026-09-13T13:08:01.3071120Z [36;1m    echo "toolchain=1.$((($(date -v-$(sed 's/stable \([0-9]*\) \(.\).*/\1\2/' <<< $toolchain) +%s)/60/60/24-16569)/7/6))" >> $GITHUB_OUTPUT[0m
+2026-09-13T13:08:01.3071570Z [36;1m  else[0m
+2026-09-13T13:08:01.3071910Z [36;1m    echo "toolchain=1.$((($(date --date "${toolchain#stable }" +%s)/60/60/24-16569)/7/6))" >> $GITHUB_OUTPUT[0m
+2026-09-13T13:08:01.3072300Z [36;1m  fi[0m
+2026-09-13T13:08:01.3072550Z [36;1melif [[ $toolchain =~ ^stable' 'minus' '[0-9]+' 'releases?$ ]]; then[0m
+2026-09-13T13:08:01.3073040Z [36;1m  echo "toolchain=1.$((($(date +%s)/60/60/24-16569)/7/6-${toolchain//[^0-9]/}))" >> $GITHUB_OUTPUT[0m
+2026-09-13T13:08:01.3073770Z [36;1melif [[ $toolchain =~ ^1\.[0-9]+$ ]]; then[0m
+2026-09-13T13:08:01.3074270Z [36;1m  echo "toolchain=1.$((i=${toolchain#1.}, c=($(date +%s)/60/60/24-16569)/7/6, i+9*i*(10*i<=c)+90*i*(100*i<=c)))" >> $GITHUB_OUTPUT[0m
+2026-09-13T13:08:01.3074730Z [36;1melse[0m
+2026-09-13T13:08:01.3074970Z [36;1m  echo "toolchain=$toolchain" >> $GITHUB_OUTPUT[0m
+2026-09-13T13:08:01.3075250Z [36;1mfi[0m
+2026-09-13T13:08:01.3128160Z shell: /bin/bash --noprofile --norc -e -o pipefail {0}
+2026-09-13T13:08:01.3128530Z env:
+2026-09-13T13:08:01.3128680Z   CARGO_BUILD_JOBS: 2
+2026-09-13T13:08:01.3128860Z   RUST_VERSION: 1.97.1
+2026-09-13T13:08:01.3129040Z   RUSTUP_TOOLCHAIN: 1.97.1
+2026-09-13T13:08:01.3129230Z   ACTIONLINT_VERSION: 1.7.12
+2026-09-13T13:08:01.3129580Z   ACTIONLINT_LINUX_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
+2026-09-13T13:08:01.3129940Z   VERUS_VERSION: 0.2026.08.09.92f466f
+2026-09-13T13:08:01.3130270Z   VERUS_LINUX_SHA256: 2f5a41c553f424aacdd732339e9d125563716a0b003c27730f75d6f81a282cef
+2026-09-13T13:08:01.3130690Z   PERITUS_PROOF_IMPACT_BASE: 8e8cbb1bcf0de9787d86c7be3d6fc1f2079f3493
+2026-09-13T13:08:01.3130990Z   RUSTUP_MAX_RETRIES: 10
+2026-09-13T13:08:01.3131170Z   toolchain: 1.97.1
+2026-09-13T13:08:01.3131330Z ##[endgroup]
+2026-09-13T13:08:01.3619490Z ##[end-action id=__dtolnay_rust-toolchain.parse;outcome=success;conclusion=success;duration_ms=66]
+2026-09-13T13:08:01.3646890Z ##[start-action display=Construct rustup command line;id=__dtolnay_rust-toolchain.flags]
+2026-09-13T13:08:01.3763690Z ##[group]Run echo "targets=$(for t in ${targets//,/ }; do echo -n ' --target' $t; done)" >> $GITHUB_OUTPUT
+2026-09-13T13:08:01.3765990Z [36;1mecho "targets=$(for t in ${targets//,/ }; do echo -n ' --target' $t; done)" >> $GITHUB_OUTPUT[0m
+2026-09-13T13:08:01.3768510Z [36;1mecho "components=$(for c in ${components//,/ }; do echo -n ' --component' $c; done)" >> $GITHUB_OUTPUT[0m
+2026-09-13T13:08:01.3769820Z [36;1mecho "downgrade=" >> $GITHUB_OUTPUT[0m
+2026-09-13T13:08:01.3814420Z shell: /bin/bash --noprofile --norc -e -o pipefail {0}
+2026-09-13T13:08:01.3815050Z env:
+2026-09-13T13:08:01.3815240Z   CARGO_BUILD_JOBS: 2
+2026-09-13T13:08:01.3815840Z   RUST_VERSION: 1.97.1
+2026-09-13T13:08:01.3816040Z   RUSTUP_TOOLCHAIN: 1.97.1
+2026-09-13T13:08:01.3816270Z   ACTIONLINT_VERSION: 1.7.12
+2026-09-13T13:08:01.3816680Z   ACTIONLINT_LINUX_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
+2026-09-13T13:08:01.3817050Z   VERUS_VERSION: 0.2026.08.09.92f466f
+2026-09-13T13:08:01.3817480Z   VERUS_LINUX_SHA256: 2f5a41c553f424aacdd732339e9d125563716a0b003c27730f75d6f81a282cef
+2026-09-13T13:08:01.3818010Z   PERITUS_PROOF_IMPACT_BASE: 8e8cbb1bcf0de9787d86c7be3d6fc1f2079f3493
+2026-09-13T13:08:01.3818330Z   RUSTUP_MAX_RETRIES: 10
+2026-09-13T13:08:01.3818510Z   targets: 
+2026-09-13T13:08:01.3818720Z   components: clippy,rustfmt
+2026-09-13T13:08:01.3818900Z ##[endgroup]
+2026-09-13T13:08:01.4171560Z ##[end-action id=__dtolnay_rust-toolchain.flags;outcome=success;conclusion=success;duration_ms=52]
+2026-09-13T13:08:01.4174090Z ##[start-action display=Set $CARGO_HOME;id=__dtolnay_rust-toolchain.__run]
+2026-09-13T13:08:01.4214550Z ##[group]Run echo CARGO_HOME=${CARGO_HOME:-"$HOME/.cargo"} >> $GITHUB_ENV
+2026-09-13T13:08:01.4215050Z [36;1mecho CARGO_HOME=${CARGO_HOME:-"$HOME/.cargo"} >> $GITHUB_ENV[0m
+2026-09-13T13:08:01.4270340Z shell: /bin/bash --noprofile --norc -e -o pipefail {0}
+2026-09-13T13:08:01.4270640Z env:
+2026-09-13T13:08:01.4270840Z   CARGO_BUILD_JOBS: 2
+2026-09-13T13:08:01.4271010Z   RUST_VERSION: 1.97.1
+2026-09-13T13:08:01.4271200Z   RUSTUP_TOOLCHAIN: 1.97.1
+2026-09-13T13:08:01.4271410Z   ACTIONLINT_VERSION: 1.7.12
+2026-09-13T13:08:01.4271810Z   ACTIONLINT_LINUX_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
+2026-09-13T13:08:01.4272240Z   VERUS_VERSION: 0.2026.08.09.92f466f
+2026-09-13T13:08:01.4272630Z   VERUS_LINUX_SHA256: 2f5a41c553f424aacdd732339e9d125563716a0b003c27730f75d6f81a282cef
+2026-09-13T13:08:01.4273080Z   PERITUS_PROOF_IMPACT_BASE: 8e8cbb1bcf0de9787d86c7be3d6fc1f2079f3493
+2026-09-13T13:08:01.4273390Z   RUSTUP_MAX_RETRIES: 10
+2026-09-13T13:08:01.4273580Z ##[endgroup]
+2026-09-13T13:08:01.4599130Z ##[end-action id=__dtolnay_rust-toolchain.__run;outcome=success;conclusion=success;duration_ms=42]
+2026-09-13T13:08:01.4602510Z ##[start-action display=Install rustup if needed;id=__dtolnay_rust-toolchain.__run_2]
+2026-09-13T13:08:01.4634710Z ##[group]Run if ! command -v rustup &>/dev/null; then
+2026-09-13T13:08:01.4635040Z [36;1mif ! command -v rustup &>/dev/null; then[0m
+2026-09-13T13:08:01.4635810Z [36;1m  curl --proto '=https' --tlsv1.2 --retry 10 --retry-connrefused --location --silent --show-error --fail https://sh.rustup.rs | sh -s -- --default-toolchain none -y[0m
+2026-09-13T13:08:01.4636490Z [36;1m  echo "$CARGO_HOME/bin" >> $GITHUB_PATH[0m
+2026-09-13T13:08:01.4636720Z [36;1mfi[0m
+2026-09-13T13:08:01.4680880Z shell: /bin/bash --noprofile --norc -e -o pipefail {0}
+2026-09-13T13:08:01.4681150Z env:
+2026-09-13T13:08:01.4681340Z   CARGO_BUILD_JOBS: 2
+2026-09-13T13:08:01.4681560Z   RUST_VERSION: 1.97.1
+2026-09-13T13:08:01.4681780Z   RUSTUP_TOOLCHAIN: 1.97.1
+2026-09-13T13:08:01.4681970Z   ACTIONLINT_VERSION: 1.7.12
+2026-09-13T13:08:01.4682360Z   ACTIONLINT_LINUX_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
+2026-09-13T13:08:01.4682750Z   VERUS_VERSION: 0.2026.08.09.92f466f
+2026-09-13T13:08:01.4683180Z   VERUS_LINUX_SHA256: 2f5a41c553f424aacdd732339e9d125563716a0b003c27730f75d6f81a282cef
+2026-09-13T13:08:01.4683610Z   PERITUS_PROOF_IMPACT_BASE: 8e8cbb1bcf0de9787d86c7be3d6fc1f2079f3493
+2026-09-13T13:08:01.4683930Z   CARGO_HOME: /Users/runner/.cargo
+2026-09-13T13:08:01.4684470Z   RUSTUP_MAX_RETRIES: 10
+2026-09-13T13:08:01.4684670Z ##[endgroup]
+2026-09-13T13:08:01.4996880Z ##[end-action id=__dtolnay_rust-toolchain.__run_2;outcome=success;conclusion=success;duration_ms=39]
+2026-09-13T13:08:01.4999750Z ##[start-action display=Install rustup if needed on windows;id=__dtolnay_rust-toolchain.__run_3]
+2026-09-13T13:08:01.5007870Z ##[end-action id=__dtolnay_rust-toolchain.__run_3;outcome=skipped;conclusion=skipped;duration_ms=0]
+2026-09-13T13:08:01.5018150Z ##[start-action display=rustup toolchain install 1.97.1;id=__dtolnay_rust-toolchain.__run_4]
+2026-09-13T13:08:01.5049790Z ##[group]Run rustup toolchain install 1.97.1 --component clippy --component rustfmt --profile minimal --no-self-update
+2026-09-13T13:08:01.5050540Z [36;1mrustup toolchain install 1.97.1 --component clippy --component rustfmt --profile minimal --no-self-update[0m
+2026-09-13T13:08:01.5097560Z shell: /bin/bash --noprofile --norc -e -o pipefail {0}
+2026-09-13T13:08:01.5097890Z env:
+2026-09-13T13:08:01.5098120Z   CARGO_BUILD_JOBS: 2
+2026-09-13T13:08:01.5098320Z   RUST_VERSION: 1.97.1
+2026-09-13T13:08:01.5098480Z   RUSTUP_TOOLCHAIN: 1.97.1
+2026-09-13T13:08:01.5098700Z   ACTIONLINT_VERSION: 1.7.12
+2026-09-13T13:08:01.5099050Z   ACTIONLINT_LINUX_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
+2026-09-13T13:08:01.5099540Z   VERUS_VERSION: 0.2026.08.09.92f466f
+2026-09-13T13:08:01.5099890Z   VERUS_LINUX_SHA256: 2f5a41c553f424aacdd732339e9d125563716a0b003c27730f75d6f81a282cef
+2026-09-13T13:08:01.5100350Z   PERITUS_PROOF_IMPACT_BASE: 8e8cbb1bcf0de9787d86c7be3d6fc1f2079f3493
+2026-09-13T13:08:01.5100730Z   CARGO_HOME: /Users/runner/.cargo
+2026-09-13T13:08:01.5100970Z   RUSTUP_MAX_RETRIES: 10
+2026-09-13T13:08:01.5101690Z   RUSTUP_PERMIT_COPY_RENAME: 1
+2026-09-13T13:08:01.5101910Z ##[endgroup]
+2026-09-13T13:08:01.5926840Z info: syncing channel updates for 1.97.1-aarch64-apple-darwin
+2026-09-13T13:08:01.7845650Z info: latest update on 2026-07-16 for version 1.97.1 (8bab26f4f 2026-07-14)
+2026-09-13T13:08:01.7850910Z info: downloading 5 components
+2026-09-13T13:08:10.2466130Z 
+2026-09-13T13:08:10.4481660Z   1.97.1-aarch64-apple-darwin installed - rustc 1.97.1 (8bab26f4f 2026-07-14)
+2026-09-13T13:08:10.4482280Z info: self-update is disabled for this build of rustup
+2026-09-13T13:08:10.4482810Z info: any updates to rustup will need to be fetched with your system package manager
+2026-09-13T13:08:10.4483100Z 
+2026-09-13T13:08:10.4635360Z ##[end-action id=__dtolnay_rust-toolchain.__run_4;outcome=success;conclusion=success;duration_ms=8956]
+2026-09-13T13:08:10.4655070Z ##[start-action display=rustup default 1.97.1;id=__dtolnay_rust-toolchain.__run_5]
+2026-09-13T13:08:10.4689360Z ##[group]Run rustup default 1.97.1
+2026-09-13T13:08:10.4689670Z [36;1mrustup default 1.97.1[0m
+2026-09-13T13:08:10.4748890Z shell: /bin/bash --noprofile --norc -e -o pipefail {0}
+2026-09-13T13:08:10.4749320Z env:
+2026-09-13T13:08:10.4749580Z   CARGO_BUILD_JOBS: 2
+2026-09-13T13:08:10.4749830Z   RUST_VERSION: 1.97.1
+2026-09-13T13:08:10.4750200Z   RUSTUP_TOOLCHAIN: 1.97.1
+2026-09-13T13:08:10.4750460Z   ACTIONLINT_VERSION: 1.7.12
+2026-09-13T13:08:10.4750850Z   ACTIONLINT_LINUX_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
+2026-09-13T13:08:10.4751330Z   VERUS_VERSION: 0.2026.08.09.92f466f
+2026-09-13T13:08:10.4751720Z   VERUS_LINUX_SHA256: 2f5a41c553f424aacdd732339e9d125563716a0b003c27730f75d6f81a282cef
+2026-09-13T13:08:10.4752860Z   PERITUS_PROOF_IMPACT_BASE: 8e8cbb1bcf0de9787d86c7be3d6fc1f2079f3493
+2026-09-13T13:08:10.4754020Z   CARGO_HOME: /Users/runner/.cargo
+2026-09-13T13:08:10.4754660Z   RUSTUP_MAX_RETRIES: 10
+2026-09-13T13:08:10.4754860Z ##[endgroup]
+2026-09-13T13:08:10.5298790Z info: using existing install for 1.97.1-aarch64-apple-darwin
+2026-09-13T13:08:10.5323090Z info: default toolchain set to 1.97.1-aarch64-apple-darwin
+2026-09-13T13:08:10.5323850Z 
+2026-09-13T13:08:10.5460610Z info: note that the toolchain '1.97.1-aarch64-apple-darwin' is currently in use (overridden by environment variable RUSTUP_TOOLCHAIN)
+2026-09-13T13:08:10.5462840Z   1.97.1-aarch64-apple-darwin unchanged - rustc 1.97.1 (8bab26f4f 2026-07-14)
+2026-09-13T13:08:10.5463720Z 
+2026-09-13T13:08:10.5478570Z ##[end-action id=__dtolnay_rust-toolchain.__run_5;outcome=success;conclusion=success;duration_ms=82]
+2026-09-13T13:08:10.5484220Z ##[start-action display=Create cachekey;id=__dtolnay_rust-toolchain.rustc-version]
+2026-09-13T13:08:10.5531720Z ##[group]Run DATE=$(rustc +1.97.1 --version --verbose | sed -ne 's/^commit-date: \(20[0-9][0-9]\)-\([01][0-9]\)-\([0-3][0-9]\)$/\1\2\3/p')
+2026-09-13T13:08:10.5537270Z [36;1mDATE=$(rustc +1.97.1 --version --verbose | sed -ne 's/^commit-date: \(20[0-9][0-9]\)-\([01][0-9]\)-\([0-3][0-9]\)$/\1\2\3/p')[0m
+2026-09-13T13:08:10.5537840Z [36;1mHASH=$(rustc +1.97.1 --version --verbose | sed -ne 's/^commit-hash: //p')[0m
+2026-09-13T13:08:10.5538400Z [36;1mecho "cachekey=$(echo $DATE$HASH | head -c12)" >> $GITHUB_OUTPUT[0m
+2026-09-13T13:08:10.5577380Z shell: /bin/bash --noprofile --norc -e -o pipefail {0}
+2026-09-13T13:08:10.5577730Z env:
+2026-09-13T13:08:10.5577980Z   CARGO_BUILD_JOBS: 2
+2026-09-13T13:08:10.5578240Z   RUST_VERSION: 1.97.1
+2026-09-13T13:08:10.5578470Z   RUSTUP_TOOLCHAIN: 1.97.1
+2026-09-13T13:08:10.5578680Z   ACTIONLINT_VERSION: 1.7.12
+2026-09-13T13:08:10.5579080Z   ACTIONLINT_LINUX_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
+2026-09-13T13:08:10.5579470Z   VERUS_VERSION: 0.2026.08.09.92f466f
+2026-09-13T13:08:10.5579820Z   VERUS_LINUX_SHA256: 2f5a41c553f424aacdd732339e9d125563716a0b003c27730f75d6f81a282cef
+2026-09-13T13:08:10.5580270Z   PERITUS_PROOF_IMPACT_BASE: 8e8cbb1bcf0de9787d86c7be3d6fc1f2079f3493
+2026-09-13T13:08:10.5580750Z   CARGO_HOME: /Users/runner/.cargo
+2026-09-13T13:08:10.5580960Z   RUSTUP_MAX_RETRIES: 10
+2026-09-13T13:08:10.5581130Z ##[endgroup]
+2026-09-13T13:08:10.6441300Z ##[end-action id=__dtolnay_rust-toolchain.rustc-version;outcome=success;conclusion=success;duration_ms=95]
+2026-09-13T13:08:10.6444190Z ##[start-action display=Disable incremental compilation;id=__dtolnay_rust-toolchain.__run_6]
+2026-09-13T13:08:10.6472290Z ##[group]Run if [ -z "${CARGO_INCREMENTAL+set}" ]; then
+2026-09-13T13:08:10.6473070Z [36;1mif [ -z "${CARGO_INCREMENTAL+set}" ]; then[0m
+2026-09-13T13:08:10.6473460Z [36;1m  echo CARGO_INCREMENTAL=0 >> $GITHUB_ENV[0m
+2026-09-13T13:08:10.6473700Z [36;1mfi[0m
+2026-09-13T13:08:10.6514370Z shell: /bin/bash --noprofile --norc -e -o pipefail {0}
+2026-09-13T13:08:10.6514650Z env:
+2026-09-13T13:08:10.6514830Z   CARGO_BUILD_JOBS: 2
+2026-09-13T13:08:10.6515060Z   RUST_VERSION: 1.97.1
+2026-09-13T13:08:10.6515360Z   RUSTUP_TOOLCHAIN: 1.97.1
+2026-09-13T13:08:10.6515590Z   ACTIONLINT_VERSION: 1.7.12
+2026-09-13T13:08:10.6516050Z   ACTIONLINT_LINUX_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
+2026-09-13T13:08:10.6516490Z   VERUS_VERSION: 0.2026.08.09.92f466f
+2026-09-13T13:08:10.6516870Z   VERUS_LINUX_SHA256: 2f5a41c553f424aacdd732339e9d125563716a0b003c27730f75d6f81a282cef
+2026-09-13T13:08:10.6517410Z   PERITUS_PROOF_IMPACT_BASE: 8e8cbb1bcf0de9787d86c7be3d6fc1f2079f3493
+2026-09-13T13:08:10.6517730Z   CARGO_HOME: /Users/runner/.cargo
+2026-09-13T13:08:10.6518010Z   RUSTUP_MAX_RETRIES: 10
+2026-09-13T13:08:10.6518180Z ##[endgroup]
+2026-09-13T13:08:10.6885610Z ##[end-action id=__dtolnay_rust-toolchain.__run_6;outcome=success;conclusion=success;duration_ms=44]
+2026-09-13T13:08:10.6888040Z ##[start-action display=Enable colors in Cargo output;id=__dtolnay_rust-toolchain.__run_7]
+2026-09-13T13:08:10.6929590Z ##[group]Run if [ -z "${CARGO_TERM_COLOR+set}" ]; then
+2026-09-13T13:08:10.6930540Z [36;1mif [ -z "${CARGO_TERM_COLOR+set}" ]; then[0m
+2026-09-13T13:08:10.6931340Z [36;1m  echo CARGO_TERM_COLOR=always >> $GITHUB_ENV[0m
+2026-09-13T13:08:10.6932030Z [36;1mfi[0m
+2026-09-13T13:08:10.6986730Z shell: /bin/bash --noprofile --norc -e -o pipefail {0}
+2026-09-13T13:08:10.6987050Z env:
+2026-09-13T13:08:10.6987220Z   CARGO_BUILD_JOBS: 2
+2026-09-13T13:08:10.6987430Z   RUST_VERSION: 1.97.1
+2026-09-13T13:08:10.6987940Z   RUSTUP_TOOLCHAIN: 1.97.1
+2026-09-13T13:08:10.6988170Z   ACTIONLINT_VERSION: 1.7.12
+2026-09-13T13:08:10.6988530Z   ACTIONLINT_LINUX_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
+2026-09-13T13:08:10.6988930Z   VERUS_VERSION: 0.2026.08.09.92f466f
+2026-09-13T13:08:10.6989270Z   VERUS_LINUX_SHA256: 2f5a41c553f424aacdd732339e9d125563716a0b003c27730f75d6f81a282cef
+2026-09-13T13:08:10.6989730Z   PERITUS_PROOF_IMPACT_BASE: 8e8cbb1bcf0de9787d86c7be3d6fc1f2079f3493
+2026-09-13T13:08:10.6990060Z   CARGO_HOME: /Users/runner/.cargo
+2026-09-13T13:08:10.6990510Z   CARGO_INCREMENTAL: 0
+2026-09-13T13:08:10.6990680Z   RUSTUP_MAX_RETRIES: 10
+2026-09-13T13:08:10.6990930Z ##[endgroup]
+2026-09-13T13:08:10.7369240Z ##[end-action id=__dtolnay_rust-toolchain.__run_7;outcome=success;conclusion=success;duration_ms=48]
+2026-09-13T13:08:10.7383340Z ##[start-action display=Enable Cargo sparse registry;id=__dtolnay_rust-toolchain.__run_8]
+2026-09-13T13:08:10.7448460Z ##[group]Run # implemented in 1.66, stabilized in 1.68, made default in 1.70
+2026-09-13T13:08:10.7448900Z [36;1m# implemented in 1.66, stabilized in 1.68, made default in 1.70[0m
+2026-09-13T13:08:10.7449570Z [36;1mif [ -z "${CARGO_REGISTRIES_CRATES_IO_PROTOCOL+set}" -o -f "/Users/runner/work/_temp"/.implicit_cargo_registries_crates_io_protocol ]; then[0m
+2026-09-13T13:08:10.7450180Z [36;1m  if rustc +1.97.1 --version --verbose | grep -q '^release: 1\.6[89]\.'; then[0m
+2026-09-13T13:08:10.7450650Z [36;1m    touch "/Users/runner/work/_temp"/.implicit_cargo_registries_crates_io_protocol || true[0m
+2026-09-13T13:08:10.7451140Z [36;1m    echo CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse >> $GITHUB_ENV[0m
+2026-09-13T13:08:10.7451550Z [36;1m  elif rustc +1.97.1 --version --verbose | grep -q '^release: 1\.6[67]\.'; then[0m
+2026-09-13T13:08:10.7452010Z [36;1m    touch "/Users/runner/work/_temp"/.implicit_cargo_registries_crates_io_protocol || true[0m
+2026-09-13T13:08:10.7452460Z [36;1m    echo CARGO_REGISTRIES_CRATES_IO_PROTOCOL=git >> $GITHUB_ENV[0m
+2026-09-13T13:08:10.7452750Z [36;1m  fi[0m
+2026-09-13T13:08:10.7452920Z [36;1mfi[0m
+2026-09-13T13:08:10.7487850Z shell: /bin/bash --noprofile --norc -e -o pipefail {0}
+2026-09-13T13:08:10.7488140Z env:
+2026-09-13T13:08:10.7488310Z   CARGO_BUILD_JOBS: 2
+2026-09-13T13:08:10.7488460Z   RUST_VERSION: 1.97.1
+2026-09-13T13:08:10.7488640Z   RUSTUP_TOOLCHAIN: 1.97.1
+2026-09-13T13:08:10.7488830Z   ACTIONLINT_VERSION: 1.7.12
+2026-09-13T13:08:10.7489190Z   ACTIONLINT_LINUX_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
+2026-09-13T13:08:10.7489590Z   VERUS_VERSION: 0.2026.08.09.92f466f
+2026-09-13T13:08:10.7489930Z   VERUS_LINUX_SHA256: 2f5a41c553f424aacdd732339e9d125563716a0b003c27730f75d6f81a282cef
+2026-09-13T13:08:10.7490370Z   PERITUS_PROOF_IMPACT_BASE: 8e8cbb1bcf0de9787d86c7be3d6fc1f2079f3493
+2026-09-13T13:08:10.7490670Z   CARGO_HOME: /Users/runner/.cargo
+2026-09-13T13:08:10.7490850Z   CARGO_INCREMENTAL: 0
+2026-09-13T13:08:10.7491010Z   CARGO_TERM_COLOR: always
+2026-09-13T13:08:10.7491190Z   RUSTUP_MAX_RETRIES: 10
+2026-09-13T13:08:10.7491370Z ##[endgroup]
+2026-09-13T13:08:10.8253490Z ##[end-action id=__dtolnay_rust-toolchain.__run_8;outcome=success;conclusion=success;duration_ms=86]
+2026-09-13T13:08:10.8255730Z ##[start-action display=Work around spurious network errors in curl 8.0;id=__dtolnay_rust-toolchain.__run_9]
+2026-09-13T13:08:10.8276330Z ##[group]Run # https://rust-lang.zulipchat.com/#narrow/stream/246057-t-cargo/topic/timeout.20investigation
+2026-09-13T13:08:10.8276950Z [36;1m# https://rust-lang.zulipchat.com/#narrow/stream/246057-t-cargo/topic/timeout.20investigation[0m
+2026-09-13T13:08:10.8277520Z [36;1mif rustc +1.97.1 --version --verbose | grep -q '^release: 1\.7[01]\.'; then[0m
+2026-09-13T13:08:10.8277900Z [36;1m  echo CARGO_HTTP_MULTIPLEXING=false >> $GITHUB_ENV[0m
+2026-09-13T13:08:10.8278160Z [36;1mfi[0m
+2026-09-13T13:08:10.8314000Z shell: /bin/bash --noprofile --norc -e -o pipefail {0}
+2026-09-13T13:08:10.8314310Z env:
+2026-09-13T13:08:10.8314490Z   CARGO_BUILD_JOBS: 2
+2026-09-13T13:08:10.8314950Z   RUST_VERSION: 1.97.1
+2026-09-13T13:08:10.8315130Z   RUSTUP_TOOLCHAIN: 1.97.1
+2026-09-13T13:08:10.8315330Z   ACTIONLINT_VERSION: 1.7.12
+2026-09-13T13:08:10.8315700Z   ACTIONLINT_LINUX_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
+2026-09-13T13:08:10.8316090Z   VERUS_VERSION: 0.2026.08.09.92f466f
+2026-09-13T13:08:10.8316450Z   VERUS_LINUX_SHA256: 2f5a41c553f424aacdd732339e9d125563716a0b003c27730f75d6f81a282cef
+2026-09-13T13:08:10.8316900Z   PERITUS_PROOF_IMPACT_BASE: 8e8cbb1bcf0de9787d86c7be3d6fc1f2079f3493
+2026-09-13T13:08:10.8317430Z   CARGO_HOME: /Users/runner/.cargo
+2026-09-13T13:08:10.8317630Z   CARGO_INCREMENTAL: 0
+2026-09-13T13:08:10.8317820Z   CARGO_TERM_COLOR: always
+2026-09-13T13:08:10.8318000Z   RUSTUP_MAX_RETRIES: 10
+2026-09-13T13:08:10.8318180Z ##[endgroup]
+2026-09-13T13:08:10.8926250Z ##[end-action id=__dtolnay_rust-toolchain.__run_9;outcome=success;conclusion=success;duration_ms=66]
+2026-09-13T13:08:10.8929540Z ##[start-action display=rustc +1.97.1 --version --verbose;id=__dtolnay_rust-toolchain.__run_10]
+2026-09-13T13:08:10.8949100Z ##[group]Run rustc +1.97.1 --version --verbose
+2026-09-13T13:08:10.8949400Z [36;1mrustc +1.97.1 --version --verbose[0m
+2026-09-13T13:08:10.8983400Z shell: /bin/bash --noprofile --norc -e -o pipefail {0}
+2026-09-13T13:08:10.8983660Z env:
+2026-09-13T13:08:10.8983830Z   CARGO_BUILD_JOBS: 2
+2026-09-13T13:08:10.8983990Z   RUST_VERSION: 1.97.1
+2026-09-13T13:08:10.8984180Z   RUSTUP_TOOLCHAIN: 1.97.1
+2026-09-13T13:08:10.8984370Z   ACTIONLINT_VERSION: 1.7.12
+2026-09-13T13:08:10.8984780Z   ACTIONLINT_LINUX_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
+2026-09-13T13:08:10.8985160Z   VERUS_VERSION: 0.2026.08.09.92f466f
+2026-09-13T13:08:10.8985500Z   VERUS_LINUX_SHA256: 2f5a41c553f424aacdd732339e9d125563716a0b003c27730f75d6f81a282cef
+2026-09-13T13:08:10.8985940Z   PERITUS_PROOF_IMPACT_BASE: 8e8cbb1bcf0de9787d86c7be3d6fc1f2079f3493
+2026-09-13T13:08:10.8986260Z   CARGO_HOME: /Users/runner/.cargo
+2026-09-13T13:08:10.8986480Z   CARGO_INCREMENTAL: 0
+2026-09-13T13:08:10.8986660Z   CARGO_TERM_COLOR: always
+2026-09-13T13:08:10.8986860Z   RUSTUP_MAX_RETRIES: 10
+2026-09-13T13:08:10.8987040Z ##[endgroup]
+2026-09-13T13:08:10.9522860Z rustc 1.97.1 (8bab26f4f 2026-07-14)
+2026-09-13T13:08:10.9525060Z binary: rustc
+2026-09-13T13:08:10.9525590Z commit-hash: 8bab26f4f68e0e26f0bb7960be334d5b520ea452
+2026-09-13T13:08:10.9526010Z commit-date: 2026-07-14
+2026-09-13T13:08:10.9526420Z host: aarch64-apple-darwin
+2026-09-13T13:08:10.9526960Z release: 1.97.1
+2026-09-13T13:08:10.9545570Z LLVM version: 22.1.6
+2026-09-13T13:08:10.9558060Z ##[end-action id=__dtolnay_rust-toolchain.__run_10;outcome=success;conclusion=success;duration_ms=62]
+2026-09-13T13:08:10.9638600Z ##[group]Run cargo run --locked --target-dir target/xtask-bootstrap --package xtask -- ci-shard test testing
+2026-09-13T13:08:10.9639630Z [36;1mcargo run --locked --target-dir target/xtask-bootstrap --package xtask -- ci-shard test testing[0m
+2026-09-13T13:08:10.9679640Z shell: /bin/bash -e {0}
+2026-09-13T13:08:10.9679890Z env:
+2026-09-13T13:08:10.9680080Z   CARGO_BUILD_JOBS: 2
+2026-09-13T13:08:10.9680250Z   RUST_VERSION: 1.97.1
+2026-09-13T13:08:10.9680450Z   RUSTUP_TOOLCHAIN: 1.97.1
+2026-09-13T13:08:10.9680650Z   ACTIONLINT_VERSION: 1.7.12
+2026-09-13T13:08:10.9681060Z   ACTIONLINT_LINUX_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
+2026-09-13T13:08:10.9681500Z   VERUS_VERSION: 0.2026.08.09.92f466f
+2026-09-13T13:08:10.9681860Z   VERUS_LINUX_SHA256: 2f5a41c553f424aacdd732339e9d125563716a0b003c27730f75d6f81a282cef
+2026-09-13T13:08:10.9682390Z   PERITUS_PROOF_IMPACT_BASE: 8e8cbb1bcf0de9787d86c7be3d6fc1f2079f3493
+2026-09-13T13:08:10.9682780Z   CARGO_HOME: /Users/runner/.cargo
+2026-09-13T13:08:10.9683020Z   CARGO_INCREMENTAL: 0
+2026-09-13T13:08:10.9683230Z   CARGO_TERM_COLOR: always
+2026-09-13T13:08:10.9683440Z ##[endgroup]
+2026-09-13T13:08:11.3364520Z [1m[92m    Updating[0m crates.io index
+2026-09-13T13:08:11.3415440Z [1m[92m    Updating[0m git repository `https://github.com/verus-lang/verus.git`
+2026-09-13T13:08:14.0328520Z From https://github.com/verus-lang/verus
+2026-09-13T13:08:14.0329060Z  * [new ref]           92f466f247f45128c630d1c843fd6e27d2115587 -> refs/commit/92f466f247f45128c630d1c843fd6e27d2115587
+2026-09-13T13:08:15.1669490Z [1m[92m Downloading[0m crates ...
+2026-09-13T13:08:15.2211820Z [1m[92m  Downloaded[0m block-buffer v0.12.1
+2026-09-13T13:08:15.2271680Z [1m[92m  Downloaded[0m digest v0.11.3
+2026-09-13T13:08:15.2338500Z [1m[92m  Downloaded[0m equivalent v1.0.2
+2026-09-13T13:08:15.2378450Z [1m[92m  Downloaded[0m cpufeatures v0.3.0
+2026-09-13T13:08:15.2422690Z [1m[92m  Downloaded[0m cfg-if v1.0.4
+2026-09-13T13:08:15.2490620Z [1m[92m  Downloaded[0m crypto-common v0.2.2
+2026-09-13T13:08:15.2512140Z [1m[92m  Downloaded[0m base64 v0.22.1
+2026-09-13T13:08:15.2662030Z [1m[92m  Downloaded[0m serde_spanned v1.1.1
+2026-09-13T13:08:15.2701160Z [1m[92m  Downloaded[0m arraydeque v0.5.1
+2026-09-13T13:08:15.2724810Z [1m[92m  Downloaded[0m cfg_aliases v0.2.2
+2026-09-13T13:08:15.2745730Z [1m[92m  Downloaded[0m itoa v1.0.18
+2026-09-13T13:08:15.2773360Z [1m[92m  Downloaded[0m quote v1.0.47
+2026-09-13T13:08:15.2835720Z [1m[92m  Downloaded[0m toml_datetime v1.1.1+spec-1.1.0
+2026-09-13T13:08:15.2862420Z [1m[92m  Downloaded[0m foldhash v0.2.0
+2026-09-13T13:08:15.2889310Z [1m[92m  Downloaded[0m hashlink v0.12.1
+2026-09-13T13:08:15.2919040Z [1m[92m  Downloaded[0m hybrid-array v0.4.14
+2026-09-13T13:08:15.2965130Z [1m[92m  Downloaded[0m toml_writer v1.1.2+spec-1.1.0
+2026-09-13T13:08:15.3017080Z [1m[92m  Downloaded[0m sha2 v0.11.0
+2026-09-13T13:08:15.3097610Z [1m[92m  Downloaded[0m toml_parser v1.1.3+spec-1.1.0
+2026-09-13T13:08:15.3160140Z [1m[92m  Downloaded[0m zmij v1.0.23
+2026-09-13T13:08:15.3194190Z [1m[92m  Downloaded[0m serde_derive v1.0.229
+2026-09-13T13:08:15.3266560Z [1m[92m  Downloaded[0m unicode-ident v1.0.24
+2026-09-13T13:08:15.3349750Z [1m[92m  Downloaded[0m yaml-rust2 v0.12.0
+2026-09-13T13:08:15.3486590Z [1m[92m  Downloaded[0m bitflags v2.13.1
+2026-09-13T13:08:15.3618980Z [1m[92m  Downloaded[0m proc-macro2 v1.0.107
+2026-09-13T13:08:15.3700070Z [1m[92m  Downloaded[0m serde_core v1.0.229
+2026-09-13T13:08:15.3759400Z [1m[92m  Downloaded[0m toml v1.1.4+spec-1.1.0
+2026-09-13T13:08:15.3861120Z [1m[92m  Downloaded[0m typenum v1.20.1
+2026-09-13T13:08:15.3936410Z [1m[92m  Downloaded[0m memchr v2.8.3
+2026-09-13T13:08:15.4085430Z [1m[92m  Downloaded[0m serde v1.0.229
+2026-09-13T13:08:15.4141360Z [1m[92m  Downloaded[0m indexmap v2.14.0
+2026-09-13T13:08:15.4229930Z [1m[92m  Downloaded[0m hashbrown v0.17.1
+2026-09-13T13:08:15.4376440Z [1m[92m  Downloaded[0m serde_json v1.0.149
+2026-09-13T13:08:15.4513660Z [1m[92m  Downloaded[0m process-wrap v9.1.0
+2026-09-13T13:08:15.4690640Z [1m[92m  Downloaded[0m winnow v1.0.4
+2026-09-13T13:08:15.4944730Z [1m[92m  Downloaded[0m syn v3.0.3
+2026-09-13T13:08:15.5185050Z [1m[92m  Downloaded[0m nix v0.31.3
+2026-09-13T13:08:15.5411610Z [1m[92m  Downloaded[0m libc v0.2.189
+2026-09-13T13:08:15.6619700Z [1m[92m   Compiling[0m serde_core v1.0.229
+2026-09-13T13:08:15.6621460Z [1m[92m   Compiling[0m libc v0.2.189
+2026-09-13T13:08:19.2951030Z [1m[92m   Compiling[0m proc-macro2 v1.0.107
+2026-09-13T13:08:19.7265110Z [1m[92m   Compiling[0m unicode-ident v1.0.24
+2026-09-13T13:08:19.7863950Z [1m[92m   Compiling[0m typenum v1.20.1
+2026-09-13T13:08:20.5248910Z [1m[92m   Compiling[0m foldhash v0.2.0
+2026-09-13T13:08:20.6352430Z [1m[92m   Compiling[0m quote v1.0.47
+2026-09-13T13:08:20.8314420Z [1m[92m   Compiling[0m hashbrown v0.17.1
+2026-09-13T13:08:21.3649750Z [1m[92m   Compiling[0m hybrid-array v0.4.14
+2026-09-13T13:08:21.9317450Z [1m[92m   Compiling[0m cfg_aliases v0.2.2
+2026-09-13T13:08:21.9639550Z [1m[92m   Compiling[0m nix v0.31.3
+2026-09-13T13:08:22.4220140Z [1m[92m   Compiling[0m cfg-if v1.0.4
+2026-09-13T13:08:22.4475570Z [1m[92m   Compiling[0m zmij v1.0.23
+2026-09-13T13:08:22.6435820Z [1m[92m   Compiling[0m syn v3.0.3
+2026-09-13T13:08:22.6846660Z [1m[92m   Compiling[0m block-buffer v0.12.1
+2026-09-13T13:08:22.7709760Z [1m[92m   Compiling[0m crypto-common v0.2.2
+2026-09-13T13:08:23.8942200Z [1m[92m   Compiling[0m serde v1.0.229
+2026-09-13T13:08:24.1068460Z [1m[92m   Compiling[0m bitflags v2.13.1
+2026-09-13T13:08:24.2817150Z [1m[92m   Compiling[0m winnow v1.0.4
+2026-09-13T13:08:24.6093720Z [1m[92m   Compiling[0m serde_json v1.0.149
+2026-09-13T13:08:24.7463510Z [1m[92m   Compiling[0m equivalent v1.0.2
+2026-09-13T13:08:24.7836820Z [1m[92m   Compiling[0m indexmap v2.14.0
+2026-09-13T13:08:24.9486920Z [1m[92m   Compiling[0m serde_derive v1.0.229
+2026-09-13T13:08:25.4401530Z [1m[92m   Compiling[0m toml_parser v1.1.3+spec-1.1.0
+2026-09-13T13:08:27.6261740Z [1m[92m   Compiling[0m digest v0.11.3
+2026-09-13T13:08:27.7279930Z [1m[92m   Compiling[0m cpufeatures v0.3.0
+2026-09-13T13:08:27.7784510Z [1m[92m   Compiling[0m serde_spanned v1.1.1
+2026-09-13T13:08:27.8444810Z [1m[92m   Compiling[0m toml_datetime v1.1.1+spec-1.1.0
+2026-09-13T13:08:27.9726700Z [1m[92m   Compiling[0m hashlink v0.12.1
+2026-09-13T13:08:28.1041790Z [1m[92m   Compiling[0m itoa v1.0.18
+2026-09-13T13:08:28.2208220Z [1m[92m   Compiling[0m memchr v2.8.3
+2026-09-13T13:08:28.2494030Z [1m[92m   Compiling[0m arraydeque v0.5.1
+2026-09-13T13:08:28.3971700Z [1m[92m   Compiling[0m toml_writer v1.1.2+spec-1.1.0
+2026-09-13T13:08:28.5506440Z [1m[92m   Compiling[0m toml v1.1.4+spec-1.1.0
+2026-09-13T13:08:29.9929290Z [1m[92m   Compiling[0m yaml-rust2 v0.12.0
+2026-09-13T13:08:30.2221750Z [1m[92m   Compiling[0m sha2 v0.11.0
+2026-09-13T13:08:31.1346390Z [1m[92m   Compiling[0m process-wrap v9.1.0
+2026-09-13T13:08:31.4238810Z [1m[92m   Compiling[0m base64 v0.22.1
+2026-09-13T13:08:31.6119620Z [1m[92m   Compiling[0m xtask v0.0.2 (/Users/runner/work/Project-Peritus/Project-Peritus/candidate/xtask)
+2026-09-13T13:08:44.9424520Z [1m[92m    Finished[0m `dev` profile [unoptimized + debuginfo] target(s) in 33.85s
+2026-09-13T13:08:45.0482370Z [1m[92m     Running[0m `target/xtask-bootstrap/debug/xtask ci-shard test testing`
+2026-09-13T13:08:45.6461020Z [1m[92m Downloading[0m crates ...
+2026-09-13T13:08:45.7043910Z [1m[92m  Downloaded[0m ciborium-ll v0.2.2
+2026-09-13T13:08:45.7269490Z [1m[92m  Downloaded[0m chacha20 v0.10.1
+2026-09-13T13:08:45.7311500Z [1m[92m  Downloaded[0m clap_lex v1.1.0
+2026-09-13T13:08:45.7314390Z [1m[92m  Downloaded[0m dunce v1.0.5
+2026-09-13T13:08:45.7351880Z [1m[92m  Downloaded[0m ciborium v0.2.2
+2026-09-13T13:08:45.7552260Z [1m[92m  Downloaded[0m cmake v0.1.58
+2026-09-13T13:08:45.7582570Z [1m[92m  Downloaded[0m aho-corasick v1.1.5
+2026-09-13T13:08:45.7963120Z [1m[92m  Downloaded[0m clap v4.6.6
+2026-09-13T13:08:45.8335620Z [1m[92m  Downloaded[0m ed25519 v3.0.0
+2026-09-13T13:08:45.8382600Z [1m[92m  Downloaded[0m ciborium-io v0.2.2
+2026-09-13T13:08:45.8410520Z [1m[92m  Downloaded[0m clap_builder v4.6.6
+2026-09-13T13:08:45.8625870Z [1m[92m  Downloaded[0m convert_case v0.4.0
+2026-09-13T13:08:45.8724450Z [1m[92m  Downloaded[0m core-foundation-sys v0.8.7
+2026-09-13T13:08:45.8880090Z [1m[92m  Downloaded[0m criterion v0.8.2
+2026-09-13T13:08:45.9157040Z [1m[92m  Downloaded[0m curve25519-dalek v5.0.0
+2026-09-13T13:08:45.9413990Z [1m[92m  Downloaded[0m either v1.18.0
+2026-09-13T13:08:45.9447340Z [1m[92m  Downloaded[0m fallible-streaming-iterator v0.1.9
+2026-09-13T13:08:45.9461730Z [1m[92m  Downloaded[0m find-msvc-tools v0.1.11
+2026-09-13T13:08:45.9498140Z [1m[92m  Downloaded[0m fnv v1.0.7
+2026-09-13T13:08:45.9528650Z [1m[92m  Downloaded[0m futures-io v0.3.34
+2026-09-13T13:08:45.9545660Z [1m[92m  Downloaded[0m futures-macro v0.3.34
+2026-09-13T13:08:45.9570390Z [1m[92m  Downloaded[0m half v2.4.1
+2026-09-13T13:08:45.9630050Z [1m[92m  Downloaded[0m http v1.5.0
+2026-09-13T13:08:45.9719260Z [1m[92m  Downloaded[0m http-body v1.1.0
+2026-09-13T13:08:45.9739070Z [1m[92m  Downloaded[0m idna_adapter v1.2.2
+2026-09-13T13:08:45.9841720Z [1m[92m  Downloaded[0m criterion-plot v0.8.2
+2026-09-13T13:08:45.9889550Z [1m[92m  Downloaded[0m icu_provider v2.3.1
+2026-09-13T13:08:45.9897030Z [1m[92m  Downloaded[0m alloca v0.4.0
+2026-09-13T13:08:45.9928450Z [1m[92m  Downloaded[0m anes v0.1.6
+2026-09-13T13:08:45.9982920Z [1m[92m  Downloaded[0m atomic-waker v1.1.2
+2026-09-13T13:08:46.0007740Z [1m[92m  Downloaded[0m cast v0.3.0
+2026-09-13T13:08:46.0027470Z [1m[92m  Downloaded[0m core-foundation v0.10.1
+2026-09-13T13:08:46.0088920Z [1m[92m  Downloaded[0m displaydoc v0.2.7
+2026-09-13T13:08:46.0173510Z [1m[92m  Downloaded[0m futures-core v0.3.34
+2026-09-13T13:08:46.0183040Z [1m[92m  Downloaded[0m rustls-platform-verifier v0.7.0
+2026-09-13T13:08:46.0261750Z [1m[92m  Downloaded[0m futures-task v0.3.34
+2026-09-13T13:08:46.0288380Z [1m[92m  Downloaded[0m hyper-util v0.1.20
+2026-09-13T13:08:46.0396400Z [1m[92m  Downloaded[0m autocfg v1.5.1
+2026-09-13T13:08:46.0435140Z [1m[92m  Downloaded[0m cc v1.4.4
+2026-09-13T13:08:46.0520760Z [1m[92m  Downloaded[0m page_size v0.6.0
+2026-09-13T13:08:46.0543560Z [1m[92m  Downloaded[0m pkg-config v0.3.34
+2026-09-13T13:08:46.0571360Z [1m[92m  Downloaded[0m tokio-macros v2.7.2
+2026-09-13T13:08:46.0603930Z [1m[92m  Downloaded[0m tokio-rustls v0.26.4
+2026-09-13T13:08:46.0650170Z [1m[92m  Downloaded[0m yoke-derive v0.8.2
+2026-09-13T13:08:46.0677730Z [1m[92m  Downloaded[0m zerofrom-derive v0.1.7
+2026-09-13T13:08:46.0703770Z [1m[92m  Downloaded[0m zeroize v1.9.0
+2026-09-13T13:08:46.0730310Z [1m[92m  Downloaded[0m errno v0.3.14
+2026-09-13T13:08:46.0771360Z [1m[92m  Downloaded[0m fastrand v2.5.0
+2026-09-13T13:08:46.0800040Z [1m[92m  Downloaded[0m form_urlencoded v1.2.2
+2026-09-13T13:08:46.0814370Z [1m[92m  Downloaded[0m fs4 v1.1.0
+2026-09-13T13:08:46.1207790Z [1m[92m  Downloaded[0m fs_extra v1.3.0
+2026-09-13T13:08:46.1309500Z [1m[92m  Downloaded[0m futures-channel v0.3.34
+2026-09-13T13:08:46.1412990Z [1m[92m  Downloaded[0m futures-sink v0.3.34
+2026-09-13T13:08:46.1517390Z [1m[92m  Downloaded[0m getrandom v0.2.17
+2026-09-13T13:08:46.1619320Z [1m[92m  Downloaded[0m http-body-util v0.1.5
+2026-09-13T13:08:46.1682700Z [1m[92m  Downloaded[0m hyper-rustls v0.27.9
+2026-09-13T13:08:46.1683460Z [1m[92m  Downloaded[0m anstyle v1.0.14
+2026-09-13T13:08:46.1685370Z [1m[92m  Downloaded[0m arbitrary v1.4.2
+2026-09-13T13:08:46.1769520Z [1m[92m  Downloaded[0m ipnet v2.12.1
+2026-09-13T13:08:46.1822590Z [1m[92m  Downloaded[0m jobserver v0.1.35
+2026-09-13T13:08:46.1877420Z [1m[92m  Downloaded[0m lru-slab v0.1.2
+2026-09-13T13:08:46.1893880Z [1m[92m  Downloaded[0m oorandom v11.1.5
+2026-09-13T13:08:46.1908210Z [1m[92m  Downloaded[0m percent-encoding v2.3.2
+2026-09-13T13:08:46.1932170Z [1m[92m  Downloaded[0m potential_utf v0.1.6
+2026-09-13T13:08:46.1959080Z [1m[92m  Downloaded[0m quinn-udp v0.5.15
+2026-09-13T13:08:46.1999250Z [1m[92m  Downloaded[0m rand_core v0.10.1
+2026-09-13T13:08:46.2031320Z [1m[92m  Downloaded[0m rand_pcg v0.10.2
+2026-09-13T13:08:46.2068760Z [1m[92m  Downloaded[0m rustc-hash v2.1.3
+2026-09-13T13:08:46.2119330Z [1m[92m  Downloaded[0m rustc_version v0.4.1
+2026-09-13T13:08:46.2152900Z [1m[92m  Downloaded[0m same-file v1.0.6
+2026-09-13T13:08:46.2183290Z [1m[92m  Downloaded[0m signature v3.0.0
+2026-09-13T13:08:46.2221700Z [1m[92m  Downloaded[0m stable_deref_trait v1.2.1
+2026-09-13T13:08:46.2246430Z [1m[92m  Downloaded[0m subtle v2.6.1
+2026-09-13T13:08:46.2268640Z [1m[92m  Downloaded[0m sync_wrapper v1.0.2
+2026-09-13T13:08:46.2286190Z [1m[92m  Downloaded[0m thiserror v2.0.20
+2026-09-13T13:08:46.2471050Z [1m[92m  Downloaded[0m tinystr v0.8.4
+2026-09-13T13:08:46.2509860Z [1m[92m  Downloaded[0m tinyvec_macros v0.1.1
+2026-09-13T13:08:46.2525890Z [1m[92m  Downloaded[0m tokio-util v0.7.19
+2026-09-13T13:08:46.2709850Z [1m[92m  Downloaded[0m tower-layer v0.3.3
+2026-09-13T13:08:46.2753690Z [1m[92m  Downloaded[0m tower-service v0.3.3
+2026-09-13T13:08:46.2773340Z [1m[92m  Downloaded[0m try-lock v0.2.5
+2026-09-13T13:08:46.2794720Z [1m[92m  Downloaded[0m untrusted v0.9.0
+2026-09-13T13:08:46.2839690Z [1m[92m  Downloaded[0m utf8_iter v1.0.4
+2026-09-13T13:08:46.2896490Z [1m[92m  Downloaded[0m want v0.3.1
+2026-09-13T13:08:46.2912400Z [1m[92m  Downloaded[0m zerovec-derive v0.11.6
+2026-09-13T13:08:46.2945500Z [1m[92m  Downloaded[0m fallible-iterator v0.3.0
+2026-09-13T13:08:46.2964740Z [1m[92m  Downloaded[0m hyper v1.11.0
+2026-09-13T13:08:46.3105930Z [1m[92m  Downloaded[0m litemap v0.8.3
+2026-09-13T13:08:46.3142220Z [1m[92m  Downloaded[0m num-traits v0.2.19
+2026-09-13T13:08:46.3209690Z [1m[92m  Downloaded[0m pin-project-lite v0.2.17
+2026-09-13T13:08:46.3423650Z [1m[92m  Downloaded[0m rustls-pki-types v1.15.1
+2026-09-13T13:08:46.3518960Z [1m[92m  Downloaded[0m security-framework-sys v2.17.0
+2026-09-13T13:08:46.3667190Z [1m[92m  Downloaded[0m shlex v2.0.1
+2026-09-13T13:08:46.3680820Z [1m[92m  Downloaded[0m signal-hook-registry v1.4.8
+2026-09-13T13:08:46.3712090Z [1m[92m  Downloaded[0m slab v0.4.12
+2026-09-13T13:08:46.3785550Z [1m[92m  Downloaded[0m smallvec v1.15.2
+2026-09-13T13:08:46.3835970Z [1m[92m  Downloaded[0m synstructure v0.13.2
+2026-09-13T13:08:46.3836460Z [1m[92m  Downloaded[0m thiserror-impl v2.0.20
+2026-09-13T13:08:46.3850480Z [1m[92m  Downloaded[0m tinytemplate v1.2.1
+2026-09-13T13:08:46.3928620Z [1m[92m  Downloaded[0m walkdir v2.5.0
+2026-09-13T13:08:46.4032380Z [1m[92m  Downloaded[0m writeable v0.6.4
+2026-09-13T13:08:46.4095780Z [1m[92m  Downloaded[0m zerofrom v0.1.8
+2026-09-13T13:08:46.4107570Z [1m[92m  Downloaded[0m zerotrie v0.2.5
+2026-09-13T13:08:46.4522120Z [1m[92m  Downloaded[0m ed25519-dalek v3.0.0
+2026-09-13T13:08:46.4591080Z [1m[92m  Downloaded[0m getrandom v0.4.3
+2026-09-13T13:08:46.4691900Z [1m[92m  Downloaded[0m httparse v1.10.1
+2026-09-13T13:08:46.4745580Z [1m[92m  Downloaded[0m icu_locale_core v2.3.0
+2026-09-13T13:08:46.4901620Z [1m[92m  Downloaded[0m icu_normalizer_data v2.3.0
+2026-09-13T13:08:46.4943480Z [1m[92m  Downloaded[0m icu_properties v2.3.0
+2026-09-13T13:08:46.5010740Z [1m[92m  Downloaded[0m bytes v1.12.1
+2026-09-13T13:08:46.5065130Z [1m[92m  Downloaded[0m log v0.4.34
+2026-09-13T13:08:46.5117300Z [1m[92m  Downloaded[0m once_cell v1.21.4
+2026-09-13T13:08:46.5162360Z [1m[92m  Downloaded[0m semver v1.0.28
+2026-09-13T13:08:46.5201630Z [1m[92m  Downloaded[0m tinyvec v1.12.0
+2026-09-13T13:08:46.5287810Z [1m[92m  Downloaded[0m tracing-core v0.1.36
+2026-09-13T13:08:46.5407840Z [1m[92m  Downloaded[0m yoke v0.8.3
+2026-09-13T13:08:46.5439480Z [1m[92m  Downloaded[0m idna v1.1.0
+2026-09-13T13:08:46.5491100Z [1m[92m  Downloaded[0m rustls-webpki v0.103.15
+2026-09-13T13:08:46.5549980Z [1m[92m  Downloaded[0m tempfile v3.27.0
+2026-09-13T13:08:46.5600830Z [1m[92m  Downloaded[0m icu_collections v2.3.0
+2026-09-13T13:08:46.5714480Z [1m[92m  Downloaded[0m mio v1.2.2
+2026-09-13T13:08:46.5855160Z [1m[92m  Downloaded[0m quinn v0.11.11
+2026-09-13T13:08:46.5955550Z [1m[92m  Downloaded[0m rand v0.10.2
+2026-09-13T13:08:46.6057260Z [1m[92m  Downloaded[0m security-framework v3.7.0
+2026-09-13T13:08:46.6157490Z [1m[92m  Downloaded[0m socket2 v0.6.5
+2026-09-13T13:08:46.6259240Z [1m[92m  Downloaded[0m url v2.5.8
+2026-09-13T13:08:46.6359780Z [1m[92m  Downloaded[0m zerovec v0.11.8
+2026-09-13T13:08:46.6384970Z [1m[92m  Downloaded[0m itertools v0.13.0
+2026-09-13T13:08:46.6500240Z [1m[92m  Downloaded[0m libfuzzer-sys v0.4.13
+2026-09-13T13:08:46.6649310Z [1m[92m  Downloaded[0m tower v0.5.3
+2026-09-13T13:08:46.6861200Z [1m[92m  Downloaded[0m futures-util v0.3.34
+2026-09-13T13:08:46.7220050Z [1m[92m  Downloaded[0m h2 v0.4.19
+2026-09-13T13:08:46.7380410Z [1m[92m  Downloaded[0m regex v1.13.1
+2026-09-13T13:08:46.7540600Z [1m[92m  Downloaded[0m reqwest v0.13.4
+2026-09-13T13:08:46.7661820Z [1m[92m  Downloaded[0m tower-http v0.6.11
+2026-09-13T13:08:46.7912430Z [1m[92m  Downloaded[0m rusqlite v0.40.2
+2026-09-13T13:08:46.8045910Z [1m[92m  Downloaded[0m icu_properties_data v2.3.0
+2026-09-13T13:08:46.8370600Z [1m[92m  Downloaded[0m aws-lc-rs v1.18.0
+2026-09-13T13:08:46.8651910Z [1m[92m  Downloaded[0m quinn-proto v0.11.17
+2026-09-13T13:08:46.8843510Z [1m[92m  Downloaded[0m vcpkg v0.2.15
+2026-09-13T13:08:47.0122610Z [1m[92m  Downloaded[0m regex-syntax v0.8.11
+2026-09-13T13:08:47.0240770Z [1m[92m  Downloaded[0m syn v2.0.119
+2026-09-13T13:08:47.0486510Z [1m[92m  Downloaded[0m rustls v0.23.43
+2026-09-13T13:08:47.0820860Z [1m[92m  Downloaded[0m rustix v1.1.4
+2026-09-13T13:08:47.1563570Z [1m[92m  Downloaded[0m icu_normalizer v2.3.0
+2026-09-13T13:08:47.1733220Z [1m[92m  Downloaded[0m tracing v0.1.44
+2026-09-13T13:08:47.2640680Z [1m[92m  Downloaded[0m regex-automata v0.4.18
+2026-09-13T13:08:47.2964570Z [1m[92m  Downloaded[0m tokio v1.53.1
+2026-09-13T13:08:47.4194930Z [1m[92m  Downloaded[0m ring v0.17.14
+2026-09-13T13:08:47.5137200Z [1m[92m  Downloaded[0m libsqlite3-sys v0.38.2
+2026-09-13T13:08:47.5926930Z [1m[92m  Downloaded[0m aws-lc-sys v0.44.0
+2026-09-13T13:08:48.1900770Z [1m[92m   Compiling[0m proc-macro2 v1.0.107
+2026-09-13T13:08:48.1901620Z [1m[92m   Compiling[0m unicode-ident v1.0.24
+2026-09-13T13:08:48.2573590Z [1m[92m   Compiling[0m quote v1.0.47
+2026-09-13T13:08:48.4553510Z [1m[92m   Compiling[0m libc v0.2.189
+2026-09-13T13:08:49.3965570Z [1m[92m   Compiling[0m syn v3.0.3
+2026-09-13T13:08:49.4803690Z [1m[92m   Compiling[0m syn v2.0.119
+2026-09-13T13:08:54.1663310Z [1m[92m   Compiling[0m synstructure v0.13.2
+2026-09-13T13:08:54.8302810Z [1m[92m   Compiling[0m cfg-if v1.0.4
+2026-09-13T13:08:54.8585180Z [1m[92m   Compiling[0m typenum v1.20.1
+2026-09-13T13:08:54.8679230Z [1m[92m   Compiling[0m hashbrown v0.17.1
+2026-09-13T13:08:55.4450110Z [1m[92m   Compiling[0m equivalent v1.0.2
+2026-09-13T13:08:55.4784270Z [1m[92m   Compiling[0m indexmap v2.14.0
+2026-09-13T13:08:55.6554520Z [1m[92m   Compiling[0m hybrid-array v0.4.14
+2026-09-13T13:08:56.1457190Z [1m[92m   Compiling[0m cpufeatures v0.3.0
+2026-09-13T13:08:56.2008810Z [1m[92m   Compiling[0m block-buffer v0.12.1
+2026-09-13T13:08:56.2233530Z [1m[92m   Compiling[0m crypto-common v0.2.2
+2026-09-13T13:08:56.3375240Z [1m[92m   Compiling[0m verus_syn v0.0.0-2026-08-02-0125 (https://github.com/verus-lang/verus.git?rev=92f466f247f45128c630d1c843fd6e27d2115587#92f466f2)
+2026-09-13T13:08:57.3483460Z [1m[92m   Compiling[0m digest v0.11.3
+2026-09-13T13:08:57.4609820Z [1m[92m   Compiling[0m sha2 v0.11.0
+2026-09-13T13:08:58.2368490Z [1m[92m   Compiling[0m verus_prettyplease v0.0.0-2026-08-09-0044 (https://github.com/verus-lang/verus.git?rev=92f466f247f45128c630d1c843fd6e27d2115587#92f466f2)
+2026-09-13T13:08:58.4416720Z [1m[92m   Compiling[0m serde_core v1.0.229
+2026-09-13T13:08:58.7191040Z [1m[92m   Compiling[0m convert_case v0.4.0
+2026-09-13T13:08:58.9789470Z [1m[92m   Compiling[0m vstd v0.0.0-2026-08-09-0044 (https://github.com/verus-lang/verus.git?rev=92f466f247f45128c630d1c843fd6e27d2115587#92f466f2)
+2026-09-13T13:09:02.3686180Z [1m[92m   Compiling[0m verus_builtin v0.0.0-2026-08-09-0044 (https://github.com/verus-lang/verus.git?rev=92f466f247f45128c630d1c843fd6e27d2115587#92f466f2)
+2026-09-13T13:09:02.4403350Z [1m[92m   Compiling[0m itoa v1.0.18
+2026-09-13T13:09:02.5487780Z [1m[92m   Compiling[0m serde v1.0.229
+2026-09-13T13:09:02.7840770Z [1m[92m   Compiling[0m serde_derive v1.0.229
+2026-09-13T13:09:03.1446160Z [1m[92m   Compiling[0m verus_state_machines_macros v0.0.0-2026-08-02-0125 (https://github.com/verus-lang/verus.git?rev=92f466f247f45128c630d1c843fd6e27d2115587#92f466f2)
+2026-09-13T13:09:05.3879250Z [1m[92m   Compiling[0m verus_builtin_macros v0.0.0-2026-08-09-0044 (https://github.com/verus-lang/verus.git?rev=92f466f247f45128c630d1c843fd6e27d2115587#92f466f2)
+2026-09-13T13:09:08.0806370Z [1m[92m   Compiling[0m errno v0.3.14
+2026-09-13T13:09:08.1523010Z [1m[92m   Compiling[0m zmij v1.0.23
+2026-09-13T13:09:08.3528340Z [1m[92m   Compiling[0m serde_json v1.0.149
+2026-09-13T13:09:08.7689620Z [1m[92m   Compiling[0m memchr v2.8.3
+2026-09-13T13:09:10.9889810Z [1m[92m   Compiling[0m bitflags v2.13.1
+2026-09-13T13:09:11.1625840Z [1m[92m   Compiling[0m jobserver v0.1.35
+2026-09-13T13:09:11.4255730Z [1m[92m   Compiling[0m find-msvc-tools v0.1.11
+2026-09-13T13:09:11.6183810Z [1m[92m   Compiling[0m shlex v2.0.1
+2026-09-13T13:09:11.7196120Z [1m[92m   Compiling[0m cc v1.4.4
+2026-09-13T13:09:13.1324170Z [1m[92m   Compiling[0m once_cell v1.21.4
+2026-09-13T13:09:13.2642550Z [1m[92m   Compiling[0m rustix v1.1.4
+2026-09-13T13:09:14.1928060Z [1m[92m   Compiling[0m peritus-types v0.0.2 (/Users/runner/work/Project-Peritus/Project-Peritus/candidate/crates/foundation/peritus-types)
+2026-09-13T13:09:14.4348960Z [1m[92m   Compiling[0m getrandom v0.4.3
+2026-09-13T13:09:14.6538850Z [1m[92m   Compiling[0m fastrand v2.5.0
+2026-09-13T13:09:14.8099190Z [1m[92m   Compiling[0m tempfile v3.27.0
+2026-09-13T13:09:14.8138080Z [1m[92m   Compiling[0m thiserror v2.0.20
+2026-09-13T13:09:15.0683170Z [1m[92m   Compiling[0m thiserror-impl v2.0.20
+2026-09-13T13:09:15.1634920Z [1m[92m   Compiling[0m pkg-config v0.3.34
+2026-09-13T13:09:15.5724610Z [1m[92m   Compiling[0m subtle v2.6.1
+2026-09-13T13:09:15.6867820Z [1m[92m   Compiling[0m smallvec v1.15.2
+2026-09-13T13:09:15.8820070Z [1m[92m   Compiling[0m pin-project-lite v0.2.17
+2026-09-13T13:09:15.9201900Z [1m[92m   Compiling[0m bytes v1.12.1
+2026-09-13T13:09:16.1277210Z [1m[92m   Compiling[0m peritus-policy v0.0.2 (/Users/runner/work/Project-Peritus/Project-Peritus/candidate/crates/foundation/peritus-policy)
+2026-09-13T13:09:16.6001580Z [1m[92m   Compiling[0m peritus-codec v0.0.2 (/Users/runner/work/Project-Peritus/Project-Peritus/candidate/crates/foundation/peritus-codec)
+2026-09-13T13:09:16.8145880Z [1m[92m   Compiling[0m signal-hook-registry v1.4.8
+2026-09-13T13:09:17.0444850Z [1m[92m   Compiling[0m tokio-macros v2.7.2
+2026-09-13T13:09:17.0932260Z [1m[92m   Compiling[0m mio v1.2.2
+2026-09-13T13:09:17.5031270Z [1m[92m   Compiling[0m socket2 v0.6.5
+2026-09-13T13:09:17.6126550Z [1m[92m   Compiling[0m zerofrom-derive v0.1.7
+2026-09-13T13:09:17.8611210Z [1m[92m   Compiling[0m tokio v1.53.1
+2026-09-13T13:09:18.4573780Z [1m[92m   Compiling[0m semver v1.0.28
+2026-09-13T13:09:18.6453110Z [1m[92m   Compiling[0m rustc_version v0.4.1
+2026-09-13T13:09:18.8216940Z [1m[92m   Compiling[0m zerofrom v0.1.8
+2026-09-13T13:09:18.8764590Z [1m[92m   Compiling[0m peritus-spec v0.0.2 (/Users/runner/work/Project-Peritus/Project-Peritus/candidate/crates/foundation/peritus-spec)
+2026-09-13T13:09:19.1924820Z [1m[92m   Compiling[0m yoke-derive v0.8.2
+2026-09-13T13:09:19.9976440Z [1m[92m   Compiling[0m stable_deref_trait v1.2.1
+2026-09-13T13:09:20.0327370Z [1m[92m   Compiling[0m yoke v0.8.3
+2026-09-13T13:09:20.1388100Z [1m[92m   Compiling[0m curve25519-dalek v5.0.0
+2026-09-13T13:09:20.2960410Z [1m[92m   Compiling[0m zerovec-derive v0.11.6
+2026-09-13T13:09:21.0588340Z [1m[92m   Compiling[0m signature v3.0.0
+2026-09-13T13:09:21.1332340Z [1m[92m   Compiling[0m ed25519 v3.0.0
+2026-09-13T13:09:21.2317610Z [1m[92m   Compiling[0m zerovec v0.11.8
+2026-09-13T13:09:22.3503530Z [1m[92m   Compiling[0m cmake v0.1.58
+2026-09-13T13:09:22.6260500Z [1m[92m   Compiling[0m displaydoc v0.2.7
+2026-09-13T13:09:23.0946570Z [1m[92m   Compiling[0m fs_extra v1.3.0
+2026-09-13T13:09:23.2744180Z [1m[92m   Compiling[0m futures-core v0.3.34
+2026-09-13T13:09:23.3638440Z [1m[92m   Compiling[0m dunce v1.0.5
+2026-09-13T13:09:23.4136260Z [1m[92m   Compiling[0m aws-lc-sys v0.44.0
+2026-09-13T13:09:23.6245510Z [1m[92m   Compiling[0m ed25519-dalek v3.0.0
+2026-09-13T13:09:23.7510230Z [1m[92m   Compiling[0m cfg_aliases v0.2.2
+2026-09-13T13:09:23.7825940Z [1m[92m   Compiling[0m nix v0.31.3
+2026-09-13T13:09:24.0054230Z [1m[92m   Compiling[0m tinystr v0.8.4
+2026-09-13T13:09:24.1136160Z [1m[92m   Compiling[0m writeable v0.6.4
+2026-09-13T13:09:24.2710820Z [1m[92m   Compiling[0m litemap v0.8.3
+2026-09-13T13:09:24.3699620Z [1m[92m   Compiling[0m aws-lc-rs v1.18.0
+2026-09-13T13:09:24.5203170Z [1m[92m   Compiling[0m icu_locale_core v2.3.0
+2026-09-13T13:09:26.1590780Z [1m[92m   Compiling[0m zerotrie v0.2.5
+2026-09-13T13:09:26.3389800Z [1m[92m   Compiling[0m potential_utf v0.1.6
+2026-09-13T13:09:26.4073420Z [1m[92m   Compiling[0m http v1.5.0
+2026-09-13T13:09:27.5844670Z [1m[92m   Compiling[0m zeroize v1.9.0
+2026-09-13T13:09:27.6911580Z [1m[92m   Compiling[0m slab v0.4.12
+2026-09-13T13:09:27.7959460Z [1m[92m   Compiling[0m icu_properties_data v2.3.0
+2026-09-13T13:09:27.9132190Z [1m[92m   Compiling[0m utf8_iter v1.0.4
+2026-09-13T13:09:27.9906200Z [1m[92m   Compiling[0m icu_normalizer_data v2.3.0
+2026-09-13T13:09:28.1015500Z [1m[92m   Compiling[0m icu_collections v2.3.0
+2026-09-13T13:09:28.5439410Z [1m[92m   Compiling[0m icu_provider v2.3.1
+2026-09-13T13:09:28.7189950Z [1m[92m   Compiling[0m peritus-run-settlement v0.0.2 (/Users/runner/work/Project-Peritus/Project-Peritus/candidate/crates/orchestration/peritus-run-settlement)
+2026-09-13T13:09:28.9711080Z [1m[92m   Compiling[0m rustls-pki-types v1.15.1
+2026-09-13T13:09:29.2734910Z [1m[92m   Compiling[0m http-body v1.1.0
+2026-09-13T13:09:29.3325270Z [1m[92m   Compiling[0m tracing-core v0.1.36
+2026-09-13T13:09:29.7341360Z [1m[92m   Compiling[0m futures-macro v0.3.34
+2026-09-13T13:09:30.1993490Z [1m[92m   Compiling[0m rustls v0.23.43
+2026-09-13T13:09:30.2833850Z [1m[92m   Compiling[0m untrusted v0.9.0
+2026-09-13T13:09:30.3242720Z [1m[92m   Compiling[0m winnow v1.0.4
+2026-09-13T13:09:30.5237200Z [1m[92m   Compiling[0m percent-encoding v2.3.2
+2026-09-13T13:09:30.6092620Z [1m[92m   Compiling[0m futures-sink v0.3.34
+2026-09-13T13:09:30.6480450Z [1m[92m   Compiling[0m futures-task v0.3.34
+2026-09-13T13:09:30.7199850Z [1m[92m   Compiling[0m httparse v1.10.1
+2026-09-13T13:09:30.9094310Z [1m[92m   Compiling[0m futures-util v0.3.34
+2026-09-13T13:09:32.5085810Z [1m[92m   Compiling[0m tokio-util v0.7.19
+2026-09-13T13:09:33.2711700Z [1m[92m   Compiling[0m toml_parser v1.1.3+spec-1.1.0
+2026-09-13T13:09:33.8442840Z [1m[92m   Compiling[0m tracing v0.1.44
+2026-09-13T13:09:33.9644810Z [1m[92m   Compiling[0m icu_normalizer v2.3.0
+2026-09-13T13:09:34.3518190Z [1m[92m   Compiling[0m icu_properties v2.3.0
+2026-09-13T13:09:35.2122580Z [1m[92m   Compiling[0m toml_datetime v1.1.1+spec-1.1.0
+2026-09-13T13:09:35.4030510Z [1m[92m   Compiling[0m serde_spanned v1.1.1
+2026-09-13T13:09:35.4763990Z [1m[92m   Compiling[0m core-foundation-sys v0.8.7
+2026-09-13T13:09:35.6046560Z [1m[92m   Compiling[0m try-lock v0.2.5
+2026-09-13T13:09:35.6470240Z [1m[92m   Compiling[0m toml_writer v1.1.2+spec-1.1.0
+2026-09-13T13:09:35.7518260Z [1m[92m   Compiling[0m tower-service v0.3.3
+2026-09-13T13:09:35.7846560Z [1m[92m   Compiling[0m atomic-waker v1.1.2
+2026-09-13T13:09:35.8356250Z [1m[92m   Compiling[0m fnv v1.0.7
+2026-09-13T13:09:35.8744240Z [1m[92m   Compiling[0m h2 v0.4.19
+2026-09-13T13:09:39.3856500Z [1m[92m   Compiling[0m toml v1.1.4+spec-1.1.0
+2026-09-13T13:09:40.9552840Z [1m[92m   Compiling[0m want v0.3.1
+2026-09-13T13:09:41.0802360Z [1m[92m   Compiling[0m idna_adapter v1.2.2
+2026-09-13T13:09:41.4117100Z [1m[92m   Compiling[0m futures-channel v0.3.34
+2026-09-13T13:09:41.5349610Z [1m[92m   Compiling[0m hyper v1.11.0
+2026-09-13T13:09:42.7246210Z [1m[92m   Compiling[0m idna v1.1.0
+2026-09-13T13:09:43.3950170Z [1m[92m   Compiling[0m security-framework-sys v2.17.0
+2026-09-13T13:09:43.4956030Z [1m[92m   Compiling[0m core-foundation v0.10.1
+2026-09-13T13:09:43.7263160Z [1m[92m   Compiling[0m form_urlencoded v1.2.2
+2026-09-13T13:09:43.8178040Z [1m[92m   Compiling[0m sync_wrapper v1.0.2
+2026-09-13T13:09:43.8613070Z [1m[92m   Compiling[0m base64 v0.22.1
+2026-09-13T13:09:44.0980080Z [1m[92m   Compiling[0m ipnet v2.12.1
+2026-09-13T13:09:44.5390280Z [1m[92m   Compiling[0m tower-layer v0.3.3
+2026-09-13T13:09:44.6379430Z [1m[92m   Compiling[0m tower v0.5.3
+2026-09-13T13:09:44.9662070Z [1m[92m   Compiling[0m hyper-util v0.1.20
+2026-09-13T13:09:46.2998140Z [1m[92m   Compiling[0m url v2.5.8
+2026-09-13T13:09:46.9613510Z [1m[92m   Compiling[0m security-framework v3.7.0
+2026-09-13T13:09:48.2535200Z [1m[92m   Compiling[0m vcpkg v0.2.15
+2026-09-13T13:09:48.7376790Z [1m[92m   Compiling[0m log v0.4.34
+2026-09-13T13:09:48.8696760Z [1m[92m   Compiling[0m libsqlite3-sys v0.38.2
+2026-09-13T13:09:49.1051980Z [1m[92m   Compiling[0m tower-http v0.6.11
+2026-09-13T13:09:49.3852020Z [1m[92m   Compiling[0m http-body-util v0.1.5
+2026-09-13T13:09:49.5767970Z [1m[92m   Compiling[0m peritus-role v0.0.2 (/Users/runner/work/Project-Peritus/Project-Peritus/candidate/crates/orchestration/peritus-role)
+2026-09-13T13:09:49.8027590Z [1m[92m   Compiling[0m peritus-run-knowledge v0.0.2 (/Users/runner/work/Project-Peritus/Project-Peritus/candidate/crates/orchestration/peritus-run-knowledge)
+2026-09-13T13:09:53.7478470Z [1m[92m   Compiling[0m peritus-model-protocol v0.0.2 (/Users/runner/work/Project-Peritus/Project-Peritus/candidate/crates/model/peritus-model-protocol)
+2026-09-13T13:09:55.4297900Z [1m[92m   Compiling[0m peritus-context v0.0.2 (/Users/runner/work/Project-Peritus/Project-Peritus/candidate/crates/orchestration/peritus-context)
+2026-09-13T13:09:56.6297140Z [1m[92m   Compiling[0m fallible-iterator v0.3.0
+2026-09-13T13:09:56.8517970Z [1m[92m   Compiling[0m fallible-streaming-iterator v0.1.9
+2026-09-13T13:09:56.9145690Z [1m[92m   Compiling[0m rusqlite v0.40.2
+2026-09-13T13:09:57.8327710Z [1m[92m   Compiling[0m peritus-approval v0.0.2 (/Users/runner/work/Project-Peritus/Project-Peritus/candidate/crates/state/peritus-approval)
+2026-09-13T13:09:58.6992610Z [1m[92m   Compiling[0m peritus-security-policy v0.0.2 (/Users/runner/work/Project-Peritus/Project-Peritus/candidate/crates/foundation/peritus-security-policy)
+2026-09-13T13:09:59.0526690Z [1m[92m   Compiling[0m peritus-security-qualification v0.0.2 (/Users/runner/work/Project-Peritus/Project-Peritus/candidate/crates/app/testing/peritus-security-qualification)
+2026-09-13T13:10:04.4200700Z [1m[92m   Compiling[0m peritus-quality-policy v0.0.2 (/Users/runner/work/Project-Peritus/Project-Peritus/candidate/crates/foundation/peritus-quality-policy)
+2026-09-13T13:10:04.9705370Z [1m[92m   Compiling[0m peritus-budget v0.0.2 (/Users/runner/work/Project-Peritus/Project-Peritus/candidate/crates/foundation/peritus-budget)
+2026-09-13T13:10:06.2734020Z [1m[92m   Compiling[0m peritus-kernel v0.0.2 (/Users/runner/work/Project-Peritus/Project-Peritus/candidate/crates/foundation/peritus-kernel)
+2026-09-13T13:10:06.9053570Z [1m[92m   Compiling[0m libfuzzer-sys v0.4.13
+2026-09-13T13:10:27.5390910Z [1m[92m   Compiling[0m peritus-protocol v0.0.2 (/Users/runner/work/Project-Peritus/Project-Peritus/candidate/crates/foundation/peritus-protocol)
+2026-09-13T13:10:28.6377230Z [1m[92m   Compiling[0m peritus-benchmarks v0.0.2 (/Users/runner/work/Project-Peritus/Project-Peritus/candidate/crates/app/testing/peritus-benchmarks)
+2026-09-13T13:10:31.0658520Z [1m[92m   Compiling[0m fs4 v1.1.0
+2026-09-13T13:10:31.1804520Z [1m[92m   Compiling[0m arbitrary v1.4.2
+2026-09-13T13:10:31.9361020Z [1m[92m   Compiling[0m peritus-artifact-store v0.0.2 (/Users/runner/work/Project-Peritus/Project-Peritus/candidate/crates/state/peritus-artifact-store)
+2026-09-13T13:10:33.1582820Z [1m[92m   Compiling[0m peritus-leases v0.0.2 (/Users/runner/work/Project-Peritus/Project-Peritus/candidate/crates/state/peritus-leases)
+2026-09-13T13:10:33.9731370Z [1m[92m   Compiling[0m peritus-journal v0.0.2 (/Users/runner/work/Project-Peritus/Project-Peritus/candidate/crates/state/peritus-journal)
+2026-09-13T13:10:36.3075910Z [1m[92m   Compiling[0m peritus-projection v0.0.2 (/Users/runner/work/Project-Peritus/Project-Peritus/candidate/crates/state/peritus-projection)
+2026-09-13T13:10:37.3238310Z [1m[92m   Compiling[0m peritus-release-artifacts v0.0.2 (/Users/runner/work/Project-Peritus/Project-Peritus/candidate/crates/app/testing/peritus-release-artifacts)
+2026-09-13T13:10:38.1456960Z [1m[92m   Compiling[0m autocfg v1.5.1
+2026-09-13T13:10:38.3750290Z [1m[92m   Compiling[0m num-traits v0.2.19
+2026-09-13T13:10:38.4998300Z [1m[92m   Compiling[0m peritus-evidence v0.0.2 (/Users/runner/work/Project-Peritus/Project-Peritus/candidate/crates/state/peritus-evidence)
+2026-09-13T13:10:39.7556110Z [1m[92m   Compiling[0m peritus-resilience v0.0.2 (/Users/runner/work/Project-Peritus/Project-Peritus/candidate/crates/app/testing/peritus-resilience)
+2026-09-13T13:10:41.8781650Z [1m[92m   Compiling[0m alloca v0.4.0
+2026-09-13T13:10:42.0050710Z [1m[92m   Compiling[0m half v2.4.1
+2026-09-13T13:10:42.2246410Z [1m[92m   Compiling[0m clap_lex v1.1.0
+2026-09-13T13:10:42.3576420Z [1m[92m   Compiling[0m anstyle v1.0.14
+2026-09-13T13:10:42.4620810Z [1m[92m   Compiling[0m either v1.18.0
+2026-09-13T13:10:42.5797780Z [1m[92m   Compiling[0m ciborium-io v0.2.2
+2026-09-13T13:10:42.6121840Z [1m[92m   Compiling[0m regex-syntax v0.8.11
+2026-09-13T13:10:44.5768750Z [1m[92m   Compiling[0m regex-automata v0.4.18
+2026-09-13T13:10:46.8283590Z [1m[92m   Compiling[0m ciborium-ll v0.2.2
+2026-09-13T13:10:46.9645640Z [1m[92m   Compiling[0m itertools v0.13.0
+2026-09-13T13:10:48.1281520Z [1m[92m   Compiling[0m clap_builder v4.6.6
+2026-09-13T13:10:50.5057600Z [1m[92m   Compiling[0m rustls-webpki v0.103.15
+2026-09-13T13:10:51.8450650Z [1m[92m   Compiling[0m peritus-release-policy v0.0.2 (/Users/runner/work/Project-Peritus/Project-Peritus/candidate/crates/foundation/peritus-release-policy)
+2026-09-13T13:10:52.3310180Z [1m[92m   Compiling[0m cast v0.3.0
+2026-09-13T13:10:52.4396510Z [1m[92m   Compiling[0m same-file v1.0.6
+2026-09-13T13:10:52.5273460Z [1m[92m   Compiling[0m walkdir v2.5.0
+2026-09-13T13:10:52.7850440Z [1m[92m   Compiling[0m criterion-plot v0.8.2
+2026-09-13T13:10:53.8956060Z [1m[92m   Compiling[0m clap v4.6.6
+2026-09-13T13:10:53.9683230Z [1m[92m   Compiling[0m ciborium v0.2.2
+2026-09-13T13:10:54.5226990Z [1m[92m   Compiling[0m tokio-rustls v0.26.4
+2026-09-13T13:10:54.7303910Z [1m[92m   Compiling[0m hyper-rustls v0.27.9
+2026-09-13T13:10:54.9191510Z [1m[92m   Compiling[0m rustls-platform-verifier v0.7.0
+2026-09-13T13:10:55.1847840Z [1m[92m   Compiling[0m reqwest v0.13.4
+2026-09-13T13:10:58.1640430Z [1m[92m   Compiling[0m peritus-provider-core v0.0.2 (/Users/runner/work/Project-Peritus/Project-Peritus/candidate/crates/model/peritus-provider-core)
+2026-09-13T13:11:00.0161240Z [1m[92m   Compiling[0m peritus-bug-discovery v0.0.2 (/Users/runner/work/Project-Peritus/Project-Peritus/candidate/crates/app/testing/peritus-bug-discovery)
+2026-09-13T13:11:00.3823250Z [1m[92m   Compiling[0m regex v1.13.1
+2026-09-13T13:11:00.7325490Z [1m[92m   Compiling[0m peritus-review v0.0.2 (/Users/runner/work/Project-Peritus/Project-Peritus/candidate/crates/orchestration/peritus-review)
+2026-09-13T13:11:00.8362950Z [1m[92m   Compiling[0m peritus-scheduler v0.0.2 (/Users/runner/work/Project-Peritus/Project-Peritus/candidate/crates/orchestration/peritus-scheduler)
+2026-09-13T13:11:03.2292290Z [1m[92m   Compiling[0m peritus-app-protocol v0.0.2 (/Users/runner/work/Project-Peritus/Project-Peritus/candidate/crates/app/peritus-app-protocol)
+2026-09-13T13:11:03.3689440Z [1m[92m   Compiling[0m tinytemplate v1.2.1
+2026-09-13T13:11:03.8091660Z [1m[92m   Compiling[0m page_size v0.6.0
+2026-09-13T13:11:03.8589030Z [1m[92m   Compiling[0m anes v0.1.6
+2026-09-13T13:11:04.0205230Z [1m[92m   Compiling[0m oorandom v11.1.5
+2026-09-13T13:11:04.0847540Z [1m[92m   Compiling[0m criterion v0.8.2
+2026-09-13T13:11:08.0426330Z [1m[92m   Compiling[0m peritus-provider-openai v0.0.2 (/Users/runner/work/Project-Peritus/Project-Peritus/candidate/crates/model/peritus-provider-openai)
+2026-09-13T13:11:10.1443460Z [1m[92m   Compiling[0m peritus-provider-anthropic v0.0.2 (/Users/runner/work/Project-Peritus/Project-Peritus/candidate/crates/model/peritus-provider-anthropic)
+2026-09-13T13:11:10.3707680Z [1m[92m   Compiling[0m peritus-release-qualification v0.0.2 (/Users/runner/work/Project-Peritus/Project-Peritus/candidate/crates/app/testing/peritus-release-qualification)
+2026-09-13T13:11:11.7904300Z [1m[92m   Compiling[0m peritus-performance-qualification v0.0.2 (/Users/runner/work/Project-Peritus/Project-Peritus/candidate/crates/app/testing/peritus-performance-qualification)
+2026-09-13T13:11:12.7619880Z [1m[92m   Compiling[0m peritus-resilience-qualification v0.0.2 (/Users/runner/work/Project-Peritus/Project-Peritus/candidate/crates/app/testing/peritus-resilience-qualification)
+2026-09-13T13:11:14.4995060Z [1m[92m   Compiling[0m peritus-test-support v0.0.2 (/Users/runner/work/Project-Peritus/Project-Peritus/candidate/crates/app/testing/peritus-test-support)
+2026-09-13T13:11:15.7062800Z [1m[92m   Compiling[0m peritus-obligations v0.0.2 (/Users/runner/work/Project-Peritus/Project-Peritus/candidate/crates/orchestration/peritus-obligations)
+2026-09-13T13:11:16.4398680Z [1m[92m   Compiling[0m peritus-conformance v0.0.2 (/Users/runner/work/Project-Peritus/Project-Peritus/candidate/crates/app/testing/peritus-conformance)
+2026-09-13T13:11:32.6604750Z [1m[92m   Compiling[0m peritus-release-operator v0.0.2 (/Users/runner/work/Project-Peritus/Project-Peritus/candidate/crates/app/testing/peritus-release-operator)
+2026-09-13T13:11:38.2087510Z [1m[92m    Finished[0m `test` profile [unoptimized + debuginfo] target(s) in 2m 52s
+2026-09-13T13:11:38.2959240Z [1m[92m     Running[0m unittests src/lib.rs (target/debug/deps/peritus_benchmarks-953df9c791006afd)
+2026-09-13T13:11:38.3051200Z 
+2026-09-13T13:11:38.3051430Z running 10 tests
+2026-09-13T13:11:38.3065410Z test accounting_tests::queue_overflow_is_rejected_without_mutation ... ok
+2026-09-13T13:11:38.3066160Z test accounting_tests::released_run_is_balanced ... ok
+2026-09-13T13:11:38.3066760Z test contracts_tests::legacy_run_context_uses_plan_as_workload ... ok
+2026-09-13T13:11:38.3067380Z test contracts_tests::run_context_carries_an_explicit_workload_binding ... ok
+2026-09-13T13:11:38.3067850Z test identity::tests::artifact_path_rejects_escape ... ok
+2026-09-13T13:11:38.3068360Z test identity::tests::digest_round_trips ... ok
+2026-09-13T13:11:38.3068760Z test identity::tests::stable_id_rejects_whitespace ... ok
+2026-09-13T13:11:38.3069240Z test measurement::tests::rejected_sequence_does_not_advance_the_sink ... ok
+2026-09-13T13:11:38.3070530Z [1m[92m     Running[0m tests/accounting_bounds.rs (target/debug/deps/accounting_bounds-39bfe5cf0a14238f)
+2026-09-13T13:11:38.3071120Z test plan_tests::partial_queue_cycle_ends_with_an_exact_drain ... ok
+2026-09-13T13:11:38.3071720Z test plan_tests::plan_is_reproducible_without_materializing_soak ... ok
+2026-09-13T13:11:38.3072010Z 
+2026-09-13T13:11:38.3080990Z test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+2026-09-13T13:11:38.3081440Z 
+2026-09-13T13:11:38.3144630Z 
+2026-09-13T13:11:38.3144880Z running 2 tests
+2026-09-13T13:11:38.3149430Z test backpressure_requires_an_exact_full_queue ... ok
+2026-09-13T13:11:38.3151320Z test rejected_reservation_does_not_corrupt_lifecycle_balance ... ok
+2026-09-13T13:11:38.3151630Z 
+2026-09-13T13:11:38.3151840Z test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+2026-09-13T13:11:38.3152210Z 
+2026-09-13T13:11:38.3154400Z [1m[92m     Running[0m tests/baseline_regression.rs (target/debug/deps/baseline_regression-68d75382811b1c3f)
+2026-09-13T13:11:38.3197130Z 
+2026-09-13T13:11:38.3197270Z running 2 tests
+2026-09-13T13:11:38.3208580Z test blocking_baseline_regression_prevents_readiness_even_when_slo_is_met ... ok
+2026-09-13T13:11:38.3211330Z test serialized_baseline_is_valid_input_for_a_later_campaign ... ok
+2026-09-13T13:11:38.3212080Z 
+2026-09-13T13:11:38.3212750Z test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+2026-09-13T13:11:38.3213650Z 
+2026-09-13T13:11:38.3214570Z [1m[92m     Running[0m tests/dataset_contract.rs (target/debug/deps/dataset_contract-ba8ff7f95ae76230)
+2026-09-13T13:11:38.3321850Z 
+2026-09-13T13:11:38.3323270Z running 3 tests
+2026-09-13T13:11:38.3351050Z test checked_in_dataset_is_cross_referenced_and_bounded ... ok
+2026-09-13T13:11:38.3354120Z test checked_in_soak_plan_is_lazy_and_deterministic ... ok
+2026-09-13T13:11:38.3360420Z test retained_host_profile_preserves_production_policy ... ok
+2026-09-13T13:11:38.3360820Z 
+2026-09-13T13:11:38.3361070Z test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+2026-09-13T13:11:38.3361420Z 
+2026-09-13T13:11:38.3364990Z [1m[92m     Running[0m tests/evidence_reproducibility.rs (target/debug/deps/evidence_reproducibility-de27994b780b788d)
+2026-09-13T13:11:38.3412280Z 
+2026-09-13T13:11:38.3412580Z running 1 test
+2026-09-13T13:11:38.3418980Z test artifact_order_does_not_change_manifest_digest ... ok
+2026-09-13T13:11:38.3419500Z 
+2026-09-13T13:11:38.3420950Z test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+2026-09-13T13:11:38.3421350Z 
+2026-09-13T13:11:38.3421830Z [1m[92m     Running[0m tests/not_ready.rs (target/debug/deps/not_ready-a9882471feb22760)
+2026-09-13T13:11:38.3511790Z 
+2026-09-13T13:11:38.3512790Z running 1 test
+2026-09-13T13:11:38.3550070Z test missing_execution_and_baseline_can_never_be_ready ... ok
+2026-09-13T13:11:38.3550460Z 
+2026-09-13T13:11:38.3553160Z test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+2026-09-13T13:11:38.3553520Z 
+2026-09-13T13:11:38.3644110Z [1m[92m     Running[0m benches/qualification_core.rs (target/debug/deps/qualification_core-8cf44ebcd18bd75a)
+2026-09-13T13:11:38.3645110Z [1m[92m     Running[0m unittests src/lib.rs (target/debug/deps/peritus_bug_discovery-7a12b176c4af1776)
+2026-09-13T13:11:38.3686720Z 
+2026-09-13T13:11:38.3687120Z running 2 tests
+2026-09-13T13:11:38.3694440Z test provider::tests::checked_seeds_reach_complete_message_and_tool_lifecycles ... ok
+2026-09-13T13:11:38.3702390Z test provider::tests::structured_minimization_preserves_failure_signature_and_completion_reachability ... ok
+2026-09-13T13:11:38.3703020Z 
+2026-09-13T13:11:38.3703440Z test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+2026-09-13T13:11:38.3703900Z 
+2026-09-13T13:11:38.3704400Z [1m[92m     Running[0m unittests src/bin/replay.rs (target/debug/deps/discovery_replay-7d9a43732e407bf0)
+2026-09-13T13:11:38.3825590Z 
+2026-09-13T13:11:38.3826150Z running 0 tests
+2026-09-13T13:11:38.3826390Z 
+2026-09-13T13:11:38.3826700Z test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+2026-09-13T13:11:38.3827100Z 
+2026-09-13T13:11:38.3828290Z [1m[92m     Running[0m unittests src/bin/ndjson.rs (target/debug/deps/ndjson-0da3848b9e2b0031)
+2026-09-13T13:11:38.3920710Z 
+2026-09-13T13:11:38.3921570Z running 0 tests
+2026-09-13T13:11:38.3921960Z 
+2026-09-13T13:11:38.3922370Z test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+2026-09-13T13:11:38.3922700Z 
+2026-09-13T13:11:38.3923550Z [1m[92m     Running[0m unittests src/bin/provider_sequence.rs (target/debug/deps/provider_sequence-32b8f9d8998e92af)
+2026-09-13T13:11:38.4015010Z 
+2026-09-13T13:11:38.4015370Z running 0 tests
+2026-09-13T13:11:38.4016060Z 
+2026-09-13T13:11:38.4016730Z test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+2026-09-13T13:11:38.4017160Z 
+2026-09-13T13:11:38.4017640Z [1m[92m     Running[0m unittests src/bin/sse.rs (target/debug/deps/sse-66ddca90d95b962e)
+2026-09-13T13:11:38.4065220Z 
+2026-09-13T13:11:38.4065510Z running 0 tests
+2026-09-13T13:11:38.4065710Z 
+2026-09-13T13:11:38.4066000Z test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+2026-09-13T13:11:38.4067080Z [1m[92m     Running[0m unittests src/bin/working_state.rs (target/debug/deps/working_state-d89e9e51d5c57125)
+2026-09-13T13:11:38.4067480Z 
+2026-09-13T13:11:38.4159300Z 
+2026-09-13T13:11:38.4159650Z running 0 tests
+2026-09-13T13:11:38.4159890Z 
+2026-09-13T13:11:38.4160170Z test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+2026-09-13T13:11:38.4160670Z 
+2026-09-13T13:11:38.4163300Z [1m[92m     Running[0m tests/corpus_replay.rs (target/debug/deps/corpus_replay-4aaeec46a15e8299)
+2026-09-13T13:11:38.4244030Z 
+2026-09-13T13:11:38.4244440Z running 1 test
+2026-09-13T13:11:38.4301160Z test seed_corpora_replay ... ok
+2026-09-13T13:11:38.4301450Z 
+2026-09-13T13:11:38.4301720Z test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+2026-09-13T13:11:38.4302210Z 
+2026-09-13T13:11:38.4303790Z [1m[92m     Running[0m unittests src/lib.rs (target/debug/deps/peritus_conformance-9931017b22b015e3)
+2026-09-13T13:11:38.4329580Z 
+2026-09-13T13:11:38.4329910Z running 0 tests
+2026-09-13T13:11:38.4330590Z 
+2026-09-13T13:11:38.4331580Z test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+2026-09-13T13:11:38.4332400Z [1m[92m     Running[0m tests/conformance.rs (target/debug/deps/conformance-22f361918b8945da)
+2026-09-13T13:11:38.4332760Z 
+2026-09-13T13:11:38.4447050Z 
+2026-09-13T13:11:38.4448180Z running 60 tests
+2026-09-13T13:11:38.4511600Z test conformance::agent_catalog::agent_catalog_detects_uncertain_effect_redispatch ... ok
+2026-09-13T13:11:38.4512740Z test conformance::agent_catalog::agent_catalog_runs_thirteen_cases_with_fresh_subjects ... ok
+2026-09-13T13:11:38.4514930Z test conformance::cancellation::cancelling_pending_run_uses_subject_raii_without_async_teardown ... ok
+2026-09-13T13:11:38.4517210Z test conformance::cancellation::cancelling_pending_teardown_drops_owned_subject_without_completing_future ... ok
+2026-09-13T13:11:38.4541820Z test conformance::cancellation::pending_future_drop_panic_unwinds_outside_report_containment ... ok
+2026-09-13T13:11:38.4543420Z test conformance::cancellation::pending_teardown_drop_panic_also_unwinds_outside_report_containment ... ok
+2026-09-13T13:11:38.4544420Z test conformance::catalog::plugin_catalog_suite_has_a_stable_nonempty_contract ... ok
+2026-09-13T13:11:38.4545140Z test conformance::collaboration_catalog::collaboration_catalog_rejects_invalid_parentage ... ok
+2026-09-13T13:11:38.4545780Z test conformance::collaboration_catalog::collaboration_catalog_runs_all_ten_cases ... ok
+2026-09-13T13:11:38.4553310Z test conformance::daemon_catalog::daemon_catalog_rejects_read_only_mutation_admission ... ok
+2026-09-13T13:11:38.4554220Z test conformance::daemon_catalog::daemon_catalog_runs_all_twenty_eight_cases ... ok
+2026-09-13T13:11:38.4556440Z test conformance::debugger_catalog::debugger_catalog_rejects_default_surface_leakage ... ok
+2026-09-13T13:11:38.4558030Z test conformance::debugger_catalog::debugger_catalog_runs_all_thirteen_cases ... ok
+2026-09-13T13:11:38.4560170Z test conformance::evaluation_catalog::evaluation_catalog_rejects_default_surface_leakage ... ok
+2026-09-13T13:11:38.4561000Z test conformance::evaluation_catalog::evaluation_catalog_runs_all_thirteen_cases ... ok
+2026-09-13T13:11:38.4563650Z test conformance::evolution_catalog::evolution_catalog_runs_all_fourteen_cases ... ok
+2026-09-13T13:11:38.4564680Z test conformance::gate_catalog::gate_catalog_rejects_implicit_success ... ok
+2026-09-13T13:11:38.4566590Z test conformance::gate_catalog::gate_catalog_runs_all_ten_cases ... ok
+2026-09-13T13:11:38.4567900Z test conformance::harness_catalog::harness_catalog_rejects_protected_asset_drift ... ok
+2026-09-13T13:11:38.4568680Z test conformance::harness_catalog::harness_catalog_runs_all_fourteen_cases ... ok
+2026-09-13T13:11:38.4569420Z test conformance::identity::digest_observations_preserve_exact_bytes_without_hashing_claims ... ok
+2026-09-13T13:11:38.4570120Z test conformance::identity::failure_codes_are_validated_and_have_stable_error_codes ... ok
+2026-09-13T13:11:38.4571720Z test conformance::identity::identifier_error_diagnostics_are_stable ... ok
+2026-09-13T13:11:38.4572220Z test conformance::identity::path_identifiers_accept_canonical_boundaries ... ok
+2026-09-13T13:11:38.4572780Z test conformance::identity::path_identifiers_reject_every_malformed_category ... ok
+2026-09-13T13:11:38.4573370Z test conformance::identity::report_text_rejects_empty_and_oversized_values_without_truncation ... ok
+2026-09-13T13:11:38.4574110Z test conformance::orchestrator_catalog::orchestrator_catalog_rejects_stale_implicit_acceptance ... ok
+2026-09-13T13:11:38.4574770Z test conformance::orchestrator_catalog::orchestrator_catalog_runs_all_twelve_cases ... ok
+2026-09-13T13:11:38.4579020Z test conformance::panic_paths::every_case_panic_form_is_contained_teardown_runs_and_later_cases_continue ... ok
+2026-09-13T13:11:38.4586520Z test conformance::panic_paths::panic_payloads_are_normalized_bounded_and_preserve_poll_then_drop_order ... ok
+2026-09-13T13:11:38.4587410Z test conformance::panic_paths::setup_panics_are_failed_not_executed_and_cannot_claim_pass ... ok
+2026-09-13T13:11:38.4588300Z test conformance::panic_paths::suite_subject_and_case_metadata_panics_are_invalid_without_partial_cases ... ok
+2026-09-13T13:11:38.4590370Z test conformance::panic_paths::teardown_panic_is_preserved_separately_from_a_passing_case ... ok
+2026-09-13T13:11:38.4592540Z test conformance::process_catalog::process_catalog_executes_complete_contract_with_a_fresh_subject_per_case ... ok
+2026-09-13T13:11:38.4595670Z test conformance::process_catalog::process_catalog_rejects_invalid_offsets_and_incomplete_deadline_cleanup ... ok
+2026-09-13T13:11:38.4596690Z test conformance::protocol_catalog::protocol_catalog_runs_all_sixteen_cases ... ok
+2026-09-13T13:11:38.4597540Z test conformance::protocol_catalog::protocol_subject_type_is_independent_from_generic_runner_subject ... ok
+2026-09-13T13:11:38.4598330Z test conformance::provider_catalog::provider_catalog_accepts_explicit_final_result_ordering_without_synthetic_duplicates ... ok
+2026-09-13T13:11:38.4599940Z test conformance::provider_catalog::provider_catalog_reports_capability_lies_and_ambiguous_retries ... ok
+2026-09-13T13:11:38.4600670Z test conformance::provider_catalog::provider_catalog_runs_fourteen_cases_with_fresh_subjects ... ok
+2026-09-13T13:11:38.4603210Z test conformance::review_catalog::review_catalog_rejects_stale_implicit_completion ... ok
+2026-09-13T13:11:38.4604450Z test conformance::review_catalog::review_catalog_runs_all_ten_cases ... ok
+2026-09-13T13:11:38.4605800Z test conformance::runner_paths::assertion_and_teardown_failures_are_both_preserved ... ok
+2026-09-13T13:11:38.4606520Z test conformance::runner_paths::cases_run_in_id_order_with_fresh_subjects_and_exact_teardown ... ok
+2026-09-13T13:11:38.4607160Z test conformance::runner_paths::duplicate_ids_invalidate_before_any_subject_is_created ... ok
+2026-09-13T13:11:38.4608000Z test conformance::runner_paths::multiple_infrastructure_failures_in_one_case_count_once ... ok
+2026-09-13T13:11:38.4609210Z test conformance::runner_paths::observations_keep_explicit_order_and_pending_future_completes ... ok
+2026-09-13T13:11:38.4609890Z test conformance::runner_paths::repeated_deterministic_runs_produce_equal_reports ... ok
+2026-09-13T13:11:38.4610700Z test conformance::runner_paths::typed_setup_failure_is_not_executed_and_has_no_teardown ... ok
+2026-09-13T13:11:38.4612070Z test conformance::sandbox_catalog::sandbox_catalog_executes_complete_contract_with_a_fresh_subject_per_case ... ok
+2026-09-13T13:11:38.4613130Z test conformance::sandbox_catalog::sandbox_catalog_rejects_self_consistent_but_wrong_resource_observations ... ok
+2026-09-13T13:11:38.4613810Z test conformance::scheduler_catalog::scheduler_catalog_rejects_nonunique_dispatch_ownership ... ok
+2026-09-13T13:11:38.4614430Z test conformance::scheduler_catalog::scheduler_catalog_runs_all_ten_cases ... ok
+2026-09-13T13:11:38.4615060Z test conformance::state_catalog::journal_catalog_executes_three_authoritative_contract_cases ... ok
+2026-09-13T13:11:38.4616430Z test conformance::state_catalog::replay_catalog_executes_determinism_and_restart_cases ... ok
+2026-09-13T13:11:38.4618420Z test conformance::state_catalog::workspace_catalog_executes_git_patch_authority_and_recovery_cases ... ok
+2026-09-13T13:11:38.4626440Z test conformance::tool_catalog::tool_catalog_detects_rejected_dispatch_and_duplicate_replay_effects ... ok
+2026-09-13T13:11:38.4627540Z test conformance::tool_catalog::tool_catalog_executes_complete_contract_with_a_fresh_subject_per_case ... ok
+2026-09-13T13:11:38.4630490Z [1m[92m     Running[0m unittests src/lib.rs (target/debug/deps/peritus_performance_qualification-0cc87708f6775df1)
+2026-09-13T13:11:38.4632090Z test conformance::trace_catalog::trace_catalog_rejects_default_surface_leakage ... ok
+2026-09-13T13:11:38.4632750Z test conformance::trace_catalog::trace_catalog_runs_all_nine_cases ... ok
+2026-09-13T13:11:38.4634670Z 
+2026-09-13T13:11:38.4634890Z test result: ok. 60 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+2026-09-13T13:11:38.4635500Z 
+2026-09-13T13:11:38.5029740Z 
+2026-09-13T13:11:38.5030070Z running 35 tests
+2026-09-13T13:11:38.5169660Z test campaign_tests::machine_mismatch_is_rejected_before_daemon_launch ... ok
+2026-09-13T13:11:38.5172690Z test campaign_tests::one_hour_is_the_long_horizon_boundary ... ok
+2026-09-13T13:11:38.5173720Z test cancellation::tests::cancellation_is_shared_by_every_clone ... ok
+2026-09-13T13:11:38.5300210Z test event_payload::tests::encoded_event_payload_is_exact_and_too_small_is_rejected ... ok
+2026-09-13T13:11:38.5302960Z test evidence::tests::publication_refuses_an_existing_bundle ... ok
+2026-09-13T13:11:38.5569070Z test evidence_io::tests::executable_copy_is_private_and_content_bound ... ok
+2026-09-13T13:11:38.5591400Z test evidence_io::tests::executable_copy_rejects_identity_drift ... ok
+2026-09-13T13:11:38.5594930Z test file_digest::tests::streamed_digest_matches_in_memory_contract ... ok
+2026-09-13T13:11:38.5595930Z test identity::tests::identities_are_nonzero_and_distinct ... ok
+2026-09-13T13:11:38.5596660Z test machine::tests::exact_observation_matches_reference ... ok
+2026-09-13T13:11:38.5597290Z test machine::tests::mismatch_order_is_stable_and_complete ... ok
+2026-09-13T13:11:38.5608680Z test operator::tests::baseline_bytes_must_match_the_explicitly_accepted_digest ... ok
+2026-09-13T13:11:38.5609600Z test operator::tests::complete_command_is_parsed_without_environment_state ... ok
+2026-09-13T13:11:38.5611970Z test operator::tests::duplicate_and_unknown_options_are_rejected ... ok
+2026-09-13T13:11:38.5612900Z test operator::tests::help_is_not_reported_as_a_failure ... ok
+2026-09-13T13:11:38.5614050Z test operator::tests::scratch_directory_is_required_instead_of_an_ambient_default ... ok
+2026-09-13T13:11:38.5615190Z test probe::tests::amd_core_suffix_is_removed_from_class_name ... ok
+2026-09-13T13:11:38.5616390Z test probe::tests::usable_memory_is_rounded_up_to_the_hardware_class ... ok
+2026-09-13T13:11:38.5653290Z test runner::tests::cancellation_during_final_idle_tail_is_not_a_completed_horizon ... ok
+2026-09-13T13:11:38.5657680Z test runner::tests::expired_load_window_does_not_drain_backlog_and_claim_completion ... ok
+2026-09-13T13:11:38.5660980Z test runner::tests::one_step_plan_completes_with_exact_receipt ... ok
+2026-09-13T13:11:38.5661660Z test runner::tests::operation_started_inside_window_may_finish_after_its_end ... ok
+2026-09-13T13:11:38.5662210Z test runner::tests::pre_requested_cancellation_produces_cancelled_receipt ... ok
+2026-09-13T13:11:38.5662770Z test runner::tests::successful_run_observes_the_complete_declared_horizon ... ok
+2026-09-13T13:11:38.5663330Z test runner::tests::wait_overshooting_the_window_does_not_start_another_operation ... ok
+2026-09-13T13:11:38.6139860Z test sampling::tests::aligned_event_sequence_retains_samples_across_the_complete_horizon ... ok
+2026-09-13T13:11:38.6154630Z test sampling::tests::other_metrics_global_sequences_do_not_change_event_sampling ... ok
+2026-09-13T13:11:38.6161460Z test sampling::tests::reservoir_is_bounded_and_merged_sequences_are_contiguous ... ok
+2026-09-13T13:11:38.6162110Z test shared_accounting::tests::clones_update_one_balanced_ledger ... ok
+2026-09-13T13:11:38.6163070Z test storage::tests::scratch_path_cannot_be_lossily_reencoded_into_daemon_configuration ... ok
+2026-09-13T13:11:38.6167810Z test storage::tests::subjects_use_the_explicit_directory_and_release_their_owned_path ... ok
+2026-09-13T13:11:38.6176370Z test storage::tests::substituted_or_non_directory_scratch_is_rejected ... ok
+2026-09-13T13:11:38.6180720Z test subject::event_load::engine::tests::cancellation_does_not_offer_work_and_releases_idle_workers ... ok
+2026-09-13T13:11:38.6247680Z test subject::event_load::engine::tests::panicked_worker_is_reported_and_every_owned_worker_is_joined ... ok
+2026-09-13T13:11:39.6492630Z test subject::event_load::engine::tests::slow_worker_does_not_throttle_arrivals_or_drain_expired_backlog ... ok
+2026-09-13T13:11:39.6494370Z 
+2026-09-13T13:11:39.6494690Z test result: ok. 35 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.15s
+2026-09-13T13:11:39.6495060Z 
+2026-09-13T13:11:39.6496180Z [1m[92m     Running[0m unittests src/bin/peritus-h3.rs (target/debug/deps/peritus_h3-3b8fdced9d71f2eb)
+2026-09-13T13:11:39.6673410Z 
+2026-09-13T13:11:39.6673920Z running 0 tests
+2026-09-13T13:11:39.6674220Z 
+2026-09-13T13:11:39.6674580Z test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+2026-09-13T13:11:39.6675070Z 
+2026-09-13T13:11:39.6676070Z [1m[92m     Running[0m tests/campaign_evidence_smoke.rs (target/debug/deps/campaign_evidence_smoke-43ecd35691f5a4fb)
+2026-09-13T13:11:39.6769340Z 
+2026-09-13T13:11:39.6769920Z running 2 tests
+2026-09-13T13:11:39.6770560Z test real_operator_publishes_a_complete_atomic_bundle ... ignored, set PERITUS_H3_DAEMON to a built peritusd and invoke explicitly
+2026-09-13T13:11:39.6771430Z test real_operator_retains_failed_horizon_without_baseline_or_later_work ... ignored, set PERITUS_H3_DAEMON to a built peritusd and invoke explicitly
+2026-09-13T13:11:39.6771980Z 
+2026-09-13T13:11:39.6772260Z test result: ok. 0 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out; finished in 0.00s
+2026-09-13T13:11:39.6772580Z 
+2026-09-13T13:11:39.6779300Z [1m[92m     Running[0m tests/event_fidelity.rs (target/debug/deps/event_fidelity-ad6e890b9c7333e8)
+2026-09-13T13:11:39.6877470Z 
+2026-09-13T13:11:39.6877670Z running 2 tests
+2026-09-13T13:11:39.6878300Z test native_event_bytes_and_streaming_evidence_match_the_journal ... ignored, requires PERITUS_H3_DAEMON and PERITUS_H3_SCRATCH; short native fidelity check
+2026-09-13T13:11:39.6879330Z test production_event_append_acceptance ... ignored, 120-second acceptance; requires explicit fresh PERITUS_H3_ACCEPTANCE_OUTPUT
+2026-09-13T13:11:39.6879880Z 
+2026-09-13T13:11:39.6880140Z test result: ok. 0 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out; finished in 0.00s
+2026-09-13T13:11:39.6880490Z 
+2026-09-13T13:11:39.6884960Z [1m[92m     Running[0m tests/general_capability.rs (target/debug/deps/general_capability-9adb438d48daa706)
+2026-09-13T13:11:39.6987330Z 
+2026-09-13T13:11:39.6987630Z running 1 test
+2026-09-13T13:11:39.7013830Z test measured_results_decide_performance_acceptance ... ok
+2026-09-13T13:11:39.7014090Z 
+2026-09-13T13:11:39.7014290Z test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+2026-09-13T13:11:39.7014630Z 
+2026-09-13T13:11:39.7015940Z [1m[92m     Running[0m tests/integrated_smoke.rs (target/debug/deps/integrated_smoke-a1d871a03a9bbbc7)
+2026-09-13T13:11:39.7100650Z 
+2026-09-13T13:11:39.7101100Z running 2 tests
+2026-09-13T13:11:39.7101740Z test real_daemon_accepts_a_complete_scheduler_lifecycle ... ignored, set PERITUS_H3_DAEMON to a built peritusd and invoke explicitly
+2026-09-13T13:11:39.7102990Z test real_daemon_recovers_and_accepts_a_successor_event ... ignored, set PERITUS_H3_DAEMON to a built peritusd and invoke explicitly
+2026-09-13T13:11:39.7103510Z 
+2026-09-13T13:11:39.7103730Z test result: ok. 0 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out; finished in 0.00s
+2026-09-13T13:11:39.7104080Z 
+2026-09-13T13:11:39.7105790Z [1m[92m     Running[0m unittests src/lib.rs (target/debug/deps/peritus_release_artifacts-4b6b8659b5a230a0)
+2026-09-13T13:11:39.7133290Z 
+2026-09-13T13:11:39.7133610Z running 8 tests
+2026-09-13T13:11:39.7137430Z test artifact::tests::inventory_is_path_sorted_and_deterministic ... ok
+2026-09-13T13:11:39.7138000Z test artifact::tests::release_path_rejects_parent_escape ... ok
+2026-09-13T13:11:39.7138510Z test binding::tests::commit_requires_full_lowercase_identity ... ok
+2026-09-13T13:11:39.7139000Z test binding::tests::version_rejects_leading_zero ... ok
+2026-09-13T13:11:39.7139470Z test identity::tests::digest_round_trips_through_canonical_hex ... ok
+2026-09-13T13:11:39.7139970Z test identity::tests::uppercase_digest_is_rejected ... ok
+2026-09-13T13:11:39.7143570Z test signature::tests::rejects_payload_substitution ... ok
+2026-09-13T13:11:39.7148350Z test signature::tests::verifies_public_rfc_vector ... ok
+2026-09-13T13:11:39.7148620Z 
+2026-09-13T13:11:39.7148930Z test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+2026-09-13T13:11:39.7149310Z 
+2026-09-13T13:11:39.7149740Z [1m[92m     Running[0m tests/release_contracts.rs (target/debug/deps/release_contracts-39e8337dc0430be2)
+2026-09-13T13:11:39.7175440Z 
+2026-09-13T13:11:39.7175830Z running 3 tests
+2026-09-13T13:11:39.7180450Z test independent_builds_compare_exact_paths_sizes_and_hashes ... ok
+2026-09-13T13:11:39.7182310Z test same_builder_cannot_claim_independent_reproducibility ... ok
+2026-09-13T13:11:39.7184720Z test spdx_and_provenance_are_deterministic_and_candidate_bound ... ok
+2026-09-13T13:11:39.7184990Z 
+2026-09-13T13:11:39.7185250Z test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+2026-09-13T13:11:39.7185590Z 
+2026-09-13T13:11:39.7187050Z [1m[92m     Running[0m unittests src/main.rs (target/debug/deps/peritus_release_operator-c8b48b8b8607e0b3)
+2026-09-13T13:11:39.7211740Z 
+2026-09-13T13:11:39.7211980Z running 6 tests
+2026-09-13T13:11:39.7213320Z test args::tests::generate_requires_one_record ... ok
+2026-09-13T13:11:39.7213990Z test args::tests::publication_requires_both_attestation_bundles ... ok
+2026-09-13T13:11:39.7214590Z test cargo_graph::tests::component_identity_is_portable ... ok
+2026-09-13T13:11:39.7215700Z test clock::tests::epoch_and_leap_day_are_exact ... ok
+2026-09-13T13:11:39.7216100Z test evidence::tests::checksum_parser_accepts_one_canonical_digest ... ok
+2026-09-13T13:11:39.7216670Z test package_record::tests::package_paths_stay_below_the_workspace ... ok
+2026-09-13T13:11:39.7217030Z 
+2026-09-13T13:11:39.7217230Z test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+2026-09-13T13:11:39.7217570Z 
+2026-09-13T13:11:39.7218400Z [1m[92m     Running[0m unittests src/lib.rs (target/debug/deps/peritus_release_qualification-df2aa2080dade6e3)
+2026-09-13T13:11:39.7321300Z 
+2026-09-13T13:11:39.7322160Z running 8 tests
+2026-09-13T13:11:39.7341520Z test criteria::tests::catalog_is_exactly_twenty_five_and_stably_numbered ... ok
+2026-09-13T13:11:39.7359800Z test criteria::tests::empty_mapping_set_fails_closed ... ok
+2026-09-13T13:11:39.7371840Z test operator::args::tests::envelope_requires_the_complete_closed_argument_set ... ok
+2026-09-13T13:11:39.7391030Z test operator::args::tests::verify_requires_public_material ... ok
+2026-09-13T13:11:39.7391890Z test operator::files::tests::exact_material_accepts_raw_and_lowercase_hex ... ok
+2026-09-13T13:11:39.7396860Z test operator::plan::tests::checked_operator_template_matches_the_strict_plan_and_remains_not_satisfied ... ok
+2026-09-13T13:11:39.7398390Z test verified_policy::tests::digest_drift_never_reaches_verified_policy ... ok
+2026-09-13T13:11:39.7399540Z test verified_policy::tests::exact_composition_reaches_verified_policy_and_remains_not_ready_without_evidence ... ok
+2026-09-13T13:11:39.7399950Z 
+2026-09-13T13:11:39.7400160Z test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+2026-09-13T13:11:39.7400450Z 
+2026-09-13T13:11:39.7402420Z [1m[92m     Running[0m unittests src/bin/peritus_h4.rs (target/debug/deps/peritus_h4-0a67fa7bf711bce7)
+2026-09-13T13:11:39.7505080Z 
+2026-09-13T13:11:39.7505370Z running 0 tests
+2026-09-13T13:11:39.7505600Z 
+2026-09-13T13:11:39.7505920Z test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+2026-09-13T13:11:39.7506230Z 
+2026-09-13T13:11:39.7507520Z [1m[92m     Running[0m tests/evidence_operator.rs (target/debug/deps/evidence_operator-97b9149ff37f378f)
+2026-09-13T13:11:39.7595470Z 
+2026-09-13T13:11:39.7595830Z running 2 tests
+2026-09-13T13:11:39.7907070Z test operator_prepares_exact_envelope_and_admits_only_matching_signature ... ok
+2026-09-13T13:11:39.7982500Z test operator_rejects_payload_substitution_after_signing ... ok
+2026-09-13T13:11:39.7983020Z 
+2026-09-13T13:11:39.7983220Z test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+2026-09-13T13:11:39.7983500Z 
+2026-09-13T13:11:39.7985330Z [1m[92m     Running[0m tests/fail_closed.rs (target/debug/deps/fail_closed-e168df0302e00e5a)
+2026-09-13T13:11:39.8076600Z 
+2026-09-13T13:11:39.8076910Z running 2 tests
+2026-09-13T13:11:39.8093240Z test missing_inputs_are_not_ready_and_policy_is_not_called ... ok
+2026-09-13T13:11:39.8094160Z test provisioning_failure_is_retained_for_every_required_campaign ... ok
+2026-09-13T13:11:39.8094400Z 
+2026-09-13T13:11:39.8094770Z test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+2026-09-13T13:11:39.8095140Z 
+2026-09-13T13:11:39.8098230Z [1m[92m     Running[0m tests/finalize_operator.rs (target/debug/deps/finalize_operator-c8b2df532de13ed8)
+2026-09-13T13:11:39.8198210Z 
+2026-09-13T13:11:39.8198480Z running 2 tests
+2026-09-13T13:11:39.9322340Z test finalizer_emits_one_ready_no_overwrite_bundle ... ok
+2026-09-13T13:11:39.9982440Z test finalizer_rejects_unsigned_cleanup_substitution ... ok
+2026-09-13T13:11:39.9983650Z 
+2026-09-13T13:11:39.9985310Z [1m[92m     Running[0m unittests examples/claude_live_account.rs (target/debug/examples/claude_live_account-bf9aa630ccd99fe8)
+2026-09-13T13:11:39.9985930Z test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.18s
+2026-09-13T13:11:39.9986240Z 
+2026-09-13T13:11:40.0110450Z 
+2026-09-13T13:11:40.0110980Z running 0 tests
+2026-09-13T13:11:40.0111350Z 
+2026-09-13T13:11:40.0111790Z test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+2026-09-13T13:11:40.0112780Z [1m[92m     Running[0m unittests examples/codex_live_account.rs (target/debug/examples/codex_live_account-832d280af645d850)
+2026-09-13T13:11:40.0113180Z 
+2026-09-13T13:11:40.0225060Z 
+2026-09-13T13:11:40.0225550Z running 0 tests
+2026-09-13T13:11:40.0225740Z 
+2026-09-13T13:11:40.0226090Z test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+2026-09-13T13:11:40.0226770Z 
+2026-09-13T13:11:40.0228880Z [1m[92m     Running[0m unittests src/lib.rs (target/debug/deps/peritus_resilience-041ed1c0ffae2a82)
+2026-09-13T13:11:40.0254880Z 
+2026-09-13T13:11:40.0255190Z running 8 tests
+2026-09-13T13:11:40.0257010Z test cancellation::tests::abandoning_owner_cancels_every_clone ... ok
+2026-09-13T13:11:40.0257560Z test cancellation::tests::completed_owner_does_not_report_cancellation ... ok
+2026-09-13T13:11:40.0258500Z test native::process_tree::macos::tests::libproc_counts_remain_bounded_and_negative_results_fail ... ok
+2026-09-13T13:11:40.0259300Z test native::process_tree::macos::tests::libproc_native_failed_query_returns_zero_but_cannot_prove_cleanup ... ok
+2026-09-13T13:11:40.0260040Z test native::process_tree::macos::tests::libproc_native_live_group_is_not_empty ... ok
+2026-09-13T13:11:40.0260700Z test native::process_tree::macos::tests::libproc_query_clears_stale_errno_before_observing_empty_group ... ok
+2026-09-13T13:11:40.0261320Z test native::process_tree::macos::tests::libproc_zero_with_error_cannot_prove_cleanup ... ok
+2026-09-13T13:11:40.0263350Z test report_json::tests::projection_retains_verdict_counts_failure_and_canonical_digest ... ok
+2026-09-13T13:11:40.0264140Z [1m[92m     Running[0m tests/catalog.rs (target/debug/deps/catalog-3dd13d6bbe107b05)
+2026-09-13T13:11:40.0264420Z 
+2026-09-13T13:11:40.0264640Z test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+2026-09-13T13:11:40.0265000Z 
+2026-09-13T13:11:40.0288690Z 
+2026-09-13T13:11:40.0289980Z running 3 tests
+2026-09-13T13:11:40.0291120Z test production_catalog_has_both_sides_of_every_commit ... ok
+2026-09-13T13:11:40.0292370Z test production_catalog_is_complete_unique_and_stably_sorted ... ok
+2026-09-13T13:11:40.0293490Z test production_catalog_kills_daemon_in_every_active_phase ... ok
+2026-09-13T13:11:40.0293790Z 
+2026-09-13T13:11:40.0294050Z test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+2026-09-13T13:11:40.0295290Z [1m[92m     Running[0m tests/native_controller.rs (target/debug/deps/native_controller-6a829e330bf6a474)
+2026-09-13T13:11:40.0295620Z 
+2026-09-13T13:11:40.0401430Z 
+2026-09-13T13:11:40.0404040Z running 9 tests
+2026-09-13T13:11:40.2584460Z test controller_failure_retains_bounded_stderr_diagnostics ... ok
+2026-09-13T13:11:40.3528800Z test diagnostics::cleanup_failure_identifies_the_exact_case_and_observed_state ... ok
+2026-09-13T13:11:40.4627930Z test diagnostics::rejection_failure_identifies_the_exact_case_and_observed_state ... ok
+2026-09-13T13:11:40.9624720Z test drain::cleanup_waits_for_a_short_lived_owned_descendant ... ok
+2026-09-13T13:11:41.0850610Z test dropping_a_pending_run_kills_the_controller_and_its_descendant ... ok
+2026-09-13T13:11:49.1185310Z test false_retained_digest_fails_recovery_but_each_controller_still_cleans_up ... ok
+2026-09-13T13:11:49.1193950Z test immutable_controller_resource_is_bound_by_digest ... ok
+2026-09-13T13:11:56.2388940Z test persistent_controller_qualifies_all_43_fresh_subjects_and_retains_evidence ... FAILED
+2026-09-13T13:12:01.5622620Z test stale_prepare_response_is_rejected_and_the_subject_still_cleans_up ... ok
+2026-09-13T13:12:01.5623230Z 
+2026-09-13T13:12:01.5623340Z failures:
+2026-09-13T13:12:01.5623550Z 
+2026-09-13T13:12:01.5623930Z ---- persistent_controller_qualifies_all_43_fresh_subjects_and_retains_evidence stdout ----
+2026-09-13T13:12:01.5624360Z 
+2026-09-13T13:12:01.5624980Z thread 'persistent_controller_qualifies_all_43_fresh_subjects_and_retains_evidence' (74227) panicked at crates/app/testing/peritus-resilience/tests/native_controller.rs:40:5:
+2026-09-13T13:12:01.5626400Z assertion `left == right` failed: native H1 failures: [("h1.daemon-kill.gates-pending", [Subject { phase: Cleanup, error: SubjectError { code: Supervision, context: QualificationText("native controller was released"), retryable: false } }])]
+2026-09-13T13:12:01.5628160Z   left: NotReadyForProduction(ScenarioFailure)
+2026-09-13T13:12:01.5628640Z  right: Ready
+2026-09-13T13:12:01.5628810Z 
+2026-09-13T13:12:01.5628860Z 
+2026-09-13T13:12:01.5629030Z failures:
+2026-09-13T13:12:01.5630090Z     persistent_controller_qualifies_all_43_fresh_subjects_and_retains_evidence
+2026-09-13T13:12:01.5630520Z 
+2026-09-13T13:12:01.5630780Z test result: FAILED. 8 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 21.51s
+2026-09-13T13:12:01.5631650Z 
+2026-09-13T13:12:01.5642700Z [1m[91merror[0m: test failed, to rerun pass `-p peritus-resilience --test native_controller`
+2026-09-13T13:12:01.5761460Z error[PERITUS-XTASK-METADATA-001]: CI shard `testing` failed during Test with status exit status: 101
+2026-09-13T13:12:01.5804560Z ##[error]Process completed with exit code 1.
+2026-09-13T13:12:01.5990100Z Post job cleanup.
+2026-09-13T13:12:01.9479420Z [command]/opt/homebrew/bin/git version
+2026-09-13T13:12:01.9674860Z git version 2.55.0
+2026-09-13T13:12:01.9691930Z Copying '/Users/runner/.gitconfig' to '/Users/runner/work/_temp/dd938df7-4f42-4f29-ac94-dea8498ba82e/.gitconfig'
+2026-09-13T13:12:01.9698120Z Temporarily overriding HOME='/Users/runner/work/_temp/dd938df7-4f42-4f29-ac94-dea8498ba82e' before making global git config changes
+2026-09-13T13:12:01.9699060Z Adding repository directory to the temporary git global config as a safe directory
+2026-09-13T13:12:01.9702000Z [command]/opt/homebrew/bin/git config --global --add safe.directory /Users/runner/work/Project-Peritus/Project-Peritus/candidate
+2026-09-13T13:12:01.9805540Z Removing SSH command configuration
+2026-09-13T13:12:01.9810140Z [command]/opt/homebrew/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-09-13T13:12:01.9895400Z [command]/opt/homebrew/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-09-13T13:12:02.0672220Z Removing HTTP extra header
+2026-09-13T13:12:02.0675810Z [command]/opt/homebrew/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-09-13T13:12:02.0732730Z [command]/opt/homebrew/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-09-13T13:12:02.1414030Z Removing includeIf entries pointing to credentials config files
+2026-09-13T13:12:02.1417710Z [command]/opt/homebrew/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-09-13T13:12:02.1470850Z [command]/opt/homebrew/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-09-13T13:12:02.2231100Z Cleaning up orphan processes
+
+entry-raw-end
+entry-metadata-bytes=149
+{"bytes":542,"finding_id":"FINDING-0001","label":"precursor-abandonment","sha256":"e65445fa6255cfb90c04e9dd4f205deacd320041e19b07ee65d00ba02bf73e81"}
+entry-raw-begin
+{
+  "candidate_commit": "5cbd9efd5ef7719b1505d64350df56e1a0b58892",
+  "status": "abandoned-for-source-fix",
+  "recorded_at": "2026-09-13T14:27:04.911253+00:00",
+  "reason": "Confirmed macOS native controller cleanup double-wait race in frozen source; preparing repaired candidate and complete fresh132 qualification.",
+  "completed_commands_retained": 17,
+  "active_command": "cargo verus verify --package peritus-daemon --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20",
+  "approval": false
+}
+
+entry-raw-end
+entry-metadata-bytes=150
+{"bytes":2794,"finding_id":"FINDING-0001","label":"resilience-full-suite","sha256":"9e8d8b88bcdafda94311f68467713d8ceb1d0bcfd2b1b4e02ab13907c201fae1"}
+entry-raw-begin
+   Compiling peritus-resilience v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/app/testing/peritus-resilience)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 2.09s
+     Running unittests src/lib.rs (target/debug/deps/peritus_resilience-cef643871a6171b3)
+
+running 6 tests
+test cancellation::tests::abandoning_owner_cancels_every_clone ... ok
+test native::process_tree::macos::tests::libproc_counts_remain_bounded_and_negative_results_fail ... ok
+test cancellation::tests::completed_owner_does_not_report_cancellation ... ok
+test native::process_tree::macos::tests::libproc_query_clears_stale_errno_before_observing_empty_group ... ok
+test native::process_tree::macos::tests::libproc_zero_with_error_cannot_prove_cleanup ... ok
+test report_json::tests::projection_retains_verdict_counts_failure_and_canonical_digest ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/catalog.rs (target/debug/deps/catalog-21e4d0c0ed5776aa)
+
+running 3 tests
+test production_catalog_kills_daemon_in_every_active_phase ... ok
+test production_catalog_is_complete_unique_and_stably_sorted ... ok
+test production_catalog_has_both_sides_of_every_commit ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/native_controller.rs (target/debug/deps/native_controller-d1f71c40831a6d26)
+
+running 11 tests
+test cleanup::oversized_queued_response_preserves_the_output_limit_error ... ok
+test diagnostics::rejection_failure_identifies_the_exact_case_and_observed_state ... ok
+test controller_failure_retains_bounded_stderr_diagnostics ... ok
+test false_retained_digest_fails_recovery_but_each_controller_still_cleans_up ... ok
+test stale_prepare_response_is_rejected_and_the_subject_still_cleans_up ... ok
+test dropping_a_pending_run_kills_the_controller_and_its_descendant ... ok
+test diagnostics::cleanup_failure_identifies_the_exact_case_and_observed_state ... ok
+test persistent_controller_qualifies_all_43_fresh_subjects_and_retains_evidence ... ok
+test cleanup::response_queued_after_controller_exit_does_not_wait_twice ... ok
+test immutable_controller_resource_is_bound_by_digest ... ok
+test drain::cleanup_waits_for_a_short_lived_owned_descendant ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 8.40s
+
+     Running tests/runner.rs (target/debug/deps/runner-ccbed5da086dd94a)
+
+running 3 tests
+test full_catalog_requires_and_cleans_up_one_fresh_subject_per_case ... ok
+test false_success_is_evidence_backed_not_ready ... ok
+test identical_direct_observations_have_identical_report_digest ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+
+entry-raw-end
+entry-metadata-bytes=152
+{"bytes":205,"finding_id":"FINDING-0001","label":"resilience-strict-clippy","sha256":"f763e56941b5749398fa1768f1224e72f2758c9b47faa43e350bcad335a1d799"}
+entry-raw-begin
+    Checking peritus-resilience v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/app/testing/peritus-resilience)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 2.81s
+
+entry-raw-end
+entry-metadata-bytes=145
+{"bytes":274,"finding_id":"FINDING-0001","label":"source-hash-guard","sha256":"60d292f08abcb75c3ade6f5fd4ece851370bf00fdb4e54d4a9e135f4049300ea"}
+entry-raw-begin
+old_source_sha256=9ec4a6ba86a649ea2b853c308a8c53bac7212e483457c2e08f1941fbc42fbc2d
+fixed_source_sha256=11e9584d69b2b918396df00990a6bd8c0d8956aa7a0f6e7711836b2ea03a9aa9
+restored_source_sha256=11e9584d69b2b918396df00990a6bd8c0d8956aa7a0f6e7711836b2ea03a9aa9
+old_test_exit=101
+
+entry-raw-end

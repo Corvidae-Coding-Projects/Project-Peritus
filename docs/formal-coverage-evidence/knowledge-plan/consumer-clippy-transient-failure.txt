@@ -1,0 +1,311 @@
+    Checking cfg-if v1.0.4
+   Compiling quote v1.0.47
+    Checking typenum v1.20.1
+   Compiling syn v2.0.119
+   Compiling syn v3.0.3
+   Compiling synstructure v0.13.2
+   Compiling verus_syn v0.0.0-2026-08-02-0125 (https://github.com/verus-lang/verus.git?rev=92f466f247f45128c630d1c843fd6e27d2115587#92f466f2)
+    Checking hybrid-array v0.4.14
+    Checking block-buffer v0.12.1
+    Checking crypto-common v0.2.2
+    Checking bitflags v2.13.1
+    Checking digest v0.11.3
+    Checking cpufeatures v0.3.0
+    Checking libc v0.2.189
+    Checking sha2 v0.11.0
+    Checking pin-project-lite v0.2.17
+    Checking linux-raw-sys v0.12.1
+   Compiling verus_prettyplease v0.0.0-2026-08-09-0044 (https://github.com/verus-lang/verus.git?rev=92f466f247f45128c630d1c843fd6e27d2115587#92f466f2)
+    Checking rustix v1.1.4
+   Compiling verus_builtin_macros v0.0.0-2026-08-09-0044 (https://github.com/verus-lang/verus.git?rev=92f466f247f45128c630d1c843fd6e27d2115587#92f466f2)
+   Compiling verus_state_machines_macros v0.0.0-2026-08-02-0125 (https://github.com/verus-lang/verus.git?rev=92f466f247f45128c630d1c843fd6e27d2115587#92f466f2)
+    Checking subtle v2.6.1
+    Checking vstd v0.0.0-2026-08-09-0044 (https://github.com/verus-lang/verus.git?rev=92f466f247f45128c630d1c843fd6e27d2115587#92f466f2)
+    Checking futures-core v0.3.34
+    Checking once_cell v1.21.4
+    Checking serde_core v1.0.229
+    Checking smallvec v1.15.2
+   Compiling serde_derive v1.0.229
+    Checking peritus-types v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/foundation/peritus-types)
+    Checking peritus-codec v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/foundation/peritus-codec)
+    Checking peritus-policy v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/foundation/peritus-policy)
+    Checking peritus-spec v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/foundation/peritus-spec)
+    Checking errno v0.3.14
+    Checking signal-hook-registry v1.4.8
+    Checking itoa v1.0.18
+    Checking fastrand v2.5.0
+    Checking slab v0.4.12
+   Compiling zerofrom-derive v0.1.7
+    Checking zeroize v1.9.0
+   Compiling yoke-derive v0.8.2
+    Checking stable_deref_trait v1.2.1
+    Checking foldhash v0.2.0
+    Checking zerofrom v0.1.8
+    Checking yoke v0.8.3
+    Checking hashbrown v0.17.1
+    Checking serde v1.0.229
+   Compiling zerovec-derive v0.11.6
+   Compiling curve25519-dalek-derive v0.1.1
+    Checking bytes v1.12.1
+    Checking atomic-waker v1.1.2
+    Checking signature v3.0.0
+    Checking zerovec v0.11.8
+    Checking ed25519 v3.0.0
+    Checking curve25519-dalek v5.0.0
+    Checking libsqlite3-sys v0.38.2
+    Checking peritus-role v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/orchestration/peritus-role)
+    Checking peritus-quality-policy v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/foundation/peritus-quality-policy)
+    Checking peritus-budget v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/foundation/peritus-budget)
+    Checking peritus-run-settlement v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/orchestration/peritus-run-settlement)
+    Checking tracing-core v0.1.36
+   Compiling displaydoc v0.2.7
+   Compiling tracing-attributes v0.1.31
+    Checking parking v2.2.1
+    Checking equivalent v1.0.2
+    Checking fallible-streaming-iterator v0.1.9
+    Checking fallible-iterator v0.3.0
+    Checking log v0.4.34
+    Checking rusqlite v0.40.2
+    Checking tracing v0.1.44
+    Checking indexmap v2.14.0
+    Checking peritus-kernel v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/foundation/peritus-kernel)
+    Checking ed25519-dalek v3.0.0
+    Checking generic-array v0.14.7
+    Checking fs4 v1.1.0
+   Compiling futures-macro v0.3.34
+    Checking futures-task v0.3.34
+   Compiling winnow v1.0.4
+    Checking futures-util v0.3.34
+    Checking peritus-artifact-store v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/state/peritus-artifact-store)
+    Checking peritus-protocol v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/foundation/peritus-protocol)
+    Checking peritus-approval v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/state/peritus-approval)
+    Checking peritus-leases v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/state/peritus-leases)
+    Checking socket2 v0.6.5
+    Checking mio v1.2.2
+   Compiling tokio-macros v2.7.2
+    Checking peritus-journal v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/state/peritus-journal)
+    Checking tokio v1.53.1
+    Checking zmij v1.0.23
+   Compiling toml_parser v1.1.3+spec-1.1.0
+    Checking tinystr v0.8.4
+    Checking peritus-run-knowledge v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/orchestration/peritus-run-knowledge)
+   Compiling enumflags2_derive v0.7.12
+    Checking litemap v0.8.3
+    Checking memchr v2.8.3
+    Checking ipnet v2.12.1
+    Checking writeable v0.6.4
+   Compiling toml_edit v0.25.13+spec-1.1.0
+    Checking icu_locale_core v2.3.0
+    Checking serde_json v1.0.149
+    Checking num-traits v0.2.19
+    Checking crossbeam-utils v0.8.22
+    Checking zerotrie v0.2.5
+    Checking potential_utf v0.1.6
+    Checking http v1.5.0
+    Checking utf8_iter v1.0.4
+    Checking futures-io v0.3.34
+    Checking icu_collections v2.3.0
+    Checking icu_provider v2.3.1
+    Checking concurrent-queue v2.5.0
+   Compiling proc-macro-crate v3.5.0
+    Checking peritus-context v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/orchestration/peritus-context)
+    Checking aws-lc-sys v0.44.0
+   Compiling zvariant_utils v4.2.0
+    Checking crypto-common v0.1.7
+    Checking event-listener v5.4.2
+    Checking rustls-pki-types v1.15.1
+    Checking unicode-ident v1.0.24
+    Checking proc-macro2 v1.0.107
+   Compiling zvariant_derive v5.15.0
+    Checking event-listener-strategy v0.5.4
+    Checking aws-lc-rs v1.18.0
+    Checking http-body v1.1.0
+    Checking getrandom v0.4.3
+    Checking icu_properties_data v2.3.0
+    Checking icu_normalizer_data v2.3.0
+    Checking futures-lite v2.6.1
+    Checking percent-encoding v2.3.2
+    Checking futures-sink v0.3.34
+    Checking untrusted v0.9.0
+    Checking tokio-util v0.7.19
+    Checking rustls-webpki v0.103.15
+    Checking icu_normalizer v2.3.0
+    Checking icu_properties v2.3.0
+    Checking tempfile v3.27.0
+    Checking tower-service v0.3.3
+    Checking try-lock v0.2.5
+    Checking base64 v0.22.1
+    Checking fnv v1.0.7
+    Checking h2 v0.4.19
+    Checking idna_adapter v1.2.2
+    Checking want v0.3.1
+    Checking rustls v0.23.43
+    Checking memoffset v0.9.1
+    Checking httparse v1.10.1
+    Checking num-integer v0.1.47
+    Checking enumflags2 v0.7.12
+   Compiling zcheapstr v1.1.0
+    Checking block-buffer v0.10.4
+    Checking block-padding v0.3.3
+    Checking futures-channel v0.3.34
+    Checking polling v3.11.0
+   Compiling thiserror-impl v1.0.69
+   Compiling endi v1.1.1
+    Checking async-task v4.7.1
+   Compiling zvariant v5.15.0
+    Checking thiserror v1.0.69
+    Checking async-io v2.6.0
+    Checking hyper v1.11.0
+    Checking inout v0.1.4
+    Checking digest v0.10.7
+    Checking nix v0.31.3
+    Checking io-lifetimes v2.0.4
+    Checking io-lifetimes v3.0.1
+    Checking idna v1.1.0
+    Checking form_urlencoded v1.2.2
+    Checking async-channel v2.5.0
+    Checking peritus-sandbox v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/runtime/peritus-sandbox)
+    Checking sync_wrapper v1.0.2
+    Checking tower-layer v0.3.3
+    Checking openssl-probe v0.2.1
+    Checking rustls-native-certs v0.8.4
+    Checking tower v0.5.3
+    Checking url v2.5.8
+    Checking io-extras v0.19.0
+    Checking nix v0.28.0
+    Checking fs-set-times v0.20.3
+   Compiling zbus_names v4.3.4
+    Checking cipher v0.4.4
+    Checking hyper-util v0.1.20
+    Checking async-signal v0.2.14
+    Checking filedescriptor v0.8.3
+    Checking anyhow v1.0.104
+    Checking tokio-rustls v0.26.4
+    Checking num-bigint v0.4.8
+    Checking async-lock v3.4.2
+    Checking piper v0.2.5
+    Checking peritus-projection v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/state/peritus-projection)
+    Checking rustix-linux-procfs v0.1.1
+    Checking serial2 v0.2.38
+    Checking cpufeatures v0.2.17
+    Checking shell-words v1.1.1
+    Checking maybe-owned v0.3.4
+    Checking downcast-rs v1.2.1
+    Checking ambient-authority v0.0.2
+    Checking portable-pty v0.9.0
+    Checking cap-primitives v4.0.3
+    Checking peritus-evidence v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/state/peritus-evidence)
+    Checking num-rational v0.4.2
+    Checking blocking v1.7.0
+    Checking async-process v2.5.0
+    Checking hyper-rustls v0.27.9
+   Compiling zbus_macros v5.19.0
+    Checking tower-http v0.6.11
+    Checking rustls-platform-verifier v0.7.0
+    Checking process-wrap v9.1.0
+    Checking hmac v0.12.1
+    Checking async-executor v1.14.0
+    Checking num-iter v0.1.46
+    Checking http-body-util v0.1.5
+    Checking async-broadcast v0.7.2
+    Checking num-complex v0.4.6
+    Checking peritus-tool-protocol v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/tools/peritus-tool-protocol)
+    Checking uuid v1.25.0
+    Checking ordered-stream v0.2.0
+   Compiling serde_repr v0.1.21
+   Compiling async-trait v0.1.92
+   Compiling async-recursion v1.1.1
+    Checking simd-adler32 v0.3.10
+    Checking hex v0.4.3
+    Checking peritus-tool-router v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/tools/peritus-tool-router)
+    Checking zbus v5.19.0
+    Checking num v0.4.3
+    Checking reqwest v0.13.4
+    Checking hkdf v0.12.4
+    Checking peritus-process v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/runtime/peritus-process)
+    Checking cap-std v4.0.3
+    Checking sha2 v0.10.9
+    Checking aes v0.8.4
+    Checking cbc v0.1.2
+    Checking peritus-model-protocol v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/model/peritus-model-protocol)
+    Checking getrandom v0.2.17
+    Checking adler2 v2.0.1
+    Checking secret-service v5.1.0
+    Checking cap-fs-ext v4.0.3
+    Checking peritus-provider-core v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/model/peritus-provider-core)
+    Checking keyring-core v1.0.0
+    Checking peritus-git v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/runtime/peritus-git)
+    Checking peritus-patch v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/runtime/peritus-patch)
+    Checking serde_spanned v1.1.1
+    Checking toml_datetime v1.1.1+spec-1.1.0
+    Checking toml_writer v1.1.2+spec-1.1.0
+    Checking toml v1.1.4+spec-1.1.0
+    Checking peritus-workspace v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/runtime/peritus-workspace)
+    Checking zbus-secret-service-keyring-store v1.0.1
+    Checking crc32fast v1.5.1
+    Checking miniz_oxide v0.9.1
+   Compiling thiserror-impl v2.0.20
+    Checking flate2 v1.1.10
+    Checking peritus-tools-quality v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/tools/peritus-tools-quality)
+    Checking keyring v4.1.6
+    Checking thiserror v2.0.20
+    Checking miniz_oxide v0.8.9
+    Checking fdeflate v0.3.7
+    Checking peritus-scheduler v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/orchestration/peritus-scheduler)
+    Checking peritus-obligations v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/orchestration/peritus-obligations)
+error: function `clone_work_records` is never used
+   --> crates/orchestration/peritus-scheduler/src/work.rs:337:15
+    |
+337 | pub(crate) fn clone_work_records(values: &[WorkRecord]) -> (result: Vec<WorkRecord>)
+    |               ^^^^^^^^^^^^^^^^^^
+    |
+    = note: `-D dead-code` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[expect(dead_code)]` or `#[allow(dead_code)]`
+
+error: function `clone_worker_records` is never used
+   --> crates/orchestration/peritus-scheduler/src/worker.rs:159:15
+    |
+159 | pub(crate) fn clone_worker_records(values: &[WorkerRecord]) -> (result: Vec<WorkerRecord>)
+    |               ^^^^^^^^^^^^^^^^^^^^
+
+error: function `clone_reservations` is never used
+   --> crates/orchestration/peritus-scheduler/src/worker.rs:263:15
+    |
+263 | pub(crate) fn clone_reservations(
+    |               ^^^^^^^^^^^^^^^^^^
+
+    Checking peritus-memory v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/orchestration/peritus-memory)
+error: pub(crate) function inside private module
+   --> crates/orchestration/peritus-scheduler/src/work.rs:337:1
+    |
+337 | pub(crate) fn clone_work_records(values: &[WorkRecord]) -> (result: Vec<WorkRecord>)
+    | ----------^^^^^^^^^^^^^^^^^^^^^^
+    | |
+    | help: consider using: `pub`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#redundant_pub_crate
+    = note: `-D clippy::redundant-pub-crate` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::redundant_pub_crate)]`
+
+error: pub(crate) function inside private module
+   --> crates/orchestration/peritus-scheduler/src/worker.rs:159:1
+    |
+159 | pub(crate) fn clone_worker_records(values: &[WorkerRecord]) -> (result: Vec<WorkerRecord>)
+    | ----------^^^^^^^^^^^^^^^^^^^^^^^^
+    | |
+    | help: consider using: `pub`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#redundant_pub_crate
+
+error: pub(crate) function inside private module
+   --> crates/orchestration/peritus-scheduler/src/worker.rs:263:1
+    |
+263 | pub(crate) fn clone_reservations(
+    | ----------^^^^^^^^^^^^^^^^^^^^^^
+    | |
+    | help: consider using: `pub`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#redundant_pub_crate
+
+error: could not compile `peritus-scheduler` (lib) due to 6 previous errors
+warning: build failed, waiting for other jobs to finish...

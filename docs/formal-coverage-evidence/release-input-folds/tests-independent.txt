@@ -1,0 +1,85 @@
+   Compiling peritus-release-policy v0.0.2 (/tmp/peritus-parent-readiness-review.q25p5n7e/crates/foundation/peritus-release-policy)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.26s
+     Running unittests src/lib.rs (/home/doll/Project-Peritus/.worktrees/formal-coverage/target/formal-readiness-review/debug/deps/peritus_release_policy-7bc79be2ebedd6fa)
+
+running 3 tests
+test catalog::tests::criterion_twenty_four_requires_every_release_artifact_class ... ok
+test catalog::tests::stable_catalog_ids_are_contiguous ... ok
+test error::tests::every_error_kind_has_a_stable_h4_code ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/acceptance.rs (/home/doll/Project-Peritus/.worktrees/formal-coverage/target/formal-readiness-review/debug/deps/acceptance-4bc022f51cf83baf)
+
+running 4 tests
+test every_final_qualification_check_is_required_for_admission ... ok
+test complete_exact_evidence_is_ready_without_publication_authority ... ok
+test decision_is_bound_to_the_exact_candidate_and_time ... ok
+test every_required_artifact_fails_closed_when_removed ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/catalog.rs (/home/doll/Project-Peritus/.worktrees/formal-coverage/target/formal-readiness-review/debug/deps/catalog-7c55ef942dec9fdc)
+
+running 3 tests
+test every_criterion_has_at_least_one_required_artifact ... ok
+test production_catalog_is_exactly_twenty_five_stable_items ... ok
+test evidence_catalog_has_stable_unique_ids_and_sources ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/construction.rs (/home/doll/Project-Peritus/.worktrees/formal-coverage/target/formal-readiness-review/debug/deps/construction-e4edfedbd7f21c65)
+
+running 4 tests
+test platform_slots_are_nominal_not_positional_guesswork ... ok
+test zero_nominal_identities_are_rejected ... ok
+test invalid_time_and_source_revision_bindings_are_rejected ... ok
+test evidence_collection_bound_is_enforced ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/fail_closed.rs (/home/doll/Project-Peritus/.worktrees/formal-coverage/target/formal-readiness-review/debug/deps/fail_closed-3547060af7a9f2bb)
+
+running 4 tests
+test stale_evidence_is_diagnosed_and_cannot_contribute ... ok
+test mismatched_candidate_evidence_is_diagnosed_and_excluded ... ok
+test wrong_source_unreviewed_unsigned_and_conflict_are_distinct ... ok
+test every_complete_candidate_identity_component_is_checked ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/permutation.rs (/home/doll/Project-Peritus/.worktrees/formal-coverage/target/formal-readiness-review/debug/deps/permutation-8a9e5ef7ce728211)
+
+running 1 test
+test evidence_permutations_preserve_verdict_digest_and_diagnostics ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/qualifications.rs (/home/doll/Project-Peritus/.worktrees/formal-coverage/target/formal-readiness-review/debug/deps/qualifications-ef6331090169cd7c)
+
+running 4 tests
+test explicit_not_ready_qualification_blocks_release ... ok
+test stale_and_unreviewed_qualifications_never_count_as_ready ... ok
+test conflicting_current_qualification_reports_block_release ... ok
+test every_h_slice_is_required ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/reviews_and_findings.rs (/home/doll/Project-Peritus/.worktrees/formal-coverage/target/formal-readiness-review/debug/deps/reviews_and_findings-b7d58e27cdd59034)
+
+running 5 tests
+test independent_review_quorum_is_mandatory ... ok
+test self_review_changes_required_and_shared_context_each_block ... ok
+test independent_waiver_can_resolve_a_nonblocking_finding ... ok
+test unresolved_release_blocker_cannot_be_waived ... ok
+test ignored_and_quarantined_findings_are_never_release_ready ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests peritus_release_policy
+
+running 1 test
+test crates/foundation/peritus-release-policy/src/decision.rs - decision::ReleaseDecision (line 59) - compile fail ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+

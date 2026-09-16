@@ -1,0 +1,8 @@
+{
+  "command": [
+    "target/debug/xtask",
+    "verify-trust"
+  ],
+  "exit_code": 1,
+  "elapsed_seconds": 44.94
+}

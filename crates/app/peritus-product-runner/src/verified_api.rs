@@ -18,44 +18,16 @@ use crate::{ProductRunnerError, control::HostPermissions};
 
 mod command_runtime;
 mod effect_stubs;
-mod progress;
 pub use command_runtime::{CommandRuntime, FolderPatchAuthority, FolderPatchAuthorityPlan};
 pub use effect_stubs::checked_protected_file;
 
 /// Maximum wall-clock duration of one uninterrupted product-run attempt.
 pub const PRODUCT_RUN_MAX_ELAPSED: Duration = Duration::from_hours(8);
-/// Maximum provider requests across all product roles.
-pub const PRODUCT_RUN_MAX_MODEL_REQUESTS: u32 = 4_096;
-/// Maximum application tool calls across all product roles.
-pub const PRODUCT_RUN_MAX_TOOL_CALLS: u32 = 20_000;
-/// Maximum aggregate provider tokens across all product roles.
-pub const PRODUCT_RUN_MAX_TOTAL_TOKENS: u64 = 100_000_000;
-/// Maximum provider-estimated cost in integer microunits.
-pub const PRODUCT_RUN_MAX_COST_MICROUNITS: u64 = 500_000_000;
-/// Maximum observed resident memory at a completed effect boundary.
-pub const PRODUCT_RUN_MAX_PEAK_RSS_BYTES: u64 = 12 * 1024 * 1024 * 1024;
-/// Maximum regular-file growth beneath the managed workspace during one run.
-pub const PRODUCT_RUN_MAX_WORKSPACE_GROWTH_BYTES: u64 = 50 * 1024 * 1024 * 1024;
-
-/// Monotonic aggregate progress for one complete product-run attempt.
-#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
-pub struct ProductRunProgress {
-    model_requests: u32,
-    tool_calls: u32,
-    retries: u32,
-    provider_failovers: u32,
-    compactions: u32,
-    input_tokens: u64,
-    cached_input_tokens: u64,
-    output_tokens: u64,
-    total_tokens: u64,
-    provider_cost_microunits: u64,
-    usage_observations: u32,
-    elapsed_millis: u64,
-    workspace_bytes: u64,
-    workspace_growth_bytes: u64,
-    peak_rss_bytes: u64,
-}
+pub use crate::accounting::{
+    PRODUCT_RUN_MAX_COST_MICROUNITS, PRODUCT_RUN_MAX_MODEL_REQUESTS,
+    PRODUCT_RUN_MAX_PEAK_RSS_BYTES, PRODUCT_RUN_MAX_TOOL_CALLS, PRODUCT_RUN_MAX_TOTAL_TOKENS,
+    PRODUCT_RUN_MAX_WORKSPACE_GROWTH_BYTES, ProductRunProgress,
+};
 
 /// Concrete product-run phase emitted to the daemon.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

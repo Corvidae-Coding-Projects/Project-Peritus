@@ -1,7 +1,8 @@
 //! Bounded, content-based detection of an unchanged inspection cycle.
 
-use std::collections::VecDeque;
+use std::collections::{BTreeMap, VecDeque};
 
+use peritus_model_protocol::{ContentBlock, Message};
 use peritus_types::Sha256Digest;
 use serde_json::Value;
 
@@ -12,23 +13,68 @@ const STOP_REPEATS: u8 = 6;
 #[derive(Default)]
 pub(super) struct InspectionProgress {
     recent: VecDeque<Sha256Digest>,
+    visible_observations: Option<Vec<Sha256Digest>>,
     repeats: u8,
     warning_pending: bool,
 }
 
 impl InspectionProgress {
+    pub(super) fn observe_model_context(&mut self, messages: &[Message]) {
+        let mut pending = BTreeMap::new();
+        let mut visible = Vec::new();
+        for block in messages.iter().flat_map(Message::content) {
+            match block {
+                ContentBlock::ToolCall(call) if is_inspection(call.name().as_str()) => {
+                    if let Ok(arguments) =
+                        serde_json::from_slice::<Value>(call.arguments().canonical_bytes())
+                    {
+                        pending
+                            .insert(call.id().expose_for_wire(), (call.name().as_str(), arguments));
+                    }
+                }
+                ContentBlock::ToolResult(result) => {
+                    if let Some((name, arguments)) =
+                        pending.remove(result.call_id().expose_for_wire())
+                        && let Ok(mut output) =
+                            serde_json::from_slice::<Value>(result.output().canonical_bytes())
+                    {
+                        // The host adds this source reference after producing the raw observation.
+                        if let Some(object) = output.as_object_mut() {
+                            object.remove("local_context");
+                        }
+                        visible.push(fingerprint(name, &arguments, &output));
+                    }
+                }
+                _ => {}
+            }
+        }
+        self.visible_observations = Some(visible);
+    }
+
     pub(super) fn observe(&mut self, name: &str, arguments: &Value, result: &Value) {
-        if !matches!(name, "workspace_list" | "workspace_read" | "workspace_search") {
+        if !is_inspection(name) {
             // Commands (including polling and failed verification), edits, and other tool
             // strategies end this inspection sequence. Never infer process progress here.
-            *self = Self::default();
+            self.recent.clear();
+            self.repeats = 0;
+            self.warning_pending = false;
             return;
         }
-        let digest = peritus_codec::sha256(format!("{name}\n{arguments}\n{result}").as_bytes());
+        let digest = fingerprint(name, arguments, result);
         if self.recent.contains(&digest) {
-            self.repeats = self.repeats.saturating_add(1);
-            if self.repeats == WARN_REPEATS {
-                self.warning_pending = true;
+            let visible = self
+                .visible_observations
+                .as_ref()
+                .is_none_or(|observations| observations.contains(&digest));
+            if visible {
+                self.repeats = self.repeats.saturating_add(1);
+                if self.repeats == WARN_REPEATS {
+                    self.warning_pending = true;
+                }
+            } else {
+                // Identical bytes can restore evidence that the active model view evicted.
+                self.repeats = 0;
+                self.warning_pending = false;
             }
         } else {
             self.repeats = 0;
@@ -47,13 +93,21 @@ impl InspectionProgress {
     }
 
     pub(super) fn blocker(&self) -> Option<String> {
-        (self.repeats >= STOP_REPEATS).then(|| {
+        (self.repeats >= STOP_REPEATS && !self.warning_pending).then(|| {
             format!(
                 "inspection-no-progress: {} consecutive workspace inspections repeated previously observed arguments and results without new evidence. Stopped after warning; completed work and tool observations are preserved. Review the last tool results before starting another invocation.",
                 self.repeats,
             )
         })
     }
+}
+
+fn is_inspection(name: &str) -> bool {
+    matches!(name, "workspace_list" | "workspace_read" | "workspace_search")
+}
+
+fn fingerprint(name: &str, arguments: &Value, result: &Value) -> Sha256Digest {
+    peritus_codec::sha256(format!("{name}\n{arguments}\n{result}").as_bytes())
 }
 
 #[cfg(test)]
@@ -91,6 +145,7 @@ mod tests {
         for name in ["run_command", "command_poll", "workspace_write"] {
             for _ in 0..=STOP_REPEATS {
                 progress.observe("workspace_list", &path("."), &Value::Array(Vec::new()));
+                progress.feedback();
             }
             assert!(progress.blocker().is_some());
             progress.observe(
@@ -101,5 +156,19 @@ mod tests {
             assert!(progress.blocker().is_none());
             assert!(progress.feedback().is_none());
         }
+    }
+
+    #[test]
+    fn a_batch_crossing_both_thresholds_delivers_its_warning_before_stopping() {
+        let mut progress = InspectionProgress::default();
+        progress.observe("workspace_read", &path("state"), &Value::from("same"));
+        for _ in 0..STOP_REPEATS {
+            progress.observe("workspace_read", &path("state"), &Value::from("same"));
+        }
+        assert!(progress.blocker().is_none(), "the warning has not reached a provider turn");
+        assert!(progress.feedback().is_some());
+        progress.observe("workspace_read", &path("state"), &Value::from("same"));
+        assert!(progress.blocker().is_some(), "continued unchanged inspections still stop");
+        assert!(progress.feedback().is_none());
     }
 }

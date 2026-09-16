@@ -1,6 +1,7 @@
 //! Local working-memory host: C0 effects around C6 deterministic state.
 
 mod assembly;
+mod checkpoint_validation;
 mod driver;
 mod memory;
 mod port;
@@ -10,10 +11,11 @@ mod storage;
 #[cfg(test)]
 mod tests;
 mod tools;
+mod view_binding;
 
 pub use driver::{InvocationAccounting, run_live_invocation};
 pub use port::LocalContextHandle;
-pub use tools::{MemoryTools, definitions as memory_tool_definitions};
+pub use tools::MemoryTools;
 
 pub use crate::context_config::{LocalContextConfig, LocalProcessConfig, LocalSemanticBackend};
 

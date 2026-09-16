@@ -1,0 +1,17 @@
+# Force Cargo to rerun the current package proof without changing source content.
+touch crates/orchestration/peritus-run-knowledge/src/model/topology.rs
+
+# Strict Verus proof; result: 178 verified, 0 errors.
+env CARGO_BUILD_JOBS=2 CARGO_TARGET_DIR=/home/doll/Project-Peritus/.worktrees/formal-coverage/target/peritus-sol-run-knowledge-topology-01 CCACHE_DISABLE=1 cargo verus verify -p peritus-run-knowledge --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20
+
+# Bounded ordinary tests; each result: 16 passed, 0 failed.
+env CARGO_BUILD_JOBS=2 CARGO_TARGET_DIR=/home/doll/Project-Peritus/.worktrees/formal-coverage/target/peritus-sol-run-knowledge-topology-01 CCACHE_DISABLE=1 cargo test -p peritus-run-knowledge --locked --all-features
+env CARGO_BUILD_JOBS=2 CARGO_TARGET_DIR=/home/doll/Project-Peritus/.worktrees/formal-coverage/target/peritus-sol-run-knowledge-topology-01 CCACHE_DISABLE=1 cargo test -p peritus-run-knowledge --locked
+
+# Strict package lint and source checks; all pass.
+env CARGO_BUILD_JOBS=2 CARGO_TARGET_DIR=/home/doll/Project-Peritus/.worktrees/formal-coverage/target/peritus-sol-run-knowledge-topology-01 CCACHE_DISABLE=1 cargo clippy -p peritus-run-knowledge --locked --all-targets --all-features -- -D warnings
+cargo fmt --package peritus-run-knowledge -- --check
+git diff --check -- crates/orchestration/peritus-run-knowledge
+
+# Repository source-layout gate; failed only on separately owned release-policy and scheduler files.
+env CARGO_BUILD_JOBS=2 CARGO_TARGET_DIR=/home/doll/Project-Peritus/.worktrees/formal-coverage/target/peritus-sol-run-knowledge-topology-01 CCACHE_DISABLE=1 cargo xtask source-layout-check

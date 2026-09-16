@@ -1,0 +1,37 @@
+   Compiling proc-macro2 v1.0.107
+   Compiling unicode-ident v1.0.24
+   Compiling quote v1.0.47
+   Compiling verus_syn v0.0.0-2026-08-02-0125 (https://github.com/verus-lang/verus.git?rev=92f466f247f45128c630d1c843fd6e27d2115587#92f466f2)
+   Compiling verus_prettyplease v0.0.0-2026-08-09-0044 (https://github.com/verus-lang/verus.git?rev=92f466f247f45128c630d1c843fd6e27d2115587#92f466f2)
+   Compiling equivalent v1.0.2
+   Compiling hashbrown v0.17.1
+   Compiling indexmap v2.14.0
+   Compiling syn v2.0.119
+   Compiling synstructure v0.13.2
+   Compiling convert_case v0.4.0
+   Compiling typenum v1.20.1
+   Compiling vstd v0.0.0-2026-08-09-0044 (https://github.com/verus-lang/verus.git?rev=92f466f247f45128c630d1c843fd6e27d2115587#92f466f2)
+   Compiling verus_builtin_macros v0.0.0-2026-08-09-0044 (https://github.com/verus-lang/verus.git?rev=92f466f247f45128c630d1c843fd6e27d2115587#92f466f2)
+   Compiling hybrid-array v0.4.14
+   Compiling verus_state_machines_macros v0.0.0-2026-08-02-0125 (https://github.com/verus-lang/verus.git?rev=92f466f247f45128c630d1c843fd6e27d2115587#92f466f2)
+   Compiling verus_builtin v0.0.0-2026-08-09-0044 (https://github.com/verus-lang/verus.git?rev=92f466f247f45128c630d1c843fd6e27d2115587#92f466f2)
+   Compiling crypto-common v0.2.2
+   Compiling block-buffer v0.12.1
+   Compiling digest v0.11.3
+   Compiling cfg-if v1.0.4
+   Compiling cpufeatures v0.3.0
+   Compiling sha2 v0.11.0
+   Compiling peritus-types v0.0.2 (/tmp/peritus-parent-obligations-proof.6ib_z8mo/crates/foundation/peritus-types)
+   Compiling peritus-spec v0.0.2 (/tmp/peritus-parent-obligations-proof.6ib_z8mo/crates/foundation/peritus-spec)
+   Compiling peritus-run-settlement v0.0.2 (/tmp/peritus-parent-obligations-proof.6ib_z8mo/crates/orchestration/peritus-run-settlement)
+   Compiling peritus-obligations v0.0.2 (/tmp/peritus-parent-obligations-proof.6ib_z8mo/crates/orchestration/peritus-obligations)
+    Finished `release` profile [optimized] target(s) in 17.24s
+     Running tests/review_scaling_probe.rs (/home/doll/Project-Peritus/.worktrees/formal-coverage/target/formal-obligations-scaling-parent-v3-fixed356/release/deps/review_scaling_probe-6efdc40e37750e0b)
+
+running 1 test
+SCALING n=256 repeats=3 elapsed_ns=308100
+SCALING n=512 repeats=3 elapsed_ns=647488
+test bounded_incomplete_branch_scaling ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

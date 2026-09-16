@@ -1,17 +1,22 @@
 //! Pure deterministic scheduler reduction and exact replay.
 
 mod apply;
+mod decision;
+mod fences;
+mod reconstruction;
+mod start;
 
 use std::collections::BTreeSet;
 
-use peritus_types::{EventSequence, Sha256Digest};
+use peritus_types::Sha256Digest;
 
 use crate::{
     SchedulerCommand, SchedulerCommandKind, SchedulerError, SchedulerErrorKind, SchedulerEvent,
-    SchedulerEventKind, SchedulerPhase, SchedulerState, SchedulerTransition,
+    SchedulerState, SchedulerTransition,
 };
 
 use apply::apply;
+use reconstruction::command_from_event;
 
 /// Starts a scheduler from the only legal genesis command.
 ///
@@ -22,7 +27,8 @@ pub fn start(command: &SchedulerCommand) -> Result<SchedulerTransition, Schedule
         return Err(illegal("scheduler genesis command is not StartScheduler"));
     };
     binding.validate()?;
-    if command.run_id() != binding.run_id()
+    if command.semantics() != binding.semantics()
+        || command.run_id() != binding.run_id()
         || command.revision() != binding.revision()
         || command.expected_sequence() != 0
         || command.expected_previous_event().is_some()
@@ -33,8 +39,7 @@ pub fn start(command: &SchedulerCommand) -> Result<SchedulerTransition, Schedule
             "scheduler genesis differs from its exact binding or fences",
         ));
     }
-    let mut state =
-        SchedulerState::genesis(binding.clone(), command.event_id(), command.command_id());
+    let mut state = start::prepare_genesis(binding, command.event_id(), command.command_id());
     if state.estimated_encoded_bytes() > binding.limits().state_bytes() {
         return Err(crate::error::reject(
             SchedulerErrorKind::LimitExceeded,
@@ -42,18 +47,7 @@ pub fn start(command: &SchedulerCommand) -> Result<SchedulerTransition, Schedule
         ));
     }
     let successor = crate::canonical::state_digest(&state);
-    crate::state::mutation::set_state_digest(&mut state, successor);
-    let event = SchedulerEvent::from_wire(
-        command.event_id(),
-        command.command_id(),
-        EventSequence::first(),
-        None,
-        command.run_id(),
-        command.revision(),
-        Sha256Digest::new([0; 32]),
-        successor,
-        SchedulerEventKind::SchedulerStarted { binding: binding.clone() },
-    );
+    let event = start::commit_genesis(command, binding, &mut state, successor);
     Ok(SchedulerTransition::new(event, state))
 }
 
@@ -82,25 +76,9 @@ pub fn decide(
             "scheduler successor exceeds its immutable state-byte bound",
         ));
     }
-    crate::state::mutation::advance_cursor(
-        &mut successor,
-        sequence,
-        command.event_id(),
-        command.command_id(),
-    );
+    decision::prepare_cursor(&mut successor, sequence, command.event_id(), command.command_id());
     let successor_digest = crate::canonical::state_digest(&successor);
-    crate::state::mutation::set_state_digest(&mut successor, successor_digest);
-    let event = SchedulerEvent::from_wire(
-        command.event_id(),
-        command.command_id(),
-        sequence,
-        Some(state.last_event_id()),
-        command.run_id(),
-        command.revision(),
-        state.state_digest(),
-        successor_digest,
-        kind,
-    );
+    let event = decision::commit_event(state, command, &mut successor, kind, successor_digest);
     Ok(SchedulerTransition::new(event, successor))
 }
 
@@ -112,7 +90,7 @@ pub fn replay(events: &[SchedulerEvent]) -> Result<SchedulerState, SchedulerErro
     let first = events.first().ok_or_else(|| {
         crate::error::reject(SchedulerErrorKind::ReplayMismatch, "scheduler replay is empty")
     })?;
-    let first_command = command_from_event(first, 0, None)?;
+    let first_command = command_from_event(first, 0, None);
     let first_transition = start(&first_command)?;
     if first_transition.event() != first {
         return Err(replay_error("scheduler genesis differs from deterministic reduction"));
@@ -121,11 +99,14 @@ pub fn replay(events: &[SchedulerEvent]) -> Result<SchedulerState, SchedulerErro
     let mut event_ids = BTreeSet::from([first.id()]);
     let mut command_ids = BTreeSet::from([first.command_id()]);
     for event in &events[1..] {
+        if event.semantics() != first.semantics() {
+            return Err(replay_error("scheduler replay mixes semantic versions"));
+        }
         if !event_ids.insert(event.id()) || !command_ids.insert(event.command_id()) {
             return Err(replay_error("scheduler event or command identity is duplicated"));
         }
         let command =
-            command_from_event(event, state.sequence().get(), Some(state.last_event_id()))?;
+            command_from_event(event, state.sequence().get(), Some(state.last_event_id()));
         let transition = decide(&state, &command)?;
         if transition.event() != event {
             return Err(replay_error("scheduler event differs from deterministic reduction"));
@@ -139,115 +120,20 @@ fn validate_fences(
     state: &SchedulerState,
     command: &SchedulerCommand,
 ) -> Result<(), SchedulerError> {
-    if state.phase() == SchedulerPhase::Terminal {
-        return Err(illegal("scheduler aggregate is terminal and fenced closed"));
-    }
-    if state.used_commands().len() >= 65_535 {
-        return Err(crate::error::reject(
+    match fences::classify(state, command) {
+        fences::FenceAdmission::Accepted => Ok(()),
+        fences::FenceAdmission::Terminal => {
+            Err(illegal("scheduler aggregate is terminal and fenced closed"))
+        }
+        fences::FenceAdmission::HistoryLimit => Err(crate::error::reject(
             SchedulerErrorKind::LimitExceeded,
             "scheduler command history reached the canonical collection limit",
-        ));
-    }
-    if state.run_id() != command.run_id()
-        || state.binding().revision() != command.revision()
-        || state.sequence().get() != command.expected_sequence()
-        || command.expected_previous_event() != Some(state.last_event_id())
-        || command.prior_state_digest() != state.state_digest()
-        || state.used_commands().contains(&command.command_id())
-        || matches!(command.kind(), SchedulerCommandKind::StartScheduler { .. })
-    {
-        return Err(crate::error::reject(
+        )),
+        fences::FenceAdmission::Stale => Err(crate::error::reject(
             SchedulerErrorKind::StaleFence,
             "scheduler command run, revision, predecessor, digest, identity, or lifecycle differs",
-        ));
+        )),
     }
-    Ok(())
-}
-
-fn command_from_event(
-    event: &SchedulerEvent,
-    expected_sequence: u64,
-    previous: Option<peritus_types::EventId>,
-) -> Result<SchedulerCommand, SchedulerError> {
-    let kind = match event.kind() {
-        SchedulerEventKind::SchedulerStarted { binding } => {
-            SchedulerCommandKind::StartScheduler { binding: binding.clone() }
-        }
-        SchedulerEventKind::WorkerRegistered { descriptor } => {
-            SchedulerCommandKind::RegisterWorker { descriptor: descriptor.clone() }
-        }
-        SchedulerEventKind::WorkerAvailable { worker_id } => {
-            SchedulerCommandKind::SetWorkerAvailable { worker_id: *worker_id }
-        }
-        SchedulerEventKind::WorkerDrainRequested { worker_id } => {
-            SchedulerCommandKind::DrainWorker { worker_id: *worker_id }
-        }
-        SchedulerEventKind::WorkerLost { worker_id, .. } => {
-            SchedulerCommandKind::LoseWorker { worker_id: *worker_id }
-        }
-        SchedulerEventKind::WorkerRemoved { worker_id } => {
-            SchedulerCommandKind::RemoveWorker { worker_id: *worker_id }
-        }
-        SchedulerEventKind::WorkAdmitted { spec } => {
-            SchedulerCommandKind::AdmitWork { spec: spec.clone() }
-        }
-        SchedulerEventKind::WorkReserved { reservation } => SchedulerCommandKind::DispatchNext {
-            dispatch_id: reservation.dispatch_id(),
-            dispatch_token: reservation.dispatch_token(),
-        },
-        SchedulerEventKind::WorkStartAcknowledged { dispatch_id } => {
-            SchedulerCommandKind::AcknowledgeStart { dispatch_id: *dispatch_id }
-        }
-        SchedulerEventKind::WorkSucceeded { dispatch_id, result_digest } => {
-            SchedulerCommandKind::CompleteWork {
-                dispatch_id: *dispatch_id,
-                result_digest: *result_digest,
-            }
-        }
-        SchedulerEventKind::WorkFailed { dispatch_id, failure_digest, disposition } => {
-            SchedulerCommandKind::FailWork {
-                dispatch_id: *dispatch_id,
-                failure_digest: *failure_digest,
-                disposition: *disposition,
-            }
-        }
-        SchedulerEventKind::WorkRetryQueued { work_id } => {
-            SchedulerCommandKind::RetryWork { work_id: *work_id }
-        }
-        SchedulerEventKind::WorkCancelled { work_id, descendants, .. } => {
-            if *descendants {
-                SchedulerCommandKind::CancelWorkTree { work_id: *work_id }
-            } else {
-                SchedulerCommandKind::CancelWork { work_id: *work_id }
-            }
-        }
-        SchedulerEventKind::CancellationAcknowledged { dispatch_id } => {
-            SchedulerCommandKind::AcknowledgeCancellation { dispatch_id: *dispatch_id }
-        }
-        SchedulerEventKind::WorkExhausted { work_id, cause_digest } => {
-            SchedulerCommandKind::ExhaustWork { work_id: *work_id, cause_digest: *cause_digest }
-        }
-        SchedulerEventKind::DispatchAbandoned { dispatch_id, cause_digest } => {
-            SchedulerCommandKind::AbandonDispatch {
-                dispatch_id: *dispatch_id,
-                cause_digest: *cause_digest,
-            }
-        }
-        SchedulerEventKind::SchedulerPaused => SchedulerCommandKind::PauseScheduler,
-        SchedulerEventKind::SchedulerResumed => SchedulerCommandKind::ResumeScheduler,
-        SchedulerEventKind::SchedulerDrainRequested => SchedulerCommandKind::DrainScheduler,
-        SchedulerEventKind::SchedulerFinalized { .. } => SchedulerCommandKind::FinalizeScheduler,
-    };
-    SchedulerCommand::new(
-        event.command_id(),
-        event.id(),
-        event.run_id(),
-        expected_sequence,
-        previous,
-        event.prior_state_digest(),
-        event.revision(),
-        kind,
-    )
 }
 
 pub fn illegal(detail: &'static str) -> SchedulerError {

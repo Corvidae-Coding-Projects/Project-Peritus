@@ -1,6 +1,6 @@
 //! Exact integrated-candidate and revision binding.
 
-use peritus_types::{RevisionTuple, Sha256Digest};
+use peritus_types::{ActorId, RevisionTuple, Sha256Digest};
 use vstd::prelude::*;
 
 verus! {
@@ -153,6 +153,30 @@ const fn bytes_32_equal(left: [u8; 32], right: [u8; 32]) -> (equal: bool)
     bytes_32_equal_from(left, right, 0)
 }
 
+/// Mathematical equality of actor identities by all stable bytes.
+pub open spec fn actor_same(left: ActorId, right: ActorId) -> bool {
+    same_bytes_16(left.spec_bytes(), right.spec_bytes())
+}
+
+/// Mathematical equality of SHA-256 digests by all bytes.
+pub open spec fn digest_same(left: Sha256Digest, right: Sha256Digest) -> bool {
+    same_bytes_32(left.spec_bytes(), right.spec_bytes())
+}
+
+/// Executable equality of actor identities by all stable bytes.
+pub const fn actor_ids_equal(left: ActorId, right: ActorId) -> (equal: bool)
+    ensures equal == actor_same(left, right),
+{
+    bytes_16_equal(*left.as_bytes(), *right.as_bytes())
+}
+
+/// Executable equality of SHA-256 digests by all bytes.
+pub const fn digests_equal(left: Sha256Digest, right: Sha256Digest) -> (equal: bool)
+    ensures equal == digest_same(left, right),
+{
+    bytes_32_equal(*left.as_bytes(), *right.as_bytes())
+}
+
 /// Exact mathematical equality of every candidate and revision component.
 pub open spec fn candidate_fresh(
     observed: IntegratedCandidate,
@@ -243,21 +267,43 @@ pub(crate) const fn candidate_matches(
 }
 
 /// Reports whether a digest is not the reserved all-zero missing-evidence value.
+pub open spec fn digest_bytes_present_from(bytes: [u8; 32], index: nat) -> bool
+    decreases 32 - index,
+{
+    if index >= 32 {
+        false
+    } else {
+        bytes[index as int] != 0 || digest_bytes_present_from(bytes, index + 1)
+    }
+}
+
+/// Specification predicate for a non-placeholder digest.
+pub open spec fn digest_is_present(digest: Sha256Digest) -> bool {
+    digest_bytes_present_from(digest.spec_bytes(), 0)
+}
+
+const fn digest_bytes_present_exec(bytes: [u8; 32], index: usize) -> (present: bool)
+    requires index <= 32,
+    ensures present == digest_bytes_present_from(bytes, index as nat),
+    decreases 32 - index,
+{
+    if index == 32 {
+        false
+    } else if bytes[index] != 0 {
+        true
+    } else {
+        digest_bytes_present_exec(bytes, index + 1)
+    }
+}
+
 #[allow(
     clippy::redundant_pub_crate,
     reason = "verified sibling evaluator modules require the executable digest predicate"
 )]
-pub(crate) const fn digest_present(digest: Sha256Digest) -> bool {
-    let bytes = digest.as_bytes();
-    let mut index = 0;
-    while index < bytes.len()
-        invariant 0 <= index <= bytes.len(),
-        decreases bytes.len() - index,
-    {
-        if bytes[index] != 0 { return true; }
-        index += 1;
-    }
-    false
+pub(crate) const fn digest_present(digest: Sha256Digest) -> (present: bool)
+    ensures present == digest_is_present(digest),
+{
+    digest_bytes_present_exec(*digest.as_bytes(), 0)
 }
 
 } // verus!

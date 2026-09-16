@@ -125,7 +125,7 @@ fn next(
         Some(state.head_event_id()),
         state.revision(),
     );
-    let transition = state.reduce(envelope, command.clone(), inputs).into_result().unwrap();
+    let transition = state.reduce(envelope, command, inputs).into_result().unwrap();
     let event = transition.event();
     let head = journal_store.head(key).unwrap().unwrap();
     journal_store

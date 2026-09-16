@@ -1,0 +1,7 @@
+   Compiling peritus-debugger v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/analysis/peritus-debugger)
+   Compiling peritus-eval v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/analysis/peritus-eval)
+   Compiling peritus-product-runner v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/app/peritus-product-runner)
+   Compiling peritus-evolution v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/analysis/peritus-evolution)
+   Compiling peritus-daemon v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/app/peritus-daemon)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 47.35s
+     Running unittests src/lib.rs (target/debug/deps/peritus_daemon-284c06b4a696f2bd)

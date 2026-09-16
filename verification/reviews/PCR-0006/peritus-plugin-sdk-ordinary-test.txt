@@ -1,0 +1,23 @@
+{"candidate_commit": "65f16e2933b70305de865750931bb05fe9afb64d", "candidate_tree": "ae2a43f9a9b73f5fec944d39cf165a8b3ec4df20", "environment": {"CARGO_BUILD_JOBS": "1", "CCACHE_DISABLE": "1", "RUST_TEST_THREADS": "1"}, "gate": {"command": "cargo test --package peritus-plugin-sdk --all-targets --all-features --locked", "invocation": ["cargo", "test", "--package", "peritus-plugin-sdk", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "output": "059-peritus-plugin-sdk-ordinary-test.log", "owning_crate": "peritus-plugin-sdk", "started_at": "2026-09-13T15:20:31.395928Z"}, "plan_sha256": "7fc101b7f8284fbe3818461a8166d73d3425f369120b43c1cbf1b43809a6b7c9"}
+
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.16s
+     Running unittests src/lib.rs (target/debug/deps/peritus_plugin_sdk-8fabbe6b37b5afb2)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/contracts.rs (target/debug/deps/contracts-49d940839e92805a)
+
+running 6 tests
+test canonical_manifest_and_trust_material_are_stable ... ok
+test duplicate_capability_names_are_rejected_even_when_other_fields_differ ... ok
+test framed_protocol_roundtrips_and_rejects_trailing_or_oversized_input ... ok
+test host_quota_intersection_never_widens_a_manifest ... ok
+test payloads_are_canonical_and_recursively_bounded ... ok
+test unsafe_entrypoints_and_unknown_manifest_fields_are_rejected ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+GATE DRIVER RESULT: {"command": "cargo test --package peritus-plugin-sdk --all-targets --all-features --locked", "command_exit_code": 0, "elapsed_seconds": 0.265, "exit_code": 0, "finished_at": "2026-09-13T15:20:31.662001Z", "invocation": ["cargo", "test", "--package", "peritus-plugin-sdk", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "output": "059-peritus-plugin-sdk-ordinary-test.log", "owning_crate": "peritus-plugin-sdk", "result": "passed", "started_at": "2026-09-13T15:20:31.395928Z"}

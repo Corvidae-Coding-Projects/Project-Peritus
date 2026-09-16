@@ -13,6 +13,12 @@ use std::{
 
 use crate::{BenchmarkError, evidence::TraceUsage};
 
+pub struct HarnessTraceEvidence {
+    pub projected_responses: usize,
+    pub usage: TraceUsage,
+    pub incomplete_response: Option<PathBuf>,
+}
+
 pub fn prepare(trace_path: &Path) -> Result<(), BenchmarkError> {
     OpenOptions::new()
         .create(true)
@@ -30,13 +36,21 @@ pub fn publish_harnessbench(
     task_id: &str,
     session_id: &str,
     model_id: &str,
-) -> Result<usize, BenchmarkError> {
+) -> Result<HarnessTraceEvidence, BenchmarkError> {
     let mut rounds = Vec::new();
+    let mut incomplete_response = None;
     for (trace_path, initial_user_prompt) in trace_inputs {
         let frames = frames::read(trace_path)?;
-        rounds.extend(projection::project(trace_path, &frames, initial_user_prompt)?);
+        let projected = projection::project(trace_path, &frames, initial_user_prompt)?;
+        if projected.incomplete_response && incomplete_response.is_none() {
+            incomplete_response = Some(trace_path.clone());
+        }
+        rounds.extend(projected.rounds);
     }
-    harnessbench::publish(proxy_dir, task_id, session_id, model_id, &rounds)
+    let usage = summarize_rounds(&rounds);
+    let projected_responses =
+        harnessbench::publish(proxy_dir, task_id, session_id, model_id, &rounds)?;
+    Ok(HarnessTraceEvidence { projected_responses, usage, incomplete_response })
 }
 
 pub fn summarize_usage(
@@ -44,7 +58,14 @@ pub fn summarize_usage(
     initial_user_prompt: &str,
 ) -> Result<TraceUsage, BenchmarkError> {
     let frames = frames::read(trace_path)?;
-    let rounds = projection::project(trace_path, &frames, initial_user_prompt)?;
+    let projected = projection::project(trace_path, &frames, initial_user_prompt)?;
+    if projected.incomplete_response {
+        return Err(BenchmarkError::trace(trace_path, "provider response has no terminal event"));
+    }
+    Ok(summarize_rounds(&projected.rounds))
+}
+
+fn summarize_rounds(rounds: &[projection::Round]) -> TraceUsage {
     let mut aggregate = TraceUsage { requests: rounds.len(), ..TraceUsage::default() };
     for round in rounds {
         let input = round.usage.input_tokens().unwrap_or(0);
@@ -61,7 +82,7 @@ pub fn summarize_usage(
             .provider_cost_microunits
             .saturating_add(round.usage.provider_cost_microunits().unwrap_or(0));
     }
-    Ok(aggregate)
+    aggregate
 }
 
 #[cfg(test)]

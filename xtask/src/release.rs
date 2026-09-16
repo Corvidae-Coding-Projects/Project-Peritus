@@ -42,6 +42,14 @@ pub(crate) fn bootstrap_smoke(
                 .arg(root),
             "test Windows installer parsing, archive checks, and dependency routing",
         )?;
+        run(
+            Command::new("powershell")
+                .args(["-NoProfile", "-ExecutionPolicy", "Bypass", "-File"])
+                .arg(root.join("packaging/tests/windows-lifecycle.Tests.ps1"))
+                .arg("-RepositoryRoot")
+                .arg(root),
+            "test Windows installation and removal with running processes and locked files",
+        )?;
     }
     let package = match input {
         QualificationInput::Build => crate::product_package::smoke(root)?,

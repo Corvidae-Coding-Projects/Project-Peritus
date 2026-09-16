@@ -1,138 +1,120 @@
 //! Pure deterministic bounded-bypass selection.
 
-use core::cmp::Ordering;
+use vstd::prelude::*;
 
-use crate::{ResourceVector, SchedulerState, WorkId, WorkPhase, WorkerId, WorkerPhase};
+use crate::{SchedulerState, WorkId};
 
-/// One deterministic feasible work/worker choice.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub struct Selection {
-    work_id: WorkId,
-    worker_id: WorkerId,
-}
+mod capacity;
+mod model;
+#[cfg(verus_only)]
+mod ordering;
+mod scan;
 
-impl Selection {
-    /// Returns selected work.
-    #[must_use]
-    pub const fn work_id(self) -> WorkId {
-        self.work_id
-    }
-    /// Returns selected worker.
-    #[must_use]
-    pub const fn worker_id(self) -> WorkerId {
-        self.worker_id
-    }
+pub use capacity::worker_reservation_count;
+pub use model::Selection;
+
+use model::IndexedSelection;
+#[cfg(verus_only)]
+pub(crate) use model::{
+    admitted_work_is_unreserved, chosen_pair_matches as exact_chosen_pair,
+    exact_selection_ready as exact_selection_available, no_dispatch_candidate,
+    selected_pair_admitted, selected_pair_feasible, selected_pair_feasible_parts,
+};
+#[cfg(verus_only)]
+use model::{
+    chosen_pair_matches, exact_selection_ready, selection_is_exact, selection_is_feasible,
+};
+
+verus! {
+
+pub fn select_next_for_dispatch(
+    state: &SchedulerState,
+) -> (result: Option<(usize, usize)>)
+    ensures
+        match result {
+            Some((work_index, worker_index)) =>
+                work_index < state.spec_work().len()
+                    && worker_index < state.spec_workers().len()
+                    && (state.spec_reservation_invariant() ==> selected_pair_admitted(
+                        state,
+                        work_index as int,
+                        worker_index as int,
+                    )),
+            None => true,
+        },
+        exact_selection_ready(state) ==> match result {
+            Some((work_index, worker_index)) => chosen_pair_matches(
+                state, work_index as int, worker_index as int,
+            ),
+            None => no_dispatch_candidate(state),
+        },
+{
+    let selection = scan::select_next_indexed(state)?;
+    Some((selection.work_index, selection.worker_index))
 }
 
 /// Selects the next feasible item by aged-first, priority, enqueue ordinal, identity, then worker.
 #[must_use]
-pub fn select_next(state: &SchedulerState) -> Option<Selection> {
-    let mut feasible = state
-        .work()
-        .iter()
-        .filter_map(|work| {
-            if work.phase() != WorkPhase::Queued {
-                return None;
-            }
-            let worker = first_feasible_worker(state, work.spec().id())?;
-            Some((work, worker))
-        })
-        .collect::<Vec<_>>();
-    feasible.sort_by(|(left, left_worker), (right, right_worker)| {
-        compare_work(state, left, right).then_with(|| left_worker.cmp(right_worker))
-    });
-    feasible
-        .first()
-        .map(|(work, worker)| Selection { work_id: work.spec().id(), worker_id: *worker })
+pub fn select_next(state: &SchedulerState) -> (result: Option<Selection>)
+    ensures
+        state.spec_reservation_invariant() ==> match result {
+            Some(selection) => selection_is_feasible(state, selection),
+            None => true,
+        },
+        exact_selection_ready(state) ==> match result {
+            Some(selection) => selection_is_exact(state, selection),
+            None => no_dispatch_candidate(state),
+        },
+{
+    let selection: IndexedSelection = scan::select_next_indexed(state)?;
+    let work_records = state.work();
+    let workers = state.workers();
+    let selected = Selection::new(
+        work_records[selection.work_index].spec().id(),
+        workers[selection.worker_index].descriptor().id(),
+    );
+    proof {
+        if state.spec_reservation_invariant() {
+            assert(selected_pair_admitted(
+                state,
+                selection.work_index as int,
+                selection.worker_index as int,
+            ));
+            reveal(selected_pair_admitted);
+            assert(work_records@ == state.spec_work());
+            assert(workers@ == state.spec_workers());
+            assert(state.spec_work()[selection.work_index as int]
+                .spec_definition().spec_id() == selected.spec_work_id());
+            assert(state.spec_workers()[selection.worker_index as int]
+                .spec_descriptor().spec_id() == selected.spec_worker_id());
+            assert(selection_is_feasible(state, selected));
+        }
+        if exact_selection_ready(state) {
+            assert(chosen_pair_matches(
+                state,
+                selection.work_index as int,
+                selection.worker_index as int,
+            ));
+            reveal(selection_is_exact);
+        }
+    }
+    Some(selected)
 }
 
 /// Returns whether an item is feasible under current global and at least one worker capacity.
 #[must_use]
-pub fn is_feasible(state: &SchedulerState, work_id: WorkId) -> bool {
-    first_feasible_worker(state, work_id).is_some()
-}
-
-fn compare_work(
-    state: &SchedulerState,
-    left: &crate::WorkRecord,
-    right: &crate::WorkRecord,
-) -> Ordering {
-    let limit = state.binding().limits().bypass_count();
-    let left_aged = left.bypasses() >= limit;
-    let right_aged = right.bypasses() >= limit;
-    right_aged
-        .cmp(&left_aged)
-        .then_with(|| right.spec().priority().cmp(&left.spec().priority()))
-        .then_with(|| left.enqueue_ordinal().cmp(&right.enqueue_ordinal()))
-        .then_with(|| left.spec().id().cmp(&right.spec().id()))
-}
-
-fn first_feasible_worker(state: &SchedulerState, work_id: WorkId) -> Option<WorkerId> {
-    let work = state.work_item(work_id)?;
-    let global_used = state.used_resources().ok().flatten();
-    if !fits_after(
-        global_used.as_ref(),
-        work.spec().request(),
-        state.binding().capacity(),
-        state.binding().limits().resource_dimensions(),
-    ) {
-        return None;
-    }
-    state.workers().iter().find_map(|worker| {
-        if worker.phase() != WorkerPhase::Available
-            || worker.descriptor().owner() != work.spec().owner()
-            || !worker.descriptor().supports(work.spec().class())
-        {
-            return None;
+pub fn is_feasible(state: &SchedulerState, work_id: WorkId) -> (result: bool) {
+    let mut index = 0;
+    while index < state.work().len()
+        invariant index <= state.spec_work().len(),
+        decreases state.spec_work().len() - index,
+    {
+        if state.work()[index].spec().id().same(&work_id) {
+            return scan::first_feasible_worker(state, index).is_some();
         }
-        let active: Vec<_> = state
-            .reservations()
-            .iter()
-            .filter(|reservation| reservation.worker_id() == worker.descriptor().id())
-            .collect();
-        if active.len() >= usize::from(worker.descriptor().concurrency()) {
-            return None;
-        }
-        let used = resource_sum(active.into_iter(), state.binding().limits().resource_dimensions())
-            .ok()?;
-        fits_after(
-            used.as_ref(),
-            work.spec().request(),
-            worker.descriptor().capacity(),
-            state.binding().limits().resource_dimensions(),
-        )
-        .then_some(worker.descriptor().id())
-    })
-}
-
-fn fits_after(
-    current: Option<&ResourceVector>,
-    request: &ResourceVector,
-    capacity: &ResourceVector,
-    dimensions: u16,
-) -> bool {
-    current.map_or_else(
-        || request.fits_within(capacity),
-        |current| {
-            current
-                .checked_add(request, dimensions)
-                .is_ok_and(|combined| combined.fits_within(capacity))
-        },
-    )
-}
-
-fn resource_sum<'a>(
-    values: impl Iterator<Item = &'a crate::SchedulerReservation>,
-    dimensions: u16,
-) -> Result<Option<ResourceVector>, ()> {
-    let mut sum = None;
-    for reservation in values {
-        sum = Some(sum.map_or_else(
-            || Ok(reservation.resources().clone()),
-            |current: ResourceVector| {
-                current.checked_add(reservation.resources(), dimensions).map_err(|_| ())
-            },
-        )?);
+        index += 1;
     }
-    Ok(sum)
+    false
 }
+
+} // verus!

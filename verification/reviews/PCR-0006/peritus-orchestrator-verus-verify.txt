@@ -1,0 +1,2205 @@
+{"candidate_commit": "65f16e2933b70305de865750931bb05fe9afb64d", "candidate_tree": "ae2a43f9a9b73f5fec944d39cf165a8b3ec4df20", "environment": {"CARGO_BUILD_JOBS": "1", "CCACHE_DISABLE": "1", "RUST_TEST_THREADS": "1"}, "gate": {"command": "cargo verus verify --package peritus-orchestrator --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20", "invocation": ["taskset", "-c", "0,1", "cargo", "verus", "verify", "--package", "peritus-orchestrator", "--all-features", "--locked", "--check-toolchain", "--fwd-verus-args-to", "roots", "--", "--no-cheating", "--rlimit", "20"], "kind": "verus-verify", "output": "054-peritus-orchestrator-verus-verify.log", "owning_crate": "peritus-orchestrator", "started_at": "2026-09-13T15:20:24.904895Z"}, "plan_sha256": "7fc101b7f8284fbe3818461a8166d73d3425f369120b43c1cbf1b43809a6b7c9"}
+
+note: automatically chose triggers for this expression:
+  --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:15:59
+   |
+15 |           crate::selector::SelectorValues::Exact(values) => exists |index: int|
+   |  ___________________________________________________________^
+16 | |             0 <= index < values@.len() && !boundary.spec_contains_actor(values@[index]),
+   | |_______________________________________________________________________________________^
+
+note:   trigger 1 of 1:
+  --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:16:73
+   |
+16 |             0 <= index < values@.len() && !boundary.spec_contains_actor(values@[index]),
+   |                                                                         ^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:26:59
+   |
+26 |           crate::selector::SelectorValues::Exact(values) => exists |index: int|
+   |  ___________________________________________________________^
+27 | |             0 <= index < values@.len() && !boundary.spec_contains_role(values@[index]),
+   | |______________________________________________________________________________________^
+
+note:   trigger 1 of 1:
+  --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:27:72
+   |
+27 |             0 <= index < values@.len() && !boundary.spec_contains_role(values@[index]),
+   |                                                                        ^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:37:59
+   |
+37 |           crate::selector::SelectorValues::Exact(values) => exists |index: int|
+   |  ___________________________________________________________^
+38 | |             0 <= index < values@.len() && !boundary.spec_contains_environment(values@[index]),
+   | |_____________________________________________________________________________________________^
+
+note:   trigger 1 of 1:
+  --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:38:79
+   |
+38 |             0 <= index < values@.len() && !boundary.spec_contains_environment(values@[index]),
+   |                                                                               ^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:47:25
+   |
+47 |           Some(values) => exists |index: int|
+   |  _________________________^
+48 | |             0 <= index < values.spec_values().len()
+49 | |                 && !boundary.spec_contains_permission(&values.spec_values()[index]),
+   | |___________________________________________________________________________________^
+
+note:   trigger 1 of 1:
+  --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:49:56
+   |
+49 |                 && !boundary.spec_contains_permission(&values.spec_values()[index]),
+   |                                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:119:20
+    |
+119 |               assert(exists |witness: int| 0 <= witness < values@.len()
+    |  ____________________^
+120 | |                 && !boundary.spec_contains_actor(values@[witness])) by {
+    | |__________________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:120:50
+    |
+120 |                 && !boundary.spec_contains_actor(values@[witness])) by {
+    |                                                  ^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:128:24
+    |
+128 |                   assert(exists |witness: int| 0 <= witness < values@.len()
+    |  ________________________^
+129 | |                     && !boundary.spec_contains_actor(values@[witness]));
+    | |______________________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:129:54
+    |
+129 |                     && !boundary.spec_contains_actor(values@[witness]));
+    |                                                      ^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:114:13
+    |
+114 | /             forall |prior: int| 0 <= prior < index ==>
+115 | |                 boundary.spec_contains_actor(values@[prior]),
+    | |____________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:115:46
+    |
+115 |                 boundary.spec_contains_actor(values@[prior]),
+    |                                              ^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:157:20
+    |
+157 |               assert(exists |witness: int| 0 <= witness < values@.len()
+    |  ____________________^
+158 | |                 && !boundary.spec_contains_role(values@[witness])) by {
+    | |_________________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:158:49
+    |
+158 |                 && !boundary.spec_contains_role(values@[witness])) by {
+    |                                                 ^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:166:24
+    |
+166 |                   assert(exists |witness: int| 0 <= witness < values@.len()
+    |  ________________________^
+167 | |                     && !boundary.spec_contains_role(values@[witness]));
+    | |_____________________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:167:53
+    |
+167 |                     && !boundary.spec_contains_role(values@[witness]));
+    |                                                     ^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:152:13
+    |
+152 | /             forall |prior: int| 0 <= prior < index ==>
+153 | |                 boundary.spec_contains_role(values@[prior]),
+    | |___________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:153:45
+    |
+153 |                 boundary.spec_contains_role(values@[prior]),
+    |                                             ^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:195:20
+    |
+195 |               assert(exists |witness: int| 0 <= witness < values@.len()
+    |  ____________________^
+196 | |                 && !boundary.spec_contains_environment(values@[witness])) by {
+    | |________________________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:196:56
+    |
+196 |                 && !boundary.spec_contains_environment(values@[witness])) by {
+    |                                                        ^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:204:24
+    |
+204 |                   assert(exists |witness: int| 0 <= witness < values@.len()
+    |  ________________________^
+205 | |                     && !boundary.spec_contains_environment(values@[witness]));
+    | |____________________________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:205:60
+    |
+205 |                     && !boundary.spec_contains_environment(values@[witness]));
+    |                                                            ^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:190:13
+    |
+190 | /             forall |prior: int| 0 <= prior < index ==>
+191 | |                 boundary.spec_contains_environment(values@[prior]),
+    | |__________________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:191:52
+    |
+191 |                 boundary.spec_contains_environment(values@[prior]),
+    |                                                    ^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:234:20
+    |
+234 |               assert(exists |witness: int| 0 <= witness < values@.len()
+    |  ____________________^
+235 | |                 && !boundary.spec_contains_permission(&values@[witness])) by {
+    | |________________________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:235:56
+    |
+235 |                 && !boundary.spec_contains_permission(&values@[witness])) by {
+    |                                                        ^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:244:24
+    |
+244 |                   assert(exists |witness: int| 0 <= witness < values@.len()
+    |  ________________________^
+245 | |                     && !boundary.spec_contains_permission(&values@[witness]));
+    | |____________________________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:245:60
+    |
+245 |                     && !boundary.spec_contains_permission(&values@[witness]));
+    |                                                            ^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:229:13
+    |
+229 | /             forall |prior: int| 0 <= prior < index ==>
+230 | |                 boundary.spec_contains_permission(&values@[prior]),
+    | |__________________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:230:52
+    |
+230 |                 boundary.spec_contains_permission(&values@[prior]),
+    |                                                    ^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/foundation/peritus-policy/src/amendment/preview.rs:39:24
+   |
+39 |                       && exists |revision: RevisionTuple,
+   |  ________________________^
+40 | |                         ceiling: crate::AuthorityCeiling,
+41 | |                         layers: Seq<RestrictionLayer>| {
+42 | |                         &&& crate::amendment_model::revision_is_exact_successor(
+...  |
+64 | |                         ) == Some((error.spec_kind(), error.spec_dimension()))
+65 | |                     }
+   | |_____________________^
+
+note:   trigger 1 of 1:
+  --> crates/foundation/peritus-policy/src/amendment/preview.rs:47:29
+   |
+47 |                           &&& ceiling.spec_is_revision_rebind_of(
+   |  _____________________________^
+48 | |                             &base.spec_ceiling_value(),
+49 | |                             revision,
+50 | |                         )
+   | |_________________________^
+...
+60 |                           &&& crate::definition::construction::policy_definition_validation_error(
+   |  _____________________________^
+61 | |                             proposal.spec_successor_policy_id_value(),
+62 | |                             &ceiling,
+63 | |                             layers,
+64 | |                         ) == Some((error.spec_kind(), error.spec_dimension()))
+   | |_________________________^
+
+note: automatically chose triggers for this expression:
+   --> crates/foundation/peritus-policy/src/amendment/preview.rs:101:9
+    |
+101 | /         exists |witness_revision: RevisionTuple,
+102 | |             witness_ceiling: crate::AuthorityCeiling,
+103 | |             witness_layers: Seq<RestrictionLayer>| {
+104 | |             &&& crate::amendment_model::revision_is_exact_successor(
+...   |
+126 | |             ) == Some((error.spec_kind(), error.spec_dimension()))
+127 | |         },
+    | |_________^
+
+note:   trigger 1 of 1:
+   --> crates/foundation/peritus-policy/src/amendment/preview.rs:109:17
+    |
+109 |               &&& witness_ceiling.spec_is_revision_rebind_of(
+    |  _________________^
+110 | |                 &base.spec_ceiling_value(),
+111 | |                 witness_revision,
+112 | |             )
+    | |_____________^
+...
+122 |               &&& crate::definition::construction::policy_definition_validation_error(
+    |  _________________^
+123 | |                 proposal.spec_successor_policy_id_value(),
+124 | |                 &witness_ceiling,
+125 | |                 witness_layers,
+126 | |             ) == Some((error.spec_kind(), error.spec_dimension()))
+    | |_____________^
+
+note: automatically chose triggers for this expression:
+   --> crates/foundation/peritus-policy/src/amendment/preview.rs:129:12
+    |
+129 |       assert(exists |witness_revision: RevisionTuple,
+    |  ____________^
+130 | |         witness_ceiling: crate::AuthorityCeiling,
+131 | |         witness_layers: Seq<RestrictionLayer>| {
+132 | |         &&& witness_revision == revision
+...   |
+157 | |         ) == Some((error.spec_kind(), error.spec_dimension()))
+158 | |     });
+    | |_____^
+
+note:   trigger 1 of 2:
+   --> crates/foundation/peritus-policy/src/amendment/preview.rs:140:13
+    |
+140 |           &&& witness_ceiling.spec_is_revision_rebind_of(
+    |  _____________^
+141 | |             &base.spec_ceiling_value(),
+142 | |             witness_revision,
+143 | |         )
+    | |_________^
+...
+153 |           &&& crate::definition::construction::policy_definition_validation_error(
+    |  _____________^
+154 | |             proposal.spec_successor_policy_id_value(),
+155 | |             &witness_ceiling,
+156 | |             witness_layers,
+157 | |         ) == Some((error.spec_kind(), error.spec_dimension()))
+    | |_________^
+
+note:   trigger 2 of 2:
+   --> crates/foundation/peritus-policy/src/amendment/preview.rs:140:13
+    |
+140 |           &&& witness_ceiling.spec_is_revision_rebind_of(
+    |  _____________^
+141 | |             &base.spec_ceiling_value(),
+142 | |             witness_revision,
+143 | |         )
+    | |_________^
+...
+153 |           &&& crate::definition::construction::policy_definition_validation_error(
+    |  _____________^
+154 | |             proposal.spec_successor_policy_id_value(),
+155 | |             &witness_ceiling,
+156 | |             witness_layers,
+157 | |         ) == Some((error.spec_kind(), error.spec_dimension()))
+    | |_________^
+
+note:   trigger 1 of 1:
+   --> crates/foundation/peritus-policy/src/amendment/preview.rs:140:13
+    |
+140 |           &&& witness_ceiling.spec_is_revision_rebind_of(
+    |  _____________^
+141 | |             &base.spec_ceiling_value(),
+142 | |             witness_revision,
+143 | |         )
+    | |_________^
+...
+153 |           &&& crate::definition::construction::policy_definition_validation_error(
+    |  _____________^
+154 | |             proposal.spec_successor_policy_id_value(),
+155 | |             &witness_ceiling,
+156 | |             witness_layers,
+157 | |         ) == Some((error.spec_kind(), error.spec_dimension()))
+    | |_________^
+
+note: Verus printed one or more automatically chosen quantifier triggers
+      because it had low confidence in the chosen triggers.
+      To suppress these messages, do one of the following:
+        (1) manually annotate a single desired trigger using #[trigger]
+            (example: forall|i: int, j: int| f(i) && #[trigger] g(i) && #[trigger] h(j)),
+        (2) manually annotate multiple desired triggers using #![trigger ...]
+            (example: forall|i: int| #![trigger f(i)] #![trigger g(i)] f(i) && g(i)),
+        (3) accept the automatically chosen trigger using #![auto]
+            (example: forall|i: int, j: int| #![auto] f(i) && g(i) && h(j))
+        (4) use the --triggers-mode silent command-line option to suppress all printing of triggers.
+      (Note: triggers are used by the underlying SMT theorem prover to instantiate quantifiers;
+      the theorem prover instantiates a quantifier whenever some expression matches the
+      pattern specified by one of the quantifier's triggers.)
+   --> crates/foundation/peritus-policy/src/amendment/preview.rs:129:12
+    |
+129 |       assert(exists |witness_revision: RevisionTuple,
+    |  ____________^
+130 | |         witness_ceiling: crate::AuthorityCeiling,
+131 | |         witness_layers: Seq<RestrictionLayer>| {
+132 | |         &&& witness_revision == revision
+...   |
+157 | |         ) == Some((error.spec_kind(), error.spec_dimension()))
+158 | |     });
+    | |_____^
+
+note: automatically chose triggers for this expression:
+  --> crates/foundation/peritus-kernel/src/aggregate/lookup.rs:96:21
+   |
+96 |               None => forall |index: int| 0 <= index < self.runs@.len()
+   |  _____________________^
+97 | |                 ==> !crate::identity::run_ids_equal(self.runs@[index].id, id),
+   | |_____________________________________________________________________________^
+
+note:   trigger 1 of 1:
+  --> crates/foundation/peritus-kernel/src/aggregate/lookup.rs:97:53
+   |
+97 |                 ==> !crate::identity::run_ids_equal(self.runs@[index].id, id),
+   |                                                     ^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/foundation/peritus-kernel/src/aggregate/lookup.rs:104:17
+    |
+104 | /                 forall |prior: int| 0 <= prior < index
+105 | |                     ==> !crate::identity::run_ids_equal(self.runs@[prior].id, id),
+    | |_________________________________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/foundation/peritus-kernel/src/aggregate/lookup.rs:105:57
+    |
+105 |                     ==> !crate::identity::run_ids_equal(self.runs@[prior].id, id),
+    |                                                         ^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/foundation/peritus-kernel/src/aggregate/lookup.rs:173:21
+    |
+173 |               None => forall |index: int| 0 <= index < self.reviews@.len() ==>
+    |  _____________________^
+174 | |                 !crate::identity::review_cycle_ids_equal(self.reviews@[index].spec_id(), id),
+    | |____________________________________________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/foundation/peritus-kernel/src/aggregate/lookup.rs:174:58
+    |
+174 |                 !crate::identity::review_cycle_ids_equal(self.reviews@[index].spec_id(), id),
+    |                                                          ^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/foundation/peritus-kernel/src/aggregate/lookup.rs:181:17
+    |
+181 | /                 forall |prior: int| 0 <= prior < index ==>
+182 | |                     !crate::identity::review_cycle_ids_equal(
+183 | |                         self.reviews@[prior].spec_id(), id),
+    | |___________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/foundation/peritus-kernel/src/aggregate/lookup.rs:183:25
+    |
+183 |                         self.reviews@[prior].spec_id(), id),
+    |                         ^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/foundation/peritus-kernel/src/aggregate/lookup.rs:199:21
+    |
+199 |               None => forall |index: int| 0 <= index < self.waivers@.len() ==>
+    |  _____________________^
+200 | |                 !peritus_quality_policy::finding_ids_match(
+201 | |                     self.waivers@[index].spec_finding_id(), id),
+    | |_______________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/foundation/peritus-kernel/src/aggregate/lookup.rs:201:21
+    |
+201 |                     self.waivers@[index].spec_finding_id(), id),
+    |                     ^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/foundation/peritus-kernel/src/aggregate/lookup.rs:208:17
+    |
+208 | /                 forall |prior: int| 0 <= prior < index ==>
+209 | |                     !peritus_quality_policy::finding_ids_match(
+210 | |                         self.waivers@[prior].spec_finding_id(), id),
+    | |___________________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/foundation/peritus-kernel/src/aggregate/lookup.rs:210:25
+    |
+210 |                         self.waivers@[prior].spec_finding_id(), id),
+    |                         ^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/foundation/peritus-kernel/src/inputs.rs:45:9
+   |
+45 | /         exists |evidence: &'a AcceptanceEvidence,
+46 | |             waiver_index: int,
+47 | |             review_index: int,
+48 | |             finding_index: int|
+...  |
+65 | |             && evidence.spec_reviews()[review_index].spec_cycle_id().spec_bytes()@
+66 | |                 == review_cycle_id.spec_bytes()@
+   | |________________________________________________^
+
+note:   trigger 1 of 1:
+  --> crates/foundation/peritus-kernel/src/inputs.rs:50:16
+   |
+50 |               && peritus_quality_policy::current_waiver_at(
+   |  ________________^
+51 | |                 evidence.spec_waivers(), finding_id, revision, waiver_index)
+   | |____________________________________________________________________________^
+...
+58 |               && peritus_quality_policy::current_finding_at(
+   |  ________________^
+59 | |                 evidence.spec_reviews(),
+60 | |                 finding_id,
+61 | |                 revision,
+62 | |                 review_index,
+63 | |                 finding_index,
+64 | |             )
+   | |_____________^
+
+note: automatically chose triggers for this expression:
+   --> crates/foundation/peritus-kernel/src/inputs.rs:93:16
+    |
+ 93 |           assert(exists |candidate_evidence: &'a AcceptanceEvidence,
+    |  ________________^
+ 94 | |             candidate_waiver: int,
+ 95 | |             candidate_review: int,
+ 96 | |             candidate_finding: int|
+...   |
+113 | |             && candidate_evidence.spec_reviews()[candidate_review].spec_cycle_id().spec_bytes()@
+114 | |                 == review_cycle_id.spec_bytes()@) by {
+    | |________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/foundation/peritus-kernel/src/inputs.rs:98:16
+    |
+ 98 |               && peritus_quality_policy::current_waiver_at(
+    |  ________________^
+ 99 | |                 candidate_evidence.spec_waivers(), finding_id, revision, candidate_waiver)
+    | |__________________________________________________________________________________________^
+...
+106 |               && peritus_quality_policy::current_finding_at(
+    |  ________________^
+107 | |                 candidate_evidence.spec_reviews(),
+108 | |                 finding_id,
+109 | |                 revision,
+110 | |                 candidate_review,
+111 | |                 candidate_finding,
+112 | |             )
+    | |_____________^
+
+note: automatically chose triggers for this expression:
+   --> crates/foundation/peritus-kernel/src/model.rs:101:5
+    |
+101 | /     exists |before_index: int, after_index: int| {
+102 | |         &&& 0 <= before_index < before.runs@.len()
+103 | |         &&& 0 <= after_index < after.runs@.len()
+104 | |         &&& crate::identity::run_ids_equal(before.runs@[before_index].id, id)
+...   |
+109 | |         &&& after.runs@[after_index].acceptance == AcceptancePhase::Accepted
+110 | |     }
+    | |_____^
+
+note:   trigger 1 of 1:
+   --> crates/foundation/peritus-kernel/src/model.rs:104:44
+    |
+104 |         &&& crate::identity::run_ids_equal(before.runs@[before_index].id, id)
+    |                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+105 |         &&& crate::identity::run_ids_equal(after.runs@[after_index].id, id)
+    |                                            ^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/foundation/peritus-kernel/src/model.rs:119:5
+    |
+119 | /     exists |before_index: int, after_index: int| {
+120 | |         &&& 0 <= before_index < before.runs@.len()
+121 | |         &&& 0 <= after_index < after.runs@.len()
+122 | |         &&& crate::identity::run_ids_equal(before.runs@[before_index].id, id)
+...   |
+127 | |         &&& after.runs@[after_index].acceptance == AcceptancePhase::NeedsChanges
+128 | |     }
+    | |_____^
+
+note:   trigger 1 of 1:
+   --> crates/foundation/peritus-kernel/src/model.rs:122:44
+    |
+122 |         &&& crate::identity::run_ids_equal(before.runs@[before_index].id, id)
+    |                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+123 |         &&& crate::identity::run_ids_equal(after.runs@[after_index].id, id)
+    |                                            ^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/foundation/peritus-kernel/src/model.rs:174:13
+    |
+174 |           ==> exists |before_index: int| {
+    |  _____________^
+175 | |             &&& 0 <= before_index < before.runs@.len()
+176 | |             &&& crate::identity::run_ids_equal(
+177 | |                 before.runs@[before_index].id,
+...   |
+180 | |             &&& before.runs@[before_index].phase == RunPhase::Accepted
+181 | |         }
+    | |_________^
+
+note:   trigger 1 of 1:
+   --> crates/foundation/peritus-kernel/src/model.rs:177:17
+    |
+177 |                 before.runs@[before_index].id,
+    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/foundation/peritus-kernel/src/reducer/waiver_correspondence.rs:18:5
+   |
+18 | /     exists |waiver_index: int, review_index: int|
+19 | |         0 <= waiver_index < before.spec_waivers().len()
+20 | |         && peritus_quality_policy::finding_ids_match(
+21 | |             before.spec_waivers()[waiver_index].spec_finding_id(), finding_id)
+...  |
+31 | |             before.spec_waivers()[waiver_index].spec_review_cycle_id(),
+32 | |         )
+   | |_________^
+
+note:   trigger 1 of 1:
+  --> crates/foundation/peritus-kernel/src/reducer/waiver_correspondence.rs:21:13
+   |
+21 |             before.spec_waivers()[waiver_index].spec_finding_id(), finding_id)
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+24 |         && before.spec_reviews()[review_index].spec_id().spec_bytes()@
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/foundation/peritus-kernel/src/reducer/waiver_correspondence.rs:41:5
+   |
+41 | /     exists |waiver_index: int, review_index: int|
+42 | |         0 <= waiver_index < after.spec_waivers().len()
+43 | |         && peritus_quality_policy::finding_ids_match(
+44 | |             after.spec_waivers()[waiver_index].spec_finding_id(), finding_id)
+...  |
+54 | |             after.spec_waivers()[waiver_index].spec_review_cycle_id(),
+55 | |         )
+   | |_________^
+
+note:   trigger 1 of 1:
+  --> crates/foundation/peritus-kernel/src/reducer/waiver_correspondence.rs:44:13
+   |
+44 |             after.spec_waivers()[waiver_index].spec_finding_id(), finding_id)
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+47 |         && after.spec_reviews()[review_index].spec_id().spec_bytes()@
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/foundation/peritus-kernel/src/reducer/refinement.rs:87:24
+   |
+87 |                   assert(exists |left: int, right: int| {
+   |  ________________________^
+88 | |                     &&& 0 <= left < before.runs@.len()
+89 | |                     &&& 0 <= right < after.runs@.len()
+90 | |                     &&& crate::identity::run_ids_equal(before.runs@[left].id, id)
+...  |
+95 | |                     &&& after.runs@[right].acceptance == AcceptancePhase::Accepted
+96 | |                 });
+   | |_________________^
+
+note:   trigger 1 of 1:
+  --> crates/foundation/peritus-kernel/src/reducer/refinement.rs:90:56
+   |
+90 |                     &&& crate::identity::run_ids_equal(before.runs@[left].id, id)
+   |                                                        ^^^^^^^^^^^^^^^^^^
+91 |                     &&& crate::identity::run_ids_equal(after.runs@[right].id, id)
+   |                                                        ^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/foundation/peritus-kernel/src/reducer/refinement.rs:127:24
+    |
+127 |                   assert(exists |left: int, right: int| {
+    |  ________________________^
+128 | |                     &&& 0 <= left < before.runs@.len()
+129 | |                     &&& 0 <= right < after.runs@.len()
+130 | |                     &&& crate::identity::run_ids_equal(before.runs@[left].id, id)
+...   |
+135 | |                     &&& after.runs@[right].acceptance == AcceptancePhase::NeedsChanges
+136 | |                 });
+    | |_________________^
+
+note:   trigger 1 of 1:
+   --> crates/foundation/peritus-kernel/src/reducer/refinement.rs:130:56
+    |
+130 |                     &&& crate::identity::run_ids_equal(before.runs@[left].id, id)
+    |                                                        ^^^^^^^^^^^^^^^^^^
+131 |                     &&& crate::identity::run_ids_equal(after.runs@[right].id, id)
+    |                                                        ^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/foundation/peritus-kernel/src/reducer/refinement.rs:199:24
+    |
+199 |                   assert(exists |prior: int| {
+    |  ________________________^
+200 | |                     &&& 0 <= prior < before.runs@.len()
+201 | |                     &&& crate::identity::run_ids_equal(
+202 | |                         before.runs@[prior].id,
+...   |
+205 | |                     &&& before.runs@[prior].phase == RunPhase::Accepted
+206 | |                 });
+    | |_________________^
+
+note:   trigger 1 of 1:
+   --> crates/foundation/peritus-kernel/src/reducer/refinement.rs:202:25
+    |
+202 |                         before.runs@[prior].id,
+    |                         ^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/foundation/peritus-kernel/src/reducer/refinement.rs:167:21
+    |
+167 |                   ==> exists |before_index: int| {
+    |  _____________________^
+168 | |                     &&& 0 <= before_index < before.runs@.len()
+169 | |                     &&& crate::identity::run_ids_equal(
+170 | |                         before.runs@[before_index].id,
+...   |
+173 | |                     &&& before.runs@[before_index].phase == RunPhase::Accepted
+174 | |                 },
+    | |_________________^
+
+note:   trigger 1 of 1:
+   --> crates/foundation/peritus-kernel/src/reducer/refinement.rs:170:25
+    |
+170 |                         before.runs@[before_index].id,
+    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: Verus printed one or more automatically chosen quantifier triggers
+      because it had low confidence in the chosen triggers.
+      To suppress these messages, do one of the following:
+        (1) manually annotate a single desired trigger using #[trigger]
+            (example: forall|i: int, j: int| f(i) && #[trigger] g(i) && #[trigger] h(j)),
+        (2) manually annotate multiple desired triggers using #![trigger ...]
+            (example: forall|i: int| #![trigger f(i)] #![trigger g(i)] f(i) && g(i)),
+        (3) accept the automatically chosen trigger using #![auto]
+            (example: forall|i: int, j: int| #![auto] f(i) && g(i) && h(j))
+        (4) use the --triggers-mode silent command-line option to suppress all printing of triggers.
+      (Note: triggers are used by the underlying SMT theorem prover to instantiate quantifiers;
+      the theorem prover instantiates a quantifier whenever some expression matches the
+      pattern specified by one of the quantifier's triggers.)
+  --> crates/foundation/peritus-kernel/src/reducer/waiver_correspondence.rs:41:5
+   |
+41 | /     exists |waiver_index: int, review_index: int|
+42 | |         0 <= waiver_index < after.spec_waivers().len()
+43 | |         && peritus_quality_policy::finding_ids_match(
+44 | |             after.spec_waivers()[waiver_index].spec_finding_id(), finding_id)
+...  |
+54 | |             after.spec_waivers()[waiver_index].spec_review_cycle_id(),
+55 | |         )
+   | |_________^
+
+note: automatically chose triggers for this expression:
+   --> crates/state/peritus-leases/src/binding/use_projection.rs:151:16
+    |
+151 |               && forall |index: int| 0 <= index < permissions.len() ==>
+    |  ________________^
+152 | |                 self.scope_permissions@[index].matches_permission(&permissions[index])
+    | |______________________________________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/state/peritus-leases/src/binding/use_projection.rs:152:68
+    |
+152 |                 self.scope_permissions@[index].matches_permission(&permissions[index])
+    |                                                                    ^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/state/peritus-leases/src/binding/duplication.rs:37:16
+   |
+37 |               && forall |index: int| 0 <= index < source.scope_permissions@.len() ==>
+   |  ________________^
+38 | |                 self.scope_permissions@[index]
+39 | |                     .exactly_duplicates(&source.scope_permissions@[index])
+40 | |             && self.revision == source.revision
+...  |
+51 | |             && self.successor_issuance_digest == source.successor_issuance_digest
+52 | |             && self.successor_issuance_command_id == source.successor_issuance_command_id
+   | |_________________________________________________________________________________________^
+
+note:   trigger 1 of 2:
+  --> crates/state/peritus-leases/src/binding/duplication.rs:38:17
+   |
+38 |                 self.scope_permissions@[index]
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note:   trigger 2 of 2:
+  --> crates/state/peritus-leases/src/binding/duplication.rs:39:42
+   |
+39 |                     .exactly_duplicates(&source.scope_permissions@[index])
+   |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/state/peritus-leases/src/binding/duplication.rs:64:17
+   |
+64 | /                 forall |prior: int| 0 <= prior < index ==>
+65 | |                     scope_permissions@[prior]
+66 | |                         .exactly_duplicates(&self.scope_permissions@[prior]),
+   | |____________________________________________________________________________^
+
+note:   trigger 1 of 1:
+  --> crates/state/peritus-leases/src/binding/duplication.rs:65:21
+   |
+65 |                     scope_permissions@[prior]
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/state/peritus-leases/src/binding/duplication.rs:98:13
+   |
+98 |             assert forall |permission_index: int|
+   |             ^^^^^^
+
+note:   trigger 1 of 2:
+   --> crates/state/peritus-leases/src/binding/duplication.rs:100:21
+    |
+100 |                     duplicate.scope_permissions@[permission_index]
+    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note:   trigger 2 of 2:
+   --> crates/state/peritus-leases/src/binding/duplication.rs:101:46
+    |
+101 |                         .exactly_duplicates(&self.scope_permissions@[permission_index]) by {
+    |                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/state/peritus-leases/src/binding/use_projection.rs:57:17
+   |
+57 | /                 forall |prior: int| 0 <= prior < index ==>
+58 | |                     scope_permissions@[prior].matches_permission(&source_permissions@[prior]),
+   | |_____________________________________________________________________________________________^
+
+note:   trigger 1 of 2:
+  --> crates/state/peritus-leases/src/binding/use_projection.rs:58:21
+   |
+58 |                     scope_permissions@[prior].matches_permission(&source_permissions@[prior]),
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note:   trigger 2 of 2:
+  --> crates/state/peritus-leases/src/binding/use_projection.rs:58:67
+   |
+58 |                     scope_permissions@[prior].matches_permission(&source_permissions@[prior]),
+   |                                                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/state/peritus-leases/src/binding/use_projection.rs:68:13
+   |
+68 |             assert forall |permission_index: int|
+   |             ^^^^^^
+
+note:   trigger 1 of 2:
+  --> crates/state/peritus-leases/src/binding/use_projection.rs:70:21
+   |
+70 |                     scope_permissions@[permission_index]
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note:   trigger 2 of 2:
+  --> crates/state/peritus-leases/src/binding/use_projection.rs:71:46
+   |
+71 |                         .matches_permission(&source_permissions@[permission_index]) by {
+   |                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/state/peritus-leases/src/port/equality/binding/use_projection.rs:251:13
+    |
+251 | /             forall |prior: int| 0 <= prior < index ==>
+252 | |                 permission_fields_match(
+253 | |                     &left.scope_permissions@[prior],
+254 | |                     &right.scope_permissions@[prior],
+255 | |                 ),
+    | |_________________^
+
+note:   trigger 1 of 2:
+   --> crates/state/peritus-leases/src/port/equality/binding/use_projection.rs:253:22
+    |
+253 |                     &left.scope_permissions@[prior],
+    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note:   trigger 2 of 2:
+   --> crates/state/peritus-leases/src/port/equality/binding/use_projection.rs:254:22
+    |
+254 |                     &right.scope_permissions@[prior],
+    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/state/peritus-leases/src/port/equality/binding/use_projection.rs:268:9
+    |
+268 |         assert forall |permission_index: int|
+    |         ^^^^^^
+
+note:   trigger 1 of 2:
+   --> crates/state/peritus-leases/src/port/equality/binding/use_projection.rs:271:22
+    |
+271 |                     &left.scope_permissions@[permission_index],
+    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note:   trigger 2 of 2:
+   --> crates/state/peritus-leases/src/port/equality/binding/use_projection.rs:272:22
+    |
+272 |                     &right.scope_permissions@[permission_index],
+    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: Verus printed one or more automatically chosen quantifier triggers
+      because it had low confidence in the chosen triggers.
+      To suppress these messages, do one of the following:
+        (1) manually annotate a single desired trigger using #[trigger]
+            (example: forall|i: int, j: int| f(i) && #[trigger] g(i) && #[trigger] h(j)),
+        (2) manually annotate multiple desired triggers using #![trigger ...]
+            (example: forall|i: int| #![trigger f(i)] #![trigger g(i)] f(i) && g(i)),
+        (3) accept the automatically chosen trigger using #![auto]
+            (example: forall|i: int, j: int| #![auto] f(i) && g(i) && h(j))
+        (4) use the --triggers-mode silent command-line option to suppress all printing of triggers.
+      (Note: triggers are used by the underlying SMT theorem prover to instantiate quantifiers;
+      the theorem prover instantiates a quantifier whenever some expression matches the
+      pattern specified by one of the quantifier's triggers.)
+   --> crates/state/peritus-leases/src/binding/use_projection.rs:151:16
+    |
+151 |               && forall |index: int| 0 <= index < permissions.len() ==>
+    |  ________________^
+152 | |                 self.scope_permissions@[index].matches_permission(&permissions[index])
+    | |______________________________________________________________________________________^
+
+note: automatically chose triggers for this expression:
+  --> crates/orchestration/peritus-role/src/capability_view.rs:63:13
+   |
+63 | /             exists |index: int| 0 <= index < operations.len()
+64 | |                 && Self::spec_valid_through(role, operations, index)
+65 | |                 && Self::spec_error_at(role, operations, index, error)
+   | |______________________________________________________________________^
+
+note:   trigger 1 of 1:
+  --> crates/orchestration/peritus-role/src/capability_view.rs:64:20
+   |
+64 |                 && Self::spec_valid_through(role, operations, index)
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: Verus printed one or more automatically chosen quantifier triggers
+      because it had low confidence in the chosen triggers.
+      To suppress these messages, do one of the following:
+        (1) manually annotate a single desired trigger using #[trigger]
+            (example: forall|i: int, j: int| f(i) && #[trigger] g(i) && #[trigger] h(j)),
+        (2) manually annotate multiple desired triggers using #![trigger ...]
+            (example: forall|i: int| #![trigger f(i)] #![trigger g(i)] f(i) && g(i)),
+        (3) accept the automatically chosen trigger using #![auto]
+            (example: forall|i: int, j: int| #![auto] f(i) && g(i) && h(j))
+        (4) use the --triggers-mode silent command-line option to suppress all printing of triggers.
+      (Note: triggers are used by the underlying SMT theorem prover to instantiate quantifiers;
+      the theorem prover instantiates a quantifier whenever some expression matches the
+      pattern specified by one of the quantifier's triggers.)
+  --> crates/orchestration/peritus-role/src/capability_view.rs:63:13
+   |
+63 | /             exists |index: int| 0 <= index < operations.len()
+64 | |                 && Self::spec_valid_through(role, operations, index)
+65 | |                 && Self::spec_error_at(role, operations, index, error)
+   | |______________________________________________________________________^
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+  --> crates/orchestration/peritus-run-settlement/src/evidence.rs:47:10
+   |
+47 | #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+   |          ^^^^^
+   |
+   = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: autoderive Clone impl does not take the form Verus expects; continuing, but without adding a specification for the derived Clone impl
+  --> crates/orchestration/peritus-run-settlement/src/evidence.rs:81:10
+   |
+81 | #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+   |          ^^^^^
+   |
+   = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: `peritus-run-settlement` (lib) generated 2 warnings
+note: automatically chose triggers for this expression:
+  --> crates/orchestration/peritus-run-knowledge/src/model.rs:71:5
+   |
+71 |     exists |index: int| 0 <= index < catalog.len() && catalog[index].spec_matches(&source)
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note:   trigger 1 of 1:
+  --> crates/orchestration/peritus-run-knowledge/src/model.rs:71:55
+   |
+71 |     exists |index: int| 0 <= index < catalog.len() && catalog[index].spec_matches(&source)
+   |                                                       ^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/orchestration/peritus-run-knowledge/src/model.rs:79:5
+   |
+79 | /     exists |index: int|
+80 | |         0 <= index < affected_sections.len() && affected_sections[index].spec_matches(&id)
+   | |__________________________________________________________________________________________^
+
+note:   trigger 1 of 1:
+  --> crates/orchestration/peritus-run-knowledge/src/model.rs:80:49
+   |
+80 |         0 <= index < affected_sections.len() && affected_sections[index].spec_matches(&id)
+   |                                                 ^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/orchestration/peritus-run-knowledge/src/change.rs:121:17
+    |
+121 | /                 forall |prior: int| 0 <= prior < index ==>
+122 | |                     !self.sources@[prior].spec_matches(&source),
+    | |_______________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/orchestration/peritus-run-knowledge/src/change.rs:122:22
+    |
+122 |                     !self.sources@[prior].spec_matches(&source),
+    |                      ^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/orchestration/peritus-run-knowledge/src/change.rs:269:17
+    |
+269 | /                 forall |prior: int| 0 <= prior < index ==>
+270 | |                     !self.affected_sections@[prior].spec_matches(&id),
+    | |_____________________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/orchestration/peritus-run-knowledge/src/change.rs:270:22
+    |
+270 |                     !self.affected_sections@[prior].spec_matches(&id),
+    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/orchestration/peritus-run-knowledge/src/model/topology.rs:46:5
+   |
+46 | /     exists |prior: int| 0 <= prior < section_index
+47 | |         && prior < sections.len()
+48 | |         && sections[prior].spec_id().spec_matches(&dependency)
+   | |______________________________________________________________^
+
+note:   trigger 1 of 1:
+  --> crates/orchestration/peritus-run-knowledge/src/model/topology.rs:48:12
+   |
+48 |         && sections[prior].spec_id().spec_matches(&dependency)
+   |            ^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/orchestration/peritus-run-knowledge/src/model.rs:250:5
+    |
+250 | /     exists |section: int| 0 <= section < sections.len()
+251 | |         && sections[section].spec_id().spec_matches(&target)
+252 | |         && sections[section].spec_kind().spec_is_clarification_target()
+    | |_______________________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/orchestration/peritus-run-knowledge/src/model.rs:251:12
+    |
+251 |         && sections[section].spec_id().spec_matches(&target)
+    |            ^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/orchestration/peritus-run-knowledge/src/model/delta/plan.rs:384:5
+    |
+384 | /     exists |index: int| 0 <= index < entries.len()
+385 | |         && entries[index].0.spec_matches(&id)
+386 | |         && entries[index].1.spec_is_reuse()
+    | |___________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/orchestration/peritus-run-knowledge/src/model/delta/plan.rs:385:12
+    |
+385 |         && entries[index].0.spec_matches(&id)
+    |            ^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/orchestration/peritus-run-knowledge/src/model/material.rs:37:5
+   |
+37 | /     exists |index: int| 0 <= index < sections.len()
+38 | |         && sections[index].spec_id().spec_matches(&current.spec_id())
+39 | |         && (forall |prior: int| 0 <= prior < index ==>
+40 | |             !#[trigger] sections[prior].spec_id().spec_matches(&current.spec_id()))
+41 | |         && section_material_matches(&sections[index], current)
+   | |______________________________________________________________^
+
+note:   trigger 1 of 1:
+  --> crates/orchestration/peritus-run-knowledge/src/model/material.rs:38:12
+   |
+38 |         && sections[index].spec_id().spec_matches(&current.spec_id())
+   |            ^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/orchestration/peritus-run-knowledge/src/model/topology.rs:78:5
+   |
+78 | /     exists |index: int| 0 <= index < sections.len()
+79 | |         && sections[index].spec_id().spec_matches(&id)
+80 | |         && sections[index].spec_kind() == kind
+   | |______________________________________________^
+
+note:   trigger 1 of 1:
+  --> crates/orchestration/peritus-run-knowledge/src/model/topology.rs:79:12
+   |
+79 |         && sections[index].spec_id().spec_matches(&id)
+   |            ^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/orchestration/peritus-run-knowledge/src/model/topology.rs:135:12
+    |
+135 |           && exists |position: int|
+    |  ____________^
+136 | |             0 <= position < sections[dependent as int].spec_dependencies().len()
+137 | |                 && sections[dependent as int].spec_dependencies()[position].spec_matches(
+138 | |                     &sections[dependency as int].spec_id())
+    | |___________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/orchestration/peritus-run-knowledge/src/model/topology.rs:137:20
+    |
+137 |                 && sections[dependent as int].spec_dependencies()[position].spec_matches(
+    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/orchestration/peritus-run-knowledge/src/model.rs:85:5
+   |
+85 | /     exists |index: int| 0 <= index < entries.len()
+86 | |         && entries[index].spec_section_id().spec_matches(&id)
+87 | |         && entries[index].spec_decision().spec_is_reuse()
+   | |_________________________________________________________^
+
+note:   trigger 1 of 1:
+  --> crates/orchestration/peritus-run-knowledge/src/model.rs:86:12
+   |
+86 |         && entries[index].spec_section_id().spec_matches(&id)
+   |            ^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/orchestration/peritus-run-knowledge/src/model.rs:342:9
+    |
+342 |       &&& forall |index: int| 0 <= index < entries.len() ==>
+    |  _________^
+343 | |         entries[index].spec_section_id()
+344 | |                 .spec_matches(&snapshot.spec_sections()[index].spec_id())
+345 | |             && entries[index].spec_decision() == planned_decision(
+...   |
+349 | |                 entries.take(index),
+350 | |             )
+    | |_____________^
+
+note:   trigger 1 of 1:
+   --> crates/orchestration/peritus-run-knowledge/src/model.rs:343:9
+    |
+343 |         entries[index].spec_section_id()
+    |         ^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/orchestration/peritus-run-knowledge/src/delta.rs:305:28
+    |
+305 |                           && (forall |prior: int| 0 <= prior < other ==>
+    |  ____________________________^
+306 | |                             !sections@[prior].spec_id().spec_matches(&current.spec_id())) implies
+    | |_________________________________________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/orchestration/peritus-run-knowledge/src/delta.rs:306:30
+    |
+306 | ...                   !sections@[prior].spec_id().spec_matches(&current.spec_id())) implies
+    |                        ^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/orchestration/peritus-run-knowledge/src/delta.rs:303:21
+    |
+303 |                     assert forall |other: int| 0 <= other < sections.len()
+    |                     ^^^^^^
+
+note:   trigger 1 of 1:
+   --> crates/orchestration/peritus-run-knowledge/src/delta.rs:304:28
+    |
+304 |                         && sections@[other].spec_id().spec_matches(&current.spec_id())
+    |                            ^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/orchestration/peritus-run-knowledge/src/delta.rs:293:13
+    |
+293 | /             forall |prior: int| 0 <= prior < index ==>
+294 | |                 !sections@[prior].spec_id().spec_matches(&current.spec_id()),
+    | |____________________________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/orchestration/peritus-run-knowledge/src/delta.rs:294:18
+    |
+294 |                 !sections@[prior].spec_id().spec_matches(&current.spec_id()),
+    |                  ^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/orchestration/peritus-run-knowledge/src/delta/material.rs:34:13
+   |
+34 |             forall |prior: int| 0 <= prior < index ==> left@[prior].spec_matches(&right@[prior]),
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note:   trigger 1 of 2:
+  --> crates/orchestration/peritus-run-knowledge/src/delta/material.rs:34:56
+   |
+34 |             forall |prior: int| 0 <= prior < index ==> left@[prior].spec_matches(&right@[prior]),
+   |                                                        ^^^^^^^^^^^^
+
+note:   trigger 2 of 2:
+  --> crates/orchestration/peritus-run-knowledge/src/delta/material.rs:34:83
+   |
+34 |             forall |prior: int| 0 <= prior < index ==> left@[prior].spec_matches(&right@[prior]),
+   |                                                                                   ^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/orchestration/peritus-run-knowledge/src/delta/material.rs:52:13
+   |
+52 |             forall |prior: int| 0 <= prior < index ==> left@[prior].spec_matches(&right@[prior]),
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note:   trigger 1 of 2:
+  --> crates/orchestration/peritus-run-knowledge/src/delta/material.rs:52:56
+   |
+52 |             forall |prior: int| 0 <= prior < index ==> left@[prior].spec_matches(&right@[prior]),
+   |                                                        ^^^^^^^^^^^^
+
+note:   trigger 2 of 2:
+  --> crates/orchestration/peritus-run-knowledge/src/delta/material.rs:52:83
+   |
+52 |             forall |prior: int| 0 <= prior < index ==> left@[prior].spec_matches(&right@[prior]),
+   |                                                                                   ^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/orchestration/peritus-run-knowledge/src/model.rs:97:26
+    |
+ 97 |           Some(section) => exists |index: int|
+    |  __________________________^
+ 98 | |             0 <= index < sections.len()
+ 99 | |                 && sections[index].spec_id().spec_matches(&id)
+100 | |                 && *section == sections[index],
+    | |______________________________________________^
+
+note:   trigger 1 of 1:
+  --> crates/orchestration/peritus-run-knowledge/src/model.rs:99:20
+   |
+99 |                 && sections[index].spec_id().spec_matches(&id)
+   |                    ^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/orchestration/peritus-run-knowledge/src/model.rs:101:17
+    |
+101 |           None => forall |index: int|
+    |  _________________^
+102 | |             0 <= index < sections.len() ==> !sections[index].spec_id().spec_matches(&id),
+    | |________________________________________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/orchestration/peritus-run-knowledge/src/model.rs:102:46
+    |
+102 |             0 <= index < sections.len() ==> !sections[index].spec_id().spec_matches(&id),
+    |                                              ^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/orchestration/peritus-run-knowledge/src/model.rs:365:5
+    |
+365 |     assert forall |index: int| 0 <= index < entries.take(end).len() implies
+    |     ^^^^^^
+
+note:   trigger 1 of 1:
+   --> crates/orchestration/peritus-run-knowledge/src/model.rs:367:28
+    |
+367 |             .spec_matches(&snapshot.spec_sections()[index].spec_id())
+    |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/orchestration/peritus-run-knowledge/src/model/closure.rs:24:31
+   |
+24 |       let dependency_position = choose |position: int|
+   |  _______________________________^
+25 | |         0 <= position < sections[dependent as int].spec_dependencies().len()
+26 | |             && sections[dependent as int].spec_dependencies()[position].spec_matches(
+27 | |                 &sections[dependency as int].spec_id());
+   | |_______________________________________________________^
+
+note:   trigger 1 of 1:
+  --> crates/orchestration/peritus-run-knowledge/src/model/closure.rs:26:16
+   |
+26 |             && sections[dependent as int].spec_dependencies()[position].spec_matches(
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/orchestration/peritus-run-knowledge/src/model/delta/correspondence.rs:19:21
+   |
+19 |           let index = choose |index: int| 0 <= index < left.len()
+   |  _____________________^
+20 | |             && left[index].spec_section_id().spec_matches(&id)
+21 | |             && left[index].spec_decision().spec_is_reuse();
+   | |__________________________________________________________^
+
+note:   trigger 1 of 1:
+  --> crates/orchestration/peritus-run-knowledge/src/model/delta/correspondence.rs:20:16
+   |
+20 |             && left[index].spec_section_id().spec_matches(&id)
+   |                ^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/orchestration/peritus-run-knowledge/src/model/delta/correspondence.rs:32:21
+   |
+32 |           let index = choose |index: int| 0 <= index < right.len()
+   |  _____________________^
+33 | |             && right[index].0.spec_matches(&id)
+34 | |             && right[index].1.spec_is_reuse();
+   | |_____________________________________________^
+
+note:   trigger 1 of 1:
+  --> crates/orchestration/peritus-run-knowledge/src/model/delta/correspondence.rs:33:16
+   |
+33 |             && right[index].0.spec_matches(&id)
+   |                ^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/orchestration/peritus-run-knowledge/src/model/delta/correspondence.rs:134:21
+    |
+134 |           let entry = choose |entry: int|
+    |  _____________________^
+135 | |             0 <= dependency < section.spec_dependencies().len()
+136 | |                 && 0 <= entry < actual.len()
+137 | |                 && crate::model::entry_invalidates_dependency(
+138 | |                     actual[entry], section.spec_dependencies()[dependency]);
+    | |___________________________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/orchestration/peritus-run-knowledge/src/model/delta/correspondence.rs:138:21
+    |
+138 |                     actual[entry], section.spec_dependencies()[dependency]);
+    |                     ^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/orchestration/peritus-run-knowledge/src/model/delta/correspondence.rs:161:21
+    |
+161 |           let entry = choose |entry: int|
+    |  _____________________^
+162 | |             0 <= dependency < section.spec_dependencies().len()
+163 | |                 && 0 <= entry < model.len()
+164 | |                 && model[entry].0.spec_matches(
+165 | |                     &section.spec_dependencies()[dependency])
+166 | |                 && !model[entry].1.spec_is_reuse();
+    | |__________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/orchestration/peritus-run-knowledge/src/model/delta/correspondence.rs:164:20
+    |
+164 |                 && model[entry].0.spec_matches(
+    |                    ^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/orchestration/peritus-run-knowledge/src/model/delta/correspondence.rs:210:13
+    |
+210 |             assert forall |prior_index: int| 0 <= prior_index < prior.len() implies
+    |             ^^^^^^
+
+note:   trigger 1 of 1:
+   --> crates/orchestration/peritus-run-knowledge/src/model/delta/correspondence.rs:211:17
+    |
+211 |                 prior[prior_index].spec_section_id().spec_matches(
+    |                 ^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/orchestration/peritus-run-knowledge/src/model/delta/plan.rs:263:21
+    |
+263 |           let entry = choose |entry: int|
+    |  _____________________^
+264 | |             0 <= dependency < section.spec_dependencies().len()
+265 | |                 && 0 <= entry < entries.len()
+266 | |                 && entries[entry].0.spec_matches(
+267 | |                     &section.spec_dependencies()[dependency])
+268 | |                 && !entries[entry].1.spec_is_reuse();
+    | |____________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/orchestration/peritus-run-knowledge/src/model/delta/plan.rs:266:20
+    |
+266 |                 && entries[entry].0.spec_matches(
+    |                    ^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/orchestration/peritus-run-knowledge/src/model/topology.rs:331:25
+    |
+331 |               let prior = choose |prior: int| 0 <= prior < section
+    |  _________________________^
+332 | |                 && prior < left.len()
+333 | |                 && left[prior].spec_id().spec_matches(&dependency_id);
+    | |_____________________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/orchestration/peritus-run-knowledge/src/model/topology.rs:333:20
+    |
+333 |                 && left[prior].spec_id().spec_matches(&dependency_id);
+    |                    ^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/orchestration/peritus-run-knowledge/src/model/topology.rs:340:21
+    |
+340 |           let prior = choose |index: int| 0 <= index < left.len()
+    |  _____________________^
+341 | |             && left[index].spec_id().spec_matches(&repository_inventory)
+342 | |             && left[index].spec_kind() == KnowledgeSectionKind::RepositoryInventory;
+    | |___________________________________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/orchestration/peritus-run-knowledge/src/model/topology.rs:341:16
+    |
+341 |             && left[index].spec_id().spec_matches(&repository_inventory)
+    |                ^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/orchestration/peritus-run-knowledge/src/model/topology.rs:347:21
+    |
+347 |           let prior = choose |index: int| 0 <= index < left.len()
+    |  _____________________^
+348 | |             && left[index].spec_id().spec_matches(&relevant_file_map)
+349 | |             && left[index].spec_kind() == KnowledgeSectionKind::RelevantFileMap;
+    | |_______________________________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/orchestration/peritus-run-knowledge/src/model/topology.rs:348:16
+    |
+348 |             && left[index].spec_id().spec_matches(&relevant_file_map)
+    |                ^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/orchestration/peritus-run-knowledge/src/model/topology.rs:354:21
+    |
+354 |           let prior = choose |index: int| 0 <= index < left.len()
+    |  _____________________^
+355 | |             && left[index].spec_id().spec_matches(&requirement_ledger)
+356 | |             && left[index].spec_kind() == KnowledgeSectionKind::LiteralRequirementLedger;
+    | |________________________________________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/orchestration/peritus-run-knowledge/src/model/topology.rs:355:16
+    |
+355 |             && left[index].spec_id().spec_matches(&requirement_ledger)
+    |                ^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/orchestration/peritus-run-knowledge/src/model/topology.rs:261:13
+    |
+261 |       ensures exists |dependency: nat| dependency < dependent
+    |  _____________^
+262 | |         && direct_dependency_at(sections, dependent as nat, dependency)
+263 | |         && sections[dependency as int].spec_id().spec_matches(
+264 | |             &dependency_at(sections, dependent, position)),
+    | |__________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/orchestration/peritus-run-knowledge/src/model/topology.rs:263:12
+    |
+263 |         && sections[dependency as int].spec_id().spec_matches(
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/orchestration/peritus-run-knowledge/src/model/topology.rs:268:22
+    |
+268 |       let dependency = choose |prior: int| 0 <= prior < dependent
+    |  ______________________^
+269 | |         && prior < sections.len()
+270 | |         && sections[prior].spec_id().spec_matches(&dependency_id);
+    | |_________________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/orchestration/peritus-run-knowledge/src/model/topology.rs:270:12
+    |
+270 |         && sections[prior].spec_id().spec_matches(&dependency_id);
+    |            ^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/orchestration/peritus-run-knowledge/src/model/topology.rs:284:12
+    |
+284 |       assert(exists |dependency_index: nat| dependency_index < dependent
+    |  ____________^
+285 | |         && direct_dependency_at(sections, dependent as nat, dependency_index)
+286 | |         && sections[dependency_index as int].spec_id().spec_matches(
+287 | |             &dependency_at(sections, dependent, position))) by {
+    | |__________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/orchestration/peritus-run-knowledge/src/model/topology.rs:286:12
+    |
+286 |         && sections[dependency_index as int].spec_id().spec_matches(
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/orchestration/peritus-run-knowledge/src/plan.rs:329:13
+    |
+329 |             assert forall |entry_index: int| 0 <= entry_index < entries@.len() implies
+    |             ^^^^^^
+
+note:   trigger 1 of 2:
+   --> crates/orchestration/peritus-run-knowledge/src/plan.rs:330:17
+    |
+330 |                 entries@[entry_index].spec_section_id()
+    |                 ^^^^^^^^^^^^^^^^^^^^^
+
+note:   trigger 2 of 2:
+   --> crates/orchestration/peritus-run-knowledge/src/plan.rs:331:36
+    |
+331 |                     .spec_matches(&snapshot.spec_sections()[entry_index].spec_id())
+    |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/orchestration/peritus-run-knowledge/src/plan.rs:221:17
+    |
+221 | /                 forall |prior: int| 0 <= prior < index ==>
+222 | |                     !(self.entries@[prior].spec_section_id().spec_matches(&id)
+223 | |                         && self.entries@[prior].spec_decision().spec_is_reuse()),
+    | |________________________________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/orchestration/peritus-run-knowledge/src/plan.rs:222:23
+    |
+222 |                     !(self.entries@[prior].spec_section_id().spec_matches(&id)
+    |                       ^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/orchestration/peritus-run-knowledge/src/plan/evaluation.rs:113:13
+    |
+113 | /             forall |prior: int| 0 <= prior < index ==>
+114 | |                 !(sections@[prior].spec_id().spec_matches(&target)
+115 | |                     && sections@[prior].spec_kind().spec_is_clarification_target()),
+    | |___________________________________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/orchestration/peritus-run-knowledge/src/plan/evaluation.rs:114:19
+    |
+114 |                 !(sections@[prior].spec_id().spec_matches(&target)
+    |                   ^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/orchestration/peritus-run-knowledge/src/plan/evaluation.rs:34:13
+   |
+34 | /             forall |prior: int| 0 <= prior < index ==>
+35 | |                 crate::model::clarification_target_valid(
+36 | |                     snapshot.spec_sections(), targets@[prior]),
+   | |______________________________________________________________^
+
+note:   trigger 1 of 1:
+  --> crates/orchestration/peritus-run-knowledge/src/plan/evaluation.rs:36:47
+   |
+36 |                     snapshot.spec_sections(), targets@[prior]),
+   |                                               ^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/orchestration/peritus-run-knowledge/src/plan/evaluation.rs:152:13
+    |
+152 | /             forall |prior: int| 0 <= prior < index ==>
+153 | |                 crate::model::source_is_current(
+154 | |                     request.spec_state().spec_sources(),
+155 | |                     sources@[prior],
+156 | |                 ),
+    | |_________________^
+
+note:   trigger 1 of 1:
+   --> crates/orchestration/peritus-run-knowledge/src/plan/evaluation.rs:155:21
+    |
+155 |                     sources@[prior],
+    |                     ^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/orchestration/peritus-run-knowledge/src/plan/evaluation.rs:219:16
+    |
+219 |           assert(forall |prior_entry: int| 0 <= prior_entry < entries.len() ==>
+    |  ________________^
+220 | |             !crate::model::entry_invalidates_dependency(
+221 | |                 entries@[prior_entry], dependencies@[dependency_index as int]));
+    | |______________________________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/orchestration/peritus-run-knowledge/src/plan/evaluation.rs:221:17
+    |
+221 |                 entries@[prior_entry], dependencies@[dependency_index as int]));
+    |                 ^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/orchestration/peritus-run-knowledge/src/snapshot.rs:257:17
+    |
+257 | /                 forall |prior: int| 0 <= prior < index ==>
+258 | |                     !self.sections@[prior].spec_id().spec_matches(&id),
+    | |______________________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/orchestration/peritus-run-knowledge/src/snapshot.rs:258:22
+    |
+258 |                     !self.sections@[prior].spec_id().spec_matches(&id),
+    |                      ^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/orchestration/peritus-run-knowledge/src/snapshot/validation.rs:214:13
+    |
+214 | /             forall |prior: int| 0 <= prior < index ==>
+215 | |                 !sections@[prior].spec_id().spec_matches(&id),
+    | |_____________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/orchestration/peritus-run-knowledge/src/snapshot/validation.rs:215:18
+    |
+215 |                 !sections@[prior].spec_id().spec_matches(&id),
+    |                  ^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/orchestration/peritus-run-knowledge/src/snapshot/validation.rs:172:13
+    |
+172 | /             forall |prior_dependency: int|
+173 | |                 0 <= prior_dependency < dependency_index ==>
+174 | |                     crate::model::dependency_resolves_before(
+175 | |                         sections@,
+176 | |                         index as int,
+177 | |                         dependencies@[prior_dependency],
+178 | |                     ),
+    | |_____________________^
+
+note:   trigger 1 of 1:
+   --> crates/orchestration/peritus-run-knowledge/src/snapshot/validation.rs:177:25
+    |
+177 |                         dependencies@[prior_dependency],
+    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/orchestration/peritus-run-knowledge/src/snapshot/validation.rs:79:13
+   |
+79 |             assert forall |section_index: int, dependency: int|
+   |             ^^^^^^
+
+note:   trigger 1 of 1:
+  --> crates/orchestration/peritus-run-knowledge/src/snapshot/validation.rs:86:25
+   |
+86 |                         sections@[section_index].spec_dependencies()[dependency],
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/orchestration/peritus-run-knowledge/src/snapshot/validation.rs:238:13
+    |
+238 | /             forall |prior: int| 0 <= prior < index ==>
+239 | |                 !(sections@[prior].spec_id().spec_matches(&id)
+240 | |                     && sections@[prior].spec_kind() == kind),
+    | |____________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/orchestration/peritus-run-knowledge/src/snapshot/validation.rs:239:19
+    |
+239 |                 !(sections@[prior].spec_id().spec_matches(&id)
+    |                   ^^^^^^^^^^^^^^^^
+
+note: Verus printed one or more automatically chosen quantifier triggers
+      because it had low confidence in the chosen triggers.
+      To suppress these messages, do one of the following:
+        (1) manually annotate a single desired trigger using #[trigger]
+            (example: forall|i: int, j: int| f(i) && #[trigger] g(i) && #[trigger] h(j)),
+        (2) manually annotate multiple desired triggers using #![trigger ...]
+            (example: forall|i: int| #![trigger f(i)] #![trigger g(i)] f(i) && g(i)),
+        (3) accept the automatically chosen trigger using #![auto]
+            (example: forall|i: int, j: int| #![auto] f(i) && g(i) && h(j))
+        (4) use the --triggers-mode silent command-line option to suppress all printing of triggers.
+      (Note: triggers are used by the underlying SMT theorem prover to instantiate quantifiers;
+      the theorem prover instantiates a quantifier whenever some expression matches the
+      pattern specified by one of the quantifier's triggers.)
+   --> crates/orchestration/peritus-run-knowledge/src/snapshot/validation.rs:238:13
+    |
+238 | /             forall |prior: int| 0 <= prior < index ==>
+239 | |                 !(sections@[prior].spec_id().spec_matches(&id)
+240 | |                     && sections@[prior].spec_kind() == kind),
+    | |____________________________________________________________^
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+  --> crates/orchestration/peritus-context/src/compaction/replacement.rs:12:10
+   |
+12 | #[derive(Clone, Debug, Eq, PartialEq)]
+   |          ^^^^^
+   |
+   = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+  --> crates/orchestration/peritus-context/src/compaction.rs:87:10
+   |
+87 | #[derive(Clone, Debug, Eq, PartialEq)]
+   |          ^^^^^
+   |
+   = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+   --> crates/orchestration/peritus-context/src/compaction.rs:190:10
+    |
+190 | #[derive(Clone, Debug, Eq, PartialEq)]
+    |          ^^^^^
+    |
+    = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+   --> crates/orchestration/peritus-context/src/compaction.rs:199:10
+    |
+199 | #[derive(Clone, Debug, Eq, PartialEq)]
+    |          ^^^^^
+    |
+    = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+  --> crates/orchestration/peritus-context/src/plan.rs:91:10
+   |
+91 | #[derive(Clone, Debug, Eq, PartialEq)]
+   |          ^^^^^
+   |
+   = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+  --> crates/orchestration/peritus-context/src/render.rs:27:10
+   |
+27 | #[derive(Clone, Debug, Eq, PartialEq)]
+   |          ^^^^^
+   |
+   = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+  --> crates/orchestration/peritus-context/src/render.rs:71:10
+   |
+71 | #[derive(Clone, Debug, Eq, PartialEq)]
+   |          ^^^^^
+   |
+   = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+  --> crates/orchestration/peritus-context/src/selection.rs:16:10
+   |
+16 | #[derive(Clone, Debug, Eq, PartialEq)]
+   |          ^^^^^
+   |
+   = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+  --> crates/orchestration/peritus-context/src/working/delta.rs:10:10
+   |
+10 | #[derive(Clone, Debug, Eq, PartialEq)]
+   |          ^^^^^
+   |
+   = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+  --> crates/orchestration/peritus-context/src/working/entry.rs:43:10
+   |
+43 | #[derive(Clone, Debug, Eq, PartialEq)]
+   |          ^^^^^
+   |
+   = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+   --> crates/orchestration/peritus-context/src/working/entry.rs:104:10
+    |
+104 | #[derive(Clone, Debug, Eq, PartialEq)]
+    |          ^^^^^
+    |
+    = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: autoderive Clone impl does not take the form Verus expects; continuing, but without adding a specification for the derived Clone impl
+  --> crates/orchestration/peritus-context/src/working/event.rs:12:10
+   |
+12 | #[derive(Clone, Debug, Eq, PartialEq)]
+   |          ^^^^^
+   |
+   = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+  --> crates/orchestration/peritus-context/src/working/protocol.rs:42:10
+   |
+42 | #[derive(Clone, Debug, Eq, PartialEq)]
+   |          ^^^^^
+   |
+   = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+  --> crates/orchestration/peritus-context/src/working/protocol.rs:82:10
+   |
+82 | #[derive(Clone, Debug, Eq, PartialEq)]
+   |          ^^^^^
+   |
+   = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+  --> crates/orchestration/peritus-context/src/working/state.rs:10:10
+   |
+10 | #[derive(Clone, Debug, Eq, PartialEq)]
+   |          ^^^^^
+   |
+   = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+  --> crates/orchestration/peritus-context/src/working/validity.rs:29:10
+   |
+29 | #[derive(Clone, Debug, Eq, PartialEq)]
+   |          ^^^^^
+   |
+   = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+  --> crates/orchestration/peritus-context/src/working/validity.rs:62:10
+   |
+62 | #[derive(Clone, Debug, Eq, PartialEq)]
+   |          ^^^^^
+   |
+   = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+note: automatically chose triggers for this expression:
+  --> crates/orchestration/peritus-context/src/graph/cycle_edge_model.rs:72:13
+   |
+72 |       ensures exists |found: nat| index <= found < dependencies.len()
+   |  _____________^
+73 | |         && dependencies[found as int].spec_matches(&id),
+   | |_______________________________________________________^
+
+note:   trigger 1 of 1:
+  --> crates/orchestration/peritus-context/src/graph/cycle_edge_model.rs:73:12
+   |
+73 |         && dependencies[found as int].spec_matches(&id),
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/orchestration/peritus-context/src/graph/cycle_edge_model.rs:134:25
+    |
+134 |               let other = choose |other: nat| index + 1 <= other
+    |  _________________________^
+135 | |                 && other < node.spec_dependencies().len()
+136 | |                 && node.spec_dependencies()[other as int].spec_matches(&id);
+    | |___________________________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/orchestration/peritus-context/src/graph/cycle_edge_model.rs:136:20
+    |
+136 |                 && node.spec_dependencies()[other as int].spec_matches(&id);
+    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/orchestration/peritus-context/src/graph/cycle_model.rs:282:5
+    |
+282 |     assert forall |index: int| 0 <= index < nodes.len() implies
+    |     ^^^^^^
+
+note:   trigger 1 of 1:
+   --> crates/orchestration/peritus-context/src/graph/cycle_model.rs:283:9
+    |
+283 |         removed.update(target as int, true)[index]
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/orchestration/peritus-context/src/graph/cycle_model.rs:240:9
+    |
+240 |         assert forall |value: nat| order.to_set().contains(value) <==>
+    |         ^^^^^^
+
+note:   trigger 1 of 1:
+   --> crates/orchestration/peritus-context/src/graph/cycle_model.rs:240:36
+    |
+240 |         assert forall |value: nat| order.to_set().contains(value) <==>
+    |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/orchestration/peritus-context/src/graph/cycle_proofs.rs:22:9
+   |
+22 |         assert forall |value: nat| order.to_set().contains(value) implies
+   |         ^^^^^^
+
+note:   trigger 1 of 1:
+  --> crates/orchestration/peritus-context/src/graph/cycle_proofs.rs:22:36
+   |
+22 |         assert forall |value: nat| order.to_set().contains(value) implies
+   |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/orchestration/peritus-context/src/reuse/model.rs:115:5
+    |
+115 | /     exists |profile: RoleProfile| profile.spec_for_role(role.spec_actor_role())
+116 | |         && profile.spec_context().spec_visible().spec_values().contains(class)
+    | |______________________________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/orchestration/peritus-context/src/reuse/model.rs:115:35
+    |
+115 |     exists |profile: RoleProfile| profile.spec_for_role(role.spec_actor_role())
+    |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: Verus printed one or more automatically chosen quantifier triggers
+      because it had low confidence in the chosen triggers.
+      To suppress these messages, do one of the following:
+        (1) manually annotate a single desired trigger using #[trigger]
+            (example: forall|i: int, j: int| f(i) && #[trigger] g(i) && #[trigger] h(j)),
+        (2) manually annotate multiple desired triggers using #![trigger ...]
+            (example: forall|i: int| #![trigger f(i)] #![trigger g(i)] f(i) && g(i)),
+        (3) accept the automatically chosen trigger using #![auto]
+            (example: forall|i: int, j: int| #![auto] f(i) && g(i) && h(j))
+        (4) use the --triggers-mode silent command-line option to suppress all printing of triggers.
+      (Note: triggers are used by the underlying SMT theorem prover to instantiate quantifiers;
+      the theorem prover instantiates a quantifier whenever some expression matches the
+      pattern specified by one of the quantifier's triggers.)
+   --> crates/orchestration/peritus-context/src/reuse/model.rs:115:5
+    |
+115 | /     exists |profile: RoleProfile| profile.spec_for_role(role.spec_actor_role())
+116 | |         && profile.spec_context().spec_visible().spec_values().contains(class)
+    | |______________________________________________________________________________^
+
+warning: `peritus-context` (lib) generated 17 warnings
+note: automatically chose triggers for this expression:
+   --> crates/orchestration/peritus-scheduler/src/resource/subtraction.rs:149:13
+    |
+149 | /             forall |prior: int| 0 <= prior < index ==>
+150 | |                 left.0@[prior].spec_quantity().spec_value()
+151 | |                     >= other.spec_quantity(left.0@[prior].spec_kind()),
+    | |______________________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/orchestration/peritus-scheduler/src/resource/subtraction.rs:150:17
+    |
+150 |                 left.0@[prior].spec_quantity().spec_value()
+    |                 ^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/orchestration/peritus-scheduler/src/resource/subtraction.rs:217:13
+    |
+217 | /             forall |prior: int| 0 <= prior < other_index ==>
+218 | |                 left.spec_quantity(other.0@[prior].spec_kind()) != 0,
+    | |____________________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/orchestration/peritus-scheduler/src/resource/subtraction.rs:218:36
+    |
+218 |                 left.spec_quantity(other.0@[prior].spec_kind()) != 0,
+    |                                    ^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/orchestration/peritus-scheduler/src/selection/capacity/refinement.rs:102:9
+    |
+102 | /         forall |kind: ResourceKind|
+103 | |             crate::verified::reservation_quantity(state.spec_reservations(), kind)
+104 | |                     + crate::verified::vector_quantity(request.spec_entries(), kind)
+105 | |                 <= state.spec_binding().spec_capacity().spec_quantity(kind),
+    | |___________________________________________________________________________^
+
+note:   trigger 1 of 2:
+   --> crates/orchestration/peritus-scheduler/src/selection/capacity/refinement.rs:103:13
+    |
+103 |             crate::verified::reservation_quantity(state.spec_reservations(), kind)
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note:   trigger 2 of 2:
+   --> crates/orchestration/peritus-scheduler/src/selection/capacity/refinement.rs:104:23
+    |
+104 |                     + crate::verified::vector_quantity(request.spec_entries(), kind)
+    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/orchestration/peritus-scheduler/src/selection/capacity/refinement.rs:150:9
+    |
+150 | /         forall |kind: ResourceKind|
+151 | |             crate::verified::worker_quantity(
+152 | |                 state.spec_reservations(),
+153 | |                 state.spec_workers()[worker_index].spec_descriptor().spec_id(),
+...   |
+156 | |                 <= state.spec_workers()[worker_index].spec_descriptor()
+157 | |                     .spec_capacity().spec_quantity(kind),
+    | |________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/orchestration/peritus-scheduler/src/selection/capacity/refinement.rs:155:17
+    |
+155 |             ) + crate::verified::vector_quantity(request.spec_entries(), kind)
+    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: Verus printed one or more automatically chosen quantifier triggers
+      because it had low confidence in the chosen triggers.
+      To suppress these messages, do one of the following:
+        (1) manually annotate a single desired trigger using #[trigger]
+            (example: forall|i: int, j: int| f(i) && #[trigger] g(i) && #[trigger] h(j)),
+        (2) manually annotate multiple desired triggers using #![trigger ...]
+            (example: forall|i: int| #![trigger f(i)] #![trigger g(i)] f(i) && g(i)),
+        (3) accept the automatically chosen trigger using #![auto]
+            (example: forall|i: int, j: int| #![auto] f(i) && g(i) && h(j))
+        (4) use the --triggers-mode silent command-line option to suppress all printing of triggers.
+      (Note: triggers are used by the underlying SMT theorem prover to instantiate quantifiers;
+      the theorem prover instantiates a quantifier whenever some expression matches the
+      pattern specified by one of the quantifier's triggers.)
+   --> crates/orchestration/peritus-scheduler/src/selection/capacity/refinement.rs:150:9
+    |
+150 | /         forall |kind: ResourceKind|
+151 | |             crate::verified::worker_quantity(
+152 | |                 state.spec_reservations(),
+153 | |                 state.spec_workers()[worker_index].spec_descriptor().spec_id(),
+...   |
+156 | |                 <= state.spec_workers()[worker_index].spec_descriptor()
+157 | |                     .spec_capacity().spec_quantity(kind),
+    | |________________________________________________________^
+
+note: function body check has been running for 2 seconds
+      reporting errors as they are discovered (they may not be in source order)
+   --> crates/orchestration/peritus-obligations/src/ledger/model.rs:285:1
+    |
+285 | / pub proof fn clone_preserves_ledger_valid(
+286 | |     source_digest: Sha256Digest,
+287 | |     conversation_revision: u64,
+288 | |     original: Seq<RequirementEntry>,
+289 | |     cloned: Seq<RequirementEntry>,
+290 | |     limits: ObligationLimits,
+291 | | )
+    | |_^
+
+note: function body check finished in 6 seconds
+   --> crates/orchestration/peritus-obligations/src/ledger/model.rs:285:1
+    |
+285 | / pub proof fn clone_preserves_ledger_valid(
+286 | |     source_digest: Sha256Digest,
+287 | |     conversation_revision: u64,
+288 | |     original: Seq<RequirementEntry>,
+289 | |     cloned: Seq<RequirementEntry>,
+290 | |     limits: ObligationLimits,
+291 | | )
+    | |_^
+
+note: while loop has been running for 2 seconds
+      reporting errors as they are discovered (they may not be in source order)
+   --> crates/orchestration/peritus-obligations/src/ledger/validation.rs:127:5
+    |
+127 |     while index < drafts.len()
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: while loop finished in 4 seconds
+   --> crates/orchestration/peritus-obligations/src/ledger/validation.rs:127:5
+    |
+127 |     while index < drafts.len()
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/orchestration/peritus-obligations/src/ledger/model.rs:108:9
+    |
+108 |       &&& forall |index: int| 0 <= index < drafts.len() ==>
+    |  _________^
+109 | |         draft_valid(source, &drafts[index], index, limits)
+    | |__________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/orchestration/peritus-obligations/src/ledger/model.rs:109:30
+    |
+109 |         draft_valid(source, &drafts[index], index, limits)
+    |                              ^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/orchestration/peritus-obligations/src/ledger/model.rs:143:12
+    |
+143 |           && forall |index: int| 0 <= index < entries.len() ==>
+    |  ____________^
+144 | |             entry_matches_draft(source, &drafts[index], index, &entries[index])
+    | |_______________________________________________________________________________^
+
+note:   trigger 1 of 2:
+   --> crates/orchestration/peritus-obligations/src/ledger/model.rs:144:42
+    |
+144 |             entry_matches_draft(source, &drafts[index], index, &entries[index])
+    |                                          ^^^^^^^^^^^^^
+
+note:   trigger 2 of 2:
+   --> crates/orchestration/peritus-obligations/src/ledger/model.rs:144:65
+    |
+144 |             entry_matches_draft(source, &drafts[index], index, &entries[index])
+    |                                                                 ^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/orchestration/peritus-obligations/src/ledger/model.rs:211:5
+    |
+211 |     assert forall |index: int| 0 <= index < entries.push(entry).len() implies
+    |     ^^^^^^
+
+note:   trigger 1 of 1:
+   --> crates/orchestration/peritus-obligations/src/ledger/model.rs:212:38
+    |
+212 |         entry_matches_draft(source, &drafts[index], index, &entries.push(entry)[index]) by {
+    |                                      ^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/orchestration/peritus-obligations/src/ledger/validation.rs:132:13
+    |
+132 | /             forall |prior: int| 0 <= prior < index ==>
+133 | |                 model::draft_valid(source, &drafts@[prior], prior, limits),
+    | |__________________________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/orchestration/peritus-obligations/src/ledger/validation.rs:133:45
+    |
+133 |                 model::draft_valid(source, &drafts@[prior], prior, limits),
+    |                                             ^^^^^^^^^^^^^^
+
+note: Verus printed one or more automatically chosen quantifier triggers
+      because it had low confidence in the chosen triggers.
+      To suppress these messages, do one of the following:
+        (1) manually annotate a single desired trigger using #[trigger]
+            (example: forall|i: int, j: int| f(i) && #[trigger] g(i) && #[trigger] h(j)),
+        (2) manually annotate multiple desired triggers using #![trigger ...]
+            (example: forall|i: int| #![trigger f(i)] #![trigger g(i)] f(i) && g(i)),
+        (3) accept the automatically chosen trigger using #![auto]
+            (example: forall|i: int, j: int| #![auto] f(i) && g(i) && h(j))
+        (4) use the --triggers-mode silent command-line option to suppress all printing of triggers.
+      (Note: triggers are used by the underlying SMT theorem prover to instantiate quantifiers;
+      the theorem prover instantiates a quantifier whenever some expression matches the
+      pattern specified by one of the quantifier's triggers.)
+   --> crates/orchestration/peritus-obligations/src/ledger/validation.rs:132:13
+    |
+132 | /             forall |prior: int| 0 <= prior < index ==>
+133 | |                 model::draft_valid(source, &drafts@[prior], prior, limits),
+    | |__________________________________________________________________________^
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+  --> crates/orchestration/peritus-memory/src/claim.rs:52:10
+   |
+52 | #[derive(Clone, Debug, Eq, PartialEq)]
+   |          ^^^^^
+   |
+   = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+   --> crates/orchestration/peritus-memory/src/claim.rs:171:10
+    |
+171 | #[derive(Clone, Debug, Eq, PartialEq)]
+    |          ^^^^^
+    |
+    = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+   --> crates/orchestration/peritus-memory/src/claim.rs:236:10
+    |
+236 | #[derive(Clone, Debug, Eq, PartialEq)]
+    |          ^^^^^
+    |
+    = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+  --> crates/orchestration/peritus-memory/src/evidence.rs:15:10
+   |
+15 | #[derive(Clone, Debug, Eq, PartialEq)]
+   |          ^^^^^
+   |
+   = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+  --> crates/orchestration/peritus-memory/src/evidence.rs:37:10
+   |
+37 | #[derive(Clone, Debug, Eq, PartialEq)]
+   |          ^^^^^
+   |
+   = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+  --> crates/orchestration/peritus-memory/src/index/types.rs:13:10
+   |
+13 | #[derive(Clone, Debug, Eq, PartialEq)]
+   |          ^^^^^
+   |
+   = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+  --> crates/orchestration/peritus-memory/src/index/types.rs:36:10
+   |
+36 | #[derive(Clone, Debug, Eq, PartialEq)]
+   |          ^^^^^
+   |
+   = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+  --> crates/orchestration/peritus-memory/src/index/types.rs:59:10
+   |
+59 | #[derive(Clone, Debug, Eq, PartialEq)]
+   |          ^^^^^
+   |
+   = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+  --> crates/orchestration/peritus-memory/src/index/types.rs:82:10
+   |
+82 | #[derive(Clone, Debug, Eq, PartialEq)]
+   |          ^^^^^
+   |
+   = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+  --> crates/orchestration/peritus-memory/src/record.rs:17:10
+   |
+17 | #[derive(Clone, Debug, Eq, PartialEq)]
+   |          ^^^^^
+   |
+   = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+   --> crates/orchestration/peritus-memory/src/record.rs:104:10
+    |
+104 | #[derive(Clone, Debug, Eq, PartialEq)]
+    |          ^^^^^
+    |
+    = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+   --> crates/orchestration/peritus-memory/src/retrieval/output.rs:134:10
+    |
+134 | #[derive(Clone, Debug, Eq, PartialEq)]
+    |          ^^^^^
+    |
+    = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+   --> crates/orchestration/peritus-memory/src/retrieval/output.rs:226:10
+    |
+226 | #[derive(Clone, Debug, Eq, PartialEq)]
+    |          ^^^^^
+    |
+    = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+  --> crates/orchestration/peritus-memory/src/retrieval/types.rs:18:10
+   |
+18 | #[derive(Clone, Debug, Eq, PartialEq)]
+   |          ^^^^^
+   |
+   = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+   --> crates/orchestration/peritus-memory/src/retrieval/types.rs:193:10
+    |
+193 | #[derive(Clone, Debug, Eq, PartialEq)]
+    |          ^^^^^
+    |
+    = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+   --> crates/orchestration/peritus-memory/src/retrieval/types.rs:233:10
+    |
+233 | #[derive(Clone, Debug, Eq, PartialEq)]
+    |          ^^^^^
+    |
+    = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: `peritus-memory` (lib) generated 16 warnings
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.27s
+
+GATE DRIVER RESULT: {"command": "cargo verus verify --package peritus-orchestrator --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20", "command_exit_code": 0, "elapsed_seconds": 0.666, "exit_code": 0, "finished_at": "2026-09-13T15:20:25.572161Z", "invocation": ["taskset", "-c", "0,1", "cargo", "verus", "verify", "--package", "peritus-orchestrator", "--all-features", "--locked", "--check-toolchain", "--fwd-verus-args-to", "roots", "--", "--no-cheating", "--rlimit", "20"], "kind": "verus-verify", "output": "054-peritus-orchestrator-verus-verify.log", "owning_crate": "peritus-orchestrator", "result": "passed", "started_at": "2026-09-13T15:20:24.904895Z"}

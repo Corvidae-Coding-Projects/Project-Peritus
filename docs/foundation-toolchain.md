@@ -38,6 +38,7 @@ registries, unknown Git sources, wildcard requirements, duplicate versions, unap
 and known advisories under the checked-in policy. The reviewed license set is Apache-2.0,
 BSD-3-Clause, ISC, MIT, MIT-0, Unicode-3.0, and Zlib; ISC and MIT-0 cover the pinned
 Rustls/AWS-LC cryptography closure introduced by C5 rather than a package-specific exception.
+NCSA is admitted only for the exact testing-only `libfuzzer-sys@0.4.13` package.
 
 Path dependencies are accepted only when they resolve without symbolic links to registered
 workspace packages inside this repository. External and unregistered in-repository path crates are
@@ -71,6 +72,41 @@ evidence in [GitHub governance](github-governance.md). GitHub Team cannot pin a 
 an immutable reviewed revision, so the current status-check system remains candidate-controlled;
 the stronger Enterprise authority is an explicit future upgrade rather than a current claim.
 
+The checked `.github/workflows/formal-authority.yml` adds a narrower default-branch validation for
+pull requests targeting `main` or `develop`. GitHub loads `pull_request_target` workflow code from
+default `main`; the job binds `github.workflow_sha` as the checker revision and binds the PR's exact
+base and head as separate comparison and candidate revisions. It rejects symlinks, submodules,
+alternate Cargo configuration, and alternate Rust selectors in all three trees. Before candidate
+Cargo metadata, it requires exact equality for the root Cargo manifest and lockfile, the complete
+`xtask` manifest/source/default-build-script surface, and every current repository file embedded
+into the checker binary, alongside the root Cargo configuration, line-ending policy, and toolchain
+selector. Both checker-to-base and base-to-candidate comparisons must pass.
+
+The job builds `xtask` from the exact workflow/checker revision into runner temporary storage,
+primes only that revision's locked dependency metadata, and runs that binary from the candidate
+directory with an offline Cargo home and a PATH reconstructed from the resolved runner Cargo and Git
+directories plus fixed system binary directories. The trusted executable runs both `all` and
+`verify-trust`; it never builds a candidate package, build script, procedural macro, action, or
+repository script. `verify-trust` receives the exact PR base as its proof-impact comparison base,
+not the checker revision.
+
+The root manifest and lockfile custody means dependency changes fail before candidate metadata.
+Other offline candidate metadata deliberately admits only dependencies already primed by the
+trusted checker revision. A dependency or authority-checker change therefore requires the
+externally controlled, exact-head bootstrap described in
+[GitHub governance](github-governance.md); candidate-committed records cannot authorize it. The
+bootstrap must establish identical protected inputs on `main` and `develop` before ordinary develop
+validation resumes. The workflow does not retry candidate metadata online. Its ordinary GitHub
+Actions result is useful evidence, but it is not an exclusive merge authority: a separately
+configured source-bound GitHub App producer remains required before this result can replace the
+candidate-controlled required status.
+
+The default-branch-built checker also embeds the exact authority-workflow bytes. A PR base or
+candidate that changes those bytes or any repository-controlled checker build input is rejected even
+if it changes review or policy files at the same time. A legitimate authority update therefore needs
+the independently reviewed exact-head bootstrap documented in
+[GitHub governance](github-governance.md); candidate files cannot authorize the update.
+
 ## Compilation-input trust discovery
 
 A0 seeds trust scanning from every workspace Cargo target, follows direct literal `include!` and
@@ -86,7 +122,8 @@ procedural-macro target; only these exact package identities are admitted:
   `aws-lc-sys@0.44.0`, `crossbeam-utils@0.8.22`, `curve25519-dalek@5.0.0`,
   `crunchy@0.2.4`, `generic-array@0.14.7`, `getrandom@0.4.3`, `httparse@1.10.1`,
   `icu_normalizer_data@2.3.0`, `icu_properties_data@2.3.0`, `jni@0.22.4`,
-  `jni-macros@0.22.4`, `libc@0.2.189`, `libsqlite3-sys@0.38.2`, `memoffset@0.9.1`,
+  `jni-macros@0.22.4`, `libc@0.2.189`, `libfuzzer-sys@0.4.13`,
+  `libsqlite3-sys@0.38.2`, `memoffset@0.9.1`,
   `nix@0.28.0`, `nix@0.31.3`, `num-traits@0.2.19`, `proc-macro2@1.0.107`,
   `quote@1.0.47`, `quinn@0.11.11`, `quinn-udp@0.5.15`, `ring@0.17.14`,
   `rustix@1.1.4`, `rustls@0.23.43`, `rustversion@1.0.23`, `serde@1.0.229`,
@@ -161,6 +198,15 @@ It performs no child-process, network, repository, or ambient-file access. H3 di
 `half@2.4.1` with only `std` so Criterion's CBOR dependency does not add the later zerocopy build
 script and derive-macro execution surface. These are benchmark/dev dependencies, not product
 runtime code, but their exact executable identities and locked closures remain Gate A inputs.
+
+For the isolated bug-discovery harness, the reviewed `libfuzzer-sys@0.4.13` build script compiles
+the package's 26 fixed `libfuzzer/*.cpp` inputs as C++17 through `cc@1.4.4` and links the resulting
+static archive. Its executable build closure is `cc -> jobserver, libc, find-msvc-tools, shlex`;
+Cargo.lock pins every registry identity and checksum. The upstream script also supports ambient
+`CUSTOM_LIBFUZZER_PATH` and `CUSTOM_LIBFUZZER_STD_CXX` overrides, so the repository's fuzz entry
+point explicitly removes both variables before compilation. Campaigns therefore use packaged
+sources and the selected Cargo C++ toolchain without build-time network or repository access. This
+testing-only dependency does not enter product runtime or formal semantics.
 
 The executable identity is Cargo's complete package ID: registry or immutable Git source, package
 name, and exact version—not just the readable labels above. A same-name/same-version package from

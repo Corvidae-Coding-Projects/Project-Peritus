@@ -93,6 +93,41 @@ fn public_capability_constructor_rejects_widening_and_noncanonical_values() {
 }
 
 #[test]
+fn checked_capability_views_preserve_exact_role_and_operation_membership() {
+    let operations = [
+        OperationClass::Inspection,
+        OperationClass::WorkspaceMutation,
+        OperationClass::Execution,
+        OperationClass::Network,
+        OperationClass::DependencyEnvironment,
+        OperationClass::RepositoryHistoryMutation,
+        OperationClass::SecretUse,
+        OperationClass::ExternalSideEffect,
+        OperationClass::Acceptance,
+        OperationClass::Waiver,
+        OperationClass::PolicyAmendment,
+        OperationClass::HarnessPromotion,
+        OperationClass::HumanAuthority,
+        OperationClass::RawEffect,
+    ];
+
+    for role in ROLES {
+        let allowed: Vec<_> =
+            operations.into_iter().filter(|operation| role.permits_operation(*operation)).collect();
+        for start in 0..allowed.len() {
+            let selected = &allowed[start..];
+            let view =
+                CapabilityView::new(role, selected.to_vec()).expect("canonical permitted subset");
+            assert_eq!(view.role(), role);
+            assert_eq!(view.operations(), selected);
+            for operation in operations {
+                assert_eq!(view.permits(operation), selected.contains(&operation));
+            }
+        }
+    }
+}
+
+#[test]
 fn every_required_and_contributable_class_is_visible() {
     for role in ROLES {
         let profile = RoleProfile::for_actor_role(role);

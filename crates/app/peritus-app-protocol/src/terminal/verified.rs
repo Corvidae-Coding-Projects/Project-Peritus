@@ -2,6 +2,8 @@
 
 use vstd::prelude::*;
 
+verus! {
+
 /// Returns whether an output chunk occupies the exact next sequence and byte offset.
 #[must_use]
 pub fn output_is_contiguous(
@@ -10,20 +12,29 @@ pub fn output_is_contiguous(
     sequence: u64,
     offset: u64,
     bytes: usize,
-) -> bool {
+) -> (contiguous: bool)
+    ensures contiguous == (
+        sequence == next_sequence && offset == next_offset && bytes > 0
+            && next_offset as int + bytes as int <= u64::MAX as int
+    ),
+{
+    if bytes as u128 > u128::from(u64::MAX) {
+        return false;
+    }
+    let length = bytes as u64;
     sequence == next_sequence
         && offset == next_offset
         && bytes > 0
-        && u64::try_from(bytes).ok().and_then(|length| next_offset.checked_add(length)).is_some()
+        && length <= u64::MAX - next_offset
 }
 
 /// Returns whether current output accounting is representable and nonterminal.
 #[must_use]
-pub const fn output_position_is_valid(next_sequence: u64, terminal: bool) -> bool {
+pub const fn output_position_is_valid(next_sequence: u64, terminal: bool) -> (valid: bool)
+    ensures valid == (!terminal && next_sequence < u64::MAX),
+{
     !terminal && next_sequence < u64::MAX
 }
-
-verus! {
 
 /// Mathematical output step for `INV-026 TerminalOrdering`.
 pub open spec fn spec_output_contiguous(

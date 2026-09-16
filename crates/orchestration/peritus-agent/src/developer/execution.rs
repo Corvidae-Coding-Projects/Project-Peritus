@@ -1,7 +1,7 @@
 //! Tight provider/tool execution loop.
 mod invocation;
 mod provider_turn;
-use provider_turn::complete_turn;
+use provider_turn::{RetryContext, complete_turn};
 
 use peritus_model_protocol::{
     CanonicalJson, Capability, ContentBlock, JsonBounds, Message, ProtocolLimits,
@@ -66,6 +66,7 @@ impl DeveloperLoop {
                 &required_capabilities,
                 &[
                     Capability::Streaming,
+                    Capability::UsageDetail,
                     Capability::ParallelToolCalls,
                     Capability::ReasoningControls,
                     Capability::ReasoningReplay,
@@ -105,11 +106,11 @@ impl DeveloperLoop {
                 // Replace, never append: the current host projection is budgeted and cannot
                 // accumulate stale startup states or be compacted as optional conversation.
                 messages[0] = invocation_policy;
-                if let Some(input) = governing_input {
+                if let Some(input) = governing_input.as_ref() {
                     if governing_installed {
-                        messages[2] = input;
+                        messages[2] = input.clone();
                     } else {
-                        messages.insert(2, input);
+                        messages.insert(2, input.clone());
                         governing_installed = true;
                     }
                 }
@@ -124,10 +125,11 @@ impl DeveloperLoop {
                         protected_prefix,
                     )?
                 {
+                    let mut semantic_messages = semantic.request_messages().to_vec();
                     match complete_turn(
                         provider,
                         &request,
-                        semantic.request_messages(),
+                        &mut semantic_messages,
                         profile,
                         negotiated,
                         protocol_limits,
@@ -137,6 +139,7 @@ impl DeveloperLoop {
                         &mut retries,
                         &mut usage,
                         trace,
+                        None,
                         None,
                     )
                     .await
@@ -180,7 +183,7 @@ impl DeveloperLoop {
             let Some(session) = complete_turn(
                 provider,
                 &request,
-                &messages,
+                &mut messages,
                 profile,
                 negotiated,
                 protocol_limits,
@@ -191,6 +194,12 @@ impl DeveloperLoop {
                 &mut usage,
                 trace,
                 live.map(|(port, role)| (port, role, input_revision)),
+                Some(RetryContext {
+                    context: &mut context,
+                    tools,
+                    governing_input: governing_input.as_ref(),
+                    compactions: &mut compactions,
+                }),
             )
             .await?
             else {
@@ -334,6 +343,7 @@ impl DeveloperLoop {
                     observation: &observation,
                 })?;
                 let model_output = model_visible_tool_output(
+                    call.name().as_str(),
                     &observation.output,
                     profile.limits().max_input_tokens(),
                     protocol_limits,
@@ -352,11 +362,14 @@ impl DeveloperLoop {
                     )?,
                 )?;
             }
+            // A queued warning must reach a provider turn before it can justify stopping.
+            // Capturing first preserves an executor's pending-warning state for this batch.
+            let continuation_blocker = tools.continuation_blocker();
             if let Some(feedback) = tools.take_progress_feedback() {
                 context.append(&mut messages, message(Role::User, feedback, protocol_limits)?)?;
             }
             context.observe(DeveloperContextEvent::BatchCompleted)?;
-            if let Some(blocker) = tools.continuation_blocker() {
+            if let Some(blocker) = continuation_blocker {
                 return Err(DeveloperLoopError::Tool(blocker));
             }
             if tools.yields_to_host() {

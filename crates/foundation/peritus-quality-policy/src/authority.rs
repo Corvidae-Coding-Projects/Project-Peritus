@@ -39,6 +39,24 @@ pub struct ApprovalObservation {
 }
 
 impl ApprovalObservation {
+    /// Specification view of the supplied approval request identity.
+    pub closed spec fn spec_request_id(&self) -> ApprovalRequestId { self.request_id }
+
+    /// Specification view of the complete approval subject.
+    pub closed spec fn spec_subject(&self) -> ApprovalSubject { self.subject }
+
+    /// Specification view of the supplied actor identity.
+    pub closed spec fn spec_actor_id(&self) -> ActorId { self.actor_id }
+
+    /// Specification view of the supplied authority-policy reference.
+    pub closed spec fn spec_authority(&self) -> ContentReference { self.authority }
+
+    /// Specification view of the explicit approval outcome.
+    pub closed spec fn spec_outcome(&self) -> ApprovalOutcome { self.outcome }
+
+    /// Specification view of the supplied approval evidence digest.
+    pub closed spec fn spec_evidence_digest(&self) -> Sha256Digest { self.evidence_digest }
+
     /// Specification view of the exact authorized revision.
     pub closed spec fn spec_revision(&self) -> RevisionTuple { self.revision }
 
@@ -52,13 +70,24 @@ impl ApprovalObservation {
         authority: ContentReference,
         outcome: ApprovalOutcome,
         evidence_digest: Sha256Digest,
-    ) -> Self {
+    ) -> (approval: Self)
+        ensures
+            approval.spec_request_id() == request_id,
+            approval.spec_revision() == revision,
+            approval.spec_subject() == subject,
+            approval.spec_actor_id() == actor_id,
+            approval.spec_authority() == authority,
+            approval.spec_outcome() == outcome,
+            approval.spec_evidence_digest() == evidence_digest,
+    {
         Self { request_id, revision, subject, actor_id, authority, outcome, evidence_digest }
     }
 
     /// Returns the approval request identity.
     #[must_use]
-    pub const fn request_id(&self) -> ApprovalRequestId { self.request_id }
+    pub const fn request_id(&self) -> (id: ApprovalRequestId)
+        ensures id == self.spec_request_id(),
+    { self.request_id }
 
     /// Returns the exact revision authorized or denied.
     #[must_use]
@@ -68,23 +97,33 @@ impl ApprovalObservation {
 
     /// Returns the exact approval purpose.
     #[must_use]
-    pub const fn subject(&self) -> ApprovalSubject { self.subject }
+    pub const fn subject(&self) -> (subject: ApprovalSubject)
+        ensures subject == self.spec_subject(),
+    { self.subject }
 
     /// Returns the human actor identity.
     #[must_use]
-    pub const fn actor_id(&self) -> ActorId { self.actor_id }
+    pub const fn actor_id(&self) -> (actor: ActorId)
+        ensures actor == self.spec_actor_id(),
+    { self.actor_id }
 
     /// Returns the authority declaration matched against the contract.
     #[must_use]
-    pub const fn authority(&self) -> ContentReference { self.authority }
+    pub const fn authority(&self) -> (authority: ContentReference)
+        ensures authority == self.spec_authority(),
+    { self.authority }
 
     /// Returns the explicit authority outcome.
     #[must_use]
-    pub const fn outcome(&self) -> ApprovalOutcome { self.outcome }
+    pub const fn outcome(&self) -> (outcome: ApprovalOutcome)
+        ensures outcome == self.spec_outcome(),
+    { self.outcome }
 
     /// Returns authenticated approval evidence.
     #[must_use]
-    pub const fn evidence_digest(&self) -> Sha256Digest { self.evidence_digest }
+    pub const fn evidence_digest(&self) -> (digest: Sha256Digest)
+        ensures digest == self.spec_evidence_digest(),
+    { self.evidence_digest }
 }
 
 /// Explicit authorization to waive one exact finding on one exact revision.
@@ -99,6 +138,21 @@ pub struct WaiverObservation {
 }
 
 impl WaiverObservation {
+    /// Specification view of the supplied finding identity.
+    pub closed spec fn spec_finding_id(&self) -> FindingId { self.finding_id }
+
+    /// Specification view of the supplied approval request identity.
+    pub closed spec fn spec_approval_request_id(&self) -> ApprovalRequestId { self.approval_request_id }
+
+    /// Specification view of the supplied authority-policy reference.
+    pub closed spec fn spec_authority(&self) -> ContentReference { self.authority }
+
+    /// Specification view of the supplied evidence requirement identity.
+    pub closed spec fn spec_evidence_requirement_id(&self) -> EvidenceRequirementId { self.evidence_requirement_id }
+
+    /// Specification view of the supplied waiver digest.
+    pub closed spec fn spec_waiver_digest(&self) -> Sha256Digest { self.waiver_digest }
+
     /// Specification view of the exact waived revision.
     pub closed spec fn spec_revision(&self) -> RevisionTuple { self.revision }
 
@@ -111,7 +165,15 @@ impl WaiverObservation {
         authority: ContentReference,
         evidence_requirement_id: EvidenceRequirementId,
         waiver_digest: Sha256Digest,
-    ) -> Self {
+    ) -> (waiver: Self)
+        ensures
+            waiver.spec_finding_id() == finding_id,
+            waiver.spec_revision() == revision,
+            waiver.spec_approval_request_id() == approval_request_id,
+            waiver.spec_authority() == authority,
+            waiver.spec_evidence_requirement_id() == evidence_requirement_id,
+            waiver.spec_waiver_digest() == waiver_digest,
+    {
         Self {
             finding_id,
             revision,
@@ -124,7 +186,9 @@ impl WaiverObservation {
 
     /// Returns the waived finding identity.
     #[must_use]
-    pub const fn finding_id(&self) -> FindingId { self.finding_id }
+    pub const fn finding_id(&self) -> (id: FindingId)
+        ensures id == self.spec_finding_id(),
+    { self.finding_id }
 
     /// Returns the exact revision on which the waiver applies.
     #[must_use]
@@ -134,21 +198,29 @@ impl WaiverObservation {
 
     /// Returns the human approval request authorizing this waiver.
     #[must_use]
-    pub const fn approval_request_id(&self) -> ApprovalRequestId { self.approval_request_id }
+    pub const fn approval_request_id(&self) -> (id: ApprovalRequestId)
+        ensures id == self.spec_approval_request_id(),
+    { self.approval_request_id }
 
     /// Returns the contract authority matched by this waiver.
     #[must_use]
-    pub const fn authority(&self) -> ContentReference { self.authority }
+    pub const fn authority(&self) -> (authority: ContentReference)
+        ensures authority == self.spec_authority(),
+    { self.authority }
 
     /// Returns the contract evidence declaration matched by this waiver.
     #[must_use]
-    pub const fn evidence_requirement_id(&self) -> EvidenceRequirementId {
+    pub const fn evidence_requirement_id(&self) -> (id: EvidenceRequirementId)
+        ensures id == self.spec_evidence_requirement_id(),
+    {
         self.evidence_requirement_id
     }
 
     /// Returns the digest of the authenticated waiver record.
     #[must_use]
-    pub const fn waiver_digest(&self) -> Sha256Digest { self.waiver_digest }
+    pub const fn waiver_digest(&self) -> (digest: Sha256Digest)
+        ensures digest == self.spec_waiver_digest(),
+    { self.waiver_digest }
 }
 
 } // verus!

@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "id": "command-ordinal-transient-writer-contention",
+  "classification": "product_defect",
+  "invariant": "Concurrent product runtimes wait through ordinary transient SQLite writer contention and reserve distinct durable command ordinals.",
+  "original": {
+    "revision": "2c2be90c03dc4987ff6fb143e031e7efadc83612",
+    "platform": "github-hosted ubuntu-24.04",
+    "finding_source": "manual Bug discovery workflow run 34663371138, receipt mutation shards 1, 2, 3, and 7",
+    "independent_reproducer": "four independent fresh hosted checkouts plus the owning regression applied to the original production source",
+    "fresh_fixture_repetitions": 4,
+    "command": "cargo test --locked --offline -p peritus-product-runner --lib transient_writer_contention_waits_for_a_durable_reservation -- --nocapture",
+    "exit_code": 101,
+    "failure_signature": "reservation completed while writer lock held: Ok(Err(\"reserve durable command ordinal: database is locked\"))"
+  },
+  "reproducer": {
+    "path": "crates/app/peritus-product-runner/src/developer_tools/command_runtime/ordinal.rs",
+    "test": "transient_writer_contention_waits_for_a_durable_reservation",
+    "fault_schedule": ["open a fresh or initialized ordinal database", "hold an immediate writer transaction", "start a second reservation", "retain the writer lock for 500 ms", "release and reopen"],
+    "required_reachability": ["second reservation waits while the writer lock is held", "reservation commits after release", "reopen observes the next distinct ordinal"],
+    "oracle": "bounded wait result and the next durable ordinal after reopening the database",
+    "minimization": "one database, one held immediate transaction, one competing reservation, and one reopen; removing any step loses contention or durability evidence"
+  },
+  "fix": {
+    "revision": "5a7746170f42a6066c4b106e11e2bffb93673499",
+    "owner": "ProductRunner command ordinal allocator",
+    "root_cause": "the allocator replaced rusqlite's five-second default busy timeout with 250 ms, shorter than ordinary concurrent durable writer scheduling"
+  },
+  "fixed_replay": {
+    "command": "cargo test --locked --offline -p peritus-product-runner --lib transient_writer_contention_waits_for_a_durable_reservation -- --nocapture",
+    "expected": "exit 0 for both fresh and initialized databases; the waiting reservation and reopened allocator return consecutive distinct ordinals"
+  },
+  "negative_control": "with no competing writer, reservation remains immediate; restoring the 250 ms timeout makes the held-writer regression fail before lock release",
+  "cleanup": "the hosted failures use fresh ephemeral runners; the owner regression uses temporary directories and commits the held transaction before scope exit",
+  "limitations": ["contention beyond five seconds remains an explicit error", "the fix does not mask permanently stalled or externally locked databases"]
+}

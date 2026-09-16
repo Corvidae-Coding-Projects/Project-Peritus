@@ -1,6 +1,8 @@
 use super::manifest_context::ManifestContext;
 use super::manifest_model::{BoundaryEvidence, ProofEvidence};
 use super::manifest_support::validate_symbol;
+use super::manifest_symbol::owned_function_declarations;
+use crate::api_contract::{CargoTest, Configuration, Mode};
 use crate::error::Diagnostic;
 use crate::reproducibility;
 use std::collections::BTreeSet;
@@ -72,7 +74,15 @@ fn validate_item(
 ) {
     let source = context.validate_source(manifest, id, owning_crate, source_file, diagnostics);
     validate_symbol(manifest, id, owning_crate, source.as_deref(), symbol, diagnostics);
-    validate_declaration(manifest, id, source.as_deref(), symbol, command, diagnostics);
+    validate_declaration(
+        manifest,
+        id,
+        owning_crate,
+        source.as_deref(),
+        symbol,
+        command,
+        diagnostics,
+    );
     if !reproducibility::is_exact_evidence_command(
         command,
         owning_crate,
@@ -89,6 +99,7 @@ fn validate_item(
 fn validate_declaration(
     manifest: &Path,
     id: &str,
+    owning_crate: &str,
     source: Option<&Path>,
     symbol: &str,
     command: &str,
@@ -97,36 +108,30 @@ fn validate_declaration(
     let Some(source) = source else { return };
     let Ok(contents) = fs::read_to_string(source) else { return };
     let name = symbol.rsplit("::").next().unwrap_or(symbol);
-    let lines: Vec<_> = contents.lines().collect();
-    let declaration = lines.iter().position(|line| declaration_name(line) == Some(name));
-    let Some(index) = declaration else { return };
-    let attributes = lines[..index]
-        .iter()
-        .rev()
-        .take_while(|line| line.trim().starts_with("#[") || line.trim().is_empty())
-        .copied()
-        .collect::<Vec<_>>();
-    let executable_test = attributes.iter().any(|line| line.trim() == "#[test]")
-        && !attributes.iter().any(|line| line.trim().starts_with("#[cfg"));
-    let formal = lines[index].contains("proof fn") || lines[index].contains("spec fn");
-    let valid = if command.starts_with("cargo test ") { executable_test } else { formal };
+    let declarations = owned_function_declarations(owning_crate, source, &contents, name);
+    let mut exact = declarations.iter().filter(|declaration| declaration.path == symbol);
+    let Some(declaration) = exact.next() else { return };
+    if exact.next().is_some() {
+        return;
+    }
+    let declaration = declaration.declaration;
+    let valid = if command.starts_with("cargo test ") {
+        declaration.cargo_test == CargoTest::Runnable
+            && declaration.configuration != Configuration::Other
+            && !declaration.nested
+    } else if command.starts_with("cargo verus ") {
+        declaration.in_verus
+            && declaration.configuration == Configuration::Unconditional
+            && !declaration.nested
+            && matches!(declaration.mode, Some(Mode::Exec | Mode::Proof | Mode::Spec))
+    } else {
+        false
+    };
     if !valid {
         diagnostics.push(Diagnostic::at(
             manifest,
             format!("entry `{id}` evidence symbol `{symbol}` is not exercised by its command"),
-            "use an unconditional #[test] for cargo test or an exact proof/spec item for Cargo-Verus",
+            "use a non-ignored #[test] enabled unconditionally or only by cfg(test), or an unconditional function declared inside verus! whose mode is confirmed by the fresh compiler proof-scope gate",
         ));
     }
-}
-
-fn declaration_name(line: &str) -> Option<&str> {
-    let tokens: Vec<_> = line
-        .split(|character: char| !character.is_ascii_alphanumeric() && character != '_')
-        .filter(|token| !token.is_empty())
-        .collect();
-    tokens.windows(2).find_map(|pair| {
-        ["fn", "struct", "enum", "union", "trait", "type", "const", "static"]
-            .contains(&pair[0])
-            .then_some(pair[1])
-    })
 }

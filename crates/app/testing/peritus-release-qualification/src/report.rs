@@ -7,16 +7,18 @@ use serde::Serialize;
 use peritus_release_artifacts::{
     ArtifactInventory, ReleaseBinding, ReproducibilityComparison, Sha256Digest, digest_bytes,
 };
+use peritus_release_policy::{ReleaseQualificationAdmission, ReleaseQualificationCheck};
 
 use self::validation::{
-    PolicyDigests, available_references, collect_records, evaluate_policy,
+    PolicyDigests, available_references, build_policy_input, collect_records,
     validate_artifact_inventory, validate_audit, validate_criterion_map, validate_manifest,
     validate_reproducibility, validate_required_records,
 };
+use crate::verified_policy::LOCAL_RELEASE_QUALIFICATION_CHECK_COUNT;
 use crate::{
     AcceptanceCriterion, CollectionRun, CriterionEvidenceMap, DeterministicReleasePolicy,
     EvidenceKind, EvidenceManifest, FinalAudit, PolicyDecision, QualificationError,
-    SignedEvidenceRecord,
+    SignedEvidenceRecord, VerifiedReleasePolicyAdapter,
 };
 
 /// Top-level H4 input whose absence blocks policy evaluation.
@@ -180,7 +182,7 @@ impl QualificationInputs {
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum QualificationVerdict {
-    /// Every H4 check and the authoritative release policy accepted the exact candidate.
+    /// Every retained H4 check and the configured release-policy path reported ready.
     Ready,
     /// Readiness was withheld; blockers enumerate why.
     NotReady,
@@ -197,6 +199,8 @@ pub struct QualificationReport {
     final_audit_digest: Option<Sha256Digest>,
     blockers: Vec<Blocker>,
     policy_decision: Option<PolicyDecision>,
+    #[serde(skip)]
+    verified_admission: Option<ReleaseQualificationAdmission>,
     verdict: QualificationVerdict,
 }
 
@@ -211,33 +215,81 @@ impl QualificationReport {
         inputs: &QualificationInputs,
         policy: &P,
     ) -> Result<Self, QualificationError> {
+        Self::evaluate_with(inputs, |input, _checks| (policy.evaluate(input), None))
+    }
+
+    /// Reduces supplied observations through the production verified-policy admission path.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`QualificationError`] only when deterministic content addressing fails. Missing or
+    /// contradictory evidence is retained as a not-ready blocker.
+    pub fn evaluate_verified(
+        inputs: &QualificationInputs,
+        policy: &VerifiedReleasePolicyAdapter,
+    ) -> Result<Self, QualificationError> {
+        Self::evaluate_with(inputs, |input, checks| {
+            let (decision, admission) = policy.evaluate_with_admission(input, checks);
+            (decision, Some(admission))
+        })
+    }
+
+    fn evaluate_with(
+        inputs: &QualificationInputs,
+        evaluate_policy: impl FnOnce(
+            &crate::ReleasePolicyInput,
+            [ReleaseQualificationCheck; LOCAL_RELEASE_QUALIFICATION_CHECK_COUNT],
+        ) -> (PolicyDecision, Option<ReleaseQualificationAdmission>),
+    ) -> Result<Self, QualificationError> {
         let mut blockers = Vec::new();
-        let records = collect_records(inputs, &mut blockers);
-        validate_required_records(inputs, &records, &mut blockers);
-        let artifact_inventory_digest =
+        let (records, collection_check) = collect_records(inputs, &mut blockers);
+        let signed_evidence_check = validate_required_records(inputs, &records, &mut blockers);
+        let (artifact_inventory_digest, artifact_inventory_check) =
             validate_artifact_inventory(inputs, &records, &mut blockers)?;
-        validate_reproducibility(inputs, &records, &mut blockers)?;
+        let reproducibility_check = validate_reproducibility(inputs, &records, &mut blockers)?;
         let available = available_references(inputs, &records);
-        let criterion_map_digest = validate_criterion_map(inputs, &available, &mut blockers)?;
-        let evidence_manifest_digest = validate_manifest(inputs, &available, &mut blockers)?;
-        let final_audit_digest = validate_audit(inputs, &mut blockers)?;
-        let policy_decision = evaluate_policy(
+        let (criterion_map_digest, criterion_map_check) =
+            validate_criterion_map(inputs, &available, &mut blockers)?;
+        let (evidence_manifest_digest, evidence_manifest_check) =
+            validate_manifest(inputs, &available, &mut blockers)?;
+        let (final_audit_digest, final_audit_check) = validate_audit(inputs, &mut blockers)?;
+        let local_checks = [
+            collection_check,
+            signed_evidence_check,
+            artifact_inventory_check,
+            reproducibility_check,
+            criterion_map_check,
+            evidence_manifest_check,
+            final_audit_check,
+        ];
+        let policy_input = build_policy_input(
             inputs,
-            policy,
             PolicyDigests {
                 artifact_inventory: artifact_inventory_digest,
                 evidence_manifest: evidence_manifest_digest,
                 criterion_map: criterion_map_digest,
                 final_audit: final_audit_digest,
             },
-            &mut blockers,
+            &blockers,
         );
-        let verdict =
-            if blockers.is_empty() && matches!(policy_decision, Some(PolicyDecision::Ready)) {
-                QualificationVerdict::Ready
-            } else {
-                QualificationVerdict::NotReady
-            };
+        let (policy_decision, verified_admission) = policy_input.map_or((None, None), |input| {
+            let (decision, admission) = evaluate_policy(&input, local_checks);
+            match &decision {
+                PolicyDecision::Ready => {}
+                PolicyDecision::NotReady { .. } => blockers.push(Blocker::PolicyRejected),
+                PolicyDecision::Unavailable { .. } => blockers.push(Blocker::PolicyUnavailable),
+            }
+            (Some(decision), admission)
+        });
+        let policy_ready = policy_decision.as_ref().is_some_and(PolicyDecision::is_ready);
+        let admitted = verified_admission
+            .as_ref()
+            .map_or(policy_ready, ReleaseQualificationAdmission::is_ready);
+        let verdict = if blockers.is_empty() && admitted {
+            QualificationVerdict::Ready
+        } else {
+            QualificationVerdict::NotReady
+        };
         Ok(Self {
             schema_version: 1,
             binding: inputs.binding.clone(),
@@ -247,6 +299,7 @@ impl QualificationReport {
             final_audit_digest,
             blockers,
             policy_decision,
+            verified_admission,
             verdict,
         })
     }
@@ -255,6 +308,19 @@ impl QualificationReport {
     #[must_use]
     pub const fn verdict(&self) -> QualificationVerdict {
         self.verdict
+    }
+
+    /// Reports readiness from retained blockers and the configured policy path.
+    #[must_use]
+    pub const fn is_ready(&self) -> bool {
+        let admitted = match self.verified_admission.as_ref() {
+            Some(admission) => admission.is_ready(),
+            None => match self.policy_decision.as_ref() {
+                Some(decision) => decision.is_ready(),
+                None => false,
+            },
+        };
+        matches!(self.verdict, QualificationVerdict::Ready) && self.blockers.is_empty() && admitted
     }
 
     /// Returns blockers in deterministic validation order.

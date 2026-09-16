@@ -6,6 +6,9 @@ use sha2::{Digest as _, Sha256};
 
 const TOKEN_ESTIMATE_BYTES: u64 = 3;
 const REVIEW_INPUT_SHARE_PERCENT: u64 = 50;
+// Initial evidence must leave space for independently requested workspace observations, in
+// addition to the system policy and tool catalog charged by the request estimator.
+const REVIEW_REQUEST_SHARE_PERCENT: u64 = 75;
 const MAX_REVIEW_EVIDENCE_BYTES: usize = 384 * 1024;
 const BASE_SECTION_CAPS: [usize; 6] =
     [64 * 1024, 144 * 1024, 48 * 1024, 80 * 1024, 32 * 1024, 16 * 1024];
@@ -13,6 +16,8 @@ const BASE_TOTAL_BYTES: usize = 384 * 1024;
 const EXTRA_PRIORITY: [usize; 6] = [0, 1, 3, 2, 4, 5];
 
 pub struct ReviewerPrompt<'a> {
+    pub system: &'a str,
+    pub tools: &'a [peritus_model_protocol::ToolDefinition],
     pub transcript: &'a str,
     pub diff: &'a str,
     pub gates: &'a str,
@@ -34,25 +39,25 @@ pub(super) struct ReviewerEvidence {
 
 pub(super) fn project(
     max_input_tokens: u64,
-    transcript: &str,
-    diff: &str,
-    gates: &str,
-    developer: &str,
-    prior: &str,
-    correction: &str,
+    framing_tokens: u64,
+    values: [&str; 6],
 ) -> ReviewerEvidence {
-    let values = [transcript, diff, gates, developer, prior, correction];
-    let allocations = allocations(&values, evidence_budget(max_input_tokens));
+    let allocations = allocations(&values, evidence_budget(max_input_tokens, framing_tokens));
     let [transcript, diff, gates, developer, prior, correction] =
         std::array::from_fn(|index| bounded(values[index], allocations[index]));
     ReviewerEvidence { transcript, diff, gates, developer, prior, correction }
 }
 
-fn evidence_budget(max_input_tokens: u64) -> usize {
-    let bytes = max_input_tokens
-        .saturating_mul(TOKEN_ESTIMATE_BYTES)
-        .saturating_mul(REVIEW_INPUT_SHARE_PERCENT)
-        / 100;
+pub(super) const fn request_target(max_input_tokens: u64) -> u64 {
+    max_input_tokens.saturating_mul(REVIEW_REQUEST_SHARE_PERCENT) / 100
+}
+
+fn evidence_budget(max_input_tokens: u64, framing_tokens: u64) -> usize {
+    let evidence_tokens = max_input_tokens.saturating_mul(REVIEW_INPUT_SHARE_PERCENT) / 100;
+    let request_tokens = request_target(max_input_tokens);
+    let bytes = evidence_tokens
+        .min(request_tokens.saturating_sub(framing_tokens))
+        .saturating_mul(TOKEN_ESTIMATE_BYTES);
     usize::try_from(bytes).unwrap_or(usize::MAX).min(MAX_REVIEW_EVIDENCE_BYTES)
 }
 
@@ -119,7 +124,8 @@ mod tests {
         let prior = "conserved finding";
         let correction = "retry correction";
 
-        let projected = project(200_000, transcript, &diff, gates, &developer, prior, correction);
+        let projected =
+            project(200_000, 0, [transcript, &diff, gates, &developer, prior, correction]);
         let total = projected.transcript.len()
             + projected.diff.len()
             + projected.gates.len()
@@ -127,7 +133,7 @@ mod tests {
             + projected.prior.len()
             + projected.correction.len();
 
-        assert!(total <= evidence_budget(200_000));
+        assert!(total <= evidence_budget(200_000, 0));
         assert_eq!(projected.transcript, transcript);
         assert_eq!(projected.gates, gates);
         assert_eq!(projected.prior, prior);
@@ -143,12 +149,12 @@ mod tests {
     #[test]
     fn smaller_provider_profiles_receive_smaller_evidence_packets() {
         let content = "x".repeat(900_000);
-        let smaller = project(64_000, "task", &content, &content, &content, "", "");
-        let larger = project(200_000, "task", &content, &content, &content, "", "");
+        let smaller = project(64_000, 0, ["task", &content, &content, &content, "", ""]);
+        let larger = project(200_000, 0, ["task", &content, &content, &content, "", ""]);
         let smaller_total = smaller.diff.len() + smaller.gates.len() + smaller.developer.len();
         let larger_total = larger.diff.len() + larger.gates.len() + larger.developer.len();
 
         assert!(smaller_total < larger_total);
-        assert!(smaller_total <= evidence_budget(64_000));
+        assert!(smaller_total <= evidence_budget(64_000, 0));
     }
 }

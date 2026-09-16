@@ -1,0 +1,9 @@
+   Compiling peritus-daemon v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/app/peritus-daemon)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.86s
+     Running tests/recovery_shutdown.rs (target/debug/deps/recovery_shutdown-5d8769dca342dff5)
+
+running 1 test
+test restart_resumes_the_durable_session_and_replays_the_exact_command_result ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.05s
+

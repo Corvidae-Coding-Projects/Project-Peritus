@@ -1,0 +1,44 @@
+{
+  "schema": "peritus.formal-coverage.increment-review",
+  "schema_version": 1,
+  "status": "reviewed-bounded-increment-not-obligation-discharge",
+  "recorded_at": "2026-09-12T20:09:52.750855+00:00",
+  "base_commit": "1aa9282ff2cfcbf8fac325f11f157f408d33ee30",
+  "implementation": "/root/sol_acceptance_completion",
+  "reviewer": "/root",
+  "review_provenance": "Independent parent source review through Codex collaboration in thread 01a08ab8-4887-7c63-8c75-7b8541cbbe4c; not an external signature or protected proof-impact authorization.",
+  "reviewed_source_manifest_sha256": "bf9bea10fdd237df6110c6069799dd70e24b768f7d46a9ce940e860b8d096463",
+  "reviewer_verdict": "PASS for exact stored waiver request and supplied current authority binding, original-input Clone correspondence, grant record and subject, helper rejection preservation, and the reproduced wrong-review regression.",
+  "remaining_limits": [
+    "Conditional GrantWaiver result, not complete public admission equivalence or all-command event exclusion.",
+    "No external evidence/authority authenticity or projection correctness theorem.",
+    "Copy addition downstream checks tracked separately.",
+    "Not a complete compiler-input attestation or final clean commit."
+  ],
+  "results": {
+    "isolated_strict_verified": 295,
+    "integrated_strict_verified": 295,
+    "proof_errors": 0,
+    "kernel_root_proof_warnings": 0,
+    "isolated_clone_kernel_tests_passed": 14,
+    "integrated_kernel_tests_passed": 15,
+    "integrated_quality_tests_passed": 40,
+    "isolated_clippy": "passed",
+    "format": "passed",
+    "baseline_wrong_review_regression": "failed as expected",
+    "integrated_wrong_review_regression": "passed"
+  },
+  "artifacts": {
+    "audit.md": "68d2430ec1d06133a56ee4fc42a4a10ba8e5b8b74e7acb35a264d5b6ece67be7",
+    "clippy-isolated.txt": "38fb79e66b005d8a54db002a50f495a1cf5c27bcce83c70240ec8a12c58d322d",
+    "clone-patch.diff": "3070e16f7cc667052234a8845bd05ffeabc6b73b812020078269ad1eb9d56481",
+    "commands.txt": "04122b39155ef2092f298bb32557788a95b6eec33d6e86f85a529fa1dd8df5fb",
+    "regression-baseline-source.txt": "2657440ad71113972469aeb206ebf235aed1622af22f1f839f333a206494e8f7",
+    "regression-baseline.txt": "c443edb7cc8b442d6724ae0ffe5dbb2e43fd068886cfc559fbf00a68b6f7ddf7",
+    "source-sha256.txt": "bf9bea10fdd237df6110c6069799dd70e24b768f7d46a9ce940e860b8d096463",
+    "tests-integrated.txt": "0306796c5f679cdc3651c79bf9fd0d31a467925ce2133a914ef86c661e01549b",
+    "tests-isolated-clone.txt": "6e40ec7017cc31192c0274c9c22e72464e4bc4759414a8bc3125c2300bb8f86d",
+    "verus-integrated.txt": "5fdbaca04a3684e51e5e4b1987d67e90cfb5d085818cea26044424b210eaa7d5",
+    "verus-isolated.txt": "0101b3f9e5d588f11a45d181dec885da81e893430288f2827d3cc6f33423d722"
+  }
+}

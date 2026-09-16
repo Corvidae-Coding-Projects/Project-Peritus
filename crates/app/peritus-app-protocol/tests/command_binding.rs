@@ -65,3 +65,42 @@ fn binding_preserves_exact_b3_frames_and_rejects_revision_drift() {
             .expect_err("a registered record is not a command");
     assert_eq!(wrong_role.code(), AppErrorCode::InvalidCommandFrame);
 }
+
+#[test]
+fn command_binding_accepts_supported_scheduler_schemas_only() {
+    let (envelope, command) = command_fixture_bytes();
+    for version in [1, 2] {
+        let scheduler_command = relabel(command.clone(), 70, version);
+        let frames = CommandSubmissionFrames::parse(
+            envelope.clone(),
+            scheduler_command,
+            AppProtocolLimits::PRODUCTION,
+        )
+        .expect("supported scheduler command schema parses");
+        assert_eq!(frames.command_frame().schema_version(), version);
+    }
+
+    for version in [0, 3] {
+        let error = CommandSubmissionFrames::parse(
+            envelope.clone(),
+            relabel(command.clone(), 70, version),
+            AppProtocolLimits::PRODUCTION,
+        )
+        .expect_err("unsupported scheduler command schema rejects");
+        assert_eq!(error.code(), AppErrorCode::UnsupportedSchema);
+    }
+
+    let error = CommandSubmissionFrames::parse(
+        envelope,
+        relabel(command, 1, 2),
+        AppProtocolLimits::PRODUCTION,
+    )
+    .expect_err("non-scheduler family remains schema one only");
+    assert_eq!(error.code(), AppErrorCode::UnsupportedSchema);
+}
+
+fn relabel(mut frame: Vec<u8>, family: u16, schema_version: u16) -> Vec<u8> {
+    frame[6..8].copy_from_slice(&family.to_be_bytes());
+    frame[8..10].copy_from_slice(&schema_version.to_be_bytes());
+    frame
+}

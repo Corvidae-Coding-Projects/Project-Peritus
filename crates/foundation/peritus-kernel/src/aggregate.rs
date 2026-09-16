@@ -18,7 +18,7 @@ verus! {
 use crate::{ActionState, AttemptState, ReviewState, RunState, TurnState, WaiverState};
 
 /// Complete authoritative B0 state for one session event stream.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq)]
 pub struct KernelAggregate {
     pub(crate) project_id: ProjectId,
     pub(crate) revision: RevisionTuple,
@@ -59,6 +59,53 @@ impl KernelGenesis {
 }
 
 impl KernelAggregate {
+    /// Exact scalar fields preserved by cloning.
+    pub closed spec fn scalar_clone_equivalent(left: &Self, right: &Self) -> bool {
+        left.project_id == right.project_id
+            && left.revision == right.revision
+            && left.contract_binding == right.contract_binding
+            && left.session == right.session
+            && left.head_event_id == right.head_event_id
+            && left.last_sequence == right.last_sequence
+    }
+
+    /// Exact sequence fields preserved by cloning.
+    pub closed spec fn sequence_clone_equivalent(left: &Self, right: &Self) -> bool {
+        left.accepted_command_ids@ == right.accepted_command_ids@
+            && left.event_ids@ == right.event_ids@
+            && left.runs@ == right.runs@
+            && left.attempts@ == right.attempts@
+            && left.turns@ == right.turns@
+            && left.reviews@ == right.reviews@
+            && left.waivers@ == right.waivers@
+    }
+
+    /// Semantic action fields preserved by cloning.
+    pub closed spec fn action_clone_equivalent(left: &Self, right: &Self) -> bool {
+        ActionState::sequence_clone_equivalent(left.actions@, right.actions@)
+    }
+
+    /// Exact scalar/sequence and semantic action fields preserved by cloning.
+    pub open spec fn clone_equivalent(left: &Self, right: &Self) -> bool {
+        Self::scalar_clone_equivalent(left, right)
+            && Self::sequence_clone_equivalent(left, right)
+            && Self::action_clone_equivalent(left, right)
+    }
+
+    /// Specification view of the exact current revision.
+    pub closed spec fn spec_revision(&self) -> RevisionTuple { self.revision }
+    /// Specification view of stored review-cycle states.
+    pub closed spec fn spec_reviews(&self) -> Seq<ReviewState> { self.reviews@ }
+    /// Specification view of stored finding-waiver states.
+    pub closed spec fn spec_waivers(&self) -> Seq<WaiverState> { self.waivers@ }
+
+    pub(crate) proof fn expose_internal_views(&self)
+        ensures
+            self.spec_revision() == self.revision,
+            self.spec_reviews() == self.reviews@,
+            self.spec_waivers() == self.waivers@,
+    {}
+
     /// Formal shape guaranteed by every successful genesis transition.
     pub closed spec fn genesis_result_refines(
         revision: RevisionTuple,
@@ -148,7 +195,9 @@ impl KernelAggregate {
     pub const fn project_id(&self) -> ProjectId { self.project_id }
     /// Returns the exact current revision tuple.
     #[must_use]
-    pub const fn revision(&self) -> RevisionTuple { self.revision }
+    pub const fn revision(&self) -> (revision: RevisionTuple)
+        ensures revision == self.spec_revision(),
+    { self.revision }
     /// Returns the immutable acceptance-contract binding.
     #[must_use]
     pub const fn contract_binding(&self) -> ContractBinding { self.contract_binding }
@@ -175,14 +224,65 @@ impl KernelAggregate {
     pub const fn actions(&self) -> &[ActionState] { self.actions.as_slice() }
     /// Returns all reviews in creation order.
     #[must_use]
-    pub const fn reviews(&self) -> &[ReviewState] { self.reviews.as_slice() }
+    pub const fn reviews(&self) -> (reviews: &[ReviewState])
+        ensures reviews@ == self.spec_reviews(),
+    { self.reviews.as_slice() }
     /// Returns all waivers in creation order.
     #[must_use]
-    pub const fn waivers(&self) -> &[WaiverState] { self.waivers.as_slice() }
+    pub const fn waivers(&self) -> (waivers: &[WaiverState])
+        ensures waivers@ == self.spec_waivers(),
+    { self.waivers.as_slice() }
 
     /// Returns whether the complete executable aggregate invariants hold.
     #[must_use]
     pub fn is_valid(&self) -> bool { validation::is_valid(self) }
+}
+
+impl Clone for KernelAggregate {
+    fn clone(&self) -> (result: Self)
+        ensures
+            Self::scalar_clone_equivalent(self, &result),
+            Self::sequence_clone_equivalent(self, &result),
+            Self::action_clone_equivalent(self, &result),
+            Self::clone_equivalent(self, &result),
+            result.spec_revision() == self.spec_revision(),
+            result.spec_reviews() == self.spec_reviews(),
+            result.spec_waivers() == self.spec_waivers(),
+    {
+        let accepted_command_ids = self.accepted_command_ids.clone();
+        let event_ids = self.event_ids.clone();
+        let runs = self.runs.clone();
+        let attempts = self.attempts.clone();
+        let turns = self.turns.clone();
+        let actions = ActionState::clone_sequence(self.actions.as_slice());
+        let reviews = self.reviews.clone();
+        let waivers = self.waivers.clone();
+        proof {
+            assert(accepted_command_ids@ =~= self.accepted_command_ids@);
+            assert(event_ids@ =~= self.event_ids@);
+            assert(runs@ =~= self.runs@);
+            assert(attempts@ =~= self.attempts@);
+            assert(turns@ =~= self.turns@);
+            assert(reviews@ =~= self.reviews@);
+            assert(waivers@ =~= self.waivers@);
+        }
+        Self {
+            project_id: self.project_id,
+            revision: self.revision,
+            contract_binding: self.contract_binding,
+            session: self.session,
+            head_event_id: self.head_event_id,
+            last_sequence: self.last_sequence,
+            accepted_command_ids,
+            event_ids,
+            runs,
+            attempts,
+            turns,
+            actions,
+            reviews,
+            waivers,
+        }
+    }
 }
 
 } // verus!

@@ -15,19 +15,7 @@ impl SchedulerState {
             || self.used_commands.len() > 65_535
             || self.used_dispatches.len() > 65_535
             || self.estimated_encoded_bytes() > limits.state_bytes()
-            || self
-                .work
-                .iter()
-                .filter(|record| {
-                    matches!(
-                        record.phase(),
-                        WorkPhase::Queued
-                            | WorkPhase::WaitingDependencies
-                            | WorkPhase::RetryPending
-                    )
-                })
-                .count()
-                > limits.queued_work() as usize
+            || !super::queue::within_bounds(self)
         {
             return Err(crate::error::reject(
                 SchedulerErrorKind::LimitExceeded,

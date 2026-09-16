@@ -1,0 +1,206 @@
+name: Formal authority validation
+
+on:
+  pull_request_target:
+    branches: [main, develop]
+    types: [opened, edited, reopened, synchronize, ready_for_review]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: formal-authority-${{ github.event.pull_request.number }}-${{ github.workflow_sha }}-${{ github.event.pull_request.base.sha }}-${{ github.event.pull_request.head.sha }}
+  cancel-in-progress: false
+
+env:
+  CARGO_BUILD_JOBS: "2"
+  RUST_VERSION: 1.97.1
+  RUSTUP_TOOLCHAIN: 1.97.1
+
+jobs:
+  trusted-base-validation:
+    name: Trusted-base validation
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      CHECKER_SHA: ${{ github.workflow_sha }}
+      BASE_SHA: ${{ github.event.pull_request.base.sha }}
+      CANDIDATE_SHA: ${{ github.event.pull_request.head.sha }}
+      EVENT_SHA: ${{ github.sha }}
+      EVENT_REF: ${{ github.ref }}
+      WORKFLOW_REF: ${{ github.workflow_ref }}
+      DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+      BASE_REF: ${{ github.event.pull_request.base.ref }}
+      BASE_REPOSITORY: ${{ github.event.pull_request.base.repo.full_name }}
+      BASE_REPOSITORY_ID: ${{ github.event.pull_request.base.repo.id }}
+      REPOSITORY_ID: ${{ github.repository_id }}
+      EVENT_NAME: ${{ github.event_name }}
+    steps:
+      - name: Check out exact checker revision
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: ${{ github.repository }}
+          ref: ${{ github.workflow_sha }}
+          path: authority
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Check out exact comparison base
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: ${{ github.repository }}
+          ref: ${{ github.event.pull_request.base.sha }}
+          path: base
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Check out exact candidate revision
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: ${{ github.repository }}
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: candidate
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Bind event and checkout identities
+        shell: bash
+        run: |
+          set -euo pipefail
+          require_sha() {
+            local label="$1"
+            local value="$2"
+            if [[ ! "$value" =~ ^[0-9a-f]{40}$ || "$value" == "0000000000000000000000000000000000000000" ]]; then
+              printf '%s is not a nonzero lowercase full commit SHA\n' "$label" >&2
+              exit 1
+            fi
+          }
+          require_sha CHECKER_SHA "$CHECKER_SHA"
+          require_sha EVENT_SHA "$EVENT_SHA"
+          require_sha BASE_SHA "$BASE_SHA"
+          require_sha CANDIDATE_SHA "$CANDIDATE_SHA"
+          test "$EVENT_NAME" = "pull_request_target"
+          test "$DEFAULT_BRANCH" = "main"
+          test "$EVENT_REF" = "refs/heads/main"
+          test "$EVENT_SHA" = "$CHECKER_SHA"
+          test "$WORKFLOW_REF" = "$GITHUB_REPOSITORY/.github/workflows/formal-authority.yml@refs/heads/main"
+          test "$BASE_REPOSITORY" = "$GITHUB_REPOSITORY"
+          test "$BASE_REPOSITORY_ID" = "$REPOSITORY_ID"
+          case "$BASE_REF" in
+            main) test "$BASE_SHA" = "$CHECKER_SHA" ;;
+            develop) ;;
+            *) printf 'unsupported pull-request base: %s\n' "$BASE_REF" >&2; exit 1 ;;
+          esac
+          checker_head="$(git -C authority rev-parse --verify 'HEAD^{commit}')"
+          base_head="$(git -C base rev-parse --verify 'HEAD^{commit}')"
+          candidate_head="$(git -C candidate rev-parse --verify 'HEAD^{commit}')"
+          test "$checker_head" = "$CHECKER_SHA"
+          test "$base_head" = "$BASE_SHA"
+          test "$candidate_head" = "$CANDIDATE_SHA"
+          git -C candidate cat-file -e "$CHECKER_SHA^{commit}"
+          git -C candidate cat-file -e "$BASE_SHA^{commit}"
+          git -C candidate merge-base --is-ancestor "$BASE_SHA" "$CANDIDATE_SHA"
+      - name: Reject execution inputs before Cargo metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          check_tree() {
+            local checkout="$1"
+            local revision="$2"
+            local label="$3"
+            local tree_inventory="$RUNNER_TEMP/formal-authority-$label-tree"
+            git -C "$checkout" ls-tree -r -z --full-tree "$revision" > "$tree_inventory"
+            while IFS= read -r -d '' entry; do
+              header="${entry%%$'\t'*}"
+              path="${entry#*$'\t'}"
+              mode="${header%% *}"
+              remainder="${header#* }"
+              kind="${remainder%% *}"
+              case "$mode:$kind" in
+                100644:blob|100755:blob) ;;
+                *)
+                  printf '%s tree contains non-regular entry: %s\n' "$label" "$path" >&2
+                  exit 1
+                  ;;
+              esac
+              case "$path" in
+                .cargo/config|rust-toolchain)
+                  printf '%s tree contains alternate Cargo or Rust selector: %s\n' "$label" "$path" >&2
+                  exit 1
+                  ;;
+              esac
+            done < "$tree_inventory"
+          }
+          check_tree authority "$CHECKER_SHA" checker
+          check_tree base "$BASE_SHA" base
+          check_tree candidate "$CANDIDATE_SHA" candidate
+          authority_inputs=(
+            .cargo/config.toml .gitattributes rust-toolchain.toml
+            Cargo.toml Cargo.lock
+            xtask/Cargo.toml xtask/build.rs xtask/src
+            .github/workflows/formal-authority.yml
+            .github/workflows/formal-governance.yml
+            docs/formal-governance-ruleset.template.json
+          )
+          git -C candidate diff --no-ext-diff --no-textconv --exit-code \
+            "$CHECKER_SHA" "$BASE_SHA" -- "${authority_inputs[@]}"
+          git -C candidate diff --no-ext-diff --no-textconv --exit-code \
+            "$BASE_SHA" "$CANDIDATE_SHA" -- "${authority_inputs[@]}"
+      - name: Install pinned Rust
+        uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # v1
+        env:
+          RUSTUP_MAX_RETRIES: "10"
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+      - name: Build trusted checker and prime locked metadata
+        shell: bash
+        env:
+          CARGO_HOME: ${{ runner.temp }}/formal-authority-cargo-home
+        run: |
+          set -euo pipefail
+          cargo +1.97.1 build --locked --release --manifest-path authority/Cargo.toml \
+            --package xtask --bin xtask \
+            --target-dir "$RUNNER_TEMP/formal-authority-target"
+          cargo +1.97.1 metadata --locked --all-features --format-version 1 \
+            --manifest-path authority/Cargo.toml > /dev/null
+      - name: Evaluate candidate with trusted checker
+        working-directory: candidate
+        shell: bash
+        env:
+          CARGO_HOME: ${{ runner.temp }}/formal-authority-cargo-home
+          CARGO_NET_OFFLINE: "true"
+          GIT_CONFIG_GLOBAL: /dev/null
+          GIT_CONFIG_NOSYSTEM: "1"
+        run: |
+          set -euo pipefail
+          checker="$RUNNER_TEMP/formal-authority-target/release/xtask"
+          cargo_bin="$(command -v cargo)"
+          git_bin="$(command -v git)"
+          case "$checker:$cargo_bin:$git_bin" in
+            *"$GITHUB_WORKSPACE/candidate"*)
+              printf 'trusted executable path resolves inside candidate checkout\n' >&2
+              exit 1
+              ;;
+          esac
+          trusted_path="${cargo_bin%/*}:${git_bin%/*}:/usr/bin:/bin"
+          PATH="$trusted_path" "$checker" all
+      - name: Evaluate protected proof-impact trust
+        working-directory: candidate
+        shell: bash
+        env:
+          CARGO_HOME: ${{ runner.temp }}/formal-authority-cargo-home
+          CARGO_NET_OFFLINE: "true"
+          GITHUB_ACTIONS: "true"
+          GIT_CONFIG_GLOBAL: /dev/null
+          GIT_CONFIG_NOSYSTEM: "1"
+          PERITUS_PROOF_IMPACT_BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          checker="$RUNNER_TEMP/formal-authority-target/release/xtask"
+          cargo_bin="$(command -v cargo)"
+          git_bin="$(command -v git)"
+          case "$checker:$cargo_bin:$git_bin" in
+            *"$GITHUB_WORKSPACE/candidate"*)
+              printf 'trusted executable path resolves inside candidate checkout\n' >&2
+              exit 1
+              ;;
+          esac
+          trusted_path="${cargo_bin%/*}:${git_bin%/*}:/usr/bin:/bin"
+          PATH="$trusted_path" "$checker" verify-trust

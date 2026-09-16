@@ -12,7 +12,20 @@ agent_file="$peritus_home/Library/LaunchAgents/com.corvidae.peritus.plist"
 domain="gui/$(id -u)"
 command_file="$peritus_home/.local/bin/peritus"
 
-launchctl bootout "$domain/com.corvidae.peritus" 2>/dev/null || true
+if command -v launchctl >/dev/null 2>&1; then
+    # Validate access to the user's launchd domain separately from an absent job.
+    launchctl print "$domain" >/dev/null
+    if launchctl print "$domain/com.corvidae.peritus" >/dev/null 2>&1; then
+        launchctl bootout "$domain/com.corvidae.peritus"
+    else
+        status=$?
+        # launchctl reports ESRCH when the domain is available but the job is absent.
+        [ "$status" -eq 113 ] || exit "$status"
+    fi
+elif [ -f "$agent_file" ]; then
+    echo "launchctl is unavailable; preserving the registered agent and package files" >&2
+    exit 127
+fi
 rm -f -- "$agent_file"
 rm -f -- "$command_file"
 rm -f -- "$app_root/bin/peritusd" "$app_root/bin/peritus" "$app_root/bin/peritus-tui"

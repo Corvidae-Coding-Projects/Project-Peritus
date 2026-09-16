@@ -10,15 +10,10 @@ pub struct PlatformCredentialSource {
 }
 
 impl PlatformCredentialSource {
-    /// Opens the platform credential namespace without reading any secret material.
-    ///
-    /// # Errors
-    ///
-    /// Rejects an invalid service namespace.
-    pub fn new(service: &str) -> Result<Self, ProviderCoreError> {
-        let store = PlatformCredentialStore::new(service.to_owned())
-            .map_err(|_| credential_error("platform credential namespace is invalid"))?;
-        Ok(Self { store })
+    /// Opens the same provider namespace used by setup without reading any secret material.
+    #[must_use]
+    pub fn providers() -> Self {
+        Self { store: PlatformCredentialStore::providers() }
     }
 
     /// Reports whether the current platform credential adapter is available.

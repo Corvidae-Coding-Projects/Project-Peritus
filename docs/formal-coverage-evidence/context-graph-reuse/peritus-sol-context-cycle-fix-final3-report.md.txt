@@ -1,0 +1,115 @@
+# Peritus context cycle performance repair handoff
+
+Date: 2026-09-13 UTC
+
+Status: bounded repair and local qualification complete; frozen for independent review. This report does not approve the original 481 checkpoint or complete unrelated context proof work.
+
+## Exact source
+
+- Final 72-file package: `/tmp/peritus-sol-context-cycle-fix-final-source-003/peritus-context`
+- Full manifest: `/tmp/peritus-sol-context-cycle-fix-final3-full-package.sha256`, SHA-256 `69681b7b8b68f8cef5ac41f8aeb9762c7f7bd276f91d25d2fd4f7d64ed06f87e`
+- Changed/new 13-file manifest: `/tmp/peritus-sol-context-cycle-fix-final3-changed-source.sha256`, SHA-256 `3d3907e64964652ab8c10cdaa7eb0c00dc6ce43be07bb807434fa503fd3cedd3`
+- Exact original481-to-repair patch: `/tmp/peritus-sol-context-cycle-fix-final3.patch`, SHA-256 `9d949e2f9056c8c19b4eeeca82750ac567e7318b3980710b9e6c9f32cb593e9b`
+- Changed path list: `/tmp/peritus-sol-context-cycle-fix-final3-changed-paths.json`, SHA-256 `7c42bd77dc82432e79a32abeecb73ac53b321c0738af50feb82086208ae4c755`
+- Final manifest check: `/tmp/peritus-sol-context-cycle-fix-final3-source-check.log`, SHA-256 `ee4716e8064f47c3a0e630cb983089b9428191790f2c720d839723be79089eb8`
+
+The isolated compile workspace was `/tmp/peritus-sol-context-cycle-fix-001`. No shared source was edited.
+
+Direct proof dependencies in that workspace were rechecked immediately before handoff:
+
+- `crates/orchestration/peritus-run-knowledge`: `/tmp/peritus-sol-knowledge-errors-source-final.sha256`, 38 files, manifest SHA-256 `6854d6da0f6c0f6bd7b298f75b608a34e0937e32938ee266b233c6e00062e1d2`
+- `crates/orchestration/peritus-role`: `/tmp/peritus-parent-role-policy-full-package-02.sha256`, 17 files, manifest SHA-256 `af21cf03dfbc25f44e373ac08bbddbe217b5bff271528af69c2b3bd61ed7f385`
+- `crates/foundation/peritus-spec`: `/tmp/peritus-parent-role-policy-spec-dependency.sha256`, manifest SHA-256 `207f982395f69bf78f294ea773d9dfcece4470592f24bb267be48e148c784700`
+
+All checks exited zero. Raw logs are `/tmp/peritus-sol-context-cycle-fix-final3-dependency-{knowledge,role,spec}.log`.
+
+## Defect and repair
+
+The independently reviewed original481 implementation repeatedly scanned all source nodes and their dependency arrays while searching for each removable node. On a canonical ascending chain where node `i` depends on `i-1`, the production `ContextGraph::new` path regressed from 20.18x at 64 nodes to 310.03x at 1024 nodes against prior55; the measured 2048-node frozen run took 8.94 seconds.
+
+The repair maintains one exact count per target node: the number of not-yet-removed source nodes that directly depend on it. Initialization and removal follow actual dependency edges and use the constructor-proved canonical lookup. A target is removable exactly when it is present and its count is zero. Selection still scans target indices in the original order, so the canonical elimination order and exact residual diagnostic remain unchanged.
+
+The executable count initialization and decrement functions are connected to a mathematical remaining-dependent-count model. The proof establishes:
+
+- initial counts equal the exact all-present remaining-dependent counts;
+- every admitted dependency resolves to one canonical target;
+- canonical metadata makes each source-to-target dependency contribution unique;
+- removing a source decrements exactly its direct targets, without underflow;
+- every maintained count continues to equal the exact remaining-dependent count;
+- zero count is equivalent to absence of a remaining dependent;
+- first zero-count selection is the original first-removable selection;
+- the existing finite elimination certificate, semantic acyclicity iff, and first residual diagnostic contracts are preserved.
+
+No public executable precondition, rejection guard, alternate verifier-only implementation, assumption, admit, axiom, `external_body`, or lint/checker suppression was added. The only new executable state is the dependent-count vector and scalar removed count; the prior runtime removal-order vector was removed because it existed only to mirror the ghost proof trace.
+
+## Performance evidence
+
+Probe: `/tmp/peritus-sol-context-chain-probe.rs`, SHA-256 `1bb9471714555906f07e2cb5eb3dd3c4d5a763c4e05ac276d9c93cdd24adcc4d`. It constructs valid canonical ascending chains, warms once per size, and times only the actual `ContextGraph::new`; node construction and input `Vec` cloning are outside the timer. Prior55, original481, and repaired source manifests were checked in their separate workspaces, and builds used distinct release targets on disk.
+
+Median nanoseconds:
+
+| nodes | prior55 | original481 | repaired524 | repaired/prior | original/repaired |
+|---:|---:|---:|---:|---:|---:|
+| 64 | 17,966 | 362,466 | 8,641 | 0.48x | 41.95x |
+| 128 | 69,865 | 2,720,550 | 28,346 | 0.41x | 95.98x |
+| 256 | 275,454 | 17,503,230 | 104,513 | 0.38x | 167.47x |
+| 512 | 1,094,272 | 137,086,391 | 403,093 | 0.37x | 340.09x |
+| 1024 | 3,589,992 | 1,113,008,751 | 1,828,238 | 0.51x | 608.79x |
+| 2048 | 14,187,887 | 8,942,616,019 | 6,809,582 | 0.48x | 1313.24x |
+| 4096 | 57,382,212 | not measured | 20,236,190 | 0.35x | n/a |
+
+The repaired source is faster than prior55 for every measured size. This resolves both the original severe regression and the 3.1-3.8x residual in the first count-vector checkpoint. These are bounded wall-clock measurements, not an asymptotic theorem.
+
+Final exact-source command:
+
+```sh
+CCACHE_DISABLE=1 CARGO_BUILD_JOBS=1 CARGO_TARGET_DIR=/home/doll/Project-Peritus/.worktrees/formal-coverage/target/peritus-sol-context-perf-optimized-001 cargo run --release --package peritus-context --example context_graph_chain_probe --locked -- 64,128,256,512,1024,2048,4096 5
+```
+
+Raw final log: `/tmp/peritus-sol-context-perf-optimized-final3.log`, SHA-256 `b825d2ba00d8c7aeb982da34edc1287131309a2a4b17501f1c4a5eda86a4e380`. Exact repaired production source was checked before adding the external probe; check log `/tmp/peritus-sol-context-perf-optimized-final3-source-check.log`, SHA-256 `ee4716e8064f47c3a0e630cb983089b9428191790f2c720d839723be79089eb8`. Machine-readable comparison: `/tmp/peritus-sol-context-cycle-final-performance-comparison.json`, SHA-256 `c7f6f7fc98d9d715e2a56a182bf6708128ac934cbd54a58aa63c9fd9a76f3acd`; generator SHA-256 `d19d2ca7b90ea2d38900a1e2616a826c4d9af2839f27558cd1fa1b5370e9a395`.
+
+## Qualification
+
+Commands ran from `/tmp/peritus-sol-context-cycle-fix-001` with build targets on disk.
+
+Strict pinned Verus:
+
+```sh
+CCACHE_DISABLE=1 CARGO_BUILD_JOBS=1 CARGO_TARGET_DIR=/home/doll/Project-Peritus/.worktrees/formal-coverage/target/peritus-sol-context-cycle-fix-verus-001 cargo verus verify --package peritus-context --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --num-threads 2 --no-cheating --rlimit 20
+```
+
+Result: 524 verified, 0 errors. Log `/tmp/peritus-sol-context-cycle-optimized-verus-diag-023.log`, SHA-256 `48313d21e54964b42c67c1644e6f606ea9550a32f9dcf5ab436350cca371c88c`. The 17 warnings are the pre-existing unsupported non-Copy derived-Clone warnings; no warning suppression was added.
+
+Default tests:
+
+```sh
+CCACHE_DISABLE=1 CARGO_BUILD_JOBS=1 CARGO_TARGET_DIR=/home/doll/Project-Peritus/.worktrees/formal-coverage/target/peritus-sol-context-cycle-fix-gates-001 cargo test --package peritus-context --locked
+```
+
+Result: 56 passed, 0 failed. Log `/tmp/peritus-sol-context-cycle-fix-final4-tests-default.log`, SHA-256 `e47bb36000c0d6b471e1bae550bd27995b0e21daab511ed141e4c268e52563f5`.
+
+All-feature tests used the same command plus `--all-features`: 56 passed, 0 failed. Log `/tmp/peritus-sol-context-cycle-fix-final4-tests-all.log`, SHA-256 `862aacb359bcaf3194fcf6265abbada7037a922283ad8f3cda96aa91058eeaf4`.
+
+Strict Clippy:
+
+```sh
+CCACHE_DISABLE=1 CARGO_BUILD_JOBS=1 CARGO_TARGET_DIR=/home/doll/Project-Peritus/.worktrees/formal-coverage/target/peritus-sol-context-cycle-fix-gates-001 cargo clippy --package peritus-context --all-targets --all-features --locked -- -D warnings
+```
+
+Result: pass. Log `/tmp/peritus-sol-context-cycle-fix-final5-clippy.log`, SHA-256 `fe2c59375d484633008d3b8f79a28746708a7862ce39b6fb948c8016b3ed1afd`.
+
+`cargo fmt --package peritus-context -- --check` passed; empty log `/tmp/peritus-sol-context-cycle-fix-final3-fmt.log`, SHA-256 `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855`.
+
+`cargo run --locked --package xtask -- source-layout-check` passed over 4,415 source files. All changed production and test files are below 400 lines. Log `/tmp/peritus-sol-context-cycle-fix-final3-source-layout.log`, SHA-256 `d2c68566ff337d055a0667e41ff86f161b4ead3559e25443fc60a3e11d6bbd28`.
+
+`cargo run --locked --package xtask -- ordinary-api-check` passed over 3,514 formal-boundary files and 14,691 ordinary-safe executable entry points. Log `/tmp/peritus-sol-context-cycle-fix-final3-ordinary-api.log`, SHA-256 `0c06fdeefef7036b4c07c05d26c79ffb4c1558cc6f9bac312695d37522f412d9`.
+
+The exact patch adds no forbidden proof escape or lint allow; scan `/tmp/peritus-sol-context-cycle-fix-final3-forbidden-additions.log` is empty.
+
+The final three formatting-only call compactions in `cycle_member` brought the verified function below Clippy's 100-line threshold without changing executable operations or contracts. Strict Verus, both 56-test profiles, Clippy, fmt, layout, API, and exact-source performance all ran against the final bytes.
+
+## Remaining boundaries
+
+This repair closes the confirmed cycle-traversal performance defect while retaining the original481 graph and reuse theorem boundaries. It does not add or discharge selection, compaction, or working-state correspondence. The original checkpoint's exact open list remains in `/tmp/peritus-sol-context-original481-independent-review-20260913T001.md`, SHA-256 `a097ed3b5be302964c17f9beeda5cc6ea5578f068532fb56b1eb8fa89e83c4aa`.
+
+Digest authenticity, input provenance, external observations, provider/repository I/O, and end-to-end whole-system admission remain outside this deterministic cycle repair.

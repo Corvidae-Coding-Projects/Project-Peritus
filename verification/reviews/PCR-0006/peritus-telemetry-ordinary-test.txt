@@ -1,0 +1,42 @@
+{"candidate_commit": "65f16e2933b70305de865750931bb05fe9afb64d", "candidate_tree": "ae2a43f9a9b73f5fec944d39cf165a8b3ec4df20", "environment": {"CARGO_BUILD_JOBS": "1", "CCACHE_DISABLE": "1", "RUST_TEST_THREADS": "1"}, "gate": {"command": "cargo test --package peritus-telemetry --all-targets --all-features --locked", "invocation": ["cargo", "test", "--package", "peritus-telemetry", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "output": "113-peritus-telemetry-ordinary-test.log", "owning_crate": "peritus-telemetry", "started_at": "2026-09-13T15:21:51.814051Z"}, "plan_sha256": "7fc101b7f8284fbe3818461a8166d73d3425f369120b43c1cbf1b43809a6b7c9"}
+
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.17s
+     Running unittests src/lib.rs (target/debug/deps/peritus_telemetry-33225cd10917781e)
+
+running 2 tests
+test storage::tests::checkpoint_rejects_a_prefix_without_exact_final_disposition_accounting ... ok
+test storage::tests::identical_retry_reenters_durability_finalization_after_prior_failure ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/buffering_export.rs (target/debug/deps/buffering_export-77b8f21ce3798da5)
+
+running 4 tests
+test both_backpressure_policies_are_bounded_and_account_exact_drops ... ok
+test contradictory_acknowledgement_keeps_the_batch_pending ... ok
+test exporter_failure_is_explicit_and_retains_the_exact_batch_for_retry ... ok
+test shutdown_is_bounded_and_only_releases_an_empty_exporter ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/checkpoint_recovery.rs (target/debug/deps/checkpoint_recovery-ce001c8c2c766f4c)
+
+running 6 tests
+test checkpoint_restart_replays_only_the_undisposed_projection_suffix ... ok
+test corrupted_latest_generation_fails_closed_and_abandoned_temp_is_removed ... ok
+test drop_oldest_checkpoint_preserves_eviction_before_later_export_across_restart ... ok
+test recovery_rejects_a_checkpoint_from_changed_projection_history ... ok
+test reject_newest_checkpoint_preserves_trailing_gap_after_earlier_exports ... ok
+test version_one_checkpoint_marker_is_explicitly_unsupported ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/leakage.rs (target/debug/deps/leakage-06014dec018d7bef)
+
+running 1 test
+test exporter_adapter_state_never_enters_errors_metrics_or_source_chains ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+GATE DRIVER RESULT: {"command": "cargo test --package peritus-telemetry --all-targets --all-features --locked", "command_exit_code": 0, "elapsed_seconds": 0.265, "exit_code": 0, "finished_at": "2026-09-13T15:21:52.080001Z", "invocation": ["cargo", "test", "--package", "peritus-telemetry", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "output": "113-peritus-telemetry-ordinary-test.log", "owning_crate": "peritus-telemetry", "result": "passed", "started_at": "2026-09-13T15:21:51.814051Z"}

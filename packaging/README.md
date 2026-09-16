@@ -1,6 +1,7 @@
 # Installation
 
-No public release is available yet. Use [Install from source](#install-from-source) until the first release is published.
+Install the latest public release below, select a specific published version, or use
+[Install from source](#install-from-source) for development builds.
 
 ## System requirements
 
@@ -212,6 +213,11 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "$env:LOCALAPPDATA\Programs\
 Removal keeps configuration, credentials, task state, logs, and managed repository copies.
 It also keeps system dependencies and the standard Unix user-bin path setting.
 For an older installation without a saved uninstaller, use the uninstaller from its downloaded package.
+
+On Windows, installation and removal stop processes belonging to the selected installation,
+including a daemon started directly by the launcher. Other installations are left running.
+Removal reports an error if a remaining file lock or access denial prevents deletion; release
+that lock and retry. It does not report success or remove the user PATH entry while files remain.
 
 ## Install from source
 

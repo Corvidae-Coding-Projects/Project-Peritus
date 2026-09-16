@@ -3,5 +3,5 @@ pub(super) fn canonical_ci() -> String {
 }
 
 pub(super) fn canonical_governance() -> String {
-    include_str!("../../../.github/workflows/formal-governance.yml").to_owned()
+    include_str!("canonical/formal-governance.yml").to_owned()
 }

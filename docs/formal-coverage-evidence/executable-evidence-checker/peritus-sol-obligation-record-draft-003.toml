@@ -1,0 +1,266 @@
+# Proposed append-only entries for verification/obligations.toml.
+# Source snapshot: feature/formal-coverage at the time recorded in the companion mapping note.
+
+[[entries]]
+id = "OBL-0209"
+kind = "contract"
+statement = "The common 16-byte nominal-identifier constructor accepts exactly nonzero byte arrays and preserves every supplied byte on success; the all-zero reserved value is rejected."
+owning_crate = "peritus-types"
+source_file = "crates/foundation/peritus-types/src/ids/base.rs"
+symbol = "peritus_types::ids::base::OpaqueIdentifier::new"
+status = "in-progress"
+dependencies = []
+live_issue = "#75"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/foundation/peritus-types/src/ids/base.rs", symbol = "peritus_types::ids::base::OpaqueIdentifier::new", command = "cargo verus verify --package peritus-types --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "property-test", source_file = "crates/foundation/peritus-types/tests/ids.rs", symbol = "peritus_types::tests::ids::every_nominal_identifier_enforces_the_shared_boundary", command = "cargo test --package peritus-types --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0210"
+kind = "contract"
+statement = "CapabilityName construction accepts exactly the bounded lowercase ASCII hierarchical grammar and preserves the complete supplied character sequence on success."
+owning_crate = "peritus-types"
+source_file = "crates/foundation/peritus-types/src/capability.rs"
+symbol = "peritus_types::capability::CapabilityName::new"
+status = "in-progress"
+dependencies = []
+live_issue = "#75"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/foundation/peritus-types/src/capability.rs", symbol = "peritus_types::capability::CapabilityName::new", command = "cargo verus verify --package peritus-types --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "property-test", source_file = "crates/foundation/peritus-types/tests/capability.rs", symbol = "peritus_types::tests::capability::accepts_the_complete_grammar_and_length_boundaries", command = "cargo test --package peritus-types --all-targets --all-features --locked" },
+  { kind = "property-test", source_file = "crates/foundation/peritus-types/tests/capability.rs", symbol = "peritus_types::tests::capability::rejects_non_ascii_and_disallowed_ascii", command = "cargo test --package peritus-types --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0211"
+kind = "contract"
+statement = "ResourceQuantity checked addition returns the exact mathematical sum when representable, reports only overflow when the sum exceeds u64, and never reports underflow."
+owning_crate = "peritus-types"
+source_file = "crates/foundation/peritus-types/src/resource.rs"
+symbol = "peritus_types::resource::ResourceQuantity::checked_add"
+status = "in-progress"
+dependencies = []
+live_issue = "#75"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/foundation/peritus-types/src/resource.rs", symbol = "peritus_types::resource::ResourceQuantity::checked_add", command = "cargo verus verify --package peritus-types --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "property-test", source_file = "crates/foundation/peritus-types/tests/resource.rs", symbol = "peritus_types::tests::resource::addition_is_exact_or_reports_overflow", command = "cargo test --package peritus-types --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0212"
+kind = "contract"
+statement = "RevisionTuple construction retains exactly all seven supplied authority-context components, so changing any component changes tuple identity."
+owning_crate = "peritus-types"
+source_file = "crates/foundation/peritus-types/src/revision.rs"
+symbol = "peritus_types::revision::RevisionTuple::new"
+status = "in-progress"
+dependencies = ["OBL-0209"]
+live_issue = "#75"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/foundation/peritus-types/src/revision.rs", symbol = "peritus_types::revision::RevisionTuple::new", command = "cargo verus verify --package peritus-types --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "property-test", source_file = "crates/foundation/peritus-types/tests/revision.rs", symbol = "peritus_types::tests::revision::changing_any_component_changes_tuple_identity", command = "cargo test --package peritus-types --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0213"
+kind = "refinement"
+statement = "The verified requirement-ledger extraction kernel succeeds exactly for valid source, draft, and limit inputs and, on success, retains the exact source identity, conversation revision, limits, canonical entries, source spans, specifications, and path roles."
+owning_crate = "peritus-obligations"
+source_file = "crates/orchestration/peritus-obligations/src/ledger.rs"
+symbol = "peritus_obligations::ledger::RequirementLedger::extract_preimage"
+status = "in-progress"
+dependencies = ["OBL-0209"]
+live_issue = "#75"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/orchestration/peritus-obligations/src/ledger.rs", symbol = "peritus_obligations::ledger::RequirementLedger::extract_preimage", command = "cargo verus verify --package peritus-obligations --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "refinement-test", source_file = "crates/orchestration/peritus-obligations/tests/ledger_qualification_correspondence.rs", symbol = "peritus_obligations::tests::ledger_qualification_correspondence::extraction_copies_binary_spans_and_matches_the_complete_identity", command = "cargo test --package peritus-obligations --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0214"
+kind = "refinement"
+statement = "The production ledger encoder emits exactly the versioned canonical byte sequence modeled for the ledger fields and ordered entries before the ordinary SHA-256 boundary consumes it."
+owning_crate = "peritus-obligations"
+source_file = "crates/orchestration/peritus-obligations/src/canonical/encode.rs"
+symbol = "peritus_obligations::canonical::encode::ledger_bytes"
+status = "in-progress"
+dependencies = ["OBL-0213"]
+live_issue = "#75"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/orchestration/peritus-obligations/src/canonical/encode.rs", symbol = "peritus_obligations::canonical::encode::ledger_bytes", command = "cargo verus verify --package peritus-obligations --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "refinement-test", source_file = "crates/orchestration/peritus-obligations/tests/canonical_encoding.rs", symbol = "peritus_obligations::tests::canonical_encoding::public_extraction_retains_the_existing_canonical_digest", command = "cargo test --package peritus-obligations --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0215"
+kind = "refinement"
+statement = "Qualification succeeds exactly for valid ordered condition and evidence inputs; success reports the exact input-defined requirement, condition, evidence, and alternative-branch accounting, while rejection identifies the exact first validation error and payload."
+owning_crate = "peritus-obligations"
+source_file = "crates/orchestration/peritus-obligations/src/qualification.rs"
+symbol = "peritus_obligations::qualification::qualify"
+status = "in-progress"
+dependencies = ["OBL-0213"]
+live_issue = "#75"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/orchestration/peritus-obligations/src/qualification.rs", symbol = "peritus_obligations::qualification::qualify", command = "cargo verus verify --package peritus-obligations --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "refinement-test", source_file = "crates/orchestration/peritus-obligations/tests/qualification_contracts.rs", symbol = "peritus_obligations::tests::qualification_contracts::qualification_keeps_first_error_and_every_payload_field", command = "cargo test --package peritus-obligations --all-targets --all-features --locked" },
+  { kind = "refinement-test", source_file = "crates/orchestration/peritus-obligations/tests/qualification_contracts.rs", symbol = "peritus_obligations::tests::qualification_contracts::qualification_requires_every_active_member_and_one_whole_alternative_branch", command = "cargo test --package peritus-obligations --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0216"
+kind = "invariant"
+statement = "RunKnowledgeSnapshot construction succeeds exactly for a supported role, bounded canonical section sequence, exact candidate and role bindings, nonfuture observations, backward-resolving dependencies, and correctly typed required base sections; every rejection preserves the modeled first error and payload."
+owning_crate = "peritus-run-knowledge"
+source_file = "crates/orchestration/peritus-run-knowledge/src/snapshot.rs"
+symbol = "peritus_run_knowledge::snapshot::RunKnowledgeSnapshot::new"
+status = "in-progress"
+dependencies = ["OBL-0209"]
+live_issue = "#75"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/orchestration/peritus-run-knowledge/src/snapshot.rs", symbol = "peritus_run_knowledge::snapshot::RunKnowledgeSnapshot::new", command = "cargo verus verify --package peritus-run-knowledge --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "refinement-test", source_file = "crates/orchestration/peritus-run-knowledge/tests/snapshot_admission.rs", symbol = "peritus_run_knowledge::tests::snapshot_admission::snapshot_retains_section_order_then_lineage_role_time_dependency_error_priority", command = "cargo test --package peritus-run-knowledge --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0217"
+kind = "refinement"
+statement = "Invalidation planning succeeds exactly for valid clarification targets and returns one canonical decision per section with exact reuse accounting and transitive invalidation closure; invalid targets return the modeled exact error and payload."
+owning_crate = "peritus-run-knowledge"
+source_file = "crates/orchestration/peritus-run-knowledge/src/plan.rs"
+symbol = "peritus_run_knowledge::plan::plan_invalidation"
+status = "in-progress"
+dependencies = ["OBL-0216"]
+live_issue = "#75"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/orchestration/peritus-run-knowledge/src/plan.rs", symbol = "peritus_run_knowledge::plan::plan_invalidation", command = "cargo verus verify --package peritus-run-knowledge --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "refinement-test", source_file = "crates/orchestration/peritus-run-knowledge/tests/knowledge_matrix.rs", symbol = "peritus_run_knowledge::tests::knowledge_matrix::clarification_invalidation_closes_transitively_over_prior_entries", command = "cargo test --package peritus-run-knowledge --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0218"
+kind = "refinement"
+statement = "Delta packet planning succeeds exactly when prior and current snapshots share a role, the current snapshot matches current observations, and both invalidation plans are valid; success binds every packet entry, delivery class, source, and accounting value, while failure preserves exact error precedence and payload."
+owning_crate = "peritus-run-knowledge"
+source_file = "crates/orchestration/peritus-run-knowledge/src/delta.rs"
+symbol = "peritus_run_knowledge::delta::plan_delta_packet"
+status = "in-progress"
+dependencies = ["OBL-0217"]
+live_issue = "#75"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/orchestration/peritus-run-knowledge/src/delta.rs", symbol = "peritus_run_knowledge::delta::plan_delta_packet", command = "cargo verus verify --package peritus-run-knowledge --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "refinement-test", source_file = "crates/orchestration/peritus-run-knowledge/tests/delta_packet.rs", symbol = "peritus_run_knowledge::tests::delta_packet::delta_admission_preserves_error_precedence", command = "cargo test --package peritus-run-knowledge --all-targets --all-features --locked" },
+  { kind = "refinement-test", source_file = "crates/orchestration/peritus-run-knowledge/tests/delta_packet.rs", symbol = "peritus_run_knowledge::tests::delta_packet::exact_late_bytes_and_dependency_material_drive_changed_facts", command = "cargo test --package peritus-run-knowledge --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0219"
+kind = "contract"
+statement = "CandidateCheckpoint construction succeeds exactly when every evidence binding is current or validly stale for the exact candidate and the declared stage is supported; success retains all inputs and rejection returns the modeled first error kind."
+owning_crate = "peritus-run-settlement"
+source_file = "crates/orchestration/peritus-run-settlement/src/checkpoint.rs"
+symbol = "peritus_run_settlement::checkpoint::CandidateCheckpoint::new"
+status = "in-progress"
+dependencies = ["OBL-0209"]
+live_issue = "#75"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/orchestration/peritus-run-settlement/src/checkpoint.rs", symbol = "peritus_run_settlement::checkpoint::CandidateCheckpoint::new", command = "cargo verus verify --package peritus-run-settlement --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "refinement-test", source_file = "crates/orchestration/peritus-run-settlement/tests/reducer.rs", symbol = "peritus_run_settlement::tests::reducer::evidence_from_another_candidate_is_rejected_or_stale", command = "cargo test --package peritus-run-settlement --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0220"
+kind = "invariant"
+statement = "SettlementReducer observation preserves terminal state, accepts exactly an initial checkpoint or a valid strictly advancing successor before settlement, stores that exact checkpoint on success, and preserves the complete reducer with the exact modeled error on rejection."
+owning_crate = "peritus-run-settlement"
+source_file = "crates/orchestration/peritus-run-settlement/src/reducer.rs"
+symbol = "peritus_run_settlement::reducer::SettlementReducer::observe"
+status = "in-progress"
+dependencies = ["OBL-0219"]
+live_issue = "#75"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/orchestration/peritus-run-settlement/src/reducer.rs", symbol = "peritus_run_settlement::reducer::SettlementReducer::observe", command = "cargo verus verify --package peritus-run-settlement --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "refinement-test", source_file = "crates/orchestration/peritus-run-settlement/tests/reducer.rs", symbol = "peritus_run_settlement::tests::reducer::reducer_rejects_nonadvancing_regressing_and_post_terminal_updates", command = "cargo test --package peritus-run-settlement --all-targets --all-features --locked" },
+  { kind = "refinement-test", source_file = "crates/orchestration/peritus-run-settlement/tests/reducer.rs", symbol = "peritus_run_settlement::tests::reducer::rejected_observations_and_terminal_updates_preserve_the_complete_reducer", command = "cargo test --package peritus-run-settlement --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0221"
+kind = "invariant"
+statement = "SettlementReducer terminal settlement preserves the retained checkpoint, succeeds exactly once, records the exact requested cause and disposition derived from the retained checkpoint, and preserves the complete reducer with AlreadySettled on repetition."
+owning_crate = "peritus-run-settlement"
+source_file = "crates/orchestration/peritus-run-settlement/src/reducer.rs"
+symbol = "peritus_run_settlement::reducer::SettlementReducer::settle"
+status = "in-progress"
+dependencies = ["OBL-0219"]
+live_issue = "#75"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/orchestration/peritus-run-settlement/src/reducer.rs", symbol = "peritus_run_settlement::reducer::SettlementReducer::settle", command = "cargo verus verify --package peritus-run-settlement --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "refinement-test", source_file = "crates/orchestration/peritus-run-settlement/tests/reducer.rs", symbol = "peritus_run_settlement::tests::reducer::every_terminal_cause_is_expressible_with_and_without_a_candidate", command = "cargo test --package peritus-run-settlement --all-targets --all-features --locked" },
+  { kind = "refinement-test", source_file = "crates/orchestration/peritus-run-settlement/tests/reducer.rs", symbol = "peritus_run_settlement::tests::reducer::rejected_observations_and_terminal_updates_preserve_the_complete_reducer", command = "cargo test --package peritus-run-settlement --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0222"
+kind = "invariant"
+statement = "Product-run usage accounting atomically replaces the current response high-water contribution: success updates every usage total by exact subtraction then addition while preserving nonusage fields, and either overflow category preserves the complete accounting state with exact precedence."
+owning_crate = "peritus-product-runner"
+source_file = "crates/app/peritus-product-runner/src/accounting/usage.rs"
+symbol = "peritus_product_runner::accounting::usage::AccountingState::apply_usage"
+status = "in-progress"
+dependencies = []
+live_issue = "#75"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/app/peritus-product-runner/src/accounting/usage.rs", symbol = "peritus_product_runner::accounting::usage::AccountingState::apply_usage", command = "cargo verus verify --package peritus-product-runner --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "refinement-test", source_file = "crates/app/peritus-product-runner/src/budget/tests.rs", symbol = "peritus_product_runner::budget::tests::usage_replacement_rejection_preserves_totals_and_the_retained_response", command = "cargo test --package peritus-product-runner --all-targets --all-features --locked" },
+  { kind = "refinement-test", source_file = "crates/app/peritus-product-runner/src/budget/tests.rs", symbol = "peritus_product_runner::budget::tests::replacement_subtracts_before_adding_and_rejects_missing_prior_contributions", command = "cargo test --package peritus-product-runner --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0223"
+kind = "invariant"
+statement = "Developer usage accumulation publishes every counter from an accepted provider observation in one state replacement, treats absent usage as inert, preserves explicit-zero observations, rejects every arithmetic overflow, and preserves the complete prior usage state on rejection."
+owning_crate = "peritus-agent"
+source_file = "crates/orchestration/peritus-agent/src/usage.rs"
+symbol = "peritus_agent::usage::DeveloperUsage::apply_observation"
+status = "in-progress"
+dependencies = []
+live_issue = "#75"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/orchestration/peritus-agent/src/usage.rs", symbol = "peritus_agent::usage::DeveloperUsage::apply_observation", command = "cargo verus verify --package peritus-agent --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "refinement-test", source_file = "crates/orchestration/peritus-agent/src/developer/usage.rs", symbol = "peritus_agent::developer::usage::tests::rejected_usage_preserves_every_previously_accepted_counter", command = "cargo test --package peritus-agent --all-targets --all-features --locked" },
+  { kind = "refinement-test", source_file = "crates/orchestration/peritus-agent/src/developer/usage.rs", symbol = "peritus_agent::developer::usage::tests::explicit_total_preserves_derived_counter_overflow_rejection", command = "cargo test --package peritus-agent --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0224"
+kind = "invariant"
+statement = "Product-run work accounting atomically increments exactly the counters selected by each actual work event, resets only the per-response high-water snapshot when a new model request starts, preserves every unrelated field, and preserves the complete prior state if any selected counter would overflow."
+owning_crate = "peritus-product-runner"
+source_file = "crates/app/peritus-product-runner/src/accounting/work.rs"
+symbol = "peritus_product_runner::accounting::work::AccountingState::apply_work"
+status = "in-progress"
+dependencies = []
+live_issue = "#75"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/app/peritus-product-runner/src/accounting/work.rs", symbol = "peritus_product_runner::accounting::work::AccountingState::apply_work", command = "cargo verus verify --package peritus-product-runner --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "refinement-test", source_file = "crates/app/peritus-product-runner/src/budget/tests.rs", symbol = "peritus_product_runner::budget::tests::rejected_model_request_preserves_prior_usage_and_every_counter", command = "cargo test --package peritus-product-runner --all-targets --all-features --locked" },
+  { kind = "refinement-test", source_file = "crates/app/peritus-product-runner/src/budget/tests.rs", symbol = "peritus_product_runner::budget::tests::work_events_accumulate_without_a_successful_role_outcome", command = "cargo test --package peritus-product-runner --all-targets --all-features --locked" },
+]

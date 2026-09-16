@@ -5,7 +5,24 @@ use crate::{
 };
 use peritus_policy::AuthorityInstant;
 use peritus_types::{ActionId, CapabilityName, EvidenceId, RevisionTuple, Sha256Digest};
-use std::collections::BTreeSet;
+use vstd::prelude::*;
+
+mod batch;
+mod clone_impl;
+
+verus! {
+
+pub fn clone_tool_proposals(
+    proposals: &[ToolProposal],
+) -> (result: Vec<ToolProposal>)
+    ensures ToolProposal::sequence_clone_equivalent(proposals@, result@),
+{
+    clone_impl::clone_tool_proposals(proposals)
+}
+
+} // verus!
+
+verus! {
 
 /// Checked semantic tool version.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -13,6 +30,8 @@ pub struct ToolVersion {
     major: u16,
     minor: u16,
 }
+
+} // verus!
 
 impl ToolVersion {
     /// Creates a semantic version with a positive major component.
@@ -37,6 +56,8 @@ impl ToolVersion {
     }
 }
 
+verus! {
+
 /// Side-effect projection used for D0 serialization; C4 remains authoritative.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum ToolSideEffect {
@@ -54,8 +75,12 @@ pub enum ToolIdempotency {
     NonIdempotent,
 }
 
+} // verus!
+
+verus! {
+
 /// Immutable checked tool proposal supplied after C4 preparation.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq)]
 pub struct ToolProposal {
     ordinal: ToolOrdinal,
     model_call_id: ModelCallId,
@@ -70,6 +95,8 @@ pub struct ToolProposal {
     side_effect: ToolSideEffect,
     idempotency: ToolIdempotency,
 }
+
+} // verus!
 
 impl ToolProposal {
     #[allow(clippy::too_many_arguments, reason = "the C4-prepared identity must remain exact")]
@@ -165,6 +192,8 @@ pub enum ToolSlotPhase {
     Terminal,
 }
 
+verus! {
+
 /// Terminal C4 result projection.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum ToolResultStatus {
@@ -176,13 +205,15 @@ pub enum ToolResultStatus {
 }
 
 /// Bounded terminal tool result supplied by C4.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq)]
 pub struct ToolResultRecord {
     status: ToolResultStatus,
     result_digest: Sha256Digest,
     model_visible_bytes: u64,
     evidence: Vec<EvidenceId>,
 }
+
+} // verus!
 
 impl ToolResultRecord {
     pub const MAX_EVIDENCE: usize = 256;
@@ -281,47 +312,6 @@ pub struct ToolBatch {
 }
 
 impl ToolBatch {
-    pub(super) fn new(
-        proposals: Vec<ToolProposal>,
-        revision: RevisionTuple,
-        max: u16,
-    ) -> Result<Self, AgentRejection> {
-        if proposals.is_empty() || proposals.len() > usize::from(max) {
-            return Err(tool_error(
-                AgentErrorCode::InvalidLimit,
-                "tool batch is empty or exceeds the turn limit",
-            ));
-        }
-        let mut actions = BTreeSet::new();
-        let mut calls = BTreeSet::new();
-        let mut mutation_count = 0_u16;
-        for (index, proposal) in proposals.iter().enumerate() {
-            let expected = u16::try_from(index).map_err(|_| {
-                tool_error(AgentErrorCode::InvalidLimit, "tool ordinal exceeds representation")
-            })?;
-            if proposal.ordinal.get() != expected
-                || proposal.revision != revision
-                || !actions.insert(proposal.action_id)
-                || !calls.insert(proposal.model_call_id)
-            {
-                return Err(tool_error(
-                    AgentErrorCode::NonCanonicalOrder,
-                    "tool proposals are unordered, duplicated, or stale",
-                ));
-            }
-            if proposal.side_effect == ToolSideEffect::Workspace {
-                mutation_count += 1;
-            }
-        }
-        if mutation_count > 0 && proposals.len() > 1 {
-            return Err(tool_error(
-                AgentErrorCode::InvalidTool,
-                "workspace mutations must be serialized",
-            ));
-        }
-        Ok(Self { slots: proposals.into_iter().map(ToolSlot::proposed).collect() })
-    }
-
     #[must_use]
     pub fn slots(&self) -> &[ToolSlot] {
         &self.slots
@@ -344,16 +334,6 @@ impl ToolBatch {
     ) -> Result<&mut ToolSlot, AgentRejection> {
         self.slots
             .get_mut(usize::from(ordinal.get()))
-            .ok_or_else(|| tool_error(AgentErrorCode::InvalidTool, "unknown tool ordinal"))
-    }
-
-    pub(super) fn slot_mut_for_read(
-        &self,
-        ordinal: ToolOrdinal,
-    ) -> Result<ToolSlotPhase, AgentRejection> {
-        self.slots
-            .get(usize::from(ordinal.get()))
-            .map(ToolSlot::phase)
             .ok_or_else(|| tool_error(AgentErrorCode::InvalidTool, "unknown tool ordinal"))
     }
 }

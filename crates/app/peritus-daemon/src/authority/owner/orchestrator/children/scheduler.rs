@@ -59,17 +59,16 @@ pub(super) fn admit_scheduler_directive(
             ));
         }
     };
-    let command = SchedulerCommand::new(
-        command_id,
-        event_id,
-        run_id,
-        predecessor.sequence,
-        Some(predecessor.event_id),
-        predecessor.state_digest,
-        claim.directive().revision(),
-        kind,
-    )
-    .map_err(|error| scheduler_error("construct D3 scheduler lifecycle command", error))?;
+    let prefix_len = usize::try_from(predecessor.sequence)
+        .map_err(|_| child_mismatch("D3 scheduler predecessor cannot address retained history"))?;
+    let prefix = replay
+        .events()
+        .get(..prefix_len)
+        .ok_or_else(|| child_mismatch("D3 scheduler predecessor is outside retained history"))?;
+    let predecessor_state = peritus_scheduler::replay(prefix)
+        .map_err(|error| scheduler_error("rebuild D3 scheduler directive predecessor", error))?;
+    let command = SchedulerCommand::from_state(&predecessor_state, command_id, event_id, kind)
+        .map_err(|error| scheduler_error("construct D3 scheduler lifecycle command", error))?;
     commit_scheduler_directive(journal, &command)
 }
 

@@ -33,6 +33,24 @@ pub struct ReviewerIndependence {
 }
 
 impl ReviewerIndependence {
+    /// Specification view of distinct reviewer actors being required.
+    pub closed spec fn spec_distinct_reviewers(&self) -> bool { self.distinct_reviewers }
+
+    /// Specification view of required producer independence.
+    pub closed spec fn spec_independent_from_producer(&self) -> bool { self.independent_from_producer }
+
+    /// Specification view of distinct review contexts being required.
+    pub closed spec fn spec_distinct_contexts(&self) -> bool { self.distinct_contexts }
+
+    /// Specification view of distinct model families being required.
+    pub closed spec fn spec_distinct_model_families(&self) -> bool { self.distinct_model_families }
+
+    /// Specification view of distinct providers being required.
+    pub closed spec fn spec_distinct_providers(&self) -> bool { self.distinct_providers }
+
+    /// Specification view of distinct ancestry identities being required.
+    pub closed spec fn spec_no_shared_ancestry(&self) -> bool { self.no_shared_ancestry }
+
     /// Creates an explicit conjunction of independence requirements.
     #[must_use]
     #[allow(clippy::fn_params_excessive_bools, reason = "callers must declare every independence fact")]
@@ -43,7 +61,15 @@ impl ReviewerIndependence {
         distinct_model_families: bool,
         distinct_providers: bool,
         no_shared_ancestry: bool,
-    ) -> Self {
+    ) -> (result: Self)
+        ensures
+            result.spec_distinct_reviewers() == distinct_reviewers,
+            result.spec_independent_from_producer() == independent_from_producer,
+            result.spec_distinct_contexts() == distinct_contexts,
+            result.spec_distinct_model_families() == distinct_model_families,
+            result.spec_distinct_providers() == distinct_providers,
+            result.spec_no_shared_ancestry() == no_shared_ancestry,
+    {
         Self {
             distinct_reviewers,
             independent_from_producer,
@@ -56,29 +82,41 @@ impl ReviewerIndependence {
 
     /// Whether one identity may count more than once in the quorum.
     #[must_use]
-    pub const fn requires_distinct_reviewers(&self) -> bool { self.distinct_reviewers }
+    pub const fn requires_distinct_reviewers(&self) -> (required: bool)
+        ensures required == self.spec_distinct_reviewers(),
+    { self.distinct_reviewers }
 
     /// Whether producing actors are excluded from the review quorum.
     #[must_use]
-    pub const fn requires_independence_from_producer(&self) -> bool {
+    pub const fn requires_independence_from_producer(&self) -> (required: bool)
+        ensures required == self.spec_independent_from_producer(),
+    {
         self.independent_from_producer
     }
 
     /// Whether each counted review must use a distinct context.
     #[must_use]
-    pub const fn requires_distinct_contexts(&self) -> bool { self.distinct_contexts }
+    pub const fn requires_distinct_contexts(&self) -> (required: bool)
+        ensures required == self.spec_distinct_contexts(),
+    { self.distinct_contexts }
 
     /// Whether each counted review must use a distinct model family.
     #[must_use]
-    pub const fn requires_distinct_model_families(&self) -> bool { self.distinct_model_families }
+    pub const fn requires_distinct_model_families(&self) -> (required: bool)
+        ensures required == self.spec_distinct_model_families(),
+    { self.distinct_model_families }
 
     /// Whether each counted review must use a distinct provider.
     #[must_use]
-    pub const fn requires_distinct_providers(&self) -> bool { self.distinct_providers }
+    pub const fn requires_distinct_providers(&self) -> (required: bool)
+        ensures required == self.spec_distinct_providers(),
+    { self.distinct_providers }
 
     /// Whether reviews with shared causal ancestry are excluded.
     #[must_use]
-    pub const fn requires_no_shared_ancestry(&self) -> bool { self.no_shared_ancestry }
+    pub const fn requires_no_shared_ancestry(&self) -> (required: bool)
+        ensures required == self.spec_no_shared_ancestry(),
+    { self.no_shared_ancestry }
 }
 
 /// Checked reviewer policy attached to an acceptance contract.
@@ -91,6 +129,18 @@ pub struct ReviewPolicy {
 }
 
 impl ReviewPolicy {
+    /// Specification view of the declared review categories.
+    pub closed spec fn spec_required_categories(&self) -> Seq<ReviewCategory> { self.required_categories@ }
+
+    /// Specification view of the required review count.
+    pub closed spec fn spec_reviewer_quorum(&self) -> u16 { self.reviewer_quorum }
+
+    /// Specification view of the configured independence requirements.
+    pub closed spec fn spec_independence(&self) -> ReviewerIndependence { self.independence }
+
+    /// Specification view of the blocking severity threshold.
+    pub closed spec fn spec_blocking_severity(&self) -> FindingSeverity { self.blocking_severity }
+
     /// Validates a nonempty, strictly ordered category set and nonzero reviewer quorum.
     ///
     /// # Errors
@@ -101,7 +151,15 @@ impl ReviewPolicy {
         reviewer_quorum: u16,
         independence: ReviewerIndependence,
         blocking_severity: FindingSeverity,
-    ) -> Result<Self, SpecError> {
+    ) -> (result: Result<Self, SpecError>)
+        ensures match result {
+            Ok(policy) => policy.spec_required_categories() == required_categories@
+                && policy.spec_reviewer_quorum() == reviewer_quorum
+                && policy.spec_independence() == independence
+                && policy.spec_blocking_severity() == blocking_severity,
+            Err(_) => true,
+        },
+    {
         if required_categories.is_empty() {
             return Err(SpecError::EmptyCollection(CanonicalCollection::ReviewCategories));
         }
@@ -137,21 +195,29 @@ impl ReviewPolicy {
 
     /// Returns required categories in canonical order.
     #[must_use]
-    pub const fn required_categories(&self) -> &[ReviewCategory] {
+    pub const fn required_categories(&self) -> (categories: &[ReviewCategory])
+        ensures categories@ == self.spec_required_categories(),
+    {
         self.required_categories.as_slice()
     }
 
     /// Returns the number of reviews required to form a quorum.
     #[must_use]
-    pub const fn reviewer_quorum(&self) -> u16 { self.reviewer_quorum }
+    pub const fn reviewer_quorum(&self) -> (quorum: u16)
+        ensures quorum == self.spec_reviewer_quorum(),
+    { self.reviewer_quorum }
 
     /// Returns the required reviewer independence facts.
     #[must_use]
-    pub const fn independence(&self) -> ReviewerIndependence { self.independence }
+    pub const fn independence(&self) -> (independence: ReviewerIndependence)
+        ensures independence == self.spec_independence(),
+    { self.independence }
 
     /// Returns the lowest finding severity treated as a blocker.
     #[must_use]
-    pub const fn blocking_severity(&self) -> FindingSeverity { self.blocking_severity }
+    pub const fn blocking_severity(&self) -> (severity: FindingSeverity)
+        ensures severity == self.spec_blocking_severity(),
+    { self.blocking_severity }
 }
 
 } // verus!

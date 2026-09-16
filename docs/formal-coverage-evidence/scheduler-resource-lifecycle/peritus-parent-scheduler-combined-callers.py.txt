@@ -1,0 +1,60 @@
+"""Resume only the caller checks requiring local Unix-socket permission."""
+import hashlib
+import json
+import os
+from pathlib import Path
+import subprocess
+
+root = Path('/home/doll/Project-Peritus/.worktrees/formal-coverage')
+package = root / 'crates/orchestration/peritus-scheduler'
+record = Path('/tmp/peritus-parent-scheduler-combined-qualification.json')
+original = record.read_bytes()
+results = json.loads(original)
+assert results['commands'][-1]['label'] == 'daemon-runtime'
+assert results['commands'][-1]['exit_code'] == 101
+assert 'Operation not permitted' in Path(results['commands'][-1]['log']).read_text()
+backup = Path('/tmp/peritus-parent-scheduler-combined-qualification-sandbox.json')
+assert not backup.exists()
+backup.write_bytes(original)
+expected = dict((name, digest) for digest, name in
+                (line.split('  ', 1) for line in
+                 Path('/tmp/peritus-parent-scheduler-combined.sha256').read_text().splitlines()))
+env = dict(os.environ, CARGO_BUILD_JOBS='1', CCACHE_DISABLE='1',
+           CARGO_TARGET_DIR=str(root / 'target'))
+
+
+def check_source():
+    assert {str(p.relative_to(package)): hashlib.sha256(p.read_bytes()).hexdigest()
+            for p in package.rglob('*') if p.is_file()} == expected
+
+
+commands = [
+    ('daemon-runtime', ['cargo', 'test', '--package', 'peritus-daemon', '--all-features',
+                        '--test', 'runtime', '--locked',
+                        'runtime_commits_and_replays_registered_scheduler_commands']),
+    ('daemon-restart', ['cargo', 'test', '--package', 'peritus-daemon', '--all-features',
+                        '--test', 'recovery_shutdown', '--locked',
+                        'restart_resumes_the_durable_session_and_replays_the_exact_command_result']),
+]
+for label, command in commands:
+    check_source()
+    log = Path('/tmp/peritus-parent-scheduler-combined-' + label + '-socket-permission.log')
+    assert not log.exists()
+    print('START ' + label, flush=True)
+    with log.open('w') as output:
+        run = subprocess.run(command, cwd=root, env=env, stdout=output,
+                             stderr=subprocess.STDOUT, timeout=600)
+    check_source()
+    row = {'label': label, 'command': command, 'log': str(log), 'exit_code': run.returncode,
+           'execution': 'local temporary Unix-socket test with sandbox permission'}
+    if label == 'daemon-runtime':
+        row['prior_sandbox_attempt'] = results['commands'].pop()
+    results['commands'].append(row)
+    record.write_text(json.dumps(results, indent=2) + '\n')
+    print(label + ' exit=' + str(run.returncode), flush=True)
+    if run.returncode:
+        print(log.read_text()[-5000:], flush=True)
+        raise SystemExit(run.returncode)
+assert len(results['commands']) == 11
+assert all(row['exit_code'] == 0 for row in results['commands'])
+print('All eleven combined scheduler gates passed; denied sandbox attempt retained.', flush=True)

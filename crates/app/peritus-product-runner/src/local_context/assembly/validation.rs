@@ -1,6 +1,6 @@
 //! Exact-view accounting; savings compare with this invocation's unreduced complete exchanges.
 
-use super::super::{error, memory::LocalMemory, record::ViewValidation};
+use super::super::{error, memory::LocalMemory, record::ViewValidation, view_binding};
 use peritus_agent::DeveloperLoopError;
 use peritus_context::working::WorkingEntryStatus;
 use peritus_model_protocol::ProviderProfile;
@@ -43,6 +43,7 @@ impl LocalMemory {
             pending_operations: self.transcript.pending.len(),
             local_compactor_failures: self.local_compactor_failures,
             retrieval_calls: self.retrieval_calls,
+            tool_policy: Some(view_binding::tool_policy(&self.tools)?),
         })
     }
 }

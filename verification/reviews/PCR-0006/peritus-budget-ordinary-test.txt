@@ -1,0 +1,92 @@
+{"candidate_commit": "65f16e2933b70305de865750931bb05fe9afb64d", "candidate_tree": "ae2a43f9a9b73f5fec944d39cf165a8b3ec4df20", "environment": {"CARGO_BUILD_JOBS": "1", "CCACHE_DISABLE": "1", "RUST_TEST_THREADS": "1"}, "gate": {"command": "cargo test --package peritus-budget --all-targets --all-features --locked", "invocation": ["cargo", "test", "--package", "peritus-budget", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "output": "009-peritus-budget-ordinary-test.log", "owning_crate": "peritus-budget", "started_at": "2026-09-13T15:17:49.312966Z"}, "plan_sha256": "7fc101b7f8284fbe3818461a8166d73d3425f369120b43c1cbf1b43809a6b7c9"}
+
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.17s
+     Running unittests src/lib.rs (target/debug/deps/peritus_budget-00d45dfcbd6ecc42)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/adversarial.rs (target/debug/deps/adversarial-65bd7b466f786ffb)
+
+running 5 tests
+test close_rejects_live_work_and_seal_blocks_only_new_work ... ok
+test exact_settlement_consumes_the_remaining_ceiling_and_replays_once ... ok
+test reducer_overflow_is_typed_and_state_preserving_in_every_dimension ... ok
+test request_arithmetic_overflow_is_typed_and_never_partially_charges ... ok
+test zero_limits_are_valid_and_immediately_exhausted ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/amounts.rs (target/debug/deps/amounts-4260d1d446418d5d)
+
+running 4 tests
+test every_stable_error_code_has_an_exact_recovery_contract ... ok
+test exact_arithmetic_boundaries_cover_every_dimension ... ok
+test fixed_dimensions_are_total_and_stably_ordered ... ok
+test limiting_dimension_set_reports_every_mixed_excess ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/commit_boundary.rs (target/debug/deps/commit_boundary-f688a8dc83c16881)
+
+running 3 tests
+test active_or_indeterminate_history_cannot_be_recast_as_held_cancellation ... ok
+test cancellation_replay_is_exact_and_changed_evidence_is_not_a_second_release ... ok
+test forged_unknown_and_mismatched_claims_cannot_release_capacity ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/generated.rs (target/debug/deps/generated-04fdc65542f238fa)
+
+running 1 test
+test persisted_seed_traces_refine_independent_high_water_model ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/ledger.rs (target/debug/deps/ledger-8287d75a3e795e46)
+
+running 5 tests
+test above_ceiling_consumes_remaining_ceiling_faults_lineage_and_preserves_raw_report ... ok
+test child_consumption_reaches_each_ancestor_once_and_close_only_releases_unused_delegation ... ok
+test cumulative_observations_charge_only_delta_reject_decrease_and_release_final_remainder ... ok
+test exact_limit_is_accepted_and_one_over_reports_all_limiting_dimensions ... ok
+test held_cancel_releases_but_active_ambiguity_consumes_every_remaining_unit ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/lifecycle_reference.rs (target/debug/deps/lifecycle_reference-ddd4cb30b8396c9b)
+
+running 1 test
+test persisted_full_lifecycle_traces_refine_independent_hierarchical_model ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.13s
+
+     Running tests/model.rs (target/debug/deps/model-649b705f6d2bbd9a)
+
+running 3 tests
+test bounded_reordered_trace_matches_independent_high_water_model ... ok
+test every_bounded_final_report_partitions_ceiling_without_refund ... ok
+test one_over_ceiling_is_conservative_and_exact_replay_is_stable ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/rejection_reference.rs (target/debug/deps/rejection_reference-9737c3429dded4f3)
+
+running 2 tests
+test branch_ordered_rejections_preserve_the_exact_full_ledger ... ok
+test replay_receipts_are_exact_and_nonconsuming ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/retry.rs (target/debug/deps/retry-a96e0b8ba44c212a)
+
+running 3 tests
+test reservation_tombstones_reject_semantic_id_reuse_and_binding_tampering ... ok
+test retry_requires_fresh_identity_and_charges_attempt_and_retry_before_execution ... ok
+test retry_waits_for_terminal_resolution_and_duplicate_observations_bind_evidence ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+GATE DRIVER RESULT: {"command": "cargo test --package peritus-budget --all-targets --all-features --locked", "command_exit_code": 0, "elapsed_seconds": 0.415, "exit_code": 0, "finished_at": "2026-09-13T15:17:49.729011Z", "invocation": ["cargo", "test", "--package", "peritus-budget", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "output": "009-peritus-budget-ordinary-test.log", "owning_crate": "peritus-budget", "result": "passed", "started_at": "2026-09-13T15:17:49.312966Z"}

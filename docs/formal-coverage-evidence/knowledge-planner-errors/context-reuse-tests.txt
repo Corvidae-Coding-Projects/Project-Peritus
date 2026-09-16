@@ -1,0 +1,10 @@
+   Compiling peritus-context v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/crates/orchestration/peritus-context)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.08s
+     Running tests/reuse_matrix.rs (target/formal-knowledge-integrated/debug/deps/reuse_matrix-783cc0d073113beb)
+
+running 2 tests
+test changed_source_requires_new_digest_bound_context_before_selection ... ok
+test deterministic_selection_retains_full_provenance_and_packet_order ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

@@ -1,10 +1,11 @@
 //! Atomic C0 persistence and checked replay loading for one scheduler aggregate.
 
 mod binding;
+mod semantics;
 
 use core::fmt;
 
-use peritus_codec::{CodecLimits, decode_message, encode_message, sha256};
+use peritus_codec::{CodecLimits, sha256};
 use peritus_evidence::revision_digest;
 use peritus_journal::{
     AggregateId, AggregateKey, AggregateKind, AppendRequest, CommandResolution, CommittedBatch,
@@ -13,7 +14,10 @@ use peritus_journal::{
 };
 use peritus_types::RunId;
 
-use crate::wire::{SchedulerCommandFrame, SchedulerEventFrame, SchedulerStateFrame};
+use crate::wire::{
+    decode_scheduler_event, decode_scheduler_state, encode_scheduler_command,
+    encode_scheduler_event, encode_scheduler_state,
+};
 use crate::{
     SchedulerCommand, SchedulerError, SchedulerErrorKind, SchedulerEvent, SchedulerState,
     SchedulerTransition,
@@ -27,7 +31,7 @@ const STATE_KEY_DOMAIN: &[u8] = b"peritus.scheduler.state.v1\0";
 pub struct SchedulerReplay {
     store_id: StoreId,
     events: Vec<SchedulerEvent>,
-    checkpoint: Option<SchedulerStateFrame>,
+    checkpoint: Option<SchedulerState>,
 }
 
 impl SchedulerReplay {
@@ -54,7 +58,7 @@ impl SchedulerReplay {
             };
         }
         let state = crate::replay(&self.events)?;
-        if !self.checkpoint.as_ref().is_some_and(|frame| frame.matches_state(&state)) {
+        if self.checkpoint.as_ref() != Some(&state) {
             return Err(inconsistent("scheduler checkpoint differs from deterministic replay"));
         }
         Ok(Some(state))
@@ -67,10 +71,7 @@ impl fmt::Debug for SchedulerReplay {
             .debug_struct("SchedulerReplay")
             .field("store_id", &self.store_id)
             .field("events", &self.events.len())
-            .field(
-                "checkpoint_sequence",
-                &self.checkpoint.as_ref().map(SchedulerStateFrame::sequence),
-            )
+            .field("checkpoint_sequence", &self.checkpoint.as_ref().map(SchedulerState::sequence))
             .finish_non_exhaustive()
     }
 }
@@ -125,14 +126,11 @@ pub fn commit_transition(
     let aggregate = scheduler_aggregate_key(command.run_id())?;
     let state_key = scheduler_state_key(command.run_id());
     let command_bytes =
-        encode_message(&SchedulerCommandFrame::from_command(command), CodecLimits::PRODUCTION)
-            .map_err(codec_error)?;
+        encode_scheduler_command(command, CodecLimits::PRODUCTION).map_err(codec_error)?;
     let event_bytes =
-        encode_message(&SchedulerEventFrame::new(event.clone()), CodecLimits::PRODUCTION)
-            .map_err(codec_error)?;
+        encode_scheduler_event(event, CodecLimits::PRODUCTION).map_err(codec_error)?;
     let state_bytes =
-        encode_message(&SchedulerStateFrame::from_state(state), CodecLimits::PRODUCTION)
-            .map_err(codec_error)?;
+        encode_scheduler_state(state, CodecLimits::PRODUCTION).map_err(codec_error)?;
     if payload_len(&command_bytes)? > state.binding().limits().payload_bytes()
         || payload_len(&event_bytes)? > state.binding().limits().payload_bytes()
         || payload_len(&state_bytes)? > state.binding().limits().state_bytes()
@@ -159,6 +157,7 @@ pub fn commit_transition(
     if head.is_some() != current.is_some() {
         return Err(inconsistent("scheduler journal head/checkpoint presence differs"));
     }
+    semantics::validate_append(command, current.as_ref())?;
     match head {
         None if command.expected_sequence() != 0 => {
             return Err(binding_error("scheduler genesis expects an existing head"));
@@ -257,12 +256,14 @@ fn resolve_existing(
         return Err(inconsistent("resolved scheduler command differs from expected event"));
     }
     let observed =
-        decode_message::<SchedulerStateFrame>(checkpoint.bytes(), CodecLimits::PRODUCTION)
-            .map_err(codec_error)?;
-    if checkpoint.revision() == state.sequence().get() && observed.matches_state(state) {
+        decode_scheduler_state(checkpoint.bytes(), CodecLimits::PRODUCTION).map_err(codec_error)?;
+    if checkpoint.revision() == state.sequence().get() && &observed == state {
         return Ok(Some(batch));
     }
-    if observed.run_id() == state.run_id() && observed.sequence().get() > state.sequence().get() {
+    if observed.run_id() == state.run_id()
+        && observed.binding().semantics() == state.binding().semantics()
+        && observed.sequence().get() > state.sequence().get()
+    {
         return Err(SchedulerError::new(
             SchedulerErrorKind::Journal,
             crate::SchedulerRecoveryAction::ReplayAggregate,
@@ -289,18 +290,17 @@ pub fn load_scheduler_replay(
     if records.is_empty() != state_record.is_none() {
         return Err(inconsistent("scheduler events/checkpoint presence differs"));
     }
-    let mut events = Vec::with_capacity(records.len());
+    let mut events: Vec<SchedulerEvent> = Vec::with_capacity(records.len());
     for record in records {
-        let event =
-            decode_message::<SchedulerEventFrame>(record.frame_bytes(), CodecLimits::PRODUCTION)
-                .map_err(codec_error)?
-                .into_event();
+        let event = decode_scheduler_event(record.frame_bytes(), CodecLimits::PRODUCTION)
+            .map_err(codec_error)?;
         if event.run_id() != run_id
             || event.sequence() != record.sequence()
             || event.id() != record.event_id()
             || event.command_id() != record.command_id()
             || event.previous_event() != record.previous_event_id()
             || revision_digest(&event.revision()) != record.revision_digest()
+            || events.last().is_some_and(|previous| previous.semantics() != event.semantics())
         {
             return Err(binding_error("decoded scheduler event differs from C0 record"));
         }
@@ -309,8 +309,7 @@ pub fn load_scheduler_replay(
     let checkpoint = state_record
         .as_ref()
         .map(|record| {
-            decode_message::<SchedulerStateFrame>(record.bytes(), CodecLimits::PRODUCTION)
-                .map_err(codec_error)
+            decode_scheduler_state(record.bytes(), CodecLimits::PRODUCTION).map_err(codec_error)
         })
         .transpose()?;
     if let Some(frame) = &checkpoint {
@@ -319,7 +318,8 @@ pub fn load_scheduler_replay(
         if frame.run_id() != run_id
             || frame.sequence() != last.sequence()
             || frame.last_event_id() != last.id()
-            || frame.revision() != last.revision()
+            || frame.binding().revision() != last.revision()
+            || frame.binding().semantics() != last.semantics()
             || frame.state_digest() != last.successor_state_digest()
             || record.revision() != frame.sequence().get()
         {

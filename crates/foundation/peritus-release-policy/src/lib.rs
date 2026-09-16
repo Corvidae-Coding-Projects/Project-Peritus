@@ -22,7 +22,9 @@ mod identity;
 mod model;
 pub mod prelude;
 mod qualification;
+mod qualification_admission;
 mod review;
+pub(crate) mod validation;
 
 pub use candidate::{
     Architecture, GitCommitId, GitObjectFormat, OperatingSystem, PlatformIdentity, PlatformMatrix,
@@ -38,10 +40,16 @@ pub use decision::{
 };
 pub use error::{ConstructionError, ConstructionErrorKind};
 pub use evaluator::evaluate_release;
+#[cfg(verus_only)]
+pub use evaluator::{ready_evaluation_contract, release_inputs_ready};
 pub use evidence::{EvidenceBinding, EvidenceObservation, ReleaseEvidence};
 pub use identity::{CandidateId, FindingId, PrincipalId, ReviewId};
 pub use qualification::{
     QualificationObservation, QualificationSlice, QualificationVerdict,
+};
+pub use qualification_admission::{
+    RELEASE_QUALIFICATION_CHECK_COUNT, ReleaseQualificationAdmission,
+    ReleaseQualificationCheck,
 };
 pub use review::{
     FindingDisposition, FindingObservation, FindingSeverity, ReviewObservation, ReviewOutcome,

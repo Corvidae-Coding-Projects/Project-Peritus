@@ -173,7 +173,7 @@ fn validate_family(family: u16, schema_version: u16) -> Result<(), ProjectionErr
             format!("unknown frame family {family}"),
         ));
     };
-    if schema_version != registered.schema_version {
+    if !registered.supports(schema_version) {
         return Err(journal_error(
             ProjectionErrorKind::UnsupportedSchema,
             format!("family {family} schema {schema_version} is unsupported"),
@@ -184,4 +184,22 @@ fn validate_family(family: u16, schema_version: u16) -> Result<(), ProjectionErr
 
 fn journal_error(kind: ProjectionErrorKind, detail: impl Into<String>) -> ProjectionError {
     ProjectionError::new(kind, RecoveryClass::RepairJournal, "replay journal", detail)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::validate_family;
+    use crate::ProjectionErrorKind;
+
+    #[test]
+    fn scheduler_family_validation_accepts_v1_v2_and_rejects_v0_v3() {
+        assert!(validate_family(71, 1).is_ok());
+        assert!(validate_family(71, 2).is_ok());
+        for version in [0, 3] {
+            let error = validate_family(71, version).expect_err("unsupported scheduler schema");
+            assert_eq!(error.kind(), ProjectionErrorKind::UnsupportedSchema);
+        }
+        let error = validate_family(3, 2).expect_err("non-scheduler family remains v1 only");
+        assert_eq!(error.kind(), ProjectionErrorKind::UnsupportedSchema);
+    }
 }

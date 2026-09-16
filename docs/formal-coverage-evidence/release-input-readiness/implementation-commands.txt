@@ -1,0 +1,4 @@
+CARGO_BUILD_JOBS=2 CCACHE_DISABLE=1 CARGO_TARGET_DIR=target/sol-release-input-ready cargo verus verify --package peritus-release-policy --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20
+CARGO_BUILD_JOBS=2 CCACHE_DISABLE=1 CARGO_TARGET_DIR=target/sol-release-input-ready cargo test --package peritus-release-policy --all-features --locked
+CARGO_BUILD_JOBS=2 CCACHE_DISABLE=1 CARGO_TARGET_DIR=target/sol-release-input-ready cargo clippy --package peritus-release-policy --all-targets --all-features --locked -- -D warnings
+cargo fmt --package peritus-release-policy -- --check

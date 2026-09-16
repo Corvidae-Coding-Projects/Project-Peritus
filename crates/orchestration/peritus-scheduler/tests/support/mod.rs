@@ -19,8 +19,24 @@ pub struct Fixture {
 
 impl Fixture {
     pub fn new() -> Self {
-        let limits =
-            SchedulerLimits::new(128, 512, 16, 16, 8, 16, 4, 2, 8, 1_048_576, 4_194_304).unwrap();
+        Self::with_active_reservations(16)
+    }
+
+    pub fn with_active_reservations(active_reservations: u16) -> Self {
+        let limits = SchedulerLimits::new(
+            128,
+            512,
+            16,
+            16,
+            8,
+            active_reservations,
+            4,
+            2,
+            8,
+            1_048_576,
+            4_194_304,
+        )
+        .unwrap();
         let revision = RevisionTuple::new(
             AcceptanceSpecId::new(bytes(10)).unwrap(),
             HarnessId::new(bytes(11)).unwrap(),
@@ -62,14 +78,10 @@ impl Fixture {
         identity: u8,
         kind: SchedulerCommandKind,
     ) -> SchedulerCommand {
-        SchedulerCommand::new(
+        SchedulerCommand::from_state(
+            state,
             CommandId::new(bytes(identity)).unwrap(),
             EventId::new(bytes(identity.wrapping_add(100))).unwrap(),
-            state.run_id(),
-            state.sequence().get(),
-            Some(state.last_event_id()),
-            state.state_digest(),
-            state.binding().revision(),
             kind,
         )
         .unwrap()
@@ -99,6 +111,23 @@ impl Fixture {
         .unwrap()
     }
 
+    pub fn worker_with_resources(
+        &self,
+        id: u8,
+        concurrency: u16,
+        capacity: &[(ResourceKind, u64)],
+    ) -> WorkerDescriptor {
+        WorkerDescriptor::new(
+            WorkerId::new(bytes(id)).unwrap(),
+            self.owner,
+            vec![ExecutionClass::Tool],
+            resources(capacity, self.limits),
+            concurrency,
+            self.limits,
+        )
+        .unwrap()
+    }
+
     pub fn work(
         &self,
         id: u8,
@@ -118,6 +147,31 @@ impl Fixture {
             None,
             dependencies,
             parent,
+            AttemptNumber::new(maximum_attempts).unwrap(),
+            recovery,
+            digest(id),
+            self.limits,
+        )
+        .unwrap()
+    }
+
+    pub fn work_with_resources(
+        &self,
+        id: u8,
+        maximum_attempts: u16,
+        recovery: RecoveryPolicy,
+        request: &[(ResourceKind, u64)],
+    ) -> WorkSpec {
+        WorkSpec::new(
+            WorkId::new(bytes(id)).unwrap(),
+            self.owner,
+            self.binding.revision(),
+            ExecutionClass::Tool,
+            1,
+            resources(request, self.limits),
+            None,
+            Vec::new(),
+            None,
             AttemptNumber::new(maximum_attempts).unwrap(),
             recovery,
             digest(id),

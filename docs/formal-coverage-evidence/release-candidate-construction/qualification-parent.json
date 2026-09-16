@@ -1,0 +1,100 @@
+{
+  "cwd": "/home/doll/Project-Peritus/.worktrees/formal-coverage",
+  "prior_files_checked": 64,
+  "final_files_checked": 65,
+  "changed_files": 8,
+  "environment": {
+    "CARGO_BUILD_JOBS": "2",
+    "CCACHE_DISABLE": "1",
+    "CARGO_TARGET_DIR": "/home/doll/Project-Peritus/.worktrees/formal-coverage/target"
+  },
+  "commands": [
+    {
+      "command": [
+        "cargo",
+        "verus",
+        "verify",
+        "--package",
+        "peritus-release-policy",
+        "--all-features",
+        "--locked",
+        "--check-toolchain",
+        "--fwd-verus-args-to",
+        "roots",
+        "--",
+        "--no-cheating",
+        "--rlimit",
+        "20"
+      ],
+      "log": "/tmp/peritus-parent-release-candidate-verus-integrated.log",
+      "exit_code": 0
+    },
+    {
+      "command": [
+        "cargo",
+        "test",
+        "--package",
+        "peritus-release-policy",
+        "--locked"
+      ],
+      "log": "/tmp/peritus-parent-release-candidate-tests-default-integrated.log",
+      "exit_code": 0
+    },
+    {
+      "command": [
+        "cargo",
+        "test",
+        "--package",
+        "peritus-release-policy",
+        "--all-features",
+        "--locked"
+      ],
+      "log": "/tmp/peritus-parent-release-candidate-tests-all-integrated.log",
+      "exit_code": 0
+    },
+    {
+      "command": [
+        "cargo",
+        "clippy",
+        "--package",
+        "peritus-release-policy",
+        "--all-features",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "log": "/tmp/peritus-parent-release-candidate-clippy-integrated.log",
+      "exit_code": 0
+    },
+    {
+      "command": [
+        "cargo",
+        "fmt",
+        "--package",
+        "peritus-release-policy",
+        "--",
+        "--check"
+      ],
+      "log": "/tmp/peritus-parent-release-candidate-fmt-integrated.log",
+      "exit_code": 0
+    },
+    {
+      "command": [
+        "/home/doll/Project-Peritus/.worktrees/formal-coverage/target/debug/xtask",
+        "ordinary-api-check"
+      ],
+      "log": "/tmp/peritus-parent-release-candidate-api-integrated.log",
+      "exit_code": 0
+    },
+    {
+      "command": [
+        "/home/doll/Project-Peritus/.worktrees/formal-coverage/target/debug/xtask",
+        "source-layout-check"
+      ],
+      "log": "/tmp/peritus-parent-release-candidate-layout-integrated.log",
+      "exit_code": 0
+    }
+  ]
+}

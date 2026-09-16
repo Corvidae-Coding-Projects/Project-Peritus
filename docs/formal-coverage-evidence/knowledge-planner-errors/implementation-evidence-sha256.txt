@@ -1,0 +1,14 @@
+6854d6da0f6c0f6bd7b298f75b608a34e0937e32938ee266b233c6e00062e1d2  /tmp/peritus-sol-knowledge-errors-source-final.sha256
+9da7f3a1d9abadd3bece6b27ec274d55e076f7284c55edc057f56fba2cddf038  /tmp/peritus-sol-knowledge-errors.patch
+2e35ca9b7f838aab5824788c955cc7964c60c359d66e4e9f8c13b97530c4fbf7  /tmp/peritus-sol-knowledge-errors-commands-20260912T001.txt
+2b220b212ab8db2a24f718cbb5947dd72b1b3bfd3090c4913da5eb416b4432e8  /tmp/peritus-sol-knowledge-errors-review-20260912T001.md
+e03c5e4548abfd791cf4f004a1d7004346ceb2a95985623c1d107febedeaa7c4  /tmp/peritus-sol-knowledge-errors-baseline-verus-01.log
+fccb5e76332f669a64fb2e43be59de2984f1c33eae2bf4c811b60c0152b29d61  /tmp/peritus-sol-knowledge-errors-verus-final.log
+d1705f4e5146cd20f8b9658fc04ecf83fb174c63de8274050d87530839015903  /tmp/peritus-sol-knowledge-errors-negative-plain-current-error-verus-01.log
+f412867b7a234dd1d16469f68855f5772cdfd3d103c64d9e9611d1816b7120a3  /tmp/peritus-sol-knowledge-errors-tests-default-02.log
+bed0889c6f2dd532951a57e5144c4e0c73ca8d0e67f7a77a873706c3925dec97  /tmp/peritus-sol-knowledge-errors-tests-all-features-02.log
+21bd0d0c510082f5a2c47c7bff4ab51c30b97ac2514f75060a743a0beb8ee591  /tmp/peritus-sol-knowledge-errors-clippy-02.log
+e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  /tmp/peritus-sol-knowledge-errors-fmt-02.log
+4bac6157fbc5dedcb05c61716f10d607535002a30dfed56ecce947294c84ec03  /tmp/peritus-sol-knowledge-errors-source-layout-01.log
+2a77049024a19ed9689c6a2771d2a30cff9449057baa45f60f94e22c9be86a6e  /tmp/peritus-sol-knowledge-errors-ordinary-api-01.log
+e9af85534457453005aca78b38737baf8a7d1841092f9b7e4f2f85e0724abb1c  /tmp/peritus-sol-knowledge-errors-restored-source-check.log

@@ -1,0 +1,125 @@
+   Compiling proc-macro2 v1.0.107
+   Compiling unicode-ident v1.0.24
+   Compiling quote v1.0.47
+   Compiling verus_syn v0.0.0-2026-08-02-0125 (https://github.com/verus-lang/verus.git?rev=92f466f247f45128c630d1c843fd6e27d2115587#92f466f2)
+   Compiling verus_prettyplease v0.0.0-2026-08-09-0044 (https://github.com/verus-lang/verus.git?rev=92f466f247f45128c630d1c843fd6e27d2115587#92f466f2)
+   Compiling equivalent v1.0.2
+   Compiling hashbrown v0.17.1
+   Compiling syn v2.0.119
+   Compiling synstructure v0.13.2
+   Compiling indexmap v2.14.0
+   Compiling vstd v0.0.0-2026-08-09-0044 (https://github.com/verus-lang/verus.git?rev=92f466f247f45128c630d1c843fd6e27d2115587#92f466f2)
+   Compiling convert_case v0.4.0
+   Compiling verus_builtin_macros v0.0.0-2026-08-09-0044 (https://github.com/verus-lang/verus.git?rev=92f466f247f45128c630d1c843fd6e27d2115587#92f466f2)
+   Compiling verus_state_machines_macros v0.0.0-2026-08-02-0125 (https://github.com/verus-lang/verus.git?rev=92f466f247f45128c630d1c843fd6e27d2115587#92f466f2)
+    Checking verus_builtin v0.0.0-2026-08-09-0044 (https://github.com/verus-lang/verus.git?rev=92f466f247f45128c630d1c843fd6e27d2115587#92f466f2)
+verification results:: 2044 verified, 0 errors
+    Checking peritus-types v0.0.2 (/tmp/peritus-sol-release-candidate-contracts-workspace-01/crates/foundation/peritus-types)
+verification results:: 210 verified, 0 errors
+    Checking peritus-release-policy v0.0.2 (/tmp/peritus-sol-release-candidate-contracts-workspace-01/crates/foundation/peritus-release-policy)
+error: postcondition not satisfied
+  --> crates/foundation/peritus-release-policy/src/candidate/construction.rs:89:17
+   |
+89 |                 Ok(value) => value.spec_revision() == revision
+   |                 ^^^^^^^^^ failed this postcondition
+...
+94 |         crate::validation::require_revision(revision)?;
+   |                                                      - at this exit
+
+note: function body check: not all errors may have been reported; rerun with a higher value for --multiple-errors to find other potential errors in this function
+   --> crates/foundation/peritus-release-policy/src/candidate/construction.rs:135:5
+    |
+135 | /     pub fn new(
+136 | |         policy: u64,
+137 | |         evidence: u64,
+138 | |         report: u64,
+139 | |         artifact: u64,
+140 | |         catalog_digest: Sha256Digest,
+141 | |     ) -> (result: Result<Self, ConstructionError>)
+    | |_________________________________________________^
+
+error: postcondition not satisfied
+   --> crates/foundation/peritus-release-policy/src/candidate/construction.rs:146:17
+    |
+146 |                 Ok(value) => value.spec_policy() == policy
+    |                 ^^^^^^^^^ failed this postcondition
+...
+156 |         crate::validation::require_revision(evidence)?;
+    |                                                      - at this exit
+
+error: postcondition not satisfied
+   --> crates/foundation/peritus-release-policy/src/candidate/construction.rs:146:17
+    |
+146 |                 Ok(value) => value.spec_policy() == policy
+    |                 ^^^^^^^^^ failed this postcondition
+...
+157 |         crate::validation::require_revision(report)?;
+    |                                                    - at this exit
+
+error: postcondition not satisfied
+   --> crates/foundation/peritus-release-policy/src/candidate/construction.rs:146:17
+    |
+146 |                 Ok(value) => value.spec_policy() == policy
+    |                 ^^^^^^^^^ failed this postcondition
+...
+155 |         crate::validation::require_revision(policy)?;
+    |                                                    - at this exit
+
+error: postcondition not satisfied
+   --> crates/foundation/peritus-release-policy/src/candidate/construction.rs:204:17
+    |
+204 |                 Ok(value) => value.spec_id() == id
+    |                 ^^^^^^^^^ failed this postcondition
+...
+217 |         crate::validation::require_revision(source_revision)?;
+    |                                                             - at this exit
+
+error: postcondition not satisfied
+  --> crates/foundation/peritus-release-policy/src/validation.rs:66:13
+   |
+66 |               Ok(()) => true,
+   |               ^^^^^^ failed this postcondition
+...
+70 | /     if revision == 0 {
+71 | |         Err(ConstructionError::new(ConstructionErrorKind::ZeroRevision))
+72 | |     } else {
+73 | |         Ok(())
+74 | |     }
+   | |_____- at the end of the function body
+
+note: automatically chose triggers for this expression:
+  --> crates/foundation/peritus-release-policy/src/model.rs:79:17
+   |
+79 |       let index = choose |index: int| 0 <= index < left.len()
+   |  _________________^
+80 | |         && left[index].spec_contributes_to(requirement, candidate, evaluated_at);
+   | |________________________________________________________________________________^
+
+note:   trigger 1 of 1:
+  --> crates/foundation/peritus-release-policy/src/model.rs:80:12
+   |
+80 |         && left[index].spec_contributes_to(requirement, candidate, evaluated_at);
+   |            ^^^^^^^^^^^
+
+note: Verus printed one or more automatically chosen quantifier triggers
+      because it had low confidence in the chosen triggers.
+      To suppress these messages, do one of the following:
+        (1) manually annotate a single desired trigger using #[trigger]
+            (example: forall|i: int, j: int| f(i) && #[trigger] g(i) && #[trigger] h(j)),
+        (2) manually annotate multiple desired triggers using #![trigger ...]
+            (example: forall|i: int| #![trigger f(i)] #![trigger g(i)] f(i) && g(i)),
+        (3) accept the automatically chosen trigger using #![auto]
+            (example: forall|i: int, j: int| #![auto] f(i) && g(i) && h(j))
+        (4) use the --triggers-mode silent command-line option to suppress all printing of triggers.
+      (Note: triggers are used by the underlying SMT theorem prover to instantiate quantifiers;
+      the theorem prover instantiates a quantifier whenever some expression matches the
+      pattern specified by one of the quantifier's triggers.)
+  --> crates/foundation/peritus-release-policy/src/model.rs:79:17
+   |
+79 |       let index = choose |index: int| 0 <= index < left.len()
+   |  _________________^
+80 | |         && left[index].spec_contributes_to(requirement, candidate, evaluated_at);
+   | |________________________________________________________________________________^
+
+verification results:: 373 verified, 4 errors
+error: could not compile `peritus-release-policy` (lib) due to 6 previous errors

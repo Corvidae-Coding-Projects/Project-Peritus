@@ -1,0 +1,15 @@
+{
+  "base_commit": "1aa9282ff2cfcbf8fac325f11f157f408d33ee30",
+  "backup_files": 76,
+  "partial_frozen_manifest_files": 45,
+  "unchanged_files_verified_against_base": 30,
+  "restored_files": 75,
+  "restored_changed_paths": [
+    "src/verified/reservations.rs"
+  ],
+  "new_path_removed_after_backup": "src/verified/reservations/entity_insertion.rs",
+  "backup_manifest_sha256": "d0312d48ff301e4f13fbd90155bee9964045413be9891e0fb8e772e7e3400526",
+  "complete_manifest_sha256": "812d4eabac5f6b131baa156cc970eee34a7c45a40a79c36433cdb65493e84f40",
+  "independent_source_review": "still pending; this restores previously qualified frozen244 source",
+  "agent_work_preserved": "/tmp/peritus-sol-scheduler-post244-source-001"
+}

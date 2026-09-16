@@ -1,0 +1,4 @@
+# Independently restored 12 frozen sources and production role/settlement dependencies.
+# Working directory: /tmp/peritus-parent-readiness-review.q25p5n7e
+CARGO_BUILD_JOBS=2 CCACHE_DISABLE=1 CARGO_TARGET_DIR=/home/doll/Project-Peritus/.worktrees/formal-coverage/target/formal-readiness-review cargo verus verify --package peritus-run-knowledge --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20
+CARGO_BUILD_JOBS=2 CCACHE_DISABLE=1 CARGO_TARGET_DIR=/home/doll/Project-Peritus/.worktrees/formal-coverage/target/formal-readiness-review cargo test --locked --all-features --package peritus-run-knowledge

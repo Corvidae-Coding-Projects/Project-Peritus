@@ -1,0 +1,2 @@
+    Checking peritus-scheduler v0.0.2 (/home/doll/Project-Peritus/.worktrees/formal-coverage/target/sol-scheduler-perf-aggregate-source-001/crates/orchestration/peritus-scheduler)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 3.65s

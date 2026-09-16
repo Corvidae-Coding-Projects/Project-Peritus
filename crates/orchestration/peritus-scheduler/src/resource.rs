@@ -1,10 +1,32 @@
 //! Checked canonical resource dimensions and arithmetic.
 
 use crate::{SchedulerError, SchedulerErrorKind};
+use vstd::prelude::*;
+
+mod addition;
+pub mod capacity;
+mod subtraction;
+
+verus! {
 
 /// Stable nonzero resource dimension tag.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct ResourceKind(u16);
+
+impl ResourceKind {
+    /// Returns the mathematical stable resource tag.
+    pub closed spec fn spec_tag(&self) -> u16 { self.0 }
+
+    /// Returns the stable canonical tag.
+    #[must_use]
+    pub const fn tag(self) -> (result: u16)
+        ensures result == self.spec_tag(),
+    {
+        self.0
+    }
+}
+
+} // verus!
 
 impl ResourceKind {
     /// CPU execution slots.
@@ -29,17 +51,34 @@ impl ResourceKind {
             Ok(Self(tag))
         }
     }
-
-    /// Returns the stable canonical tag.
-    #[must_use]
-    pub const fn tag(self) -> u16 {
-        self.0
-    }
 }
+
+verus! {
 
 /// Checked positive quantity in a resource dimension.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct ResourceQuantity(u64);
+
+impl ResourceQuantity {
+    /// Returns the mathematical positive quantity.
+    pub closed spec fn spec_value(&self) -> u64 { self.0 }
+
+    /// Returns the exact quantity.
+    #[must_use]
+    pub const fn get(self) -> (result: u64)
+        ensures result == self.spec_value(),
+    {
+        self.0
+    }
+
+    pub(crate) const fn from_wire(value: u64) -> (result: Self)
+        ensures result.spec_value() == value,
+    {
+        Self(value)
+    }
+}
+
+} // verus!
 
 impl ResourceQuantity {
     /// Creates a positive resource quantity.
@@ -53,17 +92,9 @@ impl ResourceQuantity {
             Ok(Self(value))
         }
     }
-
-    /// Returns the exact quantity.
-    #[must_use]
-    pub const fn get(self) -> u64 {
-        self.0
-    }
-
-    pub(crate) const fn from_wire(value: u64) -> Self {
-        Self(value)
-    }
 }
+
+verus! {
 
 /// One canonical resource entry.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -73,26 +104,112 @@ pub struct ResourceEntry {
 }
 
 impl ResourceEntry {
-    /// Creates one checked entry.
-    #[must_use]
-    pub const fn new(kind: ResourceKind, quantity: ResourceQuantity) -> Self {
-        Self { kind, quantity }
-    }
+    /// Returns the mathematical resource kind.
+    pub closed spec fn spec_kind(&self) -> ResourceKind { self.kind }
+    /// Returns the mathematical resource quantity.
+    pub closed spec fn spec_quantity(&self) -> ResourceQuantity { self.quantity }
+
     /// Returns the dimension.
     #[must_use]
-    pub const fn kind(self) -> ResourceKind {
+    pub const fn kind(self) -> (result: ResourceKind)
+        ensures result == self.spec_kind(),
+    {
         self.kind
     }
     /// Returns the positive quantity.
     #[must_use]
-    pub const fn quantity(self) -> ResourceQuantity {
+    pub const fn quantity(self) -> (result: ResourceQuantity)
+        ensures result == self.spec_quantity(),
+    {
         self.quantity
+    }
+
+    /// Creates one checked entry.
+    #[must_use]
+    pub const fn new(kind: ResourceKind, quantity: ResourceQuantity) -> (result: Self)
+        ensures
+            result.spec_kind() == kind,
+            result.spec_quantity() == quantity,
+    {
+        Self { kind, quantity }
     }
 }
 
+} // verus!
+
+verus! {
+
 /// Nonempty unique resource vector in ascending kind order.
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+#[derive(Debug, Eq, Hash, PartialEq)]
 pub struct ResourceVector(Vec<ResourceEntry>);
+
+enum VectorAdmission {
+    Accepted(ResourceVector),
+    LimitExceeded,
+    NonCanonical,
+}
+
+enum VectorAddition {
+    Value(ResourceVector),
+    Overflow,
+    LimitExceeded,
+}
+
+enum VectorSubtraction {
+    Value(ResourceVector),
+    ExactZero,
+    Underflow,
+    AbsentDimension,
+}
+
+impl ResourceVector {
+    #[verifier::type_invariant]
+    closed spec fn invariant(&self) -> bool {
+        capacity::entries_canonical(self.spec_entries())
+    }
+
+    /// Returns the exact mathematical entry sequence.
+    pub closed spec fn spec_entries(&self) -> Seq<ResourceEntry> {
+        self.0@
+    }
+
+    /// Borrows canonical entries.
+    #[must_use]
+    pub fn entries(&self) -> (result: &[ResourceEntry])
+        ensures
+            result@ == self.spec_entries(),
+            capacity::entries_canonical(result@),
+    {
+        proof { use_type_invariant(self); }
+        &self.0
+    }
+
+    /// Adds two canonical vectors for internal aggregate accounting.
+    pub(crate) fn aggregate_add(&self, other: &Self) -> (result: Option<Self>)
+        ensures match result {
+            Some(vector) => forall |kind: ResourceKind| #![auto]
+                vector.spec_quantity(kind)
+                    == self.spec_quantity(kind) + other.spec_quantity(kind),
+            None => true,
+        },
+    {
+        match addition::add(self, other, u16::MAX) {
+            VectorAddition::Value(vector) => Some(vector),
+            VectorAddition::Overflow | VectorAddition::LimitExceeded => None,
+        }
+    }
+}
+
+impl Clone for ResourceVector {
+    fn clone(&self) -> (result: Self)
+        ensures result.spec_entries() == self.spec_entries(),
+    {
+        proof { use_type_invariant(self); }
+        Self(self.0.clone())
+    }
+}
+
+} // verus!
 
 impl ResourceVector {
     /// Creates a canonical vector under a caller-configured dimension bound.
@@ -103,40 +220,17 @@ impl ResourceVector {
         entries: Vec<ResourceEntry>,
         maximum_dimensions: u16,
     ) -> Result<Self, SchedulerError> {
-        if entries.is_empty() || entries.len() > usize::from(maximum_dimensions) {
-            return Err(crate::error::reject(
+        match capacity::admit_entries(entries, maximum_dimensions) {
+            VectorAdmission::Accepted(vector) => Ok(vector),
+            VectorAdmission::LimitExceeded => Err(crate::error::reject(
                 SchedulerErrorKind::LimitExceeded,
                 "resource vector is empty or exceeds its dimension bound",
-            ));
-        }
-        if entries.windows(2).any(|pair| pair[0].kind() >= pair[1].kind()) {
-            return Err(crate::error::reject(
+            )),
+            VectorAdmission::NonCanonical => Err(crate::error::reject(
                 SchedulerErrorKind::NonCanonical,
                 "resource entries are duplicated or not in ascending kind order",
-            ));
+            )),
         }
-        Ok(Self(entries))
-    }
-
-    /// Borrows canonical entries.
-    #[must_use]
-    pub fn entries(&self) -> &[ResourceEntry] {
-        &self.0
-    }
-
-    /// Returns a dimension's quantity, with absence representing exact zero usage.
-    #[must_use]
-    pub fn quantity(&self, kind: ResourceKind) -> u64 {
-        self.0
-            .binary_search_by_key(&kind, |entry| entry.kind())
-            .ok()
-            .map_or(0, |index| self.0[index].quantity().get())
-    }
-
-    /// Returns whether every requested quantity is provided by `capacity`.
-    #[must_use]
-    pub fn fits_within(&self, capacity: &Self) -> bool {
-        self.0.iter().all(|entry| entry.quantity().get() <= capacity.quantity(entry.kind()))
     }
 
     /// Adds two vectors without wrapping or losing canonical ordering.
@@ -148,39 +242,17 @@ impl ResourceVector {
         other: &Self,
         maximum_dimensions: u16,
     ) -> Result<Self, SchedulerError> {
-        let mut result = Vec::with_capacity(self.0.len().saturating_add(other.0.len()));
-        let (mut left, mut right) = (0, 0);
-        while left < self.0.len() || right < other.0.len() {
-            match (self.0.get(left), other.0.get(right)) {
-                (Some(a), Some(b)) if a.kind() == b.kind() => {
-                    let quantity =
-                        a.quantity().get().checked_add(b.quantity().get()).ok_or_else(|| {
-                            crate::error::reject(
-                                SchedulerErrorKind::ResourceConflict,
-                                "resource addition overflowed",
-                            )
-                        })?;
-                    result
-                        .push(ResourceEntry::new(a.kind(), ResourceQuantity::from_wire(quantity)));
-                    left += 1;
-                    right += 1;
-                }
-                (Some(a), Some(b)) if a.kind() < b.kind() => {
-                    result.push(*a);
-                    left += 1;
-                }
-                (Some(_) | None, Some(b)) => {
-                    result.push(*b);
-                    right += 1;
-                }
-                (Some(a), None) => {
-                    result.push(*a);
-                    left += 1;
-                }
-                (None, None) => break,
-            }
+        match addition::add(self, other, maximum_dimensions) {
+            VectorAddition::Value(vector) => Ok(vector),
+            VectorAddition::Overflow => Err(crate::error::reject(
+                SchedulerErrorKind::ResourceConflict,
+                "resource addition overflowed",
+            )),
+            VectorAddition::LimitExceeded => Err(crate::error::reject(
+                SchedulerErrorKind::LimitExceeded,
+                "resource vector is empty or exceeds its dimension bound",
+            )),
         }
-        Self::new(result, maximum_dimensions)
     }
 
     /// Subtracts an exact vector, returning `None` for exact zero.
@@ -188,27 +260,18 @@ impl ResourceVector {
     /// # Errors
     /// Rejects any absent dimension or underflow.
     pub fn checked_subtract(&self, other: &Self) -> Result<Option<Self>, SchedulerError> {
-        let mut result = Vec::with_capacity(self.0.len());
-        for entry in &self.0 {
-            let subtract = other.quantity(entry.kind());
-            let remaining = entry.quantity().get().checked_sub(subtract).ok_or_else(|| {
-                crate::error::reject(
-                    SchedulerErrorKind::ResourceConflict,
-                    "resource subtraction underflowed",
-                )
-            })?;
-            if remaining != 0 {
-                result
-                    .push(ResourceEntry::new(entry.kind(), ResourceQuantity::from_wire(remaining)));
-            }
-        }
-        if other.0.iter().any(|entry| self.quantity(entry.kind()) == 0) {
-            return Err(crate::error::reject(
+        match subtraction::subtract(self, other) {
+            VectorSubtraction::Value(vector) => Ok(Some(vector)),
+            VectorSubtraction::ExactZero => Ok(None),
+            VectorSubtraction::Underflow => Err(crate::error::reject(
+                SchedulerErrorKind::ResourceConflict,
+                "resource subtraction underflowed",
+            )),
+            VectorSubtraction::AbsentDimension => Err(crate::error::reject(
                 SchedulerErrorKind::ResourceConflict,
                 "resource subtraction names an absent dimension",
-            ));
+            )),
         }
-        Ok((!result.is_empty()).then_some(Self(result)))
     }
 
     pub(crate) fn validate(&self, maximum_dimensions: u16) -> Result<(), SchedulerError> {

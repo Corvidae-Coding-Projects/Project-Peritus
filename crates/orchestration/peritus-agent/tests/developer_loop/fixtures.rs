@@ -11,13 +11,17 @@ use peritus_model_protocol::{
 use peritus_types::{ProviderProfileId, Sha256Digest};
 
 pub fn profile() -> ProviderProfile {
+    profile_with_capabilities(&[Capability::ToolCalls])
+}
+
+pub fn profile_with_capabilities(capabilities: &[Capability]) -> ProviderProfile {
     ProviderProfile::new(
         ProviderProfileId::new([0x7A; 16]).expect("profile ID"),
         1,
         ProviderName::new("scripted-provider".to_owned()).expect("provider"),
         ModelName::new("scripted-model".to_owned()).expect("model"),
         WireDialect::CompatibleResponses,
-        CapabilityMatrix::new(&[Capability::ToolCalls], &[]).expect("capabilities"),
+        CapabilityMatrix::new(capabilities, &[]).expect("capabilities"),
         CapabilityProvenance::Probed,
         ModelLimits::new(32_768, 4_096, 16, 1, 256 * 1024).expect("limits"),
         OutputLimitEnforcement::ProviderEnforced,

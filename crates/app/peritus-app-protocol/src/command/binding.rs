@@ -81,13 +81,13 @@ pub struct CommandSubmissionFrames {
 impl CommandSubmissionFrames {
     /// Parses two complete canonical B3 frames without reserializing either one.
     ///
-    /// The first frame must be the current B0 command envelope. The second must be a current B3
-    /// registry family whose semantic role is [`MessageRole::Command`].
+    /// The first frame must be the current B0 command envelope. The second must use a supported B3
+    /// registry schema whose semantic role is [`MessageRole::Command`].
     ///
     /// # Errors
     ///
     /// Returns a codec-derived error for malformed framing/envelope payload, an unsupported-schema
-    /// error for a stale registered command schema, or an invalid-command-frame error for an
+    /// error for an unsupported registered command schema, or an invalid-command-frame error for an
     /// unregistered/non-command family.
     pub fn parse(
         envelope_bytes: Vec<u8>,
@@ -109,7 +109,7 @@ impl CommandSubmissionFrames {
         let Some(registered) = FAMILIES.iter().find(|family| family.tag == command.family()) else {
             return Err(AppProtocolError::new(AppErrorCode::InvalidCommandFrame, None));
         };
-        if registered.schema_version != command.schema_version() {
+        if !registered.supports(command.schema_version()) {
             return Err(AppProtocolError::new(AppErrorCode::UnsupportedSchema, None));
         }
         if registered.role() != MessageRole::Command {

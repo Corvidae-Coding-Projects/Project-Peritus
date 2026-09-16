@@ -1,0 +1,106 @@
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+  --> crates/orchestration/peritus-run-settlement/src/evidence.rs:47:10
+   |
+47 | #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+   |          ^^^^^
+   |
+   = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: autoderive Clone impl does not take the form Verus expects; continuing, but without adding a specification for the derived Clone impl
+  --> crates/orchestration/peritus-run-settlement/src/evidence.rs:81:10
+   |
+81 | #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+   |          ^^^^^
+   |
+   = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: `peritus-run-settlement` (lib) generated 2 warnings
+    Checking peritus-obligations v0.0.2 (/tmp/peritus-parent-obligations-proof.6ib_z8mo/crates/orchestration/peritus-obligations)
+error: postcondition not satisfied
+   --> crates/orchestration/peritus-obligations/src/qualification/validation.rs:102:13
+    |
+102 |             Ok(()) => true,
+    |             ^^^^^^ failed this postcondition
+...
+187 |                 return Err(ObligationError::plain(ObligationErrorKind::UnknownRequirement));
+    |                 --------------------------------------------------------------------------- at this exit
+
+note: automatically chose triggers for this expression:
+   --> crates/orchestration/peritus-obligations/src/ledger/model.rs:108:9
+    |
+108 |       &&& forall |index: int| 0 <= index < drafts.len() ==>
+    |  _________^
+109 | |         draft_valid(source, &drafts[index], index, limits)
+    | |__________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/orchestration/peritus-obligations/src/ledger/model.rs:109:30
+    |
+109 |         draft_valid(source, &drafts[index], index, limits)
+    |                              ^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/orchestration/peritus-obligations/src/ledger/validation.rs:118:13
+    |
+118 | /             forall |prior: int| 0 <= prior < index ==>
+119 | |                 model::draft_valid(source, &drafts@[prior], prior, limits),
+    | |__________________________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/orchestration/peritus-obligations/src/ledger/validation.rs:119:45
+    |
+119 |                 model::draft_valid(source, &drafts@[prior], prior, limits),
+    |                                             ^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/orchestration/peritus-obligations/src/ledger/model.rs:143:12
+    |
+143 |           && forall |index: int| 0 <= index < entries.len() ==>
+    |  ____________^
+144 | |             entry_matches_draft(source, &drafts[index], index, &entries[index])
+    | |_______________________________________________________________________________^
+
+note:   trigger 1 of 2:
+   --> crates/orchestration/peritus-obligations/src/ledger/model.rs:144:42
+    |
+144 |             entry_matches_draft(source, &drafts[index], index, &entries[index])
+    |                                          ^^^^^^^^^^^^^
+
+note:   trigger 2 of 2:
+   --> crates/orchestration/peritus-obligations/src/ledger/model.rs:144:65
+    |
+144 |             entry_matches_draft(source, &drafts[index], index, &entries[index])
+    |                                                                 ^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/orchestration/peritus-obligations/src/ledger/model.rs:211:5
+    |
+211 |     assert forall |index: int| 0 <= index < entries.push(entry).len() implies
+    |     ^^^^^^
+
+note:   trigger 1 of 1:
+   --> crates/orchestration/peritus-obligations/src/ledger/model.rs:212:38
+    |
+212 |         entry_matches_draft(source, &drafts[index], index, &entries.push(entry)[index]) by {
+    |                                      ^^^^^^^^^^^^^
+
+note: Verus printed one or more automatically chosen quantifier triggers
+      because it had low confidence in the chosen triggers.
+      To suppress these messages, do one of the following:
+        (1) manually annotate a single desired trigger using #[trigger]
+            (example: forall|i: int, j: int| f(i) && #[trigger] g(i) && #[trigger] h(j)),
+        (2) manually annotate multiple desired triggers using #![trigger ...]
+            (example: forall|i: int| #![trigger f(i)] #![trigger g(i)] f(i) && g(i)),
+        (3) accept the automatically chosen trigger using #![auto]
+            (example: forall|i: int, j: int| #![auto] f(i) && g(i) && h(j))
+        (4) use the --triggers-mode silent command-line option to suppress all printing of triggers.
+      (Note: triggers are used by the underlying SMT theorem prover to instantiate quantifiers;
+      the theorem prover instantiates a quantifier whenever some expression matches the
+      pattern specified by one of the quantifier's triggers.)
+   --> crates/orchestration/peritus-obligations/src/ledger/model.rs:211:5
+    |
+211 |     assert forall |index: int| 0 <= index < entries.push(entry).len() implies
+    |     ^^^^^^
+
+verification results:: 360 verified, 1 errors
+error: could not compile `peritus-obligations` (lib) due to 1 previous error

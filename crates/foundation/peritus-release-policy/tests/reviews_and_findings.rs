@@ -13,6 +13,12 @@ fn independent_review_quorum_is_mandatory() {
     let mut inputs = ready_inputs();
     inputs.reviews.pop();
     let decision = inputs.evaluate();
+    let reviews = decision.reviews();
+    assert_eq!(reviews.approved_count(), 1);
+    assert_eq!(reviews.changes_required_count(), 0);
+    assert_eq!(reviews.self_review_count(), 0);
+    assert_eq!(reviews.non_independent_count(), 0);
+    assert!(!reviews.has_shared_context());
     assert_eq!(decision.verdict(), ReleaseVerdict::NotReadyForProduction);
     assert!(
         decision.diagnostics().contains(&Diagnostic::ReviewerQuorum { required: 2, observed: 1 })
@@ -49,6 +55,12 @@ fn self_review_changes_required_and_shared_context_each_block() {
         .expect("changes-required review"),
     ];
     let decision = inputs.evaluate();
+    let reviews = decision.reviews();
+    assert_eq!(reviews.approved_count(), 0);
+    assert_eq!(reviews.changes_required_count(), 1);
+    assert_eq!(reviews.self_review_count(), 1);
+    assert_eq!(reviews.non_independent_count(), 1);
+    assert!(reviews.has_shared_context());
     assert!(decision.diagnostics().contains(&Diagnostic::SelfReview(1)));
     assert!(decision.diagnostics().contains(&Diagnostic::NonIndependentReview(1)));
     assert!(decision.diagnostics().contains(&Diagnostic::ChangesRequired(1)));
@@ -85,6 +97,13 @@ fn unresolved_release_blocker_cannot_be_waived() {
         .expect("attempted waiver"),
     );
     let decision = inputs.evaluate();
+    let findings = decision.findings();
+    assert_eq!(findings.open_count(), 1);
+    assert_eq!(findings.release_blocking_count(), 1);
+    assert_eq!(findings.invalid_waiver_count(), 1);
+    assert_eq!(findings.stale_count(), 0);
+    assert_eq!(findings.mismatched_count(), 0);
+    assert!(!findings.has_conflicting_finding());
     assert!(decision.diagnostics().contains(&Diagnostic::ReleaseBlockingFindings(1)));
     assert!(decision.diagnostics().contains(&Diagnostic::OpenFindings(1)));
     assert!(decision.diagnostics().contains(&Diagnostic::InvalidWaivers(1)));

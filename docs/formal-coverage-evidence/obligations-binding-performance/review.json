@@ -1,0 +1,39 @@
+{
+  "schema": "peritus.formal-coverage.increment-review",
+  "schema_version": 1,
+  "status": "reviewed-bounded-increment-not-obligation-discharge",
+  "recorded_at": "2026-09-12T20:55:37.339166+00:00",
+  "base_commit": "1aa9282ff2cfcbf8fac325f11f157f408d33ee30",
+  "implementation": "/root",
+  "reviewer": "/root/sol_acceptance_completion",
+  "reviewed_source_manifest_sha256": "b0b43113846b3951876b5313a828403c6df3f7f314956216f76d12e8c90182d1",
+  "results": {
+    "isolated_strict_verified": 192,
+    "integrated_strict_verified": 192,
+    "proof_errors": 0,
+    "isolated_tests_passed": 16,
+    "integrated_tests_passed": 16,
+    "clippy": "passed",
+    "format": "passed",
+    "base_regression": "failed as expected",
+    "negative_old_arithmetic": "191 verified and 1 postcondition error as expected",
+    "existing_clone_warnings": 13
+  },
+  "independent_review": "Source/contracts/callers and parent-produced logs inspected; no independent execution claimed.",
+  "artifacts": {
+    "audit.md": "a51aa6370b5a97c97b184fc0c0f8fbc8af2c16e7cbec45795be787c7b14134c5",
+    "clippy.txt": "933a48f84162abfad29502f2b6acd2240bcfcaccd74fda999b7d0e493db508a4",
+    "commands.txt": "3b4ffca9df1afa0b780e26432d339424a814409a9896d7f9e992859f0fad26f7",
+    "format.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "independent-review.json": "d9f4db228a00dafe78e7d0d2813b72ab2c4235e8fbfe33816f8f1d205236850e",
+    "negative-source-sha256.txt": "d764a792f8fe122d12cda2e052e8613c87a24e4ba440a64d3ed3ae0a1202b9b0",
+    "negative-verus.txt": "3efffd7c13b7348dcac15237a7b3e69bed84157996e3a2d96e5d15da84d8d746",
+    "regression-clean-base.txt": "df53c004d40746b92b0b701614ac804f8c051ad5b4a20fc373ae4e6a615481db",
+    "regression-source-sha256.txt": "fd9e0ba5f747ba5daa3e121a627c9c93592c411c5acc0f4d2cf0979574b2749a",
+    "source-sha256.txt": "b0b43113846b3951876b5313a828403c6df3f7f314956216f76d12e8c90182d1",
+    "tests-integrated.txt": "be0b57bfa8b4eff7b7682c9afd16a2d65109b4ff516c77b1183ae580bc82fa2a",
+    "tests-isolated.txt": "066e1c7c58200d0853d6efd8e11492aba8a8ae7e436b750557d98cf8664079c0",
+    "verus-integrated.txt": "851a5ebec69ade386dbbb81287b9787de47afa579ae4efe7af4097425a693528",
+    "verus-isolated.txt": "dabaff50d45937556c2506865982860c7744f9bc8dedc91f55d43830394a7c9c"
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "id": "provider-framing-exact-limit-split-crlf",
+  "classification": "product_defect",
+  "invariant": "A complete frame at the content limit is admitted independently of where its CRLF delimiter is split.",
+  "original": {
+    "revision": "f75f5dee3976b1c72b85e78fa1d6c50475d5d8fa",
+    "platform": "linux-x86_64",
+    "finding_source": "structured SSE and NDJSON boundary generation",
+    "independent_reproducer": "owner framing-partition regression in three fresh test processes",
+    "fresh_fixture_repetitions": 3,
+    "command": "CARGO_BUILD_JOBS=2 cargo test --locked --offline -p peritus-provider-core --test framing_partitions -- --nocapture",
+    "exit_code": 101,
+    "failure_signature": "four exact-limit split assertions fail while the hard-buffer negative control passes"
+  },
+  "reproducer": {
+    "path": "crates/model/peritus-provider-core/tests/framing_partitions.rs",
+    "tests": ["ndjson_exact_limit_crlf_survives_every_split", "sse_exact_limit_crlf_survives_every_split"],
+    "fault_schedule": ["set frame limit to exact content bytes", "partition CR from LF", "feed both chunks", "finish parser"],
+    "required_reachability": ["content reaches exact frame limit", "pending buffer ends in CR", "following LF completes delimiter"],
+    "oracle": "decoded frame count and payload are equal across every split of identical wire bytes",
+    "minimization": "checked-in exact-limit-crlf SSE and NDJSON corpus entries select the smallest content and chunk width that split CR from LF"
+  },
+  "fix": {
+    "revision": "fa1ca671645902eb675da9b31a27ee00f35aa2f1",
+    "owner": "peritus-provider-core framing parsers",
+    "root_cause": "the pending-byte check counted a possible CRLF delimiter byte as content before LF arrived"
+  },
+  "fixed_replay": {
+    "command": "CARGO_BUILD_JOBS=2 cargo test --locked --offline -p peritus-provider-core --test framing_partitions -- --nocapture",
+    "expected": "exit 0; exact-limit SSE and NDJSON frames decode at every split"
+  },
+  "negative_control": "an interior CR and a pending buffer over its independent hard bound still return LimitExceeded",
+  "cleanup": "pure in-memory parser tests; no process, network, credential, or durable state",
+  "limitations": ["synthetic framing bytes", "provider-specific JSON semantics remain owner-suite obligations"]
+}

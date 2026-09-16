@@ -1,0 +1,26 @@
+{
+  "schema": "peritus.formal-coverage.consumer-review",
+  "schema_version": 1,
+  "status": "reviewed-copy-compatibility",
+  "recorded_at": "2026-09-12T20:13:38.393542+00:00",
+  "implementation": "/root/sol_acceptance_completion",
+  "reviewer": "/root",
+  "reviewer_verdict": "PASS: all twelve exact source identities and changed lines inspected; only equivalent Copy substitutions.",
+  "provenance": "Independent parent review within Codex collaboration, not protected CI authorization.",
+  "source_manifest_sha256": "7df71cd6c072cd16ee15c417db1b204dfc3ecbf919fcf82b0d39a72fc0e99125",
+  "results": {
+    "ten_package_clippy": "passed all-target all-features with warnings denied",
+    "ten_package_tests": "failed only at workspace Unix-socket EPERM; reached changed-path targets in preceding nine packages",
+    "full_workspace_retry": "passed with required local syscall access",
+    "format": "passed"
+  },
+  "artifacts": {
+    "consumer-clippy.txt": "471d147110a571d2466da56ca43248e21040a94a270e3556167f40763032ee9b",
+    "consumer-commands.txt": "ed9c3192d26d06300ecd895163c1ff8e4df4e96bc9290c7e7a9539f8e8fe50db",
+    "consumer-format.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "consumer-review.md": "7748ef47454d6505b0b792c5cefb4de5d7175cce72a43aee53a0b9a570144a81",
+    "consumer-source-sha256.txt": "7df71cd6c072cd16ee15c417db1b204dfc3ecbf919fcf82b0d39a72fc0e99125",
+    "consumer-tests-ten-packages.txt": "2ca5d54791c209782cf8ed0217b3528734d90adf00bc5e7229c67a4ff605ea14",
+    "consumer-tests-workspace-retry.txt": "f6b28c509ab8f7630a8df5bb72f4b42b6c17c501a867fca9d3a0f7548ad8062a"
+  }
+}

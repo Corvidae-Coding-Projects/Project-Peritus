@@ -44,7 +44,7 @@ pub(super) fn usage(value: &Value) -> Result<UsageObservation, ProviderCoreError
         return Err(error::malformed("Chat-compatible usage total was inconsistent"));
     }
     Ok(UsageObservation::new(
-        UsageScope::Final,
+        UsageScope::Cumulative,
         UsageCounters::new(prompt, None, None, completion, None, None, total, None),
         None,
     ))

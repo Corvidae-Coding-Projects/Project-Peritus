@@ -1,0 +1,51 @@
+{
+  "schema": "peritus.formal-coverage.review-checkpoint",
+  "schema_version": 1,
+  "status": "reviewed-increment-not-obligation-discharge",
+  "audit_base": "1aa9282ff2cfcbf8fac325f11f157f408d33ee30",
+  "review_date": "2026-09-12",
+  "implementation_agent": "/root",
+  "reviewer": "/root/sol_acceptance_completion",
+  "reviewer_model": "gpt-5.6-sol",
+  "reviewer_reasoning_effort": "xhigh",
+  "review_provenance": "Independent collaboration review message on the frozen three-file source manifest; no external identity authentication is asserted.",
+  "scope": "Caller contract/evidence views and builder/getter preservation, exact internal event constructors, acceptance helper input/output refinement, and propagation to the public reducer result.",
+  "review_procedure": [
+    "Independent reviewer inspected the three source files and verified all final source hashes.",
+    "Reviewer checked the actual input_defined_acceptance consumer, successful Accepted/NeedsChanges split, subject identity, revision preservation and unchanged state on helper rejection.",
+    "Reviewer confirmed the public reducer theorem remains conditional on the EvaluateAcceptance command and emitted AcceptanceAccepted event, and checked the stated limitations.",
+    "Parent ran strict root verification, combined policy/kernel tests, standard dependency-inclusive Clippy, package formatting and scoped diff checks."
+  ],
+  "commands": [
+    "CCACHE_DIR=/tmp/peritus-formal-scope-ccache cargo verus verify --package peritus-kernel --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20",
+    "CCACHE_DIR=/tmp/peritus-formal-scope-ccache cargo +1.97.1 test --locked --all-features --all-targets --package peritus-quality-policy --package peritus-kernel",
+    "CCACHE_DIR=/tmp/peritus-formal-scope-ccache cargo +1.97.1 clippy --locked --all-features --all-targets --package peritus-kernel -- -D warnings",
+    "cargo +1.97.1 fmt --package peritus-kernel -- --check",
+    "git diff --check -- crates/foundation/peritus-kernel"
+  ],
+  "results": {
+    "kernel_verified": 274,
+    "verus_errors": 0,
+    "quality_policy_tests_passed": 40,
+    "kernel_tests_passed": 14,
+    "strict_clippy": "passed",
+    "package_format": "passed",
+    "diff_check": "passed"
+  },
+  "limits": [
+    "This three-file manifest is not the full dependency/compiler input snapshot or a committed candidate identity.",
+    "The public theorem proves (EvaluateAcceptance and emitted AcceptanceAccepted) implies the exact supplied policy input predicate. It does not yet prove every other command family cannot emit acceptance.",
+    "Successful helper evaluation proves the exact Accepted-versus-NeedsChanges event split from the input predicate, subject identity and revision preservation; helper errors preserve the whole state.",
+    "Projection matching, full lifecycle admission/rejection equivalence, and complete kernel state updates remain additional proof work.",
+    "ReducerInputs contracts cover the actual contract/evidence bindings; budget and capability field refinements remain additional work.",
+    "Stored contract digest and binding checks remain executable preflight behavior, not newly proved by this conditional acceptance theorem.",
+    "The verifier retains four existing derived-Clone warnings. This increment adds no suppression, trust escape or new runtime guard.",
+    "No obligation discharge, exclusion or proof-impact approval is created by this checkpoint."
+  ],
+  "artifacts": {
+    "source-sha256.txt": "1332711f73963d643a4547ef486665ca77a90da5ecf9bd150b513dfe89a33be0",
+    "verus-output.txt": "488d1419d2546c0a7f04a5d5126a505640b3c9724cb2403083bba056ae1cf0ab",
+    "integration-tests.txt": "b537336cbc67cef2d81c8e7aedd8eebab2da271afffec4a3ff4e3bbff4ec8e6b",
+    "clippy-output.txt": "578c39ee08c67b1b04fdba16a224783ffcb966680ddbd5ad3e9742414207fdb6"
+  }
+}

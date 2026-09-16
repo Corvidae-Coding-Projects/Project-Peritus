@@ -1,7 +1,7 @@
 use crate::error::Diagnostic;
 use serde::de::DeserializeOwned;
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 
 pub(super) fn read_toml<T: DeserializeOwned>(
     root: &Path,
@@ -73,7 +73,23 @@ pub(super) fn is_regular_without_symlink(root: &Path, relative: &Path) -> bool {
 
 pub(super) fn repository_relative(path: &Path) -> bool {
     !path.as_os_str().is_empty()
-        && path.components().all(|component| matches!(component, std::path::Component::Normal(_)))
+        && path.components().all(|component| matches!(component, Component::Normal(_)))
+}
+
+pub(super) fn repository_path(path: &Path) -> Option<String> {
+    if !repository_relative(path) {
+        return None;
+    }
+    let mut encoded = String::new();
+    for component in path.components() {
+        let Component::Normal(segment) = component else { return None };
+        let segment = segment.to_str()?;
+        if !encoded.is_empty() {
+            encoded.push('/');
+        }
+        encoded.push_str(segment);
+    }
+    Some(encoded)
 }
 
 fn read_regular(
@@ -122,7 +138,7 @@ fn parse_error(path: &Path, format: &str, detail: &str, diagnostics: &mut Vec<Di
 
 #[cfg(test)]
 mod tests {
-    use super::{read_regular_with, read_toml, repository_relative};
+    use super::{read_regular_with, read_toml, repository_path, repository_relative};
     use serde::Deserialize;
     use std::env;
     use std::fs;
@@ -233,11 +249,24 @@ mod tests {
 
     #[test]
     fn repository_paths_reject_absolute_parent_and_current_components() {
-        assert!(repository_relative(Path::new("verification/policy.toml")));
+        let valid = Path::new("verification/policy.toml");
+        assert!(repository_relative(valid));
+        assert_eq!(repository_path(valid).as_deref(), Some("verification/policy.toml"));
         for path in
             ["", "/verification/policy.toml", "../policy.toml", "a/../policy.toml", "./policy.toml"]
         {
             assert!(!repository_relative(Path::new(path)), "accepted `{path}`");
+            assert!(repository_path(Path::new(path)).is_none(), "encoded `{path}`");
         }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn repository_paths_reject_non_utf8_components() {
+        use std::ffi::OsString;
+        use std::os::unix::ffi::OsStringExt as _;
+
+        let path = PathBuf::from(OsString::from_vec(vec![b'f', b'o', 0x80]));
+        assert!(repository_path(&path).is_none());
     }
 }

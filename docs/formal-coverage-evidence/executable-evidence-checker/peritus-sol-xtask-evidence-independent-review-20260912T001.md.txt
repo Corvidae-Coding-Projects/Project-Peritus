@@ -1,0 +1,124 @@
+# Independent source review: executable proof-evidence checker
+
+## Verdict
+
+PASS for the exact 16-path checker/documentation increment frozen at
+`/tmp/peritus-sol-xtask-evidence-final-source-001`.
+
+The final source fixes the reproduced false rejection of executable Verus evidence and the
+ordinary-`const fn` silent-validation skip without weakening record ownership, exact evidence
+commands, proof-scope freshness, trust-escape accounting, or proof-impact authority. Three concrete
+issues found during this independent review were corrected before freeze:
+
+1. declaration metadata was initially joined to owner paths by line, allowing same-name methods on
+   one line to inherit the first method's mode; the final source joins the ordered token streams by
+   exact same-name occurrence ordinal and tests Spec/Exec methods under distinct owners;
+2. the first configuration model rejected eight current, valid unit-test locators under the
+   conventional `#[cfg(test)] mod tests`; the final `Configuration` model admits only exact
+   `cfg(test)` for Cargo-test evidence and rejects every other `cfg`, `cfg_attr`, mixed, or malformed
+   configuration;
+3. the first Cargo-test model accepted `#[ignore] #[test]`; the final `CargoTest` model requires the
+   exact `Runnable` state, and the negative regression passes.
+
+No source blocker remains in the reviewed bytes.
+
+## Exact source and evidence identity
+
+- Initial 187-file shared `xtask/src` preimage manifest:
+  `/tmp/peritus-sol-xtask-evidence-preimage-001.sha256`, SHA-256
+  `0a2c690630db0715f68682f6d8c673e6866dfa0fdca55d4b6c40816e5eb0baf2`.
+- Immutable 188-file baseline checker/documentation manifest:
+  `/tmp/peritus-sol-xtask-evidence-baseline-source-001.sha256`, SHA-256
+  `10058a75a10a5045cac8fd09cd56cb875d3bc0ace0b2343d807addb8b9044cf5`.
+- Immutable 191-file final checker/documentation manifest:
+  `/tmp/peritus-sol-xtask-evidence-full-source-001.sha256`, SHA-256
+  `7cd89b94c3a77785a316256fc9c36b712bf4e09d4d3e6930b7f9f82f08252173`.
+- Exact changed-source manifest (16 paths):
+  `/tmp/peritus-sol-xtask-evidence-delta-source-001.sha256`, SHA-256
+  `b44335811249a902887765e5a6c79c7f5ce9d3e98264dc6065edd2cadd102ee6`.
+- Changed-path inventory:
+  `/tmp/peritus-sol-xtask-evidence-delta-paths-001.txt`, SHA-256
+  `542f1085f7fcd70cca1bb55debcafdab65fee4feaa42c626e32e5a1d2af3f8ac`.
+- Baseline-to-final patch: `/tmp/peritus-sol-xtask-evidence-001.patch`, SHA-256
+  `dfe21328a168ae005de00854a72ff63737b64fc5450cf53995511404197fdfb7`.
+- Implementation report: `/tmp/peritus-sol-xtask-evidence-report-001.md`, SHA-256
+  `bf227e6ba3212ee0a95c0fb19eb27b28cfa6dcbb4deda0ebc647ed2deee3de70`.
+- Evidence manifest: `/tmp/peritus-sol-xtask-evidence-evidence-001.sha256`, SHA-256
+  `9d81da23cfc7aa22d66a2d6f24b827122e75dfbc4015a0d5063d96bd8df85c01`.
+- Evidence check log: `/tmp/peritus-sol-xtask-evidence-evidence-check-001.log`, SHA-256
+  `cc4a4f3c2bbc53f8990542091ef8dc6eb31ba15d200c538fc33276bdc6fc0d14`.
+
+I independently ran the three source-manifest checks against the shared baseline and immutable
+final roots, checked the top-level artifact hashes, checked all 25 evidence-manifest entries, and
+confirmed the working isolate is byte-identical to the immutable final checker/documentation tree.
+
+## Source correspondence reviewed
+
+- `api_contract/declaration.rs` reuses the existing comment/literal-safe reference lexer, the pinned
+  Verus signature grammar, and the existing function-header scanner. It records actual mode,
+  lexical `verus!` enclosure, nesting, configuration, and exact test/ignore state.
+- `trust_lexer::declaration_paths` retains duplicates and emits one ordinal for every same-name
+  function, including locals before local filtering. `manifest_symbol::owned_function_declarations`
+  pairs that ordinal with the same ordered declarations, then constructs the exact crate/module/
+  associated-owner path. Exact-path multiplicity must be one.
+- `ManifestContext::validate_source` remains the source of Cargo package ownership and regular,
+  non-symlink repository-path validation. The symbol root must still match `owning_crate`, and the
+  exact canonical evidence command check is unchanged.
+- Cargo-test evidence requires an exact non-ignored `#[test]`, no function nesting, and only
+  unconditional or exact `cfg(test)` activation. Ordinary functions, ordinary `const fn`, other
+  conditional paths, `cfg_attr`, and ambiguous declarations produce diagnostics.
+- Cargo-Verus evidence requires one unconditional non-local declaration inside `verus!` and an
+  exact parsed Exec, Proof, or Spec mode. Comments, string literals, local functions, alternate
+  owners, and duplicate same-path declarations cannot supply that declaration.
+- `registered_proof_symbols` resolves each obligation `verus-proof` locator again from source and
+  carries its parsed mode into the fresh strict package scope. The compiler report checker requires
+  exact selection plus a successful same-symbol `exec` or `proof` query for executable/proof
+  evidence. Spec evidence retains the explicitly documented selected-function check. Failed,
+  partial, wrong-toolchain, sibling-root, absent-query, and conflicting-mode reports still fail.
+- The trust scanner's prohibited-construct scan is unchanged. Its declaration-path helper changed
+  only from deduplicated paths to exact path/ordinal occurrences, so `assume`, `admit`, `axiom`,
+  external-body, and related escape accounting is neither suppressed nor newly authorized.
+- No production crate, workflow, obligation record, manifest schema, dependency, or public API is
+  changed. The test-only module split preserves behavior and restores the source-layout gate.
+
+## Supplied execution evidence
+
+The worker ran these final gates against the source that was subsequently copied byte-for-byte to
+the immutable final root:
+
+- xtask library tests: 432 passed, 0 failed, 1 ignored, 1 filtered; the filtered archive test needs
+  Git metadata absent from the isolated workspace;
+- actual `formal-inventory`: valid `peritus.formal-audit-inventory` JSON, schema 1, 66 packages;
+- all-target/all-feature Clippy with `-D warnings`;
+- rustfmt check;
+- ordinary API check: 3,555 formal-boundary files and 14,704 executable entry points;
+- source-layout check: 4,459 files.
+
+These are supplied execution results, not an independent compiler rerun. I independently inspected
+the raw final logs and parsed the retained inventory JSON. The earlier failure logs correctly retain
+the original 13 executable-evidence false rejections, the review-found `cfg(test)` false rejection,
+the ignored-test regression, the initial Clippy findings, and the initial layout failure.
+
+## Boundaries
+
+- Static eligibility and compiler selection/query evidence do not prove the cited function's
+  production correspondence, discharge its obligation, authenticate the runner, or authorize a
+  review.
+- `formal-inventory` remains audit-only. Fresh selection and same-mode query checks occur in the
+  strict CI proof-scope invocation with before/after source-input snapshots.
+- The compiler-scope registration reviewed here is the obligation register's `verus-proof`
+  evidence. The currently empty trust and exclusion registers retain their separate boundary-
+  evidence semantics.
+- Spec functions intentionally require selection rather than a standalone solver query; this is an
+  explicit checker contract, not a proof that a spec body establishes an obligation.
+
+## Read-only commands run independently
+
+```text
+(cd /tmp/peritus-sol-xtask-evidence-final-source-001 && sha256sum -c /tmp/peritus-sol-xtask-evidence-full-source-001.sha256)
+(cd /tmp/peritus-sol-xtask-evidence-final-source-001 && sha256sum -c /tmp/peritus-sol-xtask-evidence-delta-source-001.sha256)
+(cd /home/doll/Project-Peritus/.worktrees/formal-coverage && sha256sum -c /tmp/peritus-sol-xtask-evidence-baseline-source-001.sha256)
+sha256sum -c /tmp/peritus-sol-xtask-evidence-evidence-001.sha256
+diff -qr /tmp/peritus-sol-xtask-evidence-final-source-001/xtask/src /tmp/peritus-sol-xtask-evidence-source-001/xtask/src
+cmp /tmp/peritus-sol-xtask-evidence-final-source-001/verification/README.md /tmp/peritus-sol-xtask-evidence-source-001/verification/README.md
+```

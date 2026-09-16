@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "id": "effect-receipt-append-after-crash-tail",
+  "classification": "product_defect",
+  "invariant": "A valid receipt appended after an incomplete crash tail remains replayable after another restart.",
+  "original": {
+    "revision": "f75f5dee3976b1c72b85e78fa1d6c50475d5d8fa",
+    "platform": "linux-x86_64",
+    "finding_source": "bounded Daybreak receipt chaos campaign",
+    "independent_reproducer": "primary campaign controller with three fresh ledgers",
+    "fresh_fixture_repetitions": 3,
+    "command": "CARGO_BUILD_JOBS=2 cargo test --locked --offline -p peritus-product-runner append_after_truncated_tail_remains_replayable_after_another_restart -- --nocapture",
+    "exit_code": 101,
+    "failure_signature": "decode effect receipt: key must be a string at line 1 column 2"
+  },
+  "reproducer": {
+    "path": "crates/app/peritus-product-runner/src/developer_tools/receipt/tests.rs",
+    "test": "append_after_truncated_tail_remains_replayable_after_another_restart",
+    "fault_schedule": ["complete ordinal 1", "append synced incomplete final frame", "reload", "append and complete ordinal 2", "reload again"],
+    "required_reachability": ["clean prefix decoded", "incomplete final frame reached", "second valid receipt synced"],
+    "oracle": "ledger length after repair and exact replay decisions for ordinals 1 and 2",
+    "minimization": "one clean completed frame, one incomplete suffix, one later completed frame, and two reloads; each frame and reload is required for the decode failure"
+  },
+  "fix": {
+    "revision": "16d5fa8701536180595f80dd631478b4827ee11d",
+    "owner": "EffectReceiptLedger load",
+    "root_cause": "load ignored but retained an incomplete suffix, so later valid frames were appended behind corrupt bytes"
+  },
+  "fixed_replay": {
+    "command": "CARGO_BUILD_JOBS=2 cargo test --locked --offline -p peritus-product-runner append_after_truncated_tail_remains_replayable_after_another_restart -- --nocapture",
+    "expected": "exit 0; incomplete suffix truncated and synced; both completed receipts replay"
+  },
+  "negative_control": "a complete malformed frame remains byte-for-byte present and fails closed",
+  "cleanup": "temporary ledger removed; no command or provider process used",
+  "limitations": ["fsync and process-crash contract", "no storage-controller or power-loss claim"]
+}

@@ -1,0 +1,324 @@
+{
+  "schema": "peritus.formal-coverage.stabilization-checkpoint",
+  "schema_version": 1,
+  "status": "two-patches-reviewed-and-integrated; full-goal-incomplete",
+  "base_commit": "8e8cbb1bcf0de9787d86c7be3d6fc1f2079f3493",
+  "scope": [
+    "ledger exact extraction error contracts",
+    "scheduler dependency-budget proof repair"
+  ],
+  "changed_paths": {
+    "crates/orchestration/peritus-obligations/src/ledger.rs": {
+      "before": "7611b6f52a407cf071d14c0ec52dcf4e07e244a8a788f3fb9b1fff5718a9d711",
+      "after": "7f33ed5e8bc7b870a03f8ae25a736acf361442a30d03303191796fb0ce85ac0a"
+    },
+    "crates/orchestration/peritus-obligations/src/ledger/admission.rs": {
+      "before": null,
+      "after": "c439684efd62c576b3daad88450b92ff95c3da59fd10f428295073232372a926"
+    },
+    "crates/orchestration/peritus-obligations/src/ledger/validation.rs": {
+      "before": "0f0b99577edb738e0f8de93eb4654997bf2d4497fd5923d347daf36f748bd1d8",
+      "after": "f0ee05e930075d7411b37bf0c7080c4914e81f6c42d89976c533b13b4fb4ccd1"
+    },
+    "crates/orchestration/peritus-obligations/src/path.rs": {
+      "before": "ebd021b2103e4fd78787bd34f6d31bfcd5d0590d3e041f2a7747095c4af2c42c",
+      "after": "255e137d4dfe52ab161eee6412d75d28a651c907e0c6dc679b0d0b63b8cbd9f9"
+    },
+    "crates/orchestration/peritus-obligations/src/path/validation.rs": {
+      "before": "f9531787b91bcd82920541e39e5f5faaa0cc3524968ea1bd794b706621fec720",
+      "after": "8e204d3de7837f87c5aef0a4aa386005faa78b46620e68e1395833cac158b637"
+    },
+    "crates/orchestration/peritus-obligations/tests/foundation_semantics.rs": {
+      "before": "e659f2320e535f569f15c4affbc5e7fcceb747aebaea88dc7360bfdf06399bdd",
+      "after": "5c59aed7a0e2d399360b08d4a4c1c8203e970399b6736653ea0107b4fa37be90"
+    },
+    "crates/orchestration/peritus-scheduler/src/resource/addition/merge.rs": {
+      "before": "7595e85fb3c55542054227952e954b90acd69d2fb275571270315bc93d066621",
+      "after": "a793fef32138cf6a2a3887c09b3ac7ba622f92920351c914fdc0426520fcc548"
+    },
+    "crates/orchestration/peritus-scheduler/src/resource/addition/merge/advance_proofs.rs": {
+      "before": null,
+      "after": "18a7a512786e7821d9aec95c0b10a04d15fea9322dd81fd88fcb2d9fba578f41"
+    }
+  },
+  "verification": {
+    "scheduler_fresh_root_rlimit10": {
+      "verified": 375,
+      "errors": 0
+    },
+    "combined_dependency_obligations": {
+      "verified": 361,
+      "errors": 0
+    },
+    "combined_dependency_scheduler": {
+      "verified": 375,
+      "errors": 0
+    },
+    "combined_product_runner": {
+      "encountered-error": false,
+      "encountered-vir-error": false,
+      "success": true,
+      "verified": 34,
+      "errors": 0,
+      "is-verifying-entire-crate": true
+    },
+    "ci_scope_gate": "FAILED: OBL-0222 method owner locator differs from Verus type-owner path; OBL-0224 analogous",
+    "local_validation": [
+      {
+        "label": "tests-default",
+        "command": [
+          "cargo",
+          "test",
+          "--locked",
+          "--package",
+          "peritus-obligations",
+          "--package",
+          "peritus-scheduler"
+        ],
+        "exit_code": 0,
+        "elapsed_seconds": 9.54
+      },
+      {
+        "label": "tests-no-default",
+        "command": [
+          "cargo",
+          "test",
+          "--locked",
+          "--package",
+          "peritus-obligations",
+          "--package",
+          "peritus-scheduler",
+          "--no-default-features"
+        ],
+        "exit_code": 0,
+        "elapsed_seconds": 1.23
+      },
+      {
+        "label": "tests-all",
+        "command": [
+          "cargo",
+          "test",
+          "--locked",
+          "--package",
+          "peritus-obligations",
+          "--package",
+          "peritus-scheduler",
+          "--all-targets",
+          "--all-features"
+        ],
+        "exit_code": 0,
+        "elapsed_seconds": 0.38
+      },
+      {
+        "label": "runner-lib",
+        "command": [
+          "cargo",
+          "test",
+          "--locked",
+          "--package",
+          "peritus-product-runner",
+          "--all-features",
+          "--lib",
+          "--",
+          "--test-threads=1"
+        ],
+        "exit_code": 0,
+        "elapsed_seconds": 34.28
+      },
+      {
+        "label": "daemon-scheduler",
+        "command": [
+          "cargo",
+          "test",
+          "--locked",
+          "--package",
+          "peritus-daemon",
+          "--all-features",
+          "--lib",
+          "scheduler_"
+        ],
+        "exit_code": 0,
+        "elapsed_seconds": 47.44
+      },
+      {
+        "label": "daemon-replay",
+        "command": [
+          "cargo",
+          "test",
+          "--locked",
+          "--package",
+          "peritus-daemon",
+          "--all-features",
+          "--test",
+          "runtime",
+          "runtime_commits_and_replays_registered_scheduler_commands"
+        ],
+        "exit_code": 0,
+        "elapsed_seconds": 22.16
+      },
+      {
+        "label": "daemon-restart",
+        "command": [
+          "cargo",
+          "test",
+          "--locked",
+          "--package",
+          "peritus-daemon",
+          "--all-features",
+          "--test",
+          "recovery_shutdown",
+          "restart_resumes_the_durable_session_and_replays_the_exact_command_result"
+        ],
+        "exit_code": 0,
+        "elapsed_seconds": 2.09
+      },
+      {
+        "label": "clippy",
+        "command": [
+          "cargo",
+          "clippy",
+          "--locked",
+          "--package",
+          "peritus-obligations",
+          "--package",
+          "peritus-scheduler",
+          "--package",
+          "peritus-product-runner",
+          "--all-targets",
+          "--all-features",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "exit_code": 0,
+        "elapsed_seconds": 44.52
+      },
+      {
+        "label": "fmt",
+        "command": [
+          "cargo",
+          "fmt",
+          "--all",
+          "--",
+          "--check"
+        ],
+        "exit_code": 0,
+        "elapsed_seconds": 5.88
+      },
+      {
+        "label": "xtask-tests",
+        "command": [
+          "cargo",
+          "test",
+          "--locked",
+          "--package",
+          "xtask",
+          "--lib"
+        ],
+        "exit_code": 0,
+        "elapsed_seconds": 10.8
+      },
+      {
+        "label": "xtask-all",
+        "command": [
+          "/home/doll/Project-Peritus/.worktrees/formal-coverage/target/debug/xtask",
+          "all"
+        ],
+        "exit_code": 0,
+        "elapsed_seconds": 45.42
+      },
+      {
+        "label": "layout",
+        "command": [
+          "/home/doll/Project-Peritus/.worktrees/formal-coverage/target/debug/xtask",
+          "source-layout-check"
+        ],
+        "exit_code": 0,
+        "elapsed_seconds": 2.67
+      },
+      {
+        "label": "inventory",
+        "command": [
+          "/home/doll/Project-Peritus/.worktrees/formal-coverage/target/debug/xtask",
+          "formal-inventory"
+        ],
+        "exit_code": 0,
+        "elapsed_seconds": 38.1
+      },
+      {
+        "label": "diff",
+        "command": [
+          "git",
+          "diff",
+          "--check"
+        ],
+        "exit_code": 0,
+        "elapsed_seconds": 0.05
+      }
+    ],
+    "product_runner_library_tests": {
+      "passed": 284,
+      "failed": 0,
+      "ignored": 3
+    },
+    "package_tests_each_profile": {
+      "passed": 61,
+      "failed": 0
+    },
+    "xtask_library_tests": {
+      "passed": 433,
+      "failed": 0,
+      "ignored": 1
+    },
+    "final_hosted_ci": "not run",
+    "protected_verify_trust": {
+      "exit_code": 1,
+      "failure": "proof-impact still references removed verification-only ProductRunProgress source"
+    },
+    "post_run_source_snapshot": {
+      "inputs": 4624,
+      "changed": 0,
+      "committed_at_run": false
+    }
+  },
+  "reviewers": {
+    "ledger": "/root/checkpoint_ledger_review",
+    "scheduler": "/root/checkpoint_scheduler_review"
+  },
+  "artifacts": {
+    "clippy.err.txt": "ae52cf6eba58fc62033e25ebe1b20108578c96f3020318ed51671e60153fa7a2",
+    "combined-app-runner-result.json": "332377a7144199827c3eb8cbc410251940b65b16c6be8a3895ee485e83d83111",
+    "combined-app-runner.log.txt": "799cfaf2a7a407e20bc21c9f464e464118e32293ac7aca1ca5b9e049e8068438",
+    "daemon-replay.err.txt": "0ecc98074114d82381dcc5789986f607514ba66be20b5eb63dc834992e020549",
+    "daemon-replay.log.txt": "80ce2ea3c76d78cb875f833c1028951387397b006d369d8e95d2176e51de8103",
+    "daemon-restart.err.txt": "754c82ba02b1995388151bf6417a838582cfb76730f23f504b6b892bb63a82b6",
+    "daemon-restart.log.txt": "6e0a43523bb7c35cef778fd14d9103ce6ce6fdd49f8b4d87e7dd1628e47faaa5",
+    "daemon-scheduler.err.txt": "578d3c2e8ad75595db28bfaafef6fe5f1694d8abfefea22cd5a6d9e25a26f76f",
+    "daemon-scheduler.log.txt": "ab95c06afc6e15cd9e1153e56b17edf858cadda3785dadf86a3117d74df3da15",
+    "layout.log.txt": "19569f3f32b58f555b9d0353139bfb92afd57bb9cf5017c3665578efc0f103fb",
+    "peritus-checkpoint-ledger-review.md.txt": "3620a3697ef515f53f435722802ce49350b562aaeee6350f95f69cc4f0d6c2e3",
+    "peritus-checkpoint-scheduler-review.md.txt": "48bd31982daee002e68cc6abb90e3fb4cd7d8e9397ac3cf75600804fda4809d7",
+    "peritus-product-runner-verus-output.txt": "6eb9ef6f35f37718845c88ff17d8c45f9891a724be5c71140119d2d0521b12d0",
+    "runner-lib.err.txt": "f3ecab5e200ead5faa40a40ae777cd834d8ef8aa2cd31c98f72adf08d48d7095",
+    "runner-lib.log.txt": "75f7c4c0323634149b115bd6197ea4c4768a1de044e57b1a325a2263e500fdfe",
+    "scheduler-rlimit10-fixed.log.txt": "58a9bf676467a4de77a1db6c41b3023f23c88daf003526663e6506b5b6fa3d5a",
+    "tests-all.err.txt": "2acf4cbd7d0df85a102e1c03af87417367e483887014cdb41babab474b67f332",
+    "tests-all.log.txt": "d0bd78fa2dfeba85b5c167452c3190777c2b32ecf2b15ef4f9b41dfd7e06ae0f",
+    "tests-default.err.txt": "5b1170a54231b440a1b044dd2a45efd723a600538d6e6d0031ea460ecc4bc199",
+    "tests-default.log.txt": "1d8f09e3bf7ee3bb966e15ca187041f0ee1d2d33416ba4e95b64e5bb42162ae9",
+    "tests-no-default.err.txt": "ea30e9537935d7ce4d162719eba9bbad901a5590e9559b23fe6a8f7100b8d5d3",
+    "tests-no-default.log.txt": "78c5675e2d842dae4b1a14ba66c9661274c781a3a143e7239efca5af0d24eebc",
+    "two-patches-source.json": "c6281d5312e085b049500def0edfc6fcde5a9dd6c17a992664c8ddd7281b0f39",
+    "two-patches.patch": "904b2165874f99fe0bcf3047be51a3da79407acd7451f9d41f49a911d51a9428",
+    "validation.json": "0c0de5a6e2e195fdf7b9365f2abe94d8009069223d802a8fbdf96089a8f0a277",
+    "xtask-all.log.txt": "fe63ae2f9a2f12fcb01bfeae64ddd73a6282728265e922870ceca80d2ad811b3",
+    "xtask-tests.err.txt": "544ca74813232e798ae580db7ffa9095f0c5f87396023ee20a44ddc7fa4e0b54",
+    "xtask-tests.log.txt": "0adc306df048b4eb0f460a65ffaf527da3d8f560f4bc40d48d91e88677f6f65d",
+    "verify-trust.err.txt": "59e175c4076cf4cd5bfe75ba041ec98d370462b55beb63d2b4aa9285acf0ad63",
+    "verify-trust-result.json": "a5d5ade79310164866e15fe0fc93fbadf087305403232f2f6ad88c4f57bff6f6",
+    "source-snapshot-recheck.json": "a2bf2af28d60da49fdaac8ce72848c715b8945dc9021c2a54867479bf813aab9",
+    "source-inputs.json": "c1d33ba9438eeff0624d788f66d4ddf8b763f85851f8aac4d1406f82c22e4ace",
+    "peritus-checkpoint-scope-review.md.txt": "70d98ce04065b1035352046f9b2bfad714066a12c2a0694fbd091bb1ff2d988d"
+  },
+  "checkpoint_scope_review": "PASS for incomplete local checkpoint; no final-goal or merge approval"
+}

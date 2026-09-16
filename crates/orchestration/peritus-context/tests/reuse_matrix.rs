@@ -7,6 +7,7 @@ use peritus_context::{
     AuthorityClass, ContentKind, ContextErrorKind, KnowledgeContextLink, Provenance,
     RequirementMode, TrustClass, build_reusable_context_selections,
 };
+use peritus_policy::ActorRole;
 use peritus_role::{ContextClass, HarnessRole};
 use peritus_run_knowledge::{
     CandidateIdentity, CurrentKnowledgeState, InvalidationRequest, KnowledgeBinding,
@@ -33,12 +34,16 @@ const fn digest(byte: u8) -> Sha256Digest {
 }
 
 fn candidate() -> CandidateIdentity {
+    candidate_at(1)
+}
+
+fn candidate_at(checkpoint_sequence: u64) -> CandidateIdentity {
     CandidateIdentity::new(
         RunId::new([31; 16]).expect("run"),
         WorkspaceId::new([32; 16]).expect("workspace"),
         digest(33),
         1,
-        1,
+        checkpoint_sequence,
     )
     .expect("candidate")
 }
@@ -60,7 +65,15 @@ fn section_text(byte: u8, source_changed: bool) -> String {
 }
 
 fn knowledge_snapshot(source_a_digest: u8, source_changed: bool) -> RunKnowledgeSnapshot {
-    let identity = candidate();
+    knowledge_snapshot_for(candidate(), HarnessRole::Writer, source_a_digest, source_changed)
+}
+
+fn knowledge_snapshot_for(
+    identity: CandidateIdentity,
+    role: HarnessRole,
+    source_a_digest: u8,
+    source_changed: bool,
+) -> RunKnowledgeSnapshot {
     let source_a = SourceDigest::new(source_id(1), digest(source_a_digest));
     let source_b = SourceDigest::new(source_id(2), digest(12));
     let definitions = [
@@ -83,8 +96,7 @@ fn knowledge_snapshot(source_a_digest: u8, source_changed: bool) -> RunKnowledge
         .map(|(byte, kind, sources, dependencies)| {
             let text = section_text(byte, source_changed);
             let binding =
-                KnowledgeBinding::new(identity, HarnessRole::Writer, 1, sources, limits())
-                    .expect("binding");
+                KnowledgeBinding::new(identity, role, 1, sources, limits()).expect("binding");
             KnowledgeSection::new(
                 section_id(byte),
                 kind,
@@ -98,7 +110,7 @@ fn knowledge_snapshot(source_a_digest: u8, source_changed: bool) -> RunKnowledge
         .collect();
     RunKnowledgeSnapshot::new(
         identity,
-        HarnessRole::Writer,
+        role,
         section_id(1),
         section_id(2),
         section_id(3),
@@ -109,6 +121,14 @@ fn knowledge_snapshot(source_a_digest: u8, source_changed: bool) -> RunKnowledge
 }
 
 fn context_graph(source_changed: bool) -> peritus_context::ContextGraph {
+    context_graph_for(source_changed, ContextClass::RepositorySource, &writer_roles())
+}
+
+fn context_graph_for(
+    source_changed: bool,
+    class: ContextClass,
+    visibility: &peritus_context::RoleVisibility,
+) -> peritus_context::ContextGraph {
     graph(
         (1..=8)
             .map(|byte| {
@@ -119,13 +139,13 @@ fn context_graph(source_changed: bool) -> peritus_context::ContextGraph {
                     Provenance::Repository,
                     AuthorityClass::NonAuthoritative,
                     TrustClass::Constrained,
-                    ContextClass::RepositorySource,
+                    class,
                     ContentKind::RepositorySource,
                     8,
                     u64::from(byte),
                     RequirementMode::Optional,
                     0,
-                    writer_roles(),
+                    visibility.clone(),
                     Vec::new(),
                 )
             })
@@ -190,4 +210,106 @@ fn changed_source_requires_new_digest_bound_context_before_selection() {
     )
     .expect("fresh context selection");
     assert_eq!(selections.len(), 8);
+}
+
+#[test]
+fn packet_binding_uses_the_complete_candidate_identity() {
+    let snapshot = knowledge_snapshot(11, false);
+    let later_candidate = candidate_at(2);
+    let later = knowledge_snapshot_for(later_candidate, HarnessRole::Writer, 11, false);
+    let state = CurrentKnowledgeState::new(later_candidate, source_catalog(11), limits())
+        .expect("later state");
+    let request = InvalidationRequest::new(state, KnowledgeChange::SameRevision, Vec::new())
+        .expect("request");
+    let packet = plan_delta_packet(&later, &later, &request).expect("later packet");
+
+    assert_eq!(
+        build_reusable_context_selections(
+            &context_graph(false),
+            &snapshot,
+            &packet,
+            links().as_slice(),
+        )
+        .expect_err("checkpoint mismatch must fail before entry admission")
+        .kind(),
+        ContextErrorKind::KnowledgeRoleMismatch,
+    );
+}
+
+#[test]
+fn link_admission_rejects_duplicate_missing_and_absent_nodes() {
+    let snapshot = knowledge_snapshot(11, false);
+    let state = CurrentKnowledgeState::new(candidate(), source_catalog(11), limits())
+        .expect("current state");
+    let request = InvalidationRequest::new(state, KnowledgeChange::SameRevision, Vec::new())
+        .expect("request");
+    let packet = plan_delta_packet(&snapshot, &snapshot, &request).expect("packet");
+    let graph = context_graph(false);
+
+    let mut too_many = links();
+    too_many.push(KnowledgeContextLink::new(section_id(9), context_id(9)));
+    assert_eq!(
+        build_reusable_context_selections(&graph, &snapshot, &packet, too_many.as_slice())
+            .expect_err("link count is snapshot bounded")
+            .kind(),
+        ContextErrorKind::TooManyNodes,
+    );
+
+    let mut duplicate = links();
+    duplicate[1] = duplicate[0];
+    assert_eq!(
+        build_reusable_context_selections(&graph, &snapshot, &packet, duplicate.as_slice())
+            .expect_err("duplicate link")
+            .kind(),
+        ContextErrorKind::DuplicateValue,
+    );
+
+    let mut missing = links();
+    missing.remove(0);
+    assert_eq!(
+        build_reusable_context_selections(&graph, &snapshot, &packet, missing.as_slice())
+            .expect_err("missing link")
+            .kind(),
+        ContextErrorKind::KnowledgeContextLinkMissing,
+    );
+
+    let mut absent_node = links();
+    absent_node[0] = KnowledgeContextLink::new(section_id(1), context_id(9));
+    let error =
+        build_reusable_context_selections(&graph, &snapshot, &packet, absent_node.as_slice())
+            .expect_err("linked node must exist");
+    assert_eq!(error.kind(), ContextErrorKind::PlanNodeMissing);
+    assert_eq!(error.node_id(), Some(context_id(9)));
+}
+
+#[test]
+fn role_and_context_class_visibility_are_both_required() {
+    let identity = candidate();
+    let snapshot = knowledge_snapshot_for(identity, HarnessRole::Reviewer, 11, false);
+    let state =
+        CurrentKnowledgeState::new(identity, source_catalog(11), limits()).expect("reviewer state");
+    let request = InvalidationRequest::new(state, KnowledgeChange::SameRevision, Vec::new())
+        .expect("request");
+    let packet = plan_delta_packet(&snapshot, &snapshot, &request).expect("reviewer packet");
+
+    let actor_hidden = context_graph_for(false, ContextClass::RepositorySource, &writer_roles());
+    assert_eq!(
+        build_reusable_context_selections(&actor_hidden, &snapshot, &packet, links().as_slice(),)
+            .expect_err("actor visibility")
+            .kind(),
+        ContextErrorKind::KnowledgeRoleMismatch,
+    );
+
+    let reviewer_visible = peritus_context::RoleVisibility::new(
+        vec![ActorRole::Reviewer],
+        peritus_context::ContextLimits::new(32, 64, 8, 8).expect("context limits"),
+    )
+    .expect("reviewer visibility");
+    let class_hidden = context_graph_for(false, ContextClass::HiddenReasoning, &reviewer_visible);
+    assert_eq!(
+        build_reusable_context_selections(&class_hidden, &snapshot, &packet, links().as_slice(),)
+            .expect_err("class visibility")
+            .kind(),
+        ContextErrorKind::KnowledgeRoleMismatch,
+    );
 }

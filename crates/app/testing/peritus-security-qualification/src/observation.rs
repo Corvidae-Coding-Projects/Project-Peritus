@@ -2,7 +2,7 @@
 
 use std::collections::BTreeSet;
 
-use peritus_security_policy::IntegratedCandidate;
+use peritus_security_policy::{IntegratedCandidate, SecurityQualificationOutcome as CaseOutcome};
 use peritus_types::Sha256Digest;
 
 use crate::{
@@ -190,17 +190,6 @@ pub enum CaseFailure {
     AssertionFailed,
 }
 
-/// Derived terminal state of one production probe.
-#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub enum CaseOutcome {
-    /// Setup did not produce a subject and execution never began.
-    NotExecuted,
-    /// A fresh subject executed but the case or cleanup failed.
-    Failed,
-    /// Direct execution, assertions, resource bounds, and cleanup all passed.
-    Passed,
-}
-
 /// Complete fail-closed report for one catalog entry.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct CaseReport {
@@ -332,6 +321,10 @@ impl QualificationRun {
     #[must_use]
     pub fn all_passed(&self) -> bool {
         self.cases.iter().all(|case| case.outcome() == CaseOutcome::Passed)
+    }
+
+    pub(crate) fn admission_outcomes(&self) -> [CaseOutcome; H0_PRODUCTION_PROBE_COUNT] {
+        std::array::from_fn(|index| self.cases[index].outcome())
     }
 }
 

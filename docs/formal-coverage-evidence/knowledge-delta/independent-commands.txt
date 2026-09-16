@@ -1,0 +1,9 @@
+# Isolated cwd: /tmp/peritus-parent-obligations-proof.6ib_z8mo
+# Integrated cwd: /home/doll/Project-Peritus/.worktrees/formal-coverage
+# Source manifests use paths relative to crates/orchestration/peritus-run-knowledge.
+export CARGO_BUILD_JOBS=2 CCACHE_DISABLE=1 CARGO_TARGET_DIR=/home/doll/Project-Peritus/.worktrees/formal-coverage/target/formal-knowledge-parent
+# Both isolated and integrated exact sources:
+cargo verus verify --package peritus-run-knowledge --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20
+cargo test --package peritus-run-knowledge --all-features --locked
+# Integrated consumer regression check:
+cargo test --package peritus-context --locked --test reuse_matrix

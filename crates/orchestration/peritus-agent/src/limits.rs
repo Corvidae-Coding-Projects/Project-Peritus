@@ -1,6 +1,9 @@
 //! Checked local limits and monotonic counters.
 
 use crate::{AgentErrorCode, AgentOperation, AgentRecovery, AgentRejection};
+use vstd::prelude::*;
+
+verus! {
 
 /// Local hard-limit dimension.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -13,6 +16,8 @@ pub enum AgentLimitDimension {
     ConcurrentToolCalls,
     Transitions,
 }
+
+} // verus!
 
 /// Fully checked local D0 limits. These supplement, never replace, B1 budgets.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

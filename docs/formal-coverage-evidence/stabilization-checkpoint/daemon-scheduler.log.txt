@@ -1,0 +1,7 @@
+
+running 2 tests
+test authority::owner::orchestrator::children_tests::d3::scheduler_stale_fence_does_not_append_or_claim_success ... ok
+test authority::owner::orchestrator::children_tests::d3::scheduler_lifecycle_retries_exactly_across_restart ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 175 filtered out; finished in 0.02s
+

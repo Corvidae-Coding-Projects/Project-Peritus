@@ -27,9 +27,6 @@ pub(super) fn validate(
     diagnostics: &mut Vec<Diagnostic>,
 ) -> Result<(), XtaskError> {
     validate_envelope(document, diagnostics);
-    if enforce_review_base && authorization::validate(context, document, diagnostics)? {
-        return Ok(());
-    }
     let expected = expected_sources(context, compilation_sources);
     let changes = validate_changes(context, actors, document, diagnostics);
     verdict::validate_directory(context.root, document, diagnostics);
@@ -390,6 +387,12 @@ mod checker_binding;
 mod evidence;
 #[path = "manifest_impact/inventory.rs"]
 mod inventory;
+#[path = "manifest_impact/phase.rs"]
+mod phase;
+pub(super) use phase::{is_authorization_phase, validate_authorization};
+#[path = "manifest_impact/snapshot.rs"]
+mod snapshot;
+pub(crate) use snapshot::render as render_snapshot;
 #[path = "manifest_impact/review_base.rs"]
 mod review_base;
 #[path = "manifest_impact/verdict.rs"]

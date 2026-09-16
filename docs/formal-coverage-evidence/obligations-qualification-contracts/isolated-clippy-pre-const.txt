@@ -1,0 +1,21 @@
+    Checking peritus-obligations v0.0.2 (/tmp/peritus-parent-obligations-proof.6ib_z8mo/crates/orchestration/peritus-obligations)
+error: this could be a `const fn`
+  --> crates/orchestration/peritus-obligations/tests/qualification_contracts.rs:26:1
+   |
+26 | / fn details(
+27 | |     error: ObligationError,
+28 | | ) -> (ObligationErrorKind, Option<RequirementId>, Option<u64>, Option<u64>) {
+29 | |     (error.kind(), error.requirement_id(), error.expected(), error.actual())
+30 | | }
+   | |_^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#missing_const_for_fn
+   = note: `-D clippy::missing-const-for-fn` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::missing_const_for_fn)]`
+help: make the function `const`
+   |
+26 | const fn details(
+   | +++++
+
+error: could not compile `peritus-obligations` (test "qualification_contracts") due to 1 previous error
+warning: build failed, waiting for other jobs to finish...

@@ -13,6 +13,12 @@ pub struct CompletionPolicy {
 }
 
 impl CompletionPolicy {
+    /// Specification view of the configured gate-attempt limit.
+    pub closed spec fn spec_max_gate_attempts(&self) -> u16 { self.max_gate_attempts }
+
+    /// Specification view of the configured review-cycle limit.
+    pub closed spec fn spec_max_review_cycles(&self) -> u16 { self.max_review_cycles }
+
     /// Creates nonzero gate-attempt and review-cycle limits.
     ///
     /// # Errors
@@ -21,7 +27,15 @@ impl CompletionPolicy {
     pub const fn new(
         max_gate_attempts: u16,
         max_review_cycles: u16,
-    ) -> Result<Self, SpecError> {
+    ) -> (result: Result<Self, SpecError>)
+        ensures
+            result.is_ok() == (max_gate_attempts > 0 && max_review_cycles > 0),
+            match result {
+                Ok(policy) => policy.spec_max_gate_attempts() == max_gate_attempts
+                    && policy.spec_max_review_cycles() == max_review_cycles,
+                Err(_) => true,
+            },
+    {
         if max_gate_attempts == 0 {
             return Err(SpecError::ZeroLimit(LimitKind::GateAttempts));
         }
@@ -33,11 +47,15 @@ impl CompletionPolicy {
 
     /// Returns the maximum permitted attempts for one gate.
     #[must_use]
-    pub const fn max_gate_attempts(&self) -> u16 { self.max_gate_attempts }
+    pub const fn max_gate_attempts(&self) -> (result: u16)
+        ensures result == self.spec_max_gate_attempts()
+    { self.max_gate_attempts }
 
     /// Returns the maximum writer/reviewer/fixer cycles.
     #[must_use]
-    pub const fn max_review_cycles(&self) -> u16 { self.max_review_cycles }
+    pub const fn max_review_cycles(&self) -> (result: u16)
+        ensures result == self.spec_max_review_cycles()
+    { self.max_review_cycles }
 }
 
 } // verus!

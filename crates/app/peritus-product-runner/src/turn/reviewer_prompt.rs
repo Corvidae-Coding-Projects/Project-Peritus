@@ -1,6 +1,8 @@
 //! Independent reviewer instructions and exact evidence projection.
 
 use super::{ReviewerPrompt, evidence};
+use peritus_agent::{DeveloperLoopError, estimate_developer_request_tokens};
+use peritus_model_protocol::{BoundedText, ContentBlock, Message, ProtocolLimits, Role};
 use std::time::Duration;
 
 pub fn reviewer_system(remaining: Duration) -> String {
@@ -20,16 +22,50 @@ pub struct ReviewDelivery {
     pub effect_requirement: crate::delivery_requirement::ExternalEffectRequirement,
 }
 
-pub fn reviewer_user(prompt: &ReviewerPrompt<'_>) -> String {
+/// Bounds the initial evidence after charging the system policy, prompt framing and tools.
+///
+/// # Errors
+/// Rejects excessive protocol text or a profile with no room for independent review evidence.
+pub fn reviewer_user(prompt: &ReviewerPrompt<'_>) -> Result<String, DeveloperLoopError> {
+    let empty = evidence::project(0, 0, [""; 6]);
+    let framing = render(prompt, &empty);
+    let messages = [(Role::System, prompt.system), (Role::User, framing.as_str())]
+        .into_iter()
+        .map(|(role, text)| {
+            Message::new(
+                role,
+                vec![ContentBlock::Text(BoundedText::new(
+                    text.to_owned(),
+                    ProtocolLimits::PRODUCTION,
+                )?)],
+                ProtocolLimits::PRODUCTION,
+            )
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    let framing_tokens = estimate_developer_request_tokens(&messages, prompt.tools);
+    let request_target = evidence::request_target(prompt.max_input_tokens);
+    if framing_tokens >= request_target {
+        return Err(DeveloperLoopError::Context(format!(
+            "reviewer policy and tool framing use {framing_tokens} estimated tokens; the {}-token profile has no initial evidence headroom within the {request_target}-token review target",
+            prompt.max_input_tokens
+        )));
+    }
     let projected = evidence::project(
         prompt.max_input_tokens,
-        prompt.transcript,
-        prompt.diff,
-        prompt.gates,
-        prompt.developer_evidence,
-        prompt.prior,
-        prompt.correction.unwrap_or_default(),
+        framing_tokens,
+        [
+            prompt.transcript,
+            prompt.diff,
+            prompt.gates,
+            prompt.developer_evidence,
+            prompt.prior,
+            prompt.correction.unwrap_or_default(),
+        ],
     );
+    Ok(render(prompt, &projected))
+}
+
+fn render(prompt: &ReviewerPrompt<'_>, projected: &evidence::ReviewerEvidence) -> String {
     let correction = if projected.correction.is_empty() {
         String::new()
     } else {

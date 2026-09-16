@@ -1,0 +1,577 @@
+diff -ruN /tmp/peritus-parent-knowledge-admission-source/src/delta.rs /tmp/peritus-sol-knowledge-errors-source-01/crates/orchestration/peritus-run-knowledge/src/delta.rs
+--- /tmp/peritus-parent-knowledge-admission-source/src/delta.rs	2026-09-12 17:30:57.182092769 -0500
++++ /tmp/peritus-sol-knowledge-errors-source-01/crates/orchestration/peritus-run-knowledge/src/delta.rs	2026-09-12 18:20:47.458248182 -0500
+@@ -30,21 +30,35 @@
+         result.is_ok() == crate::model::delta_inputs_valid(previous, current, request),
+         match result {
+             Ok(packet) => packet.spec_refines(previous, current, request),
+-            Err(_) => true,
++            Err(error) => crate::model::delta_planning_error(
++                previous, current, request, error),
+         },
+ {
+     if !crate::binding::roles_match(previous.role(), current.role()) {
+         assert(!crate::model::delta_inputs_valid(previous, current, request));
+-        return Err(KnowledgeError::plain(KnowledgeErrorKind::RoleMismatch));
++        let error = KnowledgeError::plain(KnowledgeErrorKind::RoleMismatch);
++        assert(crate::model::delta_planning_error(previous, current, request, error));
++        return Err(error);
+     }
+     let candidate_matches = material::candidates_match(
+         current.candidate(), request.state().candidate());
+     if !candidate_matches {
+         assert(!crate::model::delta_inputs_valid(previous, current, request));
+-        return Err(KnowledgeError::plain(KnowledgeErrorKind::CurrentSnapshotStale));
++        let error = KnowledgeError::plain(KnowledgeErrorKind::CurrentSnapshotStale);
++        assert(crate::model::delta_planning_error(previous, current, request, error));
++        return Err(error);
+     }
+-    validate_current_snapshot(current, request)?;
+-    let prior_plan = plan_invalidation(previous, request)?;
++    if let Err(error) = validate_current_snapshot(current, request) {
++        assert(crate::model::delta_planning_error(previous, current, request, error));
++        return Err(error);
++    }
++    let prior_plan = match plan_invalidation(previous, request) {
++        Err(error) => {
++            assert(crate::model::delta_planning_error(previous, current, request, error));
++            return Err(error);
++        },
++        Ok(plan) => plan,
++    };
+     assert(crate::model::delta_inputs_valid(previous, current, request));
+     Ok(build_delta_packet(previous, current, request, &prior_plan))
+ }
+@@ -53,8 +67,14 @@
+     current: &RunKnowledgeSnapshot,
+     request: &InvalidationRequest,
+ ) -> (result: Result<(), KnowledgeError>)
+-    ensures result.is_ok()
+-        == crate::model::current_snapshot_fresh(current, &request.spec_state()),
++    ensures
++        result.is_ok()
++            == crate::model::current_snapshot_fresh(current, &request.spec_state()),
++        match result {
++            Err(error) => crate::model::current_snapshot_error(
++                current, &request.spec_state(), error),
++            Ok(()) => true,
++        },
+ {
+     let cloned_state = request.state().clone();
+     let current_request = InvalidationRequest::same_revision(cloned_state);
+@@ -78,21 +98,64 @@
+         invariant
+             current_index <= current_entries.len(),
+             current_entries@ == current_plan.spec_entries(),
++            crate::model::normalized_same_revision(
++                &current_request, request.spec_state()),
++            crate::model::entries_are_exact_prefix(
++                current, &current_request, current_plan.spec_entries()),
+             crate::model::all_actual_entries_reused(current_plan.spec_entries())
+                 == crate::model::current_snapshot_fresh(current, &request.spec_state()),
+             forall |prior: int| 0 <= prior < current_index ==>
+                 #[trigger] current_entries@[prior].spec_decision().spec_is_reuse(),
++            forall |prior: int| 0 <= prior < current_index ==>
++                crate::model::current_section_fresh(
++                    current,
++                    #[trigger] &current.spec_sections()[prior],
++                    &request.spec_state(),
++                ),
+         decreases current_entries.len() - current_index,
+     {
+-        if !current_entries[current_index].decision().is_reuse() {
++        let entry = current_entries[current_index];
++        proof {
++            crate::model::normalized_actual_entry_reuse_matches_freshness(
++                current,
++                &current_request,
++                request.spec_state(),
++                current_plan.spec_entries(),
++                current_index as int,
++            );
++        }
++        if !entry.decision().is_reuse() {
+             assert(!crate::model::all_actual_entries_reused(current_plan.spec_entries())) by {
+                 let witness = current_index as int;
+             }
+-            return Err(KnowledgeError::section(
+-                KnowledgeErrorKind::CurrentSnapshotStale,
+-                current_entries[current_index].section_id(),
++            assert(!crate::model::current_section_fresh(
++                current,
++                &current.spec_sections()[current_index as int],
++                &request.spec_state(),
+             ));
++            assert(entry.spec_section_id().spec_matches(
++                &current.spec_sections()[current_index as int].spec_id()));
++            proof {
++                KnowledgeSectionId::matches_implies_equal(
++                    &entry.spec_section_id(),
++                    &current.spec_sections()[current_index as int].spec_id(),
++                );
++            }
++            let error = KnowledgeError::section(
++                KnowledgeErrorKind::CurrentSnapshotStale,
++                entry.section_id(),
++            );
++            assert(crate::model::current_snapshot_error(
++                current, &request.spec_state(), error)) by {
++                let first = current_index as int;
++            }
++            return Err(error);
+         }
++        assert(crate::model::current_section_fresh(
++            current,
++            &current.spec_sections()[current_index as int],
++            &request.spec_state(),
++        ));
+         current_index += 1;
+     }
+     Ok(())
+diff -ruN /tmp/peritus-parent-knowledge-admission-source/src/identity.rs /tmp/peritus-sol-knowledge-errors-source-01/crates/orchestration/peritus-run-knowledge/src/identity.rs
+--- /tmp/peritus-parent-knowledge-admission-source/src/identity.rs	2026-09-12 17:59:07.051591798 -0500
++++ /tmp/peritus-sol-knowledge-errors-source-01/crates/orchestration/peritus-run-knowledge/src/identity.rs	2026-09-12 18:14:00.095879963 -0500
+@@ -87,6 +87,15 @@
+     {
+     }
+ 
++    /// Converts exact byte matching to structural section-identity equality.
++    pub(crate) proof fn matches_implies_equal(left: &Self, right: &Self)
++        requires left.spec_matches(right),
++        ensures *left == *right,
++    {
++        assert(left.spec_bytes() == right.spec_bytes());
++        assert(left.0 == right.0);
++    }
++
+     /// Composes exact section-identity equality inside proofs.
+     pub(crate) proof fn matches_transitive(left: &Self, middle: &Self, right: &Self)
+         requires left.spec_matches(middle), middle.spec_matches(right),
+diff -ruN /tmp/peritus-parent-knowledge-admission-source/src/model/delta/errors.rs /tmp/peritus-sol-knowledge-errors-source-01/crates/orchestration/peritus-run-knowledge/src/model/delta/errors.rs
+--- /tmp/peritus-parent-knowledge-admission-source/src/model/delta/errors.rs	1969-12-31 18:00:00.000000000 -0600
++++ /tmp/peritus-sol-knowledge-errors-source-01/crates/orchestration/peritus-run-knowledge/src/model/delta/errors.rs	2026-09-12 18:18:33.456803215 -0500
+@@ -0,0 +1,151 @@
++//! Exact invalidation and delta-planner error correspondence.
++
++use super::*;
++use crate::{
++    CurrentKnowledgeState, InvalidationRequest, KnowledgeError, KnowledgeErrorKind,
++    PlannedKnowledge, RunKnowledgeSnapshot,
++};
++use vstd::prelude::*;
++
++verus! {
++
++/// Exact first stale current section and complete planner error payload.
++pub open spec fn current_snapshot_error(
++    snapshot: &RunKnowledgeSnapshot,
++    state: &CurrentKnowledgeState,
++    error: KnowledgeError,
++) -> bool {
++    exists |index: int| 0 <= index < snapshot.spec_sections().len()
++        && (forall |prior: int| 0 <= prior < index ==>
++            current_section_fresh(
++                snapshot,
++                #[trigger] &snapshot.spec_sections()[prior],
++                state,
++            ))
++        && !current_section_fresh(
++            snapshot,
++            #[trigger] &snapshot.spec_sections()[index],
++            state,
++        )
++        && error.spec_section(
++            KnowledgeErrorKind::CurrentSnapshotStale,
++            snapshot.spec_sections()[index].spec_id(),
++        )
++}
++
++/// Exact top-level delta-planning error precedence and complete optional fields.
++pub open spec fn delta_planning_error(
++    previous: &RunKnowledgeSnapshot,
++    current: &RunKnowledgeSnapshot,
++    request: &InvalidationRequest,
++    error: KnowledgeError,
++) -> bool {
++    if previous.spec_role() != current.spec_role() {
++        error.spec_plain(KnowledgeErrorKind::RoleMismatch)
++    } else if !crate::model::candidates_match(
++        &current.spec_candidate(),
++        &request.spec_state().spec_candidate(),
++    ) {
++        error.spec_plain(KnowledgeErrorKind::CurrentSnapshotStale)
++    } else if !current_snapshot_fresh(current, &request.spec_state()) {
++        current_snapshot_error(current, &request.spec_state(), error)
++    } else {
++        crate::model::clarification_targets_error(previous, request, error)
++    }
++}
++
++proof fn all_actual_reused_after_push(
++    entries: Seq<PlannedKnowledge>,
++    entry: PlannedKnowledge,
++)
++    ensures all_actual_entries_reused(entries.push(entry))
++        == (all_actual_entries_reused(entries) && entry.spec_decision().spec_is_reuse()),
++{
++    if all_actual_entries_reused(entries.push(entry)) {
++        assert forall |index: int| 0 <= index < entries.len() implies
++            #[trigger] entries[index].spec_decision().spec_is_reuse() by {
++            assert(entries.push(entry)[index] == entries[index]);
++        }
++        assert(entries.push(entry).last() == entry);
++    }
++    if all_actual_entries_reused(entries) && entry.spec_decision().spec_is_reuse() {
++        assert forall |index: int| 0 <= index < entries.push(entry).len() implies
++            #[trigger] entries.push(entry)[index].spec_decision().spec_is_reuse() by {
++            if index < entries.len() {
++                assert(entries.push(entry)[index] == entries[index]);
++            } else {
++                assert(index == entries.len());
++                assert(entries.push(entry)[index] == entry);
++            }
++        }
++    }
++}
++
++/// At the first executable non-reuse decision, normalized planning identifies the exact stale
++/// input section.
++pub proof fn normalized_actual_entry_reuse_matches_freshness(
++    snapshot: &RunKnowledgeSnapshot,
++    request: &InvalidationRequest,
++    state: CurrentKnowledgeState,
++    entries: Seq<PlannedKnowledge>,
++    index: int,
++)
++    requires
++        normalized_same_revision(request, state),
++        crate::model::entries_are_exact_prefix(snapshot, request, entries),
++        0 <= index < entries.len(),
++        forall |prior: int| 0 <= prior < index ==>
++            #[trigger] entries[prior].spec_decision().spec_is_reuse(),
++    ensures entries[index].spec_decision().spec_is_reuse()
++        == current_section_fresh(
++            snapshot,
++            &snapshot.spec_sections()[index],
++            &state,
++        ),
++{
++    let prior = entries.take(index);
++    let through = entries.take(index + 1);
++    crate::model::restrict_exact_prefix(snapshot, request, entries, index);
++    crate::model::restrict_exact_prefix(snapshot, request, entries, index + 1);
++    plan_matches_exact_entries(snapshot, request, prior);
++    plan_matches_exact_entries(snapshot, request, through);
++    let model_prior = exact_plan_entries(snapshot, request, index as nat);
++    let model_through = exact_plan_entries(snapshot, request, (index + 1) as nat);
++    plan_all_reuse_matches(prior, model_prior);
++    plan_all_reuse_matches(through, model_through);
++    normalized_plan_reuse_matches_freshness(snapshot, request, state, index as nat);
++    normalized_plan_reuse_matches_freshness(snapshot, request, state, (index + 1) as nat);
++    assert(all_actual_entries_reused(prior)) by {
++        assert forall |prior_index: int| 0 <= prior_index < prior.len() implies
++            #[trigger] prior[prior_index].spec_decision().spec_is_reuse() by {
++            assert(prior[prior_index] == entries[prior_index]);
++        }
++    }
++    assert(through == prior.push(entries[index]));
++    all_actual_reused_after_push(prior, entries[index]);
++    assert((forall |prior_index: int| 0 <= prior_index < index ==>
++        current_section_fresh(
++            snapshot,
++            #[trigger] &snapshot.spec_sections()[prior_index],
++            &state,
++        )));
++    if current_section_fresh(
++        snapshot,
++        &snapshot.spec_sections()[index],
++        &state,
++    ) {
++        assert forall |fresh_index: int| 0 <= fresh_index < index + 1 implies
++            current_section_fresh(
++                snapshot,
++                #[trigger] &snapshot.spec_sections()[fresh_index],
++                &state,
++            ) by {
++            if fresh_index < index {
++            } else {
++                assert(fresh_index == index);
++            }
++        }
++    }
++}
++
++} // verus!
+diff -ruN /tmp/peritus-parent-knowledge-admission-source/src/model/delta.rs /tmp/peritus-sol-knowledge-errors-source-01/crates/orchestration/peritus-run-knowledge/src/model/delta.rs
+--- /tmp/peritus-parent-knowledge-admission-source/src/model/delta.rs	2026-09-12 17:30:57.182486046 -0500
++++ /tmp/peritus-sol-knowledge-errors-source-01/crates/orchestration/peritus-run-knowledge/src/model/delta.rs	2026-09-12 18:17:02.259491787 -0500
+@@ -3,6 +3,8 @@
+ #[cfg(verus_only)]
+ mod correspondence;
+ #[cfg(verus_only)]
++mod errors;
++#[cfg(verus_only)]
+ mod plan;
+ 
+ #[cfg(verus_only)]
+@@ -11,6 +13,11 @@
+     plan_reuse_matches,
+ };
+ #[cfg(verus_only)]
++pub use errors::{
++    current_snapshot_error, delta_planning_error,
++    normalized_actual_entry_reuse_matches_freshness,
++};
++#[cfg(verus_only)]
+ pub use plan::{
+     all_actual_entries_reused, all_entries_reused, current_plan_all_reuse_matches_freshness,
+     current_section_fresh, current_snapshot_fresh, exact_plan_entries, exact_plan_reuses,
+diff -ruN /tmp/peritus-parent-knowledge-admission-source/src/model.rs /tmp/peritus-sol-knowledge-errors-source-01/crates/orchestration/peritus-run-knowledge/src/model.rs
+--- /tmp/peritus-parent-knowledge-admission-source/src/model.rs	2026-09-12 17:53:04.994868155 -0500
++++ /tmp/peritus-sol-knowledge-errors-source-01/crates/orchestration/peritus-run-knowledge/src/model.rs	2026-09-12 18:17:22.540559900 -0500
+@@ -25,15 +25,16 @@
+ pub use delta::{
+     all_actual_entries_reused, all_delta_entries_exact, all_delta_entries_exact_prefix,
+     all_entries_reused, changed_fact_count,
+-    current_reference_count, current_snapshot_fresh, delta_delivery,
++    current_reference_count, current_section_fresh, current_snapshot_fresh, delta_delivery,
+     delta_counts_after_push, delta_inputs_valid, exact_plan_entries,
+     exact_plan_reuses, invalidated_prior_count, navigation_count,
+     current_plan_all_reuse_matches_freshness, delta_prefix_after_push, delta_prefix_complete,
+     delta_prefix_entry_at, normalized_plan_reuse_matches_freshness, normalized_same_revision,
+     plan_all_reuse_matches,
+     plan_entries_after_push, plan_entries_match, plan_invalidated_count_matches,
+-    plan_matches_exact_entries,
++    plan_matches_exact_entries, normalized_actual_entry_reuse_matches_freshness,
+     plan_reuse_matches,
++    current_snapshot_error, delta_planning_error,
+ };
+ #[cfg(verus_only)]
+ pub use topology::{
+@@ -48,8 +49,9 @@
+ 
+ #[cfg(verus_only)]
+ use crate::{
+-    InvalidationReason, InvalidationRequest, KnowledgeChange, KnowledgeSection,
+-    KnowledgeSectionId, PlannedKnowledge, ReuseDecision, RunKnowledgeSnapshot, SourceDigest,
++    InvalidationReason, InvalidationRequest, KnowledgeChange, KnowledgeError,
++    KnowledgeErrorKind, KnowledgeSection, KnowledgeSectionId, PlannedKnowledge, ReuseDecision,
++    RunKnowledgeSnapshot, SourceDigest,
+ };
+ use vstd::prelude::*;
+ 
+@@ -263,6 +265,29 @@
+             )
+ }
+ 
++/// Exact first invalid clarification target and complete planner error payload.
++pub open spec fn clarification_targets_error(
++    snapshot: &RunKnowledgeSnapshot,
++    request: &InvalidationRequest,
++    error: KnowledgeError,
++) -> bool {
++    request.spec_change() == KnowledgeChange::UserClarification
++        && exists |target: int| 0 <= target < request.spec_affected_sections().len()
++            && (forall |prior: int| 0 <= prior < target ==>
++                clarification_target_valid(
++                    snapshot.spec_sections(),
++                    #[trigger] request.spec_affected_sections()[prior],
++                ))
++            && !clarification_target_valid(
++                snapshot.spec_sections(),
++                #[trigger] request.spec_affected_sections()[target],
++            )
++            && error.spec_section(
++                KnowledgeErrorKind::InvalidClarificationTarget,
++                request.spec_affected_sections()[target],
++            )
++}
++
+ /// Number of reused entries in an exact plan sequence.
+ pub open spec fn reused_count(entries: Seq<PlannedKnowledge>) -> nat
+     decreases entries.len(),
+@@ -325,4 +350,30 @@
+             )
+ }
+ 
++/// Restricting an actual exact plan preserves exact input-defined prefix correspondence.
++pub proof fn restrict_exact_prefix(
++    snapshot: &RunKnowledgeSnapshot,
++    request: &InvalidationRequest,
++    entries: Seq<PlannedKnowledge>,
++    end: int,
++)
++    requires
++        entries_are_exact_prefix(snapshot, request, entries),
++        0 <= end <= entries.len(),
++    ensures entries_are_exact_prefix(snapshot, request, entries.take(end)),
++{
++    assert forall |index: int| 0 <= index < entries.take(end).len() implies
++        entries.take(end)[index].spec_section_id()
++            .spec_matches(&snapshot.spec_sections()[index].spec_id())
++        && entries.take(end)[index].spec_decision() == planned_decision(
++            snapshot,
++            &snapshot.spec_sections()[index],
++            request,
++            entries.take(end).take(index),
++        ) by {
++        assert(entries.take(end)[index] == entries[index]);
++        assert(entries.take(end).take(index) == entries.take(index));
++    }
++}
++
+ } // verus!
+diff -ruN /tmp/peritus-parent-knowledge-admission-source/src/plan/evaluation.rs /tmp/peritus-sol-knowledge-errors-source-01/crates/orchestration/peritus-run-knowledge/src/plan/evaluation.rs
+--- /tmp/peritus-parent-knowledge-admission-source/src/plan/evaluation.rs	2026-09-12 17:30:57.182714196 -0500
++++ /tmp/peritus-sol-knowledge-errors-source-01/crates/orchestration/peritus-run-knowledge/src/plan/evaluation.rs	2026-09-12 18:14:00.279880581 -0500
+@@ -13,7 +13,12 @@
+     snapshot: &RunKnowledgeSnapshot,
+     request: &InvalidationRequest,
+ ) -> (result: Result<(), KnowledgeError>)
+-    ensures result.is_ok() == crate::model::clarification_targets_valid(snapshot, request),
++    ensures
++        result.is_ok() == crate::model::clarification_targets_valid(snapshot, request),
++        match result {
++            Err(error) => crate::model::clarification_targets_error(snapshot, request, error),
++            Ok(()) => true,
++        },
+ {
+     if !request.change().is_user_clarification() {
+         return Ok(());
+@@ -39,10 +44,15 @@
+                 assert(!crate::model::clarification_target_valid(
+                     snapshot.spec_sections(), targets@[witness]));
+             }
+-            return Err(KnowledgeError::section(
++            let error = KnowledgeError::section(
+                 KnowledgeErrorKind::InvalidClarificationTarget,
+                 target,
+-            ));
++            );
++            assert(crate::model::clarification_targets_error(
++                snapshot, request, error)) by {
++                let first = index as int;
++            }
++            return Err(error);
+         }
+         index += 1;
+     }
+diff -ruN /tmp/peritus-parent-knowledge-admission-source/src/plan.rs /tmp/peritus-sol-knowledge-errors-source-01/crates/orchestration/peritus-run-knowledge/src/plan.rs
+--- /tmp/peritus-parent-knowledge-admission-source/src/plan.rs	2026-09-12 17:30:57.181813356 -0500
++++ /tmp/peritus-sol-knowledge-errors-source-01/crates/orchestration/peritus-run-knowledge/src/plan.rs	2026-09-12 18:14:00.370880887 -0500
+@@ -272,7 +272,7 @@
+         result.is_ok() == crate::model::clarification_targets_valid(snapshot, request),
+         match result {
+             Ok(plan) => plan.spec_refines(snapshot, request),
+-            Err(_) => true,
++            Err(error) => crate::model::clarification_targets_error(snapshot, request, error),
+         },
+ {
+     proof {
+diff -ruN /tmp/peritus-parent-knowledge-admission-source/tests/delta_packet.rs /tmp/peritus-sol-knowledge-errors-source-01/crates/orchestration/peritus-run-knowledge/tests/delta_packet.rs
+--- /tmp/peritus-parent-knowledge-admission-source/tests/delta_packet.rs	2026-09-12 17:30:57.181338105 -0500
++++ /tmp/peritus-sol-knowledge-errors-source-01/crates/orchestration/peritus-run-knowledge/tests/delta_packet.rs	2026-09-12 18:19:47.504046805 -0500
+@@ -5,8 +5,8 @@
+ use peritus_role::HarnessRole;
+ use peritus_run_knowledge::{
+     CurrentKnowledgeState, DeltaDelivery, DeltaPacket, InvalidationRequest, KnowledgeBinding,
+-    KnowledgeChange, KnowledgeErrorKind, KnowledgeSection, KnowledgeSectionId, SourceDigest,
+-    plan_delta_packet,
++    KnowledgeChange, KnowledgeError, KnowledgeErrorKind, KnowledgeSection, KnowledgeSectionId,
++    SourceDigest, plan_delta_packet, plan_invalidation,
+ };
+ use peritus_run_settlement::CandidateIdentity;
+ use peritus_types::{RunId, Sha256Digest, WorkspaceId};
+@@ -21,6 +21,26 @@
+         .delivery()
+ }
+ 
++fn assert_plain_error(error: KnowledgeError, kind: KnowledgeErrorKind) {
++    assert_eq!(error.kind(), kind);
++    assert_eq!(error.section_id(), None);
++    assert_eq!(error.source_id(), None);
++    assert_eq!(error.expected(), None);
++    assert_eq!(error.actual(), None);
++}
++
++fn assert_section_error(
++    error: KnowledgeError,
++    kind: KnowledgeErrorKind,
++    section_id: KnowledgeSectionId,
++) {
++    assert_eq!(error.kind(), kind);
++    assert_eq!(error.section_id(), Some(section_id));
++    assert_eq!(error.source_id(), None);
++    assert_eq!(error.expected(), None);
++    assert_eq!(error.actual(), None);
++}
++
+ fn replace_section(
+     base: &peritus_run_knowledge::RunKnowledgeSnapshot,
+     target: KnowledgeSectionId,
+@@ -96,43 +116,50 @@
+     )
+     .expect("structurally valid request");
+ 
+-    assert_eq!(
++    assert_plain_error(
+         plan_delta_packet(&reviewer, &writer, &wrong_candidate_request)
+-            .expect_err("role mismatch has priority")
+-            .kind(),
++            .expect_err("role mismatch has priority"),
+         KnowledgeErrorKind::RoleMismatch,
+     );
+-    assert_eq!(
++    assert_plain_error(
+         plan_delta_packet(&writer, &writer, &wrong_candidate_request)
+-            .expect_err("candidate mismatch precedes target validation")
+-            .kind(),
++            .expect_err("candidate mismatch precedes target validation"),
+         KnowledgeErrorKind::CurrentSnapshotStale,
+     );
+ 
++    let source_a = SourceDigest::new(source_id(1), digest(11));
++    let incomplete_current_state = CurrentKnowledgeState::new(identity, vec![source_a], limits())
++        .expect("incomplete but canonical current state");
+     let stale_current_request = InvalidationRequest::new(
+-        state(identity, 13),
++        incomplete_current_state,
+         KnowledgeChange::UserClarification,
+-        vec![invalid_target],
++        vec![section_id(3), invalid_target],
+     )
+     .expect("structurally valid stale request");
+-    assert_eq!(
++    assert_section_error(
+         plan_delta_packet(&writer, &writer, &stale_current_request)
+-            .expect_err("current freshness precedes prior target validation")
+-            .kind(),
++            .expect_err("current freshness precedes prior target validation"),
+         KnowledgeErrorKind::CurrentSnapshotStale,
++        section_id(3),
+     );
+ 
+     let invalid_target_request = InvalidationRequest::new(
+         state(identity, 11),
+         KnowledgeChange::UserClarification,
+-        vec![invalid_target],
++        vec![section_id(3), invalid_target, section_id(10)],
+     )
+     .expect("structurally valid target request");
+-    assert_eq!(
++    assert_section_error(
++        plan_invalidation(&writer, &invalid_target_request)
++            .expect_err("planner reports the first invalid target"),
++        KnowledgeErrorKind::InvalidClarificationTarget,
++        invalid_target,
++    );
++    assert_section_error(
+         plan_delta_packet(&writer, &writer, &invalid_target_request)
+-            .expect_err("invalid prior target")
+-            .kind(),
++            .expect_err("invalid prior target"),
+         KnowledgeErrorKind::InvalidClarificationTarget,
++        invalid_target,
+     );
+ }
+ 

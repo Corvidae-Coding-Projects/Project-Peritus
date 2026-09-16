@@ -1,0 +1,23 @@
+{"candidate_commit": "65f16e2933b70305de865750931bb05fe9afb64d", "candidate_tree": "ae2a43f9a9b73f5fec944d39cf165a8b3ec4df20", "environment": {"CARGO_BUILD_JOBS": "1", "CCACHE_DISABLE": "1", "RUST_TEST_THREADS": "1"}, "gate": {"command": "cargo test --package peritus-tools-quality --all-targets --all-features --locked", "invocation": ["cargo", "test", "--package", "peritus-tools-quality", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "output": "123-peritus-tools-quality-ordinary-test.log", "owning_crate": "peritus-tools-quality", "started_at": "2026-09-13T15:21:58.390773Z"}, "plan_sha256": "7fc101b7f8284fbe3818461a8166d73d3425f369120b43c1cbf1b43809a6b7c9"}
+
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.18s
+     Running unittests src/lib.rs (target/debug/deps/peritus_tools_quality-a1fe9ecebc36e1cc)
+
+running 12 tests
+test acceptance::tests::all_execution_relevant_fields_change_the_binding ... ok
+test catalog::tests::catalog_refines_b1_classes_exactly ... ok
+test discovery::cargo::tests::invalid_manifest_is_not_discovery_success ... ok
+test discovery::just::tests::finds_only_public_zero_argument_recipes ... ok
+test discovery::tests::real_temporary_project_discovers_cargo_and_just_surfaces ... ok
+test error::tests::diagnostic_cap_preserves_utf8_boundaries ... ok
+test parser::tests::json_parser_never_passes_invalid_or_incomplete_output ... ok
+test parser::tests::json_success_requires_an_explicit_true_member ... ok
+test result::tests::contradictory_failure_envelopes_are_malformed_and_never_retryable ... ok
+test result::tests::malformed_or_open_terminal_values_fail_closed ... ok
+test result::tests::status_failure_and_structured_outcome_matrix_is_closed ... ok
+test result::tests::structured_quality_terminal_decodes_all_required_provenance ... ok
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+GATE DRIVER RESULT: {"command": "cargo test --package peritus-tools-quality --all-targets --all-features --locked", "command_exit_code": 0, "elapsed_seconds": 0.265, "exit_code": 0, "finished_at": "2026-09-13T15:21:58.657042Z", "invocation": ["cargo", "test", "--package", "peritus-tools-quality", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "output": "123-peritus-tools-quality-ordinary-test.log", "owning_crate": "peritus-tools-quality", "result": "passed", "started_at": "2026-09-13T15:21:58.390773Z"}

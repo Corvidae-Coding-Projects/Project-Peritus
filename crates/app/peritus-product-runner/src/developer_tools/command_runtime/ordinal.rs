@@ -17,7 +17,9 @@ use super::{contract, identity};
 pub(super) fn reserve(root: &Path, run_id: RunId, after: u64) -> Result<u64, String> {
     let mut connection =
         Connection::open(root.join("command-ordinals.sqlite3")).map_err(|error| detail(&error))?;
-    connection.busy_timeout(Duration::from_millis(250)).map_err(|error| detail(&error))?;
+    // Independent runtimes share this writer lock. Allow durable commits and
+    // scheduling delays under contention without failing after only 250 ms.
+    connection.busy_timeout(Duration::from_secs(5)).map_err(|error| detail(&error))?;
     // EXTRA also syncs the rollback-journal directory after commit. FULL alone
     // can lose the last acknowledged reservation on power loss in DELETE mode.
     connection.pragma_update(None, "synchronous", "EXTRA").map_err(|error| detail(&error))?;
@@ -129,6 +131,44 @@ mod tests {
     fn independent_threads_reserve_distinct_numbers() {
         for initialized in [false, true] {
             concurrent_reservations(initialized);
+        }
+    }
+
+    #[test]
+    fn transient_writer_contention_waits_for_a_durable_reservation() {
+        for initialized in [false, true] {
+            let root = tempfile::tempdir().expect("state directory");
+            let run = RunId::new([8; 16]).expect("run");
+            let offset =
+                if initialized { reserve(root.path(), run, 0).expect("initialize") } else { 0 };
+            let mut blocker = Connection::open(root.path().join("command-ordinals.sqlite3"))
+                .expect("open contending writer");
+            let transaction = blocker
+                .transaction_with_behavior(TransactionBehavior::Immediate)
+                .expect("hold writer lock");
+            let barrier = std::sync::Barrier::new(2);
+            let (sender, receiver) = std::sync::mpsc::sync_channel(1);
+            std::thread::scope(|scope| {
+                let worker = scope.spawn(|| {
+                    barrier.wait();
+                    sender.send(reserve(root.path(), run, 0)).expect("send reservation");
+                });
+                barrier.wait();
+                // A competing durable writer may outlive the old 250 ms budget.
+                // Keep its lock until the waiting reservation has had twice that long.
+                let while_locked = receiver.recv_timeout(Duration::from_millis(500));
+                transaction.commit().expect("release writer lock");
+                worker.join().expect("allocation thread");
+                assert!(
+                    matches!(while_locked, Err(std::sync::mpsc::RecvTimeoutError::Timeout)),
+                    "reservation completed while writer lock held: {while_locked:?}"
+                );
+                assert_eq!(
+                    receiver.recv().expect("reservation result").expect("reserved"),
+                    offset + 1
+                );
+            });
+            assert_eq!(reserve(root.path(), run, 0).expect("reopen after contention"), offset + 2);
         }
     }
 

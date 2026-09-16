@@ -1,0 +1,161 @@
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 1 test
+test public_extraction_retains_the_existing_canonical_digest ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 2 tests
+test evidence_currentness_checks_every_requirement_and_ledger_byte ... ok
+test canonical_paths_distinguish_the_last_byte_and_clone_retains_them ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 5 tests
+test external_effect_requires_public_boundary_completion ... ok
+test performance_requires_current_same_workload_measurement ... ok
+test malformed_html_claim_needs_a_real_browser_oracle ... ok
+test request_and_response_schema_fields_are_directional ... ok
+test lifecycle_simulation_cannot_replace_public_ingress ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 2 tests
+test only_candidate_defects_request_a_fixer_cycle ... ok
+test ambiguity_asks_once_and_non_code_failures_recover_or_settle ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 6 tests
+test condition_and_requirement_identity_errors_preserve_complete_details ... ok
+test ledger_clone_preserves_exact_binary_clause_provenance_and_each_path_role ... ok
+test public_extraction_retains_collection_and_interleaved_draft_error_priority ... ok
+test limits_and_public_source_preserve_exact_admission_and_error_details ... ok
+test public_extraction_retains_span_shape_path_and_alternative_error_priority ... ok
+test path_validation_retains_size_and_first_pair_error_precedence ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 4 tests
+test extraction_copies_binary_spans_and_matches_the_complete_identity ... ok
+test incomplete_alternative_groups_keep_first_ledger_occurrence_order ... ok
+test qualification_rejects_inputs_in_the_existing_public_error_order ... ok
+test qualification_report_partitions_actual_verdicts_and_alternative_completion ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 2 tests
+test improvement_noise_cannot_hide_a_large_regression ... ok
+test improvement_preserves_inclusive_and_full_width_boundaries ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 2 tests
+test qualification_keeps_first_error_and_every_payload_field ... ok
+test qualification_requires_every_active_member_and_one_whole_alternative_branch ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 5 tests
+test evidence_constructor_accepts_empty_and_rejects_noncanonical_identities ... ok
+test covers_is_exact_directional_required_field_membership ... ok
+test requirement_constructor_enforces_full_identity_order_and_error_priority ... ok
+test schema_field_retains_exact_identity_and_name_bounds ... ok
+test ledger_rejects_schema_variant_direction_mismatch ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 5 tests
+test example_clauses_are_informative_without_candidate_evidence ... ok
+test ledger_retains_exact_clause_and_public_provenance ... ok
+test referenced_and_example_paths_are_not_mandatory_outputs ... ok
+test one_complete_alternative_branch_is_required ... ok
+test conditional_output_activates_only_when_public_condition_holds ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 2 tests
+test resource::subtraction::tests::zero_quantity_preserves_absent_dimension_and_underflow_precedence ... ok
+test wire::fixture_tests::canonical_binary_corpus_is_exact_and_rejects_wrong_family_or_trailing_bytes ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 1 test
+test canonical_binding_digest_is_stable_and_commits_every_binding_dimension ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 5 tests
+test pause_drain_and_terminal_truth_are_closed_and_explicit ... ok
+test dependency_failure_propagates_and_never_manufactures_readiness ... ok
+test cancellation_tree_preserves_active_ownership_until_acknowledgement ... ok
+test retryable_failure_is_explicit_and_attempt_bound_exhausts ... ok
+test worker_loss_classifies_retry_ambiguity_failure_and_cancellation ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 2 tests
+test missing_checkpoint_fails_closed ... ok
+test commit_restart_resolution_and_conflicting_command_are_exact ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+
+running 2 tests
+test reordered_or_tampered_stream_fails_closed ... ok
+test genesis_frames_roundtrip_and_replay_exactly ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 4 tests
+test cancellation_acknowledgement_and_abandonment_reject_without_partial_mutation ... ok
+test retry_releases_capacity_and_reserves_a_fresh_dispatch_identity ... ok
+test dispatch_rejections_preserve_error_precedence_and_state ... ok
+test every_release_path_frees_only_its_exact_capacity_and_replays ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+
+running 3 tests
+test identities_limits_and_vectors_reject_invalid_values ... ok
+test indexed_quantity_preserves_present_and_absent_dimensions ... ok
+test resource_addition_and_subtraction_are_exact_and_checked ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 1 test
+test implementation_matches_independent_reference_and_forces_aged_work ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 7 tests
+test switching_runs_and_failed_storage_cannot_publish_a_planned_successor ... ok
+test commit_without_matching_replay_and_invalid_pure_commands_do_not_advance_state ... ok
+test corruption_after_session_planning_is_rejected_at_the_actual_append_boundary ... ok
+test ordinary_same_owner_and_external_commits_invalidate_the_old_state ... ok
+test racing_writer_rejects_planned_transition_and_then_replays_its_actual_successor ... ok
+test live_external_corruption_is_not_hidden_by_a_warm_session ... ok
+test warm_successors_and_restarted_replay_preserve_every_canonical_byte ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.11s
+

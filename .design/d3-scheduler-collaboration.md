@@ -138,6 +138,11 @@ separately in `.design/e0-actor-orchestrator.md`.
 - **D3-R030:** Scheduler schema-v1 command/event/state frames use B3 families 70, 71, and 72;
   collaboration command/event/state frames use 73, 74, and 75. Decoded frames are inert and must
   pass domain constructors and reducers before they can affect authoritative state.
+  Scheduler schema 2 uses the same families for new aggregates and reserves queue capacity for
+  recoverable active work. Historical scheduler schema-1 bytes and admission decisions remain
+  replayable and writable; semantics are immutable per aggregate. Fresh durable schema-1 genesis
+  is rejected after exact existing-command resolution. Version-aware codec helpers must reject
+  mixed versions and cannot relabel a legacy value as current. This adds no journal rewrite.
 - **D3-R031:** C0 adds immutable aggregate tags 10 (`Scheduler`) and 11 (`Collaboration`) while
   preserving tags 1-9. Dedicated checkpoint namespaces are `0xD301` and `0xD302`, with
   domain-separated run-state keys.

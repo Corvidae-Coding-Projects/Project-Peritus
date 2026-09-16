@@ -1,0 +1,39 @@
+{"candidate_commit": "65f16e2933b70305de865750931bb05fe9afb64d", "candidate_tree": "ae2a43f9a9b73f5fec944d39cf165a8b3ec4df20", "environment": {"CARGO_BUILD_JOBS": "1", "CCACHE_DISABLE": "1", "RUST_TEST_THREADS": "1"}, "gate": {"command": "cargo verus verify --package peritus-release-policy --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20", "invocation": ["taskset", "-c", "0,1", "cargo", "verus", "verify", "--package", "peritus-release-policy", "--all-features", "--locked", "--check-toolchain", "--fwd-verus-args-to", "roots", "--", "--no-cheating", "--rlimit", "20"], "kind": "verus-verify", "output": "086-peritus-release-policy-verus-verify.log", "owning_crate": "peritus-release-policy", "started_at": "2026-09-13T15:21:14.702379Z"}, "plan_sha256": "7fc101b7f8284fbe3818461a8166d73d3425f369120b43c1cbf1b43809a6b7c9"}
+
+note: automatically chose triggers for this expression:
+  --> crates/foundation/peritus-release-policy/src/model.rs:79:17
+   |
+79 |       let index = choose |index: int| 0 <= index < left.len()
+   |  _________________^
+80 | |         && left[index].spec_contributes_to(requirement, candidate, evaluated_at);
+   | |________________________________________________________________________________^
+
+note:   trigger 1 of 1:
+  --> crates/foundation/peritus-release-policy/src/model.rs:80:12
+   |
+80 |         && left[index].spec_contributes_to(requirement, candidate, evaluated_at);
+   |            ^^^^^^^^^^^
+
+note: Verus printed one or more automatically chosen quantifier triggers
+      because it had low confidence in the chosen triggers.
+      To suppress these messages, do one of the following:
+        (1) manually annotate a single desired trigger using #[trigger]
+            (example: forall|i: int, j: int| f(i) && #[trigger] g(i) && #[trigger] h(j)),
+        (2) manually annotate multiple desired triggers using #![trigger ...]
+            (example: forall|i: int| #![trigger f(i)] #![trigger g(i)] f(i) && g(i)),
+        (3) accept the automatically chosen trigger using #![auto]
+            (example: forall|i: int, j: int| #![auto] f(i) && g(i) && h(j))
+        (4) use the --triggers-mode silent command-line option to suppress all printing of triggers.
+      (Note: triggers are used by the underlying SMT theorem prover to instantiate quantifiers;
+      the theorem prover instantiates a quantifier whenever some expression matches the
+      pattern specified by one of the quantifier's triggers.)
+  --> crates/foundation/peritus-release-policy/src/model.rs:79:17
+   |
+79 |       let index = choose |index: int| 0 <= index < left.len()
+   |  _________________^
+80 | |         && left[index].spec_contributes_to(requirement, candidate, evaluated_at);
+   | |________________________________________________________________________________^
+
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.19s
+
+GATE DRIVER RESULT: {"command": "cargo verus verify --package peritus-release-policy --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20", "command_exit_code": 0, "elapsed_seconds": 0.565, "exit_code": 0, "finished_at": "2026-09-13T15:21:15.268715Z", "invocation": ["taskset", "-c", "0,1", "cargo", "verus", "verify", "--package", "peritus-release-policy", "--all-features", "--locked", "--check-toolchain", "--fwd-verus-args-to", "roots", "--", "--no-cheating", "--rlimit", "20"], "kind": "verus-verify", "output": "086-peritus-release-policy-verus-verify.log", "owning_crate": "peritus-release-policy", "result": "passed", "started_at": "2026-09-13T15:21:14.702379Z"}

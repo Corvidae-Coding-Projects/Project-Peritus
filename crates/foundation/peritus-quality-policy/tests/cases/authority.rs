@@ -3,13 +3,13 @@ use peritus_quality_policy::{
     ApprovalObservation, ApprovalOutcome, ApprovalSubject, FindingDisposition, FindingObservation,
     InvalidWaiverReason, UnmetCondition, WaiverObservation, evaluate_acceptance,
 };
-use peritus_spec::{FindingSeverity, HumanApprovalPolicy, WaiverPolicy};
-use peritus_types::{ActorId, ApprovalRequestId};
+use peritus_spec::{ContentReference, FindingSeverity, HumanApprovalPolicy, WaiverPolicy};
+use peritus_types::{ActorId, ApprovalRequestId, ProviderProfileId, RevisionTuple, Sha256Digest};
 
 fn low_severity_waiver_evidence(
     fixture: &Fixture,
     contract: &peritus_spec::AcceptanceContract,
-    authority: peritus_spec::ContentReference,
+    authority: ContentReference,
     outcome: ApprovalOutcome,
 ) -> (peritus_quality_policy::AcceptanceEvidence, peritus_types::FindingId, ActorId) {
     let revision = fixture.revision();
@@ -108,6 +108,122 @@ fn required_human_approval_must_be_current_approved_and_from_declared_authority(
         evaluate_acceptance(&contract, revision, &wrong_authority)
             .unmet_conditions()
             .contains(&UnmetCondition::WrongHumanApprovalAuthority)
+    );
+}
+
+#[test]
+fn final_approval_uses_complete_authority_and_revision_identities() {
+    let fixture = Fixture::new();
+    let mut options = ContractOptions::basic();
+    options.approval_policy = HumanApprovalPolicy::Required(fixture.approval_authority);
+    let contract = fixture.contract(options);
+    let revision = fixture.revision();
+    let review = || {
+        fixture.review(
+            revision,
+            70,
+            80,
+            vec![fixture.category_a, fixture.category_b],
+            Vec::new(),
+            130,
+            true,
+        )
+    };
+
+    let admitted = fixture.evidence_set(
+        &contract,
+        revision,
+        vec![review()],
+        vec![fixture.acceptance_approval(revision, ApprovalOutcome::Approved)],
+        Vec::new(),
+    );
+    assert!(evaluate_acceptance(&contract, revision, &admitted).is_acceptable());
+
+    let mut wrong_authority_bytes = fixture.approval_authority.digest().into_bytes();
+    wrong_authority_bytes[Sha256Digest::LENGTH - 1] ^= 1;
+    let wrong_authority = ContentReference::new(Sha256Digest::new(wrong_authority_bytes));
+    let wrong = ApprovalObservation::new(
+        ApprovalRequestId::new(bytes(90)).expect("approval"),
+        revision,
+        ApprovalSubject::Acceptance,
+        ActorId::new(bytes(91)).expect("actor"),
+        wrong_authority,
+        ApprovalOutcome::Denied,
+        digest(92),
+    );
+    let wrong_evidence =
+        fixture.evidence_set(&contract, revision, vec![review()], vec![wrong], Vec::new());
+    assert_eq!(
+        evaluate_acceptance(&contract, revision, &wrong_evidence).unmet_conditions(),
+        &[UnmetCondition::WrongHumanApprovalAuthority],
+    );
+
+    let mut profile_bytes = revision.provider_profile_id().into_bytes();
+    profile_bytes[profile_bytes.len() - 1] ^= 1;
+    let stale_revision = RevisionTuple::new(
+        revision.acceptance_spec_id(),
+        revision.harness_id(),
+        revision.workspace_id(),
+        revision.workspace_generation(),
+        revision.workspace_revision(),
+        revision.policy_id(),
+        ProviderProfileId::new(profile_bytes).expect("late-byte provider profile"),
+    );
+    let stale = fixture.evidence_set(
+        &contract,
+        revision,
+        vec![review()],
+        vec![fixture.acceptance_approval(stale_revision, ApprovalOutcome::Approved)],
+        Vec::new(),
+    );
+    assert_eq!(
+        evaluate_acceptance(&contract, revision, &stale).unmet_conditions(),
+        &[
+            UnmetCondition::StaleObservation {
+                kind: peritus_quality_policy::ObservationKind::Approval,
+                index: 0
+            },
+            UnmetCondition::MissingHumanApproval,
+        ],
+    );
+}
+
+#[test]
+fn unexpected_approval_reports_the_complete_actor_identity() {
+    let fixture = Fixture::new();
+    let contract = fixture.contract(ContractOptions::basic());
+    let revision = fixture.revision();
+    let mut actor_bytes = bytes(91);
+    actor_bytes[actor_bytes.len() - 1] ^= 1;
+    let actor = ActorId::new(actor_bytes).expect("late-byte actor identity");
+    let approval = ApprovalObservation::new(
+        ApprovalRequestId::new(bytes(90)).expect("approval"),
+        revision,
+        ApprovalSubject::Acceptance,
+        actor,
+        fixture.approval_authority,
+        ApprovalOutcome::Approved,
+        digest(92),
+    );
+    let evidence = fixture.evidence_set(
+        &contract,
+        revision,
+        vec![fixture.review(
+            revision,
+            70,
+            80,
+            vec![fixture.category_a, fixture.category_b],
+            Vec::new(),
+            130,
+            true,
+        )],
+        vec![approval],
+        Vec::new(),
+    );
+
+    assert_eq!(
+        evaluate_acceptance(&contract, revision, &evidence).unmet_conditions(),
+        &[UnmetCondition::UnexpectedApproval(actor)],
     );
 }
 

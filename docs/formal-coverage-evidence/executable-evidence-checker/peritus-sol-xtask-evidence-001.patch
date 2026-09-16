@@ -1,0 +1,1087 @@
+diff --git a/tmp/peritus-sol-xtask-evidence-baseline-source-001/verification/README.md b/tmp/peritus-sol-xtask-evidence-final-source-001/verification/README.md
+index 478373b..ebc564b 100644
+--- a/tmp/peritus-sol-xtask-evidence-baseline-source-001/verification/README.md
++++ b/tmp/peritus-sol-xtask-evidence-final-source-001/verification/README.md
+@@ -100,10 +100,15 @@ Trust and exclusion entries contain `evidence`, an array of tables with exactly
+ | `command` | string | Exact locked command that executes or verifies the evidence. |
+ 
+ Every evidence location must exist and every command must select the owning package without a
+-focused verification mode, ignored failure, or skip. A Cargo test locator must name an
+-unconditionally compiled `#[test]`; a Cargo-Verus locator must name an exact proof/spec item. An
+-evidence record is a locator, not a claim that the command passed; CI and release evidence record
+-the actual result separately.
++focused verification mode, ignored failure, or skip. A Cargo test locator must name a non-ignored
++`#[test]` enabled unconditionally or only by its conventional enclosing `#[cfg(test)]`; other
++conditional compilation and `cfg_attr` remain ineligible. A Cargo-Verus locator must resolve to
++exactly one unconditionally compiled, non-local function inside `verus!`; executable, proof, and spec modes
++are parsed with the pinned Verus signature grammar. The static manifest check establishes only
++that source eligibility. The strict CI proof-scope run separately requires the same executable or
++proof symbol to have a successful compiler query in its declared mode and every spec symbol to
++appear in the compiler selection inventory. An evidence record is a locator, not a claim that the
++command passed; CI and release evidence record the actual result separately.
+ 
+ ### Trusted-construct manifest
+ 
+diff --git a/tmp/peritus-sol-xtask-evidence-final-source-001/xtask/src/api_contract/declaration.rs b/tmp/peritus-sol-xtask-evidence-final-source-001/xtask/src/api_contract/declaration.rs
+new file mode 100644
+index 0000000..091f83a
+--- /dev/null
++++ b/tmp/peritus-sol-xtask-evidence-final-source-001/xtask/src/api_contract/declaration.rs
+@@ -0,0 +1,239 @@
++use super::scanner;
++use super::signature::{self, Mode};
++use crate::source::reference_lexer::{Token, TokenKind, tokenize};
++use std::collections::BTreeSet;
++
++/// A structurally parsed Rust/Verus function declaration relevant to manifest evidence.
++#[derive(Clone, Copy, Debug, Eq, PartialEq)]
++pub(crate) struct FunctionDeclaration {
++    /// Source line containing the declaration's `fn` token.
++    pub(crate) line: usize,
++    /// Verus function mode parsed with the pinned signature grammar.
++    pub(crate) mode: Option<Mode>,
++    /// Whether the declaration is lexically enclosed by `verus! { ... }`.
++    pub(crate) in_verus: bool,
++    /// Whether a containing function makes this a function-local declaration.
++    pub(crate) nested: bool,
++    /// The structurally recognized conditional-compilation envelope.
++    pub(crate) configuration: Configuration,
++    /// The exact Cargo-test attributes on the declaration.
++    pub(crate) cargo_test: CargoTest,
++}
++
++/// Cargo-test attributes relevant to the canonical evidence command.
++#[derive(Clone, Copy, Debug, Eq, PartialEq)]
++pub(crate) enum CargoTest {
++    /// The declaration is not an exact `#[test]`.
++    None,
++    /// The declaration is an exact non-ignored `#[test]`.
++    Runnable,
++    /// The declaration is an exact `#[test]` but also has `#[ignore]`.
++    Ignored,
++}
++
++/// Conditional-compilation status relevant to exact evidence commands.
++#[derive(Clone, Copy, Debug, Eq, PartialEq)]
++pub(crate) enum Configuration {
++    /// No enclosing or declaration-local conditional compilation.
++    Unconditional,
++    /// Only exact `#[cfg(test)]`, which the canonical Cargo test command enables.
++    TestOnly,
++    /// Any other, mixed, attributed, or malformed configuration.
++    Other,
++}
++
++impl Configuration {
++    const fn combine(self, other: Self) -> Self {
++        match (self, other) {
++            (Self::Other, _) | (_, Self::Other) => Self::Other,
++            (Self::TestOnly, _) | (_, Self::TestOnly) => Self::TestOnly,
++            (Self::Unconditional, Self::Unconditional) => Self::Unconditional,
++        }
++    }
++}
++
++/// Finds every function declaration named `name` without treating comments or literals as code.
++pub(crate) fn function_declarations(source: &str, name: &str) -> Vec<FunctionDeclaration> {
++    let tokens = tokenize(source);
++    let function_bodies: BTreeSet<_> = tokens
++        .iter()
++        .enumerate()
++        .filter(|(index, token)| {
++            identifier_is(token, "fn") && declaration_name(&tokens, *index).is_some()
++        })
++        .filter_map(|(index, _)| scanner::function_body(&tokens, index))
++        .collect();
++    let mut scopes = Vec::new();
++    let mut declarations = Vec::new();
++
++    for (index, token) in tokens.iter().enumerate() {
++        if punctuation_is(token, '}') {
++            scopes.pop();
++            continue;
++        }
++        if punctuation_is(token, '{') {
++            let kind = if function_bodies.contains(&index) {
++                ScopeKind::Function
++            } else if verus_macro_body(&tokens, index) {
++                ScopeKind::Verus
++            } else {
++                ScopeKind::Other
++            };
++            let start = item_start(&tokens, index);
++            let configuration = configuration(&tokens[start..index]);
++            scopes.push(Scope { kind, configuration });
++            continue;
++        }
++        if !identifier_is(token, "fn") || declaration_name(&tokens, index) != Some(name) {
++            continue;
++        }
++
++        let start = item_start(&tokens, index);
++        let prefix = &tokens[start..index];
++        let configuration = scopes
++            .iter()
++            .fold(configuration(prefix), |current, scope| current.combine(scope.configuration));
++        let cargo_test =
++            match (has_attribute(prefix, &["test"]), has_attribute(prefix, &["ignore"])) {
++                (true, false) => CargoTest::Runnable,
++                (true, true) => CargoTest::Ignored,
++                (false, _) => CargoTest::None,
++            };
++        declarations.push(FunctionDeclaration {
++            line: token.line,
++            mode: signature::parse(prefix).map(|parsed| parsed.mode),
++            in_verus: scopes.iter().any(|scope| scope.kind == ScopeKind::Verus),
++            nested: scopes.iter().any(|scope| scope.kind == ScopeKind::Function),
++            configuration,
++            cargo_test,
++        });
++    }
++    declarations
++}
++
++#[derive(Clone, Copy)]
++struct Scope {
++    kind: ScopeKind,
++    configuration: Configuration,
++}
++
++#[derive(Clone, Copy, Eq, PartialEq)]
++enum ScopeKind {
++    Function,
++    Verus,
++    Other,
++}
++
++fn verus_macro_body(tokens: &[Token], brace: usize) -> bool {
++    brace >= 2
++        && punctuation_is(&tokens[brace - 1], '!')
++        && identifier_is(&tokens[brace - 2], "verus")
++}
++
++fn has_attribute(tokens: &[Token], names: &[&str]) -> bool {
++    let mut cursor = 0;
++    while cursor < tokens.len() {
++        if !punctuation_is(&tokens[cursor], '#') {
++            cursor += 1;
++            continue;
++        }
++        let mut open = cursor + 1;
++        if tokens.get(open).is_some_and(|token| punctuation_is(token, '!')) {
++            open += 1;
++        }
++        if !tokens.get(open).is_some_and(|token| punctuation_is(token, '[')) {
++            cursor += 1;
++            continue;
++        }
++        let Some(end) = matching_group(tokens, open, '[', ']') else { return true };
++        if tokens.get(open + 1).and_then(identifier).is_some_and(|name| names.contains(&name)) {
++            return true;
++        }
++        cursor = end;
++    }
++    false
++}
++
++fn configuration(tokens: &[Token]) -> Configuration {
++    let mut result = Configuration::Unconditional;
++    let mut cursor = 0;
++    while cursor < tokens.len() {
++        if !punctuation_is(&tokens[cursor], '#') {
++            cursor += 1;
++            continue;
++        }
++        let mut open = cursor + 1;
++        if tokens.get(open).is_some_and(|token| punctuation_is(token, '!')) {
++            open += 1;
++        }
++        if !tokens.get(open).is_some_and(|token| punctuation_is(token, '[')) {
++            return Configuration::Other;
++        }
++        let Some(end) = matching_group(tokens, open, '[', ']') else {
++            return Configuration::Other;
++        };
++        let attribute = &tokens[open + 1..end - 1];
++        match attribute.first().and_then(identifier) {
++            Some("cfg") if exact_cfg_test(attribute) => {
++                result = result.combine(Configuration::TestOnly);
++            }
++            Some("cfg" | "cfg_attr") => return Configuration::Other,
++            _ => {}
++        }
++        cursor = end;
++    }
++    result
++}
++
++fn exact_cfg_test(attribute: &[Token]) -> bool {
++    attribute.len() == 4
++        && identifier_is(&attribute[0], "cfg")
++        && punctuation_is(&attribute[1], '(')
++        && identifier_is(&attribute[2], "test")
++        && punctuation_is(&attribute[3], ')')
++}
++
++fn item_start(tokens: &[Token], index: usize) -> usize {
++    let mut cursor = index;
++    while cursor > 0 {
++        if matches!(tokens[cursor - 1].kind, TokenKind::Punctuation('{' | '}' | ';')) {
++            break;
++        }
++        cursor -= 1;
++    }
++    cursor
++}
++
++fn matching_group(tokens: &[Token], open: usize, opening: char, closing: char) -> Option<usize> {
++    let mut depth = 0_usize;
++    for (index, token) in tokens.iter().enumerate().skip(open) {
++        if punctuation_is(token, opening) {
++            depth += 1;
++        } else if punctuation_is(token, closing) {
++            depth = depth.checked_sub(1)?;
++            if depth == 0 {
++                return Some(index + 1);
++            }
++        }
++    }
++    None
++}
++
++fn declaration_name(tokens: &[Token], function: usize) -> Option<&str> {
++    tokens.get(function + 1).and_then(identifier)
++}
++
++fn identifier_is(token: &Token, expected: &str) -> bool {
++    identifier(token) == Some(expected)
++}
++
++fn identifier(token: &Token) -> Option<&str> {
++    match &token.kind {
++        TokenKind::Identifier(value, _) => Some(value),
++        TokenKind::Punctuation(_) | TokenKind::StringLiteral(_) => None,
++    }
++}
++
++const fn punctuation_is(token: &Token, expected: char) -> bool {
++    matches!(token.kind, TokenKind::Punctuation(value) if value == expected)
++}
+diff --git a/tmp/peritus-sol-xtask-evidence-final-source-001/xtask/src/api_contract/declaration_tests.rs b/tmp/peritus-sol-xtask-evidence-final-source-001/xtask/src/api_contract/declaration_tests.rs
+new file mode 100644
+index 0000000..b58cee6
+--- /dev/null
++++ b/tmp/peritus-sol-xtask-evidence-final-source-001/xtask/src/api_contract/declaration_tests.rs
+@@ -0,0 +1,97 @@
++use super::{CargoTest, Configuration, Mode, function_declarations};
++
++#[test]
++fn identifies_actual_verus_modes_and_ignores_declaration_shaped_text() {
++    let source = r#"
++fn ordinary() {}
++const TEXT: &str = "verus! { proof fn invented() {} }";
++// verus! { proof fn commented() {} }
++verus! {
++    pub const fn executable() -> (value: u64)
++        ensures value == 1,
++    {
++        1
++    }
++
++    pub proof fn lemma() { assert(true); }
++    pub closed spec fn model() -> bool { true }
++}
++"#;
++
++    let ordinary = function_declarations(source, "ordinary");
++    assert_eq!(ordinary.len(), 1);
++    assert!(!ordinary[0].in_verus);
++    assert_eq!(ordinary[0].mode, Some(Mode::Exec));
++    assert!(function_declarations(source, "invented").is_empty());
++    assert!(function_declarations(source, "commented").is_empty());
++
++    for (name, mode) in [("executable", Mode::Exec), ("lemma", Mode::Proof), ("model", Mode::Spec)]
++    {
++        let declaration = function_declarations(source, name);
++        assert_eq!(declaration.len(), 1);
++        assert!(declaration[0].in_verus);
++        assert_eq!(declaration[0].mode, Some(mode));
++    }
++}
++
++#[test]
++fn records_configuration_tests_nested_functions_and_ambiguous_declarations() {
++    let source = r"
++#[test]
++fn test_case() {}
++
++#[ignore]
++#[test]
++fn ignored_case() {}
++
++#[cfg(test)]
++mod cases {
++    #[test]
++    fn test_only_case() {}
++}
++
++verus! {
++    #[cfg(any())]
++    pub fn disabled() {}
++
++    fn outer() {
++        fn local() {}
++    }
++
++    pub fn duplicate() {}
++    pub fn duplicate() {}
++}
++
++#[cfg(any())]
++mod hidden {
++    verus! { pub fn inherited_disabled() {} }
++}
++";
++
++    let test = function_declarations(source, "test_case");
++    assert_eq!(test.len(), 1);
++    assert_eq!(test[0].cargo_test, CargoTest::Runnable);
++    assert_eq!(test[0].configuration, Configuration::Unconditional);
++
++    let ignored = function_declarations(source, "ignored_case");
++    assert_eq!(ignored.len(), 1);
++    assert_eq!(ignored[0].cargo_test, CargoTest::Ignored);
++
++    let test_only = function_declarations(source, "test_only_case");
++    assert_eq!(test_only.len(), 1);
++    assert_eq!(test_only[0].cargo_test, CargoTest::Runnable);
++    assert_eq!(test_only[0].configuration, Configuration::TestOnly);
++
++    let disabled = function_declarations(source, "disabled");
++    assert_eq!(disabled.len(), 1);
++    assert_eq!(disabled[0].configuration, Configuration::Other);
++
++    let inherited = function_declarations(source, "inherited_disabled");
++    assert_eq!(inherited.len(), 1);
++    assert_eq!(inherited[0].configuration, Configuration::Other);
++
++    let local = function_declarations(source, "local");
++    assert_eq!(local.len(), 1);
++    assert!(local[0].nested);
++    assert_eq!(function_declarations(source, "duplicate").len(), 2);
++}
+diff --git a/tmp/peritus-sol-xtask-evidence-baseline-source-001/xtask/src/api_contract/scanner.rs b/tmp/peritus-sol-xtask-evidence-final-source-001/xtask/src/api_contract/scanner.rs
+index 0b92b19..a0c712c 100644
+--- a/tmp/peritus-sol-xtask-evidence-baseline-source-001/xtask/src/api_contract/scanner.rs
++++ b/tmp/peritus-sol-xtask-evidence-final-source-001/xtask/src/api_contract/scanner.rs
+@@ -157,6 +157,7 @@ fn verus_spec_clauses(tokens: &[Token]) -> Vec<String> {
+ struct Header {
+     clauses: Vec<String>,
+     opaque_return: bool,
++    body: Option<usize>,
+ }
+ 
+ impl Header {
+@@ -190,7 +191,7 @@ fn inspect_header(tokens: &[Token], function: usize) -> Option<Header> {
+         let top_level = parentheses == 0 && brackets == 0 && (in_contract || angles == 0);
+         if top_level {
+             if punctuation_is(&tokens[cursor], ';') {
+-                return Some(Header { clauses, opaque_return });
++                return Some(Header { clauses, opaque_return, body: None });
+             }
+             if punctuation_is(&tokens[cursor], '{') {
+                 if in_contract {
+@@ -200,7 +201,7 @@ fn inspect_header(tokens: &[Token], function: usize) -> Option<Header> {
+                         continue;
+                     }
+                 }
+-                return Some(Header { clauses, opaque_return });
++                return Some(Header { clauses, opaque_return, body: Some(cursor) });
+             }
+             if let Some(word) = identifier(&tokens[cursor]) {
+                 if matches!(
+@@ -229,6 +230,10 @@ fn inspect_header(tokens: &[Token], function: usize) -> Option<Header> {
+     None
+ }
+ 
++pub(super) fn function_body(tokens: &[Token], function: usize) -> Option<usize> {
++    inspect_header(tokens, function)?.body
++}
++
+ fn braced_contract_expression_continues(tokens: &[Token], end: usize) -> bool {
+     let Some(next) = tokens.get(end) else { return false };
+     if punctuation_is(next, ',') {
+diff --git a/tmp/peritus-sol-xtask-evidence-baseline-source-001/xtask/src/api_contract/signature.rs b/tmp/peritus-sol-xtask-evidence-final-source-001/xtask/src/api_contract/signature.rs
+index 1bda5e4..bcc1398 100644
+--- a/tmp/peritus-sol-xtask-evidence-baseline-source-001/xtask/src/api_contract/signature.rs
++++ b/tmp/peritus-sol-xtask-evidence-final-source-001/xtask/src/api_contract/signature.rs
+@@ -1,7 +1,7 @@
+ use crate::source::reference_lexer::{Token, TokenKind};
+ 
+ #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+-pub(super) enum Mode {
++pub(crate) enum Mode {
+     Exec,
+     Proof,
+     Spec,
+diff --git a/tmp/peritus-sol-xtask-evidence-baseline-source-001/xtask/src/api_contract.rs b/tmp/peritus-sol-xtask-evidence-final-source-001/xtask/src/api_contract.rs
+index 478f6eb..c6dcbf8 100644
+--- a/tmp/peritus-sol-xtask-evidence-baseline-source-001/xtask/src/api_contract.rs
++++ b/tmp/peritus-sol-xtask-evidence-final-source-001/xtask/src/api_contract.rs
+@@ -6,6 +6,8 @@ use std::collections::BTreeSet;
+ use std::fs;
+ use std::path::{Path, PathBuf};
+ 
++#[path = "api_contract/declaration.rs"]
++mod declaration;
+ #[path = "api_contract/expansion.rs"]
+ mod expansion;
+ #[path = "api_contract/scanner.rs"]
+@@ -17,6 +19,11 @@ mod verifier_only;
+ #[path = "api_contract/violation.rs"]
+ mod violation;
+ 
++pub(crate) use declaration::{
++    CargoTest, Configuration, FunctionDeclaration, function_declarations,
++};
++pub(crate) use signature::Mode;
++
+ /// Successful ordinary-Rust boundary audit statistics.
+ #[derive(Debug)]
+ pub(crate) struct Report {
+@@ -134,3 +141,7 @@ mod signature_tests;
+ #[cfg(test)]
+ #[path = "api_contract/policy_tests.rs"]
+ mod policy_tests;
++
++#[cfg(test)]
++#[path = "api_contract/declaration_tests.rs"]
++mod declaration_tests;
+diff --git a/tmp/peritus-sol-xtask-evidence-baseline-source-001/xtask/src/ci_shard/proof_scope/report/tests.rs b/tmp/peritus-sol-xtask-evidence-final-source-001/xtask/src/ci_shard/proof_scope/report/tests.rs
+index df938a9..0d7b20a 100644
+--- a/tmp/peritus-sol-xtask-evidence-baseline-source-001/xtask/src/ci_shard/proof_scope/report/tests.rs
++++ b/tmp/peritus-sol-xtask-evidence-final-source-001/xtask/src/ci_shard/proof_scope/report/tests.rs
+@@ -1,6 +1,8 @@
+ use super::{check, parse};
++use crate::api_contract::Mode;
+ use crate::metadata;
+ use crate::model::ToolchainPolicy;
++use crate::trust::RegisteredProofSymbol;
+ use serde_json::{Value, json};
+ use std::path::Path;
+ 
+@@ -33,8 +35,13 @@ fn compiler() -> Value {
+     })
+ }
+ 
+-fn expected() -> Vec<(String, String, String)> {
+-    vec![("INV-EXAMPLE".into(), "peritus-example".into(), "peritus_example::specification".into())]
++fn expected() -> Vec<RegisteredProofSymbol> {
++    vec![RegisteredProofSymbol {
++        obligation: "INV-EXAMPLE".into(),
++        owner: "peritus-example".into(),
++        symbol: "peritus_example::specification".into(),
++        mode: Mode::Spec,
++    }]
+ }
+ 
+ fn accepts(value: &Value) -> bool {
+@@ -80,6 +87,36 @@ fn rejects_successful_compilation_that_did_not_select_registered_evidence() {
+     assert!(!accepts(&value));
+ }
+ 
++#[test]
++fn executable_and_proof_evidence_require_successful_queries_in_the_declared_mode() {
++    for (mode, query_mode) in [(Mode::Exec, "exec"), (Mode::Proof, "proof")] {
++        let mut evidence = expected();
++        evidence[0].symbol = "peritus_example::implementation".into();
++        evidence[0].mode = mode;
++        let reports = parse(compiler().to_string().as_bytes()).expect("compiler report");
++        assert_eq!(
++            check(&reports, "peritus-example", &["peritus_example"], &evidence, &tools()).is_ok(),
++            query_mode == "exec"
++        );
++
++        let mut value = compiler();
++        value["times-ms"]["smt"]["smt-run-module-times"][0]["function-breakdown"][0]["mode:"] =
++            json!(query_mode);
++        let reports = parse(value.to_string().as_bytes()).expect("compiler report");
++        assert!(
++            check(&reports, "peritus-example", &["peritus_example"], &evidence, &tools()).is_ok()
++        );
++    }
++
++    let mut value = compiler();
++    value["times-ms"]["smt"]["smt-run-module-times"] = json!([]);
++    let reports = parse(value.to_string().as_bytes()).expect("selected-only compiler report");
++    let mut evidence = expected();
++    evidence[0].symbol = "peritus_example::implementation".into();
++    evidence[0].mode = Mode::Exec;
++    assert!(check(&reports, "peritus-example", &["peritus_example"], &evidence, &tools()).is_err());
++}
++
+ #[test]
+ fn rejects_failed_partial_and_missing_compiler_results() {
+     for field in ["encountered-error", "encountered-vir-error"] {
+diff --git a/tmp/peritus-sol-xtask-evidence-baseline-source-001/xtask/src/ci_shard/proof_scope/report.rs b/tmp/peritus-sol-xtask-evidence-final-source-001/xtask/src/ci_shard/proof_scope/report.rs
+index 570ccf4..dba0634 100644
+--- a/tmp/peritus-sol-xtask-evidence-baseline-source-001/xtask/src/ci_shard/proof_scope/report.rs
++++ b/tmp/peritus-sol-xtask-evidence-final-source-001/xtask/src/ci_shard/proof_scope/report.rs
+@@ -1,5 +1,7 @@
++use crate::api_contract::Mode;
+ use crate::error::XtaskError;
+ use crate::model::ToolchainPolicy;
++use crate::trust::RegisteredProofSymbol;
+ use serde::{Deserialize, Serialize};
+ use std::collections::{BTreeMap, BTreeSet};
+ 
+@@ -139,7 +141,7 @@ pub(super) fn check(
+     reports: &[CompilerReport],
+     package: &str,
+     root_targets: &[&str],
+-    expected: &[(String, String, String)],
++    expected: &[RegisteredProofSymbol],
+     tools: &ToolchainPolicy,
+ ) -> Result<Scope, XtaskError> {
+     if reports.is_empty() || root_targets.is_empty() {
+@@ -181,16 +183,31 @@ pub(super) fn check(
+         }
+     }
+     let mut registered = BTreeSet::new();
+-    for (obligation, owner, symbol) in expected {
+-        if owner != package {
++    for evidence in expected {
++        if evidence.owner != package {
+             continue;
+         }
+-        if !selected_functions.contains(symbol) {
++        if !selected_functions.contains(&evidence.symbol) {
+             return Err(invalid(format!(
+-                "obligation `{obligation}` cites `{symbol}`, which Verus did not select"
++                "obligation `{obligation}` cites `{symbol}`, which Verus did not select",
++                obligation = evidence.obligation,
++                symbol = evidence.symbol
+             )));
+         }
+-        registered.insert(symbol);
++        let required_query = match evidence.mode {
++            Mode::Exec => Some("exec"),
++            Mode::Proof => Some("proof"),
++            Mode::Spec => None,
++        };
++        if let Some(required_query) = required_query
++            && queried_functions.get(&evidence.symbol).map(String::as_str) != Some(required_query)
++        {
++            return Err(invalid(format!(
++                "obligation `{}` cites `{}` as {required_query} evidence, but the successful compiler query is absent or has another mode",
++                evidence.obligation, evidence.symbol
++            )));
++        }
++        registered.insert(&evidence.symbol);
+     }
+     Ok(Scope {
+         package: package.to_owned(),
+diff --git a/tmp/peritus-sol-xtask-evidence-baseline-source-001/xtask/src/ci_shard/proof_scope.rs b/tmp/peritus-sol-xtask-evidence-final-source-001/xtask/src/ci_shard/proof_scope.rs
+index 3ec3e75..453859e 100644
+--- a/tmp/peritus-sol-xtask-evidence-baseline-source-001/xtask/src/ci_shard/proof_scope.rs
++++ b/tmp/peritus-sol-xtask-evidence-final-source-001/xtask/src/ci_shard/proof_scope.rs
+@@ -30,8 +30,11 @@ fn prepare_reports(root: &Path, shard: &str) -> Result<(), XtaskError> {
+         .map_err(|error| XtaskError::io("create proof scope output at", &directory, error))
+ }
+ 
+-/// Requires each claimed symbol to be selected in its own package's fresh compiler invocation.
+-/// Selection does not discharge an obligation or establish production correspondence.
++/// Requires each claimed symbol in its own package's fresh compiler invocation.
++///
++/// Executable and proof evidence must produce a successful query in its source-declared mode;
++/// spec evidence must be selected because a spec definition need not produce a standalone query.
++/// Compiler observation does not discharge an obligation or establish production correspondence.
+ pub(super) fn run(root: &Path, shard: &str) -> Result<usize, XtaskError> {
+     prepare_reports(root, shard)?;
+     let directory = root.join("target/formal-scope").join(shard);
+diff --git a/tmp/peritus-sol-xtask-evidence-baseline-source-001/xtask/src/trust/manifest_evidence.rs b/tmp/peritus-sol-xtask-evidence-final-source-001/xtask/src/trust/manifest_evidence.rs
+index 9e617c7..3a3efd2 100644
+--- a/tmp/peritus-sol-xtask-evidence-baseline-source-001/xtask/src/trust/manifest_evidence.rs
++++ b/tmp/peritus-sol-xtask-evidence-final-source-001/xtask/src/trust/manifest_evidence.rs
+@@ -1,6 +1,8 @@
+ use super::manifest_context::ManifestContext;
+ use super::manifest_model::{BoundaryEvidence, ProofEvidence};
+ use super::manifest_support::validate_symbol;
++use super::manifest_symbol::owned_function_declarations;
++use crate::api_contract::{CargoTest, Configuration, Mode};
+ use crate::error::Diagnostic;
+ use crate::reproducibility;
+ use std::collections::BTreeSet;
+@@ -72,7 +74,15 @@ fn validate_item(
+ ) {
+     let source = context.validate_source(manifest, id, owning_crate, source_file, diagnostics);
+     validate_symbol(manifest, id, owning_crate, source.as_deref(), symbol, diagnostics);
+-    validate_declaration(manifest, id, source.as_deref(), symbol, command, diagnostics);
++    validate_declaration(
++        manifest,
++        id,
++        owning_crate,
++        source.as_deref(),
++        symbol,
++        command,
++        diagnostics,
++    );
+     if !reproducibility::is_exact_evidence_command(
+         command,
+         owning_crate,
+@@ -89,6 +99,7 @@ fn validate_item(
+ fn validate_declaration(
+     manifest: &Path,
+     id: &str,
++    owning_crate: &str,
+     source: Option<&Path>,
+     symbol: &str,
+     command: &str,
+@@ -97,36 +108,30 @@ fn validate_declaration(
+     let Some(source) = source else { return };
+     let Ok(contents) = fs::read_to_string(source) else { return };
+     let name = symbol.rsplit("::").next().unwrap_or(symbol);
+-    let lines: Vec<_> = contents.lines().collect();
+-    let declaration = lines.iter().position(|line| declaration_name(line) == Some(name));
+-    let Some(index) = declaration else { return };
+-    let attributes = lines[..index]
+-        .iter()
+-        .rev()
+-        .take_while(|line| line.trim().starts_with("#[") || line.trim().is_empty())
+-        .copied()
+-        .collect::<Vec<_>>();
+-    let executable_test = attributes.iter().any(|line| line.trim() == "#[test]")
+-        && !attributes.iter().any(|line| line.trim().starts_with("#[cfg"));
+-    let formal = lines[index].contains("proof fn") || lines[index].contains("spec fn");
+-    let valid = if command.starts_with("cargo test ") { executable_test } else { formal };
++    let declarations = owned_function_declarations(owning_crate, source, &contents, name);
++    let mut exact = declarations.iter().filter(|declaration| declaration.path == symbol);
++    let Some(declaration) = exact.next() else { return };
++    if exact.next().is_some() {
++        return;
++    }
++    let declaration = declaration.declaration;
++    let valid = if command.starts_with("cargo test ") {
++        declaration.cargo_test == CargoTest::Runnable
++            && declaration.configuration != Configuration::Other
++            && !declaration.nested
++    } else if command.starts_with("cargo verus ") {
++        declaration.in_verus
++            && declaration.configuration == Configuration::Unconditional
++            && !declaration.nested
++            && matches!(declaration.mode, Some(Mode::Exec | Mode::Proof | Mode::Spec))
++    } else {
++        false
++    };
+     if !valid {
+         diagnostics.push(Diagnostic::at(
+             manifest,
+             format!("entry `{id}` evidence symbol `{symbol}` is not exercised by its command"),
+-            "use an unconditional #[test] for cargo test or an exact proof/spec item for Cargo-Verus",
++            "use a non-ignored #[test] enabled unconditionally or only by cfg(test), or an unconditional function declared inside verus! whose mode is confirmed by the fresh compiler proof-scope gate",
+         ));
+     }
+ }
+-
+-fn declaration_name(line: &str) -> Option<&str> {
+-    let tokens: Vec<_> = line
+-        .split(|character: char| !character.is_ascii_alphanumeric() && character != '_')
+-        .filter(|token| !token.is_empty())
+-        .collect();
+-    tokens.windows(2).find_map(|pair| {
+-        ["fn", "struct", "enum", "union", "trait", "type", "const", "static"]
+-            .contains(&pair[0])
+-            .then_some(pair[1])
+-    })
+-}
+diff --git a/tmp/peritus-sol-xtask-evidence-baseline-source-001/xtask/src/trust/manifest_symbol.rs b/tmp/peritus-sol-xtask-evidence-final-source-001/xtask/src/trust/manifest_symbol.rs
+index 6e3bbde..fccbfb9 100644
+--- a/tmp/peritus-sol-xtask-evidence-baseline-source-001/xtask/src/trust/manifest_symbol.rs
++++ b/tmp/peritus-sol-xtask-evidence-final-source-001/xtask/src/trust/manifest_symbol.rs
+@@ -1,7 +1,14 @@
++use crate::api_contract::{FunctionDeclaration, function_declarations};
+ use crate::error::Diagnostic;
+ use std::fs;
+ use std::path::Path;
+ 
++#[derive(Clone, Debug, Eq, PartialEq)]
++pub(super) struct OwnedFunctionDeclaration {
++    pub(super) path: String,
++    pub(super) declaration: FunctionDeclaration,
++}
++
+ pub(super) fn validate_symbol(
+     manifest: &Path,
+     id: &str,
+@@ -26,35 +33,56 @@ pub(super) fn validate_symbol(
+     let Some(source) = source else { return };
+     let final_segment = segments.last().expect("validated symbol has segments");
+     let contents = fs::read_to_string(source).unwrap_or_default();
+-    let Some(module) = module_symbol(owning_crate, source) else { return };
+-    let candidates: Vec<_> = super::lexer::declaration_paths(&contents, final_segment)
+-        .into_iter()
+-        .map(|owners| {
+-            owners.into_iter().fold(module.clone(), |mut path, owner| {
+-                path.push_str("::");
+-                path.push_str(&owner);
+-                path
+-            }) + "::"
+-                + final_segment
+-        })
+-        .collect();
+-    if !candidates.iter().any(|candidate| candidate == symbol) {
+-        let remedy = if candidates.is_empty() {
+-            "name an actual file-level or associated function declaration in the recorded source"
+-                .to_owned()
++    let candidates = owned_function_declarations(owning_crate, source, &contents, final_segment);
++    let matching = candidates.iter().filter(|candidate| candidate.path == symbol).count();
++    if matching != 1 {
++        let declared: Vec<_> = candidates.iter().map(|candidate| candidate.path.as_str()).collect();
++        let remedy = if declared.is_empty() {
++            "name an actual non-local function declaration in the recorded source".to_owned()
++        } else if matching > 1 {
++            format!(
++                "retain one unambiguous declaration for `{symbol}`; {matching} exact declarations were found"
++            )
+         } else {
+-            format!("use one exact declared symbol path: {}", candidates.join(", "))
++            format!("use one exact declared symbol path: {}", declared.join(", "))
+         };
+         diagnostics.push(Diagnostic::at(
+             manifest,
+             format!(
+-                "entry `{id}` symbol `{symbol}` does not match its source module path or associated-item owner"
++                "entry `{id}` symbol `{symbol}` does not match exactly one source module path and associated-item owner"
+             ),
+             remedy,
+         ));
+     }
+ }
+ 
++pub(super) fn owned_function_declarations(
++    owning_crate: &str,
++    source: &Path,
++    contents: &str,
++    name: &str,
++) -> Vec<OwnedFunctionDeclaration> {
++    let Some(module) = module_symbol(owning_crate, source) else { return Vec::new() };
++    let parsed = function_declarations(contents, name);
++    super::lexer::declaration_paths(contents, name)
++        .into_iter()
++        .filter_map(|(owners, ordinal)| {
++            let declaration = parsed.get(ordinal).copied()?;
++            if declaration.nested {
++                return None;
++            }
++            let mut path = owners.into_iter().fold(module.clone(), |mut path, owner| {
++                path.push_str("::");
++                path.push_str(&owner);
++                path
++            });
++            path.push_str("::");
++            path.push_str(name);
++            Some(OwnedFunctionDeclaration { path, declaration })
++        })
++        .collect()
++}
++
+ pub(super) fn source_line_exists(path: &Path, line: u64) -> bool {
+     line > 0
+         && usize::try_from(line).ok().is_some_and(|line| {
+diff --git a/tmp/peritus-sol-xtask-evidence-baseline-source-001/xtask/src/trust/manifest_tests/adversarial.rs b/tmp/peritus-sol-xtask-evidence-final-source-001/xtask/src/trust/manifest_tests/adversarial.rs
+index 8233206..7f20171 100644
+--- a/tmp/peritus-sol-xtask-evidence-baseline-source-001/xtask/src/trust/manifest_tests/adversarial.rs
++++ b/tmp/peritus-sol-xtask-evidence-final-source-001/xtask/src/trust/manifest_tests/adversarial.rs
+@@ -1,10 +1,12 @@
+ use super::*;
+ 
+ #[test]
+-fn evidence_must_be_an_unconditionally_exercised_test() {
++fn evidence_must_be_exercised_by_the_canonical_cargo_test_command() {
+     for source in [
+         "fn audited() { assume(false); }\nfn evidence_case() { let _value = 1; }\n",
+         "fn audited() { assume(false); }\n#[cfg(any())]\n#[test]\nfn evidence_case() { let _value = 1; }\n",
++        "fn audited() { assume(false); }\n#[cfg_attr(test, test)]\nfn evidence_case() { let _value = 1; }\n",
++        "fn audited() { assume(false); }\n#[cfg(test)]\n#[ignore]\n#[test]\nfn evidence_case() { let _value = 1; }\n",
+     ] {
+         let fixture = Fixture::new();
+         write_fixture(&fixture, trust_entry());
+diff --git a/tmp/peritus-sol-xtask-evidence-final-source-001/xtask/src/trust/manifest_tests/evidence.rs b/tmp/peritus-sol-xtask-evidence-final-source-001/xtask/src/trust/manifest_tests/evidence.rs
+new file mode 100644
+index 0000000..aa14ec2
+--- /dev/null
++++ b/tmp/peritus-sol-xtask-evidence-final-source-001/xtask/src/trust/manifest_tests/evidence.rs
+@@ -0,0 +1,122 @@
++use super::*;
++
++#[test]
++fn unconditional_executable_inside_verus_is_valid_proof_evidence() {
++    let fixture = Fixture::new();
++    write_fixture(&fixture, "[]");
++    fixture.write(
++        "crates/foundation/peritus-types/src/lib.rs",
++        r"
++verus! {
++pub struct Capability;
++impl Capability {
++    pub const fn new() -> (value: u64)
++        ensures value == 1,
++    {
++        1
++    }
++}
++}
++",
++    );
++    write_coverage_documents(&fixture, "[]", executable_obligation());
++    let mut diagnostics = Vec::new();
++    validate(
++        fixture.path(),
++        &policy(),
++        &cargo(&fixture),
++        &sources(&fixture),
++        &[],
++        false,
++        &mut diagnostics,
++    )
++    .expect("executable proof-evidence fixture must parse");
++    assert!(diagnostics.is_empty(), "unexpected diagnostics: {diagnostics:?}");
++}
++
++#[test]
++fn same_line_associated_declarations_keep_their_own_verus_mode() {
++    let fixture = Fixture::new();
++    write_fixture(&fixture, "[]");
++    fixture.write(
++        "crates/foundation/peritus-types/src/lib.rs",
++        "verus! { pub struct Model; pub struct Runtime; impl Model { pub closed spec fn checked() -> bool { true } } impl Runtime { pub fn checked() -> (value: bool) ensures value, { true } } }\n",
++    );
++    let obligation =
++        executable_obligation().replace("Capability::new", "Runtime::checked").replace(
++            "the verified executable retains its exact result",
++            "the exact associated executable retains its result",
++        );
++    write_coverage_documents(&fixture, "[]", &obligation);
++    let mut diagnostics = Vec::new();
++    validate(
++        fixture.path(),
++        &policy(),
++        &cargo(&fixture),
++        &sources(&fixture),
++        &[],
++        false,
++        &mut diagnostics,
++    )
++    .expect("same-line associated evidence fixture must parse");
++    assert!(diagnostics.is_empty(), "unexpected diagnostics: {diagnostics:?}");
++
++    let registered = crate::trust::registered_proof_symbols(fixture.path())
++        .expect("exact registered executable");
++    assert_eq!(registered.len(), 1);
++    assert_eq!(registered[0].mode, crate::api_contract::Mode::Exec);
++}
++
++#[test]
++fn verus_evidence_rejects_ordinary_disabled_local_and_ambiguous_functions() {
++    for source in [
++        "pub fn checked() {}\n",
++        "pub const fn checked() {}\n",
++        "verus! { #[cfg(any())] pub fn checked() {} }\n",
++        "verus! { fn outer() { pub fn checked() {} } }\n",
++        "verus! { pub fn checked() {} pub fn checked() {} }\n",
++    ] {
++        let fixture = Fixture::new();
++        write_fixture(&fixture, "[]");
++        fixture.write("crates/foundation/peritus-types/src/lib.rs", source);
++        write_coverage_documents(
++            &fixture,
++            "[]",
++            &executable_obligation().replace("Capability::new", "checked"),
++        );
++        let mut diagnostics = Vec::new();
++        validate(
++            fixture.path(),
++            &policy(),
++            &cargo(&fixture),
++            &sources(&fixture),
++            &[],
++            false,
++            &mut diagnostics,
++        )
++        .expect("adversarial executable evidence fixture must parse");
++        assert!(
++            diagnostics.iter().any(|diagnostic| {
++                diagnostic.message().contains("not exercised")
++                    || diagnostic.message().contains("does not match exactly one")
++            }),
++            "ineligible executable evidence was accepted: {diagnostics:?}"
++        );
++    }
++}
++
++fn executable_obligation() -> &'static str {
++    r##"[{
++id = "OBL-0002",
++kind = "contract",
++statement = "the verified executable retains its exact result",
++owning_crate = "peritus-types",
++source_file = "crates/foundation/peritus-types/src/lib.rs",
++symbol = "peritus_types::Capability::new",
++status = "in-progress",
++dependencies = [],
++live_issue = "#3",
++owner = "ACTOR-0001",
++evidence = [{ kind = "verus-proof", source_file = "crates/foundation/peritus-types/src/lib.rs", symbol = "peritus_types::Capability::new", command = "cargo verus verify --package peritus-types --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" }]
++}]"##
++}
+diff --git a/tmp/peritus-sol-xtask-evidence-baseline-source-001/xtask/src/trust/manifest_tests.rs b/tmp/peritus-sol-xtask-evidence-final-source-001/xtask/src/trust/manifest_tests.rs
+index 281f8f0..8149042 100644
+--- a/tmp/peritus-sol-xtask-evidence-baseline-source-001/xtask/src/trust/manifest_tests.rs
++++ b/tmp/peritus-sol-xtask-evidence-final-source-001/xtask/src/trust/manifest_tests.rs
+@@ -387,3 +387,5 @@ fn occurrence() -> TrustedOccurrence {
+ mod adversarial;
+ #[path = "manifest_tests/core.rs"]
+ mod core;
++#[path = "manifest_tests/evidence.rs"]
++mod evidence;
+diff --git a/tmp/peritus-sol-xtask-evidence-baseline-source-001/xtask/src/trust.rs b/tmp/peritus-sol-xtask-evidence-final-source-001/xtask/src/trust.rs
+index 0ee8984..9d02194 100644
+--- a/tmp/peritus-sol-xtask-evidence-baseline-source-001/xtask/src/trust.rs
++++ b/tmp/peritus-sol-xtask-evidence-final-source-001/xtask/src/trust.rs
+@@ -1,3 +1,4 @@
++use crate::api_contract::{Configuration, Mode};
+ use crate::error::{Diagnostic, ErrorCode, XtaskError};
+ use crate::metadata;
+ use crate::model::{ArchitecturePolicy, CargoMetadata};
+@@ -39,22 +40,68 @@ mod manifest_symbol;
+ #[path = "trust/manifest_trust.rs"]
+ mod manifest_trust;
+ 
++#[derive(Clone, Debug, Eq, PartialEq)]
++pub(crate) struct RegisteredProofSymbol {
++    pub(crate) obligation: String,
++    pub(crate) owner: String,
++    pub(crate) symbol: String,
++    pub(crate) mode: Mode,
++}
++
+ /// Returns the exact compiler-visible symbols claimed as Verus evidence by the register.
+ pub(crate) fn registered_proof_symbols(
+     root: &Path,
+-) -> Result<Vec<(String, String, String)>, XtaskError> {
++) -> Result<Vec<RegisteredProofSymbol>, XtaskError> {
+     let document: manifest_model::ObligationsDocument =
+         metadata::read_toml(&root.join("verification/obligations.toml"))?;
+-    Ok(document
+-        .entries
+-        .into_iter()
+-        .flat_map(|entry| {
+-            entry.evidence.into_iter().filter_map(move |evidence| {
+-                matches!(evidence.kind, manifest_model::ProofEvidenceKind::VerusProof)
+-                    .then(|| (entry.id.clone(), entry.owning_crate.clone(), evidence.symbol))
+-            })
+-        })
+-        .collect())
++    let mut registered = Vec::new();
++    for entry in document.entries {
++        for evidence in entry.evidence.into_iter().filter(|evidence| {
++            matches!(evidence.kind, manifest_model::ProofEvidenceKind::VerusProof)
++        }) {
++            let source = root.join(&evidence.source_file);
++            let contents = fs::read_to_string(&source)
++                .map_err(|error| XtaskError::io("read registered proof source", &source, error))?;
++            let name = evidence.symbol.rsplit("::").next().unwrap_or(&evidence.symbol);
++            let matches: Vec<_> = manifest_symbol::owned_function_declarations(
++                &entry.owning_crate,
++                &source,
++                &contents,
++                name,
++            )
++            .into_iter()
++            .filter(|declaration| declaration.path == evidence.symbol)
++            .collect();
++            let [declaration] = matches.as_slice() else {
++                return Err(XtaskError::metadata(format!(
++                    "registered proof `{}` does not resolve to exactly one declaration",
++                    evidence.symbol
++                )));
++            };
++            let Some(mode) = declaration.declaration.mode else {
++                return Err(XtaskError::metadata(format!(
++                    "registered proof `{}` has an unrecognized Verus function signature",
++                    evidence.symbol
++                )));
++            };
++            if !declaration.declaration.in_verus
++                || declaration.declaration.nested
++                || declaration.declaration.configuration != Configuration::Unconditional
++            {
++                return Err(XtaskError::metadata(format!(
++                    "registered proof `{}` is not an unconditional non-local verus! declaration",
++                    evidence.symbol
++                )));
++            }
++            registered.push(RegisteredProofSymbol {
++                obligation: entry.id.clone(),
++                owner: entry.owning_crate.clone(),
++                symbol: evidence.symbol,
++                mode,
++            });
++        }
++    }
++    Ok(registered)
+ }
+ 
+ pub(crate) fn check(root: &Path, policy: &ArchitecturePolicy) -> Result<usize, XtaskError> {
+diff --git a/tmp/peritus-sol-xtask-evidence-baseline-source-001/xtask/src/trust_lexer.rs b/tmp/peritus-sol-xtask-evidence-final-source-001/xtask/src/trust_lexer.rs
+index 05e5e7d..ce8c3f0 100644
+--- a/tmp/peritus-sol-xtask-evidence-baseline-source-001/xtask/src/trust_lexer.rs
++++ b/tmp/peritus-sol-xtask-evidence-final-source-001/xtask/src/trust_lexer.rs
+@@ -75,17 +75,19 @@ enum DeclarationScope {
+     Other,
+ }
+ 
+-/// Returns the inline-module and associated-item path for every declaration of `item`.
++/// Returns the owner path and same-name declaration ordinal for every declaration of `item`.
+ ///
+ /// An empty path identifies a file/module item. Tokenization excludes comments and literals, and
+ /// declarations nested in a function are ineligible, so a manifest symbol cannot be redirected by
+-/// declaration-shaped text that does not name a repository-visible item.
+-pub(super) fn declaration_paths(source: &str, item: &str) -> Vec<Vec<String>> {
++/// declaration-shaped text that does not name a repository-visible item. The ordinal preserves
++/// exact token identity when multiple declarations occupy the same physical source line.
++pub(super) fn declaration_paths(source: &str, item: &str) -> Vec<(Vec<String>, usize)> {
+     let tokens = tokenize(source);
+     let mut paths = Vec::new();
+     let mut scopes = Vec::new();
+     let mut pending = None;
+     let mut impl_header = None;
++    let mut ordinal = 0_usize;
+ 
+     for (index, token) in tokens.iter().enumerate() {
+         match token.kind {
+@@ -94,10 +96,11 @@ pub(super) fn declaration_paths(source: &str, item: &str) -> Vec<Vec<String>> {
+                 pending = None;
+             }
+             TokenKind::Identifier("fn") => {
+-                if next_identifier(&tokens, index + 1) == Some(item)
+-                    && let Some(path) = enclosing_declaration_path(&scopes)
+-                {
+-                    paths.push(path);
++                if next_identifier(&tokens, index + 1) == Some(item) {
++                    if let Some(path) = enclosing_declaration_path(&scopes) {
++                        paths.push((path, ordinal));
++                    }
++                    ordinal += 1;
+                 }
+                 pending = Some(DeclarationScope::Function);
+             }
+@@ -130,8 +133,6 @@ pub(super) fn declaration_paths(source: &str, item: &str) -> Vec<Vec<String>> {
+             _ => {}
+         }
+     }
+-    paths.sort();
+-    paths.dedup();
+     paths
+ }
+ 

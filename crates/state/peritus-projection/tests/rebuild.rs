@@ -1,118 +1,28 @@
 //! File-backed projection replay and generation-swap integration tests.
 
+#[path = "rebuild/journal_fixture.rs"]
+mod journal_fixture;
+
 use peritus_codec::{CodecLimits, encode_frame, encode_message};
 use peritus_journal::{
-    AggregateId, AggregateKey, AggregateKind, AppendRequest, ArtifactDependency, EventDraft,
-    ExactFrame, HeadExpectation, SqliteJournal, SqliteJournalOptions, StoreId,
+    AggregateKind, AppendRequest, ArtifactDependency, EventDraft, ExactFrame, HeadExpectation,
 };
-use peritus_kernel::{KernelEventKind, SessionPhase};
+use peritus_kernel::KernelEventKind;
 use peritus_projection::{
     ArtifactReferenceProjection, EvidenceCatalogProjection, JournalCatalogProjection,
     LifecycleProjection, Projection, ProjectionErrorKind, ProjectionStore, RepairAction,
     RepairReason, StoreOptions, rebuild_from_genesis, replay_artifact_references,
     replay_from_genesis,
 };
-use peritus_protocol::{KernelEventDto, KernelSubjectDto, LifecyclePhaseDto};
-use peritus_types::{
-    AcceptanceSpecId, CommandId, EventId, EventSequence, Generation, HarnessId, PolicyId,
-    ProviderProfileId, RevisionNumber, RevisionTuple, SessionId, Sha256Digest, WorkspaceId,
-};
+use peritus_protocol::{KernelEventDto, KernelSubjectDto};
+use peritus_types::{EventSequence, SessionId, Sha256Digest};
 use rusqlite::{Connection, params};
 use sha2::{Digest, Sha256};
-use std::path::{Path, PathBuf};
-use tempfile::TempDir;
 
-struct Fixture {
-    temp: TempDir,
-    path: PathBuf,
-    journal: SqliteJournal,
-    next: u8,
-}
-
-impl Fixture {
-    fn new() -> Self {
-        let temp = TempDir::new().expect("temporary directory");
-        let path = temp.path().join("shared.sqlite3");
-        let journal = open_journal(&path);
-        Self { temp, path, journal, next: 20 }
-    }
-
-    fn append(&mut self, aggregate: AggregateKey, bytes: Vec<u8>, revision: u8) {
-        let head = self.journal.head(aggregate).expect("read head");
-        let sequence = head.map_or(1, |value| value.sequence().get() + 1);
-        let previous = head.map(peritus_journal::AggregateHead::event_id);
-        let event = event_id(self.next);
-        let command = command_id(self.next);
-        self.next = self.next.checked_add(1).expect("fixture id space");
-        let draft = EventDraft::new(
-            aggregate,
-            EventSequence::new(sequence).expect("sequence"),
-            event,
-            previous,
-            ExactFrame::new(bytes).expect("exact frame"),
-            Sha256Digest::new([revision; 32]),
-            Vec::new(),
-        )
-        .expect("draft");
-        let expectation = head.map_or(HeadExpectation::Absent(aggregate), HeadExpectation::Present);
-        let plan = AppendRequest::new(
-            store_id(),
-            command,
-            Sha256Digest::new([self.next; 32]),
-            vec![expectation],
-            vec![draft],
-            Vec::new(),
-            Vec::new(),
-            None,
-            None,
-            Vec::new(),
-        )
-        .plan()
-        .expect("plan");
-        self.journal.append(plan).expect("append");
-    }
-
-    fn export(&mut self) -> peritus_journal::IntegrityExport {
-        self.journal.integrity_export().expect("integrity export")
-    }
-}
-
-fn open_journal(path: &Path) -> SqliteJournal {
-    SqliteJournal::open(path, store_id(), SqliteJournalOptions::default()).expect("open journal")
-}
-
-fn store_id() -> StoreId {
-    StoreId::new([1; 16]).expect("store id")
-}
-
-fn key(kind: AggregateKind, byte: u8) -> AggregateKey {
-    AggregateKey::new(kind, AggregateId::new([byte; 16]).expect("aggregate id"))
-}
-
-fn event_id(byte: u8) -> EventId {
-    EventId::new([byte; 16]).expect("event id")
-}
-
-fn command_id(byte: u8) -> CommandId {
-    CommandId::new([byte; 16]).expect("command id")
-}
-
-fn phase_frame() -> Vec<u8> {
-    encode_message(&LifecyclePhaseDto::Session(SessionPhase::Open), CodecLimits::PRODUCTION)
-        .expect("phase frame")
-}
-
-fn revision() -> RevisionTuple {
-    RevisionTuple::new(
-        AcceptanceSpecId::new([2; 16]).expect("acceptance id"),
-        HarnessId::new([3; 16]).expect("harness id"),
-        WorkspaceId::new([4; 16]).expect("workspace id"),
-        Generation::new(1).expect("generation"),
-        RevisionNumber::new(1).expect("revision"),
-        PolicyId::new([5; 16]).expect("policy id"),
-        ProviderProfileId::new([6; 16]).expect("provider id"),
-    )
-}
+use journal_fixture::{
+    Fixture, command_id, event_id, key, phase_frame, relabel_schema, revision,
+    scheduler_event_frame, store_id,
+};
 
 #[test]
 fn shadow_rebuild_restart_checksum_and_atomic_swap() {
@@ -243,6 +153,33 @@ fn replay_rejects_unknown_typed_invalid_and_stale_revision_records() {
     stale.append(aggregate, phase_frame(), 96);
     let error = replay_from_genesis(&projection, &stale.export()).expect_err("revision change");
     assert_eq!(error.kind(), ProjectionErrorKind::StaleRevision);
+}
+
+#[test]
+fn replay_accepts_supported_scheduler_schemas_only() {
+    let projection = JournalCatalogProjection::new().expect("projection");
+    for version in [1, 2] {
+        let mut fixture = Fixture::new();
+        fixture.append(
+            key(AggregateKind::Scheduler, u8::try_from(version).expect("fixture version")),
+            scheduler_event_frame(version),
+            93,
+        );
+        replay_from_genesis(&projection, &fixture.export())
+            .expect("supported scheduler event schema replays");
+    }
+
+    let mut unsupported = Fixture::new();
+    unsupported.append(key(AggregateKind::Scheduler, 30), scheduler_event_frame(3), 94);
+    let error = replay_from_genesis(&projection, &unsupported.export())
+        .expect_err("unsupported scheduler event schema rejects");
+    assert_eq!(error.kind(), ProjectionErrorKind::UnsupportedSchema);
+
+    let mut non_scheduler = Fixture::new();
+    non_scheduler.append(key(AggregateKind::Kernel, 31), relabel_schema(phase_frame(), 2), 95);
+    let error = replay_from_genesis(&projection, &non_scheduler.export())
+        .expect_err("non-scheduler family remains schema one only");
+    assert_eq!(error.kind(), ProjectionErrorKind::UnsupportedSchema);
 }
 
 #[test]

@@ -1,0 +1,46 @@
+{"candidate_commit": "65f16e2933b70305de865750931bb05fe9afb64d", "candidate_tree": "ae2a43f9a9b73f5fec944d39cf165a8b3ec4df20", "environment": {"CARGO_BUILD_JOBS": "1", "CCACHE_DISABLE": "1", "RUST_TEST_THREADS": "1"}, "gate": {"command": "cargo test --package peritus-git --all-targets --all-features --locked", "invocation": ["cargo", "test", "--package", "peritus-git", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "output": "029-peritus-git-ordinary-test.log", "owning_crate": "peritus-git", "started_at": "2026-09-13T15:20:01.310824Z"}, "plan_sha256": "7fc101b7f8284fbe3818461a8166d73d3425f369120b43c1cbf1b43809a6b7c9"}
+
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.17s
+     Running unittests src/lib.rs (target/debug/deps/peritus_git-b5b068be6046888e)
+
+running 6 tests
+test name::tests::validates_portable_names ... ok
+test object_id::tests::accepts_exact_sha1_and_sha256 ... ok
+test object_id::tests::rejects_wrong_algorithm_length_and_uppercase ... ok
+test reconcile::tests::reason_encoding_is_order_sensitive_and_total ... ok
+test status::porcelain::tests::parses_headers_and_all_simple_record_classes ... ok
+test status::porcelain::tests::rejects_unterminated_and_malformed_records ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/git_lifecycle.rs (target/debug/deps/git_lifecycle-8037df493b2388ae)
+
+running 6 tests
+test candidate_snapshot_restart_and_restore_preserve_head_and_history ... ok
+test opens_resolves_and_manages_an_exact_detached_worktree ... ok
+test opens_sha256_repository_when_supported_by_git ... ok
+test parses_real_unmerged_index_as_indeterminate_reconciliation ... ok
+test parses_tracked_untracked_ignored_and_renamed_status ... ok
+test recovers_trusted_worktree_at_advanced_detached_head_without_losing_changes ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.55s
+
+     Running tests/git_safety.rs (target/debug/deps/git_safety-1dfc1ebe6f606987)
+
+running 4 tests
+test attached_head_at_same_commit_is_not_accepted_as_managed_topology ... ok
+test configured_external_filter_is_rejected_before_execution_or_staging ... ok
+test recovers_existing_exact_worktree_after_interrupted_registration ... ok
+test status_overrides_local_submodule_ignore_configuration ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.43s
+
+     Running tests/snapshot_quarantine.rs (target/debug/deps/snapshot_quarantine-91f0b0c05ce912b6)
+
+running 1 test
+test divergent_snapshot_reference_is_atomically_quarantined ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.12s
+
+
+GATE DRIVER RESULT: {"command": "cargo test --package peritus-git --all-targets --all-features --locked", "command_exit_code": 0, "elapsed_seconds": 1.368, "exit_code": 0, "finished_at": "2026-09-13T15:20:02.679871Z", "invocation": ["cargo", "test", "--package", "peritus-git", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "output": "029-peritus-git-ordinary-test.log", "owning_crate": "peritus-git", "result": "passed", "started_at": "2026-09-13T15:20:01.310824Z"}

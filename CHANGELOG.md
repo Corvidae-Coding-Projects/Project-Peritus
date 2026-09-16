@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.0.3
+
+- Make compatible-provider connections more reliable for OpenCode Zen and DeepSeek. Recover
+  streamed usage and batched choice fragments, complete live chat and tool-result round trips,
+  retry required tool calls when a provider omits them, and keep model discovery aligned with
+  the configured provider route.
+- Strengthen the coding harness where live HarnessBench runs exposed weak behavior from smaller
+  models. Preserve decisive command evidence and recent source/result exchanges within bounded
+  context, enforce requested outputs and interfaces, recover terminal corrections, and classify
+  exhausted development loops as budget limits instead of successful completion.
+- Preserve exact product-run context across selection, compaction, persistence, retry, and restart.
+  Bind rendered segments and recovered checkpoints to their selected sources and reject stale or
+  incompatible state.
+- Expand formal coverage for scheduler cancellation, capacity, replay reconstruction, finalization,
+  and product-context correspondence. Keep proof scope tied to the production methods and protected
+  review inventory checked by CI.
+- Add bounded fuzzing, mutation, recovery, and containment campaigns. Fix repeated effect identities,
+  cancellation and receipt-tail recovery, leaked or colliding test state, and cross-platform campaign
+  runner failures found by those campaigns.
+- Keep the hosted test matrix within its bounded shards while repairing Windows-native path checks,
+  quoted output-directory handling, transient Rust setup retries, and proof-policy runner coverage.
+
 ## 0.0.2
 
 - Run authorized repository and folder work through the checked writer, reviewer, and fixer

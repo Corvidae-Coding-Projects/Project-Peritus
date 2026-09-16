@@ -68,6 +68,55 @@
       "record_locators": [
         "codex-collaboration:Corvidae-Coding-Projects/Project-Peritus/session/23/task/root/workbench_formal_review"
       ]
+    },
+    {
+      "actor_id": "ACTOR-0005",
+      "kind": "crosslink-agent",
+      "principal": "SHA256:F4pa6Img4SKcIhtZ3zyHSwUehhPFSMjlvpf7eTU6qsE",
+      "repository": "Corvidae-Coding-Projects/Project-Peritus",
+      "issue": 75,
+      "issue_created_at": "2026-09-12T15:27:42.848160186Z",
+      "session": 4,
+      "task": "/root",
+      "mode": "implementation",
+      "public_key": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHug+hTvrGCqZ0gChS1B/VCQwdA2pRG5ohoaiC7j/nr8 crosslink-agent:4jyS@dollspace-laptop",
+      "allowed_signer": "4jyS@crosslink ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHug+hTvrGCqZ0gChS1B/VCQwdA2pRG5ohoaiC7j/nr8 crosslink-agent:4jyS@dollspace-laptop",
+      "record_locators": [
+        "embedded:allowed-signer",
+        "embedded:public-key"
+      ]
+    },
+    {
+      "actor_id": "ACTOR-0006",
+      "kind": "codex-subagent",
+      "principal": "Corvidae-Coding-Projects/Project-Peritus/session/4/task/root/gap2_final_review",
+      "repository": "Corvidae-Coding-Projects/Project-Peritus",
+      "issue": 75,
+      "issue_created_at": "2026-09-12T15:27:42.848160186Z",
+      "session": 4,
+      "task": "/root/gap2_final_review",
+      "mode": "read-only-review",
+      "model": "gpt-5.6-sol",
+      "reasoning_effort": "xhigh",
+      "record_locators": [
+        "codex-collaboration:Corvidae-Coding-Projects/Project-Peritus/session/4/task/root/gap2_final_review"
+      ]
+    },
+    {
+      "actor_id": "ACTOR-0007",
+      "kind": "codex-subagent",
+      "principal": "Corvidae-Coding-Projects/Project-Peritus/session/4/task/root/gap4_final_review",
+      "repository": "Corvidae-Coding-Projects/Project-Peritus",
+      "issue": 75,
+      "issue_created_at": "2026-09-12T15:27:42.848160186Z",
+      "session": 4,
+      "task": "/root/gap4_final_review",
+      "mode": "read-only-review",
+      "model": "gpt-5.6-sol",
+      "reasoning_effort": "xhigh",
+      "record_locators": [
+        "codex-collaboration:Corvidae-Coding-Projects/Project-Peritus/session/4/task/root/gap4_final_review"
+      ]
     }
   ]
 }

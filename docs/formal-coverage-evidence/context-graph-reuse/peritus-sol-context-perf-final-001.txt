@@ -1,0 +1,38 @@
+   Compiling proc-macro2 v1.0.107
+   Compiling unicode-ident v1.0.24
+   Compiling quote v1.0.47
+   Compiling verus_syn v0.0.0-2026-08-02-0125 (https://github.com/verus-lang/verus.git?rev=92f466f247f45128c630d1c843fd6e27d2115587#92f466f2)
+   Compiling verus_prettyplease v0.0.0-2026-08-09-0044 (https://github.com/verus-lang/verus.git?rev=92f466f247f45128c630d1c843fd6e27d2115587#92f466f2)
+   Compiling equivalent v1.0.2
+   Compiling hashbrown v0.17.1
+   Compiling indexmap v2.14.0
+   Compiling syn v2.0.119
+   Compiling synstructure v0.13.2
+   Compiling convert_case v0.4.0
+   Compiling vstd v0.0.0-2026-08-09-0044 (https://github.com/verus-lang/verus.git?rev=92f466f247f45128c630d1c843fd6e27d2115587#92f466f2)
+   Compiling verus_state_machines_macros v0.0.0-2026-08-02-0125 (https://github.com/verus-lang/verus.git?rev=92f466f247f45128c630d1c843fd6e27d2115587#92f466f2)
+   Compiling verus_builtin_macros v0.0.0-2026-08-09-0044 (https://github.com/verus-lang/verus.git?rev=92f466f247f45128c630d1c843fd6e27d2115587#92f466f2)
+   Compiling verus_builtin v0.0.0-2026-08-09-0044 (https://github.com/verus-lang/verus.git?rev=92f466f247f45128c630d1c843fd6e27d2115587#92f466f2)
+   Compiling typenum v1.20.1
+   Compiling hybrid-array v0.4.14
+   Compiling crypto-common v0.2.2
+   Compiling block-buffer v0.12.1
+   Compiling digest v0.11.3
+   Compiling cfg-if v1.0.4
+   Compiling cpufeatures v0.3.0
+   Compiling sha2 v0.11.0
+   Compiling peritus-types v0.0.2 (/tmp/peritus-sol-context-perf-final-001/crates/foundation/peritus-types)
+   Compiling peritus-spec v0.0.2 (/tmp/peritus-sol-context-perf-final-001/crates/foundation/peritus-spec)
+   Compiling peritus-policy v0.0.2 (/tmp/peritus-sol-context-perf-final-001/crates/foundation/peritus-policy)
+   Compiling peritus-run-settlement v0.0.2 (/tmp/peritus-sol-context-perf-final-001/crates/orchestration/peritus-run-settlement)
+   Compiling peritus-codec v0.0.2 (/tmp/peritus-sol-context-perf-final-001/crates/foundation/peritus-codec)
+   Compiling peritus-role v0.0.2 (/tmp/peritus-sol-context-perf-final-001/crates/orchestration/peritus-role)
+   Compiling peritus-run-knowledge v0.0.2 (/tmp/peritus-sol-context-perf-final-001/crates/orchestration/peritus-run-knowledge)
+   Compiling peritus-context v0.0.2 (/tmp/peritus-sol-context-perf-final-001/crates/orchestration/peritus-context)
+    Finished `release` profile [optimized] target(s) in 17.18s
+     Running `/home/doll/Project-Peritus/.worktrees/formal-coverage/target/peritus-sol-context-perf-final-001/release/examples/context_graph_chain_probe 64,128,256,512 5`
+shape=ascending-chain repeats=5
+n=64 min_ns=359789 median_ns=362466 mean_ns=362351 max_ns=366343
+n=128 min_ns=2717721 median_ns=2720550 mean_ns=2725025 max_ns=2745920
+n=256 min_ns=16640306 median_ns=17503230 mean_ns=17647277 max_ns=18894954
+n=512 min_ns=136391957 median_ns=137086391 mean_ns=137344475 max_ns=139033071

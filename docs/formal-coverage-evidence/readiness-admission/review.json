@@ -1,0 +1,55 @@
+{
+  "schema": "peritus.formal-coverage.review-checkpoint",
+  "schema_version": 1,
+  "status": "reviewed-increment-not-obligation-discharge",
+  "audit_base": "1aa9282ff2cfcbf8fac325f11f157f408d33ee30",
+  "implementation_checkpoint_time": "2026-09-12T19:19:40Z",
+  "implementation_agent": "/root/sol_readiness_correspondence",
+  "implementation_model": "gpt-5.6-sol",
+  "implementation_reasoning_effort": "xhigh",
+  "reviewer": "/root",
+  "scope": "Actual H4 evidence contributors with complete candidate identity, exact decision constructor correspondence, and production-called finite H0/H4 qualification admission.",
+  "review_procedure": [
+    "Read changed source and contracts, complete candidate comparator and nested component comparisons.",
+    "Checked all 42 actual H0 outcomes preserve canonical case order and H4 operator passes seven validation outcomes plus adapter result to verified admission.",
+    "Reviewed the preserved generic policy API and runtime diagnostic/error paths.",
+    "Checked all 33 source hashes in frozen backup and isolated review copy.",
+    "Independently reran four-package ordinary tests and both strict proof roots."
+  ],
+  "results": {
+    "independent_tests_passed": 82,
+    "release_policy_verified": 304,
+    "security_policy_verified": 164,
+    "proof_errors": 0,
+    "implementation_strict_clippy": "passed four packages/all targets/all features",
+    "implementation_format": "passed four packages",
+    "shared_layout": "earlier pass, later failure in concurrently changed kernel waiver.rs; not a final repository-layout claim"
+  },
+  "limits": [
+    "Full H0/H4 input equivalence remains open beyond the exact constructor contracts and H4 evidence witness implication.",
+    "Ordinary validators and outcome classification are not verified by the finite outcome reductions.",
+    "Supplied signed/reviewed flags and actor/digest values are not authenticated by these proofs.",
+    "No release staging/publishing workflow was changed.",
+    "This source checkpoint may become historical during subsequent security-policy work; it is not complete compiler-input or final-commit evidence.",
+    "No proof-impact authorization, exclusion, or obligation discharge is created."
+  ],
+  "artifacts": {
+    "audit.md": "986be0dc1c3436cc6b91d8159d963d865298a34a260da38ede4d0624cc5d9793",
+    "commands.txt": "3e5552ac1d0f07a74ebd7f91c52c65dda8b75a9149d9d6f955fd875d4ac4449d",
+    "implementation-manifest.txt": "9aa5ae1bba809ff46dbd7a69e9eaf5cef18ad06ef69845c3632a21df671eeeac",
+    "parent-release-verus.txt": "c8da8949dde1d88b6ca02cfafeb686c42e3186cf0f4e1851c3d41953f116038a",
+    "parent-security-verus.txt": "3b98754e671efaed5322056a29ba4bf0363fc6947bcf42cd4ff91241d7f56461",
+    "parent-tests.txt": "da67f5cdcfc31e6fa5bd5633ca4882080c84a378d0275313eb37e218964a2d0d",
+    "peritus-sol-readiness-clippy-final-20260912T008.txt": "aadaff0065556bf1998b1dd694c4ab0e4ed064f3afaac33394e740eac9d0dfa1",
+    "peritus-sol-readiness-environment-final-20260912T002.txt": "f87d2fbd580442e28af2fd81f38a11bb25a2c96c1b028b0a4bf4b3dc2b65251c",
+    "peritus-sol-readiness-fmt-final-20260912T004.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "peritus-sol-readiness-forbidden-scan-final-20260912T004.txt": "758b9e93d46e1e3c9a773a2ed82790c05d6fd2a0ab23f2aec03784462973a66b",
+    "peritus-sol-readiness-package-tests-final-20260912T007.txt": "399eb5c5307458c8f690442e9846eb3fe1fec42d90305511c32ae6053186ab1a",
+    "peritus-sol-readiness-release-fail-closed-tests-final-20260912T001.txt": "59c3d8f6d0d865cbde705824953ded23cb310286b2e760693dd24e97943aca07",
+    "peritus-sol-readiness-release-verus-final-20260912T013.txt": "0db83963029fb003c22a7e8ac086739249992a466bac0c24f7c6e67ed0849c0c",
+    "peritus-sol-readiness-security-verus-final-20260912T002.txt": "5898204a329f5ac29f2ad3e096c77af154cfb5c5c04c18f836088fbf2fc7e789",
+    "peritus-sol-readiness-source-layout-final-20260912T005.txt": "23cd259921541fabe9c0816fb05ff56181ee1bb5376e46bf2f82006ab63c3372",
+    "peritus-sol-readiness-source-layout-final-20260912T006.txt": "5ea331432845c53d3bb9bbc1a1bf85261a6e89abf4170f845a366f9996d4c754",
+    "source-sha256.txt": "ac006a77ed92faca44980356e192f6c6b44773623d80b37e879589c56127d37f"
+  }
+}
