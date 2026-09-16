@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1492,
-        "tip_oid": "1c39d912ee8a3c2b8802ac266353891714858d1f",
-        "prefix_sha256": "5ffbaa520140b36ca053d61e23f160655d8c49f1ad5f355fdbe4a2b475445612"
+        "sequence": 1493,
+        "tip_oid": "d25e3be6b50adee5c21b763e3f10432a4fc649d4",
+        "prefix_sha256": "ac191fc30541efb05ec225e2cdb7d727e9596736cbf141c04b8f9e2adaf1bbca"
       },
       "NWAR": {
         "sequence": 39,
@@ -16470,11 +16470,12 @@
       "display_id": 85,
       "title": "Prepare and publish Peritus v0.0.3",
       "description": "Synchronize workspace version 0.0.3 on current develop, document changes since v0.0.2, validate, promote develop to main, tag the exact merge, qualify the staged release, verify assets, and publish only after the repository Ready gate and separate owner publication authority.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-16T04:33:35.654836720Z",
-      "updated_at": "2026-09-16T08:44:42.704738976Z",
+      "updated_at": "2026-09-16T08:45:16.373102454Z",
+      "closed_at": "2026-09-16T08:45:16.371774070Z",
       "labels": [
         "release"
       ],
