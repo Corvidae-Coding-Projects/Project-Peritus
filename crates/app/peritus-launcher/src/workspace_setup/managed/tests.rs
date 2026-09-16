@@ -118,7 +118,10 @@ fn trust_uses_the_exact_selected_linked_worktree_head() {
     assert_ne!(selected_head, primary_head);
 
     let repository = DiscoveredRepository::open(&selected).expect("linked worktree");
-    assert_eq!(repository.root_text(), selected.to_str().expect("selected path"));
+    assert_eq!(
+        Path::new(repository.root_text()),
+        fs::canonicalize(&selected).expect("canonical selected path")
+    );
     let layout = AppLayout::for_test(&temporary.path().join("application"))
         .prepare()
         .expect("application layout");
