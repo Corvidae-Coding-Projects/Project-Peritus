@@ -1,6 +1,7 @@
 //! Bounded authenticated local connection acceptor and owned task set.
 
 use std::{
+    error::Error as _,
     future::{Future, poll_fn},
     io::Write as _,
     sync::Arc,
@@ -155,6 +156,16 @@ fn report_connection_event(prefix: &[u8], error: &DaemonError) {
     let _ = stderr.write_all(error.operation().as_bytes());
     let _ = stderr.write_all(b": ");
     let _ = stderr.write_all(error.detail().as_bytes());
+    let mut source = error.source();
+    let mut depth = 0;
+    while let Some(cause) = source
+        && depth < 4
+    {
+        let _ = stderr.write_all(b"; cause: ");
+        let _ = stderr.write_all(cause.to_string().as_bytes());
+        source = cause.source();
+        depth += 1;
+    }
     let _ = stderr.write_all(b"\n");
 }
 

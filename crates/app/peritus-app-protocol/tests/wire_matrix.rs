@@ -1,9 +1,12 @@
 //! Six-family canonical wire round-trip and rejection integration tests.
 
 use peritus_app_protocol::{
-    AppErrorCode, AppProtocolLimits, decode_app_message, encode_app_message,
+    AppErrorCode, AppMessage, AppProtocolError, AppProtocolLimits, AppResponseEnvelope,
+    AppResponsePayload, CorrelationId, ProtocolContext, ProtocolId, ProtocolVersion, RequestId,
+    ResponsibleSubsystem, RetryDisposition, decode_app_message, encode_app_message,
     schema::generated_fixture_cases,
 };
+use peritus_types::SessionId;
 use std::collections::BTreeSet;
 
 #[test]
@@ -54,4 +57,38 @@ fn all_six_families_round_trip_and_reject_malformed_frames() {
             .code(),
         AppErrorCode::TrailingBytes,
     );
+}
+
+#[test]
+fn provider_and_workspace_error_allocations_round_trip_through_public_response_wire() {
+    assert_eq!(ResponsibleSubsystem::Provider.tag(), 10);
+    assert_eq!(ResponsibleSubsystem::Workspace.tag(), 11);
+
+    let context = ProtocolContext::new(
+        ProtocolId::new([1; 16]).expect("protocol"),
+        ProtocolVersion::new(1, 0).expect("version"),
+        SessionId::new([2; 16]).expect("session"),
+    );
+    for (subsystem, request_byte, correlation_byte) in
+        [(ResponsibleSubsystem::Provider, 3, 5), (ResponsibleSubsystem::Workspace, 4, 6)]
+    {
+        let response = AppMessage::Response(AppResponseEnvelope::new(
+            context,
+            RequestId::new([request_byte; 16]).expect("request"),
+            CorrelationId::new([correlation_byte; 16]).expect("correlation"),
+            AppResponsePayload::Error(AppProtocolError::classified(
+                AppErrorCode::MissingRequiredFeature,
+                RetryDisposition::NewRequest,
+                subsystem,
+                None,
+            )),
+        ));
+        let encoded = encode_app_message(&response, AppProtocolLimits::PRODUCTION)
+            .expect("public error response encodes");
+        assert_eq!(
+            decode_app_message(&encoded, AppProtocolLimits::PRODUCTION)
+                .expect("public error response decodes"),
+            response,
+        );
+    }
 }

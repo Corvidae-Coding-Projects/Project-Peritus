@@ -305,7 +305,7 @@ export interface CommittedEventRange {
 export interface AppProtocolError {
   readonly code: AppErrorCode;
   readonly retry: RetryDisposition;
-  readonly subsystem: ResponsibleSubsystem;
+  readonly subsystem: "codec" | "negotiation" | "session" | "command" | "subscription" | "artifact" | "prompt" | "terminal" | "daemon" | "provider" | "workspace" | "internal";
   readonly diagnostic?: string;
 }
 

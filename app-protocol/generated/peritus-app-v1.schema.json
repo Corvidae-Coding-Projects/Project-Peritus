@@ -214,7 +214,7 @@
       "properties": {
         "code": { "$ref": "#/$defs/AppErrorCode", "x-canonical-wire": "u16-be", "x-rust-type": "AppErrorCode" },
         "retry": { "type": "string", "enum": ["never", "same-request", "new-request", "after-recovery", "reconnect"], "x-canonical-wire": "u8", "x-rust-type": "RetryDisposition" },
-        "subsystem": { "type": "string", "enum": ["codec", "negotiation", "session", "command", "subscription", "artifact", "prompt", "terminal", "daemon", "internal"], "x-canonical-wire": "u8", "x-rust-type": "ResponsibleSubsystem" },
+        "subsystem": { "type": "string", "enum": ["codec", "negotiation", "session", "command", "subscription", "artifact", "prompt", "terminal", "daemon", "provider", "workspace", "internal"], "x-canonical-wire": "u8", "x-rust-type": "ResponsibleSubsystem" },
         "diagnostic": { "type": "string", "x-canonical-wire": "option+value", "x-rust-type": "Option<AppDiagnostic>", "x-bounds": ["app.max-diagnostic-bytes"] }
       },
       "required": ["code", "retry", "subsystem"]
