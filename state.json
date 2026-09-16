@@ -48,14 +48,14 @@
         "prefix_sha256": "75e62af207437405c7c0292c3ecc35c1e80a87ef1a9953202d92cb6ee96daa52"
       },
       "u7IC": {
-        "sequence": 123,
-        "tip_oid": "a26ae625bb98220bb61159596425b67a3838320a",
-        "prefix_sha256": "bb213d39105e09a2f23085f594f66b9a38bb8f1d50a2e5500f8db966498b815a"
+        "sequence": 124,
+        "tip_oid": "5a6e80f3807f3545cc302f594723e336cae13603",
+        "prefix_sha256": "9f47ea823d9a9fe521a0ff6b71543b3cfd66de4e79a7e94b6cfbc4219b936165"
       }
     }
   },
   "next_display_id": 85,
-  "next_comment_id": 1718,
+  "next_comment_id": 1719,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -13009,7 +13009,7 @@
       "priority": "medium",
       "created_by": "u7IC",
       "created_at": "2026-09-15T00:49:55.217770155Z",
-      "updated_at": "2026-09-16T02:09:07.698688961Z",
+      "updated_at": "2026-09-16T02:25:00.512309907Z",
       "labels": [
         "feature"
       ],
@@ -13823,6 +13823,15 @@
           "kind": "result",
           "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA+FElxzoEE4bqWY/u8YcKxu0nCQDzJeyxBQBU7VdX4ukQSYKvA8pzx+PTjk65I7AwAiJZW1fWKOGLI6+D2P/JCw=="
+        },
+        "d2d9f261-0cd4-4b93-b655-2579a8e72b01": {
+          "display_id": 1718,
+          "author": "u7IC",
+          "content": "Original105 finished both unchanged rounds at70f8e9be0: native DeepSeek qualification, all5 inputs intact, state/attempt/idempotency/result correctness independently checked against public fixtures. Original3/5 checks pass; JSON-list key, CSV parser precedence/header and undefined aggregate scope mismatches retained in archives, not tailored away. PR82 remains draft with evidence through105. Runner fixes remain committed/pushed; current hosted CI489pass0fail68pending.",
+          "created_at": "2026-09-16T02:25:00.505731256Z",
+          "kind": "result",
+          "signed_by": "SHA256:QtTAJ8voo+0NCQicoYJNH/aJwAgK0BANEjls19DY3oU",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAC0dTwrnqXW3RvLGBzCiTBlBP4HBAjmmeFu/BIPK52qY6crN+Pb8xlC9rvdfw11Qpmh/f8WpX4lo24adqJIEFDQ=="
         },
         "d9509473-953e-4e36-887f-4ee4dd9945c7": {
           "display_id": 1673,
