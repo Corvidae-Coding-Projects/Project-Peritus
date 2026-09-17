@@ -133,6 +133,22 @@
       "record_locators": [
         "codex-collaboration:Corvidae-Coding-Projects/Project-Peritus/session/61/task/root/pcr7_final_review_sol"
       ]
+    },
+    {
+      "actor_id": "ACTOR-0009",
+      "kind": "codex-subagent",
+      "principal": "Corvidae-Coding-Projects/Project-Peritus/session/61/task/root/pcr8_final_review_sol",
+      "repository": "Corvidae-Coding-Projects/Project-Peritus",
+      "issue": 86,
+      "issue_created_at": "2026-09-16T14:32:25.393355747Z",
+      "session": 61,
+      "task": "/root/pcr8_final_review_sol",
+      "mode": "read-only-review",
+      "model": "gpt-5.6-sol",
+      "reasoning_effort": "xhigh",
+      "record_locators": [
+        "codex-collaboration:Corvidae-Coding-Projects/Project-Peritus/session/61/task/root/pcr8_final_review_sol"
+      ]
     }
   ]
 }
