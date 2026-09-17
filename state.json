@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1504,
-        "tip_oid": "29c4310605d63c7ad3b531d7d014dc939ea17c83",
-        "prefix_sha256": "e27d3b092f45f9f5cc2e7201d7f6528363bf0027d23644be69d58833b88ff98b"
+        "sequence": 1505,
+        "tip_oid": "e570da8a6e928ec9fecc1b087bec525892e9a723",
+        "prefix_sha256": "b94fa59399927c9f83b9716e916be81556c2a5ce3bd5f8d0b14c42580face453"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 87,
-  "next_comment_id": 1733,
+  "next_comment_id": 1734,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -9797,7 +9797,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-16T14:32:25.393355747Z",
-      "updated_at": "2026-09-17T00:39:43.527984621Z",
+      "updated_at": "2026-09-17T02:32:52.377749624Z",
       "labels": [
         "bug"
       ],
@@ -9864,6 +9864,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABACuo062CWSlUq7IKNiS3BOUt7kqUSikDCier2UabOInkCsZHMAHbEoX/9Ar2e/OnDTGwnBxVBHd9DtZIzHY0SDg=="
+        },
+        "fa5ac6a3-cd74-437b-bf6c-c78de6fd9424": {
+          "display_id": 1733,
+          "author": "6ME5",
+          "content": "Landed PCR-0008 authorization in PR #89 (merge a2ec39632), then landed the exact portable Windows diagnostic assertion and reconciled source inventory in PR #90 (merge 6ebd46291). PR #90 completed with 576 passing checks, 0 failures, 0 pending checks, and 3 intentional skips. The former Windows daemon failure is green. One macOS Intel H2 job hit a GitHub artifact API ETIMEDOUT; rerunning only that failed job passed. Final develop verify-trust passes across 4602 source files.",
+          "created_at": "2026-09-17T02:32:52.359428035Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA9d4Or7hfSr/jWokr/H0pnxAUSVehndSlaIZuP4JhuN/qv/ORnWI0SVcdkS9O/3JXFUjbbAIc3D/e4F4vDMz9DA=="
         }
       }
     },
