@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1502,
-        "tip_oid": "2932ab2841f211ece6ad614d3173c2d0bebf7d72",
-        "prefix_sha256": "ab1cd4b97c54b5d3481767674ad8e15d066c44f4f464a33fda3ecf28e331c445"
+        "sequence": 1503,
+        "tip_oid": "869161c57a482bbcab58eedf2be74d4b9499c459",
+        "prefix_sha256": "4959c7316fac811e98f19728b07f1f3a3183b83cdc24beb036db4ee0b2b2fccc"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 87,
-  "next_comment_id": 1731,
+  "next_comment_id": 1732,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -9797,7 +9797,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-16T14:32:25.393355747Z",
-      "updated_at": "2026-09-16T21:53:16.818004121Z",
+      "updated_at": "2026-09-17T00:31:32.098182624Z",
       "labels": [
         "bug"
       ],
@@ -9846,6 +9846,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAoi5wUxmiSeNeEukWvQQ49VKnwDzo6sAj4nZzzF2KlGrGT/J0i2qbBXcccFc9hOnxnZX0eRThGlWYsPNl/dBhDg=="
+        },
+        "e92aaedb-6a93-4077-a97f-67beee6d03c0": {
+          "display_id": 1731,
+          "author": "6ME5",
+          "content": "Committed PCR-0008 protected-base authorization as f511cb298. The authorization binds candidate 58da2dbc18f3248594e3ea3c7b67b540723b4b60 and tree fd1a8f2a9bb48d55fda7128aa135632b7aa69be5 to base ee31669a2da6d4e91a17553aa92eb27b28da8f33, retains 66 ordinary-test and 66 Verus logs, records independent ACTOR-0009 approval, and passes cargo xtask all plus verify-trust over 4602 source files.",
+          "created_at": "2026-09-17T00:31:32.083873422Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABACuo062CWSlUq7IKNiS3BOUt7kqUSikDCier2UabOInkCsZHMAHbEoX/9Ar2e/OnDTGwnBxVBHd9DtZIzHY0SDg=="
         }
       }
     },
