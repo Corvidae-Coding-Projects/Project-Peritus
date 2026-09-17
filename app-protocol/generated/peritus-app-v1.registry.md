@@ -201,7 +201,7 @@ Rust type: `AppProtocolError`
 |---|:---:|---|---|---|---|
 | `code` | yes | `u16-be` | `AppErrorCode` | `AppErrorCode` | — |
 | `retry` | yes | `u8` | `RetryDisposition` | `RetryDisposition` | — |
-| `subsystem` | yes | `u8` | `ResponsibleSubsystem` | `ResponsibleSubsystem` | — |
+| `subsystem` | yes | `u8` | `ResponsibleSubsystem` | `"codec" | "negotiation" | "session" | "command" | "subscription" | "artifact" | "prompt" | "terminal" | "daemon" | "provider" | "workspace" | "internal"` | — |
 | `diagnostic` | no | `option+value` | `Option<AppDiagnostic>` | `string` | `app.max-diagnostic-bytes` |
 
 ### `CommandResult`
