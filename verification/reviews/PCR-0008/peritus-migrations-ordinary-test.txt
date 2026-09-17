@@ -1,0 +1,43 @@
+candidate_commit=eb187b0f0b1dafb1f079d34aa581acfcd0b6239e
+candidate_tree=fd1a8f2a9bb48d55fda7128aa135632b7aa69be5
+command=CARGO_BUILD_JOBS=1 cargo test --package peritus-migrations --all-targets --all-features --locked
+started_at=2026-09-16T21:58:04Z
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.18s
+     Running unittests src/lib.rs (target/debug/deps/peritus_migrations-faa7d9357df68bbc)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/apply_recovery.rs (target/debug/deps/apply_recovery-792a922d9014f7f5)
+
+running 9 tests
+test migration_owner_lock_rejects_concurrent_engine ... ok
+test pre_backup_failure_is_restart_visible_without_schema_progress ... ok
+test corrupted_durable_backup_blocks_schema_apply ... ok
+test abandoned_backup_temporary_is_replaced_on_retry ... ok
+test completed_backup_survives_interrupted_apply_start ... ok
+test applied_history_digest_drift_is_terminal ... ok
+test apply_failure_requires_and_supports_explicit_backup_restore ... ok
+test successful_risky_apply_creates_backup_and_records_version ... ok
+test landed_ambiguous_commit_remains_applying_and_reconciles_applied_after_restart ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/initial_install.rs (target/debug/deps/initial_install-4849e5e2e2c9b4d0)
+
+running 2 tests
+test fresh_schema_is_complete_and_adopted_once_without_upgrade_or_backup ... ok
+test initial_schema_accepts_all_release_aggregate_families_and_shared_history ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running tests/planning.rs (target/debug/deps/planning-eb28105ec53a4796)
+
+running 4 tests
+test production_registry_contains_only_the_initial_release_schema ... ok
+test planning_rejects_insufficient_space_and_reverse_or_incompatible_ranges ... ok
+test source_digest_drift_and_registry_gaps_are_rejected ... ok
+test planning_rejects_reverse_ranges_and_checked_capacity_overflow ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s

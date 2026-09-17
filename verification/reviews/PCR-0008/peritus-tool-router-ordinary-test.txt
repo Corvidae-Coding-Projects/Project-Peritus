@@ -1,0 +1,41 @@
+candidate_commit=eb187b0f0b1dafb1f079d34aa581acfcd0b6239e
+candidate_tree=fd1a8f2a9bb48d55fda7128aa135632b7aa69be5
+exact_command=cargo test --package peritus-tool-router --all-targets --all-features --locked
+started_at=2026-09-16T21:57:05Z
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.19s
+     Running unittests src/lib.rs (target/debug/deps/peritus_tool_router-c61fdb056cfd00db)
+
+running 3 tests
+test verified::tests::authority_rejects_each_independent_missing_fact ... ok
+test verified::tests::rejection_and_replay_never_admit_second_effect ... ok
+test verified::tests::operation_refinement_rejects_each_independent_mismatch ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/production_conformance.rs (target/debug/deps/production_conformance-b31a8066f66e6b36)
+
+running 1 test
+test production_router_passes_all_eight_a2_tool_cases ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.23s
+
+     Running tests/router_authority.rs (target/debug/deps/router_authority-af2cfbb32152468c)
+
+running 6 tests
+test authority_rejection_never_calls_dispatcher ... ok
+test wrong_prepared_digest_never_calls_dispatcher ... ok
+test rejected_control_restores_active_execution_ownership ... ok
+test exact_replay_still_requires_exact_authority_without_redispatch ... ok
+test conflicting_and_non_idempotent_replay_never_repeat_effect ... ok
+test exact_authority_dispatches_once_and_exact_replay_returns_cached_result ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running tests/router_lifecycle.rs (target/debug/deps/router_lifecycle-6590fc8c60a2bc63)
+
+running 3 tests
+test recovery_progress_and_terminal_are_accepted_as_one_update ... ok
+test progress_then_typed_poll_failure_closes_with_observed_count ... ok
+test synchronous_result_cannot_claim_unobserved_progress ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s

@@ -1,0 +1,29 @@
+candidate_commit=eb187b0f0b1dafb1f079d34aa581acfcd0b6239e
+candidate_tree=fd1a8f2a9bb48d55fda7128aa135632b7aa69be5
+exact_command=cargo test --package peritus-tools-git --all-targets --all-features --locked
+started_at=2026-09-16T21:57:27Z
+    Blocking waiting for file lock on build directory
+   Compiling peritus-tools-git v0.0.3 (/home/doll/Project-Peritus/.worktrees/issue-84-actionable-errors/crates/tools/peritus-tools-git)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 5.94s
+     Running unittests src/lib.rs (target/debug/deps/peritus_tools_git-767fc5746bcc518d)
+
+running 1 test
+test verified::tests::diff_dimensions_are_independent ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/git_dispatch.rs (target/debug/deps/git_dispatch-c4f579d2336cd133)
+
+running 1 test
+test router_dispatches_candidate_snapshot_and_history_preserving_rollback ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.32s
+
+     Running tests/git_tools.rs (target/debug/deps/git_tools-a22f31574dd4b11b)
+
+running 3 tests
+test descriptor_catalog_is_complete_canonical_and_deterministic ... ok
+test merge_is_typed_unsupported_and_never_mutates_refs ... ok
+test structured_status_diff_history_and_snapshot_use_real_git_observations ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.09s

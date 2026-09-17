@@ -1,0 +1,49 @@
+candidate_commit=eb187b0f0b1dafb1f079d34aa581acfcd0b6239e
+candidate_tree=fd1a8f2a9bb48d55fda7128aa135632b7aa69be5
+command=CARGO_BUILD_JOBS=1 cargo test --package peritus-kernel --all-targets --all-features --locked
+started_at=2026-09-16T21:58:00Z
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.17s
+     Running unittests src/lib.rs (target/debug/deps/peritus_kernel-07faa5b5daa134da)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/adversarial.rs (target/debug/deps/adversarial-b6247b0caa0a2c69)
+
+running 6 tests
+test acceptance_rejects_missing_stale_and_untracked_evidence ... ok
+test revision_forks_and_replayed_identities_preserve_the_aggregate ... ok
+test waiver_grant_rejects_a_finding_from_another_review_cycle ... ok
+test run_and_attempt_admission_fail_closed_on_budget_inputs ... ok
+test action_authorization_requires_the_exact_capability_use ... ok
+test incomplete_current_evidence_enters_fixer_state_without_implicit_success ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/lifecycle_trace.rs (target/debug/deps/lifecycle_trace-df26cf808436bbe7)
+
+running 1 test
+test complete_writer_action_review_acceptance_trace_is_causal ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/reference_model.rs (target/debug/deps/reference_model-9feb03d62cf5b1e4)
+
+running 1 test
+test generated_traces_match_reference_after_each_step_and_first_rejection ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/transition_matrix.rs (target/debug/deps/transition_matrix-b7d0422feadfe6f2)
+
+running 7 tests
+test session_and_run_control_matrix_accepts_only_declared_edges ... ok
+test missing_parents_and_illegal_child_edges_fail_without_events ... ok
+test needs_changes_attempt_resumes_only_through_the_explicit_fixer_edge ... ok
+test run_pause_resume_and_all_non_acceptance_terminal_edges_are_explicit ... ok
+test approved_exact_revision_waiver_can_participate_in_acceptance ... ok
+test attempt_turn_and_action_families_cover_progress_failure_and_rejection ... ok
+test review_waiver_and_acceptance_families_cover_terminal_and_illegal_edges ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s

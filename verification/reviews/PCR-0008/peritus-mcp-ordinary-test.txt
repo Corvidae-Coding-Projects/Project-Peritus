@@ -1,0 +1,19 @@
+candidate_commit=eb187b0f0b1dafb1f079d34aa581acfcd0b6239e
+candidate_tree=fd1a8f2a9bb48d55fda7128aa135632b7aa69be5
+command=CARGO_BUILD_JOBS=1 cargo test --package peritus-mcp --all-targets --all-features --locked
+started_at=2026-09-16T21:58:02Z
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.18s
+     Running unittests src/lib.rs (target/debug/deps/peritus_mcp-2821a5476a09f7ee)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/server.rs (target/debug/deps/server-bd26d395428ea01a)
+
+running 3 tests
+test malformed_framing_is_reported_after_owned_tasks_are_joined ... ok
+test cancellation_remains_responsive_while_a_call_is_active ... ok
+test lifecycle_pagination_tool_resource_and_prompt_methods_work ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s

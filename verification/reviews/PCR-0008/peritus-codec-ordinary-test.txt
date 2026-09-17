@@ -1,0 +1,38 @@
+candidate_commit=eb187b0f0b1dafb1f079d34aa581acfcd0b6239e
+candidate_tree=fd1a8f2a9bb48d55fda7128aa135632b7aa69be5
+command=CARGO_BUILD_JOBS=1 cargo test --package peritus-codec --all-targets --all-features --locked
+started_at=2026-09-16T21:55:44Z
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.13s
+     Running unittests src/lib.rs (target/debug/deps/peritus_codec-adac081120203522)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/frame.rs (target/debug/deps/frame-ab415737fa4dcc42)
+
+running 4 tests
+test every_header_and_payload_truncation_is_rejected ... ok
+test frame_rejects_reserved_fields_and_resource_overruns ... ok
+test version_one_frame_has_exact_header_and_round_trips ... ok
+test malformed_headers_and_trailing_data_fail_exactly ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/message.rs (target/debug/deps/message-16dd8c8e6a111b48)
+
+running 2 tests
+test typed_decode_rejects_wrong_family_schema_and_payload_trailing_bytes ... ok
+test typed_messages_round_trip_and_hash_complete_frames ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/primitives.rs (target/debug/deps/primitives-9d419bbd89599d10)
+
+running 4 tests
+test exact_limits_succeed_and_one_over_fails_without_partial_write ... ok
+test primitive_encoding_is_fixed_width_big_endian_and_round_trips ... ok
+test nesting_limit_is_exact_for_reader_and_writer ... ok
+test invalid_closed_tags_utf8_and_trailing_bytes_are_rejected ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s

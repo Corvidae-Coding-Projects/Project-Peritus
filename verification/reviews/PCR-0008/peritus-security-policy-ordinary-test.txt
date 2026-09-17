@@ -1,0 +1,23 @@
+candidate_commit=eb187b0f0b1dafb1f079d34aa581acfcd0b6239e
+candidate_tree=fd1a8f2a9bb48d55fda7128aa135632b7aa69be5
+exact_command=cargo test --package peritus-security-policy --all-targets --all-features --locked
+started_at=2026-09-16T21:56:18Z
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.17s
+     Running unittests src/lib.rs (target/debug/deps/peritus_security_policy-b88db9facda22ee2)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/policy.rs (target/debug/deps/policy-66f5d8d0d08ced21)
+
+running 7 tests
+test any_candidate_mutation_invalidates_prior_security_evidence ... ok
+test complete_exact_candidate_is_security_ready_without_release_authority ... ok
+test resolved_high_finding_requires_remediation_and_retest_evidence ... ok
+test every_native_probe_outcome_is_required_for_final_admission ... ok
+test unresolved_high_finding_blocks_readiness ... ok
+test missing_independent_review_is_not_ready ... ok
+test every_required_security_dimension_fails_closed_when_removed ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s

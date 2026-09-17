@@ -1,0 +1,119 @@
+candidate_commit=eb187b0f0b1dafb1f079d34aa581acfcd0b6239e
+candidate_tree=fd1a8f2a9bb48d55fda7128aa135632b7aa69be5
+command=CARGO_BUILD_JOBS=1 cargo test --package peritus-eval --all-targets --all-features --locked
+started_at=2026-09-16T21:56:53Z
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+   Compiling peritus-git v0.0.3 (/home/doll/Project-Peritus/.worktrees/issue-84-actionable-errors/crates/runtime/peritus-git)
+   Compiling peritus-workspace v0.0.3 (/home/doll/Project-Peritus/.worktrees/issue-84-actionable-errors/crates/runtime/peritus-workspace)
+   Compiling peritus-harness v0.0.3 (/home/doll/Project-Peritus/.worktrees/issue-84-actionable-errors/crates/orchestration/peritus-harness)
+   Compiling peritus-eval v0.0.3 (/home/doll/Project-Peritus/.worktrees/issue-84-actionable-errors/crates/analysis/peritus-eval)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 12.40s
+     Running unittests src/lib.rs (target/debug/deps/peritus_eval-39c65c7c1ae6ad75)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/accounting_properties.rs (target/debug/deps/accounting_properties-ca5080e59b8d34bf)
+
+running 2 tests
+test exact_duplicates_are_idempotent_and_conflicting_terminals_quarantine ... ok
+test ledger_conserves_every_expected_rollout_and_retains_attempts ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/cancellation.rs (target/debug/deps/cancellation-d5fa580746868d02)
+
+running 1 test
+test cancellation_waits_for_each_external_rollout_before_terminal_completion ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/dataset_profile.rs (target/debug/deps/dataset_profile-aaab9d35663cce0e)
+
+running 4 tests
+test canonical_dataset_is_reproducible_and_keeps_evaluator_roots_sealed ... ok
+test extended_provider_snapshot_binds_supported_and_unknown_reasoning_replay ... ok
+test cross_corpus_candidate_evaluator_collision_is_rejected ... ok
+test frozen_profile_and_plan_inputs_are_stable ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/durability_effects.rs (target/debug/deps/durability_effects-5ad82b2712b18782)
+
+running 1 test
+test cancellation_settlement_atomically_acknowledges_the_existing_effect_and_restarts ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests/durability_restart.rs (target/debug/deps/durability_restart-5e25f0921dabc8dc)
+
+running 1 test
+test genesis_commit_is_idempotent_and_restart_replay_matches_checkpoint ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/execution_isolation.rs (target/debug/deps/execution_isolation-94c3bcbbcc89f582)
+
+running 3 tests
+test candidate_failure_is_infrastructure_and_skips_evaluator ... ok
+test evaluator_outage_never_masquerades_as_task_failure ... ok
+test evaluator_runs_only_after_finalized_candidate_output ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/planning_scheduling.rs (target/debug/deps/planning_scheduling-45a12ff644b13164)
+
+running 2 tests
+test planned_rollout_builds_exact_d3_coordination_work ... ok
+test complete_plan_is_deterministic_and_pair_seeds_match ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/production_conformance.rs (target/debug/deps/production_conformance-1bb7581d1f3db0a5)
+
+running 1 test
+test production_evaluation_satisfies_the_complete_a2_catalog ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests/publication_integration.rs (target/debug/deps/publication_integration-ec1c09da7dd73f63)
+
+running 1 test
+test complete_campaign_publishes_evidence_and_replays_without_duplicate_effects ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.08s
+
+     Running tests/replay_wire.rs (target/debug/deps/replay_wire-4bbf0ffbe69089af)
+
+running 2 tests
+test families_85_86_and_87_round_trip_through_semantic_checks ... ok
+test frozen_wire_corpus_is_byte_exact_and_malformed_frames_reject ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/report_analysis.rs (target/debug/deps/report_analysis-66c8d754442d16be)
+
+running 2 tests
+test incomplete_ledger_cannot_begin_analysis ... ok
+test complete_ledger_produces_deterministic_non_authoritative_report ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/statistics_vectors.rs (target/debug/deps/statistics_vectors-0c8fe318d2166ce4)
+
+running 3 tests
+test wilson_distribution_and_stability_retain_raw_inputs ... ok
+test pass_at_k_matches_exact_combinatorial_edges ... ok
+test paired_bootstrap_and_sign_diagnostic_are_reproducible ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/verified_refinement.rs (target/debug/deps/verified_refinement-1dd0d9174291f361)
+
+running 2 tests
+test accounting_and_statistical_preconditions_match_runtime_boundaries ... ok
+test frozen_ledger_transition_replay_and_non_authority_roots_are_exact_conjunctions ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
