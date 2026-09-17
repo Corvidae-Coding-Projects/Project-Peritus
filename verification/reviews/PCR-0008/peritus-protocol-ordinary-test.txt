@@ -1,0 +1,87 @@
+candidate_commit=eb187b0f0b1dafb1f079d34aa581acfcd0b6239e
+candidate_tree=fd1a8f2a9bb48d55fda7128aa135632b7aa69be5
+exact_command=cargo test --package peritus-protocol --all-targets --all-features --locked
+started_at=2026-09-16T21:55:32Z
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on build directory
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.24s
+     Running unittests src/lib.rs (target/debug/deps/peritus_protocol-32496382c884be8e)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/bin/peritus-protocol-codegen.rs (target/debug/deps/peritus_protocol_codegen-b8fc63aac014f573)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/acceptance.rs (target/debug/deps/acceptance-53ed2860be87be2d)
+
+running 2 tests
+test contract_digest_rejects_any_corrupted_advertised_value ... ok
+test complete_contract_roundtrips_and_reconstructs_checked_domain ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/agent.rs (target/debug/deps/agent-ce197a7d9f5baed8)
+
+running 5 tests
+test sequence_and_predecessor_must_describe_the_same_causal_head ... ok
+test all_agent_families_round_trip_exactly ... ok
+test configured_opaque_bound_is_enforced ... ok
+test truncation_unknown_tags_digest_mismatch_and_trailing_bytes_are_rejected ... ok
+test debug_output_redacts_all_opaque_payload_bytes ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/budget.rs (target/debug/deps/budget-9ae81662509c00f7)
+
+running 2 tests
+test amounts_and_every_budget_command_roundtrip ... ok
+test snapshots_receipts_and_failures_remain_inert_data ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/compatibility.rs (target/debug/deps/compatibility-5c52051a8d6d7c2b)
+
+running 7 tests
+test checked_in_agent_frames_are_exact_and_decodable ... ok
+test family_registry_is_nonzero_unique_and_strictly_ordered ... ok
+test f0_family_allocations_are_frozen ... ok
+test checked_in_compatibility_frames_are_exact_and_decodable ... ok
+test scheduler_families_dual_read_v1_v2_while_other_families_remain_v1_only ... ok
+test checked_in_client_artifacts_are_exact_generator_output ... ok
+test lifecycle_registry_is_complete_unique_and_nonzero ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/lifecycle.rs (target/debug/deps/lifecycle-e13aa83febcc0df1)
+
+running 5 tests
+test envelope_preserves_revision_and_causal_predecessor ... ok
+test error_record_and_malformed_values_are_closed ... ok
+test every_phase_roundtrips ... ok
+test every_command_variant_roundtrips ... ok
+test every_event_kind_and_subject_roundtrips_as_inert_data ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/policy.rs (target/debug/deps/policy-8057f9504ac2aab1)
+
+running 3 tests
+test complete_policy_definition_roundtrips_through_checked_constructors ... ok
+test action_digest_binds_every_action_field ... ok
+test amendment_digest_is_verified_before_domain_conversion ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/registry_roles.rs (target/debug/deps/registry_roles-d190a875a3160412)
+
+running 3 tests
+test scheduler_roles_accept_both_registered_schema_versions ... ok
+test every_registered_family_has_one_stable_role ... ok
+test registered_command_and_event_roles_are_complete_and_disjoint ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s

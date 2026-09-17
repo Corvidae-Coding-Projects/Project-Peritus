@@ -1,0 +1,86 @@
+candidate_commit=eb187b0f0b1dafb1f079d34aa581acfcd0b6239e
+candidate_tree=fd1a8f2a9bb48d55fda7128aa135632b7aa69be5
+command=CARGO_BUILD_JOBS=1 cargo test --package peritus-debugger --all-targets --all-features --locked
+started_at=2026-09-16T21:56:21Z
+    Blocking waiting for file lock on package cache
+   Compiling peritus-git v0.0.3 (/home/doll/Project-Peritus/.worktrees/issue-84-actionable-errors/crates/runtime/peritus-git)
+   Compiling peritus-workspace v0.0.3 (/home/doll/Project-Peritus/.worktrees/issue-84-actionable-errors/crates/runtime/peritus-workspace)
+   Compiling peritus-tools-quality v0.0.3 (/home/doll/Project-Peritus/.worktrees/issue-84-actionable-errors/crates/tools/peritus-tools-quality)
+   Compiling peritus-gates v0.0.3 (/home/doll/Project-Peritus/.worktrees/issue-84-actionable-errors/crates/orchestration/peritus-gates)
+   Compiling peritus-orchestrator v0.0.3 (/home/doll/Project-Peritus/.worktrees/issue-84-actionable-errors/crates/orchestration/peritus-orchestrator)
+   Compiling peritus-harness v0.0.3 (/home/doll/Project-Peritus/.worktrees/issue-84-actionable-errors/crates/orchestration/peritus-harness)
+   Compiling peritus-debugger v0.0.3 (/home/doll/Project-Peritus/.worktrees/issue-84-actionable-errors/crates/analysis/peritus-debugger)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 19.36s
+     Running unittests src/lib.rs (target/debug/deps/peritus_debugger-b1c94c2bf577ed8f)
+
+running 5 tests
+test model::runner::tests::malformed_stream_and_provider_failure_are_retryable_protocol_errors ... ok
+test model::runner::tests::strict_structured_proposal_is_the_only_success_shape ... ok
+test model::runner::tests::cancellation_and_event_budget_stop_before_admission ... ok
+test model::runner::tests::output_shape_and_schema_fail_closed ... ok
+test runtime::publication::tests::staged_report_and_pre_admitted_evidence_reconcile_to_one_publication ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests/domain_primitives.rs (target/debug/deps/domain_primitives-cba5783c728ed8e1)
+
+running 12 tests
+test artifact_ranges_are_nonempty_half_open ... ok
+test refinement_non_authority ... ok
+test confidence_retains_counters_and_never_implies_acceptance ... ok
+test nominal_identity_rejects_zero_and_derives_deterministically ... ok
+test refinement_bounded_analysis ... ok
+test refinement_report_validity ... ok
+test refinement_citation_containment ... ok
+test limits_only_tighten_and_fit_c0_b3_boundaries ... ok
+test unsupported_claim_retains_only_digest_and_reason ... ok
+test taxonomy_is_complete_unique_and_strict ... ok
+test refinement_replay_equivalence ... ok
+test refinement_selection_containment ... ok
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/durability_journal.rs (target/debug/deps/durability_journal-4ddeb8919decb0bc)
+
+running 4 tests
+test absent_job_has_no_phantom_checkpoint_or_history ... ok
+test reused_command_identity_with_different_content_is_rejected ... ok
+test commit_is_idempotent_and_replay_matches_the_atomic_checkpoint ... ok
+test model_outbox_start_and_failure_settlement_share_one_claim_fence ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests/durability_reducer.rs (target/debug/deps/durability_reducer-0010bdf845fdd7c2)
+
+running 3 tests
+test cancellation_is_terminal_and_wins_before_effect_execution ... ok
+test report_recovery_distinguishes_staging_commit_admission_and_settlement ... ok
+test retry_is_a_separate_bounded_transition_and_recovery_action ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/model_validation.rs (target/debug/deps/model_validation-eb4e380bc6abec2a)
+
+running 3 tests
+test v1_fixture_digest_manifest_matches_exact_bytes ... ok
+test v1_proposal_fixtures_are_bounded_canonical_json ... ok
+test strict_schema_is_stable_parseable_and_closed ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/production_conformance.rs (target/debug/deps/production_conformance-95c9ff101c81db2b)
+
+running 1 test
+test production_debugger_passes_all_thirteen_a2_cases ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/replay_wire.rs (target/debug/deps/replay_wire-03d7f1095ba883ca)
+
+running 4 tests
+test wire_rejects_corruption_instead_of_partially_activating_it ... ok
+test families_82_83_and_84_round_trip_through_semantic_checks ... ok
+test event_replay_reconstructs_the_exact_successor_chain ... ok
+test frozen_family_corpus_matches_exact_canonical_bytes ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s

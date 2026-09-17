@@ -313,13 +313,13 @@ mod tests {
 
     #[test]
     fn persistence_error_keeps_operation_cause_and_recovery_action() {
-        let cause = std::io::Error::from_raw_os_error(13);
-        let cause_text = cause.to_string();
-        let error =
-            ProductRunServiceError::persistence("replace the durable product-run record", cause);
+        let error = ProductRunServiceError::persistence(
+            "replace the durable product-run record",
+            std::io::Error::from_raw_os_error(13),
+        );
         let message = error.describe();
         assert!(message.contains("replace the durable product-run record"));
-        assert!(message.contains(&cause_text));
+        assert!(message.contains("Permission denied"));
         assert!(message.contains("Restore write access"));
     }
 

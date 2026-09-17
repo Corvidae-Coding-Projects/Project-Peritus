@@ -1,0 +1,30 @@
+candidate_commit=eb187b0f0b1dafb1f079d34aa581acfcd0b6239e
+candidate_tree=fd1a8f2a9bb48d55fda7128aa135632b7aa69be5
+exact_command=cargo test --package peritus-tool-protocol --all-targets --all-features --locked
+started_at=2026-09-16T21:56:41Z
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on build directory
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 11.25s
+     Running unittests src/lib.rs (target/debug/deps/peritus_tool_protocol-bef35e2334e30f96)
+
+running 1 test
+test verified::tests::bounds_reject_each_missing_fact ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/protocol_envelopes.rs (target/debug/deps/protocol_envelopes-c0f8ccf39d266b37)
+
+running 11 tests
+test schema_compatibility_allows_only_additive_optional_properties ... ok
+test canonical_json_and_schema_fixtures_are_byte_stable ... ok
+test every_public_envelope_has_stable_versioned_bytes ... ok
+test canonical_json_rejects_duplicate_keys_at_every_depth ... ok
+test complete_schema_validation_rejects_wrong_and_extra_values ... ok
+test common_envelope_decoder_enforces_transport_bounds_and_header ... ok
+test protocol_error_rejects_an_over_limit_path ... ok
+test json_limit_construction_can_only_narrow_production_ceilings ... ok
+test progress_and_terminal_output_enforce_narrowed_call_bounds ... ok
+test recursive_schema_error_paths_are_utf8_safely_bounded ... ok
+test descriptor_and_prepared_generation_is_deterministic ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s

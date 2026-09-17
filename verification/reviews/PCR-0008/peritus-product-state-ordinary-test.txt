@@ -1,0 +1,23 @@
+candidate_commit=eb187b0f0b1dafb1f079d34aa581acfcd0b6239e
+candidate_tree=fd1a8f2a9bb48d55fda7128aa135632b7aa69be5
+exact_command=cargo test --package peritus-product-state --all-targets --all-features --locked
+started_at=2026-09-16T21:55:15Z
+    Blocking waiting for file lock on build directory
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 11.40s
+     Running unittests src/lib.rs (target/debug/deps/peritus_product_state-65acf87ebfc33cef)
+
+running 12 tests
+test provider::tests::failover_is_explicit_and_requires_two_routes ... ok
+test provider::tests::old_state_shape_defaults_failover_off ... ok
+test state::tests::repeating_completed_effect_is_idempotent ... ok
+test state::tests::skip_and_reversal_are_rejected ... ok
+test state::tests::canonical_round_trip_preserves_resume_phase ... ok
+test state::tests::provider_selection_is_durable_and_idempotent ... ok
+test state::tests::zero_identity_is_rejected ... ok
+test workspace::profile::tests::trust_requires_all_registration_facts ... ok
+test state::tests::workspace_selection_round_trips_and_advances_once ... ok
+test workspace::selection::tests::activation_is_recent_unique_and_removal_selects_the_next_entry ... ok
+test workspace::selection::tests::replacing_a_trusted_repository_retains_its_daemon_registration ... ok
+test workspace::selection::tests::refreshing_a_trusted_workspace_replaces_its_old_registration ... ok
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s

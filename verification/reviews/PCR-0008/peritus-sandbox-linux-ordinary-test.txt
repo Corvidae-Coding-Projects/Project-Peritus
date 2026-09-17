@@ -1,0 +1,53 @@
+candidate_commit=eb187b0f0b1dafb1f079d34aa581acfcd0b6239e
+candidate_tree=fd1a8f2a9bb48d55fda7128aa135632b7aa69be5
+exact_command=cargo test --package peritus-sandbox-linux --all-targets --all-features --locked
+started_at=2026-09-16T21:55:49Z
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.24s
+     Running unittests src/lib.rs (target/debug/deps/peritus_sandbox_linux-50c46d7d0f986004)
+
+running 5 tests
+test exec_status::tests::close_on_exec_eof_is_success ... ok
+test session::tests::prepared_validation_failure_cleans_up_without_normal_release_observation ... ok
+test exec_status::tests::digest_bound_failure_is_typed ... ok
+test native::seccomp_policy::tests::production_policy_compiles_for_each_supported_architecture ... ok
+test conformance::tests::linux_adapter_passes_complete_fresh_subject_a2_sandbox_suite ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running unittests src/bin/peritus-linux-sandbox-helper.rs (target/debug/deps/peritus_linux_sandbox_helper-79ee0da668ebad6c)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/contracts.rs (target/debug/deps/contracts-0f341e9419e6d80b)
+
+running 9 tests
+test error_detail_is_bounded_on_utf8_boundary ... ok
+test activation_record_is_fixed_and_corruption_detected ... ok
+test refinement_predicates_deny_mismatch_and_require_empty_cleanup ... ok
+test manifest_round_trip_is_deterministic_and_checksum_bound ... ok
+test recovery_record_round_trip_and_absent_state_are_fail_closed ... ok
+test recovery_classification_distinguishes_owned_mismatch_and_clean_absence ... ok
+test protected_root_alias_cannot_escape_the_workspace ... ok
+test absent_protected_root_overlapping_creation_fails_closed ... ok
+test filesystem_projection_is_deterministic_and_protected_metadata_dominates ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/native_enforcement.rs (target/debug/deps/native_enforcement-ca0b75ef466fc990)
+
+running 11 tests
+test helper_inherits_only_bound_secret_handle_and_installs_exact_environment ... ok
+test network::bubblewrapped_helper_bridges_only_the_managed_proxy_from_its_fresh_netns ... ok
+test private_filesystem::private_root_admits_installed_inputs_but_hides_unrelated_host_files ... ok
+test helper_rejects_missing_checked_pty_before_activation ... ok
+test helper_rejects_corrupted_manifest_before_activation ... ok
+test helper_keeps_protocol_pipes_separate_from_target_pty ... ok
+test helper_self_attaches_to_manifest_cgroup_before_activation ... ok
+test helper_performs_bound_handshake_installs_controls_and_execs_literal_argv ... ok
+test missing_and_nonfunctional_installations_never_advertise_support ... ok
+test real_probe_reports_host_facilities_without_false_cgroup_claims ... ok
+test real_bubblewrap_enforces_writable_mount_and_read_only_metadata_mask ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 24.09s
