@@ -15,6 +15,7 @@ system-package = ["peritus-launcher/system-package"]
 
 [dependencies]
 base64.workspace = true
+peritus-app-client = { version = "=0.0.3", path = "../peritus-app-client" }
 peritus-app-protocol = { version = "=0.0.3", path = "../peritus-app-protocol" }
 peritus-codec = { version = "=0.0.3", path = "../../foundation/peritus-codec" }
 peritus-launcher = { version = "=0.0.3", path = "../peritus-launcher" }

@@ -1,0 +1,71 @@
+name: Browser workspace
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: webui-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_BUILD_JOBS: "2"
+  RUST_VERSION: 1.97.1
+
+jobs:
+  browser:
+    name: WebUI and local gateway
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Verify reviewed pre-Cargo policy
+        shell: bash
+        run: git diff --no-ext-diff --no-textconv --exit-code 6ca5f56d2ab12e93f155d684b33f4a86c2f877b8 -- .cargo/config.toml .gitattributes
+      - name: Install pinned Rust
+        uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # v1
+        env:
+          RUSTUP_MAX_RETRIES: "10"
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+          components: clippy,rustfmt
+      - name: Install frontend build runtime
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: webui/package-lock.json
+      - name: Install frontend dependencies
+        run: npm --prefix webui ci
+      - name: Check Svelte and TypeScript
+        run: npm --prefix webui run check
+      - name: Check frontend units
+        run: npm --prefix webui run test:unit
+      - name: Build static frontend
+        run: npm --prefix webui run build
+      - name: Check client and gateway formatting
+        run: cargo fmt --package peritus-app-client --package peritus-web --package peritus-cli -- --check
+      - name: Test shared client and native gateway contracts
+        run: cargo test --locked --package peritus-app-client --package peritus-web
+      - name: Test CLI transport integration
+        run: cargo test --locked --package peritus-cli
+      - name: Check client and gateway lints
+        run: cargo clippy --locked --package peritus-app-client --package peritus-web --package peritus-cli --all-targets --no-deps -- -D warnings
+      - name: Build gateway and real CLI for browser integration
+        run: cargo build --locked --package peritus-web --package peritus-cli
+      - name: Install browser and system dependencies
+        run: npm --prefix webui exec --offline -- playwright install --with-deps chromium
+      - name: Prepare isolated fixture directory
+        run: mkdir -p /tmp/opencode
+      - name: Verify browser, Git, and CLI integration
+        env:
+          PERITUS_BIN: ${{ github.workspace }}/target/debug/peritus
+        run: npm --prefix webui run test:e2e
