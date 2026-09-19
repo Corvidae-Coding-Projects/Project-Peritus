@@ -202,15 +202,30 @@ fn exact_checkout(step: &Yaml, name: &str, reference: &str, checkout_path: &str)
     let Some(inputs) = mapping_value(step, "with").and_then(Yaml::as_hash) else {
         return false;
     };
+    let expected = if checkout_path == "candidate" {
+        &[
+            "repository",
+            "ref",
+            "path",
+            "fetch-depth",
+            "persist-credentials",
+            "allow-unsafe-pr-checkout",
+        ][..]
+    } else {
+        &["repository", "ref", "path", "fetch-depth", "persist-credentials"][..]
+    };
     exact_keys(step, &["name", "uses", "with"])
         && string(step, "name") == Some(name)
         && string(step, "uses") == Some(CHECKOUT)
-        && exact_keys(inputs, &["repository", "ref", "path", "fetch-depth", "persist-credentials"])
+        && exact_keys(inputs, expected)
         && string(inputs, "repository") == Some(REPOSITORY)
         && string(inputs, "ref") == Some(reference)
         && string(inputs, "path") == Some(checkout_path)
         && integer(inputs, "fetch-depth") == Some(0)
         && mapping_value(inputs, "persist-credentials").and_then(Yaml::as_bool) == Some(false)
+        && (checkout_path != "candidate"
+            || mapping_value(inputs, "allow-unsafe-pr-checkout").and_then(Yaml::as_bool)
+                == Some(true))
 }
 
 fn exact_rust(step: &Yaml, rust: &str) -> bool {
