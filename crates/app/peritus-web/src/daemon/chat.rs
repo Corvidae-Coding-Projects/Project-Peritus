@@ -32,7 +32,7 @@ pub async fn send(app: &App, input: &Value) -> Result<Value> {
     let mut exact = input.clone();
     exact["text"] = json!(message(app, input)?);
     let prepared = prepare(app, &exact)?;
-    readiness::admit(app, &prepared).await?;
+    readiness::ensure_ready(app, &prepared).await?;
     response(receipts::recorded(app, operation, AppRequestPayload::Interact(prepared)).await?)
 }
 

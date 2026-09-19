@@ -56,7 +56,7 @@ pub async fn ready_facts(app: &App, project: &Project) -> Result<Value> {
     }
     Ok(value)
 }
-pub async fn admit(app: &App, prepared: &ProductInteractionRequest) -> Result<()> {
+pub async fn ensure_ready(app: &App, prepared: &ProductInteractionRequest) -> Result<()> {
     let status = status(app).await?;
     if status["ready"] != true {
         return Err(problem(format!(
