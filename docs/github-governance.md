@@ -46,7 +46,10 @@ file. The job binds those values to an immutable checker checkout and separately
 base and head to comparison-base and candidate checkouts. It requires the PR base to be an ancestor
 of the candidate and uses no candidate action or script.
 
-Before invoking Cargo in the candidate checkout, the job rejects every authority, base, or candidate
+The candidate checkout explicitly opts into the checkout action's fork checkout because this job
+treats the candidate tree as untrusted data: it persists no credentials and executes no candidate
+action or program. Before invoking Cargo in the candidate checkout, the job rejects every authority,
+base, or candidate
 Git tree entry except a regular file and rejects the legacy `.cargo/config` and `rust-toolchain`
 selectors. It requires the root Cargo configuration, attributes, toolchain selector, manifest, and
 lockfile to have exact bytes and modes across both custody edges: checker revision to PR base, then PR

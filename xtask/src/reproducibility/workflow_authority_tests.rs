@@ -87,6 +87,7 @@ fn revision_custody_and_pre_metadata_guards_cannot_be_relaxed() {
         ("check_tree authority \"$CHECKER_SHA\" checker", "true"),
         ("check_tree base \"$BASE_SHA\" base", "true"),
         ("check_tree candidate \"$CANDIDATE_SHA\" candidate", "true"),
+        ("allow-unsafe-pr-checkout: true", "allow-unsafe-pr-checkout: false"),
         ("100644:blob|100755:blob", "*:blob"),
         (".cargo/config|rust-toolchain", "rust-toolchain"),
         ("CARGO_NET_OFFLINE: \"true\"", "CARGO_NET_OFFLINE: \"false\""),
