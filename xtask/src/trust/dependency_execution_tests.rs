@@ -71,6 +71,7 @@ fn accepts_only_exact_reviewed_executable_dependency_identities() {
         "registry+https://github.com/rust-lang/crates.io-index#serde@1.0.229",
         "registry+https://github.com/rust-lang/crates.io-index#getrandom@0.4.3",
         "registry+https://github.com/rust-lang/crates.io-index#libsqlite3-sys@0.38.2",
+        "registry+https://github.com/rust-lang/crates.io-index#mime_guess@2.0.5",
         "registry+https://github.com/rust-lang/crates.io-index#io-extras@0.19.0",
         "registry+https://github.com/rust-lang/crates.io-index#io-lifetimes@2.0.4",
         "registry+https://github.com/rust-lang/crates.io-index#io-lifetimes@3.0.1",
