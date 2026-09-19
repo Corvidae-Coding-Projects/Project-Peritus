@@ -123,7 +123,7 @@ procedural-macro target; only these exact package identities are admitted:
   `crunchy@0.2.4`, `generic-array@0.14.7`, `getrandom@0.4.3`, `httparse@1.10.1`,
   `icu_normalizer_data@2.3.0`, `icu_properties_data@2.3.0`, `jni@0.22.4`,
   `jni-macros@0.22.4`, `libc@0.2.189`, `libfuzzer-sys@0.4.13`,
-  `libsqlite3-sys@0.38.2`, `memoffset@0.9.1`,
+  `libsqlite3-sys@0.38.2`, `memoffset@0.9.1`, `mime_guess@2.0.5`,
   `nix@0.28.0`, `nix@0.31.3`, `num-traits@0.2.19`, `proc-macro2@1.0.107`,
   `quote@1.0.47`, `quinn@0.11.11`, `quinn-udp@0.5.15`, `ring@0.17.14`,
   `rustix@1.1.4`, `rustls@0.23.43`, `rustversion@1.0.23`, `serde@1.0.229`,
@@ -163,6 +163,10 @@ entry/select expansion, display text derivation, JNI bindings, and ICU zero-copy
 caller token streams. Their exact versions, registry identities, archive checksums, build inputs,
 and complete transitive closures are locked; changing any executable package identity reopens this
 review and fails A0 before candidate execution.
+
+For the local WebUI, the reviewed `mime_guess@2.0.5` build script reads its packaged static MIME
+table and writes generated extension mappings only to Cargo's `OUT_DIR`. It performs no network
+access and launches no child process.
 
 For B1, the reviewed `curve25519-dalek` build script reads exactly
 `CARGO_CFG_TARGET_FEATURE`, `CARGO_CFG_TARGET_ARCH`, `CARGO_CFG_CURVE25519_DALEK_BITS`,
