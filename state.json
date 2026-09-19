@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1515,
-        "tip_oid": "6fdf4524ce1bd8374d22a594dc154296e7e0d053",
-        "prefix_sha256": "d317b10751362d51178413dd86ca3a8d600db2fb6bfc406c46659c907680a15e"
+        "sequence": 1516,
+        "tip_oid": "f83371cd06d676e84d17b135c330d5d191467caf",
+        "prefix_sha256": "709c0739f5eb7c988cee690c631031339680d88274c3d6cbd2140e7acc89b508"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 88,
-  "next_comment_id": 1740,
+  "next_comment_id": 1741,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -14285,7 +14285,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-19T01:10:20.172929196Z",
-      "updated_at": "2026-09-19T05:40:04.600706919Z",
+      "updated_at": "2026-09-19T05:40:27.007429386Z",
       "labels": [
         "bug"
       ],
@@ -14316,6 +14316,15 @@
           "kind": "handoff",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA/Sbt+HZOKSV68IoG6iaw8mB7BVf1w+JPqWxLTWj0R+Lf0WyCEr+RkLEHheyAT1F0BByrDHQkXHkOjX5qu1rvCg=="
+        },
+        "ea058ab5-d6f7-4a09-b156-9068341d4a94": {
+          "display_id": 1740,
+          "author": "6ME5",
+          "content": "PR #92 runner repair checkpoint at 7c8c4f0272c46a4820edbb672a8706808e8dbfe6: Native product package attempt 2 passed 162/162; Foundation verification attempt 2 passed 193/193; Gate A attempt 2 passed 214/214. Distribution package tooling, Windows terminal title, Browser workspace, Native security qualification, and Proactive bug discovery also completed successfully. The only red check is Formal authority validation, whose trusted-base job intentionally rejects protected Cargo/xtask input changes between develop 8d96f9a731d878a552c85a06469bd52dbf7a0d8d and this candidate. That is a protected-base staging verdict, not a test/package/runner execution failure.",
+          "created_at": "2026-09-19T05:40:27.003702086Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABARlnogLNicKw124IV/W0Ed98VM8panf3ks2oqDbrH6BGVG0dwCxpEaL+LilEqrV1j3BOoafQY6H/bh2EJogfvBw=="
         },
         "efaf0957-81b7-4380-a445-ecdafc00e0e0": {
           "display_id": 1735,
