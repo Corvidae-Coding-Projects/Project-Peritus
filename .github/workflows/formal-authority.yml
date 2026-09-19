@@ -60,6 +60,7 @@ jobs:
           path: candidate
           fetch-depth: 0
           persist-credentials: false
+          allow-unsafe-pr-checkout: true
       - name: Bind event and checkout identities
         shell: bash
         run: |
