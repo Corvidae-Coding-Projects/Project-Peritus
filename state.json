@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1516,
-        "tip_oid": "f83371cd06d676e84d17b135c330d5d191467caf",
-        "prefix_sha256": "709c0739f5eb7c988cee690c631031339680d88274c3d6cbd2140e7acc89b508"
+        "sequence": 1517,
+        "tip_oid": "192ccad4b28c297bfa703908124d65a7006bd1a7",
+        "prefix_sha256": "1cdf40918eebf5ee674fc31604f5fb318b60e4051f09d4587d453c3319cacf7a"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 88,
-  "next_comment_id": 1741,
+  "next_comment_id": 1742,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -14285,7 +14285,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-19T01:10:20.172929196Z",
-      "updated_at": "2026-09-19T05:40:27.007429386Z",
+      "updated_at": "2026-09-19T12:17:10.797998746Z",
       "labels": [
         "bug"
       ],
@@ -14307,6 +14307,15 @@
           "kind": "handoff",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAKuslI8fofMCYts/nMCbd1blOXIAQZtLt28QhaXcpqpBSS/DAOMelS7SbAYZHrm4Iyvu0J4kOkiaCn3AJciRsBw=="
+        },
+        "5e5e0580-4d25-4526-ab4f-9991e6d9463b": {
+          "display_id": 1741,
+          "author": "6ME5",
+          "content": "Commit f8d8888b6 (fix(ci): classify protected input transitions) replaces the misleading formal-runner failure for legitimate protected-input changes with a read-only bootstrap-required classification and a skipped Trusted-base validation job. Unchanged-input PRs retain the complete strict validation path. Verified actionlint, cargo fmt --check, strict xtask Clippy, 459 xtask unit tests, 8 xtask integration tests, exact canonical workflow bytes, and cargo xtask all (84 packages, 4600 sources, 143 pinned actions).",
+          "created_at": "2026-09-19T12:17:10.794487903Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAf6nkIXbHPFDKq3h3FsgFPgR0MKtrV9rif6av2JOqJZ71O8s6EObHXro2gVWMHYRgrb8yQEmZCyJOHU4CkYRuAQ=="
         },
         "7efe74c9-1ab0-4d03-a18c-b1d2290d1309": {
           "display_id": 1736,
