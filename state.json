@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1517,
-        "tip_oid": "192ccad4b28c297bfa703908124d65a7006bd1a7",
-        "prefix_sha256": "1cdf40918eebf5ee674fc31604f5fb318b60e4051f09d4587d453c3319cacf7a"
+        "sequence": 1518,
+        "tip_oid": "ff9e8c9b2e9ef8dcfb53ec4490639c06b964189a",
+        "prefix_sha256": "1980af7cea21e2f0484aef391b41e49a43d37cdaf092d7b0a63414f59dc53da1"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 88,
-  "next_comment_id": 1742,
+  "next_comment_id": 1743,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -14285,7 +14285,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-19T01:10:20.172929196Z",
-      "updated_at": "2026-09-19T12:17:10.797998746Z",
+      "updated_at": "2026-09-19T13:51:53.197585842Z",
       "labels": [
         "bug"
       ],
@@ -14316,6 +14316,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAf6nkIXbHPFDKq3h3FsgFPgR0MKtrV9rif6av2JOqJZ71O8s6EObHXro2gVWMHYRgrb8yQEmZCyJOHU4CkYRuAQ=="
+        },
+        "75420260-5971-4d8e-ae4d-a413e47b742d": {
+          "display_id": 1742,
+          "author": "6ME5",
+          "content": "PR #92 final hosted state: Formal authority run 35446640055 completed successfully from main befbac3df; Protected-input classification passed and Trusted-base validation was explicitly skipped because the candidate changes protected Cargo/xtask inputs. gh pr checks reports no failed, canceled, or pending checks, and GitHub reports mergeStateStatus CLEAN. Gate A remains 214/214 passed, Foundation 193/193, Native product package 162/162, with Browser, security, distribution, terminal-title, and proactive-discovery workflows green.",
+          "created_at": "2026-09-19T13:51:53.183755486Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAfVgoYNGbowY0wXKdRUn1R8OiopZZGAN3F+2/vCdMomN5///WQKIud4yUNN3WiGrVhzen2PjOLuwll3b+fwpkAQ=="
         },
         "7efe74c9-1ab0-4d03-a18c-b1d2290d1309": {
           "display_id": 1736,
