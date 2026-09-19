@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1518,
-        "tip_oid": "ff9e8c9b2e9ef8dcfb53ec4490639c06b964189a",
-        "prefix_sha256": "1980af7cea21e2f0484aef391b41e49a43d37cdaf092d7b0a63414f59dc53da1"
+        "sequence": 1519,
+        "tip_oid": "0742bfeb65450ad7b29952609649a37faf8cbd0e",
+        "prefix_sha256": "98f71c4a6ab7b7ed2afc8847efc8e745b0a1e0a66f6cf1aa50a476b1fa7132e3"
       },
       "NWAR": {
         "sequence": 39,
@@ -14281,11 +14281,12 @@
       "display_id": 87,
       "title": "Repair PR #92 runner failures",
       "description": "Inspect PR #92, reproduce its failing CI gates, apply root-cause fixes to the existing feature/webui-workspace head branch, and monitor the full runner matrix to green without expanding product scope.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-19T01:10:20.172929196Z",
-      "updated_at": "2026-09-19T13:51:53.197585842Z",
+      "updated_at": "2026-09-19T13:52:13.535982371Z",
+      "closed_at": "2026-09-19T13:52:13.534838803Z",
       "labels": [
         "bug"
       ],
