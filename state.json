@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1511,
-        "tip_oid": "8cf2a3e267a4b37fb3604e1f9cc1c7ba5a97867a",
-        "prefix_sha256": "ad8ac45baa303af329addb653fa2d95f94ad187eb2ffdc24a851a99799130183"
+        "sequence": 1513,
+        "tip_oid": "52d95be7ec6e4272e4ea04b8b1a78848f6720b10",
+        "prefix_sha256": "6a0103f6a4d81fc328911fa2b83122491d1c6b9a605116e58afaf268eb8493cc"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 88,
-  "next_comment_id": 1736,
+  "next_comment_id": 1738,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -14285,11 +14285,29 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-19T01:10:20.172929196Z",
-      "updated_at": "2026-09-19T01:22:26.605298466Z",
+      "updated_at": "2026-09-19T03:42:47.881044092Z",
       "labels": [
         "bug"
       ],
       "comments": {
+        "0f69127a-d83f-4bad-9567-3dc4cc561e69": {
+          "display_id": 1737,
+          "author": "6ME5",
+          "content": "Commit 7c8c4f027 hardens native product-package Cargo network fetches after H2 scenarios 2 (macos-15-intel) failed fetching serde with repeated broken-pipe and 30-second low-speed timeouts. The workflow now uses CARGO_NET_RETRY=10 and CARGO_HTTP_TIMEOUT=120, enforced by an xtask workflow contract test. Validation: targeted xtask test passed, actionlint passed, cargo fmt --check passed, and cargo xtask all passed (86 packages, 4632 sources, 144 pinned actions).",
+          "created_at": "2026-09-19T03:42:47.869100023Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAiwg+fIGQ7u3VVcwb49Au9WtS07mnIUR9fVn7dmKl5sSw+xyKUSrjDe+UDXb1dioBTZ+BToZaoim3yrAbasCaBA=="
+        },
+        "7efe74c9-1ab0-4d03-a18c-b1d2290d1309": {
+          "display_id": 1736,
+          "author": "6ME5",
+          "content": "Session auto-ended (stale after 21372 minutes). No handoff notes provided.",
+          "created_at": "2026-09-19T02:22:50.345299027Z",
+          "kind": "handoff",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA/Sbt+HZOKSV68IoG6iaw8mB7BVf1w+JPqWxLTWj0R+Lf0WyCEr+RkLEHheyAT1F0BByrDHQkXHkOjX5qu1rvCg=="
+        },
         "efaf0957-81b7-4380-a445-ecdafc00e0e0": {
           "display_id": 1735,
           "author": "6ME5",
