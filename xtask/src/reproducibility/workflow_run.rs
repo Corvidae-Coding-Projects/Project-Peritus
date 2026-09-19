@@ -1,5 +1,6 @@
 use super::workflow_command_policy;
 use super::workflow_command_policy::CommandPolicy;
+use super::workflow_webui;
 use super::{
     workflow_authority, workflow_governance, workflow_governance_jobs, workflow_governance_shards,
 };
@@ -61,6 +62,12 @@ pub(super) fn validate_step(
     }
     if path == Path::new(workflow_authority::PATH)
         && workflow_authority::reviewed_run_step(location, script)
+    {
+        return;
+    }
+    if policy.permits_webui()
+        && workflow_webui::is_reviewed_command(path, script)
+        && mapping_value(step, "working-directory").is_none()
     {
         return;
     }

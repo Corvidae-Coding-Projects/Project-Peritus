@@ -1,0 +1,13 @@
+.git-workflow { border-top: 1px solid var(--line); font-size: .86rem; }
+.git-workflow summary { cursor: pointer; padding: 13px 14px; color: var(--text); }
+.git-workflow summary span { display: block; padding-top: 5px; color: var(--muted); font-size: .76rem; overflow-wrap: anywhere; }
+.git-workflow-body { display: flex; flex-direction: column; gap: 9px; padding: 0 14px 16px; }
+.git-workflow-body form { display: flex; flex-direction: column; gap: 9px; padding-top: 16px; margin-top: 5px; border-top: 1px solid var(--line); }
+.git-workflow-body input, .git-workflow-body select { width: 100%; min-width: 0; font-size: .86rem; }
+.git-workflow-body p { color: var(--muted); overflow-wrap: anywhere; line-height: 1.5; }
+.git-workflow-body .inline-checkbox { display: flex; align-items: center; gap: 8px; }
+.git-workflow-body .inline-checkbox input { width: auto; }
+.remote-address { display: flex; flex-direction: column; gap: 6px; margin: 4px 0 10px; }
+.remote-address span { color: var(--muted); font-size: .76rem; }
+.remote-address code { font-size: .76rem; overflow-wrap: anywhere; white-space: pre-wrap; }
+@media (max-width: 760px) { .git-workflow-body input, .git-workflow-body select { font-size: 1rem; } }

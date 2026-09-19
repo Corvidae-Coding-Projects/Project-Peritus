@@ -60,10 +60,6 @@ impl CliError {
         Self::new(ExitCategory::Connection, operation, detail)
     }
 
-    pub(crate) fn negotiation(detail: impl Into<String>) -> Self {
-        Self::new(ExitCategory::Negotiation, "negotiate daemon session", detail)
-    }
-
     pub(crate) fn rejected(error: &AppProtocolError) -> Self {
         Self::new(ExitCategory::Rejected, "execute daemon request", error.actionable_message())
     }
@@ -125,6 +121,20 @@ impl fmt::Display for CliError {
 impl std::error::Error for CliError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         self.source.as_deref().map(|source| source as &(dyn std::error::Error + 'static))
+    }
+}
+
+impl From<peritus_app_client::ClientError> for CliError {
+    fn from(error: peritus_app_client::ClientError) -> Self {
+        use peritus_app_client::ClientErrorKind;
+
+        let category = match error.kind() {
+            ClientErrorKind::Connection | ClientErrorKind::Unsupported => ExitCategory::Connection,
+            ClientErrorKind::Negotiation => ExitCategory::Negotiation,
+            ClientErrorKind::Protocol => ExitCategory::Protocol,
+            ClientErrorKind::Identity => ExitCategory::Internal,
+        };
+        Self::with_source(category, error.operation(), error.detail().to_owned(), error)
     }
 }
 

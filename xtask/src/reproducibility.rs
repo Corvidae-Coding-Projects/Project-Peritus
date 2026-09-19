@@ -57,6 +57,7 @@ mod workflow_policy;
 mod workflow_run;
 mod workflow_rust_matrix;
 mod workflow_timeout;
+mod workflow_webui;
 
 #[cfg(test)]
 #[path = "reproducibility/workflow_authority_tests.rs"]

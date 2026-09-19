@@ -1,0 +1,222 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-11T14:21:01.941685Z",
+  "title": "Design System: Peritus WebUI",
+  "extensions": {
+    "colorMeta": {
+      "background": {
+        "role": "neutral",
+        "displayName": "Blackened chassis",
+        "tonalRamp": ["oklch(15.00% 0.00748 196.62)", "oklch(26.43% 0.00748 196.62)", "oklch(37.86% 0.00748 196.62)", "oklch(49.29% 0.00748 196.62)", "oklch(60.71% 0.00748 196.62)", "oklch(72.14% 0.00748 196.62)", "oklch(83.57% 0.00748 196.62)", "oklch(95.00% 0.00748 196.62)"]
+      },
+      "panel": {
+        "role": "neutral",
+        "displayName": "Gunmetal plate",
+        "tonalRamp": ["oklch(15.00% 0.01004 186.16)", "oklch(26.43% 0.01004 186.16)", "oklch(37.86% 0.01004 186.16)", "oklch(49.29% 0.01004 186.16)", "oklch(60.71% 0.01004 186.16)", "oklch(72.14% 0.01004 186.16)", "oklch(83.57% 0.01004 186.16)", "oklch(95.00% 0.01004 186.16)"]
+      },
+      "display": {
+        "role": "neutral",
+        "displayName": "Reading well",
+        "tonalRamp": ["oklch(15.00% 0.00910 196.44)", "oklch(26.43% 0.00910 196.44)", "oklch(37.86% 0.00910 196.44)", "oklch(49.29% 0.00910 196.44)", "oklch(60.71% 0.00910 196.44)", "oklch(72.14% 0.00910 196.44)", "oklch(83.57% 0.00910 196.44)", "oklch(95.00% 0.00910 196.44)"]
+      },
+      "text": {
+        "role": "neutral",
+        "displayName": "Ivory lettering",
+        "tonalRamp": ["oklch(15.00% 0.01207 111.77)", "oklch(26.43% 0.01207 111.77)", "oklch(37.86% 0.01207 111.77)", "oklch(49.29% 0.01207 111.77)", "oklch(60.71% 0.01207 111.77)", "oklch(72.14% 0.01207 111.77)", "oklch(83.57% 0.01207 111.77)", "oklch(95.00% 0.01207 111.77)"]
+      },
+      "muted": {
+        "role": "neutral",
+        "displayName": "Sage-grey engraving",
+        "tonalRamp": ["oklch(15.00% 0.01489 162.35)", "oklch(26.43% 0.01489 162.35)", "oklch(37.86% 0.01489 162.35)", "oklch(49.29% 0.01489 162.35)", "oklch(60.71% 0.01489 162.35)", "oklch(72.14% 0.01489 162.35)", "oklch(83.57% 0.01489 162.35)", "oklch(95.00% 0.01489 162.35)"]
+      },
+      "accent": {
+        "role": "primary",
+        "displayName": "Warm cathode orange",
+        "tonalRamp": ["oklch(15.00% 0.12576 58.94)", "oklch(26.43% 0.12576 58.94)", "oklch(37.86% 0.12576 58.94)", "oklch(49.29% 0.12576 58.94)", "oklch(60.71% 0.12576 58.94)", "oklch(72.14% 0.12576 58.94)", "oklch(83.57% 0.12576 58.94)", "oklch(95.00% 0.12576 58.94)"]
+      },
+      "line": {
+        "role": "neutral",
+        "displayName": "Machined seam",
+        "tonalRamp": ["oklch(15.00% 0.01639 166.40)", "oklch(26.43% 0.01639 166.40)", "oklch(37.86% 0.01639 166.40)", "oklch(49.29% 0.01639 166.40)", "oklch(60.71% 0.01639 166.40)", "oklch(72.14% 0.01639 166.40)", "oklch(83.57% 0.01639 166.40)", "oklch(95.00% 0.01639 166.40)"]
+      },
+      "raised": {
+        "role": "neutral",
+        "displayName": "Raised metal",
+        "tonalRamp": ["oklch(15.00% 0.01319 173.39)", "oklch(26.43% 0.01319 173.39)", "oklch(37.86% 0.01319 173.39)", "oklch(49.29% 0.01319 173.39)", "oklch(60.71% 0.01319 173.39)", "oklch(72.14% 0.01319 173.39)", "oklch(83.57% 0.01319 173.39)", "oklch(95.00% 0.01319 173.39)"]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Key-face ink",
+        "tonalRamp": ["oklch(15.00% 0.01191 145.19)", "oklch(26.43% 0.01191 145.19)", "oklch(37.86% 0.01191 145.19)", "oklch(49.29% 0.01191 145.19)", "oklch(60.71% 0.01191 145.19)", "oklch(72.14% 0.01191 145.19)", "oklch(83.57% 0.01191 145.19)", "oklch(95.00% 0.01191 145.19)"]
+      },
+      "error": {
+        "role": "secondary",
+        "displayName": "Error coral",
+        "tonalRamp": ["oklch(15.00% 0.09423 33.66)", "oklch(26.43% 0.09423 33.66)", "oklch(37.86% 0.09423 33.66)", "oklch(49.29% 0.09423 33.66)", "oklch(60.71% 0.09423 33.66)", "oklch(72.14% 0.09423 33.66)", "oklch(83.57% 0.09423 33.66)", "oklch(95.00% 0.09423 33.66)"]
+      },
+      "success": {
+        "role": "secondary",
+        "displayName": "Signal green",
+        "tonalRamp": ["oklch(15.00% 0.06935 136.51)", "oklch(26.43% 0.06935 136.51)", "oklch(37.86% 0.06935 136.51)", "oklch(49.29% 0.06935 136.51)", "oklch(60.71% 0.06935 136.51)", "oklch(72.14% 0.06935 136.51)", "oklch(83.57% 0.06935 136.51)", "oklch(95.00% 0.06935 136.51)"]
+      }
+    },
+    "typographyMeta": {
+      "display": {"displayName": "Condensed display", "purpose": "Ready-state display heading in webui/src/app.css; responsive variants are recorded in DESIGN.md Typography and Layout."},
+      "headline": {"displayName": "Session headline", "purpose": "Active-session heading in webui/src/app.css; condensed apparatus type, with a smaller phone variant."},
+      "title": {"displayName": "Panel title", "purpose": "Dialog heading in webui/src/app.css; related drawer headings share the condensed family."},
+      "body": {"displayName": "Steady reading", "purpose": "Markdown reading in webui/src/app.css; inherits --font-body and --base-font from saved preferences."},
+      "conversation": {"displayName": "Conversation reading", "purpose": "Conversation Markdown in webui/src/app.css; returns to body size on phones and remains stationary during reading."},
+      "label": {"displayName": "Instrument caption", "purpose": "Uppercase numeric instrument captions in webui/src/app.css; equipment labels rather than a general eyebrow pattern."},
+      "code": {"displayName": "Code and receipts", "purpose": "Base preformatted Markdown style from webui/src/app.css. --font-mono is preference-controlled. The Rust Iosevka default differs from the frontend bootstrap/reset stack; DESIGN.md records the variance without promoting it to a shared rule. Console.svelte has a separate fixed xterm configuration."},
+      "counter": {"displayName": "Cathode digit", "purpose": "The small Nixie bank from webui/src/lib/components/Nixie.svelte; Rajdhani is bundled through Fontsource, with all ten digit layers retained."},
+      "counter-large": {"displayName": "Large cathode digit", "purpose": "Large Nixie variant from webui/src/app.css; phone, short-desktop, and wide-desktop variants follow the source media queries."}
+    },
+    "shadows": [
+      {"name": "molded-key", "value": "0 3px 4px #0005, inset 0 1px 0 #ffffff0b", "purpose": "Resting secondary key contact and top glint; webui/src/app.css."},
+      {"name": "depressed-key", "value": "0 1px 2px #0004, inset 0 2px 4px #0003", "purpose": "Active key sinks into its seat with a downward displacement; webui/src/app.css."},
+      {"name": "primary-key", "value": "0 3px 5px #0006, inset 0 1px 0 #ffe1b755", "purpose": "Warm primary key at rest; active pointer state uses the depressed shadow; webui/src/app.css."},
+      {"name": "recessed-field", "value": "inset 0 2px 4px #0003", "purpose": "Shared text-entry wells; webui/src/app.css."},
+      {"name": "target-readout", "value": "inset 0 2px 5px #0004", "purpose": "Compact operational readout recess; webui/src/app.css."},
+      {"name": "session-well", "value": "inset 0 2px 8px #0008", "purpose": "The primary reading recess; webui/src/app.css."},
+      {"name": "tube-envelope", "value": "inset 1px 1px 2px #dee1c318, inset -2px -1px 3px #000, 0 3px 4px #0007", "purpose": "Glass interior and contact beneath numeric tubes; webui/src/app.css."},
+      {"name": "engaged-dialog", "value": "0 18px 70px #0009, inset 0 1px 0 #ffffff10", "purpose": "Opaque floating equipment panel; backdrop blur is local to the dialog and removed by system reduced motion; webui/src/app.css."},
+      {"name": "daylight-key", "value": "0 2px 4px #2d37292e, inset 0 1px 0 #ffffff5e", "purpose": "Daylight finish override for resting key contact. Theme palette overrides are documented once in DESIGN.md Colors; webui/src/app.css."},
+      {"name": "daylight-instrument", "value": "0 4px 12px #42483122", "purpose": "Large instrument backing on ceramic; local Daylight override in webui/src/app.css."}
+    ],
+    "motion": [
+      {"name": "spring", "value": "cubic-bezier(.2,1.7,.35,1)", "purpose": "Shared mechanical settling curve, --spring in webui/src/app.css."},
+      {"name": "key-response", "value": "transform 200ms var(--spring), background-color 140ms, box-shadow 160ms", "purpose": "Raised key hover and press; active displacement is 2px. App or OS reduced motion removes transitions."},
+      {"name": "session-latch", "value": "tab-latch 280ms var(--spring)", "purpose": "New session tab travels from translateY(-5px), through translateY(1px) at 65%, to zero; opacity starts at .7. Disabled under reduced motion."},
+      {"name": "panel-engage", "value": "panel-engage 250ms var(--spring)", "purpose": "Dialog enters from translateY(12px) scale(.985), opacity .8, to its seated state. Disabled under reduced motion."},
+      {"name": "cathode-change", "value": "opacity 200ms, transform 230ms var(--spring), filter 180ms", "purpose": "Real digit changes reveal the forward cathode. Both motion-off modes disable transitions; the OS preference also removes the transforms."},
+      {"name": "switch-travel", "value": "transform 220ms var(--spring)", "purpose": "Native checked switch moves its thumb by 17px; background changes over 150ms. Reduced motion retains the checked position without animation."},
+      {"name": "busy-signal", "value": "working-lamp 1.8s ease-in-out infinite", "purpose": "Observed busy dot alternates opacity 1 and .45. Reduced motion leaves a static status cue."},
+      {"name": "notice-entry", "value": "notice-in 230ms var(--spring)", "purpose": "Notification moves up from 8px and opacity .6; disabled under reduced motion."}
+    ],
+    "breakpoints": [
+      {"name": "wide-desktop-min-width", "value": "1600px"},
+      {"name": "compact-desktop-max-width", "value": "1220px"},
+      {"name": "panel-switch-max-width", "value": "1050px"},
+      {"name": "single-panel-max-width", "value": "760px"},
+      {"name": "short-desktop", "value": "(max-height: 850px) and (min-width: 761px)"}
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary mechanical key",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The save/execute key from Settings.svelte and app.css, with hover, press, disabled, focus, Daylight, and reduced-motion treatments.",
+      "html": "<button class=\"ds-primary-key\" type=\"button\"><svg class=\"ds-key-icon\" width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"m4 12 5 5L20 6\"/></svg>Save configuration</button>",
+      "css": ".ds-primary-key{display:inline-flex;align-items:center;justify-content:center;gap:9px;min-height:38px;padding:8px 14px;border:1px solid #e5b786;border-bottom:2px solid #825732;border-radius:4px;background:linear-gradient(180deg,#ffffff0c,#ffffff00 55%),var(--accent,#f2a260);color:var(--ink,#1c211c);box-shadow:0 3px 5px #0006,inset 0 1px 0 #ffe1b755;transform:translateY(0);font:600 var(--base-font,14px) var(--font-body,Barlow,sans-serif);cursor:pointer;touch-action:manipulation;transition:transform 200ms var(--spring,cubic-bezier(.2,1.7,.35,1)),background-color 140ms,box-shadow 160ms}.ds-key-icon{flex-shrink:0}.ds-primary-key:hover:not(:disabled){background-color:color-mix(in srgb,var(--accent,#f2a260) 85%,white);border-top-color:var(--muted,#a9b4ae)}.ds-primary-key:active:not(:disabled){transform:translateY(2px);box-shadow:0 1px 2px #0004,inset 0 2px 4px #0003}.ds-primary-key:focus-visible{outline:2px solid var(--accent,#f2a260);outline-offset:3px}.ds-primary-key:disabled{cursor:not-allowed;opacity:.42}:host-context([data-theme=daylight]) .ds-primary-key{border-color:#a65d32;color:#fff2dd;box-shadow:0 2px 4px #2d37292e,inset 0 1px 0 #ffffff5e}:host-context([data-theme=daylight]) .ds-primary-key:active:not(:disabled){box-shadow:0 1px 2px #0004,inset 0 2px 4px #0003}:host-context([data-motion=reduced]) .ds-primary-key{transition:none}@media(prefers-reduced-motion:reduce){.ds-primary-key{transition:none}}"
+    },
+    {
+      "name": "Secondary command key",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "The molded header key from App.svelte; this specimen formats the real Mod+k default for Linux/Windows. The application derives its legend from saved settings.",
+      "html": "<button class=\"ds-command-key\" type=\"button\" aria-label=\"Command directory\"><svg class=\"ds-command-icon\" width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"m4 6 6 6-6 6m9 0h7\"/></svg><span>Command</span><kbd class=\"ds-command-binding\">Ctrl K</kbd></button>",
+      "css": ".ds-command-key{display:inline-flex;align-items:center;justify-content:flex-start;gap:10px;min-width:159px;min-height:38px;padding:8px 14px;border:1px solid #68716a66;border-bottom:2px solid #101513;border-radius:4px;background:linear-gradient(180deg,#ffffff0c,#ffffff00 55%),var(--raised,#303936);color:var(--text,#e5e6dd);box-shadow:0 3px 4px #0005,inset 0 1px 0 #ffffff0b;transform:translateY(0);font:400 var(--base-font,14px) var(--font-body,Barlow,sans-serif);cursor:pointer;touch-action:manipulation;transition:transform 200ms var(--spring,cubic-bezier(.2,1.7,.35,1)),background-color 140ms,box-shadow 160ms}.ds-command-icon{flex-shrink:0}.ds-command-binding{margin-left:auto;font:400 calc(var(--base-font,14px)*.71) var(--font-mono,ui-monospace,monospace);color:var(--muted,#a9b4ae);border:1px solid var(--line,#414c47);border-bottom-width:2px;border-radius:3px;padding:2px 4px;white-space:nowrap}.ds-command-key:hover:not(:disabled){background-color:color-mix(in srgb,var(--raised,#303936) 85%,var(--text,#e5e6dd));border-top-color:var(--muted,#a9b4ae)}.ds-command-key:active:not(:disabled),.ds-command-key.ds-pressed{transform:translateY(2px);box-shadow:0 1px 2px #0004,inset 0 2px 4px #0003}.ds-command-key:focus-visible{outline:2px solid var(--accent,#f2a260);outline-offset:3px}.ds-command-key:disabled{cursor:not-allowed;opacity:.42}:host-context([data-theme=daylight]) .ds-command-key{border-bottom-color:#919888;box-shadow:0 2px 4px #2d37292e,inset 0 1px 0 #ffffff5e}:host-context([data-theme=daylight]) .ds-command-key:active:not(:disabled){box-shadow:0 1px 2px #0004,inset 0 2px 4px #0003}:host-context([data-motion=reduced]) .ds-command-key{transition:none}@media(prefers-reduced-motion:reduce){.ds-command-key{transition:none}}"
+    },
+    {
+      "name": "Flat secondary action",
+      "kind": "button",
+      "refersTo": "button-flat",
+      "description": "Unraised secondary navigation from App.svelte and app.css; hover changes tone, while keyboard focus retains the shared accent outline.",
+      "html": "<button class=\"ds-flat-action\" type=\"button\">Browse session library</button>",
+      "css": ".ds-flat-action{display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:5px 7px;border:0;border-radius:3px;background:transparent;color:var(--muted,#a9b4ae);font:400 var(--base-font,14px) var(--font-body,Barlow,sans-serif);cursor:pointer;touch-action:manipulation;text-decoration:none;transition:background 140ms,color 140ms}.ds-flat-action:hover:not(:disabled){color:var(--text,#e5e6dd);background:#ffffff07}.ds-flat-action:focus-visible{outline:2px solid var(--accent,#f2a260);outline-offset:3px}.ds-flat-action:disabled{cursor:not-allowed;opacity:.42}:host-context([data-motion=reduced]) .ds-flat-action{transition:none}@media(prefers-reduced-motion:reduce){.ds-flat-action{transition:none}}"
+    },
+    {
+      "name": "Recessed text field",
+      "kind": "input",
+      "refersTo": "field",
+      "description": "The editable reading-font preference from Settings.svelte, using the shared field well, explicit label, accent caret, and visible focus.",
+      "html": "<label class=\"ds-field-label\">Reading font<input class=\"ds-field\" type=\"text\" value=\"Barlow, sans-serif\"/></label>",
+      "css": ".ds-field-label{display:flex;flex-direction:column;gap:8px;color:var(--muted,#a9b4ae);font:400 calc(var(--base-font,14px)*.93) var(--font-body,Barlow,sans-serif)}.ds-field{font:inherit;min-width:0;max-width:100%;padding:10px 12px;border:1px solid var(--line,#414c47);border-radius:3px;background:var(--display,#111717);color:var(--text,#e5e6dd);box-shadow:inset 0 2px 4px #0003;caret-color:var(--accent,#f2a260)}.ds-field::placeholder{color:var(--muted,#a9b4ae);opacity:1}.ds-field::selection{background:var(--accent,#f2a260);color:var(--ink,#1c211c)}.ds-field:focus-visible{outline:2px solid var(--accent,#f2a260);outline-offset:3px}"
+    },
+    {
+      "name": "Project channel navigation",
+      "kind": "nav",
+      "refersTo": "project-tab",
+      "description": "Selected channel from App.svelte: an engaged top edge, channel number, and signal dot. Hover and focus preserve the real tab treatment.",
+      "html": "<nav class=\"ds-project-nav\" aria-label=\"Open projects\"><button class=\"ds-project-tab\" type=\"button\" aria-current=\"page\"><span class=\"ds-channel-number\">01</span><span>Project-Peritus</span><span class=\"ds-project-indicator\" aria-hidden=\"true\"></span></button></nav>",
+      "css": ".ds-project-nav{display:flex;gap:7px;overflow-x:auto;scrollbar-width:thin;background:var(--background,#171c1c)}.ds-project-tab{display:flex;align-items:center;gap:12px;padding:10px 18px 12px;white-space:nowrap;border:1px solid transparent;border-bottom:0;border-radius:4px 4px 0 0;background:transparent;color:var(--muted,#a9b4ae);font:500 var(--base-font,14px) var(--font-body,Barlow,sans-serif);cursor:pointer;touch-action:manipulation;transition:background 170ms,transform 220ms var(--spring,cubic-bezier(.2,1.7,.35,1))}.ds-project-tab:hover{background:var(--panel,#232a29);color:var(--text,#e5e6dd)}.ds-project-tab[aria-current=page]{background:var(--panel,#232a29);border-color:var(--line,#414c47);color:var(--text,#e5e6dd);box-shadow:inset 0 2px 0 var(--accent,#f2a260),0 -3px 5px #0002}.ds-channel-number{font-family:var(--font-mono,ui-monospace,monospace);font-size:calc(var(--base-font,14px)*.75);color:var(--muted,#a9b4ae)}.ds-project-tab[aria-current=page] .ds-channel-number{color:var(--accent,#f2a260)}.ds-project-indicator{width:5px;height:5px;border-radius:50%;background:var(--line,#414c47)}.ds-project-tab[aria-current=page] .ds-project-indicator{background:var(--accent,#f2a260);box-shadow:0 1px 4px #f2a26044}.ds-project-tab:focus-visible{outline:2px solid var(--accent,#f2a260);outline-offset:3px}:host-context([data-motion=reduced]) .ds-project-tab{transition:none}@media(prefers-reduced-motion:reduce){.ds-project-tab{transition:none}}@media(max-width:760px){.ds-project-tab{gap:9px;padding:8px 11px;font-size:calc(var(--base-font,14px)*.83)}.ds-project-indicator{display:none}}"
+    },
+    {
+      "name": "Observed count chip",
+      "kind": "chip",
+      "refersTo": "count-chip",
+      "description": "The noninteractive bordered count beside Git in App.svelte. The value is specimen data; the application supplies the observed count.",
+      "html": "<span class=\"ds-count-chip\" aria-label=\"3 changes\">3</span>",
+      "css": ".ds-count-chip{font:400 calc(var(--base-font,14px)*.71) var(--font-body,Barlow,sans-serif);border:1px solid var(--line,#414c47);border-radius:3px;padding:1px 4px;color:var(--muted,#a9b4ae);min-width:18px;text-align:center}"
+    },
+    {
+      "name": "Execution target readout",
+      "kind": "card",
+      "refersTo": "target-readout",
+      "description": "App.svelte's compact target recess: a readable state and wrapping path with a flat configuration action. The path is specimen data.",
+      "html": "<section class=\"ds-target-readout\" aria-label=\"Execution target\"><h3 class=\"ds-target-heading\">Execution target</h3><span class=\"ds-target-state\"><svg class=\"ds-target-icon\" width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"m12 3 9 4v6c0 5-9 9-9 9S3 18 3 13V7Zm-4 9 3 3 5-5\"/></svg>Setup required</span><code class=\"ds-target-path\">/workspace/project</code><button class=\"ds-target-action\" type=\"button\">Configure workspace<svg class=\"ds-target-icon\" width=\"13\" height=\"13\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M4 12h16m-6-6 6 6-6 6\"/></svg></button></section>",
+      "css": ".ds-target-readout{background:var(--display,#111717);border:1px solid var(--line,#414c47);border-radius:3px;padding:13px 12px;box-shadow:inset 0 2px 5px #0004;color:var(--text,#e5e6dd);font:400 var(--base-font,14px) var(--font-body,Barlow,sans-serif)}.ds-target-heading{margin:0;font-family:var(--font-label,'Barlow Condensed',sans-serif);font-size:calc(var(--base-font,14px)*.86);font-weight:500;text-transform:uppercase;letter-spacing:.08em;color:var(--muted,#a9b4ae)}.ds-target-state{display:flex;align-items:center;gap:6px;font-size:calc(var(--base-font,14px)*.85);margin-top:12px}.ds-target-icon{flex-shrink:0}.ds-target-path{display:block;margin:8px 0 9px;font-family:var(--font-mono,ui-monospace,monospace);font-size:calc(var(--base-font,14px)*.68);line-height:1.55;color:var(--muted,#a9b4ae);overflow-wrap:anywhere}.ds-target-action{display:inline-flex;align-items:center;justify-content:space-between;gap:7px;width:100%;border:0;border-radius:3px;padding:0;background:transparent;color:var(--accent,#f2a260);font:400 calc(var(--base-font,14px)*.75) var(--font-body,Barlow,sans-serif);cursor:pointer;touch-action:manipulation;transition:background 140ms,color 140ms}.ds-target-action:hover:not(:disabled){color:var(--text,#e5e6dd);background:#ffffff07}.ds-target-action:focus-visible{outline:2px solid var(--accent,#f2a260);outline-offset:3px}.ds-target-action:disabled{cursor:not-allowed;opacity:.42}:host-context([data-motion=reduced]) .ds-target-action{transition:none}@media(prefers-reduced-motion:reduce){.ds-target-action{transition:none}}"
+    },
+    {
+      "name": "Mechanical preference switch",
+      "kind": "input",
+      "refersTo": "switch",
+      "description": "Settings.svelte's native checked/off switch; click or Space changes the thumb and accent face without framework code.",
+      "html": "<label class=\"ds-switch-row\"><span><strong class=\"ds-switch-title\">Mechanical motion</strong><small class=\"ds-switch-detail\">Spring-settling tabs and changing cathodes</small></span><input class=\"ds-switch\" type=\"checkbox\" role=\"switch\" checked/></label>",
+      "css": ".ds-switch-row{display:flex;flex-direction:row;justify-content:space-between;align-items:center;gap:15px;min-height:34px;color:var(--muted,#a9b4ae);font:400 calc(var(--base-font,14px)*.93) var(--font-body,Barlow,sans-serif)}.ds-switch-title{display:block;font-size:calc(var(--base-font,14px)*.94);font-weight:500;color:var(--text,#e5e6dd)}.ds-switch-detail{display:block;font-size:calc(var(--base-font,14px)*.79);margin-top:5px;max-width:30ch;line-height:1.45}.ds-switch{appearance:none;width:38px;height:21px;flex-shrink:0;border:1px solid var(--line,#414c47);border-radius:11px;padding:0;background:var(--display,#111717);position:relative;box-shadow:inset 0 2px 4px #0005;transition:background 150ms}.ds-switch::after{content:'';width:13px;height:13px;border-radius:50%;position:absolute;left:3px;top:3px;background:var(--muted,#a9b4ae);box-shadow:0 2px 2px #0005;transition:transform 220ms var(--spring,cubic-bezier(.2,1.7,.35,1))}.ds-switch:checked{background:var(--accent,#f2a260);border-color:var(--accent,#f2a260)}.ds-switch:checked::after{transform:translateX(17px);background:var(--ink,#1c211c)}.ds-switch:focus-visible{outline:2px solid var(--accent,#f2a260);outline-offset:3px}:host-context([data-motion=reduced]) .ds-switch,:host-context([data-motion=reduced]) .ds-switch::after{transition:none}@media(prefers-reduced-motion:reduce){.ds-switch,.ds-switch::after{transition:none}}"
+    },
+    {
+      "name": "Layered Nixie bank",
+      "kind": "custom",
+      "refersTo": "nixie-tube",
+      "description": "Two-digit specimen translated from Nixie.svelte and app.css. Every tube retains ten cathodes, mesh, shine, and base; active and inactive states match source. The value is illustrative, not a live observation.",
+      "html": "<div class=\"ds-instrument\" aria-label=\"Sessions: 2\"><div class=\"ds-tube-bank\" aria-hidden=\"true\"><div class=\"ds-tube\"><div class=\"ds-anode\"></div><div class=\"ds-cathodes\"><span class=\"ds-cathode ds-lit\" style=\"--depth:0\">0</span><span class=\"ds-cathode\" style=\"--depth:1\">1</span><span class=\"ds-cathode\" style=\"--depth:2\">2</span><span class=\"ds-cathode\" style=\"--depth:3\">3</span><span class=\"ds-cathode\" style=\"--depth:4\">4</span><span class=\"ds-cathode\" style=\"--depth:5\">5</span><span class=\"ds-cathode\" style=\"--depth:6\">6</span><span class=\"ds-cathode\" style=\"--depth:7\">7</span><span class=\"ds-cathode\" style=\"--depth:8\">8</span><span class=\"ds-cathode\" style=\"--depth:9\">9</span></div><i class=\"ds-glass-shine\"></i><i class=\"ds-tube-base\"></i></div><div class=\"ds-tube\"><div class=\"ds-anode\"></div><div class=\"ds-cathodes\"><span class=\"ds-cathode\" style=\"--depth:0\">0</span><span class=\"ds-cathode\" style=\"--depth:1\">1</span><span class=\"ds-cathode ds-lit\" style=\"--depth:2\">2</span><span class=\"ds-cathode\" style=\"--depth:3\">3</span><span class=\"ds-cathode\" style=\"--depth:4\">4</span><span class=\"ds-cathode\" style=\"--depth:5\">5</span><span class=\"ds-cathode\" style=\"--depth:6\">6</span><span class=\"ds-cathode\" style=\"--depth:7\">7</span><span class=\"ds-cathode\" style=\"--depth:8\">8</span><span class=\"ds-cathode\" style=\"--depth:9\">9</span></div><i class=\"ds-glass-shine\"></i><i class=\"ds-tube-base\"></i></div></div><span class=\"ds-instrument-label\">Sessions</span></div>",
+      "css": ".ds-instrument{display:flex;align-items:center;flex-direction:column;gap:5px}.ds-tube-bank{display:flex;gap:4px}.ds-tube{width:25px;height:43px;position:relative;border:1px solid #81918a4a;border-radius:11px 11px 4px 4px;background:linear-gradient(100deg,#afc4b006,#0a1111 24%,#161a1740 63%,#f7fbe90a 89%,#1a201d);box-shadow:inset 1px 1px 2px #dee1c318,inset -2px -1px 3px #000,0 3px 4px #0007;isolation:isolate}.ds-anode{position:absolute;inset:5px 3px 6px;border:1px solid #8b736927;border-radius:7px;background-image:repeating-linear-gradient(0deg,transparent,transparent 3px,#b5aea812 3px,#b5aea812 4px),repeating-linear-gradient(90deg,transparent,transparent 4px,#b5aea810 4px,#b5aea810 5px)}.ds-cathodes{position:absolute;inset:2px 1px 5px;display:grid;place-items:center;perspective:100px}.ds-cathode{grid-area:1/1;font-family:Rajdhani,sans-serif;font-size:36px;font-weight:400;line-height:1;color:transparent;-webkit-text-stroke:.45px #99aa9b;opacity:.07;transform:translateZ(calc(var(--depth)*-.35px)) translateY(1px);transition:opacity 200ms,transform 230ms var(--spring,cubic-bezier(.2,1.7,.35,1)),filter 180ms}.ds-cathode.ds-lit{opacity:1;-webkit-text-stroke:.6px var(--accent,#f2a260);color:#eec8a91c;text-shadow:0 1px 5px #ff761d8c,0 1px 1px #fba156;transform:translateZ(2px);filter:brightness(1.2)}.ds-glass-shine{position:absolute;inset:3px 3px auto;height:9px;border-radius:7px 7px 50% 50%;border-top:1px solid #f7f5df3b;border-left:1px solid #f7f5df18}.ds-tube-base{position:absolute;bottom:-2px;left:-1px;right:-1px;height:5px;background:linear-gradient(#687268,#1b201e 40%,#323c34 65%,#0c1310);border-radius:0 0 3px 3px;box-shadow:0 2px 3px #0007}.ds-instrument-label{font-family:var(--font-label,'Barlow Condensed',sans-serif);font-size:calc(var(--base-font,14px)*.72);letter-spacing:.13em;text-transform:uppercase;color:var(--muted,#a9b4ae);line-height:1.5}:host-context([data-theme=daylight]) .ds-tube{background:linear-gradient(100deg,#e1ebc806,#0a1111 24%,#161a17 63%,#f7fbe90a 89%,#1a201d)}:host-context([data-theme=daylight]) .ds-cathode.ds-lit{--accent:#f2a260}:host-context([data-motion=reduced]) .ds-cathode{transition:none}@media(prefers-reduced-motion:reduce){.ds-cathode{transition:none;transform:none!important}}@media(max-width:760px){.ds-tube{width:22px;height:36px}.ds-cathode{font-size:30px}.ds-instrument-label{font-size:calc(var(--base-font,14px)*.58)}}"
+    },
+    {
+      "name": "Selected command result",
+      "kind": "custom",
+      "refersTo": "command-result",
+      "description": "Palette.svelte's selected 16th command and following result. The application combobox owns keyboard selection, active descendant, and nearest-row scrolling; this specimen retains option states and actual command text.",
+      "html": "<div class=\"ds-command-results\" role=\"listbox\" aria-label=\"Available commands\"><button class=\"ds-command-result\" type=\"button\" role=\"option\" aria-selected=\"true\" tabindex=\"-1\"><span><strong class=\"ds-command-title\">Current run status</strong><small class=\"ds-command-detail\">Inspect the observed daemon state</small></span><code class=\"ds-command-slash\">/status</code></button><button class=\"ds-command-result\" type=\"button\" role=\"option\" aria-selected=\"false\" tabindex=\"-1\"><span><strong class=\"ds-command-title\">Candidate diff</strong><small class=\"ds-command-detail\">Review exact candidate changes</small></span><code class=\"ds-command-slash\">/diff</code></button></div>",
+      "css": ".ds-command-results{padding:8px;max-height:53vh;overflow:auto;scrollbar-width:thin;background:var(--panel,#232a29);font:400 var(--base-font,14px) var(--font-body,Barlow,sans-serif)}.ds-command-result{display:flex;align-items:center;justify-content:space-between;gap:16px;width:100%;padding:13px 16px;text-align:left;border:0;border-radius:3px;background:transparent;color:var(--text,#e5e6dd);font:inherit;cursor:pointer;touch-action:manipulation}.ds-command-result[aria-selected=true],.ds-command-result:hover{background:var(--raised,#303936)}.ds-command-title{font-weight:500;display:block;font-size:var(--base-font,14px)}.ds-command-detail{display:block;color:var(--muted,#a9b4ae);font-size:calc(var(--base-font,14px)*.84);line-height:1.4;margin-top:5px}.ds-command-slash{font-family:var(--font-mono,ui-monospace,monospace);font-size:calc(var(--base-font,14px)*.8);color:var(--accent,#f2a260);white-space:nowrap}.ds-command-result:focus-visible{outline:2px solid var(--accent,#f2a260);outline-offset:3px}@media(max-width:760px){.ds-command-results{max-height:65vh}.ds-command-result{padding:12px;gap:10px}.ds-command-title{font-size:calc(var(--base-font,14px)*.93)}.ds-command-detail{font-size:calc(var(--base-font,14px)*.76)}.ds-command-slash{font-size:calc(var(--base-font,14px)*.69)}}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Nixie Laboratory Console",
+    "overview": "Peritus feels like precise industrial equipment: blackened steel, gunmetal seams, ivory lettering, recessed reading wells, substantial molded keys, and warm cathodes suspended inside numeric instruments. Full physical theater is an explicit user commitment. Small highlights, contact shadows, spring-settling parts, and depressible controls explain the construction of the machine.\n\nThe equipment remains legible during sustained use. Barlow carries reading, Barlow Condensed identifies the apparatus, and Rajdhani supplies the layered digits. Nixie, Daylight, and Blueprint are three finishes of the same instrument; labels, component geometry, and action semantics remain coherent across them. Reading stays still while controls respond. System reduced-motion preferences take precedence over mechanical animation.",
+    "keyCharacteristics": [
+      "Blackened steel, ceramic, and blue-steel finishes on a shared component system.",
+      "Warm numeric cathodes with real layered depth and accessible value labels.",
+      "Recessed reading wells and molded keys with directional light and contact shadows.",
+      "Condensed instrument lettering paired with open, steady long-form text.",
+      "Explicit operational state, keyboard-visible focus, and reduced-motion response."
+    ],
+    "rules": [
+      {"name": "The Live Signal Rule", "body": "Use the accent to identify an active control, available primary action, focus, command syntax, or lit numeric cathode; pair operational status colors with readable text.", "section": "colors"},
+      {"name": "The Still Reading Rule", "body": "Keep conversation, code, and explanatory typography stationary during reading; reserve mechanical displacement for controls, entering panels, and changing numeric cathodes.", "section": "typography"},
+      {"name": "The Seated Hardware Rule", "body": "Use inset darkness for wells, soft contact shadows beneath raised parts, and a fine top highlight to express material thickness; preserve the key's depressed position as its active feedback.", "section": "elevation"},
+      {"name": "The Instrument Glass Rule", "body": "Confine glass reflections and layered luminous wire to numeric instruments; ordinary panels stay opaque, while the modal backdrop may soften the scene behind an engaged panel.", "section": "elevation"},
+      {"name": "The Reduced Motion Wins Rule", "body": "Disable animation and transition when either the system requests reduced motion or the app's mechanical-motion setting is off; keep selected, pressed, busy, and focus states understandable without movement.", "section": "elevation"}
+    ],
+    "dos": [
+      "Do reuse the semantic finish roles and inherited custom properties for panels, reading wells, controls, and text.",
+      "Do preserve the authored Nixie layers, material depth, and spring response when extending the instrument world.",
+      "Do keep long-form reading still, use the configured reading dimensions, and honor reduced motion before animation.",
+      "Do show operational labels alongside status colors and keep keyboard focus visible on interactive controls.",
+      "Do reflow auxiliary panels and settings into the implemented single-panel or single-column mobile patterns.",
+      "Do keep command selection in view and render shortcut legends from the active saved binding.",
+      "Do verify text and focus contrast after custom palette overrides; syntax validation alone does not establish readable contrast."
+    ],
+    "donts": [
+      "Don't spread glass reflections or cathode glow onto ordinary reading panels and text.",
+      "Don't flatten the approved mechanical controls into generic shadowless controls or remove their static selected/pressed cues.",
+      "Don't animate conversation or code text as part of mechanical response.",
+      "Don't use a numeric instrument, lamp, or status decoration to imply observations the daemon has not supplied.",
+      "Don't ship the development reference boards as product illustration or replace authored SVG icons with glyph approximations.",
+      "Don't turn a temporary screenshot preference, a local terminal override, or the code-font default mismatch into a new shared default.",
+      "Don't promote the workspace's first-viewport strategy into a mandatory composition for unrelated surfaces."
+    ]
+  }
+}

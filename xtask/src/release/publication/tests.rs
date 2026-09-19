@@ -150,6 +150,8 @@ fn release_and_lifecycle_matrices_cover_each_native_target_once() {
 #[test]
 fn h2_preparation_is_once_per_native_target_with_every_scenario_retained() {
     let document = workflow(".github/workflows/product-package.yml");
+    assert_eq!(document["env"]["CARGO_HTTP_TIMEOUT"].as_str(), Some("120"));
+    assert_eq!(document["env"]["CARGO_NET_RETRY"].as_str(), Some("10"));
     let prepare = &document["jobs"]["prepare-h2"];
     assert_eq!(prepare["needs"].as_str(), Some("build-h2-binary"));
     let h2 = &document["jobs"]["h2"];

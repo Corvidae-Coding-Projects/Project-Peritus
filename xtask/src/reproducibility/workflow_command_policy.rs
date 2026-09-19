@@ -2,6 +2,7 @@ use super::policy_file;
 use super::verus_commands::CANONICAL_VERUS_ARGS;
 use super::workflow_actionlint;
 use super::workflow_commands::parse_script;
+use super::workflow_webui;
 use crate::error::{Diagnostic, XtaskError};
 use std::fs;
 use std::path::Path;
@@ -23,15 +24,25 @@ const AUDITED_EXECUTABLES: [&str; 8] =
 #[derive(Clone, Copy)]
 pub(super) struct CommandPolicy {
     locked_xtask_alias: bool,
+    webui_scripts: bool,
 }
 
 impl CommandPolicy {
     pub(super) const fn new(locked_xtask_alias: bool) -> Self {
-        Self { locked_xtask_alias }
+        Self { locked_xtask_alias, webui_scripts: false }
     }
 
     pub(super) const fn permits_xtask(self) -> bool {
         self.locked_xtask_alias
+    }
+
+    pub(super) const fn with_webui_scripts(mut self, permitted: bool) -> Self {
+        self.webui_scripts = permitted;
+        self
+    }
+
+    pub(super) const fn permits_webui(self) -> bool {
+        self.webui_scripts
     }
 }
 
@@ -63,7 +74,8 @@ pub(super) fn load(
             "retain only the locked xtask alias, incremental=false, and reviewed network settings; aliases, wrappers, sources, tools, and env overrides are forbidden",
         ));
     }
-    Ok(CommandPolicy::new(valid))
+    Ok(CommandPolicy::new(valid)
+        .with_webui_scripts(workflow_webui::validate_package(root, diagnostics)))
 }
 
 pub(super) fn config_is_exact(config: &toml::Value) -> bool {
@@ -106,7 +118,10 @@ fn reject_nested_configs(root: &Path, diagnostics: &mut Vec<Diagnostic>) -> Resu
                     ]
                     .iter()
                     .any(|ignored| name == *ignored);
-                if !root_exclusion {
+                let webui_output = workflow_webui::is_generated_directory(
+                    path.strip_prefix(root).unwrap_or(&path),
+                );
+                if !root_exclusion && !webui_output {
                     directories.push(path);
                 }
                 continue;
