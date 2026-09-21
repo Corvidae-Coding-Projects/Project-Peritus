@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1520,
-        "tip_oid": "a9ca2e656bd408aa7b2208b394cc3ad4538b107f",
-        "prefix_sha256": "60709467f1872a0a4885c5b00d49907a4c1993cd4cce26025d07217b8c8eb94d"
+        "sequence": 1521,
+        "tip_oid": "b09f81920799f1d69637ff1c5e9000cc83773747",
+        "prefix_sha256": "eec8425ce75387123120de0553e06938f79e1a3f248840aeadd0feed845f730c"
       },
       "NWAR": {
         "sequence": 39,
@@ -54,7 +54,7 @@
       }
     }
   },
-  "next_display_id": 88,
+  "next_display_id": 89,
   "next_comment_id": 1743,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
@@ -100,6 +100,7 @@
     "65f4d2ae-ffe6-471c-8d5f-3de1632a9724": 61,
     "6bf9b38c-eb2f-4dcb-a19a-2a99c45886ff": 70,
     "6e8845fe-4835-478b-80d0-18135c12bc4d": 43,
+    "78b7923f-63ab-4482-af07-4ee8f3730fa4": 88,
     "79bb0f68-384c-454b-9302-eb88b692c28f": 18,
     "7a160b4f-2dc9-41d3-80f1-ff16672c18ad": 67,
     "7f54e62c-3c08-44f0-99bc-570d189eadb1": 64,
@@ -11221,6 +11222,17 @@
       "labels": [
         "feature"
       ]
+    },
+    "78b7923f-63ab-4482-af07-4ee8f3730fa4": {
+      "uuid": "78b7923f-63ab-4482-af07-4ee8f3730fa4",
+      "display_id": 88,
+      "title": "Complete WebUI session and CLI integration and fix confirmed GUI bugs",
+      "description": "Fix default-provider selection, persist session-scoped models and efforts, recover retained consoles across refresh, bind CLI workbench to exact web conversation, and open/resume runs from history. Add focused regressions, validate, push branch and PR to develop, then monitor and repair CI as needed.",
+      "status": "open",
+      "priority": "high",
+      "created_by": "6ME5",
+      "created_at": "2026-09-21T20:49:06.633628118Z",
+      "updated_at": "2026-09-21T20:49:06.633628118Z"
     },
     "79bb0f68-384c-454b-9302-eb88b692c28f": {
       "uuid": "79bb0f68-384c-454b-9302-eb88b692c28f",
