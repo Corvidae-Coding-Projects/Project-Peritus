@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1526,
-        "tip_oid": "bdec3ba7606b13a6f22b4434f41923f4f0f38207",
-        "prefix_sha256": "04b47b7d1aa7a69bc6058d706e0b9fe7b87ac818372c823af5d69c1e66d79c9f"
+        "sequence": 1527,
+        "tip_oid": "3a8d380ef0978520b6d093560e502b201bf99812",
+        "prefix_sha256": "079973c8d18f8e0200ca720e7453f200eb24ae2ad36c1355da079dec3db2a07c"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 89,
-  "next_comment_id": 1747,
+  "next_comment_id": 1748,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -11236,7 +11236,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-21T20:49:06.633628118Z",
-      "updated_at": "2026-09-21T21:42:27.358291891Z",
+      "updated_at": "2026-09-21T22:12:06.091130488Z",
       "comments": {
         "42bde749-fcd1-4b78-a9b9-3c89a12b1aa8": {
           "display_id": 1745,
@@ -11246,6 +11246,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAIGT1l/9JpaXoIpywogjB0ER/OL74GuJyWM/ymPb1S7aAsYwWbqk7gyCBG/yjeLwDhnCPw1STVCClnet/IHENCw=="
+        },
+        "8d18d1b5-c084-4f5f-bd18-542ca97ff857": {
+          "display_id": 1747,
+          "author": "6ME5",
+          "content": "[action] PR #96 at 94aee2db5; GUI/CLI fixes and daemon readiness fixture fix committed/pushed, worktree clean. Latest daemon shard 106529219078 passed. Watching 333 passing / 105 pending checks. Remaining known failures: trusted-base main/develop authority drift (run 35658717412), and transient artifact FinalizeArtifact 403 for Windows ARM h2 job 106528815021 in native package run 35658675491. Retry that job only after workflow completes; first retry refused while active. No code work remains identified.",
+          "created_at": "2026-09-21T22:12:06.078169669Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA03f1Srbg46tUK1t+dznQTAv+TbWpSVcBL+8hbVY7MYq9U7xTCV21CUyeKo7JAmS8PN0iYbb3ZBNiPGpH2MRGAw=="
         },
         "a416c261-d9e4-43b1-b9a3-796a4e56d11a": {
           "display_id": 1744,
