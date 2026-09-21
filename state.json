@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1531,
-        "tip_oid": "d56f896feef84462381377a25235220837ad361a",
-        "prefix_sha256": "298f87e8b9d624af8560f415b71df3307cb94b6de8246dd7083da0cddc6f2bac"
+        "sequence": 1532,
+        "tip_oid": "0f53d9c2b7c8682feb9315b234946e72cef3532d",
+        "prefix_sha256": "596e3a72aae03ddb7af9696a71471af74e93efc7a14217bde9fd6b5f8e63bb95"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 89,
-  "next_comment_id": 1752,
+  "next_comment_id": 1753,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -11236,8 +11236,17 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-21T20:49:06.633628118Z",
-      "updated_at": "2026-09-21T22:31:09.191803291Z",
+      "updated_at": "2026-09-21T23:13:31.605096294Z",
       "comments": {
+        "18d72ce4-4664-44a5-ae24-f4fe42723f4f": {
+          "display_id": 1752,
+          "author": "6ME5",
+          "content": "[action] PR #96 head 6891fa0ca: runner repairs pushed, worktree clean. New Gate A concurrency was verified by automatic cancellation of superseded 0ad9 run. All 42 native builds and all 6 package assemblies passed; all Linux/Windows checks complete. Browser, Windows title, distribution, native security, bug discovery passed. Latest 466 pass / 93 pending / 0 fail / 4 skipped (authority correctly classified protected transition). Remaining are macOS jobs limited by hosted runner capacity. Active runs: Foundation 35662945156, Gate A 35662945249, native package 35662945158. Continue watching and fix actual failures. No more code changes currently needed.",
+          "created_at": "2026-09-21T23:13:31.593685618Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAwIM+N28cLxc9qmijy53/g36FiUNO+bhnASqmQwHHM9GCgLt4tT33MW1FbxKp5Ywy5ZsEa4ujTA6FsxI+uWu1Cg=="
+        },
         "23a79ffe-a9f7-4792-919a-475b152aa5cc": {
           "display_id": 1748,
           "author": "6ME5",
