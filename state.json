@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1530,
-        "tip_oid": "78f46a691e5c244c95875bf2dc676941e2e8eafa",
-        "prefix_sha256": "203b561231d99cca6d71bdba7d5feaa732ee63b51ed0a43b1a265cb240b6c9ce"
+        "sequence": 1531,
+        "tip_oid": "d56f896feef84462381377a25235220837ad361a",
+        "prefix_sha256": "298f87e8b9d624af8560f415b71df3307cb94b6de8246dd7083da0cddc6f2bac"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 89,
-  "next_comment_id": 1751,
+  "next_comment_id": 1752,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -11236,7 +11236,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-21T20:49:06.633628118Z",
-      "updated_at": "2026-09-21T22:29:51.156455987Z",
+      "updated_at": "2026-09-21T22:31:09.191803291Z",
       "comments": {
         "23a79ffe-a9f7-4792-919a-475b152aa5cc": {
           "display_id": 1748,
@@ -11246,6 +11246,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAgQPRiv6AFhE0YqUtzrHUXxzIgGIhSHjEOCnnLAPr+AJuvjdiHoNdO2H1CXzZgQgSo1XkWOecnjehipNfM5FbAg=="
+        },
+        "40781bd1-3a54-4fa7-acc3-eadb4b1fcc75": {
+          "display_id": 1751,
+          "author": "6ME5",
+          "content": "[action] PR #96 latest 6891fa0ca. Full xtask suite 470 pass/1 ignored and lint/policy pass. Fixed artifact retries after live FinalizeArtifact 403 -> undeletable name -> 409 conflicts: unique attempt names and exact platform download patterns. Watching new head runs 35662945158 native, 35662945249 Gate A, 35662945156 Foundation. Verify automatic cancellation of previous Gate A 35662366995; force-cancel other lingering superseded workflows as needed.",
+          "created_at": "2026-09-21T22:31:09.187936372Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAtt/5fq/YiwsFA2sq1CIPfEYLKbFZ/vgCqvbACwpwjv2UGSC3RQpswsJEunILt7eb3WvOpi9JJq5fdLh2EqyiBA=="
         },
         "42bde749-fcd1-4b78-a9b9-3c89a12b1aa8": {
           "display_id": 1745,
