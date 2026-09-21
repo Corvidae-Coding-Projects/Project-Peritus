@@ -62,3 +62,28 @@ fn recovery_retains_conversation_selection_and_draft_only_for_the_same_configura
     assert!(different.chat.run_id.is_none());
     assert!(different.chat.models.writer().id().is_empty());
 }
+
+#[test]
+fn explicit_browser_run_is_selected_without_starting_work() {
+    use peritus_types::RunId;
+    let run = RunId::new([91; 16]).expect("run");
+    let product = ProductLaunchContext::new(
+        WorkspaceId::new([92; 16]).expect("workspace"),
+        "fixture".into(),
+        vec![ProductProviderOption::new(
+            ProviderProfileId::new([93; 16]).expect("provider"),
+            "Fixture",
+        )],
+        Some(0),
+    )
+    .expect("context")
+    .with_run(Some(run));
+    let config = TuiConfig::new("/fixture/peritus.sock").with_product(product);
+    let mut state = TuiState::default();
+    let model = state.take_model(&config, [94; 32]);
+    assert_eq!(model.chat.run_id, Some(run));
+    assert!(model.chat.snapshot.is_none());
+    assert!(model.chat.buffer.is_empty());
+    state.retain(config.clone(), model);
+    assert_eq!(state.take_model(&config, [95; 32]).chat.run_id, Some(run));
+}

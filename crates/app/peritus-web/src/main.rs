@@ -2,12 +2,14 @@
 
 mod api;
 mod config;
+mod consoles;
 mod daemon;
 mod error;
 mod files;
 mod git;
 mod operations;
 mod server;
+mod sessions;
 mod state;
 mod terminal;
 

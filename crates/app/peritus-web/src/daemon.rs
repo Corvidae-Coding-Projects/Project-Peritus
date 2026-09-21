@@ -19,7 +19,7 @@ use std::{
     time::Duration,
 };
 
-fn bytes(text: &str) -> Result<[u8; 16]> {
+pub fn bytes(text: &str) -> Result<[u8; 16]> {
     if text.len() != 32 || !text.bytes().all(|b| b.is_ascii_hexdigit()) {
         return Err(problem("Expected a 32-digit identity"));
     }
@@ -127,7 +127,7 @@ async fn request(app: &App, payload: AppRequestPayload) -> Result<AppResponsePay
     }
     Ok(response)
 }
-async fn raw_request(app: &App, payload: AppRequestPayload) -> Result<AppResponsePayload> {
+pub async fn raw_request(app: &App, payload: AppRequestPayload) -> Result<AppResponsePayload> {
     let endpoint = endpoint(app)?;
     let required = payload.required_workbench_feature().into_iter().collect::<Vec<_>>();
     let mut client =
@@ -147,12 +147,16 @@ pub async fn status(app: &App) -> Result<Value> {
     }
 }
 fn snapshot(value: &ProductRunSnapshot) -> Value {
-    json!({"id":hex(value.run_id().as_bytes()),"workspace":hex(value.workspace_id().as_bytes()),"phase":format!("{:?}",value.phase()),"busy":!value.phase().terminal(),"task":value.task(),"status":value.status(),"diff":value.diff(),"gates":value.gates(),"review":value.review(),"summary":value.summary(),"deliverable":value.deliverable().map(|d|json!({"root":d.workspace_path(),"paths":d.changed_paths(),"instructions":d.run_instructions(),"qualification":format!("{:?}",d.qualification())}))})
+    json!({"id":hex(value.run_id().as_bytes()),"workspace":hex(value.workspace_id().as_bytes()),"providers":{"writer":hex(value.providers().writer().as_bytes()),"reviewer":hex(value.providers().reviewer().as_bytes()),"fixer":hex(value.providers().fixer().as_bytes())},"phase":format!("{:?}",value.phase()),"busy":!value.phase().terminal(),"task":value.task(),"status":value.status(),"diff":value.diff(),"gates":value.gates(),"review":value.review(),"summary":value.summary(),"deliverable":value.deliverable().map(|d|json!({"root":d.workspace_path(),"paths":d.changed_paths(),"instructions":d.run_instructions(),"qualification":format!("{:?}",d.qualification())}))})
 }
-fn response(value: AppResponsePayload) -> Result<Value> {
+fn model_values(models: &ProductRoleModels) -> Value {
+    let choice = |value: &ProductModelChoice| json!({"id":value.id(),"manual":value.manual(),"effort":value.effort().label()});
+    json!({"writer":choice(models.writer()),"reviewer":choice(models.reviewer()),"fixer":choice(models.fixer())})
+}
+pub fn response(value: AppResponsePayload) -> Result<Value> {
     match value {
         AppResponsePayload::Interaction(value) => Ok(
-            json!({"run":snapshot(value.snapshot()),"received":value.received().to_string(),"incorporated":value.incorporated().to_string(),"activities":value.activities().iter().map(|a|json!({"id":a.sequence().to_string(),"kind":format!("{:?}",a.kind()).to_lowercase(),"text":a.text(),"detail":a.detail()})).collect::<Vec<_>>()}),
+            json!({"run":snapshot(value.snapshot()),"models":model_values(value.models()),"mode":format!("{:?}", value.mode()).to_lowercase(),"received":value.received().to_string(),"incorporated":value.incorporated().to_string(),"activities":value.activities().iter().map(|a|json!({"id":a.sequence().to_string(),"kind":format!("{:?}",a.kind()).to_lowercase(),"text":a.text(),"detail":a.detail()})).collect::<Vec<_>>()}),
         ),
         AppResponsePayload::ProductRunAccepted(value) => Ok(json!({"run":snapshot(&value)})),
         AppResponsePayload::ProductRunSettled(value) => {
@@ -174,6 +178,13 @@ fn prepare(app: &App, input: &Value) -> Result<ProductInteractionRequest> {
     let session = app.session(input["session"].as_str().unwrap_or(""))?;
     let project = app.project(&session.project)?;
     let facts = facts(app, &project)?;
+    let mut input = input.clone();
+    if input.get("models").is_none() {
+        input["models"] = serde_json::to_value(&session.settings.models)?;
+    }
+    if input.get("providers").is_none() {
+        input["providers"] = json!(session.settings.providers);
+    }
     let workspace =
         WorkspaceId::new(bytes(facts["workspace"]["id"].as_str().ok_or_else(|| {
             problem("Set up this project in the Setup console before sending a message.")
@@ -182,6 +193,7 @@ fn prepare(app: &App, input: &Value) -> Result<ProductInteractionRequest> {
     let provider = |role: &str| -> Result<ProviderProfileId> {
         let id = input["providers"][role]
             .as_str()
+            .filter(|id| !id.is_empty())
             .or_else(|| facts["providers"][0]["id"].as_str())
             .ok_or_else(|| problem("Select a provider in Setup console."))?;
         ProviderProfileId::new(bytes(id)?).map_err(|e| problem(format!("{e:?}")))

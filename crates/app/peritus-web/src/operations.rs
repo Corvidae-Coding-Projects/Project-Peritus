@@ -29,6 +29,12 @@ pub fn observe(app: &App, id: &str) -> Result<Value> {
             daemon::receipts::observed(app, id)?
         };
         if let Some(result) = result {
+            let result =
+                if record.input["command"] == "session-settings" && result.get("error").is_none() {
+                    crate::sessions::save(app, &record.input, &result)?
+                } else {
+                    result
+                };
             app.update(|state| {
                 state.operations.get_mut(id).ok_or_else(|| problem("Operation missing"))?.result =
                     Some(result.clone());

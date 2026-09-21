@@ -8,7 +8,6 @@ use crate::{
     error::{Result, problem},
     files, git, operations,
     state::{App, Operation, Session, id, save},
-    terminal::Terminal,
 };
 use axum::{
     Json, Router,
@@ -70,7 +69,7 @@ async fn bootstrap(State(app): State<Arc<App>>) -> Result<Response> {
     let config = std::fs::read_to_string(&app.options.config_file)?;
     let parsed = Preferences::parse(&config);
     let workspace = app.snapshot()?;
-    let mut response = Json(json!({"workspace":{"projects":workspace.projects,"sessions":workspace.sessions},"pendingOperations":operations::pending(&app)?,"preferences":parsed.as_ref().ok(),"config":config,"configError":parsed.err().map(|e|e.0),"configPath":app.options.config_file,"token":app.token})).into_response();
+    let mut response = Json(json!({"workspace":{"projects":workspace.projects,"sessions":workspace.sessions},"consoles":crate::consoles::list(&app)?,"pendingOperations":operations::pending(&app)?,"preferences":parsed.as_ref().ok(),"config":config,"configError":parsed.err().map(|e|e.0),"configPath":app.options.config_file,"token":app.token})).into_response();
     response.headers_mut().insert(
         header::SET_COOKIE,
         HeaderValue::from_str(&format!(
@@ -121,6 +120,7 @@ async fn query(State(app): State<Arc<App>>, Query(args): Query<QueryArgs>) -> Re
         "conversation" => daemon::conversation(&app, &args.session).await?,
         "models" => daemon::models(&app, &args.profile).await?,
         "runs" => daemon::runs(&app).await?,
+        "consoles" => crate::consoles::list(&app)?,
         "operation" => operations::observe(&app, &args.operation)?,
         _ => return Err(problem("Unknown query")),
     };
@@ -187,16 +187,21 @@ async fn mutation_guard(app: &Arc<App>, input: &Value) -> Result<tokio::sync::Ow
     // Serialize related Git effects while unrelated projects and agent controls stay live.
     let resource_key = if ["git", "ignore", "repository"].contains(&string("command")) {
         format!("git:{}", string("project"))
-    } else if ["send", "control"].contains(&string("command")) {
+    } else if ["send", "control", "session-settings"].contains(&string("command")) {
         format!("conversation:{}", string("session"))
     } else {
         format!("operation:{}", id()?)
     };
     let resource_lock = app.lock(resource_key)?;
     let resource_guard = resource_lock.lock_owned().await;
-    if ["send", "control", "git", "ignore", "repository"].contains(&string("command")) {
-        let target =
-            if ["send", "control"].contains(&string("command")) { "session" } else { "project" };
+    if ["send", "control", "session-settings", "git", "ignore", "repository"]
+        .contains(&string("command"))
+    {
+        let target = if ["send", "control", "session-settings"].contains(&string("command")) {
+            "session"
+        } else {
+            "project"
+        };
         let snapshot = app.snapshot()?;
         if let Some((id, _)) = snapshot.operations.iter().find(|(id, r)| {
             id.as_str() != string("operation")
@@ -221,6 +226,7 @@ async fn dispatch(app: &Arc<App>, input: &Value) -> Result<Value> {
         }
         "new-session" => {
             let session = Session {
+                settings: crate::sessions::Settings::default(),
                 id: id()?,
                 project: app.project(string("project"))?.id,
                 parent: input["parent"].as_str().map(String::from),
@@ -239,6 +245,9 @@ async fn dispatch(app: &Arc<App>, input: &Value) -> Result<Value> {
             Ok(json!(session))
         }
         "session" => edit_session(app, input),
+        "session-settings" => crate::sessions::configure(app, input).await,
+        "open-run" => crate::sessions::open_run(app, string("run")).await,
+        "workbench" => crate::consoles::workbench(app, input),
         "repository" => {
             let mut project = app.project(string("project"))?;
             project.repository = files::resolve(&project.root, string("path"))?;
@@ -287,19 +296,7 @@ async fn dispatch(app: &Arc<App>, input: &Value) -> Result<Value> {
             save(&app.options.config_file, text.as_bytes())?;
             Ok(json!({"preferences":preferences,"config":text}))
         }
-        "console" => {
-            let mut args = input["args"]
-                .as_array()
-                .map(|v| v.iter().filter_map(Value::as_str).map(String::from).collect::<Vec<_>>())
-                .unwrap_or_default();
-            if input["daemon"].as_bool().unwrap_or(false) {
-                args.splice(
-                    0..0,
-                    ["--endpoint".into(), daemon::endpoint(app)?.to_string_lossy().into_owned()],
-                );
-            }
-            Ok(json!({"id":Terminal::start(app,string("project"),args)?}))
-        }
+        "console" => crate::consoles::start(app, input),
         "close-console" => {
             app.terminals.lock().map_err(problem)?.remove(string("id"));
             Ok(json!({"closed":true}))

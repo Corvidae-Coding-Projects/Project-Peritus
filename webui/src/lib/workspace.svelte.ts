@@ -1,10 +1,11 @@
 import * as api from './api';
+import {latestConversation} from './conversations';
 import { commands } from './commands/catalog';
 import { parseSlash } from './commands/slash';
 import { gitCommand } from './commands/git';
 import {forgetFile} from './files/drafts.svelte';
 import {recovery,restoreOperations,forgetOperation} from './operations.svelte';
-import type { Attachment,Bootstrap, Conversation, Facts, FileTab, GitStatus, Mode, ModelChoice, Preferences, Project, Run, Session, Workspace } from './types';
+import type { Attachment,Bootstrap, ConsoleSession, Conversation, Facts, FileTab, GitStatus, Mode, Preferences, Project, Run, Session, Workspace } from './types';
 
 export const defaults: Preferences = { theme:'nixie',density:'comfortable',motion:true,sound:false,font_size:14,font_family:'Barlow, sans-serif',mono_family:'ui-monospace, monospace',explorer_width:248,controls_visible:true,explorer_visible:true,word_wrap:true,markdown_preview:true,shortcuts:{commands:'Mod+k',files:'Mod+Shift+e',git:'Mod+Shift+g',new:'Mod+Alt+n',settings:'Mod+,'},tokens:{},aliases:{} };
 export const ui = $state({
@@ -16,9 +17,8 @@ export const ui = $state({
   git:null as GitStatus|null,gitError:'',gitBusy:false,gitRevision:0,
   panel:'conversation', drawer:'files',overlay:'',palette:'', notice:'',noticeError:false,
   pending:{} as Record<string,boolean>,details:false,config:'',configPath:'',configError:'',
-  consoles:[] as {id:string;title:string;project:string;suggestion:string}[],consoleId:'',
+  consoles:[] as ConsoleSession[],consoleId:'',
   reportTitle:'',reportText:'',runs:[] as Run[],
-  providers:{} as Record<string,string>,models:{} as Record<string,ModelChoice>,
 });
 export function openProjects(): Project[] { return ui.workspace.projects.filter(p=>!p.closed); }
 export function project(): Project|undefined { return openProjects().find(p=>p.id===ui.projectId); }
@@ -28,7 +28,7 @@ export async function attempt(work:()=>Promise<unknown>) {
   try { await work(); } catch(error) { notify(error instanceof Error?error.message:String(error),true); }
 }
 export async function refresh() {
-  const value:Bootstrap=await api.bootstrap(); ui.workspace=value.workspace;ui.config=value.config;ui.configPath=value.configPath;
+  const value:Bootstrap=await api.bootstrap(); ui.workspace=value.workspace;ui.consoles=value.consoles??[];ui.config=value.config;ui.configPath=value.configPath;
   restoreOperations(value.pendingOperations??[]);
   ui.preferences=value.preferences ?? {...defaults}; ui.configError=value.configError ?? '';
   if(!project()) ui.projectId=openProjects()[0]?.id ?? '';
@@ -105,9 +105,14 @@ export function closeFile(path:string) {
   ui.files=ui.files.filter(f=>!(f.path===path&&f.session===ui.sessionId));
   if(ui.activeFile===path)ui.activeFile='';
 }
+export function observeConversation(id:string,value:Conversation) {
+  ui.conversations[id]=latestConversation(ui.conversations[id],value);
+  if(!ui.modes[id]&&value.mode)ui.modes[id]=value.mode;
+}
 export async function poll() {
   try{const status=await api.query<{ready:boolean;readiness:string;diagnostic?:string}>('daemon');ui.connected=true;ui.ready=status.ready;ui.readiness=status.readiness;ui.connectionMessage=status.diagnostic||status.readiness;}
   catch(error){ui.connected=false;ui.ready=false;ui.readiness='Offline';ui.connectionMessage=error instanceof Error?error.message:String(error);}
+  ui.consoles=await api.query<ConsoleSession[]>('consoles').catch(()=>ui.consoles);
   if(!ui.connected)return;
   const projectId=ui.projectId;
   if(projectId)try{const facts=await api.query<Facts>('facts',{project:projectId});if(ui.projectId===projectId){ui.facts=facts;ui.factsError='';}}catch(error){if(ui.projectId===projectId){ui.facts=null;ui.factsError=error instanceof Error?error.message:String(error);}}
@@ -115,7 +120,7 @@ export async function poll() {
   const selected=ui.sessionId;
   const ids=new Set([selected,...Object.entries(ui.conversations).filter(([,c])=>c.run?.busy).map(([id])=>id)]);
   await Promise.all([...ids].filter(Boolean).map(async id=>{
-    try{ui.conversations[id]=await api.query<Conversation>('conversation',{session:id});}
+    try{observeConversation(id,await api.query<Conversation>('conversation',{session:id}));}
     catch(error){if(ui.conversations[id]?.run)notify(`Could not refresh this run: ${error instanceof Error?error.message:error}`,true);}
   }));
 }
@@ -132,8 +137,8 @@ export async function send() {
   const attachments=[...(ui.attachments[id]??[])];
   ui.pending[id]=true;
   try{
-    const value=await api.action<Conversation>('send',{session:id,text,attachments:attachments.map(file=>file.id),mode:ui.modes[id]??'chat',models:ui.models,providers:ui.providers});
-    ui.conversations[id]=value;if(ui.drafts[id]===original)ui.drafts[id]='';
+    const value=await api.action<Conversation>('send',{session:id,text,attachments:attachments.map(file=>file.id),mode:ui.modes[id]??'chat',models:ui.conversations[id]?.models??session()?.settings?.models??{},providers:ui.conversations[id]?.run?.providers??session()?.settings?.providers??{}});
+    observeConversation(id,value);if(ui.drafts[id]===original)ui.drafts[id]='';
     ui.attachments[id]=(ui.attachments[id]??[]).filter(file=>!attachments.some(sent=>sent.id===file.id));
     if(ui.workspace.sessions.find(s=>s.id===id)?.title==='New conversation')await editSession(id,{title:text.slice(0,60)});
     notify('Message received. Incorporation is shown when observed by the daemon.');
@@ -160,7 +165,7 @@ export async function reconcileOperations(operation?:string){
     outcome.recovered++;
     forgetOperation(item.operation);
     if(item.command==='send'&&item.session&&!record.result.error){
-      ui.conversations[item.session]=record.result;
+      observeConversation(item.session,record.result);
       if(ui.drafts[item.session]?.trim()===record.input.text)ui.drafts[item.session]='';
       const sent=Array.isArray(record.input.attachments)?record.input.attachments:[];
       ui.attachments[item.session]=(ui.attachments[item.session]??[]).filter(file=>!sent.includes(file.id));
@@ -178,9 +183,17 @@ export async function gitAction(kind:string,paths:string[]=[],message='',options
     await loadGit();ui.gitRevision++;
   }finally{ui.gitBusy=false;}
 }
-export async function openConsole(args:string[]=[],title='Harness console',suggestion='',daemon=false) {
-  const value=await api.action<{id:string}>('console',{project:ui.projectId,args,daemon});
-  ui.consoles.push({id:value.id,title,project:ui.projectId,suggestion});ui.consoleId=value.id;ui.overlay='console';
+export async function openConsole(args:string[]=[],title='Harness console',daemon=false) {
+  const value=await api.action<ConsoleSession>('console',{project:ui.projectId,args,daemon,title});
+  ui.consoles.push(value);ui.consoleId=value.id;ui.overlay='console';
+}
+export async function openRun(id:string) {
+  const value=await api.action<Session>('open-run',{run:id});
+  await refresh();await selectProject(value.project);selectSession(value.id);await poll();ui.overlay='';
+}
+export async function openWorkbench(suggestion='') {
+  const value=await api.action<ConsoleSession>('workbench',{session:ui.sessionId,suggestion});
+  ui.consoles.push(value);ui.consoleId=value.id;ui.overlay='console';
 }
 export async function dispatch(id:string,args:string[]=[],depth=0):Promise<void> {
   if(depth>8)throw new Error('Command alias cycle. Check [aliases] in your dotfile.');
@@ -210,19 +223,24 @@ export async function dispatch(id:string,args:string[]=[],depth=0):Promise<void>
     }
     case 'runs':ui.runs=await api.query<Run[]>('runs');ui.overlay='runs';return;
     case 'stop':case 'retry':case 'export':
-      ui.conversations[ui.sessionId]=await api.action<Conversation>('control',{session:ui.sessionId,action:id});notify(`Requested ${id} for this run.`);return;
+      observeConversation(ui.sessionId,await api.action<Conversation>('control',{session:ui.sessionId,action:id}));notify(`Requested ${id} for this run.`);return;
     case 'discard':ui.overlay='discard';return;
-    case 'accept':case 'commit':return openConsole(['runs',id,'--run',ui.sessionId],`${command.label} · ${session()?.title}`,'',true);
+    case 'accept':case 'commit':return openConsole(['runs',id,'--run',ui.sessionId],`${command.label} · ${session()?.title}`,true);
     case 'providers':case 'workspaces':case 'update':return openConsole([id],command.label);
+    case 'consoles':
+      ui.consoles=await api.query<ConsoleSession[]>('consoles');
+      ui.consoleId=ui.consoles.find(c=>c.project===ui.projectId&&c.session===ui.sessionId)?.id??ui.consoles.find(c=>c.project===ui.projectId)?.id??'';ui.overlay='console';return;
     case 'terminal':
-      if(ui.consoles.some(c=>c.id===ui.consoleId)){ui.overlay='console';return;}
-      return openConsole(['open',project()?.root??'.']);
-    case 'cli':if(args.length)return openConsole(args,'CLI command','',!['update','providers','workspaces','open','help','completions','--help','--version'].includes(args[0]!));ui.overlay='cli';return;
+      {const retained=ui.consoles.find(c=>c.project===ui.projectId&&c.session===ui.sessionId&&!c.ended);
+      if(retained){ui.consoleId=retained.id;ui.overlay='console';return;}
+      if(!ui.ready)return openConsole(['open',project()?.root??'.'],'Project setup');
+      return openWorkbench();}
+    case 'cli':if(args.length)return openConsole(args,'CLI command',!['update','providers','workspaces','open','help','completions','--help','--version'].includes(args[0]!));ui.overlay='cli';return;
     case 'reconnect':await refresh();await loadProject();await poll();notify(ui.connected?'Reconnected. Original operation records retained.':ui.connectionMessage,!ui.connected);return;
     default:
       if(command.group==='Workbench console'){
         const suggestion=`${command.slash}${args.length?' '+args.join(' '):''}`;
-        return openConsole(['open',project()?.root??'.'],command.label,suggestion);
+        return openWorkbench(suggestion);
       }
   }
 }

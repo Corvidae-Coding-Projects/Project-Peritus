@@ -22,10 +22,10 @@ Peritus executable in a retained PTY**, not a mock terminal or a shell string.
 | `/git remote add NAME URL`, `/git remote set-url NAME URL`, `/git remote rename OLD NEW`, `/git remote remove NAME` | Native remote management; removal confirms |
 | `/git fetch [REMOTE]`, `/git pull [REMOTE] [BRANCH]`, `/git push [REMOTE] [BRANCH] [--set-upstream]` | Fetch/prune, fast-forward pull, and publish; no force push |
 | `/chat [MESSAGE]`, `/plan [MESSAGE]`, `/review [MESSAGE]`, `/build [MESSAGE]` | Select the explicit interaction mode; an optional message is sent in that mode |
-| `/model`, `/effort` | Provider/model/effort selection for writer, reviewer, and fixer; applies to subsequent native sends |
+| `/model`, `/effort` | Save per-session model/effort choices; existing conversations update the daemon immediately for subsequent model turns. Providers are fixed after the first message |
 | `/details` | Toggle public tool/status details in the conversation |
 | `/status`, `/diff` | Inspect the active session's observed run status/candidate diff |
-| `/runs` | Inspect the daemon's recent run snapshots, including runs started by other clients |
+| `/runs` | Inspect recent daemon runs and reopen interactive conversations, including those started by the CLI |
 | `/stop`, `/retry`, `/export` | Submit the exact active run's cancel, retry, or export request |
 | `/discard` | Show an explicit candidate-discard confirmation for the active run |
 | `/settings` | Edit appearance, behavior, layout, viewers, shortcuts, aliases, and TOML |
@@ -58,7 +58,8 @@ Managed candidate operations still depend on the daemon's eligibility checks.
 
 | Commands | Routing |
 | --- | --- |
-| `/terminal` | Open/reopen a full CLI console; a new one runs `peritus open PROJECT_ROOT` |
+| `/terminal` | Open/reopen the selected session console with `peritus --endpoint ENDPOINT open PROJECT_ROOT --run ACTIVE_RUN_ID`; an unconfigured daemon opens project setup |
+| `/consoles` | Rediscover retained project consoles after reload, including exited output |
 | `/providers` | `peritus providers` for account/API setup and capability checks |
 | `/workspaces` | `peritus workspaces` for workspace registration, trust, and repair |
 | `/update` | `peritus update` |
@@ -68,16 +69,21 @@ Managed candidate operations still depend on the daemon's eligibility checks.
 | `/preview`, `/checkpoint`, `/rewind`, `/run` | Same handoff for previews, checkpoints, restoration, and execution |
 | `/attach`, `/permissions`, `/init`, `/memory`, `/fork` | Same handoff for explicit context attachment, workspace capabilities, guidance, and forks |
 
-Workbench handoffs use `peritus open PROJECT_ROOT` and present the requested
-slash command for explicit submission. **The CLI has its own conversation
-selection; it is not automatically bound to the native web conversation.**
-Choose the intended target in the CLI before sending its prepared command.
-Its context, attachments, queue, forks, and model settings belong to that CLI
-selection. The console displays this distinction.
+Workbench handoffs use `peritus --endpoint ENDPOINT open PROJECT_ROOT --run
+ACTIVE_RUN_ID`. The CLI opens that exact conversation, restores its observed
+mode/model/provider selection, and presents the requested slash command for
+explicit submission. Opening a console does not send a message or execute the
+prepared command. A mismatched daemon endpoint or workspace is rejected.
+
+The daemon distinguishes interactive run conversations from governed Workbench
+sessions. Chat, status, diff, and candidate controls use the handed-off run.
+Queue, context, goals, checkpoints, and other governed controls require selecting
+or creating a Workbench session with `/sessions` inside the CLI. These are not
+silently inferred from an unrelated run ID; the console explains that selection.
 
 The embedded Xterm terminal accepts actual keyboard/mouse input and has visible
 buttons for navigation keys, Enter, Escape, and other terminal controls. Closing
-the panel retains the process for reopening from the current page. **Terminate
+the panel retains the process for reopening after browser reload using `/consoles`. **Terminate
 console** terminates it. Advanced flows retain Peritus's own prompts and checks.
 
 ## Scriptable CLI
@@ -107,10 +113,12 @@ version's actual help; its command grammar is the authority for advanced flags.
 Native Git and workspace/file/configuration paths have integration coverage.
 Native conversations have a negotiated local-socket fixture proving exact
 mode, target, provider/model/effort serialization and observation projection.
-The CLI bridge has been exercised with the installed executable's `--version`
-through a real PTY. Provider onboarding, inference, and all advanced workflows
+Regressions cover saved session choices across restart, native run adoption and
+model-update recovery, retained terminal rediscovery, exact PTY arguments, and
+CLI/TUI run selection. The actual CLI's `--version` is exercised through a PTY. Provider onboarding, inference, and all advanced workflows
 have not been exercised end-to-end in this pass.
 
 This implementation offers native common controls plus a working full-CLI
 route. It does not implement every workbench capability as a native web panel,
-nor synchronize the CLI's conversation selection with a browser session.
+and does not mirror later manual navigation inside a CLI console back into the
+browser's selected tab. The initial handoff is bound to the browser session.

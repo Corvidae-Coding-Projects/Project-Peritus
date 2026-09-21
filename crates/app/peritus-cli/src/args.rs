@@ -96,11 +96,7 @@ fn parse_command(parser: &mut Parser) -> Result<Command, CliError> {
             parser.finish()?;
             Ok(Command::Workspaces)
         }
-        "open" => {
-            let path = parser.pop().map(PathBuf::from);
-            parser.finish()?;
-            Ok(Command::Open { path })
-        }
+        "open" => parse_open(parser),
         "status" => {
             parser.finish()?;
             Ok(Command::Status)
@@ -119,6 +115,27 @@ fn parse_command(parser: &mut Parser) -> Result<Command, CliError> {
         }
         _ => Err(CliError::usage(format!("unknown command: {command}"))),
     }
+}
+
+fn parse_open(parser: &mut Parser) -> Result<Command, CliError> {
+    let mut path = None;
+    let mut run = None;
+    while let Some(argument) = parser.pop() {
+        if argument == "--run" {
+            let value = parser.value_utf8("--run")?;
+            let id = peritus_types::RunId::new(parse_hex_id(&value, "--run")?)
+                .map_err(|_| CliError::usage("invalid --run identifier"))?;
+            set_once(&mut run, id, "--run")?;
+        } else if argument.to_str().is_some_and(|value| value.starts_with('-')) {
+            return Err(CliError::usage(format!(
+                "unknown open option: {}",
+                argument.to_string_lossy()
+            )));
+        } else {
+            set_once(&mut path, PathBuf::from(argument), "PATH")?;
+        }
+    }
+    Ok(Command::Open { path, run })
 }
 
 fn parse_update(parser: &mut Parser) -> Result<Command, CliError> {

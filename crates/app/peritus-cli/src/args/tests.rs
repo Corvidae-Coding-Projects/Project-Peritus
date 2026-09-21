@@ -35,10 +35,10 @@ fn workspace_product_commands_do_not_require_an_endpoint() {
     assert!(matches!(cli.command, Command::Workspaces));
     let cli = parse(&["peritus", "open", "/project"]).expect("explicit workspace");
     assert!(
-        matches!(cli.command, Command::Open { path: Some(ref path) } if path == std::path::Path::new("/project"))
+        matches!(cli.command, Command::Open { path: Some(ref path), run: None } if path == std::path::Path::new("/project"))
     );
     let cli = parse(&["peritus", "open"]).expect("current workspace");
-    assert!(matches!(cli.command, Command::Open { path: None }));
+    assert!(matches!(cli.command, Command::Open { path: None, run: None }));
 }
 
 #[test]
@@ -155,5 +155,38 @@ fn product_run_commands_parse_exact_targets_and_confirmation_digests() {
     );
     assert!(
         parse(&["peritus", "runs", "accept", "--run", run, "--confirm-unqualified", "00"]).is_err()
+    );
+}
+
+#[test]
+fn open_selects_an_exact_run_and_rejects_ambiguous_targets() {
+    let id = "123456789abcdef0123456789abcdef0";
+    for args in [
+        vec!["peritus", "open", "/project", "--run", id],
+        vec!["peritus", "open", "--run", id, "/project"],
+    ] {
+        let cli = parse(&args).expect("exact-run launch");
+        assert!(
+            matches!(cli.command, Command::Open { path: Some(_), run: Some(run) } if run.as_bytes() == &[0x12,0x34,0x56,0x78,0x9a,0xbc,0xde,0xf0,0x12,0x34,0x56,0x78,0x9a,0xbc,0xde,0xf0])
+        );
+    }
+    for args in [
+        vec!["peritus", "open", "--run", "bad"],
+        vec!["peritus", "open", "--run", id, "--run", id],
+        vec!["peritus", "open", "/one", "/two"],
+        vec!["peritus", "open", "--run", "00000000000000000000000000000000"],
+    ] {
+        assert!(parse(&args).is_err(), "accepted {args:?}");
+    }
+}
+
+#[cfg(unix)]
+#[test]
+fn open_keeps_non_utf8_project_paths() {
+    use std::os::unix::ffi::OsStringExt;
+    let path = OsString::from_vec(b"/project-\xff".to_vec());
+    let cli = Cli::parse(["peritus".into(), "open".into(), path.clone()]).expect("native path");
+    assert!(
+        matches!(cli.command, Command::Open { path: Some(value), run: None } if value.as_os_str() == path)
     );
 }

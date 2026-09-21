@@ -1,6 +1,6 @@
 <script lang="ts">
   import { tick } from 'svelte';
-  import { ui,project,session,attempt,openProject,editSession,selectSession,dispatch,notify,refresh } from '../workspace.svelte';
+  import { ui,project,session,attempt,openProject,editSession,selectSession,dispatch,notify,refresh,openRun } from '../workspace.svelte';
   import { action } from '../api';
   import { parseSlash } from '../commands/slash';
   import Icon from './Icon.svelte';
@@ -20,7 +20,7 @@
     {#if ui.overlay==='open'}
       <form class="open-project-form" onsubmit={(event)=>{event.preventDefault();void attempt(()=>openProject(root));}}><p>Keep multiple projects running in one browser tab. Each project retains its own sessions, files, and repository settings.</p><label for="project-root">Project root directory</label><input id="project-root" bind:value={root} placeholder="/home/you/projects/my-project" required/><p class="setting-note">Use a directory on the machine running Peritus. Nested sessions must share this exact canonical root.</p><div class="dialog-actions"><button class="key primary">Open project<Icon name="arrow"/></button></div></form>
     {:else if ui.overlay==='settings'}<Settings/>
-    {:else if ui.overlay==='model'}<Models/>
+    {:else if ui.overlay==='model'}{#key ui.sessionId}<Models/>{/key}
     {:else if ui.overlay==='report'}
       <!-- svelte-ignore a11y_no_noninteractive_tabindex (Keyboard users need to scroll long inspection output.) -->
       <pre class="report-text" role="region" aria-label="Inspection output" tabindex="0">{ui.reportText||'No detail is available yet.'}</pre>
@@ -31,12 +31,12 @@
       <div class="session-library">{#each ui.workspace.sessions.filter(s=>s.title.toLowerCase().includes(sessionFilter.toLowerCase())) as item}<div class="library-row"><Icon name={item.parent?'branch':'chat'}/><span><strong>{item.title}</strong><small>{ui.workspace.projects.find(p=>p.id===item.project)?.name} · {item.closed?'Tab closed':'Open'}{item.parent?' · Nested':''}</small></span><button class="key small" onclick={()=>void attempt(async()=>{await editSession(item.id,{closed:false});selectSession(item.id);ui.overlay='';})}>Open</button></div>{/each}</div>
     {:else if ui.overlay==='runs'}
       <p class="dialog-description">Actual observations from the daemon, including runs started by other clients.</p>
-      {#each ui.runs as run}<div class="library-row"><Icon name="layers"/><span><strong>{run.task}</strong><small>{run.phase} · {run.id.slice(0,8)}</small></span><button class="key small" onclick={()=>{ui.reportTitle=run.task;ui.reportText=[run.status,run.summary,run.gates,run.review].filter(Boolean).join('\n\n');ui.overlay='report';}}>Inspect</button></div>{/each}
+      {#each ui.runs as run}<div class="library-row"><Icon name="layers"/><span><strong>{run.task}</strong><small>{run.phase} · {run.id.slice(0,8)}</small></span><button class="key small" onclick={()=>void attempt(()=>openRun(run.id))}>Open conversation</button><button class="key small" onclick={()=>{ui.reportTitle=run.task;ui.reportText=[run.status,run.summary,run.gates,run.review].filter(Boolean).join('\n\n');ui.overlay='report';}}>Inspect</button></div>{/each}
       {#if !ui.runs.length}<div class="small-empty">No daemon-owned runs have been observed yet. Start a conversation to begin.</div>{/if}
     {:else if ui.overlay==='console'}
-      <div class="console-tabs">{#each ui.consoles as console}<button class:active={console.id===ui.consoleId} onclick={()=>ui.consoleId=console.id}>{console.title}</button>{/each}</div>
+      <div class="console-tabs">{#each ui.consoles.filter(c=>c.project===ui.projectId) as console}<button class:active={console.id===ui.consoleId} onclick={()=>ui.consoleId=console.id}>{console.title}{console.ended?' · exited':''}</button>{/each}</div>
       {#each ui.consoles.filter(c=>c.id===ui.consoleId) as console(console.id)}<Console id={console.id} suggestion={console.suggestion}/>{/each}
-      <div class="console-footer-actions"><button class="flat" onclick={()=>void attempt(()=>dispatch('cli'))}>Scriptable command…</button><button class="flat" onclick={()=>void attempt(async()=>{await refresh();notify('Provider and workspace configuration reloaded.');})}>Reload configuration after setup</button></div>
+      <div class="console-footer-actions"><button class="flat" onclick={()=>void attempt(()=>dispatch('terminal'))}>New session console</button><button class="flat" onclick={()=>void attempt(()=>dispatch('cli'))}>Scriptable command…</button><button class="flat" onclick={()=>void attempt(async()=>{await refresh();notify('Provider and workspace configuration reloaded.');})}>Reload configuration after setup</button></div>
     {:else if ui.overlay==='cli'}
       <p class="dialog-description">Run any normal Peritus CLI command in a retained console. Arguments are passed directly, without shell expansion. The selected project is the working directory.</p>
       <form class="cli-form" onsubmit={(event)=>{event.preventDefault();void attempt(runCli);}}><label>Command template<select onchange={(event)=>cli=event.currentTarget.value}><option value="status">Choose a command…</option>{#each cliPresets as preset}<option value={preset[1]}>{preset[0]}</option>{/each}</select></label><label>Arguments after <code>peritus</code><textarea rows="4" bind:value={cli} spellcheck="false"></textarea></label><p class="setting-note">Replace ID, PATH, and TOPIC placeholders with exact values. Daemon commands receive the configured endpoint automatically.</p><div class="dialog-actions"><button class="key primary">Run in console<Icon name="terminal"/></button></div></form>

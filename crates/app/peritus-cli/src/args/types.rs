@@ -27,7 +27,7 @@ COMMANDS:
                                Update now, or configure automatic startup checks
   providers                    Open provider settings
   workspaces                   Switch, add, trust, repair, or forget workspaces
-  open [PATH]                  Launch Peritus for PATH (default: current directory)
+  open [PATH] [--run ID]        Launch PATH, optionally selecting an exact conversation
   status
   shutdown [--wait]
   command submit --actor <ID> --envelope <FILE> --payload <FILE>
@@ -77,7 +77,7 @@ pub enum Command {
     Update(UpdateArgs),
     Providers,
     Workspaces,
-    Open { path: Option<PathBuf> },
+    Open { path: Option<PathBuf>, run: Option<RunId> },
     Status,
     Shutdown { wait: bool },
     Submit(SubmitArgs),

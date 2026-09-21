@@ -34,6 +34,7 @@ impl ProductProviderOption {
 /// Product facts already selected and trusted by the launcher.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ProductLaunchContext {
+    run_id: Option<peritus_types::RunId>,
     workspace_id: WorkspaceId,
     workspace_label: String,
     providers: Vec<ProductProviderOption>,
@@ -62,6 +63,7 @@ impl ProductLaunchContext {
             ));
         }
         Ok(Self {
+            run_id: None,
             workspace_id,
             workspace_label,
             providers,
@@ -69,6 +71,19 @@ impl ProductLaunchContext {
             direct_folder_writable: None,
             launcher_report: None,
         })
+    }
+
+    /// Selects the exact initial conversation, including a not-yet-started browser session.
+    #[must_use]
+    pub const fn with_run(mut self, run: Option<peritus_types::RunId>) -> Self {
+        self.run_id = run;
+        self
+    }
+
+    /// Exact initial conversation selected by the caller.
+    #[must_use]
+    pub const fn run_id(&self) -> Option<peritus_types::RunId> {
+        self.run_id
     }
 
     /// Marks a directory whose requested changes are in-place, with the current trust level.

@@ -19,13 +19,18 @@ struct Output {
     ended: bool,
 }
 pub struct Terminal {
+    pub(crate) console: crate::consoles::Console,
     output: Arc<Mutex<Output>>,
     writer: Mutex<Box<dyn Write + Send>>,
     master: Mutex<Box<dyn MasterPty + Send>>,
     child: Mutex<Box<dyn portable_pty::Child + Send + Sync>>,
 }
 impl Terminal {
-    pub(crate) fn start(app: &App, project: &str, args: Vec<String>) -> Result<String> {
+    pub(crate) fn start(
+        app: &App,
+        console: crate::consoles::Console,
+        args: Vec<String>,
+    ) -> Result<()> {
         if args.len() > 128 || args.iter().any(|arg| arg.len() > 32768 || arg.contains('\0')) {
             return Err(problem("CLI arguments exceed the allowed bounds"));
         }
@@ -33,7 +38,7 @@ impl Terminal {
         if terminals.len() >= 24 {
             return Err(problem("Close a console before opening another (24-console limit)"));
         }
-        let project = app.project(project)?;
+        let project = app.project(&console.project)?;
         let pair = portable_pty::native_pty_system()
             .openpty(PtySize { rows: 30, cols: 100, pixel_width: 0, pixel_height: 0 })
             .map_err(problem)?;
@@ -69,10 +74,10 @@ impl Terminal {
                 output.ended = true;
             }
         });
-        let id = crate::state::id()?;
         terminals.insert(
-            id.clone(),
+            console.id.clone(),
             Arc::new(Self {
+                console,
                 output,
                 writer: Mutex::new(writer),
                 master: Mutex::new(pair.master),
@@ -80,7 +85,10 @@ impl Terminal {
             }),
         );
         drop(terminals);
-        Ok(id)
+        Ok(())
+    }
+    pub(crate) fn finished(&self) -> Result<bool> {
+        Ok(self.child.lock().map_err(problem)?.try_wait()?.is_some())
     }
     pub(crate) fn read(&self, after: u64) -> Result<Value> {
         let output = self.output.lock().map_err(problem)?;

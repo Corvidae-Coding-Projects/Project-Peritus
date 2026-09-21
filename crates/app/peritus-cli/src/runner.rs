@@ -58,8 +58,8 @@ fn run(arguments: impl IntoIterator<Item = OsString>) -> ExitCode {
     if matches!(&cli.command, Command::Workspaces) {
         return run_workspace_settings();
     }
-    if let Command::Open { path } = &cli.command {
-        return run_interactive_at(path.clone());
+    if let Command::Open { path, run } = &cli.command {
+        return run_interactive_at(path.clone(), *run, cli.endpoint.clone());
     }
 
     let runtime = match tokio::runtime::Builder::new_current_thread().enable_all().build() {
@@ -140,10 +140,14 @@ fn run_workspace_settings() -> ExitCode {
 }
 
 fn run_interactive() -> ExitCode {
-    run_interactive_at(None)
+    run_interactive_at(None, None, None)
 }
 
-fn run_interactive_at(repository: Option<std::path::PathBuf>) -> ExitCode {
+fn run_interactive_at(
+    repository: Option<std::path::PathBuf>,
+    run: Option<peritus_types::RunId>,
+    endpoint: Option<OsString>,
+) -> ExitCode {
     if !std::io::stdin().is_terminal() || !std::io::stdout().is_terminal() {
         return report_error(
             &CliError::usage(
@@ -161,7 +165,7 @@ fn run_interactive_at(repository: Option<std::path::PathBuf>) -> ExitCode {
             );
         }
     };
-    match runtime.block_on(peritus_launcher::launch_interactive_at(repository)) {
+    match runtime.block_on(peritus_launcher::launch_interactive_run(repository, run, endpoint)) {
         Ok(_) => ExitCode::SUCCESS,
         Err(error) => {
             report_error(&CliError::runtime("launch interactive product", error.to_string()), false)

@@ -29,8 +29,8 @@
   });
 </script>
 <div class="console-view">
-  <p class="dialog-description">The installed Peritus CLI, running in this project. Its current selection is shown in the console. Setup, approvals, and advanced workbench flows retain their original behavior.</p>
-  {#if suggestion}<p class="console-tip">Once setup is complete and the composer is ready, submit <code>{suggestion}</code> below. Choose the intended CLI conversation first.</p>{/if}
+  <p class="dialog-description">The installed Peritus CLI. Session consoles open the exact browser conversation; setup and scriptable consoles show their own selection below.</p>
+  {#if suggestion}<p class="console-tip">Once setup is complete and the composer is ready, submit <code>{suggestion}</code> below. Chat and run controls target the selected browser conversation. Queue, context, goals, and other Workbench controls use the CLI’s /sessions selection; select or create that governed session first.</p>{/if}
   <div bind:this={element} class="terminal-surface" role="region" aria-label="Interactive Peritus terminal"></div>
   {#if error}<p class="inline-error">{error}</p>{/if}
   <div class="console-keypad" aria-label="Mouse-accessible terminal keys">

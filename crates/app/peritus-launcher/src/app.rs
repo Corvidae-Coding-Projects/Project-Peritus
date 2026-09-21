@@ -32,6 +32,18 @@ pub async fn launch_interactive() -> Result<ExitReason, LauncherError> {
 pub async fn launch_interactive_at(
     repository: Option<PathBuf>,
 ) -> Result<ExitReason, LauncherError> {
+    launch_interactive_run(repository, None, None).await
+}
+
+/// Opens an exact conversation while preserving normal workspace setup and recovery.
+///
+/// # Errors
+/// Returns a setup failure, mismatched endpoint, or terminal failure without changing targets.
+pub async fn launch_interactive_run(
+    repository: Option<PathBuf>,
+    run: Option<peritus_types::RunId>,
+    endpoint: Option<std::ffi::OsString>,
+) -> Result<ExitReason, LauncherError> {
     let _title = crate::terminal::product_title()?;
     let layout = AppLayout::discover()?.prepare()?;
     if update::offer_on_startup(&layout).await? {
@@ -42,7 +54,10 @@ pub async fn launch_interactive_at(
     let prepared = provider_setup::ensure_configured(prepared)?;
     let binaries = SiblingBinaries::discover()?;
     let supervisor = DaemonSupervisor::new(Duration::from_secs(30));
-    let product = product_context(&prepared)?;
+    if endpoint.as_deref().is_some_and(|endpoint| endpoint != prepared.endpoint_path()) {
+        return Err(LauncherError::Interaction("The selected workspace uses a different daemon endpoint. Reconnect the browser to its configured daemon.".into()));
+    }
+    let product = product_context(&prepared)?.with_run(run);
     let report = diagnostics::launcher_report(&prepared, &binaries, product.workspace_id())?;
     let product = product.with_launcher_report(report).map_err(LauncherError::Tui)?;
     let mut tui_state = peritus_tui::TuiState::default();

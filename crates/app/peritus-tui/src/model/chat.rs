@@ -209,6 +209,15 @@ impl AppModel {
         if self.chat.run_id != Some(snapshot.snapshot().run_id()) {
             return;
         }
+        if self.product.as_ref().is_some_and(|product| {
+            product.launch.workspace_id() != snapshot.snapshot().workspace_id()
+        }) {
+            self.notice(NoticeLevel::Error, "This conversation belongs to another workspace. Open its project before continuing.");
+            return;
+        }
+        if self.chat.snapshot.is_none() {
+            self.chat.mode = snapshot.mode();
+        }
         // Model updates append a durable activity. A delayed pre-selection poll must not
         // overwrite a newer acknowledgement, including after a reconnect.
         if self.chat.snapshot.as_ref().is_some_and(|current| {
