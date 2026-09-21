@@ -1,0 +1,56 @@
+name: Upload required artifact with bounded retries
+description: Retry transient artifact-service failures and fail when every upload attempt fails.
+
+inputs:
+  name:
+    description: Unique artifact name within this workflow run.
+    required: true
+  path:
+    description: Files to upload.
+    required: true
+  retention-days:
+    description: Days to retain the artifact.
+    default: '7'
+
+runs:
+  using: composite
+  steps:
+    - name: Upload artifact (attempt 1 of 3)
+      id: first
+      continue-on-error: true
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      with:
+        name: ${{ inputs.name }}
+        path: ${{ inputs.path }}
+        if-no-files-found: error
+        retention-days: ${{ inputs.retention-days }}
+    - name: Wait before retrying artifact upload
+      if: ${{ steps.first.outcome == 'failure' }}
+      shell: bash
+      run: sleep 10
+    - name: Upload artifact (attempt 2 of 3)
+      id: second
+      if: ${{ steps.first.outcome == 'failure' }}
+      continue-on-error: true
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      with:
+        name: ${{ inputs.name }}
+        path: ${{ inputs.path }}
+        if-no-files-found: error
+        retention-days: ${{ inputs.retention-days }}
+        # Finalization can fail after artifact creation. Replace that incomplete upload.
+        overwrite: true
+    - name: Wait before the final artifact upload attempt
+      if: ${{ steps.second.outcome == 'failure' }}
+      shell: bash
+      run: sleep 20
+    # Exhausted retries fail the job; implicit success() checks respect cancellation.
+    - name: Upload artifact (attempt 3 of 3)
+      if: ${{ steps.second.outcome == 'failure' }}
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      with:
+        name: ${{ inputs.name }}
+        path: ${{ inputs.path }}
+        if-no-files-found: error
+        retention-days: ${{ inputs.retention-days }}
+        overwrite: true

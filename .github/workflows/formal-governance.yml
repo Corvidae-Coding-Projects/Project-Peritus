@@ -9,6 +9,11 @@ on:
 permissions:
   contents: read
 
+# A new PR head supersedes its old checks. Push and merge-queue commits stay distinct.
+concurrency:
+  group: gate-a-${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 env:
   CARGO_BUILD_JOBS: "2"
   RUST_VERSION: 1.97.1

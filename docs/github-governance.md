@@ -12,6 +12,10 @@ missing, symbolic, or byte-drifted template. The checked workflow has a stable f
 workflow lint, every Rust matrix entry, supply-chain policy, and every strict Verus/no-cheating
 operation succeeded.
 
+Gate A cancels superseded runs only for the same pull request. Main pushes and merge-queue
+commits use separate concurrency groups and are not canceled by later commits. Every check and
+failure-propagating aggregator remains required on the current candidate.
+
 ## Current authority boundary
 
 GitHub Team supports repository rulesets and required status checks for private repositories. The
