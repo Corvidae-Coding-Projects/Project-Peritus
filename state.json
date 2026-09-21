@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1529,
-        "tip_oid": "1dd4df523a9b3333e793f215efbb4fc3bb3a3a4a",
-        "prefix_sha256": "0a9e25a14419ce6301f83963d916f5086df2ca5cacbd27815ceb7e01318ebcd2"
+        "sequence": 1530,
+        "tip_oid": "78f46a691e5c244c95875bf2dc676941e2e8eafa",
+        "prefix_sha256": "203b561231d99cca6d71bdba7d5feaa732ee63b51ed0a43b1a265cb240b6c9ce"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 89,
-  "next_comment_id": 1750,
+  "next_comment_id": 1751,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -11236,7 +11236,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-21T20:49:06.633628118Z",
-      "updated_at": "2026-09-21T22:23:44.174365727Z",
+      "updated_at": "2026-09-21T22:29:51.156455987Z",
       "comments": {
         "23a79ffe-a9f7-4792-919a-475b152aa5cc": {
           "display_id": 1748,
@@ -11255,6 +11255,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAIGT1l/9JpaXoIpywogjB0ER/OL74GuJyWM/ymPb1S7aAsYwWbqk7gyCBG/yjeLwDhnCPw1STVCClnet/IHENCw=="
+        },
+        "50f8617a-edcd-461e-9f10-e4f9d3926d46": {
+          "display_id": 1750,
+          "author": "6ME5",
+          "content": "Follow-up fixes retry artifact name collisions after live Linux ARM evidence showed FinalizeArtifact 403 leaves an undeletable reservation and overwrite retries produce 409. Uploads now have distinct workflow-attempt/retry suffixes; both prepared consumers use exact platform prefixes. Full xtask suite: 470 pass, 1 existing ignored; actionlint, fmt, strict Clippy, xtask all pass. New head pushed; watch automatic stale-run cancellation and new uploads.",
+          "created_at": "2026-09-21T22:29:51.152483738Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA4D1jXdBZap0glBXLGjtAt5b301u1uQDcVAawyRt3iK+LSpIHumwasiz5joWHPFGtMz42tU4NxHpwMzChnDTBBw=="
         },
         "8d18d1b5-c084-4f5f-bd18-542ca97ff857": {
           "display_id": 1747,
