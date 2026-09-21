@@ -43,7 +43,8 @@ jobs:
       - name: Retrieve this platform's same-run H2 package
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
-          name: h2-prepared-${{ matrix.os }}
+          pattern: h2-prepared-${{ matrix.os }}--*
+          merge-multiple: true
           path: target/prepared-h2
       - name: Restore prepared artifacts and executable permissions
         run: cargo run --locked --package xtask -- product-native-qualification-restore
@@ -164,7 +165,8 @@ jobs:
       - name: Retrieve this platform's same-run H2 package
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
-          name: h2-prepared-${{ matrix.os }}
+          pattern: h2-prepared-${{ matrix.os }}--*
+          merge-multiple: true
           path: target/prepared-h2
       - name: Restore prepared artifacts and executable permissions
         run: cargo run --locked --package xtask -- product-native-qualification-restore
