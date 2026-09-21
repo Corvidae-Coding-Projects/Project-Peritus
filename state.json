@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1528,
-        "tip_oid": "7a3cc4be0eda35e5e25f05d284be3ebc0289ea14",
-        "prefix_sha256": "c581ebfb69b1293c30731aabed29295ed22882fab6f3dabfee9a999134916516"
+        "sequence": 1529,
+        "tip_oid": "1dd4df523a9b3333e793f215efbb4fc3bb3a3a4a",
+        "prefix_sha256": "0a9e25a14419ce6301f83963d916f5086df2ca5cacbd27815ceb7e01318ebcd2"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 89,
-  "next_comment_id": 1749,
+  "next_comment_id": 1750,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -11236,7 +11236,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-21T20:49:06.633628118Z",
-      "updated_at": "2026-09-21T22:23:24.134872882Z",
+      "updated_at": "2026-09-21T22:23:44.174365727Z",
       "comments": {
         "23a79ffe-a9f7-4792-919a-475b152aa5cc": {
           "display_id": 1748,
@@ -11264,6 +11264,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA03f1Srbg46tUK1t+dznQTAv+TbWpSVcBL+8hbVY7MYq9U7xTCV21CUyeKo7JAmS8PN0iYbb3ZBNiPGpH2MRGAw=="
+        },
+        "a1b12c04-ed3f-4cf1-a8c3-c28efd9e8b0a": {
+          "display_id": 1749,
+          "author": "6ME5",
+          "content": "[action] PR #96 now 0ad9a8f3f; fixed stale Gate A cancellation and bounded native upload retries. Canceling old Gate A 35658675653 after push (old definition lacked concurrency). All local CI-policy checks pass. Watching new exact-head runs.",
+          "created_at": "2026-09-21T22:23:44.170638956Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAnPndvjVxRn+9ERKCihlpoibphxqGH62bMjeBh83iQG4mXY9rHZjqAZTKvyrCk9v+SDcdaq4XmP89iJVC8eAfAw=="
         },
         "a416c261-d9e4-43b1-b9a3-796a4e56d11a": {
           "display_id": 1744,
