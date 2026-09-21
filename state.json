@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1524,
-        "tip_oid": "7198d08798e7a0f97f28412beea6ed81cd8d2015",
-        "prefix_sha256": "0aa1f7829b36cdd46653df8e6856515a13e4b0158296813c310037a673e1e75e"
+        "sequence": 1525,
+        "tip_oid": "389a3e43c61bc22aa872b7a260e33565b716471d",
+        "prefix_sha256": "6ff2cbba137badf38cb2ac25c7f32db38a74f8357b9d83fa1f8251b6d8f2ce77"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 89,
-  "next_comment_id": 1745,
+  "next_comment_id": 1746,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -11236,8 +11236,17 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-21T20:49:06.633628118Z",
-      "updated_at": "2026-09-21T21:13:53.273515640Z",
+      "updated_at": "2026-09-21T21:14:28.332041646Z",
       "comments": {
+        "42bde749-fcd1-4b78-a9b9-3c89a12b1aa8": {
+          "display_id": 1745,
+          "author": "6ME5",
+          "content": "[action] PR #96 open against develop at e4e7cdfbe. Local tests and policy pass; now watching GitHub runner results.",
+          "created_at": "2026-09-21T21:14:28.327469725Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAIGT1l/9JpaXoIpywogjB0ER/OL74GuJyWM/ymPb1S7aAsYwWbqk7gyCBG/yjeLwDhnCPw1STVCClnet/IHENCw=="
+        },
         "a416c261-d9e4-43b1-b9a3-796a4e56d11a": {
           "display_id": 1744,
           "author": "6ME5",
