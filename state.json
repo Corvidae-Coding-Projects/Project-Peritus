@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1523,
-        "tip_oid": "edf7428cf7116465ddd7b3eb16169046b4ad9179",
-        "prefix_sha256": "14b43d5d23b0102b9f701758c5304c85f2e134aa4057a0fd4db099d5f5442bdb"
+        "sequence": 1524,
+        "tip_oid": "7198d08798e7a0f97f28412beea6ed81cd8d2015",
+        "prefix_sha256": "0aa1f7829b36cdd46653df8e6856515a13e4b0158296813c310037a673e1e75e"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 89,
-  "next_comment_id": 1744,
+  "next_comment_id": 1745,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -11236,8 +11236,17 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-21T20:49:06.633628118Z",
-      "updated_at": "2026-09-21T21:09:05.599951331Z",
+      "updated_at": "2026-09-21T21:13:53.273515640Z",
       "comments": {
+        "a416c261-d9e4-43b1-b9a3-796a4e56d11a": {
+          "display_id": 1744,
+          "author": "6ME5",
+          "content": "Committed e4e7cdfbe: fix(webui): persist sessions and bind CLI consoles to exact runs. Validation: 213 focused Rust tests, 18 frontend units, 22 Playwright tests, strict Clippy, rustfmt, Svelte checks, production build, and xtask all pass. Governed Workbench sessions remain distinct daemon objects and require CLI /sessions selection; documented explicitly. Pushing PR to develop and monitoring runners.",
+          "created_at": "2026-09-21T21:13:53.268844121Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAAoFg0l4gagrfFyQuDjVPPUXX7SSBlmPc3f11bgimH2WP2g7bfG5UTU7QWqrtJyuh/+Fj4oC6U0vrrn9yx94wBg=="
+        },
         "d69dfece-9284-41fc-b65b-a74a0227b87e": {
           "display_id": 1743,
           "author": "6ME5",
