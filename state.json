@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1550,
-        "tip_oid": "5f97b6e04709f8c8d3c78072a196c8d297beed86",
-        "prefix_sha256": "0f42f59016390d9c2f09fd6569922686dcd39ddd520831559801f70b210b9719"
+        "sequence": 1551,
+        "tip_oid": "2cfc2aa71a0f199069f9301310b99a8d1ade71ac",
+        "prefix_sha256": "d0c1729410263224f37775a232b7fb745e62efd8a3e206278596699ab749f0c1"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 90,
-  "next_comment_id": 1763,
+  "next_comment_id": 1764,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -8778,7 +8778,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-22T00:32:01.785644005Z",
-      "updated_at": "2026-09-22T01:30:38.123318678Z",
+      "updated_at": "2026-09-22T03:09:47.805422591Z",
       "labels": [
         "feature"
       ],
@@ -8800,6 +8800,15 @@
           "kind": "handoff",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA/S36VtIv7gDpNPyEc3ePaCkWIYyft97ZKRMVl3vdZaDK7sQ8EM47t/3y+3A5mGQDGVFFWZm7IoJfl2OrEJ72Dw=="
+        },
+        "32615785-5153-494b-aaa9-c252f8c8aacb": {
+          "display_id": 1763,
+          "author": "6ME5",
+          "content": "Hosted verification completed for exact PR97 head a66240fc4d09686256c7c2753a17fc6ba3ebcc70: 579 successful check runs, 5 skipped, zero failures or pending jobs. All ten workflow runs succeeded, including Foundation verification, Gate A, WebUI, native security and native packaging. Two Trusted-base validation instances are deliberately skipped under existing protected-input/bootstrap classification; three other skipped jobs are optional discovery campaigns. This is not a trusted-checker authorization claim; the revised default-branch workflow still requires its documented reviewed promotion/bootstrap. Local CI repair validation: 476 xtask tests, strict Clippy, actionlint, format, canonical workflow sync and xtask all passed. Worktree clean; no merge or live app restart.",
+          "created_at": "2026-09-22T03:09:47.793686351Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAlYRiJy63F/pj6P4zJ7xSD3ILOm8cMuXAwRDL/tASuNBY70SibgNHUcjsvYgtnsm4iPvktByO5r2WDW5OXr8GCQ=="
         },
         "49a913c8-e0d6-4690-b716-8eaf128928cc": {
           "display_id": 1758,
