@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1548,
-        "tip_oid": "8c544986180b5b7b43c7446e1f08e597958523f8",
-        "prefix_sha256": "8d09b48c129427fb1e086412fe28a52a046a2516fdbea12fea0d89f3b9aae58e"
+        "sequence": 1549,
+        "tip_oid": "c4ba3cbef12634285a7c6d42effd985771a33264",
+        "prefix_sha256": "76fba364e91e8e2291cca2b8d54c1b6f658116fd99c8f7b6f0f6f8e8ec36de71"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 90,
-  "next_comment_id": 1761,
+  "next_comment_id": 1762,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -8778,11 +8778,20 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-22T00:32:01.785644005Z",
-      "updated_at": "2026-09-22T01:11:41.436316917Z",
+      "updated_at": "2026-09-22T01:27:34.869355795Z",
       "labels": [
         "feature"
       ],
       "comments": {
+        "0ed1d99f-a20a-4442-928c-9eecb8a494da": {
+          "display_id": 1761,
+          "author": "6ME5",
+          "content": "[action] PR97 runner failure reproduced as main checker befbac3df versus develop base 29d826ae3 protected-input drift, before Cargo. Main classifier only compares base-to-candidate. Reconciling already merged main authority workflow and classifying both custody edges, retaining skipped/bootstrap-required semantics and immutable checker safeguards. Adding executable shell regression fixtures; other CI jobs still monitored.",
+          "created_at": "2026-09-22T01:27:34.857997606Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAcybB5m9B7qK3DXcPo7+LcqNM30jCLgstZMgELjhJz0E7moxUdKE0e0aW8+wJnM1aapgVvyV8xcvzx8/LlclSDQ=="
+        },
         "2e2763fb-f7f4-48b5-8cc2-f5e4b68cc4bf": {
           "display_id": 1760,
           "author": "6ME5",
