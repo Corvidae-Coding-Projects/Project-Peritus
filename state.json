@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1549,
-        "tip_oid": "c4ba3cbef12634285a7c6d42effd985771a33264",
-        "prefix_sha256": "76fba364e91e8e2291cca2b8d54c1b6f658116fd99c8f7b6f0f6f8e8ec36de71"
+        "sequence": 1550,
+        "tip_oid": "5f97b6e04709f8c8d3c78072a196c8d297beed86",
+        "prefix_sha256": "0f42f59016390d9c2f09fd6569922686dcd39ddd520831559801f70b210b9719"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 90,
-  "next_comment_id": 1762,
+  "next_comment_id": 1763,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -8778,7 +8778,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-22T00:32:01.785644005Z",
-      "updated_at": "2026-09-22T01:27:34.869355795Z",
+      "updated_at": "2026-09-22T01:30:38.123318678Z",
       "labels": [
         "feature"
       ],
@@ -8836,6 +8836,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAlzWKPpl6QD7Itv+YfAO7nXZIB1L7n3EdppJ0GuIryxFv2lpfVivN2KydFp16GKsY402o4BMdXVKVwzNgkSVwCw=="
+        },
+        "fd5a42c3-8d54-48ac-aa94-e86ef10a6940": {
+          "display_id": 1762,
+          "author": "6ME5",
+          "content": "CI repair a66240fc4: reproduced Trusted-base validation failure before Cargo because default-main checker befbac3df and develop base 29d826ae3 have different protected inputs. Brought in existing main classification, extended it to both checker-base and base-candidate edges, rejected unavailable checker revisions, and added actual canonical-shell regressions. No validation authority is granted to changed inputs; they explicitly require reviewed bootstrap. 476 xtask tests passed (one existing ignored), strict Clippy, actionlint, format, canonical sync and xtask all passed. Pushed PR97 and now monitoring replacement hosted checks.",
+          "created_at": "2026-09-22T01:30:38.119675673Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA9hucz3GEhaVH6mB9d0C0SUZrUsM+wSGol+c5SkVVIuMuGGJUMv0x2nBG/Xg3gTlQuow+1j4/KXswXevLdI4bAg=="
         }
       }
     },
