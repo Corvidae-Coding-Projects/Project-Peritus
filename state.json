@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1553,
-        "tip_oid": "e81c422be33d8a64c788c8c2fa57bb4c0ddeec4d",
-        "prefix_sha256": "7898b3e995de7562f27964ba552d2d4ed3027a1c22fcf80012b7964ee4352275"
+        "sequence": 1554,
+        "tip_oid": "0311c7f68cdc8d49dc86a47f651e360167043748",
+        "prefix_sha256": "5f0f4ff532069009c8d7625c5eda12e5bf63fee7196880b98066c17ddc7732ee"
       },
       "NWAR": {
         "sequence": 39,
@@ -54,7 +54,7 @@
       }
     }
   },
-  "next_display_id": 90,
+  "next_display_id": 91,
   "next_comment_id": 1765,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
@@ -69,6 +69,7 @@
     "19b7b53a-b2fb-41c1-835d-ffd6ce605c08": 14,
     "1b7f002e-151c-477c-b626-2e0e56626101": 65,
     "1df15ea3-f541-41f4-9d1c-9f91f53fafd4": 57,
+    "1eec8b14-afc4-45e6-a774-ace60ac03192": 90,
     "2194b9c5-c19f-47a2-9c91-d84a6c3c7b84": 46,
     "22ed340e-0fb7-4707-99b4-8ee50830cdd4": 68,
     "27633189-3dec-4781-9940-42a3e8eb9e60": 24,
@@ -2961,6 +2962,16 @@
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgSY3NzUt4yJsmoc9xMF24/yiRVJA4OsYNnfEm+9bJ5LkAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAYmPg37nE8KOAkTz71ec81BwqVtSK2KmZZVG3MMSfdg6XyV2DP4+TXmpPOMfu0oronhXnRX3TVrpL3F8F7JHeAg=="
         }
       }
+    },
+    "1eec8b14-afc4-45e6-a774-ace60ac03192": {
+      "uuid": "1eec8b14-afc4-45e6-a774-ace60ac03192",
+      "display_id": 90,
+      "title": "Build and install develop preserving provider login for supervised ferrolearn reorganization",
+      "status": "open",
+      "priority": "high",
+      "created_by": "6ME5",
+      "created_at": "2026-09-22T21:59:51.865738141Z",
+      "updated_at": "2026-09-22T21:59:51.865738141Z"
     },
     "2194b9c5-c19f-47a2-9c91-d84a6c3c7b84": {
       "uuid": "2194b9c5-c19f-47a2-9c91-d84a6c3c7b84",
