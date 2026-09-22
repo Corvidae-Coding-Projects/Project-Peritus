@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1562,
-        "tip_oid": "f837271371db11fc780af4c7ebcde33a83fa73e5",
-        "prefix_sha256": "61292a71d2e6abdf4530051125c5ab9ea1186d570442a11f148585769559f959"
+        "sequence": 1563,
+        "tip_oid": "a3ab53ba94b6b2854f76b33bf5b08748bbb716e0",
+        "prefix_sha256": "51e2268e2fa3ad24f1bff614fcf26b7e7e7b802a33e7283629623935001d8df2"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 92,
-  "next_comment_id": 1767,
+  "next_comment_id": 1768,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -8814,7 +8814,18 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-22T23:55:25.050950590Z",
-      "updated_at": "2026-09-22T23:55:25.050950590Z"
+      "updated_at": "2026-09-22T23:59:45.295141039Z",
+      "comments": {
+        "b2f37a7f-d07b-429c-b1f2-79d6c641a6a3": {
+          "display_id": 1767,
+          "author": "6ME5",
+          "content": "Added supported explicit Codex configuration disabling update_plan, experimental_request_user_input and web_search, plus sleep_tool and tool_suggest feature flags. Decoder native-event rejection is unchanged. Existing 31 provider tests, focused Clippy with warnings denied, rustfmt and release daemon build pass. Installed rebuilt peritusd, cleanly restarted same config/login, and resumed retained ferrolearn candidate via direct JSON CLI. Live reliability remains under observation; no claim that generic native_tool error identified a specific tool. No commits.",
+          "created_at": "2026-09-22T23:59:45.289172867Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAyo0I5WjmB4YfG2dA3uZREooaMuxI2YLwp7r9wLIwDAj4xzSasNYxwTl7wrGSZrJx4XOc1hym+wUFnFl3w4YDCA=="
+        }
+      }
     },
     "3815f89a-0b1b-43eb-8435-9838e1a62569": {
       "uuid": "3815f89a-0b1b-43eb-8435-9838e1a62569",
