@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1540,
-        "tip_oid": "322da0edc15bf605be319d9c94e4183046479aa6",
-        "prefix_sha256": "2574d69fca98886ebd9a2b5551bda29b22a6cb0430fb697f88a576a515ead67b"
+        "sequence": 1541,
+        "tip_oid": "6dcd737b125d7c4d76c7fb5b237df95f17514e1f",
+        "prefix_sha256": "611c96276758dd466b20b3467988544c6b5405e4211e3b40dad4411101959707"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 90,
-  "next_comment_id": 1757,
+  "next_comment_id": 1758,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -8778,11 +8778,20 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-22T00:32:01.785644005Z",
-      "updated_at": "2026-09-22T00:59:34.194461757Z",
+      "updated_at": "2026-09-22T01:06:20.270813321Z",
       "labels": [
         "feature"
       ],
       "comments": {
+        "84c73260-4377-4afa-a8fc-cdbd44d8d66d": {
+          "display_id": 1757,
+          "author": "6ME5",
+          "content": "Delivered local commit 79efd332e401bf1ffd19960333e23d3ed1a0e139 (feat: collect harness suggestions for explicit evaluation) on feature/harness-candidate-inbox, based on develop 29d826ae3, in .worktrees/harness-candidate-inbox. Durable evidence-backed suggestions, deduplication/dismissal, explicit native isolated patch evaluation, GUI /improvements and CLI commands. No background inference, test campaigns, or promotion. Evaluation produces source changes for existing review/export/accept/commit controls; installation remains explicit. Verification: 375 Rust tests passed with 3 existing ignored; latest focused inbox suite 7 passed (including 2 additional tests); 18 frontend unit tests; all 23 browser tests; strict Clippy for affected crates; workspace all-target/all-feature check; production binaries and frontend build; format and xtask all passed. No paid provider evaluation or live daemon restart. No push requested.",
+          "created_at": "2026-09-22T01:06:20.266759546Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAPV4i1glL0+rHpo91wzU4c3dzteRo2/iDwVyYBiUJb1xhLNR9JzRmYmYMIutK1u8yxeCnmmfqixkonqRBYeGaCA=="
+        },
         "eb590328-7954-4cbb-88d5-84993dafbfbf": {
           "display_id": 1756,
           "author": "6ME5",
