@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1539,
-        "tip_oid": "936279558080aa47fe7c9d5f66dc0a757620abe0",
-        "prefix_sha256": "9bc9302269e94cdb4a52a6bccac150987bc4e217da4a2acbd1f2a900e4b676e7"
+        "sequence": 1540,
+        "tip_oid": "322da0edc15bf605be319d9c94e4183046479aa6",
+        "prefix_sha256": "2574d69fca98886ebd9a2b5551bda29b22a6cb0430fb697f88a576a515ead67b"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 90,
-  "next_comment_id": 1756,
+  "next_comment_id": 1757,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -8778,10 +8778,21 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-22T00:32:01.785644005Z",
-      "updated_at": "2026-09-22T00:32:18.741670016Z",
+      "updated_at": "2026-09-22T00:59:34.194461757Z",
       "labels": [
         "feature"
-      ]
+      ],
+      "comments": {
+        "eb590328-7954-4cbb-88d5-84993dafbfbf": {
+          "display_id": 1756,
+          "author": "6ME5",
+          "content": "[action] Implemented candidate inbox on feature/harness-candidate-inbox in .worktrees/harness-candidate-inbox, base develop 29d826ae3. User chose evidence-backed suggestions first, patches only on explicit evaluate. Daemon SQLite inbox, digest-checked evidence, dedup/dismissal, explicit native isolated evaluation runs, CLI commands, GUI panel and model-free collection. 375 Rust tests passed (3 existing ignored), 7 targeted inbox tests including later capacity/collision checks passed, 18 frontend unit tests passed, browser flow passed, strict Clippy and xtask all passed before final minor UI/test changes. Final review/checks and branch commit in progress; no push or live daemon restart.",
+          "created_at": "2026-09-22T00:59:34.190156382Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAlzWKPpl6QD7Itv+YfAO7nXZIB1L7n3EdppJ0GuIryxFv2lpfVivN2KydFp16GKsY402o4BMdXVKVwzNgkSVwCw=="
+        }
+      }
     },
     "39341321-25d6-4cd4-8e10-ad806ddefb0d": {
       "uuid": "39341321-25d6-4cd4-8e10-ad806ddefb0d",
