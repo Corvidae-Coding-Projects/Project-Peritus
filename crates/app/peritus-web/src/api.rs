@@ -120,6 +120,7 @@ async fn query(State(app): State<Arc<App>>, Query(args): Query<QueryArgs>) -> Re
         "conversation" => daemon::conversation(&app, &args.session).await?,
         "models" => daemon::models(&app, &args.profile).await?,
         "runs" => daemon::runs(&app).await?,
+        "improvements" => daemon::improvements::list(&app, &args.project).await?,
         "consoles" => crate::consoles::list(&app)?,
         "operation" => operations::observe(&app, &args.operation)?,
         _ => return Err(problem("Unknown query")),
@@ -219,6 +220,7 @@ async fn mutation_guard(app: &Arc<App>, input: &Value) -> Result<tokio::sync::Ow
 async fn dispatch(app: &Arc<App>, input: &Value) -> Result<Value> {
     let string = |key: &str| input[key].as_str().unwrap_or("");
     match string("command") {
+        "improvements" => daemon::improvements::action(app, input).await,
         "open-project" => Ok(json!(app.open_project(std::path::Path::new(string("root")))?)),
         "close-project" => {
             app.close_project(string("project"))?;

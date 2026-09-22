@@ -190,3 +190,38 @@ fn open_keeps_non_utf8_project_paths() {
         matches!(cli.command, Command::Open { path: Some(value), run: None } if value.as_os_str() == path)
     );
 }
+
+#[test]
+fn improvement_collection_and_evaluation_are_distinct_explicit_commands() {
+    let workspace = "11111111111111111111111111111111";
+    let cli = parse(&["peritus", "improvements", "list", "--workspace", workspace]).expect("inbox");
+    assert!(matches!(
+        cli.command,
+        Command::Improvements(peritus_app_protocol::ImprovementRequest::List(_))
+    ));
+    assert!(parse(&["peritus", "improvements", "evaluate", "--workspace", workspace]).is_err());
+    assert!(
+        parse(&[
+            "peritus",
+            "improvements",
+            "suggest",
+            "--workspace",
+            workspace,
+            "--proposal",
+            "No evidence"
+        ])
+        .is_err()
+    );
+    assert!(
+        parse(&[
+            "peritus",
+            "improvements",
+            "list",
+            "--workspace",
+            workspace,
+            "--provider",
+            workspace
+        ])
+        .is_err()
+    );
+}

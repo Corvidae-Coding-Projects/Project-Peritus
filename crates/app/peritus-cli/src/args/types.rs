@@ -49,6 +49,11 @@ COMMANDS:
                   --columns <N> --rows <N>
   terminal detach --attachment <ID> --process <ID> --originating-request <ID>
   terminal cancel --attachment <ID> --process <ID> --originating-request <ID>
+  improvements list --workspace ID
+  improvements suggest --workspace ID --run ID --proposal TEXT
+  improvements dismiss --workspace ID --candidate DIGEST
+  improvements evaluate --workspace ID --candidate DIGEST --target WORKSPACE
+                        --provider ID --run NEW-RUN-ID
   runs list
   runs show --run <ID>
   runs continue --run <ID> --message <TEXT>
@@ -71,6 +76,7 @@ pub struct Cli {
 }
 
 pub enum Command {
+    Improvements(peritus_app_protocol::ImprovementRequest),
     Help { text: String },
     Version,
     Completions(Shell),

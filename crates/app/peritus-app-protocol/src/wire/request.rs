@@ -59,6 +59,7 @@ fn write_payload(
 ) -> Result<(), CodecError> {
     writer.write_u16(payload_tag(payload))?;
     match payload {
+        AppRequestPayload::Improvements(value) => super::improvements::write_request(writer, value),
         AppRequestPayload::PreviewWorkbenchRewind(value)
         | AppRequestPayload::InspectWorkbenchCheckpoint(value) => {
             super::workbench_checkpoints::write_request(writer, *value)
@@ -157,6 +158,7 @@ fn write_payload(
 
 fn payload_tag(payload: &AppRequestPayload) -> u16 {
     match payload {
+        AppRequestPayload::Improvements(_) => 180,
         AppRequestPayload::PreviewWorkbenchRewind(_) => 120,
         AppRequestPayload::InspectWorkbenchCheckpoint(_) => 121,
         AppRequestPayload::QueryWorkbenchMemory(_) => 161,
@@ -256,6 +258,7 @@ pub(super) fn read_request(
         161 => {
             AppRequestPayload::QueryWorkbenchMemory(super::workbench_memory::read_query(reader)?)
         }
+        180 => AppRequestPayload::Improvements(super::improvements::read_request(reader)?),
         162 => {
             AppRequestPayload::DiscoverInit(super::workbench_init::read_discovery_request(reader)?)
         }

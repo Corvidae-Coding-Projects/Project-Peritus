@@ -5,6 +5,7 @@ use peritus_types::SessionId;
 use crate::{completion::Shell, error::CliError, id::parse_hex_id};
 
 mod artifact;
+mod improvements;
 mod product;
 mod terminal;
 mod types;
@@ -108,6 +109,7 @@ fn parse_command(parser: &mut Parser) -> Result<Command, CliError> {
         "prompt" => parse_prompt(parser),
         "terminal" => terminal::parse_terminal(parser),
         "runs" => product::parse_product(parser),
+        "improvements" => improvements::parse(parser),
         "completions" => parse_completions(parser),
         "help" => {
             parser.finish()?;

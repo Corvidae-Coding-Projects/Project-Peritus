@@ -219,6 +219,10 @@ async fn execute(cli: Cli) -> Result<(), CliError> {
         Command::TerminalCancel(arguments) => {
             terminal::cancel(&endpoint, cli.session, cli.timeout, arguments, &output).await
         }
+        Command::Improvements(request) => {
+            crate::improvements::execute(&endpoint, cli.session, cli.timeout, request, &output)
+                .await
+        }
         Command::ProductRuns(arguments) => {
             product_run::execute(&endpoint, cli.session, cli.timeout, arguments, &output).await
         }

@@ -65,6 +65,8 @@ impl OperationAcknowledgement {
 /// Closed schema-v1 application response payload.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum AppResponsePayload {
+    /// Durable evidence-backed harness suggestion inbox.
+    Improvements(crate::ImprovementInbox),
     /// Durable checkpoint publication with exact visible coverage and exclusions.
     WorkbenchCheckpoint(crate::WorkbenchCheckpointReceipt),
     /// Non-mutating exact restore plan awaiting confirmation.

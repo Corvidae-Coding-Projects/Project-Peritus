@@ -88,6 +88,9 @@ impl AppModel {
         exact_run: Option<peritus_types::RunId>,
     ) -> Vec<Effect> {
         match payload {
+            AppResponsePayload::Improvements(inbox) => {
+                self.notice(NoticeLevel::Info, format!("{} harness improvement suggestions. Inspect them in the GUI inbox or with peritus improvements list.", inbox.candidates().len()));
+            }
             AppResponsePayload::WorkbenchCheckpoint(_)
             | AppResponsePayload::WorkbenchRewindPreview(_)
             | AppResponsePayload::WorkbenchRestore(_)
