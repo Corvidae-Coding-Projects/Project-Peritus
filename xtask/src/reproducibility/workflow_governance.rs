@@ -36,7 +36,7 @@ pub(super) fn validate(
         root_is_exact(workflow, tools),
         path,
         "required Gate A workflow has mutable triggers, permissions, environment, or job topology",
-        "retain main push, pull-request, and merge-group triggers; contents:read; exact pins; and all reviewed jobs without cancellation",
+        "retain main push, pull-request, and merge-group triggers; contents:read; exact pins; and all reviewed jobs with cancellation restricted to superseded PR heads",
         diagnostics,
     );
     let jobs = mapping_value(workflow, "jobs").and_then(Yaml::as_hash);
@@ -74,9 +74,12 @@ fn root_is_exact(workflow: &Hash, tools: &ToolchainPolicy) -> bool {
     let Some(permissions) = mapping_value(workflow, "permissions").and_then(Yaml::as_hash) else {
         return false;
     };
+    let Some(concurrency) = mapping_value(workflow, "concurrency").and_then(Yaml::as_hash) else {
+        return false;
+    };
     let Some(env) = mapping_value(workflow, "env").and_then(Yaml::as_hash) else { return false };
     let Some(jobs) = mapping_value(workflow, "jobs").and_then(Yaml::as_hash) else { return false };
-    exact_keys(workflow, &["name", "on", "permissions", "env", "jobs"])
+    exact_keys(workflow, &["name", "on", "permissions", "concurrency", "env", "jobs"])
         && string(workflow, "name") == Some("Gate A")
         && exact_keys(triggers, &["push", "pull_request", "merge_group"])
         && mapping_value(triggers, "push").is_some_and(push_trigger_is_exact)
@@ -84,6 +87,13 @@ fn root_is_exact(workflow: &Hash, tools: &ToolchainPolicy) -> bool {
         && mapping_value(triggers, "merge_group") == Some(&Yaml::Null)
         && exact_keys(permissions, &["contents"])
         && string(permissions, "contents") == Some("read")
+        && exact_keys(concurrency, &["group", "cancel-in-progress"])
+        && string(concurrency, "group")
+            == Some(
+                "gate-a-${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}",
+            )
+        && string(concurrency, "cancel-in-progress")
+            == Some("${{ github.event_name == 'pull_request' }}")
         && exact_keys(
             env,
             &[

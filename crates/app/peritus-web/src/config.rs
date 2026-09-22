@@ -40,8 +40,19 @@ impl Options {
             product_state_root: state_root.join("product-state"),
             daemon_config: None,
             endpoint: None,
-            cli: std::env::var_os("PERITUS_BIN")
-                .map_or_else(|| PathBuf::from("peritus"), PathBuf::from),
+            cli: std::env::var_os("PERITUS_BIN").map_or_else(
+                || {
+                    let sibling = std::env::current_exe().ok().and_then(|path| {
+                        path.parent().map(|parent| {
+                            parent.join(format!("peritus{}", std::env::consts::EXE_SUFFIX))
+                        })
+                    });
+                    sibling
+                        .filter(|path| path.is_file())
+                        .unwrap_or_else(|| PathBuf::from("peritus"))
+                },
+                PathBuf::from,
+            ),
         };
         let mut args = args.into_iter();
         while let Some(flag) = args.next() {

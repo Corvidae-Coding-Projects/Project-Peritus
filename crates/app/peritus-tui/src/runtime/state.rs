@@ -15,7 +15,11 @@ pub struct TuiState {
 impl TuiState {
     pub(super) fn take_model(&mut self, config: &TuiConfig, seed: [u8; 32]) -> Box<AppModel> {
         self.saved.take().filter(|(previous, _)| previous == config).map_or_else(
-            || Box::new(AppModel::with_product(seed, config.product().cloned())),
+            || {
+                let mut model = Box::new(AppModel::with_product(seed, config.product().cloned()));
+                model.chat.run_id = config.product().and_then(super::ProductLaunchContext::run_id);
+                model
+            },
             |(_, model)| model,
         )
     }

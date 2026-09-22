@@ -29,7 +29,7 @@ Run from the repository root:
 ```sh
 npm --prefix webui ci
 npm --prefix webui run build
-cargo build -p peritus-web -j 2
+cargo build -p peritus-web -p peritus-cli -p peritus-daemon -j 2
 ./target/debug/peritus-web --root "/absolute/path/to/project"
 ```
 
@@ -235,11 +235,20 @@ fonts, such as Iosevka, use the system installation or their fallback stack.
 | `--daemon-config PATH` | Exact generated Peritus daemon configuration; default discovers the latest native generation |
 | `--product-state DIR` | Peritus product-state generation directory; defaults to the native state root's `product-state` |
 | `--endpoint PATH` | Explicit daemon socket/named-pipe endpoint; otherwise derived from daemon configuration |
-| `--cli PATH` | Installed Peritus executable; default `$PERITUS_BIN` or `peritus` on PATH |
+| `--cli PATH` | Installed Peritus executable; default `$PERITUS_BIN`, sibling `peritus`, then `peritus` on PATH |
 
 Overriding WebUI configuration/state files does not redirect daemon discovery.
 For an isolated daemon, supply its daemon configuration, endpoint, and
 product-state directory explicitly.
+
+Model, effort, and provider choices are saved per session in the workspace state.
+Provider routes are chosen before the first message and retained by the daemon.
+Changing models on an existing conversation uses the daemon's model-update API,
+so the browser and an exact-run CLI console observe the same selection.
+Run history can reopen interactive conversations started by either client.
+
+Use a CLI built from this checkout: session consoles require `peritus open PATH
+--run ID`. The gateway prefers a sibling CLI; `--cli` and `PERITUS_BIN` override it.
 
 ## Execution and recovery
 
@@ -276,9 +285,10 @@ outcome. That acknowledgement clears the hold; it never resends or labels the
 old action successful. Reconnection renews a rotated gateway token automatically.
 
 CLI consoles retain processes while their panel is closed and can be reopened
-from the current page. **Terminate console** terminates the CLI process. Console IDs
-are page-local, output is held in server memory (1 MiB per console, maximum 24
-consoles), and gateway shutdown ends those PTYs. Closing a browser session tab
+with `/consoles`, including after a browser reload. Titles, session bindings, exit
+status, and output are rediscovered from the gateway. **Terminate console** ends
+the selected CLI process. Output is held in server memory (1 MiB per console,
+maximum 24 consoles), and gateway shutdown ends those PTYs. Closing a browser session tab
 does not cancel daemon-owned work.
 
 File reads reject canonical paths outside the selected project, including
@@ -311,7 +321,7 @@ cargo clippy --locked -p peritus-web --all-targets --no-deps -j 2 -- -D warnings
 npm --prefix webui run check
 npm --prefix webui run test:unit
 npm --prefix webui run build
-cargo build -p peritus-web -j 2
+cargo build -p peritus-web -p peritus-cli -p peritus-daemon -j 2
 npm --prefix webui run test:e2e
 ```
 

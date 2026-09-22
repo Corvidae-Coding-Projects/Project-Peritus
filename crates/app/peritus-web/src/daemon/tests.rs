@@ -1,5 +1,7 @@
 //! Native conversation wire contract against a local protocol fixture; no provider calls.
 
+mod sessions;
+
 use super::*;
 use crate::config::Options;
 use peritus_app_protocol::{
@@ -236,7 +238,7 @@ async fn native_messages_preserve_targets_modes_models_and_observed_revisions() 
         let input = json!({
             "operation":crate::state::id().unwrap(),"session":session, "text":"Fixture message — unchanged", "mode":mode,
             "attachments":if mode=="build"{vec![attachment["id"].clone()]}else{Vec::new()},
-            "providers":{"reviewer":hex(reviewer.as_bytes())},
+            "providers":{"writer":"","reviewer":hex(reviewer.as_bytes()),"fixer":""},
             "models":{
                 "writer":{"id":"fixture-writer","manual":true,"effort":"high"},
                 "reviewer":{"id":"fixture-reviewer","manual":false,"effort":"medium"}

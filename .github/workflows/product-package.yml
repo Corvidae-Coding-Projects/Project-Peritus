@@ -43,7 +43,8 @@ jobs:
       - name: Retrieve this platform's same-run H2 package
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
-          name: h2-prepared-${{ matrix.os }}
+          pattern: h2-prepared-${{ matrix.os }}--*
+          merge-multiple: true
           path: target/prepared-h2
       - name: Restore prepared artifacts and executable permissions
         run: cargo run --locked --package xtask -- product-native-qualification-restore
@@ -111,11 +112,10 @@ jobs:
         run: >-
           cargo build --locked --package ${{ matrix.package }} --bin ${{ matrix.binary }}
       - name: Retain one same-run native binary
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: ./.github/actions/upload-artifact
         with:
           name: h2-bin-${{ matrix.os }}--${{ matrix.binary }}
           path: target/debug/${{ matrix.artifact }}
-          if-no-files-found: error
           retention-days: 7
 
   prepare-h2:
@@ -141,11 +141,10 @@ jobs:
       - name: Assemble and archive prepared H2 package
         run: cargo run --locked --package xtask -- product-native-qualification-prepare
       - name: Retain same-run prepared H2 package
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: ./.github/actions/upload-artifact
         with:
           name: h2-prepared-${{ matrix.os }}
           path: target/h2-prepared.tar
-          if-no-files-found: error
           retention-days: 7
 
   h2:
@@ -166,7 +165,8 @@ jobs:
       - name: Retrieve this platform's same-run H2 package
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
-          name: h2-prepared-${{ matrix.os }}
+          pattern: h2-prepared-${{ matrix.os }}--*
+          merge-multiple: true
           path: target/prepared-h2
       - name: Restore prepared artifacts and executable permissions
         run: cargo run --locked --package xtask -- product-native-qualification-restore

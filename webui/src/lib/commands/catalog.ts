@@ -23,6 +23,7 @@ export const commands: Command[] = [
   {id:'accept',label:'Accept candidate',detail:'Open the exact-run CLI acceptance flow',group:'Results',slash:'/accept'},
   {id:'commit',label:'Commit candidate',detail:'Commit the managed candidate; distinct from Git commit',group:'Results',slash:'/commit'},
   {id:'discard',label:'Discard candidate',detail:'Remove this run’s candidate changes',group:'Results',slash:'/discard'},
+  {id:'consoles',label:'Retained consoles',detail:'Reopen or terminate this project’s CLI processes',group:'Harness',slash:'/consoles'},
   {id:'terminal',label:'Full harness console',detail:'Interactive Peritus CLI with keyboard and mouse controls',group:'Harness',slash:'/terminal'},
   {id:'providers',label:'Provider setup',detail:'Account login, API routes, models, and capability tests',group:'Harness',slash:'/providers'},
   {id:'workspaces',label:'Workspace setup',detail:'Register, trust, repair, or forget a workspace',group:'Harness',slash:'/workspaces'},

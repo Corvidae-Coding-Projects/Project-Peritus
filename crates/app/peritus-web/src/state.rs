@@ -27,6 +27,8 @@ pub struct Project {
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Session {
+    #[serde(default)]
+    pub(crate) settings: crate::sessions::Settings,
     pub(crate) id: String,
     pub(crate) project: String,
     pub(crate) parent: Option<String>,
@@ -159,6 +161,7 @@ impl App {
                 root,
             };
             workspace.sessions.push(Session {
+                settings: crate::sessions::Settings::default(),
                 id: id()?,
                 project: project.id.clone(),
                 parent: None,
@@ -242,6 +245,7 @@ mod tests {
             },
         ];
         let one = Session {
+            settings: crate::sessions::Settings::default(),
             id: "one".into(),
             project: "a".into(),
             parent: None,
