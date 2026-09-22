@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1556,
-        "tip_oid": "0699f5eb7fc4dd721fbc8d56e37fc65cecde3c53",
-        "prefix_sha256": "a1b1f711389c1a27c1aca041cf232727e8706aab0b41032f73b37c7098203096"
+        "sequence": 1557,
+        "tip_oid": "c8414683de08990ada58ed624b640840df97e774",
+        "prefix_sha256": "d6e44d5445f5fea733da062c4471370ed026ac345056bceb2c63b30835517b65"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 91,
-  "next_comment_id": 1765,
+  "next_comment_id": 1766,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -2975,10 +2975,21 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-22T21:59:51.865738141Z",
-      "updated_at": "2026-09-22T22:00:09.504738506Z",
+      "updated_at": "2026-09-22T22:06:11.088932061Z",
       "labels": [
         "chore"
-      ]
+      ],
+      "comments": {
+        "e1d4a83b-3087-4505-9f35-3d41865ab388": {
+          "display_id": 1765,
+          "author": "6ME5",
+          "content": "Root checkout is now develop at f43692cf5 (fast-forward to fetched origin). The clean release-0.0.3 worktree was detached to release the develop branch. Local .claude and .mcp.json settings plus a private copy and hashes of existing Peritus configuration are preserved in /home/doll/.cache/peritus-develop-install-20260922. Native installer leaves config and state untouched. Release build/install is running with two Cargo jobs; existing daemon has no actively executing runs.",
+          "created_at": "2026-09-22T22:06:11.076520440Z",
+          "kind": "observation",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABASLCFiqzsA5RaQD52Tw3k+YpAwd3nyOHeCD75bOjB1X19ZK7SGGVVCQrG7u93vG1nSadioTRNusnGL0qjQVhrDw=="
+        }
+      }
     },
     "2194b9c5-c19f-47a2-9c91-d84a6c3c7b84": {
       "uuid": "2194b9c5-c19f-47a2-9c91-d84a6c3c7b84",
