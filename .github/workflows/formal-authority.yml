@@ -18,8 +18,118 @@ env:
   RUSTUP_TOOLCHAIN: 1.97.1
 
 jobs:
+  protected-input-classification:
+    name: Protected-input classification
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      changed: ${{ steps.classify.outputs.changed }}
+    env:
+      CHECKER_SHA: ${{ github.workflow_sha }}
+      BASE_SHA: ${{ github.event.pull_request.base.sha }}
+      CANDIDATE_SHA: ${{ github.event.pull_request.head.sha }}
+      EVENT_SHA: ${{ github.sha }}
+      EVENT_REF: ${{ github.ref }}
+      WORKFLOW_REF: ${{ github.workflow_ref }}
+      DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+      BASE_REF: ${{ github.event.pull_request.base.ref }}
+      BASE_REPOSITORY: ${{ github.event.pull_request.base.repo.full_name }}
+      BASE_REPOSITORY_ID: ${{ github.event.pull_request.base.repo.id }}
+      REPOSITORY_ID: ${{ github.repository_id }}
+      EVENT_NAME: ${{ github.event_name }}
+    steps:
+      - name: Check out exact comparison base
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: ${{ github.repository }}
+          ref: ${{ github.event.pull_request.base.sha }}
+          path: base
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Check out exact candidate revision
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: ${{ github.repository }}
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: candidate
+          fetch-depth: 0
+          persist-credentials: false
+          allow-unsafe-pr-checkout: true
+      - name: Classify protected authority inputs
+        id: classify
+        shell: bash
+        run: |
+          set -euo pipefail
+          require_sha() {
+            local label="$1"
+            local value="$2"
+            if [[ ! "$value" =~ ^[0-9a-f]{40}$ || "$value" == "0000000000000000000000000000000000000000" ]]; then
+              printf '%s is not a nonzero lowercase full commit SHA\n' "$label" >&2
+              exit 1
+            fi
+          }
+          require_sha CHECKER_SHA "$CHECKER_SHA"
+          require_sha EVENT_SHA "$EVENT_SHA"
+          require_sha BASE_SHA "$BASE_SHA"
+          require_sha CANDIDATE_SHA "$CANDIDATE_SHA"
+          test "$EVENT_NAME" = "pull_request_target"
+          test "$DEFAULT_BRANCH" = "main"
+          test "$EVENT_SHA" = "$CHECKER_SHA"
+          test "$EVENT_REF" = "refs/heads/main"
+          test "$WORKFLOW_REF" = "$GITHUB_REPOSITORY/.github/workflows/formal-authority.yml@refs/heads/main"
+          test "$BASE_REPOSITORY" = "$GITHUB_REPOSITORY"
+          test "$BASE_REPOSITORY_ID" = "$REPOSITORY_ID"
+          case "$BASE_REF" in
+            main) test "$BASE_SHA" = "$CHECKER_SHA" ;;
+            develop) ;;
+            *) printf 'unsupported pull-request base: %s\n' "$BASE_REF" >&2; exit 1 ;;
+          esac
+          base_head="$(git -C base rev-parse --verify 'HEAD^{commit}')"
+          candidate_head="$(git -C candidate rev-parse --verify 'HEAD^{commit}')"
+          test "$base_head" = "$BASE_SHA"
+          test "$candidate_head" = "$CANDIDATE_SHA"
+          git -C candidate cat-file -e "$CHECKER_SHA^{commit}"
+          git -C candidate cat-file -e "$BASE_SHA^{commit}"
+          git -C candidate merge-base --is-ancestor "$BASE_SHA" "$CANDIDATE_SHA"
+          authority_inputs=(
+            .cargo/config.toml .gitattributes rust-toolchain.toml
+            Cargo.toml Cargo.lock
+            xtask/Cargo.toml xtask/build.rs xtask/src
+            .github/workflows/formal-authority.yml
+            .github/workflows/formal-governance.yml
+            docs/formal-governance-ruleset.template.json
+          )
+          classify_edge() {
+            local before="$1"
+            local after="$2"
+            local label="$3"
+            set +e
+            git -C candidate diff --no-ext-diff --no-textconv --quiet \
+              "$before" "$after" -- "${authority_inputs[@]}"
+            diff_status=$?
+            set -e
+            case "$diff_status" in
+              0) ;;
+              1)
+                changed=true
+                printf '::notice title=Protected-input bootstrap required::Protected inputs differ on %s. Trusted-base validation is skipped pending a reviewed trusted-checker update. This classification does not authorize the transition.\n' "$label"
+                git -C candidate diff --no-ext-diff --no-textconv --name-only "$before" "$after" -- "${authority_inputs[@]}"
+                ;;
+              *)
+                printf 'failed to classify protected authority inputs on %s (git diff exit %s)\n' "$label" "$diff_status" >&2
+                exit "$diff_status"
+                ;;
+            esac
+          }
+          changed=false
+          classify_edge "$CHECKER_SHA" "$BASE_SHA" checker-to-base
+          classify_edge "$BASE_SHA" "$CANDIDATE_SHA" base-to-candidate
+          printf 'changed=%s\n' "$changed" >> "$GITHUB_OUTPUT"
+
   trusted-base-validation:
     name: Trusted-base validation
+    needs: protected-input-classification
+    if: needs.protected-input-classification.outputs.changed == 'false'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     env:

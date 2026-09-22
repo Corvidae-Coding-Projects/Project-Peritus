@@ -41,15 +41,16 @@ pub(super) fn validate(
 }
 
 pub(super) fn reviewed_run_step(location: &str, script: &str) -> bool {
-    let index = match location {
-        "jobs.trusted-base-validation.steps[3]" => 3,
-        "jobs.trusted-base-validation.steps[4]" => 4,
-        "jobs.trusted-base-validation.steps[6]" => 6,
-        "jobs.trusted-base-validation.steps[7]" => 7,
-        "jobs.trusted-base-validation.steps[8]" => 8,
+    let (job, index) = match location {
+        "jobs.protected-input-classification.steps[2]" => ("protected-input-classification", 2),
+        "jobs.trusted-base-validation.steps[3]" => ("trusted-base-validation", 3),
+        "jobs.trusted-base-validation.steps[4]" => ("trusted-base-validation", 4),
+        "jobs.trusted-base-validation.steps[6]" => ("trusted-base-validation", 6),
+        "jobs.trusted-base-validation.steps[7]" => ("trusted-base-validation", 7),
+        "jobs.trusted-base-validation.steps[8]" => ("trusted-base-validation", 8),
         _ => return false,
     };
-    canonical_script(index).as_deref() == Some(script)
+    canonical_script(job, index).as_deref() == Some(script)
 }
 
 fn root_is_exact(workflow: &Hash, tools: &ToolchainPolicy) -> bool {
@@ -72,7 +73,10 @@ fn root_is_exact(workflow: &Hash, tools: &ToolchainPolicy) -> bool {
     let Some(jobs) = mapping_value(workflow, "jobs").and_then(Yaml::as_hash) else {
         return false;
     };
-    let Some(job) = mapping_value(jobs, "trusted-base-validation") else {
+    let Some(classification) = mapping_value(jobs, "protected-input-classification") else {
+        return false;
+    };
+    let Some(validation) = mapping_value(jobs, "trusted-base-validation") else {
         return false;
     };
 
@@ -92,8 +96,9 @@ fn root_is_exact(workflow: &Hash, tools: &ToolchainPolicy) -> bool {
         && string(environment, "CARGO_BUILD_JOBS") == Some("2")
         && string(environment, "RUST_VERSION") == Some(&tools.rust)
         && string(environment, "RUSTUP_TOOLCHAIN") == Some(&tools.rust)
-        && exact_keys(jobs, &["trusted-base-validation"])
-        && exact_job(job, tools)
+        && exact_keys(jobs, &["protected-input-classification", "trusted-base-validation"])
+        && exact_classification_job(classification)
+        && exact_validation_job(validation, tools)
 }
 
 fn exact_target_trigger(trigger: &Hash) -> bool {
@@ -111,7 +116,31 @@ fn exact_target_trigger(trigger: &Hash) -> bool {
         )
 }
 
-fn exact_job(job: &Yaml, tools: &ToolchainPolicy) -> bool {
+fn exact_classification_job(job: &Yaml) -> bool {
+    let Some(job) = job.as_hash() else { return false };
+    let Some(outputs) = mapping_value(job, "outputs").and_then(Yaml::as_hash) else {
+        return false;
+    };
+    let Some(environment) = mapping_value(job, "env").and_then(Yaml::as_hash) else {
+        return false;
+    };
+    let Some(steps) = mapping_value(job, "steps").and_then(Yaml::as_vec) else {
+        return false;
+    };
+    exact_keys(job, &["name", "runs-on", "timeout-minutes", "outputs", "env", "steps"])
+        && string(job, "name") == Some("Protected-input classification")
+        && string(job, "runs-on") == Some("ubuntu-24.04")
+        && integer(job, "timeout-minutes") == Some(5)
+        && exact_keys(outputs, &["changed"])
+        && string(outputs, "changed") == Some("${{ steps.classify.outputs.changed }}")
+        && exact_identity_environment(environment)
+        && steps.len() == 3
+        && exact_checkout(&steps[0], "Check out exact comparison base", BASE_SHA, "base")
+        && exact_checkout(&steps[1], "Check out exact candidate revision", HEAD_SHA, "candidate")
+        && exact_classification_run(&steps[2])
+}
+
+fn exact_validation_job(job: &Yaml, tools: &ToolchainPolicy) -> bool {
     let Some(job) = job.as_hash() else { return false };
     let Some(environment) = mapping_value(job, "env").and_then(Yaml::as_hash) else {
         return false;
@@ -119,42 +148,14 @@ fn exact_job(job: &Yaml, tools: &ToolchainPolicy) -> bool {
     let Some(steps) = mapping_value(job, "steps").and_then(Yaml::as_vec) else {
         return false;
     };
-    exact_keys(job, &["name", "runs-on", "timeout-minutes", "env", "steps"])
+    exact_keys(job, &["name", "needs", "if", "runs-on", "timeout-minutes", "env", "steps"])
         && string(job, "name") == Some("Trusted-base validation")
+        && string(job, "needs") == Some("protected-input-classification")
+        && string(job, "if")
+            == Some("needs.protected-input-classification.outputs.changed == 'false'")
         && string(job, "runs-on") == Some("ubuntu-24.04")
         && integer(job, "timeout-minutes") == Some(10)
-        && exact_keys(
-            environment,
-            &[
-                "CHECKER_SHA",
-                "BASE_SHA",
-                "CANDIDATE_SHA",
-                "EVENT_SHA",
-                "EVENT_REF",
-                "WORKFLOW_REF",
-                "DEFAULT_BRANCH",
-                "BASE_REF",
-                "BASE_REPOSITORY",
-                "BASE_REPOSITORY_ID",
-                "REPOSITORY_ID",
-                "EVENT_NAME",
-            ],
-        )
-        && string(environment, "CHECKER_SHA") == Some(CHECKER_SHA)
-        && string(environment, "BASE_SHA") == Some(BASE_SHA)
-        && string(environment, "CANDIDATE_SHA") == Some(HEAD_SHA)
-        && string(environment, "EVENT_SHA") == Some("${{ github.sha }}")
-        && string(environment, "EVENT_REF") == Some("${{ github.ref }}")
-        && string(environment, "WORKFLOW_REF") == Some("${{ github.workflow_ref }}")
-        && string(environment, "DEFAULT_BRANCH")
-            == Some("${{ github.event.repository.default_branch }}")
-        && string(environment, "BASE_REF") == Some("${{ github.event.pull_request.base.ref }}")
-        && string(environment, "BASE_REPOSITORY")
-            == Some("${{ github.event.pull_request.base.repo.full_name }}")
-        && string(environment, "BASE_REPOSITORY_ID")
-            == Some("${{ github.event.pull_request.base.repo.id }}")
-        && string(environment, "REPOSITORY_ID") == Some("${{ github.repository_id }}")
-        && string(environment, "EVENT_NAME") == Some("${{ github.event_name }}")
+        && exact_identity_environment(environment)
         && steps.len() == 9
         && exact_checkout(&steps[0], "Check out exact checker revision", CHECKER_SHA, "authority")
         && exact_checkout(&steps[1], "Check out exact comparison base", BASE_SHA, "base")
@@ -195,6 +196,49 @@ fn exact_job(job: &Yaml, tools: &ToolchainPolicy) -> bool {
                 ("PERITUS_PROOF_IMPACT_BASE", BASE_SHA),
             ],
         )
+}
+
+fn exact_identity_environment(environment: &Hash) -> bool {
+    exact_keys(
+        environment,
+        &[
+            "CHECKER_SHA",
+            "BASE_SHA",
+            "CANDIDATE_SHA",
+            "EVENT_SHA",
+            "EVENT_REF",
+            "WORKFLOW_REF",
+            "DEFAULT_BRANCH",
+            "BASE_REF",
+            "BASE_REPOSITORY",
+            "BASE_REPOSITORY_ID",
+            "REPOSITORY_ID",
+            "EVENT_NAME",
+        ],
+    ) && string(environment, "CHECKER_SHA") == Some(CHECKER_SHA)
+        && string(environment, "BASE_SHA") == Some(BASE_SHA)
+        && string(environment, "CANDIDATE_SHA") == Some(HEAD_SHA)
+        && string(environment, "EVENT_SHA") == Some("${{ github.sha }}")
+        && string(environment, "EVENT_REF") == Some("${{ github.ref }}")
+        && string(environment, "WORKFLOW_REF") == Some("${{ github.workflow_ref }}")
+        && string(environment, "DEFAULT_BRANCH")
+            == Some("${{ github.event.repository.default_branch }}")
+        && string(environment, "BASE_REF") == Some("${{ github.event.pull_request.base.ref }}")
+        && string(environment, "BASE_REPOSITORY")
+            == Some("${{ github.event.pull_request.base.repo.full_name }}")
+        && string(environment, "BASE_REPOSITORY_ID")
+            == Some("${{ github.event.pull_request.base.repo.id }}")
+        && string(environment, "REPOSITORY_ID") == Some("${{ github.repository_id }}")
+        && string(environment, "EVENT_NAME") == Some("${{ github.event_name }}")
+}
+
+fn exact_classification_run(step: &Yaml) -> bool {
+    let Some(step) = step.as_hash() else { return false };
+    exact_keys(step, &["name", "id", "shell", "run"])
+        && string(step, "name") == Some("Classify protected authority inputs")
+        && string(step, "id") == Some("classify")
+        && string(step, "shell") == Some("bash")
+        && canonical_script("protected-input-classification", 2).as_deref() == string(step, "run")
 }
 
 fn exact_checkout(step: &Yaml, name: &str, reference: &str, checkout_path: &str) -> bool {
@@ -266,7 +310,7 @@ fn exact_run(
         && working_directory
             .is_none_or(|expected| string(step, "working-directory") == Some(expected))
         && exact_environment(step, expected_environment)
-        && canonical_script(index).as_deref() == string(step, "run")
+        && canonical_script("trusted-base-validation", index).as_deref() == string(step, "run")
 }
 
 fn exact_environment(step: &Hash, expected: &[(&str, &str)]) -> bool {
@@ -280,11 +324,11 @@ fn exact_environment(step: &Hash, expected: &[(&str, &str)]) -> bool {
         && expected.iter().all(|(key, value)| string(environment, key) == Some(value))
 }
 
-fn canonical_script(index: usize) -> Option<String> {
+fn canonical_script(job_name: &str, index: usize) -> Option<String> {
     let documents = YamlLoader::load_from_str(CANONICAL).ok()?;
     let root = documents.first()?.as_hash()?;
     let jobs = mapping_value(root, "jobs")?.as_hash()?;
-    let job = mapping_value(jobs, "trusted-base-validation")?.as_hash()?;
+    let job = mapping_value(jobs, job_name)?.as_hash()?;
     let steps = mapping_value(job, "steps")?.as_vec()?;
     let step = steps.get(index)?.as_hash()?;
     string(step, "run").map(ToOwned::to_owned)
