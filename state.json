@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1552,
-        "tip_oid": "44b8f48c3fb1803b7aca092d175bd1de789af553",
-        "prefix_sha256": "ce7dc85f92b2b7b722e450c8c4dbbcc82f788bc6c2963dc4767722733b9b23ae"
+        "sequence": 1553,
+        "tip_oid": "e81c422be33d8a64c788c8c2fa57bb4c0ddeec4d",
+        "prefix_sha256": "7898b3e995de7562f27964ba552d2d4ed3027a1c22fcf80012b7964ee4352275"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 90,
-  "next_comment_id": 1764,
+  "next_comment_id": 1765,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -8774,7 +8774,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-22T00:32:01.785644005Z",
-      "updated_at": "2026-09-22T03:09:47.805422591Z",
+      "updated_at": "2026-09-22T03:10:46.587562861Z",
       "labels": [
         "feature"
       ],
@@ -8787,6 +8787,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAcybB5m9B7qK3DXcPo7+LcqNM30jCLgstZMgELjhJz0E7moxUdKE0e0aW8+wJnM1aapgVvyV8xcvzx8/LlclSDQ=="
+        },
+        "13803a1b-83f5-4b97-861f-b87c90a0820e": {
+          "display_id": 1764,
+          "author": "6ME5",
+          "content": "Fixed PR97 failing Trusted-base validation classification in pushed commit a66240fc4d09686256c7c2753a17fc6ba3ebcc70, feature/harness-candidate-inbox. Reconciles main protected-input classification into develop feature, checks checker-base and base-candidate drift, rejects missing checker commits, with regression tests. Hosted final head: 579 successes, 5 skips, no failures or pending checks; all workflows succeeded. Trusted validation skips explicitly require reviewed checker bootstrap, not certification. PR remains open to develop at https://github.com/Corvidae-Coding-Projects/Project-Peritus/pull/97; no merge or live app changes. Dedicated worktree clean. See /tmp/peritus-pr97-xtask-tests.log, /tmp/peritus-pr97-clippy.log and /tmp/peritus-pr97-policy.log for local evidence.",
+          "created_at": "2026-09-22T03:10:46.583638924Z",
+          "kind": "handoff",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAn83uVLFWPORxCPP06OUKd1RJhe6LSHQ8ymHWbtYN9CKu2LdNVatsHMCyYHPlUWEoFtMg3Uu4yrNtGlHSpDCFDA=="
         },
         "2e2763fb-f7f4-48b5-8cc2-f5e4b68cc4bf": {
           "display_id": 1760,
