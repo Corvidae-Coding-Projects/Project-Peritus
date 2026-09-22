@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1557,
-        "tip_oid": "c8414683de08990ada58ed624b640840df97e774",
-        "prefix_sha256": "d6e44d5445f5fea733da062c4471370ed026ac345056bceb2c63b30835517b65"
+        "sequence": 1558,
+        "tip_oid": "e4660a0c309ebae654c6fccb537173332e93157b",
+        "prefix_sha256": "253d0bb219e86845ee3af48ed551b6947068f3c33ec505c74235e75c96fde76a"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 91,
-  "next_comment_id": 1766,
+  "next_comment_id": 1767,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -2975,11 +2975,20 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-22T21:59:51.865738141Z",
-      "updated_at": "2026-09-22T22:06:11.088932061Z",
+      "updated_at": "2026-09-22T22:10:57.814004700Z",
       "labels": [
         "chore"
       ],
       "comments": {
+        "7a490447-069d-4388-b935-e22e73b31bab": {
+          "display_id": 1766,
+          "author": "6ME5",
+          "content": "Release build and native installation completed successfully. Installed peritus, peritusd and peritus-tui hashes match develop release artifacts. All 23 pre-existing configuration files are byte-identical immediately after installation. User directed selecting saved OpenAI/ChatGPT account and gpt-5.6-sol; selected through Peritus provider menu, live provider advertised that model and account status Ready. Preserved other stored credentials, OpenAI default, automatic failover disabled. Old idle daemon shut down cleanly before new launch.",
+          "created_at": "2026-09-22T22:10:57.809890978Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAHeOh0uDYfgHBOZo37xIf2zH5oeWaa3QPLHJ6weWJOizUMJA8li/vQX8TfwjU4QGPXU3RCiYVjBRnI90yeR+UDg=="
+        },
         "e1d4a83b-3087-4505-9f35-3d41865ab388": {
           "display_id": 1765,
           "author": "6ME5",
