@@ -92,6 +92,8 @@ peritus open /path/to/folder
 
 ## Experimental browser workspace
 
+The [harness improvement inbox](docs/harness-improvements.md) collects evidence-backed suggestions for explicit later patch generation and evaluation. Open `/improvements` in the WebUI or use `peritus improvements` in the CLI.
+
 An optional [WebUI](webui/README.md) provides project/session tabs, file previews
 and small text edits, context attachments, Git controls, and native conversations.
 It uses the existing Peritus daemon; the terminal interface remains available.

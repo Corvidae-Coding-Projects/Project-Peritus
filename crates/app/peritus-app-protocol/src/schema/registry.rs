@@ -43,6 +43,7 @@ const SERVER_HELLO: &[AppPayloadDescriptor] = &[
 ];
 
 const REQUESTS: &[AppPayloadDescriptor] = &[
+    AppPayloadDescriptor { tag: 180, name: "harness-improvements" },
     AppPayloadDescriptor { tag: 1, name: "submit-command" },
     AppPayloadDescriptor { tag: 2, name: "subscribe" },
     AppPayloadDescriptor { tag: 3, name: "open-artifact" },
@@ -97,6 +98,7 @@ const REQUESTS: &[AppPayloadDescriptor] = &[
 ];
 
 const RESPONSES: &[AppPayloadDescriptor] = &[
+    AppPayloadDescriptor { tag: 180, name: "harness-improvements" },
     AppPayloadDescriptor { tag: 1, name: "command-result" },
     AppPayloadDescriptor { tag: 2, name: "subscription-started" },
     AppPayloadDescriptor { tag: 3, name: "artifact-opened" },

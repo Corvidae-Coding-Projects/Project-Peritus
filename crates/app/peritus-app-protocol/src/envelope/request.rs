@@ -97,6 +97,8 @@ impl ArtifactOpenRequest {
 /// Closed schema-v1 application request payload.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum AppRequestPayload {
+    /// Collects inert suggestions or explicitly starts their evaluation.
+    Improvements(crate::ImprovementRequest),
     /// Previews exact covered targets, exclusions, conflicts, and non-restorable effects.
     PreviewWorkbenchRewind(crate::WorkbenchRewindRequest),
     /// Inspects one exact durable checkpoint manifest without mutating current state.
@@ -203,6 +205,7 @@ impl AppRequestPayload {
     #[must_use]
     pub const fn required_workbench_feature(&self) -> Option<crate::WellKnownProtocolFeature> {
         match self {
+            Self::Improvements(_) => Some(crate::WellKnownProtocolFeature::HarnessImprovements),
             Self::PreviewWorkbenchRewind(_) | Self::InspectWorkbenchCheckpoint(_) => {
                 Some(crate::WellKnownProtocolFeature::WorkbenchCheckpoints)
             }

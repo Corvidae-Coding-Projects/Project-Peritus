@@ -6,15 +6,16 @@
   import Icon from './Icon.svelte';
   import Settings from './Settings.svelte';
   import Models from './Models.svelte';
+  import Improvements from './Improvements.svelte';
   import Console from './Console.svelte';
   let dialog:HTMLDialogElement,root=$state(''),sessionFilter=$state(''),cli=$state('status'),sessionTitle=$state(''),parent=$state('');
-  const titles:Record<string,string>={open:'Open a project',settings:'Console configuration',model:'Models & reasoning',sessions:'Session library',report:'Inspection',runs:'Run history',console:'Harness console',cli:'Scriptable CLI',discard:'Discard candidate changes',session:'Organize session'};
+  const titles:Record<string,string>={improvements:'Harness improvement inbox',open:'Open a project',settings:'Console configuration',model:'Models & reasoning',sessions:'Session library',report:'Inspection',runs:'Run history',console:'Harness console',cli:'Scriptable CLI',discard:'Discard candidate changes',session:'Organize session'};
   let title=$derived(ui.overlay==='report'?ui.reportTitle:titles[ui.overlay]??'Control');
   $effect(()=>{if(ui.overlay){dialog.showModal();if(ui.overlay==='session'){sessionTitle=session()?.title??'';parent=session()?.parent??'';}void tick().then(()=>dialog.querySelector<HTMLInputElement>('input:not([type=checkbox])')?.focus());}else dialog?.close();});
   async function runCli(){const parsed=parseSlash('/cli '+cli);if(parsed.kind!=='command')throw new Error('Check your command’s quoted arguments.');await dispatch('cli',[...parsed.args]);}
   const cliPresets=[['Status','status'],['Get artifact','artifact get --artifact ID --output PATH'],['Upload artifact','artifact put --artifact ID --input PATH --media-type text/plain'],['Cancel artifact transfer','artifact cancel --transfer ID --artifact ID'],['Watch events','events watch --topic TOPIC --snapshot-acceptable'],['Answer prompt','prompt answer --binding PATH --text "Your answer"'],['Cancel prompt','prompt cancel --binding PATH'],['Attach terminal','terminal attach --process ID'],['Terminal input','terminal input --attachment ID --process ID --originating-request ID --input PATH'],['Resize terminal','terminal resize --attachment ID --process ID --originating-request ID --columns 100 --rows 30'],['Detach terminal','terminal detach --attachment ID --process ID --originating-request ID'],['Cancel terminal','terminal cancel --attachment ID --process ID --originating-request ID'],['Submit command','command submit --actor ID --envelope PATH --payload PATH --idempotency-key KEY'],['Shutdown daemon','shutdown --wait'],['Shell completions','completions bash'],['Update checks','update --enable-checks']];
 </script>
-<dialog bind:this={dialog} class="control-dialog" class:wide={['settings','console','report'].includes(ui.overlay)} aria-label={title} onclose={()=>ui.overlay=''} onclick={(event)=>{if(event.target===dialog)ui.overlay='';}}>
+<dialog bind:this={dialog} class="control-dialog" class:wide={['settings','console','report','improvements'].includes(ui.overlay)} aria-label={title} onclose={()=>ui.overlay=''} onclick={(event)=>{if(event.target===dialog)ui.overlay='';}}>
   <div class="dialog-heading"><h2>{title}</h2><button class="key icon-button" aria-label="Close panel" onclick={()=>ui.overlay=''}><Icon name="close"/></button></div>
   <div class="dialog-body">
     {#if ui.overlay==='open'}
@@ -29,6 +30,7 @@
     {:else if ui.overlay==='sessions'}
       <p class="dialog-description">Closing a tab keeps its conversation and running work. Reopen a session here.</p><input class="library-filter" aria-label="Find a session" bind:value={sessionFilter} placeholder="Find a session…"/>
       <div class="session-library">{#each ui.workspace.sessions.filter(s=>s.title.toLowerCase().includes(sessionFilter.toLowerCase())) as item}<div class="library-row"><Icon name={item.parent?'branch':'chat'}/><span><strong>{item.title}</strong><small>{ui.workspace.projects.find(p=>p.id===item.project)?.name} · {item.closed?'Tab closed':'Open'}{item.parent?' · Nested':''}</small></span><button class="key small" onclick={()=>void attempt(async()=>{await editSession(item.id,{closed:false});selectSession(item.id);ui.overlay='';})}>Open</button></div>{/each}</div>
+    {:else if ui.overlay==='improvements'}{#key ui.projectId}<Improvements/>{/key}
     {:else if ui.overlay==='runs'}
       <p class="dialog-description">Actual observations from the daemon, including runs started by other clients.</p>
       {#each ui.runs as run}<div class="library-row"><Icon name="layers"/><span><strong>{run.task}</strong><small>{run.phase} · {run.id.slice(0,8)}</small></span><button class="key small" onclick={()=>void attempt(()=>openRun(run.id))}>Open conversation</button><button class="key small" onclick={()=>{ui.reportTitle=run.task;ui.reportText=[run.status,run.summary,run.gates,run.review].filter(Boolean).join('\n\n');ui.overlay='report';}}>Inspect</button></div>{/each}

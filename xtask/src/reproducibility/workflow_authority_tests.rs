@@ -6,6 +6,10 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, ExitStatus, Stdio};
 use std::sync::atomic::{AtomicU64, Ordering};
 
+#[cfg(unix)]
+#[path = "workflow_authority_classification_tests.rs"]
+mod classification;
+
 const AUTHORITY_INPUTS: &[&str] = &[
     ".cargo/config.toml",
     ".gitattributes",
@@ -30,7 +34,7 @@ fn canonical() -> String {
 fn canonical_authority_workflow_is_exact_and_pinned() {
     let (actions, diagnostics) = validate(PATH, DocumentKind::Workflow, &canonical());
 
-    assert_eq!(actions, 4);
+    assert_eq!(actions, 6);
     assert!(diagnostics.is_empty(), "unexpected diagnostics: {diagnostics:?}");
 }
 
@@ -126,6 +130,27 @@ fn checker_build_inputs_cannot_drift_on_either_custody_edge() {
 }
 
 #[test]
+fn protected_input_transition_classification_cannot_be_bypassed_or_misreported() {
+    for altered in [
+        canonical().replace("changed: ${{ steps.classify.outputs.changed }}", "changed: false"),
+        canonical().replace(
+            "if: needs.protected-input-classification.outputs.changed == 'false'",
+            "if: always()",
+        ),
+        canonical().replace("        id: classify\n", ""),
+        canonical().replace(
+            "git -C candidate diff --no-ext-diff --no-textconv --quiet",
+            "git -C candidate diff --quiet",
+        ),
+        canonical().replace("changed=true", "changed=false"),
+        canonical()
+            .replace("exit \"$diff_status\"", "printf 'changed=false\\n' >> \"$GITHUB_OUTPUT\""),
+    ] {
+        assert_rejected(&altered);
+    }
+}
+
+#[test]
 fn unchanged_develop_base_and_candidate_preserve_both_custody_edges() {
     let unchanged = GitFixture::new();
     unchanged.write("xtask/src/lib.rs", "pub fn authority() -> bool { true }\n");
@@ -160,7 +185,7 @@ fn checker_source_only_drift_in_develop_base_fails_closed() {
 }
 
 #[test]
-fn checker_source_only_drift_in_candidate_fails_closed() {
+fn checker_source_only_drift_in_candidate_is_detected_for_bootstrap() {
     let drift = GitFixture::new();
     drift.write("xtask/src/lib.rs", "pub fn authority() -> bool { true }\n");
     drift.commit("checker");

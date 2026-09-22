@@ -12,10 +12,6 @@ missing, symbolic, or byte-drifted template. The checked workflow has a stable f
 workflow lint, every Rust matrix entry, supply-chain policy, and every strict Verus/no-cheating
 operation succeeded.
 
-Gate A cancels superseded runs only for the same pull request. Main pushes and merge-queue
-commits use separate concurrency groups and are not canceled by later commits. Every check and
-failure-propagating aggregator remains required on the current candidate.
-
 ## Current authority boundary
 
 GitHub Team supports repository rulesets and required status checks for private repositories. The
@@ -41,19 +37,25 @@ the candidate-controlled workflow, satisfy the weakened check, and merge their o
 
 ## Trusted-base validation available in repository code
 
-`.github/workflows/formal-authority.yml` defines a read-only `pull_request_target` validation for
-pull requests targeting `main` or `develop`. Once that file is present on the default `main` branch,
+`.github/workflows/formal-authority.yml` defines a read-only `pull_request_target` workflow for pull
+requests targeting `main` or `develop`. Once that file is present on the default `main` branch,
 GitHub obtains its workflow definition from the default branch rather than from the pull-request
 head. GitHub defines `github.sha` and `github.ref` for this event as the last commit and ref on the
 default branch, while `github.workflow_sha` and `github.workflow_ref` identify the exact workflow
-file. The job binds those values to an immutable checker checkout and separately binds the exact PR
-base and head to comparison-base and candidate checkouts. It requires the PR base to be an ancestor
-of the candidate and uses no candidate action or script.
+file. A read-only classification job binds those identities, the exact PR base and head, and their
+ancestry before comparing the protected authority inputs. It uses no candidate action or script.
 
-The candidate checkout explicitly opts into the checkout action's fork checkout because this job
-treats the candidate tree as untrusted data: it persists no credentials and executes no candidate
-action or program. Before invoking Cargo in the candidate checkout, the job rejects every authority,
-base, or candidate
+When protected authority inputs differ from checker to PR base or from PR base to candidate,
+classification succeeds with an explicit bootstrap-required notice and the `Trusted-base validation` job is skipped. The skipped job does not
+authorize or validate the transition; it distinguishes a protected-input bootstrap requirement from
+a failed test runner. Only when both comparisons leave protected inputs unchanged does the trusted job run the complete
+validation described below. Each differing comparison is named in the notice. Missing revisions or
+comparison errors fail classification without emitting an eligibility result.
+
+The candidate checkouts explicitly opt into the checkout action's fork checkout because both jobs
+treat the candidate tree as untrusted data: they persist no credentials and execute no candidate
+action or program. Before invoking Cargo in an unchanged-input candidate checkout, the trusted job
+rejects every authority, base, or candidate
 Git tree entry except a regular file and rejects the legacy `.cargo/config` and `rust-toolchain`
 selectors. It requires the root Cargo configuration, attributes, toolchain selector, manifest, and
 lockfile to have exact bytes and modes across both custody edges: checker revision to PR base, then PR
@@ -62,7 +64,8 @@ build script, and every current non-test repository input embedded in the checke
 `main` pull request, the checker and PR base SHAs must also be identical. For a `develop` pull request,
 their commits may differ, but every protected authority input must remain identical.
 
-`RUSTUP_TOOLCHAIN` and a runner-temporary `CARGO_HOME` are set by the trusted workflow. The job builds
+`RUSTUP_TOOLCHAIN` and a runner-temporary `CARGO_HOME` are set by the trusted workflow. For an
+unchanged-input candidate, the trusted job builds
 `xtask` from the exact workflow/checker checkout into `RUNNER_TEMP`, primes only that revision's
 locked dependency metadata, and then runs that exact binary against the candidate with offline Cargo
 metadata and a PATH reconstructed from the resolved runner Cargo and Git directories plus fixed
@@ -71,10 +74,11 @@ SHA, not the checker SHA, as `PERITUS_PROOF_IMPACT_BASE`, preserving the candida
 proof-impact comparison and authorization base.
 
 `cargo metadata` reads candidate manifests and dependency metadata but does not compile candidate
-build scripts or load candidate procedural macros. Root manifest, lockfile, or authority-checker
-drift fails before metadata, and the offline boundary also prevents resolution outside the checker's
-primed closure. There is no label, actor, approval count, candidate record, or workflow input that
-bypasses either custody comparison.
+build scripts or load candidate procedural macros. The classification prevents protected-input
+drift from reaching metadata, and the offline boundary also prevents resolution outside the
+checker's primed closure. There is no label, actor, approval count, candidate record, or workflow
+input that bypasses classification or changes a protected transition into a trusted validation
+result.
 
 Before exclusive App enforcement is enabled, a checker or dependency transition needs an independent
 review bound to the exact new head and complete protected-input tree, followed by a separately
@@ -90,11 +94,11 @@ status exclusive because candidate workflows can publish checks through the same
 application identity. No App reporter or App credential is present in this repository increment.
 The code is therefore validation-ready and enforcement-incomplete.
 
-The checker built from `github.workflow_sha` embeds the exact reviewed authority-workflow bytes. It
-rejects any PR-base or candidate change to that workflow or to the repository-controlled checker
-build inputs even when review or policy files change at the same time. A legitimate workflow or
-checker update must use the explicit external bootstrap above. Candidate-provided records cannot
-authorize it.
+The checker built from `github.workflow_sha` embeds the exact reviewed authority-workflow bytes. For
+an unchanged-input candidate, it rejects any PR-base drift from that workflow or from the
+repository-controlled checker build inputs. Both inherited PR-base drift and candidate drift are classified before the checker runs.
+A legitimate workflow or checker update must use the explicit external bootstrap above.
+Candidate-provided records cannot authorize it.
 
 ## Exclusive authority deployment prerequisite
 

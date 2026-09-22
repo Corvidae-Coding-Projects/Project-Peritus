@@ -1,5 +1,6 @@
 export interface Command { id: string; label: string; detail: string; group: string; slash: string; args?: string }
 export const commands: Command[] = [
+  {id:'improvements',label:'Improvement inbox',detail:'Collect suggestions; explicitly generate and test selected harness patches',group:'Harness',slash:'/improvements'},
   {id:'new',label:'New conversation',detail:'Open a sibling session in this project',group:'Workspace',slash:'/new'},
   {id:'nest',label:'Nest a conversation',detail:'Add a child beneath the active session',group:'Workspace',slash:'/nest'},
   {id:'open',label:'Open project',detail:'Add another project to this browser tab',group:'Workspace',slash:'/open',args:'Absolute project directory'},

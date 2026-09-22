@@ -181,6 +181,12 @@ where
                     Err(error) => artifact_error_payload(&error),
                 }
             }
+            AppRequestPayload::Improvements(value) => {
+                match product_runs.improvements(value).await {
+                    Ok(inbox) => AppResponsePayload::Improvements(inbox),
+                    Err(error) => product_run_error(error),
+                }
+            }
             AppRequestPayload::Interact(value) => {
                 match product_runs.interact(value.clone()).await {
                     Ok(snapshot) => AppResponsePayload::Interaction(snapshot),

@@ -36,6 +36,9 @@ impl CanonicalEncode for AppResponseEnvelope {
         write_id(writer, self.correlation_id().as_bytes())?;
         writer.write_u16(payload_tag(self.payload()))?;
         match self.payload() {
+            AppResponsePayload::Improvements(value) => {
+                super::improvements::write_inbox(writer, value)
+            }
             AppResponsePayload::WorkbenchCheckpoint(value) => {
                 super::workbench_checkpoints::write_checkpoint_receipt(writer, value)
             }
@@ -130,6 +133,7 @@ impl CanonicalEncode for AppResponseEnvelope {
 
 fn payload_tag(payload: &AppResponsePayload) -> u16 {
     match payload {
+        AppResponsePayload::Improvements(_) => 180,
         AppResponsePayload::WorkbenchCheckpoint(_) => 120,
         AppResponsePayload::WorkbenchRewindPreview(_) => 121,
         AppResponsePayload::WorkbenchRestore(_) => 122,
@@ -211,6 +215,7 @@ pub(super) fn read_response(
             AppResponsePayload::ConversationLibrary(super::workbench_library::read_page(reader)?)
         }
         161 => AppResponsePayload::WorkbenchMemory(super::workbench_memory::read_memory(reader)?),
+        180 => AppResponsePayload::Improvements(super::improvements::read_inbox(reader)?),
         162 => AppResponsePayload::InitProposal(super::workbench_init::read_proposal(reader)?),
         160 => AppResponsePayload::WorkbenchPermissions(
             super::workbench_permissions::read_permissions(reader)?,

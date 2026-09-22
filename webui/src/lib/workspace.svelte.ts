@@ -221,6 +221,7 @@ export async function dispatch(id:string,args:string[]=[],depth=0):Promise<void>
       const run=ui.conversations[ui.sessionId]?.run;ui.reportTitle=id==='diff'?'Candidate diff':'Run status';
       ui.reportText=run?(id==='diff'?run.diff:run.status):'No run has been observed in this session yet.';ui.overlay='report';return;
     }
+    case 'improvements':ui.overlay='improvements';return;
     case 'runs':ui.runs=await api.query<Run[]>('runs');ui.overlay='runs';return;
     case 'stop':case 'retry':case 'export':
       observeConversation(ui.sessionId,await api.action<Conversation>('control',{session:ui.sessionId,action:id}));notify(`Requested ${id} for this run.`);return;

@@ -70,3 +70,50 @@ test('workbench binds exact browser session, project and daemon without executin
   expect((await action(request,'workbench',{session:'missing'})).error).toContain('Session');
   await action(request,'close-console',{id:opened.id});
 });
+
+test('improvement inbox stays passive until explicit evaluation and preserves evidence controls',async({page,request})=>{
+  const boot=await (await request.get('/api/bootstrap')).json();
+  const current=boot.workspace.sessions[0],workspace='44'.repeat(16),candidate='55'.repeat(32);
+  const mutations:Record<string,unknown>[]=[];
+  const inbox={workspace,candidates:[{id:candidate,proposal:'Investigate repeated verification failures',dismissed:false,evaluation:null as string|null,evidence:[{run:current.id,digest:'66'.repeat(32),summary:'A completed run required three repair cycles.'}]}]};
+  await page.route('**/api/query?**',async route=>{
+    const kind=new URL(route.request().url()).searchParams.get('kind');
+    if(kind==='improvements')return route.fulfill({json:inbox});
+    if(kind==='runs')return route.fulfill({json:[{id:current.id,workspace,task:'Evidence fixture',phase:'Complete',busy:false}]});
+    await route.continue();
+  });
+  await page.route('**/api/action',async route=>{
+    const input=route.request().postDataJSON();
+    if(input.command==='improvements'){
+      mutations.push(input);
+      if(input.action==='dismiss')inbox.candidates[0]!.dismissed=true;
+      if(input.action==='evaluate')inbox.candidates[0]!.evaluation=current.id;
+      return route.fulfill({json:inbox});
+    }
+    if(input.command==='open-run')return route.fulfill({json:current});
+    await route.continue();
+  });
+  await page.goto('/');
+  await page.getByRole('button',{name:'Improvement inbox',exact:true}).click();
+  await expect(page.getByText('Untested suggestion',{exact:false})).toBeVisible();
+  expect(mutations).toEqual([]);
+  await page.getByText('Inspect evidence',{exact:true}).click();
+  await expect(page.getByText('A completed run required three repair cycles.',{exact:true})).toBeVisible();
+  const evaluate=page.getByRole('button',{name:'Generate patch & evaluate',exact:true});
+  await expect(evaluate).toBeDisabled();
+  await page.getByLabel('Peritus source workspace',{exact:true}).selectOption(current.project);
+  await expect(evaluate).toBeEnabled();
+  expect(mutations).toEqual([]);
+  await page.screenshot({path:'/tmp/peritus-improvement-inbox.png',fullPage:true});
+  await evaluate.click();
+  await expect(page.getByRole('dialog')).toBeHidden();
+  expect(mutations).toHaveLength(1);
+  expect(mutations[0]).toMatchObject({action:'evaluate',candidate,target:current.project});
+  await page.getByRole('button',{name:'Improvement inbox',exact:true}).click();
+  await expect(page.getByRole('button',{name:'Open evaluation / review patch',exact:true})).toBeVisible();
+  await page.getByRole('button',{name:'Dismiss',exact:true}).click();
+  await expect(page.getByText('No suggestions in this view.',{exact:false})).toBeVisible();
+  await page.getByLabel('Show dismissed suggestions',{exact:true}).check();
+  await expect(page.getByText('Dismissed · 1 supporting run',{exact:true})).toBeVisible();
+  expect(mutations).toHaveLength(2);
+});

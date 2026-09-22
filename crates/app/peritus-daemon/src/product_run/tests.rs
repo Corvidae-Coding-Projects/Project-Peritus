@@ -20,6 +20,7 @@ mod catalog;
 mod doctor;
 mod folder;
 mod healing;
+mod improvements;
 mod interaction;
 mod model_selection;
 mod recovery;
@@ -284,6 +285,11 @@ fn service(
     let network = !registry.is_empty();
     ProductRunService {
         inner: Arc::new(Inner {
+            improvements: std::sync::Mutex::new(
+                super::improvements::Store::open(&state.join("improvements.sqlite3"))
+                    .expect("inbox"),
+            ),
+            improvement_launch: tokio::sync::Mutex::new(()),
             controls: std::sync::Mutex::new(None),
             control_store: peritus_journal::StoreId::new([0x7f; 16]).expect("control store"),
             directory,

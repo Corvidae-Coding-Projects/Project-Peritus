@@ -115,6 +115,7 @@ pub fn facts(app: &App, project: &Project) -> Result<Value> {
 }
 
 mod chat;
+pub mod improvements;
 mod readiness;
 pub mod receipts;
 #[cfg(all(test, unix))]
@@ -155,6 +156,7 @@ fn model_values(models: &ProductRoleModels) -> Value {
 }
 pub fn response(value: AppResponsePayload) -> Result<Value> {
     match value {
+        AppResponsePayload::Improvements(inbox) => Ok(improvements::projection(&inbox)),
         AppResponsePayload::Interaction(value) => Ok(
             json!({"run":snapshot(value.snapshot()),"models":model_values(value.models()),"mode":format!("{:?}", value.mode()).to_lowercase(),"received":value.received().to_string(),"incorporated":value.incorporated().to_string(),"activities":value.activities().iter().map(|a|json!({"id":a.sequence().to_string(),"kind":format!("{:?}",a.kind()).to_lowercase(),"text":a.text(),"detail":a.detail()})).collect::<Vec<_>>()}),
         ),

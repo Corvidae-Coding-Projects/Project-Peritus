@@ -20,6 +20,9 @@ mod doctor;
 mod envelope;
 mod error;
 mod family;
+mod improvements;
+pub use improvements::*;
+
 mod identity;
 mod limits;
 mod product;
