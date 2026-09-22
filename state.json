@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1533,
-        "tip_oid": "85d04a0dc1d6385e165d49edb50375d5854b1144",
-        "prefix_sha256": "dfd8290fb8834f2836e0a73ea46f0437427d3b777ce1eb75bb32c4f4d2b57d1f"
+        "sequence": 1534,
+        "tip_oid": "5a4ab9fa5fb8a67676331efd3bbd9792207b3472",
+        "prefix_sha256": "10c52067431e9923d4aaba3c9487bd9038d249a8d1d493d8e6ea072e835de62b"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 89,
-  "next_comment_id": 1754,
+  "next_comment_id": 1755,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -11236,7 +11236,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-21T20:49:06.633628118Z",
-      "updated_at": "2026-09-21T23:49:52.699609204Z",
+      "updated_at": "2026-09-22T00:08:14.420496141Z",
       "comments": {
         "18d72ce4-4664-44a5-ae24-f4fe42723f4f": {
           "display_id": 1752,
@@ -11246,6 +11246,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAwIM+N28cLxc9qmijy53/g36FiUNO+bhnASqmQwHHM9GCgLt4tT33MW1FbxKp5Ywy5ZsEa4ujTA6FsxI+uWu1Cg=="
+        },
+        "1c3a0b10-f517-4f7b-8a39-4b2a9096ac69": {
+          "display_id": 1754,
+          "author": "6ME5",
+          "content": "Final delivery: PR https://github.com/Corvidae-Coding-Projects/Project-Peritus/pull/96 to develop, branch fix/webui-session-cli, head 6891fa0ca2574215d84f7a2a3d5d84b265379aad. All latest-head workflow runs completed successfully: Gate A 35662945249, Foundation 35662945156, native package 35662945158 (162 jobs/six platforms), browser, security, distribution, Windows title, bug discovery. Authority classification succeeded; trusted-base was explicitly skipped for the protected CI-policy transition, not claimed as independent authority approval. GUI tests and 470 xtask tests passed locally. Worktree clean. Workbench sessions still use CLI /sessions selection as documented. No merge performed.",
+          "created_at": "2026-09-22T00:08:14.416909952Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAerH2wM9eHmYnQiCzBxF7mHGws531y36cQg6DvKfMwz57BeyKxbWF3xYFkPJuVIn24yJXddiCr0XjBYST9g/MAg=="
         },
         "23a79ffe-a9f7-4792-919a-475b152aa5cc": {
           "display_id": 1748,
