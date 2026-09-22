@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1535,
-        "tip_oid": "ba9b63541955cdeddd8762f80a543f113a253c24",
-        "prefix_sha256": "a1a6a544c09795a4aee117c4581053e50a85c104ebf0fb101e8adf89cee8aa3b"
+        "sequence": 1536,
+        "tip_oid": "607cff54a34d6854b9b9fee2cac94c98c2d825c5",
+        "prefix_sha256": "517c16bf8b3f41af9c00831eebefb937d4be3c52bede1ac9c0fcbb57e4aee337"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 89,
-  "next_comment_id": 1755,
+  "next_comment_id": 1756,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -11232,7 +11232,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-21T20:49:06.633628118Z",
-      "updated_at": "2026-09-22T00:08:14.420496141Z",
+      "updated_at": "2026-09-22T00:08:55.352780674Z",
       "comments": {
         "18d72ce4-4664-44a5-ae24-f4fe42723f4f": {
           "display_id": 1752,
@@ -11314,6 +11314,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAAoFg0l4gagrfFyQuDjVPPUXX7SSBlmPc3f11bgimH2WP2g7bfG5UTU7QWqrtJyuh/+Fj4oC6U0vrrn9yx94wBg=="
+        },
+        "d181126a-87d5-43cb-8de5-6b2a5d4a73b6": {
+          "display_id": 1755,
+          "author": "6ME5",
+          "content": "Delivered GUI session persistence, model updates, console recovery, exact-run CLI/history integration, daemon conformance race fix, and CI stale-run/artifact retry fixes in PR #96 to develop. Head 6891fa0ca, branch fix/webui-session-cli, worktree .worktrees/webui-session-cli clean. All latest-head workflow runs passed, including Gate A, Foundation and all 162 native package jobs. Authority is a protected-input transition (trusted-base skipped), requiring the documented review/bootstrap for authority alignment. Main/develop were not merged. Existing live GUI remains on its previous build. Governed Workbench session selection remains explicit via /sessions. Ready for review.",
+          "created_at": "2026-09-22T00:08:55.349567768Z",
+          "kind": "handoff",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAst0dz+o5y9dT2dZ1lw/eyS2up2Poy+r+aXYXLlBLlN+SbCC+v6W1LQXTSodoP2lol0/8xE0ld5DzI8+WtiiJBQ=="
         },
         "d69dfece-9284-41fc-b65b-a74a0227b87e": {
           "display_id": 1743,
