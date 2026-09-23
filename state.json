@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1569,
-        "tip_oid": "df8b09f48ec24cbe82599f7b00ae7a62839410a1",
-        "prefix_sha256": "3d9818b357fa5017a8d5e2038b2b2cf74b27587891bd19157876dd59361f2ac3"
+        "sequence": 1570,
+        "tip_oid": "a9e873d3373e45e1ebfebdda13f33d107cf5a6b9",
+        "prefix_sha256": "6dab5d0d3958c85d2bffa13e73ec566e2644dde4d8d87dfe63d72a55d5836298"
       },
       "NWAR": {
         "sequence": 39,
@@ -11389,11 +11389,12 @@
       "uuid": "77b3f659-574f-438a-836d-abb417662ec4",
       "display_id": 92,
       "title": "Document OpenAI Codex runtime invocation fix",
-      "status": "open",
+      "status": "closed",
       "priority": "medium",
       "created_by": "6ME5",
       "created_at": "2026-09-23T01:24:18.044211232Z",
-      "updated_at": "2026-09-23T01:26:32.435125047Z",
+      "updated_at": "2026-09-23T01:27:02.919084571Z",
+      "closed_at": "2026-09-23T01:27:02.917897751Z",
       "labels": [
         "documentation"
       ],
