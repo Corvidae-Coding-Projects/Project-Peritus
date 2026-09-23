@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1568,
-        "tip_oid": "1327cbcf5bc169b99034cbbbde13a8eef74dcee4",
-        "prefix_sha256": "88f5bff3935808add7b983f4e9d6fa28eeccc996db8cd96535df82ad22119ca9"
+        "sequence": 1569,
+        "tip_oid": "df8b09f48ec24cbe82599f7b00ae7a62839410a1",
+        "prefix_sha256": "3d9818b357fa5017a8d5e2038b2b2cf74b27587891bd19157876dd59361f2ac3"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 93,
-  "next_comment_id": 1768,
+  "next_comment_id": 1769,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -11393,10 +11393,21 @@
       "priority": "medium",
       "created_by": "6ME5",
       "created_at": "2026-09-23T01:24:18.044211232Z",
-      "updated_at": "2026-09-23T01:24:34.836667416Z",
+      "updated_at": "2026-09-23T01:26:32.435125047Z",
       "labels": [
         "documentation"
-      ]
+      ],
+      "comments": {
+        "b589d24b-5966-4004-bee8-b2d061234637": {
+          "display_id": 1768,
+          "author": "6ME5",
+          "content": "Documented the local Codex runtime invocation change, linked the modified source and related decoder/test code, recorded the focused checks and live-run observation, and added the page to docs/README.md. cargo xtask docs-check passed for 272 documentation files; git diff --check and local links passed. Source fix remains local and uncommitted.",
+          "created_at": "2026-09-23T01:26:32.422276989Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAbIchehGNZN49fSjXdmYrEiEGyjdAIDns26vEf9J/Dk5hYFCYzkOgluV36o0v+AtdQuAOaDRKWz6af8fD/WXsBA=="
+        }
+      }
     },
     "78b7923f-63ab-4482-af07-4ee8f3730fa4": {
       "uuid": "78b7923f-63ab-4482-af07-4ee8f3730fa4",
