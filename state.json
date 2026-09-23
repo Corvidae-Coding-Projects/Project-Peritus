@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1565,
-        "tip_oid": "3171ba2b8c55d3fa56c2c5b4e83f76b73ac97694",
-        "prefix_sha256": "1b9f915d2daf526f297da84b266e97d6a4105ce8e51f6f6f688bfad439f9c292"
+        "sequence": 1566,
+        "tip_oid": "65dbdd3922302df77a67678e2c88fa86d69be33a",
+        "prefix_sha256": "f8df29a9bcd58be94c33595e2765daeadc4c9871e9cdb212d2c86daa5cb409cd"
       },
       "NWAR": {
         "sequence": 39,
@@ -54,7 +54,7 @@
       }
     }
   },
-  "next_display_id": 92,
+  "next_display_id": 93,
   "next_comment_id": 1768,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
@@ -103,6 +103,7 @@
     "65f4d2ae-ffe6-471c-8d5f-3de1632a9724": 61,
     "6bf9b38c-eb2f-4dcb-a19a-2a99c45886ff": 70,
     "6e8845fe-4835-478b-80d0-18135c12bc4d": 43,
+    "77b3f659-574f-438a-836d-abb417662ec4": 92,
     "78b7923f-63ab-4482-af07-4ee8f3730fa4": 88,
     "79bb0f68-384c-454b-9302-eb88b692c28f": 18,
     "7a160b4f-2dc9-41d3-80f1-ff16672c18ad": 67,
@@ -11379,6 +11380,16 @@
       "labels": [
         "feature"
       ]
+    },
+    "77b3f659-574f-438a-836d-abb417662ec4": {
+      "uuid": "77b3f659-574f-438a-836d-abb417662ec4",
+      "display_id": 92,
+      "title": "Document OpenAI Codex runtime invocation fix",
+      "status": "open",
+      "priority": "medium",
+      "created_by": "6ME5",
+      "created_at": "2026-09-23T01:24:18.044211232Z",
+      "updated_at": "2026-09-23T01:24:18.044211232Z"
     },
     "78b7923f-63ab-4482-af07-4ee8f3730fa4": {
       "uuid": "78b7923f-63ab-4482-af07-4ee8f3730fa4",
