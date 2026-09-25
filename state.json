@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1587,
-        "tip_oid": "f3b18f952ff0c21d2051a0368f6362d6360837b6",
-        "prefix_sha256": "7a2890060287fa6f8f17d8299fa792ea8b251923f3a26a6e2f602d5d5c41142d"
+        "sequence": 1588,
+        "tip_oid": "dd0aec1e1f0bc2d84bc13e338c46d6d24d175115",
+        "prefix_sha256": "f79ad0962e79545f34ffab3b1e2a53835569048c6a6db4f64e956dfcb6897522"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 94,
-  "next_comment_id": 1780,
+  "next_comment_id": 1781,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -11808,7 +11808,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-25T14:33:31.398261726Z",
-      "updated_at": "2026-09-25T15:56:28.475107501Z",
+      "updated_at": "2026-09-25T16:11:06.205560761Z",
       "labels": [
         "bug"
       ],
@@ -11911,6 +11911,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA8huheqKM3aPbB/1Wo3DkXDitBi0LzHcME5uWcUVHQ/E3GA7NVoHPdAzu1UvwldZy7l8NiW1qhe/XDDLz+KNdDg=="
+        },
+        "fbcac988-e32c-4d55-a983-31a9c04ebf19": {
+          "display_id": 1780,
+          "author": "6ME5",
+          "content": "[action] User challenged running PR99 checks while its authority dependency was blocked. Corrected scheduling: cancelled only PR99 unfinished Native product package 36151148028, Foundation verification 36151147309 and Gate A 36151147321 to release shared macOS capacity for PR100. Completed passing PR99 workflows preserved. Resume PR99 cancelled/unfinished jobs only after PR100 fully passes and is merged, and trigger fresh authority workflow on current main. User merge authorization remains active. PR99 cancellations are intentional, not code failures.",
+          "created_at": "2026-09-25T16:11:06.174581057Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA++isEtiIVh6iKw0Lmd61Lwnf9giWFGGUz3oJTLG/v/8/+ExTaH0UvdKfB2Ydm6IhBRT+/Yi7VHy7UoQF4BDoCg=="
         }
       }
     },
