@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1593,
-        "tip_oid": "6033e83e26048f6786cd458019570ffad8655019",
-        "prefix_sha256": "b9a6d524e15e6241c07df5f258e01dbf3e0564b19f6189f6691a46b6d87c8b36"
+        "sequence": 1594,
+        "tip_oid": "664ff3c45cc4e3911117938cc258492f7bd8b646",
+        "prefix_sha256": "09375d8c957e7f3221794f776295f0db2d2807497ebcef2480cfd23f8df1a07f"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 94,
-  "next_comment_id": 1786,
+  "next_comment_id": 1787,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -11808,7 +11808,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-25T14:33:31.398261726Z",
-      "updated_at": "2026-09-25T17:28:14.554917982Z",
+      "updated_at": "2026-09-25T17:33:32.520834706Z",
       "labels": [
         "bug"
       ],
@@ -11947,6 +11947,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAePDjUceUzDfNiIN2KSuAq2qzq+CQp/svexE/fefanUHGIUIxdfQxLe8rTOvbQcV6eMO8ubrHf8vblJRrgstWCw=="
+        },
+        "eead5f3d-d3ad-4103-bc87-b60f604a18e6": {
+          "display_id": 1786,
+          "author": "6ME5",
+          "content": "[action] PR100 MERGED at 17:27 UTC into main commit b1e95edacd01a1d68621fb322b2f4f3cfef6b1fe after exact-head verification of 576 pass/4 expected skips and all seven successful workflows. All-main workflow bytes verified match e8269599d. Fresh PR99 authority run 36167290781 (classification job 108178028916) triggered by PR body edit; currently queued behind ordinary automatic main push CI. PR99 other cancelled runs stay stopped until authority success is verified. Next: inspect fresh authority log for CHECKER_SHA b1e95edac and successful bootstrap classification; then rerun failed/cancelled jobs in 36151148028, 36151147309, 36151147321. Baseline job states in /tmp/peritus-pr99-cancelled-baseline.json. User has authorized merge99 after all checks pass; no new permission needed.",
+          "created_at": "2026-09-25T17:33:32.516816606Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABADufZQE+Q83IgAniOKIME66ZKQuhtv9VJ2MuqozFJPK94cWpCySI09k0p6W0Jjgao0Y5x+AUJDnDvBnKPOn/1AQ=="
         },
         "ef9a1642-866a-4597-b25d-4c45a8d8be1f": {
           "display_id": 1769,
