@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1579,
-        "tip_oid": "a9448b492d4d54eec714e168fa375752ac702004",
-        "prefix_sha256": "a4f6a44257ee48af9e59cdf39dfdf3c0702b1a367186a92a467738a1eace47dc"
+        "sequence": 1580,
+        "tip_oid": "1982d818037707e3e692ed41cd5a0eac1f28ba8f",
+        "prefix_sha256": "fe83d2694a3af3bf762e9b878d5a1d965e11b4d5066db1af2cbbdb4adc4f31d7"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 94,
-  "next_comment_id": 1774,
+  "next_comment_id": 1775,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -11808,7 +11808,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-25T14:33:31.398261726Z",
-      "updated_at": "2026-09-25T15:14:10.432589275Z",
+      "updated_at": "2026-09-25T15:17:41.422399456Z",
       "labels": [
         "bug"
       ],
@@ -11821,6 +11821,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAwf4Uxd+TmCHuqSXjRJrFfoLSKp9m4vGFNCGJEbnuLU+hmYM68dDD5AcS/on9RuU7whiGdwKpnkwvxeICz9TjAA=="
+        },
+        "78b9fbec-186d-4f0c-bd80-dff520a32f49": {
+          "display_id": 1774,
+          "author": "6ME5",
+          "content": "User authorized an additional CI-only PR to main for the inherited authority-classification correction. Created isolated fix/authority-main-bootstrap worktree from main befbac3; applying only five already-existing develop files (workflow, canonical workflow, regression tests, governance documentation). Product PR #99 remains unchanged.",
+          "created_at": "2026-09-25T15:17:41.417151346Z",
+          "kind": "decision",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAaG1qWGTF5PDeyUADfTMC1Dza8yh5dIqqcekE6LyAfz9l9101ZgF6jL50Qn8xB12e804N9i0c0ZUayiTjsGOlCw=="
         },
         "a93eeb68-2907-417a-9ec1-e91ceb8f6599": {
           "display_id": 1773,
