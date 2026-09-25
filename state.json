@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1622,
-        "tip_oid": "e8aff4dd53f6cc78e62776b106016559cbe6ba87",
-        "prefix_sha256": "c12fa6ce5458b40ebe09e9db6bd44e9f810a32531d13ff7e1a5aee38f9395885"
+        "sequence": 1623,
+        "tip_oid": "42df133e3f56f67e9e43d90afa1d9d77d1a7ac2f",
+        "prefix_sha256": "876b334cd1de73942236681c36284e61d042db6a40a973c6d25f36a78c731059"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 95,
-  "next_comment_id": 1810,
+  "next_comment_id": 1811,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -17342,7 +17342,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-25T18:44:39.713275514Z",
-      "updated_at": "2026-09-25T21:59:58.541738560Z",
+      "updated_at": "2026-09-25T22:02:14.653082249Z",
       "labels": [
         "release"
       ],
@@ -17436,6 +17436,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAC36bf1gCHUpUf05/XXg0MjDr6KvgpwsTDe+u/TsER1PVJ0iPQ9Jsbk4479gyQ6aeU9hCkJVYv9RcUverZzpzAg=="
+        },
+        "854fb999-eda6-405d-855b-87dab7f220f0": {
+          "display_id": 1810,
+          "author": "6ME5",
+          "content": "Native Windows confirmation: PR102 Foundation Rust test testing-external (windows-2025), job108262925991, succeeded at22:00:58Z on f47a2c296. Its repaired fixture has now passed the actual hosted Windows environment. PR currently167passing checks,4expectedskips,no failures; continue full PR gates and old-main restoration without cancellation.",
+          "created_at": "2026-09-25T22:02:14.648844077Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA5PCBYv28wvszEh6xhQ1ZSULMbHM6DIu2+b3kecWPAyoUBi5NHqjONuBFRl3YEbw9mwCT0iVWuLJUOm60rNJsCg=="
         },
         "c0d6736c-a4ab-491b-a605-3001a7c3ad69": {
           "display_id": 1794,
