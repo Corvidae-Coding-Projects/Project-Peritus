@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1581,
-        "tip_oid": "d75409248c88a8e7f202bac24c4a0cc1790aa86d",
-        "prefix_sha256": "4abfac04fd8eb49032528c5cc586f99378ef973a63e9b9c4607796c18546fc50"
+        "sequence": 1582,
+        "tip_oid": "0848b5e1aaf58d0a39bf794990165e15381d2c05",
+        "prefix_sha256": "4101db4f3243b30a6b9bf409a6cf513842f57565cef78c27d979d4187ce9dece"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 94,
-  "next_comment_id": 1776,
+  "next_comment_id": 1777,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -11808,11 +11808,20 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-25T14:33:31.398261726Z",
-      "updated_at": "2026-09-25T15:20:24.870167545Z",
+      "updated_at": "2026-09-25T15:26:56.434485473Z",
       "labels": [
         "bug"
       ],
       "comments": {
+        "56febeea-7d46-4ad2-8a78-d5e871447b14": {
+          "display_id": 1776,
+          "author": "6ME5",
+          "content": "[action] Opened authorized CI-only main PR #100 at signed e8269599d in .worktrees/authority-main-bootstrap. All 471 xtask tests, Clippy, fmt, xtask all and actionlint pass; PR #100 authority workflow completed successfully with bootstrap classification. Product PR #99 at 94f24adf2 has native Windows vault test pass and 341 passing checks; remaining foundation/Gate A/package jobs queued or running. Main and develop not merged; root worktree stays fix/omnibus-product-bugs.",
+          "created_at": "2026-09-25T15:26:56.420871689Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAir4B9Yd/Xfp8BfT5n9IYVOJC1Pcewvuq+4KP8mwWwk0EeVMkw1BiDNqoWR3a620utsKFuk1uw8ZbE7JSGl1fBw=="
+        },
         "72295005-fa5d-4bb0-944d-aa712b59ccec": {
           "display_id": 1772,
           "author": "6ME5",
