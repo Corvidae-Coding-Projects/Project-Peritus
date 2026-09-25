@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1605,
-        "tip_oid": "5c6ae95aca71444a6c62abfa07a12282f0571c22",
-        "prefix_sha256": "e45a27c21d8c1ea0c966d821c08d09a82b516d44d01d0c36d23ad5ab8f212d9a"
+        "sequence": 1606,
+        "tip_oid": "21b64e49a1634d14769b667554e32758750a7222",
+        "prefix_sha256": "12945b06ff4ce1c56e73908a2912a09ac334e97f7cbf56e73ea5d9e663960f19"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 95,
-  "next_comment_id": 1793,
+  "next_comment_id": 1794,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -17342,10 +17342,21 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-25T18:44:39.713275514Z",
-      "updated_at": "2026-09-25T18:44:57.586515449Z",
+      "updated_at": "2026-09-25T18:49:04.976557748Z",
       "labels": [
         "release"
-      ]
+      ],
+      "comments": {
+        "6236bcf5-97a0-4b51-943a-3c1953deb688": {
+          "display_id": 1793,
+          "author": "6ME5",
+          "content": "[action] Pulled develop049484677 and created release/v0.0.4, merged main b1e95edac with no content changes, bumped all86 packages/internal pins and WebUI, added changelog/migration notes; third-party lock entries unchanged. 476 xtask and18 frontend tests pass, fmt/actionlint pass. Policy/trust/distro/Clippy still running (session21028). Release state /tmp/peritus-v004-state.json. User authorized full release through main and publication; preserve unrelated untracked artifacts.",
+          "created_at": "2026-09-25T18:49:04.969412870Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAbRbkTaZoI6kFjVfN6EpVUtfTbDbzPzdoHVAQAIRJaJZAPtdIENpncd8MYFnoyQeclAAYcnUl7C1ZOpDZU1JbCQ=="
+        }
+      }
     },
     "f27888a7-5366-4703-a68a-9f17b1adad81": {
       "uuid": "f27888a7-5366-4703-a68a-9f17b1adad81",
