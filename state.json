@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1617,
-        "tip_oid": "f2bd8caeb5b50beb8bf728ef7263686f7555f3af",
-        "prefix_sha256": "07e3d4e210b8949162a992de345ab81e5d960f0540a6c51ce4a02d82ae24a9fb"
+        "sequence": 1618,
+        "tip_oid": "f0d53961eb4fb8eeb21a29fb59ffb923c24f2cb0",
+        "prefix_sha256": "4a01175a935bd795d26b252ccf5baebfc752d85527c487aea2316d351f0426ad"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 95,
-  "next_comment_id": 1805,
+  "next_comment_id": 1806,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -17342,11 +17342,20 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-25T18:44:39.713275514Z",
-      "updated_at": "2026-09-25T21:25:48.439408358Z",
+      "updated_at": "2026-09-25T21:35:09.928007888Z",
       "labels": [
         "release"
       ],
       "comments": {
+        "12a20740-496f-4a8c-bfae-e20706dbd14f": {
+          "display_id": 1805,
+          "author": "6ME5",
+          "content": "New actual failure during restoration: current main Gate A attempt2 job108251977479 Rust shard test testing-external (windows-2025), provider circuit-bypass fixture assertion settlement.is_accepted at provider.rs185. Fixture max_elapsed60s; failed test occupied68.5s, suite199.15s. Exact release tree passed PR Windows GateA suite74/74 in48.08s (job108207868756), and focused local test passes in0.55s. Suspected hosted timing fluctuation, not confirmed production defect. GitHub refuses job rerun while workflow active. Monitor moved to session91208, recognizes only observed failure ID and requests one --failed retry after GateA completes; unknown failures still stop. Original main monitor98167 exited on detection. Release monitor18766 remains healthy,94success4Macarchivequeued1expectedskip. Do not cancel main runs.",
+          "created_at": "2026-09-25T21:35:09.922696910Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAWJsQmIy6qOK2x7o6BgBzSlgqBotp+XcBYZ7fgr0ZuJ1BnmBlX0xG33UHeAOpPvXLw9yzu1aTZJ0hrvT0KohFDA=="
+        },
         "17c9f45c-171d-4b4b-99ae-ea6981ccccfb": {
           "display_id": 1804,
           "author": "6ME5",
