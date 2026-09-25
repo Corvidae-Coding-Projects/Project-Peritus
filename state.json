@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1621,
-        "tip_oid": "a7b5149eb6dc302c4b53a391f91afdf075480d7c",
-        "prefix_sha256": "772d05d202098e3ec9a9f12ef29e6c1b8acfa2365d577659e747c38ebda516d4"
+        "sequence": 1622,
+        "tip_oid": "e8aff4dd53f6cc78e62776b106016559cbe6ba87",
+        "prefix_sha256": "c12fa6ce5458b40ebe09e9db6bd44e9f810a32531d13ff7e1a5aee38f9395885"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 95,
-  "next_comment_id": 1809,
+  "next_comment_id": 1810,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -17342,7 +17342,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-25T18:44:39.713275514Z",
-      "updated_at": "2026-09-25T21:45:39.187424282Z",
+      "updated_at": "2026-09-25T21:59:58.541738560Z",
       "labels": [
         "release"
       ],
@@ -17481,6 +17481,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAuRSNAnYpe4F0c0sulrWlx6u0ifD1B/fpDqYn+Ieo0/uUCgMhYQCk74SVFnBfmk6QtuI/FBo0etb/UjeZraK8Cw=="
+        },
+        "f14d0b6f-6f54-4c38-a355-b9dc6af674dc": {
+          "display_id": 1809,
+          "author": "6ME5",
+          "content": "[action] PR102 f47a2c296 now153passing4expectedskips, nofailure, ~284pending as GateA expanded. Windows regression job108262925991 FoundationRusttest testing-external is inprogress since21:51:46UTC, shard since21:52:23, not yet nativeWindowsverified. Old main restoration monitor91208 still running: oldFoundation173pass oldGateA174pass oldNative79pass; currentGateA143pass oneknownWindowsfixturefailure plusMacqueue; currentFoundation/Native deferred until their oldrunparentsgreen. Release monitor18766 now99pass1expectedskip with nativeassembliesfinished, comparisons/attestationsnext. PR monitor50937. Allthree monitor sessions live, no main cancellations. Rootfixbranch trackedclean; PR102open, notmerged; v004stilldraft, notpublished; developnotreconciled.",
+          "created_at": "2026-09-25T21:59:58.537001400Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAMX6QNcc/6o8eT342dRoWh5l6cK0NhVzYuVkwPYU10E2Y0r5bQuO6UmlmRdKotqrkVui56QIhs3XIGZKfbBBUDA=="
         },
         "f1c9f821-fb34-4a20-882b-09d341a6e300": {
           "display_id": 1795,
