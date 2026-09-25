@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1612,
-        "tip_oid": "995997bdf0d1cead472f120f9187411a621c9412",
-        "prefix_sha256": "37c1280f1f6e68c897fc7ed909f91c29dbb4923232fa32a0aebea2935300f9f5"
+        "sequence": 1613,
+        "tip_oid": "dec39544149ca35b45a62484d1b04b66d621c51c",
+        "prefix_sha256": "8a7656dec97fa1869f8b55bc735086638a1f155f910889405e432cb2ae3c8ced"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 95,
-  "next_comment_id": 1800,
+  "next_comment_id": 1801,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -17342,7 +17342,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-25T18:44:39.713275514Z",
-      "updated_at": "2026-09-25T20:00:21.242690765Z",
+      "updated_at": "2026-09-25T20:16:10.808747935Z",
       "labels": [
         "release"
       ],
@@ -17382,6 +17382,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABABzDR3baBRZNGfP2VYfrx3QAF4Gwm4bQ1k5pO9H6D8E8isz0lFORI0m/1yLfi98BwgyD+SeFzIqUuVa/wLA4nBg=="
+        },
+        "c0e47b50-91c0-4631-979a-cf2ed288080d": {
+          "display_id": 1800,
+          "author": "6ME5",
+          "content": "[action] 20:15 UTC: PR #101 remains open against main b1e95edacd01a1d68621fb322b2f4f3cfef6b1fe, exact signed head 3d49d0b8b664903904ba6f0fe7ed676e273a264b; mergeable true, blocked only by unfinished checks. 539 pass, 20 macOS checks pending, four expected skips, zero failures. Monitor 68110 still active; final aggregates may add checks. All Linux/Windows/Verus and six complete workflows passed. Tracked worktree clean, original untracked files preserved. After all current workflows/checks succeed: merge #101 with --match-head-commit, verify merge/tree, tag signed v0.0.4 on merged main, push tag, monitor release.yml and fix actual failures, approve release-signing environment under existing full-release authorization, verify draft assets then publish, reconcile develop. Release state /tmp/peritus-v004-state.json and notes/expected assets nearby. Do not end the task while PR/release work is pending.",
+          "created_at": "2026-09-25T20:16:10.804291854Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABANeWLUSR7Bl0xJm/9QiHdIKQtJMI23LCwG1F48VKGcX/ISomWrQ85/TYDzYS8RwgccViJ+VVYfJno01MJMTdkAw=="
         },
         "e8b6520b-41a1-41f5-8778-b8f8c7b41f08": {
           "display_id": 1798,
