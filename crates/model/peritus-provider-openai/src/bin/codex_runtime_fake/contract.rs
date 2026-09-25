@@ -25,9 +25,39 @@ pub(super) fn valid(arguments: &[String], stdin: &str) -> bool {
     required_present
         && environment_absent()
         && isolated_schema
-        && arguments.iter().filter(|value| value.as_str() == "--disable").count() == 15
+        && native_tools_disabled(arguments)
         && !arguments.iter().any(|value| value == "code_mode_host")
         && stdin.starts_with("Peritus is the sole host agent")
+}
+
+fn native_tools_disabled(arguments: &[String]) -> bool {
+    let features = [
+        "shell_tool",
+        "unified_exec",
+        "apps",
+        "plugins",
+        "multi_agent",
+        "browser_use",
+        "computer_use",
+        "image_generation",
+        "view_image",
+        "hooks",
+        "skill_search",
+        "skill_mcp_dependency_install",
+        "tool_call_mcp_elicitation",
+        "request_permissions_tool",
+        "code_mode",
+        "sleep_tool",
+        "tool_suggest",
+    ];
+    features.iter().all(|feature| arguments.windows(2).any(|pair| pair == ["--disable", feature]))
+        && [
+            "tools.update_plan.enabled=false",
+            "tools.experimental_request_user_input.enabled=false",
+            "web_search=\"disabled\"",
+        ]
+        .iter()
+        .all(|setting| arguments.windows(2).any(|pair| pair == ["--config", setting]))
 }
 
 fn is_file_in_working_directory(path: &std::path::Path) -> bool {

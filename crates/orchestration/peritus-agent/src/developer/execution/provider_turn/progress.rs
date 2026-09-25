@@ -29,6 +29,10 @@ impl<'a> ProviderProgress<'a> {
         self.interaction = None;
     }
 
+    pub(super) fn summary_received(&mut self) {
+        self.next_notice = Instant::now() + NOTICE_INTERVAL;
+    }
+
     pub(super) async fn wait<T>(
         &mut self,
         operation: impl Future<Output = Result<T, DeveloperLoopError>>,

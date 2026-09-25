@@ -17,6 +17,7 @@ mod live;
 use live::LiveConversation;
 mod models;
 mod narration;
+const SUMMARY_DETAIL: &str = "Provider thinking summary";
 mod tool_activity;
 
 #[derive(Clone)]
@@ -30,6 +31,7 @@ pub(super) struct InteractionOptions {
     pub(super) activities: Vec<ProductActivity>,
     pub(super) next_sequence: u64,
     pub(super) pending_utf8: Vec<u8>,
+    pending_summary_utf8: Vec<u8>,
     pub(super) streaming_text: bool,
     pending_tool: Option<tool_activity::PendingTool>,
 }
@@ -46,6 +48,7 @@ impl InteractionOptions {
             activities: Vec::new(),
             next_sequence: 1,
             pending_utf8: Vec::new(),
+            pending_summary_utf8: Vec::new(),
             streaming_text: false,
             pending_tool: None,
         }
@@ -86,8 +89,33 @@ impl InteractionOptions {
     }
 
     fn text(&mut self, bytes: &[u8]) -> Result<(), ProductRunServiceError> {
-        self.pending_utf8.extend_from_slice(bytes);
-        let valid = match std::str::from_utf8(&self.pending_utf8) {
+        self.stream_text(bytes, ProductActivityKind::Assistant, "")
+    }
+
+    fn summary(&mut self, bytes: &[u8]) -> Result<(), ProductRunServiceError> {
+        self.stream_text(bytes, ProductActivityKind::Status, SUMMARY_DETAIL)
+    }
+
+    fn stream_text(
+        &mut self,
+        bytes: &[u8],
+        kind: ProductActivityKind,
+        detail: &str,
+    ) -> Result<(), ProductRunServiceError> {
+        let mut streaming = if kind == ProductActivityKind::Assistant {
+            self.streaming_text
+        } else {
+            self.activities
+                .last()
+                .is_some_and(|last| last.kind() == kind && last.detail() == detail)
+        };
+        let pending = if kind == ProductActivityKind::Assistant {
+            &mut self.pending_utf8
+        } else {
+            &mut self.pending_summary_utf8
+        };
+        pending.extend_from_slice(bytes);
+        let valid = match std::str::from_utf8(pending) {
             Ok(text) => text.len(),
             Err(error) if error.error_len().is_none() => error.valid_up_to(),
             Err(error) => {
@@ -97,34 +125,34 @@ impl InteractionOptions {
                 ));
             }
         };
-        if !self.streaming_text
-            && std::str::from_utf8(&self.pending_utf8[..valid])
+        if !streaming
+            && std::str::from_utf8(&pending[..valid])
                 .is_ok_and(|text| text.chars().all(char::is_whitespace))
         {
             // Some compatible providers begin a post-tool response with standalone whitespace.
             // Keep a small prefix so it can join the first real text delta, but never let an
             // unbounded whitespace stream consume memory or create an invalid empty activity.
             if valid > 256 {
-                self.pending_utf8.drain(..valid);
+                pending.drain(..valid);
             }
             return Ok(());
         }
-        let text =
-            String::from_utf8(self.pending_utf8.drain(..valid).collect()).map_err(|error| {
-                ProductRunServiceError::invalid_provider_output(
-                    "assemble streamed assistant text",
-                    error,
-                )
-            })?;
+        let text = String::from_utf8(pending.drain(..valid).collect()).map_err(|error| {
+            ProductRunServiceError::invalid_provider_output(
+                "assemble streamed assistant text",
+                error,
+            )
+        })?;
         if text.is_empty() {
             return Ok(());
         }
         let mut remaining = text.as_str();
         while !remaining.is_empty() {
             let last = self.activities.last();
-            let merge = self.streaming_text
+            let merge = streaming
                 && last.is_some_and(|last| {
-                    last.kind() == ProductActivityKind::Assistant
+                    last.kind() == kind
+                        && last.detail() == detail
                         && last.text().len() < MAX_PRODUCT_ACTIVITY_BYTES.saturating_sub(4)
                 });
             let available = if merge {
@@ -142,9 +170,9 @@ impl InteractionOptions {
                 self.activities.push(
                     ProductActivity::new(
                         last.sequence(),
-                        ProductActivityKind::Assistant,
+                        kind,
                         format!("{}{piece}", last.text()),
-                        String::new(),
+                        detail.to_owned(),
                     )
                     .map_err(|error| {
                         ProductRunServiceError::invalid_data(
@@ -154,9 +182,10 @@ impl InteractionOptions {
                     })?,
                 );
             } else {
-                self.append(ProductActivityKind::Assistant, piece, "")?;
+                self.append(kind, piece, detail)?;
             }
-            self.streaming_text = true;
+            streaming = true;
+            self.streaming_text = kind == ProductActivityKind::Assistant;
             remaining = &remaining[count..];
         }
         Ok(())
@@ -352,48 +381,4 @@ fn bounded(text: &str) -> String {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn standalone_leading_whitespace_waits_for_real_assistant_text() {
-        let mut options =
-            InteractionOptions::new(ProductInteractionMode::Chat, ProductRoleModels::default());
-
-        options.text(b"\n").expect("leading whitespace");
-        assert!(options.activities.is_empty());
-        options.text(b"The values match.").expect("assistant text");
-
-        assert_eq!(options.activities.len(), 1);
-        assert_eq!(options.activities[0].kind(), ProductActivityKind::Assistant);
-        assert_eq!(options.activities[0].text(), "\nThe values match.");
-    }
-
-    #[test]
-    fn whitespace_only_stream_is_bounded_without_a_public_empty_activity() {
-        let mut options =
-            InteractionOptions::new(ProductInteractionMode::Chat, ProductRoleModels::default());
-
-        options.text(&vec![b' '; MAX_PRODUCT_ACTIVITY_BYTES * 2]).expect("whitespace stream");
-
-        assert!(options.activities.is_empty());
-        assert!(options.pending_utf8.len() <= 3);
-    }
-
-    #[test]
-    fn invalid_provider_utf8_retains_provider_classification() {
-        let mut options =
-            InteractionOptions::new(ProductInteractionMode::Chat, ProductRoleModels::default());
-
-        let error = options.text(b"valid\xff").unwrap_err();
-        let ProductRunServiceError::Context { code, retry, subsystem, operation, detail } = error
-        else {
-            panic!("classified provider error");
-        };
-        assert_eq!(code, peritus_app_protocol::AppErrorCode::MalformedFrame);
-        assert_eq!(retry, peritus_app_protocol::RetryDisposition::AfterRecovery);
-        assert_eq!(subsystem, peritus_app_protocol::ResponsibleSubsystem::Provider);
-        assert_eq!(operation, "decode streamed assistant text");
-        assert!(detail.contains("invalid UTF-8"));
-    }
-}
+mod tests;

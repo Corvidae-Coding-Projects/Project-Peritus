@@ -57,6 +57,16 @@ fn selected_effort_reaches_the_owned_codex_process_unchanged() {
                     .any(|arg| arg == &format!("model_reasoning_effort=\"{}\"", effort.as_str()))
             );
             assert!(args.iter().any(|arg| arg == "--skip-git-repo-check"));
+            for feature in DISABLED_NATIVE_FEATURES {
+                assert!(args.windows(2).any(|pair| pair == ["--disable", feature]));
+            }
+            for setting in [
+                "tools.update_plan.enabled=false",
+                "tools.experimental_request_user_input.enabled=false",
+                "web_search=\"disabled\"",
+            ] {
+                assert!(args.windows(2).any(|pair| pair == ["--config", setting]));
+            }
             drop(args);
         }
     });

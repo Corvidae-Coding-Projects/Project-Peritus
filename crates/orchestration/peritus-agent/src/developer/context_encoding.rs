@@ -4,7 +4,7 @@ use peritus_model_protocol::{ContentBlock, Message, Role, ToolDefinition};
 
 use super::DeveloperLoopError;
 
-pub(super) const POLICY_REVISION: &[u8] = b"peritus-developer-compaction-v3";
+pub(super) const POLICY_REVISION: &[u8] = b"peritus-developer-compaction-v4";
 const TOKEN_ESTIMATE_BYTES: u64 = 3;
 // Vision providers account decoded image tiles rather than compressed transfer bytes. Keep a
 // deliberately generous per-image ceiling so a valid image collection cannot consume the entire
@@ -87,11 +87,19 @@ pub(super) fn encode_source(messages: &[Message]) -> Result<Vec<u8>, DeveloperLo
                     output.push(u8::from(result.is_error()));
                     append_tagged(&mut output, 6, result.output().canonical_bytes());
                 }
+                ContentBlock::Reasoning(value) => {
+                    // Bind both components to the source digest without turning opaque replay
+                    // material into public text or an instruction in the replacement summary.
+                    append_tagged(&mut output, 7, value.opaque_for_wire());
+                    output.push(u8::from(value.summary().is_some()));
+                    if let Some(summary) = value.summary() {
+                        append_tagged(&mut output, 8, summary.expose_for_wire().as_bytes());
+                    }
+                }
                 ContentBlock::Image(_)
                 | ContentBlock::Audio(_)
                 | ContentBlock::Document(_)
                 | ContentBlock::Refusal(_)
-                | ContentBlock::Reasoning(_)
                 | ContentBlock::ProviderExtension(_) => {
                     return Err(DeveloperLoopError::Context(
                         "compaction source contained an unsupported content block".to_owned(),

@@ -299,6 +299,7 @@ impl ProfileFeatures {
         }
         if reasoning {
             capabilities.push("reasoning-controls");
+            capabilities.push("reasoning-summaries");
         }
         Self::new(capabilities, image_input)
     }

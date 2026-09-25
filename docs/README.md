@@ -19,6 +19,7 @@ the product. The letter-and-number names follow the architecture sequence in `DE
 - [Platform security](c3-platform-security.md) covers native sandbox backends, network control, secrets, and teardown.
 - [Tool system](c4-tool-system.md) covers schemas, authorization, routing, replay, and built-in tools.
 - [Model providers](c5-model-providers.md) covers direct APIs, account-backed executable routes, streaming, and retry.
+- [OpenAI Codex runtime bridge repair](openai-codex-runtime-bridge-repair.md) records the local native-tool invocation fix and its verification.
 - [Context and memory](c6-context-memory.md) covers grounded context, compaction, token planning, and scoped memory.
 - [Trace and telemetry](c7-trace-telemetry.md) covers durable observations, redaction, projections, and exporters.
 

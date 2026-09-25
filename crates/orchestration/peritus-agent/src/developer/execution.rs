@@ -69,6 +69,7 @@ impl DeveloperLoop {
                     Capability::UsageDetail,
                     Capability::ParallelToolCalls,
                     Capability::ReasoningControls,
+                    Capability::ReasoningSummaries,
                     Capability::ReasoningReplay,
                     Capability::PromptCaching,
                 ],
