@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1606,
-        "tip_oid": "21b64e49a1634d14769b667554e32758750a7222",
-        "prefix_sha256": "12945b06ff4ce1c56e73908a2912a09ac334e97f7cbf56e73ea5d9e663960f19"
+        "sequence": 1607,
+        "tip_oid": "e26566f19e191e8aba446f27962aa580c98ec2ec",
+        "prefix_sha256": "d18977c225a6a8d53b49dd40f305f543b5bc5b73220accee581a729fab4d0859"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 95,
-  "next_comment_id": 1794,
+  "next_comment_id": 1795,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -17342,7 +17342,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-25T18:44:39.713275514Z",
-      "updated_at": "2026-09-25T18:49:04.976557748Z",
+      "updated_at": "2026-09-25T18:51:13.130582492Z",
       "labels": [
         "release"
       ],
@@ -17355,6 +17355,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAbRbkTaZoI6kFjVfN6EpVUtfTbDbzPzdoHVAQAIRJaJZAPtdIENpncd8MYFnoyQeclAAYcnUl7C1ZOpDZU1JbCQ=="
+        },
+        "c0d6736c-a4ab-491b-a605-3001a7c3ad69": {
+          "display_id": 1794,
+          "author": "6ME5",
+          "content": "Prepared signed release commit3d49d0b8b: v0.0.4 across86 workspace packages and WebUI, changelog and migration notes. External dependency lock records unchanged. Pass:476 xtask tests (1 standalone subprocess fixture ignored/exercised by parent),18 frontend tests, Svelte check/build,44 distro tests, strict xtask Clippy, all policy, fmt, actionlint, diff check. Standalone verify-trust rejects protected-input/version drift as expected for this bootstrap transition; preserved failure log and disclosed in PR. Full unchanged Gate A and platform CI required before main merge. No proof inventory/workflow weakening or fabricated review.",
+          "created_at": "2026-09-25T18:51:13.124982046Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABABzDR3baBRZNGfP2VYfrx3QAF4Gwm4bQ1k5pO9H6D8E8isz0lFORI0m/1yLfi98BwgyD+SeFzIqUuVa/wLA4nBg=="
         }
       }
     },
