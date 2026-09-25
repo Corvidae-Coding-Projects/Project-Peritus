@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1577,
-        "tip_oid": "ca8d22fda4162b625cfc2dcd9c73db3556773266",
-        "prefix_sha256": "6823c2f8cc6ab0569b04a77783f2bfd3a4d3560386e503226f0d5a4013d1e6bc"
+        "sequence": 1578,
+        "tip_oid": "1c7a766cf98994c9461c9df37f2c57b3a9501db1",
+        "prefix_sha256": "1f1f7cc96741fbeb91d60c36f470a3ec9859b2673cb7c618202aa37db8a749b8"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 94,
-  "next_comment_id": 1772,
+  "next_comment_id": 1773,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -11808,11 +11808,20 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-25T14:33:31.398261726Z",
-      "updated_at": "2026-09-25T14:59:32.883338729Z",
+      "updated_at": "2026-09-25T14:59:56.162291659Z",
       "labels": [
         "bug"
       ],
       "comments": {
+        "72295005-fa5d-4bb0-944d-aa712b59ccec": {
+          "display_id": 1772,
+          "author": "6ME5",
+          "content": "[action] Signed commit 94f24adf2 pushed; omnibus PR #99 targets develop: https://github.com/Corvidae-Coding-Projects/Project-Peritus/pull/99. 922 local tests pass, strict Clippy for six affected crates, fmt and xtask all pass. Four subprocess fixtures ignored standalone, two existing graphical playtests not run. Monitoring nine GitHub workflows; native Windows vault test still pending CI. Unrelated .design and local tooling files remain untracked.",
+          "created_at": "2026-09-25T14:59:56.157933140Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAwf4Uxd+TmCHuqSXjRJrFfoLSKp9m4vGFNCGJEbnuLU+hmYM68dDD5AcS/on9RuU7whiGdwKpnkwvxeICz9TjAA=="
+        },
         "b7b52802-dc9d-4972-b32e-bc386d2fc145": {
           "display_id": 1771,
           "author": "6ME5",
