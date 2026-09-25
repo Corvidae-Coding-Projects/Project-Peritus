@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1586,
-        "tip_oid": "98d87008246552c67388b75980afa4301a025b93",
-        "prefix_sha256": "24637a458aee9e79e2703abd0d4445619535f331a1ccfe24b546134888506148"
+        "sequence": 1587,
+        "tip_oid": "f3b18f952ff0c21d2051a0368f6362d6360837b6",
+        "prefix_sha256": "7a2890060287fa6f8f17d8299fa792ea8b251923f3a26a6e2f602d5d5c41142d"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 94,
-  "next_comment_id": 1779,
+  "next_comment_id": 1780,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -11808,7 +11808,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-25T14:33:31.398261726Z",
-      "updated_at": "2026-09-25T15:37:23.264326354Z",
+      "updated_at": "2026-09-25T15:56:28.475107501Z",
       "labels": [
         "bug"
       ],
@@ -11893,6 +11893,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAHxW6jVxC/T2OzWrGBGg6Rfhh4Dfn/RR7uwisxkY+2x2R83F2p7NbiDlZGf+qqSArqPH4zRWWqd8Tpkd0hHpZBQ=="
+        },
+        "ddb7672c-301d-49c6-86c7-c02c14413aea": {
+          "display_id": 1779,
+          "author": "6ME5",
+          "content": "[action] Continuing authorized CI watch and merge. No new failures on either immutable PR head. At 15:55 UTC PR99 has 440 passing checks plus known old-main authority failure; PR100 has 342 passing with no failures. Remaining jobs mostly macOS queue. User authorizes merge after all checks pass: merge #100 to main first, edit PR99 body to trigger fresh pull_request_target with new main checker, wait for all PR99 checks, merge #99 to develop. Do not use admin bypass, auto-merge (only required checks), or accept partial checks. Monitors 11120 and 85968 remain active.",
+          "created_at": "2026-09-25T15:56:28.462508106Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAePDjUceUzDfNiIN2KSuAq2qzq+CQp/svexE/fefanUHGIUIxdfQxLe8rTOvbQcV6eMO8ubrHf8vblJRrgstWCw=="
         },
         "ef9a1642-866a-4597-b25d-4c45a8d8be1f": {
           "display_id": 1769,
