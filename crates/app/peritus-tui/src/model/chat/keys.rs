@@ -23,6 +23,9 @@ impl AppModel {
     }
 
     pub(in crate::model) fn paste_chat_event(&mut self, text: &str) {
+        if self.chat.selecting_output() {
+            return;
+        }
         if self.paste_file_field(text) || self.paste_image_field(text) {
             return;
         }
@@ -40,6 +43,9 @@ impl AppModel {
         }
     }
     pub(in crate::model) fn handle_chat_key(&mut self, key: KeyEvent) -> Vec<Effect> {
+        if self.chat.output_mode.handle_key(key) {
+            return Vec::new();
+        }
         self.chat.mouse_anchor = None;
         if !(key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('c')) {
             self.chat.interrupt_requested = false;

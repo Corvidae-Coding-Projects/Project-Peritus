@@ -296,6 +296,7 @@ impl DeveloperInteraction for LiveConversation {
     fn observe(&self, activity: DeveloperActivity<'_>) -> Result<(), DeveloperLoopError> {
         self.update(|options| match activity {
             DeveloperActivity::Text(bytes) => options.text(bytes),
+            DeveloperActivity::ReasoningSummary(bytes) => options.summary(bytes),
             DeveloperActivity::ModelStarted { model, reasoning } => {
                 options.streaming_text = false;
                 let effort = match reasoning {

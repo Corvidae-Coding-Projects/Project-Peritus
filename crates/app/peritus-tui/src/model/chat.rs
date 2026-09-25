@@ -35,6 +35,7 @@ pub struct ChatUi {
     pub(crate) models: ProductRoleModels,
     pub(crate) scroll: usize,
     pub(crate) expanded: bool,
+    pub(crate) output_mode: navigation::OutputMode,
     pub(crate) working: WorkingIndicator,
     pub(crate) command_selection: usize,
     pub(crate) catalog: Option<ProductModelCatalog>,
@@ -61,6 +62,7 @@ impl Default for ChatUi {
             models: ProductRoleModels::default(),
             scroll: 0,
             expanded: false,
+            output_mode: navigation::OutputMode::Live,
             working: WorkingIndicator::default(),
             command_selection: 0,
             catalog: None,
@@ -76,6 +78,10 @@ impl Default for ChatUi {
     }
 }
 impl ChatUi {
+    pub(crate) const fn selecting_output(&self) -> bool {
+        matches!(self.output_mode, navigation::OutputMode::Selecting)
+    }
+
     pub(super) fn status(&self) -> String {
         self.snapshot.as_ref().map_or_else(
             || "New conversation".to_owned(),

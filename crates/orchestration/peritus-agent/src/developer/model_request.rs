@@ -41,7 +41,11 @@ pub(super) fn build_model_request(
     let reasoning = if negotiated.includes(Capability::ReasoningControls) {
         ReasoningPolicy::Effort {
             effort: selected_effort.unwrap_or(ReasoningEffort::High),
-            summary: SummaryPolicy::None,
+            summary: if negotiated.includes(Capability::ReasoningSummaries) {
+                SummaryPolicy::Auto
+            } else {
+                SummaryPolicy::None
+            },
         }
     } else {
         if selected_effort.is_some() {

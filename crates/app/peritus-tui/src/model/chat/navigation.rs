@@ -6,6 +6,32 @@ use ratatui::layout::Position;
 use super::{AppModel, ChatUi};
 use crate::{input::composer, model::View};
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum OutputMode {
+    Live,
+    Selecting,
+}
+
+impl OutputMode {
+    pub(super) fn handle_key(&mut self, key: crossterm::event::KeyEvent) -> bool {
+        use crossterm::event::KeyCode;
+        match *self {
+            Self::Selecting => {
+                if matches!(key.code, KeyCode::Esc | KeyCode::F(2)) {
+                    *self = Self::Live;
+                }
+                // The terminal owns copy keys; they must never cancel daemon work.
+                true
+            }
+            Self::Live if key.code == KeyCode::F(2) => {
+                *self = Self::Selecting;
+                true
+            }
+            Self::Live => false,
+        }
+    }
+}
+
 impl ChatUi {
     pub(crate) fn selection(&self) -> Option<std::ops::Range<usize>> {
         crate::input::selection::range(self.selection_anchor, self.cursor)
@@ -19,6 +45,7 @@ impl AppModel {
             return;
         }
         if self.view != View::Conversation
+            || self.chat.selecting_output()
             || self.editor.is_some()
             || self.chat.doctor.is_some()
             || self.chat.workbench.open

@@ -67,9 +67,28 @@ fn assistant_reasoning_survives_local_archive_and_recovery_without_becoming_inst
     begin(&mut memory, "next-invocation");
     let fresh = memory.prepare_view(&profile(32_768), &[]).unwrap();
     assert!(
+        render(&fresh).contains("visible answer"),
+        "prior public analysis survives a new invocation"
+    );
+    assert!(render(&fresh).contains("UNTRUSTED PRIOR ASSISTANT TEXT"));
+    assert!(!render(&fresh).contains("untrusted opaque note"));
+    assert!(
         !fresh
             .iter()
             .flat_map(Message::content)
             .any(|block| matches!(block, ContentBlock::Reasoning(_)))
     );
+    assert!(
+        !fresh
+            .iter()
+            .flat_map(Message::content)
+            .any(|block| matches!(block, ContentBlock::ToolCall(_))),
+        "old calls cannot be redispatched"
+    );
+    assert!(peritus_agent::estimate_developer_request_tokens(&fresh, &[]) <= 32_768);
+    memory.publish(&fresh).unwrap();
+    drop(memory);
+    let mut reopened = fixture.open();
+    let recovered = reopened.prepare_view(&profile(32_768), &[]).unwrap();
+    assert!(render(&recovered).contains("visible answer"));
 }

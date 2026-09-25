@@ -248,7 +248,10 @@ async fn drive(
                     let public_text =
                         session.pending().and_then(|envelope| match envelope.event() {
                             ModelEvent::TextDelta { fragment, .. } => {
-                                Some(fragment.expose().to_vec())
+                                Some((false, fragment.expose().to_vec()))
+                            }
+                            ModelEvent::ReasoningSummaryDelta { fragment, .. } => {
+                                Some((true, fragment.expose().to_vec()))
                             }
                             _ => None,
                         });
@@ -270,10 +273,15 @@ async fn drive(
                         trace
                             .account(DeveloperAccountingEvent::Usage(session.usage_high_water()))?;
                     }
-                    if let (Some(port), Some(text)) = (interaction, public_text) {
+                    if let (Some(port), Some((summary, text))) = (interaction, public_text) {
                         // Never insert waiting messages between fragments of public assistant text.
-                        progress.text_received();
-                        port.observe(DeveloperActivity::Text(&text))?;
+                        if summary {
+                            progress.summary_received();
+                            port.observe(DeveloperActivity::ReasoningSummary(&text))?;
+                        } else {
+                            progress.text_received();
+                            port.observe(DeveloperActivity::Text(&text))?;
+                        }
                     }
                 }
             }
