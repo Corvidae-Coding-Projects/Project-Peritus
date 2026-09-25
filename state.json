@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1591,
-        "tip_oid": "8d038e7bc8691e75a77ef4fce389d5e43b98d134",
-        "prefix_sha256": "e9d31eeab2364473dabde7d4aea687fa8bd0c9181061e001db5506dc39075d76"
+        "sequence": 1592,
+        "tip_oid": "5c1f70b0ebad1f54d90f9421ae096f15f2064205",
+        "prefix_sha256": "ee1594118dd2a86157a3e3e0dd89719aaa82eab5f56f18dee9f615a7bd2e5fd9"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 94,
-  "next_comment_id": 1784,
+  "next_comment_id": 1785,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -11808,7 +11808,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-25T14:33:31.398261726Z",
-      "updated_at": "2026-09-25T16:42:19.944858802Z",
+      "updated_at": "2026-09-25T16:58:05.623301876Z",
       "labels": [
         "bug"
       ],
@@ -11830,6 +11830,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABASXP0DtoLTTdhiNjhdo3YWTNOFLrt2v49cnDIxZlZ2drpFyiusRCPYRdMgW0lb/I5krCH4ZN/w3ZpSP99+EtqCg=="
+        },
+        "538cc006-55ad-4178-b510-21d06bfb4281": {
+          "display_id": 1784,
+          "author": "6ME5",
+          "content": "[action] 16:57 UTC: PR100 has 516 passing, 41 pending macOS checks, 4 expected skips, no failures. Merge remains authorized only once all checks finish successfully, exact head e8269599d. Saved PR99 cancellation baseline at /tmp/peritus-pr99-cancelled-baseline.json with job IDs/statuses: native package 126 pass/36 rerun; foundation 165 pass/28 rerun; Gate A 166 pass/48 rerun (includes aggregate failures caused by cancellation). Use gh run rerun --failed after PR100 merge and verify cancelled jobs are included; do not restart successful jobs unnecessarily. Trigger fresh PR99 authority event via body edit after main changes; old authority run cannot load new main on rerun. Monitor100 exec session 85968 active.",
+          "created_at": "2026-09-25T16:58:05.595163875Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAIQvs93+QZUMkiV9VnYndriZhX9inNgh58K6WRRm2gDKwH8ldlTI2rH3HhdqsLgFskNEoIhcBJzoz41Ptp/yJCg=="
         },
         "56febeea-7d46-4ad2-8a78-d5e871447b14": {
           "display_id": 1776,
