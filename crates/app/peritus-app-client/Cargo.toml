@@ -11,9 +11,9 @@ keywords = ["agents", "ipc", "client"]
 categories = ["development-tools"]
 
 [dependencies]
-peritus-app-protocol = { version = "=0.0.3", path = "../peritus-app-protocol" }
-peritus-codec = { version = "=0.0.3", path = "../../foundation/peritus-codec" }
-peritus-types = { version = "=0.0.3", path = "../../foundation/peritus-types" }
+peritus-app-protocol = { version = "=0.0.4", path = "../peritus-app-protocol" }
+peritus-codec = { version = "=0.0.4", path = "../../foundation/peritus-codec" }
+peritus-types = { version = "=0.0.4", path = "../../foundation/peritus-types" }
 getrandom.workspace = true
 tokio.workspace = true
 

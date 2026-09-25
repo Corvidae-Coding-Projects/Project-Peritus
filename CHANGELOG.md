@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.0.4
+
+- Add an experimental browser workspace with persistent projects and sessions, file previews,
+  live activity, and CLI consoles bound to the selected run. The WebUI remains an optional
+  source-built companion; native installers continue to provide the CLI and terminal interface.
+- Collect evidence-backed harness improvement suggestions for later review. Patches are generated
+  only when a user explicitly chooses to evaluate a candidate; collection does not modify or
+  automatically promote the installed harness.
+- Keep long conversations usable by compacting complete reasoning exchanges, preserving replay
+  data, and retrieving bounded prior assistant observations for continuing work.
+- Show provider thinking summaries when supported, and add terminal copy mode with F2 so output
+  can be selected without interrupting background work.
+- Improve credential-store and product-run error messages, preserve interrupted work for explicit
+  retry, and keep managed workspaces bound to the selected repository view.
+- Repair the Codex runtime bridge and cross-platform persistence tests. Harden native package
+  fetches, artifact retries, daemon readiness checks, and trusted-checker CI classification.
+
 ## 0.0.3
 
 - Make compatible-provider connections more reliable for OpenCode Zen and DeepSeek. Recover

@@ -15,10 +15,10 @@ categories = ["development-tools"]
 axum = "=0.8.8"
 tower = { version = "=0.5.3", features = ["util"] }
 tower-http = { version = "=0.6.11", features = ["fs"] }
-peritus-app-client = { version = "=0.0.3", path = "../peritus-app-client" }
-peritus-app-protocol = { version = "=0.0.3", path = "../peritus-app-protocol" }
-peritus-types = { version = "=0.0.3", path = "../../foundation/peritus-types" }
-peritus-local-socket = { version = "=0.0.3", path = "../../runtime/peritus-local-socket" }
+peritus-app-client = { version = "=0.0.4", path = "../peritus-app-client" }
+peritus-app-protocol = { version = "=0.0.4", path = "../peritus-app-protocol" }
+peritus-types = { version = "=0.0.4", path = "../../foundation/peritus-types" }
+peritus-local-socket = { version = "=0.0.4", path = "../../runtime/peritus-local-socket" }
 base64.workspace = true
 getrandom.workspace = true
 portable-pty.workspace = true
@@ -30,7 +30,7 @@ tokio = { workspace = true, features = ["process"] }
 toml.workspace = true
 
 [dev-dependencies]
-peritus-codec = { version = "=0.0.3", path = "../../foundation/peritus-codec" }
+peritus-codec = { version = "=0.0.4", path = "../../foundation/peritus-codec" }
 
 [package.metadata.peritus]
 owner = "G1"

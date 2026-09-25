@@ -18,6 +18,12 @@ Release `0.0.3` also retains the version-1 journal schema and the original `0.0.
 marker. It does not add a journal migration. Application-owned stores remain governed by their
 own opening and recovery contracts; this is not a claim that the full H4 upgrade drills passed.
 
+Release `0.0.4` retains that journal schema and migration marker. The optional WebUI stores its
+project/session metadata separately, and the improvement inbox uses `improvements.sqlite3` under
+the state root. Preserve those application-owned stores with the rest of the state backup.
+Interrupted product runs require explicit retry after restart; collecting an improvement suggestion
+does not change the installed harness. Full H4 upgrade qualification remains a separate evidence gate.
+
 ## Authority and protected data
 
 The release operator may replace package-owned binaries, helpers, manifests, and supervisor
