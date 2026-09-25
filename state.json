@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1588,
-        "tip_oid": "dd0aec1e1f0bc2d84bc13e338c46d6d24d175115",
-        "prefix_sha256": "f79ad0962e79545f34ffab3b1e2a53835569048c6a6db4f64e956dfcb6897522"
+        "sequence": 1589,
+        "tip_oid": "21ea978e1961c63fffb3778c8937e962cd6c3956",
+        "prefix_sha256": "8d490b6e8658c27d1d95c90424e0b40ec6032792ff8a350335b4a1cb4d09360d"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 94,
-  "next_comment_id": 1781,
+  "next_comment_id": 1782,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -11808,7 +11808,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-25T14:33:31.398261726Z",
-      "updated_at": "2026-09-25T16:11:06.205560761Z",
+      "updated_at": "2026-09-25T16:12:55.974187049Z",
       "labels": [
         "bug"
       ],
@@ -11830,6 +11830,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAir4B9Yd/Xfp8BfT5n9IYVOJC1Pcewvuq+4KP8mwWwk0EeVMkw1BiDNqoWR3a620utsKFuk1uw8ZbE7JSGl1fBw=="
+        },
+        "6b8ae54e-0f2b-433f-974c-afb7f27e61d0": {
+          "display_id": 1781,
+          "author": "6ME5",
+          "content": "[action] PR99 cancellation confirmed complete at 16:12 UTC for Native product package, Foundation verification, and Gate A. Monitor 11120 exited on intentional cancelled jobs and downstream aggregate failures; those are scheduling artifacts, not code failures. Only PR100 monitor 85968 remains active. After PR100 merge, trigger fresh authority via PR99 body edit and rerun failed/cancelled jobs in the three saved PR99 run IDs, preserving passed jobs where GitHub allows. All PR99 checks must pass before merge.",
+          "created_at": "2026-09-25T16:12:55.951530028Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAcaWfjTwwNIgnWO3uNxUvjtCGGRSXr8WafVlhaN7CfpgkIMk+35+BuTRsiG32dPsPSYSX8q5DB2ybBkgauby5CA=="
         },
         "72295005-fa5d-4bb0-944d-aa712b59ccec": {
           "display_id": 1772,
