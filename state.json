@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1610,
-        "tip_oid": "8fc7587fe658befccd2ee96de0df87d1d2018669",
-        "prefix_sha256": "ab6a01bd0fa2eccd7b6092485a115c9d285e2cd4a158ccbb18d743200a08b461"
+        "sequence": 1611,
+        "tip_oid": "beedf529a6f61c446b9d8dbc7cdee2c96fcf48b2",
+        "prefix_sha256": "060ee7f0b8172951c2471984ce19ff62184e97667da203642d87f26daf775817"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 95,
-  "next_comment_id": 1798,
+  "next_comment_id": 1799,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -17342,7 +17342,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-25T18:44:39.713275514Z",
-      "updated_at": "2026-09-25T19:30:21.189137338Z",
+      "updated_at": "2026-09-25T19:45:54.343813303Z",
       "labels": [
         "release"
       ],
@@ -17382,6 +17382,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABABzDR3baBRZNGfP2VYfrx3QAF4Gwm4bQ1k5pO9H6D8E8isz0lFORI0m/1yLfi98BwgyD+SeFzIqUuVa/wLA4nBg=="
+        },
+        "e8b6520b-41a1-41f5-8778-b8f8c7b41f08": {
+          "display_id": 1798,
+          "author": "6ME5",
+          "content": "[action] 19:45 UTC: PR101 exact3d49d0b8b664903904ba6f0fe7ed676e273a264b at481pass78pending4expected skips0fail. Remaining checks allmacOS, fiveconcurrentrunners; no realrunnerfailures orcodefixes needed. Linux,Windows,allVerus,WebUI,security,distro passed. Monitor68110active. NeedcompleteallPRchecks/aggregateGateA thennormalexactheadmerge, signedtagv0.0.4, releaseworkflowwithauthorizedsigningenvironmentapproval, artifactverification andpublication, reconciledevelop. Main/develop release work notyetmerged/tagged/published. Preservefullreleaseobjectiveacrosscompaction. Localissue94/session76, state/tmp/peritus-v004-state.json.",
+          "created_at": "2026-09-25T19:45:54.339901383Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAQl3gawBf8IcAe4GGRbIPMaeCtsGujaHD8DHiWr5AZ2DBz06qOlCIg9n7LJT6odkaydRWcKf9iPP+60RlbyMrDw=="
         },
         "f1c9f821-fb34-4a20-882b-09d341a6e300": {
           "display_id": 1795,
