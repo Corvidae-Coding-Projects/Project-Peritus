@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1574,
-        "tip_oid": "1b4138c4ff46a5187aa8acf21625bd621681244b",
-        "prefix_sha256": "c64d98b44d1394f59a776648cf6f9d16f73c7c1f841ae62d54edf8e554b4cae0"
+        "sequence": 1575,
+        "tip_oid": "67a9160f8195acfae5da300666444f85e45f6564",
+        "prefix_sha256": "924786efae008b7bb2a689ad71c47faa87d3aab23dda8afd00089fb8023b7758"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 94,
-  "next_comment_id": 1769,
+  "next_comment_id": 1770,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -11808,10 +11808,21 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-25T14:33:31.398261726Z",
-      "updated_at": "2026-09-25T14:33:51.569279542Z",
+      "updated_at": "2026-09-25T14:42:43.172836220Z",
       "labels": [
         "bug"
-      ]
+      ],
+      "comments": {
+        "ef9a1642-866a-4597-b25d-4c45a8d8be1f": {
+          "display_id": 1769,
+          "author": "6ME5",
+          "content": "[action] On fix/omnibus-product-bugs; implemented reasoning-aware compaction, safe display-summary propagation, F2 native selection, credential diagnostics, Codex invocation guard assertions. Targeted tests compiling; validating persisted analysis and Windows vault roundtrip next.",
+          "created_at": "2026-09-25T14:42:43.168153413Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA8huheqKM3aPbB/1Wo3DkXDitBi0LzHcME5uWcUVHQ/E3GA7NVoHPdAzu1UvwldZy7l8NiW1qhe/XDDLz+KNdDg=="
+        }
+      }
     },
     "8bbbda45-2e84-44e1-87fb-033729ad7029": {
       "uuid": "8bbbda45-2e84-44e1-87fb-033729ad7029",
