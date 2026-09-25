@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1596,
-        "tip_oid": "f4838f52a83af77b9928e6a20693b0785f521421",
-        "prefix_sha256": "c4807ccbf6fcc506f7c6f997309f96fba40bd1834df48677b7eb8668f8b8ac31"
+        "sequence": 1597,
+        "tip_oid": "f4dd1f139cc584a4f4ba4b85e99008c7c9e58e22",
+        "prefix_sha256": "814bafe13e83d75ee4344d2ec541d62051fbaebedc80364ed7afea077a42eb43"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 94,
-  "next_comment_id": 1789,
+  "next_comment_id": 1790,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -11808,7 +11808,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-25T14:33:31.398261726Z",
-      "updated_at": "2026-09-25T17:42:43.188937133Z",
+      "updated_at": "2026-09-25T17:56:56.643558422Z",
       "labels": [
         "bug"
       ],
@@ -11956,6 +11956,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAHxW6jVxC/T2OzWrGBGg6Rfhh4Dfn/RR7uwisxkY+2x2R83F2p7NbiDlZGf+qqSArqPH4zRWWqd8Tpkd0hHpZBQ=="
+        },
+        "c4c4915e-c10a-429d-a6cc-e30df7122863": {
+          "display_id": 1789,
+          "author": "6ME5",
+          "content": "[action] 17:56 UTC: PR99 attempt2 at unchanged94f24adf2 has491 passing,68 pending macOS,4 expected skips,no failures. Active monitor31963. PR100 already merged b1e95edac after576 passing checks; PR99 fresh authority36167290781 succeeded using that main checker. User authorized merge99 to develop once all its checks pass. IMPORTANT deferred duplicate automatic main push workflows must be resumed via --failed once PR99 checks finish: Foundation36167231887,GateA36167231768,Native36167231932. They were temporarily cancelled only after exact tree equality to fully tested e8269599d and no main failures were verified, to prioritize99; user informed. Preserve all successful job results; do not rerun entire workflows unnecessarily. Root/worktree tracked files remain clean; unrelated untracked files untouched.",
+          "created_at": "2026-09-25T17:56:56.632267186Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAHDXBtsiPuJymOfPHBpqgYs0NeU+Hn7rwcA0sy+X3M282QpqoBYFYhrqRJUAiiAyDS6F1bbQlSmmXVMpgJywcAw=="
         },
         "ddb7672c-301d-49c6-86c7-c02c14413aea": {
           "display_id": 1779,
