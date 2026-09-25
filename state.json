@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1590,
-        "tip_oid": "11e8a0297c0ac18bc5900771ad2e9c38ca659005",
-        "prefix_sha256": "78596a2e630a5d86f942a832044f17384715f20f4c9185f653f4d69de38c0557"
+        "sequence": 1591,
+        "tip_oid": "8d038e7bc8691e75a77ef4fce389d5e43b98d134",
+        "prefix_sha256": "e9d31eeab2364473dabde7d4aea687fa8bd0c9181061e001db5506dc39075d76"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 94,
-  "next_comment_id": 1783,
+  "next_comment_id": 1784,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -11808,7 +11808,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-25T14:33:31.398261726Z",
-      "updated_at": "2026-09-25T16:27:31.836511414Z",
+      "updated_at": "2026-09-25T16:42:19.944858802Z",
       "labels": [
         "bug"
       ],
@@ -11875,6 +11875,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA4x/Gs455SmzfgOSNGqDGurHlfz+FI/0QU4OrjiM/5/2V+5Zs0HVGqqJYjULBiop3hGM8WO8TEBJPzoaTaIqSBg=="
+        },
+        "8945f50b-1f21-4929-b31b-06290ba990d0": {
+          "display_id": 1783,
+          "author": "6ME5",
+          "content": "[action] 16:41 UTC: PR100 at unchanged e8269599d has 488 passing, 69 pending (all macOS), 4 expected skipped, no failures. Five macOS runner slots are executing the remaining queue; all Linux/Windows checks passed. Continue monitoring exec session 85968. PR99 remains intentionally stopped after user challenged wasted capacity on its blocked authority check: cancelled run IDs 36151148028, 36151147309, 36151147321. Do not resume until #100 is fully green and merged to main. Then trigger fresh PR99 authority event with a body update, rerun failed/cancelled jobs in the saved runs (verify prior successes preserved), and merge #99 only after every applicable check passes. User has already authorized both merges; no approval question needed.",
+          "created_at": "2026-09-25T16:42:19.915498270Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAywFDsdbl9jgphT8pguiC/VxFlODp5oe2LsB2IPMiXfobgPwtIKZHH25U6NJyMcY1YQNDrSCaHulHTtqtvPruCQ=="
         },
         "8f4992d9-1644-4854-9d21-1129ee194207": {
           "display_id": 1777,
