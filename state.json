@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1620,
-        "tip_oid": "f24bddd1b4c2c856276c8dac3fe6674e05fa7146",
-        "prefix_sha256": "334e6f6348ca0e50d7c94aa3b825ff960d1b4e5be1fbac5c58f731613d3678a2"
+        "sequence": 1621,
+        "tip_oid": "a7b5149eb6dc302c4b53a391f91afdf075480d7c",
+        "prefix_sha256": "772d05d202098e3ec9a9f12ef29e6c1b8acfa2365d577659e747c38ebda516d4"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 95,
-  "next_comment_id": 1808,
+  "next_comment_id": 1809,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -17342,7 +17342,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-25T18:44:39.713275514Z",
-      "updated_at": "2026-09-25T21:44:12.481488391Z",
+      "updated_at": "2026-09-25T21:45:39.187424282Z",
       "labels": [
         "release"
       ],
@@ -17427,6 +17427,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAj/deoEViItdRMev4k+zQrtW7hWXDG6K1eT1uNiPURfheGn7B00NjU80O3h9LrXG7FU6y3U9UkpXGV9j4Se9xDw=="
+        },
+        "780f1ba2-5e43-449c-85a9-5bed043e0a99": {
+          "display_id": 1808,
+          "author": "6ME5",
+          "content": "[action] Immediate CI repair implemented and pushed as PR102 to main: f47a2c296361dcc29d6b46c4cdd01c46dd05303e on fix/windows-capability-fixture-deadlines. Seven files fix60s behavioral fixture budget to180s and output full outcomes; Foundation and Native workflow concurrency now commit-based with only PR heads cancellable; exactpolicy+regression tests updated. 551tests, stricttwo-crateClippy, fmt,actionlint,xtaskall pass. PR102 eight workflows now running. Main restoration monitor91208 includes one planned retry of Windows testing-external after old GateAcompletes; older run sequencing intact. Release monitor18766 healthy94passes4Macarchivesqueued. Do NOT cancel main, do NOT movev004tag. MergePR102 only aftergreen, then validate newmain while completingreleasepublication anddevelopreconcile.",
+          "created_at": "2026-09-25T21:45:39.183497075Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAC36bf1gCHUpUf05/XXg0MjDr6KvgpwsTDe+u/TsER1PVJ0iPQ9Jsbk4479gyQ6aeU9hCkJVYv9RcUverZzpzAg=="
         },
         "c0d6736c-a4ab-491b-a605-3001a7c3ad69": {
           "display_id": 1794,
