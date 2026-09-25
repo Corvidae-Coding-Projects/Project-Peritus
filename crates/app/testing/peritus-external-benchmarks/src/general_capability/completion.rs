@@ -46,7 +46,11 @@ fn candidate_handoff_and_phase_selective_resume_are_public_truth() {
         .await
         .expect("reviewer failure settles");
 
-        assert_eq!(first.settlement().disposition(), RunDisposition::CandidateAvailable);
+        assert_eq!(
+            first.settlement().disposition(),
+            RunDisposition::CandidateAvailable,
+            "candidate handoff: {first:?}",
+        );
         assert_eq!(
             first.settlement().checkpoint().expect("checkpoint").stage(),
             CandidateStage::ReviewPending
@@ -87,7 +91,7 @@ fn candidate_handoff_and_phase_selective_resume_are_public_truth() {
         )
         .await
         .expect("resume succeeds");
-        assert!(accepted.settlement().is_accepted());
+        assert!(accepted.settlement().is_accepted(), "resumed run: {accepted:?}");
         assert_eq!(writer.starts(), writer_starts, "writer reran after completed write and gates");
         let phases = phases.lock().expect("phase log").clone();
         assert!(phases.contains(&ProductRunPhase::Reviewing));

@@ -130,7 +130,9 @@ pub(super) fn input(
         command_runtime: command_runtime(state.path(), repository.path(), run_id),
         finding_state: String::new(),
         task: TASK.to_owned(),
-        max_elapsed: Duration::from_mins(1),
+        // Behavioral fixtures run real Git and Cargo subprocesses. Allow slow hosted
+        // Windows workers to finish; this deadline bounds hangs, not performance.
+        max_elapsed: Duration::from_mins(3),
         delivery_scope: ProductDeliveryScope::WorkspaceChanges,
         conversation: Arc::new(FixedConversation(format!("User:\n{TASK}"))),
         providers,

@@ -182,7 +182,7 @@ fn a_failed_primary_is_circuit_bypassed_while_authorized_fallbacks_finish() {
             )
             .await
             .expect("fallback-backed run");
-            assert!(outcome.settlement().is_accepted());
+            assert!(outcome.settlement().is_accepted(), "fallback run: {outcome:?}");
             assert_eq!(starts.load(Ordering::Acquire), 1, "open primary circuit was retried");
             assert!(
                 failovers

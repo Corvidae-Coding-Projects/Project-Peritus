@@ -51,8 +51,11 @@ pub(super) fn controls_are_exact(workflow: &Hash) -> bool {
         && string(permissions, "contents") == Some("read")
         && exact_keys(concurrency, &["group", "cancel-in-progress"])
         && string(concurrency, "group")
-            == Some("foundation-${{ github.workflow }}-${{ github.ref }}")
-        && mapping_value(concurrency, "cancel-in-progress").and_then(Yaml::as_bool) == Some(true)
+            == Some(
+                "foundation-${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}",
+            )
+        && string(concurrency, "cancel-in-progress")
+            == Some("${{ github.event_name == 'pull_request' }}")
 }
 
 fn workflow_dispatch_is_exact(dispatch: Option<&Yaml>) -> bool {

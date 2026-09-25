@@ -126,12 +126,22 @@ fn workflow_root_controls_are_exact_and_automatic() {
         canonical_ci()
             .replace("    branches: [main]", "    branches: [main]\n    paths: [docs/**]"),
         canonical_ci().replace("  contents: read", "  contents: write"),
-        canonical_ci().replace("  cancel-in-progress: true", "  cancel-in-progress: false"),
+        canonical_ci()
+            .replace("${{ github.event.pull_request.number || github.sha }}", "${{ github.ref }}"),
+        canonical_ci().replace(
+            "cancel-in-progress: ${{ github.event_name == 'pull_request' }}",
+            "cancel-in-progress: true",
+        ),
+        canonical_ci().replace(
+            "cancel-in-progress: ${{ github.event_name == 'pull_request' }}",
+            "cancel-in-progress: false",
+        ),
         canonical_ci().replace(
             "permissions:\n  contents: read",
             "defaults:\n  run:\n    shell: bash {0} || true\n\npermissions:\n  contents: read",
         ),
     ] {
+        assert_ne!(altered, canonical_ci(), "fixture mutation must change canonical CI");
         let (_, diagnostics) =
             validate(".github/workflows/ci.yml", DocumentKind::Workflow, &altered);
         assert_message(&diagnostics, "root triggers, permissions, or concurrency");
