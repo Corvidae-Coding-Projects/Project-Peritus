@@ -45,11 +45,12 @@ default branch, while `github.workflow_sha` and `github.workflow_ref` identify t
 file. A read-only classification job binds those identities, the exact PR base and head, and their
 ancestry before comparing the protected authority inputs. It uses no candidate action or script.
 
-When the candidate changes a protected authority input, classification succeeds with an explicit
-bootstrap-required notice and the `Trusted-base validation` job is skipped. The skipped job does not
+When protected authority inputs differ from checker to PR base or from PR base to candidate,
+classification succeeds with an explicit bootstrap-required notice and the `Trusted-base validation` job is skipped. The skipped job does not
 authorize or validate the transition; it distinguishes a protected-input bootstrap requirement from
-a failed test runner. When the candidate leaves the protected inputs unchanged, the trusted job runs
-the complete validation described below.
+a failed test runner. Only when both comparisons leave protected inputs unchanged does the trusted job run the complete
+validation described below. Each differing comparison is named in the notice. Missing revisions or
+comparison errors fail classification without emitting an eligibility result.
 
 The candidate checkouts explicitly opt into the checkout action's fork checkout because both jobs
 treat the candidate tree as untrusted data: they persist no credentials and execute no candidate
@@ -95,7 +96,7 @@ The code is therefore validation-ready and enforcement-incomplete.
 
 The checker built from `github.workflow_sha` embeds the exact reviewed authority-workflow bytes. For
 an unchanged-input candidate, it rejects any PR-base drift from that workflow or from the
-repository-controlled checker build inputs. Candidate drift is classified before the checker runs.
+repository-controlled checker build inputs. Both inherited PR-base drift and candidate drift are classified before the checker runs.
 A legitimate workflow or checker update must use the explicit external bootstrap above.
 Candidate-provided records cannot authorize it.
 

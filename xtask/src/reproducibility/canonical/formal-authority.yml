@@ -88,6 +88,7 @@ jobs:
           candidate_head="$(git -C candidate rev-parse --verify 'HEAD^{commit}')"
           test "$base_head" = "$BASE_SHA"
           test "$candidate_head" = "$CANDIDATE_SHA"
+          git -C candidate cat-file -e "$CHECKER_SHA^{commit}"
           git -C candidate cat-file -e "$BASE_SHA^{commit}"
           git -C candidate merge-base --is-ancestor "$BASE_SHA" "$CANDIDATE_SHA"
           authority_inputs=(
@@ -98,25 +99,32 @@ jobs:
             .github/workflows/formal-governance.yml
             docs/formal-governance-ruleset.template.json
           )
-          set +e
-          git -C candidate diff --no-ext-diff --no-textconv --quiet \
-            "$BASE_SHA" "$CANDIDATE_SHA" -- "${authority_inputs[@]}"
-          diff_status=$?
-          set -e
-          case "$diff_status" in
-            0)
-              printf 'changed=false\n' >> "$GITHUB_OUTPUT"
-              ;;
-            1)
-              printf 'changed=true\n' >> "$GITHUB_OUTPUT"
-              printf '::notice title=Protected-input bootstrap required::Trusted-base validation is skipped because this pull request changes protected Cargo, xtask, workflow, or ruleset inputs. This classification does not authorize those changes.\n'
-              git -C candidate diff --name-only "$BASE_SHA" "$CANDIDATE_SHA" -- "${authority_inputs[@]}"
-              ;;
-            *)
-              printf 'failed to classify protected authority inputs (git diff exit %s)\n' "$diff_status" >&2
-              exit "$diff_status"
-              ;;
-          esac
+          classify_edge() {
+            local before="$1"
+            local after="$2"
+            local label="$3"
+            set +e
+            git -C candidate diff --no-ext-diff --no-textconv --quiet \
+              "$before" "$after" -- "${authority_inputs[@]}"
+            diff_status=$?
+            set -e
+            case "$diff_status" in
+              0) ;;
+              1)
+                changed=true
+                printf '::notice title=Protected-input bootstrap required::Protected inputs differ on %s. Trusted-base validation is skipped pending a reviewed trusted-checker update. This classification does not authorize the transition.\n' "$label"
+                git -C candidate diff --no-ext-diff --no-textconv --name-only "$before" "$after" -- "${authority_inputs[@]}"
+                ;;
+              *)
+                printf 'failed to classify protected authority inputs on %s (git diff exit %s)\n' "$label" "$diff_status" >&2
+                exit "$diff_status"
+                ;;
+            esac
+          }
+          changed=false
+          classify_edge "$CHECKER_SHA" "$BASE_SHA" checker-to-base
+          classify_edge "$BASE_SHA" "$CANDIDATE_SHA" base-to-candidate
+          printf 'changed=%s\n' "$changed" >> "$GITHUB_OUTPUT"
 
   trusted-base-validation:
     name: Trusted-base validation

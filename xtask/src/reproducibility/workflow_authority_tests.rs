@@ -6,6 +6,10 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, ExitStatus, Stdio};
 use std::sync::atomic::{AtomicU64, Ordering};
 
+#[cfg(unix)]
+#[path = "workflow_authority_classification_tests.rs"]
+mod classification;
+
 const AUTHORITY_INPUTS: &[&str] = &[
     ".cargo/config.toml",
     ".gitattributes",
@@ -128,10 +132,7 @@ fn checker_build_inputs_cannot_drift_on_either_custody_edge() {
 #[test]
 fn protected_input_transition_classification_cannot_be_bypassed_or_misreported() {
     for altered in [
-        canonical().replace(
-            "changed: ${{ steps.classify.outputs.changed }}",
-            "changed: false",
-        ),
+        canonical().replace("changed: ${{ steps.classify.outputs.changed }}", "changed: false"),
         canonical().replace(
             "if: needs.protected-input-classification.outputs.changed == 'false'",
             "if: always()",
@@ -141,14 +142,9 @@ fn protected_input_transition_classification_cannot_be_bypassed_or_misreported()
             "git -C candidate diff --no-ext-diff --no-textconv --quiet",
             "git -C candidate diff --quiet",
         ),
-        canonical().replace(
-            "printf 'changed=true\\n' >> \"$GITHUB_OUTPUT\"",
-            "printf 'changed=false\\n' >> \"$GITHUB_OUTPUT\"",
-        ),
-        canonical().replace(
-            "*)\n              printf 'failed to classify protected authority inputs",
-            "*)\n              printf 'changed=false\\n' >> \"$GITHUB_OUTPUT\"\n              printf 'failed to classify protected authority inputs",
-        ),
+        canonical().replace("changed=true", "changed=false"),
+        canonical()
+            .replace("exit \"$diff_status\"", "printf 'changed=false\\n' >> \"$GITHUB_OUTPUT\""),
     ] {
         assert_rejected(&altered);
     }
