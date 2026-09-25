@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1583,
-        "tip_oid": "dc7f005950f427566b99a674f4ddb8a431dbfb62",
-        "prefix_sha256": "7201bd4e82020fde6b314bd633b1a00c805c0d5b0249389e236d3269e00d2300"
+        "sequence": 1584,
+        "tip_oid": "06a815b6124f55dac0e34b0594b45feab6e7b4fa",
+        "prefix_sha256": "621f74edf749a1cf714b5ce8dee903b99c62a98371027652b0f84e16e74e866f"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 94,
-  "next_comment_id": 1777,
+  "next_comment_id": 1778,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -11804,7 +11804,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-25T14:33:31.398261726Z",
-      "updated_at": "2026-09-25T15:26:56.434485473Z",
+      "updated_at": "2026-09-25T15:32:43.363815606Z",
       "labels": [
         "bug"
       ],
@@ -11844,6 +11844,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA4x/Gs455SmzfgOSNGqDGurHlfz+FI/0QU4OrjiM/5/2V+5Zs0HVGqqJYjULBiop3hGM8WO8TEBJPzoaTaIqSBg=="
+        },
+        "8f4992d9-1644-4854-9d21-1129ee194207": {
+          "display_id": 1777,
+          "author": "6ME5",
+          "content": "Prepared both requested PRs without merging: omnibus PR #99 to develop at signed 94f24adf2 on fix/omnibus-product-bugs; CI-only PR #100 to main at signed e8269599d on fix/authority-main-bootstrap in .worktrees/authority-main-bootstrap. Local product validation: 922 tests, strict six-crate Clippy, fmt and xtask all pass. Main CI patch: 471 xtask tests, strict Clippy, fmt, xtask all, actionlint and canonical parity pass. Native Windows credential cross-process regression verified passing in job 108124542157. All Linux and Windows Rust shards for PR99 have passed, including final Windows runner recovery job 108127146239. Remote CI remains incomplete: macOS jobs and aggregate checks queued; PR100 broad matrix still running. Known PR99 trusted-base failure is inherited from old main classifier; main PR100 must land and a fresh PR event must run before corrected default-branch classifier applies. Neither branch merged. Root tracked worktree clean; unrelated .codex, .crosslink, .design/executable-harness-modules.md, AGENTS.md remain untracked. Background check monitors are exec sessions 11120 (PR99, known authority failure excluded from new-failure stop) and 85968 (PR100); scripts /tmp/peritus-monitor-pr99.py and /tmp/peritus-monitor-pr100.py. Latest log snapshots under /tmp/peritus-pr99-*, /tmp/peritus-main-authority-*. No live daemon/provider changes.",
+          "created_at": "2026-09-25T15:32:43.359351243Z",
+          "kind": "handoff",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAaMwrisIbjmY6tULM7IGT8eN/TAIGKnNmtr/hxfmuDSDuHK7VIrY42yLs2B/gEvfJ/yJlTg2fU72HYYU92QUhAw=="
         },
         "a93eeb68-2907-417a-9ec1-e91ceb8f6599": {
           "display_id": 1773,
