@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1623,
-        "tip_oid": "42df133e3f56f67e9e43d90afa1d9d77d1a7ac2f",
-        "prefix_sha256": "876b334cd1de73942236681c36284e61d042db6a40a973c6d25f36a78c731059"
+        "sequence": 1624,
+        "tip_oid": "1232242acc845b79dc064e4ce75ef3fa798e85d5",
+        "prefix_sha256": "a4852a84af9b90f34cff066194be308c6db489d87b8c10fc7d1e7b3382da4876"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 95,
-  "next_comment_id": 1811,
+  "next_comment_id": 1812,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -17342,7 +17342,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-25T18:44:39.713275514Z",
-      "updated_at": "2026-09-25T22:02:14.653082249Z",
+      "updated_at": "2026-09-25T22:06:21.245818419Z",
       "labels": [
         "release"
       ],
@@ -17472,6 +17472,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAbAGH4UZyG/wwtVlPSegkQKDCgBNSt03YcYxEiPKNV4Cp6+sMpJH9IIfbMCziHWDwkwTkhijwr0KJjgtlF7PnBg=="
+        },
+        "e663b632-216a-4703-a4e5-31d5c7963cd0": {
+          "display_id": 1811,
+          "author": "6ME5",
+          "content": "[action] USER REQUEST: stop token-heavy periodic polling. Switch to silent background watchers and wake this same thread only on failure/completion. Existing monitors: PR102 session50937; mainrestoration91208; release18766. Codex thread01a0c490-3f94-7641-b05a-c34e38fe2e24. Background functions bridge consumes their output without LLM polling and uses send_message_to_thread on terminal/error events. Config/snapshots at /tmp/peritus-alert-watch-state.json. PR102 fix f47a2c296 pushed, actual Windows regression job108262925991 passed74tests. PRnotyetmerged, maingreen restoration stillrequired, v004draftnotpublished, developnotreconciled. Preserve no-main-cancellation constraint; on alert inspect named event and act, then rearmsilentwatch rather than frequent progress updates.",
+          "created_at": "2026-09-25T22:06:21.241244499Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA64W9yu++WYp2vOiL9Jtvx/I/U+xK7ko6Gpy+kU1jePCq2/YzXG+NlVWc/f9JhmJDqUknr3Z9Ji1HXWcCSN1lBA=="
         },
         "e8b6520b-41a1-41f5-8778-b8f8c7b41f08": {
           "display_id": 1798,
