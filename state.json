@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1602,
-        "tip_oid": "d49f8d45b6c7bf3b29b125bdd3b54b0e5d790a25",
-        "prefix_sha256": "ec9d0ca0a4a867f137997e471759df607da78325e97a74e9b95534eee95d477c"
+        "sequence": 1603,
+        "tip_oid": "763326b34f27b081d37ae99e684fc356d7d37918",
+        "prefix_sha256": "11eeae0f8a312e01204885f058c6e9f968fb3635204989b0278951f47e58ccee"
       },
       "NWAR": {
         "sequence": 39,
@@ -54,7 +54,7 @@
       }
     }
   },
-  "next_display_id": 94,
+  "next_display_id": 95,
   "next_comment_id": 1793,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
@@ -143,6 +143,7 @@
     "edda35ab-7441-4598-95a8-a13cc6d161d8": 82,
     "edeb1fcd-4798-4b01-b961-7ca4168230fd": 85,
     "ef6ed3ab-52cd-436a-aa6e-d5d098c89f6c": 8,
+    "f0ea50e8-99f4-44d0-b781-b3cf95e9f6e5": 94,
     "f27888a7-5366-4703-a68a-9f17b1adad81": 20,
     "f350243c-7824-4375-a9c4-63dd3e976f1a": 49,
     "f442c009-255b-4800-a118-169b6debf529": 55,
@@ -17327,6 +17328,17 @@
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAOBF0XmxAsVwi1zDss/uwfwbxIAh90Zn1Lm4pa0CasaO9m/zc54k+AohcL1kQddUVJFwzC6AIuT9kwHppgU8CCQ=="
         }
       }
+    },
+    "f0ea50e8-99f4-44d0-b781-b3cf95e9f6e5": {
+      "uuid": "f0ea50e8-99f4-44d0-b781-b3cf95e9f6e5",
+      "display_id": 94,
+      "title": "Release current develop to main and publish v0.0.4",
+      "description": "User authorized pulling develop and performing a full release to main: version and changelog, complete validation, release PR and merge, signed tag, native artifacts and publication, then reconcile develop.",
+      "status": "open",
+      "priority": "high",
+      "created_by": "6ME5",
+      "created_at": "2026-09-25T18:44:39.713275514Z",
+      "updated_at": "2026-09-25T18:44:39.713275514Z"
     },
     "f27888a7-5366-4703-a68a-9f17b1adad81": {
       "uuid": "f27888a7-5366-4703-a68a-9f17b1adad81",
