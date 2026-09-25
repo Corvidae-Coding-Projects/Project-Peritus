@@ -48,8 +48,16 @@ fn required_workflow_rejects_trigger_permission_and_environment_drift() {
         canonical_governance().replace("    branches: [main]", "    branches: [feature]"),
         canonical_governance().replace("  contents: read", "  contents: write"),
         canonical_governance().replace(
-            "permissions:\n  contents: read",
-            "concurrency:\n  cancel-in-progress: true\n\npermissions:\n  contents: read",
+            "cancel-in-progress: ${{ github.event_name == 'pull_request' }}",
+            "cancel-in-progress: true",
+        ),
+        canonical_governance().replace(
+            "cancel-in-progress: ${{ github.event_name == 'pull_request' }}",
+            "cancel-in-progress: false",
+        ),
+        canonical_governance().replace(
+            "github.event.pull_request.number || github.sha",
+            "github.ref",
         ),
         canonical_governance().replace("  RUSTUP_TOOLCHAIN: 1.97.1\n", ""),
         canonical_governance().replace(

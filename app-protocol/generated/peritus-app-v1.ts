@@ -36,6 +36,7 @@ export type AppPayloadKind =
   | "compatible"
   | "downgraded"
   | "incompatible"
+  | "harness-improvements"
   | "submit-command"
   | "subscribe"
   | "open-artifact"
@@ -87,6 +88,7 @@ export type AppPayloadKind =
   | "query-workbench-permissions"
   | "query-workbench-memory"
   | "discover-init"
+  | "harness-improvements"
   | "command-result"
   | "subscription-started"
   | "artifact-opened"
@@ -305,7 +307,7 @@ export interface CommittedEventRange {
 export interface AppProtocolError {
   readonly code: AppErrorCode;
   readonly retry: RetryDisposition;
-  readonly subsystem: ResponsibleSubsystem;
+  readonly subsystem: "codec" | "negotiation" | "session" | "command" | "subscription" | "artifact" | "prompt" | "terminal" | "daemon" | "provider" | "workspace" | "internal";
   readonly diagnostic?: string;
 }
 

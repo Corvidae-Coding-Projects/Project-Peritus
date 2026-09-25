@@ -10,6 +10,10 @@ ignored_directories = [
     "reference-repos",
     "target",
     "target-verus",
+    "webui/node_modules",
+    "webui/dist",
+    "webui/test-results",
+    "webui/playwright-report",
 ]
 forbidden_module_names = ["common", "helpers", "manager", "misc", "utils"]
 trusted_source_roots = ["crates/foundation/peritus-tcb/src"]
@@ -179,8 +183,22 @@ layer = "app"
 verification_class = "H"
 
 [[packages]]
+name = "peritus-app-client"
+path = "crates/app/peritus-app-client"
+owner = "G1"
+layer = "app"
+verification_class = "C"
+
+[[packages]]
 name = "peritus-cli"
 path = "crates/app/peritus-cli"
+owner = "G1"
+layer = "app"
+verification_class = "C"
+
+[[packages]]
+name = "peritus-web"
+path = "crates/app/peritus-web"
 owner = "G1"
 layer = "app"
 verification_class = "C"

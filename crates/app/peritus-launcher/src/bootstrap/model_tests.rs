@@ -3,6 +3,34 @@ use peritus_product_state::ProviderKind;
 use std::{collections::BTreeMap, fs};
 
 #[test]
+fn direct_reasoning_profiles_enable_supported_display_summaries() {
+    use peritus_product_state::{CompatibleProtocol, DirectProviderProfile};
+    for kind in [
+        ProviderKind::OpenAiApi,
+        ProviderKind::AnthropicApi,
+        ProviderKind::GoogleGeminiApi,
+        ProviderKind::CompatibleEndpoint,
+    ] {
+        let direct = DirectProviderProfile::new(
+            kind,
+            format!("peritus-secret-v1:{}:{}", "01".repeat(16), "02".repeat(32)),
+            (kind != ProviderKind::OpenAiApi).then(|| "https://example.invalid/v1".to_owned()),
+            "fixture-model".to_owned(),
+            (kind == ProviderKind::CompatibleEndpoint).then_some(CompatibleProtocol::Responses),
+            None,
+        )
+        .unwrap();
+        let rendered = configuration::render_direct_provider(kind, Some(&direct)).unwrap();
+        let profile: toml::Value = toml::from_str(&rendered).unwrap();
+        let capabilities = profile["providers"][0]["profile"]["capabilities"].as_array().unwrap();
+        assert_eq!(
+            capabilities.iter().any(|value| value.as_str() == Some("reasoning-summaries")),
+            kind != ProviderKind::CompatibleEndpoint
+        );
+    }
+}
+
+#[test]
 fn missing_account_model_is_rejected_before_durable_state_changes() {
     let temporary = tempfile::tempdir().expect("root");
     let layout = AppLayout::for_test(temporary.path()).prepare().expect("layout");

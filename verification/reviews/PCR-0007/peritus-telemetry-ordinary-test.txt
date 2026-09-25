@@ -1,0 +1,44 @@
+candidate_commit=1440209e50c851b228e6948db3e5389e22bcc55b
+candidate_tree=86fd9fe3d21a79655a02234ddc96c33515c6ad1f
+command=cargo test --package peritus-telemetry --all-targets --all-features --locked
+started_at=2026-09-16T17:58:23Z
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.16s
+     Running unittests src/lib.rs (target/debug/deps/peritus_telemetry-f9c0d035d07cb424)
+
+running 2 tests
+test storage::tests::checkpoint_rejects_a_prefix_without_exact_final_disposition_accounting ... ok
+test storage::tests::identical_retry_reenters_durability_finalization_after_prior_failure ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/buffering_export.rs (target/debug/deps/buffering_export-ddd7d32ccfab7c01)
+
+running 4 tests
+test both_backpressure_policies_are_bounded_and_account_exact_drops ... ok
+test contradictory_acknowledgement_keeps_the_batch_pending ... ok
+test exporter_failure_is_explicit_and_retains_the_exact_batch_for_retry ... ok
+test shutdown_is_bounded_and_only_releases_an_empty_exporter ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/checkpoint_recovery.rs (target/debug/deps/checkpoint_recovery-b92b4ad95e01f7cf)
+
+running 6 tests
+test checkpoint_restart_replays_only_the_undisposed_projection_suffix ... ok
+test corrupted_latest_generation_fails_closed_and_abandoned_temp_is_removed ... ok
+test drop_oldest_checkpoint_preserves_eviction_before_later_export_across_restart ... ok
+test recovery_rejects_a_checkpoint_from_changed_projection_history ... ok
+test reject_newest_checkpoint_preserves_trailing_gap_after_earlier_exports ... ok
+test version_one_checkpoint_marker_is_explicitly_unsupported ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/leakage.rs (target/debug/deps/leakage-28dd2188f5b9d3ac)
+
+running 1 test
+test exporter_adapter_state_never_enters_errors_metrics_or_source_chains ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+finished_at=2026-09-16T17:58:23Z
+exit_status=0

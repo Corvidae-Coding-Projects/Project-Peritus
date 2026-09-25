@@ -48,6 +48,8 @@ pub enum DeveloperActivity<'a> {
     ResponseHealed,
     /// Public assistant text received from a provider, never a reasoning delta.
     Text(&'a [u8]),
+    /// Provider-supplied display summary, never opaque reasoning replay bytes.
+    ReasoningSummary(&'a [u8]),
     /// One exact tool call is about to execute.
     ToolStarted { name: &'a str, arguments: &'a str },
     /// A tool completed with a bounded, user-visible result.

@@ -1,0 +1,41 @@
+candidate_commit=eb187b0f0b1dafb1f079d34aa581acfcd0b6239e
+candidate_tree=fd1a8f2a9bb48d55fda7128aa135632b7aa69be5
+exact_command=cargo test --package peritus-projection --all-targets --all-features --locked
+started_at=2026-09-16T21:55:27Z
+    Blocking waiting for file lock on build directory
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 4.33s
+     Running unittests src/lib.rs (target/debug/deps/peritus_projection-03399c4dfefad0e6)
+
+running 1 test
+test replay::tests::scheduler_family_validation_accepts_v1_v2_and_rejects_v0_v3 ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/agent.rs (target/debug/deps/agent-9498022857eff21f)
+
+running 2 tests
+test projection_rejects_turn_identity_not_derived_from_agent_aggregate ... ok
+test projection_tracks_latest_phase_digest_and_counters ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/conformance.rs (target/debug/deps/conformance-fb3d914b71c3f6f9)
+
+running 1 test
+test production_replay_passes_a2_determinism_and_restart_conformance ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/rebuild.rs (target/debug/deps/rebuild-e9c2b0c967ea7c30)
+
+running 8 tests
+test lifecycle_fold_checks_envelope_and_evidence_fold_has_no_effect ... ok
+test journal_corruption_is_rejected_before_projection_replay ... ok
+test artifact_projection_uses_actual_committed_dependency_digest ... ok
+test shadow_rebuild_restart_checksum_and_atomic_swap ... ok
+test stale_checkpoint_rebuilds_and_stale_swap_is_atomic ... ok
+test corrupt_payload_is_replaced_by_a_new_active_generation ... ok
+test replay_rejects_unknown_typed_invalid_and_stale_revision_records ... ok
+test replay_accepts_supported_scheduler_schemas_only ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s

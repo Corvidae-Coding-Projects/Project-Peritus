@@ -132,6 +132,8 @@ selection, and typed notices. The Help view describes the live key map.
 - `1` through `7` select Runs, Diff, Review, Trace, Evolution, Terminal, or Approvals.
 - `Tab` and `Shift-Tab` cycle views; `j`/`k` or arrows move the selection.
 - `PageUp` and `PageDown` move by a page; `r` requests a refresh.
+- In conversation view, `F2` freezes output and releases mouse capture for native terminal
+  selection and copy. `Esc` or `F2` resumes the live view; daemon work continues throughout.
 - `p` and `u` pause and resume the active event subscription.
 - `Enter` opens the selected approval/input editor; `c` cancels a selected prompt.
 - In Terminal, `a` begins attach entry, `i` captures keys for the PTY, `Ctrl-]` releases capture,

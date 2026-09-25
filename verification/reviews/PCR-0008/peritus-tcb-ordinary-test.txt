@@ -1,0 +1,19 @@
+candidate_commit=eb187b0f0b1dafb1f079d34aa581acfcd0b6239e
+candidate_tree=fd1a8f2a9bb48d55fda7128aa135632b7aa69be5
+exact_command=cargo test --package peritus-tcb --all-targets --all-features --locked
+started_at=2026-09-16T21:56:20Z
+    Blocking waiting for file lock on package cache
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.23s
+     Running unittests src/lib.rs (target/debug/deps/peritus_tcb-44fe7511e156549f)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/manifest_paths.rs (target/debug/deps/manifest_paths-7fa6974db314e79c)
+
+running 2 tests
+test manifest_paths_are_unique_repository_relative_toml_files ... ok
+test manifest_paths_resolve_to_regular_repository_files ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s

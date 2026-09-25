@@ -1,0 +1,14 @@
+schema=peritus.independent-finding-evidence.v1
+finding_id=FINDING-0001
+candidate_commit=58da2dbc18f3248594e3ea3c7b67b540723b4b60
+qualified_equivalent_commit=eb187b0f0b1dafb1f079d34aa581acfcd0b6239e
+candidate_tree=fd1a8f2a9bb48d55fda7128aa135632b7aa69be5
+regression=crates/app/peritus-daemon/src/product_run/error.rs::product_run::error::tests::persistence_error_keeps_operation_cause_and_recovery_action
+failure_platform=windows-2025
+failure_jobs=Foundation Rust test-daemon app-shell; Rust shard test-daemon app-shell
+repair=crates/app/peritus-daemon/src/product_run/error.rs
+ordinary_gate=peritus-daemon-ordinary-test.txt
+verus_gate=peritus-daemon-verus-verify.txt
+focused_linux=passed
+focused_windows_wine=passed
+result=fixed

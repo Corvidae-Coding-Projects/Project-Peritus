@@ -1,0 +1,10 @@
+schema=peritus.independent-finding-evidence.v1
+finding_id=FINDING-0003
+candidate_commit=1440209e50c851b228e6948db3e5389e22bcc55b
+candidate_tree=86fd9fe3d21a79655a02234ddc96c33515c6ad1f
+regression=crates/app/peritus-daemon/src/session/request/response.rs::negotiated_limit_constrains_error_without_dropping_the_connection_frame
+repair=crates/app/peritus-app-protocol/src/error/diagnostic.rs
+repair=crates/app/peritus-daemon/src/session/request.rs
+ordinary_gate=peritus-app-protocol-ordinary-test.txt
+ordinary_gate=peritus-daemon-ordinary-test.txt
+result=fixed

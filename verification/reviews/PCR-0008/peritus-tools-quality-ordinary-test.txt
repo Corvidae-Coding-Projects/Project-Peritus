@@ -1,0 +1,24 @@
+candidate_commit=eb187b0f0b1dafb1f079d34aa581acfcd0b6239e
+candidate_tree=fd1a8f2a9bb48d55fda7128aa135632b7aa69be5
+exact_command=cargo test --package peritus-tools-quality --all-targets --all-features --locked
+started_at=2026-09-16T21:57:39Z
+    Blocking waiting for file lock on build directory
+   Compiling peritus-tools-quality v0.0.3 (/home/doll/Project-Peritus/.worktrees/issue-84-actionable-errors/crates/tools/peritus-tools-quality)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 3.01s
+     Running unittests src/lib.rs (target/debug/deps/peritus_tools_quality-d889009440db5e7e)
+
+running 12 tests
+test discovery::cargo::tests::invalid_manifest_is_not_discovery_success ... ok
+test acceptance::tests::all_execution_relevant_fields_change_the_binding ... ok
+test parser::tests::json_success_requires_an_explicit_true_member ... ok
+test parser::tests::json_parser_never_passes_invalid_or_incomplete_output ... ok
+test discovery::tests::real_temporary_project_discovers_cargo_and_just_surfaces ... ok
+test result::tests::status_failure_and_structured_outcome_matrix_is_closed ... ok
+test discovery::just::tests::finds_only_public_zero_argument_recipes ... ok
+test catalog::tests::catalog_refines_b1_classes_exactly ... ok
+test result::tests::malformed_or_open_terminal_values_fail_closed ... ok
+test error::tests::diagnostic_cap_preserves_utf8_boundaries ... ok
+test result::tests::structured_quality_terminal_decodes_all_required_provenance ... ok
+test result::tests::contradictory_failure_envelopes_are_malformed_and_never_retryable ... ok
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s

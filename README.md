@@ -90,6 +90,21 @@ To open a different folder, run:
 peritus open /path/to/folder
 ```
 
+## Experimental browser workspace
+
+The [harness improvement inbox](docs/harness-improvements.md) collects evidence-backed suggestions for explicit later patch generation and evaluation. Open `/improvements` in the WebUI or use `peritus improvements` in the CLI.
+
+An optional [WebUI](webui/README.md) provides project/session tabs, file previews
+and small text edits, context attachments, Git controls, and native conversations.
+It uses the existing Peritus daemon; the terminal interface remains available.
+
+The WebUI currently requires a source build and is not included in the standard
+installers. Node is needed to build the frontend, not to run the built application.
+It is intended for one local user, not remote hosting or multi-user access.
+See its [security boundaries](webui/SECURITY.md) and
+[native versus CLI capability map](webui/COMMANDS.md) before use. Full CLI parity,
+cross-platform qualification, and complete accessibility acceptance are not claimed.
+
 ## Start a conversation
 
 Type a question, discuss an idea, or request a change, then press Enter.

@@ -150,6 +150,8 @@ fn release_and_lifecycle_matrices_cover_each_native_target_once() {
 #[test]
 fn h2_preparation_is_once_per_native_target_with_every_scenario_retained() {
     let document = workflow(".github/workflows/product-package.yml");
+    assert_eq!(document["env"]["CARGO_HTTP_TIMEOUT"].as_str(), Some("120"));
+    assert_eq!(document["env"]["CARGO_NET_RETRY"].as_str(), Some("10"));
     let prepare = &document["jobs"]["prepare-h2"];
     assert_eq!(prepare["needs"].as_str(), Some("build-h2-binary"));
     let h2 = &document["jobs"]["h2"];
@@ -173,13 +175,11 @@ fn h2_and_lifecycle_only_execute_the_exact_same_run_prepared_artifact() {
     let preparation = document["jobs"]["prepare-h2"]["steps"].as_vec().expect("preparation");
     let upload = preparation
         .iter()
-        .find(|step| {
-            step["uses"].as_str().is_some_and(|value| value.starts_with("actions/upload-artifact@"))
-        })
+        .find(|step| step["uses"].as_str() == Some("./.github/actions/upload-artifact"))
         .expect("prepared package upload");
     assert_eq!(upload["with"]["name"].as_str(), Some("h2-prepared-${{ matrix.os }}"));
     assert_eq!(upload["with"]["path"].as_str(), Some("target/h2-prepared.tar"));
-    assert_eq!(upload["with"]["if-no-files-found"].as_str(), Some("error"));
+    assert_eq!(upload["uses"].as_str(), Some("./.github/actions/upload-artifact"));
     assert_eq!(
         preparation.iter().filter_map(|step| step["run"].as_str()).collect::<Vec<_>>(),
         ["cargo run --locked --package xtask -- product-native-qualification-prepare"]
@@ -234,7 +234,7 @@ fn native_binary_builds_are_individually_bounded_and_downloads_cannot_cross_plat
         Some("h2-bin-${{ matrix.os }}--${{ matrix.binary }}")
     );
     assert_eq!(upload["with"]["path"].as_str(), Some("target/debug/${{ matrix.artifact }}"));
-    assert_eq!(upload["with"]["if-no-files-found"].as_str(), Some("error"));
+    assert_eq!(upload["uses"].as_str(), Some("./.github/actions/upload-artifact"));
     assert_eq!(build["env"]["CARGO_BUILD_JOBS"].as_str(), Some("2"));
     let prepare = document["jobs"]["prepare-h2"]["steps"].as_vec().expect("assembly steps");
     let download = prepare
@@ -271,8 +271,9 @@ fn assert_prepared_consumer(document: &Yaml, job: &str, command: &str) {
                 .is_some_and(|value| value.starts_with("actions/download-artifact@"))
         })
         .expect("same-run download");
-    assert_eq!(download["with"].as_hash().expect("download inputs").len(), 2);
-    assert_eq!(download["with"]["name"].as_str(), Some("h2-prepared-${{ matrix.os }}"));
+    assert_eq!(download["with"].as_hash().expect("download inputs").len(), 3);
+    assert_eq!(download["with"]["pattern"].as_str(), Some("h2-prepared-${{ matrix.os }}--*"));
+    assert_eq!(download["with"]["merge-multiple"].as_bool(), Some(true));
     assert_eq!(download["with"]["path"].as_str(), Some("target/prepared-h2"));
     let commands =
         steps.iter().filter_map(|step| step["run"].as_str()).collect::<Vec<_>>().join("\n");
@@ -287,4 +288,40 @@ fn assert_prepared_consumer(document: &Yaml, job: &str, command: &str) {
     );
     assert!(!commands.contains("product-native-qualification-shard "));
     assert!(!commands.contains("release-bootstrap-smoke"));
+}
+
+#[test]
+fn artifact_retries_avoid_reserved_names_and_do_not_hide_exhaustion() {
+    let action = workflow(".github/actions/upload-artifact/action.yml");
+    let steps = action["runs"]["steps"].as_vec().expect("retry steps");
+    let uploads = steps.iter().filter(|step| step["uses"].as_str().is_some()).collect::<Vec<_>>();
+    assert_eq!(uploads.len(), 3);
+    let mut names = std::collections::BTreeSet::new();
+    for (index, upload) in uploads.iter().enumerate() {
+        assert_eq!(upload["with"]["if-no-files-found"].as_str(), Some("error"));
+        let template = upload["with"]["name"].as_str().expect("artifact name");
+        for (_, _, runner) in TARGETS {
+            for run_attempt in [1, 2] {
+                let prefix = format!("h2-prepared-{runner}--");
+                let name = template
+                    .replace("${{ inputs.name }}", &format!("h2-prepared-{runner}"))
+                    .replace("${{ github.run_attempt }}", &run_attempt.to_string());
+                assert!(name.starts_with(&prefix));
+                assert!(names.insert(name), "retry must not reuse a reserved artifact name");
+            }
+        }
+        if index < 2 {
+            assert_eq!(upload["continue-on-error"].as_bool(), Some(true));
+        } else {
+            assert_ne!(upload["continue-on-error"].as_bool(), Some(true));
+        }
+    }
+    assert_eq!(uploads[0]["id"].as_str(), Some("first"));
+    assert_eq!(uploads[1]["id"].as_str(), Some("second"));
+    assert_eq!(uploads[1]["if"].as_str(), Some("${{ steps.first.outcome == 'failure' }}"));
+    assert_eq!(uploads[2]["if"].as_str(), Some("${{ steps.second.outcome == 'failure' }}"));
+    for (_, _, runner) in TARGETS {
+        let prefix = format!("h2-prepared-{runner}--");
+        assert_eq!(names.iter().filter(|name| name.starts_with(&prefix)).count(), 6);
+    }
 }

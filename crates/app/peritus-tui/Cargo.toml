@@ -13,13 +13,13 @@ categories = ["command-line-utilities"]
 [dependencies]
 base64.workspace = true
 crossterm.workspace = true
-peritus-app-protocol = { version = "=0.0.3", path = "../peritus-app-protocol" }
-peritus-codec = { version = "=0.0.3", path = "../../foundation/peritus-codec" }
-peritus-protocol = { version = "=0.0.3", path = "../../foundation/peritus-protocol" }
-peritus-product-runner = { version = "=0.0.3", path = "../peritus-product-runner" }
-peritus-run-settlement = { version = "=0.0.3", path = "../../orchestration/peritus-run-settlement" }
-peritus-tools-shell = { version = "=0.0.3", path = "../../tools/peritus-tools-shell" }
-peritus-types = { version = "=0.0.3", path = "../../foundation/peritus-types" }
+peritus-app-protocol = { version = "=0.0.4", path = "../peritus-app-protocol" }
+peritus-codec = { version = "=0.0.4", path = "../../foundation/peritus-codec" }
+peritus-protocol = { version = "=0.0.4", path = "../../foundation/peritus-protocol" }
+peritus-product-runner = { version = "=0.0.4", path = "../peritus-product-runner" }
+peritus-run-settlement = { version = "=0.0.4", path = "../../orchestration/peritus-run-settlement" }
+peritus-tools-shell = { version = "=0.0.4", path = "../../tools/peritus-tools-shell" }
+peritus-types = { version = "=0.0.4", path = "../../foundation/peritus-types" }
 ratatui.workspace = true
 sha2.workspace = true
 thiserror.workspace = true

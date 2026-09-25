@@ -243,6 +243,15 @@ impl ProductRunService {
                 )
             }
         };
+        if let Err(error) = self.collect_improvement(record)
+            && let Some(options) = &mut record.interaction
+        {
+            let _ = options.append(
+                peritus_app_protocol::ProductActivityKind::Error,
+                "Could not collect an improvement suggestion. Open the inbox to retry collection.",
+                &error.describe(),
+            );
+        }
         self.deliver_public_reply(record, public_reply);
         super::interaction::terminal_activity(record);
         let _ = persist_record(&self.inner.directory, record);

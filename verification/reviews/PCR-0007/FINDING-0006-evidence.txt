@@ -1,0 +1,17 @@
+schema=peritus.independent-finding-evidence.v1
+finding_id=FINDING-0006
+candidate_commit=d7f710e6e0da2c7577a0d7af0f89f376b01a418f
+candidate_tree=7d077975141a4ab6df6400f6eda34baf8d522390
+regression=xtask/tests/cli.rs::policy_commands_discover_the_workspace_from_a_member_directory
+repair=xtask/tests/cli.rs
+pre_fix_windows_jobs=2
+pre_fix_timeout_minutes=15
+pre_fix_normal_tests_passed=429
+focused_command=cargo test --locked -p xtask --test cli
+focused_result=4 passed, 0 failed, 0 ignored; independent rerun finished in 3.01s
+all_targets_command=cargo test --locked -p xtask --all-targets
+all_targets_result=465 passed, 0 failed (457 unit + 4 cli + 4 release)
+strict_clippy_result=passed
+format_result=passed
+proof_impact_inventory=byte-identical to final3; all 366 transition hashes match the candidate tree
+result=fixed

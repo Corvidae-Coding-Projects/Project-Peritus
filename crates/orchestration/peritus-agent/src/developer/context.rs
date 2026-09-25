@@ -170,7 +170,11 @@ fn complete_unit_end(messages: &[Message], start: usize, cutoff: usize) -> Optio
                 message.content().iter().any(|block| matches!(block, ContentBlock::ToolCall(_)));
             if has_calls {
                 tool_exchange_end(messages, start, cutoff)
-            } else if message.content().iter().all(|block| matches!(block, ContentBlock::Text(_))) {
+            } else if message
+                .content()
+                .iter()
+                .all(|block| matches!(block, ContentBlock::Text(_) | ContentBlock::Reasoning(_)))
+            {
                 Some(start + 1)
             } else {
                 None
@@ -183,10 +187,12 @@ fn complete_unit_end(messages: &[Message], start: usize, cutoff: usize) -> Optio
 fn tool_exchange_end(messages: &[Message], start: usize, cutoff: usize) -> Option<usize> {
     let assistant = messages.get(start)?;
     if assistant.role() != Role::Assistant
-        || assistant
-            .content()
-            .iter()
-            .any(|block| !matches!(block, ContentBlock::Text(_) | ContentBlock::ToolCall(_)))
+        || assistant.content().iter().any(|block| {
+            !matches!(
+                block,
+                ContentBlock::Text(_) | ContentBlock::ToolCall(_) | ContentBlock::Reasoning(_)
+            )
+        })
     {
         return None;
     }

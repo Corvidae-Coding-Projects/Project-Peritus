@@ -26,12 +26,19 @@ use super::wire::{WireClient, raw_connect};
 pub(super) fn second_instance() -> io::Result<DaemonConformanceObservation> {
     let environment = TestEnvironment::new()?;
     let owner = environment.start()?;
+    // Binding IPC precedes the local-principal write. Observe actual readiness before
+    // attributing later state changes to the competitor, and keep this session alive.
+    let mut client = WireClient::establish(owner.endpoint(), fresh_hello(220))?;
+    if !daemon_status(&mut client, 221)?.mutation_ready() {
+        return Err(io::Error::other("first daemon is not ready for the instance test"));
+    }
     let before = fs::symlink_metadata(owner.endpoint())?;
     let state_bytes_before = regular_file_bytes(environment.state_root())?;
     let mut competitor = environment.spawn_competitor()?;
     let status = TestEnvironment::wait_for_exit(&mut competitor)?;
     let after = fs::symlink_metadata(owner.endpoint())?;
     let state_bytes_after = regular_file_bytes(environment.state_root())?;
+    drop(client);
     Ok(DaemonConformanceObservation::Instance(DaemonInstanceObservation::new(
         !status.success(),
         before.dev() == after.dev() && before.ino() == after.ino(),

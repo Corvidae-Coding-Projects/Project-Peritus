@@ -58,6 +58,18 @@ impl ProductRunService {
         reconcile_restored_candidates(&directory, &mut records, &workspace_roots)?;
         Ok(Self {
             inner: Arc::new(Inner {
+                improvements: std::sync::Mutex::new(
+                    super::improvements::Store::open(&state_root.join("improvements.sqlite3"))
+                        .map_err(|e| {
+                            DaemonError::new(
+                                crate::DaemonErrorCode::CorruptState,
+                                crate::DaemonRecovery::Operator,
+                                "open improvement inbox",
+                                e.describe(),
+                            )
+                        })?,
+                ),
+                improvement_launch: Mutex::new(()),
                 controls: std::sync::Mutex::new(controls),
                 control_store,
                 directory,

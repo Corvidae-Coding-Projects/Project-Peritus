@@ -1,0 +1,7 @@
+candidate_commit=1440209e50c851b228e6948db3e5389e22bcc55b
+candidate_tree=86fd9fe3d21a79655a02234ddc96c33515c6ad1f
+command=cargo verus verify --package peritus-provider-anthropic --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20
+started_at=2026-09-16T17:59:11Z
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.24s
+finished_at=2026-09-16T17:59:12Z
+exit_status=0

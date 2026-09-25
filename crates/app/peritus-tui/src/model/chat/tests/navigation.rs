@@ -54,6 +54,22 @@ fn word_navigation_handles_unicode_punctuation_whitespace_and_boundaries() {
 }
 
 #[test]
+fn output_selection_owns_copy_keys_without_cancelling_or_editing() {
+    let mut model = draft("unsent draft");
+    assert!(key(&mut model, KeyCode::F(2)).is_empty());
+    assert!(model.chat.selecting_output());
+    modified(&mut model, KeyCode::Char('c'), KeyModifiers::CONTROL | KeyModifiers::SHIFT);
+    modified(&mut model, KeyCode::Char('c'), KeyModifiers::CONTROL);
+    let _ = model.update(Action::TerminalEvent(Event::Paste("accidental paste".to_owned())));
+    assert!(!model.quitting);
+    assert_eq!(model.chat.buffer, "unsent draft");
+    assert!(key(&mut model, KeyCode::Esc).is_empty());
+    assert!(!model.chat.selecting_output());
+    let _ = key(&mut model, KeyCode::Char('!'));
+    assert_eq!(model.chat.buffer, "unsent draft!");
+}
+
+#[test]
 fn shift_selection_reverses_collapses_and_replaces_without_splitting_utf8() {
     let mut model = draft("a λ界 tail");
     modified(&mut model, KeyCode::Left, KeyModifiers::CONTROL | KeyModifiers::SHIFT);

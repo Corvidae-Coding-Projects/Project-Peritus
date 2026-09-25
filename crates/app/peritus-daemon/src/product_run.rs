@@ -8,6 +8,7 @@ mod deliverable;
 mod doctor;
 mod error;
 mod execution;
+mod improvements;
 mod interaction;
 mod library;
 mod lifecycle;
@@ -60,6 +61,8 @@ pub struct ProductRunService {
 }
 
 struct Inner {
+    improvements: std::sync::Mutex<improvements::Store>,
+    improvement_launch: Mutex<()>,
     controls: std::sync::Mutex<Option<crate::product_control::ControlStore>>,
     control_store: peritus_journal::StoreId,
     directory: PathBuf,

@@ -1,0 +1,30 @@
+candidate_commit=eb187b0f0b1dafb1f079d34aa581acfcd0b6239e
+candidate_tree=fd1a8f2a9bb48d55fda7128aa135632b7aa69be5
+command=CARGO_BUILD_JOBS=1 cargo test --package peritus-network --all-targets --all-features --locked
+started_at=2026-09-16T21:58:06Z
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.18s
+     Running unittests src/lib.rs (target/debug/deps/peritus_network-edbb7b79e64e1d8f)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/network.rs (target/debug/deps/network-594a93b7f697f2eb)
+
+running 14 tests
+test policy::redirect_and_credential_scope_are_exact_and_bounded ... ok
+test policy::canonical_matching_denies_and_special_addresses_are_narrowed ... ok
+test policy::canonical_order_ipv6_and_multi_answer_denial_are_exact ... ok
+test policy::inert_proxy_preparation_starts_only_from_the_checked_plan ... ok
+test managed_proxy_forwards_http_injects_scoped_credential_and_joins ... ok
+test redirects::managed_proxy_revalidates_and_suppresses_a_denied_absolute_redirect ... ok
+test policy::inherited_listener_bridge_accepts_inside_namespace_and_connects_from_parent ... ok
+test managed_proxy_denies_unlisted_destination_before_resolution_or_connect ... ok
+test managed_proxy_connect_tunnels_bidirectionally_and_joins_both_relays ... ok
+test proxy_shutdown_cancels_an_active_connect_and_joins_the_worker ... ok
+test redirects::managed_proxy_preserves_redirect_count_across_upstream_connections ... ok
+test redirects::managed_proxy_follows_relative_redirect_and_returns_only_final_response ... ok
+test connect_byte_ceiling_stops_the_tunnel_and_reports_a_limited_close ... ok
+test worker_bound_applies_backpressure_and_shutdown_joins_the_active_tunnel ... ok
+
+test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.31s

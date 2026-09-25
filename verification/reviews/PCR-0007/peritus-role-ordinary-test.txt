@@ -1,0 +1,43 @@
+candidate_commit=1440209e50c851b228e6948db3e5389e22bcc55b
+candidate_tree=86fd9fe3d21a79655a02234ddc96c33515c6ad1f
+command=cargo test --package peritus-role --all-targets --all-features --locked
+started_at=2026-09-16T17:57:55Z
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.16s
+     Running unittests src/lib.rs (target/debug/deps/peritus_role-7a776d6ca037e9aa)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/policy_boundaries.rs (target/debug/deps/policy_boundaries-cd3c88fe71db2659)
+
+running 4 tests
+test cloned_review_context_keeps_private_and_mutating_material_excluded ... ok
+test context_errors_retain_first_pair_and_complete_payload ... ok
+test independence_projection_keeps_all_combinations_distinct ... ok
+test operation_permission_and_pair_errors_preserve_input_order ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/reviewer_independence.rs (target/debug/deps/reviewer_independence-17f7de5261f15b37)
+
+running 1 test
+test projection_preserves_every_contract_fact_and_requires_fresh_context ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/role_matrix.rs (target/debug/deps/role_matrix-7b98d11311c0ed75)
+
+running 7 tests
+test checked_capability_views_preserve_exact_role_and_operation_membership ... ok
+test checked_context_sets_reject_empty_duplicates_and_unordered_values ... ok
+test every_b1_role_has_an_explicit_non_widening_profile ... ok
+test every_required_and_contributable_class_is_visible ... ok
+test harness_roles_map_exactly_to_b1 ... ok
+test public_capability_constructor_rejects_widening_and_noncanonical_values ... ok
+test writer_fixer_and_reviewer_separation_remains_exact ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+finished_at=2026-09-16T17:57:55Z
+exit_status=0

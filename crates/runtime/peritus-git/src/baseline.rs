@@ -46,7 +46,7 @@ impl GitRepository {
         let commit_expression = format!("{revision}^{{commit}}");
         let mut arguments = strings(&["rev-parse", "--verify", "--end-of-options"]);
         arguments.push(OsString::from(commit_expression));
-        let output = self.checked_repo_command(
+        let output = self.checked_selected_command(
             Operation::ResolveBaseline,
             CommandAccess::Read,
             &arguments,
@@ -60,7 +60,7 @@ impl GitRepository {
         let tree_expression = format!("{}^{{tree}}", commit.object_id());
         let mut arguments = strings(&["rev-parse", "--verify", "--end-of-options"]);
         arguments.push(OsString::from(tree_expression));
-        let output = self.checked_repo_command(
+        let output = self.checked_selected_command(
             Operation::ResolveBaseline,
             CommandAccess::Read,
             &arguments,

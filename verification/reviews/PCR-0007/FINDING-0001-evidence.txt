@@ -1,0 +1,11 @@
+schema=peritus.independent-finding-evidence.v1
+finding_id=FINDING-0001
+candidate_commit=1440209e50c851b228e6948db3e5389e22bcc55b
+candidate_tree=86fd9fe3d21a79655a02234ddc96c33515c6ad1f
+regression=crates/app/peritus-daemon/src/product_run/tests/recovery/persistence_faults.rs::persistent_failure_after_effect_does_not_replay_provider_or_tool_on_restart
+repair=crates/app/peritus-daemon/src/product_run/persistence.rs
+repair=crates/app/peritus-daemon/src/product_run/persistence/record.rs
+repair=crates/app/peritus-daemon/src/product_run/lifecycle.rs
+ordinary_gate=peritus-daemon-ordinary-test.txt
+verus_gate=peritus-daemon-verus-verify.txt
+result=fixed

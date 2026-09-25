@@ -1,0 +1,45 @@
+candidate_commit=eb187b0f0b1dafb1f079d34aa581acfcd0b6239e
+candidate_tree=fd1a8f2a9bb48d55fda7128aa135632b7aa69be5
+command=CARGO_BUILD_JOBS=1 cargo test --package peritus-collaboration --all-targets --all-features --locked
+started_at=2026-09-16T21:55:45Z
+    Blocking waiting for file lock on package cache
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.23s
+     Running unittests src/lib.rs (target/debug/deps/peritus_collaboration-b07e778acae0eba0)
+
+running 1 test
+test wire::fixture_tests::canonical_corpus_is_exact_and_rejects_tag_and_trailing_corruption ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/cancellation_causality.rs (target/debug/deps/cancellation_causality-385acaa600864abe)
+
+running 2 tests
+test pause_blocks_only_new_delegation_and_resume_restores_it ... ok
+test cancellation_propagates_canonically_and_cannot_resurrect_success ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/domain_lifecycle.rs (target/debug/deps/domain_lifecycle-8e89ddd35c67f910)
+
+running 4 tests
+test identities_limits_and_causal_message_shape_are_checked ... ok
+test any_required_needs_one_declared_success_and_optional_failure_does_not_manufacture_it ... ok
+test missing_required_child_wrong_owner_and_stale_reservation_are_rejected_without_transition ... ok
+test all_required_lifecycle_message_handoff_and_finalization_are_exact ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/durability_restart.rs (target/debug/deps/durability_restart-ecafffb6dd431253)
+
+running 2 tests
+test reused_command_identity_with_different_bytes_is_a_conflict ... ok
+test exact_transition_survives_restart_and_resolves_idempotently ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/replay_semantics.rs (target/debug/deps/replay_semantics-7d83252d406b7479)
+
+running 1 test
+test replay_is_exact_and_rejects_empty_duplicate_and_reordered_streams ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s

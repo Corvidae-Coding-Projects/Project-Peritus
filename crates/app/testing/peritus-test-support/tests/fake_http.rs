@@ -302,7 +302,7 @@ fn configuration_and_incoming_request_limits_fail_explicitly() {
     let mut client = TcpStream::connect(server.address()).expect("client must connect");
     write!(client, "GET / HTTP/1.1\r\nX-Oversized: {}", "x".repeat(128))
         .expect("oversized request must reach server");
-    client.shutdown(Shutdown::Both).expect("client must close");
+    drop(client);
     assert_eq!(
         server.finish().expect_err("request head limit must fail").kind(),
         FakeHttpErrorKind::RequestLimit

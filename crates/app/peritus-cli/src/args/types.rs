@@ -27,7 +27,7 @@ COMMANDS:
                                Update now, or configure automatic startup checks
   providers                    Open provider settings
   workspaces                   Switch, add, trust, repair, or forget workspaces
-  open [PATH]                  Launch Peritus for PATH (default: current directory)
+  open [PATH] [--run ID]        Launch PATH, optionally selecting an exact conversation
   status
   shutdown [--wait]
   command submit --actor <ID> --envelope <FILE> --payload <FILE>
@@ -49,6 +49,11 @@ COMMANDS:
                   --columns <N> --rows <N>
   terminal detach --attachment <ID> --process <ID> --originating-request <ID>
   terminal cancel --attachment <ID> --process <ID> --originating-request <ID>
+  improvements list --workspace ID
+  improvements suggest --workspace ID --run ID --proposal TEXT
+  improvements dismiss --workspace ID --candidate DIGEST
+  improvements evaluate --workspace ID --candidate DIGEST --target WORKSPACE
+                        --provider ID --run NEW-RUN-ID
   runs list
   runs show --run <ID>
   runs continue --run <ID> --message <TEXT>
@@ -71,13 +76,14 @@ pub struct Cli {
 }
 
 pub enum Command {
+    Improvements(peritus_app_protocol::ImprovementRequest),
     Help { text: String },
     Version,
     Completions(Shell),
     Update(UpdateArgs),
     Providers,
     Workspaces,
-    Open { path: Option<PathBuf> },
+    Open { path: Option<PathBuf>, run: Option<RunId> },
     Status,
     Shutdown { wait: bool },
     Submit(SubmitArgs),

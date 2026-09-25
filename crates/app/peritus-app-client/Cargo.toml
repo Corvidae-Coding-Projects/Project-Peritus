@@ -1,0 +1,29 @@
+[package]
+name = "peritus-app-client"
+description = "Shared local application-protocol client for Peritus interfaces"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+keywords = ["agents", "ipc", "client"]
+categories = ["development-tools"]
+
+[dependencies]
+peritus-app-protocol = { version = "=0.0.4", path = "../peritus-app-protocol" }
+peritus-codec = { version = "=0.0.4", path = "../../foundation/peritus-codec" }
+peritus-types = { version = "=0.0.4", path = "../../foundation/peritus-types" }
+getrandom.workspace = true
+tokio.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+
+[package.metadata.peritus]
+owner = "G1"
+layer = "app"
+verification-class = "C"
+
+[lints]
+workspace = true

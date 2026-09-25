@@ -1,0 +1,47 @@
+candidate_commit=eb187b0f0b1dafb1f079d34aa581acfcd0b6239e
+candidate_tree=fd1a8f2a9bb48d55fda7128aa135632b7aa69be5
+command=CARGO_BUILD_JOBS=1 cargo test --package peritus-gates --all-targets --all-features --locked
+started_at=2026-09-16T21:57:32Z
+    Blocking waiting for file lock on build directory
+   Compiling peritus-git v0.0.3 (/home/doll/Project-Peritus/.worktrees/issue-84-actionable-errors/crates/runtime/peritus-git)
+   Compiling peritus-workspace v0.0.3 (/home/doll/Project-Peritus/.worktrees/issue-84-actionable-errors/crates/runtime/peritus-workspace)
+   Compiling peritus-tools-quality v0.0.3 (/home/doll/Project-Peritus/.worktrees/issue-84-actionable-errors/crates/tools/peritus-tools-quality)
+   Compiling peritus-gates v0.0.3 (/home/doll/Project-Peritus/.worktrees/issue-84-actionable-errors/crates/orchestration/peritus-gates)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 6.30s
+     Running unittests src/lib.rs (target/debug/deps/peritus_gates-0c642ee659917d98)
+
+running 32 tests
+test descriptor::tests::total_attempt_bound_matches_the_production_codec_collection_ceiling ... ok
+test obligation::tests::bridge_passes_only_a_qualified_obligation_report ... ok
+test obligation::tests::bridge_never_routes_provider_failure_to_fixer ... ok
+test evidence::receipt::tests::two_requirements_cannot_reuse_one_evidence_record ... ok
+test product::report::tests::additional_constraint_participates_in_acceptance_and_evidence ... ok
+test product::plan::tests::explicit_artifact_workspace_covers_general_outputs ... ok
+test product::commands::tests::artifact_manifest_rejects_unknown_or_incompatible_fields ... ok
+test product::plan::tests::conventional_sqlite_workspace_runs_migration_verification ... ok
+test product::plan::tests::changed_json_artifact_gets_structural_acceptance ... ok
+test product::plan::tests::manifestless_python_tests_use_their_nearest_conventional_project ... ok
+test tests::dispatched_attempt_without_a_result_recovers_as_indeterminate ... ok
+test product::plan::tests::root_level_python_tests_cover_workflow_and_documentation_changes ... ok
+test product::plan::tests::manifestless_node_module_runs_adjacent_test_files ... ok
+test tests::action_identity::retry_rejects_reused_action_with_fresh_execution_without_mutation ... ok
+test product::plan::tests::python_requirements_are_verified_without_installing_or_network_access ... ok
+test product::plan::tests::rust_plan_builds_the_exact_nested_package ... ok
+test tests::evidence_binding::receipt_with_another_quality_artifact_set_is_rejected_without_mutation ... ok
+test tests::pause::cancelling_pause_resumes_cancelling_and_cannot_finalize_while_paused ... ok
+test tests::all_d1_families_round_trip_and_checkpoint_matches_replay ... ok
+test tests::evidence_binding::zero_requirement_receipt_is_bound_to_the_exact_result_event_and_manifest ... ok
+test product::plan::tests::standalone_changed_python_source_gets_syntax_acceptance ... ok
+test tests::dependency_failure_blocks_successor_and_replays_exactly ... ok
+test tests::recovery_is_required_before_fresh_retry_and_cancellation_is_fail_closed ... ok
+test tests::complete_evidence_is_required_for_every_passing_dependency ... ok
+test engine::tests::resolved_dispatch_after_later_checkpoint_requires_replay_and_no_effect ... ok
+test engine::tests::exact_resolved_dispatch_never_recreates_an_effect_permit ... ok
+test tests::pause::plan_free_commit_rejects_every_non_lifecycle_command ... ok
+test tests::atomic_genesis_commit_is_idempotent_and_restart_checked ... ok
+test engine::tests::publisher_receipt_for_another_result_position_is_rejected ... ok
+test engine::tests::engine_rejects_commit_through_another_store_without_mutation ... ok
+test tests::pause::active_pause_is_canonical_durable_idempotent_and_restart_safe ... ok
+test engine::tests::same_result_event_from_another_store_is_not_authoritative_provenance ... ok
+
+test result: ok. 32 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s

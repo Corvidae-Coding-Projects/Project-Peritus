@@ -3,7 +3,7 @@
 use super::*;
 
 #[test]
-fn repeated_failed_recovery_admission_does_not_duplicate_restart_narration() {
+fn restored_interrupted_run_remains_idle_without_restart_narration() {
     interaction::block_on(async {
         let repository = repository();
         let state = tempfile::tempdir().expect("state");
@@ -46,8 +46,7 @@ fn repeated_failed_recovery_admission_does_not_duplicate_restart_narration() {
             [&writer, &reviewer, &fixer],
         );
         *restarted.inner.records.write().expect("run ownership") = records;
-        restarted.resume_interrupted().await;
-        restarted.resume_interrupted().await;
+        tokio::time::sleep(Duration::from_millis(100)).await;
 
         let messages = restarted
             .inner
@@ -59,6 +58,16 @@ fn repeated_failed_recovery_admission_does_not_duplicate_restart_narration() {
             .conversation
             .messages()
             .expect("conversation");
+        let status = restarted
+            .inner
+            .records
+            .read()
+            .expect("records")
+            .get(&run_id)
+            .expect("run")
+            .snapshot
+            .status()
+            .to_owned();
         let recovery_messages = messages
             .iter()
             .filter(|message| {
@@ -66,7 +75,8 @@ fn repeated_failed_recovery_admission_does_not_duplicate_restart_narration() {
                     == "The daemon restarted; I am continuing this goal from its preserved workspace."
             })
             .count();
-        assert_eq!(recovery_messages, 1);
+        assert_eq!(recovery_messages, 0);
+        assert!(status.contains("explicit retry"), "{status}");
         assert_eq!(writer.requests.lock().expect("writer requests").len(), 1);
         restarted.shutdown(Duration::from_secs(5)).await;
     });
@@ -147,10 +157,11 @@ fn product_record_fault_boundaries_preserve_an_old_or_complete_new_record() {
                 )
                 .expect("replacement snapshot");
                 inject_persistence_fault(run_id, point);
-                assert!(matches!(
-                    persist_record(&service.inner.directory, record),
-                    Err(ProductRunServiceError::Unavailable)
-                ));
+                let error = persist_record(&service.inner.directory, record)
+                    .expect_err("injected persistence fault");
+                assert!(matches!(error, ProductRunServiceError::Context { .. }));
+                assert!(error.describe().contains("product-run"));
+                assert!(error.describe().contains("injected persistence failure"));
             }
             let observed: serde_json::Value =
                 serde_json::from_slice(&fs::read(&record_path).expect("canonical record bytes"))
@@ -160,6 +171,174 @@ fn product_record_fault_boundaries_preserve_an_old_or_complete_new_record() {
             assert_eq!(observed["status"].as_str(), Some(expected), "fault point {point:?}");
             service.shutdown(Duration::from_secs(5)).await;
         }
+    });
+}
+
+#[test]
+fn interaction_persistence_failure_is_visible_and_terminal_in_memory() {
+    interaction::block_on(async {
+        use super::super::super::persistence::{PersistenceFaultPoint, inject_persistence_fault};
+        use super::super::super::{persist_record, replace_snapshot};
+        use peritus_app_protocol::{
+            ProductActivityKind, ProductInteractionMode, ProductInteractionRequest,
+            ProductRoleModels, ProductRunConversationQuery,
+        };
+
+        let repository = repository();
+        let state = tempfile::tempdir().expect("state");
+        let writer = stalled(0x91, "writer");
+        let reviewer = scripted(0x92, "reviewer", clean_review());
+        let fixer = scripted(0x93, "fixer", Vec::new());
+        let run_id = RunId::new([0x94; 16]).expect("run");
+        let workspace_id = WorkspaceId::new([0x95; 16]).expect("workspace");
+        let service =
+            service(state.path(), repository.path(), workspace_id, [&writer, &reviewer, &fixer]);
+        let request = ProductRunRequest::new(
+            run_id,
+            workspace_id,
+            ProductProviderSelection::new(
+                writer.profile.profile_id(),
+                reviewer.profile.profile_id(),
+                fixer.profile.profile_id(),
+            ),
+            "Exercise a visible conversation persistence failure.".to_owned(),
+        )
+        .expect("request");
+        service
+            .interact(ProductInteractionRequest::new(
+                request,
+                ProductInteractionMode::Chat,
+                ProductRoleModels::default(),
+            ))
+            .await
+            .expect("start interaction");
+        tokio::time::timeout(Duration::from_secs(5), async {
+            while writer.requests.lock().expect("writer requests").is_empty() {
+                tokio::task::yield_now().await;
+            }
+        })
+        .await
+        .expect("provider boundary");
+
+        {
+            let mut records = service.inner.records.write().expect("records");
+            let record = records.get_mut(&run_id).expect("run");
+            record.snapshot = replace_snapshot(
+                &record.snapshot,
+                ProductRunPhase::Writing,
+                "Responding to the conversation",
+                record.snapshot.summary(),
+            )
+            .expect("working snapshot");
+            inject_persistence_fault(run_id, PersistenceFaultPoint::BeforeWrite);
+            let error =
+                persist_record(&service.inner.directory, record).expect_err("persistence failure");
+            assert!(error.describe().contains("write the product-run temporary record"));
+        }
+
+        let visible = service
+            .query_interaction(ProductRunConversationQuery::new(run_id))
+            .expect("in-memory recovery projection");
+        assert_eq!(visible.snapshot().phase(), ProductRunPhase::RecoveryRequired);
+        assert!(visible.snapshot().status().contains("could not be saved"));
+        let failure = visible.activities().last().expect("visible persistence failure");
+        assert_eq!(failure.kind(), ProductActivityKind::Error);
+        assert!(failure.detail().contains("write the product-run temporary record"));
+        assert!(failure.detail().contains("restart Peritus"));
+        service.shutdown(Duration::from_secs(5)).await;
+    });
+}
+
+#[test]
+fn persistent_failure_after_effect_does_not_replay_provider_or_tool_on_restart() {
+    interaction::block_on(async {
+        use super::super::super::persistence::{
+            PersistenceFaultPoint, clear_persistent_persistence_fault,
+            inject_persistent_persistence_fault,
+        };
+        use peritus_app_protocol::{
+            ProductInteractionMode, ProductInteractionRequest, ProductRoleModels,
+        };
+
+        let repository = repository();
+        let state = tempfile::tempdir().expect("state");
+        let mut prefix = complete_writer(CORRECT);
+        prefix.pop();
+        let writer = support::stalled_after(0x61, "writer", prefix);
+        let reviewer = scripted(0x62, "reviewer", clean_review());
+        let fixer = scripted(0x63, "fixer", Vec::new());
+        let run_id = RunId::new([0x64; 16]).expect("run");
+        let workspace_id = WorkspaceId::new([0x65; 16]).expect("workspace");
+        let running =
+            service(state.path(), repository.path(), workspace_id, [&writer, &reviewer, &fixer]);
+        let request = ProductRunRequest::new(
+            run_id,
+            workspace_id,
+            ProductProviderSelection::new(
+                writer.profile.profile_id(),
+                reviewer.profile.profile_id(),
+                fixer.profile.profile_id(),
+            ),
+            "Perform one external effect, then continue safely.".to_owned(),
+        )
+        .expect("request");
+        running
+            .interact(ProductInteractionRequest::new(
+                request,
+                ProductInteractionMode::Build,
+                ProductRoleModels::default(),
+            ))
+            .await
+            .expect("start interaction");
+
+        tokio::time::timeout(Duration::from_secs(30), async {
+            loop {
+                let request_count = writer.requests.lock().expect("writer requests").len();
+                let effect_completed = fs::read_to_string(repository.path().join("src/lib.rs"))
+                    .is_ok_and(|value| value == CORRECT);
+                if request_count == 8 && effect_completed {
+                    break;
+                }
+                tokio::time::sleep(Duration::from_millis(10)).await;
+            }
+        })
+        .await
+        .expect("effect boundary and following provider request");
+        let requests_before_restart = writer.requests.lock().expect("writer requests").len();
+
+        inject_persistent_persistence_fault(run_id, PersistenceFaultPoint::BeforeWrite);
+        running.shutdown(Duration::from_secs(5)).await;
+        drop(running);
+        clear_persistent_persistence_fault(run_id, PersistenceFaultPoint::BeforeWrite);
+
+        let restarted =
+            service(state.path(), repository.path(), workspace_id, [&writer, &reviewer, &fixer]);
+        let records =
+            super::super::super::load_records(&restarted.inner.directory).expect("reload runs");
+        assert_eq!(
+            records.get(&run_id).expect("restored run").snapshot.phase(),
+            ProductRunPhase::RecoveryRequired,
+        );
+        *restarted.inner.records.write().expect("restore ownership") = records;
+        writer
+            .responses
+            .lock()
+            .expect("writer scripts")
+            .push_back(support::text_response(b"do not replay this provider request"));
+
+        tokio::time::sleep(Duration::from_millis(250)).await;
+
+        assert_eq!(
+            writer.requests.lock().expect("writer requests").len(),
+            requests_before_restart,
+            "startup recovery must not replay an indeterminate provider request",
+        );
+        assert_eq!(
+            fs::read_to_string(repository.path().join("src/lib.rs")).expect("retained effect"),
+            CORRECT,
+            "startup recovery must not replay the completed tool effect",
+        );
+        restarted.shutdown(Duration::from_secs(5)).await;
     });
 }
 

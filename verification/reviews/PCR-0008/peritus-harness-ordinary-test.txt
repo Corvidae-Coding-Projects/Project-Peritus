@@ -1,0 +1,107 @@
+candidate_commit=eb187b0f0b1dafb1f079d34aa581acfcd0b6239e
+candidate_tree=fd1a8f2a9bb48d55fda7128aa135632b7aa69be5
+command=CARGO_BUILD_JOBS=1 cargo test --package peritus-harness --all-targets --all-features --locked
+started_at=2026-09-16T21:57:45Z
+   Compiling peritus-harness v0.0.3 (/home/doll/Project-Peritus/.worktrees/issue-84-actionable-errors/crates/orchestration/peritus-harness)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 7.56s
+     Running unittests src/lib.rs (target/debug/deps/peritus_harness-ad1f2cccd331731e)
+
+running 1 test
+test runtime::binding::tests::exact_binding_retains_the_shared_tuple_and_rejects_drift ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/domain_catalog.rs (target/debug/deps/domain_catalog-b3334fd0286a0411)
+
+running 5 tests
+test manifest_limits_can_only_tighten_compiled_ceilings ... ok
+test intervals_feature_sets_and_authority_sets_are_strict ... ok
+test declaration_enforces_compiled_protection_and_authority ... ok
+test nominal_values_reject_noncanonical_or_protected_inputs ... ok
+test complete_catalog_has_stable_unique_tags_and_every_protection_class ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/domain_graph.rs (target/debug/deps/domain_graph-2390be4e1a200a80)
+
+running 6 tests
+test dependency_kind_version_and_digest_are_independently_checked ... ok
+test transitive_authority_and_incompatible_protected_dependencies_reject ... ok
+test unknown_features_remain_inert_and_unsatisfied ... ok
+test graph_resolves_deterministically_and_round_trips_canonical_bytes ... ok
+test declaration_order_is_identity_but_topological_ties_use_component_id ... ok
+test duplicate_missing_and_cycle_are_rejected ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/domain_properties.rs (target/debug/deps/domain_properties-be480e6ba4ac2113)
+
+running 1 test
+test all_small_ranked_dags_match_the_reference_checker_and_round_trip ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests/domain_revision.rs (target/debug/deps/domain_revision-7bbf089d669fec70)
+
+running 6 tests
+test exact_component_bytes_are_checked_before_revision_construction ... ok
+test every_structural_change_to_a_protected_asset_rejects ... ok
+test protected_asset_addition_removal_and_reordering_reject ... ok
+test history_retains_branches_and_allows_only_strict_ancestor_rollback ... ok
+test genesis_and_successor_are_deterministic_content_addressed_values ... ok
+test history_snapshot_is_deterministic_and_fully_rechecked ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/durability_restart.rs (target/debug/deps/durability_restart-d8bce0874a4bd4fd)
+
+running 3 tests
+test fixtures_support::fixed_fixture_constructs_a_content_bound_genesis ... ok
+test atomic_genesis_commit_is_idempotent_and_restart_replay_matches_checkpoint ... ok
+test checked_restart_recreates_plan_and_atomically_settles_exact_claim ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.11s
+
+     Running tests/fixtures_support.rs (target/debug/deps/fixtures_support-5dfcc6b664bc570a)
+
+running 1 test
+test fixed_fixture_constructs_a_content_bound_genesis ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/manifest_document.rs (target/debug/deps/manifest_document-49ca1d010bbcedd1)
+
+running 2 tests
+test strict_manifest_retains_exact_bytes_and_checked_declaration ... ok
+test unknown_manifest_field_and_noncanonical_digest_fail_closed ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/manifest_loading.rs (target/debug/deps/manifest_loading-b35a2294731a1281)
+
+running 2 tests
+test real_c1_snapshot_loads_checks_finalizes_and_constructs_genesis ... ok
+test real_c1_inventory_rejects_missing_undeclared_and_drifted_content ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.33s
+
+     Running tests/materialization_safety.rs (target/debug/deps/materialization_safety-5d9482f91a346fd5)
+
+running 4 tests
+test rollback_reason_is_explicit_bounded_and_control_free ... ok
+test absent_files_and_malformed_plan_bytes_cannot_be_activated ... ok
+test fixtures_support::fixed_fixture_constructs_a_content_bound_genesis ... ok
+test deterministic_plan_round_trips_exact_artifact_and_snapshot_bindings ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.09s
+
+     Running tests/replay_wire.rs (target/debug/deps/replay_wire-b38c8135a0e43b81)
+
+running 5 tests
+test complete_frame_trailing_bytes_are_rejected ... ok
+test fixtures_support::fixed_fixture_constructs_a_content_bound_genesis ... ok
+test replay_projection_matches_live_state_and_rejects_duplicate_genesis ... ok
+test families_79_80_81_round_trip_only_through_checked_activation ... ok
+test canonical_corpus_is_exact_and_rejects_corruption ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s

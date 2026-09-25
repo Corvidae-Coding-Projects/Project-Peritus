@@ -1,0 +1,137 @@
+candidate_commit=1440209e50c851b228e6948db3e5389e22bcc55b
+candidate_tree=86fd9fe3d21a79655a02234ddc96c33515c6ad1f
+command=cargo test --package peritus-context --all-targets --all-features --locked
+started_at=2026-09-16T17:53:50Z
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.14s
+     Running unittests src/lib.rs (target/debug/deps/peritus_context-51530f6c5316fe3c)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/compaction_matrix.rs (target/debug/deps/compaction_matrix-f1251128e67a7a7c)
+
+running 9 tests
+test hidden_source_is_rejected_even_with_a_plan_from_another_graph ... ok
+test protected_and_mixed_context_sources_are_rejected ... ok
+test ranges_and_proposals_reject_empty_overlap_duplicate_and_noncanonical_inputs ... ok
+test replacement_rejects_required_sources_and_graph_drift ... ok
+test replacement_separates_lineage_and_rewrites_live_dependencies ... ok
+test successful_compaction_retains_provenance_ranges_dependencies_and_savings ... ok
+test trust_is_preserved_only_for_all_trusted_inputs_and_an_explicit_policy ... ok
+test validation_rejects_missing_digest_range_selection_and_savings_failures ... ok
+test validation_rejects_policy_identity_existing_output_and_self_lineage ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/graph_matrix.rs (target/debug/deps/graph_matrix-24a7007a7c7f12bd)
+
+running 8 tests
+test cycle_diagnostics_preserve_legacy_residual_order_for_complex_shapes ... ok
+test dependency_metadata_rejects_self_duplicate_and_noncanonical_edges ... ok
+test dependent_count_traversal_preserves_long_chain_and_cycle_result ... ok
+test graph_rejects_cycles_and_accepts_a_canonical_dag ... ok
+test graph_rejects_empty_duplicate_unordered_and_missing_nodes ... ok
+test identifiers_content_and_limits_are_checked ... ok
+test node_metadata_rejects_zero_and_security_mismatches ... ok
+test visibility_requires_nonempty_canonical_unique_roles ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/poisoning.rs (target/debug/deps/poisoning-a735adbc0db5255a)
+
+running 2 tests
+test instruction_like_payloads_from_every_non_authoritative_source_stay_evidence ... ok
+test render_order_preserves_precedence_and_every_metadata_field ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/reuse_matrix.rs (target/debug/deps/reuse_matrix-d2ab676c141ff356)
+
+running 5 tests
+test changed_source_requires_new_digest_bound_context_before_selection ... ok
+test deterministic_selection_retains_full_provenance_and_packet_order ... ok
+test link_admission_rejects_duplicate_missing_and_absent_nodes ... ok
+test packet_binding_uses_the_complete_candidate_identity ... ok
+test role_and_context_class_visibility_are_both_required ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/selection_certificate.rs (target/debug/deps/selection_certificate-d36582f4581dc832)
+
+running 4 tests
+test exact_success_and_exact_first_error_are_certified ... ok
+test optional_atomicity_ranking_and_first_error_precedence_cannot_be_substituted ... ok
+test optional_omission_details_and_full_accounting_cannot_be_substituted ... ok
+test required_closure_reasons_and_render_order_cannot_be_substituted ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/selection_matrix.rs (target/debug/deps/selection_matrix-6d2d0ea99156132c)
+
+running 10 tests
+test an_optional_root_with_a_hidden_dependency_is_omitted_before_capacity_checks ... ok
+test dependency_required_nodes_are_never_ranked_as_standalone_optional_roots ... ok
+test hidden_required_root_and_dependency_fail_transactionally ... ok
+test identical_inputs_produce_byte_for_byte_equal_plans ... ok
+test optional_closure_is_omitted_atomically_and_explained ... ok
+test optional_omission_uses_the_first_capacity_failure_and_names_only_the_root ... ok
+test ranking_uses_authority_requirement_priority_recency_then_id ... ok
+test required_budget_node_and_byte_failures_name_the_root ... ok
+test required_root_selects_complete_dependency_closure ... ok
+test token_budget_checks_boundaries_and_reports_each_component ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/working_bounds.rs (target/debug/deps/working_bounds-f04ede8c0a7db729)
+
+running 6 tests
+test duplicate_unordered_and_host_status_proposals_are_rejected ... ok
+test identical_inputs_reduce_to_identical_state_and_noop_refresh_is_idempotent ... ok
+test reviewer_projection_omits_even_required_derived_entries_and_rejects_other_roles ... ok
+test source_capacity_exhaustion_keeps_the_existing_prefix ... ok
+test stale_evidence_must_postdate_repeated_environment_invalidation ... ok
+test state_rechecks_proposals_built_with_wider_limits ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/working_headroom.rs (target/debug/deps/working_headroom-d3a2127a6f2762ae)
+
+running 2 tests
+test headroom_preserves_required_roots_and_shared_dependencies_without_optional_expansion ... ok
+test optional_entries_do_not_borrow_headroom ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/working_replay.rs (target/debug/deps/working_replay-854325798458be30)
+
+running 7 tests
+test all_truncated_prefixes_and_trailing_bytes_are_rejected ... ok
+test canonical_observation_version_one_fixture_is_stable ... ok
+test rejected_reducers_and_partial_replay_leave_the_exact_input_state_unchanged ... ok
+test replay_never_skips_a_bad_event_or_redispatches_any_operation ... ok
+test snapshot_plus_committed_suffix_matches_uninterrupted_execution ... ok
+test snapshot_preserves_sticky_staleness_and_superseded_evidence ... ok
+test unknown_versions_scope_and_wider_snapshot_limits_fail_closed ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/working_state.rs (target/debug/deps/working_state-cf437649628b9072)
+
+running 11 tests
+test dependency_cycles_include_supersession_edges ... ok
+test every_scope_dimension_is_checked_before_read_or_write ... ok
+test file_changes_invalidate_transitively_but_unrelated_edits_do_not ... ok
+test malformed_ranges_limits_and_reference_order_are_rejected ... ok
+test missing_sources_and_dependencies_reject_the_entire_batch ... ok
+test model_status_never_confers_authority_and_counterevidence_survives ... ok
+test observations_are_contiguous_exact_and_idempotent ... ok
+test revision_and_conversation_rebinding_are_monotonic ... ok
+test stale_reactivation_requires_evidence_after_the_invalidation_boundary ... ok
+test supersession_retains_sources_and_invalidates_dependents ... ok
+test uncertain_or_missing_file_dependencies_cannot_be_asserted_current ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+finished_at=2026-09-16T17:53:50Z
+exit_status=0

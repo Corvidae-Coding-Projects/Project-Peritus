@@ -1,0 +1,9 @@
+schema=peritus.independent-finding-evidence.v1
+finding_id=FINDING-0002
+candidate_commit=1440209e50c851b228e6948db3e5389e22bcc55b
+candidate_tree=86fd9fe3d21a79655a02234ddc96c33515c6ad1f
+regression=crates/app/peritus-tui/src/model/chat/tests.rs::rejected_chat_open_restores_navigation_and_shows_the_daemon_error
+repair=crates/app/peritus-tui/src/model/protocol/response.rs
+ordinary_gate=peritus-app-protocol-ordinary-test.txt
+verus_gate=peritus-app-protocol-verus-verify.txt
+result=fixed

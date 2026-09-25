@@ -27,53 +27,7 @@ fn developer_loop_preserves_opaque_reasoning_on_the_next_tool_result_request() {
             .expect("profile");
             let replay =
                 br#"{"service":"deepseek","fields":{"reasoning_content":"opaque thought"}}"#;
-            let item = ItemId::new("reasoning-item".to_owned()).expect("item");
-            let mut events: Vec<_> =
-                tool_response().into_iter().map(|event| event.event().clone()).collect();
-            events.splice(
-                1..1,
-                [
-                    ModelEvent::ItemStarted {
-                        item_id: item.clone(),
-                        index: 1,
-                        kind: ItemKind::Reasoning,
-                    },
-                    if opaque {
-                        ModelEvent::ReasoningReplayDelta {
-                            item_id: item.clone(),
-                            fragment: StreamFragment::new(
-                                replay.to_vec(),
-                                ProtocolLimits::PRODUCTION,
-                            )
-                            .expect("replay"),
-                        }
-                    } else {
-                        ModelEvent::ReasoningSummaryDelta {
-                            item_id: item.clone(),
-                            fragment: StreamFragment::new(
-                                b"visible summary".to_vec(),
-                                ProtocolLimits::PRODUCTION,
-                            )
-                            .expect("summary"),
-                        }
-                    },
-                    ModelEvent::ItemCompleted(item),
-                ],
-            );
-            let response = events
-                .into_iter()
-                .enumerate()
-                .map(|(index, event)| {
-                    EventEnvelope::new(
-                        u64::try_from(index + 1).expect("sequence"),
-                        None,
-                        None,
-                        peritus_types::Sha256Digest::new([1; 32]),
-                        event,
-                    )
-                    .expect("envelope")
-                })
-                .collect();
+            let response = reasoning_response(opaque, replay);
             let provider = ScriptedProvider {
                 profile,
                 responses: Mutex::new(VecDeque::from([response, text_response()])),
@@ -104,4 +58,47 @@ fn developer_loop_preserves_opaque_reasoning_on_the_next_tool_result_request() {
             drop(requests);
         });
     }
+}
+
+pub fn reasoning_response(opaque: bool, replay: &[u8]) -> VecDeque<EventEnvelope> {
+    let item = ItemId::new("reasoning-item".to_owned()).expect("item");
+    let mut events: Vec<_> =
+        tool_response().into_iter().map(|event| event.event().clone()).collect();
+    events.splice(
+        1..1,
+        [
+            ModelEvent::ItemStarted { item_id: item.clone(), index: 1, kind: ItemKind::Reasoning },
+            if opaque {
+                ModelEvent::ReasoningReplayDelta {
+                    item_id: item.clone(),
+                    fragment: StreamFragment::new(replay.to_vec(), ProtocolLimits::PRODUCTION)
+                        .expect("replay"),
+                }
+            } else {
+                ModelEvent::ReasoningSummaryDelta {
+                    item_id: item.clone(),
+                    fragment: StreamFragment::new(
+                        b"visible summary".to_vec(),
+                        ProtocolLimits::PRODUCTION,
+                    )
+                    .expect("summary"),
+                }
+            },
+            ModelEvent::ItemCompleted(item),
+        ],
+    );
+    events
+        .into_iter()
+        .enumerate()
+        .map(|(index, event)| {
+            EventEnvelope::new(
+                u64::try_from(index + 1).expect("sequence"),
+                None,
+                None,
+                peritus_types::Sha256Digest::new([1; 32]),
+                event,
+            )
+            .expect("envelope")
+        })
+        .collect()
 }

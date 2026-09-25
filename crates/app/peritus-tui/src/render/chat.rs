@@ -44,16 +44,29 @@ pub(super) fn draw(frame: &mut Frame<'_>, model: &AppModel) {
         Paragraph::new(vec![
             Line::styled(title, Style::default().fg(ACCENT).add_modifier(Modifier::BOLD)),
             Line::styled(
-                "Type / for commands · /model · /effort · PageUp/PageDown scroll · /details",
+                if model.chat.selecting_output() {
+                    "F2/Esc returns · SELECT: drag, then terminal Copy (Ctrl+Shift+C) · work continues"
+                } else {
+                    "Type / for commands · /model · /effort · PageUp/PageDown scroll · F2 select/copy · /details"
+                },
                 Style::default().fg(MUTED),
             ),
         ]),
         regions[0],
     );
     if let Some(seconds) = working_seconds {
+        let progress = model
+            .chat
+            .snapshot
+            .as_ref()
+            .and_then(|snapshot| snapshot.activities().last())
+            .filter(|activity| activity.kind() == ProductActivityKind::Status)
+            .map_or("", |activity| activity.text());
         frame.render_widget(
-            Paragraph::new(format!("*working ({seconds}s)"))
-                .style(Style::default().fg(Color::White).add_modifier(Modifier::BOLD)),
+            Paragraph::new(crate::sanitize::sanitize_display_text(&format!(
+                "*working ({seconds}s) {progress}"
+            )))
+            .style(Style::default().fg(Color::White).add_modifier(Modifier::BOLD)),
             regions[2],
         );
     }
@@ -198,7 +211,9 @@ fn draw_transcript(frame: &mut Frame<'_>, area: Rect, model: &AppModel) {
             lines.push(Line::styled("Earlier activity is outside this bounded window. The durable conversation and trace remain available.", Style::default().fg(MUTED)));
         }
         for activity in snapshot.activities() {
-            if !model.chat.expanded && activity.kind() == ProductActivityKind::Status {
+            let thinking = activity.kind() == ProductActivityKind::Status
+                && activity.detail() == "Provider thinking summary";
+            if !model.chat.expanded && activity.kind() == ProductActivityKind::Status && !thinking {
                 continue;
             }
             if activity.kind() == ProductActivityKind::Tool {
@@ -209,7 +224,9 @@ fn draw_transcript(frame: &mut Frame<'_>, area: Rect, model: &AppModel) {
                 ProductActivityKind::User => ("You", ACCENT),
                 ProductActivityKind::Assistant => ("Peritus", GOOD),
                 ProductActivityKind::Tool => ("Tool", MUTED),
-                ProductActivityKind::Status => ("Status", MUTED),
+                ProductActivityKind::Status => {
+                    (if thinking { "Thinking" } else { "Status" }, MUTED)
+                }
                 ProductActivityKind::Error => ("Error", BAD),
             };
             lines

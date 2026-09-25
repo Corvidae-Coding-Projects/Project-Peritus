@@ -52,8 +52,15 @@ ask a question or request scoped work. Questions and diagnosis do not implicitly
 
 Type `/` to discover commands, use arrows and Tab to complete them, and use Shift-Enter for
 newlines. PageUp/PageDown scroll public activity; `/details` expands bounded tool summaries.
+Press F2 to select and copy the visible output with the terminal's normal mouse selection and
+Copy command (Ctrl-Shift-C in Windows Terminal). This freezes the display and releases mouse
+capture while daemon work continues. Esc or F2 returns to live output. To copy another page,
+return to live output, scroll, then press F2 again.
 Raw tool arguments/results stay in the trace rather than being copied into the public activity
-projection, and hidden reasoning is not shown. The bounded activity window explicitly reports
+projection. Provider-supplied display summaries appear as Thinking activity; opaque reasoning
+replay is never displayed. Summaries are requested only when the provider declares support;
+otherwise the working line displays elapsed time and the latest host status.
+The bounded activity window explicitly reports
 omitted earlier history; durable conversation records and traces remain available.
 
 Messages submitted during work show separate received and incorporated revisions. New input

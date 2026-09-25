@@ -39,6 +39,8 @@ const DISABLED_NATIVE_FEATURES: &[&str] = &[
     "tool_call_mcp_elicitation",
     "request_permissions_tool",
     "code_mode",
+    "sleep_tool",
+    "tool_suggest",
 ];
 
 pub(super) fn require_authenticated<'a>(
@@ -137,6 +139,12 @@ fn arguments(
         model.to_owned(),
         "--config".to_owned(),
         format!("model_reasoning_effort=\"{reasoning_effort}\""),
+        "--config".to_owned(),
+        "tools.update_plan.enabled=false".to_owned(),
+        "--config".to_owned(),
+        "tools.experimental_request_user_input.enabled=false".to_owned(),
+        "--config".to_owned(),
+        "web_search=\"disabled\"".to_owned(),
     ];
     for feature in DISABLED_NATIVE_FEATURES {
         values.push("--disable".to_owned());

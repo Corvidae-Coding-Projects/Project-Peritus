@@ -1,0 +1,16 @@
+candidate_commit=eb187b0f0b1dafb1f079d34aa581acfcd0b6239e
+candidate_tree=fd1a8f2a9bb48d55fda7128aa135632b7aa69be5
+command=CARGO_BUILD_JOBS=1 cargo test --package peritus-local-socket --all-targets --all-features --locked
+started_at=2026-09-16T21:58:02Z
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.16s
+     Running unittests src/lib.rs (target/debug/deps/peritus_local_socket-a21b5aaeeac544e4)
+
+running 6 tests
+test path::tests::long_unicode_paths_are_stable_and_isolated_by_the_complete_original_path ... ok
+test path::tests::preserves_existing_paths_through_each_platform_boundary ... ok
+test unix::tests::ordinary_clients_round_trip_at_a_short_private_runtime_address ... ok
+test unix::tests::refuses_symlinks_wrong_owner_and_broad_permissions_without_repair ... ok
+test path::tests::rejects_invalid_paths_without_turning_them_into_valid_runtime_names ... ok
+test unix::tests::cleanup_preserves_replacements_and_nonempty_directories ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s

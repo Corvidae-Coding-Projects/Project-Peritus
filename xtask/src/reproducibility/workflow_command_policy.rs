@@ -2,6 +2,7 @@ use super::policy_file;
 use super::verus_commands::CANONICAL_VERUS_ARGS;
 use super::workflow_actionlint;
 use super::workflow_commands::parse_script;
+use super::workflow_webui;
 use crate::error::{Diagnostic, XtaskError};
 use std::fs;
 use std::path::Path;
@@ -23,15 +24,25 @@ const AUDITED_EXECUTABLES: [&str; 8] =
 #[derive(Clone, Copy)]
 pub(super) struct CommandPolicy {
     locked_xtask_alias: bool,
+    webui_scripts: bool,
 }
 
 impl CommandPolicy {
     pub(super) const fn new(locked_xtask_alias: bool) -> Self {
-        Self { locked_xtask_alias }
+        Self { locked_xtask_alias, webui_scripts: false }
     }
 
     pub(super) const fn permits_xtask(self) -> bool {
         self.locked_xtask_alias
+    }
+
+    pub(super) const fn with_webui_scripts(mut self, permitted: bool) -> Self {
+        self.webui_scripts = permitted;
+        self
+    }
+
+    pub(super) const fn permits_webui(self) -> bool {
+        self.webui_scripts
     }
 }
 
@@ -63,7 +74,8 @@ pub(super) fn load(
             "retain only the locked xtask alias, incremental=false, and reviewed network settings; aliases, wrappers, sources, tools, and env overrides are forbidden",
         ));
     }
-    Ok(CommandPolicy::new(valid))
+    Ok(CommandPolicy::new(valid)
+        .with_webui_scripts(workflow_webui::validate_package(root, diagnostics)))
 }
 
 pub(super) fn config_is_exact(config: &toml::Value) -> bool {
@@ -106,7 +118,10 @@ fn reject_nested_configs(root: &Path, diagnostics: &mut Vec<Diagnostic>) -> Resu
                     ]
                     .iter()
                     .any(|ignored| name == *ignored);
-                if !root_exclusion {
+                let webui_output = workflow_webui::is_generated_directory(
+                    path.strip_prefix(root).unwrap_or(&path),
+                );
+                if !root_exclusion && !webui_output {
                     directories.push(path);
                 }
                 continue;
@@ -164,7 +179,11 @@ fn validate_with_mode(
     let actionlint_install = workflow_actionlint::is_reviewed_install(&parsed);
     let config_preflight = parsed.is_reviewed_config_preflight();
     let ubuntu_sandbox_install = parsed.is_reviewed_ubuntu_sandbox_install();
-    let rust_setup_backoff = path == Path::new(".github/actions/setup-rust/action.yml")
+    let action_backoff = [
+        Path::new(".github/actions/setup-rust/action.yml"),
+        Path::new(".github/actions/upload-artifact/action.yml"),
+    ]
+    .contains(&path)
         && matches!(script.trim(), "sleep 10" | "sleep 20");
     if !parsed.is_failure_propagating()
         && !parsed.is_reviewed_archive_install()
@@ -191,7 +210,7 @@ fn validate_with_mode(
             && !AUDITED_EXECUTABLES.contains(&executable)
             && !(actionlint_install && executable == "tar")
             && !(config_preflight && executable == "git")
-            && !(rust_setup_backoff && executable == "sleep")
+            && !(action_backoff && executable == "sleep")
             && !(ubuntu_sandbox_install
                 && matches!(executable, "sudo" | "apt-get" | "apparmor_parser" | "bwrap"))
         {
@@ -245,32 +264,36 @@ mod tests {
     use super::*;
 
     #[test]
-    fn rust_setup_backoff_is_bounded_literal_and_scoped_to_the_reviewed_action() {
-        let action = Path::new(".github/actions/setup-rust/action.yml");
-        for script in ["sleep 10", "sleep 20\n"] {
-            let mut diagnostics = Vec::new();
-            validate(
-                script,
-                action,
-                "runs.steps[1].run",
-                CommandPolicy::new(true),
-                &mut diagnostics,
-            );
-            assert!(diagnostics.is_empty(), "{script}: {diagnostics:?}");
-        }
-        for (path, script) in [
-            (action, "sleep 300"),
-            (action, "sleep infinity"),
-            (action, "sleep $DELAY"),
-            (action, "sleep 10; sleep 20"),
-            (action, "sleep 10 || true"),
-            (action, "sleep 10 &"),
-            (action, "sleep 10\nsleep 20"),
-            (Path::new(".github/workflows/ci.yml"), "sleep 10"),
+    fn action_backoff_is_bounded_literal_and_scoped_to_the_reviewed_actions() {
+        for action in [
+            Path::new(".github/actions/setup-rust/action.yml"),
+            Path::new(".github/actions/upload-artifact/action.yml"),
         ] {
-            let mut diagnostics = Vec::new();
-            validate(script, path, "run", CommandPolicy::new(true), &mut diagnostics);
-            assert!(!diagnostics.is_empty(), "unexpectedly permitted {path:?}: {script}");
+            for script in ["sleep 10", "sleep 20\n"] {
+                let mut diagnostics = Vec::new();
+                validate(
+                    script,
+                    action,
+                    "runs.steps[1].run",
+                    CommandPolicy::new(true),
+                    &mut diagnostics,
+                );
+                assert!(diagnostics.is_empty(), "{script}: {diagnostics:?}");
+            }
+            for (path, script) in [
+                (action, "sleep 300"),
+                (action, "sleep infinity"),
+                (action, "sleep $DELAY"),
+                (action, "sleep 10; sleep 20"),
+                (action, "sleep 10 || true"),
+                (action, "sleep 10 &"),
+                (action, "sleep 10\nsleep 20"),
+                (Path::new(".github/workflows/ci.yml"), "sleep 10"),
+            ] {
+                let mut diagnostics = Vec::new();
+                validate(script, path, "run", CommandPolicy::new(true), &mut diagnostics);
+                assert!(!diagnostics.is_empty(), "unexpectedly permitted {path:?}: {script}");
+            }
         }
     }
 }

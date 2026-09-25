@@ -44,3 +44,11 @@ __pycache__/
 
 # Compatibility payloads are checked in as reviewable hexadecimal text.
 /compat/app-protocol/**/payload.bin
+
+# Browser workspace dependencies, output, and local review artifacts.
+/webui/node_modules/
+/webui/dist/
+/webui/test-results/
+/webui/playwright-report/
+/.impeccable/review/
+/.impeccable/*.webp

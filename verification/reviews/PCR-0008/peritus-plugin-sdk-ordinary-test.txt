@@ -1,0 +1,22 @@
+candidate_commit=eb187b0f0b1dafb1f079d34aa581acfcd0b6239e
+candidate_tree=fd1a8f2a9bb48d55fda7128aa135632b7aa69be5
+command=CARGO_BUILD_JOBS=1 cargo test --package peritus-plugin-sdk --all-targets --all-features --locked
+started_at=2026-09-16T21:58:20Z
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.16s
+     Running unittests src/lib.rs (target/debug/deps/peritus_plugin_sdk-66d3ad8b426dc6e2)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/contracts.rs (target/debug/deps/contracts-93f48de5bf4881b8)
+
+running 6 tests
+test framed_protocol_roundtrips_and_rejects_trailing_or_oversized_input ... ok
+test duplicate_capability_names_are_rejected_even_when_other_fields_differ ... ok
+test payloads_are_canonical_and_recursively_bounded ... ok
+test host_quota_intersection_never_widens_a_manifest ... ok
+test unsafe_entrypoints_and_unknown_manifest_fields_are_rejected ... ok
+test canonical_manifest_and_trust_material_are_stable ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s

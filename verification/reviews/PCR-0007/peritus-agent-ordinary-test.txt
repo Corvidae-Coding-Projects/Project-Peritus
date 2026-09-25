@@ -1,0 +1,179 @@
+candidate_commit=1440209e50c851b228e6948db3e5389e22bcc55b
+candidate_tree=86fd9fe3d21a79655a02234ddc96c33515c6ad1f
+command=cargo test --package peritus-agent --all-targets --all-features --locked
+started_at=2026-09-16T17:53:18Z
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.24s
+     Running unittests src/lib.rs (target/debug/deps/peritus_agent-2232e73e93fc453c)
+
+running 13 tests
+test control::tests::control_updates_handle_stale_saved_phase_without_an_unstated_invariant ... ok
+test control::tests::resume_rejects_missing_recovery_before_missing_saved_phase_without_mutation ... ok
+test developer::execution::provider_turn::progress::tests::failed_observation_cancels_the_owned_pending_request ... ok
+test developer::execution::provider_turn::progress::tests::notice_arrives_while_the_same_provider_future_is_still_pending ... ok
+test developer::execution::provider_turn::progress::tests::ready_results_and_streaming_text_do_not_get_wait_notices ... ok
+test developer::observation::tests::completed_command_projection_keeps_decision_evidence_and_drops_lifecycle_noise ... ok
+test developer::observation::tests::non_command_output_is_unchanged ... ok
+test developer::observation::tests::running_command_projection_retains_recent_progress_and_handle ... ok
+test developer::usage::tests::explicit_total_preserves_derived_counter_overflow_rejection ... ok
+test developer::usage::tests::independent_response_usage_adds_without_double_counting_reasoning ... ok
+test developer::usage::tests::missing_usage_is_inert_but_an_explicit_zero_is_an_observation ... ok
+test developer::usage::tests::rejected_usage_preserves_every_previously_accepted_counter ... ok
+test reducer::tests::replay_rejects_correctly_fenced_failure_events_after_terminal_state ... ok
+
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/budgets.rs (target/debug/deps/budgets-b9a0ab08ac294c98)
+
+running 2 tests
+test checked_limits_reject_zero_and_hard_ceiling_overflow ... ok
+test transition_exhaustion_is_explicit_failure_not_completion ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/control_matrix.rs (target/debug/deps/control_matrix-4c31a5f96c59e340)
+
+running 2 tests
+test cancellation_phase_completion_does_not_claim_outstanding_tool_termination ... ok
+test every_active_phase_pauses_resumes_and_cancels_explicitly ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/control_rejections.rs (target/debug/deps/control_rejections-32755b87c3b075c0)
+
+running 3 tests
+test cancelling_rejects_reentry_and_terminal_outer_guard_keeps_precedence ... ok
+test phase_tags_and_terminal_detection_remain_const_and_stable ... ok
+test resume_and_pause_rejections_keep_existing_classification_and_state ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/developer_loop.rs (target/debug/deps/developer_loop-86a7b7e728d0d8f5)
+
+running 46 tests
+test accounting_tests::dropping_an_inflight_response_retains_accepted_accounting_without_a_terminal ... ok
+test accounting_tests::ordinary_developer_requests_negotiate_usage_when_supported ... ok
+test context_tests::developer_loop_accounts_image_tiles_instead_of_compressed_transfer_bytes ... ok
+test context_tests::developer_loop_bounds_an_oversized_tool_result_before_model_history ... ok
+test context_tests::developer_loop_compacts_an_impossible_recent_complete_exchange ... ok
+test context_tests::developer_loop_compacts_old_complete_tool_exchanges_with_digest_evidence ... ok
+test context_tests::developer_loop_falls_back_when_semantic_compaction_is_unusable ... ok
+test context_tests::developer_loop_negotiates_automatic_prompt_caching ... ok
+test context_tests::developer_loop_returns_context_when_compaction_cannot_fit_the_request ... ok
+test context_tests::framing::context_pressure_with_malformed_compaction_framing_preserves_completed_work ... ok
+test developer_loop_executes_a_tool_and_returns_its_observation_to_the_next_model_turn ... ok
+test developer_loop_returns_executor_progress_feedback_to_the_same_session ... ok
+test developer_loop_uses_the_negotiated_parallel_tool_width ... ok
+test grounding_tests::developer_loop_continues_an_early_terminal_in_the_same_grounding_session ... ok
+test grounding_tests::required_tool_retries_restate_the_exact_host_prerequisite ... ok
+test interaction_tests::cancellation_between_calls_prevents_the_remaining_effects ... ok
+test interaction_tests::exact_prepared_request_is_checked_before_send_and_stale_context_is_rebuilt ... ok
+test interaction_tests::host_handoff_stops_the_batch_and_returns_without_another_model_request ... ok
+test interaction_tests::images::exact_current_images_follow_governing_input_and_withdrawal_discards_the_stale_image ... ok
+test interaction_tests::images::unsupported_live_image_input_rejects_before_incorporation_and_provider_send ... ok
+test interaction_tests::input_received_during_retry_is_incorporated_before_the_next_provider_request ... ok
+test interaction_tests::steering_skips_remaining_calls_and_reaches_the_next_model_request ... ok
+test interaction_tests::tool_identity::developer_loop_passes_its_stable_request_prefix_to_both_tool_boundaries ... ok
+test local_context_tests::exact_diagnostic_is_ingested_before_model_visible_output_limiting ... ok
+test local_context_tests::lifecycle::executor_context_failure_prevents_provider_dispatch ... ok
+test local_context_tests::lifecycle::executor_observes_the_exact_selected_view_after_context_assembly ... ok
+test local_context_tests::lifecycle::failed_invocation_retains_observations_and_a_new_provider_requires_fresh_grounding ... ok
+test local_context_tests::lifecycle::progress::no_progress_failure_preserves_the_complete_batch_before_stopping ... ok
+test local_context_tests::lifecycle::progress::progress_warning_reaches_the_next_provider_turn_and_ignored_warning_still_stops ... ok
+test local_context_tests::lifecycle::required_tool_retry_dispatches_its_exact_checkpointed_view ... ok
+test local_context_tests::lifecycle::retry_that_exceeds_the_active_model_input_limit_is_not_published_or_dispatched ... ok
+test local_context_tests::lifecycle::stale_local_invocation_policy_stops_before_publication_or_provider_dispatch ... ok
+test local_context_tests::local_context_keeps_host_completion_and_progress_corrections ... ok
+test local_context_tests::metadata::host_metadata_overwrites_forgery_after_archival_and_counts_in_request_budget ... ok
+test local_context_tests::observation_ingestion_failure_preserves_trace_and_stops_the_tool_batch ... ok
+test local_context_tests::old_exchanges_above_the_legacy_trigger_remain_under_local_policy ... ok
+test local_context_tests::open_assembly_and_checkpoint_failures_stop_before_any_provider_request ... ok
+test local_context_tests::oversized_local_view_never_selects_legacy_compaction_or_publishes ... ok
+test local_context_tests::proposal_persistence_failure_prevents_tool_execution ... ok
+test reasoning_tests::developer_loop_preserves_opaque_reasoning_on_the_next_tool_result_request ... ok
+test retry_tests::cancellation::dropped_loop_cleans_up_pending_start_and_stream_without_cancelling_caller ... ok
+test retry_tests::cancellation::explicit_stop_cancels_pending_start_and_stream_without_retry ... ok
+test retry_tests::developer_loop_cancels_during_a_planned_retry_wait ... ok
+test retry_tests::developer_loop_preserves_a_nonretryable_provider_terminal ... ok
+test retry_tests::developer_loop_retries_a_recoverable_malformed_provider_turn ... ok
+test retry_tests::interrupted_stream_recovers_automatically_without_repeating_completed_tools ... ok
+
+test result: ok. 46 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.91s
+
+     Running tests/phase_transitions.rs (target/debug/deps/phase_transitions-67a2c59a8be930cc)
+
+running 4 tests
+test actual_normal_command_path_uses_each_expected_phase_edge_and_replays ... ok
+test command_phase_rejections_keep_error_precedence_and_original_state ... ok
+test failure_and_exhaustion_terminate_supported_nonterminal_paths_and_replay ... ok
+test phase_tag_projection_contains_exactly_the_possible_phase_pairs ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/replay_completion.rs (target/debug/deps/replay_completion-6440a58157b4f3b9)
+
+running 6 tests
+test completion_requires_explicit_proposal_then_commit_and_replays_exactly ... ok
+test partial_model_terminal_cannot_become_success_and_rejection_is_non_mutating ... ok
+test pause_resume_and_cancel_are_explicit ... ok
+test protocol_records_recover_pure_retry_events_and_replay_exactly ... ok
+test provider_retry_closes_in_flight_work_and_replays_exact_resume ... ok
+test provider_retry_restarts_a_safe_new_request_and_replays_the_backward_phase_edge ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/runtime_budget.rs (target/debug/deps/runtime_budget-7d1b3f07ec1e8918)
+
+running 4 tests
+test missing_final_usage_stays_active_until_conservative_ambiguity_consumes_the_ceiling ... ok
+test model_attempt_charges_attempt_tokens_cost_and_time_then_admits_one_retry ... ok
+test regressing_interim_usage_is_rejected_without_changing_high_water_accounting ... ok
+test tool_effect_time_uses_the_same_verified_b1_lifecycle ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/runtime_context.rs (target/debug/deps/runtime_context-8f6ca90147e72c4d)
+
+running 2 tests
+test selected_memory_stays_untrusted_evidence_and_renders_as_a_separate_message ... ok
+test selected_sources_keep_exact_order_content_and_authority_at_the_c5_boundary ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/runtime_driver.rs (target/debug/deps/runtime_driver-e61f3f0d268a8ac9)
+
+running 5 tests
+test crash_after_tool_dispatch_is_classified_indeterminate_without_redispatch ... ok
+test crash_restores_exact_provider_prefix_before_resuming_at_the_next_cursor ... ok
+test exact_provider_duplicate_is_recorded_without_reapplying_semantics ... ok
+test fake_provider_completion_is_durable_and_restarts_from_exact_state ... ok
+test out_of_order_provider_stream_becomes_explicit_protocol_failure ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.07s
+
+     Running tests/runtime_model.rs (target/debug/deps/runtime_model-7513b1011c2eddc4)
+
+running 2 tests
+test each_envelope_waits_for_durable_ack_before_reduction_or_next_pull ... ok
+test local_cancel_propagates_to_the_owned_provider_stream ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/runtime_tools.rs (target/debug/deps/runtime_tools-bd70daa99f055178)
+
+running 2 tests
+test authorized_fake_inspection_runs_once_and_results_return_to_context ... ok
+test complete_inspect_edit_run_test_loop_reaches_only_a_completion_proposal ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.12s
+
+     Running tests/tool_ordering.rs (target/debug/deps/tool_ordering-dab27aaecbec9e1a)
+
+running 3 tests
+test indeterminate_result_is_renderable_but_cannot_claim_gate_ready_completion ... ok
+test parallel_terminal_arrival_retains_proposal_order ... ok
+test unordered_and_parallel_mutation_batches_are_rejected_without_state_change ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+finished_at=2026-09-16T17:53:22Z
+exit_status=0

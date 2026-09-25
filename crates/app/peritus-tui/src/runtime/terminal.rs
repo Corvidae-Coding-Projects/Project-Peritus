@@ -29,6 +29,7 @@ const INPUT_POLL: Duration = Duration::from_millis(100);
 pub(super) struct TerminalOwner {
     terminal: Terminal<CrosstermBackend<Stdout>>,
     active: bool,
+    selecting_output: bool,
     title: TerminalTitle,
 }
 
@@ -52,7 +53,7 @@ impl TerminalOwner {
         }
         match Terminal::new(CrosstermBackend::new(stdout)) {
             Ok(terminal) => {
-                let mut owner = Self { terminal, active: true, title };
+                let mut owner = Self { terminal, active: true, selecting_output: false, title };
                 owner.terminal.clear()?;
                 Ok(owner)
             }
@@ -72,10 +73,22 @@ impl TerminalOwner {
     }
 
     pub(super) fn draw(&mut self, model: &mut AppModel) -> Result<(), TuiError> {
+        if self.selecting_output && model.chat.selecting_output() {
+            return Ok(());
+        }
+        if self.selecting_output {
+            execute!(self.terminal.backend_mut(), EnableMouseCapture)?;
+            self.selecting_output = false;
+            self.terminal.clear()?;
+        }
         self.terminal.draw(|frame| {
             model.chat.viewport = Some(frame.area());
             render::draw(frame, model);
         })?;
+        if model.chat.selecting_output() {
+            execute!(self.terminal.backend_mut(), DisableMouseCapture, Hide)?;
+            self.selecting_output = true;
+        }
         Ok(())
     }
 
@@ -114,6 +127,7 @@ impl TerminalOwner {
             return Err(TuiError::Io(error));
         }
         self.active = true;
+        self.selecting_output = false;
         self.terminal.clear()?;
         Ok(())
     }

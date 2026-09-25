@@ -1,0 +1,26 @@
+candidate_commit=eb187b0f0b1dafb1f079d34aa581acfcd0b6239e
+candidate_tree=fd1a8f2a9bb48d55fda7128aa135632b7aa69be5
+exact_command=cargo test --package peritus-run-settlement --all-targets --all-features --locked
+started_at=2026-09-16T21:55:47Z
+    Blocking waiting for file lock on package cache
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.23s
+     Running unittests src/lib.rs (target/debug/deps/peritus_run_settlement-94ef8f3e212c36ec)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/reducer.rs (target/debug/deps/reducer-dfa6b8dc40783406)
+
+running 9 tests
+test cancellation_recovery_and_user_wait_retain_a_qualified_candidate_without_accepting_it ... ok
+test every_stable_tag_round_trips_and_unknown_tags_reject ... ok
+test accepted_requires_a_fully_qualified_current_candidate ... ok
+test evidence_from_another_candidate_is_rejected_or_stale ... ok
+test every_terminal_cause_is_expressible_with_and_without_a_candidate ... ok
+test candidate_comparison_uses_every_identity_byte_and_ignores_only_checkpoint_sequence ... ok
+test rejected_observations_and_terminal_updates_preserve_the_complete_reducer ... ok
+test candidate_is_delivered_without_being_accepted ... ok
+test reducer_rejects_nonadvancing_regressing_and_post_terminal_updates ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
