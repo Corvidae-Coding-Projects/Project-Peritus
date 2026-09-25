@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1594,
-        "tip_oid": "664ff3c45cc4e3911117938cc258492f7bd8b646",
-        "prefix_sha256": "09375d8c957e7f3221794f776295f0db2d2807497ebcef2480cfd23f8df1a07f"
+        "sequence": 1595,
+        "tip_oid": "aace2fdc0bd778ecdf5cd6bee53f72873fc34a67",
+        "prefix_sha256": "041aea7b0d395c4da1de50e730544fb749d2c06446bd2bd9f6fd5d2519de1c39"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 94,
-  "next_comment_id": 1787,
+  "next_comment_id": 1788,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -11808,7 +11808,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-25T14:33:31.398261726Z",
-      "updated_at": "2026-09-25T17:33:32.520834706Z",
+      "updated_at": "2026-09-25T17:39:09.424440056Z",
       "labels": [
         "bug"
       ],
@@ -11839,6 +11839,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABASXP0DtoLTTdhiNjhdo3YWTNOFLrt2v49cnDIxZlZ2drpFyiusRCPYRdMgW0lb/I5krCH4ZN/w3ZpSP99+EtqCg=="
+        },
+        "4bf6a0bd-9723-4e74-8bf5-488e4c9d9dbd": {
+          "display_id": 1787,
+          "author": "6ME5",
+          "content": "[action] PR99 authority FIXED: fresh run 36167290781 succeeded; log verifies CHECKER_SHA b1e95edac and expected inherited-input bootstrap skip. Resumed only failed/cancelled jobs via --failed in saved native, foundation and Gate A runs; all are now attempt 2 on unchanged 94f24adf2. Rollup shows 466 passes preserved, 93 pending, four expected skips, no failures/cancellations. Pending job names verified against /tmp/peritus-pr99-cancelled-baseline.json so no successful job was restarted. New strict monitor session31963 (/tmp/peritus-monitor-pr99-resumed.py) flags any failure and retries transient API reads. PR100 already merged; merge99 to develop once all checks pass.",
+          "created_at": "2026-09-25T17:39:09.412053813Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAquiEC0rS3bizKY21IBU2TsPRQ/BejLPhXVIaTHytrfX+M3g/BezzQ8bLM7SzgkW6AEQ7L2ILz3gtoSfB48PeAA=="
         },
         "538cc006-55ad-4178-b510-21d06bfb4281": {
           "display_id": 1784,
