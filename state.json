@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1615,
-        "tip_oid": "e1654cbde3c00479ff2fafdebfbf7e25fa5c382d",
-        "prefix_sha256": "74e24165b5414bde523ca1fff0fc954502116432b81d8c5a6b812b731330dbc0"
+        "sequence": 1616,
+        "tip_oid": "15bab81ccd06bfb08bf188a97c17a61b891cd84d",
+        "prefix_sha256": "06ff22a1bb3b77d0ba84077788ee1e7399abd2031b79a6649a85f9d996dd8838"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 95,
-  "next_comment_id": 1803,
+  "next_comment_id": 1804,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -17342,11 +17342,20 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-25T18:44:39.713275514Z",
-      "updated_at": "2026-09-25T20:51:05.130705631Z",
+      "updated_at": "2026-09-25T21:08:03.324027407Z",
       "labels": [
         "release"
       ],
       "comments": {
+        "1aa7f350-105b-420a-8e62-b83cf35fb06f": {
+          "display_id": 1803,
+          "author": "6ME5",
+          "content": "[action] USER CORRECTION: main must be green, with no failed or cancelled runs. Do NOT cancel main workflows again for release capacity. My cancellations caused Gate A aggregate failures (logs show cancelled dependencies). Resumed all six affected main runs via --failed: current 0dd11e runs36186317248 Foundation,36186317202 GateA,36186317269 Native; older b1e95 runs36167231887 Foundation,36167231768 GateA,36167231932 Native. Current Foundation/Native attempt2 were then auto-cancelled by older reruns because those workflows group concurrency by refs/heads/main. Must sequence: wait old Foundation36167231887 success then rerun current36186317248; wait old Native36167231932 success then rerun current36186317269. Both GateA runs group by SHA and can finish concurrently. Keep all affected runs until green; no more main cancellation. Release36186389009 continues healthy, monitor18766; signing approved on exacttagged0dd11e after four distro builds passed. Original full-release objective remains: complete artifacts/publication/develop reconciliation, and now all affected main runs green before ending.",
+          "created_at": "2026-09-25T21:08:03.312311222Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA/Fpty5OPIEWka5j3fkqGnuxTy3ZMTmDbyzuS7fg5O6kct+R5RnjD/DoU0jfS4pwrWnADTdF/t5bQLGtP/xKxCg=="
+        },
         "555528ca-3408-43ef-9562-65390b7eaa7e": {
           "display_id": 1801,
           "author": "6ME5",
