@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1619,
-        "tip_oid": "d311d3ab5b74a1f0e3fd133e907e14c807ee662a",
-        "prefix_sha256": "d5b8cc98ac66096bb1b8d42165bd78cabb733ed0cd39cc3d786128c86e05ddfd"
+        "sequence": 1620,
+        "tip_oid": "f24bddd1b4c2c856276c8dac3fe6674e05fa7146",
+        "prefix_sha256": "334e6f6348ca0e50d7c94aa3b825ff960d1b4e5be1fbac5c58f731613d3678a2"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 95,
-  "next_comment_id": 1807,
+  "next_comment_id": 1808,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -17342,7 +17342,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-25T18:44:39.713275514Z",
-      "updated_at": "2026-09-25T21:40:18.292589294Z",
+      "updated_at": "2026-09-25T21:44:12.481488391Z",
       "labels": [
         "release"
       ],
@@ -17400,6 +17400,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAsL570uoDcB0zNnPLkSXvfQycr4evmZilIs/Agf/23ukDi7/gNZcOrGWf4ndPDYIHV9zTlhh9ozv81jgwWkFKAQ=="
+        },
+        "5c6f2122-50c5-4e54-92fe-3ceea82d597f": {
+          "display_id": 1807,
+          "author": "6ME5",
+          "content": "Committed f47a2c296: fix(ci): preserve main runs and bound Windows fixtures. Seven files: two workflow concurrency settings, Foundation policy plus regression mutations, three behavioral-fixture files. 551tests pass (476xtask plus75external), strict Clippy for both crates, fmt, actionlint, diffcheck and cargo xtask all pass. Root-cause repair for main run collisions and local test-fixture budget repair with richer settlement diagnostics. No runtime/CI-timeout/tag modifications. Push/PR/Windows verification pending.",
+          "created_at": "2026-09-25T21:44:12.477524015Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAr+5EEnStStq6mXPbmKvhLFhlGYL2BS/CTcIfshUYYDQZRNHOtBL9FzeTPT67EV4nd4nZrMejJ2DNgWTilep5Dg=="
         },
         "6236bcf5-97a0-4b51-943a-3c1953deb688": {
           "display_id": 1793,
