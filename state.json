@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1599,
-        "tip_oid": "4b9288aed845448d704ca09df9c731d82e6e848d",
-        "prefix_sha256": "94108f9f777a72570d46396ab6528255f6c21b4df2d8596678bca2d730af2fb7"
+        "sequence": 1600,
+        "tip_oid": "6c3fbe989ee6a7de97cde5ffee2d04ae50c6b24e",
+        "prefix_sha256": "fb45fe6a4efba6c138e448fec2321e04942bc1614252b30d29077f71961cb846"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 94,
-  "next_comment_id": 1792,
+  "next_comment_id": 1793,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -11808,7 +11808,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-25T14:33:31.398261726Z",
-      "updated_at": "2026-09-25T18:24:54.013971773Z",
+      "updated_at": "2026-09-25T18:42:14.860877032Z",
       "labels": [
         "bug"
       ],
@@ -11947,6 +11947,15 @@
           "kind": "handoff",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAaMwrisIbjmY6tULM7IGT8eN/TAIGKnNmtr/hxfmuDSDuHK7VIrY42yLs2B/gEvfJ/yJlTg2fU72HYYU92QUhAw=="
+        },
+        "9e1da1dd-d040-473f-93d8-d07631e37b1a": {
+          "display_id": 1792,
+          "author": "6ME5",
+          "content": "Delivered and merged both authorized PRs after exact-head verification. CI-only PR100 to main merged 2026-09-25T17:27:21Z as b1e95edacd01a1d68621fb322b2f4f3cfef6b1fe after 576 passing PR checks and 4 expected skips. Fresh PR99 authority run 36167290781 used that corrected main checker and succeeded; trusted-base validation was the intended bootstrap skip. Omnibus PR99 to develop merged 2026-09-25T18:41:30Z as 049484677f1fd11e090b50026e35c41f22eb55c0 after 578 passing PR checks, 4 expected skips, zero failures, Gate A success, all current workflows success. Earlier cancelled PR99 jobs resumed with --failed only, preserving passes. Deferred duplicate main push workflows 36167231887, 36167231768, 36167231932 resumed with --failed after PR99 finished; attempt 2 confirmed. No code changes during this watch; tracked worktree clean and unrelated untracked files preserved.",
+          "created_at": "2026-09-25T18:42:14.856492758Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA1RjgLI85kCTYw8Ad4ucfSbrs+rzibdSSNonsZBLvqVHSfIqrXgjPwO2YNRI175yns+Mm+2ut8ssz9f5U73jqAw=="
         },
         "a93eeb68-2907-417a-9ec1-e91ceb8f6599": {
           "display_id": 1773,
