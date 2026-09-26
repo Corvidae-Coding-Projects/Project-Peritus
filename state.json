@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1624,
-        "tip_oid": "1232242acc845b79dc064e4ce75ef3fa798e85d5",
-        "prefix_sha256": "a4852a84af9b90f34cff066194be308c6db489d87b8c10fc7d1e7b3382da4876"
+        "sequence": 1626,
+        "tip_oid": "47023b7831aa634a1d2c6844b7ce76de19248322",
+        "prefix_sha256": "3451c316b8a1a880d340861e20f5bf9be2dc08e2a52c73579b35e448516405d3"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 95,
-  "next_comment_id": 1812,
+  "next_comment_id": 1813,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -179,10 +179,6 @@
     "86": {
       "agent_id": "6ME5",
       "claimed_at": "2026-09-16T14:33:19.672713572Z"
-    },
-    "94": {
-      "agent_id": "6ME5",
-      "claimed_at": "2026-09-25T18:45:21.094722484Z"
     }
   },
   "issues": {
@@ -17342,7 +17338,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-25T18:44:39.713275514Z",
-      "updated_at": "2026-09-25T22:06:21.245818419Z",
+      "updated_at": "2026-09-26T03:47:51.062123693Z",
       "labels": [
         "release"
       ],
@@ -17445,6 +17441,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA5PCBYv28wvszEh6xhQ1ZSULMbHM6DIu2+b3kecWPAyoUBi5NHqjONuBFRl3YEbw9mwCT0iVWuLJUOm60rNJsCg=="
+        },
+        "8fa70682-083c-4305-b3e0-dce7f02f49b3": {
+          "display_id": 1812,
+          "author": "6ME5",
+          "content": "Access restored. PR102 fully green577checks4expectedskips and8successfulworkflows, merged normally at1004861f6962f3a8c275c21630f7de479ea8ddd2. Release36186389009 succeeded231jobs1expectedskip and all75assets present; Linuxarchive/installers hashes verified, signedprovenance verified forv004tag0dd11e, downloadedCLI reports0.0.4. Original sixrun restoration now5green; remainingNative36186317269 timedoutonIntelMacdaemon job108295173437 at15m (confirmedGitHubannotation), restarted --failed. Newfix e5ddefb7d extends onlynamednativebinarybuild to20m withpolicy/tests;477xtasktests,strictclippy,fmt,actionlint,xtaskall pass. PushingnewPRmain. Need durablewatchservice instead of deadtoolsession bridge; publication remainshelduntilmaingreen; developnotreconciled.",
+          "created_at": "2026-09-26T03:47:51.058460311Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAdRmCrQqgAGTu+21ujFw2HpxCMKqa/nNVQi4q9oLjWBgkRR3rE2doZGfiCIeY2KbHrhX12pT0PEPHcQmbesh8Dw=="
         },
         "c0d6736c-a4ab-491b-a605-3001a7c3ad69": {
           "display_id": 1794,
