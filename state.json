@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1627,
-        "tip_oid": "70baa800a19b4c4e824e57ceec52c60ac326f0c2",
-        "prefix_sha256": "df16a9c2c1214776b6fc375a0df3ab305d1fc40b04ff946f8aa9bad5da25a383"
+        "sequence": 1628,
+        "tip_oid": "162facf02864a78aba26eccb1d18915e69834f86",
+        "prefix_sha256": "26f647b183dd72bfee90523a79a5b6b06bb4445596f93e473036dc753968847a"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 95,
-  "next_comment_id": 1814,
+  "next_comment_id": 1815,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -17338,7 +17338,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-25T18:44:39.713275514Z",
-      "updated_at": "2026-09-26T03:53:56.604268311Z",
+      "updated_at": "2026-09-26T07:10:32.040409863Z",
       "labels": [
         "release"
       ],
@@ -17450,6 +17450,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAdRmCrQqgAGTu+21ujFw2HpxCMKqa/nNVQi4q9oLjWBgkRR3rE2doZGfiCIeY2KbHrhX12pT0PEPHcQmbesh8Dw=="
+        },
+        "bd5bbcbb-97db-4139-a659-3d00fd6e0d76": {
+          "display_id": 1814,
+          "author": "6ME5",
+          "content": "PR103 now576passes4skips1failure: H2scenario11macos15intel job108347647404. Log proves nativeH2qualificationpassed, upload of3evidencefilesfailed CreateArtifact ENOTFOUND(DNS) after30seconds. No test failure. Reran onlyfailed job via run36215940112 --failed (attempt2), preserve577othercheckresults. Originalsixaffectedmainruns nowALLGREEN inclNative36186317269; newer100486mainNative36215687966 stillpending, othersgreen. Durablewatchservice detectedfailure butCLIresume failed thread-store activewriter conflict; stoppedlocalwatchservice toavoidbrokencallbacks. Do not claim alerts work. Userrequestedquietwatch, fixactualrunnererrors promptly, no maincancel. PR103stillopen,releasev004stilldraftawaitmaingreen.",
+          "created_at": "2026-09-26T07:10:32.026212130Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAgBlK7YivwhbRLAVtkdMnHPAVuAtzY7YJXTXRp3C75DqZDI7FO2Ex8bnfjbKWEp1TfCB2OjZq4vT9kLiUR0SLBQ=="
         },
         "c0d6736c-a4ab-491b-a605-3001a7c3ad69": {
           "display_id": 1794,
