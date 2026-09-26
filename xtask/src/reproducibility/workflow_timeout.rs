@@ -20,7 +20,10 @@ pub(super) fn validate(
                 | "jobs.check-native-staging"
                 | "jobs.distro-compile"
                 | "jobs.distro-compile-checks"
-        ) {
+        )
+        || (path == Path::new(".github/workflows/product-package.yml")
+            && location == "jobs.build-h2-binary")
+    {
         20
     } else if [
         (".github/workflows/ci.yml", "jobs.rust"),
@@ -28,7 +31,6 @@ pub(super) fn validate(
         (".github/workflows/formal-governance.yml", "jobs.verus-shards"),
         (".github/workflows/formal-governance.yml", "jobs.rust-shards"),
         (".github/workflows/security-qualification.yml", "jobs.native-security"),
-        (".github/workflows/product-package.yml", "jobs.build-h2-binary"),
     ]
     .iter()
     .any(|(workflow, job)| path == Path::new(workflow) && location == *job)
@@ -42,7 +44,7 @@ pub(super) fn validate(
         diagnostics.push(Diagnostic::at(
             path,
             format!("`{location}` does not have a timeout from 1 through {maximum} minutes"),
-            "keep ordinary jobs within ten minutes, named Rust, Verus, H0, and native binary builds within fifteen, and named release compilation jobs within twenty",
+            "keep ordinary jobs within ten minutes, named Rust, Verus, and H0 jobs within fifteen, and named native binary and release compilation jobs within twenty",
         ));
     }
 }
@@ -75,7 +77,6 @@ mod tests {
             (".github/workflows/formal-governance.yml", "jobs.verus-shards"),
             (".github/workflows/formal-governance.yml", "jobs.rust-shards"),
             (".github/workflows/security-qualification.yml", "jobs.native-security"),
-            (".github/workflows/product-package.yml", "jobs.build-h2-binary"),
         ];
         for (path, job) in allowed {
             let path = std::path::Path::new(".github/workflows")
@@ -102,6 +103,37 @@ mod tests {
             )]);
             let mut diagnostics = Vec::new();
             super::validate(&mapping, std::path::Path::new(path), job, &mut diagnostics);
+            assert_message(&diagnostics, "timeout from 1 through 10 minutes");
+        }
+    }
+
+    #[test]
+    fn native_binary_build_allowance_is_bounded_and_scoped() {
+        let workflow = ".github/workflows/product-package.yml";
+        for timeout in ["1", "10", "15", "20"] {
+            let (_, diagnostics) = validate(
+                workflow,
+                DocumentKind::Workflow,
+                &timeout_workflow("build-h2-binary", timeout),
+            );
+            assert!(diagnostics.is_empty(), "{timeout}: {diagnostics:?}");
+        }
+        for timeout in ["0", "21", "\"20\"", "null", "${{ inputs.timeout }}"] {
+            let (_, diagnostics) = validate(
+                workflow,
+                DocumentKind::Workflow,
+                &timeout_workflow("build-h2-binary", timeout),
+            );
+            assert_message(&diagnostics, "timeout from 1 through 20 minutes");
+        }
+        for (path, job) in [
+            (workflow, "bootstrap"),
+            (workflow, "prepare-h2"),
+            (workflow, "h2"),
+            (".github/workflows/extra.yml", "build-h2-binary"),
+        ] {
+            let (_, diagnostics) =
+                validate(path, DocumentKind::Workflow, &timeout_workflow(job, "20"));
             assert_message(&diagnostics, "timeout from 1 through 10 minutes");
         }
     }
