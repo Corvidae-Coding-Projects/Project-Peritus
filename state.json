@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1628,
-        "tip_oid": "162facf02864a78aba26eccb1d18915e69834f86",
-        "prefix_sha256": "26f647b183dd72bfee90523a79a5b6b06bb4445596f93e473036dc753968847a"
+        "sequence": 1630,
+        "tip_oid": "9d02a7b86c723f6b67109c39f62450ccee0cc3e6",
+        "prefix_sha256": "5d847c33434274a3276e1df7e5bdd6e9131c34708ccdab236f1ece5167241a15"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 95,
-  "next_comment_id": 1815,
+  "next_comment_id": 1817,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -17338,7 +17338,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-25T18:44:39.713275514Z",
-      "updated_at": "2026-09-26T07:10:32.040409863Z",
+      "updated_at": "2026-09-26T07:14:36.736204768Z",
       "labels": [
         "release"
       ],
@@ -17378,6 +17378,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABANic969Z2RdTvwFSeJVSgkZ+srm0KmFZlgPj1FSQLk/tgiDqKNJC7KKsKtSKchiHBC1ekMzMNV9B53tRySZ48AA=="
+        },
+        "46970905-397d-41b5-bce5-63d860c03321": {
+          "display_id": 1815,
+          "author": "6ME5",
+          "content": "Session auto-ended (stale after 748 minutes). No handoff notes provided.",
+          "created_at": "2026-09-26T07:13:30.565147647Z",
+          "kind": "handoff",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAYoqE1dsfmfeu6y6DdusiH5dPnPh8lGfU+rqAkOFXrXbOV/H8waZgnzzFtnnf2UGo9gH1v1E9KlkEWv9jhA2HCw=="
         },
         "555528ca-3408-43ef-9562-65390b7eaa7e": {
           "display_id": 1801,
@@ -17423,6 +17432,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAj/deoEViItdRMev4k+zQrtW7hWXDG6K1eT1uNiPURfheGn7B00NjU80O3h9LrXG7FU6y3U9UkpXGV9j4Se9xDw=="
+        },
+        "728281a2-c571-412b-aab6-36165f46edbc": {
+          "display_id": 1816,
+          "author": "6ME5",
+          "content": "[action] PR103 isolated retry in progress: H2 macOS scenario itself passed; artifact upload ENOTFOUND DNS error. Six original affected main runs all green. Disabled broken system watcher CLI resume callback after active-writer conflict; investigating documented proxy to existing app server. PR103 merge, latest main validation, draft publication, develop reconciliation remain.",
+          "created_at": "2026-09-26T07:14:36.732247223Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAGzC1QmT3UugtPklEmM1hv3f6Wez8Cd1nQY26Hk6nY/UwXWtGuC01qRbxLkQchDgr2kRuXsKaHv18XSsFZgl1AQ=="
         },
         "780f1ba2-5e43-449c-85a9-5bed043e0a99": {
           "display_id": 1808,
