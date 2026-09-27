@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1645,
-        "tip_oid": "00d1f4c09b1beb0b7b2c23ca627a73912c45c80e",
-        "prefix_sha256": "ed57320d2b251a5df1e53997865ef61311b7fd0793d30d7b917d85b2c74bcc8b"
+        "sequence": 1646,
+        "tip_oid": "2109991d4f66bfc99f9da7c88d56aec0489a7b18",
+        "prefix_sha256": "f812e02afb0f4703913c40634e126e73201b33895a466fbbbef54355e1b67aa2"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 97,
-  "next_comment_id": 1824,
+  "next_comment_id": 1825,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -3387,8 +3387,17 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-27T11:17:26.357337836Z",
-      "updated_at": "2026-09-27T11:20:06.646166206Z",
+      "updated_at": "2026-09-27T11:22:42.059783029Z",
       "comments": {
+        "34c7384b-bf6e-43c6-8a1f-d94b562a70dd": {
+          "display_id": 1824,
+          "author": "6ME5",
+          "content": "Confirmed with temporary production-code probes: (1) an oversized complete batch of eight successful tool reads is omitted wholesale from the next view; no tool results or replacement metadata retained, also skips older fitting read. (2) 43 valid task-bound open plans at 32,768 tokens are accepted, then required-working-state overflow prevents next request and persists across reopening/new invocation. (3) idle question-only chat blocks a new run in same workspace until explicitly cancelled; registered provider switch in existing idle run also returns InvalidState. Logs and reproducible probes in /tmp/peritus-incident-probes; tracked test files restored.",
+          "created_at": "2026-09-27T11:22:42.055944458Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAq1gXCAO5Tf9HmXDPpxRNAEyR5ckNvNqtM956fGTqsoMKEA8CNUzxUFBHktqHAKTRXmgILDO2M7g3d8rlYBxeAg=="
+        },
         "f4f58005-0ace-41e2-ab44-9e4d523d3929": {
           "display_id": 1823,
           "author": "6ME5",
