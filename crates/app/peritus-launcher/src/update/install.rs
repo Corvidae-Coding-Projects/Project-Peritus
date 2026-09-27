@@ -1,12 +1,17 @@
 //! Transactional native installer invocation and installed-version verification.
 
-use std::{env, path::PathBuf, process::Command, time::Duration};
+use std::{env, path::PathBuf, process::Command};
+
+#[cfg(not(windows))]
+use std::time::Duration;
 
 use crate::LauncherError;
 
 use super::release::Release;
 
+#[cfg(not(windows))]
 const INSTALL_TIMEOUT: Duration = Duration::from_mins(15);
+#[cfg(not(windows))]
 const VERIFY_TIMEOUT: Duration = Duration::from_secs(30);
 
 pub(super) fn apply(package: &std::path::Path, release: &Release) -> Result<(), LauncherError> {

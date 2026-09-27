@@ -1,14 +1,18 @@
 //! Bounded native child-process execution for update helpers.
 
 use std::{
-    process::{Child, Command, ExitStatus, Stdio},
+    process::{Child, Command, ExitStatus},
     thread,
     time::{Duration, Instant},
 };
 
+#[cfg(not(windows))]
+use std::process::Stdio;
+
 use crate::LauncherError;
 
 const POLL_INTERVAL: Duration = Duration::from_millis(25);
+#[cfg(not(windows))]
 const MAX_CAPTURED_STDOUT_BYTES: usize = 64 * 1024;
 
 pub(super) fn status(
@@ -22,6 +26,7 @@ pub(super) fn status(
     wait(&mut child, operation, timeout)
 }
 
+#[cfg(not(windows))]
 pub(super) fn stdout(
     command: &mut Command,
     operation: &'static str,
@@ -83,6 +88,7 @@ fn wait(
     }
 }
 
+#[cfg(not(windows))]
 fn drain_bounded(mut output: impl std::io::Read) -> std::io::Result<(Vec<u8>, bool)> {
     let mut retained = Vec::new();
     let mut buffer = [0_u8; 8 * 1024];
@@ -107,7 +113,7 @@ fn configure_group(command: &mut Command) {
 }
 
 #[cfg(not(unix))]
-fn configure_group(_command: &mut Command) {}
+const fn configure_group(_command: &mut Command) {}
 
 #[cfg(unix)]
 fn terminate(child: &mut Child) {
@@ -127,11 +133,10 @@ fn terminate(child: &mut Child) {
     let _ = child.kill();
 }
 
-#[cfg(test)]
+#[cfg(all(test, unix))]
 mod tests {
     use super::*;
 
-    #[cfg(unix)]
     #[test]
     fn status_terminates_a_hung_process_group_at_the_deadline() {
         let started = Instant::now();
@@ -145,7 +150,6 @@ mod tests {
         assert!(started.elapsed() < Duration::from_secs(2));
     }
 
-    #[cfg(unix)]
     #[test]
     fn stdout_captures_a_bounded_successful_result() {
         let (status, output) = stdout(
