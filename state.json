@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1644,
-        "tip_oid": "9637dc92c2134b35f5f10eb16a770db3cbeee3c9",
-        "prefix_sha256": "62e70131f10c07d6036716ce72e8e1709d4c049d28b0eab3fc5dda1c0dd23634"
+        "sequence": 1645,
+        "tip_oid": "00d1f4c09b1beb0b7b2c23ca627a73912c45c80e",
+        "prefix_sha256": "ed57320d2b251a5df1e53997865ef61311b7fd0793d30d7b917d85b2c74bcc8b"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 97,
-  "next_comment_id": 1823,
+  "next_comment_id": 1824,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -3387,7 +3387,18 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-27T11:17:26.357337836Z",
-      "updated_at": "2026-09-27T11:17:26.357337836Z"
+      "updated_at": "2026-09-27T11:20:06.646166206Z",
+      "comments": {
+        "f4f58005-0ace-41e2-ab44-9e4d523d3929": {
+          "display_id": 1823,
+          "author": "6ME5",
+          "content": "[action] User clarified accumulated tool history is the target, not growing chat. Reviewing issue 70 and 91 repairs against working-state overflow, exchange retention and phase handoff.",
+          "created_at": "2026-09-27T11:20:06.642348510Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAEZRg4XStIPMjLUtgmyihRedeJ+ubSFP0gOmcZWZfMAOz10PQ0pz8FBfYv6BNmxEH/g/7w+vZZlsgfTJTP97yDQ=="
+        }
+      }
     },
     "2b288a30-b5b1-4452-81bd-20950bebd2d3": {
       "uuid": "2b288a30-b5b1-4452-81bd-20950bebd2d3",
