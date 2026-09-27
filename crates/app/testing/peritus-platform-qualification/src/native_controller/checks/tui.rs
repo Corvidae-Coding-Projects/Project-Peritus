@@ -62,15 +62,14 @@ pub(super) fn exercise(
     let mut cursor_reports = 0_usize;
     let mut screen = TerminalScreen::new(30, 100);
     let mut rendered_bytes = 0_usize;
+    let mut milestones = ScreenMilestones::default();
 
     let status = loop {
         let state = transcript.lock().map_err(|_| "native TUI transcript lock was poisoned")?;
         screen.feed(&state.bytes[rendered_bytes..]);
         rendered_bytes = state.bytes.len();
-        let rendered = rendered(&screen);
+        milestones.observe(&screen);
         let connected = connected(&state.bytes);
-        let navigated = screen.contains("Key reference");
-        let reconnected = screen.contains(RECONNECTED_STATUS);
         let cursor_queries = occurrences(&state.bytes, CURSOR_POSITION_QUERY);
         let overflow = state.overflow;
         drop(state);
@@ -90,15 +89,15 @@ pub(super) fn exercise(
         if answered_cursor_query {
             writer.flush()?;
         }
-        if rendered && connected && !help_requested {
+        if milestones.rendered && connected && !help_requested {
             writer.write_all(b"?")?;
             writer.flush()?;
             help_requested = true;
-        } else if navigated && !reconnect_requested {
+        } else if milestones.navigated && !reconnect_requested {
             writer.write_all(b"R")?;
             writer.flush()?;
             reconnect_requested = true;
-        } else if reconnect_requested && reconnected && !quit_sent {
+        } else if reconnect_requested && milestones.reconnected && !quit_sent {
             writer.write_all(&[CONTROL_Q])?;
             writer.flush()?;
             quit_sent = true;
@@ -113,8 +112,11 @@ pub(super) fn exercise(
                 .map(|state| diagnostic_tail(&state.bytes))?;
             child.terminate()?;
             return Err(format!(
-                "native TUI did not complete its connected user journey within {} seconds: rendered={rendered} connected={connected} navigated={navigated} help_requested={help_requested} reconnect_requested={reconnect_requested} reconnected={reconnected} quit_sent={quit_sent} cursor_reports={cursor_reports}; screen: {}; transcript tail: {diagnostic}",
+                "native TUI did not complete its connected user journey within {} seconds: rendered={} connected={connected} navigated={} help_requested={help_requested} reconnect_requested={reconnect_requested} reconnected={} quit_sent={quit_sent} cursor_reports={cursor_reports}; screen: {}; transcript tail: {diagnostic}",
                 DEADLINE.as_secs(),
+                milestones.rendered,
+                milestones.navigated,
+                milestones.reconnected,
                 screen.diagnostic()
             )
             .into());
@@ -126,7 +128,7 @@ pub(super) fn exercise(
     drop(pair.master);
     join_reader(reader_thread)?;
     let state = transcript.lock().map_err(|_| "native TUI transcript lock was poisoned")?;
-    let result = validate_journey(&status, &state.bytes, &screen, quit_sent, cursor_reports);
+    let result = validate_journey(&status, &state.bytes, milestones, quit_sent, cursor_reports);
     drop(state);
     result
 }
@@ -134,15 +136,12 @@ pub(super) fn exercise(
 fn validate_journey(
     status: &portable_pty::ExitStatus,
     transcript: &[u8],
-    screen: &TerminalScreen,
+    milestones: ScreenMilestones,
     quit_sent: bool,
     cursor_reports: usize,
 ) -> Result<TuiObservation, Box<dyn std::error::Error>> {
     let diagnostic = diagnostic_tail(transcript);
-    let rendered = rendered(screen);
     let connected = connected(transcript);
-    let navigated = screen.contains("Key reference");
-    let reconnected = screen.contains(RECONNECTED_STATUS);
     let restored = terminal_restored(transcript);
     if !status.success() {
         return Err(format!(
@@ -151,9 +150,16 @@ fn validate_journey(
         )
         .into());
     }
-    if !quit_sent || !rendered || !connected || !navigated || !reconnected || !restored {
+    if !quit_sent
+        || !milestones.rendered
+        || !connected
+        || !milestones.navigated
+        || !milestones.reconnected
+        || !restored
+    {
         return Err(format!(
-            "native TUI journey was incomplete: quit={quit_sent} rendered={rendered} connected={connected} navigated={navigated} reconnected={reconnected} restored={restored}"
+            "native TUI journey was incomplete: quit={quit_sent} rendered={} connected={connected} navigated={} reconnected={} restored={restored}",
+            milestones.rendered, milestones.navigated, milestones.reconnected
         )
         .into());
     }
@@ -204,7 +210,22 @@ fn connected(bytes: &[u8]) -> bool {
             && contains(bytes, LIVE_EVENT_STREAM))
 }
 
-fn rendered(screen: &TerminalScreen) -> bool {
+#[derive(Clone, Copy, Debug, Default)]
+struct ScreenMilestones {
+    rendered: bool,
+    navigated: bool,
+    reconnected: bool,
+}
+
+impl ScreenMilestones {
+    fn observe(&mut self, screen: &TerminalScreen) {
+        self.rendered |= frame_rendered(screen);
+        self.navigated |= screen.contains("Key reference");
+        self.reconnected |= screen.contains(RECONNECTED_STATUS);
+    }
+}
+
+fn frame_rendered(screen: &TerminalScreen) -> bool {
     screen.contains("Peritus") && screen.contains("Ctrl-Q quit")
 }
 
@@ -279,18 +300,37 @@ mod tests {
     use super::*;
 
     #[test]
-    fn rendered_frame_accepts_detail_views_with_global_tui_chrome() {
+    fn screen_milestones_accept_detail_views_and_survive_later_frames() {
         let mut detail = TerminalScreen::new(4, 100);
+        let mut milestones = ScreenMilestones::default();
         detail.feed(
             b"\x1b[2J\x1b[1;1HPeritus - online\x1b[2;1HEvent credential-registry-event\x1b[4;1H? help - Ctrl-Q quit",
         );
-        assert!(rendered(&detail));
+        milestones.observe(&detail);
+        assert!(milestones.rendered);
         assert!(!detail.contains("Runs"));
+
+        detail.feed(b"\x1b[2J\x1b[1;1HKey reference");
+        milestones.observe(&detail);
+        assert!(milestones.navigated);
+
+        detail.feed(b"\x1b[2J\x1b[1;1Honline #2");
+        milestones.observe(&detail);
+        assert!(milestones.reconnected);
+
+        detail.feed(b"\x1b[2J");
+        milestones.observe(&detail);
+        assert!(!frame_rendered(&detail));
+        assert!(milestones.rendered);
+        assert!(milestones.navigated);
+        assert!(milestones.reconnected);
 
         let mut incomplete = TerminalScreen::new(4, 100);
         incomplete
             .feed(b"\x1b[2J\x1b[1;1HPeritus - online\x1b[2;1HEvent credential-registry-event");
-        assert!(!rendered(&incomplete));
+        let mut incomplete_milestones = ScreenMilestones::default();
+        incomplete_milestones.observe(&incomplete);
+        assert!(!incomplete_milestones.rendered);
     }
 
     #[test]
