@@ -67,7 +67,7 @@ pub(super) fn exercise(
         let state = transcript.lock().map_err(|_| "native TUI transcript lock was poisoned")?;
         screen.feed(&state.bytes[rendered_bytes..]);
         rendered_bytes = state.bytes.len();
-        let rendered = screen.contains("Peritus") && screen.contains("Runs");
+        let rendered = rendered(&screen);
         let connected = connected(&state.bytes);
         let navigated = screen.contains("Key reference");
         let reconnected = screen.contains(RECONNECTED_STATUS);
@@ -139,7 +139,7 @@ fn validate_journey(
     cursor_reports: usize,
 ) -> Result<TuiObservation, Box<dyn std::error::Error>> {
     let diagnostic = diagnostic_tail(transcript);
-    let rendered = screen.contains("Peritus") && screen.contains("Runs");
+    let rendered = rendered(screen);
     let connected = connected(transcript);
     let navigated = screen.contains("Key reference");
     let reconnected = screen.contains(RECONNECTED_STATUS);
@@ -202,6 +202,10 @@ fn connected(bytes: &[u8]) -> bool {
         || (contains(bytes, ONLINE_STATUS)
             && contains(bytes, READY_READ_WRITE)
             && contains(bytes, LIVE_EVENT_STREAM))
+}
+
+fn rendered(screen: &TerminalScreen) -> bool {
+    screen.contains("Peritus") && screen.contains("Ctrl-Q quit")
 }
 
 fn terminal_restored(bytes: &[u8]) -> bool {
@@ -273,6 +277,21 @@ impl Drop for OwnedChild {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn rendered_frame_accepts_detail_views_with_global_tui_chrome() {
+        let mut detail = TerminalScreen::new(4, 100);
+        detail.feed(
+            b"\x1b[2J\x1b[1;1HPeritus - online\x1b[2;1HEvent credential-registry-event\x1b[4;1H? help - Ctrl-Q quit",
+        );
+        assert!(rendered(&detail));
+        assert!(!detail.contains("Runs"));
+
+        let mut incomplete = TerminalScreen::new(4, 100);
+        incomplete
+            .feed(b"\x1b[2J\x1b[1;1HPeritus - online\x1b[2;1HEvent credential-registry-event");
+        assert!(!rendered(&incomplete));
+    }
 
     #[test]
     fn transcript_requires_render_connection_and_complete_restoration() {
