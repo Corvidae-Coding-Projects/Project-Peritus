@@ -191,7 +191,7 @@ const SCENARIOS: [ScenarioSpec; 18] = [
     spec(
         ScenarioId::TuiLifecycle,
         ScenarioCategory::Application,
-        "verify packaged TUI negotiation and terminal restoration",
+        "verify packaged TUI navigation, durable reconnect, and terminal restoration",
     ),
     spec(
         ScenarioId::ProcessEquivalence,

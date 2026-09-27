@@ -102,6 +102,59 @@ async fn question_scenario() {
 }
 
 #[test]
+fn idle_chat_releases_workspace_ownership_for_a_new_conversation() {
+    block_on(async {
+        let repository = repository();
+        let state = tempfile::tempdir().expect("state");
+        let writer = scripted(
+            0x51,
+            "chat",
+            vec![text_response(b"First reply."), text_response(b"Second reply.")],
+        );
+        let reviewer = scripted(0x52, "review", Vec::new());
+        let fixer = scripted(0x53, "fix", Vec::new());
+        let workspace = WorkspaceId::new([0x54; 16]).expect("workspace");
+        let providers = ProductProviderSelection::new(
+            writer.profile.profile_id(),
+            reviewer.profile.profile_id(),
+            fixer.profile.profile_id(),
+        );
+        let service =
+            service(state.path(), repository.path(), workspace, [&writer, &reviewer, &fixer]);
+        let request = |run_id, text: &str| {
+            ProductInteractionRequest::new(
+                ProductRunRequest::new(run_id, workspace, providers, text.to_owned())
+                    .expect("request"),
+                ProductInteractionMode::Chat,
+                ProductRoleModels::default(),
+            )
+        };
+        let first = RunId::new([0x55; 16]).expect("first run");
+        service.interact(request(first, "First question")).await.expect("first chat");
+        assert_eq!(
+            wait_for_terminal(&service, first).await.phase(),
+            ProductRunPhase::WaitingForUser
+        );
+
+        let second = RunId::new([0x56; 16]).expect("second run");
+        service.interact(request(second, "Second question")).await.expect("new idle chat");
+        assert_eq!(
+            wait_for_terminal(&service, second).await.phase(),
+            ProductRunPhase::WaitingForUser
+        );
+        assert_eq!(
+            service
+                .query_interaction(ProductRunConversationQuery::new(first))
+                .expect("retained first conversation")
+                .snapshot()
+                .phase(),
+            ProductRunPhase::WaitingForUser
+        );
+        service.shutdown(Duration::from_secs(5)).await;
+    });
+}
+
+#[test]
 fn public_start_message_is_visible_before_a_stalled_provider_finishes() {
     block_on(async {
         let repository = repository();
@@ -163,75 +216,6 @@ fn public_start_message_is_visible_before_a_stalled_provider_finishes() {
             .await
             .expect("stop");
         assert_eq!(wait_for_terminal(&service, run_id).await.phase(), ProductRunPhase::Cancelled);
-        service.shutdown(Duration::from_secs(5)).await;
-    });
-}
-
-#[test]
-fn follow_up_admitted_at_finalization_is_processed_once() {
-    block_on(async {
-        let repository = repository();
-        let state = tempfile::tempdir().expect("state");
-        let writer = scripted(
-            0x66,
-            "chat",
-            vec![text_response(b"First reply."), text_response(b"Follow-up considered.")],
-        );
-        let reviewer = scripted(0x67, "review", Vec::new());
-        let fixer = scripted(0x68, "fix", Vec::new());
-        let workspace_id = WorkspaceId::new([0x69; 16]).expect("workspace");
-        let run_id = RunId::new([0x6a; 16]).expect("run");
-        let service =
-            service(state.path(), repository.path(), workspace_id, [&writer, &reviewer, &fixer]);
-        let barrier = super::super::execution::inject_finish_barrier(run_id);
-        let request = ProductRunRequest::new(
-            run_id,
-            workspace_id,
-            ProductProviderSelection::new(
-                writer.profile.profile_id(),
-                reviewer.profile.profile_id(),
-                fixer.profile.profile_id(),
-            ),
-            "Hello".to_owned(),
-        )
-        .expect("request");
-        service
-            .interact(ProductInteractionRequest::new(
-                request,
-                ProductInteractionMode::Chat,
-                ProductRoleModels::default(),
-            ))
-            .await
-            .expect("start chat");
-        tokio::time::timeout(Duration::from_secs(5), barrier.reached())
-            .await
-            .expect("runner reached finalization barrier");
-        let admitted = service
-            .continue_run(
-                &ProductRunContinuation::new(run_id, "One follow-up".to_owned())
-                    .expect("continuation"),
-            )
-            .await
-            .expect("admit follow-up");
-        assert!(!admitted.phase().terminal());
-        barrier.release();
-
-        let terminal = wait_for_terminal(&service, run_id).await;
-        assert_eq!(terminal.phase(), ProductRunPhase::WaitingForUser);
-        let conversation = service
-            .query_interaction(ProductRunConversationQuery::new(run_id))
-            .expect("conversation");
-        assert_eq!((conversation.received(), conversation.incorporated()), (2, 2));
-        assert_eq!(writer.requests.lock().expect("requests").len(), 2);
-        assert_eq!(
-            conversation
-                .activities()
-                .iter()
-                .filter(|activity| activity.kind() == ProductActivityKind::User
-                    && activity.text() == "One follow-up")
-                .count(),
-            1
-        );
         service.shutdown(Duration::from_secs(5)).await;
     });
 }
@@ -367,5 +351,7 @@ async fn pending_idle_input_is_restarted_without_claiming_prior_incorporation(
     assert!(!service.pending_interactive_input(run_id));
 }
 
+#[path = "interaction/continuation.rs"]
+mod continuation;
 #[path = "interaction/read_only.rs"]
 mod read_only;

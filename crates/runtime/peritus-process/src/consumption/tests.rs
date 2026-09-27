@@ -195,3 +195,39 @@ impl ProcessProbe for NoProbe {
         panic!("orphan claim must never be signalled")
     }
 }
+
+#[test]
+fn terminal_records_can_be_retired_without_losing_recovery_required_state() {
+    let registry = TestRegistry::new();
+    let execution = identity();
+    let plan_digest = digest(31);
+    prepare_closed_manifest(&registry, &execution, plan_digest);
+    let store = ProcessStore::open(registry.registry(), registry.workspace()).expect("open store");
+    store
+        .record_terminal(execution.process_id(), &terminal(execution.process_id(), plan_digest))
+        .expect("record terminal result");
+
+    {
+        let mut state = store.lock_state();
+        super::retire_terminal_records(
+            &store.inner.claims,
+            &store.inner.manifests,
+            &store.inner.spools,
+            &mut state,
+            0,
+        )
+        .expect("retire terminal record");
+    }
+
+    assert_eq!(store.recovery_work_count(), 0);
+    assert!(store.terminal_result(execution.process_id()).is_err());
+    assert!(!store.claim_path(execution.process_id()).exists());
+    let manifest_path = store.inner.manifests.join(format!(
+        "{}.manifest",
+        crate::registry_storage::hex(execution.process_id().as_bytes())
+    ));
+    assert!(!manifest_path.exists());
+    drop(store);
+    let reopened = ProcessStore::open(registry.registry(), registry.workspace()).expect("reopen");
+    assert_eq!(reopened.recovery_work_count(), 0);
+}

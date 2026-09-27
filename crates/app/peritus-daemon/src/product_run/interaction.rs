@@ -1,7 +1,5 @@
 //! Conversation semantics, durable input acknowledgements, and public execution activity.
 
-#[cfg(not(verus_only))]
-use super::persistence::persist_record;
 use super::{ProductRunService, ProductRunServiceError, snapshot::live_snapshot};
 use peritus_agent::DeveloperInput;
 use peritus_app_protocol::{

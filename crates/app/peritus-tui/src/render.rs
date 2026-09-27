@@ -343,7 +343,9 @@ fn render_help(frame: &mut Frame<'_>, area: Rect) {
 fn render_status(frame: &mut Frame<'_>, area: Rect, model: &AppModel) {
     let (connection, style) = match &model.connection {
         ConnectionStatus::Connecting => ("connecting".to_owned(), Style::default().fg(WARN)),
-        ConnectionStatus::Online { .. } => ("online".to_owned(), Style::default().fg(GOOD)),
+        ConnectionStatus::Online { .. } => {
+            (format!("online #{}", model.connection_generation()), Style::default().fg(GOOD))
+        }
         ConnectionStatus::Disconnected(error) => {
             let recovery = if model.product.is_some() {
                 "offline · R restart/reconnect"
@@ -374,7 +376,12 @@ fn render_status(frame: &mut Frame<'_>, area: Rect, model: &AppModel) {
         };
         spans.push(Span::styled(format!(" {} ", notice.text), Style::default().fg(color)));
     } else {
-        spans.push(Span::styled(" ? help · Ctrl-Q quit ", Style::default().fg(MUTED)));
+        let help = if model.view == View::Conversation {
+            " /help · Ctrl-Q quit "
+        } else {
+            " ? help · Ctrl-Q quit "
+        };
+        spans.push(Span::styled(help, Style::default().fg(MUTED)));
     }
     frame.render_widget(Paragraph::new(Line::from(spans)), area);
 }

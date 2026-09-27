@@ -37,6 +37,15 @@ impl EffectReceiptLedger {
                     .is_error
                     .ok_or_else(|| tool("completed receipt lost its result status"))?,
             },
+            ReceiptState::Applied => ReceiptDecision::RecoverCheckpoint {
+                value: existing
+                    .output
+                    .clone()
+                    .ok_or_else(|| tool("applied receipt lost its result"))?,
+                is_error: existing
+                    .is_error
+                    .ok_or_else(|| tool("applied receipt lost its result status"))?,
+            },
             ReceiptState::Ambiguous => ReceiptDecision::Refuse {
                 detail: ambiguous(&self.scope, ordinal, &existing.call_id),
                 ambiguous: true,

@@ -308,10 +308,13 @@ pub struct AppModel {
     pub(crate) editor: Option<Editor>,
     pub(crate) quitting: bool,
     context: Option<ProtocolContext>,
+    retained_session: Option<SessionId>,
+    connection_generation: u64,
     limits: AppProtocolLimits,
     subscription: Option<SubscriptionId>,
     last_cursor: EventCursor,
     pending: HashMap<RequestId, PendingRequest>,
+    pending_started: HashMap<RequestId, u64>,
     ids: IdFactory,
     pub(super) product: Option<ProductUi>,
     tick_count: u64,
@@ -340,10 +343,13 @@ impl AppModel {
             editor: None,
             quitting: false,
             context: None,
+            retained_session: None,
+            connection_generation: 0,
             limits: AppProtocolLimits::PRODUCTION,
             subscription: None,
             last_cursor: EventCursor::origin(),
             pending: HashMap::new(),
+            pending_started: HashMap::new(),
             ids: IdFactory::new(seed),
             product: product.map(ProductUi::new),
             tick_count: 0,
@@ -372,11 +378,17 @@ impl AppModel {
                 }
             }
             Action::Connected { context, limits, server, downgraded } => {
+                let reconnected = self.retained_session.is_some();
                 self.features.clear();
                 self.context = Some(context);
+                self.retained_session = Some(context.session_id());
+                self.connection_generation = self.connection_generation.saturating_add(1);
                 self.limits = limits;
                 self.connection = ConnectionStatus::Online { server, downgraded };
-                self.notice(NoticeLevel::Info, "connected to daemon");
+                self.notice(
+                    NoticeLevel::Info,
+                    if reconnected { "reconnected to daemon" } else { "connected to daemon" },
+                );
                 self.start_session()
             }
             Action::ConnectionFailed(error) | Action::Disconnected(error) => {
@@ -387,6 +399,7 @@ impl AppModel {
                 self.interrupt_file_import();
                 self.interrupt_image_import();
                 self.pending.clear();
+                self.pending_started.clear();
                 self.notice(NoticeLevel::Error, format!("daemon disconnected: {error}"));
                 Vec::new()
             }
@@ -394,13 +407,17 @@ impl AppModel {
             Action::TerminalEvent(event) => self.handle_terminal_event(event),
             Action::Tick(_) => {
                 self.tick_count = self.tick_count.saturating_add(1);
+                let reconnect = self.expire_pending_requests();
                 if let Some(notice) = &mut self.notice {
                     notice.ticks_remaining = notice.ticks_remaining.saturating_sub(1);
                     if notice.ticks_remaining == 0 {
                         self.notice = None;
                     }
                 }
-                if self.tick_count.is_multiple_of(4) {
+                if reconnect {
+                    self.connection = ConnectionStatus::Connecting;
+                    vec![Effect::Reconnect]
+                } else if self.tick_count.is_multiple_of(4) {
                     self.poll_product_runs()
                 } else {
                     Vec::new()
@@ -437,8 +454,12 @@ impl AppModel {
         self.last_cursor
     }
 
-    pub(crate) fn retained_session(&self) -> Option<SessionId> {
-        self.context.map(ProtocolContext::session_id)
+    pub(crate) const fn retained_session(&self) -> Option<SessionId> {
+        self.retained_session
+    }
+
+    pub(crate) const fn connection_generation(&self) -> u64 {
+        self.connection_generation
     }
 
     pub(crate) fn cleanup_messages(&mut self) -> Vec<AppMessage> {

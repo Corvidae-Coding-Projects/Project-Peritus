@@ -19,6 +19,8 @@ mod delivery_requirement;
 mod design;
 pub(crate) mod developer_tools;
 #[cfg(not(verus_only))]
+mod diagnostic;
+#[cfg(not(verus_only))]
 mod engineering_workflow;
 mod error;
 #[cfg(not(verus_only))]

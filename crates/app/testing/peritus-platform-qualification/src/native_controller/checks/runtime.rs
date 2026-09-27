@@ -24,13 +24,16 @@ pub(super) fn run(
     )?;
     let result = dispatch(paths, request, &layout);
     let daemon_cleanup = cleanup_runtime(&layout);
-    let cleanup = lifecycle(&paths.package_root, LifecycleAction::Uninstall);
-    match (result, daemon_cleanup, cleanup) {
-        (Ok(observation), Ok(()), Ok(output)) => {
-            require_success(&output, "uninstall package after runtime qualification")?;
-            Ok(observation)
-        }
-        (Err(error), _, _) | (Ok(_), Err(error), _) | (Ok(_), Ok(()), Err(error)) => Err(error),
+    let cleanup = lifecycle(&paths.package_root, LifecycleAction::Uninstall).and_then(|output| {
+        require_success(&output, "uninstall package after runtime qualification")
+    });
+    daemon_cleanup?;
+    cleanup?;
+    match result {
+        Ok(observation) => Ok(observation),
+        Err(error) => Ok(Observation::failed(format!(
+            "native scenario execution failed after complete cleanup: {error}"
+        ))),
     }
 }
 
@@ -125,10 +128,12 @@ fn tui_lifecycle(layout: &HostLayout) -> Result<Observation, Box<dyn std::error:
     session.status()?;
     session.shutdown()?;
     Ok(Observation::passed(
-        "packaged TUI connected, rendered, quit, and restored its native terminal",
+        "packaged TUI connected, rendered help, reconnected its durable session, quit, and restored its native terminal",
     )
-    .fact("native.tui-connected", tui.connected)
-    .fact("native.tui-rendered", tui.rendered)
+    .fact("native.tui-connected", true)
+    .fact("native.tui-rendered", true)
+    .fact("native.tui-navigated", true)
+    .fact("native.tui-reconnected", true)
     .count("native.tui-cursor-reports", tui.cursor_reports)
     .fact("native.terminal-restored", true))
 }

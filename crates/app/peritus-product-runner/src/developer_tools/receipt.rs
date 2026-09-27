@@ -24,6 +24,7 @@ const MAX_RECORD_BYTES: usize = 2 * 1024 * 1024;
 pub(super) enum ReceiptDecision {
     Execute,
     Replay { value: Value, is_error: bool },
+    RecoverCheckpoint { value: Value, is_error: bool },
     Refuse { detail: String, ambiguous: bool },
 }
 
@@ -49,6 +50,7 @@ struct ReceiptRecord {
 
 enum ReceiptState {
     Started,
+    Applied,
     Completed,
     Ambiguous,
 }
@@ -73,6 +75,7 @@ impl Clone for ReceiptState {
     fn clone(&self) -> Self {
         match self {
             Self::Started => Self::Started,
+            Self::Applied => Self::Applied,
             Self::Completed => Self::Completed,
             Self::Ambiguous => Self::Ambiguous,
         }
@@ -113,6 +116,14 @@ impl EffectReceiptLedger {
                     is_error: existing
                         .is_error
                         .ok_or_else(|| tool("completed receipt lost its result status"))?,
+                }),
+                ReceiptState::Applied => Ok(ReceiptDecision::RecoverCheckpoint {
+                    value: existing
+                        .output
+                        .ok_or_else(|| tool("applied receipt lost its result"))?,
+                    is_error: existing
+                        .is_error
+                        .ok_or_else(|| tool("applied receipt lost its result status"))?,
                 }),
                 ReceiptState::Ambiguous => Ok(ReceiptDecision::Refuse {
                     detail: ambiguous(&self.scope, ordinal, &existing.call_id),
@@ -168,6 +179,15 @@ impl EffectReceiptLedger {
         value: &Value,
         is_error: bool,
     ) -> Result<(), DeveloperLoopError> {
+        self.applied(value, is_error)?;
+        self.finalize()
+    }
+
+    pub(super) fn applied(
+        &mut self,
+        value: &Value,
+        is_error: bool,
+    ) -> Result<(), DeveloperLoopError> {
         let ordinal = self.next_ordinal;
         let existing = self
             .entries
@@ -178,11 +198,27 @@ impl EffectReceiptLedger {
             return Err(tool("effect receipt is not awaiting completion"));
         }
         let record = ReceiptRecord {
-            state: ReceiptState::Completed,
+            state: ReceiptState::Applied,
             output: Some(value.clone()),
             is_error: Some(is_error),
             ..existing
         };
+        self.append(&record)?;
+        self.entries.insert(ordinal, record);
+        Ok(())
+    }
+
+    pub(super) fn finalize(&mut self) -> Result<(), DeveloperLoopError> {
+        let ordinal = self.next_ordinal;
+        let existing = self
+            .entries
+            .get(&ordinal)
+            .cloned()
+            .ok_or_else(|| tool("effect finalized without an applied receipt"))?;
+        if !matches!(existing.state, ReceiptState::Applied) {
+            return Err(tool("effect receipt is not awaiting checkpoint finalization"));
+        }
+        let record = ReceiptRecord { state: ReceiptState::Completed, ..existing };
         self.append(&record)?;
         self.entries.insert(ordinal, record);
         Ok(())
@@ -251,7 +287,9 @@ impl EffectReceiptLedger {
             ReceiptState::Started | ReceiptState::Ambiguous => {
                 record.output.is_none() && record.is_error.is_none()
             }
-            ReceiptState::Completed => record.output.is_some() && record.is_error.is_some(),
+            ReceiptState::Applied | ReceiptState::Completed => {
+                record.output.is_some() && record.is_error.is_some()
+            }
         };
         if !fields_are_consistent {
             return Err(tool("effect receipt state fields are inconsistent"));

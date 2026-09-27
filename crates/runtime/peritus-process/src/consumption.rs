@@ -10,8 +10,7 @@ use peritus_leases::LeaseClaim;
 use peritus_types::{ProcessId, Sha256Digest};
 
 use crate::{
-    ErrorCode, ExecutionPlan, LifecyclePhase, OsExitObservation, ProcessError, ProcessOperation,
-    RecoveryClass, StopTrigger,
+    ExecutionPlan, LifecyclePhase, OsExitObservation, ProcessError, StopTrigger,
     platform::ProcessTreeIdentity,
     recovery::{claim::ConsumptionClaim, manifest::ExecutionManifest},
     registry_storage::{
@@ -20,11 +19,17 @@ use crate::{
     },
 };
 
+mod errors;
+mod retention;
 mod terminal_store;
 #[cfg(test)]
 mod tests;
 
+use errors::{overlap_error, reused, store_error};
+use retention::{execution_record_count, retire_terminal_records};
+
 const MAX_EXECUTION_RECORDS: usize = 16_384;
+const RETIRE_BATCH: usize = 1_024;
 
 struct StoreState {
     manifests: BTreeMap<ProcessId, ExecutionManifest>,
@@ -67,12 +72,7 @@ impl ProcessStore {
         let workspace = std::fs::canonicalize(agent_workspace_root.as_ref())
             .map_err(|_| store_error("agent workspace root cannot be canonicalized"))?;
         if root.starts_with(&workspace) || workspace.starts_with(&root) {
-            return Err(ProcessError::new(
-                ErrorCode::InvalidInput,
-                ProcessOperation::OpenStore,
-                RecoveryClass::CorrectRequest,
-                "process registry and agent-visible workspace roots overlap",
-            ));
+            return Err(overlap_error());
         }
         let manifests = root.join("manifests-v1");
         let claims = root.join("claims-v1");
@@ -93,6 +93,13 @@ impl ProcessStore {
             &quarantine,
             &mut state.manifests,
             &mut state.quarantined_records,
+        )?;
+        retire_terminal_records(
+            &claims,
+            &manifests,
+            &spools,
+            &mut state,
+            MAX_EXECUTION_RECORDS.saturating_sub(RETIRE_BATCH),
         )?;
         if execution_record_count(&state) > MAX_EXECUTION_RECORDS {
             return Err(store_error("process registry exceeds its record bound"));
@@ -157,7 +164,18 @@ impl ProcessStore {
             return Err(reused());
         }
         if execution_record_count(&state) >= MAX_EXECUTION_RECORDS {
-            return Err(store_error("process registry exceeds its record bound"));
+            retire_terminal_records(
+                &self.inner.claims,
+                &self.inner.manifests,
+                &self.inner.spools,
+                &mut state,
+                MAX_EXECUTION_RECORDS.saturating_sub(RETIRE_BATCH),
+            )?;
+            if execution_record_count(&state) >= MAX_EXECUTION_RECORDS {
+                return Err(store_error(
+                    "process registry is full of records that still require recovery",
+                ));
+            }
         }
         let claim = persist_claim(&self.inner.claims, &identity, action_digest, plan.digest())?;
         state.claims.insert(process_id, claim);
@@ -373,28 +391,5 @@ const fn legal_manifest_advance(before: LifecyclePhase, after: LifecyclePhase) -
         (before, after),
         (LifecyclePhase::Authorized, LifecyclePhase::Starting)
             | (LifecyclePhase::Closed, LifecyclePhase::Terminal)
-    )
-}
-
-fn execution_record_count(state: &StoreState) -> usize {
-    state.claims.len()
-        + state.manifests.keys().filter(|process_id| !state.claims.contains_key(process_id)).count()
-}
-
-const fn reused() -> ProcessError {
-    ProcessError::new(
-        ErrorCode::ReceiptReused,
-        ProcessOperation::Authorize,
-        RecoveryClass::Reauthorize,
-        "action/process authority was already durably consumed",
-    )
-}
-
-const fn store_error(detail: &'static str) -> ProcessError {
-    ProcessError::new(
-        ErrorCode::Persistence,
-        ProcessOperation::Persist,
-        RecoveryClass::ReopenAndReconcile,
-        detail,
     )
 }

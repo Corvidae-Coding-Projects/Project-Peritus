@@ -8,6 +8,37 @@ use crate::model::{
 };
 
 impl AppModel {
+    pub(in crate::model) fn expire_pending_requests(&mut self) -> bool {
+        const REQUEST_TIMEOUT_TICKS: u64 = 120;
+
+        let expired = self
+            .pending_started
+            .iter()
+            .filter_map(|(request, started)| {
+                (self.tick_count.saturating_sub(*started) >= REQUEST_TIMEOUT_TICKS)
+                    .then_some(*request)
+            })
+            .collect::<Vec<_>>();
+        if expired.is_empty() {
+            return false;
+        }
+        for request in expired {
+            self.pending_started.remove(&request);
+            match self.pending.remove(&request) {
+                Some(PendingRequest::ChatSubmit { text, .. }) => self.restore_chat_draft(&text),
+                Some(PendingRequest::Prompt(prompt)) => {
+                    self.set_prompt_phase(prompt, PromptPhase::Failed);
+                }
+                _ => {}
+            }
+        }
+        self.notice(
+            NoticeLevel::Error,
+            "daemon request timed out; reconnecting to reconcile its outcome before another action",
+        );
+        true
+    }
+
     fn response_error(
         &mut self,
         error: &peritus_app_protocol::AppProtocolError,
@@ -72,6 +103,7 @@ impl AppModel {
             return Vec::new();
         }
         let pending = self.pending.remove(&response.request_id());
+        self.pending_started.remove(&response.request_id());
         let exact_run = match &pending {
             Some(PendingRequest::ProductExactQuery(run_id)) => Some(*run_id),
             _ => None,

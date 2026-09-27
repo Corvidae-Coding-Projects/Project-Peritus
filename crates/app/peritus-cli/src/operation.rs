@@ -81,9 +81,31 @@ pub async fn shutdown(
             "shutdown accepted; completion not awaited",
         );
     }
+    await_shutdown(&mut client, shutdown, timeout, output).await
+}
 
+async fn await_shutdown(
+    client: &mut Client,
+    shutdown: ShutdownRequest,
+    timeout: Duration,
+    output: &Output,
+) -> Result<(), CliError> {
+    let deadline = tokio::time::Instant::now() + timeout;
     loop {
-        let event = client.read_event().await?;
+        let remaining = deadline.saturating_duration_since(tokio::time::Instant::now());
+        if remaining.is_zero() {
+            return Err(CliError::connection(
+                "wait for shutdown",
+                "shutdown completion deadline elapsed after acceptance",
+            ));
+        }
+        let event =
+            tokio::time::timeout(remaining, client.read_event()).await.map_err(|_| {
+                CliError::connection(
+                    "wait for shutdown",
+                    "shutdown completion deadline elapsed after acceptance",
+                )
+            })??;
         if client.reply_heartbeat(&event).await? {
             continue;
         }

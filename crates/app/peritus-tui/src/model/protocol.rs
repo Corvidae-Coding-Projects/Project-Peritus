@@ -62,6 +62,7 @@ impl AppModel {
         match AppRequestEnvelope::new(context, request, correlation, payload) {
             Ok(envelope) => {
                 self.pending.insert(request, kind);
+                self.pending_started.insert(request, self.tick_count);
                 Some(Effect::Send(AppMessage::Request(envelope)))
             }
             Err(error) => {

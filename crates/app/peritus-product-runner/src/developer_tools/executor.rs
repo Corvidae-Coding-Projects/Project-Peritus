@@ -121,14 +121,14 @@ fn first_missing_permission(
 }
 
 fn required_permissions(tool_name: &str) -> Option<&'static [PermissionCapability]> {
-    use PermissionCapability::{Network, Process, Read, Write};
+    use PermissionCapability::{Process, Read, Write};
     match tool_name {
         "workspace_list" | "workspace_search" | "workspace_read" => Some(&[Read]),
         "workspace_scope" | "workspace_write" | "workspace_patch" | "workspace_remove" => {
             Some(&[Read, Write])
         }
         "run_command" | "command_start" | "command_stdin" | "command_resize" | "command_signal" => {
-            Some(&[Read, Write, Process, Network])
+            Some(&[Read, Write, Process])
         }
         // Observation and cleanup of an already-owned process remain available after revocation.
         "command_poll" | "command_recover" | "command_cancel" => Some(&[]),
@@ -255,13 +255,22 @@ impl DeveloperToolExecutor for WorkspaceDeveloperTools {
             )?;
         }
         if effect {
-            self.receipts
-                .as_mut()
-                .ok_or_else(|| tool("writable tools have no effect receipt ledger"))?
-                .complete(&value, is_error)?;
-        }
-        if accepted {
-            self.record_checkpoint(call.name().as_str(), &arguments, &value)?;
+            if accepted {
+                self.receipts
+                    .as_mut()
+                    .ok_or_else(|| tool("writable tools have no effect receipt ledger"))?
+                    .applied(&value, is_error)?;
+                self.record_checkpoint(call.name().as_str(), &arguments, &value)?;
+                self.receipts
+                    .as_mut()
+                    .ok_or_else(|| tool("writable tools have no effect receipt ledger"))?
+                    .finalize()?;
+            } else {
+                self.receipts
+                    .as_mut()
+                    .ok_or_else(|| tool("writable tools have no effect receipt ledger"))?
+                    .complete(&value, is_error)?;
+            }
         }
         if accepted {
             self.record_success(call.name().as_str(), &arguments, &value);

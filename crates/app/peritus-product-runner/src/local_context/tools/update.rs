@@ -8,8 +8,8 @@ use peritus_context::{
     ContextLimits, bind_context_content,
     working::{
         ObservationId, WorkingDelta, WorkingEntry, WorkingEntryKind, WorkingEntryStatus,
-        WorkingEnvironment, WorkingEvent, WorkingLinks, WorkingValidity, apply_working_delta,
-        apply_working_event,
+        WorkingEnvironment, WorkingEvent, WorkingLinks, WorkingState, WorkingValidity,
+        apply_working_delta, apply_working_event,
     },
 };
 use serde::Deserialize;
@@ -81,7 +81,13 @@ pub(in crate::local_context) fn execute(
         Ok(proposal) => proposal,
         Err(reason) => return Ok(rejected(memory, &reason.to_string())),
     };
-    let (environment, files, delta) = proposal;
+    let (environment, files, delta, successor) = proposal;
+    if let Err(reason) = memory.ensure_required_state_fits(&successor) {
+        return Ok(rejected(
+            memory,
+            &format!("update would make the next provider request unusable: {reason}"),
+        ));
+    }
     if memory.state.environment() != &environment {
         memory.state_event(&WorkingEvent::Refresh {
             base_revision: memory.state.revision(),
@@ -114,7 +120,7 @@ pub(in crate::local_context) fn execute(
 fn prepare(
     memory: &LocalMemory,
     update: &Update,
-) -> Result<(WorkingEnvironment, Vec<String>, WorkingDelta), DeveloperLoopError> {
+) -> Result<(WorkingEnvironment, Vec<String>, WorkingDelta, WorkingState), DeveloperLoopError> {
     if update.base_revision != memory.model_revision {
         return Err(error("working-model revision conflict; inspect current state"));
     }
@@ -182,9 +188,9 @@ fn prepare(
     entries.sort_by_key(WorkingEntry::id);
     let delta = WorkingDelta::new(state.binding(), state.revision(), entries, memory.limits)
         .map_err(|_| error("duplicate or invalid update operations"))?;
-    apply_working_delta(&state, &delta)
+    let successor = apply_working_delta(&state, &delta)
         .map_err(|_| error("update references, dependencies, freshness, or capacity rejected"))?;
-    Ok((environment, paths, delta))
+    Ok((environment, paths, delta, successor))
 }
 
 fn label(value: &str) -> Result<peritus_context::ContextNodeId, DeveloperLoopError> {

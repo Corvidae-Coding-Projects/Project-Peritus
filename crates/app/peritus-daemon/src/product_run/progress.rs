@@ -4,6 +4,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use peritus_product_runner::{PRODUCT_RUN_MAX_ELAPSED, ProductRunProgress};
 
+#[derive(Clone)]
 pub(super) struct RunProgress {
     pub(super) started_unix_millis: u64,
     pub(super) last_effect_unix_millis: u64,

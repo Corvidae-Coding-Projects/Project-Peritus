@@ -19,6 +19,7 @@ pub(super) fn encode(record: &ReceiptRecord) -> Value {
         Value::String(
             match &record.state {
                 ReceiptState::Started => "started",
+                ReceiptState::Applied => "applied",
                 ReceiptState::Completed => "completed",
                 ReceiptState::Ambiguous => "ambiguous",
             }
@@ -42,6 +43,7 @@ pub(super) fn decode(value: &Value) -> Result<ReceiptRecord, DeveloperLoopError>
         .map_err(|_| tool("effect receipt ordinal is out of range"))?;
     let state = match required_text(fields, "state")? {
         "started" => ReceiptState::Started,
+        "applied" => ReceiptState::Applied,
         "completed" => ReceiptState::Completed,
         "ambiguous" => ReceiptState::Ambiguous,
         _ => return Err(tool("effect receipt state is unknown")),

@@ -1,5 +1,6 @@
 //! Native conversation wire contract against a local protocol fixture; no provider calls.
 
+mod recovery;
 mod sessions;
 
 use super::*;
@@ -159,6 +160,12 @@ async fn native_messages_preserve_targets_modes_models_and_observed_revisions() 
                         )
                         .unwrap(),
                     )),
+                    AppRequestPayload::QueryInteraction(_) => Some(AppResponsePayload::Error(
+                        peritus_app_protocol::AppProtocolError::new(
+                            peritus_app_protocol::AppErrorCode::InvalidIdentifier,
+                            None,
+                        ),
+                    )),
                     _ => None,
                 };
                 if let Some(payload) = diagnostic {
@@ -296,31 +303,6 @@ async fn receive_request(
     write_message(&mut stream, AppMessage::ServerHello(answer)).await;
     let AppMessage::Request(request) = read_message(&mut stream).await else { panic!("request") };
     (stream, request)
-}
-#[tokio::test]
-async fn lost_response_is_uncertain_and_never_reissued_after_restart() {
-    let temporary = tempfile::tempdir().unwrap();
-    let root = temporary.path();
-    let endpoint = root.join("recovery.sock");
-    let listener = UnixListener::bind(&endpoint).unwrap();
-    let app = isolated_app(root, endpoint.clone());
-    let server = tokio::spawn(async move {
-        let (stream, request) = receive_request(&listener).await;
-        assert!(matches!(request.payload(), AppRequestPayload::ControlProductRun(_)));
-        drop(stream);
-    });
-    let payload = AppRequestPayload::ControlProductRun(ProductRunControl::new(
-        RunId::new([1; 16]).unwrap(),
-        ProductRunControlAction::Cancel,
-    ));
-    let error = receipts::recorded(&app, "original", payload.clone()).await.unwrap_err();
-    assert!(error.1);
-    server.await.unwrap();
-    let reopened = isolated_app(root, endpoint);
-    assert!(receipts::observed(&reopened, "original").unwrap().is_none());
-    let retained = reopened.snapshot().unwrap();
-    assert!(retained.operations["daemon:original"].input["frame"].as_str().unwrap().len() > 64);
-    assert!(receipts::recorded(&reopened, "original", payload).await.unwrap_err().1);
 }
 #[tokio::test]
 async fn read_only_or_draining_connection_is_not_mutation_ready() {

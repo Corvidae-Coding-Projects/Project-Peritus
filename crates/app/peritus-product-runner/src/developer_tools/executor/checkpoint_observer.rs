@@ -53,6 +53,64 @@ pub(super) struct PreparedMutation {
 }
 
 impl WorkspaceDeveloperTools {
+    pub(super) fn recover_checkpoint(
+        &mut self,
+        name: &str,
+        arguments: &Value,
+        result: &Value,
+    ) -> Result<(), DeveloperLoopError> {
+        self.prepared_mutations.clear();
+        match name {
+            "workspace_write" if result.get("changed").and_then(Value::as_bool) == Some(true) => {
+                let path = required_string(arguments, "path")?;
+                let content = required_string(arguments, "content")?;
+                let actual = fs::read(checked(&self.root, path, false)?)
+                    .map_err(|error| tool(error.to_string()))?;
+                if actual != content.as_bytes() {
+                    return Err(tool(
+                        "workspace changed after the completed write; checkpoint recovery requires reconciliation",
+                    ));
+                }
+                self.prepared_mutations.push(prepared_file(path, content.as_bytes()));
+            }
+            "workspace_patch" => {
+                let path = required_string(arguments, "path")?;
+                let actual = fs::read(checked(&self.root, path, false)?)
+                    .map_err(|error| tool(error.to_string()))?;
+                let expected_bytes = result.get("bytes").and_then(Value::as_u64);
+                let expected_digest = result.get("sha256").and_then(Value::as_str);
+                if expected_bytes != Some(actual.len() as u64)
+                    || expected_digest != Some(digest_hex(&actual).as_str())
+                {
+                    return Err(tool(
+                        "workspace changed after the completed patch; checkpoint recovery requires reconciliation",
+                    ));
+                }
+                self.prepared_mutations.push(prepared_file(path, &actual));
+            }
+            "workspace_remove" => {
+                let path = required_string(arguments, "path")?;
+                if checked(&self.root, path, true)?.exists() {
+                    return Err(tool(
+                        "removed path reappeared before checkpoint recovery; reconciliation is required",
+                    ));
+                }
+                let kind = match result.get("kind").and_then(Value::as_str) {
+                    Some("file") => WorkspaceMutationKind::File,
+                    Some("directory") => WorkspaceMutationKind::EmptyDirectory,
+                    _ => return Err(tool("completed removal receipt has no supported path kind")),
+                };
+                self.prepared_mutations.push(PreparedMutation {
+                    path: path.to_owned(),
+                    kind,
+                    owned_postchange: CheckpointFileVersion::Absent,
+                });
+            }
+            _ => {}
+        }
+        self.record_checkpoint(name, arguments, result)
+    }
+
     pub(super) fn prepare_effect_checkpoint(
         &mut self,
         name: &str,
@@ -260,6 +318,16 @@ fn prepared_file(path: &str, content: &[u8]) -> PreparedMutation {
             CheckpointFileMode::Regular,
         ),
     }
+}
+
+fn digest_hex(bytes: &[u8]) -> String {
+    use core::fmt::Write as _;
+
+    let mut value = String::with_capacity(64);
+    for byte in Sha256::digest(bytes) {
+        let _ = write!(value, "{byte:02x}");
+    }
+    value
 }
 
 fn exact_file_receipt(

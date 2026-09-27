@@ -35,6 +35,7 @@ mod cli;
 mod command;
 mod component;
 mod config;
+mod diagnostic;
 mod domain;
 mod error;
 mod identity;

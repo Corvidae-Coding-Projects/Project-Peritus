@@ -23,8 +23,6 @@ const REQUEST_NAMESPACE: u16 = 3404;
 const MANIFEST_NAMESPACE: u16 = 3405;
 const REPLY_NAMESPACE: u16 = 3406;
 const HOST_GOAL_OPERATION_NAMESPACE: u16 = 3420;
-const MAX_RECORDS: u64 = 16_384;
-const MAX_DATABASE_BYTES: u64 = 256 * 1024 * 1024;
 
 mod checkpoints;
 mod files;
@@ -74,13 +72,11 @@ impl ControlStore {
             .open(root.join("owner.lock"))?;
         owner.try_lock().map_err(|error| Error::Io(error.into()))?;
         let owner = ControlOwner(owner);
-        let mut journal = SqliteJournal::open(
+        let journal = SqliteJournal::open(
             root.join("control.sqlite3"),
             store,
             SqliteJournalOptions { busy_timeout: Duration::from_millis(250) },
         )?;
-        let pages = journal.storage_pages()?;
-        journal.limit_storage_pages(MAX_DATABASE_BYTES / pages.page_size())?;
         Ok(Self { journal, store, _owner: owner })
     }
 
@@ -190,9 +186,6 @@ impl ControlStore {
         let current = self.load(operation.conversation())?;
         self.check_creation_reservation(operation, current.is_none())?;
         let (next, receipt) = ConversationRecord::apply(current.as_ref(), operation)?;
-        if next.revision() > MAX_RECORDS {
-            return Err(ControlError::Capacity.into());
-        }
         let payload = operation.canonical_bytes()?;
         let aggregate = aggregate(operation.conversation())?;
         let head = self.journal.head(aggregate)?;

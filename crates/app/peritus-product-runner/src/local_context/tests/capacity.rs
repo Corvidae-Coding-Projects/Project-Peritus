@@ -2,8 +2,124 @@
 
 use super::super::tools;
 use super::support::*;
-use peritus_agent::estimate_developer_request_tokens;
+use peritus_agent::{DeveloperToolObservation, estimate_developer_request_tokens};
+use peritus_model_protocol::{
+    CancellationKind, Capability, CapabilityMatrix, CapabilityProvenance, ModelLimits, ModelName,
+    OutputLimitEnforcement, ProviderName, ProviderProfile, ResumeKind, StateMode, WireDialect,
+};
 use serde_json::Value;
+
+fn batch_profile() -> ProviderProfile {
+    ProviderProfile::new(
+        peritus_types::ProviderProfileId::new([8; 16]).unwrap(),
+        1,
+        ProviderName::new("batch-fixture".to_owned()).unwrap(),
+        ModelName::new("batch-fixture".to_owned()).unwrap(),
+        WireDialect::CompatibleResponses,
+        CapabilityMatrix::new(&[Capability::ToolCalls, Capability::ParallelToolCalls], &[])
+            .unwrap(),
+        CapabilityProvenance::Probed,
+        ModelLimits::new(32_768, 128, 32, 8, 512 * 1024).unwrap(),
+        OutputLimitEnforcement::ProviderEnforced,
+        StateMode::StatelessReplay,
+        ResumeKind::Unsupported,
+        CancellationKind::BestEffortLocalAbort,
+    )
+    .unwrap()
+}
+
+#[test]
+fn oversized_completed_batch_retains_retrieval_handles_and_older_fitting_evidence() {
+    let fixture = Fixture::new();
+    let mut memory = fixture.open();
+    begin(&mut memory, "large-batch");
+    observation(&mut memory, "earlier-read", "EARLIER_SUCCESS", false);
+    let calls: Vec<_> = (0..8).map(|index| call(&format!("large-read-{index}"))).collect();
+    memory
+        .observe_message(
+            &peritus_model_protocol::Message::new(
+                peritus_model_protocol::Role::Assistant,
+                calls.iter().cloned().map(peritus_model_protocol::ContentBlock::ToolCall).collect(),
+                peritus_model_protocol::ProtocolLimits::PRODUCTION,
+            )
+            .unwrap(),
+        )
+        .unwrap();
+    for (index, call) in calls.iter().enumerate() {
+        let output = canonical(&serde_json::json!({
+            "content": format!("LATEST_BATCH_FACT_{index} {}", "e".repeat(12_160))
+        }));
+        assert!(output.canonical_bytes().len() <= 32_768 / 8 * 3);
+        memory
+            .observe_tool(
+                call,
+                &DeveloperToolObservation { output: output.clone(), is_error: false },
+            )
+            .unwrap();
+        memory
+            .observe_message(
+                &peritus_model_protocol::Message::new(
+                    peritus_model_protocol::Role::Tool,
+                    vec![peritus_model_protocol::ContentBlock::ToolResult(
+                        peritus_model_protocol::ToolResult::new(call.id().clone(), output, false),
+                    )],
+                    peritus_model_protocol::ProtocolLimits::PRODUCTION,
+                )
+                .unwrap(),
+            )
+            .unwrap();
+    }
+
+    let view = memory.prepare_view(&batch_profile(), &[]).unwrap();
+    let rendered = render(&view);
+    let earlier = canonical(&serde_json::json!({"diagnostic": "EARLIER_SUCCESS"}));
+    assert!(view.iter().flat_map(peritus_model_protocol::Message::content).any(|block| {
+        matches!(block, peritus_model_protocol::ContentBlock::ToolResult(result)
+            if result.call_id().expose_for_wire() == "earlier-read"
+                && result.output() == &earlier)
+    }));
+    assert!(rendered.contains("COMPLETED TOOL EVIDENCE OMITTED FROM INLINE HISTORY"));
+    assert!(rendered.contains("call=large-read-0"));
+    assert!(rendered.contains("exact_source=obs:"));
+    assert!(!rendered.contains("LATEST_BATCH_FACT"));
+    assert!(estimate_developer_request_tokens(&view, &[]) <= 32_768);
+}
+
+#[test]
+fn update_that_would_overfill_required_working_state_is_rejected_before_commit() {
+    let fixture = Fixture::new();
+    let mut memory = fixture.open();
+    begin(&mut memory, "memory-growth");
+    let source = observation(&mut memory, "inspect", "retained source", false);
+    let provider = profile(32_768);
+    let mut rejected_at = None;
+    for index in 0..100 {
+        let view = memory.prepare_view(&provider, &[]).unwrap();
+        memory.publish(&view).unwrap();
+        let mut proposal = update(
+            memory.model_revision,
+            source,
+            &format!("plan-{index}"),
+            &"Retain this source-backed investigation detail. ".repeat(42),
+        );
+        proposal["operations"][0]["kind"] = Value::from("plan");
+        proposal["operations"][0]["validity"] = Value::from("task");
+        let before = memory.state.clone();
+        let result = tools::update::execute(&mut memory, proposal.to_string().as_bytes()).unwrap();
+        if result.get("rejected").is_some() {
+            assert_eq!(memory.state, before);
+            rejected_at = Some(index);
+            break;
+        }
+    }
+    assert!(rejected_at.is_some(), "fixture must reach the provider request boundary");
+    let usable = memory.prepare_view(&provider, &[]).unwrap();
+    memory.publish(&usable).unwrap();
+    drop(memory);
+    let mut recovered = fixture.open();
+    begin(&mut recovered, "reopen-after-rejection");
+    assert!(recovered.prepare_view(&provider, &[]).is_ok());
+}
 
 #[test]
 fn reviewer_packet_leaves_room_for_authoritative_tool_observations() {

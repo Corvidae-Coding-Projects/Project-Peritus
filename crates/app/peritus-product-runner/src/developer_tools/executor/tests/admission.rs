@@ -88,6 +88,34 @@ fn live_permission_narrowing_precedes_reads_scope_receipts_and_process_effects()
 }
 
 #[test]
+fn network_revocation_still_allows_network_denied_local_commands() {
+    let root = tempfile::tempdir().expect("workspace");
+    fs::write(root.path().join("README.md"), "grounding\n").expect("grounding fixture");
+    let view = Arc::new(MutablePermissionView::new(
+        HostPermissions::all().without(PermissionCapability::Network),
+    ));
+    let mut tools = writable_tools(root.path()).with_protection_view(view);
+    assert!(!execute(&mut tools, "workspace_list", r#"{"path":"."}"#).is_error);
+    assert!(
+        !execute(
+            &mut tools,
+            "workspace_read",
+            r#"{"path":"README.md","start_line":1,"end_line":5}"#,
+        )
+        .is_error
+    );
+
+    let command = execute(
+        &mut tools,
+        "run_command",
+        r#"{"program":"rustc","args":["--version"],"cwd":".","purpose":"verification"}"#,
+    );
+
+    assert!(!command.is_error, "{}", wire(&command));
+    assert!(wire(&command).contains(r#""success":true"#));
+}
+
+#[test]
 fn bad_write_is_repairable_in_the_same_invocation_without_enrollment_or_effect() {
     let root = tempfile::tempdir().unwrap();
     let state = tempfile::tempdir().unwrap();

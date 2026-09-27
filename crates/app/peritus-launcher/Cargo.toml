@@ -19,6 +19,7 @@ crossterm.workspace = true
 fs4.workspace = true
 futures-util.workspace = true
 getrandom.workspace = true
+nix = { workspace = true, features = ["process"] }
 peritus-approval = { version = "=0.0.4", path = "../../state/peritus-approval" }
 peritus-app-protocol = { version = "=0.0.4", path = "../peritus-app-protocol" }
 peritus-daemon = { version = "=0.0.4", path = "../peritus-daemon" }

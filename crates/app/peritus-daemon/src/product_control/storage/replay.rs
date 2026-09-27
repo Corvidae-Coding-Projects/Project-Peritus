@@ -1,13 +1,11 @@
 //! Verified immutable replay and exact historical checkpoint reads.
 
 use super::{
-    ControlStore, Error, FRAME_FAMILY, MANIFEST_NAMESPACE, MAX_RECORDS, REPLY_NAMESPACE,
-    REQUEST_NAMESPACE, ROOT_NAMESPACE, aggregate,
+    ControlStore, Error, FRAME_FAMILY, MANIFEST_NAMESPACE, REPLY_NAMESPACE, REQUEST_NAMESPACE,
+    ROOT_NAMESPACE, aggregate,
 };
 use peritus_codec::{CodecLimits, decode_frame, sha256};
-use peritus_product_runner::control::{
-    ControlError, ControlOperation, ConversationId, ConversationRecord,
-};
+use peritus_product_runner::control::{ControlOperation, ConversationId, ConversationRecord};
 
 impl ControlStore {
     /// Verifies bounded immutable history against the current C0 state root without recovery writes.
@@ -30,9 +28,6 @@ impl ControlStore {
         revision: Option<u64>,
     ) -> Result<Option<ConversationRecord>, Error> {
         let aggregate = aggregate(id)?;
-        if self.journal.head(aggregate)?.is_some_and(|head| head.sequence().get() > MAX_RECORDS) {
-            return Err(ControlError::Capacity.into());
-        }
         let (records, root) = self
             .journal
             .aggregate_checkpoint_snapshot(aggregate, ROOT_NAMESPACE, id.as_bytes())?

@@ -137,7 +137,7 @@ async fn model_update_and_recovered_local_save_retain_the_same_native_selection(
         Ok(())
     })
     .unwrap();
-    let recovered = crate::operations::observe(&app, "models-op").unwrap();
+    let recovered = crate::operations::observe(&app, "models-op").await.unwrap();
     assert_eq!(recovered["result"], result);
     assert_eq!(app.session(&session).unwrap().settings.models["writer"].id, "selected");
     server.await.unwrap();

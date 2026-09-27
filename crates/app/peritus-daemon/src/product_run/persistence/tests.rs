@@ -1,6 +1,28 @@
 use super::*;
 use peritus_run_settlement::CandidateStage;
 
+#[path = "tests/identity.rs"]
+mod identity;
+
+#[test]
+fn ungoverned_workbench_projection_is_quarantined_without_blocking_startup() {
+    let state = tempfile::tempdir().expect("state");
+    let root = state.path().join("workbench-v1");
+    let directory = root.join("runs");
+    fs::create_dir_all(&directory).expect("run directory");
+    let orphan = directory.join("orphan.json");
+    fs::write(&orphan, b"retained evidence").expect("orphan projection");
+
+    let records = load_workbench_records(&root, None).expect("healthy startup");
+
+    assert!(records.is_empty());
+    assert!(!orphan.exists());
+    assert_eq!(
+        fs::read(directory.join(".quarantine/orphan.json")).expect("quarantined bytes"),
+        b"retained evidence"
+    );
+}
+
 #[test]
 fn legacy_run_without_messages_gains_a_resumable_conversation() {
     let json = r#"{
@@ -278,6 +300,7 @@ fn restart_restores_each_resumable_phase_and_preserves_completed_writer_state() 
                 role: ProductConversationRole::User.tag(),
                 content: "build tetris".to_owned(),
             }],
+            conversation_revision: 1,
             progress: PersistedProgress::default(),
             checkpoint: Some(PersistedCheckpoint::from_checkpoint(&checkpoint)),
             settlement_cause: None,

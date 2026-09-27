@@ -25,6 +25,7 @@ peritus-review = { version = "=0.0.4", path = "../../../orchestration/peritus-re
 peritus-scheduler = { version = "=0.0.4", path = "../../../orchestration/peritus-scheduler" }
 peritus-spec = { version = "=0.0.4", path = "../../../foundation/peritus-spec" }
 peritus-types = { version = "=0.0.4", path = "../../../foundation/peritus-types" }
+peritus-workspace = { version = "=0.0.4", path = "../../../runtime/peritus-workspace" }
 sha2.workspace = true
 serde.workspace = true
 serde_json.workspace = true

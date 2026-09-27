@@ -128,6 +128,7 @@ pub(super) fn workspace_has_active_run(
             ProductRunPhase::Complete
                 | ProductRunPhase::Failed
                 | ProductRunPhase::Cancelled
+                | ProductRunPhase::WaitingForUser
                 | ProductRunPhase::RecoveryRequired
         );
         let pending_handoff = record.snapshot.phase() == ProductRunPhase::Complete

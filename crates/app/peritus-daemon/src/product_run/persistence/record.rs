@@ -50,6 +50,7 @@ impl PersistedRecord {
             finding_state: record.finding_state.clone(),
             deliverable: snapshot.deliverable().map(PersistedDeliverable::from_deliverable),
             messages,
+            conversation_revision: record.conversation.revision(),
             progress: PersistedProgress::from_run(&record.progress),
             checkpoint: record.checkpoint.as_ref().map(PersistedCheckpoint::from_checkpoint),
             settlement_cause: record.settlement.as_ref().map(|value| value.cause().tag()),
@@ -189,7 +190,16 @@ impl PersistedRecord {
                 );
             }
         }
-        let conversation = SharedConversation::new(run_id, messages)?;
+        let conversation_revision = if self.conversation_revision == 0 {
+            messages
+                .iter()
+                .filter(|message| message.role() == ProductConversationRole::User)
+                .count() as u64
+        } else {
+            self.conversation_revision
+        };
+        let conversation =
+            SharedConversation::new_with_revision(run_id, messages, conversation_revision)?;
         if interaction.as_ref().is_some_and(|state| {
             state.workbench.is_none() && state.incorporated > conversation.revision()
         }) {

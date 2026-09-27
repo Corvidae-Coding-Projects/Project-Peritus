@@ -2,6 +2,7 @@
 
 mod download;
 mod install;
+mod process;
 mod release;
 
 use std::{fs, time::Duration};
