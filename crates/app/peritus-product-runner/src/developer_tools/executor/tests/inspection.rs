@@ -149,3 +149,55 @@ fn read_only_inspection_and_real_delivery_do_not_exhaust_the_nudge_budget() {
     assert!(!unchanged.is_error);
     assert_eq!(tools.progress_nudges, 2, "an unchanged write is not delivery progress");
 }
+
+#[test]
+fn large_text_files_support_bounded_line_ranges() {
+    let workspace = tempfile::tempdir().unwrap();
+    let mut content = "padding\n".repeat(300_000);
+    content.push_str("TARGET-LINE\n");
+    fs::write(workspace.path().join("large.txt"), content).unwrap();
+    let mut tools = writable_tools(workspace.path());
+
+    execute(&mut tools, "workspace_list", r#"{"path":".","depth":1}"#);
+    let whole = execute(&mut tools, "workspace_read", r#"{"path":"large.txt"}"#);
+    let ranged = execute(
+        &mut tools,
+        "workspace_read",
+        r#"{"path":"large.txt","start_line":300001,"end_line":300002}"#,
+    );
+
+    assert!(whole.is_error);
+    assert!(!ranged.is_error);
+    let value: Value = serde_json::from_slice(ranged.output.canonical_bytes()).unwrap();
+    assert_eq!(value["content"], "300001: TARGET-LINE");
+}
+
+#[cfg(unix)]
+#[test]
+fn listing_reports_dangling_symlinks_without_aborting_the_directory() {
+    use std::os::unix::fs::symlink;
+
+    let workspace = tempfile::tempdir().unwrap();
+    fs::write(workspace.path().join("healthy.txt"), "healthy").unwrap();
+    symlink("missing.txt", workspace.path().join("dangling")).unwrap();
+    let mut tools = writable_tools(workspace.path());
+
+    let result = execute(&mut tools, "workspace_list", r#"{"path":".","depth":1}"#);
+
+    assert!(!result.is_error);
+    let value: Value = serde_json::from_slice(result.output.canonical_bytes()).unwrap();
+    assert!(
+        value["entries"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|entry| { entry["path"] == "dangling" && entry["kind"] == "symlink" })
+    );
+    assert!(
+        value["entries"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|entry| { entry["path"] == "healthy.txt" && entry["kind"] == "file" })
+    );
+}

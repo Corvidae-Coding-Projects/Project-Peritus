@@ -3,7 +3,7 @@
 use super::{LocalMemory, error, text_message};
 use peritus_agent::{DeveloperLoopError, estimate_developer_request_tokens};
 use peritus_context::working::{
-    WorkingRenderView, render_working_state, render_working_state_with_headroom,
+    WorkingRenderView, WorkingState, render_working_state, render_working_state_with_headroom,
 };
 use peritus_model_protocol::{Message, Role, ToolDefinition};
 
@@ -14,7 +14,17 @@ pub(super) fn append(
     tools: &[ToolDefinition],
     capacity: u64,
 ) -> Result<WorkingRenderView, DeveloperLoopError> {
-    let state = &memory.state;
+    append_state(memory, &memory.state, messages, selected, tools, capacity)
+}
+
+pub(super) fn append_state(
+    memory: &LocalMemory,
+    state: &WorkingState,
+    messages: &mut Vec<Message>,
+    selected: &mut Vec<u64>,
+    tools: &[ToolDefinition],
+    capacity: u64,
+) -> Result<WorkingRenderView, DeveloperLoopError> {
     if !memory.derived_memory_allowed()
         || state.entries(state.binding()).map_err(|_| error("working scope mismatch"))?.is_empty()
     {

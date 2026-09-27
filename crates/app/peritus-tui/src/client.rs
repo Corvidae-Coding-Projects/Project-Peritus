@@ -17,6 +17,9 @@ use tokio::{
 
 use crate::TuiError;
 
+const WRITE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(8);
+const CLOSE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(8);
+
 trait LocalIo: AsyncRead + AsyncWrite + Send + Unpin {}
 impl<T> LocalIo for T where T: AsyncRead + AsyncWrite + Send + Unpin {}
 type BoxedLocalIo = Box<dyn LocalIo>;
@@ -96,28 +99,36 @@ impl ClientSession {
     }
 
     pub(crate) async fn send(&self, message: AppMessage) -> Result<(), TuiError> {
-        self.writer
-            .send(WriterCommand::Message(message))
+        tokio::time::timeout(WRITE_TIMEOUT, self.writer.send(WriterCommand::Message(message)))
             .await
+            .map_err(|_| {
+                TuiError::Task("daemon writer queue did not accept the request in time".to_owned())
+            })?
             .map_err(|_| TuiError::Task("daemon writer is no longer available".to_owned()))
     }
 
     pub(crate) async fn close(self, final_messages: Vec<AppMessage>) -> Result<(), TuiError> {
         let (completed_tx, completed_rx) = oneshot::channel();
-        let sent = self
-            .writer
-            .send(WriterCommand::Close { final_messages, completed: completed_tx })
-            .await;
-        let write_result = if sent.is_ok() {
-            match completed_rx.await {
-                Ok(Ok(())) => Ok(()),
-                Ok(Err(error)) => Err(TuiError::Task(error)),
-                Err(_) => Err(TuiError::Task(
+        let sent = tokio::time::timeout(
+            CLOSE_TIMEOUT,
+            self.writer.send(WriterCommand::Close { final_messages, completed: completed_tx }),
+        )
+        .await;
+        let write_result = match sent {
+            Ok(Ok(())) => match tokio::time::timeout(CLOSE_TIMEOUT, completed_rx).await {
+                Ok(Ok(Ok(()))) => Ok(()),
+                Ok(Ok(Err(error))) => Err(TuiError::Task(error)),
+                Ok(Err(_)) => Err(TuiError::Task(
                     "daemon writer stopped before close acknowledgement".to_owned(),
                 )),
-            }
-        } else {
-            Err(TuiError::Task("daemon writer was already closed".to_owned()))
+                Err(_) => Err(TuiError::Task(
+                    "daemon writer did not acknowledge close in time".to_owned(),
+                )),
+            },
+            Ok(Err(_)) => Err(TuiError::Task("daemon writer was already closed".to_owned())),
+            Err(_) => Err(TuiError::Task(
+                "daemon writer did not accept close before the deadline".to_owned(),
+            )),
         };
 
         self.reader_task.abort();
@@ -127,7 +138,15 @@ impl ClientSession {
         {
             return Err(TuiError::Task(error.to_string()));
         }
-        self.writer_task.await?;
+        let mut writer_task = self.writer_task;
+        let Ok(joined) = tokio::time::timeout(CLOSE_TIMEOUT, &mut writer_task).await else {
+            writer_task.abort();
+            let _ = writer_task.await;
+            return Err(TuiError::Task(
+                "daemon writer did not stop before the close deadline".to_owned(),
+            ));
+        };
+        joined?;
         write_result
     }
 }
@@ -172,7 +191,10 @@ async fn writer_loop<W>(
                     for message in final_messages {
                         write_frame(&mut writer, &message, limits).await?;
                     }
-                    writer.shutdown().await.map_err(TuiError::from)
+                    tokio::time::timeout(WRITE_TIMEOUT, writer.shutdown())
+                        .await
+                        .map_err(|_| TuiError::Task("daemon socket shutdown timed out".to_owned()))?
+                        .map_err(TuiError::from)
                 }
                 .await
                 .map_err(|error| error.to_string());
@@ -181,7 +203,7 @@ async fn writer_loop<W>(
             }
         }
     }
-    let _ = writer.shutdown().await;
+    let _ = tokio::time::timeout(WRITE_TIMEOUT, writer.shutdown()).await;
 }
 
 fn client_hello(
@@ -300,9 +322,14 @@ where
     W: AsyncWrite + Unpin + ?Sized,
 {
     let frame = encode_app_message(message, limits)?;
-    writer.write_all(&frame).await?;
-    writer.flush().await?;
-    Ok(())
+    tokio::time::timeout(WRITE_TIMEOUT, async {
+        writer.write_all(&frame).await?;
+        writer.flush().await?;
+        Ok::<(), std::io::Error>(())
+    })
+    .await
+    .map_err(|_| TuiError::Task("daemon socket write timed out".to_owned()))?
+    .map_err(TuiError::from)
 }
 
 #[cfg(unix)]
@@ -323,63 +350,4 @@ fn connect_local(endpoint: &Path) -> std::future::Ready<Result<BoxedLocalIo, std
 mod unix_tests;
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    const COMMAND_FEATURES: [WellKnownProtocolFeature; 3] = [
-        WellKnownProtocolFeature::ConversationLibrary,
-        WellKnownProtocolFeature::ConversationForks,
-        WellKnownProtocolFeature::WorkbenchExecution,
-    ];
-
-    fn command_features() -> Vec<ProtocolFeatureName> {
-        COMMAND_FEATURES
-            .into_iter()
-            .map(|feature| ProtocolFeatureName::well_known(feature).expect("well-known feature"))
-            .collect()
-    }
-
-    #[test]
-    fn client_hello_advertises_features_used_by_implemented_commands() {
-        let hello = client_hello(
-            ProtocolId::new([1; 16]).expect("protocol"),
-            None,
-            AppProtocolLimits::PRODUCTION,
-        )
-        .expect("client hello");
-
-        for feature in command_features() {
-            assert!(hello.optional_features().contains(&feature), "missing {feature:?}");
-        }
-    }
-
-    #[test]
-    fn negotiation_selects_each_implemented_command_feature_when_the_daemon_advertises_it() {
-        let protocol = ProtocolId::new([2; 16]).expect("protocol");
-        let client =
-            client_hello(protocol, None, AppProtocolLimits::PRODUCTION).expect("client hello");
-        let server = peritus_app_protocol::ServerCapabilities::new(
-            vec![VersionRange::new(1, 0, 0).expect("version")],
-            command_features(),
-            AppProtocolLimits::PRODUCTION,
-            "test-daemon".to_owned(),
-        )
-        .expect("server capabilities");
-        let hello = peritus_app_protocol::negotiate(
-            &client,
-            &server,
-            SessionId::new([3; 16]).expect("session"),
-        )
-        .expect("negotiation");
-        let selected = match hello.outcome() {
-            NegotiationOutcome::Compatible(protocol) | NegotiationOutcome::Downgraded(protocol) => {
-                protocol.features()
-            }
-            NegotiationOutcome::Incompatible(reason) => panic!("incompatible: {reason:?}"),
-        };
-
-        for feature in command_features() {
-            assert!(selected.contains(&feature), "feature was not negotiated: {feature:?}");
-        }
-    }
-}
+mod tests;

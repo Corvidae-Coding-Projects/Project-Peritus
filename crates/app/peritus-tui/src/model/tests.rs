@@ -82,7 +82,23 @@ fn navigation_reconnect_and_quit_are_deterministic() {
 }
 
 #[test]
-fn disconnect_drops_only_live_connection_state_and_retains_cursor() {
+fn a_reestablished_session_is_visible_to_the_user() {
+    let mut model = AppModel::new([12; 32]);
+    for _ in 0..2 {
+        let _ = model.update(Action::Connected {
+            context: context(),
+            limits: AppProtocolLimits::PRODUCTION,
+            server: "peritusd/test".to_owned(),
+            downgraded: false,
+        });
+    }
+
+    assert!(model.notice.as_ref().is_some_and(|notice| notice.text == "reconnected to daemon"));
+    assert_eq!(model.connection_generation(), 2);
+}
+
+#[test]
+fn disconnect_drops_only_live_connection_state_and_retains_session_and_cursor() {
     let mut model = AppModel::new([9; 32]);
     let _ = model.update(Action::Connected {
         context: context(),
@@ -95,8 +111,31 @@ fn disconnect_drops_only_live_connection_state_and_retains_cursor() {
         model.connection,
         ConnectionStatus::Disconnected(ref detail) if detail == "socket closed"
     ));
-    assert_eq!(model.retained_session(), None);
+    assert_eq!(model.retained_session(), Some(context().session_id()));
     assert_eq!(model.last_cursor().get(), 0);
+}
+
+#[test]
+fn unanswered_requests_expire_instead_of_blocking_the_interface_forever() {
+    let mut model = AppModel::new([10; 32]);
+    let _ = model.update(Action::Connected {
+        context: context(),
+        limits: AppProtocolLimits::PRODUCTION,
+        server: "peritusd/test".to_owned(),
+        downgraded: false,
+    });
+    let original = model.pending.keys().copied().collect::<Vec<_>>();
+    let now = std::time::Instant::now();
+
+    let mut effects = Vec::new();
+    for step in 1..=120 {
+        effects = model.update(Action::Tick(now + std::time::Duration::from_millis(step * 250)));
+    }
+
+    assert!(original.iter().all(|request| !model.pending.contains_key(request)));
+    assert!(model.notice.as_ref().is_some_and(|notice| notice.text.contains("timed out")));
+    assert!(matches!(effects.as_slice(), [Effect::Reconnect]));
+    assert!(matches!(model.connection, ConnectionStatus::Connecting));
 }
 
 #[test]

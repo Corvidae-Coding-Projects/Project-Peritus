@@ -13,6 +13,7 @@ mod lease;
 mod ordinal;
 mod plan;
 mod preview;
+mod projections;
 mod result;
 mod sandbox;
 
@@ -66,6 +67,7 @@ struct RuntimeState {
     next_folder_patch_ordinal: u64,
     active: BTreeMap<String, ActiveCommand>,
     terminal: BTreeMap<String, TerminalCommand>,
+    recovered: BTreeMap<String, Value>,
 }
 
 struct ActiveCommand {
@@ -222,11 +224,15 @@ impl CommandRuntime {
                         interactive: request.interactive,
                     },
                 );
+                retain_projection(&self.inner.state_root, &handle, result::active(&handle, &[]));
             }
             DispatchOutcome::Completed(result) | DispatchOutcome::Replayed(result) => {
+                let projection =
+                    result::terminal(&handle, &result, &self.inner.artifacts, &[]).map_err(tool)?;
                 state
                     .terminal
                     .insert(handle.clone(), TerminalCommand { result, progress: Vec::new() });
+                retain_projection(&self.inner.state_root, &handle, projection);
             }
             DispatchOutcome::PriorOutcome(disposition) => {
                 return Err(tool(format!(
@@ -249,6 +255,9 @@ impl CommandRuntime {
             )
             .map_err(tool);
         }
+        if let Some(recovered) = state.recovered.get(handle) {
+            return Ok(recovered.clone());
+        }
         let (invocation, observed_at) = {
             let active = state
                 .active
@@ -259,7 +268,9 @@ impl CommandRuntime {
         match operation {
             Observation::Recover => match state.router.recover(invocation, observed_at) {
                 Ok(RecoveryOutcome::Active(update)) => {
-                    Ok(result::active(handle, update.progress()))
+                    let value = result::active(handle, update.progress());
+                    retain_projection(&self.inner.state_root, handle, value.clone());
+                    Ok(value)
                 }
                 Ok(RecoveryOutcome::Completed(terminal)) => {
                     state.active.remove(handle);
@@ -269,11 +280,14 @@ impl CommandRuntime {
                         handle.to_owned(),
                         TerminalCommand { result: terminal, progress: Vec::new() },
                     );
+                    retain_projection(&self.inner.state_root, handle, value.clone());
                     Ok(value)
                 }
                 Ok(RecoveryOutcome::Indeterminate(failure)) => {
                     state.active.remove(handle);
-                    Ok(result::indeterminate(handle, failure.failure().detail().as_str()))
+                    let value = result::indeterminate(handle, failure.failure().detail().as_str());
+                    retain_projection(&self.inner.state_root, handle, value.clone());
+                    Ok(value)
                 }
                 Err(error) => Err(tool(error.to_string())),
             },
@@ -304,7 +318,9 @@ impl CommandRuntime {
         terminal: Option<&ToolResult>,
     ) -> Result<Value, DeveloperLoopError> {
         let Some(terminal) = terminal.cloned() else {
-            return Ok(result::active(handle, progress));
+            let value = result::active(handle, progress);
+            retain_projection(&self.inner.state_root, handle, value.clone());
+            return Ok(value);
         };
         let value =
             result::terminal(handle, &terminal, &self.inner.artifacts, progress).map_err(tool)?;
@@ -313,7 +329,18 @@ impl CommandRuntime {
             handle.to_owned(),
             TerminalCommand { result: terminal, progress: progress.to_vec() },
         );
+        retain_projection(&self.inner.state_root, handle, value.clone());
         Ok(value)
+    }
+}
+
+fn retain_projection(root: &Path, handle: &str, value: Value) {
+    if let Err(error) = projections::record(root, handle, value) {
+        // The process/tool stores remain authoritative. A projection failure must not hide a
+        // command that was already dispatched or its terminal result from the current caller.
+        eprintln!(
+            "peritus command runtime: command {handle} completed an in-memory transition, but its reconnect projection could not be retained: {error}"
+        );
     }
 }
 

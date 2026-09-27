@@ -28,6 +28,17 @@ impl WorkspaceDeveloperTools {
                 }
                 observation(&value, is_error).map(Some)
             }
+            ReceiptDecision::RecoverCheckpoint { value, is_error } => {
+                self.recover_checkpoint(call.name().as_str(), arguments, &value)?;
+                self.receipts
+                    .as_mut()
+                    .ok_or_else(|| tool("writable tools have no effect receipt ledger"))?
+                    .finalize()?;
+                if value.get("error").is_none() {
+                    self.record_success(call.name().as_str(), arguments, &value);
+                }
+                observation(&value, is_error).map(Some)
+            }
             ReceiptDecision::Refuse { detail, ambiguous } => observation(
                 &object(vec![
                     ("error", Value::String(detail)),
@@ -85,6 +96,9 @@ impl WorkspaceDeveloperTools {
                     self.record_success(call.name().as_str(), arguments, &value);
                 }
                 observation(&value, is_error).map(Some)
+            }
+            ReceiptDecision::RecoverCheckpoint { .. } => {
+                Err(tool("checkpoint recovery must occur before effect preflight"))
             }
             ReceiptDecision::Refuse { detail, ambiguous } => observation(
                 &object(vec![
@@ -199,6 +213,7 @@ impl WorkspaceDeveloperTools {
             ("path", Value::String(relative.to_owned())),
             ("bytes", Value::from(content.len())),
             ("changed", Value::Bool(true)),
+            ("sha256", Value::String(digest_hex(content.as_bytes()))),
         ]))
     }
 
@@ -226,10 +241,23 @@ impl WorkspaceDeveloperTools {
         Ok(object(vec![
             ("path", Value::String(relative.to_owned())),
             ("replacements", Value::from(if replace_all { occurrences } else { 1 })),
+            ("bytes", Value::from(replaced.len())),
+            ("sha256", Value::String(digest_hex(replaced.as_bytes()))),
         ]))
     }
 
     pub(super) fn remove(&self, arguments: &Value) -> Result<Value, DeveloperLoopError> {
         removal::remove(&self.root, &self.grounding, &self.ownership, arguments)
     }
+}
+
+fn digest_hex(bytes: &[u8]) -> String {
+    use core::fmt::Write as _;
+    use sha2::Digest as _;
+
+    let mut value = String::with_capacity(64);
+    for byte in sha2::Sha256::digest(bytes) {
+        let _ = write!(value, "{byte:02x}");
+    }
+    value
 }

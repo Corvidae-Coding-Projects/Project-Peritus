@@ -3,7 +3,7 @@
 use super::{
     DeveloperLoopError, DeveloperModelRole, DeveloperRequestAdmission, InteractionOptions,
     LiveConversation, ProductActivityKind, ProductInteractionMode, ProductRunServiceError,
-    goal_role, narration, persist_record, port_error,
+    goal_role, narration, port_error,
 };
 
 impl LiveConversation {
@@ -96,6 +96,7 @@ impl LiveConversation {
                 return Ok(admission);
             }
         }
+        let mut next = record.clone();
         let mut options = options.clone();
         if revision > options.incorporated {
             options.incorporated = revision;
@@ -107,15 +108,12 @@ impl LiveConversation {
                 )
                 .map_err(|error| port_error("record provider request admission", error))?;
         }
-        let previous = record.interaction.replace(options).ok_or_else(|| {
+        next.interaction.replace(options).ok_or_else(|| {
             super::port_internal("admit the provider request", "the run has no interaction state")
         })?;
-        if let Err(error) = persist_record(&self.service.inner.directory, record) {
-            previous.persistence_failed.store(true, std::sync::atomic::Ordering::Release);
-            previous.record_persistence_failure(error.describe());
-            record.interaction = Some(previous);
-            return Err(port_error("persist provider request admission", error));
-        }
+        crate::product_run::persistence::write_record(&self.service.inner.directory, &next)
+            .map_err(|error| port_error("persist provider request admission", error))?;
+        *record = next;
         Ok(DeveloperRequestAdmission::Accepted)
     }
 
@@ -142,22 +140,25 @@ impl LiveConversation {
                 "the product-run record was not found",
             )
         })?;
-        let options = record.interaction.as_mut().ok_or_else(|| {
+        let mut next = record.clone();
+        let options = next.interaction.as_mut().ok_or_else(|| {
             super::port_internal("record conversation activity", "the run has no interaction state")
         })?;
         change(options).map_err(|error| port_error("record conversation activity", error))?;
         if options.mode != ProductInteractionMode::Build
-            && record.snapshot.phase() == peritus_app_protocol::ProductRunPhase::Queued
+            && next.snapshot.phase() == peritus_app_protocol::ProductRunPhase::Queued
         {
-            record.snapshot = crate::product_run::replace_snapshot(
-                &record.snapshot,
+            next.snapshot = crate::product_run::replace_snapshot(
+                &next.snapshot,
                 peritus_app_protocol::ProductRunPhase::Writing,
                 "Responding to the conversation",
-                record.snapshot.summary(),
+                next.snapshot.summary(),
             )
             .map_err(|error| port_error("project the public run phase", error))?;
         }
-        persist_record(&self.service.inner.directory, record)
-            .map_err(|error| port_error("persist conversation activity", error))
+        crate::product_run::persistence::write_record(&self.service.inner.directory, &next)
+            .map_err(|error| port_error("persist conversation activity", error))?;
+        *record = next;
+        Ok(())
     }
 }

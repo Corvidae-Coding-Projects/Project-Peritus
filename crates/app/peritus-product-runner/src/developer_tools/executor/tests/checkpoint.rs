@@ -96,6 +96,72 @@ fn checkpoint_failure_aborts_the_workspace_effect_and_unchanged_writes_skip_capt
 }
 
 #[test]
+fn completed_effect_with_failed_post_checkpoint_is_finalized_on_replay() {
+    use crate::developer_tools::receipt::{EffectReceiptLedger, ReceiptDecision};
+
+    let workspace = tempfile::tempdir().expect("workspace");
+    let receipts = receipt_path(workspace.path());
+    let ownership = WorkspaceOwnership::capture(workspace.path());
+    let call = completed_call(
+        "checkpoint-recovery",
+        "workspace_write",
+        r#"{"content":"durable\n","path":"artifact.txt"}"#,
+    );
+    let observer = Arc::new(move |boundary| {
+        if matches!(boundary, ToolCheckpointBoundary::Mutation { .. }) {
+            Err("checkpoint storage full after effect".to_owned())
+        } else {
+            Ok(())
+        }
+    });
+    let mut first = WorkspaceDeveloperTools::with_ownership(
+        workspace.path().to_owned(),
+        ownership.clone(),
+        receipts.clone(),
+        "checkpoint-recovery".to_owned(),
+        Duration::from_secs(30),
+        test_command_runtime(workspace.path()),
+    )
+    .with_checkpoint_observer(observer);
+    let _ = execute(&mut first, "workspace_list", r#"{"depth":1,"path":""}"#);
+
+    let Err(error) = first.execute(&call) else {
+        panic!("post-effect checkpoint failure was hidden");
+    };
+
+    assert!(error.to_string().contains("checkpoint storage full after effect"));
+    assert_eq!(fs::read(workspace.path().join("artifact.txt")).unwrap(), b"durable\n");
+    let recovered_events = Arc::new(Mutex::new(Vec::new()));
+    let captured = Arc::clone(&recovered_events);
+    let recovery_observer = Arc::new(move |boundary| {
+        captured.lock().map_err(|_| "event lock poisoned".to_owned())?.push(boundary);
+        Ok(())
+    });
+    let mut recovered = WorkspaceDeveloperTools::with_ownership(
+        workspace.path().to_owned(),
+        ownership,
+        receipts.clone(),
+        "checkpoint-recovery".to_owned(),
+        Duration::from_secs(30),
+        test_command_runtime(workspace.path()),
+    )
+    .with_checkpoint_observer(recovery_observer);
+
+    let replay = recovered.execute(&call).expect("checkpoint recovery replay");
+
+    assert!(!replay.is_error);
+    assert!(matches!(
+        recovered_events.lock().unwrap().as_slice(),
+        [ToolCheckpointBoundary::Mutation { path, .. }] if path == "artifact.txt"
+    ));
+    let mut ledger = EffectReceiptLedger::new(receipts, "checkpoint-recovery".to_owned());
+    assert!(matches!(
+        ledger.begin(&call).expect("finalized receipt"),
+        ReceiptDecision::Replay { is_error: false, .. }
+    ));
+}
+
+#[test]
 fn empty_directory_capture_precedes_removal_with_an_explicit_kind() {
     let workspace = tempfile::tempdir().expect("workspace");
     fs::create_dir(workspace.path().join("empty")).expect("directory");

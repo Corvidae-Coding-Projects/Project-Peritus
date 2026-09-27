@@ -164,3 +164,73 @@ fn default_transport_interrupts_a_pending_body_read() {
         worker.join().expect("fake server joined");
     });
 }
+
+#[test]
+fn transport_bounds_response_header_waits() {
+    runtime::block_on(async {
+        let listener = TcpListener::bind("127.0.0.1:0").expect("bind fake server");
+        let address = listener.local_addr().expect("fake server address");
+        let endpoint = Endpoint::new(format!("http://{address}/slow-headers")).expect("endpoint");
+        let worker = thread::spawn(move || {
+            let (mut socket, _) = listener.accept().expect("accept request");
+            let mut request = [0_u8; 4096];
+            let _ = socket.read(&mut request).expect("read request");
+            thread::sleep(Duration::from_millis(150));
+        });
+        let limits = HttpLimits::new([8, 1024, 8, 8, 8]).expect("limits");
+        let request =
+            HttpRequest::new(HttpMethod::Get, endpoint, HttpHeaders::empty(), Vec::new(), limits)
+                .expect("request");
+        let transport = ReqwestTransport::with_timeouts(
+            limits,
+            Duration::from_secs(1),
+            Duration::from_millis(30),
+            Duration::from_secs(1),
+        )
+        .expect("transport");
+
+        let error = transport
+            .send(request, &CancellationToken::new())
+            .await
+            .expect_err("response header timeout");
+
+        assert_eq!(error.kind(), ProviderCoreErrorKind::Transport);
+        worker.join().expect("fake server joined");
+    });
+}
+
+#[test]
+fn transport_bounds_idle_response_body_reads() {
+    runtime::block_on(async {
+        let listener = TcpListener::bind("127.0.0.1:0").expect("bind fake server");
+        let address = listener.local_addr().expect("fake server address");
+        let endpoint = Endpoint::new(format!("http://{address}/slow-body")).expect("endpoint");
+        let worker = thread::spawn(move || {
+            let (mut socket, _) = listener.accept().expect("accept request");
+            let mut request = [0_u8; 4096];
+            let _ = socket.read(&mut request).expect("read request");
+            socket
+                .write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 1\r\nConnection: close\r\n\r\n")
+                .expect("write headers");
+            thread::sleep(Duration::from_millis(150));
+        });
+        let limits = HttpLimits::new([8, 1024, 8, 8, 8]).expect("limits");
+        let request =
+            HttpRequest::new(HttpMethod::Get, endpoint, HttpHeaders::empty(), Vec::new(), limits)
+                .expect("request");
+        let transport = ReqwestTransport::with_timeouts(
+            limits,
+            Duration::from_secs(1),
+            Duration::from_secs(1),
+            Duration::from_millis(30),
+        )
+        .expect("transport");
+        let response = transport.send(request, &CancellationToken::new()).await.expect("headers");
+        let (_, _, mut body) = response.into_parts();
+
+        let error = body.next(&CancellationToken::new()).await.expect_err("body idle timeout");
+
+        assert_eq!(error.kind(), ProviderCoreErrorKind::Transport);
+        worker.join().expect("fake server joined");
+    });
+}

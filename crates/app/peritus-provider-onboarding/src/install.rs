@@ -1,6 +1,11 @@
 //! Explicitly approved provider installation through the vendors' native installers.
 
-use std::{path::Path, process::Command};
+use std::{
+    path::Path,
+    process::Command,
+    thread,
+    time::{Duration, Instant},
+};
 
 use peritus_product_state::ProviderKind;
 
@@ -99,7 +104,29 @@ fn run_command(
     stage: &'static str,
     command: &mut Command,
 ) -> Result<(), OnboardingError> {
-    let status = command.status().map_err(|error| installation_error(kind, stage, &error))?;
+    let mut child = command.spawn().map_err(|error| installation_error(kind, stage, &error))?;
+    let deadline = Instant::now() + Duration::from_mins(15);
+    let status = loop {
+        match child.try_wait() {
+            Ok(Some(status)) => break status,
+            Ok(None) => {}
+            Err(error) => {
+                let _ = child.kill();
+                let _ = child.wait();
+                return Err(installation_error(kind, stage, &error));
+            }
+        }
+        if Instant::now() >= deadline {
+            let _ = child.kill();
+            let _ = child.wait();
+            return Err(installation_error(
+                kind,
+                stage,
+                &"installer exceeded the 15 minute execution deadline",
+            ));
+        }
+        thread::sleep(Duration::from_millis(100));
+    };
     if status.success() { Ok(()) } else { Err(installation_error(kind, stage, &status)) }
 }
 

@@ -30,6 +30,8 @@ pub(super) struct PersistedRecord {
     #[serde(default)]
     pub(super) messages: Vec<PersistedMessage>,
     #[serde(default)]
+    pub(super) conversation_revision: u64,
+    #[serde(default)]
     pub(super) progress: PersistedProgress,
     #[serde(default)]
     pub(super) checkpoint: Option<PersistedCheckpoint>,

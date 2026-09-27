@@ -127,6 +127,9 @@ impl WorkspaceSelection {
                 && existing.repository_root() != profile.repository_root()
         });
         self.retained_registrations.push(profile);
+        if self.retained_registrations.len() > MAX_RETAINED_REGISTRATIONS {
+            self.retained_registrations.remove(0);
+        }
     }
 
     pub(crate) fn validate(&self) -> Result<(), ProductStateError> {
@@ -235,5 +238,42 @@ mod tests {
         assert_eq!(selection.recent().len(), 1);
         assert_eq!(selection.registered().len(), 1);
         assert_eq!(selection.recent()[0].registration_digest(), Some(&*"07".repeat(32)));
+    }
+
+    #[test]
+    fn retained_registration_history_evicts_the_oldest_entry_instead_of_blocking() {
+        let mut selection = WorkspaceSelection::default();
+        for index in 1..=MAX_RETAINED_REGISTRATIONS + 1 {
+            let workspace_id = format!("{index:032x}");
+            let trusted = WorkspaceProfile::restricted(
+                format!("/repo/{index}"),
+                "01".repeat(32),
+                "02".repeat(16),
+                workspace_id.clone(),
+                "04".repeat(16),
+                "05".repeat(16),
+            )
+            .expect("profile")
+            .trust(
+                format!("/state/{index}/registration.bin"),
+                "06".repeat(32),
+                format!("/state/{index}/worktree"),
+                format!("/state/{index}/transactions"),
+            )
+            .expect("trusted");
+            selection.retain_registration(trusted);
+        }
+
+        assert_eq!(selection.retained_registrations.len(), MAX_RETAINED_REGISTRATIONS);
+        assert!(
+            selection
+                .retained_registrations
+                .iter()
+                .all(|profile| profile.workspace_id() != "00000000000000000000000000000001")
+        );
+        assert_eq!(
+            selection.retained_registrations.last().expect("newest").workspace_id(),
+            format!("{:032x}", MAX_RETAINED_REGISTRATIONS + 1)
+        );
     }
 }

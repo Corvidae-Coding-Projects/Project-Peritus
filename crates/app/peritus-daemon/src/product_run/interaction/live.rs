@@ -1,7 +1,5 @@
 //! Live D0 input, provider selection, admission and typed activity adapter.
 
-#[cfg(not(verus_only))]
-use super::persist_record;
 use super::{
     InteractionOptions, ProductRunService, ProductRunServiceError, narration, tool_activity,
 };

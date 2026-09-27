@@ -1,6 +1,7 @@
 //! Disposable `peritusd` lifecycle used by integrated qualification campaigns.
 
 use std::fs::{self, OpenOptions};
+use std::os::unix::fs::PermissionsExt as _;
 use std::os::unix::fs::{FileTypeExt, MetadataExt};
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
@@ -40,6 +41,12 @@ impl DisposableDaemon {
         let log_path = root.join("daemon.log");
         let artifact_path = root.join("qualification-artifacts.bin");
         let registry_path = root.join("approval-registry.bin");
+        let provider_path = provider_fixture(root)?;
+        let folder_path = root.join("product-folder");
+        fs::create_dir(&folder_path)?;
+        let folder = peritus_workspace::FolderIdentity::observe(&folder_path).map_err(|error| {
+            SubjectError::Configuration(format!("observe H3 product folder: {error:?}"))
+        })?;
         let snapshot = CredentialRegistrySnapshot::new(RevisionNumber::first(), Vec::new())
             .map_err(|error| {
                 SubjectError::Configuration(format!("approval registry: {error:?}"))
@@ -50,7 +57,10 @@ impl DisposableDaemon {
                 SubjectError::Configuration(format!("approval registry encoding: {error:?}"))
             })?,
         )?;
-        fs::write(&config_path, configuration_text(&state_root, &registry_path))?;
+        fs::write(
+            &config_path,
+            configuration_text(&state_root, &registry_path, &provider_path, &folder),
+        )?;
         let executable = configuration.executable().to_path_buf();
         let started = Instant::now();
         let (child, endpoint) =
@@ -246,7 +256,18 @@ fn bounded_log(path: &Path) -> String {
     String::from_utf8_lossy(&bytes[start..]).into_owned()
 }
 
-fn configuration_text(state: &Path, registry: &Path) -> String {
+fn configuration_text(
+    state: &Path,
+    registry: &Path,
+    provider: &Path,
+    folder: &peritus_workspace::FolderIdentity,
+) -> String {
+    let folder_identity =
+        folder.digest().as_bytes().iter().fold(String::with_capacity(64), |mut text, byte| {
+            use std::fmt::Write as _;
+            let _ = write!(text, "{byte:02x}");
+            text
+        });
     format!(
         r#"version = 1
 store_id = "11111111111111111111111111111111"
@@ -276,6 +297,28 @@ shutdown_millis = 5000
 [human]
 actor_id = "22222222222222222222222222222222"
 
+[[providers]]
+kind = "codex-runtime"
+executable = {provider}
+
+[providers.profile]
+profile_id = "44444444444444444444444444444444"
+revision = 1
+model = "h3-product-fixture"
+capabilities = ["tool-calls"]
+max_input_tokens = 32768
+max_output_tokens = 1024
+max_tools = 32
+max_parallel_tool_calls = 1
+max_inline_media_bytes = 4194304
+
+[[folders]]
+workspace_id = "55555555555555555555555555555555"
+root = {folder}
+identity = "{folder_identity}"
+writable = false
+protected_paths = []
+
 [telemetry]
 mode = "disabled"
 "#,
@@ -287,7 +330,41 @@ mode = "disabled"
         transactions = quote(&state.join("transactions")),
         backups = quote(&state.join("backups")),
         registry = quote(registry),
+        provider = quote(provider),
+        folder = quote(folder.root()),
     )
+}
+
+fn provider_fixture(root: &Path) -> Result<PathBuf, SubjectError> {
+    const SCRIPT: &str = r#"#!/bin/sh
+if [ "$1" = "login" ] && [ "$2" = "status" ]; then
+  exit 0
+fi
+output_last=""
+while [ "$#" -gt 0 ]; do
+  if [ "$1" = "--output-last-message" ]; then
+    shift
+    output_last="$1"
+  fi
+  shift
+done
+message='{"content":"h3-product-path","tool_calls":[]}'
+if [ -n "$output_last" ]; then
+  printf '%s' "$message" > "$output_last"
+fi
+cat <<'PERITUS_H3_PROVIDER_OUTPUT'
+{"type":"thread.started","thread_id":"h3-fixture-thread"}
+{"type":"turn.started"}
+{"type":"item.completed","item":{"type":"agent_message","text":"{\"content\":\"h3-product-path\",\"tool_calls\":[]}"}}
+{"type":"turn.completed","usage":{"input_tokens":12,"cached_input_tokens":0,"output_tokens":5,"total_tokens":17}}
+PERITUS_H3_PROVIDER_OUTPUT
+"#;
+    let path = root.join("h3-provider-fixture.sh");
+    fs::write(&path, SCRIPT)?;
+    let mut permissions = fs::metadata(&path)?.permissions();
+    permissions.set_mode(0o700);
+    fs::set_permissions(&path, permissions)?;
+    Ok(path)
 }
 
 fn quote(path: &Path) -> String {

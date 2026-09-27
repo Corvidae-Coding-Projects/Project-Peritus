@@ -96,6 +96,7 @@ impl CommandRuntime {
             .map_err(|error| runtime_open(error.to_string()))?;
         let limits =
             RouterLimits::new(64, 4_096).map_err(|error| runtime_open(error.to_string()))?;
+        let recovered = super::projections::load(&state_root).map_err(runtime_open)?;
         Ok(Self {
             local_context: crate::LocalContextConfig::default(),
             inner: Arc::new(RuntimeInner {
@@ -110,6 +111,7 @@ impl CommandRuntime {
                     next_folder_patch_ordinal: 0,
                     active: BTreeMap::new(),
                     terminal: BTreeMap::new(),
+                    recovered,
                 }),
                 #[cfg(test)]
                 state_guard: None,

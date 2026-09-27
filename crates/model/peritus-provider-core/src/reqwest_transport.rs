@@ -2,6 +2,7 @@
 
 use core::fmt;
 use core::pin::Pin;
+use core::time::Duration;
 
 use bytes::Bytes;
 use futures_core::Stream;
@@ -18,7 +19,15 @@ use crate::{
 pub struct ReqwestTransport {
     client: reqwest::Client,
     limits: HttpLimits,
+    response_headers_timeout: Duration,
+    body_idle_timeout: Duration,
 }
+
+const CONNECT_TIMEOUT: Duration = Duration::from_secs(15);
+const RESPONSE_HEADERS_TIMEOUT: Duration = Duration::from_mins(2);
+const BODY_IDLE_TIMEOUT: Duration = Duration::from_mins(2);
+const REQUEST_TIMEOUT: Duration = Duration::from_mins(10);
+const MAX_TIMEOUT: Duration = Duration::from_mins(10);
 
 impl ReqwestTransport {
     /// Builds a transport with explicit resource limits.
@@ -31,7 +40,32 @@ impl ReqwestTransport {
     ///
     /// Returns a redaction-safe configuration failure if the client cannot be built.
     pub fn new(limits: HttpLimits) -> Result<Self, ProviderCoreError> {
+        Self::with_timeouts(limits, CONNECT_TIMEOUT, RESPONSE_HEADERS_TIMEOUT, BODY_IDLE_TIMEOUT)
+    }
+
+    /// Builds a transport with explicit connection, response-header, and body-idle deadlines.
+    ///
+    /// # Errors
+    ///
+    /// Rejects zero or excessively wide deadlines and client construction failures.
+    pub fn with_timeouts(
+        limits: HttpLimits,
+        connect_timeout: Duration,
+        response_headers_timeout: Duration,
+        body_idle_timeout: Duration,
+    ) -> Result<Self, ProviderCoreError> {
+        if [connect_timeout, response_headers_timeout, body_idle_timeout]
+            .into_iter()
+            .any(|timeout| timeout.is_zero() || timeout > MAX_TIMEOUT)
+        {
+            return Err(ProviderCoreError::new(
+                ProviderCoreErrorKind::Configuration,
+                "http_client",
+                "HTTP deadlines must be nonzero and no greater than ten minutes",
+            ));
+        }
         let client = reqwest::Client::builder()
+            .connect_timeout(connect_timeout)
             .redirect(reqwest::redirect::Policy::none())
             .retry(reqwest::retry::never())
             .no_proxy()
@@ -45,7 +79,7 @@ impl ReqwestTransport {
                     "Reqwest/Rustls client construction failed",
                 )
             })?;
-        Ok(Self { client, limits })
+        Ok(Self { client, limits, response_headers_timeout, body_idle_timeout })
     }
 
     /// Builds a transport with production limits.
@@ -70,6 +104,8 @@ impl fmt::Debug for ReqwestTransport {
             .debug_struct("ReqwestTransport")
             .field("client", &"[private Reqwest/Rustls client]")
             .field("limits", &self.limits)
+            .field("response_headers_timeout", &self.response_headers_timeout)
+            .field("body_idle_timeout", &self.body_idle_timeout)
             .finish()
     }
 }
@@ -84,6 +120,7 @@ impl HttpTransport for ReqwestTransport {
             if cancellation.is_cancelled() {
                 return Err(ProviderCoreError::cancelled("send_request"));
             }
+            let request_deadline = tokio::time::Instant::now() + REQUEST_TIMEOUT;
             let (method, endpoint, headers, body) = request.into_parts();
             let mut request = self.client.request(reqwest_method(method), endpoint.url().clone());
             for header in &headers {
@@ -97,10 +134,14 @@ impl HttpTransport for ReqwestTransport {
                 request = request.header(name, value);
             }
             request = request.body(body);
-            let response = crate::cancellation::first(cancellation, request.send())
-                .await
-                .ok_or_else(|| ProviderCoreError::cancelled("send_request"))?
-                .map_err(|error| map_reqwest_send_error(&error))?;
+            let response = tokio::time::timeout(
+                self.response_headers_timeout,
+                crate::cancellation::first(cancellation, request.send()),
+            )
+            .await
+            .map_err(|_| transport_timeout("send_request", "provider response headers timed out"))?
+            .ok_or_else(|| ProviderCoreError::cancelled("send_request"))?
+            .map_err(|error| map_reqwest_send_error(&error))?;
             if response
                 .content_length()
                 .is_some_and(|length| length > self.limits.max_response_body_bytes() as u64)
@@ -114,6 +155,8 @@ impl HttpTransport for ReqwestTransport {
                 max_chunk_bytes: self.limits.max_chunk_bytes(),
                 max_response_body_bytes: self.limits.max_response_body_bytes(),
                 observed_bytes: 0,
+                idle_timeout: self.body_idle_timeout,
+                request_deadline,
             };
             HttpResponse::new(status, headers, Box::new(stream), self.limits)
         })
@@ -125,6 +168,8 @@ struct ReqwestByteStream {
     max_chunk_bytes: usize,
     max_response_body_bytes: usize,
     observed_bytes: usize,
+    idle_timeout: Duration,
+    request_deadline: tokio::time::Instant,
 }
 
 impl ByteStream for ReqwestByteStream {
@@ -133,7 +178,27 @@ impl ByteStream for ReqwestByteStream {
         cancellation: &'a CancellationToken,
     ) -> BoxFuture<'a, Result<Option<Vec<u8>>, ProviderCoreError>> {
         Box::pin(async move {
-            match crate::cancellation::first(cancellation, self.stream.next()).await {
+            let remaining =
+                self.request_deadline.saturating_duration_since(tokio::time::Instant::now());
+            if remaining.is_zero() {
+                return Err(transport_timeout(
+                    "read_body",
+                    "provider request exceeded its overall deadline",
+                ));
+            }
+            let next = tokio::time::timeout(
+                self.idle_timeout.min(remaining),
+                crate::cancellation::first(cancellation, self.stream.next()),
+            )
+            .await
+            .map_err(|_| {
+                if tokio::time::Instant::now() >= self.request_deadline {
+                    transport_timeout("read_body", "provider request exceeded its overall deadline")
+                } else {
+                    transport_timeout("read_body", "provider response body became idle")
+                }
+            })?;
+            match next {
                 None => Err(ProviderCoreError::cancelled("read_body")),
                 Some(item) => match item {
                     Some(Ok(bytes)) => {
@@ -171,6 +236,10 @@ impl ByteStream for ReqwestByteStream {
             }
         })
     }
+}
+
+const fn transport_timeout(operation: &'static str, detail: &'static str) -> ProviderCoreError {
+    ProviderCoreError::new(ProviderCoreErrorKind::Transport, operation, detail)
 }
 
 fn response_headers(

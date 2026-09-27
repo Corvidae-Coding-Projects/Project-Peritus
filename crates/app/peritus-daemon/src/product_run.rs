@@ -108,6 +108,7 @@ struct PreviewOperationRecord {
     completed_sequence: u64,
 }
 
+#[derive(Clone)]
 struct RunRecord {
     interaction: Option<interaction::InteractionOptions>,
     request: ProductRunRequest,

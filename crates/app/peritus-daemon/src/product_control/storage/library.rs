@@ -1,8 +1,8 @@
 //! Atomic fork publication and rebuildable conversation-catalog projection.
 
 use super::{
-    ControlStore, Error, FRAME_FAMILY, MAX_RECORDS, RECEIPT_NAMESPACE, ROOT_NAMESPACE, aggregate,
-    command_id, event_id,
+    ControlStore, Error, FRAME_FAMILY, RECEIPT_NAMESPACE, ROOT_NAMESPACE, aggregate, command_id,
+    event_id,
 };
 use peritus_codec::{CodecLimits, decode_frame, encode_frame, sha256};
 use peritus_journal::{
@@ -45,9 +45,6 @@ impl ControlStore {
         }
         let (source_next, receipt) = ConversationRecord::apply(Some(&source_current), source)?;
         let (child_next, _) = ConversationRecord::apply(None, child)?;
-        if source_next.revision() > MAX_RECORDS || child_next.revision() > MAX_RECORDS {
-            return Err(ControlError::Capacity.into());
-        }
         let source_payload = source.canonical_bytes()?;
         let child_payload = child.canonical_bytes()?;
         let branch_payload = branch.canonical_bytes()?;

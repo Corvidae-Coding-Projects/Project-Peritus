@@ -1,7 +1,7 @@
 //! Durable follow-up admission and idle-boundary restart.
 use super::{
     ProductRunService, ProductRunServiceError, RunProgress, initial_snapshot, interaction,
-    persist_record, replace_snapshot, workspace_has_active_run,
+    replace_snapshot, workspace_has_active_run,
 };
 use peritus_app_protocol::{
     ProductConversationRole, ProductRunContinuation, ProductRunPhase, ProductRunSnapshot,
@@ -47,40 +47,42 @@ impl ProductRunService {
             {
                 return Err(ProductRunServiceError::InvalidState);
             }
-            let record =
-                records.get_mut(&continuation.run_id()).expect("checked product run exists");
+            let record = records
+                .get_mut(&continuation.run_id())
+                .ok_or(ProductRunServiceError::InvalidState)?;
+            let mut next = record.clone();
             self.validate_workspace_mode(
                 workspace_id,
-                options.as_ref().or(record.interaction.as_ref()),
+                options.as_ref().or(next.interaction.as_ref()),
             )?;
             // Resolve a new adapter before changing durable input or selected options. A bad
             // manual model must not partially admit a follow-up into the live record.
             let resolved = if was_terminal {
                 Some(self.resolve_selected_providers(
                     record.request.providers(),
-                    options.as_ref().or(record.interaction.as_ref()),
+                    options.as_ref().or(next.interaction.as_ref()),
                 )?)
             } else {
                 None
             };
             if let Some(options) = options {
                 let prior =
-                    record.interaction.as_mut().ok_or(ProductRunServiceError::InvalidState)?;
+                    next.interaction.as_mut().ok_or(ProductRunServiceError::InvalidState)?;
                 if !was_terminal && (prior.mode != options.mode || prior.models != options.models) {
                     return Err(ProductRunServiceError::InvalidState);
                 }
                 prior.mode = options.mode;
                 prior.models = options.models;
             }
-            record
+            next.conversation = next
                 .conversation
-                .append(ProductConversationRole::User, continuation.message().to_owned())?;
-            if let Some(options) = record.interaction.as_mut() {
+                .appended(ProductConversationRole::User, continuation.message().to_owned())?;
+            if let Some(options) = next.interaction.as_mut() {
                 use peritus_product_runner::ConversationView as _;
                 options.append(
                     peritus_app_protocol::ProductActivityKind::User,
                     continuation.message(),
-                    &format!("Input {} received", record.conversation.revision()),
+                    &format!("Input {} received", next.conversation.revision()),
                 )?;
             }
             if was_terminal {
@@ -88,48 +90,50 @@ impl ProductRunService {
                 let root = self
                     .inner
                     .workspaces
-                    .get(&record.request.workspace_id())
+                    .get(&next.request.workspace_id())
                     .cloned()
                     .ok_or(ProductRunServiceError::WorkspaceUnavailable)?;
                 let cancelled = Arc::new(AtomicBool::new(false));
                 let token = CancellationToken::new();
-                record.cancelled = Arc::clone(&cancelled);
-                record.user_cancelled = false;
-                record.provider_cancellation = token.clone();
+                next.cancelled = Arc::clone(&cancelled);
+                next.user_cancelled = false;
+                next.provider_cancellation = token.clone();
                 // A follow-up changes the governing conversation revision, so the prior
                 // deliverable and its qualification cannot be projected as current while the
                 // replacement run is active. The checkpoint and resume state remain durable for
                 // phase planning and failure settlement.
-                record.snapshot = initial_snapshot(&record.request)?;
-                record.snapshot = replace_snapshot(
-                    &record.snapshot,
+                next.snapshot = initial_snapshot(&next.request)?;
+                next.snapshot = replace_snapshot(
+                    &next.snapshot,
                     ProductRunPhase::Queued,
                     "Follow-up queued for the writer",
                     "",
                 )?;
-                record.progress = RunProgress::default();
-                record.settlement = None;
-                record.interruption_cause.clear();
+                next.progress = RunProgress::default();
+                next.settlement = None;
+                next.interruption_cause.clear();
                 restart = Some((
-                    record.request.clone(),
+                    next.request.clone(),
                     root,
                     providers,
                     cancelled,
                     token,
-                    Arc::clone(&record.conversation),
-                    record.finding_state.clone(),
-                    record.resume.clone(),
+                    Arc::clone(&next.conversation),
+                    next.finding_state.clone(),
+                    next.resume.clone(),
                 ));
             } else {
-                record.snapshot = replace_snapshot(
-                    &record.snapshot,
-                    record.snapshot.phase(),
+                next.snapshot = replace_snapshot(
+                    &next.snapshot,
+                    next.snapshot.phase(),
                     "Follow-up received; the next model step will incorporate it",
-                    record.snapshot.summary(),
+                    next.snapshot.summary(),
                 )?;
             }
-            persist_record(&self.inner.directory, record)?;
-            record.snapshot.clone()
+            super::persistence::write_record(&self.inner.directory, &next)?;
+            let snapshot = next.snapshot.clone();
+            *record = next;
+            snapshot
         };
         if let Some((
             request,

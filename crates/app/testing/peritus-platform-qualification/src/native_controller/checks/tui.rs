@@ -1,5 +1,7 @@
 //! Bounded native PTY exercise for the installed interactive TUI.
 
+mod screen;
+
 use std::ffi::OsStr;
 use std::io::{self, Read as _, Write as _};
 use std::path::Path;
@@ -9,13 +11,14 @@ use std::time::{Duration, Instant};
 
 use portable_pty::{Child, CommandBuilder, PtySize, native_pty_system};
 
+use screen::TerminalScreen;
+
 const DEADLINE: Duration = Duration::from_secs(30);
 const POLL_INTERVAL: Duration = Duration::from_millis(20);
 const MAX_TRANSCRIPT_BYTES: usize = 2 * 1024 * 1024;
 const CONTROL_Q: u8 = 0x11;
-const MAX_CURSOR_REPORTS: usize = 8;
+const MAX_CURSOR_REPORTS: usize = 16;
 
-const ENTER_ALTERNATE_SCREEN: &[u8] = b"\x1b[?1049h";
 const LEAVE_ALTERNATE_SCREEN: &[u8] = b"\x1b[?1049l";
 const SHOW_CURSOR: &[u8] = b"\x1b[?25h";
 const DISABLE_BRACKETED_PASTE: &[u8] = b"\x1b[?2004l";
@@ -25,10 +28,9 @@ const CONNECTED_NOTICE: &[u8] = b"connected to daemon";
 const ONLINE_STATUS: &[u8] = b"online";
 const READY_READ_WRITE: &[u8] = b"ReadyReadWrite";
 const LIVE_EVENT_STREAM: &[u8] = b"live event stream resumed";
+const RECONNECTED_STATUS: &str = "online #2";
 
 pub(super) struct TuiObservation {
-    pub(super) connected: bool,
-    pub(super) rendered: bool,
     pub(super) cursor_reports: u64,
 }
 
@@ -55,12 +57,20 @@ pub(super) fn exercise(
     let mut child = OwnedChild::new(child);
     let started = Instant::now();
     let mut quit_sent = false;
+    let mut help_requested = false;
+    let mut reconnect_requested = false;
     let mut cursor_reports = 0_usize;
+    let mut screen = TerminalScreen::new(30, 100);
+    let mut rendered_bytes = 0_usize;
 
     let status = loop {
         let state = transcript.lock().map_err(|_| "native TUI transcript lock was poisoned")?;
-        let rendered = rendered(&state.bytes);
+        screen.feed(&state.bytes[rendered_bytes..]);
+        rendered_bytes = state.bytes.len();
+        let rendered = screen.contains("Peritus") && screen.contains("Runs");
         let connected = connected(&state.bytes);
+        let navigated = screen.contains("Key reference");
+        let reconnected = screen.contains(RECONNECTED_STATUS);
         let cursor_queries = occurrences(&state.bytes, CURSOR_POSITION_QUERY);
         let overflow = state.overflow;
         drop(state);
@@ -80,7 +90,15 @@ pub(super) fn exercise(
         if answered_cursor_query {
             writer.flush()?;
         }
-        if rendered && connected && !quit_sent {
+        if rendered && connected && !help_requested {
+            writer.write_all(b"?")?;
+            writer.flush()?;
+            help_requested = true;
+        } else if navigated && !reconnect_requested {
+            writer.write_all(b"R")?;
+            writer.flush()?;
+            reconnect_requested = true;
+        } else if reconnect_requested && reconnected && !quit_sent {
             writer.write_all(&[CONTROL_Q])?;
             writer.flush()?;
             quit_sent = true;
@@ -95,8 +113,9 @@ pub(super) fn exercise(
                 .map(|state| diagnostic_tail(&state.bytes))?;
             child.terminate()?;
             return Err(format!(
-                "native TUI did not complete its connected lifecycle within {} seconds: rendered={rendered} connected={connected} quit_sent={quit_sent} cursor_reports={cursor_reports}; transcript tail: {diagnostic}",
-                DEADLINE.as_secs()
+                "native TUI did not complete its connected user journey within {} seconds: rendered={rendered} connected={connected} navigated={navigated} help_requested={help_requested} reconnect_requested={reconnect_requested} reconnected={reconnected} quit_sent={quit_sent} cursor_reports={cursor_reports}; screen: {}; transcript tail: {diagnostic}",
+                DEADLINE.as_secs(),
+                screen.diagnostic()
             )
             .into());
         }
@@ -107,11 +126,24 @@ pub(super) fn exercise(
     drop(pair.master);
     join_reader(reader_thread)?;
     let state = transcript.lock().map_err(|_| "native TUI transcript lock was poisoned")?;
-    let diagnostic = diagnostic_tail(&state.bytes);
-    let rendered = rendered(&state.bytes);
-    let connected = connected(&state.bytes);
-    let restored = terminal_restored(&state.bytes);
+    let result = validate_journey(&status, &state.bytes, &screen, quit_sent, cursor_reports);
     drop(state);
+    result
+}
+
+fn validate_journey(
+    status: &portable_pty::ExitStatus,
+    transcript: &[u8],
+    screen: &TerminalScreen,
+    quit_sent: bool,
+    cursor_reports: usize,
+) -> Result<TuiObservation, Box<dyn std::error::Error>> {
+    let diagnostic = diagnostic_tail(transcript);
+    let rendered = screen.contains("Peritus") && screen.contains("Runs");
+    let connected = connected(transcript);
+    let navigated = screen.contains("Key reference");
+    let reconnected = screen.contains(RECONNECTED_STATUS);
+    let restored = terminal_restored(transcript);
     if !status.success() {
         return Err(format!(
             "native TUI exited unsuccessfully with code {}; transcript tail: {diagnostic}",
@@ -119,17 +151,13 @@ pub(super) fn exercise(
         )
         .into());
     }
-    if !quit_sent || !rendered || !connected || !restored {
+    if !quit_sent || !rendered || !connected || !navigated || !reconnected || !restored {
         return Err(format!(
-            "native TUI lifecycle was incomplete: quit={quit_sent} rendered={rendered} connected={connected} restored={restored}"
+            "native TUI journey was incomplete: quit={quit_sent} rendered={rendered} connected={connected} navigated={navigated} reconnected={reconnected} restored={restored}"
         )
         .into());
     }
-    Ok(TuiObservation {
-        connected,
-        rendered,
-        cursor_reports: u64::try_from(cursor_reports).unwrap_or(u64::MAX),
-    })
+    Ok(TuiObservation { cursor_reports: u64::try_from(cursor_reports).unwrap_or(u64::MAX) })
 }
 
 #[derive(Default)]
@@ -167,12 +195,6 @@ fn drain(
 fn join_reader(reader: JoinHandle<io::Result<()>>) -> Result<(), Box<dyn std::error::Error>> {
     reader.join().map_err(|_| "native TUI transcript reader panicked")??;
     Ok(())
-}
-
-fn rendered(bytes: &[u8]) -> bool {
-    contains(bytes, ENTER_ALTERNATE_SCREEN)
-        && contains(bytes, b"Peritus")
-        && contains(bytes, b"Runs")
 }
 
 fn connected(bytes: &[u8]) -> bool {
@@ -256,7 +278,6 @@ mod tests {
     fn transcript_requires_render_connection_and_complete_restoration() {
         let transcript =
             b"\x1b[?1049h Peritus Runs connected to daemon \x1b[?25h\x1b[?2004l\x1b[?1049l";
-        assert!(rendered(transcript));
         assert!(connected(transcript));
         assert!(terminal_restored(transcript));
         assert!(!terminal_restored(b"\x1b[?1049h Peritus Runs connected to daemon"));
