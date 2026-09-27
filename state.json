@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1679,
-        "tip_oid": "55e68f52cd88689c7d4626094bdabb41530299c6",
-        "prefix_sha256": "4470aa900acd2f99323e101d23f5751377f95b6e3d37a2e10119e739a237a84b"
+        "sequence": 1680,
+        "tip_oid": "0ca2cc3a2bb943a848a700328cb3b83699f1af9e",
+        "prefix_sha256": "af862d045643f2bde2072b9c651478efdb4964613e0c56e311c44745b3ddabe6"
       },
       "NWAR": {
         "sequence": 39,
@@ -54,7 +54,7 @@
       }
     }
   },
-  "next_display_id": 98,
+  "next_display_id": 99,
   "next_comment_id": 1843,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
@@ -97,6 +97,7 @@
     "52028605-f0c2-43fe-b0ae-0e0db829553f": 47,
     "5451d33a-0a54-49ff-98d0-eec32c2b67a5": 28,
     "5542a0ec-9091-4c82-b341-df0b119bc0b1": 3,
+    "55c5c20f-caac-4131-a396-f42418deebb7": 98,
     "55eb574e-f173-45e4-b230-f4eebbb184d1": 50,
     "566b1c8e-fb61-4b2e-bc9b-8a781b362f04": 19,
     "59346441-f15a-4950-a0f1-f10b1b9b1f7d": 36,
@@ -10649,6 +10650,17 @@
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAhB11LdZoSz9eRedCNUwrBhmWHDKa2NIRVoE6vxOEsUSLXRqz6m4rVM6ONZzwy3cwLC3aTPNAgM0S6FVc6AInBg=="
         }
       }
+    },
+    "55c5c20f-caac-4131-a396-f42418deebb7": {
+      "uuid": "55c5c20f-caac-4131-a396-f42418deebb7",
+      "display_id": 98,
+      "title": "Exercise develop through real human TUI workflows",
+      "description": "Compile develop and operate the real terminal interface across feature discovery, iterative coding, changing requirements, errors, recovery, persistence, and adversarial usability. Record reproducible evidence and honest coverage.",
+      "status": "open",
+      "priority": "high",
+      "created_by": "6ME5",
+      "created_at": "2026-09-27T23:40:33.365528994Z",
+      "updated_at": "2026-09-27T23:40:33.365528994Z"
     },
     "55eb574e-f173-45e4-b230-f4eebbb184d1": {
       "uuid": "55eb574e-f173-45e4-b230-f4eebbb184d1",
