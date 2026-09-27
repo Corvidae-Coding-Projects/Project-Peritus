@@ -200,10 +200,10 @@ fn projection_paths(directory: &Path) -> Vec<PathBuf> {
         .filter_map(|entry| match entry {
             Ok(entry) => Some(entry),
             Err(error) => {
-                eprintln!(
+                crate::diagnostic::report(&format!(
                     "peritusd: skipped a workbench projection directory entry in {}: {error}",
                     directory.display()
-                );
+                ));
                 None
             }
         })

@@ -338,9 +338,9 @@ fn retain_projection(root: &Path, handle: &str, value: Value) {
     if let Err(error) = projections::record(root, handle, value) {
         // The process/tool stores remain authoritative. A projection failure must not hide a
         // command that was already dispatched or its terminal result from the current caller.
-        eprintln!(
+        crate::diagnostic::report(&format!(
             "peritus command runtime: command {handle} completed an in-memory transition, but its reconnect projection could not be retained: {error}"
-        );
+        ));
     }
 }
 

@@ -334,14 +334,17 @@ fn report_isolation(
     let source = source.map_or(String::new(), |error| format!(": {error}"));
     let isolation = isolation_error
         .map_or(String::new(), |error| format!("; could not move the file aside: {error}"));
-    eprintln!(
+    crate::diagnostic::report(&format!(
         "peritusd: isolated unusable run projection {}: {reason}{source}{isolation}",
         path.display()
-    );
+    ));
 }
 
 fn report_isolation_failure(path: &Path, operation: &str, error: &std::io::Error) {
-    eprintln!("peritusd: skipped {} while attempting to {operation}: {error}", path.display());
+    crate::diagnostic::report(&format!(
+        "peritusd: skipped {} while attempting to {operation}: {error}",
+        path.display()
+    ));
 }
 
 fn record_path_matches(path: &Path, run_id: RunId) -> bool {

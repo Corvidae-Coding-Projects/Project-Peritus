@@ -3,10 +3,13 @@
 use super::super::tools;
 use super::support::*;
 use peritus_agent::{DeveloperToolObservation, estimate_developer_request_tokens};
+use peritus_model_protocol::{
+    CancellationKind, Capability, CapabilityMatrix, CapabilityProvenance, ModelLimits, ModelName,
+    OutputLimitEnforcement, ProviderName, ProviderProfile, ResumeKind, StateMode, WireDialect,
+};
 use serde_json::Value;
 
-fn batch_profile() -> peritus_model_protocol::ProviderProfile {
-    use peritus_model_protocol::*;
+fn batch_profile() -> ProviderProfile {
     ProviderProfile::new(
         peritus_types::ProviderProfileId::new([8; 16]).unwrap(),
         1,

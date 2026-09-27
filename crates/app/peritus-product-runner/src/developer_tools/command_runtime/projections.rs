@@ -110,10 +110,10 @@ fn read_file(path: &Path) -> Result<ProjectionFile, String> {
             Ok(file) => Ok(file),
             Err(error) => {
                 quarantine(path);
-                eprintln!(
+                crate::diagnostic::report(&format!(
                     "peritus command runtime: replaced malformed handle projections {}: {error}",
                     path.display()
-                );
+                ));
                 Ok(ProjectionFile { version: 1, entries: Vec::new() })
             }
         },
@@ -138,9 +138,9 @@ fn quarantine(path: &Path) {
     let quarantine = path.with_extension("corrupt.json");
     let _ = fs::remove_file(&quarantine);
     if let Err(error) = fs::rename(path, &quarantine) {
-        eprintln!(
+        crate::diagnostic::report(&format!(
             "peritus command runtime: could not quarantine malformed handle projections {}: {error}",
             path.display()
-        );
+        ));
     }
 }

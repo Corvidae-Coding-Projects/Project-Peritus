@@ -58,10 +58,10 @@ pub(super) fn install_and_reconcile(
         let metadata = match fs::symlink_metadata(path) {
             Ok(metadata) => metadata,
             Err(error) => {
-                eprintln!(
+                crate::diagnostic::report(&format!(
                     "peritusd: workspace registration {} is unavailable; attempting journal recovery: {error}",
                     path.display()
-                );
+                ));
                 continue;
             }
         };
@@ -69,29 +69,29 @@ pub(super) fn install_and_reconcile(
             || metadata.len() == 0
             || metadata.len() > MAX_WORKSPACE_REGISTRATION_BYTES as u64
         {
-            eprintln!(
+            crate::diagnostic::report(&format!(
                 "peritusd: workspace registration {} is not a bounded regular file; attempting journal recovery",
                 path.display()
-            );
+            ));
             continue;
         }
         let bytes = match fs::read(path) {
             Ok(bytes) => bytes,
             Err(error) => {
-                eprintln!(
+                crate::diagnostic::report(&format!(
                     "peritusd: workspace registration {} could not be read; attempting journal recovery: {error}",
                     path.display()
-                );
+                ));
                 continue;
             }
         };
         let registration = match WorkspaceRegistration::decode(&bytes) {
             Ok(registration) => registration,
             Err(error) => {
-                eprintln!(
+                crate::diagnostic::report(&format!(
                     "peritusd: workspace registration {} is invalid; attempting journal recovery: {error}",
                     path.display()
-                );
+                ));
                 continue;
             }
         };
@@ -119,9 +119,9 @@ pub(super) fn install_and_reconcile(
         let registration =
             WorkspaceRegistration::from_application_workspace(&durable).map_err(workspace_error)?;
         registrations.insert(workspace_id, registration);
-        eprintln!(
+        crate::diagnostic::report(&format!(
             "peritusd: recovered configured workspace {workspace_id:?} from the durable journal"
-        );
+        ));
     }
     let configured = registrations.keys().copied().collect::<BTreeSet<_>>();
     if referenced != configured {
