@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1655,
-        "tip_oid": "8cbfb2f89b0515104158a0729f50b841e4f7e5fc",
-        "prefix_sha256": "e2f3544d820c207f49b95ff3d8ba27ff008c51ce1b8dc0787322896e4f9d451a"
+        "sequence": 1656,
+        "tip_oid": "701116a7bc907126b3dbbacb76b34aec85b37513",
+        "prefix_sha256": "9fb0249c05a23093653e9d4c5a0d512cd478500da1017acfcf03003dc426e555"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 98,
-  "next_comment_id": 1827,
+  "next_comment_id": 1828,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -3556,10 +3556,21 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-27T15:32:19.393524274Z",
-      "updated_at": "2026-09-27T15:32:35.983379553Z",
+      "updated_at": "2026-09-27T15:34:01.296259395Z",
       "labels": [
         "feature"
-      ]
+      ],
+      "comments": {
+        "4cd76582-18fb-43a2-9e42-ac47458c52df": {
+          "display_id": 1827,
+          "author": "6ME5",
+          "content": "[action] Created feature/repair-functional-resilience-blockers from main at 01782adc and registered high-priority issue 97. Beginning architecture-first repairs for context, startup isolation, durable retention, bounded I/O, and recovery.",
+          "created_at": "2026-09-27T15:34:01.292381557Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABANBh/14sicc0yqLDYMAlVdNGz5NH6JI7etKWfB1W2Hl5qKqBcgc38empUDwuSYZraiUB8+lBtXN/cI44sBgamBw=="
+        }
+      }
     },
     "2c2c3fa4-13c7-40a8-abe4-66acc32fc61c": {
       "uuid": "2c2c3fa4-13c7-40a8-abe4-66acc32fc61c",
