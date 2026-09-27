@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1681,
-        "tip_oid": "7d9cf09f7156b47585287f8c60187f9691c8e0db",
-        "prefix_sha256": "ae51f82fe483d80fdb463d50cafc2ae9271deec8d6838d38a0f40e4d716b456d"
+        "sequence": 1682,
+        "tip_oid": "34797b4005b99ecdcd25b3ff2b9723377223a4f1",
+        "prefix_sha256": "f5fc484f414700ab297771194e2548ca33d43478a5776ed6b6f713d8ab250f16"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 99,
-  "next_comment_id": 1843,
+  "next_comment_id": 1844,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -10664,7 +10664,18 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-27T23:40:33.365528994Z",
-      "updated_at": "2026-09-27T23:40:33.365528994Z"
+      "updated_at": "2026-09-27T23:42:10.317935831Z",
+      "comments": {
+        "62b32140-6336-421f-acdb-786e91393fce": {
+          "display_id": 1843,
+          "author": "6ME5",
+          "content": "[action] Built develop 422b2cb80; exercising production TUI in isolated XDG state and disposable Python Git project, evidence in /tmp/peritus-human-tui-415nuh50",
+          "created_at": "2026-09-27T23:42:10.314043251Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA46IWmUrbPy5ccuj/MqgNMrORu4o/rSryv5ktX3eXFp6+iKsKAdEh/BNPLExNcVIAg52/SQHwsiPfDfCaiJftDw=="
+        }
+      }
     },
     "55eb574e-f173-45e4-b230-f4eebbb184d1": {
       "uuid": "55eb574e-f173-45e4-b230-f4eebbb184d1",
