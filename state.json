@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1638,
-        "tip_oid": "025ef5fc582cf1d15184bd0e1fe286e5defe2b8a",
-        "prefix_sha256": "86f172d3df5a76b06b65f553c49fe37b882f84bd0e8a07ff8f82807e98601e95"
+        "sequence": 1639,
+        "tip_oid": "3ae30844d9df6134edaf67b4c92a952f360bda67",
+        "prefix_sha256": "84d1737a6c50e96bd3de059ac6ad0c9b5bf5bc69669dd502468390b792db3ae6"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 96,
-  "next_comment_id": 1821,
+  "next_comment_id": 1822,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -15331,10 +15331,21 @@
       "priority": "medium",
       "created_by": "6ME5",
       "created_at": "2026-09-27T10:40:59.241314232Z",
-      "updated_at": "2026-09-27T10:41:16.256437601Z",
+      "updated_at": "2026-09-27T10:45:43.614961912Z",
       "labels": [
         "review"
-      ]
+      ],
+      "comments": {
+        "83eb727f-4d4b-478f-9f0e-57a2d44222e7": {
+          "display_id": 1821,
+          "author": "6ME5",
+          "content": "[action] Ontological review #95 at develop01782adc: strongest finding product obligations turn mixed transcript into hard chunks and reuse global gates/review satisfaction for each entry. Confirmed lossy settlement projection (in-place/mixed collections/WebUI), UI session-to-run identity coupling, and generic improvement proposal hashes collapse unrelated incidents. Examining external-effect evidence and no-change evaluation outcomes. Existing focused obligation2,acceptance3,protocolsettlement5 tests pass; no implementation edits. Preparing /home/doll/Project-Peritus-Ontological-Review.md.",
+          "created_at": "2026-09-27T10:45:43.610568834Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAD8JNa+VKvBVzu81ZA+U0sdEWvb4f1QjA2jvvYcaFO1rIFPudcqenzyPc1DKxuwUIK4f/KpWI3qpNWFLws+IBCA=="
+        }
+      }
     },
     "cfa4c5e9-a5ae-4fcd-843d-3cc1f600d723": {
       "uuid": "cfa4c5e9-a5ae-4fcd-843d-3cc1f600d723",
