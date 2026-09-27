@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1640,
-        "tip_oid": "8c1839a1e3b854413ed9d3e563117660c7e74885",
-        "prefix_sha256": "091a453528365eca15e8c9c55c41974e52417e6688b0ce84849566d69c8bf987"
+        "sequence": 1641,
+        "tip_oid": "76dedc78c1f3c6c7b3e4a698032e73b0e0562ee0",
+        "prefix_sha256": "3b738fddcd1b16fd17b04613c6c2b49c00d560bf20078979a665726bbe53973e"
       },
       "NWAR": {
         "sequence": 39,
@@ -15327,11 +15327,12 @@
       "display_id": 95,
       "title": "Review Peritus domain ontology and semantic boundaries",
       "description": "Read-only source-grounded review of entity identity, relationships, lifecycle, authority, evidence, completion, and improvement semantics at develop01782adc. Produce an external Markdown review with concrete findings and source references; no implementation edits.",
-      "status": "open",
+      "status": "closed",
       "priority": "medium",
       "created_by": "6ME5",
       "created_at": "2026-09-27T10:40:59.241314232Z",
-      "updated_at": "2026-09-27T10:50:14.590310285Z",
+      "updated_at": "2026-09-27T10:50:42.415148604Z",
+      "closed_at": "2026-09-27T10:50:42.413912618Z",
       "labels": [
         "review"
       ],
