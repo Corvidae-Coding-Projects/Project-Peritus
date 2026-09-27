@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1671,
-        "tip_oid": "63befcb34d3f2de72e5ca8a2ddec66990eade050",
-        "prefix_sha256": "46d915e4a812659a0db5139abc14010967308980b5b2c6178e58b1470265fdd5"
+        "sequence": 1675,
+        "tip_oid": "875e5d471ccdc157ef03dd30168b07ce21f5b8d9",
+        "prefix_sha256": "a9c7273c67ec99db6639055502c67e62b6063f0055606d0318f6ab06871f4772"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 98,
-  "next_comment_id": 1837,
+  "next_comment_id": 1841,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -3556,7 +3556,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-27T15:32:19.393524274Z",
-      "updated_at": "2026-09-27T19:04:28.988957589Z",
+      "updated_at": "2026-09-27T21:33:42.792369340Z",
       "labels": [
         "feature"
       ],
@@ -3579,6 +3579,24 @@
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABALHVe+65KlVdCfWxTZDlOIwUNSIKPunq5R1hOTaEV7OJ4OUdb4mbBohfv5xvoFViA2VPyG9JK4hB2fN1EFg7TBw=="
         },
+        "29686523-f754-45c6-a772-4989ec163f33": {
+          "display_id": 1839,
+          "author": "6ME5",
+          "content": "CI repair 915370e45: retained ARM64 H2 evidence showed the TUI connected, opened help, reconnected, quit, restored the terminal, and cleaned all resources, but final validation re-read transient screen contents. The harness now records rendered, navigated, and reconnected milestones monotonically across frames. Verified strict native and x86_64-pc-windows-gnu Clippy, all 34 platform-qualification tests, cargo fmt, git diff --check, and full xtask all.",
+          "created_at": "2026-09-27T20:48:10.546726617Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA6MOgPs3ropg6Sg4ohDUjsJEMgkK7g23gL4+q0zGPOn36F8d7C2cjtzpr1EAbv0qlouHmoYyA6Dj+fm1bs8PXCw=="
+        },
+        "2d5270a4-f58d-4ae3-b4e7-9c1342085d56": {
+          "display_id": 1838,
+          "author": "6ME5",
+          "content": "CI repair d9a93b9a4: Windows H2 shard 8 rendered a connected event-detail screen but the qualification harness required the view-specific word 'Runs'. Readiness now uses stable global TUI chrome ('Peritus' plus 'Ctrl-Q quit') and has a regression test for detail views. Verified strict native and x86_64-pc-windows-gnu Clippy, 34 peritus-platform-qualification tests, cargo fmt, git diff --check, and full xtask all.",
+          "created_at": "2026-09-27T20:12:13.525486819Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA+GhLa0lSfmNoG9pFTSUHC5iXBUQwl5H3wsIf1i6TeHIqqJDQ+HY09YEWpogg1jhALxy8FD+YIi03d+q19TC0Bw=="
+        },
         "331af8eb-b6cf-47cc-a739-7e2d7887d698": {
           "display_id": 1835,
           "author": "6ME5",
@@ -3596,6 +3614,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABANBh/14sicc0yqLDYMAlVdNGz5NH6JI7etKWfB1W2Hl5qKqBcgc38empUDwuSYZraiUB8+lBtXN/cI44sBgamBw=="
+        },
+        "6cc42e5f-3eaf-42ff-8383-426719b227b4": {
+          "display_id": 1840,
+          "author": "6ME5",
+          "content": "CI follow-ups 915370e45 and 2420047d5 use retained H2 artifacts to harden the native TUI journey harness: screen milestones persist across later frames; help navigation accepts stable body headings when ConPTY differential output fragments the title; reconnect accepts its explicit notice when the generation status is fragmented. Linux ARM64 scenario 8 passed after milestone retention. Verified strict native and x86_64-pc-windows-gnu Clippy, all 34 platform-qualification tests, cargo fmt, git diff --check, and full xtask all.",
+          "created_at": "2026-09-27T21:33:42.787579963Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAXtnd53SiifEK+GuhCQp5aCDITVZ4Ow1sfu+T8DmEpMqtAbizmhtZpyUfECL+6mKat3U5YozRAeG3j5zKtQKDBQ=="
         },
         "971dee37-d301-4fea-a80a-fff02e3f1c68": {
           "display_id": 1829,
@@ -3623,6 +3650,15 @@
           "kind": "handoff",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAqEvo2iZHRlRfC6FFS/0bbm0tNrr45rpw+Yt90sxdWdkHOOmn1mlzC3eXYZd3sR0dg+X7XKyEe6Brie/XBL0yBg=="
+        },
+        "c1577d12-3a09-4a56-b552-6e164d4900a1": {
+          "display_id": 1837,
+          "author": "6ME5",
+          "content": "CI follow-up 1a9cd082c fixes Windows strict-Clippy failures by compiling installer verification timeouts and bounded stdout capture only on platforms that use them, while retaining the shared bounded extraction process on Windows. Verified with x86_64-pc-windows-gnu strict Clippy, native strict Clippy, 39 launcher tests, and xtask all.",
+          "created_at": "2026-09-27T19:26:16.306141235Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA3lvdtO8pwVx8xztURz09dW2r10fFBO0OWkBCOCttWKw0s2Z9lRwxSseXkH965JjEQGUDGVBW8kQLGjfLUsc7Bw=="
         },
         "ddedcd4d-7292-4ffe-b149-d686e7a7f6ef": {
           "display_id": 1830,
