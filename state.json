@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1642,
-        "tip_oid": "c20a479e4119abbb8f15824b089ee90ea4cd5620",
-        "prefix_sha256": "391583d0d49bc43a200fa2d88fc47d431348a759e953fa9e2f669db02b6d14f4"
+        "sequence": 1643,
+        "tip_oid": "8f517bb5d472269cdbaabddf8c001cc283749737",
+        "prefix_sha256": "35527433027fbca268d86fc1c23fe62849a88c65fe2665e3338f9f26ca76fe47"
       },
       "NWAR": {
         "sequence": 39,
@@ -54,7 +54,7 @@
       }
     }
   },
-  "next_display_id": 96,
+  "next_display_id": 97,
   "next_comment_id": 1823,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
@@ -73,6 +73,7 @@
     "2194b9c5-c19f-47a2-9c91-d84a6c3c7b84": 46,
     "22ed340e-0fb7-4707-99b4-8ee50830cdd4": 68,
     "27633189-3dec-4781-9940-42a3e8eb9e60": 24,
+    "2a36a349-cd6f-451a-a8ec-b54c1356274a": 96,
     "2b288a30-b5b1-4452-81bd-20950bebd2d3": 9,
     "2c2c3fa4-13c7-40a8-abe4-66acc32fc61c": 31,
     "33571295-9ab8-483c-9535-a882d4e8556f": 34,
@@ -3372,6 +3373,17 @@
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA2FsqaNx7rXQFnCSRZLmh/lG8dAXgyGfPdhD64Nc81cHm9Iu8gKPluSk1S9QfKU5L0mcWYhgQyf+2LTyjiI0iAg=="
         }
       }
+    },
+    "2a36a349-cd6f-451a-a8ec-b54c1356274a": {
+      "uuid": "2a36a349-cd6f-451a-a8ec-b54c1356274a",
+      "display_id": 96,
+      "title": "Find user blockers from solved incident patterns",
+      "description": "Read actual solved user reports and repairs, then inspect adjacent limits and lifecycle assumptions for current functional blockers. Evidence and reproductions; no product edits.",
+      "status": "open",
+      "priority": "high",
+      "created_by": "6ME5",
+      "created_at": "2026-09-27T11:17:26.357337836Z",
+      "updated_at": "2026-09-27T11:17:26.357337836Z"
     },
     "2b288a30-b5b1-4452-81bd-20950bebd2d3": {
       "uuid": "2b288a30-b5b1-4452-81bd-20950bebd2d3",
