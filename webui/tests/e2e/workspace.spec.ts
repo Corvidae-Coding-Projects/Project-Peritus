@@ -211,7 +211,7 @@ test('each session tab closes after its directory is deleted, including nested a
     expect((await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa']).analyze()).violations).toEqual([]);
   }
 });
-test('gateway restart rotates auth and preserves an unresolved operation without repeating it',async({request,page})=>{
+test('gateway restart rotates auth and releases an operation that never reached native submission',async({request,page})=>{
   // Earlier scenarios leave multiple sessions. Recovery belongs to its exact
   // target, not whichever session sorts first in a fresh browser's bootstrap.
   await page.addInitScript(({project,firstSession})=>{if(!localStorage.getItem('peritus:layout:v1'))localStorage.setItem('peritus:layout:v1',JSON.stringify({projectId:project,sessionId:firstSession}));},{project,firstSession});
@@ -223,45 +223,53 @@ test('gateway restart rotates auth and preserves an unresolved operation without
   await writeFile(join(temporary,'workspace.json'),JSON.stringify(state));await startServer();
   expect((await request.get('/api/query',{headers:{'x-peritus-token':oldToken},params:{kind:'files',project}})).status()).toBe(403);
   const boot=await (await request.get('/api/bootstrap')).json();token=boot.token;expect(token).not.toBe(oldToken);
-  await page.reload();await expect(page.getByText('Unresolved send operation',{exact:true})).toBeVisible();await expect(composer).toHaveValue('Keep the original draft');
-  await page.getByRole('button',{name:'Check original outcome'}).click();
-  await expect(page.getByText('Unresolved send operation',{exact:true})).toBeVisible();
-  await expect(page.getByText('Still unresolved.',{exact:false})).toBeVisible();
-  expect((await action(request,'send',{session:firstSession,text:'Keep the original draft'},operation)).uncertain).toBe(true);
-  expect((await action(request,'send',{session:firstSession,text:'A duplicate attempt'})).error).toContain('Resolve original operation');
-  for(const width of [1440,390]){await page.setViewportSize({width,height:900});await page.screenshot({path:resolve(`../.impeccable/review/recovery-${width}.png`),fullPage:true});expect(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth)).toBe(false);}
-  // Synthetic HTTP admission facts isolate the healthy-but-held presentation.
-  // The original operation and all recovery effects still use the real gateway.
-  let checkMode='normal';
+  await page.reload();await expect(page.getByText('Unresolved send operation',{exact:true})).toHaveCount(0);await expect(composer).toHaveValue('Keep the original draft');
+  const receipt=await query(request,'operation',{operation});
+  expect(receipt.result).toMatchObject({recovered:true,retryable:true,submitted:false});
+  expect(receipt.result.error).toContain('safe to retry');
+  const replay=await action(request,'send',{session:firstSession,text:'Keep the original draft'},operation);
+  expect(replay).toEqual(receipt.result);
+  for(const width of [1440,390]){
+    await page.setViewportSize({width,height:900});await page.screenshot({path:resolve(`../.impeccable/review/recovery-never-submitted-${width}.png`),fullPage:true});
+    expect(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth)).toBe(false);
+    expect((await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa']).analyze()).violations).toEqual([]);
+  }
+});
+test('submitted operations remain held when their outcome cannot be proven',async({page})=>{
+  const operation=randomUUID();
+  await page.addInitScript(({operation,project,firstSession})=>{
+    localStorage.setItem('peritus:layout:v1',JSON.stringify({projectId:project,sessionId:firstSession,drafts:{[firstSession]:'Retain the submitted draft'}}));
+    sessionStorage.setItem(`peritus:operation:${operation}`,JSON.stringify({operation,command:'send',session:firstSession}));
+  },{operation,project,firstSession});
+  let checkMode:'normal'|'slow'|'failed'='normal';
   await page.route('**/api/query?**',async route=>{
-    const kind=new URL(route.request().url()).searchParams.get('kind');
-    if(kind==='daemon')return route.fulfill({json:{connected:true,ready:true,readiness:'ReadyReadWrite'}});
-    if(kind==='facts')return route.fulfill({json:{ready:true,reason:'Synthetic admitted workspace fixture',workspace:{id:'fixture',root,execution:root,trust:'trusted'},providers:[],endpoint:'isolated-fixture'}});
-    if(kind==='operation'&&checkMode==='failed')return route.fulfill({status:503,json:{error:'Synthetic receipt query failure'}});
-    if(kind==='operation'&&checkMode==='slow')await new Promise(resolve=>setTimeout(resolve,800));
-    return route.continue();
+    const url=new URL(route.request().url());
+    if(url.searchParams.get('kind')!=='operation'||url.searchParams.get('operation')!==operation)return route.continue();
+    if(checkMode==='failed')return route.fulfill({status:503,json:{error:'Synthetic receipt query failure'}});
+    if(checkMode==='slow')await new Promise(resolve=>setTimeout(resolve,800));
+    return route.fulfill({json:{input:{command:'send',session:firstSession,text:'Retain the submitted draft'},result:null}});
   });
-  await page.setViewportSize({width:1440,height:900});await page.reload();
-  await expect(page.getByText('Daemon ready',{exact:true})).toBeVisible();
-  await expect(page.locator('.connection-banner')).toHaveCount(0);
-  await expect(page.getByRole('button',{name:'Send message'})).toBeDisabled();
-  await composer.fill('');await expect(page.getByText('RECOVERY HOLD',{exact:true})).toBeVisible();await composer.fill('Keep the original draft');
+  await page.route('**/api/operation-review',route=>route.fulfill({json:{result:{reviewed:true}}}));
+  await page.goto('/');
+  await expect(page.getByText('Unresolved send operation',{exact:true})).toBeVisible();
+  await expect(page.getByRole('textbox',{name:'Message Peritus or enter a slash command'})).toHaveValue('Retain the submitted draft');
+  await page.getByRole('button',{name:'Check original outcome'}).click();
+  await expect(page.getByText('Still unresolved.',{exact:false})).toBeVisible();
   checkMode='slow';await page.getByRole('button',{name:'Check original outcome'}).click();
   await expect(page.getByRole('button',{name:'Checking…',exact:true})).toBeDisabled();
   await expect(page.getByText('Checking the original outcome…',{exact:true})).toBeVisible();
   await expect(page.getByText('Still unresolved.',{exact:false})).toBeVisible();
-  for(const width of [1440,390]){
-    await page.setViewportSize({width,height:900});await page.screenshot({path:resolve(`../.impeccable/review/recovery-ready-${width}.png`),fullPage:true});
-    expect(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth)).toBe(false);
-    expect((await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa']).analyze()).violations).toEqual([]);
-  }
   checkMode='failed';await page.getByRole('button',{name:'Check original outcome'}).click();
   await expect(page.getByText('Could not check the original outcome.',{exact:false})).toBeVisible();
   await expect(page.getByRole('button',{name:'Send message'})).toBeDisabled();
-  for(const width of [1440,390]){await page.setViewportSize({width,height:900});await page.screenshot({path:resolve(`../.impeccable/review/recovery-check-failed-${width}.png`),fullPage:true});}
-  checkMode='normal';
-  page.once('dialog',dialog=>dialog.accept());await page.getByRole('button',{name:'I inspected the outcome'}).click();await expect(page.getByText('Unresolved send operation',{exact:true})).toHaveCount(0);
-  const receipt=await query(request,'operation',{operation});expect(receipt.result.reviewed).toBe(true);expect(receipt.result.error).toContain('not repeated');await expect(composer).toHaveValue('Keep the original draft');
+  for(const width of [1440,390]){
+    await page.setViewportSize({width,height:900});await page.screenshot({path:resolve(`../.impeccable/review/recovery-hold-${width}.png`),fullPage:true});
+    expect(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth)).toBe(false);
+    expect((await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa']).analyze()).violations).toEqual([]);
+  }
+  page.once('dialog',dialog=>dialog.accept());await page.getByRole('button',{name:'I inspected the outcome'}).click();
+  await expect(page.getByText('Unresolved send operation',{exact:true})).toHaveCount(0);
+  await expect(page.getByRole('textbox',{name:'Message Peritus or enter a slash command'})).toHaveValue('Retain the submitted draft');
 });
 test('configuration validates, persists behavioral settings, and aliases share the dispatcher',async({request,page})=>{
   const bad=await action(request,'config',{text:'font_size = 99\ntheme = "nixie"'});expect(bad.error).toContain('12–22');

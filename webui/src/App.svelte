@@ -129,7 +129,8 @@
           {:else}
             {#if !admissionReady}<div class="connection-banner"><span><Icon name="link" size={15}/>{!ui.ready?ui.connectionMessage:ui.facts?.reason||ui.factsError||'Connect this project to start a conversation.'}</span><button class="key small" onclick={()=>void attempt(()=>dispatch('reconnect'))}>Recheck</button><button class="key small" onclick={()=>void attempt(()=>dispatch('terminal'))}>Set up project<Icon name="arrow" size={14}/></button></div>{/if}
             <Recovery/>
-            <div class="transcript" bind:this={transcript} onscroll={()=>following=transcript.scrollHeight-transcript.scrollTop-transcript.clientHeight<80}>
+            <!-- svelte-ignore a11y_no_noninteractive_tabindex (the scrollable transcript needs a keyboard focus target) -->
+            <div class="transcript" role="region" aria-label="Conversation transcript" tabindex="0" bind:this={transcript} onscroll={()=>following=transcript.scrollHeight-transcript.scrollTop-transcript.clientHeight<80}>
               {#if !activities.length}
                 <div class="ready-state" class:compact={!!draft||!!ui.attachments[ui.sessionId]?.length}>
                   <div class="ready-instrument"><Nixie value={Math.max(1,opened.findIndex(s=>s.id===ui.sessionId)+1)} label="Session channel" digits={3} large/><div class="instrument-legend"><span class="status-dot" class:offline={!messageReady}></span>{recoveryHold?'RECOVERY HOLD':!ui.connected?'AWAITING CONNECTION':messageReady?'CHANNEL READY':'NOT READY'}</div></div>
