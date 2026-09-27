@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1649,
-        "tip_oid": "90a8ddb6c86ef9d611c29d7613d5659637543103",
-        "prefix_sha256": "deaab92a14b6443279e79408f479c859b4877ff45e81df3c790391e7748b9751"
+        "sequence": 1650,
+        "tip_oid": "2bc936556314af67caa539d1ce9027fcbb5aa7a8",
+        "prefix_sha256": "7e9cf396427ee96613211cf04aeab3a7a030b20682270df857e17913ab4af624"
       },
       "NWAR": {
         "sequence": 39,
@@ -3379,12 +3379,11 @@
       "display_id": 96,
       "title": "Find user blockers from solved incident patterns",
       "description": "Read actual solved user reports and repairs, then inspect adjacent limits and lifecycle assumptions for current functional blockers. Evidence and reproductions; no product edits.",
-      "status": "closed",
+      "status": "open",
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-27T11:17:26.357337836Z",
-      "updated_at": "2026-09-27T11:26:08.978843149Z",
-      "closed_at": "2026-09-27T11:26:08.977669222Z",
+      "updated_at": "2026-09-27T11:27:05.158528270Z",
       "comments": {
         "34c7384b-bf6e-43c6-8a1f-d94b562a70dd": {
           "display_id": 1824,
