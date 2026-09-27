@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1669,
-        "tip_oid": "c36947c2527726c2ed173bfd821452181b6cf51e",
-        "prefix_sha256": "8093d637db08efd6c6aabb65937a2a90511720fe336d6fd48f8590da127cf6c9"
+        "sequence": 1670,
+        "tip_oid": "73be662267772ba3eea67fee61857239fa737ae9",
+        "prefix_sha256": "852e612121abe09d708af0839388a892be247df84118f95c6edfbe10b4571bd0"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 98,
-  "next_comment_id": 1835,
+  "next_comment_id": 1836,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -3556,7 +3556,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-27T15:32:19.393524274Z",
-      "updated_at": "2026-09-27T18:43:27.747914947Z",
+      "updated_at": "2026-09-27T18:58:20.294259818Z",
       "labels": [
         "feature"
       ],
@@ -3578,6 +3578,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABALHVe+65KlVdCfWxTZDlOIwUNSIKPunq5R1hOTaEV7OJ4OUdb4mbBohfv5xvoFViA2VPyG9JK4hB2fN1EFg7TBw=="
+        },
+        "331af8eb-b6cf-47cc-a739-7e2d7887d698": {
+          "display_id": 1835,
+          "author": "6ME5",
+          "content": "[action] Diagnosed PR #104 initial failures: browser restart fixture conflated never-submitted and unresolved operations; Gate A rejected direct eprintln macros and a wildcard external import. Applying narrow policy-compliant fixes before replacement CI.",
+          "created_at": "2026-09-27T18:58:20.289339544Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAWLjBN/GIZ6Hgom6iVIoyMBP/Qf+5P0/v3/7k3XWZ3QwIIQr/CsWJUZ1RrrmD/USS0CsFLuCwX3zcE8kIAdPeAA=="
         },
         "4cd76582-18fb-43a2-9e42-ac47458c52df": {
           "display_id": 1827,
