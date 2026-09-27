@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1651,
-        "tip_oid": "0448815b787453f09b3fb9474b1d8203a5570af2",
-        "prefix_sha256": "c74387b497646047bc441e2666c88542fcd6086315522cde40e538736e8eb983"
+        "sequence": 1652,
+        "tip_oid": "dc0b55eb6ad2bba2e24f0643d6e446dae3beb962",
+        "prefix_sha256": "3d3fd3b865e0343b748915ad61082d2394c02e889cb59d5e176e888f3f0e5928"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 97,
-  "next_comment_id": 1826,
+  "next_comment_id": 1827,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -3387,7 +3387,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-27T11:17:26.357337836Z",
-      "updated_at": "2026-09-27T11:27:05.158528270Z",
+      "updated_at": "2026-09-27T11:46:39.514144544Z",
       "comments": {
         "34c7384b-bf6e-43c6-8a1f-d94b562a70dd": {
           "display_id": 1824,
@@ -3397,6 +3397,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAq1gXCAO5Tf9HmXDPpxRNAEyR5ckNvNqtM956fGTqsoMKEA8CNUzxUFBHktqHAKTRXmgILDO2M7g3d8rlYBxeAg=="
+        },
+        "60579b35-3ba3-4e52-9da4-5725795fa6d0": {
+          "display_id": 1826,
+          "author": "6ME5",
+          "content": "[action] Expanded issue 96 to whole-codebase functional review. Verified baseline 01782adc; external working coverage record /home/doll/Project-Peritus-Codebase-Review-2026-09-27.md. Follow only observed paths; incomplete reads do not count. User housekeeping done: ignore local files and stage AGENTS.md. No product fixes.",
+          "created_at": "2026-09-27T11:46:39.507054308Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAMt2wfstJu6/Kio7D7cljnguyIOn+2JyRW/SXe4dEKCyHoWG1MT+pT7DG180ue83jicI8wcAlydlSjkN/dMcwAw=="
         },
         "61409649-33da-402e-9feb-7d529933dadc": {
           "display_id": 1825,
