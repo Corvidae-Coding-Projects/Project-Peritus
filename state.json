@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1636,
-        "tip_oid": "d1f30c427199594e34eb797911e32b16893e4a32",
-        "prefix_sha256": "1f7c24e8988712d85c6841b0f586d96f54ba27b6335ee51e6af4c0a4e4b3344e"
+        "sequence": 1637,
+        "tip_oid": "10f7165af4a88a8f55b79e13098349990d58a982",
+        "prefix_sha256": "ab794a0310a1676295311af1ca616ba47321aeaff2454ef098132b8e80990725"
       },
       "NWAR": {
         "sequence": 39,
@@ -15327,7 +15327,10 @@
       "priority": "medium",
       "created_by": "6ME5",
       "created_at": "2026-09-27T10:40:59.241314232Z",
-      "updated_at": "2026-09-27T10:40:59.241314232Z"
+      "updated_at": "2026-09-27T10:41:16.256437601Z",
+      "labels": [
+        "review"
+      ]
     },
     "cfa4c5e9-a5ae-4fcd-843d-3cc1f600d723": {
       "uuid": "cfa4c5e9-a5ae-4fcd-843d-3cc1f600d723",
