@@ -29,6 +29,7 @@ const ONLINE_STATUS: &[u8] = b"online";
 const READY_READ_WRITE: &[u8] = b"ReadyReadWrite";
 const LIVE_EVENT_STREAM: &[u8] = b"live event stream resumed";
 const RECONNECTED_STATUS: &str = "online #2";
+const RECONNECTED_NOTICE: &str = "reconnected to";
 
 pub(super) struct TuiObservation {
     pub(super) cursor_reports: u64,
@@ -68,7 +69,7 @@ pub(super) fn exercise(
         let state = transcript.lock().map_err(|_| "native TUI transcript lock was poisoned")?;
         screen.feed(&state.bytes[rendered_bytes..]);
         rendered_bytes = state.bytes.len();
-        milestones.observe(&screen);
+        milestones.observe(&screen, &state.bytes);
         let connected = connected(&state.bytes);
         let cursor_queries = occurrences(&state.bytes, CURSOR_POSITION_QUERY);
         let overflow = state.overflow;
@@ -218,15 +219,22 @@ struct ScreenMilestones {
 }
 
 impl ScreenMilestones {
-    fn observe(&mut self, screen: &TerminalScreen) {
+    fn observe(&mut self, screen: &TerminalScreen, transcript: &[u8]) {
         self.rendered |= frame_rendered(screen);
-        self.navigated |= screen.contains("Key reference");
-        self.reconnected |= screen.contains(RECONNECTED_STATUS);
+        self.navigated |= help_rendered(screen);
+        self.reconnected |= screen.contains(RECONNECTED_STATUS)
+            || screen.contains(RECONNECTED_NOTICE)
+            || contains(transcript, RECONNECTED_NOTICE.as_bytes());
     }
 }
 
 fn frame_rendered(screen: &TerminalScreen) -> bool {
     screen.contains("Peritus") && screen.contains("Ctrl-Q quit")
+}
+
+fn help_rendered(screen: &TerminalScreen) -> bool {
+    screen.contains("Key reference")
+        || (screen.contains("Navigation") && screen.contains("Live connection"))
 }
 
 fn terminal_restored(bytes: &[u8]) -> bool {
@@ -306,20 +314,20 @@ mod tests {
         detail.feed(
             b"\x1b[2J\x1b[1;1HPeritus - online\x1b[2;1HEvent credential-registry-event\x1b[4;1H? help - Ctrl-Q quit",
         );
-        milestones.observe(&detail);
+        milestones.observe(&detail, &[]);
         assert!(milestones.rendered);
         assert!(!detail.contains("Runs"));
 
-        detail.feed(b"\x1b[2J\x1b[1;1HKey reference");
-        milestones.observe(&detail);
+        detail.feed(b"\x1b[2J\x1b[1;1HKey r f rence\x1b[2;1HNavigation\x1b[3;1HLive connection");
+        milestones.observe(&detail, &[]);
         assert!(milestones.navigated);
 
-        detail.feed(b"\x1b[2J\x1b[1;1Honline #2");
-        milestones.observe(&detail);
+        detail.feed(b"\x1b[2J\x1b[1;1Honl ne #2");
+        milestones.observe(&detail, b"differential frame reconnected to\x1b[1Cdaemon");
         assert!(milestones.reconnected);
 
         detail.feed(b"\x1b[2J");
-        milestones.observe(&detail);
+        milestones.observe(&detail, &[]);
         assert!(!frame_rendered(&detail));
         assert!(milestones.rendered);
         assert!(milestones.navigated);
@@ -329,8 +337,10 @@ mod tests {
         incomplete
             .feed(b"\x1b[2J\x1b[1;1HPeritus - online\x1b[2;1HEvent credential-registry-event");
         let mut incomplete_milestones = ScreenMilestones::default();
-        incomplete_milestones.observe(&incomplete);
+        incomplete_milestones.observe(&incomplete, &[]);
         assert!(!incomplete_milestones.rendered);
+        assert!(!incomplete_milestones.navigated);
+        assert!(!incomplete_milestones.reconnected);
     }
 
     #[test]
