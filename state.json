@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1635,
-        "tip_oid": "db2ba1b7bd39e7be6a3766317500b93c4d17286d",
-        "prefix_sha256": "e43666ff328d580f92f2ea16258f2a5184786d0520ff66274c53bdb726c0a57e"
+        "sequence": 1636,
+        "tip_oid": "d1f30c427199594e34eb797911e32b16893e4a32",
+        "prefix_sha256": "1f7c24e8988712d85c6841b0f586d96f54ba27b6335ee51e6af4c0a4e4b3344e"
       },
       "NWAR": {
         "sequence": 39,
@@ -54,7 +54,7 @@
       }
     }
   },
-  "next_display_id": 95,
+  "next_display_id": 96,
   "next_comment_id": 1821,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
@@ -129,6 +129,7 @@
     "be287235-44b0-49cd-b238-d64fe12e32f1": 37,
     "c5882fd5-3d6c-4147-8819-5fa65d1e860c": 74,
     "cc972bf7-aa67-423d-babd-1ab1068a0f90": 69,
+    "ccb77080-3627-4b93-9ac9-a0521efe7a29": 95,
     "cfa4c5e9-a5ae-4fcd-843d-3cc1f600d723": 77,
     "d232751e-0c18-4e60-a858-6c3cb8ad26f1": 25,
     "d4ee9653-ff6f-4bff-ba69-3a4199648e16": 66,
@@ -15316,6 +15317,17 @@
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABANoqi9uooyt2oSN7L11rGLXBazjhhYXRmpQGHLMmsKsBXoazGkq8TmdkU7lEco4Blf0rj6CiGjEaHyPIGMSXjAQ=="
         }
       }
+    },
+    "ccb77080-3627-4b93-9ac9-a0521efe7a29": {
+      "uuid": "ccb77080-3627-4b93-9ac9-a0521efe7a29",
+      "display_id": 95,
+      "title": "Review Peritus domain ontology and semantic boundaries",
+      "description": "Read-only source-grounded review of entity identity, relationships, lifecycle, authority, evidence, completion, and improvement semantics at develop01782adc. Produce an external Markdown review with concrete findings and source references; no implementation edits.",
+      "status": "open",
+      "priority": "medium",
+      "created_by": "6ME5",
+      "created_at": "2026-09-27T10:40:59.241314232Z",
+      "updated_at": "2026-09-27T10:40:59.241314232Z"
     },
     "cfa4c5e9-a5ae-4fcd-843d-3cc1f600d723": {
       "uuid": "cfa4c5e9-a5ae-4fcd-843d-3cc1f600d723",
