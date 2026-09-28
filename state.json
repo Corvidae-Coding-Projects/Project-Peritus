@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1691,
-        "tip_oid": "c5ad2f4857413a56c0ae6145b4e55fbbd57f3c27",
-        "prefix_sha256": "eb18a7fcb33b9a37608f2c6d5a39d2f90da1db9baf22730e214733bbd210a199"
+        "sequence": 1692,
+        "tip_oid": "9fbbde5cf5ef9e7887a20ad72a2e07672b5eb5b5",
+        "prefix_sha256": "e12a2f9e6d0a072ade8087254bc4ec5a9c04eeb0d249fdf3fe40521008541282"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 99,
-  "next_comment_id": 1851,
+  "next_comment_id": 1852,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -10664,7 +10664,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-27T23:40:33.365528994Z",
-      "updated_at": "2026-09-28T00:34:02.551612322Z",
+      "updated_at": "2026-09-28T00:35:00.202296153Z",
       "comments": {
         "172fb531-7617-4dd5-afb2-b7d95cab7e0d": {
           "display_id": 1850,
@@ -10701,6 +10701,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA46IWmUrbPy5ccuj/MqgNMrORu4o/rSryv5ktX3eXFp6+iKsKAdEh/BNPLExNcVIAg52/SQHwsiPfDfCaiJftDw=="
+        },
+        "70fd5a61-abb6-421e-9af4-b7da7287e251": {
+          "display_id": 1851,
+          "author": "6ME5",
+          "content": "Restart probe found another high blocker: normal /goal execution persists StartGoal, but persistence/interaction.rs:94 and persistence/record.rs:128 accept only StartExecution. After terminating only the disposable test daemon and /reconnect, replacement daemon quarantined the run as invalid. Goal/checkpoints survive in control journal, but run disappears from /runs and preview becomes inaccessible. Exact quarantined projection and daemon log preserved under /tmp/peritus-human-tui-415nuh50/evidence/deep-quarantined-run.json and deep-restart-daemon.log. No source edits; this invalidates durable-goal restart qualification.",
+          "created_at": "2026-09-28T00:35:00.197987099Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAaJFNCRiaBbd7vLskU+bDP3Z9h7kz5ermhpUpoqnG3r0lG8bjBdYuvZJdGbBZYdXtstEqg8eIqE4uNcrBzpqPCg=="
         },
         "7bc2f616-8fce-46fd-a081-9776332f4c76": {
           "display_id": 1848,
