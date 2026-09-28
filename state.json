@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1772,
-        "tip_oid": "38202670b58ed19e56211378dc8831b0bff4333a",
-        "prefix_sha256": "d278580ea8d86ff5a920537efdf10b23c348d2a3898179f4c2e7772b56b0449e"
+        "sequence": 1773,
+        "tip_oid": "da04a100dffe42d152b15d645911ce59e441aee0",
+        "prefix_sha256": "21d9678295f8ea2d48bbbf9cd2e8f314396c85911e713afa4fb624d73adb1288"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 1916,
+  "next_comment_id": 1917,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -16544,7 +16544,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-28T00:58:41.412806074Z",
-      "updated_at": "2026-09-28T17:34:28.083681416Z",
+      "updated_at": "2026-09-28T17:50:48.929096505Z",
       "labels": [
         "bug"
       ],
@@ -17034,6 +17034,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAkDr3n4e25JY/VGCcVWsu6YcibXpaxWnzTNzJ5Wfnr4Fraj2m1rAsCNcbABc9YyqpMz6FZUL9vJ3rbl+a+RTNAg=="
+        },
+        "e82a3e49-6d25-45be-bd96-5da17120cf4e": {
+          "display_id": 1916,
+          "author": "6ME5",
+          "content": "608b4dede committed and pushed: completed local queue/page commands clear their drafts; clear-goal confirmation survives same-goal accounting polls and rejects changed identity. Verified full TUI298 tests, strict Linux/Windows Clippy, format, policy4801, build87, and live panel commands. User requested pause. Idle-goal resume malformed-frame reproduced live and in daemon regression; unfinished two-file regression preserved in Git stash WIP idle-goal resume regression at requested pause, excluded from PR. PR105 remains open; latest CI not monitored to completion.",
+          "created_at": "2026-09-28T17:50:48.922741539Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAAQV/BBq3cjZrodZDt7oluiXnDlp+iHriGNaKJl1VSuJs3BShtxRooSC8kZySpLJV1exrt/90uvk5SA7Yqr+5AA=="
         },
         "e89c3bd5-bf07-4e4b-9fef-36817b7719c0": {
           "display_id": 1907,
