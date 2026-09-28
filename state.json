@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1682,
-        "tip_oid": "34797b4005b99ecdcd25b3ff2b9723377223a4f1",
-        "prefix_sha256": "f5fc484f414700ab297771194e2548ca33d43478a5776ed6b6f713d8ab250f16"
+        "sequence": 1683,
+        "tip_oid": "b587465f3d2b1a45e361c35b2785ba552db01e90",
+        "prefix_sha256": "c686cc7b39bda60722cfe6b06515d008482f3f1f153429b25f08cc6be4e5fb10"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 99,
-  "next_comment_id": 1844,
+  "next_comment_id": 1845,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -10664,7 +10664,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-27T23:40:33.365528994Z",
-      "updated_at": "2026-09-27T23:42:10.317935831Z",
+      "updated_at": "2026-09-28T00:09:49.707870421Z",
       "comments": {
         "62b32140-6336-421f-acdb-786e91393fce": {
           "display_id": 1843,
@@ -10674,6 +10674,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA46IWmUrbPy5ccuj/MqgNMrORu4o/rSryv5ktX3eXFp6+iKsKAdEh/BNPLExNcVIAg52/SQHwsiPfDfCaiJftDw=="
+        },
+        "a791d0b7-5689-4171-b10c-cbdf116d0c6f": {
+          "display_id": 1844,
+          "author": "6ME5",
+          "content": "[action] Live TUI pass exercised all 43 commands on develop 422b2cb80. Claude normal login restored real TUI inference/tool use. Findings and coverage at /tmp/peritus-human-tui-415nuh50/REPORT.md. Plain-folder final regression fix passed 10 external tests; awaiting final runner review.",
+          "created_at": "2026-09-28T00:09:49.702359661Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAzZP7lQvGkV3FQYlum3sg0h6/gxDZqr8vlLoDZRqh19I+7cTbqp2N4jmiumEm51GSjhEl5J6Aw0hK5QL929j3CQ=="
         }
       }
     },
