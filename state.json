@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1705,
-        "tip_oid": "761cad9e2393be07628f065da4bd7556002e34a0",
-        "prefix_sha256": "c38b1921ba0022e2e8d7e03e4fa67706f80ecc89ac5ba52c4ee4f2ca7650181c"
+        "sequence": 1706,
+        "tip_oid": "6e86cea0ff4801a6719b4f54c9d5e57ff4aacec4",
+        "prefix_sha256": "9866399e99a884ea891da3bc3dca705615fc6c481a2264dbac217a5645406838"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 1861,
+  "next_comment_id": 1862,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -16544,7 +16544,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-28T00:58:41.412806074Z",
-      "updated_at": "2026-09-28T03:26:54.053304865Z",
+      "updated_at": "2026-09-28T03:52:13.745830524Z",
       "labels": [
         "bug"
       ],
@@ -16593,6 +16593,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAJXFKmubYu9I/epazAVRad+j6FX5OqgI0g5G5NH1vhg3cmf4rWKyxDl2XeM+Ys2r2WI6d2Y5ISCM5wHyzx16BAA=="
+        },
+        "8d940eb3-80af-4892-8544-dd58f076ae14": {
+          "display_id": 1861,
+          "author": "6ME5",
+          "content": "[action] Workspace test v9 passed. Live build16 Python preview returned56 and auto-reported Exited; adding shared transcript rendering and clearing stale receipt notice. Accounting replay frontier regression passes across restart and competing edits. Implementing C4-owned preview terminal lease with authenticated reconnect and current input permissions; terminal regression running.",
+          "created_at": "2026-09-28T03:52:13.730756286Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAltdjfjdrboFqTwvJ+PO7o3xd8ezVvh8LeGFofS7036GCOSt03wRr5PMBBKDhMCTTpK68+sRxdjr79EkXUJxEAw=="
         },
         "9e78863e-8555-4643-99b3-ed6b423b55e0": {
           "display_id": 1855,
