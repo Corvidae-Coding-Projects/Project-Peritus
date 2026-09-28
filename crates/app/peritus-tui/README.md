@@ -37,6 +37,12 @@ workspace. Opening or inspecting a saved run does not start inference.
 the creation receipt. It starts no inference and still requires an explicit caption and
 confirmation. Cancelling or changing the draft abandons the deferred read; reconnect resolves
 the original creation operation instead of creating a duplicate conversation.
+`/files PATH` and `@PATH` use the same session setup, then open the file draft so the user can
+choose a range and explicitly preview it before confirmation.
+The initial `/permissions`, `/init`, `/memory`, `/brief`, `/queue`, `/context`, and `/goal`
+commands also establish their conversation metadata when needed. Inspection, goal drafting,
+and attachment setup start no model work. Existing apply/confirmation steps remain explicit;
+Escape retains the original command even if its creation receipt arrives later.
 
 In `/sessions` and its search results, arrows select a conversation and Enter opens it. `n`/`p`
 page through all results; `r` retries or refreshes the same search page. Home/End selects the

@@ -92,7 +92,8 @@ impl AppModel {
             return Vec::new();
         }
         if self.chat.workbench.selected.is_none() {
-            return self.create_image_conversation(path);
+            return self
+                .create_command_conversation("Image conversation", format!("/attach {path}"));
         }
         self.chat.workbench.open = true;
         self.chat.workbench.images.open = true;
@@ -109,35 +110,6 @@ impl AppModel {
             return self.refresh_snapshot_for_command(query, self.chat.buffer.clone());
         }
         self.begin_image_read()
-    }
-
-    fn create_image_conversation(&mut self, path: &str) -> Vec<Effect> {
-        let Some(workspace) = self.product.as_ref().map(|product| product.launch.workspace_id())
-        else {
-            return Vec::new();
-        };
-        let Some((query, revision)) = self.new_conversation_binding(workspace) else {
-            return Vec::new();
-        };
-        let title = peritus_app_protocol::ConversationTitle::new("Image conversation".to_owned())
-            .expect("static title");
-        self.select_workbench_conversation(Some(query));
-        let effects = self.submit_bound_workbench(
-            WorkbenchIntent::CreateConversation(title),
-            query,
-            revision,
-        );
-        if effects.is_empty() {
-            self.select_workbench_conversation(None);
-            return effects;
-        }
-        // Continue only after the exact creation receipt and a fresh snapshot. The shared
-        // continuation guard abandons the read when Esc, a new selection, or draft edits intervene.
-        self.chat.workbench.snapshot_refresh_command =
-            Some((query, self.chat.buffer.clone(), format!("/attach {path}")));
-        "Creating a conversation for the image preview. No inference started."
-            .clone_into(&mut self.chat.workbench.message);
-        effects
     }
 
     fn images_available(&self) -> bool {

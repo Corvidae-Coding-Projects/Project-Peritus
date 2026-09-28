@@ -95,15 +95,12 @@ impl AppModel {
             );
             return Vec::new();
         }
-        if self.chat.workbench.selected.is_none()
-            || self.workbench_request_pending()
-            || self.chat.workbench.unresolved.is_some()
-        {
-            self.notice(
-                NoticeLevel::Warning,
-                "Select a conversation and resolve pending receipts before attaching a file.",
-            );
+        if self.workbench_request_pending() || self.chat.workbench.unresolved.is_some() {
+            self.notice(NoticeLevel::Warning, "Resolve pending receipts before attaching a file.");
             return Vec::new();
+        }
+        if self.chat.workbench.selected.is_none() {
+            return self.create_command_conversation("File conversation", format!("/files {path}"));
         }
         self.chat.workbench.open = true;
         self.chat.workbench.files.open = true;

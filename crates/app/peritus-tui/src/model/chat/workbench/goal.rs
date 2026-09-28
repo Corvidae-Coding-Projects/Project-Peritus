@@ -47,11 +47,8 @@ impl AppModel {
             return Vec::new();
         }
         if self.chat.workbench.selected.is_none() {
-            self.notice(
-                NoticeLevel::Warning,
-                "Select a conversation with /sessions first; draft retained.",
-            );
-            return Vec::new();
+            return self
+                .create_command_conversation("New conversation", format!("/goal {arguments}"));
         }
         self.open_goal_panel();
         if self.workbench_request_pending() || self.chat.workbench.unresolved.is_some() {

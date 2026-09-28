@@ -194,8 +194,7 @@ impl AppModel {
         if let Some((_, draft)) = self.chat.workbench.unresolved.take()
             && self.chat.buffer == draft
             && !(matches!(command.intent(), WorkbenchIntent::CreateConversation(_))
-                && (self.chat.workbench.submission.is_some()
-                    || self.chat.workbench.snapshot_refresh_command.is_some()))
+                && self.chat.workbench.selected == Some(command.query()))
         {
             self.clear_chat_command();
         }

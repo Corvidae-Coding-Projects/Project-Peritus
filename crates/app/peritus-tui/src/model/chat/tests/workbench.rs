@@ -18,6 +18,7 @@ mod init;
 mod library;
 mod memory;
 mod navigation;
+mod onboarding;
 mod permissions;
 mod preview;
 mod queue;

@@ -16,11 +16,8 @@ impl AppModel {
             return Vec::new();
         }
         let Some(query) = self.chat.workbench.selected else {
-            self.notice(
-                NoticeLevel::Warning,
-                "Select a conversation with /sessions first; draft retained.",
-            );
-            return Vec::new();
+            return self
+                .create_command_conversation("New conversation", format!("/brief {arguments}"));
         };
         if self.workbench_request_pending() || self.chat.workbench.unresolved.is_some() {
             self.notice(

@@ -1,5 +1,6 @@
 use super::*;
 mod cancellation;
+mod onboarding;
 use crate::file_import::FileBytes;
 use peritus_app_protocol::{
     ConversationId, OperationAcknowledgement, WorkbenchFileImportPreview, WorkbenchFileMetadata,

@@ -7,6 +7,11 @@ use peritus_app_protocol::{ProductInteractionMode as Mode, ProductRunControlActi
 impl AppModel {
     pub(super) fn slash_command(&mut self, text: &str) -> Vec<Effect> {
         let effects = self.dispatch_slash_command(text);
+        self.track_workbench_inspection(&effects);
+        effects
+    }
+
+    pub(in crate::model::chat) fn track_workbench_inspection(&mut self, effects: &[Effect]) {
         // Inspection has no durable mutation receipt. Retain the draft until its validated
         // response arrives, then leave an empty composer for the next command.
         if effects.iter().any(|effect| {
@@ -29,7 +34,6 @@ impl AppModel {
         }) {
             self.chat.workbench.inspection_draft = Some(self.chat.buffer.clone());
         }
-        effects
     }
 
     fn dispatch_slash_command(&mut self, text: &str) -> Vec<Effect> {
