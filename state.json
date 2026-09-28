@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1704,
-        "tip_oid": "9cd98d8fcb687679710ea49fe9094ffed4e96136",
-        "prefix_sha256": "ab382edc2c5e933aa16f7a5aae921cecad1c851228242f7dd5a20f92dbda4707"
+        "sequence": 1705,
+        "tip_oid": "761cad9e2393be07628f065da4bd7556002e34a0",
+        "prefix_sha256": "c38b1921ba0022e2e8d7e03e4fa67706f80ecc89ac5ba52c4ee4f2ca7650181c"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 1860,
+  "next_comment_id": 1861,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -16544,7 +16544,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-28T00:58:41.412806074Z",
-      "updated_at": "2026-09-28T03:08:18.404025988Z",
+      "updated_at": "2026-09-28T03:26:54.053304865Z",
       "labels": [
         "bug"
       ],
@@ -16575,6 +16575,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAE2SmWCsJoZVhWFuTNuvIJqZ7vhqQTseB/jgNnUZ3MOGQ6Aulv4eStqn2Fcmn9eU3qrqpZoiU+bCVp+ZCXpNeDg=="
+        },
+        "6b4a8892-2707-4b93-9820-09469ba6edac": {
+          "display_id": 1860,
+          "author": "6ME5",
+          "content": "Live repair078-096 reproduced preview selecting the dashboard run instead of the open conversation, hiding SessionMismatch, and making r inert without a page. Fixed scope selection, visible query errors, retained refresh scope, and scroll preservation. New negotiated tag101 preview output preserves bounded stdout/stderr through restart; daemon subprocess regression passed; live Python prompt plus print(2+3) produced5. Added running-view polling and ANSI sanitization after live observation. Daemon lib217passed/4ignored and preview TUI16passed before newest baseline changes. Same-session Chat-to-Plan continuation and stop-at-admission boundaries now covered. Working on embedded task baseline and preflight restore validation.",
+          "created_at": "2026-09-28T03:26:54.033535810Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAeuFpYejWNH42/dTdAguZgeNNZXbwZN1OVWUTW7JB0IKn5VA44B+ENMxEDb+Dxd/IKONQWkOjzjhnTZt8bGYuCw=="
         },
         "8aaaa245-31b8-4715-91a8-410840d69c86": {
           "display_id": 1857,
