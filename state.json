@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1683,
-        "tip_oid": "b587465f3d2b1a45e361c35b2785ba552db01e90",
-        "prefix_sha256": "c686cc7b39bda60722cfe6b06515d008482f3f1f153429b25f08cc6be4e5fb10"
+        "sequence": 1684,
+        "tip_oid": "679ee131f8d516db2d67c558856fa4b65a16532c",
+        "prefix_sha256": "584b1e8d7049fbcec4ed32fe040e7da60667b2dd84918044bc2b242bb1f85a29"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 99,
-  "next_comment_id": 1845,
+  "next_comment_id": 1846,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -10664,8 +10664,17 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-27T23:40:33.365528994Z",
-      "updated_at": "2026-09-28T00:09:49.707870421Z",
+      "updated_at": "2026-09-28T00:10:25.980770117Z",
       "comments": {
+        "1e584dca-2ee8-4b77-a15f-091061bcb76e": {
+          "display_id": 1845,
+          "author": "6ME5",
+          "content": "Completed live production TUI examination on develop 422b2cb804d0a4bcf658682e071ea9e95ce5cc75. Built CLI/daemon/TUI; invoked all 43 top-level commands, with 246 captures and 180 logged actions. Real Git plan/build/steer/review/export/run/accept/commit/discard and plain-folder code/review/fix/review workflows completed. External test suites passed 4, 5, 9, then 10 tests. Normal Claude login restored real inference and tool calls. High-impact findings: detached legacy chat/workbench state, protected ancestor denies managed-file imports, token-budget overshoot rejected during persistence, stale revision recovery burden, preview session mismatch, misleading auth/model error classification. Full evidence and explicit limits: /tmp/peritus-human-tui-415nuh50/REPORT.md. No Peritus tracked edits. Both remaining test TUIs idle; goal cancelled. Findings remain for follow-up.",
+          "created_at": "2026-09-28T00:10:25.976637209Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAab3HM2cmPYTOXkcqyIw3cnfXX6dT1x9Ll7u/8AzxN/MNwFPQnWFVO6zX954wSH3F0G7al9zPbFmveJgwVE/rDQ=="
+        },
         "62b32140-6336-421f-acdb-786e91393fce": {
           "display_id": 1843,
           "author": "6ME5",
