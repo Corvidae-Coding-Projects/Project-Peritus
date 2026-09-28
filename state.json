@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1706,
-        "tip_oid": "6e86cea0ff4801a6719b4f54c9d5e57ff4aacec4",
-        "prefix_sha256": "9866399e99a884ea891da3bc3dca705615fc6c481a2264dbac217a5645406838"
+        "sequence": 1707,
+        "tip_oid": "4124cf5a8a5d211310de7f8654b1c99737b18ba4",
+        "prefix_sha256": "baceaf5c31968088175621d1f6054ac21bea050e69aade1296e8cba06909b968"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 1862,
+  "next_comment_id": 1863,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -16544,7 +16544,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-28T00:58:41.412806074Z",
-      "updated_at": "2026-09-28T03:52:13.745830524Z",
+      "updated_at": "2026-09-28T04:37:32.790957980Z",
       "labels": [
         "bug"
       ],
@@ -16629,6 +16629,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAkDr3n4e25JY/VGCcVWsu6YcibXpaxWnzTNzJ5Wfnr4Fraj2m1rAsCNcbABc9YyqpMz6FZUL9vJ3rbl+a+RTNAg=="
+        },
+        "ec5574f6-ebbd-4cba-a646-62f1fec688c7": {
+          "display_id": 1862,
+          "author": "6ME5",
+          "content": "[action] Live build23 passes stale goal refresh, idle goal pause, brief proposal ordering, denied-preview receipt recovery, real terminal input/resize/reconnect. Workspace v10 passed before these additions. Fixing reproduced mixed active/candidate run-list codec disconnect with negotiated per-run observations; implementation in progress. Branch feature/tui-resilience-repair; no commits.",
+          "created_at": "2026-09-28T04:37:32.783707255Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAjCl2bfnzhBKieFP1q4IVRjBDtBmd9Xn6PBUE9Gn6wf2O6DqG42zuT9BLbc48KO5xaRj0+oChzv9ck2/c57NHDA=="
         }
       }
     },
