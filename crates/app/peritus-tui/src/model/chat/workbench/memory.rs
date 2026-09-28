@@ -225,6 +225,7 @@ impl AppModel {
         }
         self.chat.workbench.set_include_forgotten_memory(query.include_forgotten());
         self.chat.workbench.memory = Some(memory);
+        self.complete_workbench_inspection();
         self.chat.workbench.scroll = 0;
         self.chat.workbench.message.clear();
     }

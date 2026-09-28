@@ -10,6 +10,28 @@ use peritus_types::{RunId, WorkspaceId};
 
 use super::{ProductRunServiceError, RunRecord};
 
+impl super::ProductRunService {
+    pub(crate) fn query_observations(
+        &self,
+        query: peritus_app_protocol::ProductRunQuery,
+    ) -> Result<Vec<peritus_app_protocol::ProductRunObservation>, ProductRunServiceError> {
+        let records = self.inner.records.read().map_err(|_| ProductRunServiceError::Unavailable)?;
+        records
+            .values()
+            .rev()
+            .filter(|record| query.run_id().is_none_or(|run| record.snapshot.run_id() == run))
+            .take(peritus_app_protocol::MAX_PRODUCT_RUNS)
+            .map(|record| {
+                peritus_app_protocol::ProductRunObservation::new(
+                    live_snapshot(record)?,
+                    delivery_settlement(record),
+                )
+                .map_err(|_| ProductRunServiceError::InvalidState)
+            })
+            .collect()
+    }
+}
+
 pub(super) fn project_snapshot(
     record: &RunRecord,
     snapshot: ProductRunSnapshot,
@@ -40,8 +62,35 @@ pub(super) fn project_collection(
     if settled.iter().all(Option::is_some) {
         Ok(AppResponsePayload::ProductRunSettlements(settled.into_iter().flatten().collect()))
     } else {
-        Ok(AppResponsePayload::ProductRuns(snapshots))
+        // Legacy collections cannot encode candidate qualification. Keep their status
+        // visible without asserting acceptance; exact queries retain the full evidence.
+        let summaries = snapshots.into_iter().map(legacy_summary).collect::<Result<_, _>>()?;
+        Ok(AppResponsePayload::ProductRuns(summaries))
     }
+}
+
+fn legacy_summary(
+    snapshot: ProductRunSnapshot,
+) -> Result<ProductRunSnapshot, ProductRunServiceError> {
+    if !snapshot.deliverable().is_some_and(|value| {
+        value.qualification() != peritus_run_settlement::CandidateStage::Qualified
+    }) {
+        return Ok(snapshot);
+    }
+    ProductRunSnapshot::new(
+        snapshot.run_id(),
+        snapshot.workspace_id(),
+        snapshot.providers(),
+        snapshot.phase(),
+        snapshot.cycle(),
+        snapshot.task().to_owned(),
+        snapshot.status().to_owned(),
+        snapshot.diff().to_owned(),
+        snapshot.gates().to_owned(),
+        snapshot.review().to_owned(),
+        snapshot.summary().to_owned(),
+    )
+    .map_err(|_| ProductRunServiceError::InvalidState)
 }
 
 /// The legacy settlement wire shape requires a managed deliverable for every checkpoint.

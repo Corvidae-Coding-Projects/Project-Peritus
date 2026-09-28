@@ -160,6 +160,29 @@ The run summary names the durable detailed-design path.
 After completion, the handoff shows the managed path, exact changed-file count, exact successful
 commands, and how to run the result. Press `i` to inspect, `a` to accept, `c` to commit only the
 deliverable paths, `p` to export an exact patch, or uppercase `D` to discard only those paths.
+Discard restores the task's starting file contents and staged entries. A Git repository created
+during the task is moved intact into `peritus/discarded` inside its enclosing Git directory;
+the completion status reports the recovery location. Press `i` and scroll to Status to read the
+complete recovery paths. Each recovery directory contains the saved
+`repository` and an `origin.json` identifying its original location. This preserves committed,
+uncommitted, and ignored files. To recover it, inspect that location and move the saved directory
+back only after preserving anything now occupying the original path. For an existing nested
+repository, discard restores its starting commit with a detached HEAD, or a fresh unborn branch
+if it originally had no commit. Existing branches remain unchanged. A `head.json` recovery
+record identifies the previous branch and a retained reference to its commit, including commits
+created while detached. The status reports this record too.
+Commit saves selected files in their owning repositories, including nested repositories, and
+leaves unrelated staged files alone. It first saves an exact source patch; that patch stays
+available through `p` if a commit hook or signing command fails. A saved patch remains available
+after restart even if the live workspace changed and needs fresh checks. Candidate fingerprints
+cover source contents, symlink targets, permissions, and nested repository state, so changes
+hidden by Git's status settings cannot reuse earlier qualification.
+After a partial commit, retrying `c` uses the retained source identity and saved patch; it refuses
+changed source and does not repeat a nested commit that already succeeded. Qualification tied
+to the old Git identity becomes stale. Task and follow-up drafts survive rejected submissions;
+if a connection is interrupted, the restored editor asks you to check Runs before resending
+because the original request may already have been accepted. A late rejection keeps a newer
+draft separate; reopen the same composer to recover the older one.
 Press `x` to cancel a selected run and `r` to retry a failed or cancelled run. After a daemon
 restart, an unfinished run is reconstructed as Recovery required and immediately resumed
 when its provider and workspace are still available; if automatic admission cannot proceed, it

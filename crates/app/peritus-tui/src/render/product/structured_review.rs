@@ -1,7 +1,7 @@
 //! Digest-bound structured diff, anchored comments, and evidence freshness rendering.
 
 use peritus_app_protocol::{
-    WorkbenchDiffFile, WorkbenchDiffLineKind, WorkbenchReviewCommentState,
+    WorkbenchDiffFile, WorkbenchDiffLineKind, WorkbenchReviewComment, WorkbenchReviewCommentState,
     WorkbenchReviewEvidenceState, WorkbenchReviewPage,
 };
 use ratatui::{
@@ -22,30 +22,63 @@ pub(super) fn render(frame: &mut Frame<'_>, area: Rect, model: &AppModel) {
     let Some(product) = &model.product else { return };
     let review = &product.review;
     let Some(page) = &review.page else { return };
+    let [header, files, hunk, comments, evidence] = regions(area);
+    render_header(frame, header, page, &review.message);
+    render_files(frame, files, page, review.file, review.focus);
+    render_hunk(
+        frame,
+        hunk,
+        review.selected_file(),
+        review.hunk,
+        review.focus,
+        if review.focus == ReviewFocus::Comment { 0 } else { review.scroll },
+    );
+    render_comments(
+        frame,
+        comments,
+        page,
+        review.comment,
+        review.focus,
+        if review.focus == ReviewFocus::Comment { review.scroll } else { 0 },
+    );
+    render_evidence(frame, evidence, page);
+}
+
+fn regions(area: Rect) -> [Rect; 5] {
     let vertical = Layout::default()
         .direction(Direction::Vertical)
         .constraints([Constraint::Length(3), Constraint::Min(6)])
         .split(area);
-    render_header(frame, vertical[0], page, &review.message);
 
     let columns = Layout::default()
         .direction(Direction::Horizontal)
         .constraints([Constraint::Percentage(29), Constraint::Percentage(71)])
         .split(vertical[1]);
-    render_files(frame, columns[0], page, review.file, review.focus);
 
     let right = Layout::default()
         .direction(Direction::Vertical)
         .constraints([Constraint::Percentage(64), Constraint::Percentage(36)])
         .split(columns[1]);
-    render_hunk(frame, right[0], review.selected_file(), review.hunk, review.focus);
 
     let lower = Layout::default()
         .direction(Direction::Horizontal)
         .constraints([Constraint::Percentage(68), Constraint::Percentage(32)])
         .split(right[1]);
-    render_comments(frame, lower[0], page, review.comment, review.focus);
-    render_evidence(frame, lower[1], page);
+    [vertical[0], columns[0], right[0], lower[0], lower[1]]
+}
+
+pub(super) fn scroll_limit(model: &AppModel, area: Rect) -> u16 {
+    let Some(product) = &model.product else { return 0 };
+    let review = &product.review;
+    let [_, _, hunk, comments, _] = regions(area);
+    let (lines, area) = if review.focus == ReviewFocus::Comment {
+        (comment_lines(review.selected_comment()), comments)
+    } else {
+        (selected_hunk_lines(review.selected_file(), review.hunk), hunk)
+    };
+    let lines =
+        crate::render::chat::wrapped_lines(lines, usize::from(area.width.saturating_sub(2)));
+    super::content_scroll_limit(lines.len(), area)
 }
 
 fn render_header(frame: &mut Frame<'_>, area: Rect, page: &WorkbenchReviewPage, message: &str) {
@@ -61,7 +94,7 @@ fn render_header(frame: &mut Frame<'_>, area: Rect, page: &WorkbenchReviewPage, 
         .block(
             Block::default()
                 .borders(Borders::ALL)
-                .title(" Structured review · Tab focus · ↑↓ select · ←→ hunk · t raw · r refresh "),
+                .title(" Review · Tab focus · ↑↓ select · PgUp/PgDn scroll · t raw · r refresh "),
         ),
         area,
     );
@@ -113,11 +146,13 @@ fn render_hunk(
     file: Option<&WorkbenchDiffFile>,
     selected_hunk: usize,
     focus: ReviewFocus,
+    scroll: u16,
 ) {
-    let lines = file.map_or_else(
-        || vec![Line::styled("No structured hunk selected.", Style::default().fg(MUTED))],
-        |file| hunk_lines(file, selected_hunk),
+    let lines = crate::render::chat::wrapped_lines(
+        selected_hunk_lines(file, selected_hunk),
+        usize::from(area.width.saturating_sub(2)),
     );
+    let maximum = super::content_scroll_limit(lines.len(), area);
     let target = if focus == ReviewFocus::File { "file" } else { "hunk" };
     frame.render_widget(
         Paragraph::new(lines)
@@ -129,9 +164,19 @@ fn render_hunk(
                         " Target: {target} · e explain · v revise · K keep behavior · l leave alone "
                     )),
             )
-            .wrap(Wrap { trim: false }),
+            .scroll((scroll.min(maximum), 0)),
         area,
     );
+}
+
+fn selected_hunk_lines(
+    file: Option<&WorkbenchDiffFile>,
+    selected_hunk: usize,
+) -> Vec<Line<'static>> {
+    file.map_or_else(
+        || vec![Line::styled("No structured hunk selected.", Style::default().fg(MUTED))],
+        |file| hunk_lines(file, selected_hunk),
+    )
 }
 
 fn hunk_lines(file: &WorkbenchDiffFile, selected_hunk: usize) -> Vec<Line<'static>> {
@@ -163,45 +208,46 @@ fn render_comments(
     page: &WorkbenchReviewPage,
     selected: usize,
     focus: ReviewFocus,
+    scroll: u16,
 ) {
-    let items = if page.comments().is_empty() {
-        vec![ListItem::new(Line::styled("No review comments", Style::default().fg(MUTED)))]
-    } else {
-        page.comments()
-            .iter()
-            .map(|comment| {
-                let state = match comment.state() {
-                    WorkbenchReviewCommentState::Open => "open",
-                    WorkbenchReviewCommentState::Addressed => "addressed",
-                    WorkbenchReviewCommentState::Stale => "stale — b rebind",
-                    WorkbenchReviewCommentState::Dismissed => "dismissed",
-                };
-                ListItem::new(format!(
-                    "{:?} · {state}\n{}: {}",
-                    comment.feedback(),
-                    safe(comment.anchor().path()),
-                    safe(comment.message().as_str()),
-                ))
-            })
-            .collect()
-    };
-    let mut state = ListState::default();
-    if !page.comments().is_empty() {
-        state.select(Some(selected));
-    }
-    frame.render_stateful_widget(
-        List::new(items)
+    let lines = crate::render::chat::wrapped_lines(
+        comment_lines(page.comments().get(selected)),
+        usize::from(area.width.saturating_sub(2)),
+    );
+    let maximum = super::content_scroll_limit(lines.len(), area);
+    let number = if page.comments().is_empty() { 0 } else { selected + 1 };
+    frame.render_widget(
+        Paragraph::new(lines)
             .block(
                 Block::default()
                     .borders(Borders::ALL)
                     .border_style(focus_style(focus == ReviewFocus::Comment))
-                    .title(" Comments · d dismiss · b rebind stale "),
+                    .title(format!(
+                        " Comment {number}/{} · ↑↓ select · d dismiss · b rebind ",
+                        page.comments().len()
+                    )),
             )
-            .highlight_symbol("▸ ")
-            .highlight_style(Style::default().fg(ACCENT)),
+            .scroll((scroll.min(maximum), 0)),
         area,
-        &mut state,
     );
+}
+
+fn comment_lines(comment: Option<&WorkbenchReviewComment>) -> Vec<Line<'static>> {
+    let Some(comment) = comment else {
+        return vec![Line::styled("No review comments", Style::default().fg(MUTED))];
+    };
+    let state = match comment.state() {
+        WorkbenchReviewCommentState::Open => "open",
+        WorkbenchReviewCommentState::Addressed => "addressed",
+        WorkbenchReviewCommentState::Stale => "stale — b rebind",
+        WorkbenchReviewCommentState::Dismissed => "dismissed",
+    };
+    let mut lines = vec![
+        Line::from(format!("{:?} · {state}", comment.feedback())),
+        Line::from(safe(comment.anchor().path())),
+    ];
+    lines.extend(safe(comment.message().as_str()).lines().map(|line| Line::from(line.to_owned())));
+    lines
 }
 
 fn render_evidence(frame: &mut Frame<'_>, area: Rect, page: &WorkbenchReviewPage) {

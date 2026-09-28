@@ -6,6 +6,8 @@ use super::*;
 mod persistence_faults;
 #[path = "recovery/restart.rs"]
 mod restart;
+#[path = "recovery/shutdown.rs"]
+mod shutdown;
 
 #[test]
 fn accepted_result_stays_complete_when_shutdown_follows_late_cancellation() {

@@ -18,6 +18,7 @@ pub(super) const MANIFEST_FILE: &str = "manifest.bin";
 const NEXT_MANIFEST_FILE: &str = "manifest.next";
 
 pub(super) fn prepare_transaction(
+    workspace: &Path,
     transaction_directory: &Path,
     plan: &PatchPlan,
     manifest: &Manifest,
@@ -25,7 +26,7 @@ pub(super) fn prepare_transaction(
 ) -> Result<(), PatchError> {
     for (index, operation) in plan.operations().iter().enumerate() {
         if let Some(final_file) = operation.final_file() {
-            stage_final(transaction_directory, index, operation, final_file, faults)?;
+            stage_final(workspace, transaction_directory, index, operation, final_file, faults)?;
         }
     }
     sync_directory(transaction_directory, RollbackStatus::NotRequired)?;
@@ -36,6 +37,7 @@ pub(super) fn prepare_transaction(
 }
 
 fn stage_final(
+    workspace: &Path,
     transaction_directory: &Path,
     index: usize,
     operation: &crate::PatchOperation,
@@ -43,11 +45,34 @@ fn stage_final(
     faults: &dyn FaultInjector,
 ) -> Result<(), PatchError> {
     let staged = staged_path(transaction_directory, index);
-    let mut file =
-        OpenOptions::new().write(true).create_new(true).open(&staged).map_err(|error| {
-            PatchError::io(PatchOperationContext::StageFinal, RollbackStatus::NotRequired, error)
-                .at(operation.path().clone())
-        })?;
+    let mut options = OpenOptions::new();
+    options.write(true).create_new(true);
+    #[cfg(unix)]
+    if operation.kind() == crate::PatchOperationKind::Replace {
+        use std::os::unix::fs::{OpenOptionsExt as _, PermissionsExt as _};
+        let target = super::filesystem::checked_target_path(
+            workspace,
+            operation.path(),
+            PatchOperationContext::StageFinal,
+            RollbackStatus::NotRequired,
+        )?;
+        let permissions = fs::metadata(target)
+            .map_err(|error| {
+                PatchError::io(
+                    PatchOperationContext::StageFinal,
+                    RollbackStatus::NotRequired,
+                    error,
+                )
+            })?
+            .permissions();
+        options.mode(permissions.mode() & 0o777);
+    }
+    #[cfg(not(unix))]
+    let _ = workspace;
+    let mut file = options.open(&staged).map_err(|error| {
+        PatchError::io(PatchOperationContext::StageFinal, RollbackStatus::NotRequired, error)
+            .at(operation.path().clone())
+    })?;
     file.write_all(final_file.bytes()).map_err(|error| {
         PatchError::io(PatchOperationContext::StageFinal, RollbackStatus::NotRequired, error)
             .at(operation.path().clone())

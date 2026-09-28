@@ -136,3 +136,22 @@ fn repository() -> tempfile::TempDir {
 fn run(root: &Path, arguments: &[&str]) {
     assert!(Command::new("git").args(arguments).current_dir(root).status().expect("git").success());
 }
+
+#[test]
+fn managed_preimages_survive_durable_continuation_without_recapturing_later_edits() {
+    let repository = repository();
+    let state = tempfile::tempdir().expect("state");
+    fs::write(repository.path().join("prior.txt"), "user work\n").expect("prior");
+    let baseline =
+        CandidateBaseline::capture_task(repository.path(), &state.path().join("run.trace"))
+            .expect("task baseline");
+    let mut resume = fixture(&checkpoint(1, 7), ProductRunPhase::Writing);
+    resume.baseline = baseline;
+    fs::remove_file(repository.path().join("prior.txt")).expect("task deletes file");
+    let encoded = resume.encode_durable().expect("encode");
+    let restored = ProductRunResume::decode_durable(&encoded, "User:\nBuild it.").expect("decode");
+    assert_eq!(
+        restored.baseline().changed_paths(repository.path()).expect("paths"),
+        vec![PathBuf::from("prior.txt")]
+    );
+}

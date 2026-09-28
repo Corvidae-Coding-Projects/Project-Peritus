@@ -20,7 +20,11 @@ pub(super) fn restore_preview(
     interaction: Option<&super::super::interaction::InteractionOptions>,
 ) -> Result<PreviewAggregate, ProductRunServiceError> {
     if operations.len() > MAX_PREVIEW_OPERATIONS
-        || outputs.iter().map(|value| value.stdout.len()).sum::<usize>() > MAX_PREVIEW_OUTPUT_BYTES
+        || outputs
+            .iter()
+            .map(|value| value.stdout.len().saturating_add(value.stderr.len()))
+            .sum::<usize>()
+            > MAX_PREVIEW_OUTPUT_BYTES
     {
         return Err(ProductRunServiceError::InvalidMessage);
     }
@@ -72,9 +76,15 @@ pub(super) fn restore_preview(
         .map(|value| value.launches().iter().map(WorkbenchLaunchResult::launch).collect())
         .unwrap_or_default();
     let mut restored_outputs = BTreeMap::new();
+    let mut errors = BTreeMap::new();
+    let mut truncated = std::collections::BTreeSet::new();
     for value in outputs {
         let launch = ControlOperationId::new(value.launch)
             .map_err(|_| ProductRunServiceError::InvalidMessage)?;
+        errors.insert(launch, value.stderr);
+        if value.truncated {
+            truncated.insert(launch);
+        }
         if !launch_ids.contains(&launch) || restored_outputs.insert(launch, value.stdout).is_some()
         {
             return Err(ProductRunServiceError::InvalidMessage);
@@ -83,7 +93,13 @@ pub(super) fn restore_preview(
     if page.is_none() && (!restored_operations.is_empty() || !restored_outputs.is_empty()) {
         return Err(ProductRunServiceError::InvalidMessage);
     }
-    Ok(PreviewAggregate { page, operations: restored_operations, outputs: restored_outputs })
+    Ok(PreviewAggregate {
+        page,
+        operations: restored_operations,
+        outputs: restored_outputs,
+        errors,
+        truncated,
+    })
 }
 
 fn recover_preview_page(

@@ -81,7 +81,7 @@ impl ProductRunService {
                 folders: workspaces.folders().clone(),
                 processes,
                 tasks: Mutex::new(Vec::new()),
-                model_catalogs: Mutex::new(BTreeMap::new()),
+                model_catalogs: super::catalog::ModelCatalogs::default(),
                 image_decodes: Arc::new(tokio::sync::Semaphore::new(2)),
                 preview_processes: std::sync::Mutex::new(BTreeMap::new()),
                 preview_capture: PreviewCaptureHost::discover(),

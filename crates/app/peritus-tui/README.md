@@ -18,6 +18,47 @@ recovery-required states directly. Its handoff panel exposes exact paths, checks
 remaining work, and run instructions. Users can inspect, continue, run, export, accept, commit, or
 discard a candidate without finding an internal worktree or log. Foreground run commands temporarily
 return terminal ownership to the candidate and restore the full-screen interface afterward.
+Ctrl-C can interrupt the foreground candidate without terminating the TUI owner. While the
+interface is active, Ctrl-C or Ctrl-Q requests orderly client exit.
+
+Opening a saved run resolves its actual input conversation before another message can be sent.
+A failed lookup retains the run and draft for retry. Runs in another configured workspace open
+with that workspace's path and trust; an unsent draft must be sent or cleared before leaving its
+workspace. Opening or inspecting a saved run does not start inference.
+
+In `/sessions` and its search results, arrows select a conversation and Enter opens it. `n`/`p`
+page through all results; `r` retries or refreshes the same search page. Home/End selects the
+first/last row, while PageUp/PageDown scrolls long titles and details. Refresh retains the
+selected identity when it remains in the result page.
+
+Diff, Review, Preview, and approval details support PageUp/PageDown and Home/End. Structured
+review scrolls the selected hunk or comment; arrows select another item and Tab changes focus.
+Modal drafts survive launcher-owned daemon recovery, including uncertain submissions. Reconnecting
+does not submit them again; inspect the current run before manually resending an uncertain task.
+Ctrl-R reconnects without replacing a chat or modal draft. With terminal keyboard capture enabled,
+Ctrl-R goes to the attached program; release capture with Ctrl-] before reconnecting.
+
+Isolated forks open with the child's registered workspace path and trust, without restarting the
+daemon or changing the parent workspace. If you type another draft while the fork is pending, the
+interface stays with that draft and shows the saved child's ID. `/sessions open CONVERSATION_ID
+WORKSPACE_ID` opens it later. A failed workspace lookup leaves the original conversation usable;
+it does not create the fork again. Generated fork titles stay within the title limit, including
+when the source title contains Unicode.
+
+Metadata inspectors, file/image details, and goal/context panels support arrows, PageUp/PageDown,
+and Home/End. Scrolling stops at the displayed content and adapts to terminal resizing. Multiline
+guidance, captions, objectives, and status messages keep their line breaks.
+Escape dismisses an inspection and cancels its unfinished read or unconfirmed import. Captions
+and drafts remain available, while late replies cannot resume a dismissed preview or deferred
+goal change. Submitted mutations keep their receipt tracking until their outcome is resolved.
+Read-only request timeouts leave the connection and drafts intact; panels can be refreshed or
+their commands retried. Reads needed to reconcile an accepted mutation still trigger recovery.
+An unresponsive Runs lookup does not stop conversation or preview polling, and expired replies
+cannot change the current view. Doctor supports Home/End and can be dismissed and reopened while
+an earlier probe is still running.
+
+Disconnected chat keeps an explicit offline status and Ctrl-R reconnect hint above the composer,
+including after transient notices disappear.
 
 Conversation view pins the active elapsed working indicator directly above the message-entry box in
 bold white. Tool calls remain visible without enabling diagnostics: one entry shows the command
@@ -32,6 +73,8 @@ The model picker also opens this control with `e`. Each role keeps its effort wh
 changes. Active conversations show success only after durable daemon acknowledgement; the next
 model turn uses the selection while an in-flight turn remains unchanged. `default` retains the
 existing policy: high when reasoning controls are negotiated, otherwise no reasoning control.
+Repeated model refreshes share the pending provider lookup. Closing the picker or moving to effort
+selection abandons discovery; an old reply cannot replace a reopened picker's current catalog.
 
 ## Focused checks
 

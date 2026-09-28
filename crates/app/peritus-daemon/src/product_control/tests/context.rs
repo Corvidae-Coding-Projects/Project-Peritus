@@ -36,6 +36,24 @@ fn enqueue(journal: &mut ControlStore, index: u32, revision: u64, id: u8, text: 
 }
 
 #[test]
+fn fresh_conversation_compaction_is_an_empty_read_only_preview() {
+    let root = tempfile::tempdir().expect("root");
+    let mut journal = store(root.path());
+    journal.accept(&create()).expect("create");
+    let request = peritus_app_protocol::WorkbenchCompactionRequest::new(
+        query(V::Next, 0, 0).query(),
+        1,
+        None,
+    )
+    .expect("request");
+    assert_eq!(journal.compaction_run(actor(), &request).expect("run"), None);
+    let (view, preview) = journal.compaction_preview(actor(), &request, false).expect("preview");
+    assert!(view.is_none());
+    assert!(preview.entries().is_empty());
+    assert_eq!(journal.load(create().conversation()).unwrap().unwrap().revision(), 1);
+}
+
+#[test]
 fn sealed_context_is_exact_content_free_read_only_scoped_and_restart_stable() {
     let root = tempfile::tempdir().expect("root");
     let mut journal = store(root.path());

@@ -25,7 +25,9 @@ provider, tool, journal, process, sandbox, plugin, protocol, or replay implement
   values. Digest observations do not claim hashing or authenticity semantics.
 
 Failure analysis derives `ContractViolation` only from a returned assertion and `Infrastructure`
-from setup, caught panic, or teardown failure. Suite summaries count affected cases rather than
+from setup, explicit exercise/observation failure, caught panic, or teardown failure. An unavailable
+provider probe reports infrastructure failure without asserting an unobserved provider contract
+violation. It remains failed qualification evidence and still receives teardown. Suite summaries count affected cases rather than
 failure occurrences. A case with an assertion followed by teardown failure contributes once to
 both category counts.
 

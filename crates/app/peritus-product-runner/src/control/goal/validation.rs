@@ -98,8 +98,9 @@ impl GoalRecord {
             self.budget.tool_calls,
             self.budget.total_tokens,
         )?;
-        if !self.usage_and_reservations_fit(self.budget)
-            || self.run == [0; 16]
+        // Observed time/tokens can exceed admission limits. Persist actual usage; the
+        // reached-budget state prevents subsequent admission rather than discarding evidence.
+        if self.run == [0; 16]
             || self.user_revision == 0
             || self.required_input_generation == 0
             || self.attempt == 0

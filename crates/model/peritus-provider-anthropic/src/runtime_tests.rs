@@ -159,7 +159,7 @@ fn constrained_turn_disables_runtime_authority_and_normalizes_inert_output() {
         "--no-session-persistence",
         "--strict-mcp-config",
         "--system-prompt-file",
-        "--json-schema",
+        "--max-turns",
     ] {
         assert!(turn.arguments.iter().any(|argument| argument == required), "missing {required}");
     }
@@ -167,20 +167,28 @@ fn constrained_turn_disables_runtime_authority_and_normalizes_inert_output() {
     assert!(argument_pair(&turn.arguments, "--effort", "high"));
     assert!(argument_pair(&turn.arguments, "--mcp-config", r#"{"mcpServers":{}}"#));
     assert!(argument_pair(&turn.arguments, "--disallowedTools", "mcp__*"));
-    let schema = argument_after(&turn.arguments, "--json-schema").expect("schema argument");
-    assert!(schema.contains("\"const\":\"lookup\""));
+    assert!(argument_pair(&turn.arguments, "--max-turns", "1"));
+    assert!(!turn.arguments.iter().any(|argument| argument == "--json-schema"));
     let prompt = std::str::from_utf8(&turn.stdin).expect("prompt UTF-8");
     assert!(prompt.contains("look up 42"));
     assert!(prompt.contains("\"peritus_tool_protocol\""));
     assert!(prompt.contains("\"name\":\"lookup\""));
     assert!(prompt.contains("\"maximum_calls_this_turn\":2"));
     assert!(prompt.contains("\"arguments_schema\""));
+    assert!(prompt.ends_with("Do not output any text outside the JSON object."));
+    assert!(prompt.contains("The transport object is private and only its content is public."));
     assert!(!prompt.contains("host policy"));
     let system = std::str::from_utf8(&turn.system).expect("system UTF-8");
+    assert!(system.contains("\"const\":\"lookup\""));
     assert!(system.contains("sole agent harness"));
     assert!(system.contains("do not attempt a Claude Code tool"));
     assert!(system.contains("replay its tool_result"));
     assert!(system.contains("host policy"));
+    assert!(
+        system.find("host policy").unwrap() < system.find("PERITUS TRANSPORT CONTRACT").unwrap()
+    );
+    assert!(system.contains("apply inside content"));
+    assert!(system.contains("do not simulate their output"));
     assert!(turn.current_dir);
     assert_eq!(
         turn.environment,
@@ -271,6 +279,46 @@ fn direct_messages_profile_cannot_be_reused_for_the_runtime() {
     let executable = ClaudeExecutable::pin(std::env::current_exe().expect("test executable"))
         .expect("pinned executable");
     assert!(ClaudeRuntimeConfig::new(executable, profile(), ProcessLimits::PRODUCTION).is_err());
+}
+
+#[test]
+fn nonzero_exit_preserves_structured_errors_without_executing_partial_turns() {
+    for (stdout, category) in [
+        (
+            br#"{"is_error":true,"subtype":"error_during_execution","errors":["OAuth session expired"]}"#.as_slice(),
+            FailureCategory::Authentication,
+        ),
+        (
+            br#"{"is_error":true,"subtype":"error_during_execution","errors":["Model is at capacity"]}"#.as_slice(),
+            FailureCategory::TransientProvider,
+        ),
+        (
+            br#"{"is_error":true,"result":"OAuth token has expired"}"#.as_slice(),
+            FailureCategory::Authentication,
+        ),
+        (
+            br#"{"is_error":true,"result":"Invalid model: missing"}"#.as_slice(),
+            FailureCategory::InvalidRequest,
+        ),
+        (
+            br#"{"is_error":true,"result":"Model is at capacity"}"#.as_slice(),
+            FailureCategory::TransientProvider,
+        ),
+        (
+            br#"{"structured_output":{"content":"partial","tool_calls":[]}}"#.as_slice(),
+            FailureCategory::IncompleteStream,
+        ),
+    ] {
+        let fake = state(vec![
+            output("runtime_auth_true.json"),
+            Script::Output { success: false, stdout: stdout.to_vec(), stderr: Vec::new() },
+        ]);
+        let provider = runtime_provider(fake);
+        let observed =
+            events(&provider, runtime_request(provider.profile(), false), CancellationToken::new());
+        assert!(matches!(observed.last().map(peritus_model_protocol::EventEnvelope::event),
+            Some(ModelEvent::ResponseFailed(failure)) if failure.category() == category));
+    }
 }
 
 #[test]

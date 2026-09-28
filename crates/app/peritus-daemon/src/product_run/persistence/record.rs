@@ -63,6 +63,8 @@ impl PersistedRecord {
             remaining_work: record.remaining_work.clone(),
             interruption_cause: record.interruption_cause.clone(),
             candidate_actionable: Some(record.candidate_actionable),
+            task_baseline_required: record.task_baseline_required,
+            task_baseline: record.task_baseline.clone(),
             preview_page: record
                 .preview
                 .page
@@ -89,6 +91,8 @@ impl PersistedRecord {
                 .map(|(launch, stdout)| PersistedPreviewOutput {
                     launch: launch.into_bytes(),
                     stdout: stdout.clone(),
+                    stderr: record.preview.errors.get(launch).cloned().unwrap_or_default(),
+                    truncated: record.preview.truncated.contains(launch),
                 })
                 .collect(),
         })
@@ -125,7 +129,8 @@ impl PersistedRecord {
         )?;
         if let Some(operation) = interaction.as_ref().and_then(|options| options.workbench.as_ref())
         {
-            let peritus_product_runner::control::ControlIntent::StartExecution { run, .. } =
+            let (peritus_product_runner::control::ControlIntent::StartExecution { run, .. }
+            | peritus_product_runner::control::ControlIntent::StartGoal { run, .. }) =
                 operation.intent()
             else {
                 return Err(ProductRunServiceError::InvalidMessage);
@@ -239,6 +244,10 @@ impl PersistedRecord {
         if let Some(deliverable) = self.deliverable {
             snapshot = snapshot.with_deliverable(deliverable.into_deliverable()?);
         }
+        if let Some(baseline) = &self.task_baseline {
+            peritus_product_runner::ProductRunner::validate_task_baseline(baseline)
+                .map_err(|_| ProductRunServiceError::InvalidMessage)?;
+        }
         Ok(RunRecord {
             interaction,
             request,
@@ -255,6 +264,8 @@ impl PersistedRecord {
             remaining_work: self.remaining_work,
             interruption_cause: self.interruption_cause,
             candidate_actionable: self.candidate_actionable.unwrap_or(true),
+            task_baseline_required: self.task_baseline_required,
+            task_baseline: self.task_baseline,
             preview,
         })
     }

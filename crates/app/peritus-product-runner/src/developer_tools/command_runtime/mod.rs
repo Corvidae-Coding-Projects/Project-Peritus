@@ -13,6 +13,8 @@ mod lease;
 mod ordinal;
 mod plan;
 mod preview;
+mod preview_terminal;
+pub use preview_terminal::PreviewTerminal;
 mod projections;
 mod result;
 mod sandbox;
@@ -71,6 +73,8 @@ struct RuntimeState {
 }
 
 struct ActiveCommand {
+    plan: peritus_process::ExecutionPlan,
+    control: Option<peritus_process::ProcessControl>,
     invocation: InvocationHandle,
     started: Instant,
     interactive: bool,
@@ -204,7 +208,7 @@ impl CommandRuntime {
         let mut dispatcher = RawShellDispatcher::new(
             &self.inner.gateway,
             &process_request,
-            command.execution,
+            command.execution.clone(),
             artifacts,
         )
         .map_err(|error| tool(error.to_string()))?;
@@ -219,6 +223,8 @@ impl CommandRuntime {
                 state.active.insert(
                     handle.clone(),
                     ActiveCommand {
+                        plan: command.execution,
+                        control: dispatcher.process_control(),
                         invocation,
                         started: Instant::now(),
                         interactive: request.interactive,

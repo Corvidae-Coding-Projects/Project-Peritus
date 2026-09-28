@@ -11,7 +11,7 @@ use super::{
     AppliedPatch, FaultInjector, NoFaults, TransactionFaultPoint,
     filesystem::{
         Observation, checked_target_path, create_directory, discover_missing_directories,
-        observation_matches, observe_target, sync_directory,
+        observation_matches, observe_target, preserve_replacement_permissions, sync_directory,
     },
     manifest::{FileIdentity, Manifest, TransactionPhase},
     recover::rollback_workspace,
@@ -88,7 +88,9 @@ pub(super) fn apply_with_faults(
     }
 
     let mut manifest = Manifest::from_plan(plan, created_directories);
-    if let Err(error) = prepare_transaction(&transaction_directory, plan, &manifest, faults) {
+    if let Err(error) =
+        prepare_transaction(&roots.workspace, &transaction_directory, plan, &manifest, faults)
+    {
         let _cleanup_result = cleanup_transaction(&transaction_directory, &roots.transaction_root);
         return Err(error);
     }
@@ -264,7 +266,14 @@ fn install_operation(
         sync_with_fault(faults, parent, RollbackStatus::Indeterminate)?;
         sync_directory(transaction_directory, RollbackStatus::Indeterminate)?;
     }
-    if operation.final_file().is_some() {
+    if let Some(final_file) = operation.final_file() {
+        if operation.kind() == crate::PatchOperationKind::Replace {
+            preserve_replacement_permissions(
+                &staged_path(transaction_directory, index),
+                &backup_path(transaction_directory, index),
+                final_file.mode(),
+            )?;
+        }
         fs::rename(staged_path(transaction_directory, index), &target).map_err(|error| {
             PatchError::io(
                 PatchOperationContext::InstallFinal,

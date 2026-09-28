@@ -4,20 +4,18 @@ use std::collections::BTreeSet;
 
 use super::super::fixtures::fixture;
 use super::super::{
-    ProviderAttemptOutcome, ProviderConformanceObservation, ProviderConformanceSubject,
-    ProviderEventKind, ProviderFailureKind, ProviderScenario, ProviderTerminal,
-    ProviderUsageSnapshot,
+    ProviderAttemptOutcome, ProviderConformanceError, ProviderConformanceObservation,
+    ProviderConformanceSubject, ProviderEventKind, ProviderFailureKind, ProviderScenario,
+    ProviderTerminal, ProviderUsageSnapshot,
 };
 
 pub(super) fn exercise<S: ProviderConformanceSubject>(
     subject: &mut S,
     scenario: ProviderScenario,
-) -> bool {
+) -> Result<bool, ProviderConformanceError> {
     let request = fixture(scenario);
-    let Ok(observed) = subject.exercise(&request) else {
-        return false;
-    };
-    match scenario {
+    let observed = subject.exercise(&request)?;
+    Ok(match scenario {
         ProviderScenario::CapabilityHonesty => capability(observed),
         ProviderScenario::OrderedDeduplication => ordered(observed),
         ProviderScenario::FragmentedToolCall => {
@@ -42,7 +40,7 @@ pub(super) fn exercise<S: ProviderConformanceSubject>(
         ProviderScenario::UsageAccounting => usage(observed),
         ProviderScenario::Redaction => redaction(observed, request.canary()),
         ProviderScenario::AdapterIsolation => isolation(observed, request.selected_adapter()),
-    }
+    })
 }
 
 fn capability(observed: ProviderConformanceObservation) -> bool {

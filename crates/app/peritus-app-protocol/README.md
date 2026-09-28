@@ -12,6 +12,14 @@ automated qualification from the user's existing `ProductDeliverable::accepted` 
 candidate work honestly even when a provider, gate, review, or adapter stops before acceptance.
 Legacy deliverables decode as qualified; new partial candidates use only the settlement payloads.
 
+The optional `app.workbench-run-binding` feature adds request tag 45 and response tag 44 for
+authenticated discovery of a run's durable conversation. A binding contains the existing
+interaction snapshot and its exact workbench destination, or no destination for a legacy
+interactive run. The effort-presence flag precedes the snapshot; legacy message bytes and tags
+remain unchanged. Noninteractive coding runs retain the existing `InvalidState` response
+(`IdempotencyConflict` on the wire) and coding-run follow-up flow. Other lookup errors must
+retain the selected run for retry rather than imply that it is a different kind of run.
+
 The crate does not open sockets or named pipes, authenticate peers, access storage, supervise
 processes, or grant domain authority. Those effects belong to G0 and its B0/B1/C0/C2 dependencies.
 

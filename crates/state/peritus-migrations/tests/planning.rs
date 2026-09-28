@@ -12,11 +12,11 @@ use sha2::{Digest, Sha256};
 use support::version;
 
 #[test]
-fn production_registry_contains_only_the_initial_release_schema() {
+fn production_registry_retains_initial_schema_and_registers_artifact_identity_upgrade() {
     let registry = MigrationRegistry::current();
     registry.validate().expect("production registry");
-    assert_eq!(registry.descriptors().len(), 1);
-    assert_eq!(registry.latest().expect("initial schema"), version(1));
+    assert_eq!(registry.descriptors().len(), 2);
+    assert_eq!(registry.latest().expect("initial schema"), version(2));
     let initial = registry.descriptors()[0];
     assert_eq!(initial.release(), "0.0.1");
     assert_eq!(initial.sql(), "PRAGMA user_version = 1;\n");

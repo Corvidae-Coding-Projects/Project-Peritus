@@ -76,7 +76,8 @@ pub(super) fn cases(limits: CodecLimits) -> Result<Vec<GeneratedFixtureCase>, Co
             payload,
         )
     };
-    Ok(vec![
+    let mut cases = binding_cases(interaction.clone(), limits)?;
+    cases.extend([
         model_update(run_id, limits)?,
         model_update_with_effort(run_id, limits)?,
         encoded(
@@ -105,6 +106,49 @@ pub(super) fn cases(limits: CodecLimits) -> Result<Vec<GeneratedFixtureCase>, Co
             "realistic-model-catalog-response",
             FixtureClass::Realistic,
             &response(AppResponsePayload::Models(catalog)),
+            limits,
+        )?,
+    ]);
+    Ok(cases)
+}
+
+fn binding_cases(
+    interaction: ProductInteractionSnapshot,
+    limits: CodecLimits,
+) -> Result<Vec<GeneratedFixtureCase>, CodecError> {
+    use super::values::{context, encoded, id, request};
+    let run_id = interaction.snapshot().run_id();
+    let workspace_id = interaction.snapshot().workspace_id();
+    let response = |payload| {
+        AppResponseEnvelope::new(
+            context(),
+            id(10, crate::RequestId::new),
+            id(11, crate::CorrelationId::new),
+            payload,
+        )
+    };
+    Ok(vec![
+        encoded(
+            "minimal-interaction-binding-query",
+            FixtureClass::Minimal,
+            &request(AppRequestPayload::QueryInteractionBinding(
+                crate::ProductRunConversationQuery::new(run_id),
+            )),
+            limits,
+        )?,
+        encoded(
+            "realistic-interaction-binding",
+            FixtureClass::Realistic,
+            &response(AppResponsePayload::InteractionBinding(
+                crate::ProductInteractionBinding::new(
+                    interaction,
+                    Some(crate::WorkbenchQuery::new(
+                        id(34, crate::ConversationId::new),
+                        workspace_id,
+                    )),
+                )
+                .expect("binding"),
+            )),
             limits,
         )?,
     ])

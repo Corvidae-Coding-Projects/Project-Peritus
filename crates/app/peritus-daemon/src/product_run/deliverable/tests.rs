@@ -13,6 +13,11 @@ use std::process::Output;
 use std::sync::{Arc, atomic::AtomicBool};
 use tempfile::TempDir;
 
+#[path = "tests/discard.rs"]
+mod discard;
+#[path = "tests/nested.rs"]
+mod nested;
+
 #[test]
 fn export_and_discard_are_limited_to_exact_deliverable_paths() {
     let repository = repository();
@@ -89,6 +94,39 @@ fn candidate_action_rejects_a_workspace_that_no_longer_matches_its_digest() {
 }
 
 #[test]
+fn bracketed_filename_does_not_commit_or_discard_a_matching_unrelated_file() {
+    let repository = repository();
+    let root = repository.path();
+    let chosen = "item[ab].txt";
+    let unrelated = "itema.txt";
+    fs::write(root.join(chosen), b"base\n").unwrap();
+    fs::write(root.join(unrelated), b"base\n").unwrap();
+    git(root, &["add", "."]);
+    git(root, &["commit", "-qm", "bracket names"]);
+    fs::write(root.join(chosen), b"task change\n").unwrap();
+    fs::write(root.join(unrelated), b"unrelated change\n").unwrap();
+    let deliverable = ProductDeliverable::new(
+        root.to_string_lossy().into_owned(),
+        vec![chosen.to_owned()],
+        vec!["true".to_owned()],
+        "inspect".to_owned(),
+    )
+    .unwrap();
+    let patch =
+        String::from_utf8(uncommitted_patch(root, deliverable.changed_paths()).unwrap()).unwrap();
+    assert!(!patch.contains("itema.txt"));
+    discard_deliverable(&deliverable).unwrap();
+    assert_eq!(fs::read(root.join(chosen)).unwrap(), b"base\n");
+    assert_eq!(fs::read(root.join(unrelated)).unwrap(), b"unrelated change\n");
+    fs::write(root.join(chosen), b"task change\n").unwrap();
+    commit_deliverable(&deliverable, "commit brackets").unwrap();
+    let committed = git_output(root, &["show", "--format=", "--name-only", "HEAD"]);
+    assert!(committed.contains(chosen));
+    assert!(!committed.contains(unrelated));
+    assert_eq!(git_output(root, &["show", "HEAD:itema.txt"]), "base\n");
+}
+
+#[test]
 fn repeated_user_action_is_idempotent() {
     let repository = repository();
     fs::write(repository.path().join("chosen.txt"), "candidate\n").expect("candidate");
@@ -101,13 +139,43 @@ fn repeated_user_action_is_idempotent() {
 }
 
 #[test]
+fn many_recovery_locations_cannot_make_a_successful_discard_unreportable() {
+    let repository = repository();
+    let record = candidate_record(&repository);
+    let paths = (0..512)
+        .map(|index| PathBuf::from(format!("{}/{index}", "a".repeat(4096))))
+        .collect::<Vec<_>>();
+    let status = discard_status(&paths);
+    assert!(status.contains("additional recovery records"));
+    let snapshot = replace_snapshot(
+        &record.snapshot,
+        record.snapshot.phase(),
+        &status,
+        record.snapshot.summary(),
+    )
+    .expect("bounded successful discard status");
+    assert!(snapshot.status().starts_with("Deliverable discarded"));
+    assert_eq!(discard_status(&[]), "Deliverable discarded");
+}
+
+#[test]
 fn restart_marks_changed_candidate_evidence_stale() {
     let repository = repository();
+    let state = TempDir::new().expect("state");
+    let saved_patch = state.path().join("saved-original-candidate.patch");
+    fs::write(&saved_patch, b"retained original source patch\n").unwrap();
     fs::write(repository.path().join("chosen.txt"), "candidate\n").expect("candidate");
-    let record = qualified_record(candidate_record(&repository));
+    let mut record = qualified_record(candidate_record(&repository));
+    let exported = record
+        .snapshot
+        .deliverable()
+        .unwrap()
+        .clone()
+        .mark_exported(saved_patch.to_string_lossy().into_owned())
+        .unwrap();
+    record.snapshot = record.snapshot.clone().with_deliverable(exported);
     let run_id = record.request.run_id();
     let workspace_id = record.request.workspace_id();
-    let state = TempDir::new().expect("state");
     let directory = state.path().join("product-runs");
     fs::create_dir_all(&directory).expect("product run directory");
     let mut records = std::collections::BTreeMap::from([(run_id, record)]);
@@ -139,6 +207,15 @@ fn restart_marks_changed_candidate_evidence_stale() {
         CandidateStage::Changed,
     );
     assert!(!record.snapshot.deliverable().expect("deliverable").accepted());
+    assert_eq!(record.snapshot.deliverable().unwrap().export_path(), saved_patch.to_string_lossy());
+    assert!(
+        repeated_action(
+            record,
+            ProductRunControlAction::Export,
+            record.snapshot.deliverable().unwrap()
+        )
+        .is_some()
+    );
     assert!(record.resume.is_none());
     assert_eq!(
         validate_exact_candidate(
@@ -248,6 +325,8 @@ fn candidate_record(repository: &TempDir) -> crate::product_run::RunRecord {
         remaining_work: vec!["run exact checks".to_owned()],
         interruption_cause: "reviewer unavailable".to_owned(),
         candidate_actionable: true,
+        task_baseline_required: false,
+        task_baseline: None,
         preview: crate::product_run::PreviewAggregate::default(),
     }
 }

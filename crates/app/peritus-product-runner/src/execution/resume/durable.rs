@@ -26,6 +26,8 @@ struct DurableResume {
     checkpoint: DurableCheckpoint,
     baseline_head: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    managed_baseline: Option<crate::candidate::managed::ManagedBaseline>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     in_place_baseline: Option<crate::workspace_delivery::scope::ScopedBaseline>,
     next_phase: u16,
     design_path: PathBuf,
@@ -84,6 +86,7 @@ pub(super) fn encode(resume: &ProductRunResume) -> Result<Vec<u8>, ProductRunner
         version: DURABLE_VERSION,
         checkpoint: DurableCheckpoint::from_checkpoint(&resume.checkpoint),
         baseline_head: resume.baseline.head().to_owned(),
+        managed_baseline: resume.baseline.managed().cloned(),
         in_place_baseline: resume.baseline.scope().cloned(),
         next_phase: phase_tag(resume.next_phase),
         design_path: resume.design_path.clone(),
@@ -124,6 +127,7 @@ pub(super) fn decode(
         Some(_) => return Err(durable_error("resume mixes Git and in-place baselines")),
         None => CandidateBaseline::restored(payload.baseline_head)?,
     };
+    let baseline = baseline.with_managed(payload.managed_baseline)?;
     let successful_commands = payload
         .successful_commands
         .into_iter()

@@ -19,6 +19,7 @@ const MODELED_MACROS: &[&str] = &[
     "matches",
     "panic",
     "println",
+    "eprintln",
     "params",
     "proof",
     "vec",

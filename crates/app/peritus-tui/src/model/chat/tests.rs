@@ -16,6 +16,8 @@ mod doctor;
 mod effort;
 mod model_selection;
 mod navigation;
+mod runs;
+mod timeouts;
 mod workbench;
 
 fn model() -> AppModel {
@@ -177,8 +179,8 @@ fn rejected_chat_open_restores_navigation_and_shows_the_daemon_error() {
         peritus_app_protocol::AppResponsePayload::Error(error),
     )));
 
-    assert_eq!(model.chat.run_id, None);
-    assert!(model.editor.is_some(), "failed open restores the run message composer");
+    assert_eq!(model.chat.run_id, Some(run_id), "failed lookup retains the exact retry target");
+    assert!(model.editor.is_none(), "a workspace failure is not a coding-run fallback");
     let notice = model.notice.as_ref().expect("visible failure");
     assert_eq!(notice.level, NoticeLevel::Error);
     assert!(notice.text.contains("Workspace directory is no longer readable"));
@@ -225,7 +227,27 @@ fn escape_returns_from_runs() {
 
 #[test]
 fn inspection_pages_scroll_and_home_returns_to_the_start() {
+    use peritus_app_protocol::{ProductRunPhase, ProductRunSnapshot};
     let mut model = model();
+    model.view = View::Review;
+    key(&mut model, KeyCode::PageDown);
+    assert_eq!(model.product.as_ref().expect("product").inspection_scroll, 0);
+    let product = model.product.as_ref().expect("product");
+    let run = ProductRunSnapshot::new(
+        RunId::new([49; 16]).expect("run"),
+        product.launch.workspace_id(),
+        model.chat_providers().expect("providers"),
+        ProductRunPhase::Complete,
+        1,
+        "inspect long result".to_owned(),
+        "complete".to_owned(),
+        "diff line\n".repeat(100),
+        String::new(),
+        "review line\n".repeat(100),
+        String::new(),
+    )
+    .expect("run");
+    model.accept_product_run(run);
     for view in [View::Diff, View::Review] {
         model.view = view;
         let _ = key(&mut model, KeyCode::PageDown);
@@ -235,6 +257,13 @@ fn inspection_pages_scroll_and_home_returns_to_the_start() {
         let _ = key(&mut model, KeyCode::PageDown);
         let _ = key(&mut model, KeyCode::Home);
         assert_eq!(model.product.as_ref().expect("product").inspection_scroll, 0);
+        for _ in 0..100 {
+            key(&mut model, KeyCode::PageDown);
+        }
+        let bottom = model.product.as_ref().expect("product").inspection_scroll;
+        key(&mut model, KeyCode::PageUp);
+        assert_eq!(model.product.as_ref().expect("product").inspection_scroll, bottom - 12);
+        key(&mut model, KeyCode::Home);
     }
 }
 

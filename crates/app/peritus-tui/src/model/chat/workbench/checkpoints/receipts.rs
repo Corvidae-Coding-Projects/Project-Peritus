@@ -38,6 +38,8 @@ impl AppModel {
         self.clear_checkpoint_command(command);
         self.open_checkpoint_panel();
         self.chat.workbench.selected = Some(receipt.query());
+        self.chat.workbench.receipted_revision =
+            self.chat.workbench.receipted_revision.max(receipt.accepted_revision());
         self.chat.workbench.snapshot = None;
         self.chat.workbench.checkpoint_receipt = Some(receipt.clone());
         self.chat.workbench.rewind_request = None;
@@ -127,6 +129,8 @@ impl AppModel {
         self.clear_checkpoint_command(command);
         self.open_checkpoint_panel();
         self.chat.workbench.selected = Some(receipt.query());
+        self.chat.workbench.receipted_revision =
+            self.chat.workbench.receipted_revision.max(receipt.accepted_revision());
         self.chat.workbench.snapshot = None;
         self.chat.workbench.checkpoint_receipt = None;
         self.chat.workbench.rewind_request = None;

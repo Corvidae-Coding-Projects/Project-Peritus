@@ -69,6 +69,47 @@ fn binding() -> RecoveryBinding {
     )
 }
 
+#[cfg(unix)]
+#[test]
+fn replacements_preserve_private_permissions_through_apply_and_restart() {
+    use std::os::unix::fs::PermissionsExt as _;
+    for bits in [0o600, 0o640] {
+        for interrupted in [false, true] {
+            let workspace = tempfile::tempdir().unwrap();
+            let transactions = tempfile::tempdir().unwrap();
+            let target = workspace.path().join("old");
+            std::fs::write(&target, b"before").unwrap();
+            std::fs::set_permissions(&target, std::fs::Permissions::from_mode(bits)).unwrap();
+            let plan = plan();
+            let transaction = transactions.path().join(format!("txn-{}", plan.identity()));
+            let faults = if interrupted {
+                vec![
+                    TransactionFaultPoint::AfterBackupOriginal,
+                    TransactionFaultPoint::BeforeRollback,
+                ]
+            } else {
+                vec![TransactionFaultPoint::BeforeCleanup]
+            };
+            let result = apply_with_faults(
+                workspace.path(),
+                transactions.path(),
+                &plan,
+                &FailAt::new(faults),
+            );
+            assert_eq!(result.is_err(), interrupted);
+            if !interrupted {
+                assert_eq!(std::fs::metadata(&target).unwrap().permissions().mode() & 0o777, bits);
+            }
+            recover_transaction(workspace.path(), &transaction, binding()).unwrap();
+            assert_eq!(std::fs::metadata(&target).unwrap().permissions().mode() & 0o777, bits);
+            assert_eq!(
+                std::fs::read(&target).unwrap(),
+                if interrupted { b"before".as_slice() } else { b"after".as_slice() }
+            );
+        }
+    }
+}
+
 fn nested_plan() -> PatchPlan {
     let operation = PatchOperation::create(
         WorkspacePath::new("nested/file").expect("path"),
@@ -150,7 +191,8 @@ fn prepared_transaction_recovers_without_touching_workspace() {
     )
     .expect("directories");
     let manifest = Manifest::from_plan(&plan, directories);
-    prepare_transaction(&transaction, &plan, &manifest, &NoFaults).expect("prepared");
+    prepare_transaction(&roots.workspace, &transaction, &plan, &manifest, &NoFaults)
+        .expect("prepared");
     let recovered =
         recover_transaction(workspace.path(), &transaction, binding()).expect("recover");
     assert_eq!(recovered.state(), RecoveryState::RolledBackCleanly);
@@ -187,7 +229,8 @@ fn parseable_same_length_manifest_tamper_is_quarantined_without_workspace_effect
     )
     .expect("directories");
     let manifest = Manifest::from_plan(&plan, directories);
-    prepare_transaction(&transaction, &plan, &manifest, &NoFaults).expect("prepared");
+    prepare_transaction(&roots.workspace, &transaction, &plan, &manifest, &NoFaults)
+        .expect("prepared");
     let manifest_path = transaction.join(super::storage::MANIFEST_FILE);
     let mut bytes = std::fs::read(&manifest_path).expect("read manifest");
     let path_offset =
@@ -292,7 +335,8 @@ fn binding_mismatch_is_reported_without_effects() {
     )
     .expect("directories");
     let manifest = Manifest::from_plan(&plan, directories);
-    prepare_transaction(&transaction, &plan, &manifest, &NoFaults).expect("prepared");
+    prepare_transaction(&roots.workspace, &transaction, &plan, &manifest, &NoFaults)
+        .expect("prepared");
     let different = RecoveryBinding::new(
         WorkspaceId::new([4; 16]).expect("other workspace"),
         binding().generation(),

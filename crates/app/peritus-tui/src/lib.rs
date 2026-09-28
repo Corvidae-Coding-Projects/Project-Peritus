@@ -8,6 +8,7 @@ mod client;
 mod entry;
 mod error;
 pub(crate) mod file_import;
+mod help;
 pub(crate) mod image_import;
 mod input;
 mod model;

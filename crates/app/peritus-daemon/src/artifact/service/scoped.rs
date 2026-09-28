@@ -46,9 +46,9 @@ impl ArtifactAuthority {
             .store
             .open_read(ArtifactDigest::from_sha256(catalog.digest()))
             .map_err(store_error)?;
-        if reader.metadata().size() != catalog.byte_size()
-            || reader.metadata().media_type().as_str() != catalog.media_type()
-        {
+        // The physical object is shared by digest. Its first publisher's media label is
+        // not the logical attachment's label; scope authorization binds that separately.
+        if reader.metadata().size() != catalog.byte_size() {
             return Err(invalid("attachment metadata disagrees with immutable store"));
         }
         let mut bytes = Vec::with_capacity(

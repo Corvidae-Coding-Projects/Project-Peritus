@@ -129,6 +129,49 @@ fn bounded_settlement_collection_round_trips() {
 }
 
 #[test]
+fn mixed_observations_retain_candidate_evidence_without_settling_active_work() {
+    use peritus_app_protocol::ProductRunObservation;
+    let candidate = available_snapshot();
+    let active = ProductRunSnapshot::new(
+        id(11, RunId::new),
+        id(7, WorkspaceId::new),
+        providers(),
+        ProductRunPhase::Writing,
+        1,
+        "new task".to_owned(),
+        "Writing".to_owned(),
+        String::new(),
+        String::new(),
+        String::new(),
+        String::new(),
+    )
+    .expect("active");
+    assert!(ProductRunObservation::new(candidate.snapshot().clone(), None).is_err());
+    let observations = vec![
+        ProductRunObservation::new(active, None).expect("active observation"),
+        ProductRunObservation::new(candidate.snapshot().clone(), Some(*candidate.settlement()))
+            .expect("candidate"),
+    ];
+    let message = response(AppResponsePayload::ProductRunObservations(observations.clone()));
+    let bytes =
+        encode_app_message(&message, AppProtocolLimits::PRODUCTION).expect("mixed list encodes");
+    assert_eq!(
+        peritus_app_protocol::decode_app_message(&bytes, AppProtocolLimits::PRODUCTION)
+            .expect("mixed list decodes"),
+        message
+    );
+    let oversized = response(AppResponsePayload::ProductRunObservations(vec![
+        observations[0]
+            .clone();
+        MAX_PRODUCT_RUNS + 1
+    ]));
+    assert_eq!(
+        encode_app_message(&oversized, AppProtocolLimits::PRODUCTION).expect_err("bounded").code(),
+        peritus_app_protocol::AppErrorCode::LimitExceeded
+    );
+}
+
+#[test]
 fn settlement_collection_rejects_the_first_out_of_bounds_item() {
     let message = response(AppResponsePayload::ProductRunSettlements(vec![
         available_snapshot();

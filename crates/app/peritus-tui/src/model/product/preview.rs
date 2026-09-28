@@ -13,6 +13,7 @@ use crate::model::{AppModel, Effect, NoticeLevel, PendingRequest, View};
 const PREVIEW_READINESS_MILLIS: u64 = 2_000;
 const PREVIEW_WALL_MILLIS: u64 = 600_000;
 mod profile;
+mod terminal;
 
 impl AppModel {
     pub(in crate::model) fn preview_command(&mut self, arguments: &str) -> Vec<Effect> {
@@ -39,6 +40,7 @@ impl AppModel {
         match action {
             "launch" => self.launch_preview(rest),
             "play" => self.interact_preview(rest),
+            "terminal" if rest.is_empty() => self.attach_preview_terminal(),
             "capture" => self.capture_preview(rest),
             "stop" if rest.is_empty() => self.stop_preview(),
             "check" => self.check_preview(rest),
@@ -46,14 +48,17 @@ impl AppModel {
             _ => {
                 self.notice(
                     NoticeLevel::Warning,
-                    "Use /preview [results | launch <executable> [args] | play <text> | capture <window-id> | stop | check <exact stdout> | feedback <message>]; draft retained.",
+                    "Use /preview [results | launch <executable> [args] | play <text> | terminal | capture <window-id> | stop | check <exact stdout> | feedback <message>]; draft retained.",
                 );
                 Vec::new()
             }
         }
     }
 
-    fn refresh_selected_preview(&mut self, clear_command: bool) -> Vec<Effect> {
+    pub(in crate::model) fn refresh_selected_preview(
+        &mut self,
+        clear_command: bool,
+    ) -> Vec<Effect> {
         let Some(query) = self.selected_preview_query() else { return Vec::new() };
         self.view = View::Preview;
         if clear_command {
@@ -63,6 +68,10 @@ impl AppModel {
     }
 
     pub(in crate::model) fn refresh_preview(&mut self, query: WorkbenchResultQuery) -> Vec<Effect> {
+        if !self.preview_available() {
+            self.notice(NoticeLevel::Warning, "Preview unavailable/offline; use R to reconnect.");
+            return Vec::new();
+        }
         if self
             .pending
             .values()
@@ -70,15 +79,24 @@ impl AppModel {
         {
             return Vec::new();
         }
-        self.request(
-            AppRequestPayload::QueryWorkbenchResult(query),
-            PendingRequest::WorkbenchResult(query),
-        )
-        .into_iter()
-        .collect()
+        let payload = if self.features.iter().any(|feature| {
+            feature.as_str() == WellKnownProtocolFeature::WorkbenchPreviewOutput.as_str()
+        }) {
+            AppRequestPayload::QueryWorkbenchPreview(query)
+        } else {
+            AppRequestPayload::QueryWorkbenchResult(query)
+        };
+        if let Some(product) = &mut self.product {
+            product.preview_query = Some(query);
+            "Refreshing preview…".clone_into(&mut product.preview_message);
+        }
+        self.request(payload, PendingRequest::WorkbenchResult(query)).into_iter().collect()
     }
 
     fn selected_preview_query(&mut self) -> Option<WorkbenchResultQuery> {
+        if self.chat.run_id.is_some() && !self.select_chat_run() {
+            return None;
+        }
         let Some(scope) = self.chat.workbench.selected else {
             self.notice(
                 NoticeLevel::Warning,
@@ -127,7 +145,7 @@ impl AppModel {
         let Some(selection) = profile::Selection::parse(arguments) else {
             self.notice(
                 NoticeLevel::Warning,
-                "Use /preview launch [--build <observed file>] [--source <observed file>] -- <executable> [literal args]. Observe files with /file first; draft retained.",
+                "Use /preview launch [--build <observed file>] [--source <observed file>] -- <executable> [literal args]. Observe files with /files first; draft retained.",
             );
             return Vec::new();
         };
@@ -157,7 +175,7 @@ impl AppModel {
         let Ok(profile) = profile else {
             self.notice(
                 NoticeLevel::Warning,
-                "Preview requires exact host-observed source/build files in this conversation (use /file), or the managed candidate identity. Refresh stale files; draft retained.",
+                "Preview requires exact host-observed source/build files in this conversation (use /files), or the managed candidate identity. Refresh stale files; draft retained.",
             );
             return Vec::new();
         };
@@ -334,8 +352,27 @@ impl AppModel {
             return;
         }
         if let Some(product) = &mut self.product {
+            if product.preview.as_ref().is_none_or(|prior| prior.query() != page.query()) {
+                product.preview_scroll = 0;
+            }
+            product.preview_outputs.clear();
+            product.preview_message.clear();
             product.preview = Some(page);
-            product.preview_scroll = 0;
+        }
+    }
+
+    pub(in crate::model) fn accept_preview_output(
+        &mut self,
+        query: WorkbenchResultQuery,
+        snapshot: &peritus_app_protocol::WorkbenchPreviewSnapshot,
+    ) {
+        self.accept_preview_page(query, snapshot.result().clone());
+        if let Some(product) = &mut self.product
+            && product.preview.as_ref() == Some(snapshot.result())
+            && self.chat.workbench.selected == Some(query.query())
+            && snapshot.result().query() == query
+        {
+            product.preview_outputs = snapshot.outputs().to_vec();
         }
     }
 

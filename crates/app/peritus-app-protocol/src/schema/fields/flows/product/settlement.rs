@@ -31,6 +31,30 @@ const CAUSES: &[&str] = &[
 
 pub(in crate::schema::fields) const SETTLEMENT_TYPES: &[AppTypeDescriptor] = &[
     AppTypeDescriptor {
+        name: "ProductRunObservation",
+        rust_type: "ProductRunObservation",
+        fields: &[
+            field(
+                "snapshot",
+                W::Struct,
+                &[],
+                "ProductRunSnapshot",
+                "ProductRunSnapshot",
+                J::Ref("ProductRunSnapshot"),
+                true,
+            ),
+            field(
+                "settlement",
+                W::Option,
+                &[],
+                "Option<RunSettlement>",
+                "RunSettlement",
+                J::Ref("RunSettlement"),
+                false,
+            ),
+        ],
+    },
+    AppTypeDescriptor {
         name: "CandidateIdentity",
         rust_type: "CandidateIdentity",
         fields: &[

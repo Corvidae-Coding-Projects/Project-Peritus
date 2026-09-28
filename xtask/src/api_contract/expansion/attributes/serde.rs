@@ -9,6 +9,9 @@ use std::collections::BTreeSet;
 const OMISSION_PREDICATES: &[&str] = &[
     "Option::is_none",
     "Vec::is_empty",
+    // Empty strings and false booleans preserve the defaults of historical records.
+    "String::is_empty",
+    "std::ops::Not::not",
     "super::InputLedger::is_empty",
     "super::TaskBrief::is_empty",
     "super::ContextSelections::is_empty",

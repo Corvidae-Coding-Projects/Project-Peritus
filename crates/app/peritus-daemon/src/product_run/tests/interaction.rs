@@ -57,6 +57,17 @@ async fn question_scenario() {
         .query_interaction(ProductRunConversationQuery::new(run_id))
         .expect("chat observation");
     assert_eq!(snapshot.incorporated(), 1);
+    let binding = service
+        .query_interaction_binding(
+            peritus_types::ActorId::new([1; 16]).unwrap(),
+            ProductRunConversationQuery::new(run_id),
+        )
+        .unwrap();
+    assert!(
+        binding.conversation().is_none(),
+        "legacy input must not acquire an invented durable identity"
+    );
+    assert_eq!(binding.interaction(), &snapshot);
     {
         let requests = writer.requests.lock().expect("observed provider requests");
         assert!(

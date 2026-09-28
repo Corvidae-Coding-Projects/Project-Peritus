@@ -265,4 +265,29 @@ pub(super) const INTERACTION_TYPES: &[AppTypeDescriptor] = &[
             ),
         ],
     },
+    AppTypeDescriptor {
+        name: "ProductInteractionBinding",
+        rust_type: "ProductInteractionBinding",
+        fields: &[
+            field("hasEffort", W::Boolean, &[], "bool", "boolean", J::Boolean, true),
+            field(
+                "interaction",
+                W::Struct,
+                &[],
+                "ProductInteractionSnapshot",
+                "ProductInteractionSnapshot",
+                J::Ref("ProductInteractionSnapshot"),
+                true,
+            ),
+            field(
+                "conversation",
+                W::Option,
+                &[],
+                "Option<WorkbenchQuery>",
+                "WorkbenchQuery",
+                J::Ref("WorkbenchQuery"),
+                false,
+            ),
+        ],
+    },
 ];

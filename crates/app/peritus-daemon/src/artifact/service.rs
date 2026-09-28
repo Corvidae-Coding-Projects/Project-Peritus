@@ -93,10 +93,7 @@ impl ArtifactAuthority {
         }
         let digest = ArtifactDigest::from_sha256(catalog.digest());
         let reader = self.store.open_read(digest).map_err(store_error)?;
-        if reader.metadata().size() != catalog.byte_size()
-            || reader.metadata().digest() != digest
-            || reader.metadata().media_type().as_str() != catalog.media_type()
-        {
+        if reader.metadata().size() != catalog.byte_size() || reader.metadata().digest() != digest {
             return Err(corrupt("artifact store metadata disagrees with application catalog"));
         }
         let media = CanonicalMediaType::new(catalog.media_type().to_owned(), 255)
@@ -167,10 +164,9 @@ impl ArtifactAuthority {
             metadata.media_type().as_str().to_owned(),
         )
         .map_err(journal_error)?;
-        let retained = journal.begin_application_artifact(catalog).map_err(journal_error)?;
-        if retained.state() == ApplicationArtifactState::Available {
-            return Err(invalid("application artifact is already available"));
-        }
+        // Exact metadata is idempotent. A new transfer still verifies every uploaded byte;
+        // finalization deduplicates the content and reuses the original publication receipt.
+        journal.begin_application_artifact(catalog).map_err(journal_error)?;
         let request = WriteRequest::new(
             ArtifactDigest::from_sha256(metadata.digest()),
             metadata.byte_size(),

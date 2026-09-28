@@ -95,12 +95,9 @@ impl ProductRunService {
             .get(&request.query().workspace())
             .ok_or_else(|| app_error(Code::SessionMismatch))?;
         let identity = FolderIdentity::observe(root).map_err(|_| app_error(Code::NotReady))?;
-        let mut protected = vec![
-            self.inner.directory.parent().ok_or_else(|| app_error(Code::NotReady))?.to_path_buf(),
-        ];
+        let protected = self.protected_paths(request.query()).map_err(error_value)?;
         if let Some(folder) = self.inner.folders.get(&request.query().workspace()) {
             folder.verify().map_err(|_| app_error(Code::NotReady))?;
-            protected.extend_from_slice(folder.protected_paths());
         }
         let contract = record.inputs().capture().map_err(|error| error_value(error.into()))?;
         peritus_product_runner::checked_protected_file(

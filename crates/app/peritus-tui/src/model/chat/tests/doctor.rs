@@ -72,7 +72,11 @@ fn panel_navigation_leaves_composer_and_transcript_scroll_unchanged() {
     model.chat.scroll = 7;
     assert_eq!(model.slash_command("/doctor").len(), 1);
     key(&mut model, KeyCode::PageDown);
-    assert_eq!(model.chat.doctor.as_ref().expect("panel").scroll, 5);
+    assert_eq!(
+        model.chat.doctor.as_ref().expect("panel").scroll,
+        0,
+        "a short pending message cannot overscroll"
+    );
     key(&mut model, KeyCode::Char('x'));
     key(&mut model, KeyCode::Esc);
     assert_eq!(model.chat.buffer, "retained task draft");
@@ -110,4 +114,48 @@ fn diagnostic_layout_keeps_return_and_composer_visible_at_supported_sizes() {
             assert!(text.contains(expected), "{width}x{height} missing {expected}: {text}");
         }
     }
+}
+
+#[test]
+fn diagnostics_end_resize_and_reverse_navigation_stay_bounded() {
+    use ratatui::{Terminal, backend::TestBackend, layout::Rect};
+    let mut model = enabled_model();
+    model.slash_command("/doctor");
+    model.chat.doctor.as_mut().unwrap().error =
+        Some(format!("TOP {} END", "diagnostic 界 ".repeat(300)));
+    for width in [40, 120] {
+        model.chat.viewport = Some(Rect::new(0, 0, width, 24));
+        key(&mut model, KeyCode::End);
+        let end = model.chat.doctor.as_ref().unwrap().scroll;
+        assert!(end > 0, "End did not reach the diagnostic details");
+        let mut terminal = Terminal::new(TestBackend::new(width, 24)).unwrap();
+        terminal.draw(|frame| crate::render::draw(frame, &model)).unwrap();
+        let text: String = terminal
+            .backend()
+            .buffer()
+            .content()
+            .iter()
+            .map(ratatui::buffer::Cell::symbol)
+            .collect();
+        assert!(text.contains("END"));
+        for _ in 0..100 {
+            key(&mut model, KeyCode::PageDown);
+        }
+        assert_eq!(model.chat.doctor.as_ref().unwrap().scroll, end);
+        key(&mut model, KeyCode::Up);
+        assert_eq!(model.chat.doctor.as_ref().unwrap().scroll, end - 1);
+    }
+}
+
+#[test]
+fn dismissed_diagnostics_can_be_reopened_before_the_old_probe_replies() {
+    let mut model = enabled_model();
+    model.chat.buffer = "/doctor".into();
+    let old = key(&mut model, KeyCode::Enter);
+    let [Effect::Send(AppMessage::Request(old))] = old.as_slice() else { panic!("query") };
+    key(&mut model, KeyCode::Esc);
+    assert!(!model.pending.contains_key(&old.request_id()));
+    assert!(!model.pending_started.contains_key(&old.request_id()));
+    assert_eq!(key(&mut model, KeyCode::Enter).len(), 1);
+    assert!(model.chat.doctor.is_some());
 }

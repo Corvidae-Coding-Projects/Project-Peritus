@@ -116,17 +116,20 @@ impl ProductRunService {
         FolderIdentity::observe(root).map_err(Error::from)
     }
 
-    pub(super) fn protected_paths(
+    pub(in crate::product_run::workbench) fn protected_paths(
         &self,
         query: peritus_app_protocol::WorkbenchQuery,
     ) -> Result<Vec<std::path::PathBuf>, Error> {
-        let mut protected = vec![
-            self.inner
-                .directory
-                .parent()
-                .ok_or(Error::Corrupt("product run state parent missing"))?
-                .to_path_buf(),
-        ];
+        let root = self.workspace_root(query)?;
+        let state_root = self
+            .inner
+            .directory
+            .parent()
+            .ok_or(Error::Corrupt("product run state parent missing"))?;
+        // Managed workspaces live below daemon state. Their root is already the read/write
+        // capability boundary; protecting its ancestor would incorrectly protect every file.
+        let mut protected =
+            if state_root.starts_with(root) { vec![state_root.to_path_buf()] } else { Vec::new() };
         if let Some(folder) = self.inner.folders.get(&query.workspace()) {
             protected.extend_from_slice(folder.protected_paths());
         }

@@ -21,6 +21,7 @@ mod library;
 mod memory;
 mod permissions;
 mod review;
+mod run_observations;
 mod values;
 mod workbench;
 

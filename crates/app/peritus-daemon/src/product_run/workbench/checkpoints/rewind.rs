@@ -302,6 +302,7 @@ impl ProductRunService {
                         status,
                         conflicts: terminal_conflicts.clone(),
                         transaction_manifest_digest: manifest_digest,
+                        seal_recovery: true,
                     },
                 );
                 let receipt =

@@ -4,15 +4,18 @@ mod brief;
 mod checkpoints;
 mod compaction;
 mod context;
-mod doctor;
+pub(super) mod doctor;
 mod effort;
 mod files;
 mod goal;
 mod images;
 mod init;
+pub(super) mod inspector;
+pub(super) mod library;
 mod memory;
 mod permissions;
 mod queue;
+mod status;
 #[cfg(test)]
 mod tests;
 mod workbench;
@@ -82,7 +85,7 @@ pub(super) fn draw(frame: &mut Frame<'_>, model: &AppModel) {
         draw_transcript(frame, regions[1], model);
     }
     draw_composer(frame, regions[3], model, draft);
-    draw_status(frame, regions[4], model);
+    status::draw(frame, regions[4], model);
 }
 
 fn title(model: &AppModel) -> String {
@@ -116,7 +119,7 @@ fn title(model: &AppModel) -> String {
         None => "",
     };
     crate::sanitize::sanitize_display_text(&format!(
-        "Peritus · {} · {provider} · {model_label} · effort {}{workspace_mode}{connection}",
+        "Peritus{connection} · {} · {provider} · {model_label} · effort {}{workspace_mode}",
         model.chat.mode.label(),
         selected.effort().label()
     ))
@@ -155,35 +158,6 @@ fn draw_composer(
                     .min(area.height.saturating_sub(3)),
         ));
     }
-}
-
-fn draw_status(frame: &mut Frame<'_>, area: Rect, model: &AppModel) {
-    let status = if !model.chat.expanded && model.chat.working.elapsed_seconds().is_some() {
-        "Ctrl-C stops".to_owned()
-    } else {
-        model.chat.snapshot.as_ref().map_or_else(
-            || "Ready · Enter sends · Shift-Enter newline · Ctrl-C exits".to_owned(),
-            |snapshot| {
-                format!(
-                    "{} · input received {} / incorporated {} · Ctrl-C stops / exits",
-                    snapshot.snapshot().status(),
-                    snapshot.received(),
-                    snapshot.incorporated()
-                )
-            },
-        )
-    };
-    let notice = model.notice.as_ref().map_or("", |notice| notice.text.as_str());
-    frame.render_widget(
-        Paragraph::new(vec![
-            Line::styled(
-                crate::sanitize::sanitize_display_text(&status),
-                Style::default().fg(MUTED),
-            ),
-            Line::styled(crate::sanitize::sanitize_display_text(notice), Style::default().fg(WARN)),
-        ]),
-        area,
-    );
 }
 
 fn draw_transcript(frame: &mut Frame<'_>, area: Rect, model: &AppModel) {
@@ -345,7 +319,18 @@ fn draw_models(frame: &mut Frame<'_>, area: Rect, model: &AppModel) {
         Layout::vertical([Constraint::Length(4), Constraint::Min(1), Constraint::Length(3)])
             .split(area);
     let Some(catalog) = &model.chat.catalog else {
-        frame.render_widget(Paragraph::new("Querying configured provider model catalog…\ne selects effort · Escape closes; no inference request is sent."), area);
+        let status = if model.model_discovery_pending() {
+            "Querying configured provider model catalog…"
+        } else {
+            "Model catalog unavailable. r retries discovery."
+        };
+        frame.render_widget(
+            Paragraph::new(format!(
+                "{status}\ne selects effort · Escape closes; no inference request is sent."
+            ))
+            .wrap(Wrap { trim: false }),
+            area,
+        );
         return;
     };
     let provenance = if catalog.cached() {

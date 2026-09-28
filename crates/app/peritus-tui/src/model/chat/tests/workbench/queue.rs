@@ -55,6 +55,7 @@ fn inspect(model: &mut AppModel) {
                 .expect("page"),
         ),
     );
+    assert!(model.chat.buffer.is_empty(), "successful inspection consumes its slash command");
 }
 
 #[test]
@@ -81,7 +82,13 @@ fn queue_uses_exact_inspected_content_revision_and_only_clears_draft_after_recei
 fn queue_rejects_uninspected_rows_and_unsupported_operations_without_losing_text() {
     let mut model = opened();
     inspect(&mut model);
-    for text in ["/queue hold 2", "/queue edit 1", "/queue order invalid", "/queue hold 1 extra"] {
+    for text in [
+        "/queue hold 2",
+        "/queue edit 1",
+        "/queue order invalid",
+        "/queue hold 1 extra",
+        "/queue correct 1 changed pending text",
+    ] {
         key(&mut model, KeyCode::Esc);
         model.chat.buffer = text.to_owned();
         assert!(key(&mut model, KeyCode::Enter).is_empty());

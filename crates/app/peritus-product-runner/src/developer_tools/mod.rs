@@ -40,7 +40,9 @@ mod wire;
 #[cfg(not(verus_only))]
 pub use catalog::{definitions, in_place_definition, read_only_definitions};
 #[cfg(not(verus_only))]
-pub use command_runtime::{CommandRuntime, FolderPatchAuthority, FolderPatchAuthorityPlan};
+pub use command_runtime::{
+    CommandRuntime, FolderPatchAuthority, FolderPatchAuthorityPlan, PreviewTerminal,
+};
 #[cfg(not(verus_only))]
 pub use evidence::{CommandPurpose, SuccessfulCommand, merge_successful};
 #[cfg(not(verus_only))]

@@ -21,6 +21,18 @@ pub(super) fn reconcile_restored_candidates(
     workspaces: &BTreeMap<WorkspaceId, PathBuf>,
 ) -> Result<(), DaemonError> {
     for record in records.values_mut().filter(|record| terminal_candidate(record)) {
+        match super::deliverable::discard::recover_completed(directory, record) {
+            Ok(true) => {
+                persist_record(directory, record).map_err(persistence_error)?;
+                continue;
+            }
+            Ok(false) => {}
+            Err(error) => {
+                mark_unavailable(record, &error.to_string()).map_err(persistence_error)?;
+                persist_record(directory, record).map_err(persistence_error)?;
+                continue;
+            }
+        }
         let Some(root) = workspaces.get(&record.request.workspace_id()) else {
             mark_unavailable(record, "configured workspace is unavailable after restart")
                 .map_err(persistence_error)?;
@@ -52,7 +64,7 @@ fn terminal_candidate(record: &RunRecord) -> bool {
         })
 }
 
-fn mark_stale(
+pub(super) fn mark_stale(
     record: &mut RunRecord,
     current_digest: Sha256Digest,
 ) -> Result<(), ProductRunServiceError> {
@@ -144,14 +156,23 @@ fn reset_for_current_candidate(
     value: &ProductDeliverable,
     qualification: CandidateStage,
 ) -> Result<ProductDeliverable, ProductRunServiceError> {
-    ProductDeliverable::candidate(
+    let current = ProductDeliverable::candidate(
         value.workspace_path().to_owned(),
         value.changed_paths().to_vec(),
         value.successful_commands().to_vec(),
         value.run_instructions().to_owned(),
         qualification,
     )
-    .map_err(|_| ProductRunServiceError::InvalidMessage)
+    .map_err(|_| ProductRunServiceError::InvalidMessage)?;
+    // An exported patch is an immutable artifact of the original candidate.
+    // Keep it reachable even when live files need fresh qualification.
+    if value.export_path().is_empty() {
+        Ok(current)
+    } else {
+        current
+            .mark_exported(value.export_path().to_owned())
+            .map_err(|_| ProductRunServiceError::InvalidMessage)
+    }
 }
 
 fn persistence_error(_error: ProductRunServiceError) -> DaemonError {

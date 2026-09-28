@@ -124,7 +124,9 @@ fn argument_completions(text: &str) -> Vec<(String, &'static str)> {
         ["/goal", "clear"] => &["confirm"],
         ["/pause"] => &["now", "after-operation", "before-edit"],
         ["/budget"] => &["none", "time=", "requests=", "tools=", "tokens="],
-        ["/preview"] => &["results", "launch", "play", "capture", "stop", "check", "feedback"],
+        ["/preview"] => {
+            &["results", "launch", "play", "terminal", "capture", "stop", "check", "feedback"]
+        }
         ["/context"] => &["next", "history", "show", "more", "previous"],
         ["/queue"] => &[
             "add", "edit", "correct", "hold", "release", "withdraw", "order", "history", "pending",

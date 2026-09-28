@@ -5,35 +5,40 @@ use peritus_app_protocol::{
     WorkbenchGoalBudget, WorkbenchGoalCriterionKind, WorkbenchGoalCriterionState,
     WorkbenchGoalPauseMode, WorkbenchGoalRole, WorkbenchGoalState,
 };
-use ratatui::{
-    Frame,
-    layout::{Constraint, Layout, Rect},
-    text::Line,
-    widgets::{Block, Borders, Paragraph, Wrap},
-};
+use ratatui::{Frame, layout::Rect};
 
 pub(super) fn draw(frame: &mut Frame<'_>, area: Rect, model: &AppModel) {
+    super::inspector::draw(
+        frame,
+        area,
+        model,
+        content(model),
+        " Goal · durable execution control ",
+        "Esc back · ↑↓/PgUp/PgDn scroll · Home/End · r refresh",
+    );
+}
+
+pub(super) fn content(model: &AppModel) -> Vec<String> {
     let panel = &model.chat.workbench;
-    let sections = Layout::vertical([Constraint::Min(1), Constraint::Length(1)]).split(area);
-    let mut lines = vec![Line::from(panel.message.clone())];
+    let mut lines = vec![panel.message.clone()];
     draft_lines(&mut lines, model);
     if let Some(goal) = &panel.goal {
         lines.extend([
-            Line::from(format!(
+            format!(
                 "Goal {} · run {}",
                 format_id(goal.goal().as_bytes()),
                 format_id(goal.run().as_bytes())
-            )),
-            Line::from(format!(
+            ),
+            format!(
                 "State {} · attempt {} · user rev {} · aggregate rev {}",
                 state_label(goal.state()),
                 goal.attempt(),
                 goal.user_revision(),
                 goal.aggregate_revision(),
-            )),
-            Line::from(format!("Objective: {}", goal.objective().as_str())),
-            Line::from(format!("Reason: {}", goal.reason())),
-            Line::from(format!(
+            ),
+            format!("Objective: {}", goal.objective().as_str()),
+            format!("Reason: {}", goal.reason()),
+            format!(
                 "Recovery: {}{}",
                 if goal.restart_eligible() {
                     "eligible after revalidation"
@@ -42,10 +47,10 @@ pub(super) fn draw(frame: &mut Frame<'_>, area: Rect, model: &AppModel) {
                 },
                 goal.pause_mode()
                     .map_or_else(String::new, |mode| format!(" · pending {}", pause_label(mode))),
-            )),
+            ),
         ]);
         for criterion in goal.criteria() {
-            lines.push(Line::from(format!(
+            lines.push(format!(
                 "Criterion: {} · {} · {} · evidence {}",
                 if criterion.definition().mandatory() { "mandatory" } else { "optional" },
                 criterion_kind(criterion.definition().kind()),
@@ -53,36 +58,36 @@ pub(super) fn draw(frame: &mut Frame<'_>, area: Rect, model: &AppModel) {
                 criterion
                     .evidence_revision()
                     .map_or_else(|| "none".to_owned(), |revision| revision.to_string()),
-            )));
-            lines.push(Line::from(format!("  {}", criterion.definition().description().as_str())));
+            ));
+            lines.push(format!("  {}", criterion.definition().description().as_str()));
         }
         let usage = goal.usage();
         lines.extend([
-            Line::from(format!("Budget: {}", budget_text(goal.budget()))),
-            Line::from(format!(
+            format!("Budget: {}", budget_text(goal.budget())),
+            format!(
                 "Usage: active {} ms · wall {} ms · requests {} · tools {}",
                 usage.active_millis(),
                 usage.wall_millis(),
                 usage.requests(),
                 usage.tool_calls(),
-            )),
-            Line::from(format!(
+            ),
+            format!(
                 "Totals: tokens {} · provider cost {} microunits · retries {} · failovers {} · compactions {}",
                 known(usage.total_tokens()),
                 known(usage.provider_cost_microunits()),
                 usage.retries(),
                 usage.provider_failovers(),
                 usage.compactions(),
-            )),
-            Line::from(format!(
+            ),
+            format!(
                 "Resources: workspace {} B · growth {} B · peak RSS {} B",
                 usage.workspace_bytes(),
                 usage.workspace_growth_bytes(),
                 usage.peak_rss_bytes(),
-            )),
+            ),
         ]);
         for role in usage.roles() {
-            lines.push(Line::from(format!(
+            lines.push(format!(
                 "{}: requests {}/{} complete · tools {} · tokens {} · cost {} microunits",
                 role_label(role.role()),
                 role.completed_requests(),
@@ -90,49 +95,44 @@ pub(super) fn draw(frame: &mut Frame<'_>, area: Rect, model: &AppModel) {
                 role.tool_calls(),
                 known(role.total_tokens()),
                 known(role.provider_cost_microunits()),
-            )));
+            ));
         }
     } else if panel.goal_draft.is_none() {
-        lines.push(Line::from("No durable goal is currently loaded."));
+        lines.push(String::from("No durable goal is currently loaded."));
     }
     lines.extend([
-        Line::from("/pause [now|after-operation|before-edit] · /resume [goal-id]"),
-        Line::from("/usage · /budget [time=30m requests=8 tools=32 tokens=100000]"),
-        Line::from("Unknown token or cost observations remain unknown, not zero."),
+        String::from("/pause [now|after-operation|before-edit] · /resume [goal-id]"),
+        String::from("/usage · /budget [time=30m requests=8 tools=32 tokens=100000]"),
+        String::from("Unknown token or cost observations remain unknown, not zero."),
     ]);
-    let paragraph = Paragraph::new(lines)
-        .wrap(Wrap { trim: false })
-        .block(Block::default().borders(Borders::ALL).title(" Goal · durable execution control "))
-        .scroll((u16::try_from(panel.scroll).unwrap_or(u16::MAX), 0));
-    frame.render_widget(paragraph, sections[0]);
-    frame.render_widget(Paragraph::new("Esc back · ↑↓ scroll · r refresh"), sections[1]);
+    lines
 }
 
-fn draft_lines(lines: &mut Vec<Line<'static>>, model: &AppModel) {
+fn draft_lines(lines: &mut Vec<String>, model: &AppModel) {
     if let Some(draft) = &model.chat.workbench.goal_draft {
         lines.extend([
-            Line::from("Unconfirmed draft · no goal authority yet"),
-            Line::from(format!("Objective: {}", draft.objective().as_str())),
-            Line::from(format!("Criterion: mandatory · runner acceptance · {}", criterion_text())),
-            Line::from(format!("Budget: {}", budget_text(draft.budget()))),
-            Line::from(format!(
+            String::from("Unconfirmed draft · no goal authority yet"),
+            format!("Objective: {}", draft.objective().as_str()),
+            format!("Criterion: mandatory · runner acceptance · {}", criterion_text()),
+            format!("Budget: {}", budget_text(draft.budget())),
+            format!(
                 "Execution: {} · writer {} · reviewer {} · fixer {}",
                 model.chat.mode.label(),
                 model_label(model.chat.models.writer()),
                 model_label(model.chat.models.reviewer()),
                 model_label(model.chat.models.fixer()),
-            )),
-            Line::from(
-                "/goal confirm starts eligible work only after exact brief-objective binding.",
+            ),
+            String::from(
+                "/goal confirm saves this objective in the brief, then starts eligible work.",
             ),
         ]);
         if let Some(description) = draft.graphical() {
-            lines.push(Line::from(format!(
+            lines.push(format!(
                 "Criterion: mandatory · graphical playtest · {}",
                 description.as_str()
-            )));
+            ));
         }
-        lines.push(Line::from(
+        lines.push(String::from(
             "/goal criterion graphical <description> · criterion remove-graphical",
         ));
     }

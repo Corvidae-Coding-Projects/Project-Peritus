@@ -11,11 +11,12 @@ use serde_json::{Map, Value};
 
 const SYSTEM_PREFIX: &str = "You are the inference backend inside Peritus. Peritus is the sole agent harness and authority for tools, policy, approvals, and conversation state. Claude Code native tools, plugins, hooks, MCP servers, and session state are not the Peritus tool interface. Each request contains a peritus_tool_protocol catalog. When a declared Peritus tool is needed, do not attempt a Claude Code tool or discuss whether native tools are available. Return the exact declared name and JSON arguments in the required tool_calls array. Peritus will execute the inert request and replay its tool_result on the next inference turn. If no tool call is needed or allowed, return an empty tool_calls array and put the assistant response in content. Never execute host operations yourself.\n\n";
 const INPUT_PREFIX: &str = "The following JSON is the complete ordered conversation state and tool protocol owned by Peritus. The max_output_tokens value is advisory because this runtime exposes no exact output-token control. Return only the next assistant turn through the required structured output.\n\n";
+const INPUT_SUFFIX: &str = "\n\nReturn the next Peritus transport object now: {\"content\":\"your public prose\",\"tool_calls\":[{\"name\":\"declared tool name\",\"arguments\":{}}]}. A read request needs a declared tool call; tools do not run from prose. The transport object is private and only its content is public. Use the actual tool catalog above, or an empty tool_calls array when no tool is needed. Do not output any text outside the JSON object.";
+const TRANSPORT_CONTRACT: &str = "\n\nPERITUS TRANSPORT CONTRACT\nThe task policies above govern your decisions and the public content field. Requests for prose or a task JSON report apply inside content; they do not replace this transport envelope. Peritus tools are external to Claude Code. Do not invoke native tools, including names copied from the catalog. Instead produce one structured result with content and tool_calls. For example, when workspace_read is declared, a request to read README.md is represented as {\"content\":\"I will read the README.\",\"tool_calls\":[{\"name\":\"workspace_read\",\"arguments\":{\"path\":\"README.md\"}}]}. Use only the actual catalog and arguments required for this task. Return immediately after requesting tools; do not simulate their output or assert they ran. Only subsequent Peritus tool_result messages are observations.\n";
 
 pub(super) struct RuntimeRequest {
     pub system: Vec<u8>,
     pub prompt: Vec<u8>,
-    pub schema: String,
     pub allowed_tools: BTreeSet<String>,
     pub max_calls: usize,
     pub effort: &'static str,
@@ -24,7 +25,7 @@ pub(super) struct RuntimeRequest {
 pub(super) fn encode(request: &ModelRequest) -> Result<RuntimeRequest, ProviderCoreError> {
     let effort = validate_controls(request)?;
     let (schema, allowed_tools, max_calls) = result_schema(request)?;
-    let mut system = String::from(SYSTEM_PREFIX);
+    let mut system = String::new();
     let mut messages = Vec::new();
     for message in request.messages() {
         match message.role() {
@@ -40,6 +41,12 @@ pub(super) fn encode(request: &ModelRequest) -> Result<RuntimeRequest, ProviderC
             ])),
         }
     }
+    // Task output policies describe content, not the executable adapter's transport.
+    // Keep this boundary explicit after all replayed system/developer instructions.
+    system.push_str(TRANSPORT_CONTRACT);
+    system.push_str(SYSTEM_PREFIX);
+    system.push_str("Your entire response must be exactly one JSON object conforming to this schema, without Markdown fences: ");
+    system.push_str(&schema);
     if messages.is_empty() {
         return Err(invalid("Claude runtime requires at least one non-system message"));
     }
@@ -54,14 +61,8 @@ pub(super) fn encode(request: &ModelRequest) -> Result<RuntimeRequest, ProviderC
         &serde_json::to_vec(&payload)
             .map_err(|_| invalid("Claude runtime transcript serialization failed"))?,
     );
-    Ok(RuntimeRequest {
-        system: system.into_bytes(),
-        prompt,
-        schema,
-        allowed_tools,
-        max_calls,
-        effort,
-    })
+    prompt.extend_from_slice(INPUT_SUFFIX.as_bytes());
+    Ok(RuntimeRequest { system: system.into_bytes(), prompt, allowed_tools, max_calls, effort })
 }
 
 fn tool_protocol(request: &ModelRequest, max_calls: usize) -> Result<Value, ProviderCoreError> {

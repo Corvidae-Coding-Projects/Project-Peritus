@@ -6,6 +6,38 @@ use peritus_types::{ArtifactId, WorkspaceId};
 
 const CONTENT: &[u8] = b"exact private imported bytes";
 
+#[test]
+fn cancelling_owned_imports_releases_capacity_and_rejects_foreign_cancellation() {
+    let directory = tempfile::tempdir().unwrap();
+    let (mut journal, mut authority) = open(directory.path());
+    for id in 10..20 {
+        let metadata = metadata(id, id);
+        authority
+            .begin_scoped_upload(
+                &mut journal,
+                owner(),
+                session(),
+                metadata.clone(),
+                64,
+                scope(1, 5, 6),
+            )
+            .unwrap();
+        let cancel = ArtifactCancellation::new(
+            metadata.transfer_id(),
+            metadata.artifact_id(),
+            peritus_app_protocol::CorrelationId::new([id; 16]).unwrap(),
+        );
+        assert!(authority.cancel(ActorId::new([9; 16]).unwrap(), session(), cancel).is_err());
+        assert!(authority.cancel(owner(), SessionId::new([9; 16]).unwrap(), cancel).is_err());
+        assert_eq!(authority.transfers.len(), 1);
+        authority.cancel(owner(), session(), cancel).unwrap();
+        assert!(authority.transfers.is_empty());
+        assert!(
+            authority.read_scoped(&journal, scope(1, 5, 6), metadata.artifact_id(), 1024).is_err()
+        );
+    }
+}
+
 fn owner() -> ActorId {
     ActorId::new([1; 16]).expect("actor")
 }
@@ -186,6 +218,63 @@ fn interrupted_claim_cannot_be_adopted_by_legacy_or_foreign_upload_after_restart
         authority.read_scoped(&journal, selected, metadata.artifact_id(), 1024).expect("read").1,
         CONTENT
     );
+}
+
+#[test]
+fn repeating_a_scoped_upload_keeps_the_original_publication_and_exact_bytes() {
+    let root = tempfile::tempdir().expect("root");
+    let selected = scope(1, 5, 6);
+    let mut original = None;
+    for transfer in [4, 8] {
+        let (mut journal, mut authority) = open(root.path());
+        let metadata = metadata(3, transfer);
+        authority
+            .begin_scoped_upload(&mut journal, owner(), session(), metadata.clone(), 64, selected)
+            .expect("repeatable begin");
+        finish(&mut authority, &mut journal, &metadata);
+        let entry = journal.application_artifact(metadata.artifact_id()).unwrap().unwrap();
+        if let Some(original) = original.as_ref() {
+            assert_eq!(original, &entry);
+        } else {
+            original = Some(entry);
+        }
+        assert_eq!(
+            authority.read_scoped(&journal, selected, metadata.artifact_id(), 1024).unwrap().1,
+            CONTENT
+        );
+    }
+}
+
+#[test]
+fn identical_bytes_can_be_imported_as_independent_scoped_artifacts() {
+    let root = tempfile::tempdir().expect("root");
+    for id in [3, 8] {
+        let (mut journal, mut authority) = open(root.path());
+        let selected = scope(1, id, 6);
+        let base = metadata(id, id);
+        let metadata = ArtifactMetadata::new(
+            base.transfer_id(),
+            base.artifact_id(),
+            base.byte_size(),
+            CanonicalMediaType::new(
+                if id == 3 { "application/octet-stream" } else { "text/plain" }.to_owned(),
+                255,
+            )
+            .unwrap(),
+            base.digest(),
+            64,
+            64,
+        )
+        .unwrap();
+        authority
+            .begin_scoped_upload(&mut journal, owner(), session(), metadata.clone(), 64, selected)
+            .expect("independent begin");
+        finish(&mut authority, &mut journal, &metadata);
+        assert_eq!(
+            authority.read_scoped(&journal, selected, metadata.artifact_id(), 1024).unwrap().1,
+            CONTENT
+        );
+    }
 }
 
 #[test]

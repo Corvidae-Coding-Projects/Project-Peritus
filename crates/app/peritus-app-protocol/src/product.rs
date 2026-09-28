@@ -1,11 +1,14 @@
 //! Product-level coding-run messages exposed to interactive clients.
 
+mod binding;
 mod control;
 mod conversation;
 mod effort;
 mod error;
 mod interaction;
+pub use binding::ProductInteractionBinding;
 mod models;
+mod observation;
 mod phase;
 mod request;
 mod settlement;
@@ -17,6 +20,7 @@ pub use effort::ProductModelEffort;
 pub use error::ProductRunMessageError;
 pub use interaction::*;
 pub use models::*;
+pub use observation::ProductRunObservation;
 pub use phase::*;
 pub use request::*;
 pub use settlement::*;

@@ -13,6 +13,25 @@ fn draft(text: &str) -> AppModel {
     model
 }
 
+#[test]
+fn inactive_composer_is_not_edited_by_paste_into_an_inspection_or_picker() {
+    for overlay in 0..3 {
+        let mut model = draft("unsent draft");
+        model.chat.cursor = 3;
+        model.chat.selection_anchor = Some(0);
+        match overlay {
+            0 => model.chat.workbench.open = true,
+            1 => model.chat.show_model_picker(),
+            _ => model.chat.show_effort_picker(),
+        }
+        let effects = model.update(Action::TerminalEvent(Event::Paste("accidental paste".into())));
+        assert!(effects.is_empty());
+        assert_eq!(model.chat.buffer, "unsent draft", "overlay {overlay}");
+        assert_eq!(model.chat.cursor, 3);
+        assert_eq!(model.chat.selection_anchor, Some(0));
+    }
+}
+
 fn mouse(
     model: &mut AppModel,
     kind: MouseEventKind,
@@ -197,4 +216,21 @@ fn borders_other_views_and_panels_do_not_capture_composer_clicks() {
     model.chat.workbench.open = false;
     mouse(&mut model, MouseEventKind::Down(MouseButton::Left), 0, 0, KeyModifiers::NONE);
     assert_eq!(model.chat.cursor, 5);
+}
+
+#[test]
+fn vertical_arrows_follow_wrapped_unicode_rows_and_shift_selects() {
+    let mut model = draft("ab界cdλz");
+    let _ = render(&mut model, 6, 20);
+    modified(&mut model, KeyCode::Up, KeyModifiers::SHIFT);
+    assert_eq!(model.chat.cursor, "ab界".len());
+    assert_eq!(model.chat.selection(), Some("ab界".len()..model.chat.buffer.len()));
+    modified(&mut model, KeyCode::Up, KeyModifiers::SHIFT);
+    assert_eq!(model.chat.cursor, 0);
+    assert_eq!(model.chat.selection(), Some(0..model.chat.buffer.len()));
+    modified(&mut model, KeyCode::Down, KeyModifiers::NONE);
+    assert_eq!(model.chat.selection(), None);
+    assert_eq!(model.chat.cursor, "ab界".len());
+    modified(&mut model, KeyCode::Char('!'), KeyModifiers::NONE);
+    assert_eq!(model.chat.buffer, "ab界!cdλz");
 }

@@ -53,36 +53,51 @@ pub enum PersistenceFaultPoint {
 }
 
 #[cfg(test)]
-static PERSISTENCE_FAULTS: std::sync::Mutex<Vec<([u8; 16], PersistenceFaultPoint)>> =
+static PERSISTENCE_FAULTS: std::sync::Mutex<Vec<(PathBuf, [u8; 16], PersistenceFaultPoint)>> =
     std::sync::Mutex::new(Vec::new());
 
 #[cfg(test)]
-static PERSISTENT_PERSISTENCE_FAULTS: std::sync::Mutex<Vec<([u8; 16], PersistenceFaultPoint)>> =
-    std::sync::Mutex::new(Vec::new());
+static PERSISTENT_PERSISTENCE_FAULTS: std::sync::Mutex<
+    Vec<(PathBuf, [u8; 16], PersistenceFaultPoint)>,
+> = std::sync::Mutex::new(Vec::new());
 
 #[cfg(test)]
-pub fn inject_persistence_fault(run_id: RunId, point: PersistenceFaultPoint) {
-    PERSISTENCE_FAULTS.lock().expect("persistence fault lock").push((run_id.into_bytes(), point));
+pub fn inject_persistence_fault(directory: &Path, run_id: RunId, point: PersistenceFaultPoint) {
+    PERSISTENCE_FAULTS.lock().expect("persistence fault lock").push((
+        directory.to_path_buf(),
+        run_id.into_bytes(),
+        point,
+    ));
 }
 
 #[cfg(test)]
-pub fn inject_persistent_persistence_fault(run_id: RunId, point: PersistenceFaultPoint) {
-    PERSISTENT_PERSISTENCE_FAULTS
-        .lock()
-        .expect("persistent persistence fault lock")
-        .push((run_id.into_bytes(), point));
+pub fn inject_persistent_persistence_fault(
+    directory: &Path,
+    run_id: RunId,
+    point: PersistenceFaultPoint,
+) {
+    PERSISTENT_PERSISTENCE_FAULTS.lock().expect("persistent persistence fault lock").push((
+        directory.to_path_buf(),
+        run_id.into_bytes(),
+        point,
+    ));
 }
 
 #[cfg(test)]
-pub fn clear_persistent_persistence_fault(run_id: RunId, point: PersistenceFaultPoint) {
+pub fn clear_persistent_persistence_fault(
+    directory: &Path,
+    run_id: RunId,
+    point: PersistenceFaultPoint,
+) {
     PERSISTENT_PERSISTENCE_FAULTS
         .lock()
         .expect("persistent persistence fault lock")
-        .retain(|candidate| candidate != &(run_id.into_bytes(), point));
+        .retain(|candidate| candidate != &(directory.to_path_buf(), run_id.into_bytes(), point));
 }
 
 #[cfg(test)]
 fn check_persistence_fault(
+    directory: &Path,
     run_id: RunId,
     point: PersistenceFaultPoint,
 ) -> Result<(), ProductRunServiceError> {
@@ -94,7 +109,7 @@ fn check_persistence_fault(
                 "the test fault lock was poisoned",
             )
         })?
-        .contains(&(run_id.into_bytes(), point))
+        .contains(&(directory.to_path_buf(), run_id.into_bytes(), point))
     {
         return Err(ProductRunServiceError::persistence(
             persistence_fault_operation(point),
@@ -107,8 +122,9 @@ fn check_persistence_fault(
             "the test fault lock was poisoned",
         )
     })?;
-    if let Some(index) =
-        faults.iter().position(|candidate| candidate == &(run_id.into_bytes(), point))
+    if let Some(index) = faults
+        .iter()
+        .position(|candidate| candidate == &(directory.to_path_buf(), run_id.into_bytes(), point))
     {
         faults.remove(index);
         return Err(ProductRunServiceError::persistence(
@@ -140,6 +156,8 @@ pub(super) fn write_record(
     record: &RunRecord,
 ) -> Result<(), ProductRunServiceError> {
     use std::io::Write as _;
+    #[cfg(test)]
+    let fault_directory = directory;
     let workbench_directory;
     let workbench = record.interaction.as_ref().is_some_and(|options| options.workbench.is_some());
     let directory = if workbench {
@@ -183,26 +201,43 @@ pub(super) fn write_record(
         ProductRunServiceError::persistence("create the product-run temporary record", error)
     })?;
     #[cfg(test)]
-    check_persistence_fault(record.request.run_id(), PersistenceFaultPoint::BeforeWrite)?;
+    check_persistence_fault(
+        fault_directory,
+        record.request.run_id(),
+        PersistenceFaultPoint::BeforeWrite,
+    )?;
     file.write_all(&bytes).map_err(|error| {
         ProductRunServiceError::persistence("write the product-run temporary record", error)
     })?;
     #[cfg(test)]
-    check_persistence_fault(record.request.run_id(), PersistenceFaultPoint::BeforeFileSync)?;
+    check_persistence_fault(
+        fault_directory,
+        record.request.run_id(),
+        PersistenceFaultPoint::BeforeFileSync,
+    )?;
     file.sync_all().map_err(|error| {
         ProductRunServiceError::persistence("sync the product-run temporary record", error)
     })?;
     #[cfg(test)]
-    check_persistence_fault(record.request.run_id(), PersistenceFaultPoint::BeforeRename)?;
+    check_persistence_fault(
+        fault_directory,
+        record.request.run_id(),
+        PersistenceFaultPoint::BeforeRename,
+    )?;
     fs::rename(temporary, path).map_err(|error| {
         ProductRunServiceError::persistence("replace the durable product-run record", error)
     })?;
     #[cfg(test)]
-    check_persistence_fault(record.request.run_id(), PersistenceFaultPoint::AfterRename)?;
+    check_persistence_fault(
+        fault_directory,
+        record.request.run_id(),
+        PersistenceFaultPoint::AfterRename,
+    )?;
     #[cfg(unix)]
     {
         #[cfg(test)]
         check_persistence_fault(
+            fault_directory,
             record.request.run_id(),
             PersistenceFaultPoint::BeforeDirectorySync,
         )?;
@@ -285,6 +320,9 @@ pub(super) fn load_records(directory: &Path) -> Result<BTreeMap<RunId, RunRecord
 }
 
 pub(super) fn quarantine_record(path: &Path, reason: &str, source: Option<&dyn std::fmt::Display>) {
+    if path.parent().and_then(Path::file_name).is_some_and(|name| name == ".quarantine") {
+        return;
+    }
     isolate_record(path, ".quarantine", reason, source);
 }
 

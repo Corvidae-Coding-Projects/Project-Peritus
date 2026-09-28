@@ -4,8 +4,46 @@ use peritus_types::{ProviderProfileId, WorkspaceId};
 
 use super::*;
 
-#[tokio::test]
-async fn product_reconnect_returns_control_to_the_daemon_supervisor() {
+mod drafts;
+mod navigation;
+
+#[test]
+fn late_disconnect_from_replaced_connection_does_not_take_new_connection_offline() {
+    use peritus_app_protocol::{AppProtocolLimits, ProtocolContext, ProtocolVersion};
+    let old = ProtocolContext::new(
+        ProtocolId::new([1; 16]).unwrap(),
+        ProtocolVersion::new(1, 0).unwrap(),
+        SessionId::new([3; 16]).unwrap(),
+    );
+    let current =
+        ProtocolContext::new(ProtocolId::new([2; 16]).unwrap(), old.version(), old.session_id());
+    let mut model = AppModel::with_product([8; 32], None);
+    model.update(Action::Connected {
+        context: current,
+        limits: AppProtocolLimits::PRODUCTION,
+        server: "reconnected fixture".into(),
+        downgraded: false,
+    });
+    model.chat.buffer = "retained draft".into();
+    let late = ClientEvent::Disconnected { context: old, error: "old socket closed".into() };
+    if let Some(action) = client_action(late, model.protocol_context()) {
+        model.update(action);
+    }
+    assert_eq!(
+        model.protocol_context(),
+        Some(current),
+        "an old socket must not tear down the new session"
+    );
+    assert_eq!(model.chat.buffer, "retained draft");
+    let real =
+        ClientEvent::Disconnected { context: current, error: "current socket closed".into() };
+    model.update(client_action(real, model.protocol_context()).expect("current disconnect"));
+    assert!(model.protocol_context().is_none());
+    assert_eq!(model.chat.buffer, "retained draft");
+}
+
+#[test]
+fn product_reconnect_returns_control_to_the_daemon_supervisor() {
     let product = ProductLaunchContext::new(
         WorkspaceId::new([81; 16]).expect("workspace"),
         "/managed/project".to_owned(),
@@ -18,24 +56,19 @@ async fn product_reconnect_returns_control_to_the_daemon_supervisor() {
     .expect("product context");
     let config = TuiConfig::new("/unreachable/peritus.sock").with_product(product.clone());
     let mut model = AppModel::with_product([83; 32], Some(product));
-    let mut client = None;
     let (events, _receiver) = mpsc::channel(1);
-    let mut generation = 0;
+    let mut connection = Connection::new(events);
 
     let flow = apply_effects(
         vec![Effect::Reconnect],
         &config,
         &mut model,
-        &mut client,
-        &events,
-        &mut generation,
+        &mut connection,
         &mut LocalReads::default(),
-    )
-    .await
-    .expect("reconnect routing");
+    );
 
     assert!(matches!(flow, ControlFlow::RecoverDaemon));
-    assert_eq!(generation, 0, "the stale endpoint must not be reopened directly");
+    assert!(!connection.active(), "the stale endpoint must not be reopened directly");
 }
 
 #[test]

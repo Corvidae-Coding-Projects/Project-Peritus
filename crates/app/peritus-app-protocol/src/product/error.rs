@@ -18,6 +18,8 @@ pub enum ProductRunMessageError {
     InvalidDeliverablePath,
     /// A settlement and its product snapshot disagree about candidate identity or qualification.
     InvalidSettlement,
+    /// A durable conversation binding belongs to a different workspace than its run.
+    InvalidConversationBinding,
 }
 
 impl fmt::Display for ProductRunMessageError {
@@ -31,6 +33,9 @@ impl fmt::Display for ProductRunMessageError {
             }
             Self::InvalidDeliverablePath => "product deliverable contains an unsafe path",
             Self::InvalidSettlement => "product run settlement disagrees with its snapshot",
+            Self::InvalidConversationBinding => {
+                "conversation binding disagrees with the run workspace"
+            }
         })
     }
 }

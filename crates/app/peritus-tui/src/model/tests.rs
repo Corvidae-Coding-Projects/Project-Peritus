@@ -9,7 +9,12 @@ use super::{AppModel, ConnectionStatus, View};
 use crate::action::{Action, Effect};
 use crate::runtime::{ProductLaunchContext, ProductProviderOption};
 
+mod editor;
+mod navigation;
+mod notice;
 mod product;
+mod prompts;
+mod terminal;
 
 fn context() -> ProtocolContext {
     ProtocolContext::new(

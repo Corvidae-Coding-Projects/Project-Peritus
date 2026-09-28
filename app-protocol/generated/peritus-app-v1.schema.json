@@ -8,7 +8,7 @@
   "properties": {
     "family": { "enum": [94, 95, 96, 97, 98, 99] },
     "schemaVersion": { "const": 1 },
-    "payloadKind": { "enum": ["client-hello", "compatible", "downgraded", "incompatible", "harness-improvements", "submit-command", "subscribe", "open-artifact", "cancel-artifact", "answer-prompt", "cancel-prompt", "attach-terminal", "terminal-input", "terminal-resize", "detach-terminal", "cancel-terminal", "daemon-status", "shutdown", "begin-artifact-upload", "upload-artifact-chunk", "complete-artifact-upload", "start-product-run", "control-product-run", "query-product-runs", "continue-product-run", "query-product-run-conversation", "interact", "query-interaction", "query-models", "update-models", "interact-with-effort", "update-models-with-effort", "doctor", "workbench-command", "query-workbench", "query-workbench-receipt", "query-workbench-queue", "query-workbench-context", "query-workbench-brief", "begin-workbench-image-upload", "preview-workbench-image", "query-workbench-images", "preview-workbench-file", "query-workbench-files", "begin-workbench-file-upload", "preview-workbench-file-import", "preview-workbench-compaction", "query-workbench-goal", "query-workbench-review", "query-workbench-result", "preview-workbench-rewind", "inspect-workbench-checkpoint", "query-conversation-library", "query-workbench-permissions", "query-workbench-memory", "discover-init", "harness-improvements", "command-result", "subscription-started", "artifact-opened", "prompt-accepted", "terminal-attached", "acknowledged", "daemon-status", "shutdown-accepted", "error", "product-run-accepted", "product-runs", "product-run-conversation", "product-run-settled", "product-run-settlements", "interaction", "models", "interaction-with-effort", "doctor-report", "workbench-snapshot", "workbench-receipt", "workbench-queue", "workbench-context", "workbench-brief", "workbench-image-preview", "workbench-images", "workbench-file-preview", "workbench-files", "workbench-file-import-preview", "workbench-compaction-preview", "workbench-goal", "workbench-review", "workbench-result", "workbench-checkpoint", "workbench-rewind-preview", "workbench-restore", "conversation-library", "workbench-permissions", "workbench-memory", "init-proposal", "domain-event", "subscription-gap", "backpressure", "artifact-metadata", "artifact-chunk", "artifact-complete", "prompt-requested", "terminal-output", "terminal-exited", "readiness-changed", "diagnostic", "heartbeat", "shutdown-progress", "shutdown-complete", "acknowledge", "cancel-subscription", "cancel-artifact", "cancel-prompt", "cancel-terminal", "subscription", "heartbeat-reply"] },
+    "payloadKind": { "enum": ["client-hello", "compatible", "downgraded", "incompatible", "harness-improvements", "submit-command", "subscribe", "open-artifact", "cancel-artifact", "answer-prompt", "cancel-prompt", "attach-terminal", "terminal-input", "terminal-resize", "detach-terminal", "cancel-terminal", "daemon-status", "shutdown", "begin-artifact-upload", "upload-artifact-chunk", "complete-artifact-upload", "start-product-run", "control-product-run", "query-product-runs", "continue-product-run", "query-product-run-conversation", "interact", "query-interaction", "query-models", "update-models", "interact-with-effort", "update-models-with-effort", "doctor", "workbench-command", "query-workbench", "query-workbench-receipt", "query-workbench-queue", "query-workbench-context", "query-workbench-brief", "begin-workbench-image-upload", "preview-workbench-image", "query-workbench-images", "preview-workbench-file", "query-workbench-files", "begin-workbench-file-upload", "preview-workbench-file-import", "preview-workbench-compaction", "query-workbench-execution", "continue-workbench-execution", "query-interaction-binding", "query-workbench-goal", "query-workbench-review", "query-workbench-result", "query-workbench-preview", "query-product-run-observations", "preview-workbench-rewind", "inspect-workbench-checkpoint", "query-conversation-library", "query-workbench-permissions", "query-workbench-memory", "discover-init", "harness-improvements", "command-result", "subscription-started", "artifact-opened", "prompt-accepted", "terminal-attached", "acknowledged", "daemon-status", "shutdown-accepted", "error", "product-run-accepted", "product-runs", "product-run-conversation", "product-run-settled", "product-run-settlements", "interaction", "models", "interaction-with-effort", "doctor-report", "workbench-snapshot", "workbench-receipt", "workbench-queue", "workbench-context", "workbench-brief", "workbench-image-preview", "workbench-images", "workbench-file-preview", "workbench-files", "workbench-file-import-preview", "workbench-compaction-preview", "workbench-execution", "interaction-binding", "workbench-goal", "workbench-review", "workbench-result", "workbench-preview", "product-run-observations", "workbench-checkpoint", "workbench-rewind-preview", "workbench-restore", "conversation-library", "workbench-permissions", "workbench-memory", "init-proposal", "domain-event", "subscription-gap", "backpressure", "artifact-metadata", "artifact-chunk", "artifact-complete", "prompt-requested", "terminal-output", "terminal-exited", "readiness-changed", "diagnostic", "heartbeat", "shutdown-progress", "shutdown-complete", "acknowledge", "cancel-subscription", "cancel-artifact", "cancel-prompt", "cancel-terminal", "subscription", "heartbeat-reply"] },
     "payload": { "type": "string", "contentEncoding": "base64", "description": "Exact canonical semantic payload bytes" }
   },
   "$defs": {
@@ -753,6 +753,27 @@
       },
       "required": ["kind", "comment"]
     },
+    "WorkbenchContinuation": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchContinuation",
+      "properties": {
+        "query": { "$ref": "#/$defs/WorkbenchQuery", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchQuery" },
+        "mode": { "type": "string", "enum": ["chat", "plan", "review", "build"], "x-canonical-wire": "u16-be", "x-rust-type": "ProductInteractionMode" }
+      },
+      "required": ["query", "mode"]
+    },
+    "WorkbenchExecutionState": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchExecutionState",
+      "properties": {
+        "snapshot": { "$ref": "#/$defs/WorkbenchSnapshot", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchSnapshot" },
+        "run": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "option+value", "x-rust-type": "Option<RunId>", "x-bounds": ["nonzero"] },
+        "goal": { "type": "boolean", "x-canonical-wire": "bool/u8", "x-rust-type": "bool" }
+      },
+      "required": ["snapshot", "goal"]
+    },
     "WorkbenchExecutionSettings": {
       "type": "object",
       "additionalProperties": false,
@@ -992,6 +1013,28 @@
         "region": { "$ref": "#/$defs/WorkbenchArtifactRegion", "x-canonical-wire": "option+value", "x-rust-type": "Option<WorkbenchArtifactRegion>" }
       },
       "required": ["kind", "capture", "feedback", "message"]
+    },
+    "WorkbenchPreviewOutput": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchPreviewOutput",
+      "properties": {
+        "launch": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "ControlOperationId", "x-bounds": ["nonzero"] },
+        "stdout": { "type": "string", "x-canonical-wire": "len+utf8", "x-rust-type": "String", "x-bounds": ["product.max-activity-bytes (8192)"] },
+        "stderr": { "type": "string", "x-canonical-wire": "len+utf8", "x-rust-type": "String", "x-bounds": ["product.max-activity-bytes (8192)"] },
+        "truncated": { "type": "boolean", "x-canonical-wire": "bool/u8", "x-rust-type": "bool" }
+      },
+      "required": ["launch", "stdout", "stderr", "truncated"]
+    },
+    "WorkbenchPreviewSnapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchPreviewSnapshot",
+      "properties": {
+        "result": { "$ref": "#/$defs/WorkbenchResultPage", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchResultPage" },
+        "outputs": { "type": "array", "items": { "$ref": "#/$defs/WorkbenchPreviewOutput" }, "x-canonical-wire": "len+items", "x-rust-type": "Vec<WorkbenchPreviewOutput>", "x-bounds": ["workbench.max-launches (16)"] }
+      },
+      "required": ["result", "outputs"]
     },
     "WorkbenchInteractionReceipt": {
       "type": "object",
@@ -2611,6 +2654,16 @@
       },
       "required": ["runId", "workspaceId", "providers", "phase", "cycle", "task", "status", "diff", "gates", "review", "summary"]
     },
+    "ProductRunObservation": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "ProductRunObservation",
+      "properties": {
+        "snapshot": { "$ref": "#/$defs/ProductRunSnapshot", "x-canonical-wire": "ordered-fields", "x-rust-type": "ProductRunSnapshot" },
+        "settlement": { "$ref": "#/$defs/RunSettlement", "x-canonical-wire": "option+value", "x-rust-type": "Option<RunSettlement>" }
+      },
+      "required": ["snapshot"]
+    },
     "CandidateIdentity": {
       "type": "object",
       "additionalProperties": false,
@@ -2794,6 +2847,17 @@
         "models": { "type": "array", "items": { "$ref": "#/$defs/ProductModelInfo" }, "x-canonical-wire": "len+items", "x-rust-type": "Vec<ProductModelInfo>", "x-bounds": ["product.max-models (4096)"] }
       },
       "required": ["profile", "configured", "fetchedUnixSeconds", "cached", "error", "models"]
+    },
+    "ProductInteractionBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "ProductInteractionBinding",
+      "properties": {
+        "hasEffort": { "type": "boolean", "x-canonical-wire": "bool/u8", "x-rust-type": "bool" },
+        "interaction": { "$ref": "#/$defs/ProductInteractionSnapshot", "x-canonical-wire": "ordered-fields", "x-rust-type": "ProductInteractionSnapshot" },
+        "conversation": { "$ref": "#/$defs/WorkbenchQuery", "x-canonical-wire": "option+value", "x-rust-type": "Option<WorkbenchQuery>" }
+      },
+      "required": ["hasEffort", "interaction"]
     }
   }
 }

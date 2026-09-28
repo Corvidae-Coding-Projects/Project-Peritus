@@ -1,10 +1,8 @@
-//! One sequential bounded A3 connection task.
+//! One bounded A3 connection owner with independent read-only provider discovery.
 
-use std::{
-    future::{Future, poll_fn},
-    task::Poll,
-    time::Duration,
-};
+use std::time::Duration;
+
+mod select;
 
 use peritus_app_protocol::{
     AppErrorCode, AppEventEnvelope, AppEventPayload, AppMessage, AppProtocolError,
@@ -15,8 +13,10 @@ use tokio::sync::{mpsc, watch};
 use tokio::time::MissedTickBehavior;
 
 use super::{
-    ShutdownCommand, ShutdownEventReceiver, heartbeat::ConnectionHeartbeat, negotiation::establish,
-    request::handle_request,
+    ShutdownCommand, ShutdownEventReceiver,
+    heartbeat::ConnectionHeartbeat,
+    negotiation::establish,
+    request::{CatalogRequests, handle_request},
 };
 use crate::{
     AuthenticatedConnection, AuthorityHandle, DaemonError, DaemonErrorCode, DaemonRecovery,
@@ -60,31 +60,18 @@ pub async fn run_connection(
     heartbeat_tick.set_missed_tick_behavior(MissedTickBehavior::Skip);
     heartbeat_tick.tick().await;
     let mut resources_released = false;
+    let mut catalogs = CatalogRequests::default();
 
     let result = async {
         loop {
-            let action = {
-                let mut changed = Box::pin(stop.changed());
-                let mut message = Box::pin(frames.read_or_eof());
-                let mut delivery = Box::pin(delivery_tick.tick());
-                let mut heartbeat = Box::pin(heartbeat_tick.tick());
-                poll_fn(|poll_context| {
-                    if let Poll::Ready(changed) = changed.as_mut().poll(poll_context) {
-                        return Poll::Ready(ConnectionAction::Stop(changed));
-                    }
-                    if let Poll::Ready(message) = message.as_mut().poll(poll_context) {
-                        return Poll::Ready(ConnectionAction::Message(message));
-                    }
-                    if delivery.as_mut().poll(poll_context).is_ready() {
-                        return Poll::Ready(ConnectionAction::Delivery);
-                    }
-                    if heartbeat.as_mut().poll(poll_context).is_ready() {
-                        return Poll::Ready(ConnectionAction::Heartbeat);
-                    }
-                    Poll::Pending
-                })
-                .await
-            };
+            let action = select::next_action(
+                &mut frames,
+                &mut stop,
+                &mut delivery_tick,
+                &mut heartbeat_tick,
+                &mut catalogs,
+            )
+            .await;
             match action {
                 ConnectionAction::Stop(changed) => {
                     if changed.is_err() || *stop.borrow() {
@@ -110,6 +97,21 @@ pub async fn run_connection(
                                 AppErrorCode::MissingRequiredFeature,
                             )
                             .await?;
+                            continue;
+                        }
+                        if matches!(
+                            request.payload(),
+                            peritus_app_protocol::AppRequestPayload::QueryModels(_)
+                        ) {
+                            if !catalogs.start(
+                                &product_runs,
+                                context.actor_id(),
+                                context.limits(),
+                                &request,
+                            ) {
+                                write_error(&mut frames, &request, AppErrorCode::Backpressure)
+                                    .await?;
+                            }
                             continue;
                         }
                         let shutdown_events = handle_request(
@@ -181,6 +183,18 @@ pub async fn run_connection(
                     )
                     .await?;
                 }
+                ConnectionAction::Catalog(response) => {
+                    let response = response.map_err(|error| {
+                        DaemonError::with_source(
+                            DaemonErrorCode::Transport,
+                            DaemonRecovery::Retry,
+                            "finish model discovery",
+                            "model discovery task did not complete",
+                            error,
+                        )
+                    })?;
+                    frames.write(&AppMessage::Response(response)).await?;
+                }
                 ConnectionAction::Heartbeat => {
                     heartbeat.send(&mut frames, authority.status().await?).await?;
                 }
@@ -188,6 +202,7 @@ pub async fn run_connection(
         }
     }
     .await;
+    catalogs.shutdown().await;
     let cleanup = if resources_released {
         Ok(())
     } else {
@@ -240,6 +255,7 @@ enum ConnectionAction {
     Message(Result<Option<AppMessage>, DaemonError>),
     Delivery,
     Heartbeat,
+    Catalog(Result<AppResponseEnvelope, tokio::task::JoinError>),
 }
 
 async fn pump_terminals<S>(

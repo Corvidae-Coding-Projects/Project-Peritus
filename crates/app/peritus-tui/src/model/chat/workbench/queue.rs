@@ -112,6 +112,33 @@ impl AppModel {
         }
         let (row, replacement) = split(text);
         let selected = self.queue_selection(row)?;
+        let state = self
+            .chat
+            .workbench
+            .queue
+            .as_ref()
+            .and_then(|page| page.rows().iter().find(|row| row.selected() == selected))
+            .map(peritus_app_protocol::WorkbenchInputRow::state);
+        if action == "correct"
+            && state != Some(peritus_app_protocol::WorkbenchInputState::Incorporated)
+        {
+            return Err(
+                "This input has not been incorporated. Use /queue edit <row> <text> to change a pending input; corrections apply to incorporated history. Draft retained.",
+            );
+        }
+        if action == "edit"
+            && !matches!(
+                state,
+                Some(
+                    peritus_app_protocol::WorkbenchInputState::Queued
+                        | peritus_app_protocol::WorkbenchInputState::Held
+                )
+            )
+        {
+            return Err(
+                "This revision is no longer pending. Use /queue correct <row> <text> for incorporated history. Draft retained.",
+            );
+        }
         match action {
             "edit" => Ok(WorkbenchQueueIntent::Edit { selected, text: input_text(replacement)? }),
             "correct" => Ok(WorkbenchQueueIntent::Correct {
@@ -181,6 +208,7 @@ impl AppModel {
             return;
         }
         self.chat.workbench.queue = Some(page);
+        self.complete_workbench_inspection();
         self.chat.workbench.queue_detail = None;
         self.chat.workbench.scroll = 0;
     }

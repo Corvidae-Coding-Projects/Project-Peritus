@@ -74,7 +74,7 @@ struct Inner {
     folders: BTreeMap<WorkspaceId, crate::config::FolderDeclaration>,
     processes: ProcessStore,
     tasks: Mutex<Vec<JoinHandle<()>>>,
-    model_catalogs: Mutex<BTreeMap<ProviderProfileId, peritus_app_protocol::ProductModelCatalog>>,
+    model_catalogs: catalog::ModelCatalogs,
     image_decodes: Arc<tokio::sync::Semaphore>,
     host_permissions: permissions::HostPermissionCatalog,
     preview_processes: std::sync::Mutex<BTreeMap<ControlOperationId, PreviewProcess>>,
@@ -98,6 +98,8 @@ struct PreviewAggregate {
     page: Option<WorkbenchResultPage>,
     operations: BTreeMap<ControlOperationId, PreviewOperationRecord>,
     outputs: BTreeMap<ControlOperationId, String>,
+    errors: BTreeMap<ControlOperationId, String>,
+    truncated: std::collections::BTreeSet<ControlOperationId>,
 }
 
 #[derive(Clone, Copy)]
@@ -125,6 +127,8 @@ struct RunRecord {
     remaining_work: Vec<String>,
     interruption_cause: String,
     candidate_actionable: bool,
+    task_baseline_required: bool,
+    task_baseline: Option<String>,
     preview: PreviewAggregate,
 }
 
@@ -163,7 +167,11 @@ impl ProductRunService {
         )?;
         let cancelled = Arc::new(AtomicBool::new(false));
         let provider_cancellation = CancellationToken::new();
-        if let Some(options) = interaction.as_mut() {
+        if let Some(options) = interaction.as_mut()
+            && options.workbench.is_some()
+        {
+            self.append_control_inputs(options)?;
+        } else if let Some(options) = interaction.as_mut() {
             options.append(
                 peritus_app_protocol::ProductActivityKind::User,
                 request.task(),
@@ -211,6 +219,11 @@ impl ProductRunService {
                     remaining_work: Vec::new(),
                     interruption_cause: String::new(),
                     candidate_actionable: false,
+                    task_baseline_required: !self
+                        .inner
+                        .folders
+                        .contains_key(&request.workspace_id()),
+                    task_baseline: None,
                     preview: PreviewAggregate::default(),
                 },
             );
@@ -323,9 +336,16 @@ impl ProductRunService {
 
     pub(super) fn project_many(
         &self,
-        snapshots: Vec<ProductRunSnapshot>,
+        query: ProductRunQuery,
     ) -> Result<AppResponsePayload, ProductRunServiceError> {
         let records = self.inner.records.read().map_err(|_| ProductRunServiceError::Unavailable)?;
+        let snapshots = records
+            .values()
+            .rev()
+            .filter(|record| query.run_id().is_none_or(|id| record.snapshot.run_id() == id))
+            .take(peritus_app_protocol::MAX_PRODUCT_RUNS)
+            .map(live_snapshot)
+            .collect::<Result<Vec<_>, _>>()?;
         project_collection(&records, snapshots)
     }
 

@@ -124,6 +124,14 @@ impl ProductRunService {
     ) -> Result<(), AppProtocolError> {
         let mut records = self.inner.records.write().map_err(|_| app_error(Code::Backpressure))?;
         let record = records.get_mut(&run).ok_or_else(|| app_error(Code::InvalidIdentifier))?;
+        let current = require_launch(&record.preview, launch_id)?;
+        if current.process() == Some(launch.process_id())
+            && current.state() == launch_state(observation.state())
+            && current.ready()
+            && output::output_matches(&record.preview, launch_id, observation)
+        {
+            return Ok(());
+        }
         let previous = record.preview.clone();
         mutate_launch(&mut record.preview, launch_id, |current| {
             rebuild_launch(
@@ -139,9 +147,7 @@ impl ProductRunService {
                 value
             })
         })?;
-        if observation.state() != PreviewProcessState::Running {
-            record.preview.outputs.insert(launch_id, observation.stdout().to_owned());
-        }
+        output::retain_output(&mut record.preview, launch_id, observation);
         if super::super::super::persist_record(&self.inner.directory, record).is_err() {
             record.preview = previous;
             return Err(app_error(Code::Backpressure));
@@ -195,9 +201,7 @@ impl ProductRunService {
             value.completed_sequence =
                 record.preview.page.as_ref().map_or(0, WorkbenchResultPage::result_revision);
         }
-        if observation.state() != PreviewProcessState::Running {
-            record.preview.outputs.insert(launch_id, observation.stdout().to_owned());
-        }
+        output::retain_output(&mut record.preview, launch_id, observation);
         if super::super::super::persist_record(&self.inner.directory, record).is_err() {
             record.preview = previous;
             return Err(app_error(Code::Backpressure));
@@ -234,9 +238,7 @@ impl ProductRunService {
             let Ok(active) = self.preview_process(row.launch()) else {
                 continue;
             };
-            if let Ok(observation) = active.runtime.observe_preview(&active.launch)
-                && observation.state() != PreviewProcessState::Running
-            {
+            if let Ok(observation) = active.runtime.observe_preview(&active.launch) {
                 self.store_observation(run, row.launch(), &active.launch, &observation)?;
             }
         }

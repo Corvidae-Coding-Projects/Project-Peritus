@@ -112,6 +112,7 @@ impl ProductRunService {
                         status: recovered.status,
                         conflicts: recovered.conflicts.clone(),
                         transaction_manifest_digest: Some(evidence_digest),
+                        seal_recovery: true,
                     },
                 );
                 let receipt = store.accept_restore_settlement(&settle, Some(recovered.evidence))?;
@@ -129,6 +130,7 @@ impl ProductRunService {
                     status,
                     conflicts,
                     transaction_manifest_digest,
+                    ..
                 } = settle.intent()
                 else {
                     return Err(Error::Corrupt("restore settlement identity has another intent"));

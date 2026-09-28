@@ -31,7 +31,15 @@ pub(in crate::product_run) fn load_workbench_records(
         return Ok(BTreeMap::new());
     };
     let mut records = BTreeMap::new();
-    for path in projection_paths(&directory) {
+    let quarantine = directory.join(".quarantine");
+    let mut paths = projection_paths(&directory);
+    paths.extend(
+        projection_paths(&quarantine)
+            .into_iter()
+            .filter(|path| path.file_name().is_some_and(|name| !directory.join(name).exists())),
+    );
+    for path in paths {
+        let recovering = path.parent() == Some(quarantine.as_path());
         let metadata = match fs::symlink_metadata(&path) {
             Ok(metadata) => metadata,
             Err(error) => {
@@ -75,6 +83,14 @@ pub(in crate::product_run) fn load_workbench_records(
             quarantine_record(&path, "workbench run projection has no exact start binding", None);
             continue;
         };
+        if recovering
+            && !matches!(
+                operation.intent(),
+                peritus_product_runner::control::ControlIntent::StartGoal { .. }
+            )
+        {
+            continue;
+        }
         let accepted = match controls.resolve(operation) {
             Ok(resolved) => resolved.is_some(),
             Err(error) => {
@@ -99,6 +115,9 @@ pub(in crate::product_run) fn load_workbench_records(
                 }
             }
         } else {
+            if recovering {
+                continue;
+            }
             None
         };
         let mut record = match persisted.into_record_with_context(
@@ -161,6 +180,20 @@ pub(in crate::product_run) fn load_workbench_records(
         if records.len() >= MAX_RUN_RECORDS {
             retire_record(&path, "workbench run projection exceeded retained history");
             continue;
+        }
+        if recovering {
+            let Some(parent) = root.parent() else { continue };
+            if let Err(error) = super::write_record(&parent.join("product-runs"), &record) {
+                crate::diagnostic::report(&format!(
+                    "peritusd: could not republish validated goal {}: {error}",
+                    path.display()
+                ));
+                continue;
+            }
+            crate::diagnostic::report(&format!(
+                "peritusd: recovered validated goal projection {}; original quarantine copy retained",
+                path.display()
+            ));
         }
         records.insert(run, record);
     }

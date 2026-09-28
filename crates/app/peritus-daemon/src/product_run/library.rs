@@ -350,12 +350,30 @@ fn bounded_handoff(value: &str) -> String {
 }
 
 fn bounded(value: &str, maximum: usize) -> String {
+    // Library rows are single-line labels, while task text and summaries may be multiline.
+    // Normalize only this presentation; immutable messages and exact search snippets stay intact.
+    let value: String = value.chars().map(|ch| if ch.is_control() { ' ' } else { ch }).collect();
     if value.len() <= maximum {
-        return value.to_owned();
+        return value;
     }
     let mut end = maximum;
     while !value.is_char_boundary(end) {
         end -= 1;
     }
     value[..end].to_owned()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn multiline_task_and_handoff_project_as_bounded_library_labels() {
+        let title = bounded_title("Plan the change.\nThen implement\tand test it.");
+        assert!(ConversationTitle::new(title.clone()).is_ok());
+        assert_eq!(title, "Plan the change. Then implement and test it.");
+        let handoff = bounded_handoff(&format!("Done\n{}\r\n", "λ".repeat(1024)));
+        assert!(handoff.len() <= 1024);
+        assert!(!handoff.chars().any(char::is_control));
+    }
 }

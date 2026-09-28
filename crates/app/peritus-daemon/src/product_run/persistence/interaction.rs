@@ -22,6 +22,8 @@ pub(super) struct PersistedInteraction {
     #[serde(default)]
     efforts: [u16; 3],
     incorporated: u64,
+    #[serde(default)]
+    public_input_count: usize,
     next_sequence: u64,
     activities: Vec<(u64, u16, String, String)>,
 }
@@ -35,6 +37,7 @@ impl PersistedInteraction {
             efforts: [value.models.writer(), value.models.reviewer(), value.models.fixer()]
                 .map(|choice| choice.effort().tag()),
             incorporated: value.incorporated,
+            public_input_count: value.public_input_count,
             next_sequence: value.next_sequence,
             activities: value
                 .activities
@@ -89,11 +92,13 @@ impl PersistedInteraction {
         }
         value.next_sequence = self.next_sequence;
         value.incorporated = self.incorporated;
+        value.public_input_count = self.public_input_count;
         if let Some(operation) = &self.workbench {
             operation.canonical_bytes().map_err(|_| invalid())?;
             if !matches!(
                 operation.intent(),
                 peritus_product_runner::control::ControlIntent::StartExecution { .. }
+                    | peritus_product_runner::control::ControlIntent::StartGoal { .. }
             ) {
                 return Err(invalid());
             }
@@ -109,7 +114,9 @@ impl Serialize for PersistedInteraction {
         let explicit_effort = self.efforts.iter().any(|effort| *effort != 0);
         let mut state = serializer.serialize_struct(
             "PersistedInteraction",
-            5 + usize::from(explicit_effort) + usize::from(self.workbench.is_some()),
+            5 + usize::from(explicit_effort)
+                + usize::from(self.workbench.is_some())
+                + usize::from(self.public_input_count != 0),
         )?;
         if let Some(operation) = &self.workbench {
             state.serialize_field("workbench", operation)?;
@@ -118,6 +125,9 @@ impl Serialize for PersistedInteraction {
         state.serialize_field("models", &self.models)?;
         if explicit_effort {
             state.serialize_field("efforts", &self.efforts)?;
+        }
+        if self.public_input_count != 0 {
+            state.serialize_field("public_input_count", &self.public_input_count)?;
         }
         state.serialize_field("incorporated", &self.incorporated)?;
         state.serialize_field("next_sequence", &self.next_sequence)?;

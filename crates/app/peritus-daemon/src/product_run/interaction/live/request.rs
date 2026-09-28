@@ -13,17 +13,13 @@ impl LiveConversation {
         revision: u64,
         request: &peritus_model_protocol::ModelRequest,
     ) -> Result<DeveloperRequestAdmission, DeveloperLoopError> {
-        if self
+        if !self
             .service
-            .governed_run(self.run_id)
-            .map_err(|error| port_error("read workspace governance", error))?
-            && !self
-                .service
-                .permission_allows(
-                    self.run_id,
-                    peritus_product_runner::control::PermissionCapability::Network,
-                )
-                .map_err(|error| port_error("read effective network permission", error.into()))?
+            .permission_allows(
+                self.run_id,
+                peritus_product_runner::control::PermissionCapability::Network,
+            )
+            .map_err(|error| port_error("read effective network permission", error.into()))?
         {
             return Err(DeveloperLoopError::Trace(
                 "network permission is disabled for this workspace; inspect /permissions"
@@ -98,6 +94,9 @@ impl LiveConversation {
         }
         let mut next = record.clone();
         let mut options = options.clone();
+        self.service
+            .append_control_inputs(&mut options)
+            .map_err(|error| port_error("project accepted user input", error))?;
         if revision > options.incorporated {
             options.incorporated = revision;
             options

@@ -154,3 +154,27 @@ fn repeated_deterministic_runs_produce_equal_reports() {
     let second = block_on(ConformanceRunner::run(&suite, &second_factory));
     assert_eq!(first, second);
 }
+
+#[test]
+fn exercise_infrastructure_failure_retains_observations_and_teardown_failure() {
+    let observations = vec![Observation::new(
+        ObservationId::new("probe.started").expect("valid observation ID"),
+        ObservationValue::Boolean(true),
+    )];
+    let suite = suite(vec![Box::new(TestCase::new(
+        "case.unavailable",
+        CaseBehavior::Unavailable(observations.clone()),
+    ))]);
+    let factory = TestFactory::new(OperationBehavior::Pass, OperationBehavior::TypedFailure);
+    let report = block_on(ConformanceRunner::run(&suite, &factory));
+    let case = &report.cases()[0];
+    assert_eq!(report.status(), SuiteStatus::Failed);
+    assert_eq!(case.status(), CaseStatus::Failed);
+    assert_eq!(case.observations(), observations);
+    assert!(matches!(case.primary_failure(), Some(CaseFailure::Exercise(failure))
+        if failure.code().as_str() == "TEST-EXERCISE"));
+    assert!(matches!(case.teardown_failure(), Some(TeardownFailure::Subject(_))));
+    assert_eq!(report.summary().infrastructure_failure_cases(), 1);
+    assert_eq!(report.summary().contract_violation_cases(), 0);
+    assert_eq!(factory.state().torn_down, [("case.unavailable".to_owned(), 1)]);
+}

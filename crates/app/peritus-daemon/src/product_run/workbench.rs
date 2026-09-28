@@ -13,6 +13,7 @@ use peritus_types::ActorId;
 
 mod brief;
 mod checkpoints;
+mod conversation;
 #[cfg(test)]
 #[allow(
     clippy::redundant_pub_crate,
@@ -30,6 +31,7 @@ mod inputs;
 mod launch;
 mod mapping;
 mod review;
+mod run_control;
 
 use mapping::{domain_operation, domain_operation_with_store, equivalent_user_intent};
 
@@ -41,15 +43,15 @@ impl ProductRunService {
     ) -> AppResponsePayload {
         let result = self.control_workspace(request.query()).and_then(|()| {
             let run = self.with_controls(false, |store| store.compaction_run(actor, request))?;
-            let complete = self
+            let records = self
                 .inner
                 .records
                 .read()
-                .map_err(|_| Error::Corrupt("product run registry lock poisoned"))?
-                .get(&run)
-                .is_some_and(|record| {
-                    record.snapshot.phase() == peritus_app_protocol::ProductRunPhase::Complete
-                });
+                .map_err(|_| Error::Corrupt("product run registry lock poisoned"))?;
+            let complete = run.and_then(|run| records.get(&run)).is_some_and(|record| {
+                record.snapshot.phase() == peritus_app_protocol::ProductRunPhase::Complete
+            });
+            drop(records);
             self.with_controls(false, |store| {
                 store.compaction_preview(actor, request, complete).map(|(_, preview)| preview)
             })
@@ -246,6 +248,14 @@ impl ProductRunService {
         command: &WorkbenchCommand,
     ) -> AppResponsePayload {
         match command.intent() {
+            WorkbenchIntent::StartPreview(_)
+            | WorkbenchIntent::InteractPreview { .. }
+            | WorkbenchIntent::CapturePreview(_)
+            | WorkbenchIntent::StopPreview { .. }
+            | WorkbenchIntent::CheckPreviewBehavior { .. }
+            | WorkbenchIntent::AddArtifactFeedback { .. } => {
+                return self.resolve_preview_receipt(actor, command);
+            }
             WorkbenchIntent::ApplyInitDiff(_) => {
                 return self
                     .resolve_workbench_initialization(actor, command)

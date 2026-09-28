@@ -13,6 +13,39 @@ use crate::{
 };
 
 impl AppModel {
+    pub(in crate::model) fn accept_observation_query(
+        &mut self,
+        observations: &[peritus_app_protocol::ProductRunObservation],
+        exact: Option<RunId>,
+    ) {
+        let snapshots =
+            observations.iter().map(|value| value.snapshot().clone()).collect::<Vec<_>>();
+        self.accept_product_query(&snapshots, exact);
+        if let Some(product) = &mut self.product {
+            for value in observations
+                .iter()
+                .filter(|value| exact.is_none_or(|id| id == value.snapshot().run_id()))
+            {
+                let run = value.snapshot().run_id();
+                if let Some(settlement) = value.settlement() {
+                    product.settlements.insert(run, settlement);
+                } else {
+                    product.settlements.remove(&run);
+                }
+            }
+        }
+    }
+
+    fn product_query_payload(&self, query: ProductRunQuery) -> AppRequestPayload {
+        if self.features.iter().any(|feature| {
+            feature.as_str()
+                == peritus_app_protocol::WellKnownProtocolFeature::ProductRunObservations.as_str()
+        }) {
+            AppRequestPayload::QueryProductRunObservations(query)
+        } else {
+            AppRequestPayload::QueryProductRuns(query)
+        }
+    }
     pub(in crate::model) fn accept_product_query(
         &mut self,
         snapshots: &[ProductRunSnapshot],
@@ -46,26 +79,32 @@ impl AppModel {
     }
 
     pub(in crate::model) fn poll_product_runs(&mut self) -> Vec<Effect> {
-        if self.product.is_none()
-            || self.context.is_none()
-            || self.pending.values().any(|pending| {
-                matches!(
-                    pending,
-                    PendingRequest::ProductQuery | PendingRequest::ProductExactQuery(_)
-                )
-            })
-        {
+        if self.product.is_none() || self.context.is_none() {
             return Vec::new();
         }
         let mut effects: Vec<Effect> = self.poll_chat();
+        if self.view == crate::model::View::Preview
+            && let Some(page) = self.product.as_ref().and_then(|product| product.preview.as_ref())
+            && page
+                .launches()
+                .iter()
+                .any(|launch| launch.state() == peritus_app_protocol::WorkbenchLaunchState::Running)
+        {
+            effects.extend(self.refresh_preview(page.query()));
+        }
+        if self.pending.values().any(|pending| {
+            matches!(pending, PendingRequest::ProductQuery | PendingRequest::ProductExactQuery(_))
+        }) {
+            return effects;
+        }
         effects.extend(self.request(
-            AppRequestPayload::QueryProductRuns(ProductRunQuery::recent()),
+            self.product_query_payload(ProductRunQuery::recent()),
             PendingRequest::ProductQuery,
         ));
         if let Some(run_id) =
             self.product.as_ref().and_then(ProductUi::selected_run).map(ProductRunSnapshot::run_id)
             && let Some(effect) = self.request(
-                AppRequestPayload::QueryProductRuns(ProductRunQuery::exact(run_id)),
+                self.product_query_payload(ProductRunQuery::exact(run_id)),
                 PendingRequest::ProductExactQuery(run_id),
             )
         {

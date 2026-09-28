@@ -45,6 +45,10 @@ pub(super) struct PersistedRecord {
     pub(super) interruption_cause: String,
     #[serde(default)]
     pub(super) candidate_actionable: Option<bool>,
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub(super) task_baseline_required: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(super) task_baseline: Option<String>,
     #[serde(default)]
     pub(super) preview_page: Option<Vec<u8>>,
     #[serde(default)]
@@ -68,6 +72,10 @@ pub(super) struct PersistedPreviewOperation {
 pub(super) struct PersistedPreviewOutput {
     pub(super) launch: [u8; 16],
     pub(super) stdout: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub(super) stderr: String,
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub(super) truncated: bool,
 }
 
 #[derive(Default, Serialize, Deserialize)]

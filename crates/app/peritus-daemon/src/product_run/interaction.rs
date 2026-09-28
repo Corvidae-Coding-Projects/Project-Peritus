@@ -13,8 +13,10 @@ use std::sync::Arc;
 
 mod live;
 use live::LiveConversation;
+mod inputs;
 mod models;
 mod narration;
+mod presentation;
 const SUMMARY_DETAIL: &str = "Provider thinking summary";
 mod tool_activity;
 
@@ -26,6 +28,7 @@ pub(super) struct InteractionOptions {
     pub(super) mode: ProductInteractionMode,
     pub(super) models: ProductRoleModels,
     pub(super) incorporated: u64,
+    pub(super) public_input_count: usize,
     pub(super) activities: Vec<ProductActivity>,
     pub(super) next_sequence: u64,
     pub(super) pending_utf8: Vec<u8>,
@@ -43,6 +46,7 @@ impl InteractionOptions {
             mode,
             models,
             incorporated: 0,
+            public_input_count: 0,
             activities: Vec::new(),
             next_sequence: 1,
             pending_utf8: Vec::new(),
@@ -247,12 +251,17 @@ impl ProductRunService {
         &self,
         query: ProductRunConversationQuery,
     ) -> Result<ProductInteractionSnapshot, ProductRunServiceError> {
+        self.synchronize_public_inputs(query.run_id())?;
         let records = self.inner.records.read().map_err(|_| ProductRunServiceError::Unavailable)?;
         let record = records.get(&query.run_id()).ok_or(ProductRunServiceError::NotFound)?;
         let options = record.interaction.as_ref().ok_or(ProductRunServiceError::InvalidState)?;
         let persistence_failure = options.persistence_failure();
         let mut snapshot = live_snapshot(record)?;
-        let mut activities = options.activities.clone();
+        let mut activities = if record.checkpoint.is_some() {
+            options.activities.iter().map(presentation::pipeline_activity).collect()
+        } else {
+            options.activities.clone()
+        };
         let input_revision = if let Some(detail) = persistence_failure {
             snapshot = super::snapshot::replace_snapshot(
                 &snapshot,

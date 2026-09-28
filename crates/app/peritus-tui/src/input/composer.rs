@@ -26,6 +26,33 @@ impl DraftLayout {
     }
 }
 
+/// The modal editor's outer bounds, shared by rendering and keyboard navigation.
+pub fn modal_area(area: Rect) -> Rect {
+    // Keep the global submission/error status visible even in a very short terminal.
+    let area = Rect { height: area.height.saturating_sub(1), ..area };
+    let [_, middle, _] = Layout::vertical([
+        Constraint::Length(area.height.saturating_sub(9) / 2),
+        Constraint::Length(9.min(area.height)),
+        Constraint::Min(0),
+    ])
+    .areas(area);
+    let [_, middle, _] = Layout::horizontal([
+        Constraint::Percentage(12),
+        Constraint::Percentage(76),
+        Constraint::Percentage(12),
+    ])
+    .areas(middle);
+    middle
+}
+
+/// Move by one displayed row without splitting a UTF-8 character or wide glyph.
+pub fn vertical_cursor(text: &str, cursor: usize, down: bool, width: usize) -> usize {
+    let draft = layout(text, cursor, None, width);
+    let row =
+        if down { (draft.row + 1).min(draft.lines.len() - 1) } else { draft.row.saturating_sub(1) };
+    if row == draft.row { cursor } else { draft.hit(row, draft.column) }
+}
+
 pub fn regions(area: Rect, lines: usize, working: bool) -> [Rect; 5] {
     Layout::vertical([
         Constraint::Length(2),
@@ -49,7 +76,12 @@ pub fn layout(
     let mut column = 0;
     let mut position = (0, 0);
     for (index, character) in text.char_indices() {
-        let shown = if character == '\t' { "    ".to_owned() } else { character.to_string() };
+        let shown = match character {
+            '\t' => "    ".to_owned(),
+            '\n' => String::new(),
+            control if control.is_control() => "�".to_owned(),
+            _ => character.to_string(),
+        };
         let cells = Span::raw(shown.as_str()).width().min(width);
         if character != '\n' && column + cells > width {
             lines.push(Line::default());
@@ -142,5 +174,14 @@ mod tests {
         assert_eq!((draft.row, draft.column), (1, 0));
         assert!(draft.lines[0].spans[1].style.add_modifier.contains(Modifier::REVERSED));
         assert_eq!(draft.lines[1].to_string(), "界e\u{301}");
+    }
+
+    #[test]
+    fn pasted_control_bytes_cannot_become_terminal_commands() {
+        let text = "a\x1b[2J\r\0b";
+        let draft = layout(text, text.len(), None, 80);
+        assert_eq!(draft.lines[0].to_string(), "a�[2J��b");
+        assert_eq!(draft.column, 8);
+        assert_eq!(draft.hit(0, 8), text.len());
     }
 }

@@ -38,7 +38,7 @@ impl ProductRunInput {
 
     pub(crate) fn baseline(&self) -> Result<CandidateBaseline, ProductRunnerError> {
         self.in_place_scope().map_or_else(
-            || CandidateBaseline::capture(&self.workspace_root),
+            || CandidateBaseline::capture_task(&self.workspace_root, &self.trace_path),
             |scope| Ok(CandidateBaseline::in_place(scope)),
         )
     }

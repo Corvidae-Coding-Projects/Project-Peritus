@@ -157,5 +157,33 @@ pub(super) fn preview(frame: &mut Frame<'_>, area: Rect, model: &AppModel) {
     preview::render(frame, area, model);
 }
 
+pub(super) fn scroll_limit(model: &AppModel, area: Rect) -> u16 {
+    if model.view == crate::model::View::Diff
+        && model
+            .product
+            .as_ref()
+            .is_some_and(|product| product.review.page.is_some() && !product.review.raw)
+    {
+        return structured_review::scroll_limit(model, area);
+    }
+    let lines = match model.view {
+        crate::model::View::Preview => preview::content(model, area.width),
+        crate::model::View::Diff => detail::run_text_lines(model, area.width, inspect_text, ""),
+        crate::model::View::Review => detail::run_text_lines(
+            model,
+            area.width,
+            |run| if run.review().is_empty() { run.gates() } else { run.review() }.to_owned(),
+            "",
+        ),
+        _ => Vec::new(),
+    };
+    content_scroll_limit(lines.len(), area)
+}
+
+fn content_scroll_limit(lines: usize, area: Rect) -> u16 {
+    u16::try_from(lines.saturating_sub(usize::from(area.height.saturating_sub(2))))
+        .unwrap_or(u16::MAX)
+}
+
 #[cfg(test)]
 mod tests;

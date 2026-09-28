@@ -193,8 +193,10 @@ impl ClaudeRuntimeProvider {
             EMPTY_MCP_CONFIG.to_owned(),
             "--system-prompt-file".to_owned(),
             system_path,
-            "--json-schema".to_owned(),
-            runtime.schema.clone(),
+            // --json-schema formats the result after Claude Code's agent workflow.
+            // Peritus needs one inert inference turn, with tools owned by the host.
+            "--max-turns".to_owned(),
+            "1".to_owned(),
         ];
         let process = ProcessRequest::new(
             self.config.executable().process_executable().clone(),

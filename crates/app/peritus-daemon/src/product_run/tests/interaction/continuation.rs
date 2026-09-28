@@ -112,7 +112,11 @@ fn failed_follow_up_persistence_leaves_no_duplicate_in_memory_input() {
         );
         let follow_up =
             ProductRunContinuation::new(run_id, "Only once".to_owned()).expect("continuation");
-        inject_persistence_fault(run_id, PersistenceFaultPoint::BeforeWrite);
+        inject_persistence_fault(
+            &service.inner.directory,
+            run_id,
+            PersistenceFaultPoint::BeforeWrite,
+        );
 
         assert!(service.continue_run(&follow_up).await.is_err());
         let unchanged = service

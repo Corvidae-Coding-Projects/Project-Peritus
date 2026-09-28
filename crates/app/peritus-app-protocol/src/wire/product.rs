@@ -1,5 +1,6 @@
 //! Canonical product-run request and observation encoding.
 
+pub(super) mod observations;
 mod settlement;
 
 pub(super) use settlement::{

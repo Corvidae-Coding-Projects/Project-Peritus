@@ -29,6 +29,13 @@ budget, cancellation, and recovery terminals therefore retain the strongest cand
 remaining evidence. A fresh finalization observation clears a candidate that was completely
 reverted, while an explicitly authorized external effect remains a valid candidate boundary.
 
+Discard prepares source files and symlinks for every affected repository before publishing source,
+index, HEAD, or repository-archive changes. Preimage materialization failures preserve the current
+candidate and release the prepared Git locks, so fixing the filesystem condition permits retry.
+Source staging stays outside paths being replaced and uses existing destination directories;
+successful publication synchronizes new parents and replacement directory entries. This preparation
+does not provide a crash-atomic transaction across all discard effects.
+
 Continuation state is bound to the exact run, managed-workspace lineage, candidate digest,
 conversation revision, and checkpoint sequence. S1 knowledge invalidation selects the first stale
 phase; S2 obligation evidence participates in gates, reviewer input, acceptance, and fixer routing.

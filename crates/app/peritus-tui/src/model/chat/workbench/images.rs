@@ -37,6 +37,13 @@ pub enum ImageField {
     Caption,
 }
 impl ImageUi {
+    pub(super) fn upload_binding(
+        &self,
+    ) -> Option<(peritus_app_protocol::TransferId, peritus_types::ArtifactId)> {
+        let metadata = &self.upload.as_ref()?.metadata;
+        Some((metadata.transfer_id(), metadata.artifact_id()))
+    }
+
     pub(super) fn discard_preview(&mut self) {
         self.preview = None;
         self.request = None;

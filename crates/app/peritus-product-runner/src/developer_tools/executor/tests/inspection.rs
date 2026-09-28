@@ -172,6 +172,26 @@ fn large_text_files_support_bounded_line_ranges() {
     assert_eq!(value["content"], "300001: TARGET-LINE");
 }
 
+#[test]
+fn line_ranges_include_both_endpoints_and_unterminated_last_lines() {
+    let workspace = tempfile::tempdir().unwrap();
+    fs::write(workspace.path().join("lines.txt"), "first\nsecond\nlast").unwrap();
+    let mut tools = writable_tools(workspace.path());
+    execute(&mut tools, "workspace_list", r#"{"path":"."}"#);
+    for (start, end, expected) in
+        [(1, 1, "1: first"), (1, 2, "1: first\n2: second"), (3, 3, "3: last"), (4, 4, "")]
+    {
+        let result = execute(
+            &mut tools,
+            "workspace_read",
+            &format!(r#"{{"path":"lines.txt","start_line":{start},"end_line":{end}}}"#),
+        );
+        assert!(!result.is_error);
+        let value: Value = serde_json::from_slice(result.output.canonical_bytes()).unwrap();
+        assert_eq!(value["content"], expected);
+    }
+}
+
 #[cfg(unix)]
 #[test]
 fn listing_reports_dangling_symlinks_without_aborting_the_directory() {

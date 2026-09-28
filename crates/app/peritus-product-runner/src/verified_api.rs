@@ -18,7 +18,9 @@ use crate::{ProductRunnerError, control::HostPermissions};
 
 mod command_runtime;
 mod effect_stubs;
-pub use command_runtime::{CommandRuntime, FolderPatchAuthority, FolderPatchAuthorityPlan};
+pub use command_runtime::{
+    CommandRuntime, FolderPatchAuthority, FolderPatchAuthorityPlan, PreviewTerminal,
+};
 pub use effect_stubs::checked_protected_file;
 
 /// Maximum wall-clock duration of one uninterrupted product-run attempt.

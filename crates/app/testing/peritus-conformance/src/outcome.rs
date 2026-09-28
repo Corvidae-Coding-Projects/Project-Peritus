@@ -1,6 +1,6 @@
 //! Typed case observations and explicit assertion outcomes.
 
-use crate::{AssertionFailure, ObservationId, ReportText};
+use crate::{AssertionFailure, CaseFailure, ObservationId, ReportText, SubjectFailure};
 
 /// A bounded-kind value suitable for deterministic conformance reports.
 ///
@@ -87,7 +87,7 @@ impl Observation {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct CaseResult {
     observations: Vec<Observation>,
-    failure: Option<AssertionFailure>,
+    failure: Option<CaseFailure>,
 }
 
 impl CaseResult {
@@ -100,7 +100,16 @@ impl CaseResult {
     /// Creates a failed result with ordered observations and one typed assertion failure.
     #[must_use]
     pub const fn failed(observations: Vec<Observation>, failure: AssertionFailure) -> Self {
-        Self { observations, failure: Some(failure) }
+        Self { observations, failure: Some(CaseFailure::Assertion(failure)) }
+    }
+
+    /// Creates a failed result when execution or observation could not complete.
+    ///
+    /// This does not claim an observed contract violation. The runner still tears down the subject
+    /// and the result cannot qualify as passing conformance evidence.
+    #[must_use]
+    pub const fn infrastructure(observations: Vec<Observation>, failure: SubjectFailure) -> Self {
+        Self { observations, failure: Some(CaseFailure::Exercise(failure)) }
     }
 
     /// Returns observations in the case-defined deterministic order.
@@ -109,13 +118,13 @@ impl CaseResult {
         &self.observations
     }
 
-    /// Returns the failed assertion, or `None` when the case passed.
+    /// Returns the assertion or exercise infrastructure failure, or `None` when the case passed.
     #[must_use]
-    pub const fn failure(&self) -> Option<&AssertionFailure> {
+    pub const fn failure(&self) -> Option<&CaseFailure> {
         self.failure.as_ref()
     }
 
-    pub(crate) fn into_parts(self) -> (Vec<Observation>, Option<AssertionFailure>) {
+    pub(crate) fn into_parts(self) -> (Vec<Observation>, Option<CaseFailure>) {
         (self.observations, self.failure)
     }
 }

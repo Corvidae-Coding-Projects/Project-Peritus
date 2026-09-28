@@ -113,8 +113,8 @@ impl ProductRunService {
                     delivery_scope: ProductDeliveryScope::WorkspaceChanges,
                     conversation,
                     providers,
-                    cancelled,
-                    provider_cancellation,
+                    cancelled: Arc::clone(&cancelled),
+                    provider_cancellation: provider_cancellation.clone(),
                     resume,
                 };
                 let mode = match interaction_mode {
@@ -129,21 +129,26 @@ impl ProductRunService {
                     }
                     Some(peritus_app_protocol::ProductInteractionMode::Build) | None => None,
                 };
-                let result = match mode {
-                    Some(mode) if folder.is_some() => {
-                        let folder = folder.expect("folder selected");
-                        ProductRunner::converse_folder(
-                            input,
-                            mode,
-                            folder.writable(),
-                            folder.protected_paths(),
-                            observer,
-                        )
-                        .await
+                let execution = async {
+                    match mode {
+                        Some(mode) if folder.is_some() => {
+                            let folder = folder.expect("folder selected");
+                            ProductRunner::converse_folder(
+                                input,
+                                mode,
+                                folder.writable(),
+                                folder.protected_paths(),
+                                observer,
+                            )
+                            .await
+                        }
+                        Some(mode) => ProductRunner::converse(input, mode, observer).await,
+                        None => ProductRunner::run(input, observer).await,
                     }
-                    Some(mode) => ProductRunner::converse(input, mode, observer).await,
-                    None => ProductRunner::run(input, observer).await,
                 };
+                let result = service
+                    .with_goal_clock(run_id, cancelled, provider_cancellation, execution)
+                    .await;
                 #[cfg(test)]
                 pause_before_finish(run_id).await;
                 service.finish(run_id, result);

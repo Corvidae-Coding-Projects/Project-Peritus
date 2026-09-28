@@ -6,6 +6,7 @@ use peritus_app_protocol::{ProductActivityKind, ProductModelUpdate, ProductRunCo
 impl ProductRunService {
     pub(crate) async fn update_models(
         &self,
+        actor: peritus_types::ActorId,
         update: &ProductModelUpdate,
     ) -> Result<peritus_app_protocol::ProductInteractionSnapshot, ProductRunServiceError> {
         let (providers, mode) = {
@@ -14,11 +15,7 @@ impl ProductRunService {
             let record = records.get(&update.run_id()).ok_or(ProductRunServiceError::NotFound)?;
             let options =
                 record.interaction.as_ref().ok_or(ProductRunServiceError::InvalidState)?;
-            if options.workbench.is_some() {
-                return Err(ProductRunServiceError::Control(
-                    peritus_product_runner::control::ControlError::UnsupportedSchema,
-                ));
-            }
+            self.authorize_model_selection(actor, options)?;
             (record.request.providers(), options.mode)
         };
         let selection = InteractionOptions::new(mode, update.models().clone());
@@ -32,10 +29,9 @@ impl ProductRunService {
                 records.get_mut(&update.run_id()).ok_or(ProductRunServiceError::NotFound)?;
             let prior =
                 record.interaction.as_ref().ok_or(ProductRunServiceError::InvalidState)?.clone();
-            if prior.workbench.is_some() {
-                return Err(ProductRunServiceError::Control(
-                    peritus_product_runner::control::ControlError::UnsupportedSchema,
-                ));
+            self.authorize_model_selection(actor, &prior)?;
+            if prior.mode != mode {
+                return Err(ProductRunServiceError::InvalidState);
             }
             if prior.persistence_failed.load(std::sync::atomic::Ordering::Acquire) {
                 return Err(ProductRunServiceError::Unavailable);
@@ -51,5 +47,26 @@ impl ProductRunService {
             }
         }
         self.query_interaction(ProductRunConversationQuery::new(update.run_id()))
+    }
+
+    fn authorize_model_selection(
+        &self,
+        actor: peritus_types::ActorId,
+        options: &InteractionOptions,
+    ) -> Result<(), ProductRunServiceError> {
+        let Some(binding) = &options.workbench else { return Ok(()) };
+        self.with_controls(false, |store| {
+            let record = store
+                .load(binding.conversation())?
+                .ok_or(peritus_product_runner::control::ControlError::NotFound)?;
+            if binding.actor_bytes() != actor.as_bytes()
+                || record.owner_bytes() != actor.as_bytes()
+                || record.workspace_bytes() != binding.workspace_bytes()
+            {
+                return Err(peritus_product_runner::control::ControlError::ScopeMismatch.into());
+            }
+            Ok(())
+        })
+        .map_err(Into::into)
     }
 }

@@ -166,7 +166,10 @@ async fn effort_scenario(
         )
     };
     let updated = service
-        .update_models(&ProductModelUpdate::new(run, models.clone()))
+        .update_models(
+            peritus_types::ActorId::new([1; 16]).expect("actor"),
+            &ProductModelUpdate::new(run, models.clone()),
+        )
         .await
         .expect("active update");
     assert_eq!(updated.models(), &models);
@@ -178,14 +181,23 @@ async fn effort_scenario(
         ProductModelChoice::default(),
     );
     assert_eq!(
-        service.update_models(&ProductModelUpdate::new(run, unsupported)).await,
+        service
+            .update_models(
+                peritus_types::ActorId::new([1; 16]).expect("actor"),
+                &ProductModelUpdate::new(run, unsupported)
+            )
+            .await,
         Err(ProductRunServiceError::EffortUnsupported),
         "unmapped controls must reject before saving"
     );
     assert!(!updated.snapshot().phase().terminal());
     assert!(selected.requests.lock().expect("requests").is_empty(), "in-flight turn is unchanged");
-    let invalid =
-        service.update_models(&ProductModelUpdate::new(run, choices(mode, "unsupported"))).await;
+    let invalid = service
+        .update_models(
+            peritus_types::ActorId::new([1; 16]).expect("actor"),
+            &ProductModelUpdate::new(run, choices(mode, "unsupported")),
+        )
+        .await;
     assert!(invalid.is_err());
     assert_eq!(
         service
@@ -233,7 +245,10 @@ async fn effort_scenario(
         );
     }
     let idle = service
-        .update_models(&ProductModelUpdate::new(run, ProductRoleModels::default()))
+        .update_models(
+            peritus_types::ActorId::new([1; 16]).expect("actor"),
+            &ProductModelUpdate::new(run, ProductRoleModels::default()),
+        )
         .await
         .expect("idle reset");
     assert_eq!(idle.snapshot().phase(), ProductRunPhase::WaitingForUser);
@@ -258,7 +273,15 @@ async fn assert_failed_persistence_keeps_prior_selection(
         .expect("one saved run");
     let before = fs::read(&saved).expect("saved bytes");
     fs::create_dir(saved.with_extension("json.new")).expect("block temporary file publication");
-    assert!(service.update_models(&ProductModelUpdate::new(run, models)).await.is_err());
+    assert!(
+        service
+            .update_models(
+                peritus_types::ActorId::new([1; 16]).expect("actor"),
+                &ProductModelUpdate::new(run, models)
+            )
+            .await
+            .is_err()
+    );
     assert_eq!(fs::read(saved).expect("prior durable bytes"), before);
     let records = service.inner.records.read().expect("records");
     assert_eq!(

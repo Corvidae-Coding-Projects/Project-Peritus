@@ -1,6 +1,7 @@
 //! Initial release schema marker and future forward-migration registry.
 
 mod v1;
+mod v2;
 mod validation;
 
 use peritus_types::Sha256Digest;
@@ -14,14 +15,24 @@ use validation::{invalid_registry, reject_transaction_control};
 
 // The journal installs the complete initial schema directly. This descriptor records its
 // version for future released migrations; unshipped development revisions are not supported.
-const CURRENT_DESCRIPTORS: [MigrationDescriptor; 1] = [MigrationDescriptor::new(
-    MigrationVersion::FIRST,
-    "0.0.1",
-    v1::SQL,
-    Sha256Digest::new(v1::DIGEST),
-    BackupPolicy::Required,
-    64 * 1024,
-)];
+const CURRENT_DESCRIPTORS: [MigrationDescriptor; 2] = [
+    MigrationDescriptor::new(
+        MigrationVersion::FIRST,
+        "0.0.1",
+        v1::SQL,
+        Sha256Digest::new(v1::DIGEST),
+        BackupPolicy::Required,
+        64 * 1024,
+    ),
+    MigrationDescriptor::new(
+        MigrationVersion::SECOND,
+        "0.0.4",
+        v2::SQL,
+        Sha256Digest::new(v2::DIGEST),
+        BackupPolicy::Required,
+        1024 * 1024,
+    ),
+];
 
 /// Immutable ordered migration registry.
 #[derive(Clone, Copy, Debug)]

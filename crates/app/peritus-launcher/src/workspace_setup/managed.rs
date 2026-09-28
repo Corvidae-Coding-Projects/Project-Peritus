@@ -24,6 +24,8 @@ pub enum WorkspaceHealth {
     Ready,
     /// Trusted managed worktree is available and contains an unfinished change.
     Dirty,
+    /// The same trusted detached worktree has a newer baseline to register.
+    Advanced,
     /// Retained paths or repository identity no longer match and setup can repair it.
     NeedsRepair,
 }
@@ -36,6 +38,7 @@ impl WorkspaceHealth {
             Self::Restricted => "Restricted",
             Self::Ready => "Ready",
             Self::Dirty => "Ready — changes in progress",
+            Self::Advanced => "Ready — committed changes",
             Self::NeedsRepair => "Needs repair",
         }
     }
@@ -203,7 +206,26 @@ pub fn health(profile: &WorkspaceProfile) -> WorkspaceHealth {
         return WorkspaceHealth::NeedsRepair;
     }
     let Ok(worktree) = repository.reopen_worktree(registration.worktree_manifest()) else {
-        return WorkspaceHealth::NeedsRepair;
+        let Ok(name) = WorktreeName::new(format!("workspace_{}", &profile.workspace_id()[..16]))
+        else {
+            return WorkspaceHealth::NeedsRepair;
+        };
+        let request = RecoverWorktree::new(
+            name,
+            registration.worktree_manifest().root(),
+            WorktreeAccess::Writable,
+        );
+        return match repository.recover_current_worktree(request) {
+            Ok(current)
+                if current.repository_digest()
+                    == registration.worktree_manifest().repository_digest()
+                    && current.baseline() != registration.worktree_manifest().baseline()
+                    && registration.worktree_manifest().access() == WorktreeAccess::Writable =>
+            {
+                WorkspaceHealth::Advanced
+            }
+            _ => WorkspaceHealth::NeedsRepair,
+        };
     };
     match repository.status(&worktree) {
         Ok(status) if status.is_clean() => WorkspaceHealth::Ready,

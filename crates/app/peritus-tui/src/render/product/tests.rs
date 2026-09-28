@@ -4,6 +4,40 @@ use peritus_types::{ProviderProfileId, RunId, WorkspaceId};
 use super::*;
 
 #[test]
+fn dashboard_renders_a_multibyte_task_at_the_summary_cutoff() {
+    let provider = ProviderProfileId::new([2; 16]).unwrap();
+    let workspace = WorkspaceId::new([3; 16]).unwrap();
+    let launch = crate::runtime::ProductLaunchContext::new(
+        workspace,
+        "fixture".into(),
+        vec![crate::runtime::ProductProviderOption::new(provider, "fixture")],
+        Some(0),
+    )
+    .unwrap();
+    let mut model = AppModel::with_product([9; 32], Some(launch));
+    let run = ProductRunSnapshot::new(
+        RunId::new([4; 16]).unwrap(),
+        workspace,
+        ProductProviderSelection::new(provider, provider, provider),
+        ProductRunPhase::Complete,
+        1,
+        format!("{}界 rest of task", "a".repeat(41)),
+        "done".into(),
+        String::new(),
+        String::new(),
+        String::new(),
+        String::new(),
+    )
+    .unwrap();
+    model.product.as_mut().unwrap().runs.push(run);
+    let mut terminal = ratatui::Terminal::new(ratatui::backend::TestBackend::new(200, 38)).unwrap();
+    let frame = terminal.draw(|frame| dashboard(frame, frame.area(), &model)).unwrap();
+    let rendered =
+        frame.buffer.content().iter().map(ratatui::buffer::Cell::symbol).collect::<String>();
+    assert!(rendered.contains(&format!("{}…", "a".repeat(41))));
+}
+
+#[test]
 fn candidate_inspection_snapshot_names_every_handoff_field() {
     let run = candidate_snapshot(ProductRunPhase::Failed);
 
@@ -43,6 +77,11 @@ fn candidate_inspection_scroll_reaches_the_diff_without_a_blank_tail() {
 #[test]
 fn terminal_state_snapshot_distinguishes_each_user_outcome() {
     assert_eq!(product_state(&candidate_snapshot(ProductRunPhase::Complete)), "Accepted");
+    for phase in [ProductRunPhase::Complete, ProductRunPhase::Failed] {
+        let run = candidate_snapshot(phase);
+        let discarded = run.deliverable().unwrap().clone().mark_discarded();
+        assert_eq!(product_state(&run.with_deliverable(discarded)), "Discarded");
+    }
     assert_eq!(
         product_state(&candidate_snapshot(ProductRunPhase::WaitingForUser)),
         "Waiting for you",
@@ -74,6 +113,10 @@ fn terminal_state_snapshot_distinguishes_each_user_outcome() {
 }
 
 fn candidate_snapshot(phase: ProductRunPhase) -> ProductRunSnapshot {
+    candidate_snapshot_with_status(phase, "candidate")
+}
+
+fn candidate_snapshot_with_status(phase: ProductRunPhase, status: &str) -> ProductRunSnapshot {
     let profile = ProviderProfileId::new([1; 16]).expect("provider");
     ProductRunSnapshot::new(
         RunId::new([2; 16]).expect("run"),
@@ -82,7 +125,7 @@ fn candidate_snapshot(phase: ProductRunPhase) -> ProductRunSnapshot {
         phase,
         1,
         "build tetris".to_owned(),
-        "candidate".to_owned(),
+        status.to_owned(),
         "diff --git".to_owned(),
         "cargo test failed".to_owned(),
         "review missing".to_owned(),
@@ -99,4 +142,34 @@ fn candidate_snapshot(phase: ProductRunPhase) -> ProductRunSnapshot {
         )
         .expect("deliverable"),
     )
+}
+
+#[test]
+fn recovery_location_is_reachable_in_scrollable_candidate_inspection() {
+    use crate::runtime::{ProductLaunchContext, ProductProviderOption};
+    use ratatui::{Terminal, backend::TestBackend};
+    let run = candidate_snapshot_with_status(
+        ProductRunPhase::Complete,
+        "Deliverable discarded\nRepository recovery: /saved/repository-recovery-123",
+    );
+    assert!(inspect_text(&run).contains("Status\nDeliverable discarded\nRepository recovery:"));
+    let launch = ProductLaunchContext::new(
+        run.workspace_id(),
+        "fixture".to_owned(),
+        vec![ProductProviderOption::new(run.providers().writer(), "fixture")],
+        Some(0),
+    )
+    .unwrap();
+    let mut model = AppModel::with_product([92; 32], Some(launch));
+    model.product.as_mut().unwrap().runs.push(run);
+    let mut terminal = Terminal::new(TestBackend::new(80, 10)).unwrap();
+    let mut reachable = false;
+    for offset in 0..20 {
+        model.product.as_mut().unwrap().inspection_scroll = offset;
+        let frame = terminal.draw(|frame| diff(frame, frame.area(), &model)).unwrap();
+        let text =
+            frame.buffer.content().iter().map(ratatui::buffer::Cell::symbol).collect::<String>();
+        reachable |= text.contains("/saved/repository-recovery-123");
+    }
+    assert!(reachable, "recovery path must remain accessible beyond the run summary");
 }

@@ -117,6 +117,8 @@ pub enum AppRequestPayload {
     QueryWorkbenchGoal(crate::WorkbenchQuery),
     /// Inspects source/build/process/capture identities and independent validation evidence.
     QueryWorkbenchResult(crate::WorkbenchResultQuery),
+    /// Observes live retained output for an authorized preview.
+    QueryWorkbenchPreview(crate::WorkbenchResultQuery),
     /// Inspects the exact structured candidate diff, anchored comments, and evidence freshness.
     QueryWorkbenchReview(crate::WorkbenchReviewQuery),
     /// Begins explicit selected-text transfer scoped to the conversation.
@@ -143,6 +145,12 @@ pub enum AppRequestPayload {
     WorkbenchCommand(crate::WorkbenchCommand),
     /// Inspects selected durable conversation metadata without inference.
     QueryWorkbench(crate::WorkbenchQuery),
+    /// Discovers the authorized durable conversation execution without inference.
+    QueryWorkbenchExecution(crate::WorkbenchQuery),
+    /// Reads a run and its exact durable conversation destination without starting work.
+    QueryInteractionBinding(ProductRunConversationQuery),
+    /// Incorporates already receipted pending inputs in a non-goal execution.
+    ContinueWorkbenchExecution(crate::WorkbenchContinuation),
     /// Resolves the original receipt for an exact actor-bound operation without reapplying it.
     QueryWorkbenchReceipt(crate::WorkbenchCommand),
     /// Inspects bounded local prerequisites without inference, repair, or network probes.
@@ -175,6 +183,8 @@ pub enum AppRequestPayload {
     ControlProductRun(ProductRunControl),
     /// Queries recent or exact product-run observations.
     QueryProductRuns(ProductRunQuery),
+    /// Queries mixed active and settled runs while retaining every candidate's evidence.
+    QueryProductRunObservations(ProductRunQuery),
     /// Adds user context to an active or resumable product run.
     ContinueProductRun(ProductRunContinuation),
     /// Queries the conversation for one exact product run.
@@ -205,6 +215,9 @@ impl AppRequestPayload {
     #[must_use]
     pub const fn required_workbench_feature(&self) -> Option<crate::WellKnownProtocolFeature> {
         match self {
+            Self::QueryProductRunObservations(_) => {
+                Some(crate::WellKnownProtocolFeature::ProductRunObservations)
+            }
             Self::Improvements(_) => Some(crate::WellKnownProtocolFeature::HarnessImprovements),
             Self::PreviewWorkbenchRewind(_) | Self::InspectWorkbenchCheckpoint(_) => {
                 Some(crate::WellKnownProtocolFeature::WorkbenchCheckpoints)
@@ -216,6 +229,9 @@ impl AppRequestPayload {
             }
             Self::PreviewWorkbenchCompaction(_) => {
                 Some(crate::WellKnownProtocolFeature::WorkbenchCompaction)
+            }
+            Self::QueryWorkbenchPreview(_) => {
+                Some(crate::WellKnownProtocolFeature::WorkbenchPreviewOutput)
             }
             Self::QueryWorkbenchResult(_) => {
                 Some(crate::WellKnownProtocolFeature::WorkbenchPreview)
@@ -244,6 +260,12 @@ impl AppRequestPayload {
             Self::Doctor(_) => Some(crate::WellKnownProtocolFeature::ProductDiagnostics),
             Self::WorkbenchCommand(command) | Self::QueryWorkbenchReceipt(command) => {
                 Some(required_workbench_intent_feature(command.intent()))
+            }
+            Self::ContinueWorkbenchExecution(_) | Self::QueryWorkbenchExecution(_) => {
+                Some(crate::WellKnownProtocolFeature::WorkbenchConversation)
+            }
+            Self::QueryInteractionBinding(_) => {
+                Some(crate::WellKnownProtocolFeature::WorkbenchRunBinding)
             }
             Self::QueryWorkbench(_) => Some(crate::WellKnownProtocolFeature::WorkbenchControl),
             _ => None,

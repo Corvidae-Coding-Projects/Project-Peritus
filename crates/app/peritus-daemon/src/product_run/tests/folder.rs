@@ -305,11 +305,24 @@ fn requested_command_runs_in_the_original_folder_with_daemon_owned_processes() {
                 .any(|activity| activity.text().starts_with("Calling /bin/cp")),
             "completion updates the original entry"
         );
+        // Persistence retains exact model envelopes; the public snapshot presents their prose.
+        let durable_activities = service
+            .inner
+            .records
+            .read()
+            .unwrap()
+            .get(&id)
+            .unwrap()
+            .interaction
+            .as_ref()
+            .unwrap()
+            .activities
+            .clone();
         let restored = super::super::persistence::load_records(&service.inner.directory)
             .expect("durable activities");
         assert_eq!(
             restored.get(&id).unwrap().interaction.as_ref().unwrap().activities,
-            snapshot.activities()
+            durable_activities
         );
         assert_eq!(
             fs::read_to_string(root.path().join("command-result.txt")).expect("command effect"),

@@ -23,6 +23,7 @@ use peritus_types::ActorId;
 
 mod admission;
 mod checkpoints;
+mod conversation;
 mod files;
 mod goals;
 mod images;
@@ -33,6 +34,7 @@ mod permissions;
 mod review;
 
 mod preview;
+mod preview_output;
 mod tetris;
 
 fn actor() -> ActorId {

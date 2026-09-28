@@ -43,7 +43,12 @@ impl ControlReceipt {
         {
             return Err(ControlError::IdempotencyConflict);
         }
-        if operation.expected_revision.checked_add(1) != Some(value.accepted_revision) {
+        if !value.accepted_revision.checked_sub(1).is_some_and(|revision| {
+            operation.accepts_revision(revision)
+                || (operation.can_follow_accounting()
+                    && operation.expected_revision() > 0
+                    && operation.expected_revision() < revision)
+        }) {
             return Err(ControlError::InvalidInput);
         }
         Ok(value)

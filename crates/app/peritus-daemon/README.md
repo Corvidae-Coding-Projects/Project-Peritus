@@ -15,6 +15,20 @@ configuration, lifecycle status, and a bounded authority client. Product-run con
 default-off provider-failover consent into the runner. Provider switches are counted in durable run
 progress and shown in live status without changing the A3 role-selection protocol.
 
+Model discovery runs as bounded, connection-owned read tasks so provider latency does not stop
+heartbeats, events, or other client requests. Each provider has its own discovery gate and readable
+cache; repeated refreshes report an in-progress lookup instead of queuing more provider work.
+Connection shutdown cancels and joins its outstanding discovery tasks. The A3 reader retains
+partial headers and payloads across timer interrupts, with allocation limits checked before the
+payload buffer is allocated.
+
+Terminal detach and cancellation release live attachment slots and retain bounded exact retry
+receipts separately (up to the configured attachment limit, oldest receipts evicted first).
+Detaching leaves the process running and allows a new connection to attach. Admission reclaims
+completed processes with no live attachments using the authoritative native result, even when
+their output history has expired. Owner joins happen outside the registry mutex; attached output
+still requires ordered delivery before retirement.
+
 Product-run records also retain candidate checkpoints, typed settlements, opaque continuation
 state, remaining work, and interruption causes. Startup validates settled candidates against their
 configured managed workspace, marks changed candidates stale, and automatically resumes

@@ -16,42 +16,36 @@ impl AppModel {
         {
             return Some(effects);
         }
-        if matches!(self.view, View::Diff | View::Review)
-            && let Some(product) = &mut self.product
+        if matches!(self.view, View::Diff | View::Review | View::Preview)
+            && matches!(
+                key.code,
+                KeyCode::PageUp | KeyCode::PageDown | KeyCode::Home | KeyCode::End
+            )
         {
-            match key.code {
-                KeyCode::PageUp => {
-                    product.inspection_scroll = product.inspection_scroll.saturating_sub(12);
-                }
-                KeyCode::PageDown => {
-                    product.inspection_scroll = product.inspection_scroll.saturating_add(12);
-                }
-                KeyCode::Home => product.inspection_scroll = 0,
-                _ => return None,
+            let maximum = crate::render::inspection_scroll_limit(self);
+            if let Some(product) = &mut self.product {
+                let offset = if self.view == View::Preview {
+                    &mut product.preview_scroll
+                } else if self.view == View::Diff
+                    && product.review.page.is_some()
+                    && !product.review.raw
+                {
+                    &mut product.review.scroll
+                } else {
+                    &mut product.inspection_scroll
+                };
+                let current = (*offset).min(maximum);
+                *offset = match key.code {
+                    KeyCode::PageUp => current.saturating_sub(12),
+                    KeyCode::PageDown => current.saturating_add(12).min(maximum),
+                    KeyCode::End => maximum,
+                    _ => 0,
+                };
             }
             return Some(Vec::new());
         }
-        if self.view == View::Preview
-            && let Some(product) = &mut self.product
-        {
-            match key.code {
-                KeyCode::PageUp => {
-                    product.preview_scroll = product.preview_scroll.saturating_sub(12);
-                }
-                KeyCode::PageDown => {
-                    product.preview_scroll = product.preview_scroll.saturating_add(12);
-                }
-                KeyCode::Home => product.preview_scroll = 0,
-                KeyCode::Char('r') => {
-                    let query = product
-                        .preview
-                        .as_ref()
-                        .map(peritus_app_protocol::WorkbenchResultPage::query);
-                    return Some(query.map_or_else(Vec::new, |query| self.refresh_preview(query)));
-                }
-                _ => return None,
-            }
-            return Some(Vec::new());
+        if self.view == View::Preview && key.code == KeyCode::Char('r') && self.product.is_some() {
+            return Some(self.refresh_selected_preview(false));
         }
         if self.view != View::Runs {
             return None;

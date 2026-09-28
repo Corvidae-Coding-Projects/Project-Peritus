@@ -6,23 +6,18 @@ use crate::{
     AppRequestPayload, AppResponseEnvelope, AppResponsePayload, ApprovalChallenge,
     ArtifactMetadata, CanonicalMediaType, ClientHello, CommandBinding, CommandSubmissionFrames,
     ControlEnvelope, ControlPayload, CorrelationId, EventCursor, HeartbeatId, HeartbeatReply,
-    IdempotencyKey, ImplementationMetadata, NegotiatedProtocol, NegotiationOutcome,
-    ProductDeliverable, ProductProviderSelection, ProductRunPhase, ProductRunSettlementSnapshot,
-    ProductRunSnapshot, PromptBinding, PromptConstraint, PromptCorrelation, PromptId,
-    ProtocolContext, ProtocolFeatureName, ProtocolFeatureSet, ProtocolId, ProtocolVersion,
-    RequestId, ServerHello, ShutdownProgress, ShutdownRequest, SubscriptionFilter, SubscriptionId,
-    SubscriptionRequest, TerminalAttachmentId, TerminalBinding, TerminalOutput, TerminalStream,
-    TransferId, VersionRange, WellKnownProtocolFeature,
+    IdempotencyKey, ImplementationMetadata, NegotiatedProtocol, NegotiationOutcome, PromptBinding,
+    PromptConstraint, PromptCorrelation, PromptId, ProtocolContext, ProtocolFeatureName,
+    ProtocolFeatureSet, ProtocolId, ProtocolVersion, RequestId, ServerHello, ShutdownProgress,
+    ShutdownRequest, SubscriptionFilter, SubscriptionId, SubscriptionRequest, TerminalAttachmentId,
+    TerminalBinding, TerminalOutput, TerminalStream, TransferId, VersionRange,
+    WellKnownProtocolFeature,
 };
 use peritus_codec::{CanonicalEncode, CodecError, CodecLimits, encode_message};
 use peritus_protocol::schema::generated_binary_artifacts;
-use peritus_run_settlement::{
-    CandidateCheckpoint, CandidateIdentity, CandidateStage, EvidenceStatus, SettlementCause,
-    SettlementReducer,
-};
 use peritus_types::{
     AcceptanceSpecId, ActorId, ArtifactId, CommandId, Generation, HarnessId, PolicyId, ProcessId,
-    ProviderProfileId, RevisionNumber, RevisionTuple, RunId, SessionId, Sha256Digest, WorkspaceId,
+    ProviderProfileId, RevisionNumber, RevisionTuple, SessionId, Sha256Digest, WorkspaceId,
 };
 
 pub(super) fn generated_valid_cases(
@@ -100,9 +95,23 @@ pub(super) fn generated_valid_cases(
             codec_limits,
         )?,
         encoded(
+            "minimal-product-run-observations-query",
+            FixtureClass::Minimal,
+            &request(AppRequestPayload::QueryProductRunObservations(
+                crate::ProductRunQuery::recent(),
+            )),
+            codec_limits,
+        )?,
+        encoded(
+            "realistic-mixed-product-run-observations",
+            FixtureClass::Realistic,
+            &super::run_observations::mixed(),
+            codec_limits,
+        )?,
+        encoded(
             "realistic-product-run-settlement-response",
             FixtureClass::Realistic,
-            &product_run_settlement_response(),
+            &super::run_observations::settled(),
             codec_limits,
         )?,
         encoded(
@@ -289,59 +298,6 @@ fn daemon_response(limits: AppProtocolLimits) -> AppResponseEnvelope {
             )
             .expect("fixture daemon status"),
         ),
-    )
-}
-
-fn product_run_settlement_response() -> AppResponseEnvelope {
-    let run_id = id(31, RunId::new);
-    let workspace_id = id(32, WorkspaceId::new);
-    let providers = ProductProviderSelection::new(
-        id(33, ProviderProfileId::new),
-        id(34, ProviderProfileId::new),
-        id(35, ProviderProfileId::new),
-    );
-    let deliverable = ProductDeliverable::candidate(
-        "/worktrees/fixture".to_owned(),
-        vec!["src/lib.rs".to_owned()],
-        Vec::new(),
-        "cargo test".to_owned(),
-        CandidateStage::Changed,
-    )
-    .expect("fixture candidate deliverable");
-    let snapshot = ProductRunSnapshot::new(
-        run_id,
-        workspace_id,
-        providers,
-        ProductRunPhase::Failed,
-        1,
-        "implement the requested change".to_owned(),
-        "provider ended after writing a candidate".to_owned(),
-        "src/lib.rs changed".to_owned(),
-        String::new(),
-        String::new(),
-        "candidate is preserved for continuation".to_owned(),
-    )
-    .expect("fixture product snapshot")
-    .with_deliverable(deliverable);
-    let checkpoint = CandidateCheckpoint::new(
-        CandidateIdentity::new(run_id, workspace_id, Sha256Digest::new([36; 32]), 4, 2)
-            .expect("fixture candidate identity"),
-        CandidateStage::Changed,
-        EvidenceStatus::Missing,
-        EvidenceStatus::Missing,
-        EvidenceStatus::Missing,
-    )
-    .expect("fixture candidate checkpoint");
-    let mut reducer = SettlementReducer::new();
-    reducer.observe(checkpoint).expect("fixture candidate observation");
-    let settlement = reducer.settle(SettlementCause::Provider).expect("fixture settlement");
-    let settled = ProductRunSettlementSnapshot::new(snapshot, settlement)
-        .expect("fixture product settlement snapshot");
-    AppResponseEnvelope::new(
-        context(),
-        id(10, RequestId::new),
-        id(11, CorrelationId::new),
-        AppResponsePayload::ProductRunSettled(settled),
     )
 }
 

@@ -132,7 +132,18 @@ pub(super) fn install_and_reconcile(
 
     for registration in registrations.values() {
         let durable = registration.durable_registration().map_err(journal_error)?;
-        let installed = journal.register_application_workspace(durable).map_err(journal_error)?;
+        let previous =
+            journal.application_workspace(registration.workspace_id()).map_err(journal_error)?;
+        let installed = if let Some(previous) =
+            previous.filter(|old| old.registration_bytes() != registration.canonical_bytes())
+        {
+            let old = WorkspaceRegistration::from_application_workspace(&previous)
+                .map_err(workspace_error)?;
+            validate_baseline_refresh(&old, registration)?;
+            journal.refresh_application_workspace(&previous, &durable).map_err(journal_error)?
+        } else {
+            journal.register_application_workspace(durable).map_err(journal_error)?
+        };
         if installed.state() != ApplicationWorkspaceState::Registered {
             journal
                 .set_application_workspace_state(
@@ -182,6 +193,32 @@ pub(super) fn install_and_reconcile(
         }
     }
     Ok(WorkspaceCatalog { registrations, folders })
+}
+
+fn validate_baseline_refresh(
+    old: &WorkspaceRegistration,
+    current: &WorkspaceRegistration,
+) -> Result<(), DaemonError> {
+    if old.workspace_id() != current.workspace_id()
+        || old.resource_id() != current.resource_id()
+        || old.environment_id() != current.environment_id()
+        || old.repository_root() != current.repository_root()
+        || old.transaction_root() != current.transaction_root()
+        || old.worktree_manifest().root() != current.worktree_manifest().root()
+        || old.worktree_manifest().repository_digest()
+            != current.worktree_manifest().repository_digest()
+        || old.worktree_manifest().access() != current.worktree_manifest().access()
+    {
+        return Err(invalid("workspace refresh changed a retained authority binding"));
+    }
+    let repository = peritus_git::GitRepository::open(peritus_git::RepositoryOptions::new(
+        current.repository_root(),
+    ))
+    .map_err(|_| invalid("workspace refresh repository is unavailable"))?;
+    repository
+        .reopen_worktree(current.worktree_manifest())
+        .map_err(|_| invalid("workspace refresh does not match its current detached worktree"))?;
+    Ok(())
 }
 
 fn workspace_error(error: peritus_workspace::WorkspaceError) -> DaemonError {

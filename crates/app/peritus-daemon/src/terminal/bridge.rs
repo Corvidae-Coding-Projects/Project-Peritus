@@ -4,7 +4,7 @@ use std::collections::{BTreeMap, VecDeque};
 
 use peritus_app_protocol::{
     TerminalAttachmentId, TerminalBinding, TerminalCancellation, TerminalDetach, TerminalInput,
-    TerminalPhase, TerminalResize, TerminalStream, TerminalTransitionDisposition,
+    TerminalPhase, TerminalResize, TerminalState, TerminalStream, TerminalTransitionDisposition,
 };
 use peritus_process::{
     CancellationReason, ExecutionPlan, IoMode, OwnedProcess, ProcessControl, ProcessCursor,
@@ -20,6 +20,8 @@ use super::{
 };
 
 mod observation;
+mod owner;
+use owner::TerminalOwner;
 
 /// Complete checked registration supplied by the owner of a newly launched C2 process.
 pub struct LiveTerminalRegistration {
@@ -29,7 +31,7 @@ pub struct LiveTerminalRegistration {
     plan_digest: Sha256Digest,
     birth_identity: ProcessTreeIdentity,
     control: ProcessControl,
-    owner: OwnedProcess,
+    owner: TerminalOwner,
 }
 
 impl LiveTerminalRegistration {
@@ -62,7 +64,7 @@ impl LiveTerminalRegistration {
             plan_digest: plan.digest(),
             birth_identity,
             control,
-            owner,
+            owner: TerminalOwner::Direct(owner),
         })
     }
 
@@ -105,7 +107,7 @@ pub(super) struct TerminalBridge {
     plan_digest: Sha256Digest,
     birth_identity: ProcessTreeIdentity,
     control: ProcessControl,
-    owner: OwnedProcess,
+    owner: TerminalOwner,
     process_cursor: ProcessCursor,
     stream_offsets: [u64; 3],
     next_output_offset: u64,
@@ -213,18 +215,18 @@ impl TerminalBridge {
     pub(super) fn detach(
         &mut self,
         detach: TerminalDetach,
-    ) -> Result<TerminalTransitionDisposition, TerminalBridgeError> {
+    ) -> Result<(TerminalTransitionDisposition, TerminalState), TerminalBridgeError> {
         self.require_binding_process(detach.binding())?;
         let attachment = self.attachment_mut(detach.binding())?;
         let disposition = attachment.state_mut().detach(detach)?;
         attachment.clear_pending();
-        Ok(disposition)
+        Ok((disposition, attachment.state().clone()))
     }
 
     pub(super) fn cancel(
         &mut self,
         cancellation: TerminalCancellation,
-    ) -> Result<TerminalTransitionDisposition, TerminalBridgeError> {
+    ) -> Result<(TerminalTransitionDisposition, TerminalState), TerminalBridgeError> {
         self.require_binding_process(cancellation.binding())?;
         let (next, disposition) = {
             let attachment = self.attachment_mut(cancellation.binding())?;
@@ -238,7 +240,7 @@ impl TerminalBridge {
         let attachment = self.attachment_mut(cancellation.binding())?;
         *attachment.state_mut() = next;
         attachment.clear_pending();
-        Ok(disposition)
+        Ok((disposition, attachment.state().clone()))
     }
 
     pub(super) fn poll(

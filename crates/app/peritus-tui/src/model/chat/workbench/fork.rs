@@ -83,8 +83,9 @@ impl AppModel {
         let Ok(child) = ConversationId::new(self.ids.bytes(b"workbench-fork-conversation")) else {
             return Vec::new();
         };
-        let title = format!("Fork of {}", source.title().as_str());
-        let Ok(title) = ConversationTitle::new(title) else { return Vec::new() };
+        let Ok(title) = ConversationTitle::new(fork_title(source.title())) else {
+            return Vec::new();
+        };
         let Ok(request) = WorkbenchForkRequest::new(
             WorkbenchQuery::new(child, workspace),
             title,
@@ -136,4 +137,16 @@ pub(super) fn parse_fork_budget(parts: &[&str]) -> Option<WorkbenchForkBudget> {
         }
     }
     WorkbenchForkBudget::new(time?, requests?, tools?, tokens?).ok()
+}
+
+fn fork_title(source: &ConversationTitle) -> String {
+    let mut title = format!("Fork of {}", source.as_str());
+    if title.len() > peritus_app_protocol::MAX_CONVERSATION_TITLE_BYTES {
+        let end = title.floor_char_boundary(
+            peritus_app_protocol::MAX_CONVERSATION_TITLE_BYTES - '…'.len_utf8(),
+        );
+        title.truncate(end);
+        title.push('…');
+    }
+    title
 }

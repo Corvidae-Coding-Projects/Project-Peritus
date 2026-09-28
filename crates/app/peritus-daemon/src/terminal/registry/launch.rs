@@ -14,6 +14,27 @@ use crate::terminal::{
 };
 
 impl TerminalRegistry {
+    /// Registers an authenticated conversation owner's lease over an existing C4 preview.
+    pub(crate) fn register_preview(
+        &self,
+        actor: peritus_types::ActorId,
+        session: peritus_types::SessionId,
+        lease: peritus_product_runner::PreviewTerminal,
+    ) -> Result<(), TerminalBridgeError> {
+        self.reap_completed()?;
+        let process = lease.plan().identity().process_id();
+        let mut state = self.lock();
+        if let Some(bridge) = state.processes.get_mut(&process) {
+            return bridge.reconnect_preview(actor, session);
+        }
+        if state.processes.len() >= state.limits.maximum_processes {
+            return Err(rejected(TerminalBridgeErrorKind::Capacity, "terminal registry is full"));
+        }
+        let registration = LiveTerminalRegistration::preview(actor, session, lease)?;
+        state.processes.insert(process, crate::terminal::bridge::TerminalBridge::new(registration));
+        Ok(())
+    }
+
     /// Consumes exact C2 authority, launches one PTY, and retains its move-only lifecycle owner.
     ///
     /// The execution gateway remains the sole effect authority. This method only adds the daemon

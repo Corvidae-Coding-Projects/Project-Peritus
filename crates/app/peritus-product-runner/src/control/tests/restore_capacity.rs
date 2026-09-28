@@ -52,6 +52,7 @@ fn applied_restore_invalidates_context_with_a_full_input_ledger() {
             status: RestoreStatus::Applied,
             conflicts: Vec::new(),
             transaction_manifest_digest: Some([3; 32]),
+            seal_recovery: false,
         },
     )
     .expect("settle despite full message capacity");

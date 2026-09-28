@@ -141,6 +141,7 @@ fn unknown_effort_and_noncanonical_explicit_default_payload_are_rejected() {
 #[test]
 fn every_mode_and_new_query_roundtrips() {
     let mut payloads = vec![
+        AppRequestPayload::QueryInteractionBinding(ProductRunConversationQuery::new(run())),
         AppRequestPayload::QueryInteraction(ProductRunConversationQuery::new(run())),
         AppRequestPayload::QueryModels(ProductModelQuery::new(profile(), true)),
         AppRequestPayload::UpdateModels(peritus_app_protocol::ProductModelUpdate::new(
@@ -176,6 +177,40 @@ fn every_mode_and_new_query_roundtrips() {
             )
             .expect("envelope"),
         ));
+    }
+}
+
+#[test]
+fn exact_run_bindings_roundtrip_legacy_and_durable_inputs_with_all_effort_encodings() {
+    use peritus_app_protocol::{
+        ConversationId, ProductInteractionBinding, ProductModelEffort, WorkbenchQuery,
+    };
+    let conversation =
+        WorkbenchQuery::new(ConversationId::new([90; 16]).unwrap(), snapshot().workspace_id());
+    for effort in ProductModelEffort::ALL {
+        let choice = ProductModelChoice::default().with_effort(effort);
+        let interaction = ProductInteractionSnapshot::new(
+            snapshot(),
+            ProductInteractionMode::Chat,
+            ProductRoleModels::new(choice.clone(), choice.clone(), choice),
+            1,
+            1,
+            Vec::new(),
+            None,
+        )
+        .unwrap();
+        for destination in [None, Some(conversation)] {
+            let binding = ProductInteractionBinding::new(interaction.clone(), destination).unwrap();
+            roundtrip(&AppMessage::Response(AppResponseEnvelope::new(
+                context(),
+                RequestId::new([6; 16]).unwrap(),
+                CorrelationId::new([7; 16]).unwrap(),
+                AppResponsePayload::InteractionBinding(binding),
+            )));
+        }
+        let other_workspace =
+            WorkbenchQuery::new(conversation.conversation(), WorkspaceId::new([91; 16]).unwrap());
+        assert!(ProductInteractionBinding::new(interaction, Some(other_workspace)).is_err());
     }
 }
 

@@ -205,7 +205,7 @@ fn read_line_range(path: &Path, start: usize, end: usize) -> Result<String, Deve
     let mut output = String::new();
     loop {
         let available = reader.fill_buf().map_err(|error| tool(error.to_string()))?;
-        if available.is_empty() || current >= end {
+        if available.is_empty() || current > end {
             break;
         }
         let consumed = available
@@ -229,7 +229,7 @@ fn read_line_range(path: &Path, start: usize, end: usize) -> Result<String, Deve
             current = current.saturating_add(1);
         }
     }
-    if current >= start && current < end && !selected.is_empty() {
+    if current >= start && current <= end && !selected.is_empty() {
         append_line(&mut output, current, &selected)?;
     }
     Ok(output)

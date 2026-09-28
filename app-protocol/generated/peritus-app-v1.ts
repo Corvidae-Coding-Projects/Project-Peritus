@@ -79,9 +79,14 @@ export type AppPayloadKind =
   | "begin-workbench-file-upload"
   | "preview-workbench-file-import"
   | "preview-workbench-compaction"
+  | "query-workbench-execution"
+  | "continue-workbench-execution"
+  | "query-interaction-binding"
   | "query-workbench-goal"
   | "query-workbench-review"
   | "query-workbench-result"
+  | "query-workbench-preview"
+  | "query-product-run-observations"
   | "preview-workbench-rewind"
   | "inspect-workbench-checkpoint"
   | "query-conversation-library"
@@ -118,9 +123,13 @@ export type AppPayloadKind =
   | "workbench-files"
   | "workbench-file-import-preview"
   | "workbench-compaction-preview"
+  | "workbench-execution"
+  | "interaction-binding"
   | "workbench-goal"
   | "workbench-review"
   | "workbench-result"
+  | "workbench-preview"
+  | "product-run-observations"
   | "workbench-checkpoint"
   | "workbench-rewind-preview"
   | "workbench-restore"
@@ -610,6 +619,17 @@ export interface WorkbenchDismissReviewIntent {
   readonly comment: ControlOperationId;
 }
 
+export interface WorkbenchContinuation {
+  readonly query: WorkbenchQuery;
+  readonly mode: "chat" | "plan" | "review" | "build";
+}
+
+export interface WorkbenchExecutionState {
+  readonly snapshot: WorkbenchSnapshot;
+  readonly run?: RunId;
+  readonly goal: boolean;
+}
+
 export interface WorkbenchExecutionSettings {
   readonly run: RunId;
   readonly providers: ProductProviderSelection;
@@ -743,6 +763,18 @@ export interface WorkbenchArtifactFeedbackIntent {
   readonly feedback: "explain" | "requestRevision" | "keepBehavior" | "leaveAlone";
   readonly message: string;
   readonly region?: WorkbenchArtifactRegion;
+}
+
+export interface WorkbenchPreviewOutput {
+  readonly launch: ControlOperationId;
+  readonly stdout: string;
+  readonly stderr: string;
+  readonly truncated: boolean;
+}
+
+export interface WorkbenchPreviewSnapshot {
+  readonly result: WorkbenchResultPage;
+  readonly outputs: readonly WorkbenchPreviewOutput[];
 }
 
 export interface WorkbenchInteractionReceipt {
@@ -1694,6 +1726,11 @@ export interface ProductRunSnapshot {
   readonly deliverable?: ProductDeliverable;
 }
 
+export interface ProductRunObservation {
+  readonly snapshot: ProductRunSnapshot;
+  readonly settlement?: RunSettlement;
+}
+
 export interface CandidateIdentity {
   readonly runId: RunId;
   readonly workspaceId: WorkspaceId;
@@ -1796,6 +1833,12 @@ export interface ProductModelCatalog {
   readonly cached: boolean;
   readonly error: string;
   readonly models: readonly ProductModelInfo[];
+}
+
+export interface ProductInteractionBinding {
+  readonly hasEffort: boolean;
+  readonly interaction: ProductInteractionSnapshot;
+  readonly conversation?: WorkbenchQuery;
 }
 
 export interface CanonicalAppMessage {

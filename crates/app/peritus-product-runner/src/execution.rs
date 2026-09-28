@@ -262,7 +262,6 @@ impl ProductRunner {
                         &state.successful_commands,
                     );
                     state.task_summary = completion_summary(
-                        &input.task,
                         &state.task_summary,
                         &state.fix_summaries,
                         &changed_paths,

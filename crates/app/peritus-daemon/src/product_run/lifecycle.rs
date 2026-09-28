@@ -133,7 +133,12 @@ impl ProductRunService {
                 return Err(ProductRunServiceError::InvalidState);
             }
             let record = records.get_mut(&run_id).expect("checked product run exists");
-            let pending_chat = record.snapshot.phase() == ProductRunPhase::WaitingForUser
+            let pending_chat = (record.snapshot.phase() == ProductRunPhase::WaitingForUser
+                || (record.snapshot.phase() == ProductRunPhase::Complete
+                    && record
+                        .interaction
+                        .as_ref()
+                        .is_some_and(|options| options.workbench.is_some())))
                 && self.pending_record_input(record)?;
             if !record.snapshot.phase().retryable() && !pending_chat {
                 return Err(ProductRunServiceError::InvalidState);

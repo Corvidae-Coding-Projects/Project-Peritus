@@ -23,8 +23,10 @@ mod healing;
 mod improvements;
 mod interaction;
 mod model_selection;
+mod observations;
 mod recovery;
 mod support;
+mod task_baseline;
 mod workbench;
 
 use support::{
@@ -301,7 +303,7 @@ fn service(
             folders: BTreeMap::new(),
             processes,
             tasks: tokio::sync::Mutex::new(Vec::new()),
-            model_catalogs: tokio::sync::Mutex::new(BTreeMap::new()),
+            model_catalogs: super::catalog::ModelCatalogs::default(),
             image_decodes: Arc::new(tokio::sync::Semaphore::new(2)),
             preview_processes: std::sync::Mutex::new(BTreeMap::new()),
             preview_capture: super::PreviewCaptureHost::discover(),

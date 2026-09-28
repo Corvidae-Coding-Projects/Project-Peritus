@@ -2,7 +2,7 @@
 
 use std::{path::PathBuf, time::Duration};
 
-use peritus_product_state::ProviderKind;
+use peritus_product_state::{ProviderKind, WorkspaceProfile};
 use peritus_tui::{ExitReason, ProductLaunchContext, ProductProviderOption, TuiConfig};
 use peritus_types::{ProviderProfileId, WorkspaceId};
 
@@ -12,6 +12,7 @@ use crate::{
 };
 
 mod diagnostics;
+mod navigation;
 
 /// Prepares local state, starts or reuses the daemon, and runs the interactive application.
 ///
@@ -59,7 +60,7 @@ pub async fn launch_interactive_run(
     }
     let product = product_context(&prepared)?.with_run(run);
     let report = diagnostics::launcher_report(&prepared, &binaries, product.workspace_id())?;
-    let product = product.with_launcher_report(report).map_err(LauncherError::Tui)?;
+    let mut product = product.with_launcher_report(report).map_err(LauncherError::Tui)?;
     let mut tui_state = peritus_tui::TuiState::default();
     loop {
         supervisor.ensure_ready(&prepared, &binaries).await?;
@@ -72,6 +73,18 @@ pub async fn launch_interactive_run(
         match outcome {
             ExitReason::UserQuit => return Ok(outcome),
             ExitReason::RecoverDaemon => {}
+            ExitReason::OpenRun { run, workspace } => {
+                match navigation::run_context(&prepared, &binaries, run, workspace) {
+                    Ok(context) => product = context,
+                    Err(error) => tui_state.conversation_open_failed(&error.to_string()),
+                }
+            }
+            ExitReason::OpenConversation(query) => {
+                match navigation::conversation_context(&prepared, &binaries, query) {
+                    Ok(context) => product = context,
+                    Err(error) => tui_state.conversation_open_failed(&error.to_string()),
+                }
+            }
         }
     }
 }
@@ -103,6 +116,13 @@ fn product_context(
     let workspace = prepared.state().workspaces().active().ok_or_else(|| {
         LauncherError::WorkspaceSetup("no active workspace is available after setup".to_owned())
     })?;
+    workspace_context(prepared, workspace)
+}
+
+fn workspace_context(
+    prepared: &crate::PreparedProduct,
+    workspace: &WorkspaceProfile,
+) -> Result<ProductLaunchContext, LauncherError> {
     let workspace_id = WorkspaceId::new(decode_id(workspace.workspace_id())?).map_err(|error| {
         LauncherError::WorkspaceSetup(format!("active workspace identity is invalid: {error:?}"))
     })?;

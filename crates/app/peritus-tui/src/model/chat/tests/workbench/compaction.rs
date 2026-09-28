@@ -58,7 +58,7 @@ fn compact_previews_then_confirms_the_exact_revision_fenced_source_handles() {
         &preview_request,
         AppResponsePayload::WorkbenchCompactionPreview(preview.clone()),
     );
-    assert_eq!(model.chat.buffer, "/compact preserve decisions");
+    assert!(model.chat.buffer.is_empty());
     let apply_request = request(&key(&mut model, KeyCode::Char('c')));
     let AppRequestPayload::WorkbenchCommand(command) = apply_request.payload() else {
         panic!("apply command");
@@ -67,7 +67,7 @@ fn compact_previews_then_confirms_the_exact_revision_fenced_source_handles() {
     assert!(
         matches!(command.intent(), WorkbenchIntent::ApplyCompaction(value) if value == &preview)
     );
-    assert_eq!(model.chat.buffer, "/compact preserve decisions");
+    assert!(model.chat.buffer.is_empty());
 
     let refresh = request(&respond(&mut model, &apply_request, receipt(command)));
     assert!(matches!(refresh.payload(), AppRequestPayload::QueryWorkbench(_)));

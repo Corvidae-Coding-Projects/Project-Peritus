@@ -12,8 +12,11 @@ use peritus_types::RunId;
 use super::persistence::persist_record;
 use super::snapshot::replace_snapshot;
 use super::{ProductRunService, ProductRunServiceError};
+mod baseline;
 mod goal;
+mod handoff;
 mod launch;
+use handoff::{fail_handoff, terminal_summary};
 #[cfg(test)]
 pub use launch::inject_finish_barrier;
 
@@ -131,7 +134,10 @@ impl ProductRunService {
                 let _ = self.seal_latest_checkpoint(start, run_id);
             }
         }
-        if self.settle_workbench_goal(record, &result).is_err() {
+        if !self.retain_task_baseline(record) {
+            return;
+        }
+        let Ok(goal_status) = self.settle_workbench_goal(record, &result) else {
             if let Some(options) = &record.interaction {
                 options.persistence_failed.store(true, std::sync::atomic::Ordering::Release);
             }
@@ -145,7 +151,7 @@ impl ProductRunService {
             }
             let _ = persist_record(&self.inner.directory, record);
             return;
-        }
+        };
         let public_reply = match result {
             Ok(outcome) if outcome.settlement().disposition() == RunDisposition::Accepted => {
                 let Some(output) = outcome.candidate() else {
@@ -243,6 +249,16 @@ impl ProductRunService {
                 )
             }
         };
+        if let Some(status) = goal_status
+            && let Ok(snapshot) = replace_snapshot(
+                &record.snapshot,
+                record.snapshot.phase(),
+                status,
+                record.snapshot.summary(),
+            )
+        {
+            record.snapshot = snapshot;
+        }
         if let Err(error) = self.collect_improvement(record)
             && let Some(options) = &mut record.interaction
         {
@@ -363,32 +379,4 @@ impl ProductRunService {
         )
         .ok()
     }
-}
-
-fn terminal_summary(outcome: &ProductRunOutcome, detail: &str) -> String {
-    let mut summary = outcome
-        .candidate()
-        .map_or_else(|| detail.to_owned(), |candidate| candidate.summary.clone());
-    if !detail.is_empty() && !summary.contains(detail) {
-        summary.push_str("\n\nInterruption: ");
-        summary.push_str(detail);
-    }
-    if !outcome.remaining_work().is_empty() && !summary.contains("Remaining work:") {
-        summary.push_str("\n\nRemaining work:\n- ");
-        summary.push_str(&outcome.remaining_work().join("\n- "));
-    }
-    summary
-}
-
-fn fail_handoff(record: &mut super::RunRecord) {
-    let detail = "Passing checks could not be projected into a durable deliverable handoff";
-    if let Ok(snapshot) = replace_snapshot(
-        &record.snapshot,
-        ProductRunPhase::Failed,
-        "Create durable deliverable handoff failed",
-        detail,
-    ) {
-        record.snapshot = snapshot;
-    }
-    let _ = record.conversation.append(ProductConversationRole::Agent, detail.to_owned());
 }

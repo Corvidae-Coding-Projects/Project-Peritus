@@ -113,16 +113,38 @@ impl AppModel {
         &mut self,
         query: WorkbenchQuery,
         brief: WorkbenchBrief,
-    ) {
+    ) -> Vec<Effect> {
         if brief.query() != query
             || self.chat.workbench.selected != Some(query)
             || (self.chat.workbench.mode != WorkbenchMode::Brief && !self.chat.workbench.goal_mode)
         {
-            return;
+            return Vec::new();
         }
+        let confirmed_objective = self.chat.workbench.goal_confirm_pending.take();
+        let continue_goal = confirmed_objective.is_some();
+        let exact_objective = self.chat.workbench.goal_draft.as_ref().is_some_and(|draft| {
+            confirmed_objective.as_ref() == Some(draft.objective())
+                && brief.entries().iter().any(|entry| {
+                    entry.field() == WorkbenchBriefField::Objective
+                        && entry.source().text() == draft.objective()
+                        && matches!(
+                            entry.source().state(),
+                            peritus_app_protocol::WorkbenchInputState::Queued
+                                | peritus_app_protocol::WorkbenchInputState::Incorporated
+                        )
+                })
+        });
         self.chat.workbench.brief = Some(brief);
+        self.complete_workbench_inspection();
         self.chat.workbench.scroll = 0;
         self.chat.workbench.message.clear();
+        if continue_goal && exact_objective {
+            return self.confirm_goal();
+        }
+        if continue_goal {
+            self.notice(NoticeLevel::Warning, "The objective changed during confirmation; review /brief and confirm the goal again. Draft retained.");
+        }
+        Vec::new()
     }
 
     fn brief_available(&self) -> bool {

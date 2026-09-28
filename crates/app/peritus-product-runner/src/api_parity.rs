@@ -54,10 +54,18 @@ fn command_effects(
         runtime.commit_folder_patch_authority(plan, Vec::new());
     let _: Result<PreviewLaunch, ProductRunnerError> = runtime.launch_preview(command);
     let _: Result<PreviewObservation, ProductRunnerError> = runtime.observe_preview(launch);
+    let _: Result<crate::PreviewTerminal, ProductRunnerError> = runtime.preview_terminal(launch);
     let _: Result<PreviewObservation, ProductRunnerError> =
         runtime.interact_preview(launch, Vec::new());
     let _: Result<PreviewObservation, ProductRunnerError> = runtime.stop_preview(launch);
     let _: Result<PreviewObservation, ProductRunnerError> = runtime.run_preview_helper(command);
+}
+
+#[allow(dead_code)]
+fn terminal_lease(lease: crate::PreviewTerminal) {
+    let _: &peritus_process::ExecutionPlan = lease.plan();
+    let _: peritus_process::ProcessControl = lease.control();
+    let _: Result<peritus_process::TerminalResult, ProductRunnerError> = lease.wait();
 }
 
 #[allow(dead_code)]
@@ -125,4 +133,26 @@ fn shared_control_and_attachment(
     _input: peritus_agent::DeveloperInput,
     _admission: peritus_agent::DeveloperRequestAdmission,
 ) {
+}
+
+#[allow(dead_code)]
+fn task_baseline(
+    workspace: &std::path::Path,
+    trace: &std::path::Path,
+    bytes: &str,
+    paths: &[String],
+) {
+    let _: Result<peritus_types::Sha256Digest, ProductRunnerError> =
+        crate::ProductRunner::candidate_source_digest(workspace);
+    let _: Result<Option<String>, ProductRunnerError> =
+        crate::ProductRunner::retained_task_baseline(trace);
+    let _: Result<(), ProductRunnerError> = crate::ProductRunner::validate_task_baseline(bytes);
+    let _: Result<Option<Vec<u8>>, ProductRunnerError> =
+        crate::ProductRunner::task_candidate_patch(workspace, trace);
+    let _: Result<Vec<u8>, ProductRunnerError> =
+        crate::ProductRunner::candidate_patch_from_baseline(workspace, bytes);
+    let _: Result<Option<Vec<PathBuf>>, ProductRunnerError> =
+        crate::ProductRunner::discard_task_candidate(workspace, trace, paths);
+    let _: Result<Vec<PathBuf>, ProductRunnerError> =
+        crate::ProductRunner::discard_from_baseline(workspace, bytes, paths);
 }

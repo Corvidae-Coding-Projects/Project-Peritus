@@ -74,7 +74,7 @@ impl AssertionFailure {
     }
 }
 
-/// A typed subject setup or teardown failure supplied by a subject factory.
+/// A typed setup, exercise, or teardown infrastructure failure.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct SubjectFailure {
     code: FailureCode,
@@ -82,7 +82,7 @@ pub struct SubjectFailure {
 }
 
 impl SubjectFailure {
-    /// Creates a subject lifecycle failure.
+    /// Creates a subject lifecycle or observation failure.
     #[must_use]
     pub const fn new(code: FailureCode, summary: ReportText) -> Self {
         Self { code, summary }
@@ -189,6 +189,8 @@ pub enum CaseFailure {
     Assertion(AssertionFailure),
     /// The subject factory returned a typed setup failure.
     Setup(SubjectFailure),
+    /// The case could not execute or obtain its required observations.
+    Exercise(SubjectFailure),
     /// Setup or case execution unwound with a caught panic.
     Panic(PanicFailure),
 }
@@ -199,7 +201,7 @@ impl CaseFailure {
     pub const fn kind(&self) -> FailureKind {
         match self {
             Self::Assertion(_) => FailureKind::ContractViolation,
-            Self::Setup(_) | Self::Panic(_) => FailureKind::Infrastructure,
+            Self::Setup(_) | Self::Exercise(_) | Self::Panic(_) => FailureKind::Infrastructure,
         }
     }
 }

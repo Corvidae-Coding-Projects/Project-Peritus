@@ -148,6 +148,30 @@ pub(super) fn write_snapshot(
     Ok(())
 }
 
+pub(super) fn write_binding(
+    writer: &mut CanonicalWriter,
+    binding: &crate::ProductInteractionBinding,
+) -> Result<(), CodecError> {
+    writer.write_option_tag(binding.interaction().models().has_effort())?;
+    write_snapshot(writer, binding.interaction())?;
+    writer.write_option_tag(binding.conversation().is_some())?;
+    if let Some(query) = binding.conversation() {
+        super::workbench::write_query(writer, query)?;
+    }
+    Ok(())
+}
+
+pub(super) fn read_binding(
+    reader: &mut CanonicalReader<'_>,
+) -> Result<crate::ProductInteractionBinding, CodecError> {
+    let offset = reader.offset();
+    let efforts = reader.read_option_tag()?;
+    let interaction = read_snapshot(reader, efforts)?;
+    let conversation =
+        if reader.read_option_tag()? { Some(super::workbench::read_query(reader)?) } else { None };
+    invalid(offset, crate::ProductInteractionBinding::new(interaction, conversation))
+}
+
 pub(super) fn read_snapshot(
     r: &mut CanonicalReader<'_>,
     efforts: bool,

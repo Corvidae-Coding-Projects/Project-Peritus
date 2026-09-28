@@ -60,6 +60,26 @@ fn screen(model: &AppModel, width: u16, height: u16) -> (String, (u16, u16)) {
 }
 
 #[test]
+fn disconnected_composer_keeps_reconnect_visible_after_notice_expiry_at_narrow_widths() {
+    let mut model = model();
+    model.connection = ConnectionStatus::Disconnected("transport unavailable".into());
+    model.notice = None;
+    model.chat.buffer = "retained draft".into();
+    model.chat.cursor = model.chat.buffer.len();
+    for width in [32, 40, 80] {
+        let (text, _) = screen(&model, width, 24);
+        assert!(text.starts_with("Peritus · disconnected"));
+        assert!(text.contains("Offline · Ctrl-R reconnects"));
+        assert!(text.contains("retained draft"));
+        assert!(!text.contains("Enter sends"));
+    }
+    model.connection = ConnectionStatus::Connecting;
+    let (text, _) = screen(&model, 80, 24);
+    assert!(text.contains("Connecting · draft kept"));
+    assert!(!text.contains("Enter sends"));
+}
+
+#[test]
 fn provider_failure_details_are_visible_without_expanding_the_transcript() {
     let mut model = model();
     let previous = model.chat.snapshot.take().expect("snapshot");

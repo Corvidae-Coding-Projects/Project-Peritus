@@ -8,6 +8,50 @@ use crate::{AggregateKind, AppendRequest, EventDraft, ExactFrame, HeadExpectatio
 use super::{command, event, key, open, store_id};
 
 #[test]
+fn version_one_artifact_catalog_migrates_without_losing_identity_or_metadata() {
+    use crate::{NewApplicationArtifact, SqliteJournal, SqliteJournalOptions};
+    use peritus_types::ArtifactId;
+
+    let temp = TempDir::new().expect("temporary directory");
+    let path = temp.path().join("old.sqlite3");
+    let connection = rusqlite::Connection::open(&path).expect("old database");
+    let schema = super::super::schema::INSTALL_SCHEMA.replace(
+        "digest BLOB NOT NULL CHECK (length(digest) = 32)",
+        "digest BLOB NOT NULL UNIQUE CHECK (length(digest) = 32)",
+    );
+    connection.execute_batch(&schema).expect("version one tables");
+    connection
+        .execute("INSERT INTO store_meta VALUES (1, ?1, 1)", [store_id().as_bytes().as_slice()])
+        .expect("old store binding");
+    connection.pragma_update(None, "user_version", 1).expect("old version");
+    connection
+        .execute(
+            "INSERT INTO app_artifacts VALUES (?1, ?2, 12, 'text/plain', 1, NULL)",
+            params![[3_u8; 16], [4_u8; 32]],
+        )
+        .expect("original attachment");
+    drop(connection);
+
+    let mut journal =
+        SqliteJournal::open(&path, store_id(), SqliteJournalOptions::default()).expect("upgrade");
+    let original =
+        journal.application_artifact(ArtifactId::new([3; 16]).unwrap()).unwrap().unwrap();
+    let duplicate = NewApplicationArtifact::new(
+        ArtifactId::new([5; 16]).unwrap(),
+        original.digest(),
+        original.byte_size(),
+        original.media_type().to_owned(),
+    )
+    .unwrap();
+    journal.begin_application_artifact(duplicate).expect("distinct identity, same content");
+    drop(journal);
+    let journal = SqliteJournal::open(&path, store_id(), SqliteJournalOptions::default())
+        .expect("repeat open");
+    assert_eq!(journal.application_artifact(original.artifact_id()).unwrap(), Some(original));
+    assert!(journal.application_artifact(ArtifactId::new([5; 16]).unwrap()).unwrap().is_some());
+}
+
+#[test]
 fn rejected_open_does_not_leave_partial_schema_installation() {
     for (identity, version, kind) in [
         ([2_u8; 16], 1, crate::JournalErrorKind::InvalidInput),

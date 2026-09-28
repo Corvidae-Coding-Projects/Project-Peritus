@@ -6,6 +6,8 @@ use std::{
     process::Command,
 };
 
+pub mod managed;
+
 use crate::workspace_filter;
 use crate::{ProductRunnerError, ProductRunnerErrorKind};
 
@@ -13,6 +15,7 @@ use crate::{ProductRunnerError, ProductRunnerErrorKind};
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct CandidateBaseline {
     head: String,
+    managed: Option<managed::ManagedBaseline>,
     in_place: Option<crate::workspace_delivery::scope::ScopedBaseline>,
 }
 
@@ -39,7 +42,7 @@ impl CandidateBaseline {
                 "managed workspace has no committed HEAD",
             ));
         }
-        Ok(Self { head, in_place: None })
+        Ok(Self { head, in_place: None, managed: None })
     }
 
     pub(crate) fn restored(head: String) -> Result<Self, ProductRunnerError> {
@@ -49,7 +52,7 @@ impl CandidateBaseline {
                 "durable candidate base is not a Git object identifier",
             ));
         }
-        Ok(Self { head, in_place: None })
+        Ok(Self { head, in_place: None, managed: None })
     }
 
     /// Returns every tracked modification/deletion and nonignored untracked file against the
@@ -60,6 +63,9 @@ impl CandidateBaseline {
     pub fn changed_paths(&self, root: &Path) -> Result<Vec<PathBuf>, ProductRunnerError> {
         if let Some(scope) = &self.in_place {
             return scope.changed_paths(root);
+        }
+        if let Some(baseline) = &self.managed {
+            return baseline.changed_paths(root);
         }
         let mut paths = BTreeSet::new();
         let tracked = Command::new("git")
@@ -92,12 +98,38 @@ impl CandidateBaseline {
         Ok(paths.into_iter().collect())
     }
 
+    pub(crate) fn capture_task(root: &Path, trace: &Path) -> Result<Self, ProductRunnerError> {
+        let mut baseline = Self::capture(root)?;
+        let managed = managed::ManagedBaseline::capture(root, true)?;
+        managed.save(&trace.with_extension("baseline"))?;
+        baseline.managed = Some(managed);
+        Ok(baseline)
+    }
+
+    pub(crate) const fn managed(&self) -> Option<&managed::ManagedBaseline> {
+        self.managed.as_ref()
+    }
+
+    pub(crate) fn with_managed(
+        mut self,
+        managed: Option<managed::ManagedBaseline>,
+    ) -> Result<Self, ProductRunnerError> {
+        if let Some(value) = &managed {
+            value.validate()?;
+            if self.in_place.is_some() {
+                return Err(repository("restore baseline", "mixed workspace kinds"));
+            }
+        }
+        self.managed = managed;
+        Ok(self)
+    }
+
     pub(crate) fn head(&self) -> &str {
         &self.head
     }
 
     pub(crate) const fn in_place(scope: crate::workspace_delivery::scope::ScopedBaseline) -> Self {
-        Self { head: String::new(), in_place: Some(scope) }
+        Self { head: String::new(), in_place: Some(scope), managed: None }
     }
 
     pub(crate) const fn scope(&self) -> Option<&crate::workspace_delivery::scope::ScopedBaseline> {

@@ -1,25 +1,27 @@
 //! Interactive product-run composer and daemon-observation projection.
 
+mod composer;
 mod interaction;
 mod observation;
 mod preview;
 mod review;
 
-pub use review::ReviewFocus;
+pub use review::{ReviewDraft, ReviewFocus};
 
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 
 use peritus_app_protocol::{
-    AppRequestPayload, ProductProviderSelection, ProductRunContinuation, ProductRunControl,
-    ProductRunControlAction, ProductRunConversation, ProductRunRequest, ProductRunSnapshot,
+    AppRequestPayload, ProductProviderSelection, ProductRunControl, ProductRunControlAction,
+    ProductRunConversation, ProductRunSnapshot,
 };
 use peritus_run_settlement::{
-    CandidateCheckpoint, CandidateStage, EvidenceStatus, QualificationEvidence, RunSettlement,
+    CandidateCheckpoint, CandidateIdentity, CandidateStage, EvidenceStatus, QualificationEvidence,
+    RunSettlement,
 };
 use peritus_types::RunId;
 
-use super::{AppModel, Editor, EditorKind, Effect, NoticeLevel, PendingRequest};
+use super::{AppModel, Effect, NoticeLevel, PendingRequest};
 use crate::runtime::ProductLaunchContext;
 
 #[derive(Debug)]
@@ -33,6 +35,9 @@ pub struct ProductUi {
     pub inspection_scroll: u16,
     pub preview: Option<peritus_app_protocol::WorkbenchResultPage>,
     pub preview_scroll: u16,
+    pub preview_outputs: Vec<peritus_app_protocol::WorkbenchPreviewOutput>,
+    pub preview_query: Option<peritus_app_protocol::WorkbenchResultQuery>,
+    pub preview_message: String,
     pub(crate) review: review::DiffReviewUi,
     writer: usize,
     reviewer: usize,
@@ -52,6 +57,9 @@ impl ProductUi {
             inspection_scroll: 0,
             preview: None,
             preview_scroll: 0,
+            preview_outputs: Vec::new(),
+            preview_query: None,
+            preview_message: String::new(),
             review: review::DiffReviewUi::default(),
             writer: default,
             reviewer: default,
@@ -108,6 +116,8 @@ pub struct CandidateConfirmation {
     pub run_id: RunId,
     pub action: ProductRunControlAction,
     pub warning: String,
+    snapshot: ProductRunSnapshot,
+    identity: Option<CandidateIdentity>,
 }
 
 #[derive(Clone, Copy)]
@@ -122,7 +132,8 @@ impl AppModel {
         let Some((workspace, instruction, candidate_digest)) =
             self.product.as_ref().and_then(|product| {
                 let run = product.selected_run().filter(|run| run.phase().terminal())?;
-                let deliverable = run.deliverable()?;
+                let deliverable =
+                    run.deliverable().filter(|deliverable| !deliverable.discarded())?;
                 let checkpoint = product.selected_settlement()?.checkpoint()?;
                 Some((
                     PathBuf::from(deliverable.workspace_path()),
@@ -133,7 +144,7 @@ impl AppModel {
         else {
             self.notice(
                 NoticeLevel::Warning,
-                "run is available after the coding run stops with an exact candidate identity",
+                "run is available after the coding run stops with a current, undiscarded candidate",
             );
             return Vec::new();
         };
@@ -147,106 +158,20 @@ impl AppModel {
         }
     }
 
-    pub(super) fn open_task_composer(&mut self) {
-        if self
-            .product
-            .as_ref()
-            .is_some_and(|product| product.launch.direct_folder_writable().is_some())
-        {
-            self.notice(NoticeLevel::Info, "Use /chat to request in-place folder changes. Checked candidate delivery requires a managed Git workspace.");
-            return;
-        }
-        if self.product.is_none() {
-            self.notice(
-                NoticeLevel::Warning,
-                "Start Peritus through the `peritus` command to create coding runs",
-            );
-            return;
-        }
-        self.editor = Some(Editor {
-            kind: EditorKind::ProductTask,
-            title: "New coding task",
-            hint: "Describe the outcome. Shift-Enter adds a line; Enter starts the run.",
-            buffer: String::new(),
-            cursor: 0,
-        });
-    }
-
-    pub(super) fn submit_product_task(&mut self, task: String) -> Vec<Effect> {
-        let Some(run_id) = self.ids.run() else {
-            self.notice(NoticeLevel::Error, "could not allocate a run identity");
-            return Vec::new();
-        };
-        let Some(product) = &self.product else { return Vec::new() };
-        let Some(providers) = product.providers() else {
-            self.notice(
-                NoticeLevel::Warning,
-                "No provider is configured. Run `peritus providers` to sign in or add one.",
-            );
-            return Vec::new();
-        };
-        let request =
-            match ProductRunRequest::new(run_id, product.launch.workspace_id(), providers, task) {
-                Ok(request) => request,
-                Err(error) => {
-                    self.notice(NoticeLevel::Error, error.to_string());
-                    return Vec::new();
-                }
-            };
-        self.request(AppRequestPayload::StartProductRun(request), PendingRequest::ProductStart)
-            .into_iter()
-            .collect()
-    }
-
-    pub(super) fn open_product_message_composer(&mut self) {
-        let Some(run_id) =
-            self.product.as_ref().and_then(ProductUi::selected_run).map(ProductRunSnapshot::run_id)
-        else {
-            self.notice(NoticeLevel::Warning, "select a coding run before sending a message");
-            return;
-        };
-        self.editor = Some(Editor {
-            kind: EditorKind::ProductMessage(run_id),
-            title: "Message this coding run",
-            hint: "Reply, redirect, add context, or say continue. Shift-Enter adds a line.",
-            buffer: String::new(),
-            cursor: 0,
-        });
-    }
-
-    pub(super) fn submit_product_message(&mut self, run_id: RunId, message: String) -> Vec<Effect> {
-        let continuation = match ProductRunContinuation::new(run_id, message) {
-            Ok(continuation) => continuation,
-            Err(error) => {
-                self.notice(NoticeLevel::Error, error.to_string());
-                return Vec::new();
-            }
-        };
-        self.request(
-            AppRequestPayload::ContinueProductRun(continuation),
-            PendingRequest::ProductContinue,
-        )
-        .into_iter()
-        .collect()
-    }
-
     pub(super) fn control_selected_product_run(
         &mut self,
         action: ProductRunControlAction,
     ) -> Vec<Effect> {
-        let Some((run_id, phase, qualification, has_deliverable)) =
-            self.product.as_ref().and_then(ProductUi::selected_run).map(|run| {
-                (
-                    run.run_id(),
-                    run.phase(),
-                    run.deliverable().map(peritus_app_protocol::ProductDeliverable::qualification),
-                    run.deliverable().is_some(),
-                )
-            })
+        let Some(snapshot) = self.product.as_ref().and_then(ProductUi::selected_run).cloned()
         else {
             self.notice(NoticeLevel::Warning, "no coding run is selected");
             return Vec::new();
         };
+        let run_id = snapshot.run_id();
+        let phase = snapshot.phase();
+        let qualification =
+            snapshot.deliverable().map(peritus_app_protocol::ProductDeliverable::qualification);
+        let has_deliverable = snapshot.deliverable().is_some();
         if matches!(action, ProductRunControlAction::Cancel)
             && phase.terminal()
             && phase != peritus_app_protocol::ProductRunPhase::WaitingForUser
@@ -261,18 +186,8 @@ impl AppModel {
             );
             return Vec::new();
         }
-        let deliverable_action = matches!(
-            action,
-            ProductRunControlAction::Accept
-                | ProductRunControlAction::Commit
-                | ProductRunControlAction::Export
-                | ProductRunControlAction::Discard
-        );
-        if deliverable_action && (!phase.terminal() || !has_deliverable) {
-            self.notice(
-                NoticeLevel::Warning,
-                "deliverable actions are available after the run stops with a candidate",
-            );
+        if let Some((level, message)) = unavailable_handoff(&snapshot, action) {
+            self.notice(level, message);
             return Vec::new();
         }
         if matches!(action, ProductRunControlAction::Accept | ProductRunControlAction::Commit)
@@ -280,15 +195,31 @@ impl AppModel {
             && qualification != Some(CandidateStage::Qualified)
         {
             let warning = self.unqualified_warning(run_id, action);
+            let identity = self
+                .product
+                .as_ref()
+                .and_then(ProductUi::selected_settlement)
+                .and_then(RunSettlement::checkpoint)
+                .map(|checkpoint| *checkpoint.identity());
             let confirmed = self
                 .product
                 .as_ref()
                 .and_then(|product| product.confirmation.as_ref())
-                .is_some_and(|pending| pending.run_id == run_id && pending.action == action);
+                .is_some_and(|pending| {
+                    pending.run_id == run_id
+                        && pending.action == action
+                        && pending.snapshot == snapshot
+                        && pending.identity == identity
+                });
             if !confirmed {
                 if let Some(product) = &mut self.product {
-                    product.confirmation =
-                        Some(CandidateConfirmation { run_id, action, warning: warning.clone() });
+                    product.confirmation = Some(CandidateConfirmation {
+                        run_id,
+                        action,
+                        warning: warning.clone(),
+                        snapshot,
+                        identity,
+                    });
                 }
                 self.notice(NoticeLevel::Warning, warning);
                 return Vec::new();
@@ -370,4 +301,40 @@ fn append_evidence(
     if let Some(state) = state {
         missing.push(format!("{name} {state}"));
     }
+}
+
+fn unavailable_handoff(
+    snapshot: &ProductRunSnapshot,
+    action: ProductRunControlAction,
+) -> Option<(NoticeLevel, &'static str)> {
+    let deliverable_action = matches!(
+        action,
+        ProductRunControlAction::Accept
+            | ProductRunControlAction::Commit
+            | ProductRunControlAction::Export
+            | ProductRunControlAction::Discard
+    );
+    if deliverable_action && (!snapshot.phase().terminal() || snapshot.deliverable().is_none()) {
+        return Some((
+            NoticeLevel::Warning,
+            "deliverable actions are available after the run stops with a candidate",
+        ));
+    }
+    let deliverable = snapshot.deliverable()?;
+    if deliverable_action
+        && deliverable.discarded()
+        && (action != ProductRunControlAction::Export || deliverable.export_path().is_empty())
+    {
+        return Some((
+            NoticeLevel::Info,
+            "This candidate was discarded. Continue the conversation to create a new candidate.",
+        ));
+    }
+    if action == ProductRunControlAction::Discard && !deliverable.commit_revision().is_empty() {
+        return Some((
+            NoticeLevel::Info,
+            "This candidate is already committed. Use Git to revert the commit.",
+        ));
+    }
+    None
 }

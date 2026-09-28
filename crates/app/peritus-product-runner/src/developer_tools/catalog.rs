@@ -25,7 +25,7 @@ pub fn definitions() -> Result<Vec<ToolDefinition>, ProductRunnerError> {
         ),
         (
             "workspace_read",
-            "Read a bounded line range plus current byte size and permission metadata from one workspace-relative text file. Call this after workspace_list and read the exact current target before changing an existing file.",
+            "Read a bounded line range plus current byte size and permission metadata from one workspace-relative text file. Line numbers are one-based and both start_line and end_line are inclusive; the default is lines 1 through 500. Call this after workspace_list and read the exact current target before changing an existing file.",
             WORKSPACE_READ_SCHEMA,
         ),
         (

@@ -87,15 +87,24 @@ fn governed_queue_reaches_real_runner_and_exact_binding_survives_fenced_restart(
         );
         assert_eq!(
             restored
-                .update_models(&peritus_app_protocol::ProductModelUpdate::new(
-                    run,
-                    ProductRoleModels::default()
-                ))
+                .update_models(
+                    ActorId::new([99; 16]).expect("foreign actor"),
+                    &peritus_app_protocol::ProductModelUpdate::new(
+                        run,
+                        ProductRoleModels::default()
+                    )
+                )
                 .await,
-            Err(crate::product_run::ProductRunServiceError::Control(
-                ControlError::UnsupportedSchema
-            ))
+            Err(crate::product_run::ProductRunServiceError::Control(ControlError::ScopeMismatch))
         );
+        let updated = restored
+            .update_models(
+                actor(),
+                &peritus_app_protocol::ProductModelUpdate::new(run, ProductRoleModels::default()),
+            )
+            .await
+            .expect("owner model update");
+        assert_eq!(updated.models(), &ProductRoleModels::default());
         assert_eq!(
             writer.requests.lock().expect("requests").len(),
             1,

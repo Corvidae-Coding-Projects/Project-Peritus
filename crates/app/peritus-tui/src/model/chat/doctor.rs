@@ -55,16 +55,23 @@ impl AppModel {
     }
 
     pub(super) fn doctor_key(&mut self, key: KeyEvent) -> Vec<Effect> {
+        let maximum = crate::render::doctor_scroll_limit(self);
         let Some(panel) = self.chat.doctor.as_mut() else {
             return Vec::new();
         };
+        let current = panel.scroll.min(maximum);
         match key.code {
-            KeyCode::Esc => self.chat.doctor = None,
-            KeyCode::Up => panel.scroll = panel.scroll.saturating_sub(1),
-            KeyCode::Down => panel.scroll = panel.scroll.saturating_add(1).min(4096),
-            KeyCode::PageUp => panel.scroll = panel.scroll.saturating_sub(5),
-            KeyCode::PageDown => panel.scroll = panel.scroll.saturating_add(5).min(4096),
+            KeyCode::Esc => {
+                self.chat.doctor = None;
+                self.pending.retain(|_, pending| !matches!(pending, PendingRequest::Doctor(_)));
+                self.pending_started.retain(|id, _| self.pending.contains_key(id));
+            }
+            KeyCode::Up => panel.scroll = current.saturating_sub(1),
+            KeyCode::Down => panel.scroll = current.saturating_add(1).min(maximum),
+            KeyCode::PageUp => panel.scroll = current.saturating_sub(5),
+            KeyCode::PageDown => panel.scroll = current.saturating_add(5).min(maximum),
             KeyCode::Home => panel.scroll = 0,
+            KeyCode::End => panel.scroll = maximum,
             KeyCode::Char('r') => return self.doctor_command(),
             _ => {}
         }

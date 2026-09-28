@@ -56,23 +56,25 @@ fn valid_turn(arguments: &[String], stdin: &str) -> bool {
         "--mcp-config",
         r#"{"mcpServers":{}}"#,
         "--system-prompt-file",
-        "--json-schema",
+        "--max-turns",
     ];
     let system = argument_value(arguments, "--system-prompt-file").map(PathBuf::from);
     let isolated_system = system.as_deref().is_some_and(is_file_in_working_directory);
     let system_owned = system
         .as_deref()
         .and_then(|path| std::fs::read_to_string(path).ok())
-        .is_some_and(|value| value.contains("sole agent harness"));
-    let schema_is_inert = argument_value(arguments, "--json-schema").is_some_and(|schema| {
-        schema.contains("tool_calls") && schema.contains("additionalProperties")
-    });
+        .is_some_and(|value| {
+            value.contains("sole agent harness")
+                && value.contains("tool_calls")
+                && value.contains("additionalProperties")
+        });
     required.iter().all(|value| arguments.iter().any(|argument| argument == value))
         && argument_pair(arguments, "--tools", "")
         && environment_absent()
         && isolated_system
         && system_owned
-        && schema_is_inert
+        && argument_pair(arguments, "--max-turns", "1")
+        && !arguments.iter().any(|argument| argument == "--json-schema")
         && stdin.starts_with("The following JSON is the complete ordered conversation state")
         && stdin.contains("\"peritus_tool_protocol\"")
 }

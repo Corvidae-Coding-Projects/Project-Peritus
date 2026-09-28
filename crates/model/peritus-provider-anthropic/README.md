@@ -43,7 +43,9 @@ outside Peritus.
 One turn invokes the executable with `-p --output-format json`, the exact profile model, Peritus's
 bounded `--effort` selection (high by default), `--safe-mode`, `--tools ""`, `--disallowedTools "mcp__*"`,
 `--disable-slash-commands`, `--no-chrome`, `--no-session-persistence`, `--strict-mcp-config`, an
-empty `--mcp-config`, a private `--system-prompt-file`, and a required `--json-schema`. It runs in a
+empty `--mcp-config`, a private `--system-prompt-file`, and `--max-turns 1`. The system prompt carries
+the required transport schema; the model returns that object directly without a second native
+structured-output turn. It runs in a
 fresh private directory and removes `ANTHROPIC_API_KEY`, `ANTHROPIC_AUTH_TOKEN`, and
 `CLAUDE_CODE_OAUTH_TOKEN` from both status and turn processes. Peritus owns the complete transcript,
 tool catalog, policy, tool execution, and cancellation lifecycle. Every prompt contains the typed
@@ -56,21 +58,28 @@ The runtime accepts only text and inert host-tool history and normalizes one fin
 into deterministic text/tool/usage events. Its honest profile advertises tool calls, bounded
 parallel tool calls, portable reasoning-effort selection, and detailed usage. It is stateless, has no exact resume or remote
 cancellation, does not advertise streaming, and marks output-token limits advisory because the
-official executable exposes no exact `max_output_tokens` turn flag. Missing structured output is an
-incomplete terminal; malformed JSON/schema fails as malformed; nonzero exit after partial stdout is
-an interrupted incomplete terminal; an empty post-submit exit remains ambiguous. Cancellation kills
+official executable exposes no exact `max_output_tokens` turn flag. A complete transport object may
+arrive in the direct `result` string or the legacy `structured_output` field. Missing transport
+output is an incomplete terminal; malformed JSON/schema fails as malformed. Reported errors retain
+their category even with a nonzero process exit; other nonzero exits after partial stdout are
+interrupted incomplete terminals, and an empty post-submit exit remains ambiguous. Cancellation kills
 and reaps the owned process before emitting one cancelled terminal.
 
 The runtime accepts automatic provider-managed prompt caching as a no-flag routing policy. It does
 not accept explicit cache identities or TTL breakpoints, and Peritus retains the complete stateless
 transcript locally.
 
-The documented final-result envelope does not expose a trustworthy typed rate-limit or Retry-After
-contract. Generic `is_error` results are therefore non-retryable provider terminals in production,
-and the runtime profile leaves rate-limit detail unsupported. A2 separately qualifies Peritus's
+Reported failures accept legacy diagnostic strings and the SDK's `errors` string array. Recognized
+authentication, capacity, context-limit, and invalid-model messages retain their recovery category
+without exposing private diagnostic text. Error result subtypes never release partial tool calls,
+including envelopes from older clients with an inconsistent `is_error` boolean.
+
+The final-result envelope does not expose a trustworthy typed rate-limit or Retry-After contract.
+Unclassified reported errors remain non-retryable provider terminals, and the runtime profile leaves
+rate-limit detail unsupported. A2 separately qualifies Peritus's
 provider-core planner with test-only explicit rejected rate/transient fixtures: the checked plan and
-delay drive two real process turns. This proves planner/process composition without claiming that
-production Claude errors can be classified from undocumented or untrusted result text.
+delay drive two real process turns. This proves planner/process composition without claiming a
+production rate-limit delay contract.
 
 ### Live account qualification
 

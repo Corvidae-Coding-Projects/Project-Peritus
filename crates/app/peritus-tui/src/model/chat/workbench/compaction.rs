@@ -88,6 +88,7 @@ impl AppModel {
             return;
         }
         self.chat.workbench.compaction_preview = Some(preview);
+        self.complete_workbench_inspection();
         self.chat.workbench.scroll = 0;
         self.chat.workbench.message.clear();
     }

@@ -53,7 +53,7 @@ pub use inputs::{
 pub use permissions::{HostPermissions, PermissionCapability, PermissionPolicy};
 pub use record::{
     ControlExecution, ControlIntent, ControlOperation, ControlReceipt, ConversationRecord,
-    ConversationSeed,
+    ConversationReplay, ConversationSeed,
 };
 pub use reply::PublicReplyReference;
 pub use review::{

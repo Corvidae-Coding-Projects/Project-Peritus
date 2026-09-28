@@ -3,7 +3,7 @@
 use std::{convert::Infallible, path::PathBuf};
 
 use peritus_leases::LeaseHolder;
-use peritus_process::ProcessStore;
+use peritus_process::{ExecutionPlan, ProcessControl, ProcessStore, TerminalResult};
 use peritus_types::{EnvironmentId, ResourceId, RevisionTuple, RunId};
 use peritus_workspace::WorkspaceAuthorizationRequest;
 
@@ -16,6 +16,30 @@ use crate::{
 #[derive(Clone)]
 pub struct CommandRuntime {
     unavailable: Infallible,
+}
+
+/// Verification-only terminal lease; an unavailable runtime cannot construct one.
+pub struct PreviewTerminal {
+    unavailable: Infallible,
+}
+
+impl PreviewTerminal {
+    /// Borrows the ordinary execution plan; this projection is uninhabited.
+    #[must_use]
+    pub const fn plan(&self) -> &ExecutionPlan {
+        match self.unavailable {}
+    }
+
+    /// Returns ordinary process control; this projection is uninhabited.
+    #[must_use]
+    pub fn control(&self) -> ProcessControl {
+        match self.unavailable {}
+    }
+
+    /// Observes ordinary terminal settlement; this projection is uninhabited.
+    pub fn wait(self) -> Result<TerminalResult, ProductRunnerError> {
+        match self.unavailable {}
+    }
 }
 
 /// Verification-only folder-authority plan. No effectful plan can be produced in this mode.
@@ -63,6 +87,14 @@ impl FolderPatchAuthority {
 }
 
 impl CommandRuntime {
+    /// Projects terminal borrowing without constructing an effect owner during verification.
+    pub fn preview_terminal(
+        &self,
+        _launch: &PreviewLaunch,
+    ) -> Result<PreviewTerminal, ProductRunnerError> {
+        match self.unavailable {}
+    }
+
     /// Verification-only builds cannot construct an effectful direct-folder command owner.
     pub fn open_direct(
         state_root: impl Into<PathBuf>,

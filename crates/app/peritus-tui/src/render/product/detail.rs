@@ -27,6 +27,21 @@ pub(super) fn render_run_text(
     select: impl FnOnce(&ProductRunSnapshot) -> String,
     empty: &str,
 ) {
+    let lines = run_text_lines(model, area.width, select, empty);
+    let maximum = super::content_scroll_limit(lines.len(), area);
+    let paragraph = Paragraph::new(lines).block(
+        Block::default().borders(Borders::ALL).title(format!("{title}· PgUp/PgDn · Home/End ")),
+    );
+    let scroll = model.product.as_ref().map_or(0, |product| product.inspection_scroll).min(maximum);
+    frame.render_widget(paragraph.scroll((scroll, 0)), area);
+}
+
+pub(super) fn run_text_lines(
+    model: &AppModel,
+    width: u16,
+    select: impl FnOnce(&ProductRunSnapshot) -> String,
+    empty: &str,
+) -> Vec<Line<'static>> {
     let text = model.product.as_ref().and_then(|product| product.selected_run()).map_or_else(
         || empty.to_owned(),
         |run| {
@@ -34,16 +49,10 @@ pub(super) fn render_run_text(
             if value.is_empty() { empty.to_owned() } else { safe(&value) }
         },
     );
-    let lines = crate::render::chat::wrapped_lines(
+    crate::render::chat::wrapped_lines(
         text.lines().map(|line| Line::from(line.to_owned())).collect(),
-        usize::from(area.width.saturating_sub(2)),
-    );
-    let maximum = lines.len().saturating_sub(usize::from(area.height.saturating_sub(2)));
-    let paragraph = Paragraph::new(lines)
-        .block(Block::default().borders(Borders::ALL).title(format!("{title}· PgUp/PgDn · Home ")));
-    let scroll = usize::from(model.product.as_ref().map_or(0, |product| product.inspection_scroll))
-        .min(maximum);
-    frame.render_widget(paragraph.scroll((u16::try_from(scroll).unwrap_or(u16::MAX), 0)), area);
+        usize::from(width.saturating_sub(2)),
+    )
 }
 
 pub(super) fn run_detail(
@@ -124,8 +133,9 @@ pub(super) fn inspect_text(run: &ProductRunSnapshot) -> String {
         deliverable.successful_commands().join("\n")
     };
     format!(
-        "Workspace\n{}\n\nExact candidate paths\n{}\n\nSuccessful commands\n{}\n\nRun instructions\n{}\n\nDiff\n{}",
+        "Workspace\n{}\n\nStatus\n{}\n\nExact candidate paths\n{}\n\nSuccessful commands\n{}\n\nRun instructions\n{}\n\nDiff\n{}",
         deliverable.workspace_path(),
+        run.status(),
         paths,
         commands,
         deliverable.run_instructions(),
@@ -135,6 +145,7 @@ pub(super) fn inspect_text(run: &ProductRunSnapshot) -> String {
 
 pub(super) fn product_state(run: &ProductRunSnapshot) -> String {
     match (run.phase(), run.deliverable()) {
+        (_, Some(deliverable)) if deliverable.discarded() => "Discarded".to_owned(),
         (ProductRunPhase::Complete, _) => "Accepted".to_owned(),
         (ProductRunPhase::WaitingForUser, _) => "Waiting for you".to_owned(),
         (ProductRunPhase::Cancelled, Some(_)) => "Cancelled — candidate available".to_owned(),
@@ -147,7 +158,9 @@ pub(super) fn product_state(run: &ProductRunSnapshot) -> String {
 }
 
 fn product_state_style(run: &ProductRunSnapshot) -> Style {
-    if run.phase() == ProductRunPhase::Failed && run.deliverable().is_some() {
+    if run.deliverable().is_some_and(peritus_app_protocol::ProductDeliverable::discarded) {
+        Style::default().fg(MUTED)
+    } else if run.phase() == ProductRunPhase::Failed && run.deliverable().is_some() {
         Style::default().fg(WARN)
     } else {
         phase_style(run.phase())

@@ -15,8 +15,9 @@ use crate::{
     runtime::{ProductLaunchContext, ProductProviderOption},
 };
 
-#[test]
-fn unqualified_candidate_names_missing_evidence_and_requires_a_second_action() {
+mod polling;
+
+fn unqualified_model() -> (AppModel, RunId, WorkspaceId) {
     let provider_id = ProviderProfileId::new([81; 16]).expect("provider");
     let workspace_id = WorkspaceId::new([82; 16]).expect("workspace");
     let product = ProductLaunchContext::new(
@@ -75,6 +76,12 @@ fn unqualified_candidate_names_missing_evidence_and_requires_a_second_action() {
     model.accept_product_settlement(
         &ProductRunSettlementSnapshot::new(snapshot, settlement).expect("settled snapshot"),
     );
+    (model, run_id, workspace_id)
+}
+
+#[test]
+fn unqualified_candidate_names_missing_evidence_and_requires_a_second_action() {
+    let (mut model, run_id, _) = unqualified_model();
 
     let first = model.update(Action::TerminalEvent(Event::Key(KeyEvent::new(
         KeyCode::Char('a'),
@@ -96,6 +103,54 @@ fn unqualified_candidate_names_missing_evidence_and_requires_a_second_action() {
             if matches!(request.payload(), AppRequestPayload::ControlProductRun(control)
                 if control.run_id() == run_id && control.action() == ProductRunControlAction::Accept)
     )));
+}
+
+#[test]
+fn confirmation_does_not_transfer_to_a_new_candidate_in_the_same_run() {
+    let (mut model, run_id, workspace_id) = unqualified_model();
+    assert!(model.control_selected_product_run(ProductRunControlAction::Commit).is_empty());
+    let snapshot = model.product.as_ref().unwrap().selected_run().unwrap().clone();
+    let identity =
+        CandidateIdentity::new(run_id, workspace_id, Sha256Digest::new([99; 32]), 1, 2).unwrap();
+    let checkpoint = CandidateCheckpoint::new(
+        identity,
+        CandidateStage::Changed,
+        EvidenceStatus::Missing,
+        EvidenceStatus::Missing,
+        EvidenceStatus::Missing,
+    )
+    .unwrap();
+    let mut reducer = SettlementReducer::new();
+    reducer.observe(checkpoint).unwrap();
+    let settlement = reducer.settle(SettlementCause::Provider).unwrap();
+    let polled = ProductRunSettlementSnapshot::new(snapshot, settlement).unwrap();
+    model.accept_settlement_query(std::slice::from_ref(&polled), Some(run_id));
+    assert!(model.control_selected_product_run(ProductRunControlAction::Commit).is_empty());
+    // Polling the same candidate must not make confirmation impossible.
+    model.accept_settlement_query(&[polled], Some(run_id));
+    let confirmed = model.control_selected_product_run(ProductRunControlAction::Commit);
+    assert!(confirmed.iter().any(|effect| matches!(effect,
+        Effect::Send(AppMessage::Request(request)) if matches!(request.payload(), AppRequestPayload::ControlProductRun(control)
+            if control.action() == ProductRunControlAction::Commit))));
+}
+
+#[test]
+fn discarded_candidate_cannot_be_launched_or_submitted_for_another_handoff_action() {
+    let (mut model, _, _) = unqualified_model();
+    let product = model.product.as_mut().unwrap();
+    let run = product.runs[0].clone();
+    let discarded = run.deliverable().unwrap().clone().mark_discarded();
+    product.runs[0] = run.with_deliverable(discarded);
+    for action in [
+        ProductRunControlAction::Accept,
+        ProductRunControlAction::Commit,
+        ProductRunControlAction::Discard,
+        ProductRunControlAction::Export,
+    ] {
+        assert!(model.control_selected_product_run(action).is_empty());
+        assert!(model.notice.as_ref().unwrap().text.contains("discarded"));
+    }
+    assert!(model.run_selected_product_candidate().is_empty());
 }
 
 #[test]
