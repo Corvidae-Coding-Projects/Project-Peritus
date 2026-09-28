@@ -78,6 +78,7 @@ impl AppModel {
             return;
         }
         self.chat.workbench.checkpoint_receipt = Some(receipt.clone());
+        self.complete_workbench_inspection();
         self.chat.workbench.rewind_request = None;
         self.chat.workbench.rewind_preview = None;
         self.chat.workbench.restore_receipt = None;

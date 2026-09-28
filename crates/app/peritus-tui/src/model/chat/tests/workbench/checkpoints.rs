@@ -7,6 +7,8 @@ use peritus_app_protocol::{
 };
 use peritus_types::Sha256Digest;
 
+mod drafts;
+
 fn checkpoint_model() -> AppModel {
     let mut model = enabled_model();
     model.features.push(
@@ -121,6 +123,7 @@ fn preview_and_cancel(
             .is_empty()
     );
     assert!(model.chat.workbench.restore_receipt.is_none());
+    assert!(model.chat.buffer.is_empty(), "successful rewind inspection clears its command");
     assert_preview_render(model);
     assert!(key(model, KeyCode::Esc).is_empty());
     assert!(model.chat.workbench.rewind_preview.is_none());
@@ -256,7 +259,7 @@ fn checkpoint_show_loads_exact_historical_references_without_mutation() {
             .is_empty()
     );
     assert_eq!(model.chat.workbench.checkpoint_receipt.as_ref(), Some(&receipt));
-    assert_eq!(model.chat.buffer, draft);
+    assert!(model.chat.buffer.is_empty(), "successful checkpoint inspection clears its command");
     assert!(model.chat.workbench.message.contains("Checkpoint loaded"));
 }
 

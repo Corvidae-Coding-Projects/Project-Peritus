@@ -30,6 +30,8 @@ impl AppModel {
                 | peritus_app_protocol::AppRequestPayload::QueryWorkbenchPermissions(_)
                 | peritus_app_protocol::AppRequestPayload::QueryWorkbenchQueue(_)
                 | peritus_app_protocol::AppRequestPayload::PreviewWorkbenchCompaction(_)
+                | peritus_app_protocol::AppRequestPayload::InspectWorkbenchCheckpoint(_)
+                | peritus_app_protocol::AppRequestPayload::PreviewWorkbenchRewind(_)
             ))
         }) {
             self.chat.workbench.inspection_draft = Some(self.chat.buffer.clone());
