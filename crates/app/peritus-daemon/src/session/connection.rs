@@ -3,6 +3,8 @@
 use std::time::Duration;
 
 mod select;
+#[cfg(test)]
+mod terminal_tests;
 
 use peritus_app_protocol::{
     AppErrorCode, AppEventEnvelope, AppEventPayload, AppMessage, AppProtocolError,
@@ -180,6 +182,9 @@ pub async fn run_connection(
                         context.actor_id(),
                         context.protocol().session_id(),
                         context.protocol(),
+                        context.supports(
+                            peritus_app_protocol::WellKnownProtocolFeature::TerminalFailure,
+                        ),
                     )
                     .await?;
                 }
@@ -265,14 +270,27 @@ async fn pump_terminals<S>(
     actor_id: peritus_types::ActorId,
     session_id: peritus_types::SessionId,
     context: peritus_app_protocol::ProtocolContext,
+    report_attachment_failure: bool,
 ) -> Result<(), DaemonError>
 where
     S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin,
 {
     let mut completed = Vec::new();
     for binding in bindings.iter().copied() {
-        let events =
-            terminals.poll(actor_id, session_id, binding).map_err(terminal_bridge_error)?;
+        let events = match terminals.poll(actor_id, session_id, binding) {
+            Ok(events) => events,
+            Err(error) => {
+                terminals.release_attachments(actor_id, session_id, &[binding]);
+                completed.push(binding);
+                let payload = if report_attachment_failure {
+                    AppEventPayload::TerminalUnavailable(binding)
+                } else {
+                    terminal_diagnostic(&error)?
+                };
+                frames.write(&AppMessage::Event(AppEventEnvelope::new(context, payload))).await?;
+                continue;
+            }
+        };
         for event in events {
             let (payload, terminal) = match event {
                 TerminalBridgeEvent::Output(output) => {
@@ -286,7 +304,14 @@ where
             frames.write(&AppMessage::Event(AppEventEnvelope::new(context, payload))).await?;
             if let Some((binding, process_id)) = terminal {
                 completed.push(binding);
-                terminals.retire(process_id).map_err(terminal_bridge_error)?;
+                if let Err(error) = terminals.retire(process_id) {
+                    frames
+                        .write(&AppMessage::Event(AppEventEnvelope::new(
+                            context,
+                            terminal_diagnostic(&error)?,
+                        )))
+                        .await?;
+                }
             }
         }
     }
@@ -294,14 +319,18 @@ where
     Ok(())
 }
 
-fn terminal_bridge_error(error: TerminalBridgeError) -> DaemonError {
-    DaemonError::with_source(
-        DaemonErrorCode::RecoveryRequired,
-        DaemonRecovery::Reconcile,
-        "pump terminal attachment",
-        "live terminal output became unavailable",
-        error,
+fn terminal_diagnostic(error: &TerminalBridgeError) -> Result<AppEventPayload, DaemonError> {
+    // Only the stable category is public, never provider/process diagnostic contents.
+    let text = format!(
+        "Terminal delivery unavailable ({:?}); process state is unchanged. Inspect the preview or explicitly cancel it.",
+        error.kind()
+    );
+    peritus_app_protocol::AppDiagnostic::new(
+        text,
+        AppProtocolLimits::PRODUCTION.max_diagnostic_bytes(),
     )
+    .map(AppEventPayload::Diagnostic)
+    .map_err(|_| invalid("terminal failure diagnostic exceeds its bound"))
 }
 
 fn handle_control(

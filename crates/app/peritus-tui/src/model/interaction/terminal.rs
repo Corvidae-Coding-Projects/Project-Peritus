@@ -66,7 +66,12 @@ impl AppModel {
     }
 
     pub(super) fn send_terminal_input(&mut self, bytes: Vec<u8>) -> Vec<Effect> {
-        let Some(binding) = self.terminal.as_ref().map(TerminalSession::binding) else {
+        let Some(binding) = self
+            .terminal
+            .as_ref()
+            .filter(|terminal| terminal.can_capture())
+            .map(TerminalSession::binding)
+        else {
             return Vec::new();
         };
         let input = match TerminalInput::new(binding, bytes, self.limits.max_terminal_chunk_bytes())

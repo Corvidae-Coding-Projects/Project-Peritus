@@ -25,7 +25,7 @@ impl AppModel {
             return Vec::new();
         };
         if let Some(terminal) = &mut self.terminal
-            && terminal.phase() == peritus_app_protocol::TerminalPhase::Attached
+            && terminal.can_capture()
         {
             if terminal.binding().process_id() == process {
                 terminal.set_capture_input(true);

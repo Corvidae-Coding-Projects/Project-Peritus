@@ -143,6 +143,15 @@ impl AppModel {
                 }
                 Vec::new()
             }
+            AppEventPayload::TerminalUnavailable(binding) => {
+                if let Some(terminal) = &mut self.terminal
+                    && terminal.binding() == *binding
+                {
+                    terminal.output_unavailable();
+                    self.notice(NoticeLevel::Error, "Terminal output is unavailable. The process may still be running; inspect /preview or explicitly cancel it.");
+                }
+                Vec::new()
+            }
             payload => self.handle_system_event(payload),
         }
     }
@@ -238,6 +247,7 @@ impl AppModel {
             AppEventPayload::DomainEvent(_)
             | AppEventPayload::PromptRequested(_)
             | AppEventPayload::TerminalOutput(_)
+            | AppEventPayload::TerminalUnavailable(_)
             | AppEventPayload::TerminalExited(_) => Vec::new(),
         }
     }

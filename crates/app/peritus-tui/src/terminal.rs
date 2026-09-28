@@ -21,6 +21,7 @@ pub struct TerminalSession {
     transcript: Transcript,
     capture_input: bool,
     connection_live: bool,
+    output_unavailable: bool,
     scroll: u16,
 }
 
@@ -34,6 +35,7 @@ impl TerminalSession {
             transcript: Transcript::default(),
             capture_input: true,
             connection_live: true,
+            output_unavailable: false,
             scroll: 0,
         })
     }
@@ -48,6 +50,10 @@ impl TerminalSession {
 
     pub(crate) fn phase_label(&self) -> String {
         use peritus_app_protocol::TerminalExitDisposition;
+        if self.output_unavailable {
+            return "Output unavailable · process may still be running · inspect /preview"
+                .to_owned();
+        }
         if !self.connection_live && self.phase() == TerminalPhase::Attached {
             return "Connection lost · reconnect and press a to reattach".to_owned();
         }
@@ -72,7 +78,12 @@ impl TerminalSession {
     }
 
     pub(crate) fn can_capture(&self) -> bool {
-        self.connection_live && self.phase() == TerminalPhase::Attached
+        self.connection_live && !self.output_unavailable && self.phase() == TerminalPhase::Attached
+    }
+
+    pub(crate) const fn output_unavailable(&mut self) {
+        self.output_unavailable = true;
+        self.capture_input = false;
     }
 
     pub(crate) const fn disconnect(&mut self) {

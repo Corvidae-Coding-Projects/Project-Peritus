@@ -60,12 +60,17 @@ impl Client {
             .copied()
             .map(ProtocolFeatureName::well_known)
             .collect::<Result<Vec<_>, _>>()?;
+        let optional = if required.contains(&WellKnownProtocolFeature::TerminalFailure) {
+            Vec::new()
+        } else {
+            vec![ProtocolFeatureName::well_known(WellKnownProtocolFeature::TerminalFailure)?]
+        };
         let hello = ClientHello::new_with_session(
             protocol_id,
             requested_session,
             vec![VersionRange::new(1, 0, 0)?],
             required_features,
-            Vec::new(),
+            optional,
             AppProtocolLimits::PRODUCTION,
             format!("peritus/{}", env!("CARGO_PKG_VERSION")),
         )?;

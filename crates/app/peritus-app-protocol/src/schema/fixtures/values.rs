@@ -24,7 +24,7 @@ pub(super) fn generated_valid_cases(
     codec_limits: CodecLimits,
 ) -> Result<Vec<GeneratedFixtureCase>, CodecError> {
     let limits = AppProtocolLimits::PRODUCTION;
-    Ok(vec![
+    let mut cases = vec![
         encoded(
             "minimal-client-hello",
             FixtureClass::Minimal,
@@ -83,12 +83,6 @@ pub(super) fn generated_valid_cases(
             codec_limits,
         )?,
         encoded(
-            "realistic-terminal-event",
-            FixtureClass::Realistic,
-            &terminal_event(limits),
-            codec_limits,
-        )?,
-        encoded(
             "realistic-daemon-response",
             FixtureClass::Realistic,
             &daemon_response(limits),
@@ -120,7 +114,9 @@ pub(super) fn generated_valid_cases(
             &shutdown_event(limits),
             codec_limits,
         )?,
-    ])
+    ];
+    cases.extend(terminal_cases(limits, codec_limits)?);
+    Ok(cases)
 }
 
 pub(super) fn encoded<T: CanonicalEncode>(
@@ -137,6 +133,30 @@ pub(super) fn encoded<T: CanonicalEncode>(
         accepted: true,
         expected_error: None,
     })
+}
+
+fn terminal_cases(
+    limits: AppProtocolLimits,
+    codec_limits: CodecLimits,
+) -> Result<[GeneratedFixtureCase; 2], CodecError> {
+    Ok([
+        encoded(
+            "realistic-terminal-event",
+            FixtureClass::Realistic,
+            &terminal_event(limits),
+            codec_limits,
+        )?,
+        encoded(
+            "realistic-terminal-unavailable-event",
+            FixtureClass::Realistic,
+            &event(AppEventPayload::TerminalUnavailable(TerminalBinding::new(
+                id(26, TerminalAttachmentId::new),
+                id(27, ProcessId::new),
+                id(10, RequestId::new),
+            ))),
+            codec_limits,
+        )?,
+    ])
 }
 
 fn client_hello(limits: AppProtocolLimits) -> ClientHello {

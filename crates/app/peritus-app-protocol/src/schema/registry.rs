@@ -164,6 +164,7 @@ const EVENTS: &[AppPayloadDescriptor] = &[
     AppPayloadDescriptor { tag: 12, name: "heartbeat" },
     AppPayloadDescriptor { tag: 13, name: "shutdown-progress" },
     AppPayloadDescriptor { tag: 14, name: "shutdown-complete" },
+    AppPayloadDescriptor { tag: 15, name: "terminal-unavailable" },
 ];
 
 const CONTROLS: &[AppPayloadDescriptor] = &[

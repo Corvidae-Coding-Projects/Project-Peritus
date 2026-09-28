@@ -133,6 +133,34 @@ fn terminal_lifecycle_disconnect_leaves_reconnect_key_reachable() {
 }
 
 #[test]
+fn unavailable_output_releases_capture_without_disconnecting_chat_or_claiming_exit() {
+    use peritus_app_protocol::{AppEventEnvelope, AppEventPayload, TerminalPhase};
+    let mut model = attached_model();
+    let original_context = model.context;
+    let binding = model.terminal.as_ref().unwrap().binding();
+    let stale = TerminalBinding::new(
+        TerminalAttachmentId::new([51; 16]).unwrap(),
+        binding.process_id(),
+        binding.originating_request_id(),
+    );
+    for (failed, unavailable) in [(stale, false), (binding, true)] {
+        let effects = model.update(Action::Message(AppMessage::Event(AppEventEnvelope::new(
+            context(),
+            AppEventPayload::TerminalUnavailable(failed),
+        ))));
+        assert!(effects.is_empty());
+        let terminal = model.terminal.as_ref().unwrap();
+        assert_eq!(terminal.can_capture(), !unavailable);
+        assert_eq!(terminal.phase(), TerminalPhase::Attached, "no fabricated process exit");
+        assert_eq!(model.context, original_context, "chat connection survives");
+    }
+    assert!(model.terminal.as_ref().unwrap().phase_label().contains("Output unavailable"));
+    model
+        .update(Action::TerminalEvent(Event::Key(KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE))));
+    assert_eq!(model.view, View::Conversation);
+}
+
+#[test]
 fn delayed_detach_acknowledgement_cannot_remove_a_new_terminal() {
     use peritus_app_protocol::{
         AppResponseEnvelope, AppResponsePayload, OperationAcknowledgement, TerminalExit,

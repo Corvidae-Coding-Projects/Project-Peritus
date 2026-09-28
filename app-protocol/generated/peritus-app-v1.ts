@@ -151,6 +151,7 @@ export type AppPayloadKind =
   | "heartbeat"
   | "shutdown-progress"
   | "shutdown-complete"
+  | "terminal-unavailable"
   | "acknowledge"
   | "cancel-subscription"
   | "cancel-artifact"

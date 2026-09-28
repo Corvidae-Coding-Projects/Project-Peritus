@@ -6,6 +6,12 @@ exact B3 command and event frame bindings, resumable at-least-once subscriptions
 prompt correlation, terminal streaming, daemon controls, verified candidate settlement, stable
 errors, deterministic schemas, and compatibility fixtures.
 
+The optional `app.terminal-failure` feature adds event tag 15, `TerminalUnavailable`, containing
+the exact `TerminalBinding`. It ends delivery for that attachment without asserting process exit,
+cancellation, or loss of the application connection. Existing event tags and bytes are unchanged.
+Servers send this event only to clients that negotiated the feature; older clients receive a
+bounded diagnostic instead.
+
 Product responses preserve the legacy `ProductRunSnapshot` bytes and add append-only settlement
 payload tags. A settlement identifies the exact candidate and conversation revision, distinguishes
 automated qualification from the user's existing `ProductDeliverable::accepted` choice, and reports

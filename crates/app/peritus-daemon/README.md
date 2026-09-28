@@ -28,6 +28,10 @@ Detaching leaves the process running and allows a new connection to attach. Admi
 completed processes with no live attachments using the authoritative native result, even when
 their output history has expired. Owner joins happen outside the registry mutex; attached output
 still requires ordered delivery before retirement.
+Delivery failures release only the failed attachment and notify its client without closing the
+application connection or killing the process. Clients negotiating `app.terminal-failure` receive
+an exact attachment-bound failure event; older clients receive an inert diagnostic. Other terminal
+attachments and chat requests continue. Native transport failures still end the connection.
 
 Product-run records also retain candidate checkpoints, typed settlements, opaque continuation
 state, remaining work, and interruption causes. Startup validates settled candidates against their

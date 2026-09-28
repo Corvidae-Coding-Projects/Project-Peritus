@@ -84,6 +84,12 @@ async fn follow(
             continue;
         }
         match event.payload() {
+            AppEventPayload::TerminalUnavailable(failed) if *failed == binding => {
+                return Err(CliError::remote_failure(
+                    "follow terminal",
+                    "Terminal output is unavailable. The process may still be running; inspect its preview or explicitly cancel it.".to_owned(),
+                ));
+            }
             AppEventPayload::TerminalOutput(chunk) if chunk.binding() == binding => {
                 state
                     .accept_output(chunk)
