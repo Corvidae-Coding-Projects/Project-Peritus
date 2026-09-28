@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1761,
-        "tip_oid": "5a2430d9eaa361a097007d1484cbeb7b99b0b0c0",
-        "prefix_sha256": "b26c7f043071f9340442414f6119b342e86a610f41e8d34b066c3e71cddf4e42"
+        "sequence": 1762,
+        "tip_oid": "34fc3c6948e62fa61c31ba6709ec1dad53f6f6d6",
+        "prefix_sha256": "c3c68fb5348d40818f9221efab3adf86de743aa6ef75a21a1cc92086cdd13216"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 1907,
+  "next_comment_id": 1908,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -16544,7 +16544,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-28T00:58:41.412806074Z",
-      "updated_at": "2026-09-28T16:59:48.023867408Z",
+      "updated_at": "2026-09-28T17:01:37.522142960Z",
       "labels": [
         "bug"
       ],
@@ -16962,6 +16962,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAkDr3n4e25JY/VGCcVWsu6YcibXpaxWnzTNzJ5Wfnr4Fraj2m1rAsCNcbABc9YyqpMz6FZUL9vJ3rbl+a+RTNAg=="
+        },
+        "e89c3bd5-bf07-4e4b-9fef-36817b7719c0": {
+          "display_id": 1907,
+          "author": "6ME5",
+          "content": "[action] Verified Windows candidate failure is CRLF fixture expectation; reproduced locally and fixed with dual LF/CRLF exact-byte roundtrip. Review retry accounting/narration and TUI Recovery label regressions pass. Workspace Clippy and full tests underway. Real TUI checkpoint/edit/rewind exercise running in owned plain fixture.",
+          "created_at": "2026-09-28T17:01:37.513455133Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA9m2Z4Gs65f1QYBXpIre9P+4/3IW2bEdiPgyqt0Lp/c4htGN8sRkjWU2WAHU3UAlAQqpKV2KVNVEZ1YF0b/J3AA=="
         },
         "ec5574f6-ebbd-4cba-a646-62f1fec688c7": {
           "display_id": 1862,
