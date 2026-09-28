@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1752,
-        "tip_oid": "952286a34486a214352e0bbe82e98acdca0accb6",
-        "prefix_sha256": "ce33fa5b7fc55c4c922d69301a6c653ded93613b877e388a7f9aaa036c1c2093"
+        "sequence": 1753,
+        "tip_oid": "0858d121b2bfec927e1135cd9a12e3d7fb08370c",
+        "prefix_sha256": "744ef1a85d7096b522a30a10cb7e1660b9961e4ff48437cfeebafed40fefd6c5"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 1900,
+  "next_comment_id": 1901,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -16544,7 +16544,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-28T00:58:41.412806074Z",
-      "updated_at": "2026-09-28T16:15:49.330807534Z",
+      "updated_at": "2026-09-28T16:24:44.337042903Z",
       "labels": [
         "bug"
       ],
@@ -16575,6 +16575,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAqwGOZzqhmvXXUbFzqhnSLfw1VtuHJiv98sVBDEkME2rTLE4nuOIe1oa9t8vxjf/tRbQwxysOPFcilWaKCGvADw=="
+        },
+        "1c9ecb0b-df57-4c3e-9bd1-f8f24985b18e": {
+          "display_id": 1900,
+          "author": "6ME5",
+          "content": "Native Windows recovery job 109012583285 passed all four integration targets, then timed out during candidate library tests at 15 minutes. Splitting candidate library tests into a dedicated Windows job; preserve all coverage and canonical deadline. Build77 live TUI delivered an explicitly confirmed PNG to the real account provider and answered Bright blue; sealed manifest matched its exact digest. New confirmed blocker: /attach after /new refuses without selecting a session; tracing deferred conversation creation without inference.",
+          "created_at": "2026-09-28T16:24:44.330654643Z",
+          "kind": "observation",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAeuCKHIBQgQWOrRVJ7x6qA/wBABcfHrpiQeqTHdJq3LQWtKCFguR47gGnpYB3HvDOPmX0wUN09pd+oWv3JKi0CQ=="
         },
         "1e4df3a2-91d7-454e-8c2f-2dbc7128734b": {
           "display_id": 1868,
