@@ -33,6 +33,11 @@ A failed lookup retains the run and draft for retry. Runs in another configured 
 with that workspace's path and trust; an unsent draft must be sent or cleared before leaving its
 workspace. Opening or inspecting a saved run does not start inference.
 
+`/attach PATH` in a new chat creates a durable conversation and opens the image preview after
+the creation receipt. It starts no inference and still requires an explicit caption and
+confirmation. Cancelling or changing the draft abandons the deferred read; reconnect resolves
+the original creation operation instead of creating a duplicate conversation.
+
 In `/sessions` and its search results, arrows select a conversation and Enter opens it. `n`/`p`
 page through all results; `r` retries or refreshes the same search page. Home/End selects the
 first/last row, while PageUp/PageDown scrolls long titles and details. Refresh retains the

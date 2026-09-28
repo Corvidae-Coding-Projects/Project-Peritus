@@ -1,5 +1,6 @@
 use super::*;
 use crate::image_import::ImageBytes;
+mod onboarding;
 mod page;
 mod recovery;
 use peritus_app_protocol::{

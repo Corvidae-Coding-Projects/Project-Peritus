@@ -126,13 +126,7 @@ impl AppModel {
             );
             return Vec::new();
         }
-        if let Some((_, draft)) = self.chat.workbench.unresolved.take()
-            && self.chat.buffer == draft
-            && !(matches!(command.intent(), WorkbenchIntent::CreateConversation(_))
-                && self.chat.workbench.submission.is_some())
-        {
-            self.clear_chat_command();
-        }
+        self.complete_receipted_draft(command);
         self.chat.workbench.rejected_control = None;
         if let WorkbenchIntent::ForkConversation(fork) = command.intent()
             && fork.child().workspace() != command.query().workspace()
@@ -160,6 +154,11 @@ impl AppModel {
         }
         if let Some(effects) = self.accept_workbench_chat_receipt(command) {
             return effects;
+        }
+        if matches!(command.intent(), WorkbenchIntent::CreateConversation(_))
+            && self.chat.workbench.snapshot_refresh_command.is_some()
+        {
+            return self.refresh_selected_snapshot();
         }
         if preview {
             return self.accept_preview_receipt(command, receipt);
@@ -189,6 +188,17 @@ impl AppModel {
             return self.refresh_brief();
         }
         self.refresh_workbench()
+    }
+
+    fn complete_receipted_draft(&mut self, command: &WorkbenchCommand) {
+        if let Some((_, draft)) = self.chat.workbench.unresolved.take()
+            && self.chat.buffer == draft
+            && !(matches!(command.intent(), WorkbenchIntent::CreateConversation(_))
+                && (self.chat.workbench.submission.is_some()
+                    || self.chat.workbench.snapshot_refresh_command.is_some()))
+        {
+            self.clear_chat_command();
+        }
     }
 
     fn accept_preview_receipt(
