@@ -5,6 +5,8 @@ mod ownership;
 mod pipe;
 mod pty;
 mod resource;
+#[cfg(windows)]
+mod self_memory;
 
 use std::{
     io::{Read, Write},
@@ -23,6 +25,8 @@ pub(crate) use ownership::current_start_token;
 #[cfg(unix)]
 pub(crate) use resource::process_group_count;
 pub(crate) use resource::{local_supervisor_resources_supported, sample_resources};
+#[cfg(windows)]
+pub use self_memory::current_process_resident_memory_bytes;
 
 pub(crate) struct OutputReader {
     pub(crate) stream: OutputStream,

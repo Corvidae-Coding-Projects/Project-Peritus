@@ -2,7 +2,7 @@
 
 use std::fs;
 use std::path::{Path, PathBuf};
-#[cfg(any(windows, all(unix, not(target_os = "linux"))))]
+#[cfg(all(unix, not(target_os = "linux")))]
 use std::process::Command;
 
 use crate::{ProductRunnerError, ProductRunnerErrorKind};
@@ -109,15 +109,11 @@ fn resident_memory_bytes() -> Result<u64, ProductRunnerError> {
 
 #[cfg(windows)]
 fn resident_memory_bytes() -> Result<u64, ProductRunnerError> {
-    let expression = format!("(Get-Process -Id {}).WorkingSet64", std::process::id());
-    let output = Command::new("powershell")
-        .args(["-NoProfile", "-NonInteractive", "-Command", &expression])
-        .output()
-        .map_err(|error| resource_error(error.to_string()))?;
-    parse_memory_output(&output.stdout, 1, output.status.success())
+    peritus_process::current_process_resident_memory_bytes()
+        .map_err(|error| resource_error(error.to_string()))
 }
 
-#[cfg(any(windows, all(unix, not(target_os = "linux"))))]
+#[cfg(all(unix, not(target_os = "linux")))]
 fn parse_memory_output(
     output: &[u8],
     multiplier: u64,
@@ -131,6 +127,7 @@ fn parse_memory_output(
     parse_memory_text(text.trim(), multiplier)
 }
 
+#[cfg(unix)]
 fn parse_memory_text(text: &str, multiplier: u64) -> Result<u64, ProductRunnerError> {
     let value = text
         .parse::<u64>()

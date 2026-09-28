@@ -19,6 +19,10 @@ Other platforms may run separately authorized raw-effect/reference plans with un
 observations, but a backend that claims supervisor or hard enforcement is rejected before durable
 consumption when that support is unavailable.
 
+Windows host run accounting queries its own current resident working set directly through the
+read-only C2 operating-system boundary. It does not launch PowerShell or depend on executable
+search paths. This host measurement does not claim owned-child or process-tree coverage.
+
 The process store durably binds claims, lifecycle, terminal results, complete eight-dimension
 resource observations, and per-stream artifact-publication progress. `wait_and_publish` returns a
 publication error carrying the latest durable terminal result, while
