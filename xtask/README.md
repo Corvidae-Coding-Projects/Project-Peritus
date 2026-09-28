@@ -67,6 +67,12 @@ Daemon build, Clippy, documentation, and Verus checks remain in the existing
 application-shell shards. Exact workflow checks reject missing, repeated, or
 misrouted daemon jobs.
 
+Windows runner library tests share the existing three runner jobs to stay within their
+fifteen-minute limit, including the cold build. `test-runner-recovery` also executes candidate
+library tests; `test-runner-product` also executes local-context library tests. The ordinary
+runner test job covers the remaining namespaces and non-library targets. The integration targets
+remain assigned exactly once. Linux and macOS retain their full ordinary library test invocation.
+
 Native product CI builds each of its seven native binaries in a separate bounded job on each
 platform, then assembles the downloaded binaries in a separate preparation job. Artifact names
 separate the platform and binary with a double hyphen so ARM and Intel macOS downloads cannot

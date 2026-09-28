@@ -152,6 +152,7 @@ pub(crate) fn run(root: &Path, operation: Operation, shard: &str) -> Result<usiz
             "CI shard `{shard}` failed during {operation:?} with status {status}"
         )));
     }
+    runner::run_library_partition(root, operation, cfg!(windows))?;
     feature_checks::run(root, operation, shard, &packages)?;
     Ok(packages.len())
 }
@@ -288,6 +289,9 @@ fn cargo_command(root: &Path, operation: Operation, packages: &[&str]) -> Comman
     {
         command.args(["--", "--test-threads=1"]);
         command.args(daemon::test_filters(operation, cfg!(windows)));
+        if packages == [runner::PACKAGE] && operation == Operation::Test {
+            command.args(runner::library_filters(operation, cfg!(windows)));
+        }
         if packages == [PLATFORM_PACKAGE] {
             for test in
                 [PLATFORM_TERMINAL_INTERACTIVE, PLATFORM_TERMINAL_SIGNAL, PLATFORM_TERMINAL_CANCEL]
