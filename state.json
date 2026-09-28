@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1700,
-        "tip_oid": "3a7a266078d7cb13f28028864699f242485bd996",
-        "prefix_sha256": "5ad4b48ae58ffe962ca961f30fdc714b16d9bffca92e4f3002f9ef65beee2e82"
+        "sequence": 1701,
+        "tip_oid": "185253ec16bd0ee0dfb8794767b3bed90618dd0c",
+        "prefix_sha256": "b047ea57e77a9a75bb0740b3aa5c2b354fd55b123311620b8d5d21f2b0a98de0"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 1856,
+  "next_comment_id": 1857,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -16544,7 +16544,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-28T00:58:41.412806074Z",
-      "updated_at": "2026-09-28T01:40:22.288405267Z",
+      "updated_at": "2026-09-28T01:53:18.376174687Z",
       "labels": [
         "bug"
       ],
@@ -16557,6 +16557,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABArMFauViPWn7fXXk032wA/p+X0VY8ZahahBZPab3ap/a3tsxBbyS31V9CrIqDuHyA1w7v40DxZG+Ylg5Dy2/UAw=="
+        },
+        "6b40f320-f698-4294-8a3f-972c015aa654": {
+          "display_id": 1856,
+          "author": "6ME5",
+          "content": "[action] Issue99: actual quarantined goal recovered in plain fixture; new session cache contamination fixed (152 TUI tests). Live2000ms budget stopped at2008ms with1request0tools. Added durable pause/budget status and goal polling, checking. Workspace all-target/all-feature3373passed1failed13ignored; only failure checkpoint fixture433lines, split restart assertions and targetedchecks now pass. Main unresolved: true task before-state ownership, ordinary-chat durable binding, preview terminal ownership/output.",
+          "created_at": "2026-09-28T01:53:18.367956093Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAE2SmWCsJoZVhWFuTNuvIJqZ7vhqQTseB/jgNnUZ3MOGQ6Aulv4eStqn2Fcmn9eU3qrqpZoiU+bCVp+ZCXpNeDg=="
         },
         "9e78863e-8555-4643-99b3-ed6b423b55e0": {
           "display_id": 1855,
