@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1690,
-        "tip_oid": "d93804b1f95b931d301cfecf8558c1d44a508959",
-        "prefix_sha256": "4f75ebe607d7f885095d14bcbe41a5122dccfb013d647ca00cf55796f960828e"
+        "sequence": 1691,
+        "tip_oid": "c5ad2f4857413a56c0ae6145b4e55fbbd57f3c27",
+        "prefix_sha256": "eb18a7fcb33b9a37608f2c6d5a39d2f90da1db9baf22730e214733bbd210a199"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 99,
-  "next_comment_id": 1850,
+  "next_comment_id": 1851,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -10664,8 +10664,17 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-27T23:40:33.365528994Z",
-      "updated_at": "2026-09-28T00:32:41.700945461Z",
+      "updated_at": "2026-09-28T00:34:02.551612322Z",
       "comments": {
+        "172fb531-7617-4dd5-afb2-b7d95cab7e0d": {
+          "display_id": 1850,
+          "author": "6ME5",
+          "content": "More grounded results: external-only attachment label was implemented correctly and all11 converter tests pass independently. Governed verification nevertheless aborted: automatic checkpoint sealing reuses stable operation IDs for identical postimages with newer expected_revision, causing journal IdempotencyConflict. Original seal request digests were reconstructed and matched persisted records; failure occurs after verification admission at revision166. Resume produced WaitingForUser, not accepted work. Actual two-file rewind and conflict-after-preview preservation passed. Undoing that rewind via its displayed recovery checkpoint fails because recovery postimages remain unsealed. Controlled preview natural exit passed; do not count earlier delayed status as an independent defect. Evidence /tmp/peritus-human-tui-415nuh50/DEEP-PASS.md and evidence/deep-seal-journal.jsonl.",
+          "created_at": "2026-09-28T00:34:02.547766433Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAO4DhbZJLeT81rgy975z2CLyvLvEOBlcpmcvLGyCOrfUKnT+LCN60Arks+32L4va2Zj3RFYsoqw/FU7LHg4BaBQ=="
+        },
         "1e584dca-2ee8-4b77-a15f-091061bcb76e": {
           "display_id": 1845,
           "author": "6ME5",
