@@ -55,11 +55,11 @@ impl ManagedBaseline {
             {
                 continue;
             }
-            let name = path.to_str().ok_or_else(|| failure("restore path is not UTF-8"))?;
-            if self.nested.contains_key(name) {
+            let name = super::git_path::tree_name(path)?;
+            if self.nested.contains_key(&name) {
                 continue;
             }
-            if self.entries.get(name).is_some_and(|entry| entry.mode != "160000") {
+            if self.entries.get(&name).is_some_and(|entry| entry.mode != "160000") {
                 sources.publish(&root.join(path))?;
             }
         }
@@ -112,13 +112,13 @@ impl ManagedBaseline {
         }
         self.validate_restore_paths(root, paths)?;
         for path in paths {
-            let name = path.to_str().ok_or_else(|| failure("restore path is not UTF-8"))?;
-            if let Some(entry) = self.entries.get(name)
+            let name = super::git_path::tree_name(path)?;
+            if let Some(entry) = self.entries.get(&name)
                 && entry.mode != "160000"
             {
                 git(root, &["cat-file", "blob", &entry.object], None)?;
             }
-            self.verify_index_objects(root, name)?;
+            self.verify_index_objects(root, &name)?;
         }
         for (prefix, child) in &self.nested {
             if !paths.iter().any(|path| path.starts_with(prefix)) {

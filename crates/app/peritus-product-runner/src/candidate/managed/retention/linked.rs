@@ -2,7 +2,7 @@
 
 use super::{Entry, ManagedBaseline, Manifest, Store, failure, git, metadata, owner, text};
 use crate::{ProductRunnerError, file_metadata};
-use std::{collections::BTreeMap, fs, path::Path};
+use std::{collections::BTreeMap, fs, io::Write as _, path::Path};
 
 pub(super) const MARKER: &str = "git-file";
 
@@ -58,7 +58,8 @@ pub(super) fn initialize(destination: &Path, directory: &Path) -> Result<(), Pro
             return Err(failure("linked repository database was replaced; no restore started"));
         }
     }
-    let path = directory.to_str().ok_or_else(|| failure("linked Git directory is not UTF-8"))?;
-    fs::write(destination.join(".git"), format!("gitdir: {path}\n")).map_err(failure)?;
-    fs::File::open(destination.join(".git")).and_then(|file| file.sync_all()).map_err(failure)
+    let path = super::super::git_path::local_repository(directory)?;
+    let mut file = fs::File::create(destination.join(".git")).map_err(failure)?;
+    file.write_all(format!("gitdir: {path}\n").as_bytes()).map_err(failure)?;
+    file.sync_all().map_err(failure)
 }

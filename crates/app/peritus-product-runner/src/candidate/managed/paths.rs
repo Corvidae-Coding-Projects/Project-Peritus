@@ -43,7 +43,7 @@ impl ManagedBaseline {
                 if let Ok(metadata) = fs::symlink_metadata(root.join(relative))
                     && (!metadata.is_dir() || metadata.file_type().is_symlink())
                     && (!paths.iter().any(|path| path == relative)
-                        || self.entries.contains_key(&relative.to_string_lossy().into_owned()))
+                        || self.entries.contains_key(&super::git_path::tree_name(relative)?))
                 {
                     return Err(failure("restore path has an unowned non-directory parent"));
                 }
@@ -53,7 +53,7 @@ impl ManagedBaseline {
                 continue;
             }
             if fs::symlink_metadata(root.join(path)).is_ok_and(|metadata| metadata.is_dir())
-                && !self.nested.contains_key(&path.to_string_lossy().into_owned())
+                && !self.nested.contains_key(&super::git_path::tree_name(path)?)
             {
                 validate_directory(root, path, paths)?;
             }
@@ -73,14 +73,14 @@ impl ManagedBaseline {
             if !parent_is_directory(root, &path)? {
                 continue;
             }
-            let name = path.to_string_lossy();
+            let name = super::git_path::tree_name(&path)?;
             if self.nested.keys().any(|prefix| path.starts_with(prefix)) {
                 continue;
             }
             let absolute = root.join(&path);
             match fs::symlink_metadata(&absolute) {
                 Ok(metadata) if metadata.is_dir() => remove_empty_directories(&absolute)?,
-                Ok(_) if !self.entries.contains_key(name.as_ref()) => {
+                Ok(_) if !self.entries.contains_key(&name) => {
                     fs::remove_file(&absolute).map_err(failure)?;
                     super::recovery::sync_directory(
                         absolute.parent().ok_or_else(|| failure("restore path has no parent"))?,

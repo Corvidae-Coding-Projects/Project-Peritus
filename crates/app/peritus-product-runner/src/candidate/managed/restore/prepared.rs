@@ -92,9 +92,9 @@ impl Indexes {
             {
                 continue;
             }
-            let name = path.to_str().ok_or_else(|| failure("restore path is not UTF-8"))?;
-            if baseline.entries.get(name).is_some_and(|entry| entry.mode == "160000")
-                && !baseline.nested.contains_key(name)
+            let name = super::super::git_path::tree_name(path)?;
+            if baseline.entries.get(&name).is_some_and(|entry| entry.mode == "160000")
+                && !baseline.nested.contains_key(&name)
             {
                 continue;
             }
@@ -106,7 +106,7 @@ impl Indexes {
                 rows.extend(format!("0 {}\t{path}\0", "0".repeat(baseline.tree.len())).as_bytes());
             }
             for path in local {
-                rows.extend(baseline.index_rows(root, path)?);
+                rows.extend(baseline.index_rows(root, &path)?);
             }
             self.0.insert(root.to_path_buf(), PreparedIndex::new(root, &rows)?);
         }

@@ -155,7 +155,9 @@ fn linked_worktree_uses_its_actual_git_directory_for_recovery() {
         text(git(&workspace, &["rev-parse", "--absolute-git-dir"], None).unwrap()).unwrap(),
     );
     assert_eq!(recovered.len(), 1);
-    assert!(recovered[0].starts_with(git_directory.join("peritus/discarded")));
+    assert!(
+        recovered[0].starts_with(git_directory.canonicalize().unwrap().join("peritus/discarded"))
+    );
     assert!(recovered[0].join("repository/tracked.txt").is_file());
     assert!(workspace.join(".git").is_file());
     assert!(baseline.changed_paths(&workspace).unwrap().is_empty());

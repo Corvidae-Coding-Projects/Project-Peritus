@@ -7,6 +7,7 @@ mod retained;
 fn repository() -> tempfile::TempDir {
     let root = tempfile::tempdir().expect("repository");
     git(root.path(), &["init", "--quiet"], None).expect("init");
+    git(root.path(), &["config", "core.autocrlf", "false"], None).expect("literal fixture bytes");
     git(root.path(), &["config", "user.name", "Peritus Test"], None).expect("name");
     git(root.path(), &["config", "user.email", "test@example.invalid"], None).expect("email");
     fs::write(root.path().join("tracked.txt"), "committed\n").expect("file");

@@ -50,15 +50,15 @@ fn capture_directory(
     for entry in fs::read_dir(root.join(relative)).map_err(failure)? {
         let entry = entry.map_err(failure)?;
         let path = relative.join(entry.file_name());
-        let name = path.to_str().ok_or_else(|| failure("Git metadata path is not UTF-8"))?;
+        let name = super::super::git_path::tree_name(&path)?;
         if path == Path::new("objects") || transient_lock(&path) {
             continue;
         }
-        super::validate_metadata_path(name)?;
+        super::validate_metadata_path(&name)?;
         let metadata = fs::symlink_metadata(entry.path()).map_err(failure)?;
         let permissions = file_metadata::permission_fingerprint(&metadata);
         if metadata.is_dir() {
-            manifest.directories.insert(name.to_owned(), permissions);
+            manifest.directories.insert(name, permissions);
             capture_directory(store, root, &path, manifest)?;
             continue;
         }
@@ -90,7 +90,7 @@ fn capture_directory(
                 entry.path().display()
             )));
         };
-        manifest.entries.insert(name.to_owned(), Entry { object, mode: mode.into(), permissions });
+        manifest.entries.insert(name, Entry { object, mode: mode.into(), permissions });
     }
     Ok(())
 }
@@ -146,9 +146,9 @@ pub(super) fn write_entry(
         if fs::symlink_metadata(&destination).is_ok_and(|metadata| !metadata.is_file()) {
             return Err(failure("retained file would overwrite a non-regular target"));
         }
-        store.write_blob(&entry.object, &destination)?;
+        let file = store.write_blob(&entry.object, &destination)?;
         super::super::restore::set_permissions(&destination, entry.permissions)?;
-        fs::File::open(&destination).and_then(|file| file.sync_all()).map_err(failure)?;
+        file.sync_all().map_err(failure)?;
     }
     super::super::recovery::sync_directory(parent)
 }

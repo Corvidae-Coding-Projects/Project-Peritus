@@ -1,6 +1,6 @@
 //! Export complete source trees for repositories created inside a task workspace.
 
-use super::{Entry, ManagedBaseline, capture::build_tree, failure, git, text};
+use super::{Entry, ManagedBaseline, capture::build_tree, git, text};
 use crate::ProductRunnerError;
 use std::{collections::BTreeMap, path::Path};
 
@@ -15,7 +15,7 @@ impl ManagedBaseline {
         let display = if prefix.as_os_str().is_empty() {
             String::new()
         } else {
-            format!("{}/", prefix.display())
+            format!("{}/", super::git_path::tree_name(prefix)?)
         };
         let export_tree = self.export_tree(root, current)?;
         let mut original = self.entries.clone();
@@ -117,7 +117,7 @@ fn copy_entry(
 ) -> Result<(), ProductRunnerError> {
     let bytes = git(source, &["cat-file", "blob", &entry.object], None)?;
     let object = text(git(destination, &["hash-object", "-w", "--stdin"], Some(&bytes))?)?;
-    let path = path.to_str().ok_or_else(|| failure("export path is not UTF-8"))?.to_owned();
+    let path = super::git_path::tree_name(path)?;
     entries
         .insert(path, Entry { object, mode: entry.mode.clone(), permissions: entry.permissions });
     Ok(())

@@ -34,8 +34,8 @@ impl Sources {
             if baseline.nested.keys().any(|prefix| path.starts_with(prefix)) {
                 continue;
             }
-            let name = path.to_str().ok_or_else(|| failure("restore path is not UTF-8"))?;
-            if let Some(entry) = baseline.entries.get(name)
+            let name = super::super::git_path::tree_name(path)?;
+            if let Some(entry) = baseline.entries.get(&name)
                 && entry.mode != "160000"
             {
                 let bytes = git(root, &["cat-file", "blob", &entry.object], None)?;

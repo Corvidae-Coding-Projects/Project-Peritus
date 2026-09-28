@@ -2,6 +2,7 @@
 
 mod capture;
 mod export;
+mod git_path;
 mod head;
 mod index;
 mod paths;

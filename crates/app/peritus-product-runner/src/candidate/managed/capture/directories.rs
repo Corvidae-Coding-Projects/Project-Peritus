@@ -43,7 +43,7 @@ pub(super) fn expand(
             let mut owned = BTreeSet::new();
             child.append_paths(Path::new(&directory), &mut owned);
             for path in owned {
-                paths.insert(path.to_str().ok_or_else(|| failure("path is not UTF-8"))?.into());
+                paths.insert(super::super::git_path::tree_name(&path)?);
             }
         }
     }

@@ -78,7 +78,7 @@ impl Store {
                 None,
             )?;
         }
-        let source = root.to_str().ok_or_else(|| failure("repository root is not UTF-8"))?;
+        let source = super::super::git_path::local_repository(root)?;
         git(
             &self.root,
             &[
@@ -93,7 +93,7 @@ impl Store {
                 "--update-shallow",
                 "--no-write-fetch-head",
                 "--no-auto-gc",
-                source,
+                &source,
                 "+refs/peritus/task-baselines/*:refs/peritus/task-baselines/*",
             ],
             None,
@@ -159,7 +159,7 @@ impl Store {
                 return Err(failure("retained metadata path is both a file and a directory"));
             }
             for parent in Path::new(path).ancestors().skip(1) {
-                if parent.to_str().is_some_and(|parent| manifest.entries.contains_key(parent)) {
+                if manifest.entries.contains_key(&super::super::git_path::tree_name(parent)?) {
                     return Err(failure("retained metadata path has a non-directory parent"));
                 }
             }
@@ -190,7 +190,7 @@ impl Store {
             &["init", "--quiet", "--template=", &format!("--object-format={}", self.format)],
             None,
         )?;
-        let source = self.root.to_str().ok_or_else(|| failure("retention path is not UTF-8"))?;
+        let source = super::super::git_path::local_repository(&self.root)?;
         // Fetch immutable roots before restoring original refs, which may otherwise
         // appear dangling to Git's negotiation while the new object database is empty.
         for roots in manifest.roots.chunks(64) {
@@ -214,7 +214,7 @@ impl Store {
                 "--update-shallow",
                 "--no-write-fetch-head",
                 "--no-auto-gc",
-                source,
+                &source,
             ];
             arguments.extend(references.iter().map(String::as_str));
             git(destination, &arguments, None)?;
@@ -226,7 +226,7 @@ impl Store {
         &self,
         object: &str,
         destination: &Path,
-    ) -> Result<(), ProductRunnerError> {
+    ) -> Result<fs::File, ProductRunnerError> {
         validate_object(object, self.length)?;
         let file = fs::File::create(destination).map_err(failure)?;
         let output = Command::new("git")
@@ -239,6 +239,6 @@ impl Store {
         if !output.status.success() {
             return Err(failure(String::from_utf8_lossy(&output.stderr)));
         }
-        file.sync_all().map_err(failure)
+        Ok(file)
     }
 }
