@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1755,
-        "tip_oid": "19a8b4d8cd34616b77daafd432c392a247bd59e6",
-        "prefix_sha256": "5b3362be655298e76b55139d712a803e5510e53cbc33e5e78a85edb225372338"
+        "sequence": 1756,
+        "tip_oid": "187e9823d584ae569897f92dbf867c8897db5d34",
+        "prefix_sha256": "5d6ac4877c0d0e05c425fe55e77c53679efd130c1c564b1cda1a6f38465275d2"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 1903,
+  "next_comment_id": 1904,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -16544,7 +16544,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-28T00:58:41.412806074Z",
-      "updated_at": "2026-09-28T16:28:45.620310037Z",
+      "updated_at": "2026-09-28T16:33:15.037794335Z",
       "labels": [
         "bug"
       ],
@@ -16638,6 +16638,15 @@
           "kind": "handoff",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAOpmnwiKKjtcQctKoLcep9tCAK/6AEPXqu5OGJY4aWRF2erlZXCtYWdXgCs8HVvC3WiXm4ZkFrXl1sNSusQU9CQ=="
+        },
+        "3dbad2e1-4964-4a73-b564-ba80a7e7ba03": {
+          "display_id": 1903,
+          "author": "6ME5",
+          "content": "Committed73421ad2e: /attach can be the first conversation action. Durable creation receipt and refreshed metadata precede the image read; caption/confirmation remain explicit. Seven regressions cover first action, no execution, cancellation, changed draft, reconnect same operation, rejection retry, invalid paths and missing metadata. FullTUI282pass1ignoredownedfixture, Linux/Windows strictClippy,format,policy4795files,build78 pass. LiveTUI missing-file correction and separate fresh preview/discard pass; discarded preview leaves0images, explicit confirmation saves1image without inference. PR105 kept open.",
+          "created_at": "2026-09-28T16:33:15.026485296Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABArUeoAQSuyF0bX6QH1jA+qNAokIOR9s0PYA9Y2gm/xDEgNcifdilsoU64BHN8SV8S2IOUch0iKHgVetaMMYKgAQ=="
         },
         "421d66a7-c64d-4473-ac7c-69982138d600": {
           "display_id": 1884,
