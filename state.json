@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1702,
-        "tip_oid": "7ae04beceb2627d109a42d094dd3dd652ea18b9b",
-        "prefix_sha256": "f19ba85342fb751e38f6a2796230949c96537f6f3f32438edd179b20ebd582f4"
+        "sequence": 1703,
+        "tip_oid": "3945bdd50a98c628a163fba05cef7bd75d975326",
+        "prefix_sha256": "3b7fa2e4e56dd94844d354de19cdbefbc570ba1ea7d234f9ed620e77ff7fdd74"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 1858,
+  "next_comment_id": 1859,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -16544,7 +16544,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-28T00:58:41.412806074Z",
-      "updated_at": "2026-09-28T02:16:43.845771500Z",
+      "updated_at": "2026-09-28T02:43:22.363013041Z",
       "labels": [
         "bug"
       ],
@@ -16593,6 +16593,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAU9hMT8WXURoxn3QU5lYWZAPXb0VNMKJRideAAj5/UQ0IOVE/G2HMk6nky6/6NWlwi0u06o9DvnsMFHG4kreNDA=="
+        },
+        "e4a479d7-d0e8-4598-9f22-6324236e88f4": {
+          "display_id": 1858,
+          "author": "6ME5",
+          "content": "[action] Issue99: added negotiated authenticated durable-conversation execution discovery and continuation, TUI queue receipt then StartExecution chain, read-only reopening, explicit non-goal pending-input continuation. TUI13tests and daemon real-run duplicate/no-extra-provider-call test pass. Live build11 main session4bf776decef5e8726c74a74dd6f212fd read README then changed direction via follow-up, both inputs same ledger. Found internal label displayed as user text; implementing persisted public input projection. New protocol tags43/44 and response43, fixtures/assets regenerated. Branch feature/tui-resilience-repair remains uncommitted. Still preview output/terminal, cross-panel freshness, managed baseline recovery safety outstanding.",
+          "created_at": "2026-09-28T02:43:22.345663345Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAkDr3n4e25JY/VGCcVWsu6YcibXpaxWnzTNzJ5Wfnr4Fraj2m1rAsCNcbABc9YyqpMz6FZUL9vJ3rbl+a+RTNAg=="
         }
       }
     },
