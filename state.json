@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1741,
-        "tip_oid": "c2d728804a740b28b3abdddaf04dd07bfe702e5c",
-        "prefix_sha256": "f386ffc511044c499552bf370ce062eb5dab37944b46761e1378a42476895fa4"
+        "sequence": 1742,
+        "tip_oid": "78361ca7f53c125f0bf42eb72ff60022b378dd7f",
+        "prefix_sha256": "c5dad67a2a56fbd95c40e466d34dbd249f0ca4d39d147e9712578666e156c842"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 1892,
+  "next_comment_id": 1893,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -16540,7 +16540,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-28T00:58:41.412806074Z",
-      "updated_at": "2026-09-28T15:26:19.613464872Z",
+      "updated_at": "2026-09-28T15:28:57.696183609Z",
       "labels": [
         "bug"
       ],
@@ -16814,6 +16814,15 @@
           "kind": "handoff",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAsff/yLNgnVgUfdrFdkePJe2FwF7CMIDM0a0FMg2SNFvkOVu8vTN1ICmrvBLCcxyHa0dYAOqxxvYg4ylwZaVnCg=="
+        },
+        "d2324c9b-7dfa-43e7-a019-33d6ae858344": {
+          "display_id": 1892,
+          "author": "6ME5",
+          "content": "Committed fcbc27ba6 (foreground child job control before exec) and a4407d27a (negotiated pipe previews with retained line input). Build75: full TUI274 and daemon suites, protocol/client/CLI suites, strict workspace Clippy and Windows affected-target Clippy, codegen check, format, build, and policy pass. Real PTY100 interrupt cycles plus50 expanded input/exit/exec-failure cycles pass. Real fixture TUI restarted successfully. PR105 remains open; native Windows CI pending; Linux recovery failure unreproduced in60 local runs and Windows runner15m timeout still under investigation.",
+          "created_at": "2026-09-28T15:28:57.684018140Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAXTjAKkKm0j7GCZ/OG1mNvS5W4GAKQNpi3VFANzJ5k+sCRSY8VNLFt/ImR9wyxj86AqJ38e2d+S/EX9xEtSp6AA=="
         },
         "d248bcc1-1a80-4b31-badf-781a81d290cb": {
           "display_id": 1882,
