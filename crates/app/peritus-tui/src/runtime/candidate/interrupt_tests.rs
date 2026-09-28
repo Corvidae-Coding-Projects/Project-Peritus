@@ -2,7 +2,8 @@ use super::*;
 use portable_pty::{CommandBuilder, NativePtySystem, PtySize, PtySystem};
 use std::io::{BufReader, Read as _, Write as _};
 
-const FIXTURE: &str = "runtime::candidate::interrupt_tests::foreground_interrupt_fixture";
+pub(super) const FIXTURE: &str =
+    "runtime::candidate::interrupt_tests::foreground_interrupt_fixture";
 
 #[test]
 fn foreground_interrupt_returns_to_the_client_instead_of_terminating_it() {
@@ -64,6 +65,7 @@ fn read_until(output: &mut impl std::io::BufRead, captured: &mut String, marker:
 #[tokio::test]
 #[ignore = "isolated subprocess fixture receives a real foreground process-group interrupt"]
 async fn foreground_interrupt_fixture() {
+    println!("peritus-fixture-owner={}", std::process::id());
     let mut interrupts = super::super::interrupts::listen().unwrap();
     let workspace = PathBuf::from(
         std::env::var_os("PERITUS_TUI_INTERRUPT_WORKSPACE").expect("fixture workspace"),

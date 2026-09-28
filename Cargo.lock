@@ -3598,6 +3598,7 @@ dependencies = [
  "portable-pty",
  "ratatui",
  "sha2 0.11.0",
+ "signal-hook",
  "tempfile",
  "thiserror 2.0.20",
  "tokio",

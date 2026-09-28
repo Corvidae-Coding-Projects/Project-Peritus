@@ -22,7 +22,11 @@ Ctrl-C can interrupt the foreground candidate without terminating the TUI owner.
 interface is active, Ctrl-C or Ctrl-Q requests orderly client exit.
 On Unix, the child acquires its own foreground process group before execution; terminal ownership
 returns to the UI after interruption, ordinary exit, or an executable-launch failure. Native PTY
-tests exercise immediate keyboard input and Ctrl-C. This OS job-control boundary is not Miri eligible.
+tests exercise immediate keyboard input and Ctrl-C. Ctrl-Z suspends the owning shell job; `fg`
+restores the candidate, while `bg` leaves it stopped without taking the shell's terminal.
+Resume waits for an observed SIGCONT, including when the owner has multiple threads. The existing
+locked `signal-hook` dependency provides that notification without an additional worker thread.
+This OS job-control boundary is not Miri eligible; native PTY tests cover stop, resume, and interrupt.
 
 Opening a saved run resolves its actual input conversation before another message can be sent.
 A failed lookup retains the run and draft for retry. Runs in another configured workspace open

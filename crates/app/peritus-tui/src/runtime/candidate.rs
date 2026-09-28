@@ -138,3 +138,7 @@ mod tests {
 #[cfg(all(test, unix))]
 #[path = "candidate/interrupt_tests.rs"]
 mod interrupt_tests;
+
+#[cfg(all(test, unix))]
+#[path = "candidate/job_control_tests.rs"]
+mod job_control_tests;
