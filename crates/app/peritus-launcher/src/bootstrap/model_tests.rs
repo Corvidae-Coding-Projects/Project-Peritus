@@ -95,8 +95,11 @@ fn account_executable_update_does_not_block_bootstrap_or_replace_the_prior_gener
         toml::from_str(&fs::read_to_string(&prior_path).expect("prior")).expect("toml");
     let old_executable = temporary.path().join("previous-account-client");
     fs::write(&old_executable, "old executable fixture").expect("old executable");
-    prior["providers"][0]["executable"] =
-        toml::Value::String(old_executable.to_string_lossy().into_owned());
+    // A clean installation has no discovered executable key to replace.
+    prior["providers"][0].as_table_mut().expect("provider route").insert(
+        "executable".to_owned(),
+        toml::Value::String(old_executable.to_string_lossy().into_owned()),
+    );
     let prior_text = toml::to_string(&prior).expect("legacy configuration");
     fs::write(&prior_path, &prior_text).expect("pre-update immutable generation");
     let state_path = layout
