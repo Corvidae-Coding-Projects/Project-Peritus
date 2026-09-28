@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1734,
-        "tip_oid": "41ce60eb0f9e634faa9ac57680ea4ea7079b0acf",
-        "prefix_sha256": "ca4c9c6be9ae19cbc716b2bdb48d6feac51a5685818621383f152ffc74945be2"
+        "sequence": 1736,
+        "tip_oid": "d4ffccb98342df009589c8b65cc4b4bc9ff2d5a4",
+        "prefix_sha256": "b9a67d8687552748767f10033039bb41891f0c6d8300bacf01c7be78b7eb1e82"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 1885,
+  "next_comment_id": 1887,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -16540,7 +16540,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-28T00:58:41.412806074Z",
-      "updated_at": "2026-09-28T14:25:26.398374927Z",
+      "updated_at": "2026-09-28T14:44:55.414528605Z",
       "labels": [
         "bug"
       ],
@@ -16608,6 +16608,15 @@
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABArsNPNNGTbpzoZx8eoSACZLwHiDCKpz/WZqdZd4UysGUseiZ7PwQBvExSIgN6jBsF1P9dCa2qK+5c957huWD6CA=="
         },
+        "46cdfbc4-a785-407f-a693-4b7d4ddbff75": {
+          "display_id": 1886,
+          "author": "6ME5",
+          "content": "[action] PR105 remains draft/open. Terminal attachment isolation passes affected Linux suites and real PTY backpressure regression; Linux/Windows Clippy, build70, protocol codegen and xtask pass. CI reveals additional Windows recovery path/flush and raw pipe preview incompatibilities; fixes continuing, no claim of clean native Windows CI.",
+          "created_at": "2026-09-28T14:44:55.401659209Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAuJ2jGUblj/uF5PaRPy7/G979/uEqRpuRq+rKCGMj8SSADmSdCOCAKW0kWvTmtSjZnG08TmeftlYQ4r9PPv5fAQ=="
+        },
         "50ceefa7-0b39-4494-9911-58bfa0c81d2d": {
           "display_id": 1853,
           "author": "6ME5",
@@ -16634,6 +16643,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAxWErtyyhUNHaJqgpwjO6Iv3kPk3Mq2mGcqiSL96OVjQG1yZ/AXwfVhhF95VodgqEX5pBItNor0ZHYQjd96P7AA=="
+        },
+        "55288677-9b8a-4510-bd96-99501c2ae6d9": {
+          "display_id": 1885,
+          "author": "6ME5",
+          "content": "Session auto-ended (stale after 822 minutes). No handoff notes provided.",
+          "created_at": "2026-09-28T14:40:53.179495055Z",
+          "kind": "handoff",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAGg5uOueft+5etZMVzKqj/uV1UT5NWwVvAJeSVcunyAMIjtg6vLmB3B1uOqfnYBuWeaDCR9jdex4UXj2urFz+Cw=="
         },
         "5e8ec17d-04c9-4035-b4e9-6a3350549ab7": {
           "display_id": 1883,
