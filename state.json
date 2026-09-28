@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1711,
-        "tip_oid": "57aba3c17b57ba0665e45180b50c1a60d862f02e",
-        "prefix_sha256": "872384942107b53d0c654c285968c313a44a6ac6675b1881d1dac058cfbc202d"
+        "sequence": 1712,
+        "tip_oid": "bced446f19a6455c00793fc7ac115dee961b03dd",
+        "prefix_sha256": "f16ed3fbcee1093bb34064b62c1bfda4978394067e2b0a9b4f7784ec163740e2"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 1865,
+  "next_comment_id": 1866,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -16544,11 +16544,20 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-28T00:58:41.412806074Z",
-      "updated_at": "2026-09-28T05:11:49.335184444Z",
+      "updated_at": "2026-09-28T05:22:05.508590392Z",
       "labels": [
         "bug"
       ],
       "comments": {
+        "29fa1af9-7608-486b-a073-636c8ef429b1": {
+          "display_id": 1865,
+          "author": "6ME5",
+          "content": "Live repair265: Claude official signed-in client now executes workspace_read through Peritus and returns a grounded README summary. Exact previous failure reproduced outside TUI with captured system/prompt; corrected one-turn private transport. Files preview after completed edit reproduced stale metadata; read-before-preview and cancellation regression passes. Full workspace v12 passed before these final focused changes; final full validation pending.",
+          "created_at": "2026-09-28T05:22:05.501492835Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA3tWBzWYeG0XD6CjZBspU9TElhDLDiXeevCkFy2e0FcQKjDxisIXUrCX9BVx0eKTYElwnlo0dHytAWFOz2fRPDg=="
+        },
         "35605e95-430e-4692-9b6d-6ce1b7e5eb8c": {
           "display_id": 1863,
           "author": "6ME5",
