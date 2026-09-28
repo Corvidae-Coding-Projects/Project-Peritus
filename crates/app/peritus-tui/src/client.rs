@@ -253,6 +253,7 @@ fn client_hello(
         WellKnownProtocolFeature::UserInput,
         WellKnownProtocolFeature::TerminalStreaming,
         WellKnownProtocolFeature::TerminalFailure,
+        WellKnownProtocolFeature::TerminalPipes,
         WellKnownProtocolFeature::ReadOnlyDiagnostics,
         WellKnownProtocolFeature::ProductDiagnostics,
         WellKnownProtocolFeature::WorkbenchControl,

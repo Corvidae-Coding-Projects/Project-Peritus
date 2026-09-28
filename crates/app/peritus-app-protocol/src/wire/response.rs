@@ -124,7 +124,8 @@ fn write_payload(
         }
         AppResponsePayload::ArtifactOpened(value) => write_artifact_metadata(writer, value),
         AppResponsePayload::PromptAccepted(value) => write_id(writer, value.as_bytes()),
-        AppResponsePayload::TerminalAttached(value) => write_terminal_binding(writer, *value),
+        AppResponsePayload::TerminalAttached(value)
+        | AppResponsePayload::TerminalPipeAttached(value) => write_terminal_binding(writer, *value),
         AppResponsePayload::Acknowledged(value) => write_id(writer, value.request_id().as_bytes()),
         AppResponsePayload::DaemonStatus(value) => write_daemon_status(writer, value),
         AppResponsePayload::ShutdownAccepted(value) => write_shutdown_accepted(writer, *value),
@@ -161,6 +162,7 @@ fn payload_tag(payload: &AppResponsePayload) -> u16 {
         AppResponsePayload::ArtifactOpened(_) => 3,
         AppResponsePayload::PromptAccepted(_) => 4,
         AppResponsePayload::TerminalAttached(_) => 5,
+        AppResponsePayload::TerminalPipeAttached(_) => 181,
         AppResponsePayload::Acknowledged(_) => 6,
         AppResponsePayload::DaemonStatus(_) => 7,
         AppResponsePayload::ShutdownAccepted(_) => 8,
@@ -241,6 +243,7 @@ pub(super) fn read_response(
         3 => AppResponsePayload::ArtifactOpened(read_artifact_metadata(reader, limits)?),
         4 => AppResponsePayload::PromptAccepted(read_id(reader, PromptId::new)?),
         5 => AppResponsePayload::TerminalAttached(read_terminal_binding(reader)?),
+        181 => AppResponsePayload::TerminalPipeAttached(read_terminal_binding(reader)?),
         6 => AppResponsePayload::Acknowledged(OperationAcknowledgement::new(read_id(
             reader,
             RequestId::new,
@@ -325,7 +328,8 @@ fn validate_response_binding(
         AppResponsePayload::CommandResult(value) => {
             value.original_request_id() == response.request_id()
         }
-        AppResponsePayload::TerminalAttached(value) => {
+        AppResponsePayload::TerminalAttached(value)
+        | AppResponsePayload::TerminalPipeAttached(value) => {
             value.originating_request_id() == response.request_id()
         }
         AppResponsePayload::Acknowledged(value) => value.request_id() == response.request_id(),

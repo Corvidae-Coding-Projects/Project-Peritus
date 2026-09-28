@@ -226,6 +226,7 @@ enum PendingRequest {
     Prompt(PromptId),
     TerminalAttach(TerminalBinding),
     TerminalInput,
+    TerminalLineInput(TerminalBinding),
     TerminalResize,
     TerminalDetach(TerminalBinding),
     TerminalCancel,

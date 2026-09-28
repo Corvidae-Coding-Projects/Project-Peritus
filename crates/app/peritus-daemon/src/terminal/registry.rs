@@ -107,6 +107,16 @@ impl TerminalRegistry {
         Ok(())
     }
 
+    pub(crate) fn uses_pipes(
+        &self,
+        actor: ActorId,
+        session: SessionId,
+        process: ProcessId,
+    ) -> Result<bool, TerminalBridgeError> {
+        let mut state = self.lock();
+        Ok(process_mut(&mut state, process, actor, session)?.uses_pipes())
+    }
+
     /// Opens or idempotently confirms one exact actor/session/process attachment.
     ///
     /// # Errors

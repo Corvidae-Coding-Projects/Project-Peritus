@@ -109,6 +109,7 @@ const RESPONSES: &[AppPayloadDescriptor] = &[
     AppPayloadDescriptor { tag: 3, name: "artifact-opened" },
     AppPayloadDescriptor { tag: 4, name: "prompt-accepted" },
     AppPayloadDescriptor { tag: 5, name: "terminal-attached" },
+    AppPayloadDescriptor { tag: 181, name: "terminal-pipe-attached" },
     AppPayloadDescriptor { tag: 6, name: "acknowledged" },
     AppPayloadDescriptor { tag: 7, name: "daemon-status" },
     AppPayloadDescriptor { tag: 8, name: "shutdown-accepted" },

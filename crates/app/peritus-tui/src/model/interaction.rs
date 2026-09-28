@@ -17,7 +17,7 @@ impl AppModel {
                     Vec::new()
                 } else if self.view == View::Terminal
                     && let Some(terminal) =
-                        self.terminal.as_ref().filter(|terminal| terminal.capture_input())
+                        self.terminal.as_mut().filter(|terminal| terminal.capture_input())
                 {
                     let bytes = terminal.paste_bytes(&text);
                     self.send_terminal_input(bytes)

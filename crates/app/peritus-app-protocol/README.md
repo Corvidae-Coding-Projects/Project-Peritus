@@ -12,6 +12,13 @@ cancellation, or loss of the application connection. Existing event tags and byt
 Servers send this event only to clients that negotiated the feature; older clients receive a
 bounded diagnostic instead.
 
+The optional `app.terminal-pipes` feature adds response tag 181, `TerminalPipeAttached`, carrying
+the exact attachment binding. It identifies an existing interactive preview with bounded stdin,
+stdout, and stderr pipes instead of a PTY. Clients must negotiate it before such an attachment
+is admitted. Stream offsets remain independent and event sequencing remains global; pipe mode
+does not grant resize support or new process-launch authority. `TerminalAttached` retains its
+existing PTY meaning and wire bytes.
+
 Product responses preserve the legacy `ProductRunSnapshot` bytes and add append-only settlement
 payload tags. A settlement identifies the exact candidate and conversation revision, distinguishes
 automated qualification from the user's existing `ProductDeliverable::accepted` choice, and reports

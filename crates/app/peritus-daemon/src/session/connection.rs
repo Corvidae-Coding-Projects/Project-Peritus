@@ -125,8 +125,7 @@ pub async fn run_connection(
                             &terminals,
                             &product_runs,
                             &mut terminal_bindings,
-                            context.actor_id(),
-                            context.limits(),
+                            &context,
                             request,
                         )
                         .await?;

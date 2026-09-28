@@ -39,6 +39,12 @@ impl AppModel {
             // Completion or an earlier rejection may have already removed this owned transfer.
             return Vec::new();
         }
+        if let Some(PendingRequest::TerminalLineInput(binding)) = pending
+            && let Some(terminal) = &mut self.terminal
+            && terminal.binding() == *binding
+        {
+            terminal.settle_line_input(false);
+        }
         let absent_goal = matches!(pending, Some(PendingRequest::WorkbenchGoal(_)))
             && error.code() == peritus_app_protocol::AppErrorCode::InvalidIdentifier;
         if let Some(effects) = self.resolve_rejected_control(pending, error.code()) {
@@ -194,14 +200,12 @@ impl AppModel {
             AppResponsePayload::DaemonStatus(status) => {
                 self.daemon_status = Some(status.clone());
             }
-            AppResponsePayload::TerminalAttached(binding) => {
-                if matches!(pending, Some(PendingRequest::TerminalAttach(expected)) if expected == binding)
-                {
-                    return self.accept_terminal(*binding);
-                }
-                self.notice(
-                    NoticeLevel::Error,
-                    "ignored a terminal attachment that did not match the pending request",
+            AppResponsePayload::TerminalAttached(binding)
+            | AppResponsePayload::TerminalPipeAttached(binding) => {
+                return self.accept_terminal_response(
+                    *binding,
+                    matches!(payload, AppResponsePayload::TerminalPipeAttached(_)),
+                    pending,
                 );
             }
             AppResponsePayload::PromptAccepted(prompt_id) => {
@@ -289,6 +293,13 @@ impl AppModel {
                     self.notice(NoticeLevel::Info, "terminal detached");
                 }
             }
+            Some(PendingRequest::TerminalLineInput(binding)) => {
+                if let Some(terminal) = &mut self.terminal
+                    && terminal.binding() == *binding
+                {
+                    terminal.settle_line_input(true);
+                }
+            }
             Some(PendingRequest::TerminalCancel) => {
                 self.notice(NoticeLevel::Warning, "terminal cancellation was acknowledged");
             }
@@ -296,9 +307,32 @@ impl AppModel {
         }
         Vec::new()
     }
-    fn accept_terminal(&mut self, binding: peritus_app_protocol::TerminalBinding) -> Vec<Effect> {
+    fn accept_terminal_response(
+        &mut self,
+        binding: peritus_app_protocol::TerminalBinding,
+        pipes: bool,
+        pending: Option<&PendingRequest>,
+    ) -> Vec<Effect> {
+        if matches!(pending, Some(PendingRequest::TerminalAttach(expected)) if *expected == binding)
+        {
+            return self.accept_terminal(binding, pipes);
+        }
+        self.notice(
+            NoticeLevel::Error,
+            "ignored a terminal attachment that did not match the pending request",
+        );
+        Vec::new()
+    }
+    fn accept_terminal(
+        &mut self,
+        binding: peritus_app_protocol::TerminalBinding,
+        pipes: bool,
+    ) -> Vec<Effect> {
         match TerminalSession::new(binding, self.limits.max_terminal_chunk_bytes()) {
-            Ok(terminal) => {
+            Ok(mut terminal) => {
+                if pipes {
+                    terminal.use_pipes();
+                }
                 self.terminal = Some(terminal);
                 self.view = View::Terminal;
                 self.notice(

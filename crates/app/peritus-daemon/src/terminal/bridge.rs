@@ -29,6 +29,7 @@ pub struct LiveTerminalRegistration {
     session_id: SessionId,
     process_id: ProcessId,
     plan_digest: Sha256Digest,
+    io_mode: IoMode,
     birth_identity: ProcessTreeIdentity,
     control: ProcessControl,
     owner: TerminalOwner,
@@ -62,6 +63,7 @@ impl LiveTerminalRegistration {
             session_id: identity.session_id(),
             process_id: identity.process_id(),
             plan_digest: plan.digest(),
+            io_mode: plan.io_mode(),
             birth_identity,
             control,
             owner: TerminalOwner::Direct(owner),
@@ -76,6 +78,12 @@ impl LiveTerminalRegistration {
                 "only a checked pseudo-terminal execution may be registered",
             ));
         }
+        Self::validate_observation_bounds(plan)
+    }
+
+    pub(super) const fn validate_observation_bounds(
+        plan: &ExecutionPlan,
+    ) -> Result<(), TerminalBridgeError> {
         let capabilities = plan.terminal_capabilities();
         if capabilities.event_count() == 0 || capabilities.output_bytes() == 0 {
             return Err(rejected(
@@ -105,6 +113,7 @@ pub(super) struct TerminalBridge {
     session_id: SessionId,
     process_id: ProcessId,
     plan_digest: Sha256Digest,
+    io_mode: IoMode,
     birth_identity: ProcessTreeIdentity,
     control: ProcessControl,
     owner: TerminalOwner,
@@ -126,6 +135,7 @@ impl TerminalBridge {
             session_id: registration.session_id,
             process_id: registration.process_id,
             plan_digest: registration.plan_digest,
+            io_mode: registration.io_mode,
             birth_identity: registration.birth_identity,
             control: registration.control,
             owner: registration.owner,
@@ -143,6 +153,10 @@ impl TerminalBridge {
 
     pub(super) fn owner_matches(&self, actor: ActorId, session: SessionId) -> bool {
         self.actor_id == actor && self.session_id == session
+    }
+
+    pub(super) const fn uses_pipes(&self) -> bool {
+        matches!(self.io_mode, IoMode::Pipes)
     }
 
     pub(super) fn attachment_count(&self) -> usize {

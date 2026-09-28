@@ -53,13 +53,16 @@ pub(super) fn attach_and_reconnect(
         RequestId::new([89; 16]).expect("request"),
     );
     registry.attach(actor(), session, binding, 8192).expect("reattach");
-    registry
-        .resize(
-            actor(),
-            session,
-            TerminalResize::new(binding, 100, 30, u16::MAX, u16::MAX).expect("size"),
-        )
-        .expect("resize");
+    let resized = registry.resize(
+        actor(),
+        session,
+        TerminalResize::new(binding, 100, 30, u16::MAX, u16::MAX).expect("size"),
+    );
+    if registry.uses_pipes(actor(), session, process).unwrap() {
+        assert!(resized.is_err(), "pipe attachment must not claim PTY resize");
+    } else {
+        resized.expect("resize PTY");
+    }
     service.authorize_preview_terminal_input(actor(), process).expect("input authority");
     assert!(
         service

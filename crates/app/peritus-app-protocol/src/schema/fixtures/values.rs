@@ -138,8 +138,23 @@ pub(super) fn encoded<T: CanonicalEncode>(
 fn terminal_cases(
     limits: AppProtocolLimits,
     codec_limits: CodecLimits,
-) -> Result<[GeneratedFixtureCase; 2], CodecError> {
+) -> Result<[GeneratedFixtureCase; 3], CodecError> {
     Ok([
+        encoded(
+            "realistic-terminal-pipe-attached-response",
+            FixtureClass::Realistic,
+            &AppResponseEnvelope::new(
+                context(),
+                id(10, RequestId::new),
+                id(11, CorrelationId::new),
+                AppResponsePayload::TerminalPipeAttached(TerminalBinding::new(
+                    id(26, TerminalAttachmentId::new),
+                    id(27, ProcessId::new),
+                    id(10, RequestId::new),
+                )),
+            ),
+            codec_limits,
+        )?,
         encoded(
             "realistic-terminal-event",
             FixtureClass::Realistic,

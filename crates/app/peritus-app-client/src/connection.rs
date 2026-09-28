@@ -60,11 +60,12 @@ impl Client {
             .copied()
             .map(ProtocolFeatureName::well_known)
             .collect::<Result<Vec<_>, _>>()?;
-        let optional = if required.contains(&WellKnownProtocolFeature::TerminalFailure) {
-            Vec::new()
-        } else {
-            vec![ProtocolFeatureName::well_known(WellKnownProtocolFeature::TerminalFailure)?]
-        };
+        let optional =
+            [WellKnownProtocolFeature::TerminalFailure, WellKnownProtocolFeature::TerminalPipes]
+                .into_iter()
+                .filter(|feature| !required.contains(feature))
+                .map(ProtocolFeatureName::well_known)
+                .collect::<Result<Vec<_>, _>>()?;
         let hello = ClientHello::new_with_session(
             protocol_id,
             requested_session,

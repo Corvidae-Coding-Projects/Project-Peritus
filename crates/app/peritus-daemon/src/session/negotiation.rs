@@ -157,6 +157,7 @@ fn server_capabilities() -> Result<ServerCapabilities, DaemonError> {
         WellKnownProtocolFeature::UserInput,
         WellKnownProtocolFeature::TerminalStreaming,
         WellKnownProtocolFeature::TerminalFailure,
+        WellKnownProtocolFeature::TerminalPipes,
         WellKnownProtocolFeature::ReadOnlyDiagnostics,
         WellKnownProtocolFeature::ProductDiagnostics,
         WellKnownProtocolFeature::HarnessImprovements,

@@ -20,7 +20,8 @@ impl PendingRequest {
             | Self::ChatOpen { .. }
             | Self::ProductQuery
             | Self::ProductExactQuery(_)
-            | Self::ProductConversationQuery => Recovery::Read,
+            | Self::ProductConversationQuery
+            | Self::TerminalLineInput(_) => Recovery::Read,
             Self::WorkbenchCheckpointInspect(_)
             | Self::WorkbenchRewind(_)
             | Self::WorkbenchMemory(_)
@@ -82,6 +83,7 @@ impl AppModel {
         // Decide before removing anything so request iteration order cannot change recovery.
         let workbench_pending = self.workbench_chat_pending();
         let mut reconnect = false;
+        let mut unconfirmed_terminal_input = false;
         for request in expired {
             self.pending_started.remove(&request);
             if let Some(editor) = self.pending_editor_drafts.remove(&request) {
@@ -105,6 +107,14 @@ impl AppModel {
                 Recovery::Reconnect | Recovery::WorkbenchRead => reconnect = true,
             }
             match pending {
+                PendingRequest::TerminalLineInput(binding) => {
+                    if let Some(terminal) = &mut self.terminal
+                        && terminal.binding() == binding
+                    {
+                        terminal.settle_line_input(false);
+                        unconfirmed_terminal_input = true;
+                    }
+                }
                 PendingRequest::ChatSubmit { text, .. } => self.restore_chat_draft(&text),
                 PendingRequest::Prompt(prompt) => {
                     self.set_prompt_phase(prompt, PromptPhase::Failed);
@@ -114,6 +124,8 @@ impl AppModel {
         }
         self.notice(NoticeLevel::Error, if reconnect {
             "daemon request timed out; reconnecting to reconcile its outcome before another action"
+        } else if unconfirmed_terminal_input {
+            "Terminal input acknowledgement timed out. Delivery is unknown; draft retained. Inspect the child before resending. Chat remains connected."
         } else {
             "Inspection timed out. Draft and connection retained; refresh the panel or retry the command. Ctrl-R reconnects if needed."
         });

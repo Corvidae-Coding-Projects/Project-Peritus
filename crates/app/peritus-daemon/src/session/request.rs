@@ -30,13 +30,14 @@ pub(super) async fn handle_request<S>(
     terminals: &TerminalRegistry,
     product_runs: &ProductRunService,
     terminal_bindings: &mut Vec<peritus_app_protocol::TerminalBinding>,
-    actor_id: peritus_types::ActorId,
-    limits: AppProtocolLimits,
+    context: &super::negotiation::ConnectionContext,
     request: AppRequestEnvelope,
 ) -> Result<Option<ShutdownEventReceiver>, DaemonError>
 where
     S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin,
 {
+    let actor_id = context.actor_id();
+    let limits = context.limits();
     let payload = if let Err(error) =
         product_runs.authorize_workbench_request(actor_id, request.payload())
     {
@@ -312,15 +313,9 @@ where
                     Err(error) => artifact_error_payload(&error),
                 }
             }
-            AppRequestPayload::AttachTerminal(binding) => attachment::attach(
-                product_runs,
-                terminals,
-                actor_id,
-                request.context().session_id(),
-                *binding,
-                limits,
-                terminal_bindings,
-            ),
+            AppRequestPayload::AttachTerminal(binding) => {
+                attachment::attach(product_runs, terminals, context, *binding, terminal_bindings)
+            }
             AppRequestPayload::TerminalInput(input) => terminal_operation(
                 request.request_id(),
                 terminals.input(actor_id, request.context().session_id(), input),

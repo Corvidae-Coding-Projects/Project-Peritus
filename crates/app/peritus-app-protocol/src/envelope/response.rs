@@ -131,6 +131,8 @@ pub enum AppResponsePayload {
     PromptAccepted(PromptId),
     /// Successful terminal attachment observation.
     TerminalAttached(TerminalBinding),
+    /// Negotiated bounded pipe attachment; input is line-oriented and resize is unavailable.
+    TerminalPipeAttached(TerminalBinding),
     /// Successful exact request acknowledgement.
     Acknowledged(OperationAcknowledgement),
     /// Current daemon status.

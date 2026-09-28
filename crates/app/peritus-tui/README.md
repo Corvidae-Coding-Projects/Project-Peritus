@@ -20,6 +20,9 @@ discard a candidate without finding an internal worktree or log. Foreground run 
 return terminal ownership to the candidate and restore the full-screen interface afterward.
 Ctrl-C can interrupt the foreground candidate without terminating the TUI owner. While the
 interface is active, Ctrl-C or Ctrl-Q requests orderly client exit.
+On Unix, the child acquires its own foreground process group before execution; terminal ownership
+returns to the UI after interruption, ordinary exit, or an executable-launch failure. Native PTY
+tests exercise immediate keyboard input and Ctrl-C. This OS job-control boundary is not Miri eligible.
 
 Opening a saved run resolves its actual input conversation before another message can be sent.
 A failed lookup retains the run and draft for retry. Runs in another configured workspace open
@@ -37,6 +40,13 @@ Modal drafts survive launcher-owned daemon recovery, including uncertain submiss
 does not submit them again; inspect the current run before manually resending an uncertain task.
 Ctrl-R reconnects without replacing a chat or modal draft. With terminal keyboard capture enabled,
 Ctrl-R goes to the attached program; release capture with Ctrl-] before reconnecting.
+
+Interactive previews backed by pipes negotiate `app.terminal-pipes`. Their terminal view shows
+a local line editor: type or paste, edit the visible draft, then press Enter to send it. The draft
+clears only when the daemon acknowledges that exact input; rejection or timeout preserves it.
+After an uncertain delivery, inspect the program before resending. Ctrl-C explicitly cancels
+the preview. Pipe previews do not support terminal resizing or full-screen terminal applications;
+PTY previews retain direct keyboard input and resizing.
 
 Isolated forks open with the child's registered workspace path and trust, without restarting the
 daemon or changing the parent workspace. If you type another draft while the fork is pending, the

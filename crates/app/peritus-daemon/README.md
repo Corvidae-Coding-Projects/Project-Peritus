@@ -33,6 +33,12 @@ application connection or killing the process. Clients negotiating `app.terminal
 an exact attachment-bound failure event; older clients receive an inert diagnostic. Other terminal
 attachments and chat requests continue. Native transport failures still end the connection.
 
+Existing interactive preview leases may use bounded pipes (including the raw Windows process
+backend). Clients negotiating `app.terminal-pipes` can attach with an explicit pipe-mode reply,
+send input, observe stdout/stderr, detach, and cancel. Pipe attachments reject resize operations.
+This does not turn pipe children into PTYs or change process-tree containment; direct terminal
+registration still requires a PTY plan.
+
 Product-run records also retain candidate checkpoints, typed settlements, opaque continuation
 state, remaining work, and interruption causes. Startup validates settled candidates against their
 configured managed workspace, marks changed candidates stale, and automatically resumes

@@ -35,7 +35,9 @@ pub async fn attach(
         })?;
     let binding = TerminalBinding::new(attachment, process, identity.request_id);
     let response = client.request(identity, AppRequestPayload::AttachTerminal(binding)).await?;
-    let AppResponsePayload::TerminalAttached(observed) = response.payload() else {
+    let (AppResponsePayload::TerminalAttached(observed)
+    | AppResponsePayload::TerminalPipeAttached(observed)) = response.payload()
+    else {
         return response_error(response.payload(), "terminal attachment");
     };
     if *observed != binding {
@@ -44,6 +46,11 @@ pub async fn attach(
             "daemon attached a different terminal binding",
         ));
     }
+    let mode = if matches!(response.payload(), AppResponsePayload::TerminalPipeAttached(_)) {
+        "pipes"
+    } else {
+        "pty"
+    };
     output.success(
         "terminal-attached",
         serde_json::json!({
@@ -51,9 +58,10 @@ pub async fn attach(
             "process_id": hex(binding.process_id().as_bytes()),
             "originating_request_id": hex(binding.originating_request_id().as_bytes()),
             "session_id": hex(client.context().session_id().as_bytes()),
+            "mode": mode,
         }),
         &format!(
-            "terminal attached: attachment={} process={} originating-request={} session={}{}",
+            "terminal attached ({mode}): attachment={} process={} originating-request={} session={}{}",
             hex(binding.attachment_id().as_bytes()),
             hex(binding.process_id().as_bytes()),
             hex(binding.originating_request_id().as_bytes()),

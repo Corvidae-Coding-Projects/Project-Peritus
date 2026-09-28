@@ -99,6 +99,7 @@ export type AppPayloadKind =
   | "artifact-opened"
   | "prompt-accepted"
   | "terminal-attached"
+  | "terminal-pipe-attached"
   | "acknowledged"
   | "daemon-status"
   | "shutdown-accepted"

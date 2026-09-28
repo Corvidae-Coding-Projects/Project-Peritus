@@ -24,6 +24,8 @@ impl ProtocolFeatureName {
     pub const TERMINAL_STREAMING: &'static str = "app.terminal-streaming";
     /// Attachment-local output failure without a process-exit or connection-loss claim.
     pub const TERMINAL_FAILURE: &'static str = "app.terminal-failure";
+    /// Bounded pipe attachments with explicit line-input semantics.
+    pub const TERMINAL_PIPES: &'static str = "app.terminal-pipes";
     /// Version-one read-only diagnostics feature name.
     pub const READ_ONLY_DIAGNOSTICS: &'static str = "app.read-only-diagnostics";
     /// Scoped local product diagnostics with bounded classified findings.
@@ -125,6 +127,8 @@ pub enum WellKnownProtocolFeature {
     TerminalStreaming,
     /// Attachment-local output failure events.
     TerminalFailure,
+    /// Explicit pipe attachment responses without PTY resize capability.
+    TerminalPipes,
     /// Read-only diagnostics.
     ReadOnlyDiagnostics,
     /// Scoped local product diagnostics.
@@ -188,6 +192,7 @@ impl WellKnownProtocolFeature {
             Self::UserInput => ProtocolFeatureName::USER_INPUT,
             Self::TerminalStreaming => ProtocolFeatureName::TERMINAL_STREAMING,
             Self::TerminalFailure => ProtocolFeatureName::TERMINAL_FAILURE,
+            Self::TerminalPipes => ProtocolFeatureName::TERMINAL_PIPES,
             Self::ReadOnlyDiagnostics => ProtocolFeatureName::READ_ONLY_DIAGNOSTICS,
             Self::ProductDiagnostics => ProtocolFeatureName::PRODUCT_DIAGNOSTICS,
             Self::WorkbenchControl => ProtocolFeatureName::WORKBENCH_CONTROL,

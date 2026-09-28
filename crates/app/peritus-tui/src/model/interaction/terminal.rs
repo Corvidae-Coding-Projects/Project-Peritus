@@ -8,6 +8,12 @@ use super::{
 
 impl AppModel {
     pub(super) fn captured_terminal_key(&mut self, key: KeyEvent) -> Vec<Effect> {
+        if self.terminal.as_ref().is_some_and(TerminalSession::uses_pipes)
+            && key.modifiers.contains(KeyModifiers::CONTROL)
+            && key.code == KeyCode::Char('c')
+        {
+            return self.cancel_terminal();
+        }
         if key.modifiers.contains(KeyModifiers::CONTROL)
             && matches!(key.code, KeyCode::Char(']' | '5'))
         {
@@ -18,7 +24,7 @@ impl AppModel {
             return Vec::new();
         }
         self.terminal
-            .as_ref()
+            .as_mut()
             .and_then(|terminal| terminal.key_bytes(key))
             .map_or_else(Vec::new, |bytes| self.send_terminal_input(bytes))
     }
@@ -66,6 +72,9 @@ impl AppModel {
     }
 
     pub(super) fn send_terminal_input(&mut self, bytes: Vec<u8>) -> Vec<Effect> {
+        if bytes.is_empty() {
+            return Vec::new();
+        }
         let Some(binding) = self
             .terminal
             .as_ref()
@@ -88,9 +97,12 @@ impl AppModel {
             self.notice(NoticeLevel::Error, error.to_string());
             return Vec::new();
         }
-        self.request(AppRequestPayload::TerminalInput(input), PendingRequest::TerminalInput)
-            .into_iter()
-            .collect()
+        let pending = if self.terminal.as_ref().is_some_and(TerminalSession::uses_pipes) {
+            PendingRequest::TerminalLineInput(binding)
+        } else {
+            PendingRequest::TerminalInput
+        };
+        self.request(AppRequestPayload::TerminalInput(input), pending).into_iter().collect()
     }
 
     pub(in crate::model) fn send_terminal_resize(
@@ -101,7 +113,7 @@ impl AppModel {
         let Some(binding) = self
             .terminal
             .as_ref()
-            .filter(|terminal| terminal.can_capture())
+            .filter(|terminal| terminal.can_capture() && !terminal.uses_pipes())
             .map(TerminalSession::binding)
         else {
             return Vec::new();

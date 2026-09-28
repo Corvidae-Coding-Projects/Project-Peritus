@@ -27,7 +27,7 @@ impl LiveTerminalRegistration {
         lease: PreviewTerminal,
     ) -> Result<Self, TerminalBridgeError> {
         let plan = lease.plan();
-        Self::validate_plan(plan)?;
+        Self::validate_observation_bounds(plan)?;
         let control = lease.control();
         let birth_identity = control
             .tree_identity()
@@ -47,6 +47,7 @@ impl LiveTerminalRegistration {
             session_id: session,
             process_id: plan.identity().process_id(),
             plan_digest: plan.digest(),
+            io_mode: plan.io_mode(),
             birth_identity,
             control,
             owner: TerminalOwner::Preview(lease),

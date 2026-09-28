@@ -111,10 +111,12 @@ impl TerminalBridge {
         bytes: &[u8],
         limits: TerminalRegistryLimits,
     ) -> Result<(), TerminalBridgeError> {
-        if stream != OutputStream::Terminal {
+        if matches!(self.io_mode, peritus_process::IoMode::Pty(_))
+            != (stream == OutputStream::Terminal)
+        {
             return Err(rejected(
                 TerminalBridgeErrorKind::ProcessIdentityMismatch,
-                "a registered PTY emitted a separated stdout or stderr stream",
+                "output stream differs from the checked pipe or PTY mode",
             ));
         }
         let stream_index = stream_index(stream);

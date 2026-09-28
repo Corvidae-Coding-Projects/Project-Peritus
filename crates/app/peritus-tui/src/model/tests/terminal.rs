@@ -4,6 +4,8 @@ use crate::model::EditorKind;
 use peritus_app_protocol::{RequestId, TerminalAttachmentId, TerminalBinding};
 use peritus_types::ProcessId;
 
+mod pipes;
+
 #[test]
 fn interrupt_escape_and_both_release_key_encodings_obey_capture() {
     let mut model = attached_model();

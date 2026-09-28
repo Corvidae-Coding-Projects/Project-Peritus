@@ -1,30 +1,46 @@
 //! Register and attach terminal ownership before recording connection cleanup bindings.
 
-use super::{AppProtocolLimits, AppResponsePayload, ProductRunService, TerminalRegistry};
+use super::{AppResponsePayload, ProductRunService, TerminalRegistry};
 use peritus_app_protocol::TerminalBinding;
-use peritus_types::{ActorId, SessionId};
 
 pub(super) fn attach(
     product_runs: &ProductRunService,
     terminals: &TerminalRegistry,
-    actor: ActorId,
-    session: SessionId,
+    context: &super::super::negotiation::ConnectionContext,
     binding: TerminalBinding,
-    limits: AppProtocolLimits,
     bindings: &mut Vec<TerminalBinding>,
 ) -> AppResponsePayload {
+    let actor = context.actor_id();
+    let session = context.protocol().session_id();
+    let limits = context.limits();
+    let terminal_pipes =
+        context.supports(peritus_app_protocol::WellKnownProtocolFeature::TerminalPipes);
     let registration =
         product_runs.register_preview_terminal(actor, session, binding.process_id(), terminals);
     match registration.and_then(|()| {
+        let pipes = terminals
+            .uses_pipes(actor, session, binding.process_id())
+            .map_err(|error| error.protocol_error())?;
+        if pipes && !terminal_pipes {
+            return Err(peritus_app_protocol::AppProtocolError::new(
+                peritus_app_protocol::AppErrorCode::MissingRequiredFeature,
+                None,
+            ));
+        }
         terminals
             .attach(actor, session, binding, limits.max_terminal_chunk_bytes())
+            .map(|_| pipes)
             .map_err(|error| error.protocol_error())
     }) {
-        Ok(_) => {
+        Ok(pipes) => {
             if !bindings.contains(&binding) {
                 bindings.push(binding);
             }
-            AppResponsePayload::TerminalAttached(binding)
+            if pipes {
+                AppResponsePayload::TerminalPipeAttached(binding)
+            } else {
+                AppResponsePayload::TerminalAttached(binding)
+            }
         }
         Err(error) => AppResponsePayload::Error(error),
     }

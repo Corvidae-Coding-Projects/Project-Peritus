@@ -143,6 +143,14 @@ fn render_event_view(frame: &mut Frame<'_>, area: Rect, model: &AppModel) {
 }
 
 fn render_terminal(frame: &mut Frame<'_>, area: Rect, model: &AppModel) {
+    let (area, input_area) =
+        if model.terminal.as_ref().is_some_and(crate::terminal::TerminalSession::uses_pipes) {
+            let [output, input] =
+                Layout::vertical([Constraint::Min(0), Constraint::Length(3)]).areas(area);
+            (output, Some(input))
+        } else {
+            (area, None)
+        };
     let title = model.terminal.as_ref().map_or_else(
         || " Terminal · detached ".to_owned(),
         |terminal| {
@@ -183,6 +191,40 @@ fn render_terminal(frame: &mut Frame<'_>, area: Rect, model: &AppModel) {
         && column < area.width.saturating_sub(2)
     {
         frame.set_cursor_position((area.x + 1 + column, area.y + 1 + row));
+    }
+    if let Some(input_area) = input_area
+        && let Some(terminal) = &model.terminal
+        && let Some((text, cursor, pending)) = terminal.line_input()
+    {
+        let draft = crate::input::composer::layout(
+            text,
+            cursor,
+            None,
+            usize::from(input_area.width.saturating_sub(2)),
+        );
+        let offset = draft.offset(input_area);
+        let title = if pending {
+            " Sending line · draft retained "
+        } else {
+            " Line input · Enter sends "
+        };
+        frame.render_widget(
+            Paragraph::new(draft.lines.clone())
+                .scroll((u16::try_from(offset).unwrap_or(u16::MAX), 0))
+                .block(Block::default().borders(Borders::ALL).title(title)),
+            input_area,
+        );
+        if terminal.capture_input()
+            && terminal.can_capture()
+            && !pending
+            && draft.column < usize::from(input_area.width.saturating_sub(2))
+            && draft.row.saturating_sub(offset) < usize::from(input_area.height.saturating_sub(2))
+        {
+            frame.set_cursor_position((
+                input_area.x + 1 + u16::try_from(draft.column).unwrap_or(0),
+                input_area.y + 1 + u16::try_from(draft.row.saturating_sub(offset)).unwrap_or(0),
+            ));
+        }
     }
 }
 
