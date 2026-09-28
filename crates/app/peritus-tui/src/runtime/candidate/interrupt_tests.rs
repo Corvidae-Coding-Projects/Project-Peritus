@@ -1,9 +1,6 @@
 use super::*;
-use std::{
-    io::{BufReader, Read as _},
-    os::unix::process::CommandExt as _,
-    process::Stdio,
-};
+use portable_pty::{CommandBuilder, NativePtySystem, PtySize, PtySystem};
+use std::io::{BufReader, Read as _, Write as _};
 
 const FIXTURE: &str = "runtime::candidate::interrupt_tests::foreground_interrupt_fixture";
 
@@ -19,27 +16,32 @@ fn os_interrupt_after_foreground_exit_quits_the_resumed_ui() {
 
 fn interrupt_client(check_ui: bool) {
     let workspace = tempfile::tempdir().unwrap();
-    let mut child = Command::new(std::env::current_exe().unwrap())
-        .args(["--exact", FIXTURE, "--ignored", "--nocapture"])
-        .env("PERITUS_TUI_INTERRUPT_WORKSPACE", workspace.path())
-        .env("PERITUS_TUI_INTERRUPT_CHECK_UI", if check_ui { "1" } else { "0" })
-        .process_group(0)
-        .stdout(Stdio::piped())
-        .stderr(Stdio::inherit())
-        .spawn()
-        .unwrap();
-    let mut output = BufReader::new(child.stdout.take().unwrap());
+    let pair = NativePtySystem::default().openpty(PtySize::default()).unwrap();
+    let mut command = CommandBuilder::new(std::env::current_exe().unwrap());
+    command.args(["--exact", FIXTURE, "--ignored", "--nocapture"]);
+    command.env("PERITUS_TUI_INTERRUPT_WORKSPACE", workspace.path());
+    command.env("PERITUS_TUI_INTERRUPT_CHECK_UI", if check_ui { "1" } else { "0" });
+    let mut child = pair.slave.spawn_command(command).unwrap();
+    drop(pair.slave);
+    let mut output = BufReader::new(pair.master.try_clone_reader().unwrap());
+    let mut input = pair.master.take_writer().unwrap();
     let mut captured = String::new();
+    read_until(&mut output, &mut captured, "peritus-candidate-input");
+    input.write_all(b"Ada\n").unwrap();
+    input.flush().unwrap();
     read_until(&mut output, &mut captured, "peritus-candidate-ready");
-    let group = nix::unistd::Pid::from_raw(i32::try_from(child.id()).unwrap());
-    nix::sys::signal::killpg(group, nix::sys::signal::Signal::SIGINT).unwrap();
+    input.write_all(b"\x03").unwrap();
+    input.flush().unwrap();
     read_until(&mut output, &mut captured, "peritus-client-survived");
     if check_ui {
-        nix::sys::signal::killpg(group, nix::sys::signal::Signal::SIGINT).unwrap();
+        input.write_all(b"\x03").unwrap();
+        input.flush().unwrap();
     }
-    output.read_to_string(&mut captured).unwrap();
+    if let Err(error) = output.read_to_string(&mut captured) {
+        assert_eq!(error.raw_os_error(), Some(libc::EIO), "PTY read: {error}");
+    }
     let status = child.wait().unwrap();
-    assert!(status.success(), "interrupt killed the TUI owner: {status}; {captured}");
+    assert!(status.success(), "interrupt killed the TUI owner: {status:?}; {captured}");
     if check_ui {
         assert!(captured.contains("peritus-ui-quit"), "{captured}");
     }
@@ -85,13 +87,17 @@ async fn foreground_interrupt_fixture() {
     }
     std::fs::write(
         workspace.join("run.sh"),
-        b"echo peritus-candidate-ready
+        b"echo peritus-candidate-input
+read answer
+[ \"$answer\" = Ada ] || exit 5
+echo peritus-candidate-ready
 exec sleep 30
 ",
     )
     .unwrap();
+    std::fs::write(workspace.join("success.sh"), b"exit 0\n").unwrap();
     let digest = ProductRunner::candidate_digest(&workspace).unwrap();
-    let result = execute(workspace, "sh run.sh".into(), digest, &mut interrupts).await;
+    let result = execute(workspace.clone(), "sh run.sh".into(), digest, &mut interrupts).await;
     let error = result.expect_err("interrupted child must not report success");
     assert!(error.contains("SIGINT"), "child must actually terminate from the interrupt: {error}");
     assert!(
@@ -99,6 +105,15 @@ exec sleep 30
             .await
             .is_err(),
         "foreground interrupt leaked into the resumed UI"
+    );
+    assert!(
+        execute(workspace.clone(), "sh success.sh".into(), digest, &mut interrupts).await.is_ok()
+    );
+    assert!(execute(workspace, "./does-not-exist".into(), digest, &mut interrupts).await.is_err());
+    assert_eq!(
+        nix::unistd::tcgetpgrp(std::io::stdin()).unwrap(),
+        nix::unistd::getpgrp(),
+        "terminal ownership must return after exit, interrupt, and exec failure"
     );
     let mut reads = super::super::LocalReads { interrupts: Some(interrupts), ..Default::default() };
     let (_input, mut input_rx) = tokio::sync::mpsc::channel(1);

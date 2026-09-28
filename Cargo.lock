@@ -3595,6 +3595,7 @@ dependencies = [
  "peritus-run-settlement",
  "peritus-tools-shell",
  "peritus-types",
+ "portable-pty",
  "ratatui",
  "sha2 0.11.0",
  "tempfile",

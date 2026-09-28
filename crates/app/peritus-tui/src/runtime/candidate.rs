@@ -6,6 +6,9 @@ use peritus_product_runner::ProductRunner;
 use peritus_tools_shell::ExecInput;
 use peritus_types::Sha256Digest;
 
+#[cfg(unix)]
+mod foreground;
+
 /// Runs the candidate while the full-screen terminal is suspended.
 pub(super) async fn execute(
     workspace: PathBuf,
@@ -20,8 +23,7 @@ pub(super) async fn execute(
         tokio::select! {
             biased;
             _ = interrupts.recv() => {
-                // The terminal delivers the interrupt to the foreground child too.
-                // Keep owning the wait until it exits, then restore the interface.
+                // Keep owning the foreground command until it exits, then restore the UI.
             }
             result = &mut task => {
                 super::interrupts::drain(interrupts);
@@ -45,10 +47,12 @@ fn execute_blocking(
         );
     }
     let mut command = direct_command(instruction)?;
-    let status = command
-        .current_dir(workspace)
-        .status()
-        .map_err(|error| format!("could not start candidate command: {error}"))?;
+    command.current_dir(workspace);
+    #[cfg(unix)]
+    let status = foreground::status(&mut command);
+    #[cfg(not(unix))]
+    let status = command.status();
+    let status = status.map_err(|error| format!("could not run candidate command: {error}"))?;
     if status.success() { Ok(()) } else { Err(format!("candidate command exited with {status}")) }
 }
 
