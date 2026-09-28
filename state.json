@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1739,
-        "tip_oid": "f17ef17666a4afd4dc0677ab275994f03c91bdda",
-        "prefix_sha256": "7cdf7b4ba953143f20724e03cbc47457451af679f4822999b3353409e3c9db10"
+        "sequence": 1741,
+        "tip_oid": "c2d728804a740b28b3abdddaf04dd07bfe702e5c",
+        "prefix_sha256": "f386ffc511044c499552bf370ce062eb5dab37944b46761e1378a42476895fa4"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 1890,
+  "next_comment_id": 1892,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -16540,7 +16540,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-28T00:58:41.412806074Z",
-      "updated_at": "2026-09-28T15:06:04.370769669Z",
+      "updated_at": "2026-09-28T15:26:19.613464872Z",
       "labels": [
         "bug"
       ],
@@ -16581,6 +16581,15 @@
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA3tWBzWYeG0XD6CjZBspU9TElhDLDiXeevCkFy2e0FcQKjDxisIXUrCX9BVx0eKTYElwnlo0dHytAWFOz2fRPDg=="
         },
+        "3223d512-57fe-421c-a0b5-7160f11d4dc8": {
+          "display_id": 1890,
+          "author": "6ME5",
+          "content": "Session auto-ended (stale after 854 minutes). No handoff notes provided.",
+          "created_at": "2026-09-28T15:13:03.209966191Z",
+          "kind": "handoff",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA5DLf998b7acIv8lv/nksFtldrxZYwlrOl8mwXILMty+7KJv1j7oW+06HEzBoLy6t8on8KXOZrRgxpeLtTreSBQ=="
+        },
         "35605e95-430e-4692-9b6d-6ce1b7e5eb8c": {
           "display_id": 1863,
           "author": "6ME5",
@@ -16589,6 +16598,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABASO9DAI84q/jW2W3lzxJp+qHOfNH9OQuIms9U7VdEneAhNM0EEfJIJa2GbCNcqQJna9/bYrgj6zbp6PERLQdAAQ=="
+        },
+        "37112a13-593b-40c5-96b3-4586c085f8ba": {
+          "display_id": 1891,
+          "author": "6ME5",
+          "content": "[action] Real PTY stress reproduced a foreground Ctrl-C race; parent handoff also lost immediate interrupts. Child pre-exec job-control handoff now passed 100 real PTY iterations. Pipe attachments and local line editing pass TUI274 and daemon suites; final Clippy/build running. PR105 remains draft/open; Linux recovery CI failure not reproduced in 60 native runs; Windows runner job exceeded15m.",
+          "created_at": "2026-09-28T15:26:19.599803440Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAsHkP5vbtnbKzJLlUBpjW01Rru+HtO8gsFJqM4zjRk+E5Nx7pRlTt0B6OLiWJvNp5lKfjgPvXhOzcStNSWGu4Ag=="
         },
         "3d801b96-54de-489f-a58c-8ff8fa6a92cb": {
           "display_id": 1870,
