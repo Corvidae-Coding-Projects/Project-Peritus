@@ -29,6 +29,25 @@ fn rejected_replacement_preserves_directory_contents() {
 #[cfg(unix)]
 #[test]
 fn replacement_keeps_executable_and_private_permissions() {
+    // Other tests fork concurrently; a fork can briefly inherit an unrelated writable fd
+    // before exec closes it. Keep the executable fixture in its own process so ETXTBSY
+    // cannot come from another test's child retaining this fixture's write handle.
+    let output = std::process::Command::new(std::env::current_exe().unwrap())
+        .args([
+            "--ignored",
+            "--exact",
+            "developer_tools::effect::tests::executable_permissions_fixture",
+            "--nocapture",
+        ])
+        .output()
+        .unwrap();
+    assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stdout));
+}
+
+#[cfg(unix)]
+#[test]
+#[ignore = "isolated executable fixture invoked by its parent regression"]
+fn executable_permissions_fixture() {
     use std::os::unix::fs::PermissionsExt as _;
 
     let directory = tempfile::tempdir().unwrap();
