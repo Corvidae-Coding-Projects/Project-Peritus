@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1737,
-        "tip_oid": "d84292473224b325235d4f4272795edb8f51b51b",
-        "prefix_sha256": "5b7f5d4955cbe073f302d83071e5a39ec1689cd34dfef75ebaac0dd23a34c86c"
+        "sequence": 1738,
+        "tip_oid": "873e046495535c82298484961b10850775ddefa8",
+        "prefix_sha256": "59aa3f2d5d718d12123d607736daf6c72c2064ecc06dfb4391a144680f4c0c3f"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 1888,
+  "next_comment_id": 1889,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -16540,7 +16540,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-28T00:58:41.412806074Z",
-      "updated_at": "2026-09-28T14:46:17.926080312Z",
+      "updated_at": "2026-09-28T14:57:30.911212866Z",
       "labels": [
         "bug"
       ],
@@ -16616,6 +16616,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAuJ2jGUblj/uF5PaRPy7/G979/uEqRpuRq+rKCGMj8SSADmSdCOCAKW0kWvTmtSjZnG08TmeftlYQ4r9PPv5fAQ=="
+        },
+        "492ecb4c-be92-4590-bee4-a8b6cbf22898": {
+          "display_id": 1888,
+          "author": "6ME5",
+          "content": "Signed followups d02dff163/b5bbfe24e preserve executable/private modes, adjacent user files and cleanup on failed workspace writes. Build71 real TUI patched greet.py, independently verified mode0750, sidecar exact bytes and both direct executions; completed independent review. 462447266 repairs native Windows Git tree/local-fetch path representations and read-only flush handles. Full runner419 tests plus integration targets, strict Linux/Windows-target Clippy, build72, formatting and xtask pass. Native CI pending; Windows pipe preview attachment repair is next, without claiming pipes provide PTY capabilities.",
+          "created_at": "2026-09-28T14:57:30.881360438Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAqnclKrcLZtj1wIhzFBTsUDT2G+Kw5wbG9uouZbNulgXyaPAwJHuBgcm7Xk8M3WQslN8hEpaqY/UwGSlaoHWtDg=="
         },
         "50ceefa7-0b39-4494-9911-58bfa0c81d2d": {
           "display_id": 1853,
