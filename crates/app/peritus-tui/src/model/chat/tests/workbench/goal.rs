@@ -65,6 +65,15 @@ fn snapshot(
     revision: u64,
     state: WorkbenchGoalState,
 ) -> WorkbenchGoalSnapshot {
+    snapshot_with_identity(query, revision, state, [73; 16])
+}
+
+fn snapshot_with_identity(
+    query: WorkbenchQuery,
+    revision: u64,
+    state: WorkbenchGoalState,
+    identity: [u8; 16],
+) -> WorkbenchGoalSnapshot {
     let runner = WorkbenchGoalCriterionDefinition::new(
         WorkbenchGoalCriterionKind::RunnerAcceptance,
         WorkbenchInputText::new("Strict gate".to_owned()).unwrap(),
@@ -73,7 +82,7 @@ fn snapshot(
     WorkbenchGoalSnapshot::new(
         query,
         revision,
-        ControlOperationId::new([73; 16]).unwrap(),
+        ControlOperationId::new(identity).unwrap(),
         RunId::new([74; 16]).unwrap(),
         WorkbenchInputText::new("Ship exact change".to_owned()).unwrap(),
         state,
@@ -87,6 +96,33 @@ fn snapshot(
         usage(Some(50), Some(10)),
     )
     .unwrap()
+}
+
+#[test]
+fn goal_clear_confirmation_survives_accounting_polls_only_for_the_same_goal() {
+    let mut model = goal_model();
+    let query = model.chat.workbench.selected.unwrap();
+    let goal = snapshot(query, 17, WorkbenchGoalState::Active);
+    model.chat.run_id = Some(goal.run());
+    model.chat.workbench.goal = Some(goal);
+    model.chat.buffer = "/goal clear".into();
+    assert!(key(&mut model, KeyCode::Enter).is_empty());
+    assert!(model.chat.workbench.goal_clear_pending);
+    model.accept_workbench_goal(query, snapshot(query, 18, WorkbenchGoalState::Active));
+    assert!(
+        model.chat.workbench.goal_clear_pending,
+        "routine accounting must not revoke confirmation"
+    );
+    assert!(model.chat.buffer.is_empty(), "confirmation instruction consumes its slash command");
+    assert!(model.chat.workbench.message.contains("/goal clear confirm"));
+    model.accept_workbench_goal(
+        query,
+        snapshot_with_identity(query, 19, WorkbenchGoalState::Active, [75; 16]),
+    );
+    assert!(
+        !model.chat.workbench.goal_clear_pending,
+        "a different goal requires fresh confirmation"
+    );
 }
 
 #[test]

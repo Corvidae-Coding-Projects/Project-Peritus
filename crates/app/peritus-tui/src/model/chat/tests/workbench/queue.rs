@@ -203,6 +203,7 @@ fn exact_input_detail_reaches_text_beyond_the_compact_list_and_old_scroll_ceilin
     key(&mut model, KeyCode::Esc);
     model.chat.buffer = "/queue show 1".to_owned();
     assert!(key(&mut model, KeyCode::Enter).is_empty(), "inspection performs no request");
+    assert!(model.chat.buffer.is_empty(), "successful local inspection consumes its command");
     for _ in 0..240 {
         key(&mut model, KeyCode::PageDown);
     }

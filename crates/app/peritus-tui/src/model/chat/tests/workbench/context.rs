@@ -86,6 +86,11 @@ fn context_pagination_uses_the_inspected_revision_and_rejects_cross_view_respons
     assert_eq!(model.chat.workbench.context_page.as_ref().expect("page").rows().len(), 1);
     assert!(model.chat.workbench.open);
     key(&mut model, KeyCode::Esc);
+    model.chat.buffer = "/context more".to_owned();
+    assert!(key(&mut model, KeyCode::Enter).is_empty());
+    assert!(model.chat.buffer.is_empty(), "last-page navigation consumes the command");
+    assert!(model.chat.workbench.open, "last-page navigation retains the inspected panel");
+    key(&mut model, KeyCode::Esc);
     model.chat.buffer = "/context next".to_owned();
     let sent = request(&key(&mut model, KeyCode::Enter));
     let wrong = WorkbenchContextQuery::new(query.query(), 9, 0, V::History).expect("query");

@@ -80,6 +80,7 @@ impl AppModel {
                     "Clear will cancel future continuation of goal {} at a safe boundary; history and completed effects remain. Run /goal clear confirm.",
                     crate::model::format_id(goal.goal().as_bytes())
                 );
+                self.clear_chat_command();
                 Vec::new()
             }
             "clear confirm" => self.clear_goal(),
@@ -230,14 +231,23 @@ impl AppModel {
             return Vec::new();
         }
         let run = goal.run();
+        let retain_clear = self.chat.workbench.goal_clear_pending
+            && self
+                .chat
+                .workbench
+                .goal
+                .as_ref()
+                .is_some_and(|current| current.goal() == goal.goal());
         self.chat.workbench.goal = Some(goal);
         if let Some(effects) = self.complete_goal_control_refresh() {
             return effects;
         }
         self.complete_workbench_inspection();
-        self.chat.workbench.goal_clear_pending = false;
+        self.chat.workbench.goal_clear_pending = retain_clear;
         self.chat.workbench.scroll = 0;
-        self.chat.workbench.message.clear();
+        if !retain_clear {
+            self.chat.workbench.message.clear();
+        }
         if self.chat.run_id == Some(run) {
             return Vec::new();
         }

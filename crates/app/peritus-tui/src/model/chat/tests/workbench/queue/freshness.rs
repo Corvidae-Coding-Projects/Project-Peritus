@@ -65,3 +65,14 @@ fn explicit_queue_inspection_clears_the_previous_rejection_message() {
     inspect(&mut model);
     assert!(model.chat.workbench.message.is_empty());
 }
+
+#[test]
+fn navigating_past_the_last_queue_page_consumes_the_command() {
+    let mut model = opened();
+    inspect(&mut model);
+    key(&mut model, KeyCode::Esc);
+    model.chat.buffer = "/queue next".into();
+    assert!(key(&mut model, KeyCode::Enter).is_empty());
+    assert!(model.chat.buffer.is_empty());
+    assert!(model.chat.workbench.queue.is_some());
+}

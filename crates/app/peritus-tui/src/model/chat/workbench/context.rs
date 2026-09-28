@@ -71,10 +71,12 @@ impl AppModel {
         else {
             return Vec::new();
         };
+        self.chat.workbench.open = true;
         let size = u32::try_from(MAX_WORKBENCH_CONTEXT_PAGE).unwrap_or(u32::MAX);
         let offset = if forward {
             let next = page.query().offset().saturating_add(size);
             if next >= page.total() {
+                self.clear_chat_command();
                 return Vec::new();
             }
             next

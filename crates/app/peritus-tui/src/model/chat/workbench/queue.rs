@@ -43,6 +43,7 @@ impl AppModel {
                 Ok(selected) => {
                     self.chat.workbench.queue_detail = Some(selected);
                     self.chat.workbench.scroll = 0;
+                    self.clear_chat_command();
                 }
                 Err(message) => self.notice(NoticeLevel::Warning, message),
             }
@@ -56,6 +57,7 @@ impl AppModel {
             let offset = if action == "next" {
                 let next = page.query().offset().saturating_add(page_size);
                 if next >= page.total() {
+                    self.clear_chat_command();
                     return Vec::new();
                 }
                 next

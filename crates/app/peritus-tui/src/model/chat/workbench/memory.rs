@@ -106,6 +106,7 @@ impl AppModel {
         let offset = if forward {
             let next = memory.query().offset().saturating_add(size);
             if next >= memory.total() {
+                self.clear_chat_command();
                 return Vec::new();
             }
             next
