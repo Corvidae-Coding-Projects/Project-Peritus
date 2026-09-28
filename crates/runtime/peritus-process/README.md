@@ -13,6 +13,8 @@ Execution plans project the checked sandbox's terminal permissions, output/event
 environment-value provenance, resource ceilings, and admitted backend identity into the plan
 digest. Linux local execution samples the owned process group for CPU, memory, process count, open
 handles, and disk growth, terminates on observed overruns, and records sampled fidelity honestly.
+Disk sampling tolerates descendant files and directories removed between observations, as happens
+during build cleanup. Missing workspace roots and other observation errors still fail the sample.
 Other platforms may run separately authorized raw-effect/reference plans with unsupported resource
 observations, but a backend that claims supervisor or hard enforcement is rejected before durable
 consumption when that support is unavailable.
