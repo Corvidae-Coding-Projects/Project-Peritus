@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1693,
-        "tip_oid": "305499378d8f75a983acf98f56dd7d260a866cfa",
-        "prefix_sha256": "88d35c58393182a3fdf176f80d41f0eb424b448994abb88632a4c6bfb1cd1645"
+        "sequence": 1694,
+        "tip_oid": "5ff57849a3676ed41877a07aded75dab22f08388",
+        "prefix_sha256": "938ea43599c7e7e835ce9cb7d6cce98b4ef1f8f3732bcc0321d99c13c7b4d208"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 99,
-  "next_comment_id": 1852,
+  "next_comment_id": 1853,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -10660,7 +10660,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-27T23:40:33.365528994Z",
-      "updated_at": "2026-09-28T00:35:00.202296153Z",
+      "updated_at": "2026-09-28T00:35:52.228722230Z",
       "comments": {
         "172fb531-7617-4dd5-afb2-b7d95cab7e0d": {
           "display_id": 1850,
@@ -10733,6 +10733,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAzZP7lQvGkV3FQYlum3sg0h6/gxDZqr8vlLoDZRqh19I+7cTbqp2N4jmiumEm51GSjhEl5J6Aw0hK5QL929j3CQ=="
+        },
+        "a967f9f0-fd6b-46f0-8a79-d8bf754960eb": {
+          "display_id": 1852,
+          "author": "6ME5",
+          "content": "Deep live TUI pass on develop422b2cb80, source unchanged. Cumulative276actions/367captures. /tmp/peritus-human-tui-415nuh50/DEEP-PASS.md records new blockers: ordinary chat ignores write restriction; later fixer deletes prior untracked init file; active-time budget stays0; repeated checkpoint seals collide on same ID/new revision after successful edits; recovery checkpoint cannot undo rewind; StartGoal runs rejected by StartExecution-only persistence loaders and quarantined on daemon restart. /resume then malformed-frame. Grounded journal/source evidence preserved. Passes: external-only attachment label implemented,11tests; before-edit pause; real preview input/check/naturalexit; actual2-file rewind plus concurrent-edit conflict protection. Rewound converter baseline10tests passes; main fixtureAGENTS restored. Two TUIs idle, plain daemon571860; goal WaitingForUser with quarantinedrun preserved. Issue98 comments contain findings. Next work: repairs and targeted lifecycle regressions; no fixes,commits,pushes in this examination.",
+          "created_at": "2026-09-28T00:35:52.225255322Z",
+          "kind": "handoff",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAS5l4igPDy5taiO07pKoXSWfy7xd4Wn6fwyde4MhpSEAlVxFpUIiW6uOFRIEcZNUN1JJxxiutYduV7p/ZguCYCw=="
         },
         "ea8b10da-6479-4672-8b42-a5f73f5f4fb7": {
           "display_id": 1846,
