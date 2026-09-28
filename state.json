@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1748,
-        "tip_oid": "bcadd1a5bc83844e9069975edd707bad06474ecb",
-        "prefix_sha256": "f79642884d0a0f9f52c0699632fa75b7ae505e002a60cc78d78036f9a022d9e6"
+        "sequence": 1749,
+        "tip_oid": "7eaa202ad875d5933c5c03cad4005b4c0b1f4f7b",
+        "prefix_sha256": "4fafab3a709fba56bf03946844a765215d014f510047351ae8079310758d589a"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 1898,
+  "next_comment_id": 1899,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -16544,7 +16544,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-28T00:58:41.412806074Z",
-      "updated_at": "2026-09-28T16:04:35.534077331Z",
+      "updated_at": "2026-09-28T16:05:49.265406267Z",
       "labels": [
         "bug"
       ],
@@ -16746,6 +16746,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAZlG+zYrCTQdmUwZJ3QOEhJLS700i5qfiO80fAcAjRyDhmXyzf/GC4k1OQ9PdYqSqDtpiL4f9GFZCbDCIu5T2CQ=="
+        },
+        "847fafdf-8b58-4bf5-804b-6370f9f78b0c": {
+          "display_id": 1898,
+          "author": "6ME5",
+          "content": "Signed4563e33ad repairs foreground suspension/resumption, including observed SIGCONT ordering and bg ownership. FullTUI275pass1ignoredownedfixture, realPTY50 stop/bg/fg/interrupt cycles, direct session-leader probe, Linux/Windows strict Clippy, all policy checks and build77 pass. Prior asynchronous group-stop versions failed tests and were replaced. PR105 remains open;4563 local while04b95b459 native runners validate the Windows test partition.",
+          "created_at": "2026-09-28T16:05:49.261426140Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAUrvbq+HDeQ4kigfnRRe3XI/EVoMgwehakbp+Vky2jxxkpnw6rO3ZOGgh/snnK72dlZ62RIJxO/PjccsJAF3JAA=="
         },
         "87d30145-df03-4850-83c4-1b5e55646aa0": {
           "display_id": 1895,
