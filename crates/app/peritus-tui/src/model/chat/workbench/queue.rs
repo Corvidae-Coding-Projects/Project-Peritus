@@ -33,6 +33,7 @@ impl AppModel {
             self.notice(NoticeLevel::Warning, "Resolve the pending control receipt before another queue operation. Draft retained.");
             return Vec::new();
         }
+        self.chat.workbench.message.clear();
         if text.is_empty() && matches!(action, "" | "pending" | "history") {
             self.chat.workbench.queue_detail = None;
             return self.refresh_queue(0, 0, action == "history");
@@ -71,7 +72,40 @@ impl AppModel {
             }
         };
         let Some(query) = self.chat.workbench.selected else { return Vec::new() };
-        self.submit_workbench(WorkbenchIntent::Queue(intent), query.workspace())
+        // Resolve row numbers once, against the page the user inspected. Refresh only the
+        // aggregate fence; never reinterpret the user's row against a reordered queue.
+        self.request(
+            AppRequestPayload::QueryWorkbench(query),
+            PendingRequest::WorkbenchQueueCommand {
+                query,
+                intent,
+                draft: self.chat.buffer.clone(),
+            },
+        )
+        .into_iter()
+        .collect()
+    }
+
+    pub(in crate::model) fn accept_queue_command_snapshot(
+        &mut self,
+        query: peritus_app_protocol::WorkbenchQuery,
+        intent: WorkbenchQueueIntent,
+        draft: &str,
+        snapshot: &peritus_app_protocol::WorkbenchSnapshot,
+    ) -> Vec<Effect> {
+        if snapshot.query() != query
+            || self.chat.workbench.selected != Some(query)
+            || self.chat.workbench.mode != WorkbenchMode::Queue
+            || self.chat.buffer != draft
+            || !self.queue_available()
+            || self.workbench_request_pending()
+            || self.chat.workbench.unresolved.is_some()
+        {
+            return Vec::new();
+        }
+        self.chat.workbench.inspection_draft = None;
+        self.chat.workbench.snapshot = Some(snapshot.clone());
+        self.submit_bound_workbench(WorkbenchIntent::Queue(intent), query, snapshot.revision())
     }
 
     fn queue_intent(

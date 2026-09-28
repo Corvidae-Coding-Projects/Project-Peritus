@@ -38,6 +38,7 @@ impl PendingRequest {
             | Self::WorkbenchExecution(_)
             | Self::ConversationLibrary(_)
             | Self::WorkbenchQueue(_)
+            | Self::WorkbenchQueueCommand { .. }
             | Self::WorkbenchContext(_)
             | Self::WorkbenchBrief(_)
             | Self::WorkbenchGoal(_)

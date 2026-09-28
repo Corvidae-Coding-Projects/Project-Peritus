@@ -202,6 +202,11 @@ enum PendingRequest {
     },
     ConversationLibrary(peritus_app_protocol::ConversationLibraryQuery),
     WorkbenchQueue(peritus_app_protocol::WorkbenchQueueQuery),
+    WorkbenchQueueCommand {
+        query: peritus_app_protocol::WorkbenchQuery,
+        intent: peritus_app_protocol::WorkbenchQueueIntent,
+        draft: String,
+    },
     WorkbenchContext(peritus_app_protocol::WorkbenchContextQuery),
     WorkbenchBrief(peritus_app_protocol::WorkbenchQuery),
     WorkbenchGoal(peritus_app_protocol::WorkbenchQuery),

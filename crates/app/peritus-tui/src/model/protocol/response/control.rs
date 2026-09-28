@@ -113,6 +113,10 @@ fn project_live(
             model.accept_workbench_queue(query, page.clone());
         }
         (
+            AppResponsePayload::Workbench(snapshot),
+            Some(PendingRequest::WorkbenchQueueCommand { query, intent, draft }),
+        ) => return model.accept_queue_command_snapshot(query, intent, &draft, snapshot),
+        (
             AppResponsePayload::WorkbenchPreview(snapshot),
             Some(PendingRequest::WorkbenchResult(query)),
         ) => model.accept_preview_output(query, snapshot),

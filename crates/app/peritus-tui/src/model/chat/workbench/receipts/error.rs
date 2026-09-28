@@ -49,7 +49,7 @@ impl AppModel {
                     "Session lookup failed: {detail}. Current results and draft retained; r retries the search, Esc returns."
                 );
             }
-            PendingRequest::WorkbenchQuery(_) => {
+            PendingRequest::WorkbenchQuery(_) | PendingRequest::WorkbenchQueueCommand { .. } => {
                 self.chat.workbench.snapshot = None;
                 self.chat.workbench.snapshot_refresh_command = None;
                 self.chat.workbench.files.cancel_pending_preview();

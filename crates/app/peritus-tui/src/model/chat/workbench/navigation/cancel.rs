@@ -65,6 +65,7 @@ const fn is_inspection(pending: &PendingRequest) -> bool {
             | PendingRequest::WorkbenchReview(_)
             | PendingRequest::WorkbenchContext(_)
             | PendingRequest::WorkbenchQueue(_)
+            | PendingRequest::WorkbenchQueueCommand { .. }
             | PendingRequest::WorkbenchCompaction(_)
             | PendingRequest::WorkbenchCheckpointInspect(_)
             | PendingRequest::WorkbenchRewind(_)

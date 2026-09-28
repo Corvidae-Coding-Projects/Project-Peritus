@@ -149,6 +149,7 @@ impl AppModel {
                 matches!(
                     request,
                     PendingRequest::WorkbenchExecution(_)
+                        | PendingRequest::WorkbenchQueueCommand { .. }
                         | PendingRequest::WorkbenchChatContinue { .. }
                         | PendingRequest::WorkbenchQuery(_)
                         | PendingRequest::ConversationLibrary(_)
