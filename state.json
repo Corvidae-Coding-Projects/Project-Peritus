@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1747,
-        "tip_oid": "ae425472fed8d71e9c5294032041ce2ec2d9074a",
-        "prefix_sha256": "4dc2d67b897cd55924f8ef349d494de15274de1358a7de4a941f22aab72df341"
+        "sequence": 1748,
+        "tip_oid": "bcadd1a5bc83844e9069975edd707bad06474ecb",
+        "prefix_sha256": "f79642884d0a0f9f52c0699632fa75b7ae505e002a60cc78d78036f9a022d9e6"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 1897,
+  "next_comment_id": 1898,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -16544,7 +16544,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-28T00:58:41.412806074Z",
-      "updated_at": "2026-09-28T15:50:49.746872251Z",
+      "updated_at": "2026-09-28T16:04:35.534077331Z",
       "labels": [
         "bug"
       ],
@@ -16728,6 +16728,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAeuFpYejWNH42/dTdAguZgeNNZXbwZN1OVWUTW7JB0IKn5VA44B+ENMxEDb+Dxd/IKONQWkOjzjhnTZt8bGYuCw=="
+        },
+        "82d5bcb7-1244-43d6-92bf-418619c9a20c": {
+          "display_id": 1897,
+          "author": "6ME5",
+          "content": "Ctrl-Z regression reproduced a stranded foreground child. Initial stop forwarding also raced: group stop syscall could return before another thread stopped the UI, causing bg terminal theft or fg leaving candidate in background. Explicit SIGCONT observation now gates resumption, using already-locked signal-hook0.3.18 as Unix TUI dependency. Native interactive-shell regression passes50 iterations including Ctrl-Z, bg, fg and Ctrl-C; full TUI275 tests plus isolated fixture pass, Linux strict Clippy passes. Windows target/policy/build77 validation running. PR105 remains open on04b95b459 while native CI proceeds.",
+          "created_at": "2026-09-28T16:04:35.528658979Z",
+          "kind": "observation",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABATuro2WAVOxM2/QUxppSEKLnfVmpOevEDx8n/sJCRlSktZhZonf6Sq2J7zjZzzLUCg6C+XI2NitLszUmuBg4nCg=="
         },
         "843fe9ba-501e-45e5-9576-3642a4ed57ca": {
           "display_id": 1893,
