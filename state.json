@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1707,
-        "tip_oid": "4124cf5a8a5d211310de7f8654b1c99737b18ba4",
-        "prefix_sha256": "baceaf5c31968088175621d1f6054ac21bea050e69aade1296e8cba06909b968"
+        "sequence": 1708,
+        "tip_oid": "52228d3087f8fe83c63d0b30f9d5f4837202a681",
+        "prefix_sha256": "564ac30d106f6d5dfd1f20b4968bb997b470c0ecc7f103a3fa6947d1df3d9681"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 1863,
+  "next_comment_id": 1864,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -16544,11 +16544,20 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-28T00:58:41.412806074Z",
-      "updated_at": "2026-09-28T04:37:32.790957980Z",
+      "updated_at": "2026-09-28T04:48:59.404806259Z",
       "labels": [
         "bug"
       ],
       "comments": {
+        "35605e95-430e-4692-9b6d-6ce1b7e5eb8c": {
+          "display_id": 1863,
+          "author": "6ME5",
+          "content": "[action] Build24 live intended mode-switch run now passes gates/review, accepted and exported; numeric version parser fixed. Mixed active/candidate collection tag102 and legacy fallback pass protocol/daemon tests; dashboard remains connected. VerusBuild app-shell v3 and strictClippy v32 pass. Build25 metadata refresh fixes reproduced checkpoint-after-brief stale revision; TUI169 pass; live retest/workspace v11 running. Checklist updated through repair201.",
+          "created_at": "2026-09-28T04:48:59.351903138Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABASO9DAI84q/jW2W3lzxJp+qHOfNH9OQuIms9U7VdEneAhNM0EEfJIJa2GbCNcqQJna9/bYrgj6zbp6PERLQdAAQ=="
+        },
         "50ceefa7-0b39-4494-9911-58bfa0c81d2d": {
           "display_id": 1853,
           "author": "6ME5",
