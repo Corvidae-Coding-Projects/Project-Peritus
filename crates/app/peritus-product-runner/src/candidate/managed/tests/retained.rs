@@ -159,23 +159,39 @@ fn independent_backup_does_not_depend_on_original_alternate_objects() {
 
 #[test]
 fn shallow_repository_can_be_retained_and_recovered() {
-    let root = repository();
-    let donor = repository();
-    fs::write(donor.path().join("tracked.txt"), b"second commit\n").unwrap();
-    git(donor.path(), &["add", "tracked.txt"], None).unwrap();
-    git(donor.path(), &["-c", "commit.gpgsign=false", "commit", "--quiet", "-m", "second"], None)
+    for (checkout_config, expected) in [
+        ("core.autocrlf=false", b"second commit\n".as_slice()),
+        ("core.autocrlf=true", b"second commit\r\n".as_slice()),
+    ] {
+        let root = repository();
+        let donor = repository();
+        fs::write(donor.path().join("tracked.txt"), b"second commit\n").unwrap();
+        git(donor.path(), &["add", "tracked.txt"], None).unwrap();
+        git(
+            donor.path(),
+            &["-c", "commit.gpgsign=false", "commit", "--quiet", "-m", "second"],
+            None,
+        )
         .unwrap();
-    let nested = root.path().join("nested");
-    let source = format!("file://{}", donor.path().display());
-    git(root.path(), &["clone", "--quiet", "--depth=1", &source, "nested"], None).unwrap();
-    let head = git(&nested, &["rev-parse", "HEAD"], None).unwrap();
-    let baseline = ManagedBaseline::capture(root.path(), true).unwrap();
-    fs::remove_dir_all(&nested).unwrap();
-    donor.close().unwrap();
-    baseline.discard(root.path(), &baseline.changed_paths(root.path()).unwrap()).unwrap();
-    assert_eq!(git(&nested, &["rev-parse", "HEAD"], None).unwrap(), head);
-    assert_eq!(fs::read(nested.join("tracked.txt")).unwrap(), b"second commit\n");
-    git(&nested, &["fsck", "--no-reflogs"], None).unwrap();
+        let nested = root.path().join("nested");
+        let source = format!("file://{}", donor.path().display());
+        git(
+            root.path(),
+            &["clone", "--quiet", "--config", checkout_config, "--depth=1", &source, "nested"],
+            None,
+        )
+        .unwrap();
+        let head = git(&nested, &["rev-parse", "HEAD"], None).unwrap();
+        let original = fs::read(nested.join("tracked.txt")).unwrap();
+        assert_eq!(original, expected);
+        let baseline = ManagedBaseline::capture(root.path(), true).unwrap();
+        fs::remove_dir_all(&nested).unwrap();
+        donor.close().unwrap();
+        baseline.discard(root.path(), &baseline.changed_paths(root.path()).unwrap()).unwrap();
+        assert_eq!(git(&nested, &["rev-parse", "HEAD"], None).unwrap(), head);
+        assert_eq!(fs::read(nested.join("tracked.txt")).unwrap(), original);
+        git(&nested, &["fsck", "--no-reflogs"], None).unwrap();
+    }
 }
 
 #[cfg(unix)]
