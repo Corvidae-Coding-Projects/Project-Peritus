@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1701,
-        "tip_oid": "185253ec16bd0ee0dfb8794767b3bed90618dd0c",
-        "prefix_sha256": "b047ea57e77a9a75bb0740b3aa5c2b354fd55b123311620b8d5d21f2b0a98de0"
+        "sequence": 1702,
+        "tip_oid": "7ae04beceb2627d109a42d094dd3dd652ea18b9b",
+        "prefix_sha256": "f19ba85342fb751e38f6a2796230949c96537f6f3f32438edd179b20ebd582f4"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 1857,
+  "next_comment_id": 1858,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -16544,7 +16544,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-28T00:58:41.412806074Z",
-      "updated_at": "2026-09-28T01:53:18.376174687Z",
+      "updated_at": "2026-09-28T02:16:43.845771500Z",
       "labels": [
         "bug"
       ],
@@ -16566,6 +16566,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAE2SmWCsJoZVhWFuTNuvIJqZ7vhqQTseB/jgNnUZ3MOGQ6Aulv4eStqn2Fcmn9eU3qrqpZoiU+bCVp+ZCXpNeDg=="
+        },
+        "8aaaa245-31b8-4715-91a8-410840d69c86": {
+          "display_id": 1857,
+          "author": "6ME5",
+          "content": "[action] Issue99: managed task snapshots now preserve actual raw preimages and staged index, including conflicts; nested/raw/filter/permissions/restart tests pass. Real build9 task steered version1.0 to1.1, qualified, exported only2task files, discarded viaTUI; prior README/AGENTS/userdraft preserved. Goal confirm now chains existing brief receipt before goal admission; tests pass. Completion summary original-task misreport fixed; typed pipeline envelope prose projection testing. Still outstanding ordinarychat durable binding, preview terminal/output, cache freshness.",
+          "created_at": "2026-09-28T02:16:43.826914380Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAJXFKmubYu9I/epazAVRad+j6FX5OqgI0g5G5NH1vhg3cmf4rWKyxDl2XeM+Ys2r2WI6d2Y5ISCM5wHyzx16BAA=="
         },
         "9e78863e-8555-4643-99b3-ed6b423b55e0": {
           "display_id": 1855,
