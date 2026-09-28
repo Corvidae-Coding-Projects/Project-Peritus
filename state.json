@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1685,
-        "tip_oid": "d98d8c515e42b8f080d5fbd0fcc5e09e323a7913",
-        "prefix_sha256": "a139cd1f47b52afb1b0a555b0f906a74630d573503eb5f6878e24cce18dedb7a"
+        "sequence": 1686,
+        "tip_oid": "3d30d10562c4065f99ee11d8f20f5b7015827de7",
+        "prefix_sha256": "51d52697d1df89c76bd1610e45f8f6db812fbcdb70f45c2290039f221f907338"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 99,
-  "next_comment_id": 1846,
+  "next_comment_id": 1847,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -10660,7 +10660,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-27T23:40:33.365528994Z",
-      "updated_at": "2026-09-28T00:10:25.980770117Z",
+      "updated_at": "2026-09-28T00:11:18.808121580Z",
       "comments": {
         "1e584dca-2ee8-4b77-a15f-091061bcb76e": {
           "display_id": 1845,
@@ -10688,6 +10688,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAzZP7lQvGkV3FQYlum3sg0h6/gxDZqr8vlLoDZRqh19I+7cTbqp2N4jmiumEm51GSjhEl5J6Aw0hK5QL929j3CQ=="
+        },
+        "ea8b10da-6479-4672-8b42-a5f73f5f4fb7": {
+          "display_id": 1846,
+          "author": "6ME5",
+          "content": "Live TUI audit completed on develop 422b2cb80; no Peritus source edits. Report and explicit coverage limits: /tmp/peritus-human-tui-415nuh50/REPORT.md. All 43 commands invoked; 246 terminal captures. Git and plain-folder iterative coding completed; final converter 10 tests and independent review pass. Claude official login repaired expired auth, TUI verified. Major blockers documented on issue98: chat/workbench binding, managed file reads, goal token accounting, stale revisions, previews, misleading provider errors. Two disposable test TUI sessions remain idle for inspection; goal cancelled. Fixes are follow-up work.",
+          "created_at": "2026-09-28T00:11:18.804839661Z",
+          "kind": "handoff",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAYWNEdN1PmgE/wINWv0+uJarmw8ROrHoAOdLCeAMgUBqJNRKQ48ts1yny+8aCSG8twkNQdYki3j9GEcHSk4u4DQ=="
         }
       }
     },
