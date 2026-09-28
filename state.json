@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1771,
-        "tip_oid": "e000cc81f6310e45c9e7d2027f05c6e32290a6d8",
-        "prefix_sha256": "c26896eb17a79db0d6e561ae2836a39941f2ae4eed92d4216362beecb5767a3c"
+        "sequence": 1772,
+        "tip_oid": "38202670b58ed19e56211378dc8831b0bff4333a",
+        "prefix_sha256": "d278580ea8d86ff5a920537efdf10b23c348d2a3898179f4c2e7772b56b0449e"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 1915,
+  "next_comment_id": 1916,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -16544,7 +16544,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-28T00:58:41.412806074Z",
-      "updated_at": "2026-09-28T17:31:59.397681032Z",
+      "updated_at": "2026-09-28T17:34:28.083681416Z",
       "labels": [
         "bug"
       ],
@@ -16980,6 +16980,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAD0L2j4iWarEyKQGASUa87l81KtuCI632n08ZD/SljSz5tERM5Mo7+r1RSYuTdHmwKHjbwFcO9YwWkbd5zZzIDA=="
+        },
+        "d148072b-24a4-42cc-a892-2b83df205a3a": {
+          "display_id": 1915,
+          "author": "6ME5",
+          "content": "Published 3d95db375: queue mutations refresh aggregate metadata without retargeting inspected input IDs/versions. Cancellation, changed draft/selection, timeout and replaced-page regressions pass. Full TUI 295 passed; Linux and Windows-target strict Clippy, formatting, policy4801 and build84 passed. Real TUI inspected revision8, renamed9, released original input10, held11 without manual queue refresh; exact attachment eligibility followed both changes. Published alongside 2cf88cc85 review recovery, 29d1fb9cd checkpoint drafts and 97503aabc native Windows memory observation. PR105 remains draft/open to develop. Native candidate on preceding1948485ac passed48 tests; fresh CI pending.",
+          "created_at": "2026-09-28T17:34:28.044908922Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABALFhJOARx9xdK6Vh4vylZGj9c3ymBQWQWKI7w1RGOqr4frwt/p0kqh+zHH3GubV4jTaDyqSzuH+vakTJyNdzRDA=="
         },
         "d2324c9b-7dfa-43e7-a019-33d6ae858344": {
           "display_id": 1892,
