@@ -196,6 +196,11 @@ impl Replacements {
     }
 }
 
+#[allow(
+    clippy::missing_const_for_fn,
+    clippy::unnecessary_wraps,
+    reason = "shared fallible preflight interface; Unix device metadata is platform-specific"
+)]
 fn verify_mount(staging: &Path, destination: &Path) -> Result<(), ProductRunnerError> {
     #[cfg(unix)]
     {

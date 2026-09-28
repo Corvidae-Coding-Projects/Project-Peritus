@@ -7,10 +7,13 @@ use std::{io::Write as _, thread, time::Instant};
 #[test]
 #[ignore = "owned subprocess fixture"]
 fn noisy_fixture() {
-    for _ in 0..700 {
-        println!("{}", "x".repeat(2048));
+    for index in 0..300 {
+        println!("PROGRESS {index}");
         std::io::stdout().flush().expect("flush");
-        thread::sleep(Duration::from_millis(2));
+        let expected = index.to_string();
+        while std::fs::read_to_string("progress-ack").ok().as_deref() != Some(&expected) {
+            thread::sleep(Duration::from_millis(1));
+        }
     }
     println!("NATURAL_EXIT");
 }
@@ -29,7 +32,7 @@ fn terminal_preview_does_not_wait_for_progress_backlog_drain() {
             "--nocapture".to_owned(),
         ],
         workspace.path().to_path_buf(),
-        Duration::from_secs(15),
+        Duration::from_mins(1),
         false,
         24,
         80,
@@ -50,8 +53,25 @@ fn terminal_preview_does_not_wait_for_progress_backlog_drain() {
         .clone()
         .expect("control");
     let began = Instant::now();
+    let mut cursor = ProcessCursor::after(0);
+    let mut output = String::new();
+    for index in 0..300 {
+        let expected = format!("PROGRESS {index}\n");
+        while !output.contains(&expected) {
+            for event in control.read_events(cursor, 1024) {
+                cursor = ProcessCursor::after(event.sequence());
+                output.push_str(&String::from_utf8_lossy(event.data()));
+            }
+            assert!(began.elapsed() < Duration::from_secs(45), "fixture output must arrive");
+            thread::sleep(Duration::from_millis(1));
+        }
+        // Each acknowledgement follows an observed C2 event. This guarantees more than one
+        // observation page without depending on platform timer resolution or pipe coalescing.
+        std::fs::write(workspace.path().join("progress-ack"), index.to_string())
+            .expect("next output event");
+    }
     while control.terminal_result().is_none() {
-        assert!(began.elapsed() < Duration::from_secs(10), "native exit must complete");
+        assert!(began.elapsed() < Duration::from_secs(45), "native exit must complete");
         thread::sleep(Duration::from_millis(10));
     }
     assert!(

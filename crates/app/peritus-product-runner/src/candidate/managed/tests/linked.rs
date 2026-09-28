@@ -130,7 +130,7 @@ fn deleted_linked_worktree_restores_source_and_index_without_relocating_its_data
     assert_eq!(recovered.len(), 1);
     let record: serde_json::Value =
         serde_json::from_slice(&fs::read(recovered[0].join("head.json")).unwrap()).unwrap();
-    assert_eq!(record["repository"].as_str(), nested.to_str());
+    assert_eq!(record["repository"].as_str(), nested.canonicalize().unwrap().to_str());
     assert_eq!(
         text(
             git(&nested, &["rev-parse", record["retained_commit_ref"].as_str().unwrap()], None)

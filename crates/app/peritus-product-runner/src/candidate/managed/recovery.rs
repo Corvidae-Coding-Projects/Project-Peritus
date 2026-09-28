@@ -102,6 +102,11 @@ pub(super) fn create_directory(path: &Path) -> Result<(), ProductRunnerError> {
     Ok(())
 }
 
+#[allow(
+    clippy::missing_const_for_fn,
+    clippy::unnecessary_wraps,
+    reason = "shared fallible filesystem interface; directory fsync is available only on Unix"
+)]
 pub(super) fn sync_directory(path: &Path) -> Result<(), ProductRunnerError> {
     #[cfg(unix)]
     fs::File::open(path).and_then(|directory| directory.sync_all()).map_err(failure)?;
