@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1729,
-        "tip_oid": "edacfb4effa2d3fa5b8fbb2941f39312650f6b67",
-        "prefix_sha256": "8d7e18d6a55721aec97dd36aaaea9405b06508704cc9559b00306510cb060607"
+        "sequence": 1730,
+        "tip_oid": "d7b55515e6cd6980cde45568d25fee83c52e25f9",
+        "prefix_sha256": "c0ffc8cecdb5257a5e0daa1e5d2dabe8503b8c21ba5345cc1022bc9436acf609"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 1881,
+  "next_comment_id": 1882,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -16544,7 +16544,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-28T00:58:41.412806074Z",
-      "updated_at": "2026-09-28T13:56:06.388714961Z",
+      "updated_at": "2026-09-28T13:58:46.801608883Z",
       "labels": [
         "bug"
       ],
@@ -16611,6 +16611,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABArMFauViPWn7fXXk032wA/p+X0VY8ZahahBZPab3ap/a3tsxBbyS31V9CrIqDuHyA1w7v40DxZG+Ylg5Dy2/UAw=="
+        },
+        "52a721ae-d367-4dc0-95d1-19b7e58d0d1f": {
+          "display_id": 1881,
+          "author": "6ME5",
+          "content": "Published checkpoint bd3dd14e28fa2f7f7cc5f006bb98f0753a8ef19f: fix(product): harden TUI workflows and recovery. Signed commit verified G; 422 intentional files. Unrestricted all-target/all-feature daemon, runner, TUI and Anthropic suites pass without local socket exclusions, including integration targets. Library241/413/265/39; full workspace strict Clippy and xtask all pass; Windows and build68 pass. Unrelated AGENTS.md, .codex, .crosslink and executable-harness design left untracked. Full discard crash transaction, typed terminal-stream isolation and exhaustive audit remain open; PR targets develop and will stay open.",
+          "created_at": "2026-09-28T13:58:46.797597422Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA1+fW1vxSwR53wgNxF6PEWxMziwqpiPoNRr1dAz251niIe9dIV1i5E4+9B0lPVpOaLDKMoY1PENeRL5+NrjjZBQ=="
         },
         "537cbb05-a932-4fd6-87fd-f750d2239b0d": {
           "display_id": 1866,
