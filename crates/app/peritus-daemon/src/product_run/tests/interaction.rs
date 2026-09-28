@@ -250,7 +250,12 @@ async fn pipeline_scenario(mode: ProductInteractionMode) {
     }
     responses.extend(complete_writer(CORRECT));
     let writer = scripted(0x81, "writer", responses);
-    let reviewer = scripted(0x82, "reviewer", clean_review());
+    let mut reviews = clean_review();
+    if mode == ProductInteractionMode::Build {
+        *reviews.last_mut().expect("review response") = text_response(b"invalid review fixture");
+        reviews.extend(clean_review());
+    }
+    let reviewer = scripted(0x82, "reviewer", reviews);
     let fixer = scripted(0x83, "fixer", Vec::new());
     let workspace_id = WorkspaceId::new([0x84; 16]).expect("workspace");
     let run_id = RunId::new([0x85; 16]).expect("run");
@@ -273,9 +278,12 @@ async fn pipeline_scenario(mode: ProductInteractionMode) {
         .expect("start build");
     let terminal = wait_for_terminal(&service, run_id).await;
     assert_eq!(terminal.phase(), ProductRunPhase::Complete, "{}", terminal.summary());
-    assert_eq!(reviewer.requests.lock().expect("review requests").len(), 3);
+    assert_eq!(
+        reviewer.requests.lock().expect("review requests").len(),
+        if mode == ProductInteractionMode::Build { 6 } else { 3 }
+    );
     assert!(fixer.requests.lock().expect("no fixes needed").is_empty());
-    let expected_requests = if mode == ProductInteractionMode::Chat { 12 } else { 11 };
+    let expected_requests = if mode == ProductInteractionMode::Chat { 12 } else { 14 };
     assert_eq!(
         service
             .inner
@@ -295,6 +303,9 @@ async fn pipeline_scenario(mode: ProductInteractionMode) {
     );
     let snapshot =
         service.query_interaction(ProductRunConversationQuery::new(run_id)).expect("conversation");
+    if mode == ProductInteractionMode::Build {
+        assert_recovery_notice_persisted(&service, run_id, snapshot.activities());
+    }
     let public = snapshot
         .activities()
         .iter()
@@ -366,3 +377,24 @@ async fn pending_idle_input_is_restarted_without_claiming_prior_incorporation(
 mod continuation;
 #[path = "interaction/read_only.rs"]
 mod read_only;
+
+fn assert_recovery_notice_persisted(
+    service: &ProductRunService,
+    run: RunId,
+    activities: &[peritus_app_protocol::ProductActivity],
+) {
+    let notices = activities
+        .iter()
+        .filter(|activity| activity.detail() == "Host recovery notice")
+        .collect::<Vec<_>>();
+    assert_eq!(notices.len(), 1);
+    let notice = notices[0];
+    assert_eq!(notice.kind(), ProductActivityKind::Assistant);
+    assert!(notice.text().contains("attempt 2 of 3"));
+    assert!(notice.text().contains("invalid review"));
+    let records =
+        super::super::persistence::load_records(&service.inner.directory).expect("durable records");
+    let record = records.get(&run).expect("run record");
+    assert_eq!(record.progress.retries, 1);
+    assert!(record.interaction.as_ref().expect("conversation").activities.contains(notice));
+}

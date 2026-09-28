@@ -318,6 +318,9 @@ impl DeveloperInteraction for LiveConversation {
                 "Repaired model JSON formatting",
                 "Original and repaired values are retained in the private trace. Tool validation and permissions still apply.",
             ),
+            DeveloperActivity::ReviewRetry { next_attempt, max_attempts, reason } => {
+                narration::review_retry(options, next_attempt, max_attempts, reason)
+            }
             DeveloperActivity::ToolStarted { name, arguments } => {
                 tool_activity::started(options, name, arguments)
             }

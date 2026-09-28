@@ -32,6 +32,15 @@ pub enum DeveloperToolEffect {
     MutationCapable,
 }
 
+/// Host-validated reason for repeating an independent review; contains no provider payload.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum DeveloperReviewRetryReason {
+    /// The reviewer did not inspect the required repository evidence.
+    MissingGrounding,
+    /// The completed response did not satisfy the typed review contract.
+    InvalidSubmission,
+}
+
 /// Public execution activity, separate from the raw durable provider trace.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum DeveloperActivity<'a> {
@@ -46,6 +55,15 @@ pub enum DeveloperActivity<'a> {
     ModelWaiting { elapsed_seconds: u64 },
     /// A bounded syntax repair was durably recorded; no response contents are exposed here.
     ResponseHealed,
+    /// A rejected independent review will be retried under the existing bounded allowance.
+    ReviewRetry {
+        /// One-based attempt about to start.
+        next_attempt: u8,
+        /// Maximum number of attempts, including the initial review.
+        max_attempts: u8,
+        /// Validated public reason; raw output remains in the private trace.
+        reason: DeveloperReviewRetryReason,
+    },
     /// Public assistant text received from a provider, never a reasoning delta.
     Text(&'a [u8]),
     /// Provider-supplied display summary, never opaque reasoning replay bytes.

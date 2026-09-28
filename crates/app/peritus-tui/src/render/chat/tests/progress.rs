@@ -2,6 +2,47 @@
 use super::*;
 
 #[test]
+fn host_recovery_notice_is_visible_and_distinct_from_the_provider_reply() {
+    let mut model = model();
+    let previous = model.chat.snapshot.take().unwrap();
+    model.chat.snapshot = Some(
+        ProductInteractionSnapshot::new(
+            previous.snapshot().clone(),
+            previous.mode(),
+            previous.models().clone(),
+            previous.received(),
+            previous.incorporated(),
+            vec![
+                ProductActivity::new(
+                    1,
+                    ProductActivityKind::Assistant,
+                    "Retrying review (attempt 2 of 3).".to_owned(),
+                    "Host recovery notice".to_owned(),
+                )
+                .unwrap(),
+                ProductActivity::new(
+                    2,
+                    ProductActivityKind::Assistant,
+                    "The parser now handles empty input.".to_owned(),
+                    String::new(),
+                )
+                .unwrap(),
+            ],
+            None,
+        )
+        .unwrap(),
+    );
+    assert!(!model.chat.expanded);
+    for width in [40, 100] {
+        let (text, _) = screen(&model, width, 32);
+        assert!(text.contains("Recovery"));
+        assert!(text.contains("attempt 2 of 3"));
+        assert!(text.contains("The parser now handles empty input."));
+        assert_eq!(text.matches("Peritus").count(), 2, "title and one provider reply");
+    }
+}
+
+#[test]
 fn provider_summary_is_visible_in_the_default_transcript() {
     let mut model = model();
     let previous = model.chat.snapshot.take().unwrap();

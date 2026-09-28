@@ -196,7 +196,13 @@ fn draw_transcript(frame: &mut Frame<'_>, area: Rect, model: &AppModel) {
             }
             let (label, color) = match activity.kind() {
                 ProductActivityKind::User => ("You", ACCENT),
-                ProductActivityKind::Assistant => ("Peritus", GOOD),
+                ProductActivityKind::Assistant => {
+                    if activity.detail() == "Host recovery notice" {
+                        ("Recovery", ACCENT)
+                    } else {
+                        ("Peritus", GOOD)
+                    }
+                }
                 ProductActivityKind::Tool => ("Tool", MUTED),
                 ProductActivityKind::Status => {
                     (if thinking { "Thinking" } else { "Status" }, MUTED)

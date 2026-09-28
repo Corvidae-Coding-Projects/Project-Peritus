@@ -113,7 +113,10 @@ an observed workspace listing, reads the authoritative inputs and changed files 
 read-only tool executor, and only then admits the typed review. The executor rejects write, patch,
 remove, and process calls even if a provider emits an undeclared tool name, so reviewer grounding
 does not grant mutation authority. Malformed or ungrounded reviews receive their exact rejection
-on a fresh bounded attempt.
+on a fresh bounded attempt. Each retry is counted and publishes a host recovery notice with the
+reason and next attempt number. The ordinary conversation displays that notice separately from
+provider text; the original response remains in the private trace. The three-attempt limit,
+fresh-read requirement, and typed acceptance checks are unchanged.
 
 The crate consumes already resolved provider and managed-workspace capabilities. It emits bounded
 progress and deliverable evidence; it does not own UI, provider login, workspace trust, or Git

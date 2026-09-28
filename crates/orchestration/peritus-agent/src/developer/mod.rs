@@ -26,7 +26,7 @@ pub use entry::DeveloperLoop;
 pub use error::DeveloperLoopError;
 pub use interaction::{
     DeveloperActivity, DeveloperControlFlow, DeveloperInteraction, DeveloperModelRole,
-    DeveloperRequestAdmission, DeveloperToolEffect,
+    DeveloperRequestAdmission, DeveloperReviewRetryReason, DeveloperToolEffect,
 };
 pub use tool_executor::DeveloperToolExecutor;
 pub use types::{
