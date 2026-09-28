@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1710,
-        "tip_oid": "b25738ba7e655a383af955830b4c1ed636ceefe7",
-        "prefix_sha256": "b12258b392e9bb927e87055718545c6c03bb69cfd7cc1f5a072cbff70b74dd81"
+        "sequence": 1711,
+        "tip_oid": "57aba3c17b57ba0665e45180b50c1a60d862f02e",
+        "prefix_sha256": "872384942107b53d0c654c285968c313a44a6ac6675b1881d1dac058cfbc202d"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 1864,
+  "next_comment_id": 1865,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -16544,7 +16544,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-28T00:58:41.412806074Z",
-      "updated_at": "2026-09-28T04:48:59.404806259Z",
+      "updated_at": "2026-09-28T05:11:49.335184444Z",
       "labels": [
         "bug"
       ],
@@ -16647,6 +16647,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAjCl2bfnzhBKieFP1q4IVRjBDtBmd9Xn6PBUE9Gn6wf2O6DqG42zuT9BLbc48KO5xaRj0+oChzv9ck2/c57NHDA=="
+        },
+        "ef343214-cfaa-42ba-9985-7dd0e03c486c": {
+          "display_id": 1864,
+          "author": "6ME5",
+          "content": "[action] Workspace v12 passed. Live ordinary new chat now uses durable session; beta edit completed. Claude prompt-only bridge still failed live, isolated cause to CLI post-workflow json-schema; direct max-turns=1 exact JSON succeeded. Single-turn adapter tests pass; build28b complete; real TUI read/replay and checkpoint rewind probes ongoing.",
+          "created_at": "2026-09-28T05:11:49.321777440Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAPVjU8mYjZ4w/q9PavQuBsuj7pPzDgPyH5eeIVytwuilkeo6BiQT0qGbwUd4CbhuoDN7VzlFO+VjmekIAJdBoAA=="
         }
       }
     },
