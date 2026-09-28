@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1756,
-        "tip_oid": "187e9823d584ae569897f92dbf867c8897db5d34",
-        "prefix_sha256": "5d6ac4877c0d0e05c425fe55e77c53679efd130c1c564b1cda1a6f38465275d2"
+        "sequence": 1757,
+        "tip_oid": "a7db9f860e3e1fcbd54dfb92cfe732f2a164d179",
+        "prefix_sha256": "1a70be67f364f3e785226e397b6694ffa9df246835064f67556ffb25473dff2f"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 1904,
+  "next_comment_id": 1905,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -16544,7 +16544,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-28T00:58:41.412806074Z",
-      "updated_at": "2026-09-28T16:33:15.037794335Z",
+      "updated_at": "2026-09-28T16:41:15.971930086Z",
       "labels": [
         "bug"
       ],
@@ -16719,6 +16719,15 @@
           "kind": "handoff",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAGg5uOueft+5etZMVzKqj/uV1UT5NWwVvAJeSVcunyAMIjtg6vLmB3B1uOqfnYBuWeaDCR9jdex4UXj2urFz+Cw=="
+        },
+        "5bcf7c9b-6b06-4202-888e-3627f6ad1598": {
+          "display_id": 1904,
+          "author": "6ME5",
+          "content": "Livebuild78 also reproduced first-action session prerequisites in /files, /permissions, /init and /goal. Shared metadata-creation continuation now serves attachments and setup inspectors. During regression work, reproduced a stale composer after deferred /init inspection; routed deferred inspections through existing draft acknowledgement tracking. Escape before creation receipt now preserves unchanged draft as well as changed drafts. Focused112workbenchtests and fullTUI289pass1ownedfixtureignored; lint/build79 underway. No execution or confirmation boundary is removed.",
+          "created_at": "2026-09-28T16:41:15.967353020Z",
+          "kind": "observation",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABATUto4YuxYpCVxczrbZB7R3TnjNqNomGOdDu92FR94H+x3KYqQC8r+s7Ao2OafqU7kdNTxBI0I3+8hR+QqztLBg=="
         },
         "5e8ec17d-04c9-4035-b4e9-6a3350549ab7": {
           "display_id": 1883,
