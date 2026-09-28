@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1762,
-        "tip_oid": "34fc3c6948e62fa61c31ba6709ec1dad53f6f6d6",
-        "prefix_sha256": "c3c68fb5348d40818f9221efab3adf86de743aa6ef75a21a1cc92086cdd13216"
+        "sequence": 1763,
+        "tip_oid": "787d21a3f7172450ed9d254695c7af05ee68a494",
+        "prefix_sha256": "7c753be3580a068451128d9474d31bcf590c80b856b0d2cca8429faf5083a719"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 1908,
+  "next_comment_id": 1909,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -16544,7 +16544,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-28T00:58:41.412806074Z",
-      "updated_at": "2026-09-28T17:01:37.522142960Z",
+      "updated_at": "2026-09-28T17:02:53.155662728Z",
       "labels": [
         "bug"
       ],
@@ -16863,6 +16863,15 @@
           "kind": "handoff",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAk5OJLsrxYYHPnB5VtJd8jIyqjJ4rp1Z7Wq2klqoEOvMik4iK+KEXxtuUaZcmaHSTqexEXg8joKoOtRj+DuG7CA=="
+        },
+        "a2d81ce6-32ad-4de2-b764-449a0b016017": {
+          "display_id": 1908,
+          "author": "6ME5",
+          "content": "Published signed commit 1948485ac (shallow recovery LF/CRLF fixture) together with signed 40a4662bc (first setup command session onboarding) to PR 105, base develop, still open. Native failure reproduced on Linux; both explicit checkout modes now pass exact-byte restore and fsck. Formatting, full strict workspace Clippy and focused test/build passed. Reviewer-retry work remains local under full workspace validation.",
+          "created_at": "2026-09-28T17:02:53.126786846Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAvxXf1+zgO/XqzZ+EtZJ+qBazaxtE685GSdqeJusVmt/XtfLhIVko+lUJmE+j2atme8lO6/ShUw3ln627Nb4GBg=="
         },
         "a2f94d21-771f-4be7-b212-666e5085697e": {
           "display_id": 1872,
