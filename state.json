@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1738,
-        "tip_oid": "873e046495535c82298484961b10850775ddefa8",
-        "prefix_sha256": "59aa3f2d5d718d12123d607736daf6c72c2064ecc06dfb4391a144680f4c0c3f"
+        "sequence": 1739,
+        "tip_oid": "f17ef17666a4afd4dc0677ab275994f03c91bdda",
+        "prefix_sha256": "7cdf7b4ba953143f20724e03cbc47457451af679f4822999b3353409e3c9db10"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 1889,
+  "next_comment_id": 1890,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -16540,7 +16540,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-28T00:58:41.412806074Z",
-      "updated_at": "2026-09-28T14:57:30.911212866Z",
+      "updated_at": "2026-09-28T15:06:04.370769669Z",
       "labels": [
         "bug"
       ],
@@ -16652,6 +16652,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAxWErtyyhUNHaJqgpwjO6Iv3kPk3Mq2mGcqiSL96OVjQG1yZ/AXwfVhhF95VodgqEX5pBItNor0ZHYQjd96P7AA=="
+        },
+        "543a23bf-7850-4888-9931-c141af3188af": {
+          "display_id": 1889,
+          "author": "6ME5",
+          "content": "[action] Pushed 462447266 to open PR105. Build71 actual TUI executable edit completed and independent0750/neighbor/direct-run checks passed. Build72 includes Windows recovery paths and writable sync repair; full runner419/integrations, Linux/Windows Clippy, policy pass. Uncommitted pipe attachment feature181 app.terminal-pipes and bounded line editor: TUI269 passed, full daemon suite running. Native Windows CI pending; no complete-audit claim.",
+          "created_at": "2026-09-28T15:06:04.358639861Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA3z/6KIkOawWuzSbXCPPwfD5WcrPyhM7PHA0IFhCMRMxPB43asC1pHdpL1yfSYRmWJX3uuADs46/GqaJ4emVbDA=="
         },
         "55288677-9b8a-4510-bd96-99501c2ae6d9": {
           "display_id": 1885,
