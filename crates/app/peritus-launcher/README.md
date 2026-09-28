@@ -16,6 +16,9 @@ When a selected account provider is missing, setup offers its official installer
 defaulting to no. A declined or failed installation never enables that provider. Successful
 installation returns to the ordinary login flow, and generated daemon configuration pins the
 discovered executable even when the current terminal has an older PATH.
+Resolved account executables are persisted before configuration rendering. An official-client
+update advances the immutable generation while preserving the selected model and prior files;
+temporary discovery failure retains an existing pin so provider repair remains reachable.
 
 The launcher owns host effects but no durable domain authority. It does not interpret A3 commands,
 provider traffic, workspace mutations, approvals, or TUI presentation state. All generated

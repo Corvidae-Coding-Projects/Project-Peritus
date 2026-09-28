@@ -11,6 +11,7 @@ use peritus_product_state::{
 };
 
 use crate::{AppLayout, LauncherError, persistence::read_exact_or_publish};
+pub(super) mod account;
 mod folder;
 mod hosted;
 
@@ -115,6 +116,7 @@ fn render_configuration(layout: &AppLayout, state: &ProductState) -> Result<Stri
             *provider,
             state.providers().direct_profile(*provider),
             state.providers().account_model(*provider),
+            state.providers().account_executable(*provider),
         )?);
     }
     render_workspaces(&mut text, state)?;
@@ -159,6 +161,7 @@ fn render_provider(
     provider: ProviderKind,
     direct: Option<&DirectProviderProfile>,
     account_model: Option<&str>,
+    account_executable: Option<&str>,
 ) -> Result<String, LauncherError> {
     let (kind, profile_id, image_input) = match provider {
         ProviderKind::CodexAccount => ("codex-runtime", "a1000000000000000000000000000001", true),
@@ -171,10 +174,10 @@ fn render_provider(
         invalid("account provider has no selected model; complete provider model setup")
     })?;
     let mut text = format!("\n[[providers]]\nkind = {}\n", toml_string(kind));
-    // A native installer can finish after this process captured PATH. Pin its exact discovered
-    // executable for the daemon instead of mutating the process-wide environment.
-    if let Ok(account) = peritus_provider_onboarding::AccountProvider::discover(provider) {
-        writeln!(text, "executable = {}", toml_path(account.executable())?)
+    // Discovery is durably reconciled before rendering. An updated native client must create a
+    // new product generation rather than changing the bytes of an existing configuration.
+    if let Some(executable) = account_executable {
+        writeln!(text, "executable = {}", toml_string(executable))
             .expect("writing to String cannot fail");
     }
     text.push_str(&profile_block(

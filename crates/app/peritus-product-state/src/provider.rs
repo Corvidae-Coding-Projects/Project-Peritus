@@ -5,6 +5,7 @@ use serde::Serialize;
 
 use crate::ProductStateError;
 
+mod account;
 mod kind;
 pub use kind::ProviderKind;
 
@@ -138,6 +139,8 @@ impl DirectProviderProfile {
 pub struct ProviderSelection {
     #[serde(default)]
     account_models: std::collections::BTreeMap<ProviderKind, String>,
+    #[serde(default)]
+    account_executables: std::collections::BTreeMap<ProviderKind, String>,
     enabled: Vec<ProviderKind>,
     default: Option<ProviderKind>,
     #[serde(default)]
@@ -221,6 +224,7 @@ impl ProviderSelection {
             automatic_failover,
             direct_profiles,
             account_models: std::collections::BTreeMap::new(),
+            account_executables: std::collections::BTreeMap::new(),
         })
     }
 
@@ -268,41 +272,14 @@ impl ProviderSelection {
             self.direct_profiles.clone(),
             self.automatic_failover,
         )?
-        .with_account_models(self.account_models.clone())?;
+        .with_account_models(self.account_models.clone())?
+        .with_account_executables(self.account_executables.clone())?;
         if &canonical != self {
             return Err(ProductStateError::InvalidPayload(
                 "enabled providers are not canonical".to_owned(),
             ));
         }
         Ok(())
-    }
-
-    /// Retains exact account model selections; old records may omit them until migration.
-    ///
-    /// # Errors
-    /// Rejects disabled/non-account routes and empty or unsafe identifiers.
-    pub fn with_account_models(
-        mut self,
-        models: std::collections::BTreeMap<ProviderKind, String>,
-    ) -> Result<Self, ProductStateError> {
-        if models.iter().any(|(kind, model)| {
-            !kind.is_account()
-                || !self.enabled.contains(kind)
-                || !bounded_text(model, 256)
-                || model.chars().any(char::is_control)
-        }) {
-            return Err(ProductStateError::InvalidPayload(
-                "account model selection is invalid".to_owned(),
-            ));
-        }
-        self.account_models = models;
-        Ok(self)
-    }
-
-    /// Exact selected account model, never a built-in provider default.
-    #[must_use]
-    pub fn account_model(&self, kind: ProviderKind) -> Option<&str> {
-        self.account_models.get(&kind).map(String::as_str)
     }
 }
 
