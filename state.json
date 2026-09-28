@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1753,
-        "tip_oid": "0858d121b2bfec927e1135cd9a12e3d7fb08370c",
-        "prefix_sha256": "744ef1a85d7096b522a30a10cb7e1660b9961e4ff48437cfeebafed40fefd6c5"
+        "sequence": 1754,
+        "tip_oid": "6dab531a893a5b58cc3da9c0a4df68b36b8c3c3e",
+        "prefix_sha256": "f5c64637cf244bc44ce3bc3add69baa3a4d15265c401c146d91a72b3aca5f38a"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 1901,
+  "next_comment_id": 1902,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -16544,7 +16544,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-28T00:58:41.412806074Z",
-      "updated_at": "2026-09-28T16:24:44.337042903Z",
+      "updated_at": "2026-09-28T16:27:17.382486687Z",
       "labels": [
         "bug"
       ],
@@ -16809,6 +16809,15 @@
           "kind": "handoff",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA1DQiDUznSjsMYY9M2W73/4NuMA/oCA0cAwHAMb7v5rw5CUbMcM2XqES7xZ5iljQzpFyb4dyEZi3GiD2aWomFCw=="
+        },
+        "9e209cc0-fd35-4d1c-bfd9-f8529a12b16a": {
+          "display_id": 1901,
+          "author": "6ME5",
+          "content": "Committed 836bb945e fix(ci): give Windows candidate tests a bounded job. Both workflows and canonical policy require the new job exactly once; integration targets remain exhaustive. Verification: xtask suite 478 passed/1 ignored, candidate partition57 passed, strict Clippy, format and xtask all passed. Includes prior signed4563e33ad foreground job-control repair in push. Image onboarding changes remain uncommitted under regression test.",
+          "created_at": "2026-09-28T16:27:17.376387367Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAe1GC8UHxn6QxnsX/iRmkSJH+XzD7RDdFveCCKJ02r6G8BB7uKO/4aB4BsYEQvmoKp7sECxYGVDG89hGga5AMDA=="
         },
         "9e78863e-8555-4643-99b3-ed6b423b55e0": {
           "display_id": 1855,
