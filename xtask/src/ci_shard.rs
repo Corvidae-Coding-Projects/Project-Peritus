@@ -47,6 +47,7 @@ pub(crate) enum Operation {
     TestPlatformTerminalCancel,
     TestRunnerRecovery,
     TestRunnerProduct,
+    TestRunnerCandidate,
     VerusVerify,
     VerusVerifyStrict,
     VerusBuild,
@@ -88,6 +89,7 @@ impl Operation {
             "test-platform-terminal-cancel" => Some(Self::TestPlatformTerminalCancel),
             "test-runner-recovery" => Some(Self::TestRunnerRecovery),
             "test-runner-product" => Some(Self::TestRunnerProduct),
+            "test-runner-candidate" => Some(Self::TestRunnerCandidate),
             "verus-verify" => Some(Self::VerusVerify),
             "verus-verify-strict" => Some(Self::VerusVerifyStrict),
             "verus-build" => Some(Self::VerusBuild),
@@ -186,7 +188,10 @@ fn selected_packages<'a>(
             _ => true,
         })
         .filter(|package| !operation.is_platform_terminal() || package.name == PLATFORM_PACKAGE)
-        .filter(|package| operation.runner_tests().is_none() || package.name == runner::PACKAGE)
+        .filter(|package| {
+            (operation.runner_tests().is_none() && operation != Operation::TestRunnerCandidate)
+                || package.name == runner::PACKAGE
+        })
         .map(|package| package.name.as_str())
         .collect::<Vec<_>>();
     selected.sort_unstable();
@@ -233,7 +238,7 @@ fn cargo_command(root: &Path, operation: Operation, packages: &[&str]) -> Comman
         Operation::Test | Operation::TestDaemon => {
             command.args(["test", "--locked", "--all-targets", "--all-features"]);
         }
-        Operation::TestDaemonPartition(_) => {
+        Operation::TestDaemonPartition(_) | Operation::TestRunnerCandidate => {
             command.args(["test", "--locked", "--lib", "--all-features"]);
         }
         Operation::TestRunnerRecovery | Operation::TestRunnerProduct => {
@@ -284,12 +289,17 @@ fn cargo_command(root: &Path, operation: Operation, packages: &[&str]) -> Comman
         command.args(["--test", "general_capability", test, "--", "--exact", "--test-threads=1"]);
     } else if matches!(
         operation,
-        Operation::Test | Operation::TestDaemon | Operation::TestDaemonPartition(_)
+        Operation::Test
+            | Operation::TestDaemon
+            | Operation::TestDaemonPartition(_)
+            | Operation::TestRunnerCandidate
     ) || operation.runner_tests().is_some()
     {
         command.args(["--", "--test-threads=1"]);
         command.args(daemon::test_filters(operation, cfg!(windows)));
-        if packages == [runner::PACKAGE] && operation == Operation::Test {
+        if packages == [runner::PACKAGE]
+            && matches!(operation, Operation::Test | Operation::TestRunnerCandidate)
+        {
             command.args(runner::library_filters(operation, cfg!(windows)));
         }
         if packages == [PLATFORM_PACKAGE] {

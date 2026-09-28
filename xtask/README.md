@@ -67,9 +67,9 @@ Daemon build, Clippy, documentation, and Verus checks remain in the existing
 application-shell shards. Exact workflow checks reject missing, repeated, or
 misrouted daemon jobs.
 
-Windows runner library tests share the existing three runner jobs to stay within their
-fifteen-minute limit, including the cold build. `test-runner-recovery` also executes candidate
-library tests; `test-runner-product` also executes local-context library tests. The ordinary
+Windows runner library tests are partitioned to stay within their fifteen-minute limit,
+including the cold build. `test-runner-candidate` executes candidate library tests in a separate
+Windows job; `test-runner-product` also executes local-context library tests. The ordinary
 runner test job covers the remaining namespaces and non-library targets. The integration targets
 remain assigned exactly once. Linux and macOS retain their full ordinary library test invocation.
 

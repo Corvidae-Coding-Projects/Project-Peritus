@@ -15,21 +15,19 @@ const CANDIDATE: &str = "candidate::";
 const LOCAL_CONTEXT: &str = "local_context::";
 
 pub(super) fn library_filters(operation: Operation, windows: bool) -> Vec<&'static str> {
-    if !windows {
+    if !windows && operation != Operation::TestRunnerCandidate {
         return Vec::new();
     }
     match operation {
         Operation::Test => vec!["--skip", CANDIDATE, "--skip", LOCAL_CONTEXT],
-        Operation::TestRunnerRecovery => vec![CANDIDATE, "--skip", LOCAL_CONTEXT],
+        Operation::TestRunnerCandidate => vec![CANDIDATE, "--skip", LOCAL_CONTEXT],
         Operation::TestRunnerProduct => vec![LOCAL_CONTEXT],
         _ => Vec::new(),
     }
 }
 
 fn library_command(root: &Path, operation: Operation, windows: bool) -> Option<Command> {
-    if !windows
-        || !matches!(operation, Operation::TestRunnerRecovery | Operation::TestRunnerProduct)
-    {
+    if !windows || operation != Operation::TestRunnerProduct {
         return None;
     }
     let mut command = Command::new("cargo");
@@ -100,7 +98,7 @@ mod tests {
     #[test]
     fn windows_library_namespaces_execute_once_across_existing_jobs() {
         let operations =
-            [Operation::Test, Operation::TestRunnerRecovery, Operation::TestRunnerProduct];
+            [Operation::Test, Operation::TestRunnerCandidate, Operation::TestRunnerProduct];
         for name in [
             "candidate::managed::tests::restore",
             "local_context::tests::capacity",
@@ -118,8 +116,12 @@ mod tests {
         assert!(library_command(Path::new("."), Operation::TestRunnerRecovery, false).is_none());
         assert!(library_command(Path::new("."), Operation::TestRunnerProduct, false).is_none());
         assert!(library_command(Path::new("."), Operation::Test, true).is_none());
-        for operation in [Operation::TestRunnerRecovery, Operation::TestRunnerProduct] {
-            let command = library_command(Path::new("."), operation, true).unwrap();
+        assert!(library_command(Path::new("."), Operation::TestRunnerRecovery, true).is_none());
+        assert!(library_command(Path::new("."), Operation::TestRunnerCandidate, true).is_none());
+        for command in [
+            library_command(Path::new("."), Operation::TestRunnerProduct, true).unwrap(),
+            cargo_command(Path::new("."), Operation::TestRunnerCandidate, &[PACKAGE]),
+        ] {
             let arguments =
                 command.get_args().map(|value| value.to_string_lossy()).collect::<Vec<_>>();
             for required in ["--locked", "--lib", "--all-features", "--test-threads=1"] {
@@ -130,6 +132,9 @@ mod tests {
                 "--ignored" | "--test" | "--all-targets"
             )));
         }
+        assert_eq!(Operation::parse("test-runner-candidate"), Some(Operation::TestRunnerCandidate));
+        let candidate = arguments(Operation::TestRunnerCandidate);
+        assert!(candidate.iter().any(|argument| argument == "candidate::"));
     }
 
     fn matches_filters(name: &str, filters: &[&str]) -> bool {

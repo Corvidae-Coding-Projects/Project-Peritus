@@ -14,13 +14,14 @@ const PLATFORM_TERMINAL_ENTRIES: [(&str, &str); 9] = [
     ("windows-2025", "test-platform-terminal-cancel"),
 ];
 
-const RUNNER_ENTRIES: [(&str, &str); 6] = [
+const RUNNER_ENTRIES: [(&str, &str); 7] = [
     ("ubuntu-24.04", "test-runner-recovery"),
     ("ubuntu-24.04", "test-runner-product"),
     ("macos-15", "test-runner-recovery"),
     ("macos-15", "test-runner-product"),
     ("windows-2025", "test-runner-recovery"),
     ("windows-2025", "test-runner-product"),
+    ("windows-2025", "test-runner-candidate"),
 ];
 
 const DAEMON_ENTRIES: [(&str, &str); 14] = [
