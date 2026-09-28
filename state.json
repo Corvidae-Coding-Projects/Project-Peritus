@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1774,
-        "tip_oid": "bd4a4b440606e51b4d1651241c8e7dc90571b686",
-        "prefix_sha256": "3598c13f9dbc90534e8e294568ae40d8fd038e788f7c72ec51fbed0d2cb3f4f8"
+        "sequence": 1775,
+        "tip_oid": "e48c6bca903d94d173f9f15c1472d17f746dbfa4",
+        "prefix_sha256": "87d96128c6bf8a95c6e72630dccac4608c97b1cd370db7567344794d0af8591d"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 1917,
+  "next_comment_id": 1918,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -16540,7 +16540,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-28T00:58:41.412806074Z",
-      "updated_at": "2026-09-28T17:50:48.929096505Z",
+      "updated_at": "2026-09-28T17:51:38.653537855Z",
       "labels": [
         "bug"
       ],
@@ -16958,6 +16958,15 @@
           "kind": "handoff",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAsff/yLNgnVgUfdrFdkePJe2FwF7CMIDM0a0FMg2SNFvkOVu8vTN1ICmrvBLCcxyHa0dYAOqxxvYg4ylwZaVnCg=="
+        },
+        "b5780c68-93a4-44b8-9923-f853c8337e70": {
+          "display_id": 1917,
+          "author": "6ME5",
+          "content": "Paused at explicit user request after commit/push608b4dede to PR105/develop. Verified TUI298 plus strict Linux/Windows checks, policy and build87. Unfinished idle-goal resume regression is stash@{0}, named WIP idle-goal resume regression at requested pause; baseline fails exact malformed-frame. No resume fix applied. Current owned TUI goal is paused; no active provider work. Preserve unrelated untracked files. Do not resume testing or runner monitoring until user asks. Details in /tmp/peritus-human-tui-415nuh50/REPAIR-CHECKLIST.md.",
+          "created_at": "2026-09-28T17:51:38.649375292Z",
+          "kind": "handoff",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAWW3lUONYlr6UnKTgweqjrCB8F8TN83pURpK192ZEqkvgnOywqoPS9W4w3ykNDWgD32u2RqcSpz9n0m8QLa4OCQ=="
         },
         "c50af1de-5da6-41a8-b25c-f423531756f3": {
           "display_id": 1902,
