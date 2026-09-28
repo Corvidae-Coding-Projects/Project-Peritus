@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1757,
-        "tip_oid": "a7db9f860e3e1fcbd54dfb92cfe732f2a164d179",
-        "prefix_sha256": "1a70be67f364f3e785226e397b6694ffa9df246835064f67556ffb25473dff2f"
+        "sequence": 1758,
+        "tip_oid": "d3451f544b61e5d61247f291e72197e59af4676f",
+        "prefix_sha256": "ae5206aacd3ebebc8f8d30cecedd1017ff6fe2ee4dde5ab3e6976e348a46de60"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 1905,
+  "next_comment_id": 1906,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -16544,7 +16544,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-28T00:58:41.412806074Z",
-      "updated_at": "2026-09-28T16:41:15.971930086Z",
+      "updated_at": "2026-09-28T16:45:41.680553176Z",
       "labels": [
         "bug"
       ],
@@ -16962,6 +16962,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAjCl2bfnzhBKieFP1q4IVRjBDtBmd9Xn6PBUE9Gn6wf2O6DqG42zuT9BLbc48KO5xaRj0+oChzv9ck2/c57NHDA=="
+        },
+        "ee6b58b7-5983-4d3e-9313-2830d6466f22": {
+          "display_id": 1905,
+          "author": "6ME5",
+          "content": "Committed40a4662bc shared first-command setup across files,@path,permissions,init,memory,brief,queue,context,goal. Imageflow uses same helper. Escape retains unchanged draft across late creation; deferred inspections clear only accepted command; no stale Creating message. FullTUI289pass1ownedfixtureignored,Linux/WindowsstrictClippy,fmt,policy4797files,build80 pass. RealTUIall7inspectors,filelines1:3preview/confirm,noinference,build80stale-message checks pass. Holding nextpush briefly so current73421ad2eCI can reach nativeWindows candidatepartition withoutbeingcancelled; PR105staysopen.",
+          "created_at": "2026-09-28T16:45:41.676588702Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAwYgeu3zdZncwct28nhcwW7i8pW+0QDAxZMCeNd4d08liZ+ULaeBz94SFEK1i6AoswUpAB8HUjRj7Mvnzn9sHAQ=="
         },
         "ef343214-cfaa-42ba-9985-7dd0e03c486c": {
           "display_id": 1864,
