@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1695,
-        "tip_oid": "ba2997a5d135e3ac8895beaa1974fb608826e97b",
-        "prefix_sha256": "7190169be68da44ceba6385054793e6bdea7409daff0a6c385ac3749835345e9"
+        "sequence": 1696,
+        "tip_oid": "41971c44a5eb85a7132d11dd81c60a93232da11d",
+        "prefix_sha256": "db80321ac23ff682708088e7ba90d69cc4b98236a77f5ef0c24baec09960b405"
       },
       "NWAR": {
         "sequence": 39,
@@ -16540,7 +16540,10 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-28T00:58:41.412806074Z",
-      "updated_at": "2026-09-28T00:58:41.412806074Z"
+      "updated_at": "2026-09-28T00:58:59.263542052Z",
+      "labels": [
+        "bug"
+      ]
     },
     "d94caf6d-2292-44ca-9393-3c7970c87f4f": {
       "uuid": "d94caf6d-2292-44ca-9393-3c7970c87f4f",
