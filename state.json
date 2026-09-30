@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1798,
-        "tip_oid": "7cd664daa681d144dba629526cdd038822322226",
-        "prefix_sha256": "7ca32438e7cdbf53b3f56937ac5f4881aa27c34dc5087676296ef04d48c283e7"
+        "sequence": 1799,
+        "tip_oid": "10069f994af7bde749a399878331f47b07d3feb8",
+        "prefix_sha256": "483a6a662ea133ae9ea04848abfbadead64c63785e71fd856f966c52391e0b99"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 1939,
+  "next_comment_id": 1940,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -16540,7 +16540,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-28T00:58:41.412806074Z",
-      "updated_at": "2026-09-30T21:08:41.843184441Z",
+      "updated_at": "2026-09-30T21:42:23.278244431Z",
       "labels": [
         "bug"
       ],
@@ -16598,6 +16598,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAu7g6aBXGPyyML70RvhpLv2E+/IXP/6IccEWscgfa9KSrdUO1Y6biKX6oXt6YXmJAQ+TdnF40w+ql+wv4dMCdBQ=="
+        },
+        "14efa088-04df-4ecc-a585-73f8e614b229": {
+          "display_id": 1939,
+          "author": "6ME5",
+          "content": "[action] Signed a0d372f44 was pushed to PR105 after fresh Qualified Claude TUI delivery, 487 affected tests and scoped gates. Completing discard transaction backend now: restored isolated prototype, wired source/index/HEAD/archive callbacks, added public prepare/inspect/explicit-execute APIs and verification-only boundary parity. Initial11 persistence/source-conflict/foreign-lock/nested-archive/reconstruction/HEAD tests pass. Uncommitted transaction is not publishable; remaining daemon pending receipt integration, exact startup/retry binding, real process interruption, ownership hardening, strict lint/Windows/full gates and live acceptance. Own fixture ef149dc is Qualified and exported, not discarded.",
+          "created_at": "2026-09-30T21:42:23.274022822Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAQzDkW8S5TRDk1GQyrvM8s0iP3U6HaJ2HMqrur3hkSs21i+3ra2V9cDOnPOCk/I6RxJrsLTkObo5KdYQIltmADA=="
         },
         "1c991f6f-e4ba-4bb2-af13-0af72dcae5dc": {
           "display_id": 1880,
