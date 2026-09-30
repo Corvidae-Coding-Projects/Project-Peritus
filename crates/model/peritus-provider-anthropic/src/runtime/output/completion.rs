@@ -47,6 +47,16 @@ fn no_side_activity(raw: &Map<String, Value>) -> bool {
 }
 
 fn private_candidate(text: &str) -> bool {
+    // A completed native Markdown document is public content even when it includes
+    // code, JSON, or tool examples. Its heading distinguishes it from the private
+    // object grammar; never extract operations from anywhere inside the document.
+    let first = text.trim_start();
+    let heading = first.bytes().take_while(|byte| *byte == b'#').count();
+    if (1..=6).contains(&heading)
+        && first.as_bytes().get(heading).is_some_and(|byte| matches!(byte, b' ' | b'\t'))
+    {
+        return false;
+    }
     text.lines().any(|line| {
         let line = line.trim_start();
         line.starts_with(['{', '[']) || line.starts_with("```")

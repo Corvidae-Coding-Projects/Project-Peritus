@@ -321,3 +321,25 @@ fn explicit_native_single_turn_completion_delivers_public_text_without_tool_auth
     human["origin"] = serde_json::json!({"kind":"human"});
     assert_eq!(decode(human.to_string().as_bytes(), &allowed(), 0).unwrap().content, content);
 }
+
+#[test]
+fn completed_native_markdown_keeps_code_and_tool_examples_in_public_content() {
+    // A real design turn completed with Markdown and fenced Python examples instead
+    // of the requested transport envelope. None of its document examples are commands.
+    let content = "# Design: uppercase greeting\n\n## Implementation\n```python\nprint({'content': greeting.upper()})\n```\n\n## Example protocol\n```json\n{\"content\":\"example\",\"tool_calls\":[{\"name\":\"workspace_read\",\"arguments\":{\"path\":\"README.md\"}}]}\n```\n\n## Verification\nRun the existing tests.\n";
+    let output = serde_json::json!({
+        "type":"result", "subtype":"success", "is_error":false,
+        "stop_reason":"end_turn", "terminal_reason":"completed", "num_turns":1,
+        "permission_denials":[], "result":content
+    });
+    let turn = decode(output.to_string().as_bytes(), &allowed(), 1)
+        .expect("completed native Markdown document");
+    assert_eq!(turn.content, content);
+    assert!(turn.tool_calls.is_empty(), "public examples never grant host authority");
+    assert!(turn.repairs.is_empty());
+    for field in ["stop_reason", "terminal_reason", "permission_denials", "num_turns"] {
+        let mut incomplete = output.clone();
+        incomplete.as_object_mut().unwrap().remove(field);
+        assert!(decode(incomplete.to_string().as_bytes(), &allowed(), 1).is_err());
+    }
+}

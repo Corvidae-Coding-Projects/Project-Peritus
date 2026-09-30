@@ -66,8 +66,9 @@ policy never promotes public examples or weakens tool authorization. Missing tra
 output is an incomplete terminal unless the native SDK explicitly proves a successful one-turn
 `end_turn` / `completed` result with no errors, API failure, denied or deferred tools, local
 command, queued turn, spawned subagent, or background origin. Ordinary text from that native
-terminal is delivered verbatim with no host tool calls. JSON-shaped or reserved host-envelope
-candidates still require the strict private schema; native completion never makes a malformed
+terminal is delivered verbatim with no host tool calls. Completed Markdown documents beginning
+with a heading preserve embedded code and protocol examples as public content. JSON-shaped or
+reserved host-envelope candidates still require the strict private schema; native completion never makes a malformed
 tool request executable. The single-turn limit remains unchanged, and no native formatting
 or repair request is added. See the official
 [SDK result contract](https://code.claude.com/docs/en/agent-sdk/typescript#sdkresultmessage).
