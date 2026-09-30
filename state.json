@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1792,
-        "tip_oid": "ff4a892c7f930f536f27486d9f95bb3332b338d9",
-        "prefix_sha256": "b8354d2ad7981ae07aad55a23e0fd9e6edc7c260512f7d94ca2f3784d60283b2"
+        "sequence": 1793,
+        "tip_oid": "75e4ef47841012c3f0c3c5113aaa61f2905803ab",
+        "prefix_sha256": "f0114b85ad3f21f9b91f9a0d0b32d32b228952a0c550168abac6464522a5ef3f"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 1934,
+  "next_comment_id": 1935,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -16544,7 +16544,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-28T00:58:41.412806074Z",
-      "updated_at": "2026-09-30T20:32:22.257239043Z",
+      "updated_at": "2026-09-30T20:33:35.266632932Z",
       "labels": [
         "bug"
       ],
@@ -16746,6 +16746,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAqnclKrcLZtj1wIhzFBTsUDT2G+Kw5wbG9uouZbNulgXyaPAwJHuBgcm7Xk8M3WQslN8hEpaqY/UwGSlaoHWtDg=="
+        },
+        "4e477f9a-617a-4b99-9329-6e44b6dd65b7": {
+          "display_id": 1934,
+          "author": "6ME5",
+          "content": "cfd2267f73c0ce7d64384bb8f35c8738ce5f5fd6: fix(daemon): reserve discard results before restoration (#99). Seven scoped files, signed commit. 1042 affected tests (0 failed,12 ignored), final13 discard tests, strict Linux and WindowsGNU lint, workspacebuild, fmt and xtaskall pass. ActualTUI UID1000 permission denial now leaves all7 candidate hashes/modes and raw index unchanged; permission restoration then same D succeeds with all7 source/managed baseline hashes/modes and5 tests each. NativeWindows latesthead CI and full multi-effect interrupted-discard reconciliation remain unclaimed; wider draft preserved separately. Invalid writer final report is reproducible and remains active work.",
+          "created_at": "2026-09-30T20:33:35.262547415Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAuQuyS+dR0+Jc8MY9+P5kFH4dr+zX6vVBcdsz327DfebQj9VsA4zrlky8wWVv7zBzoitYcwWekdEOkdoiW4zVDQ=="
         },
         "50ceefa7-0b39-4494-9911-58bfa0c81d2d": {
           "display_id": 1853,
