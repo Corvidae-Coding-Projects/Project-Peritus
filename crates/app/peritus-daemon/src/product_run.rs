@@ -113,6 +113,7 @@ struct PreviewOperationRecord {
 #[derive(Clone)]
 struct RunRecord {
     interaction: Option<interaction::InteractionOptions>,
+    goal_resume: Option<peritus_product_runner::control::OperationId>,
     request: ProductRunRequest,
     snapshot: ProductRunSnapshot,
     cancelled: Arc<AtomicBool>,
@@ -205,6 +206,7 @@ impl ProductRunService {
                 request.run_id(),
                 RunRecord {
                     interaction,
+                    goal_resume: None,
                     request: request.clone(),
                     snapshot: snapshot.clone(),
                     cancelled: Arc::clone(&cancelled),

@@ -111,6 +111,14 @@ impl ProductRunService {
         &self,
         run_id: RunId,
     ) -> Result<ProductRunSnapshot, ProductRunServiceError> {
+        self.retry_admitted(run_id, None).await
+    }
+
+    pub(super) async fn retry_admitted(
+        &self,
+        run_id: RunId,
+        goal_resume: Option<&peritus_product_runner::control::ControlOperation>,
+    ) -> Result<ProductRunSnapshot, ProductRunServiceError> {
         let (
             request,
             root,
@@ -129,6 +137,15 @@ impl ProductRunService {
                 .ok_or(ProductRunServiceError::NotFound)?
                 .request
                 .workspace_id();
+            let record = records.get(&run_id).expect("checked product run exists");
+            let explicit_goal = if let Some(operation) = goal_resume {
+                if !self.goal_resume_pending(record, operation)? {
+                    return Ok(record.snapshot.clone());
+                }
+                true
+            } else {
+                false
+            };
             if workspace_has_active_run(&records, workspace_id, Some(run_id)) {
                 return Err(ProductRunServiceError::InvalidState);
             }
@@ -140,7 +157,12 @@ impl ProductRunService {
                         .as_ref()
                         .is_some_and(|options| options.workbench.is_some())))
                 && self.pending_record_input(record)?;
-            if !record.snapshot.phase().retryable() && !pending_chat {
+            let explicit_idle = explicit_goal
+                && matches!(
+                    record.snapshot.phase(),
+                    ProductRunPhase::WaitingForUser | ProductRunPhase::Complete
+                );
+            if !(record.snapshot.phase().retryable() || pending_chat || explicit_idle) {
                 return Err(ProductRunServiceError::InvalidState);
             }
             self.validate_workspace_mode(workspace_id, record.interaction.as_ref())?;
@@ -156,6 +178,10 @@ impl ProductRunService {
                 .ok_or(ProductRunServiceError::WorkspaceUnavailable)?;
             let cancelled = Arc::new(AtomicBool::new(false));
             let token = CancellationToken::new();
+            let previous = record.clone();
+            if let Some(operation) = goal_resume {
+                record.goal_resume = Some(operation.id());
+            }
             record.cancelled = Arc::clone(&cancelled);
             record.user_cancelled = false;
             record.provider_cancellation = token.clone();
@@ -163,7 +189,10 @@ impl ProductRunService {
             record.progress = RunProgress::default();
             record.settlement = None;
             record.interruption_cause.clear();
-            persist_record(&self.inner.directory, record)?;
+            if let Err(error) = persist_record(&self.inner.directory, record) {
+                *record = previous;
+                return Err(error);
+            }
             (
                 record.request.clone(),
                 root,

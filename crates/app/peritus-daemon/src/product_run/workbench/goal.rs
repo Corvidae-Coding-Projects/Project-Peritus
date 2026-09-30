@@ -11,8 +11,8 @@ use peritus_app_protocol::{
     WorkbenchGoalSnapshot, WorkbenchGoalState, WorkbenchGoalUsage, WorkbenchIntent, WorkbenchQuery,
 };
 use peritus_product_runner::control::{
-    ControlError, ConversationId, GoalBudget, GoalCriterion, GoalCriterionKind, GoalCriterionState,
-    GoalPauseMode, GoalRecord, GoalRoleUsage, GoalState,
+    ControlError, ControlOperation, ConversationId, GoalBudget, GoalCriterion, GoalCriterionKind,
+    GoalCriterionState, GoalPauseMode, GoalRecord, GoalRoleUsage, GoalState,
 };
 use peritus_types::{ActorId, RunId};
 use std::sync::atomic::Ordering;
@@ -75,20 +75,17 @@ impl ProductRunService {
             Err(error) => return error_response(error),
         };
         let (run, replay_receipt) = prepared;
-        if let Some(receipt) = replay_receipt {
-            return receipt_projection(command, &receipt)
-                .map_or_else(error_response, AppResponsePayload::WorkbenchReceipt);
-        }
-        {
+        if replay_receipt.is_none() {
             // Never take the run-record lock from inside the serialized control owner. The prior
-            // worker must be at a retryable terminal projection before durable resume admission.
+            // worker must have settled before durable resume admission. Waiting for user input
+            // is a safe boundary, but only this explicit goal command may resume unchanged input.
             let retryable = self
                 .inner
                 .records
                 .read()
                 .ok()
                 .and_then(|records| {
-                    records.get(&run).map(|record| record.snapshot.phase().retryable())
+                    records.get(&run).map(|record| record.snapshot.phase().terminal())
                 })
                 .unwrap_or(false);
             if !retryable {
@@ -103,7 +100,15 @@ impl ProductRunService {
                 return error_response(error);
             }
         }
-        match self.retry(run).await {
+        let accepted = match self.with_controls(false, |store| {
+            store
+                .operation(operation.conversation(), operation.id())?
+                .ok_or_else(|| ControlError::NotFound.into())
+        }) {
+            Ok(accepted) => accepted,
+            Err(error) => return error_response(error),
+        };
+        match self.retry_admitted(run, Some(&accepted)).await {
             Ok(_) => self
                 .with_controls(false, |store| {
                     resolve_user_operation(store, &operation)?
@@ -113,6 +118,51 @@ impl ProductRunService {
                 .map_or_else(error_response, AppResponsePayload::WorkbenchReceipt),
             Err(error) => error.response(),
         }
+    }
+
+    /// Checks exact durable resume authority while the caller owns the run-record lock.
+    pub(in crate::product_run) fn goal_resume_pending(
+        &self,
+        record: &crate::product_run::RunRecord,
+        operation: &ControlOperation,
+    ) -> Result<bool, ProductRunServiceError> {
+        if record.goal_resume == Some(operation.id())
+            && record.snapshot.phase() != peritus_app_protocol::ProductRunPhase::RecoveryRequired
+        {
+            return Ok(false);
+        }
+        let start = record
+            .interaction
+            .as_ref()
+            .and_then(|options| options.workbench.as_ref())
+            .ok_or(ProductRunServiceError::Control(ControlError::InvalidInput))?;
+        let peritus_product_runner::control::ControlIntent::ResumeGoal { goal, .. } =
+            operation.intent()
+        else {
+            return Err(ProductRunServiceError::Control(ControlError::InvalidInput));
+        };
+        if *goal != start.id()
+            || operation.conversation() != start.conversation()
+            || operation.actor_bytes() != start.actor_bytes()
+            || operation.workspace_bytes() != start.workspace_bytes()
+        {
+            return Err(ProductRunServiceError::Control(ControlError::ScopeMismatch));
+        }
+        self.with_controls(false, |store| {
+            let receipt = store.resolve(operation)?.ok_or(ControlError::NotFound)?;
+            let resumed = store
+                .load_revision(operation.conversation(), receipt.accepted_revision())?
+                .ok_or(ControlError::NotFound)?;
+            let admitted_goal = resumed.goal().ok_or(ControlError::NotFound)?;
+            let current = store.load(operation.conversation())?.ok_or(ControlError::NotFound)?;
+            Ok(current.goal().is_some_and(|current_goal| {
+                current_goal.id() == *goal
+                    && current_goal.run_bytes() == record.request.run_id().as_bytes()
+                    && current_goal.attempt() == admitted_goal.attempt()
+                    && current_goal.state() == GoalState::Active
+            }))
+        })
+        .map_err(Into::into)
     }
 
     pub(super) fn signal_goal_cancellation(&self, command: &WorkbenchCommand) {

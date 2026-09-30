@@ -24,6 +24,7 @@ impl PersistedRecord {
             })
             .collect();
         Ok(Self {
+            goal_resume: record.goal_resume.map(|operation| *operation.as_bytes()),
             interaction: record
                 .interaction
                 .as_ref()
@@ -108,6 +109,18 @@ impl PersistedRecord {
     ) -> Result<RunRecord, ProductRunServiceError> {
         let interaction =
             self.interaction.map(interaction::PersistedInteraction::restore).transpose()?;
+        if self.goal_resume.is_some()
+            && !interaction.as_ref().and_then(|options| options.workbench.as_ref()).is_some_and(
+                |operation| {
+                    matches!(
+                        operation.intent(),
+                        peritus_product_runner::control::ControlIntent::StartGoal { .. }
+                    )
+                },
+            )
+        {
+            return Err(ProductRunServiceError::InvalidMessage);
+        }
         let phase_tag = if let Some(options) = &interaction {
             self.phase
                 .checked_sub(if options.workbench.is_some() { 200 } else { 100 })
@@ -250,6 +263,11 @@ impl PersistedRecord {
         }
         Ok(RunRecord {
             interaction,
+            goal_resume: self
+                .goal_resume
+                .map(peritus_product_runner::control::OperationId::new)
+                .transpose()
+                .map_err(|_| ProductRunServiceError::InvalidMessage)?,
             request,
             snapshot,
             cancelled: Arc::new(AtomicBool::new(false)),

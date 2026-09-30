@@ -270,6 +270,7 @@ fn restart_restores_each_resumable_phase_and_preserves_completed_writer_state() 
         let resume = durable_resume_json(identity, phase_tag);
         let record = PersistedRecord {
             interaction: None,
+            goal_resume: None,
             task_baseline_required: false,
             task_baseline: None,
             run_id: hex(run_id.as_bytes()),

@@ -6,6 +6,8 @@ use serde::Serialize;
 
 #[derive(Serialize, Deserialize)]
 pub(super) struct PersistedRecord {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(super) goal_resume: Option<[u8; 16]>,
     #[serde(default)]
     pub(super) interaction: Option<interaction::PersistedInteraction>,
     pub(super) run_id: String,

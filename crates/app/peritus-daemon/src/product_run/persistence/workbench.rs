@@ -78,7 +78,7 @@ pub(in crate::product_run) fn load_workbench_records(
             }
         };
         let Some(operation) =
-            persisted.interaction.as_ref().and_then(|options| options.workbench.as_ref())
+            persisted.interaction.as_ref().and_then(|options| options.workbench.clone())
         else {
             quarantine_record(&path, "workbench run projection has no exact start binding", None);
             continue;
@@ -91,7 +91,7 @@ pub(in crate::product_run) fn load_workbench_records(
         {
             continue;
         }
-        let accepted = match controls.resolve(operation) {
+        let accepted = match controls.resolve(&operation) {
             Ok(resolved) => resolved.is_some(),
             Err(error) => {
                 quarantine_record(
@@ -103,7 +103,7 @@ pub(in crate::product_run) fn load_workbench_records(
             }
         };
         let captured = if accepted {
-            match controls.capture_execution(operation) {
+            match controls.capture_execution(&operation) {
                 Ok(captured) => Some(captured),
                 Err(error) => {
                     quarantine_record(
@@ -133,6 +133,14 @@ pub(in crate::product_run) fn load_workbench_records(
                 continue;
             }
         };
+        if !resume_marker_valid(controls, &operation, &record) {
+            quarantine_record(
+                &path,
+                "goal resume launch marker has no exact control receipt",
+                None,
+            );
+            continue;
+        }
         if !record_path_matches(&path, record.request.run_id()) {
             quarantine_record(
                 &path,
@@ -198,6 +206,26 @@ pub(in crate::product_run) fn load_workbench_records(
         records.insert(run, record);
     }
     Ok(records)
+}
+
+fn resume_marker_valid(
+    controls: &ControlStore,
+    start: &peritus_product_runner::control::ControlOperation,
+    record: &RunRecord,
+) -> bool {
+    let Some(marker) = record.goal_resume else { return true };
+    controls.operation(start.conversation(), marker).is_ok_and(|operation| {
+        operation.is_some_and(|operation| {
+            operation.actor_bytes() == start.actor_bytes()
+                && operation.workspace_bytes() == start.workspace_bytes()
+                && matches!(
+                    operation.intent(),
+                    peritus_product_runner::control::ControlIntent::ResumeGoal { goal, .. }
+                        if *goal == start.id()
+                )
+                && controls.resolve(&operation).is_ok_and(|receipt| receipt.is_some())
+        })
+    })
 }
 
 pub(super) fn make_room_for_record(

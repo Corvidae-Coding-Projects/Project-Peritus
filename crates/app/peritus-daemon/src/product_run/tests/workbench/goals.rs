@@ -1,6 +1,8 @@
 //! Composed goals behavior through the actual daemon service.
 
 use super::*;
+mod idle;
+mod resume_recovery;
 
 #[test]
 fn persistent_goal_starts_real_provider_work_pauses_durably_and_resumes_same_run() {
