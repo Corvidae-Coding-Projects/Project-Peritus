@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1778,
-        "tip_oid": "975c1fcf68d7f2d734a270dba8c94a1442755b9c",
-        "prefix_sha256": "00396ff3a8015a426c8a4ef6cbdfae69f2bf90d0bbb905c212f37d2435f3213f"
+        "sequence": 1779,
+        "tip_oid": "1c5facdd99f732e20a08257ae06d43631146383a",
+        "prefix_sha256": "b4acdc67913f0b6ec6c8ce956b435f7f10edcb2c9710e888ae203f8f927e323b"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 1920,
+  "next_comment_id": 1921,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -16544,7 +16544,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-28T00:58:41.412806074Z",
-      "updated_at": "2026-09-30T15:38:32.501926318Z",
+      "updated_at": "2026-09-30T15:50:07.001980842Z",
       "labels": [
         "bug"
       ],
@@ -17088,6 +17088,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAjCl2bfnzhBKieFP1q4IVRjBDtBmd9Xn6PBUE9Gn6wf2O6DqG42zuT9BLbc48KO5xaRj0+oChzv9ck2/c57NHDA=="
+        },
+        "edb7618c-ff87-45ce-8176-345ca8bc80c0": {
+          "display_id": 1920,
+          "author": "6ME5",
+          "content": "Final resumed-goal regression matrix is green: original idle pause/restart/resume, ordinary retry refusal and budget-only non-resume, concurrent exact replay, committed-before-launch recovery, queued projection without worker after restart, persistence-before-rename rollback with no provider request, later clear and foreign actor rejection, marker forgery isolation and legacy absent-marker read. Focused 9 passed; full daemon295 and TUI298 passed; strict Linux/Windows Clippy and workspace policy4803/full all-target/all-feature build passed. Real TUI with both existing signed-in account providers now being exercised in fresh isolated XDG state.",
+          "created_at": "2026-09-30T15:50:06.995788102Z",
+          "kind": "observation",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAVmDZ4n05LMxpukkb/OetOjHqZiLVis1CNcTAYNZtbfED8K5o7F7VpkwcHVVlqnQH+ZgrQSBFDCVVL8I6Y3L+AA=="
         },
         "ee6b58b7-5983-4d3e-9313-2830d6466f22": {
           "display_id": 1905,
