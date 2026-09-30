@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1791,
-        "tip_oid": "bf33c0a6ff97a79c45f60beba28795f5d8da47c9",
-        "prefix_sha256": "8f864dfbd8883b3ebd7e99e89f00d0ac3f18c3ee3555fa29a473d922026b94b8"
+        "sequence": 1792,
+        "tip_oid": "ff4a892c7f930f536f27486d9f95bb3332b338d9",
+        "prefix_sha256": "b8354d2ad7981ae07aad55a23e0fd9e6edc7c260512f7d94ca2f3784d60283b2"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 1933,
+  "next_comment_id": 1934,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -16544,7 +16544,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-28T00:58:41.412806074Z",
-      "updated_at": "2026-09-30T20:28:18.927636963Z",
+      "updated_at": "2026-09-30T20:32:22.257239043Z",
       "labels": [
         "bug"
       ],
@@ -16890,6 +16890,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAtKe27y7wDRRJrTVPF1nmq5YpgAc4PEBzaQKIZqcuDNYpyzpvj8Ncch33G8DJFbpxrKDo40vMqwwFCKzPGs3kDw=="
+        },
+        "7f13f5db-51d1-47a9-8636-be0179ec84ce": {
+          "display_id": 1933,
+          "author": "6ME5",
+          "content": "Live repaired discard acceptance: normal TUI candidate regeneration retained SelfChecked code after invalid writer report (9 independent tests pass, not qualified). Owned UID1000 product-runs0700->0500 fault rejected D before any effect; all7 candidate hashes/modes and raw index bytes unchanged. Finally restored0700; exact D retry succeeded and all7 source/managed original hashes/modes plus5 tests in each copy passed. Ready to publish only completion-reservation repair; full multi-effect crash reconciliation and writer report remain active.",
+          "created_at": "2026-09-30T20:32:22.217062893Z",
+          "kind": "observation",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAwDSGjDvdk32A9cM4eAiz6IIk+UMKNt5AfxuRmzpykGYPmb3VRy35WNtAwwN//eu4ie12V9xZr/D7chph+CPQDA=="
         },
         "82d5bcb7-1244-43d6-92bf-418619c9a20c": {
           "display_id": 1897,
