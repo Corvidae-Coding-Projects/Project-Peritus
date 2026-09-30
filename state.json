@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1805,
-        "tip_oid": "e1005fc14409828c97e5d602e514ae3190ac4c69",
-        "prefix_sha256": "6b5e2b67b3068b1edda5384fcfe2362131f742ff624ce66cd63cf0902084f567"
+        "sequence": 1807,
+        "tip_oid": "106f3d4e387ce970eb72f0209ccff4916bed70f2",
+        "prefix_sha256": "a59c343d9e9d4cb4456821876f501562ca2dacc1453cba0334a89174619c4ac5"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 1946,
+  "next_comment_id": 1948,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -16540,7 +16540,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-28T00:58:41.412806074Z",
-      "updated_at": "2026-09-30T23:07:46.690430076Z",
+      "updated_at": "2026-09-30T23:21:59.171686547Z",
       "labels": [
         "bug"
       ],
@@ -16688,6 +16688,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA+bBKgN7L+4jC8epb9a0FC0MpGs9Rs4vU0WFfikbeGFxAvWBRjJWds9JAz+Vw1g2xeN9Z+9qHJFk678OGSjpHCA=="
+        },
+        "321d8fce-c2a0-4a99-b1e6-3b926011a261": {
+          "display_id": 1946,
+          "author": "6ME5",
+          "content": "Session auto-ended (stale after 476 minutes). No handoff notes provided.",
+          "created_at": "2026-09-30T23:13:01.079952431Z",
+          "kind": "handoff",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAV+yXL9cZCOUtxFMFICoMbaJSwv2mTJ/EjlHT37QqaE7wI1zeRIZraOEMsk4Yab34vVA7sNWVp2SLiz5OYQ7NBQ=="
         },
         "3223d512-57fe-421c-a0b5-7160f11d4dc8": {
           "display_id": 1890,
@@ -17120,6 +17129,15 @@
           "kind": "handoff",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAPSc0dSysUAGwcxKpiz/koIjBGPVaElpsU7lnGKeVj2oUuVOZOgxkmIXJkBak8JPJ54hOulpxf298/OIR4fGKDg=="
+        },
+        "a9a03aca-dc5c-4708-8f22-05ebe28ba6d5": {
+          "display_id": 1947,
+          "author": "6ME5",
+          "content": "Live normal TUI run65e95baa76ae6131b59e6181306b15b0 completed Qualified through OpenAI account writer and Claude reviewer/fixer,16 independent tests. Accept/export/commit passed. Deliberate owned pre-commit failure retained exact source patch; c retry created e83f1e13 with only the2 task files, preserving staged README, untracked human draft and source hashes/modes. Reproduced v Run rejecting the same candidate immediately after commit because it still used the pre-commit digest. Repairing the handoff identity with historical evidence retained, plus source-changing hook and nested commit regression coverage.",
+          "created_at": "2026-09-30T23:21:59.165125321Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABALA+Fmy7z0jDhdmYV7o1ei2C9Xvjj3c7LzhVAz1+j5z0bb1kzMCHzI6Y2fHJsIBoHQiwuhjekp9J6V/zs5W5CDQ=="
         },
         "b3926168-d075-4149-8306-019fb6c0c131": {
           "display_id": 1854,
