@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1794,
-        "tip_oid": "2317bd6e9eb5ae2808c345b8332399ce6fe2e247",
-        "prefix_sha256": "ce1cd16b0086bea7f32e336a9e9428b172851d3b5bd221761bb54c6d8dd92893"
+        "sequence": 1796,
+        "tip_oid": "1792699d2fc6295d8e356ac152a085ac80b826b7",
+        "prefix_sha256": "c10b7d3739fec8c077c6ba82062c4c6dbba504e86f58ea6579205b545b554e41"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 1936,
+  "next_comment_id": 1937,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -192,10 +192,6 @@
     "97": {
       "agent_id": "6ME5",
       "claimed_at": "2026-09-27T23:34:45.783730261Z"
-    },
-    "99": {
-      "agent_id": "6ME5",
-      "claimed_at": "2026-09-30T15:16:03.086182915Z"
     }
   },
   "issues": {
@@ -16544,7 +16540,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-28T00:58:41.412806074Z",
-      "updated_at": "2026-09-30T20:36:00.079484166Z",
+      "updated_at": "2026-09-30T20:53:54.528213462Z",
       "labels": [
         "bug"
       ],
@@ -17223,6 +17219,15 @@
           "kind": "observation",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAVmDZ4n05LMxpukkb/OetOjHqZiLVis1CNcTAYNZtbfED8K5o7F7VpkwcHVVlqnQH+ZgrQSBFDCVVL8I6Y3L+AA=="
+        },
+        "edc66345-5e35-4a9d-ba99-db3207ff8dfa": {
+          "display_id": 1936,
+          "author": "6ME5",
+          "content": "Reproduced invalid writer terminal from archived canonical request295 using the pinned authenticated Claude CLI: baseline final reminder demanded public prose and emitted no task JSON. Changing only that reminder preserved the task report inside the private content string. Added regression that fails baseline at final prose override; implementing generic task-format preservation without decoder/parser/authority changes.",
+          "created_at": "2026-09-30T20:53:54.523072060Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA2ebBjcwxGvF28Mqyv010e1cFZzvHq1kIpsqNUF9oYbrYRTQjk/SlePDn/3K61n1SoccdNLH2W48vP1TKqvXyAA=="
         },
         "ee6b58b7-5983-4d3e-9313-2830d6466f22": {
           "display_id": 1905,
