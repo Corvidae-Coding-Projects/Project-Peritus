@@ -46,7 +46,9 @@ bounded `--effort` selection (high by default), `--safe-mode`, `--tools ""`, `--
 empty `--mcp-config`, a private `--system-prompt-file`, and `--max-turns 1`. The system prompt carries
 the required transport schema and establishes that final answers also use its envelope before
 replaying task policies for public prose. The model returns that object directly without a second
-native structured-output turn. It runs in a
+native structured-output turn. The final transcript reminder preserves the task's response format
+inside `content`, including JSON reports required by writer or reviewer roles, and demonstrates the
+escaped nested JSON. It runs in a
 fresh private directory and removes `ANTHROPIC_API_KEY`, `ANTHROPIC_AUTH_TOKEN`, and
 `CLAUDE_CODE_OAUTH_TOKEN` from both status and turn processes. Peritus owns the complete transcript,
 tool catalog, policy, tool execution, and cancellation lifecycle. Every prompt contains the typed
