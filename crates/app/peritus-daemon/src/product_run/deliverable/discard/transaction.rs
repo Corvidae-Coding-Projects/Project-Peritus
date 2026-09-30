@@ -8,6 +8,8 @@ use peritus_types::{Sha256Digest, WorkspaceId};
 use serde::{Deserialize, Serialize};
 use std::{collections::BTreeMap, io::Write as _, path::Path};
 
+const INTERRUPTION_CAUSE: &str = "explicit discard recovery is pending";
+
 impl crate::product_run::ProductRunService {
     pub(in crate::product_run) fn ensure_workspace_available(
         &self,
@@ -118,13 +120,20 @@ impl Pending {
             &record.snapshot,
             record.snapshot.phase(),
             "Discard interrupted; retry Discard explicitly",
-            "The original discard authority is retained. Inspect the workspace, then retry Discard for this run. Other candidate actions are blocked until restoration completes.",
+            record.snapshot.summary(),
         )?;
         record.candidate_actionable = false;
-        "explicit discard recovery is pending".clone_into(&mut record.interruption_cause);
+        INTERRUPTION_CAUSE.clone_into(&mut record.interruption_cause);
         record.remaining_work =
             vec!["inspect the workspace and retry Discard for this run".to_owned()];
         Ok(())
+    }
+
+    pub(in crate::product_run) fn clear_interruption(record: &mut RunRecord) {
+        if record.interruption_cause == INTERRUPTION_CAUSE {
+            record.interruption_cause.clear();
+            record.remaining_work.clear();
+        }
     }
 }
 

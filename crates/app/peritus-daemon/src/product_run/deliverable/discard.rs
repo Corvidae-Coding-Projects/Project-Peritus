@@ -71,6 +71,7 @@ pub(in crate::product_run) fn recover_completed(
         record.snapshot.summary(),
     )?
     .with_deliverable(deliverable);
+    Pending::clear_interruption(record);
     Ok(true)
 }
 

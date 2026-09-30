@@ -100,6 +100,7 @@ fn restart_keeps_original_partial_discard_binding_and_only_exact_discard_can_res
             .await
             .unwrap();
         assert!(accepted.deliverable().unwrap().accepted());
+        let original_summary = accepted.summary().to_owned();
         let exported = fixture
             .running
             .control(ProductRunControl::new(fixture.run, ProductRunControlAction::Export))
@@ -116,6 +117,7 @@ fn restart_keeps_original_partial_discard_binding_and_only_exact_discard_can_res
         assert_eq!(records[&fixture.run].checkpoint, Some(original));
         assert!(!records[&fixture.run].candidate_actionable);
         assert!(records[&fixture.run].snapshot.status().contains("retry Discard"));
+        assert_eq!(records[&fixture.run].snapshot.summary(), original_summary);
         assert_eq!(ProductRunner::candidate_digest(fixture.repository.path()).unwrap(), before);
         assert_eq!(fs::read(fixture.repository.path().join(".git/index")).unwrap(), index);
         *fixture.running.inner.records.write().unwrap() = records;
@@ -158,6 +160,12 @@ fn restart_keeps_original_partial_discard_binding_and_only_exact_discard_can_res
             .await
             .unwrap();
         assert!(discarded.deliverable().unwrap().discarded());
+        assert_eq!(discarded.summary(), original_summary);
+        {
+            let records = fixture.running.inner.records.read().unwrap();
+            assert!(records[&fixture.run].interruption_cause.is_empty());
+            assert!(records[&fixture.run].remaining_work.is_empty());
+        }
         assert_eq!(
             fs::read(fixture.repository.path().join("src/lib.rs")).unwrap(),
             fixture.original
@@ -178,6 +186,13 @@ fn lost_final_acknowledgement_recovers_from_completed_backend_without_touching_n
     interaction::block_on(async {
         let fixture = Fixture::new().await;
         let pending = fixture.pending();
+        let original_summary = fixture.running.inner.records.read().unwrap()[&fixture.run]
+            .snapshot
+            .summary()
+            .to_owned();
+        fixture.partial_source();
+        let records = fixture.reconcile();
+        *fixture.running.inner.records.write().unwrap() = records;
         {
             let records = fixture.running.inner.records.read().unwrap();
             pending.execute(&fixture.running.inner.directory, &records[&fixture.run]).unwrap();
@@ -186,6 +201,9 @@ fn lost_final_acknowledgement_recovers_from_completed_backend_without_touching_n
         let index = fs::read(fixture.repository.path().join(".git/index")).unwrap();
         let records = fixture.reconcile();
         assert!(records[&fixture.run].snapshot.deliverable().unwrap().discarded());
+        assert_eq!(records[&fixture.run].snapshot.summary(), original_summary);
+        assert!(records[&fixture.run].interruption_cause.is_empty());
+        assert!(records[&fixture.run].remaining_work.is_empty());
         assert_eq!(
             fs::read(fixture.repository.path().join("src/lib.rs")).unwrap(),
             b"later human draft\n"

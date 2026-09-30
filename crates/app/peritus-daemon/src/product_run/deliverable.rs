@@ -162,6 +162,9 @@ impl ProductRunService {
         )?
         .with_deliverable(deliverable);
         record.snapshot = snapshot;
+        if action == ProductRunControlAction::Discard {
+            discard::Pending::clear_interruption(record);
+        }
         persist_record(&self.inner.directory, record)?;
         Ok(record.snapshot.clone())
     }
