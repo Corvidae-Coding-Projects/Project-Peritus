@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1779,
-        "tip_oid": "1c5facdd99f732e20a08257ae06d43631146383a",
-        "prefix_sha256": "b4acdc67913f0b6ec6c8ce956b435f7f10edcb2c9710e888ae203f8f927e323b"
+        "sequence": 1780,
+        "tip_oid": "c4f48e6e67465a68dab2fa50fe6226f50b1093c8",
+        "prefix_sha256": "2e01cf7f4a2d3eada260060a18350561cf7c07d8a83a304f81dbe3c68faf2ee5"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 1921,
+  "next_comment_id": 1922,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -16544,7 +16544,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-28T00:58:41.412806074Z",
-      "updated_at": "2026-09-30T15:50:07.001980842Z",
+      "updated_at": "2026-09-30T16:15:18.528069944Z",
       "labels": [
         "bug"
       ],
@@ -16701,6 +16701,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABArUeoAQSuyF0bX6QH1jA+qNAokIOR9s0PYA9Y2gm/xDEgNcifdilsoU64BHN8SV8S2IOUch0iKHgVetaMMYKgAQ=="
+        },
+        "3e0c58b1-0d12-4a4e-a2c2-93e2f79f273b": {
+          "display_id": 1921,
+          "author": "6ME5",
+          "content": "Live Claude account testing reproduced anthropic.claude_runtime.incomplete twice for a read-only greeting goal. Replaying the exact canonical ModelRequest through the same official-client flags returned exit 0 and a complete authorized workspace_list request, preceded by one plain sentence and a blank line. New decoder regression reproduces Incomplete on baseline. Preferred local correctness repair adds an explicitly private-envelope healing entry point, retaining bounded one-candidate extraction, verbatim transport validation, strict tool authorization, and an audit of original input. Ordinary tool arguments and public prose keep their previous rules; broadening the shared generic prefix rule was rejected. Focused provider tests and strict affected Linux Clippy pass; complete consumer tests, Windows compilation, policy, build, and live acceptance remain underway.",
+          "created_at": "2026-09-30T16:15:18.521145661Z",
+          "kind": "observation",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAtJuSGU9+vwe2PJZASf7Ivy88I3V3SqQl5UXf/Dq+hrgcMs2xleI0dt4PCllPmelAD0YTXmcCCmsA42JBewSqBA=="
         },
         "421d66a7-c64d-4473-ac7c-69982138d600": {
           "display_id": 1884,
