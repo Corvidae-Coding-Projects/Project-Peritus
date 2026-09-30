@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1777,
-        "tip_oid": "2d97ee4fcc3dc7be93e884edb8b2eff683c34c1d",
-        "prefix_sha256": "a2b38108ce351178fb54a497293cf52d69d704d51ce66c15f229b32899ca24b9"
+        "sequence": 1778,
+        "tip_oid": "975c1fcf68d7f2d734a270dba8c94a1442755b9c",
+        "prefix_sha256": "00396ff3a8015a426c8a4ef6cbdfae69f2bf90d0bbb905c212f37d2435f3213f"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 1919,
+  "next_comment_id": 1920,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -16544,7 +16544,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-28T00:58:41.412806074Z",
-      "updated_at": "2026-09-30T15:21:37.150951040Z",
+      "updated_at": "2026-09-30T15:38:32.501926318Z",
       "labels": [
         "bug"
       ],
@@ -16557,6 +16557,15 @@
           "kind": "handoff",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAATXWo5ansiWqk4AbXYlcwMWqo8S3aMYL2WATQeYvF2wvXA6lHTZ04rf6awdwy0uVeX5w/srwyJ2LVmIZSgcZDA=="
+        },
+        "06916247-60bd-4936-bf6f-f9819a4f502b": {
+          "display_id": 1919,
+          "author": "6ME5",
+          "content": "Root-cause repair: separate explicit durable ResumeGoal admission from ordinary retry. An optional private per-run resume operation marker distinguishes committed-but-unlaunched authority from an already launched attempt; exact replay may reconcile RecoveryRequired only on explicit request. Historical accepted attempt, current goal identity/state, owner/workspace, existing permissions, workspace exclusivity, cumulative ledger and durable projection all fence launch. Legacy JSON missing marker remains readable; no A3 wire change. Rejected marking WaitingForUser generally retryable because it would permit unattended continuation and repeat idle responses.",
+          "created_at": "2026-09-30T15:38:32.495335132Z",
+          "kind": "decision",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAd43Wq8itPhuJh9iKmEnyhqjI0wN1/DgsaxOsNQvNCbrDn2v8K654XcMJDfdRXhDGysDdLgtMHjg8xAeeyWyMBQ=="
         },
         "0ac36661-9be7-42c4-93b9-4b62dbd00f89": {
           "display_id": 1906,
