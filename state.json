@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1799,
-        "tip_oid": "10069f994af7bde749a399878331f47b07d3feb8",
-        "prefix_sha256": "483a6a662ea133ae9ea04848abfbadead64c63785e71fd856f966c52391e0b99"
+        "sequence": 1802,
+        "tip_oid": "e49c02d42b985540889e64ae39c8df464cb52254",
+        "prefix_sha256": "24bb60677947bd3c5acd59c948ec2f855942b90c9ccf593ba49f3a524cc12e5c"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 1940,
+  "next_comment_id": 1943,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -16540,7 +16540,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-28T00:58:41.412806074Z",
-      "updated_at": "2026-09-30T21:42:23.278244431Z",
+      "updated_at": "2026-09-30T22:46:53.955874597Z",
       "labels": [
         "bug"
       ],
@@ -16841,6 +16841,15 @@
           "kind": "observation",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABATUto4YuxYpCVxczrbZB7R3TnjNqNomGOdDu92FR94H+x3KYqQC8r+s7Ao2OafqU7kdNTxBI0I3+8hR+QqztLBg=="
+        },
+        "5e8b4cd8-ca0e-428d-b51f-661637a3c1f2": {
+          "display_id": 1942,
+          "author": "6ME5",
+          "content": "[action] Completed durable discard intent and daemon integration with exact explicit retry. Actual process-kill tests cover preparation, source, index, nested HEAD, repository archive and Completed. A normal account-backed TUI Qualified run was interrupted with SIGKILL between two source publications, restarted inertly with original authority and visible retry guidance, blocked unrelated candidate actions, then completed exact D retry; all seven source hashes and all managed baseline hashes and modes verified. Latest affected1064 tests and runner460 tests pass; final full workspace/build/Linux and Windows GNU lint/policy gates running. Zero-change discard regression reproduced and repaired. Reviewing selected final diff for next signed PR105 push; no merge or close.",
+          "created_at": "2026-09-30T22:46:53.924286960Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAjvJy6m59QLrHKXgZz0GnzXh+MthY+AwXj2dMb+7B4vP6njZLH+Yqgm34Uog1Nh5GJe9H0s60glSWjYDsvgFEAg=="
         },
         "5e8ec17d-04c9-4035-b4e9-6a3350549ab7": {
           "display_id": 1883,
@@ -17175,6 +17184,15 @@
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABABf/+5Fz3BpRjC/vHwkpvChjgnxoWUpZKR2kgD1an8xsVn9jalfOgvcskZdkFH+KIn6FfKhrAwUZ31JtnJgYMAA=="
         },
+        "d43530c1-0a2b-458a-bca2-c97935b0a477": {
+          "display_id": 1941,
+          "author": "6ME5",
+          "content": "Session auto-ended (stale after 441 minutes). No handoff notes provided.",
+          "created_at": "2026-09-30T22:37:44.965191933Z",
+          "kind": "handoff",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA5sCosqTOZDJZKVNjLj3XudWQr/wpkwRjz8dPMpn3Z4CeVHyaiUmtVVqLddCWC0qw2codi3Fn7bCqxVWbr4uPCw=="
+        },
         "d8799956-02d2-4bef-9e1a-5ea5239a2225": {
           "display_id": 1874,
           "author": "6ME5",
@@ -17300,6 +17318,15 @@
           "kind": "observation",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA03azG+s/QMZUO5NcwbvPc88JDS2UMju9uxLIrl3iHSr043zOlVjStStUBdeTvtBiMLeouRhOhDJPmi178yZRCA=="
+        },
+        "fc3e3113-418d-4ee8-80b7-9a2e1f0b6e2a": {
+          "display_id": 1940,
+          "author": "6ME5",
+          "content": "Session auto-ended (stale after 389 minutes). No handoff notes provided.",
+          "created_at": "2026-09-30T21:45:52.081045677Z",
+          "kind": "handoff",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABADIR9qmj5J0TEWzDFsBKnR9+bzUtmLOmusLVEUU9Y3ezW1KY9wI4ysAHoFV4rnnovVzSukUbGmrrt7ey0ZnsAAA=="
         },
         "fcbbe12d-5880-47a4-ad68-35c2bd2a4d08": {
           "display_id": 1894,
