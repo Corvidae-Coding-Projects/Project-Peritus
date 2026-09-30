@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1785,
-        "tip_oid": "65e1cfdab389e64f16710d4cb59ecef11a43e119",
-        "prefix_sha256": "2ed8da1382c4019a1b6a1d9635a74f1b9c74f4d8b8366411c8339a87c4d9686a"
+        "sequence": 1786,
+        "tip_oid": "a90eeca50563ef7619c3025d7634677205b995a4",
+        "prefix_sha256": "5a826511a3b2440263e0afa777c9c285cb8ef746943f5952c52a630e21f0af24"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 1927,
+  "next_comment_id": 1928,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -16544,7 +16544,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-28T00:58:41.412806074Z",
-      "updated_at": "2026-09-30T17:39:57.404781900Z",
+      "updated_at": "2026-09-30T18:07:05.035302202Z",
       "labels": [
         "bug"
       ],
@@ -17088,6 +17088,15 @@
           "kind": "handoff",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAd2DgnWusePRz7do8DQXZhj9K2NO1BtZTFBh42DomCHzrMeC5y5Fq1vi6xPBdvGh0tj0M86Stp91UjpoJNVLMDg=="
+        },
+        "e24a8696-a56f-4d90-a861-759c020533d3": {
+          "display_id": 1927,
+          "author": "6ME5",
+          "content": "Delivered the signed TUI receipt recovery repair: read-only ResumeGoal lookup now preserves the original operation and draft until explicit exact retry acknowledges execution. Goal polls retain retry guidance; completed retries consume only their own command and preserve later text. Regressions reject wrong IDs/scopes/revisions and preserve dismissed panels. Repeated daemon receipt reads stay inert across failed persistence and queued-before-worker recovery. Full workspace3657passed/0failed/19ignored; daemon/TUI595passed; strict Linux/Windows lint, build, policy4808, formatting and generated checks passed. Live owned UID1000 permission fault and daemon restart retained usage3/2 without launching; /sessions retry completed the same admitted attempt2 withusage5/3 and cleared the command. All7 source/managed hashes/modes unchanged and independent5tests each pass. PR105 stays draft/open; remaining discard crash boundaries and broader coverage continue.",
+          "created_at": "2026-09-30T18:07:05.021159475Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAPfhcI9Oikudd38VPfrPrivM5XJq9kVgxKyiGqvUD9EtQKIq+5GrGZPoJzn0RPvblpSuSIgvi5EAuId2ZxZf5AQ=="
         },
         "e34cfadc-bd6f-43b5-af6c-db4794a8e296": {
           "display_id": 1877,
