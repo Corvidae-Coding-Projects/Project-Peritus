@@ -44,8 +44,9 @@ One turn invokes the executable with `-p --output-format json`, the exact profil
 bounded `--effort` selection (high by default), `--safe-mode`, `--tools ""`, `--disallowedTools "mcp__*"`,
 `--disable-slash-commands`, `--no-chrome`, `--no-session-persistence`, `--strict-mcp-config`, an
 empty `--mcp-config`, a private `--system-prompt-file`, and `--max-turns 1`. The system prompt carries
-the required transport schema; the model returns that object directly without a second native
-structured-output turn. It runs in a
+the required transport schema and establishes that final answers also use its envelope before
+replaying task policies for public prose. The model returns that object directly without a second
+native structured-output turn. It runs in a
 fresh private directory and removes `ANTHROPIC_API_KEY`, `ANTHROPIC_AUTH_TOKEN`, and
 `CLAUDE_CODE_OAUTH_TOKEN` from both status and turn processes. Peritus owns the complete transcript,
 tool catalog, policy, tool execution, and cancellation lifecycle. Every prompt contains the typed
@@ -59,8 +60,18 @@ into deterministic text/tool/usage events. Its honest profile advertises tool ca
 parallel tool calls, portable reasoning-effort selection, and detailed usage. It is stateless, has no exact resume or remote
 cancellation, does not advertise streaming, and marks output-token limits advisory because the
 official executable exposes no exact `max_output_tokens` turn flag. A complete transport object may
-arrive in the direct `result` string or the legacy `structured_output` field. Missing transport
-output is an incomplete terminal; malformed JSON/schema fails as malformed. Reported errors retain
+arrive in the direct `result` string or the legacy `structured_output` field. A bounded plain
+prelude followed by a blank line and one complete private object is audited and removed; this
+policy never promotes public examples or weakens tool authorization. Missing transport
+output is an incomplete terminal unless the native SDK explicitly proves a successful one-turn
+`end_turn` / `completed` result with no errors, API failure, denied or deferred tools, local
+command, queued turn, spawned subagent, or background origin. Ordinary text from that native
+terminal is delivered verbatim with no host tool calls. JSON-shaped or reserved host-envelope
+candidates still require the strict private schema; native completion never makes a malformed
+tool request executable. The single-turn limit remains unchanged, and no native formatting
+or repair request is added. See the official
+[SDK result contract](https://code.claude.com/docs/en/agent-sdk/typescript#sdkresultmessage).
+Malformed JSON/schema fails as malformed. Reported errors retain
 their category even with a nonzero process exit; other nonzero exits after partial stdout are
 interrupted incomplete terminals, and an empty post-submit exit remains ambiguous. Cancellation kills
 and reaps the owned process before emitting one cancelled terminal.

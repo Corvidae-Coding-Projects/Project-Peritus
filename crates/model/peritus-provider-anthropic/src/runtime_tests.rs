@@ -12,6 +12,9 @@ use peritus_provider_core::{
 use super::{ClaudeExecutable, ClaudeRuntimeConfig, ClaudeRuntimeProvider};
 use crate::test_support::{block_on, fixture, profile, runtime_profile, runtime_request};
 
+#[path = "runtime_tests/terminal.rs"]
+mod terminal;
+
 enum Script {
     Output { success: bool, stdout: Vec<u8>, stderr: Vec<u8> },
     Error(ProviderCoreError),

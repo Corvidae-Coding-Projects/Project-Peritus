@@ -104,6 +104,52 @@ fn direct_single_turn_result_decodes_only_complete_declared_operations() {
 }
 
 #[test]
+fn direct_private_result_accepts_one_complete_object_after_a_plain_prelude() {
+    // Captured from a successful official-client turn for a read-only greeting task.
+    let prelude =
+        "I'll take a look at the project structure to see what this greeting project contains.";
+    let result = r#"{"content":"I'll look at the project files.","tool_calls":[{"name":"workspace_list","arguments":{"path":".","depth":2}}]}"#;
+    let output = serde_json::json!({
+        "type":"result", "subtype":"success", "is_error":false,
+        "result":format!("{prelude}\n\n{result}")
+    });
+    let tools = BTreeSet::from(["workspace_list".to_owned()]);
+    let turn = decode(output.to_string().as_bytes(), &tools, 1).expect("private envelope");
+    assert_eq!(turn.content, "I'll look at the project files.");
+    assert_eq!(turn.tool_calls.len(), 1);
+    assert_eq!(turn.tool_calls[0].name, "workspace_list");
+    assert_eq!(turn.tool_calls[0].arguments["path"], ".");
+    assert_eq!(turn.tool_calls[0].arguments["depth"], 2);
+    assert_eq!(turn.repairs.len(), 1);
+    let ModelEvent::ProviderEvent(audit) = &turn.repairs[0] else { panic!("missing audit") };
+    let audit: Value = serde_json::from_slice(audit.value().canonical_bytes()).unwrap();
+    assert_eq!(audit["original"], format!("{prelude}\n\n{result}"));
+
+    for rejected in [
+        format!("{prelude} {result}"),
+        format!("{prelude}\n\n```json\n{result}\n```"),
+        format!("\"quoted candidate\"\n\n{result}"),
+        format!("{{}}\n\n{result}"),
+        format!("{prelude}\n\n{result}\n{{}}"),
+        format!("{prelude}\n\n{result} trailing prose"),
+        format!("{prelude}\n\n{}", &result[..result.len() - 1]),
+        format!("{prelude}\n\n{}", result.replace("workspace_list", "undeclared_tool")),
+        format!("{prelude}\n\n{}", result.replace("\"depth\":2", "\"depth\":2,\"depth\":3")),
+    ] {
+        let output = serde_json::json!({"is_error":false,"result":rejected});
+        assert!(decode(output.to_string().as_bytes(), &tools, 1).is_err());
+    }
+    assert!(decode(output.to_string().as_bytes(), &tools, 0).is_err());
+    let public = serde_json::json!({
+        "structured_output":{"content":format!("{prelude}\n\n{result}"),"tool_calls":[]}
+    });
+    let turn = decode(public.to_string().as_bytes(), &tools, 1).expect("ordinary public content");
+    assert_eq!(turn.content, format!("{prelude}\n\n{result}"));
+    assert!(turn.tool_calls.is_empty());
+    assert!(turn.repairs.is_empty());
+}
+
+#[test]
 fn fenced_tool_examples_in_public_content_are_not_promoted_by_healing() {
     let example =
         "```json\n{tool_calls:[{name:\"workspace_read\",arguments:{path:\"src/lib.rs\"}}]}\n```";
@@ -195,4 +241,83 @@ fn direct_public_json_example_does_not_authorize_a_tool_call() {
     let turn = decode(output.to_string().as_bytes(), &allowed(), 1).unwrap();
     assert_eq!(turn.content, example);
     assert!(turn.tool_calls.is_empty());
+}
+
+#[test]
+fn explicit_native_single_turn_completion_delivers_public_text_without_tool_authority() {
+    let content =
+        "The script prints \"Hello, {name}!\". Mentioning workspace_read does not run it.";
+    let output = serde_json::json!({
+        "type":"result", "subtype":"success", "is_error":false,
+        "stop_reason":"end_turn", "terminal_reason":"completed", "num_turns":1,
+        "permission_denials":[], "api_error_status":null, "result":content,
+        "usage":{"input_tokens":12,"output_tokens":7}
+    });
+    let turn = decode(output.to_string().as_bytes(), &allowed(), 1).unwrap();
+    assert_eq!(turn.content, content);
+    assert!(turn.tool_calls.is_empty());
+    assert!(turn.repairs.is_empty());
+    assert_eq!(turn.usage.input_tokens(), Some(12));
+    assert_eq!(turn.usage.output_tokens(), Some(7));
+
+    for field in [
+        "type",
+        "subtype",
+        "is_error",
+        "stop_reason",
+        "terminal_reason",
+        "num_turns",
+        "permission_denials",
+    ] {
+        let mut missing = output.clone();
+        missing.as_object_mut().unwrap().remove(field);
+        assert!(decode(missing.to_string().as_bytes(), &allowed(), 1).is_err(), "{field}");
+    }
+    for (field, invalid) in [
+        ("type", serde_json::json!("assistant")),
+        ("subtype", serde_json::json!("error_max_turns")),
+        ("is_error", serde_json::json!(true)),
+        ("stop_reason", serde_json::json!("max_tokens")),
+        ("stop_reason", serde_json::json!("tool_use")),
+        ("terminal_reason", serde_json::json!("aborted_streaming")),
+        ("terminal_reason", serde_json::json!("tool_deferred")),
+        ("num_turns", serde_json::json!(0)),
+        ("num_turns", serde_json::json!(2)),
+        ("permission_denials", serde_json::json!([{"tool_name":"Read"}])),
+        ("permission_denials", serde_json::json!(false)),
+        ("errors", serde_json::json!(["unexpected error"])),
+        ("errors", serde_json::json!(false)),
+        ("api_error_status", serde_json::json!(429)),
+        ("deferred_tool_use", serde_json::json!({"name":"Read"})),
+        ("local_command", serde_json::json!("compact")),
+        ("origin", serde_json::json!({"kind":"task-notification"})),
+        ("origin", serde_json::json!(null)),
+        ("queued_turn_count", serde_json::json!(1)),
+        ("queued_turn_count", serde_json::json!(null)),
+        ("subagent_stats", serde_json::json!({"spawned":1})),
+        ("subagent_stats", serde_json::json!(null)),
+        ("result", serde_json::json!(null)),
+        ("result", serde_json::json!("  \n")),
+    ] {
+        let mut invalid_output = output.clone();
+        invalid_output[field] = invalid;
+        assert!(decode(invalid_output.to_string().as_bytes(), &allowed(), 1).is_err(), "{field}");
+    }
+    for private in [
+        "{\"content\":\"answer\"}",
+        "Here is the turn: {content : \"answer\", tool_calls : [",
+        "I will read it.\n\n{\"content\":\"reading\",\"tool_calls\":[",
+        "```json\n{\"content\":\"answer\"}\n```",
+        "{\"content\":\"answer\",\"tool_calls\":[{\"name\":\"undeclared\",\"arguments\":{}}]}",
+        "{\"content\":\"answer\",\"tool_calls\":[],\"extra\":true}",
+        "{\"content\":\"answer\",\"content\":\"duplicate\",\"tool_calls\":[]}",
+        "[1,2]",
+    ] {
+        let mut malformed = output.clone();
+        malformed["result"] = serde_json::json!(private);
+        assert!(decode(malformed.to_string().as_bytes(), &allowed(), 1).is_err(), "{private}");
+    }
+    let mut human = output;
+    human["origin"] = serde_json::json!({"kind":"human"});
+    assert_eq!(decode(human.to_string().as_bytes(), &allowed(), 0).unwrap().content, content);
 }

@@ -7,6 +7,8 @@ use peritus_model_protocol::{
 };
 use serde_json::{Map, Value};
 
+mod completion;
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(super) enum DecodeFailure {
     Authentication,
@@ -81,15 +83,21 @@ fn direct_turn(
     repairs: &mut Vec<ModelEvent>,
 ) -> Result<Map<String, Value>, DecodeFailure> {
     let text = raw.get("result").and_then(Value::as_str).ok_or(DecodeFailure::Incomplete)?;
-    if !text.trim_start().starts_with('{') && !text.trim_start().starts_with("```") {
+    if let Some(turn) = completion::public_text(raw, text) {
+        return Ok(turn);
+    }
+    if !text.contains('{') && !text.trim_start().starts_with("```") {
         return Err(DecodeFailure::Incomplete);
     }
     // This field is the model's private transport envelope, not public content. Heal
     // only bounded syntax around one complete object; tool authorization stays strict.
-    let (json, audit) =
-        peritus_provider_core::healing::object(text, "claude.turn", ProtocolLimits::PRODUCTION)
-            .map_err(|_| DecodeFailure::Malformed)?
-            .into_parts();
+    let (json, audit) = peritus_provider_core::healing::private_envelope(
+        text,
+        "claude.turn",
+        ProtocolLimits::PRODUCTION,
+    )
+    .map_err(|_| DecodeFailure::Malformed)?
+    .into_parts();
     let Value::Object(object) =
         serde_json::from_slice(json.canonical_bytes()).map_err(|_| DecodeFailure::Malformed)?
     else {

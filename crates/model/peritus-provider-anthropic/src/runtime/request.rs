@@ -9,6 +9,7 @@ use peritus_model_protocol::{
 use peritus_provider_core::ProviderCoreError;
 use serde_json::{Map, Value};
 
+const WIRE_PREFIX: &str = "PERITUS WIRE FORMAT FOR EVERY TURN\nYour response, including a final answer with no tools, must be exactly one JSON object with content and tool_calls. A final answer is {\"content\":\"your complete answer to the user\",\"tool_calls\":[]}. Public prose policies below apply only to the content string, including any instruction to avoid a build JSON envelope. This private transport object is not a build report. Never emit the final answer outside content.\n\n";
 const SYSTEM_PREFIX: &str = "You are the inference backend inside Peritus. Peritus is the sole agent harness and authority for tools, policy, approvals, and conversation state. Claude Code native tools, plugins, hooks, MCP servers, and session state are not the Peritus tool interface. Each request contains a peritus_tool_protocol catalog. When a declared Peritus tool is needed, do not attempt a Claude Code tool or discuss whether native tools are available. Return the exact declared name and JSON arguments in the required tool_calls array. Peritus will execute the inert request and replay its tool_result on the next inference turn. If no tool call is needed or allowed, return an empty tool_calls array and put the assistant response in content. Never execute host operations yourself.\n\n";
 const INPUT_PREFIX: &str = "The following JSON is the complete ordered conversation state and tool protocol owned by Peritus. The max_output_tokens value is advisory because this runtime exposes no exact output-token control. Return only the next assistant turn through the required structured output.\n\n";
 const INPUT_SUFFIX: &str = "\n\nReturn the next Peritus transport object now: {\"content\":\"your public prose\",\"tool_calls\":[{\"name\":\"declared tool name\",\"arguments\":{}}]}. A read request needs a declared tool call; tools do not run from prose. The transport object is private and only its content is public. Use the actual tool catalog above, or an empty tool_calls array when no tool is needed. Do not output any text outside the JSON object.";
@@ -25,7 +26,9 @@ pub(super) struct RuntimeRequest {
 pub(super) fn encode(request: &ModelRequest) -> Result<RuntimeRequest, ProviderCoreError> {
     let effort = validate_controls(request)?;
     let (schema, allowed_tools, max_calls) = result_schema(request)?;
-    let mut system = String::new();
+    // Establish the private wire grammar before replaying policies for public prose.
+    // The closing contract still follows all task policies and the schema stays strict.
+    let mut system = WIRE_PREFIX.to_owned();
     let mut messages = Vec::new();
     for message in request.messages() {
         match message.role() {
