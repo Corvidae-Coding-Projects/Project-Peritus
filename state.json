@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1803,
-        "tip_oid": "9026dfe2fd06d86be17fb0a0b322cff740b5157f",
-        "prefix_sha256": "0046ba4062b0054f973d963af6cf5b5acf9133a96244555246ce8ebb50582611"
+        "sequence": 1804,
+        "tip_oid": "7a09fb91e242529dcbf490f20d6dfe8715efdd06",
+        "prefix_sha256": "69f85d7ae39f7261a71d987ed18104c83276d9c4b92313a5a071922c209d34f3"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 1944,
+  "next_comment_id": 1945,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -16540,7 +16540,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-28T00:58:41.412806074Z",
-      "updated_at": "2026-09-30T22:51:47.073457922Z",
+      "updated_at": "2026-09-30T23:02:55.632793586Z",
       "labels": [
         "bug"
       ],
@@ -16841,6 +16841,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA3fjMbE/JTUfYmAidD4UB+nm7W8L1495wKSVPAymWVEO706bR/5iZIMP7Pr/m/wvP/GwBmSTe9jp80LTy1ptDBw=="
+        },
+        "5a4568bd-640a-49ea-baf2-61f4c430f84d": {
+          "display_id": 1944,
+          "author": "6ME5",
+          "content": "b39262a13416ff6f87acf61852099fafd9140a38: fix(daemon): clear completed discard recovery guidance (#99). Signed and pushed four-path follow-up. Live completed discard exposed misleading pending summary/work; two new assertions failed baseline. Preserve original task summary during pending recovery and clear only discard-specific interruption/work after direct or recovered acknowledgement. Focused3 and complete daemon/TUI605 tests pass,0 failed,7 ignored; strict Linux/Windows GNU daemon lint, app build, fmt and xtaskall pass. Normal dashboard now tests an OpenAI-account writer with Claude reviewer/fixer on run65e95baa76ae6131b59e6181306b15b0; own adjacent staged README and untracked human draft retained before task. Design remains active; handoff not yet verified. PR105 remains draft/open.",
+          "created_at": "2026-09-30T23:02:55.587719535Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAPwPabbZTa6XzZqM4hAmlVJLo0Kf7o3HrZP1/pGkC8qUc2mYNazIYn9ordU7pNBVR0cHmUf/389x2wwfNCd8xDA=="
         },
         "5bcf7c9b-6b06-4202-888e-3627f6ad1598": {
           "display_id": 1904,
