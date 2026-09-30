@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1804,
-        "tip_oid": "7a09fb91e242529dcbf490f20d6dfe8715efdd06",
-        "prefix_sha256": "69f85d7ae39f7261a71d987ed18104c83276d9c4b92313a5a071922c209d34f3"
+        "sequence": 1805,
+        "tip_oid": "e1005fc14409828c97e5d602e514ae3190ac4c69",
+        "prefix_sha256": "6b5e2b67b3068b1edda5384fcfe2362131f742ff624ce66cd63cf0902084f567"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 1945,
+  "next_comment_id": 1946,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -16540,7 +16540,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-28T00:58:41.412806074Z",
-      "updated_at": "2026-09-30T23:02:55.632793586Z",
+      "updated_at": "2026-09-30T23:07:46.690430076Z",
       "labels": [
         "bug"
       ],
@@ -16751,6 +16751,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABArsNPNNGTbpzoZx8eoSACZLwHiDCKpz/WZqdZd4UysGUseiZ7PwQBvExSIgN6jBsF1P9dCa2qK+5c957huWD6CA=="
+        },
+        "4436ceff-a9fc-43b4-96b0-3852690ede96": {
+          "display_id": 1945,
+          "author": "6ME5",
+          "content": "[action] Signed e44c74237 durable discard recovery and b39262a13 completion-guidance correction are pushed to draft PR105. Full workspace3687 and latest daemon/TUI605 tests passed with strict Linux/Windows GNU lint, build, format and policy gates. Live normal mixed-provider task65e95baa76ae6131b59e6181306b15b0 completed design and is Writing with OpenAI account writer / Claude reviewer and fixer. Own fixture includes adjacent staged README and untracked human draft captured before task. Continuing exact candidate acceptance/export/commit, adjacent-work and source preservation, native CI monitoring and broader functional coverage; no merge/close.",
+          "created_at": "2026-09-30T23:07:46.686650488Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABABhndByRbXwfUxf3L9cwHCAxHeU+ZrBzMVh/KUbf8cLwMYIi4UIPAuCCi15RcYXzXrrUzcFexDBxUJ4jhq3JzDw=="
         },
         "46cdfbc4-a785-407f-a693-4b7d4ddbff75": {
           "display_id": 1886,
