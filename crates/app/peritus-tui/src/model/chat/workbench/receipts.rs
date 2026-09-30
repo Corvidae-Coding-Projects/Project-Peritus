@@ -6,7 +6,9 @@ use super::{
 };
 use peritus_app_protocol::{WorkbenchIntent, WorkbenchReceipt, WorkbenchReviewFeedback};
 
+mod correlation;
 mod error;
+mod recovery;
 mod rejection;
 
 impl AppModel {
@@ -48,12 +50,17 @@ impl AppModel {
             self.notice(NoticeLevel::Warning, "Cannot retry the original operation on this daemon; required feature unavailable. Draft retained.");
             return Vec::new();
         }
-        self.request(
+        let effect = self.request(
             AppRequestPayload::WorkbenchCommand(command.clone()),
             PendingRequest::WorkbenchControl(command),
-        )
-        .into_iter()
-        .collect()
+        );
+        if effect.is_some()
+            && let Some((_, draft)) = self.chat.workbench.unresolved.as_mut()
+            && matches!(self.chat.buffer.trim(), "/sessions retry" | "/queue retry")
+        {
+            draft.clone_from(&self.chat.buffer);
+        }
+        effect.into_iter().collect()
     }
 
     fn review_receipt_action(&self, intent: &WorkbenchIntent) -> &'static str {
@@ -90,36 +97,7 @@ impl AppModel {
         receipt: &WorkbenchReceipt,
     ) -> Vec<Effect> {
         let preview = preview_intent(command.intent());
-        let accepted_revision = if preview {
-            Some(command.expected_revision())
-        } else {
-            command.expected_revision().checked_add(1)
-        };
-        let revision_matches = if matches!(
-            command.intent(),
-            WorkbenchIntent::PauseGoal { .. }
-                | WorkbenchIntent::Queue(_)
-                | WorkbenchIntent::SetBrief { .. }
-                | WorkbenchIntent::AcceptBriefProposal { .. }
-                | WorkbenchIntent::UpdateGoalBudget { .. }
-                | WorkbenchIntent::ClearGoal { .. }
-                | WorkbenchIntent::RenameConversation(_)
-                | WorkbenchIntent::PinConversation(_)
-        ) {
-            receipt.accepted_revision() > command.expected_revision()
-        } else {
-            accepted_revision == Some(receipt.accepted_revision())
-        };
-        if receipt.operation() != command.operation()
-            || receipt.query() != command.query()
-            || !revision_matches
-            || !self
-                .chat
-                .workbench
-                .unresolved
-                .as_ref()
-                .is_some_and(|(expected, _)| expected == command)
-        {
+        if !self.workbench_receipt_matches(command, receipt) {
             self.notice(
                 NoticeLevel::Error,
                 "Mismatched control receipt; no control state applied.",

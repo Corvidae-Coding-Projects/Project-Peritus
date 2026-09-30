@@ -76,6 +76,10 @@ guidance, captions, objectives, and status messages keep their line breaks.
 Escape dismisses an inspection and cancels its unfinished read or unconfirmed import. Captions
 and drafts remain available, while late replies cannot resume a dismissed preview or deferred
 goal change. Submitted mutations keep their receipt tracking until their outcome is resolved.
+If reconnect recovers an accepted `/resume`, its receipt proves admission but not worker launch.
+The original resume and draft remain available for explicit `/sessions retry`; inspection starts
+no inference. That retry reconciles the same admitted attempt or observes its existing launch,
+without creating another attempt. A successful retry clears its command but retains later text.
 Read-only request timeouts leave the connection and drafts intact; panels can be refreshed or
 their commands retried. Reads needed to reconcile an accepted mutation still trigger recovery.
 An unresponsive Runs lookup does not stop conversation or preview polling, and expired replies

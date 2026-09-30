@@ -245,7 +245,7 @@ impl AppModel {
         self.complete_workbench_inspection();
         self.chat.workbench.goal_clear_pending = retain_clear;
         self.chat.workbench.scroll = 0;
-        if !retain_clear {
+        if !retain_clear && self.chat.workbench.unresolved.is_none() {
             self.chat.workbench.message.clear();
         }
         if self.chat.run_id == Some(run) {

@@ -50,6 +50,17 @@ fn saved_resume_launch_without_worker_is_recovered_by_explicit_replay() {
             ProductRunPhase::RecoveryRequired
         );
         assert_eq!(writer.requests.lock().unwrap().len(), 1, "opening must never spawn work");
+        for _ in 0..3 {
+            assert!(matches!(
+                restored.workbench_receipt(actor(), &resume),
+                AppResponsePayload::WorkbenchReceipt(_)
+            ));
+            assert_eq!(
+                restored.inner.records.read().unwrap()[&run].snapshot.phase(),
+                ProductRunPhase::RecoveryRequired
+            );
+            assert_eq!(writer.requests.lock().unwrap().len(), 1, "lookup is read-only");
+        }
         let response = restored.workbench_command(actor(), &resume).await;
         assert!(matches!(response, AppResponsePayload::WorkbenchReceipt(_)), "{response:?}");
         assert_eq!(
@@ -108,6 +119,20 @@ fn failed_resume_projection_does_not_publish_an_in_memory_launch_or_call_provide
         drop(original);
         let restored =
             restore(state.path(), repository.path(), workspace, [&writer, &reviewer, &fixer]);
+        for _ in 0..3 {
+            assert!(matches!(
+                restored.workbench_receipt(actor(), &resume),
+                AppResponsePayload::WorkbenchReceipt(_)
+            ));
+            assert_eq!(
+                restored.inner.records.read().unwrap()[&run].snapshot.phase(),
+                ProductRunPhase::WaitingForUser
+            );
+            let admitted = goal(&restored, workspace);
+            assert_eq!(admitted.state(), WorkbenchGoalState::Active);
+            assert_eq!((admitted.attempt(), admitted.usage().requests()), (2, 1));
+            assert_eq!(writer.requests.lock().unwrap().len(), 1, "lookup is read-only");
+        }
         let response = restored.workbench_command(actor(), &resume).await;
         assert!(matches!(response, AppResponsePayload::WorkbenchReceipt(_)), "{response:?}");
         wait_for_terminal(&restored, run).await;

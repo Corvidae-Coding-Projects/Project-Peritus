@@ -1,5 +1,6 @@
 use super::*;
 mod criteria;
+mod recovery;
 mod refresh;
 use peritus_app_protocol::{
     ControlOperationId, ProductInteractionMode, WorkbenchBrief, WorkbenchBriefEntry,

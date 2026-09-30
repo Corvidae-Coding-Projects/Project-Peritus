@@ -152,11 +152,12 @@ fn project_live(
         }
         (
             AppResponsePayload::WorkbenchReceipt(receipt),
-            Some(
-                PendingRequest::WorkbenchControl(command)
-                | PendingRequest::WorkbenchReceipt(command),
-            ),
+            Some(PendingRequest::WorkbenchControl(command)),
         ) => return model.accept_workbench_receipt(&command, receipt),
+        (
+            AppResponsePayload::WorkbenchReceipt(receipt),
+            Some(PendingRequest::WorkbenchReceipt(command)),
+        ) => return model.observe_workbench_receipt(&command, receipt),
         (AppResponsePayload::Doctor(report), Some(PendingRequest::Doctor(query))) => {
             model.accept_doctor(query, report.clone());
         }
