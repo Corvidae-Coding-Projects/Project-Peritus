@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1802,
-        "tip_oid": "e49c02d42b985540889e64ae39c8df464cb52254",
-        "prefix_sha256": "24bb60677947bd3c5acd59c948ec2f855942b90c9ccf593ba49f3a524cc12e5c"
+        "sequence": 1803,
+        "tip_oid": "9026dfe2fd06d86be17fb0a0b322cff740b5157f",
+        "prefix_sha256": "0046ba4062b0054f973d963af6cf5b5acf9133a96244555246ce8ebb50582611"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 1943,
+  "next_comment_id": 1944,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -16540,7 +16540,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-28T00:58:41.412806074Z",
-      "updated_at": "2026-09-30T22:46:53.955874597Z",
+      "updated_at": "2026-09-30T22:51:47.073457922Z",
       "labels": [
         "bug"
       ],
@@ -16643,6 +16643,15 @@
           "kind": "handoff",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAnMwu6QVPvKbBBiU/VlMTbSWkWDBAkOpWlqAHMWpPhQrKreN+5MiZ1FfKU8xXGnQZfTchRAKZi2DH2IFHF8xkBA=="
+        },
+        "207f21fd-6df8-4c1c-812f-48cbb4ff2e77": {
+          "display_id": 1943,
+          "author": "6ME5",
+          "content": "e44c74237c5c5648d4154c2f67f651927b2558f5: fix(product): recover interrupted discard explicitly (#99). Signed checkpoint, 43 scoped daemon/runner paths. Receipt-bound atomic intent/progress retain original authority across partial source/index/HEAD/archive restoration; startup/query stay inert and exact Discard retry fences owned values while preserving human edits, unrelated staging and foreign state. Completion acknowledgement is atomic and legacy-compatible; completed backend recovery never reapplies effects. Six actual process-kill boundaries pass. Real normal TUI Qualified run was SIGKILLed between source publications, restarted inertly with explicit guidance and blocked other candidate actions, then exact D restored all seven managed files/modes; source hashes/modes unchanged. Full workspace3687 passed/0 failed/19 ignored; strict Linux and Windows GNU lint, full workspace build, fmt, whitespace and xtaskall pass. Native Windows CI pending; incomplete unsealed preparations and unknown Git locks remain preserved, ordinary directory modes absent from legacy baselines cannot be reconstructed. Whole-app coverage remains partial.",
+          "created_at": "2026-09-30T22:51:47.066965313Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA/zVvcF7zOuM3O847INhaJE4GLnr5ak370RDPIav4XsGtJ1XAFpa4RbfdS5/lKzW5SEbO8op64Op3a/JLo/FRBQ=="
         },
         "20ec24b9-405b-41b1-9187-679560c4dab5": {
           "display_id": 1913,
