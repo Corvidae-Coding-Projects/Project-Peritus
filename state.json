@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1784,
-        "tip_oid": "7ed038390ece4208392cf7d8a9ac8a83d4fdad40",
-        "prefix_sha256": "3a21e63ac432ce3e9ea255c6ad2a55ce6bf10ae1b1b02e9c0e9c52db47b24c79"
+        "sequence": 1785,
+        "tip_oid": "65e1cfdab389e64f16710d4cb59ecef11a43e119",
+        "prefix_sha256": "2ed8da1382c4019a1b6a1d9635a74f1b9c74f4d8b8366411c8339a87c4d9686a"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 1926,
+  "next_comment_id": 1927,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -16544,7 +16544,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-28T00:58:41.412806074Z",
-      "updated_at": "2026-09-30T17:32:22.488252904Z",
+      "updated_at": "2026-09-30T17:39:57.404781900Z",
       "labels": [
         "bug"
       ],
@@ -17178,6 +17178,15 @@
           "kind": "handoff",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAIfOFa+uf/4S008wfU61edMLEU2uzGKO3O/+anjtOKhAYAnpCFhDZ5zW6VhsnqtkyIR2cCLEkWbtTnjLfXb/FDw=="
+        },
+        "fa4d2ca8-6287-4378-bab5-2e784fe8d34b": {
+          "display_id": 1926,
+          "author": "6ME5",
+          "content": "Injected a real owned-workbench runs-directory permission failure after durable ResumeGoal admission; no provider request occurred and the previous run JSON was unchanged. After restoring mode and restarting only the owned daemon, Ctrl-R receipt lookup cleared the exact unresolved operation and composer. Goal Active attempt8 retained usage15/7 while run remained WaitingForUser; /sessions retry had no operation and fresh /resume returned malformed-frame. Reproduced UI root cause: read-only admission receipt is treated as execution acknowledgment. Repair will retain exact ResumeGoal authority through receipt observation until an explicit retry, with no automatic launch from query or reconnect.",
+          "created_at": "2026-09-30T17:39:57.400373642Z",
+          "kind": "observation",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA03azG+s/QMZUO5NcwbvPc88JDS2UMju9uxLIrl3iHSr043zOlVjStStUBdeTvtBiMLeouRhOhDJPmi178yZRCA=="
         },
         "fcbbe12d-5880-47a4-ad68-35c2bd2a4d08": {
           "display_id": 1894,
