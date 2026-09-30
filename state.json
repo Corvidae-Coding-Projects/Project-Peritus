@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1786,
-        "tip_oid": "a90eeca50563ef7619c3025d7634677205b995a4",
-        "prefix_sha256": "5a826511a3b2440263e0afa777c9c285cb8ef746943f5952c52a630e21f0af24"
+        "sequence": 1787,
+        "tip_oid": "9145c353f764788dd41cfc623faf5a3cfe86fea7",
+        "prefix_sha256": "085bdf81895071e5b6111d058b5b03a928a1ab72451911663bad91e65aa40f68"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 1928,
+  "next_comment_id": 1929,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -16544,7 +16544,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-28T00:58:41.412806074Z",
-      "updated_at": "2026-09-30T18:07:05.035302202Z",
+      "updated_at": "2026-09-30T18:08:24.651952588Z",
       "labels": [
         "bug"
       ],
@@ -16584,6 +16584,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAmsmgMkQJMkz6btKqNK7PdDQAtqdzbqIzvFVxijvyEpk/+JOLTptnU9MEEodiEc53MvPriwT8PTxOvtyj59iiAQ=="
+        },
+        "0f838210-2cb6-4d6f-b6f9-71b28124dde1": {
+          "display_id": 1928,
+          "author": "6ME5",
+          "content": "Commit e703ce41c1686c72586d8cfabbf1bf6f22f09346: fix(tui): retain accepted goal resume for explicit recovery. Signed and pushed to PR105 after the full3657-test workspace gate and live failed-projection/restart/exact-retry acceptance recorded in the preceding result.",
+          "created_at": "2026-09-30T18:08:24.647795450Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAkRFHP2APqyYvjQuOX8/Zm2PX1IZEQpaazPnm0kQzJLmzducZmIDSaArx+mPJjfjujLzIw58GwPSFNqtQgUg0BA=="
         },
         "10547893-c0db-410f-a726-7086eff3f2af": {
           "display_id": 1899,
