@@ -33,8 +33,18 @@ Discard prepares source files and symlinks for every affected repository before 
 index, HEAD, or repository-archive changes. Preimage materialization failures preserve the current
 candidate and release the prepared Git locks, so fixing the filesystem condition permits retry.
 Source staging stays outside paths being replaced and uses existing destination directories;
-successful publication synchronizes new parents and replacement directory entries. This preparation
-does not provide a crash-atomic transaction across all discard effects.
+successful publication synchronizes new parents and replacement directory entries.
+
+The explicit discard transaction API retains a checksummed, receipt-bound intent before restoration.
+Inspection is inert. An explicit retry admits each owned source, staged-index entry, and nested HEAD
+only at its captured candidate value or intended task preimage; unrelated staged entries survive.
+Repository archives prove directory-move gaps, and a completed transaction returns its retained
+history without touching later edits. Cleanup requires owned nonce markers, sealed preparation
+contents, and recognized ordinary leaves. Incomplete or changed preparation is preserved and
+reported; unknown native Git locks are never removed. This is explicit recovery across publication
+boundaries, not an atomic swap of an entire workspace. Ordinary directory modes absent from legacy
+task baselines cannot be reconstructed. Interrupted repository preparations remain beside the
+independent backup when their safe cleanup cannot be established.
 
 Continuation state is bound to the exact run, managed-workspace lineage, candidate digest,
 conversation revision, and checkpoint sequence. S1 knowledge invalidation selects the first stale

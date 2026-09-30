@@ -119,6 +119,24 @@ fn a_live_reservation_cannot_be_reopened_by_a_second_control() {
 }
 
 #[test]
+fn a_foreign_final_record_is_preserved_when_completion_is_published() {
+    let repository = repository();
+    let state = TempDir::new().unwrap();
+    fs::write(repository.path().join("chosen.txt"), b"candidate\n").unwrap();
+    let record = qualified_record(candidate_record(&repository));
+    let reservation = super::super::discard::Reservation::prepare(
+        state.path(),
+        &record,
+        record.snapshot.deliverable().unwrap(),
+    )
+    .unwrap();
+    let foreign = state.path().join(format!("{}.discard-result", run_hex(record.request.run_id())));
+    fs::write(&foreign, "foreign completion\n").unwrap();
+    assert!(reservation.complete("Deliverable discarded").is_err());
+    assert_eq!(fs::read(foreign).unwrap(), b"foreign completion\n");
+}
+
+#[test]
 fn completion_record_cannot_acknowledge_a_different_candidate_or_baseline() {
     let repository = repository();
     let state = TempDir::new().unwrap();

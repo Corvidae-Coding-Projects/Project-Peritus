@@ -14,7 +14,43 @@ pub(super) struct StagedEntry {
     stage: u8,
 }
 
+impl StagedEntry {
+    pub(super) fn path(&self) -> &str {
+        &self.path
+    }
+}
+
 impl ManagedBaseline {
+    pub(super) fn staged_at(
+        &self,
+        root: &Path,
+        path: &str,
+    ) -> Result<Vec<StagedEntry>, ProductRunnerError> {
+        if let Some(entries) = &self.staged {
+            return Ok(entries.iter().filter(|entry| entry.path == path).cloned().collect());
+        }
+        let rows = git(root, &["ls-tree", "-z", &self.index, "--", path], None)?;
+        rows.split(|byte| *byte == 0)
+            .filter(|row| !row.is_empty())
+            .map(|row| {
+                let row = std::str::from_utf8(row).map_err(failure)?;
+                let (fields, path) =
+                    row.split_once('\t').ok_or_else(|| failure("missing index preimage path"))?;
+                validate_path(Path::new(path))?;
+                let fields = fields.split(' ').collect::<Vec<_>>();
+                let [mode, _, object] = fields.as_slice() else {
+                    return Err(failure("invalid index preimage"));
+                };
+                Ok(StagedEntry {
+                    path: path.to_owned(),
+                    mode: (*mode).to_owned(),
+                    object: (*object).to_owned(),
+                    stage: 0,
+                })
+            })
+            .collect()
+    }
+
     pub(super) fn verify_index_objects(
         &self,
         root: &Path,

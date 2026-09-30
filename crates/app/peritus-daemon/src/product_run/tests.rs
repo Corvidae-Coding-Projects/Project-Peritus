@@ -17,6 +17,7 @@ use peritus_types::{RunId, WorkspaceId};
 use super::{Inner, ProductRunService};
 
 mod catalog;
+mod discard_recovery;
 mod doctor;
 mod folder;
 mod healing;

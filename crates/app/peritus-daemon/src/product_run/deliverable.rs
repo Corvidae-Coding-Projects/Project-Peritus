@@ -41,21 +41,33 @@ impl ProductRunService {
         }
         let mut deliverable =
             record.snapshot.deliverable().cloned().ok_or(ProductRunServiceError::InvalidState)?;
+        let pending = discard::Pending::read(&self.inner.directory, record)?;
+        if pending.is_some() && action != ProductRunControlAction::Discard && !saved_export {
+            return Err(ProductRunServiceError::InvalidState);
+        }
         if let Some(snapshot) = repeated_action(record, action, &deliverable) {
             // An earlier attempt may have completed its effects but failed to save
             // the result. A retry must make that result durable before acknowledging it.
             persist_record(&self.inner.directory, record)?;
             return Ok(snapshot);
         }
+        let workspace_id = record.request.workspace_id();
+        if pending.is_none() {
+            discard::workspace_available(&self.inner.directory, &records, workspace_id)?;
+        }
+        let record = records.get_mut(&run_id).ok_or(ProductRunServiceError::NotFound)?;
         let workspace = self
             .inner
             .workspaces
             .get(&record.request.workspace_id())
             .ok_or(ProductRunServiceError::WorkspaceUnavailable)?;
+        if pending.is_some() && Path::new(deliverable.workspace_path()) != workspace {
+            return Err(ProductRunServiceError::InvalidState);
+        }
         if action == ProductRunControlAction::Commit {
             deliverable =
                 commit::validate_retry(&self.inner.directory, record, &deliverable, workspace)?;
-        } else {
+        } else if pending.is_none() {
             validate_exact_candidate(record, &deliverable, workspace)?;
         }
         let (deliverable, status) = match action {
@@ -95,7 +107,20 @@ impl ProductRunService {
                 let completion =
                     discard::Reservation::prepare(&self.inner.directory, record, &deliverable)?;
                 let trace = self.inner.directory.join(format!("{}.trace", run_hex(run_id)));
-                let recovered = if let Some(baseline) = &record.task_baseline {
+                let pending = match pending {
+                    Some(pending) => Some(pending),
+                    None => discard::Pending::prepare(&self.inner.directory, record, workspace)?,
+                };
+                let recovered = if let Some(pending) = pending {
+                    match pending.execute(&self.inner.directory, record) {
+                        Ok(paths) => paths,
+                        Err(error) => {
+                            discard::Pending::mark_interrupted(record)?;
+                            persist_record(&self.inner.directory, record)?;
+                            return Err(error);
+                        }
+                    }
+                } else if let Some(baseline) = &record.task_baseline {
                     ProductRunner::discard_from_baseline(
                         workspace,
                         baseline,

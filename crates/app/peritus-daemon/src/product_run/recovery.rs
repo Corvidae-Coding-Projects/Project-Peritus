@@ -33,6 +33,24 @@ pub(super) fn reconcile_restored_candidates(
                 continue;
             }
         }
+        match super::deliverable::discard::Pending::read(directory, record) {
+            Ok(Some(pending)) => {
+                if let Err(error) = pending.inspect(directory, record) {
+                    mark_unavailable(record, &error.to_string()).map_err(persistence_error)?;
+                } else {
+                    super::deliverable::discard::Pending::mark_interrupted(record)
+                        .map_err(persistence_error)?;
+                }
+                persist_record(directory, record).map_err(persistence_error)?;
+                continue;
+            }
+            Ok(None) => {}
+            Err(error) => {
+                mark_unavailable(record, &error.to_string()).map_err(persistence_error)?;
+                persist_record(directory, record).map_err(persistence_error)?;
+                continue;
+            }
+        }
         let Some(root) = workspaces.get(&record.request.workspace_id()) else {
             mark_unavailable(record, "configured workspace is unavailable after restart")
                 .map_err(persistence_error)?;

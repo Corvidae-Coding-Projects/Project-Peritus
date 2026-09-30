@@ -127,6 +127,11 @@ pub(super) async fn resume_feedback(
         if workspace_has_active_run(&records, workspace, Some(run)) {
             return Err(ProductRunServiceError::InvalidState);
         }
+        crate::product_run::deliverable::discard::workspace_available(
+            &service.inner.directory,
+            &records,
+            workspace,
+        )?;
         let record = records.get_mut(&run).ok_or(ProductRunServiceError::NotFound)?;
         if !record.snapshot.phase().terminal() {
             return Err(ProductRunServiceError::InvalidState);

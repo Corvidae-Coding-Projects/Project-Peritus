@@ -74,6 +74,22 @@ pub(super) fn owner(root: &Path) -> Result<PathBuf, ProductRunnerError> {
         .map_err(failure)
 }
 
+pub(super) fn linked_owners(
+    owner: &Path,
+    baseline: &ManagedBaseline,
+) -> Result<std::collections::BTreeSet<PathBuf>, ProductRunnerError> {
+    let mut owners = std::collections::BTreeSet::new();
+    for child in baseline.nested.values() {
+        if child.retained.is_some()
+            && let Some(directory) = Store::existing(owner, child.tree.len())?.load(child)?.linked
+        {
+            owners.insert(directory);
+        }
+        owners.extend(linked_owners(owner, child)?);
+    }
+    Ok(owners)
+}
+
 pub(super) fn source_root(
     owner: &Path,
     baseline: &ManagedBaseline,

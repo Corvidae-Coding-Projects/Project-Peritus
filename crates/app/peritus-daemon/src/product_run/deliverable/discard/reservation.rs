@@ -19,6 +19,7 @@ pub(super) struct Prepared {
 }
 
 pub(in crate::product_run::deliverable) struct Reservation {
+    owner: Option<fs::File>,
     file: Option<fs::File>,
     temporary: PathBuf,
     final_path: PathBuf,
@@ -33,7 +34,26 @@ impl Reservation {
     ) -> Result<Self, ProductRunServiceError> {
         let binding = binding(record, deliverable)?;
         let final_path = path(directory, record);
-        let temporary = final_path.with_extension("discard-result.new");
+        let ownership = final_path.with_extension("discard-reservation");
+        if read_record(&ownership)?.is_some_and(|bytes| !bytes.is_empty()) {
+            return Err(failure("discard reservation ownership contains foreign data"));
+        }
+        let owner = fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create(true)
+            .truncate(false)
+            .open(ownership)
+            .map_err(failure)?;
+        owner.try_lock().map_err(failure)?;
+        let mut reservation = Self {
+            owner: Some(owner),
+            file: None,
+            temporary: final_path.with_extension("discard-result.new"),
+            final_path,
+            binding,
+        };
+        let temporary = &reservation.temporary;
         // Always create in the destination directory, including when reopening an
         // earlier reservation. Writing an existing file alone cannot establish that
         // the directory allows the completion rename.
@@ -43,21 +63,21 @@ impl Reservation {
             .write_all(&serde_json::to_vec(&prepared).map_err(failure)?)
             .and_then(|()| staging.as_file().sync_all())
             .map_err(failure)?;
-        let file = match staging.persist_noclobber(&temporary) {
+        let file = match staging.persist_noclobber(temporary) {
             Ok(file) => file,
             Err(error) if error.error.kind() == std::io::ErrorKind::AlreadyExists => {
-                let bytes = read_record(&temporary)?
+                let bytes = read_record(temporary)?
                     .ok_or_else(|| failure("discard reservation disappeared"))?;
                 let existing: Prepared = serde_json::from_slice(&bytes).map_err(failure)?;
                 if existing.version != prepared.version || existing.binding != binding {
                     return Err(failure("discard reservation belongs to another candidate"));
                 }
-                fs::OpenOptions::new().read(true).write(true).open(&temporary).map_err(failure)?
+                fs::OpenOptions::new().read(true).write(true).open(temporary).map_err(failure)?
             }
             Err(error) => return Err(failure(error)),
         };
         file.try_lock().map_err(failure)?;
-        let mut reservation = Self { file: Some(file), temporary, final_path, binding };
+        reservation.file = Some(file);
         let file =
             reservation.file.as_mut().ok_or_else(|| failure("discard reservation is closed"))?;
         // Validate again through the locked handle: another holder may have
@@ -79,20 +99,25 @@ impl Reservation {
     ) -> Result<(), ProductRunServiceError> {
         let completed = Completed { version: 1, binding: self.binding, status: status.to_owned() };
         let bytes = serde_json::to_vec(&completed).map_err(failure)?;
+        let parent =
+            self.final_path.parent().ok_or_else(|| failure("discard result has no parent"))?;
+        let mut staging = tempfile::NamedTempFile::new_in(parent).map_err(failure)?;
+        staging.write_all(&bytes).and_then(|()| staging.as_file().sync_all()).map_err(failure)?;
         let file = self.file.as_mut().ok_or_else(|| failure("discard reservation is closed"))?;
-        file.rewind()
-            .and_then(|()| file.set_len(0))
-            .and_then(|()| file.write_all(&bytes))
-            .and_then(|()| file.sync_all())
-            .map_err(failure)?;
-        // Closing the reserved file permits replacement on Windows. Completion
-        // bytes are retained even when the final rename cannot be acknowledged.
+        // Closing permits replacement on Windows. A complete record is published
+        // atomically, so a torn final acknowledgement cannot corrupt the reservation.
         file.unlock().map_err(failure)?;
         drop(self.file.take());
+        staging.persist(&self.temporary).map_err(failure)?;
+        sync_directory(parent)?;
+        if let Some(existing) = read_record(&self.final_path)? {
+            let completed: Completed = serde_json::from_slice(&existing).map_err(failure)?;
+            if completed.version != 1 || completed.binding != self.binding {
+                return Err(failure("foreign completed discard record was preserved"));
+            }
+        }
         fs::rename(&self.temporary, &self.final_path).map_err(failure)?;
-        sync_directory(
-            self.final_path.parent().ok_or_else(|| failure("discard result has no parent"))?,
-        )
+        sync_directory(parent)
     }
 }
 
@@ -106,6 +131,13 @@ impl Drop for Reservation {
             let _ = std::io::stderr()
                 .lock()
                 .write_all(format!("discard reservation unlock failed: {error}\n").as_bytes());
+        }
+        if let Some(owner) = self.owner.take()
+            && let Err(error) = owner.unlock()
+        {
+            let _ = std::io::stderr().lock().write_all(
+                format!("discard reservation ownership unlock failed: {error}\n").as_bytes(),
+            );
         }
     }
 }

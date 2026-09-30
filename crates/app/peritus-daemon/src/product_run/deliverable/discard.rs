@@ -11,7 +11,9 @@ use std::{
 };
 
 mod reservation;
+mod transaction;
 pub(super) use reservation::Reservation;
+pub(in crate::product_run) use transaction::{Pending, workspace_available};
 
 #[derive(Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
@@ -39,7 +41,22 @@ pub(in crate::product_run) fn recover_completed(
     if deliverable.discarded() || !deliverable.commit_revision().is_empty() {
         return Ok(false);
     }
-    let Some(completed) = read_completed(directory, record)? else { return Ok(false) };
+    let completed = if let Some(completed) = read_completed(directory, record)? {
+        completed
+    } else if let Some(pending) = Pending::read(directory, record)? {
+        let peritus_product_runner::DiscardTransactionState::Completed(paths) =
+            pending.inspect(directory, record)?
+        else {
+            return Ok(false);
+        };
+        Completed {
+            version: 1,
+            binding: binding(record, deliverable)?,
+            status: super::discard_status(&paths),
+        }
+    } else {
+        return Ok(false);
+    };
     if completed.version != 1 {
         return Err(failure("unsupported discard completion record version"));
     }

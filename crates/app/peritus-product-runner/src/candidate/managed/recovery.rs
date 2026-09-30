@@ -1,5 +1,6 @@
 //! Recoverable removal of repositories that did not exist at task admission.
 
+use super::transaction::{Journal, validation_directory_digest};
 use super::{ManagedBaseline, failure, git, text};
 use crate::ProductRunnerError;
 use std::{
@@ -39,12 +40,20 @@ impl ManagedBaseline {
         &self,
         root: &Path,
         paths: &[PathBuf],
+        mut journal: Option<&mut Journal>,
     ) -> Result<Vec<PathBuf>, ProductRunnerError> {
-        self.new_repositories(root, paths)?.into_iter().map(|path| archive(root, &path)).collect()
+        self.new_repositories(root, paths)?
+            .into_iter()
+            .map(|path| archive_observed(root, &path, journal.as_deref_mut()))
+            .collect()
     }
 }
 
-pub(super) fn archive(root: &Path, relative: &Path) -> Result<PathBuf, ProductRunnerError> {
+pub(super) fn archive_observed(
+    root: &Path,
+    relative: &Path,
+    journal: Option<&mut Journal>,
+) -> Result<PathBuf, ProductRunnerError> {
     let source = root.join(relative).canonicalize().map_err(failure)?;
     let git_directory =
         PathBuf::from(text(git(root, &["rev-parse", "--absolute-git-dir"], None)?)?)
@@ -67,6 +76,13 @@ pub(super) fn archive(root: &Path, relative: &Path) -> Result<PathBuf, ProductRu
     // Once a source directory can move here, no automatic cleanup may remove it.
     let recovery = temporary.keep();
     sync_directory(&directory)?;
+    if let Some(journal) = journal {
+        journal.recovery(
+            recovery.clone(),
+            Some(source.clone()),
+            Some(validation_directory_digest(&source)?),
+        )?;
+    }
     fs::rename(&source, recovery.join("repository")).map_err(|error| {
         failure(format!(
             "could not preserve {} in {}: {error}",
@@ -84,6 +100,8 @@ pub(super) fn archive(root: &Path, relative: &Path) -> Result<PathBuf, ProductRu
             recovery.display()
         ))
     })?;
+    #[cfg(test)]
+    super::transaction::fault::pause(super::transaction::fault::Stage::Archive);
     Ok(recovery)
 }
 

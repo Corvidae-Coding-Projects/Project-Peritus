@@ -1,5 +1,6 @@
 //! Restore nested HEAD without rewriting or deleting any existing branch.
 
+use super::transaction::{Journal, RootFact, projected_fact};
 use super::{capture::nested_head, failure, git, recovery, text};
 use crate::ProductRunnerError;
 use std::{
@@ -17,13 +18,18 @@ pub(super) struct Prepared {
 }
 
 impl Prepared {
-    pub(super) fn publish(self) -> Result<PathBuf, ProductRunnerError> {
-        self.change.publish().map_err(|error| {
+    pub(super) fn publish(
+        self,
+        journal: Option<&mut Journal>,
+    ) -> Result<PathBuf, ProductRunnerError> {
+        self.change.publish(journal).map_err(|error| {
             failure(format!(
                 "nested HEAD restore failed; recovery record at {}: {error}",
                 self.retained.display()
             ))
         })?;
+        #[cfg(test)]
+        super::transaction::fault::pause(super::transaction::fault::Stage::Head);
         Ok(self.retained)
     }
 }
@@ -40,9 +46,14 @@ pub(super) fn prepare(
     root: &Path,
     baseline: Option<&str>,
     restored_root: &Path,
+    mut journal: Option<&mut Journal>,
 ) -> Result<Option<Prepared>, ProductRunnerError> {
     let current = nested_head(root)?;
+    let mut target = projected_fact(root, restored_root)?;
     if current.as_deref() == baseline {
+        if let Some(journal) = journal {
+            journal.head(restored_root.to_path_buf(), target)?;
+        }
         return Ok(None);
     }
     let output = super::repository_command(root)?
@@ -88,8 +99,19 @@ pub(super) fn prepare(
     record.write_all(&serde_json::to_vec_pretty(&metadata).map_err(failure)?).map_err(failure)?;
     record.sync_all().map_err(failure)?;
     recovery::sync_directory(temporary.path())?;
-    let retained = temporary.keep();
+    let physical = temporary.keep();
     recovery::sync_directory(&directory)?;
-    let change = Change::prepare(root, baseline, current.as_deref(), &unborn_ref)?;
+    let retained = physical
+        .strip_prefix(root)
+        .map_or_else(|_| physical.clone(), |relative| restored_root.join(relative));
+    if let RootFact::Repository { commit, symbolic, .. } = &mut target {
+        *commit = baseline.map(str::to_owned);
+        *symbolic = baseline.is_none().then(|| unborn_ref.clone());
+    }
+    if let Some(journal) = journal.as_deref_mut() {
+        journal.head(restored_root.to_path_buf(), target)?;
+        journal.recovery(retained.clone(), None, None)?;
+    }
+    let change = Change::prepare(root, baseline, current.as_deref(), &unborn_ref, journal)?;
     Ok(Some(Prepared { change, retained }))
 }

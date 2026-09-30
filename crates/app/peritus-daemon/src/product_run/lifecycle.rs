@@ -149,6 +149,11 @@ impl ProductRunService {
             if workspace_has_active_run(&records, workspace_id, Some(run_id)) {
                 return Err(ProductRunServiceError::InvalidState);
             }
+            super::deliverable::discard::workspace_available(
+                &self.inner.directory,
+                &records,
+                workspace_id,
+            )?;
             let record = records.get_mut(&run_id).expect("checked product run exists");
             let pending_chat = (record.snapshot.phase() == ProductRunPhase::WaitingForUser
                 || (record.snapshot.phase() == ProductRunPhase::Complete

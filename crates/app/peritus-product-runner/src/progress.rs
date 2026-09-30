@@ -49,13 +49,20 @@ impl WorkspaceCheckpoint {
     /// Git's changed-path list omits non-executable permission changes and may hide submodules.
     pub fn capture(root: &Path) -> Result<Self, ProductRunnerError> {
         let baseline = CandidateBaseline::capture(root)?;
+        Ok(Self::managed_snapshot(
+            baseline.head().to_owned(),
+            crate::candidate::managed::ManagedBaseline::repository_fingerprint(root)?,
+        ))
+    }
+
+    pub(crate) fn managed_snapshot(head: String, repository_digest: [u8; 32]) -> Self {
         let entries = vec![CheckpointEntry {
             path: PathBuf::new(),
-            digest: Some(crate::candidate::managed::ManagedBaseline::repository_fingerprint(root)?),
+            digest: Some(repository_digest),
             permissions: None,
             kind: ContentKind::Repository,
         }];
-        Ok(Self { head: baseline.head().to_owned(), entries })
+        Self { head, entries }
     }
 
     /// Returns a canonical digest of HEAD, source contents, file kinds, and permissions.

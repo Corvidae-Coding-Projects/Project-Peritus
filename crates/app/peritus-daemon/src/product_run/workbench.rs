@@ -86,6 +86,9 @@ impl ProductRunService {
         actor: ActorId,
         command: &WorkbenchCommand,
     ) -> AppResponsePayload {
+        if let Err(error) = self.ensure_workspace_available(command.query().workspace()) {
+            return error.response();
+        }
         let required = super::permissions::command_permissions(command.intent());
         if !required.is_empty()
             && let Err(error) = self.require_workspace_permissions(actor, command.query(), required)

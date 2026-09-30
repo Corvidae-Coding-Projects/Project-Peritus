@@ -250,7 +250,7 @@ fn preparing_repository_recovery_does_not_publish_a_scratch_candidate() {
     fs::remove_dir_all(&nested).unwrap();
     let paths = baseline.changed_paths(root.path()).unwrap();
     let before = ManagedBaseline::repository_fingerprint(root.path()).unwrap();
-    let pending = retention::Replacements::prepare(&baseline, root.path(), &paths).unwrap();
+    let pending = retention::Replacements::prepare(&baseline, root.path(), &paths, false).unwrap();
     assert_eq!(
         ManagedBaseline::repository_fingerprint(root.path()).unwrap(),
         before,

@@ -106,6 +106,66 @@ impl ProductRunner {
         let paths = paths.iter().map(std::path::PathBuf::from).collect::<Vec<_>>();
         parse_baseline(bytes)?.discard(workspace, &paths)
     }
+
+    /// Retains exact discard preimages and ownership before restoration can start.
+    /// The caller must retain the returned digest in its original command receipt.
+    ///
+    /// # Errors
+    /// Rejects changed candidates, foreign intents, invalid preimages, or failed persistence.
+    pub fn prepare_discard_transaction(
+        workspace: &Path,
+        baseline: &str,
+        paths: &[String],
+        state: &Path,
+        binding: Sha256Digest,
+        candidate: Sha256Digest,
+    ) -> Result<Sha256Digest, ProductRunnerError> {
+        let mut paths = paths.iter().map(std::path::PathBuf::from).collect::<Vec<_>>();
+        paths.sort();
+        paths.dedup();
+        crate::candidate::managed::transaction::prepare(
+            workspace,
+            parse_baseline(baseline)?,
+            paths,
+            state,
+            binding.into_bytes(),
+            candidate.into_bytes(),
+        )
+        .map(Sha256Digest::new)
+    }
+
+    /// Reads bound discard progress without performing or retrying any restoration.
+    ///
+    /// # Errors
+    /// Rejects corrupt or foreign records instead of acknowledging their effects.
+    pub fn inspect_discard_transaction(
+        state: &Path,
+        binding: Sha256Digest,
+        digest: Sha256Digest,
+    ) -> Result<Option<crate::DiscardTransactionState>, ProductRunnerError> {
+        crate::candidate::managed::transaction::inspect(
+            state,
+            binding.into_bytes(),
+            digest.into_bytes(),
+        )
+    }
+
+    /// Explicitly resumes the exact bound discard after fencing current owned values.
+    /// A completed record returns its retained history without touching newer source.
+    ///
+    /// # Errors
+    /// Preserves conflicting edits, foreign locks, and unrecognized recovery state.
+    pub fn execute_discard_transaction(
+        state: &Path,
+        binding: Sha256Digest,
+        digest: Sha256Digest,
+    ) -> Result<Vec<std::path::PathBuf>, ProductRunnerError> {
+        crate::candidate::managed::transaction::execute(
+            state,
+            binding.into_bytes(),
+            digest.into_bytes(),
+        )
+    }
 }
 
 fn parse_baseline(

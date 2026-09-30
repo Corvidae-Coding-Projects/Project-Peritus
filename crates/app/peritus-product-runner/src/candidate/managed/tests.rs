@@ -4,7 +4,7 @@ mod flattened;
 mod linked;
 mod retained;
 
-fn repository() -> tempfile::TempDir {
+pub(super) fn repository() -> tempfile::TempDir {
     let root = tempfile::tempdir().expect("repository");
     git(root.path(), &["init", "--quiet"], None).expect("init");
     git(root.path(), &["config", "core.autocrlf", "false"], None).expect("literal fixture bytes");

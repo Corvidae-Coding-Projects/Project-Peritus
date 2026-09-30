@@ -12,6 +12,7 @@ pub(in super::super) struct Replacements {
     workspace: PathBuf,
     owner: PathBuf,
     staged: BTreeMap<PathBuf, Replacement>,
+    preserve_preparations: bool,
 }
 
 struct Replacement {
@@ -31,10 +32,15 @@ impl Replacements {
         baseline: &ManagedBaseline,
         root: &Path,
         paths: &[PathBuf],
+        preserve_preparations: bool,
     ) -> Result<Self, ProductRunnerError> {
         let owner = owner(root)?;
-        let mut replacements =
-            Self { workspace: root.to_path_buf(), owner: owner.clone(), staged: BTreeMap::new() };
+        let mut replacements = Self {
+            workspace: root.to_path_buf(),
+            owner: owner.clone(),
+            staged: BTreeMap::new(),
+            preserve_preparations,
+        };
         replacements.prepare_nested(baseline, root, paths, &owner)?;
         Ok(replacements)
     }
@@ -94,8 +100,11 @@ impl Replacements {
         let staging = staging.join("restoring");
         super::super::recovery::create_directory(&staging)?;
         verify_mount(&staging, &destination)?;
-        let directory =
+        let mut directory =
             tempfile::Builder::new().prefix("repository-").tempdir_in(&staging).map_err(failure)?;
+        // Incomplete reconstruction can contain unrecognized state after a crash.
+        // Retain it beside the independent backup instead of recursively deleting it.
+        directory.disable_cleanup(self.preserve_preparations);
         let mut links = Vec::new();
         let original = self
             .workspace
@@ -153,7 +162,10 @@ impl Replacements {
         Ok(paths.into_iter().collect())
     }
 
-    pub(in super::super) fn publish(self) -> Result<Vec<PathBuf>, ProductRunnerError> {
+    pub(in super::super) fn publish(
+        self,
+        mut journal: Option<&mut super::super::transaction::Journal>,
+    ) -> Result<Vec<PathBuf>, ProductRunnerError> {
         let mut recovered = Vec::new();
         for (destination, replacement) in self.staged {
             for link in &replacement.links {
@@ -178,7 +190,11 @@ impl Replacements {
                             ));
                         }
                     }
-                    recovered.push(super::super::recovery::archive(&self.workspace, relative)?);
+                    recovered.push(super::super::recovery::archive_observed(
+                        &self.workspace,
+                        relative,
+                        journal.as_deref_mut(),
+                    )?);
                 }
                 Ok(_) => {
                     return Err(failure(

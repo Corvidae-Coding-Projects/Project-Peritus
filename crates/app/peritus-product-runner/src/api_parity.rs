@@ -141,6 +141,8 @@ fn task_baseline(
     trace: &std::path::Path,
     bytes: &str,
     paths: &[String],
+    binding: peritus_types::Sha256Digest,
+    candidate: peritus_types::Sha256Digest,
 ) {
     let _: Result<peritus_types::Sha256Digest, ProductRunnerError> =
         crate::ProductRunner::candidate_source_digest(workspace);
@@ -155,4 +157,12 @@ fn task_baseline(
         crate::ProductRunner::discard_task_candidate(workspace, trace, paths);
     let _: Result<Vec<PathBuf>, ProductRunnerError> =
         crate::ProductRunner::discard_from_baseline(workspace, bytes, paths);
+    let _: Result<peritus_types::Sha256Digest, ProductRunnerError> =
+        crate::ProductRunner::prepare_discard_transaction(
+            workspace, bytes, paths, trace, binding, candidate,
+        );
+    let _: Result<Option<crate::DiscardTransactionState>, ProductRunnerError> =
+        crate::ProductRunner::inspect_discard_transaction(trace, binding, candidate);
+    let _: Result<Vec<PathBuf>, ProductRunnerError> =
+        crate::ProductRunner::execute_discard_transaction(trace, binding, candidate);
 }

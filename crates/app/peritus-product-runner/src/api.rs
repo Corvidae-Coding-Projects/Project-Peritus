@@ -20,6 +20,7 @@ pub use crate::developer_tools::{
     FolderPatchAuthorityPlanRequest, PreviewCommand, PreviewLaunch, PreviewObservation,
     PreviewProcessState,
 };
+pub use crate::discard_recovery::DiscardTransactionState;
 pub use crate::error::{ProductRunnerError, ProductRunnerErrorKind};
 #[cfg(not(verus_only))]
 pub use crate::execution::{

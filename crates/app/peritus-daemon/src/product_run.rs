@@ -202,6 +202,11 @@ impl ProductRunService {
             if workspace_has_active_run(&records, request.workspace_id(), None) {
                 return Err(ProductRunServiceError::InvalidState);
             }
+            deliverable::discard::workspace_available(
+                &self.inner.directory,
+                &records,
+                request.workspace_id(),
+            )?;
             records.insert(
                 request.run_id(),
                 RunRecord {

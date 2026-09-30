@@ -47,6 +47,13 @@ every mutating handoff action is revalidated against the exact candidate digest.
 Discard reserves a writable, candidate-bound completion record before restoring source or index
 bytes. A reservation alone never acknowledges restoration; a fully written completion can be
 recovered after a failed result rename without restoring files again or consuming later edits.
+Runs with embedded task preimages and a checkpoint also retain the runner's immutable discard
+intent digest. Restart keeps that original authority through partial restoration, reports an
+interrupted discard, and waits for explicit Discard on the same run. Other candidate actions and
+new workspace work remain blocked while an existing saved export stays readable. Completed runner
+progress can recover a lost final acknowledgement without filesystem effects. Completion records
+are published atomically, and older version-one completion records remain readable. Legacy runs
+without the required preimages and checkpoint retain their previous restoration path.
 
 Interactive tool observations retain a bounded command/operation label before execution, then
 update the same activity with the observed result. Command previews include exit status and

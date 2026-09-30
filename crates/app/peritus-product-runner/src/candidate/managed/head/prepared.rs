@@ -1,5 +1,6 @@
 //! Keep Git HEAD locks alive from preflight through source and index restoration.
 
+use super::super::transaction::{Journal, Kind, Lock, own_directory};
 use super::{failure, git, nested_head, recovery, text};
 use crate::ProductRunnerError;
 use std::{
@@ -20,6 +21,7 @@ impl Change {
         baseline: Option<&str>,
         current: Option<&str>,
         unborn: &str,
+        journal: Option<&mut Journal>,
     ) -> Result<Self, ProductRunnerError> {
         if let Some(commit) = baseline {
             let expected = current.map_or_else(|| "0".repeat(commit.len()), str::to_owned);
@@ -45,13 +47,13 @@ impl Change {
         if !output.status.success() && output.status.code() != Some(1) {
             return Err(failure(String::from_utf8_lossy(&output.stderr)));
         }
-        Symbolic::prepare(root, current, unborn).map(Self::Symbolic)
+        Symbolic::prepare(root, current, unborn, journal).map(Self::Symbolic)
     }
 
-    pub(super) fn publish(self) -> Result<(), ProductRunnerError> {
+    pub(super) fn publish(self, journal: Option<&mut Journal>) -> Result<(), ProductRunnerError> {
         match self {
             Self::Reference(transaction) => transaction.publish(),
-            Self::Symbolic(symbolic) => symbolic.publish(),
+            Self::Symbolic(symbolic) => symbolic.publish(journal),
         }
     }
 }
@@ -132,9 +134,8 @@ impl Drop for Transaction {
 
 pub(super) struct Symbolic {
     head: PathBuf,
-    lock_path: PathBuf,
-    lock: Option<fs::File>,
-    published: bool,
+    lock: Option<Lock>,
+    directory: tempfile::TempDir,
 }
 
 impl Symbolic {
@@ -142,6 +143,7 @@ impl Symbolic {
         root: &Path,
         current: Option<&str>,
         unborn: &str,
+        mut journal: Option<&mut Journal>,
     ) -> Result<Self, ProductRunnerError> {
         let head = PathBuf::from(text(git(
             root,
@@ -152,12 +154,13 @@ impl Symbolic {
             return Err(failure("HEAD is not an ordinary Git file; no restore started"));
         }
         let lock_path = head.with_file_name("HEAD.lock");
-        let lock = fs::OpenOptions::new()
-            .write(true)
-            .create_new(true)
-            .open(&lock_path)
-            .map_err(failure)?;
-        let mut symbolic = Self { head, lock_path, lock: Some(lock), published: false };
+        let lock = Lock::create(&lock_path, journal.as_deref_mut())?;
+        let parent = head.parent().ok_or_else(|| failure("HEAD has no parent"))?;
+        let mut directory =
+            tempfile::Builder::new().prefix("peritus-head-").tempdir_in(parent).map_err(failure)?;
+        own_directory(directory.path(), Kind::Head, journal.as_deref_mut())?;
+        directory.disable_cleanup(journal.is_some());
+        let symbolic = Self { head, lock: Some(lock), directory };
         if nested_head(root)?.as_deref() != current {
             return Err(failure("nested HEAD changed during discard preparation"));
         }
@@ -169,28 +172,27 @@ impl Symbolic {
             return Err(failure("restored unborn branch name is unavailable"));
         }
         let permissions = fs::metadata(&symbolic.head).map_err(failure)?.permissions();
-        let lock = symbolic.lock.as_mut().ok_or_else(|| failure("HEAD lock is closed"))?;
+        let mut payload =
+            fs::File::create(symbolic.directory.path().join("HEAD")).map_err(failure)?;
         // A symbolic HEAD can point at a fresh, absent ref without creating or deleting
         // a branch. The prior commit and symbolic name are retained in head.json.
-        writeln!(lock, "ref: {unborn}").map_err(failure)?;
-        lock.set_permissions(permissions).map_err(failure)?;
-        lock.sync_all().map_err(failure)?;
+        writeln!(payload, "ref: {unborn}").map_err(failure)?;
+        payload.set_permissions(permissions).map_err(failure)?;
+        payload.sync_all().map_err(failure)?;
+        recovery::sync_directory(symbolic.directory.path())?;
+        if let Some(journal) = journal {
+            journal.seal_directory(symbolic.directory.path())?;
+        }
         Ok(symbolic)
     }
 
-    fn publish(mut self) -> Result<(), ProductRunnerError> {
-        self.lock = None;
-        fs::rename(&self.lock_path, &self.head).map_err(failure)?;
-        self.published = true;
-        recovery::sync_directory(self.head.parent().ok_or_else(|| failure("HEAD has no parent"))?)
-    }
-}
-
-impl Drop for Symbolic {
-    fn drop(&mut self) {
-        self.lock = None;
-        if !self.published {
-            let _ = fs::remove_file(&self.lock_path);
+    fn publish(mut self, journal: Option<&mut Journal>) -> Result<(), ProductRunnerError> {
+        fs::rename(self.directory.path().join("HEAD"), &self.head).map_err(failure)?;
+        recovery::sync_directory(self.head.parent().ok_or_else(|| failure("HEAD has no parent"))?)?;
+        self.lock.take().ok_or_else(|| failure("HEAD lock is closed"))?.release()?;
+        if let Some(journal) = journal {
+            journal.cleanup_directory(self.directory.path())?;
         }
+        Ok(())
     }
 }

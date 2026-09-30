@@ -129,6 +129,36 @@ impl ProductRunner {
     ) -> Result<Vec<std::path::PathBuf>, ProductRunnerError> {
         Err(baseline_unavailable())
     }
+
+    /// Discard intent retention requires the production repository boundary.
+    pub fn prepare_discard_transaction(
+        _workspace: &Path,
+        _baseline: &str,
+        _paths: &[String],
+        _state: &Path,
+        _binding: Sha256Digest,
+        _candidate: Sha256Digest,
+    ) -> Result<Sha256Digest, ProductRunnerError> {
+        Err(baseline_unavailable())
+    }
+
+    /// Read-only discard inspection requires the production persistence boundary.
+    pub fn inspect_discard_transaction(
+        _state: &Path,
+        _binding: Sha256Digest,
+        _digest: Sha256Digest,
+    ) -> Result<Option<crate::DiscardTransactionState>, ProductRunnerError> {
+        Err(baseline_unavailable())
+    }
+
+    /// Explicit discard recovery requires the production repository boundary.
+    pub fn execute_discard_transaction(
+        _state: &Path,
+        _binding: Sha256Digest,
+        _digest: Sha256Digest,
+    ) -> Result<Vec<std::path::PathBuf>, ProductRunnerError> {
+        Err(baseline_unavailable())
+    }
 }
 fn baseline_unavailable() -> ProductRunnerError {
     ProductRunnerError::new(

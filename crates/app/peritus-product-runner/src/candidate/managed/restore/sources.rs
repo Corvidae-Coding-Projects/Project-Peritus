@@ -1,5 +1,6 @@
 //! Materialize all source preimages before source, index, HEAD, or archive publication.
 
+use super::super::transaction::{Journal, Kind, own_directory};
 use super::super::{Entry, ManagedBaseline, failure, git, recovery, retention::Replacements};
 use crate::ProductRunnerError;
 use std::{
@@ -17,9 +18,10 @@ impl Sources {
         root: &Path,
         paths: &[PathBuf],
         replacements: &Replacements,
+        journal: Option<&mut Journal>,
     ) -> Result<Self, ProductRunnerError> {
         let mut sources = Self(BTreeMap::new());
-        sources.prepare_repository(baseline, root, paths, replacements)?;
+        sources.prepare_repository(baseline, root, paths, replacements, journal)?;
         Ok(sources)
     }
 
@@ -29,6 +31,7 @@ impl Sources {
         root: &Path,
         paths: &[PathBuf],
         replacements: &Replacements,
+        mut journal: Option<&mut Journal>,
     ) -> Result<(), ProductRunnerError> {
         for path in paths {
             if baseline.nested.keys().any(|prefix| path.starts_with(prefix)) {
@@ -40,7 +43,7 @@ impl Sources {
             {
                 let bytes = git(root, &["cat-file", "blob", &entry.object], None)?;
                 let parent = staging_parent(root, path, paths)?;
-                let directory = prepare_source(&parent, entry, &bytes)?;
+                let directory = prepare_source(&parent, entry, &bytes, journal.as_deref_mut())?;
                 self.0.insert(root.join(path), directory);
             }
         }
@@ -57,17 +60,33 @@ impl Sources {
                 .map(Path::to_path_buf)
                 .collect();
             let children = replacements.children(child_root, child, children)?;
-            self.prepare_repository(child, child_root, &children, replacements)?;
+            self.prepare_repository(
+                child,
+                child_root,
+                &children,
+                replacements,
+                journal.as_deref_mut(),
+            )?;
         }
         Ok(())
     }
 
-    pub(super) fn publish(&mut self, path: &Path) -> Result<(), ProductRunnerError> {
+    pub(super) fn publish(
+        &mut self,
+        path: &Path,
+        journal: Option<&mut Journal>,
+    ) -> Result<(), ProductRunnerError> {
         let directory = self.0.remove(path).ok_or_else(|| failure("source was not prepared"))?;
         let parent = path.parent().ok_or_else(|| failure("restore has no parent"))?;
         create_parents(parent)?;
         fs::rename(directory.path().join("source"), path).map_err(failure)?;
-        recovery::sync_directory(parent)
+        recovery::sync_directory(parent)?;
+        if let Some(journal) = journal {
+            journal.cleanup_directory(directory.path())?;
+        }
+        #[cfg(test)]
+        super::super::transaction::fault::pause(super::super::transaction::fault::Stage::Source);
+        Ok(())
     }
 }
 
@@ -75,9 +94,14 @@ fn prepare_source(
     parent: &Path,
     entry: &Entry,
     bytes: &[u8],
+    mut journal: Option<&mut Journal>,
 ) -> Result<tempfile::TempDir, ProductRunnerError> {
-    let directory =
+    let mut directory =
         tempfile::Builder::new().prefix(".peritus-restore-").tempdir_in(parent).map_err(failure)?;
+    own_directory(directory.path(), Kind::Source, journal.as_deref_mut())?;
+    // The journal owns cleanup once a nonce is retained. TempDir's recursive Drop
+    // would otherwise remove foreign entries added during an interrupted operation.
+    directory.disable_cleanup(journal.is_some());
     let source = directory.path().join("source");
     if entry.mode == "120000" {
         super::create_link(&source, bytes)?;
@@ -88,6 +112,9 @@ fn prepare_source(
         file.sync_all().map_err(failure)?;
     }
     recovery::sync_directory(directory.path())?;
+    if let Some(journal) = journal {
+        journal.seal_directory(directory.path())?;
+    }
     Ok(directory)
 }
 

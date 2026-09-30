@@ -47,6 +47,11 @@ impl ProductRunService {
             {
                 return Err(ProductRunServiceError::InvalidState);
             }
+            super::deliverable::discard::workspace_available(
+                &self.inner.directory,
+                &records,
+                workspace_id,
+            )?;
             let record = records
                 .get_mut(&continuation.run_id())
                 .ok_or(ProductRunServiceError::InvalidState)?;

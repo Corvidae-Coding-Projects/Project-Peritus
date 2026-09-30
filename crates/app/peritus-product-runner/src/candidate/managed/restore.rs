@@ -1,6 +1,6 @@
 //! Restore task preimages without changing unrelated staged or unstaged files.
 
-use super::{ManagedBaseline, failure, git, retention::Replacements};
+use super::{ManagedBaseline, failure, git, retention::Replacements, transaction::Journal};
 use crate::ProductRunnerError;
 use std::{
     fs,
@@ -18,21 +18,41 @@ impl ManagedBaseline {
         root: &Path,
         paths: &[PathBuf],
     ) -> Result<Vec<PathBuf>, ProductRunnerError> {
+        self.discard_observed(root, paths, None)
+    }
+
+    pub(in crate::candidate::managed) fn discard_observed(
+        &self,
+        root: &Path,
+        paths: &[PathBuf],
+        mut journal: Option<&mut Journal>,
+    ) -> Result<Vec<PathBuf>, ProductRunnerError> {
         self.validate()?;
-        let replacements = Replacements::prepare(self, root, paths)?;
+        let replacements = Replacements::prepare(self, root, paths, journal.is_some())?;
         self.preflight_restore(root, paths, &replacements)?;
-        let mut indexes = prepared::Indexes::prepare(self, root, paths, &replacements)?;
-        let mut heads = prepared::Heads::prepare(self, root, paths, &replacements)?;
-        let mut sources = sources::Sources::prepare(self, root, paths, &replacements)?;
+        let mut indexes =
+            prepared::Indexes::prepare(self, root, paths, &replacements, journal.as_deref_mut())?;
+        let mut heads =
+            prepared::Heads::prepare(self, root, paths, &replacements, journal.as_deref_mut())?;
+        let mut sources =
+            sources::Sources::prepare(self, root, paths, &replacements, journal.as_deref_mut())?;
+        if let Some(journal) = journal.as_deref_mut() {
+            journal.restoring()?;
+        }
+        #[cfg(test)]
+        super::transaction::fault::pause(super::transaction::fault::Stage::Prepared);
         let mut recovered = self.discard_prepared(
             root,
             paths,
-            &mut indexes,
-            &mut heads,
-            &mut sources,
-            &replacements,
+            &mut Publication {
+                indexes: &mut indexes,
+                heads: &mut heads,
+                sources: &mut sources,
+                replacements: &replacements,
+                journal: journal.as_deref_mut(),
+            },
         )?;
-        recovered.extend(replacements.publish()?);
+        recovered.extend(replacements.publish(journal)?);
         Ok(recovered)
     }
 
@@ -40,12 +60,10 @@ impl ManagedBaseline {
         &self,
         root: &Path,
         paths: &[PathBuf],
-        indexes: &mut prepared::Indexes,
-        heads: &mut prepared::Heads,
-        sources: &mut sources::Sources,
-        replacements: &Replacements,
+        publication: &mut Publication<'_>,
     ) -> Result<Vec<PathBuf>, ProductRunnerError> {
-        let mut recovered = self.archive_new_repositories(root, paths)?;
+        let mut recovered =
+            self.archive_new_repositories(root, paths, publication.journal.as_deref_mut())?;
         self.prepare_restore_paths(root, paths)?;
         for path in paths {
             if self
@@ -60,10 +78,12 @@ impl ManagedBaseline {
                 continue;
             }
             if self.entries.get(&name).is_some_and(|entry| entry.mode != "160000") {
-                sources.publish(&root.join(path))?;
+                publication
+                    .sources
+                    .publish(&root.join(path), publication.journal.as_deref_mut())?;
             }
         }
-        indexes.publish(root)?;
+        publication.indexes.publish(root, publication.journal.as_deref_mut())?;
         for (prefix, child) in &self.nested {
             if !paths.iter().any(|path| path.starts_with(prefix)) {
                 continue;
@@ -75,19 +95,13 @@ impl ManagedBaseline {
                 .map(Path::to_path_buf)
                 .collect::<Vec<_>>();
             let child_path = root.join(prefix);
-            let child_root = replacements.root(&child_path);
-            let children = replacements.children(child_root, child, children)?;
+            let child_root = publication.replacements.root(&child_path);
+            let children = publication.replacements.children(child_root, child, children)?;
             if !children.is_empty() {
-                recovered.extend(child.discard_prepared(
-                    child_root,
-                    &children,
-                    indexes,
-                    heads,
-                    sources,
-                    replacements,
-                )?);
+                recovered.extend(child.discard_prepared(child_root, &children, publication)?);
             }
-            recovered.extend(heads.publish(child_root)?);
+            recovered
+                .extend(publication.heads.publish(child_root, publication.journal.as_deref_mut())?);
         }
         Ok(recovered)
     }
@@ -143,6 +157,14 @@ impl ManagedBaseline {
         }
         Ok(())
     }
+}
+
+struct Publication<'a> {
+    indexes: &'a mut prepared::Indexes,
+    heads: &'a mut prepared::Heads,
+    sources: &'a mut sources::Sources,
+    replacements: &'a Replacements,
+    journal: Option<&'a mut Journal>,
 }
 
 #[cfg(unix)]
