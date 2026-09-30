@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1780,
-        "tip_oid": "c4f48e6e67465a68dab2fa50fe6226f50b1093c8",
-        "prefix_sha256": "2e01cf7f4a2d3eada260060a18350561cf7c07d8a83a304f81dbe3c68faf2ee5"
+        "sequence": 1781,
+        "tip_oid": "07a6fabe9d46cd6ed5fb131ee10f502a3aa03808",
+        "prefix_sha256": "99a9f9b361693b834640749d84fab834ff96b280ccedbcf7a084ad49621b1b50"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 1922,
+  "next_comment_id": 1923,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -16544,7 +16544,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-28T00:58:41.412806074Z",
-      "updated_at": "2026-09-30T16:15:18.528069944Z",
+      "updated_at": "2026-09-30T16:19:14.150112899Z",
       "labels": [
         "bug"
       ],
@@ -16746,6 +16746,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABArMFauViPWn7fXXk032wA/p+X0VY8ZahahBZPab3ap/a3tsxBbyS31V9CrIqDuHyA1w7v40DxZG+Ylg5Dy2/UAw=="
+        },
+        "520324f6-2ded-44c7-816e-6f226cffd6fb": {
+          "display_id": 1922,
+          "author": "6ME5",
+          "content": "Delivered 4538f88bd: fix(daemon): resume idle goals through durable authority. Explicit resume now admits settled idle goals without weakening ordinary retry. Exact persisted launch markers fence repeated and stale resume authority; accepted-but-unlaunched and queued-before-crash attempts reconcile only on explicit replay. Persistence failure restores the prior run projection before provider execution. Added six lifecycle/recovery tests; current full affected suite passed 788 tests including daemon 295 and TUI 298, zero failed. Strict affected Linux and Windows-target Clippy, formatting, generated assets, workspace policy and scoped workspace build passed. Live account/TUI acceptance continues; unrelated local artifacts and original regression stash were preserved.",
+          "created_at": "2026-09-30T16:19:14.145979600Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAuzaK4FWyh4Axd6gy12xUKuHRQ5jmztuc723V9gdAZuxSHQbnfSvtQzuWr+putblenl6q2d+jyzfpdmPpIhpQDw=="
         },
         "52a721ae-d367-4dc0-95d1-19b7e58d0d1f": {
           "display_id": 1881,
