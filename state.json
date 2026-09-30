@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1776,
-        "tip_oid": "56c218929b58ab73ca7c0090e0c77d7d5e56a494",
-        "prefix_sha256": "044baec94842967282331e8b27dae8e9f27b2c6757a21e61f613a42a85c1a9fe"
+        "sequence": 1777,
+        "tip_oid": "2d97ee4fcc3dc7be93e884edb8b2eff683c34c1d",
+        "prefix_sha256": "a2b38108ce351178fb54a497293cf52d69d704d51ce66c15f229b32899ca24b9"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 1918,
+  "next_comment_id": 1919,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -16544,7 +16544,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-28T00:58:41.412806074Z",
-      "updated_at": "2026-09-28T17:51:38.653537855Z",
+      "updated_at": "2026-09-30T15:21:37.150951040Z",
       "labels": [
         "bug"
       ],
@@ -16638,6 +16638,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA3tWBzWYeG0XD6CjZBspU9TElhDLDiXeevCkFy2e0FcQKjDxisIXUrCX9BVx0eKTYElwnlo0dHytAWFOz2fRPDg=="
+        },
+        "31af2a9f-d46d-44bb-b8c4-8377aaf88e9d": {
+          "display_id": 1918,
+          "author": "6ME5",
+          "content": "[action] Reproduced idle paused-goal resume MalformedFrame after restart; traced daemon retry admission, cumulative goal ledger and replay launch gap. Preparing bounded explicit resume admission plus durable per-run launch marker.",
+          "created_at": "2026-09-30T15:21:37.146098564Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA+bBKgN7L+4jC8epb9a0FC0MpGs9Rs4vU0WFfikbeGFxAvWBRjJWds9JAz+Vw1g2xeN9Z+9qHJFk678OGSjpHCA=="
         },
         "3223d512-57fe-421c-a0b5-7160f11d4dc8": {
           "display_id": 1890,
