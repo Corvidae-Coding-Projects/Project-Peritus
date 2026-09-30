@@ -92,6 +92,8 @@ impl ProductRunService {
                 if !deliverable.commit_revision().is_empty() {
                     return Err(ProductRunServiceError::InvalidState);
                 }
+                let completion =
+                    discard::Reservation::prepare(&self.inner.directory, record, &deliverable)?;
                 let trace = self.inner.directory.join(format!("{}.trace", run_hex(run_id)));
                 let recovered = if let Some(baseline) = &record.task_baseline {
                     ProductRunner::discard_from_baseline(
@@ -120,7 +122,7 @@ impl ProductRunService {
                     Vec::new()
                 };
                 let status = discard_status(&recovered);
-                discard::save_completed(&self.inner.directory, record, &deliverable, &status)?;
+                completion.complete(&status)?;
                 (deliverable.mark_discarded(), status)
             }
             ProductRunControlAction::Cancel | ProductRunControlAction::Retry => {

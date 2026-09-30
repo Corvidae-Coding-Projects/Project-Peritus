@@ -44,6 +44,9 @@ state, remaining work, and interruption causes. Startup validates settled candid
 configured managed workspace, marks changed candidates stale, and automatically resumes
 interrupted runs. Accept, commit, export, and discard remain separate durable user decisions, and
 every mutating handoff action is revalidated against the exact candidate digest.
+Discard reserves a writable, candidate-bound completion record before restoring source or index
+bytes. A reservation alone never acknowledges restoration; a fully written completion can be
+recovered after a failed result rename without restoring files again or consuming later edits.
 
 Interactive tool observations retain a bounded command/operation label before execution, then
 update the same activity with the observed result. Command previews include exit status and

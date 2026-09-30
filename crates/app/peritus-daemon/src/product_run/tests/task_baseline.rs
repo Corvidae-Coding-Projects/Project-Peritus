@@ -2,6 +2,73 @@
 use super::*;
 
 #[test]
+fn discard_retention_failure_leaves_the_exact_candidate_unchanged() {
+    interaction::block_on(async {
+        let repository = repository();
+        let original = fs::read(repository.path().join("src/lib.rs")).unwrap();
+        let state = tempfile::tempdir().unwrap();
+        let writer = scripted(0x21, "writer", complete_writer(CORRECT));
+        let reviewer = scripted(0x22, "reviewer", clean_review());
+        let fixer = scripted(0x23, "fixer", Vec::new());
+        let workspace = WorkspaceId::new([0x24; 16]).unwrap();
+        let run = RunId::new([0x25; 16]).unwrap();
+        let running =
+            service(state.path(), repository.path(), workspace, [&writer, &reviewer, &fixer]);
+        running
+            .start(
+                ProductRunRequest::new(
+                    run,
+                    workspace,
+                    ProductProviderSelection::new(
+                        writer.profile.profile_id(),
+                        reviewer.profile.profile_id(),
+                        fixer.profile.profile_id(),
+                    ),
+                    "Return 42 with verified tests.".to_owned(),
+                )
+                .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(wait_for_terminal(&running, run).await.phase(), ProductRunPhase::Complete);
+        let candidate = fs::read(repository.path().join("src/lib.rs")).unwrap();
+        let index = fs::read(repository.path().join(".git/index")).unwrap();
+        let receipt = running
+            .inner
+            .directory
+            .join(format!("{:032x}.discard-result.new", u128::from_be_bytes(run.into_bytes())));
+        fs::create_dir(&receipt).unwrap();
+        assert!(
+            running
+                .control(ProductRunControl::new(run, ProductRunControlAction::Discard))
+                .await
+                .is_err()
+        );
+        assert_eq!(
+            fs::read(repository.path().join("src/lib.rs")).unwrap(),
+            candidate,
+            "discard must retain recovery authority before restoring source bytes"
+        );
+        assert_eq!(fs::read(repository.path().join(".git/index")).unwrap(), index);
+        assert!(
+            !running.inner.records.read().unwrap()[&run]
+                .snapshot
+                .deliverable()
+                .unwrap()
+                .discarded()
+        );
+        fs::remove_dir(&receipt).unwrap();
+        let discarded = running
+            .control(ProductRunControl::new(run, ProductRunControlAction::Discard))
+            .await
+            .unwrap();
+        assert!(discarded.deliverable().unwrap().discarded());
+        assert_eq!(fs::read(repository.path().join("src/lib.rs")).unwrap(), original);
+        running.shutdown(Duration::from_secs(5)).await;
+    });
+}
+
+#[test]
 fn completed_discard_is_recovered_after_result_persistence_failure_and_restart() {
     interaction::block_on(async {
         use super::super::persistence::{PersistenceFaultPoint, inject_persistence_fault};
