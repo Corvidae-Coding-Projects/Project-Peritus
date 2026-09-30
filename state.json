@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1788,
-        "tip_oid": "acf8f291d9966badded935bb7041230b54c8d456",
-        "prefix_sha256": "a4ced9b78ff7e67c300e5f6f8085971dd1cb8c368d07c344b8f513528d5ec501"
+        "sequence": 1789,
+        "tip_oid": "361d80225d39231ce05ab93d076ce0a27e103a45",
+        "prefix_sha256": "e7aee557df831feec4e5f9b854e228dc17fcda217e57229a88c4073bee96e930"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 1930,
+  "next_comment_id": 1931,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -16544,7 +16544,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-28T00:58:41.412806074Z",
-      "updated_at": "2026-09-30T18:08:48.166191493Z",
+      "updated_at": "2026-09-30T18:40:26.478816719Z",
       "labels": [
         "bug"
       ],
@@ -16854,6 +16854,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAeuFpYejWNH42/dTdAguZgeNNZXbwZN1OVWUTW7JB0IKn5VA44B+ENMxEDb+Dxd/IKONQWkOjzjhnTZt8bGYuCw=="
+        },
+        "73d850d6-940c-422e-a671-43da80423d91": {
+          "display_id": 1930,
+          "author": "6ME5",
+          "content": "[action] Reproduced completed Claude Markdown rejection in live Build; local repair passes486 affected tests/lint/build/policy and normalTUI retry is under validation. Also reproduced discard restoration before failed recovery retention; regression retained separately for durable transaction repair.",
+          "created_at": "2026-09-30T18:40:26.473038058Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAluHseJ5DCGplnWjqY1R/lzWq/NRIClg5WQNcT2whAkrFFYOnt9bE9WwjOX3FzHEdRiaLlf0sn7pbf9QbIGndBg=="
         },
         "7abad5cd-2946-411f-95ce-8489d398dfaf": {
           "display_id": 1909,
