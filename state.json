@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1866,
-        "tip_oid": "833cf69e8a0052fd651af254930cc6cb442224b4",
-        "prefix_sha256": "2dcff2cf11deb9c0f1fa275dec98f3a2eec8d012a5c3c6f7fbd954230dfb47bf"
+        "sequence": 1867,
+        "tip_oid": "2535203a1d7dec335a7627281c2bf74e1dc90d01",
+        "prefix_sha256": "2b85710416a8d6521e4cf35e9bac23273319634dacac084a8184124e5770cd72"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 1994,
+  "next_comment_id": 1995,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -16544,7 +16544,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-28T00:58:41.412806074Z",
-      "updated_at": "2026-10-01T09:47:50.950247642Z",
+      "updated_at": "2026-10-01T09:48:19.257242063Z",
       "labels": [
         "bug"
       ],
@@ -17664,6 +17664,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA9m2Z4Gs65f1QYBXpIre9P+4/3IW2bEdiPgyqt0Lp/c4htGN8sRkjWU2WAHU3UAlAQqpKV2KVNVEZ1YF0b/J3AA=="
+        },
+        "eada5eb6-fbef-4de8-8d30-ef75dbce60b1": {
+          "display_id": 1994,
+          "author": "6ME5",
+          "content": "[action] Resolve hosted Foundation policy source-layout failure by moving product operation fixtures and TUI inspection navigation coverage to their owning modules; exact policy, affected suites, strict Clippy, and xtask all pass.",
+          "created_at": "2026-10-01T09:48:19.253106610Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABADIhLhetoDuRUDmBw8EFNU8nO9O5m+zzOswf4bsyWAB9eDztn5gEUFQXaqrr/K8PdMRbp/XzIKJ+4eaMY+ya/Bw=="
         },
         "ec5574f6-ebbd-4cba-a646-62f1fec688c7": {
           "display_id": 1862,
