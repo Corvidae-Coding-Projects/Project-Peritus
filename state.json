@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1833,
-        "tip_oid": "4be51245a8ee960aa9e9ae22766fb55d4cd27588",
-        "prefix_sha256": "22ad338d9e20c20eb2ec3f156ae2ac4ba377add5d1f58c8ef61868c31dde5448"
+        "sequence": 1834,
+        "tip_oid": "a1538d57daa20f2d462bb13a48acebd6851824b4",
+        "prefix_sha256": "cedd21eeb7405c2f6669f726e56c98066d5fed4b27053d486018abfe8c7f9809"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 1967,
+  "next_comment_id": 1968,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -16544,7 +16544,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-28T00:58:41.412806074Z",
-      "updated_at": "2026-10-01T06:25:28.266906435Z",
+      "updated_at": "2026-10-01T06:25:55.316436927Z",
       "labels": [
         "bug"
       ],
@@ -17313,6 +17313,15 @@
           "kind": "handoff",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAWW3lUONYlr6UnKTgweqjrCB8F8TN83pURpK192ZEqkvgnOywqoPS9W4w3ykNDWgD32u2RqcSpz9n0m8QLa4OCQ=="
+        },
+        "bd83b532-63b4-4a5a-a8b4-c887e6cbd209": {
+          "display_id": 1967,
+          "author": "6ME5",
+          "content": "[action] No-backcompat audit found strict v2 product records still have an explicit legacy missing goal_resume compatibility case; distinguishing current optional semantics from migration fallback before edit.",
+          "created_at": "2026-10-01T06:25:55.312508963Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAWVPbcE3vE++uu5wpvuclZbj1QWjWOkzF8AhRTY5RLA1E6oQ+kbBynHwiX/EENOMEh2wf00sVmNM0vJr/4xPBDA=="
         },
         "c1c12f7a-0ebb-4507-a1ee-39df9c827830": {
           "display_id": 1924,
