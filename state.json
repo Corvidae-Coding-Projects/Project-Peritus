@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1850,
-        "tip_oid": "be0093a1650e906eae79605032d8f672e406b5f3",
-        "prefix_sha256": "5ce5477302df1e5b2f31341bfc71fcbc5dfaa0722e0d17b543894364f2823667"
+        "sequence": 1851,
+        "tip_oid": "f032ae2f0c7ec1d241437f0ed075a976fc01c9db",
+        "prefix_sha256": "1b79d7ace3a98ec60ddcd4a21c7f4f90cebf041dcc4103cf27fca8b4e8931ab4"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 1979,
+  "next_comment_id": 1980,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -16540,7 +16540,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-28T00:58:41.412806074Z",
-      "updated_at": "2026-10-01T07:56:13.020846335Z",
+      "updated_at": "2026-10-01T07:56:44.184518552Z",
       "labels": [
         "bug"
       ],
@@ -17588,6 +17588,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAPVjU8mYjZ4w/q9PavQuBsuj7pPzDgPyH5eeIVytwuilkeo6BiQT0qGbwUd4CbhuoDN7VzlFO+VjmekIAJdBoAA=="
+        },
+        "f17c0971-a0e0-41db-9e6d-bdaaca53f2cd": {
+          "display_id": 1979,
+          "author": "6ME5",
+          "content": "[action] Published 85c47e4f0: durable improvement workbench evaluation; next delete legacy Interact wire path and ownerless run branches.",
+          "created_at": "2026-10-01T07:56:44.180808699Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAIPCCqqNc31ObhkoIqgrdzKqXw2yO0Ra576RVlL6O1+QMjU/KVYP7/Xw7TV12slQ5TZMOsTDH6bib2HFR3FvHDQ=="
         },
         "f285bdba-e8aa-4b4f-9683-b72beb99a3e7": {
           "display_id": 1871,
