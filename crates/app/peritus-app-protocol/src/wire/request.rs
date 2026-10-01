@@ -28,8 +28,7 @@ use super::{
     primitive::{invalid, read_context, read_id, unknown, write_context, write_id},
     product::{
         read_conversation_query, read_run_continuation, read_run_control, read_run_query,
-        read_run_request, write_conversation_query, write_run_continuation, write_run_control,
-        write_run_query, write_run_request,
+        write_conversation_query, write_run_continuation, write_run_control, write_run_query,
     },
     prompt::{
         read_prompt_answer, read_prompt_cancellation, write_prompt_answer,
@@ -130,7 +129,6 @@ fn write_payload(
         AppRequestPayload::CompleteArtifactUpload(value) => {
             write_artifact_completion(writer, *value)
         }
-        AppRequestPayload::StartProductRun(value) => write_run_request(writer, value),
         AppRequestPayload::ControlProductRun(value) => write_run_control(writer, *value),
         AppRequestPayload::QueryProductRunObservations(value) => write_run_query(writer, *value),
         AppRequestPayload::ContinueProductRun(value) => write_run_continuation(writer, value),
@@ -185,7 +183,6 @@ fn payload_tag(payload: &AppRequestPayload) -> u16 {
         AppRequestPayload::BeginArtifactUpload(_) => 14,
         AppRequestPayload::UploadArtifactChunk(_) => 15,
         AppRequestPayload::CompleteArtifactUpload(_) => 16,
-        AppRequestPayload::StartProductRun(_) => 17,
         AppRequestPayload::ControlProductRun(_) => 18,
         AppRequestPayload::QueryProductRunObservations(_) => 102,
         AppRequestPayload::ContinueProductRun(_) => 20,
@@ -278,7 +275,6 @@ fn read_payload(
         14 => AppRequestPayload::BeginArtifactUpload(read_artifact_metadata(reader, limits)?),
         15 => AppRequestPayload::UploadArtifactChunk(read_artifact_chunk(reader, limits)?),
         16 => AppRequestPayload::CompleteArtifactUpload(read_artifact_completion(reader)?),
-        17 => AppRequestPayload::StartProductRun(read_run_request(reader)?),
         18 => AppRequestPayload::ControlProductRun(read_run_control(reader)?),
         102 => AppRequestPayload::QueryProductRunObservations(read_run_query(reader)?),
         20 => AppRequestPayload::ContinueProductRun(read_run_continuation(reader)?),

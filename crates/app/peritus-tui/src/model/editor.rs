@@ -34,9 +34,7 @@ impl AppModel {
             if let Some(editor) = &self.editor
                 && matches!(
                     editor.kind,
-                    EditorKind::ProductTask
-                        | EditorKind::ProductMessage(_)
-                        | EditorKind::ReviewFeedback(_)
+                    EditorKind::ProductMessage(_) | EditorKind::ReviewFeedback(_)
                 )
             {
                 self.paste_editor("\n");
@@ -136,7 +134,6 @@ impl AppModel {
                 self.submit_signed_approval(prompt_id, &editor.buffer)
             }
             EditorKind::PromptAnswer(prompt_id) => self.submit_user_input(prompt_id, editor.buffer),
-            EditorKind::ProductTask => self.submit_product_task(editor.buffer),
             EditorKind::ProductMessage(run_id) => {
                 self.submit_product_message(run_id, editor.buffer)
             }

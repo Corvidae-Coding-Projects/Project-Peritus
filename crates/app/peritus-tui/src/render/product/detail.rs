@@ -274,7 +274,7 @@ fn evidence_name(evidence: &EvidenceStatus<QualificationEvidence>) -> String {
 pub(super) fn empty_detail() -> Text<'static> {
     Text::from(vec![
         Line::from("Ready."),
-        Line::from("Press n and describe a useful coding outcome."),
+        Line::from("Press Esc, then use /build <request> in Conversation."),
     ])
 }
 

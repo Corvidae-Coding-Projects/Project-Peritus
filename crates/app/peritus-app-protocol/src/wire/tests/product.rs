@@ -6,8 +6,8 @@ use crate::{
     ProductDeliverable, ProductProviderSelection, ProductRunContinuation, ProductRunControl,
     ProductRunControlAction, ProductRunConversation, ProductRunConversationQuery,
     ProductRunLegalControls, ProductRunObservation, ProductRunOperation, ProductRunOperationKind,
-    ProductRunOperationState, ProductRunPhase, ProductRunRequest, ProductRunSnapshot,
-    ProtocolContext, ProtocolId, ProtocolVersion, RequestId,
+    ProductRunOperationState, ProductRunPhase, ProductRunSnapshot, ProtocolContext, ProtocolId,
+    ProtocolVersion, RequestId,
 };
 use peritus_run_settlement::CandidateStage;
 use peritus_types::{ProviderProfileId, RunId, SessionId, WorkspaceId};
@@ -25,7 +25,7 @@ fn product_retry_is_limited_to_unsuccessful_terminal_runs() {
 }
 
 #[test]
-fn product_run_requests_and_snapshots_round_trip() -> Result<(), Box<dyn std::error::Error>> {
+fn product_run_snapshots_round_trip() -> Result<(), Box<dyn std::error::Error>> {
     let context = ProtocolContext::new(
         ProtocolId::new([31; 16]).expect("nonzero protocol id"),
         ProtocolVersion::new(1, 0)?,
@@ -38,24 +38,6 @@ fn product_run_requests_and_snapshots_round_trip() -> Result<(), Box<dyn std::er
     );
     let run_id = RunId::new([36; 16]).expect("nonzero run id");
     let workspace_id = WorkspaceId::new([37; 16]).expect("nonzero workspace id");
-    let request = AppRequestEnvelope::new(
-        context,
-        RequestId::new([38; 16]).expect("nonzero request id"),
-        CorrelationId::new([39; 16]).expect("nonzero correlation id"),
-        AppRequestPayload::StartProductRun(ProductRunRequest::new(
-            run_id,
-            workspace_id,
-            providers,
-            "implement the feature".to_owned(),
-        )?),
-    )?;
-    let encoded =
-        encode_app_message(&AppMessage::Request(request.clone()), AppProtocolLimits::PRODUCTION)?;
-    assert_eq!(
-        decode_app_message(&encoded, AppProtocolLimits::PRODUCTION)?,
-        AppMessage::Request(request)
-    );
-
     let snapshot = ProductRunSnapshot::new(
         run_id,
         workspace_id,

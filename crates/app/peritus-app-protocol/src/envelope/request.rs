@@ -3,10 +3,10 @@
 use crate::{
     AppErrorCode, AppProtocolError, ArtifactCancellation, ArtifactChunk, ArtifactCompletion,
     ArtifactMetadata, CommandBinding, CorrelationId, EventCursor, ProductRunContinuation,
-    ProductRunControl, ProductRunConversationQuery, ProductRunQuery, ProductRunRequest,
-    PromptAnswer, PromptCancellation, RequestId, ShutdownRequest, SubscriptionFilter,
-    SubscriptionId, TerminalBinding, TerminalCancellation, TerminalDetach, TerminalInput,
-    TerminalResize, TransferId,
+    ProductRunControl, ProductRunConversationQuery, ProductRunQuery, PromptAnswer,
+    PromptCancellation, RequestId, ShutdownRequest, SubscriptionFilter, SubscriptionId,
+    TerminalBinding, TerminalCancellation, TerminalDetach, TerminalInput, TerminalResize,
+    TransferId,
 };
 use peritus_types::ArtifactId;
 
@@ -177,8 +177,6 @@ pub enum AppRequestPayload {
     UploadArtifactChunk(ArtifactChunk),
     /// Completes one artifact upload with exact size and digest.
     CompleteArtifactUpload(ArtifactCompletion),
-    /// Starts one daemon-owned writer-reviewer-fixer coding run.
-    StartProductRun(ProductRunRequest),
     /// Cancels or retries one exact product run.
     ControlProductRun(ProductRunControl),
     /// Queries recent or exact runs while retaining every candidate's qualification evidence.

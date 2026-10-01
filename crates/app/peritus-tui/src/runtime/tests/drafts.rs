@@ -1,7 +1,8 @@
 use super::*;
 use crate::model::{Editor, EditorKind, View};
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
-use peritus_app_protocol::{AppProtocolLimits, ProtocolContext, ProtocolVersion};
+use peritus_app_protocol::{AppProtocolLimits, CURRENT_PROTOCOL_VERSION, ProtocolContext};
+use peritus_types::RunId;
 
 fn config() -> TuiConfig {
     TuiConfig::new("fixture.sock").with_product(
@@ -16,15 +17,18 @@ fn config() -> TuiConfig {
 }
 
 #[test]
-fn launcher_recovery_preserves_the_open_modal_and_its_cursor() {
+fn launcher_recovery_preserves_the_open_message_modal_and_its_cursor() {
     let config = config();
     let mut state = TuiState::default();
     let mut model = state.take_model(&config, [43; 32]);
-    model.view = View::Runs;
-    model.update(Action::TerminalEvent(Event::Key(KeyEvent::new(
-        KeyCode::Char('n'),
-        KeyModifiers::NONE,
-    ))));
+    model.editor = Some(Editor {
+        kind: EditorKind::ProductMessage(RunId::new([40; 16]).unwrap()),
+        title: "Message",
+        hint: "fixture",
+        buffer: String::new(),
+        cursor: 0,
+        pasted_command: false,
+    });
     model.update(Action::TerminalEvent(Event::Paste("unfinished task λ".to_owned())));
     let cursor = model.editor.as_ref().unwrap().cursor;
     let effects = model.update(Action::TerminalEvent(Event::Key(KeyEvent::new(
@@ -34,23 +38,23 @@ fn launcher_recovery_preserves_the_open_modal_and_its_cursor() {
     assert!(matches!(effects.as_slice(), [Effect::Reconnect]));
     state.retain(config.clone(), model);
     let restored = state.take_model(&config, [44; 32]);
-    let editor = restored.editor.as_ref().expect("retained task editor");
+    let editor = restored.editor.as_ref().expect("retained message editor");
     assert_eq!(editor.buffer, "unfinished task λ");
     assert_eq!(editor.cursor, cursor);
-    assert!(matches!(editor.kind, EditorKind::ProductTask));
+    assert!(matches!(editor.kind, EditorKind::ProductMessage(_)));
     state.retain(config, restored);
     let different = state.take_model(&TuiConfig::new("other.sock"), [45; 32]);
     assert!(different.editor.is_none());
 }
 
 #[test]
-fn launcher_recovery_preserves_ambiguous_submission_without_replaying_it() {
+fn launcher_recovery_preserves_ambiguous_message_without_replaying_it() {
     let config = config();
     let mut state = TuiState::default();
     let mut model = state.take_model(&config, [46; 32]);
     let context = ProtocolContext::new(
         ProtocolId::new([47; 16]).unwrap(),
-        ProtocolVersion::new(1, 0).unwrap(),
+        CURRENT_PROTOCOL_VERSION,
         SessionId::new([48; 16]).unwrap(),
     );
     let connected = || Action::Connected {
@@ -62,8 +66,8 @@ fn launcher_recovery_preserves_ambiguous_submission_without_replaying_it() {
     model.update(connected());
     model.view = View::Runs;
     model.editor = Some(Editor {
-        kind: EditorKind::ProductTask,
-        title: "Task",
+        kind: EditorKind::ProductMessage(RunId::new([50; 16]).unwrap()),
+        title: "Message",
         hint: "fixture",
         buffer: "already sent once".into(),
         cursor: 17,
@@ -77,12 +81,12 @@ fn launcher_recovery_preserves_ambiguous_submission_without_replaying_it() {
     assert!(model.editor.is_none());
     state.retain(config.clone(), model);
     let mut restored = state.take_model(&config, [49; 32]);
-    let editor = restored.editor.as_ref().expect("uncertain task draft");
+    let editor = restored.editor.as_ref().expect("uncertain message draft");
     assert_eq!(editor.buffer, "already sent once");
     assert!(editor.hint.contains("may already have been accepted"));
     let effects = restored.update(connected());
     assert!(!effects.iter().any(|effect| matches!(effect,
-        Effect::Send(peritus_app_protocol::AppMessage::Request(request)) if matches!(request.payload(), peritus_app_protocol::AppRequestPayload::StartProductRun(_))
+        Effect::Send(peritus_app_protocol::AppMessage::Request(request)) if matches!(request.payload(), peritus_app_protocol::AppRequestPayload::ContinueProductRun(_))
     )));
 }
 

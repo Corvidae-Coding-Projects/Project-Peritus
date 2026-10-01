@@ -4,8 +4,8 @@ use std::path::Path;
 
 use peritus_app_protocol::{
     AppMessage, AppProtocolLimits, ClientHello, NegotiationOutcome, ProtocolContext,
-    ProtocolFeatureName, ProtocolId, ServerHello, VersionRange, WellKnownProtocolFeature,
-    decode_app_message, encode_app_message,
+    ProtocolFeatureName, ProtocolId, ServerHello, WellKnownProtocolFeature, decode_app_message,
+    encode_app_message,
 };
 use peritus_codec::{HEADER_LEN, MAGIC};
 use peritus_types::SessionId;
@@ -285,7 +285,7 @@ fn client_hello(
     Ok(ClientHello::new_with_session(
         protocol_id,
         requested_session,
-        vec![VersionRange::new(1, 0, 0)?],
+        vec![peritus_app_protocol::CURRENT_PROTOCOL_RANGE],
         Vec::new(),
         optional,
         limits,
@@ -314,6 +314,11 @@ fn establish(
             )));
         }
     };
+    if protocol.version() != peritus_app_protocol::CURRENT_PROTOCOL_VERSION {
+        return Err(TuiError::ProtocolViolation(
+            "daemon selected a version outside the offered range".to_owned(),
+        ));
+    }
     Ok(EstablishedConnection {
         features: protocol.features().as_slice().to_vec(),
         context: ProtocolContext::new(expected_protocol, protocol.version(), session),

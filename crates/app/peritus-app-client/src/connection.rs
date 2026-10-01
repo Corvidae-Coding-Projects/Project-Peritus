@@ -3,8 +3,8 @@
 use std::{ffi::OsStr, time::Duration};
 
 use peritus_app_protocol::{
-    AppMessage, AppProtocolLimits, ClientHello, NegotiationOutcome, ProtocolContext,
-    ProtocolFeatureName, ProtocolId, VersionRange, WellKnownProtocolFeature,
+    AppMessage, AppProtocolLimits, CURRENT_PROTOCOL_RANGE, ClientHello, NegotiationOutcome,
+    ProtocolContext, ProtocolFeatureName, ProtocolId, WellKnownProtocolFeature,
 };
 use peritus_types::SessionId;
 
@@ -69,7 +69,7 @@ impl Client {
         let hello = ClientHello::new_with_session(
             protocol_id,
             requested_session,
-            vec![VersionRange::new(1, 0, 0)?],
+            vec![CURRENT_PROTOCOL_RANGE],
             required_features,
             optional,
             AppProtocolLimits::PRODUCTION,
@@ -84,7 +84,7 @@ impl Client {
         }
         let (version, limits) = match server.outcome() {
             NegotiationOutcome::Compatible(protocol) | NegotiationOutcome::Downgraded(protocol) => {
-                if protocol.version() != VersionRange::new(1, 0, 0)?.preferred() {
+                if protocol.version() != CURRENT_PROTOCOL_RANGE.preferred() {
                     return Err(ClientError::negotiation(
                         "daemon selected a version outside the offered range",
                     ));

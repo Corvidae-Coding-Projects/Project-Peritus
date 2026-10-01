@@ -81,9 +81,9 @@ selected account models when their state is upgraded; old immutable configuratio
 
 ## Checked coding runs
 
-Use `/build <request>` from the conversation or the legacy task action in `/runs`:
+Use `/build <request>` from the conversation:
 
-1. Press `n`, describe the desired coding outcome, and press Enter. Shift-Enter adds a line.
+1. Enter `/build` followed by the desired coding outcome.
 2. Peritus sends the task and the selected writer, reviewer, and fixer providers to the daemon.
 3. Before code is written, a read-only design pass inspects the real repository and publishes a
    detailed Markdown design beside the durable run trace. It covers acceptance criteria,

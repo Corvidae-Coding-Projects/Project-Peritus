@@ -227,12 +227,6 @@ where
                     Err(error) => product_run_error(error),
                 }
             }
-            AppRequestPayload::StartProductRun(value) => {
-                match product_runs.start(value.clone()).await {
-                    Ok(snapshot) => product_run_projection(product_runs.project(snapshot)),
-                    Err(error) => product_run_error(error),
-                }
-            }
             AppRequestPayload::ControlProductRun(value) => {
                 product_runs.control_authenticated(actor_id, request.request_id(), *value).await
             }

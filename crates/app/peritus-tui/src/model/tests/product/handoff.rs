@@ -11,7 +11,7 @@ use crate::{
 };
 
 #[test]
-fn product_launch_queries_runs_and_task_submission_is_daemon_owned() {
+fn product_launch_queries_runs_and_legacy_task_key_is_inert() {
     let product = ProductLaunchContext::new(
         WorkspaceId::new([41; 16]).expect("workspace"),
         "/managed/project".to_owned(),
@@ -36,18 +36,8 @@ fn product_launch_queries_runs_and_task_submission_is_daemon_owned() {
         KeyModifiers::NONE,
     ))));
     assert!(effects.is_empty());
-    assert!(model.editor.is_some());
-    for character in "add a status command".chars() {
-        let _ = model.update(Action::TerminalEvent(Event::Key(KeyEvent::new(
-            KeyCode::Char(character),
-            KeyModifiers::NONE,
-        ))));
-    }
-    let effects = model.update(Action::TerminalEvent(Event::Key(KeyEvent::new(
-        KeyCode::Enter,
-        KeyModifiers::NONE,
-    ))));
-    assert!(effects.iter().any(|effect| matches!(effect, Effect::Send(AppMessage::Request(request)) if matches!(request.payload(), AppRequestPayload::StartProductRun(_)))));
+    assert!(model.editor.is_none());
+    assert_eq!(model.view, View::Runs);
 }
 
 #[test]

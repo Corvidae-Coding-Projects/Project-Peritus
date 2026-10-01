@@ -54,7 +54,6 @@ impl AppModel {
             return None;
         }
         match key.code {
-            KeyCode::Char('n') => self.open_task_composer(),
             KeyCode::Enter => return Some(self.open_selected_conversation()),
             KeyCode::Char('m') => self.open_product_message_composer(),
             KeyCode::Char('i') => {

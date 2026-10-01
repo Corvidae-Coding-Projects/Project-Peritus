@@ -126,6 +126,19 @@ fn dispatcher_separates_family_schema_tag_and_frame_failures()
 }
 
 #[test]
+fn retired_legacy_product_start_tag_is_rejected() -> Result<(), Box<dyn std::error::Error>> {
+    let limits = AppProtocolLimits::PRODUCTION;
+    let mut encoded = encode_app_message(&AppMessage::Request(minimal_status_request()?), limits)?;
+    let tag_offset = encoded.len() - size_of::<u16>();
+    encoded[tag_offset..].copy_from_slice(&17_u16.to_be_bytes());
+    assert_eq!(
+        decode_app_message(&encoded, limits).map_err(|error| error.code()),
+        Err(AppErrorCode::UnknownTag),
+    );
+    Ok(())
+}
+
+#[test]
 fn negotiated_frame_limit_is_applied_before_payload_allocation()
 -> Result<(), Box<dyn std::error::Error>> {
     let production = AppProtocolLimits::PRODUCTION;

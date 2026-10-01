@@ -235,7 +235,6 @@ enum PendingRequest {
     TerminalResize,
     TerminalDetach(TerminalBinding),
     TerminalCancel,
-    ProductStart,
     ProductQuery,
     ProductExactQuery(RunId),
     ProductControl,
@@ -249,7 +248,6 @@ pub enum EditorKind {
     ProcessId,
     ApprovalSignature(PromptId),
     PromptAnswer(PromptId),
-    ProductTask,
     ProductMessage(RunId),
     ReviewFeedback(Box<product::ReviewDraft>),
 }

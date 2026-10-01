@@ -7,8 +7,9 @@ use std::time::Duration;
 use peritus_app_client::{Client, ClientErrorKind, RequestIdentity};
 use peritus_app_protocol::{
     AppMessage, AppProtocolLimits, AppRequestPayload, AppResponseEnvelope, AppResponsePayload,
-    CorrelationId, OperationAcknowledgement, ProtocolContext, RequestId, ServerCapabilities,
-    VersionRange, WellKnownProtocolFeature, decode_app_message, encode_app_message, negotiate,
+    CURRENT_PROTOCOL_RANGE, CorrelationId, OperationAcknowledgement, ProtocolContext, RequestId,
+    ServerCapabilities, WellKnownProtocolFeature, decode_app_message, encode_app_message,
+    negotiate,
 };
 use peritus_codec::HEADER_LEN;
 use peritus_types::SessionId;
@@ -41,7 +42,7 @@ async fn handshake(stream: &mut UnixStream) {
         panic!("expected client negotiation");
     };
     let capabilities = ServerCapabilities::new(
-        vec![VersionRange::new(1, 0, 0).unwrap()],
+        vec![CURRENT_PROTOCOL_RANGE],
         Vec::new(),
         AppProtocolLimits::PRODUCTION,
         "independent transport fixture".to_owned(),

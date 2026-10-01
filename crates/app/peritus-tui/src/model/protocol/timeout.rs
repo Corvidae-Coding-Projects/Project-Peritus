@@ -59,7 +59,6 @@ impl PendingRequest {
             | Self::TerminalResize
             | Self::TerminalDetach(_)
             | Self::TerminalCancel
-            | Self::ProductStart
             | Self::ProductControl
             | Self::ProductContinue => Recovery::Reconnect,
         }

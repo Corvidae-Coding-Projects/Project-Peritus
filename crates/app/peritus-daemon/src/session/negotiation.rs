@@ -7,7 +7,7 @@ use std::{
 
 use peritus_app_protocol::{
     AppProtocolLimits, ClientHello, DaemonReadiness, NegotiatedProtocol, NegotiationOutcome,
-    ProtocolContext, ProtocolFeatureName, ServerCapabilities, ServerHello, VersionRange,
+    ProtocolContext, ProtocolFeatureName, ServerCapabilities, ServerHello,
     WellKnownProtocolFeature, negotiate,
 };
 use peritus_journal::{ApplicationPrincipalState, ApplicationSessionState, NewApplicationSession};
@@ -189,7 +189,7 @@ fn server_capabilities() -> Result<ServerCapabilities, DaemonError> {
     .collect::<Result<Vec<_>, _>>()
     .map_err(protocol_error)?;
     ServerCapabilities::new(
-        vec![VersionRange::new(1, 0, 0).map_err(protocol_error)?],
+        vec![peritus_app_protocol::CURRENT_PROTOCOL_RANGE],
         features,
         AppProtocolLimits::PRODUCTION,
         format!("peritusd/{DAEMON_VERSION}"),

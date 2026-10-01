@@ -34,7 +34,7 @@ pub(super) fn dashboard(frame: &mut Frame<'_>, area: Rect, model: &AppModel) {
             "What should Peritus build?",
             Style::default().fg(Color::White).add_modifier(Modifier::BOLD),
         ),
-        Line::from("Press n to describe a task and begin the writer → reviewer → fixer loop."),
+        Line::from("Press Esc, then use /build <request> in Conversation to start checked work."),
         Line::from(""),
         Line::from(vec![
             Span::styled("Workspace  ", Style::default().fg(MUTED)),
@@ -53,7 +53,7 @@ pub(super) fn dashboard(frame: &mut Frame<'_>, area: Rect, model: &AppModel) {
                 Block::default()
                     .borders(Borders::ALL)
                     .border_style(Style::default().fg(ACCENT))
-                    .title(" New coding run · n start · w/e/f choose providers "),
+                    .title(" Checked coding runs · /build starts · w/e/f choose providers "),
             )
             .wrap(Wrap { trim: false }),
         areas.composer,

@@ -61,7 +61,7 @@ mod tests {
 
     fn screen(text: &str) -> (ratatui::buffer::Buffer, ratatui::layout::Position) {
         let editor = Editor {
-            kind: EditorKind::ProductTask,
+            kind: EditorKind::ProductMessage(peritus_types::RunId::new([60; 16]).unwrap()),
             title: "Draft",
             hint: "Enter submits",
             buffer: text.to_owned(),
@@ -98,7 +98,7 @@ mod tests {
         let mut model = crate::model::AppModel::new([61; 32]);
         model.view = crate::model::View::Conversation;
         model.editor = Some(Editor {
-            kind: EditorKind::ProductTask,
+            kind: EditorKind::ProductMessage(peritus_types::RunId::new([61; 16]).unwrap()),
             title: "Recovered task",
             hint: "Enter submits",
             buffer: "recover this exact task".to_owned(),

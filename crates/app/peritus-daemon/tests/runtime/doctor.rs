@@ -25,7 +25,7 @@ fn doctor_requires_negotiation_and_reports_missing_prerequisites_without_startin
             };
             let client = ClientHello::new(
                 ProtocolId::new([if enabled { 42 } else { 41 }; 16]).expect("protocol"),
-                vec![VersionRange::new(1, 0, 0).expect("version")],
+                vec![peritus_app_protocol::CURRENT_PROTOCOL_RANGE],
                 Vec::new(),
                 optional,
                 AppProtocolLimits::PRODUCTION,

@@ -63,7 +63,11 @@ fn reject(model: &mut AppModel, request: &AppRequestEnvelope) {
 fn offline_submission_retains_the_complete_modal_draft() {
     let mut model = model();
     model.context = None;
-    draft(&mut model, EditorKind::ProductTask, "build this\nwith café text");
+    draft(
+        &mut model,
+        EditorKind::ProductMessage(peritus_types::RunId::new([84; 16]).unwrap()),
+        "build this\nwith café text",
+    );
     assert!(submit(&mut model).is_empty());
     assert_eq!(model.editor.as_ref().unwrap().buffer, "build this\nwith café text");
 }
@@ -88,7 +92,11 @@ fn process_id_validation_rejection_and_timeout_preserve_input() {
 #[test]
 fn reconnect_keeps_the_open_editor_and_never_resubmits_it() {
     let mut model = model();
-    draft(&mut model, EditorKind::ProductTask, "retain while reconnecting");
+    draft(
+        &mut model,
+        EditorKind::ProductMessage(peritus_types::RunId::new([85; 16]).unwrap()),
+        "retain while reconnecting",
+    );
     let effects = model.update(Action::TerminalEvent(Event::Key(KeyEvent::new(
         KeyCode::Char('r'),
         KeyModifiers::CONTROL,
@@ -99,41 +107,42 @@ fn reconnect_keeps_the_open_editor_and_never_resubmits_it() {
 }
 
 #[test]
-fn rejected_task_or_message_restores_the_exact_draft() {
-    for kind in [
-        EditorKind::ProductTask,
-        EditorKind::ProductMessage(peritus_types::RunId::new([90; 16]).unwrap()),
-    ] {
-        let mut model = model();
-        draft(&mut model, kind.clone(), "change my mind\nkeep this reply");
-        let request = request(submit(&mut model));
-        assert!(model.editor.is_none());
-        reject(&mut model, &request);
-        let restored = model.editor.as_ref().unwrap();
-        assert_eq!(restored.kind, kind);
-        assert_eq!(restored.buffer, "change my mind\nkeep this reply");
-        assert_eq!(restored.cursor, restored.buffer.len());
-    }
+fn rejected_product_message_restores_the_exact_draft() {
+    let kind = EditorKind::ProductMessage(peritus_types::RunId::new([90; 16]).unwrap());
+    let mut model = model();
+    draft(&mut model, kind.clone(), "change my mind\nkeep this reply");
+    let request = request(submit(&mut model));
+    assert!(model.editor.is_none());
+    reject(&mut model, &request);
+    let restored = model.editor.as_ref().unwrap();
+    assert_eq!(restored.kind, kind);
+    assert_eq!(restored.buffer, "change my mind\nkeep this reply");
+    assert_eq!(restored.cursor, restored.buffer.len());
 }
 
 #[test]
 fn late_rejection_keeps_the_new_draft_and_recovers_the_old_one_separately() {
     let mut model = model();
-    draft(&mut model, EditorKind::ProductTask, "first submitted task");
+    let run = peritus_types::RunId::new([91; 16]).unwrap();
+    draft(&mut model, EditorKind::ProductMessage(run), "first submitted message");
     let request = request(submit(&mut model));
-    draft(&mut model, EditorKind::ProductTask, "new task still being typed");
+    draft(&mut model, EditorKind::ProductMessage(run), "new message still being typed");
     reject(&mut model, &request);
-    assert_eq!(model.editor.as_ref().unwrap().buffer, "new task still being typed");
+    assert_eq!(model.editor.as_ref().unwrap().buffer, "new message still being typed");
     model.editor = None;
-    model.open_task_composer();
-    assert_eq!(model.editor.as_ref().unwrap().buffer, "first submitted task");
+    model.open_run_message_composer(run);
+    assert_eq!(model.editor.as_ref().unwrap().buffer, "first submitted message");
 }
 
 #[test]
 fn disconnect_and_timeout_retain_text_without_resubmitting_it() {
     for disconnect in [true, false] {
         let mut model = model();
-        draft(&mut model, EditorKind::ProductTask, "retain unknown outcome");
+        draft(
+            &mut model,
+            EditorKind::ProductMessage(peritus_types::RunId::new([92; 16]).unwrap()),
+            "retain unknown outcome",
+        );
         let _ = request(submit(&mut model));
         if disconnect {
             let effects = model.update(Action::Disconnected("connection lost".to_owned()));
@@ -153,7 +162,11 @@ fn disconnect_and_timeout_retain_text_without_resubmitting_it() {
 fn modal_up_and_down_follow_the_visible_unicode_rows() {
     let mut model = model();
     model.chat.viewport = Some(ratatui::layout::Rect::new(0, 0, 80, 24));
-    draft(&mut model, EditorKind::ProductTask, "first 界λ\nnext 界λ");
+    draft(
+        &mut model,
+        EditorKind::ProductMessage(peritus_types::RunId::new([93; 16]).unwrap()),
+        "first 界λ\nnext 界λ",
+    );
     model.handle_editor_key(KeyEvent::new(KeyCode::Up, KeyModifiers::NONE));
     assert_eq!(model.editor.as_ref().unwrap().cursor, "first 界".len());
     model.handle_editor_key(KeyEvent::new(KeyCode::Down, KeyModifiers::NONE));
@@ -164,9 +177,13 @@ fn modal_up_and_down_follow_the_visible_unicode_rows() {
 #[test]
 fn modal_paste_and_typing_enforce_submission_limits_without_truncating_the_draft() {
     let mut model = model();
-    let maximum = peritus_app_protocol::MAX_PRODUCT_TASK_BYTES;
+    let maximum = peritus_app_protocol::MAX_PRODUCT_MESSAGE_BYTES;
     let original = "x".repeat(maximum - 1);
-    draft(&mut model, EditorKind::ProductTask, &original);
+    draft(
+        &mut model,
+        EditorKind::ProductMessage(peritus_types::RunId::new([94; 16]).unwrap()),
+        &original,
+    );
     model.update(Action::TerminalEvent(Event::Paste("界".to_owned())));
     assert!(
         model.editor.as_ref().unwrap().buffer == original,

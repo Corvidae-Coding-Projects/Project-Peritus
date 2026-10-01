@@ -127,7 +127,7 @@ fn negotiation_selects_each_implemented_command_feature_when_the_daemon_advertis
     let protocol = ProtocolId::new([2; 16]).expect("protocol");
     let client = client_hello(protocol, None, AppProtocolLimits::PRODUCTION).expect("client hello");
     let server = peritus_app_protocol::ServerCapabilities::new(
-        vec![VersionRange::new(1, 0, 0).expect("version")],
+        vec![peritus_app_protocol::CURRENT_PROTOCOL_RANGE],
         command_features(),
         AppProtocolLimits::PRODUCTION,
         "test-daemon".to_owned(),
@@ -149,4 +149,37 @@ fn negotiation_selects_each_implemented_command_feature_when_the_daemon_advertis
     for feature in command_features() {
         assert!(selected.contains(&feature), "feature was not negotiated: {feature:?}");
     }
+}
+
+#[test]
+fn establishment_rejects_a_retired_version_even_if_the_server_marks_it_compatible() {
+    let protocol = ProtocolId::new([4; 16]).expect("protocol");
+    let retired = peritus_app_protocol::VersionRange::new(1, 0, 0).expect("retired version");
+    let client = ClientHello::new(
+        protocol,
+        vec![retired],
+        Vec::new(),
+        Vec::new(),
+        AppProtocolLimits::PRODUCTION,
+        "retired-client".to_owned(),
+    )
+    .expect("retired client hello");
+    let server = peritus_app_protocol::ServerCapabilities::new(
+        vec![retired],
+        Vec::new(),
+        AppProtocolLimits::PRODUCTION,
+        "retired-daemon".to_owned(),
+    )
+    .expect("retired server capabilities");
+    let hello = peritus_app_protocol::negotiate(
+        &client,
+        &server,
+        SessionId::new([5; 16]).expect("session"),
+    )
+    .expect("retired negotiation");
+
+    let error = establish(protocol, &hello).expect_err("retired selection must be rejected");
+    assert!(
+        matches!(error, TuiError::ProtocolViolation(message) if message.contains("outside the offered range"))
+    );
 }

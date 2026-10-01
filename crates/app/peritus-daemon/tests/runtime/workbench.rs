@@ -67,7 +67,7 @@ async fn connect(
     };
     let hello = ClientHello::new(
         ProtocolId::new([43; 16]).expect("protocol"),
-        vec![VersionRange::new(1, 0, 0).expect("version")],
+        vec![peritus_app_protocol::CURRENT_PROTOCOL_RANGE],
         Vec::new(),
         features,
         AppProtocolLimits::PRODUCTION,
