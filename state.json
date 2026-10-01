@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1880,
-        "tip_oid": "3600a420ff2ccbb548e67a5f6a115a1fb9babd1b",
-        "prefix_sha256": "963fb55ba15903c3c81d41eac46d51401704a355b8e13b0afe85d76a0b91f403"
+        "sequence": 1881,
+        "tip_oid": "3bdf417f3e2841f43fd776555dbe9c5d41913765",
+        "prefix_sha256": "c38cde167dfa88c3dcc6f612850d6a674b0c7c3ac8458f9a13b4d8cbf7d18692"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 2004,
+  "next_comment_id": 2005,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -16544,7 +16544,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-28T00:58:41.412806074Z",
-      "updated_at": "2026-10-01T10:32:51.095861346Z",
+      "updated_at": "2026-10-01T10:47:56.891581629Z",
       "labels": [
         "bug"
       ],
@@ -17646,6 +17646,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAJBdpyRlxG0g+bgKm/NHp+DLqCPLvk+DOdLceCaR4T+4i0CNA+aBe8COVJYICWJ+j8mBgLB0q7GSmaAuCo08TCQ=="
+        },
+        "cafe5e00-2d5d-47d2-b343-ef4d3bc1f28c": {
+          "display_id": 2004,
+          "author": "6ME5",
+          "content": "[action] Narrowed DD6-003 repair to CommandRuntime blocking boundary: removed per-run executor/public error, retained daemon-owned task settlement. Auditing Linux crash watchdog before live reinstall.",
+          "created_at": "2026-10-01T10:47:56.887288495Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAa0k6AyGE9A8uOV6AM835NucurJyfaFyYq8oraBXP+hiJ1qft/vIA2JC++PnWlQiaX6Dw+0xA1ksdl0wNjWAjCw=="
         },
         "d148072b-24a4-42cc-a892-2b83df205a3a": {
           "display_id": 1915,
