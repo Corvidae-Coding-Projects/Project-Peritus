@@ -240,6 +240,17 @@ impl PersistedRecord {
         if invalid_lineage || resume_mismatch {
             return Err(ProductRunServiceError::InvalidMessage);
         }
+        // Older records used human acceptance wording for automated qualification.
+        // A projection label cannot create a user decision or restore absent evidence.
+        let status = if status == "Accepted — passing checks and independent review" {
+            if checkpoint.is_some_and(|value| value.is_qualified()) {
+                "Qualified — passing checks and independent review".to_owned()
+            } else {
+                "Candidate available — inspect current qualification".to_owned()
+            }
+        } else {
+            status
+        };
         let mut snapshot = ProductRunSnapshot::new(
             run_id,
             workspace_id,

@@ -41,9 +41,17 @@ registration still requires a PTY plan.
 
 Product-run records also retain candidate checkpoints, typed settlements, opaque continuation
 state, remaining work, and interruption causes. Startup validates settled candidates against their
-configured managed workspace, marks changed candidates stale, and automatically resumes
-interrupted runs. Accept, commit, export, and discard remain separate durable user decisions, and
+configured managed workspace, marks changed candidates stale, and reconciles interruptions without
+automatically replaying effects. Continuing interrupted work requires explicit recovery or retry.
+Accept, commit, export, and discard remain separate durable user decisions, and
 every mutating handoff action is revalidated against the exact candidate digest.
+After a successful explicit commit, unchanged source is checked against the retained commit
+attempt and the final Git state receives a new candidate checkpoint. Earlier checks and review
+keep their original provenance as stale evidence; committing does not qualify the new Git identity.
+The committed handoff remains runnable with that exact digest, including after restart. Later
+source or nested HEAD changes fail the foreground Run check. Hook edits are preserved and
+reported without adopting them as the recorded candidate. Previously committed records that lack
+this checkpoint update still require continuation before Run can validate them.
 Discard reserves a writable, candidate-bound completion record before restoring source or index
 bytes. A reservation alone never acknowledges restoration; a fully written completion can be
 recovered after a failed result rename without restoring files again or consuming later edits.

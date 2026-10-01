@@ -9,6 +9,7 @@ use std::{
 };
 
 mod attempt;
+mod handoff;
 
 pub(super) fn validate_retry(
     directory: &Path,
@@ -89,11 +90,13 @@ pub(super) fn with_recovery(
             return Err(error);
         }
     };
+    let deliverable = deliverable
+        .mark_committed(revision.clone())
+        .map_err(|_| ProductRunServiceError::InvalidMessage)?;
+    let (deliverable, detail) = handoff::bind(directory, record, deliverable)?;
     Ok((
-        deliverable
-            .mark_committed(revision.clone())
-            .map_err(|_| ProductRunServiceError::InvalidMessage)?,
-        format!("Deliverable committed as {revision}; source patch saved to {display}"),
+        deliverable,
+        format!("Deliverable committed as {revision}; source patch saved to {display}{detail}"),
     ))
 }
 

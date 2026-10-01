@@ -132,7 +132,7 @@ pub proof fn stale_evidence_cannot_qualify(
     ),
 {}
 
-/// Candidate content and conversation revisions are both part of the freshness binding.
+/// Candidate snapshot and conversation revisions are both part of the freshness binding.
 pub open spec fn candidate_binding_spec(
     same_run: bool,
     same_workspace: bool,
@@ -142,7 +142,7 @@ pub open spec fn candidate_binding_spec(
     same_run && same_workspace && same_digest && same_conversation_revision
 }
 
-/// Changing either candidate content or conversation revision invalidates the prior binding.
+/// Changing either candidate snapshot or conversation revision invalidates the prior binding.
 pub proof fn candidate_or_revision_change_breaks_binding(
     same_digest: bool,
     same_conversation_revision: bool,

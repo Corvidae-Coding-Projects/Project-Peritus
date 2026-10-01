@@ -76,7 +76,12 @@ fn candidate_inspection_scroll_reaches_the_diff_without_a_blank_tail() {
 
 #[test]
 fn terminal_state_snapshot_distinguishes_each_user_outcome() {
-    assert_eq!(product_state(&candidate_snapshot(ProductRunPhase::Complete)), "Accepted");
+    let complete = candidate_snapshot(ProductRunPhase::Complete);
+    assert_eq!(product_state(&complete), "Ready for inspection");
+    let accepted = complete.deliverable().unwrap().clone().mark_accepted();
+    assert_eq!(product_state(&complete.clone().with_deliverable(accepted.clone())), "Accepted");
+    let committed = accepted.mark_committed("a".repeat(40)).unwrap();
+    assert_eq!(product_state(&complete.with_deliverable(committed)), "Committed");
     for phase in [ProductRunPhase::Complete, ProductRunPhase::Failed] {
         let run = candidate_snapshot(phase);
         let discarded = run.deliverable().unwrap().clone().mark_discarded();

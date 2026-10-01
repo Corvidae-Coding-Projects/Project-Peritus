@@ -69,6 +69,41 @@ fn conversation_revision_stales_prior_evidence() {
 }
 
 #[test]
+fn fresh_failed_check_revokes_qualification_without_changing_the_candidate() {
+    let root = repository();
+    let baseline = CandidateBaseline::capture(root.path()).expect("baseline");
+    let recorder =
+        CandidateRecorder::new(root.path(), baseline, run_id(), workspace_id(), None, false)
+            .expect("recorder");
+    fs::write(root.path().join("candidate.txt"), "changed").expect("mutation");
+    recorder
+        .record(CandidateStage::GatesPassed, 1, CheckpointEvidence::Gates(true))
+        .expect("gates");
+    recorder
+        .record(CandidateStage::GatesPassed, 1, CheckpointEvidence::Obligations(true))
+        .expect("requirements");
+    let qualified = recorder
+        .record(CandidateStage::Qualified, 1, CheckpointEvidence::Review(true))
+        .expect("review")
+        .expect("candidate");
+    assert!(qualified.is_qualified());
+
+    let current = recorder
+        .record(CandidateStage::SelfChecked, 1, CheckpointEvidence::Gates(false))
+        .expect("a fresh negative observation must be representable")
+        .expect("candidate stays accessible");
+    assert!(current.identity().same_candidate(qualified.identity()));
+    assert!(!current.is_qualified());
+    assert_eq!(current.stage(), CandidateStage::SelfChecked);
+    assert!(matches!(current.gates(), EvidenceStatus::Failed(_)));
+    assert!(current.review().is_current_and_satisfied(current.identity()));
+    assert_eq!(
+        recorder.settle(SettlementCause::Gate).unwrap().disposition(),
+        peritus_run_settlement::RunDisposition::CandidateAvailable
+    );
+}
+
+#[test]
 fn fresh_reversion_clears_an_old_workspace_candidate() {
     let root = repository();
     let baseline = CandidateBaseline::capture(root.path()).expect("baseline");

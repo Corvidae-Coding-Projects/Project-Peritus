@@ -2404,7 +2404,7 @@ evidence = [
 [[entries]]
 id = "OBL-0220"
 kind = "invariant"
-statement = "SettlementReducer observation preserves terminal state, accepts exactly an initial checkpoint or a valid strictly advancing successor before settlement, stores that exact checkpoint on success, and preserves the complete reducer with the exact modeled error on rejection."
+statement = "SettlementReducer observation preserves terminal state, accepts exactly an initial checkpoint or a valid strictly advancing successor before settlement, permits newer observations to revoke qualification without a content change, stores that exact checkpoint on success, and preserves the complete reducer with the exact modeled error on rejection."
 owning_crate = "peritus-run-settlement"
 source_file = "crates/orchestration/peritus-run-settlement/src/reducer.rs"
 symbol = "peritus_run_settlement::reducer::SettlementReducer::observe"
@@ -2414,7 +2414,7 @@ live_issue = "#75"
 owner = "ACTOR-0005"
 evidence = [
   { kind = "verus-proof", source_file = "crates/orchestration/peritus-run-settlement/src/reducer.rs", symbol = "peritus_run_settlement::reducer::SettlementReducer::observe", command = "cargo verus verify --package peritus-run-settlement --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
-  { kind = "refinement-test", source_file = "crates/orchestration/peritus-run-settlement/tests/reducer.rs", symbol = "peritus_run_settlement::tests::reducer::reducer_rejects_nonadvancing_regressing_and_post_terminal_updates", command = "cargo test --package peritus-run-settlement --all-targets --all-features --locked" },
+  { kind = "refinement-test", source_file = "crates/orchestration/peritus-run-settlement/tests/reducer.rs", symbol = "peritus_run_settlement::tests::reducer::reducer_allows_new_incomplete_evidence_and_rejects_post_terminal_updates", command = "cargo test --package peritus-run-settlement --all-targets --all-features --locked" },
   { kind = "refinement-test", source_file = "crates/orchestration/peritus-run-settlement/tests/reducer.rs", symbol = "peritus_run_settlement::tests::reducer::rejected_observations_and_terminal_updates_preserve_the_complete_reducer", command = "cargo test --package peritus-run-settlement --all-targets --all-features --locked" },
 ]
 

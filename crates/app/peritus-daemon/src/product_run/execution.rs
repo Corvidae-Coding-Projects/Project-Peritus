@@ -176,7 +176,7 @@ impl ProductRunService {
                     output.fixer_cycles + 1,
                     record.request.task().to_owned(),
                     if deliverable.is_some() {
-                        "Accepted — passing checks and independent review".to_owned()
+                        "Qualified — passing checks and independent review".to_owned()
                     } else {
                         "Completed in place — tracked task files passed checks and independent review".to_owned()
                     },

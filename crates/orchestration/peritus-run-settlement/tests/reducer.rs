@@ -182,7 +182,7 @@ fn evidence_from_another_candidate_is_rejected_or_stale() {
 }
 
 #[test]
-fn reducer_rejects_nonadvancing_regressing_and_post_terminal_updates() {
+fn reducer_allows_new_incomplete_evidence_and_rejects_post_terminal_updates() {
     let first = identity(3, 7, 1);
     let second = identity(3, 7, 2);
     let mut reducer = SettlementReducer::new();
@@ -196,10 +196,8 @@ fn reducer_rejects_nonadvancing_regressing_and_post_terminal_updates() {
         EvidenceStatus::Missing,
     )
     .expect("well-formed checkpoint");
-    assert_eq!(
-        reducer.observe(regressed).expect_err("stage regression").kind(),
-        SettlementErrorKind::CandidateStageRegressed,
-    );
+    reducer.observe(regressed).expect("new observation may revoke qualification");
+    assert!(!reducer.checkpoint().unwrap().is_qualified());
 
     reducer.settle(SettlementCause::Completed).expect("settlement");
     assert_eq!(
@@ -241,17 +239,19 @@ fn rejected_observations_and_terminal_updates_preserve_the_complete_reducer() {
         SettlementErrorKind::CheckpointDidNotAdvance,
     );
     assert_eq!(reducer, before);
-    let regressed = CandidateCheckpoint::new(
-        identity(3, 7, 2),
-        CandidateStage::Changed,
-        EvidenceStatus::Missing,
-        EvidenceStatus::Missing,
-        EvidenceStatus::Missing,
-    )
-    .expect("well-formed earlier stage");
+    let foreign = qualified(
+        CandidateIdentity::new(
+            RunId::new([9; 16]).expect("different run"),
+            first.identity().workspace_id(),
+            first.identity().candidate_digest(),
+            first.identity().conversation_revision(),
+            2,
+        )
+        .expect("foreign lineage"),
+    );
     assert_eq!(
-        reducer.observe(regressed).expect_err("stage must not regress").kind(),
-        SettlementErrorKind::CandidateStageRegressed,
+        reducer.observe(foreign).expect_err("lineage must remain exact").kind(),
+        SettlementErrorKind::CandidateLineageMismatch,
     );
     assert_eq!(reducer, before);
     reducer.settle(SettlementCause::Completed).expect("first settlement");

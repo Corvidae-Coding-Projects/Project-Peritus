@@ -13,6 +13,7 @@ mod disposition;
 mod error;
 mod evidence;
 mod identity;
+mod observation;
 mod reducer;
 mod settlement;
 mod stage;

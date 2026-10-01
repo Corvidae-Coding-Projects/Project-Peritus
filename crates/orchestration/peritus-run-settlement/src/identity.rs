@@ -6,7 +6,10 @@ use vstd::prelude::*;
 
 verus! {
 
-/// Exact run, workspace, content, conversation, and checkpoint identity of one candidate.
+/// Exact run, workspace snapshot, conversation, and checkpoint identity of one candidate.
+///
+/// The host supplies the snapshot digest. This legacy binding does not declare separate content
+/// and context dependencies or prove that unobserved execution inputs are covered.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct CandidateIdentity {
     run_id: RunId,
@@ -21,7 +24,7 @@ impl CandidateIdentity {
     pub closed spec fn spec_run_id(&self) -> RunId { self.run_id }
     /// Logical view of the managed workspace identity.
     pub closed spec fn spec_workspace_id(&self) -> WorkspaceId { self.workspace_id }
-    /// Logical view of the candidate content digest.
+    /// Logical view of the host-provided candidate snapshot digest.
     pub closed spec fn spec_candidate_digest(&self) -> Sha256Digest { self.candidate_digest }
     /// Logical view of the incorporated conversation revision.
     pub closed spec fn spec_conversation_revision(&self) -> u64 { self.conversation_revision }
@@ -34,7 +37,7 @@ impl CandidateIdentity {
             && self.spec_workspace_id().spec_bytes()@ == other.spec_workspace_id().spec_bytes()@
     }
 
-    /// Exact content and conversation identity agree within the same lineage.
+    /// Exact snapshot and conversation identity agree within the same lineage.
     pub open spec fn spec_same_candidate(&self, other: &Self) -> bool {
         self.spec_same_lineage(other)
             && self.spec_candidate_digest().spec_bytes()@
@@ -90,7 +93,7 @@ impl CandidateIdentity {
         ensures value == self.spec_workspace_id(),
     { self.workspace_id }
 
-    /// Digest of the exact candidate content.
+    /// Digest of the host snapshot to which observations are bound.
     #[must_use]
     pub const fn candidate_digest(&self) -> (value: Sha256Digest)
         ensures value == self.spec_candidate_digest(),

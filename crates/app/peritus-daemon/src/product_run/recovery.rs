@@ -5,8 +5,7 @@ use std::{collections::BTreeMap, path::PathBuf};
 use peritus_app_protocol::{ProductDeliverable, ProductRunPhase};
 use peritus_product_runner::ProductRunner;
 use peritus_run_settlement::{
-    CandidateCheckpoint, CandidateIdentity, CandidateStage, EvidenceStatus, QualificationEvidence,
-    RunDisposition, SettlementReducer,
+    CandidateCheckpoint, CandidateIdentity, CandidateStage, RunDisposition, SettlementReducer,
 };
 use peritus_types::{RunId, Sha256Digest, WorkspaceId};
 
@@ -87,34 +86,14 @@ pub(super) fn mark_stale(
     current_digest: Sha256Digest,
 ) -> Result<(), ProductRunServiceError> {
     let previous = record.checkpoint.ok_or(ProductRunServiceError::InvalidState)?;
-    let sequence = previous
-        .identity()
-        .checkpoint_sequence()
-        .checked_add(1)
-        .ok_or(ProductRunServiceError::InvalidState)?;
-    let identity = CandidateIdentity::new(
-        previous.identity().run_id(),
-        previous.identity().workspace_id(),
-        current_digest,
-        previous.identity().conversation_revision(),
-        sequence,
-    )
-    .map_err(|_| ProductRunServiceError::InvalidState)?;
-    let checkpoint = CandidateCheckpoint::new(
-        identity,
-        CandidateStage::Changed,
-        stale(previous.gates()),
-        stale(previous.obligations()),
-        stale(previous.review()),
-    )
-    .map_err(|_| ProductRunServiceError::InvalidState)?;
+    let checkpoint = changed_checkpoint(previous, current_digest)?;
     let cause = record.settlement.ok_or(ProductRunServiceError::InvalidState)?.cause();
     let mut reducer = SettlementReducer::new();
     reducer.observe(checkpoint).map_err(|_| ProductRunServiceError::InvalidState)?;
     let settlement = reducer.settle(cause).map_err(|_| ProductRunServiceError::InvalidState)?;
     let deliverable = reset_for_current_candidate(
         record.snapshot.deliverable().ok_or(ProductRunServiceError::InvalidState)?,
-        CandidateStage::Changed,
+        checkpoint.stage(),
     )?;
     let phase = match settlement.disposition() {
         RunDisposition::Accepted => ProductRunPhase::Complete,
@@ -144,6 +123,27 @@ pub(super) fn mark_stale(
     Ok(())
 }
 
+/// Advances an exact identity while retaining the original evidence as historical observations.
+pub(super) fn changed_checkpoint(
+    previous: CandidateCheckpoint,
+    current_digest: Sha256Digest,
+) -> Result<CandidateCheckpoint, ProductRunServiceError> {
+    let sequence = previous
+        .identity()
+        .checkpoint_sequence()
+        .checked_add(1)
+        .ok_or(ProductRunServiceError::InvalidState)?;
+    let identity = CandidateIdentity::new(
+        previous.identity().run_id(),
+        previous.identity().workspace_id(),
+        current_digest,
+        previous.identity().conversation_revision(),
+        sequence,
+    )
+    .map_err(|_| ProductRunServiceError::InvalidState)?;
+    previous.reobserve(identity).map_err(|_| ProductRunServiceError::InvalidState)
+}
+
 fn mark_unavailable(record: &mut RunRecord, cause: &str) -> Result<(), ProductRunServiceError> {
     record.snapshot = replace_snapshot(
         &record.snapshot,
@@ -157,17 +157,6 @@ fn mark_unavailable(record: &mut RunRecord, cause: &str) -> Result<(), ProductRu
         record.remaining_work.push("restore access to the managed workspace".to_owned());
     }
     Ok(())
-}
-
-const fn stale(
-    evidence: &EvidenceStatus<QualificationEvidence>,
-) -> EvidenceStatus<QualificationEvidence> {
-    match evidence {
-        EvidenceStatus::Missing => EvidenceStatus::Missing,
-        EvidenceStatus::Current(record)
-        | EvidenceStatus::Failed(record)
-        | EvidenceStatus::Stale(record) => EvidenceStatus::Stale(*record),
-    }
 }
 
 fn reset_for_current_candidate(

@@ -13,11 +13,14 @@ On Windows, a scoped title owner displays `Peritus`, reclaims the title after fo
 and restores the caller's exact console title on exit. The launcher acquires the same owner before
 provider setup and around login handoffs. Detached processes and other platforms are unaffected.
 
-The Runs dashboard presents accepted, candidate-available, waiting, cancelled, stopped, and
-recovery-required states directly. Its handoff panel exposes exact paths, checks, review evidence,
+The Runs dashboard presents ready-for-inspection, accepted, committed, candidate-available,
+waiting, cancelled, stopped, and recovery-required states directly. Its handoff panel exposes exact paths, checks, review evidence,
 remaining work, and run instructions. Users can inspect, continue, run, export, accept, commit, or
 discard a candidate without finding an internal worktree or log. Foreground run commands temporarily
 return terminal ownership to the candidate and restore the full-screen interface afterward.
+Completion alone does not label a handoff accepted. Explicit acceptance and commitment use their
+own durable flags. A committed candidate runs against its recorded post-commit identity; earlier
+check and review evidence stays historical after the Git identity changes.
 Ctrl-C can interrupt the foreground candidate without terminating the TUI owner. While the
 interface is active, Ctrl-C or Ctrl-Q requests orderly client exit.
 On Unix, the child acquires its own foreground process group before execution; terminal ownership

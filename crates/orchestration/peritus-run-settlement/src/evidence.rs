@@ -91,6 +91,14 @@ pub enum EvidenceStatus<T> {
 }
 
 impl<T> EvidenceStatus<T> {
+    /// Logical view of the retained original observation, independent of freshness.
+    pub open spec fn spec_record(&self) -> Option<EvidenceRecord<T>> {
+        match self {
+            Self::Missing => None,
+            Self::Current(record) | Self::Failed(record) | Self::Stale(record) => Some(*record),
+        }
+    }
+
     /// Current or failed evidence has the exact candidate binding and an earlier or equal sequence.
     pub open spec fn spec_is_current_for(&self, candidate: &CandidateIdentity) -> bool {
         match self {
@@ -161,6 +169,56 @@ impl<T> EvidenceStatus<T> {
 }
 
 impl EvidenceStatus<QualificationEvidence> {
+    /// Reconciles a retained observation against the current snapshot binding.
+    ///
+    /// Provenance and payload are never rewritten. A matching retained observation can apply
+    /// again after an exact reversion; a differing binding remains historical evidence.
+    ///
+    /// # Errors
+    /// Rejects a matching observation from a future checkpoint sequence.
+    pub fn reconcile_for(
+        self,
+        candidate: &CandidateIdentity,
+    ) -> (result: Result<Self, crate::SettlementError>)
+        ensures
+            match result {
+                Ok(value) => value.spec_record() == self.spec_record(),
+                Err(_) => true,
+            },
+            match result {
+            Ok(Self::Missing) => self == Self::Missing,
+            Ok(Self::Current(record)) => record.spec_value() == QualificationEvidence::Satisfied
+                && record.spec_provenance().spec_same_candidate(candidate)
+                && record.spec_provenance().spec_checkpoint_sequence()
+                    <= candidate.spec_checkpoint_sequence(),
+            Ok(Self::Failed(record)) => record.spec_value() == QualificationEvidence::Unsatisfied
+                && record.spec_provenance().spec_same_candidate(candidate)
+                && record.spec_provenance().spec_checkpoint_sequence()
+                    <= candidate.spec_checkpoint_sequence(),
+            Ok(Self::Stale(record)) => !record.spec_provenance().spec_same_candidate(candidate),
+            Err(error) => error.spec_kind()
+                == crate::SettlementErrorKind::CurrentEvidenceBindingMismatch,
+        },
+    {
+        let record = match self {
+            Self::Missing => return Ok(Self::Missing),
+            Self::Current(record) | Self::Failed(record) | Self::Stale(record) => record,
+        };
+        if !record.provenance.same_candidate(candidate) {
+            return Ok(Self::Stale(record));
+        }
+        if record.provenance.checkpoint_sequence() > candidate.checkpoint_sequence() {
+            return Err(crate::SettlementError::new(
+                crate::SettlementErrorKind::CurrentEvidenceBindingMismatch,
+            ));
+        }
+        if record.value.satisfied() {
+            Ok(Self::Current(record))
+        } else {
+            Ok(Self::Failed(record))
+        }
+    }
+
     /// Only a positive current observation for the exact candidate satisfies qualification.
     pub open spec fn spec_is_current_and_satisfied(&self, candidate: &CandidateIdentity) -> bool {
         match self {

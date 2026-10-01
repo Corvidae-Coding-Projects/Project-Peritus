@@ -146,7 +146,12 @@ pub(super) fn inspect_text(run: &ProductRunSnapshot) -> String {
 pub(super) fn product_state(run: &ProductRunSnapshot) -> String {
     match (run.phase(), run.deliverable()) {
         (_, Some(deliverable)) if deliverable.discarded() => "Discarded".to_owned(),
-        (ProductRunPhase::Complete, _) => "Accepted".to_owned(),
+        (_, Some(deliverable)) if !deliverable.commit_revision().is_empty() => {
+            "Committed".to_owned()
+        }
+        (_, Some(deliverable)) if deliverable.accepted() => "Accepted".to_owned(),
+        (ProductRunPhase::Complete, Some(_)) => "Ready for inspection".to_owned(),
+        (ProductRunPhase::Complete, None) => "Complete".to_owned(),
         (ProductRunPhase::WaitingForUser, _) => "Waiting for you".to_owned(),
         (ProductRunPhase::Cancelled, Some(_)) => "Cancelled — candidate available".to_owned(),
         (ProductRunPhase::Cancelled, None) => "Cancelled".to_owned(),

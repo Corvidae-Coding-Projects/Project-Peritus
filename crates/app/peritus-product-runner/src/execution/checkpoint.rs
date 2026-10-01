@@ -159,10 +159,10 @@ impl CandidateRecorder {
         let stage = previous
             .filter(|_| same_candidate)
             .map_or(requested_stage, |checkpoint| stronger(checkpoint.stage(), requested_stage));
-        let mut gates = carry(previous.as_ref().map(CandidateCheckpoint::gates), same_candidate);
+        let mut gates = previous.map_or(EvidenceStatus::Missing, |value| *value.gates());
         let mut obligations =
-            carry(previous.as_ref().map(CandidateCheckpoint::obligations), same_candidate);
-        let mut review = carry(previous.as_ref().map(CandidateCheckpoint::review), same_candidate);
+            previous.map_or(EvidenceStatus::Missing, |value| *value.obligations());
+        let mut review = previous.map_or(EvidenceStatus::Missing, |value| *value.review());
         match acquired {
             CheckpointEvidence::None => {}
             CheckpointEvidence::Gates(satisfied) => {
@@ -179,7 +179,7 @@ impl CandidateRecorder {
                 review = EvidenceStatus::Missing;
             }
         }
-        let checkpoint = CandidateCheckpoint::new(identity, stage, gates, obligations, review)
+        let checkpoint = CandidateCheckpoint::observe(identity, stage, gates, obligations, review)
             .map_err(invariant)?;
         recorder_state.reducer.observe(checkpoint).map_err(invariant)?;
         drop(recorder_state);
@@ -232,28 +232,6 @@ impl CandidateRecorder {
                 "candidate checkpoint recorder is poisoned",
             )
         })
-    }
-}
-
-const fn carry(
-    status: Option<&EvidenceStatus<QualificationEvidence>>,
-    same_candidate: bool,
-) -> EvidenceStatus<QualificationEvidence> {
-    match status.copied() {
-        None | Some(EvidenceStatus::Missing) => EvidenceStatus::Missing,
-        Some(EvidenceStatus::Current(record) | EvidenceStatus::Failed(record))
-            if same_candidate =>
-        {
-            if record.value().satisfied() {
-                EvidenceStatus::Current(record)
-            } else {
-                EvidenceStatus::Failed(record)
-            }
-        }
-        Some(EvidenceStatus::Current(record) | EvidenceStatus::Failed(record)) => {
-            EvidenceStatus::Stale(record)
-        }
-        Some(EvidenceStatus::Stale(record)) => EvidenceStatus::Stale(record),
     }
 }
 

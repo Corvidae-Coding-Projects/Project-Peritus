@@ -13,6 +13,8 @@ use std::process::Output;
 use std::sync::{Arc, atomic::AtomicBool};
 use tempfile::TempDir;
 
+#[path = "tests/commit_handoff.rs"]
+mod commit_handoff;
 #[path = "tests/discard.rs"]
 mod discard;
 #[path = "tests/nested.rs"]
