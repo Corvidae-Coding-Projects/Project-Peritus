@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1887,
-        "tip_oid": "43b357b93ff11e3ce2d403bfd445467747c33e07",
-        "prefix_sha256": "e02cc402eaff4b56fc96e3e17d0dcc879805beaee27194cb5e5bbe0a925814eb"
+        "sequence": 1888,
+        "tip_oid": "2b899865cda20258ec151aa68fb6cb95a92b8fda",
+        "prefix_sha256": "659beb51897ac8e2ca9ddd7683d73949657934f5db9be8638f3006a8bcc1b14e"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 2009,
+  "next_comment_id": 2010,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -16544,7 +16544,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-28T00:58:41.412806074Z",
-      "updated_at": "2026-10-01T11:00:00.337770832Z",
+      "updated_at": "2026-10-01T11:00:29.771165200Z",
       "labels": [
         "bug"
       ],
@@ -17160,6 +17160,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAeuFpYejWNH42/dTdAguZgeNNZXbwZN1OVWUTW7JB0IKn5VA44B+ENMxEDb+Dxd/IKONQWkOjzjhnTZt8bGYuCw=="
+        },
+        "6ddcb508-f773-4d88-8590-168d23ead55b": {
+          "display_id": 2009,
+          "author": "6ME5",
+          "content": "Result: signed commit 9e1a436cf fixes DD6-003 scheduler starvation by marking only the synchronous developer-command wait as blocking, and adds a Linux exact-identity owner-death watchdog using peritusd itself plus parent-death signaling for native launches. Verification: cargo fmt check, git diff check, peritus-process tests (23 unit, 3 native probe, 1 conformance, 25 integration), strict clippy for peritus-process/peritus-product-runner/peritus-daemon, peritusd build, daemon serial lib suite (253 passed, 6 ignored), and live owner-EOF/disarm process-group drills. This source is ready for installed behavioral qualification; daily-driver qualification remains open.",
+          "created_at": "2026-10-01T11:00:29.767679149Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAgGQAnxVuLQ0dvkKIIZjBRo+uMo4P08IjNF+Xv9+intEbzkNlS48ueLwrWp0kM//IUj2KSLs788SY9r8Je+SRBw=="
         },
         "735eac6c-b4f4-44df-a889-45f05d276e2e": {
           "display_id": 1932,
