@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1928,
-        "tip_oid": "d20a095996fac5451c035679eca828156a0ff740",
-        "prefix_sha256": "b678d8587a8d7d0a5eacf86460336f66fd963dff29f31097d3cc01091def22a8"
+        "sequence": 1929,
+        "tip_oid": "74128aa188bef74335de641431ae7f48e3a23ffa",
+        "prefix_sha256": "688de44062706442c004c061955ff7e9339869553bf8ac26f697d75ba1f52759"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 2042,
+  "next_comment_id": 2043,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -16589,7 +16589,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-28T00:58:41.412806074Z",
-      "updated_at": "2026-10-01T17:11:22.763957626Z",
+      "updated_at": "2026-10-01T17:44:26.791033169Z",
       "labels": [
         "bug"
       ],
@@ -17349,6 +17349,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAluHseJ5DCGplnWjqY1R/lzWq/NRIClg5WQNcT2whAkrFFYOnt9bE9WwjOX3FzHEdRiaLlf0sn7pbf9QbIGndBg=="
+        },
+        "7563de81-6440-408f-88cb-dd5793c429aa": {
+          "display_id": 2042,
+          "author": "6ME5",
+          "content": "Committed 1da05a8d8 (signed): added discoverable TUI /retry, durable live provider-turn age/latest event/counters, configurable bounded provider-turn deadline with exact-run recovery, atomic steering-before-tool admission, reconnect-stable elapsed timing, and bounded repeated immutable reads. Exact public route run fbd55b0c185fa117076f421aac232c81 exercised picker discovery, live progress, timeout recovery, and exact retry. Local five-crate tests, strict Clippy, fmt, and diff checks passed.",
+          "created_at": "2026-10-01T17:44:26.776922369Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA8Mf/Ou+7+DtCsf9rOKNLF5k37l8R3yx9asRhL2EwJBPVdjFj+rzC/LGXuVtj5FT+kRxY87ljJd2lpjMJe53xCQ=="
         },
         "76b59875-853c-4e7e-a238-603cd8f283a1": {
           "display_id": 1954,
