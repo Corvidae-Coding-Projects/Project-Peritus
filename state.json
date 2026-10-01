@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1890,
-        "tip_oid": "94f72d04a9acc62c7f7d5fc7a9ef510f52c1d385",
-        "prefix_sha256": "bed44d6046ba08d90d4d7c7ce2c9e72271bdb609d5c9b4b7cfb82f08c285779c"
+        "sequence": 1891,
+        "tip_oid": "ae73c7685112d67924612390d13970bbc7280381",
+        "prefix_sha256": "e182e61e80a70230fe4afd0d1e6a20ff6bb7ac8188b48072a240bb74803e39d9"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 2012,
+  "next_comment_id": 2013,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -16544,7 +16544,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-28T00:58:41.412806074Z",
-      "updated_at": "2026-10-01T11:25:05.894624872Z",
+      "updated_at": "2026-10-01T11:25:33.390741850Z",
       "labels": [
         "bug"
       ],
@@ -17943,6 +17943,15 @@
           "kind": "observation",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA03azG+s/QMZUO5NcwbvPc88JDS2UMju9uxLIrl3iHSr043zOlVjStStUBdeTvtBiMLeouRhOhDJPmi178yZRCA=="
+        },
+        "fbf6a62e-ed69-444d-b5aa-befb882be30f": {
+          "display_id": 2012,
+          "author": "6ME5",
+          "content": "Result: signed commit ddb4c0283 fixes the repeated Uncovered candidate files loop for exact requested manifestless outputs. One host-owned explicit-path analysis now supplies presence, closed-inventory, and target-planning facts. Exact requested artifacts gain coverage; unrequested siblings remain uncovered. Verification: peritus-gates 35 passed, peritus-product-runner 452 passed/5 ignored plus checkpoint/external-effect/in-place/composition/failover/role integration suites, strict clippy, fmt, diff check, and peritus-daemon all-target check.",
+          "created_at": "2026-10-01T11:25:33.387176500Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAfwOCyBtd1Lam1+JFgPhp5Jm/cyLIQszbwZjNvwA7/a5ssxhU/A98MVV27Inx0MVIy6UJBbp0wr/0yV1Zrd60BQ=="
         },
         "fc3e3113-418d-4ee8-80b7-9a2e1f0b6e2a": {
           "display_id": 1940,
