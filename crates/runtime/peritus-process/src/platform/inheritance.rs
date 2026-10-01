@@ -4,6 +4,34 @@ use std::process::Command;
 
 use crate::{ErrorCode, NativeProtectedHandle, ProcessError, ProcessOperation, RecoveryClass};
 
+#[cfg(target_os = "linux")]
+#[allow(
+    unsafe_code,
+    reason = "the Linux parent-death contract is installed in the forked child before exec"
+)]
+pub(crate) fn configure_parent_death(command: &mut Command) {
+    use std::os::unix::process::CommandExt as _;
+
+    // Capture before fork. If ownership changed before the child installs the kernel contract,
+    // terminate in the child instead of executing without an owner.
+    let expected_parent = unsafe { libc::getpid() };
+    unsafe {
+        command.pre_exec(move || {
+            if libc::prctl(libc::PR_SET_PDEATHSIG, libc::SIGKILL) != 0 {
+                return Err(std::io::Error::last_os_error());
+            }
+            if libc::getppid() != expected_parent {
+                let _ = libc::kill(libc::getpid(), libc::SIGKILL);
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::Interrupted,
+                    "process owner exited during launch",
+                ));
+            }
+            Ok(())
+        });
+    }
+}
+
 #[cfg(unix)]
 #[allow(
     unsafe_code,

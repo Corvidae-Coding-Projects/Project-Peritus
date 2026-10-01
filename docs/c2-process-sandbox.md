@@ -152,10 +152,14 @@ without a terminal observation, or indeterminate. Only an exact live owned tree 
 during recovery. PID reuse, mismatched start identity, corrupt records, or unverifiable state do
 not permit signalling and never imply success.
 
+Result knowledge and ownership settlement are independent facts. An exact-absence observation may
+durably settle tree and support-task ownership while the command result remains absent-unobserved.
+That settled uncertainty does not make daemon shutdown unclean and does not become success.
+
 Holder-quiescence inspection correlates the exact fenced generation and prior actor/session holder
 with every process and support task in the ownership registry. Evidence is produced only after a
-complete scan finds no matching live or unresolved execution, every started tree has terminated,
-every task has joined, and cleanup is complete. This supplies C2 provenance for B1 resource
+complete scan finds no matching live or unresolved ownership, every started tree has a durable
+quiescence observation, every task has joined, and cleanup is complete. This supplies C2 provenance for B1 resource
 reconciliation; a caller-created logical value is not a substitute.
 
 ## Stable failures

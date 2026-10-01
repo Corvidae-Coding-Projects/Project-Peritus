@@ -19,7 +19,7 @@ Use `--help` for path/endpoint overrides.
 - `api.rs`: loopback host/origin/token checks, HTTP routes, shared mutation dispatcher.
 - `api/file_response.rs`: confined streaming, PDF-only inline policy, and attachment delivery.
 - `server.rs`: local listener startup and graceful shutdown.
-- `state.rs`: durable presentation state, original operation outcomes, canonical-root nesting.
+- `state.rs`: durable presentation state, exact prepared operation context and outcomes, canonical-root nesting.
 - `config.rs`: validated TOML and platform-native discovery independent of WebUI overrides.
 - `daemon.rs`: native conversation, model, status, and run protocol adapter.
 - `files.rs`: project-confined directory pages and UTF-8 text previews.

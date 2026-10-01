@@ -31,7 +31,15 @@ pub(in crate::product_run) fn load_workbench_records(
         return Ok(BTreeMap::new());
     };
     let mut records = BTreeMap::new();
-    for path in projection_paths(&directory) {
+    let quarantine = directory.join(".quarantine");
+    let mut paths = projection_paths(&directory);
+    paths.extend(
+        projection_paths(&quarantine)
+            .into_iter()
+            .filter(|path| path.file_name().is_some_and(|name| !directory.join(name).exists())),
+    );
+    for path in paths {
+        let recovering = path.parent() == Some(quarantine.as_path());
         let metadata = match fs::symlink_metadata(&path) {
             Ok(metadata) => metadata,
             Err(error) => {
@@ -69,13 +77,16 @@ pub(in crate::product_run) fn load_workbench_records(
                 continue;
             }
         };
-        let Some(operation) =
-            persisted.interaction.as_ref().and_then(|options| options.workbench.as_ref())
-        else {
-            quarantine_record(&path, "workbench run projection has no exact start binding", None);
+        let operation = persisted.interaction.workbench.clone();
+        if recovering
+            && !matches!(
+                operation.intent(),
+                peritus_product_runner::control::ControlIntent::StartGoal { .. }
+            )
+        {
             continue;
-        };
-        let accepted = match controls.resolve(operation) {
+        }
+        let accepted = match controls.resolve(&operation) {
             Ok(resolved) => resolved.is_some(),
             Err(error) => {
                 quarantine_record(
@@ -87,7 +98,7 @@ pub(in crate::product_run) fn load_workbench_records(
             }
         };
         let captured = if accepted {
-            match controls.capture_execution(operation) {
+            match controls.capture_execution(&operation) {
                 Ok(captured) => Some(captured),
                 Err(error) => {
                     quarantine_record(
@@ -99,6 +110,9 @@ pub(in crate::product_run) fn load_workbench_records(
                 }
             }
         } else {
+            if recovering {
+                continue;
+            }
             None
         };
         let mut record = match persisted.into_record_with_context(
@@ -114,6 +128,14 @@ pub(in crate::product_run) fn load_workbench_records(
                 continue;
             }
         };
+        if !resume_marker_valid(controls, &operation, &record) {
+            quarantine_record(
+                &path,
+                "goal resume launch marker has no exact control receipt",
+                None,
+            );
+            continue;
+        }
         if !record_path_matches(&path, record.request.run_id()) {
             quarantine_record(
                 &path,
@@ -140,12 +162,10 @@ pub(in crate::product_run) fn load_workbench_records(
                 }
             };
         }
-        if captured.as_ref().is_some_and(|capture| {
-            record
-                .interaction
-                .as_ref()
-                .is_some_and(|options| options.incorporated > capture.inputs().generation())
-        }) {
+        if captured
+            .as_ref()
+            .is_some_and(|capture| record.interaction.incorporated > capture.inputs().generation())
+        {
             quarantine_record(
                 &path,
                 "workbench incorporation exceeds its authoritative input generation",
@@ -162,9 +182,43 @@ pub(in crate::product_run) fn load_workbench_records(
             retire_record(&path, "workbench run projection exceeded retained history");
             continue;
         }
+        if recovering {
+            let Some(parent) = root.parent() else { continue };
+            if let Err(error) = super::write_record(&parent.join("product-runs"), &record) {
+                crate::diagnostic::report(&format!(
+                    "peritusd: could not republish validated goal {}: {error}",
+                    path.display()
+                ));
+                continue;
+            }
+            crate::diagnostic::report(&format!(
+                "peritusd: recovered validated goal projection {}; original quarantine copy retained",
+                path.display()
+            ));
+        }
         records.insert(run, record);
     }
     Ok(records)
+}
+
+fn resume_marker_valid(
+    controls: &ControlStore,
+    start: &peritus_product_runner::control::ControlOperation,
+    record: &RunRecord,
+) -> bool {
+    let Some(marker) = record.goal_resume else { return true };
+    controls.operation(start.conversation(), marker).is_ok_and(|operation| {
+        operation.is_some_and(|operation| {
+            operation.actor_bytes() == start.actor_bytes()
+                && operation.workspace_bytes() == start.workspace_bytes()
+                && matches!(
+                    operation.intent(),
+                    peritus_product_runner::control::ControlIntent::ResumeGoal { goal, .. }
+                        if *goal == start.id()
+                )
+                && controls.resolve(&operation).is_ok_and(|receipt| receipt.is_some())
+        })
+    })
 }
 
 pub(super) fn make_room_for_record(

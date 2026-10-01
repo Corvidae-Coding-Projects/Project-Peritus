@@ -66,7 +66,7 @@ async fn connect_all(
     let hello = ClientHello::new_with_session(
         ProtocolId::new([0xa2; 16]).expect("protocol"),
         requested_session,
-        vec![VersionRange::new(1, 0, 0).expect("version")],
+        vec![peritus_app_protocol::CURRENT_PROTOCOL_RANGE],
         feature_names(),
         Vec::new(),
         AppProtocolLimits::PRODUCTION,

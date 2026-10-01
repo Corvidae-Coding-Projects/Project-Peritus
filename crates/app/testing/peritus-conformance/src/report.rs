@@ -62,7 +62,7 @@ impl CaseReport {
         &self.observations
     }
 
-    /// Returns a setup, assertion, or execution-panic failure when present.
+    /// Returns a setup, exercise, assertion, or execution-panic failure when present.
     #[must_use]
     pub const fn primary_failure(&self) -> Option<&CaseFailure> {
         self.primary_failure.as_ref()

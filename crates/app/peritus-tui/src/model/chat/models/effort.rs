@@ -46,6 +46,7 @@ impl AppModel {
     }
 
     pub(super) fn open_effort_picker(&mut self) {
+        self.abandon_model_discovery();
         let current = self.chat.model_role.choice(&self.chat.models).effort();
         self.chat.effort_selection =
             ProductModelEffort::ALL.iter().position(|effort| *effort == current).unwrap_or(0);

@@ -4,6 +4,7 @@ import { execFileSync, spawn, type ChildProcess } from 'node:child_process';
 import { mkdtemp, mkdir, writeFile, readFile, rm, symlink } from 'node:fs/promises';
 import { resolve, join } from 'node:path';
 import { randomUUID } from 'node:crypto';
+import { tmpdir } from 'node:os';
 import AxeBuilder from '@axe-core/playwright';
 
 let temporary:string,root:string,repository:string,other:string,remote:string,server:ChildProcess,token:string,project:string,firstSession:string;
@@ -23,7 +24,7 @@ async function query(request:APIRequestContext,kind:string,args:Record<string,st
 }
 test.describe.configure({mode:'serial'});
 test.beforeAll(async({request})=>{
-  temporary=await mkdtemp('/tmp/opencode/peritus-console-e2e-');root=join(temporary,'alpha');repository=join(root,'source');other=join(temporary,'beta');remote=join(temporary,'remote.git');
+  temporary=await mkdtemp(join(tmpdir(),'peritus-console-e2e-'));root=join(temporary,'alpha');repository=join(root,'source');other=join(temporary,'beta');remote=join(temporary,'remote.git');
   await mkdir(repository,{recursive:true});await mkdir(other);
   await writeFile(join(root,'README.md'),'# Test project\n\nA **real** local file.\n');
   await writeFile(join(root,'sample.py'),'def hello():\n    return "peritus"\n');
@@ -219,7 +220,7 @@ test('gateway restart rotates auth and releases an operation that never reached 
   const composer=page.getByRole('textbox',{name:'Message Peritus or enter a slash command'});await composer.fill('Keep the original draft');
   const oldToken=token,operation=randomUUID();await stopServer();
   const state=JSON.parse(await readFile(join(temporary,'workspace.json'),'utf8'));
-  state.operations[operation]={input:{operation,command:'send',session:firstSession,text:'Keep the original draft'},result:null};
+  state.operations[operation]={input:{operation,command:'send',session:firstSession,text:'Keep the original draft'},prepared:null,result:null};
   await writeFile(join(temporary,'workspace.json'),JSON.stringify(state));await startServer();
   expect((await request.get('/api/query',{headers:{'x-peritus-token':oldToken},params:{kind:'files',project}})).status()).toBe(403);
   const boot=await (await request.get('/api/bootstrap')).json();token=boot.token;expect(token).not.toBe(oldToken);

@@ -6,6 +6,47 @@ use super::super::{
 
 pub(super) const WORKBENCH_TYPES: &[AppTypeDescriptor] = &[
     AppTypeDescriptor {
+        name: "WorkbenchContinuation",
+        rust_type: "WorkbenchContinuation",
+        fields: &[
+            field(
+                "query",
+                W::Struct,
+                &[],
+                "WorkbenchQuery",
+                "WorkbenchQuery",
+                J::Ref("WorkbenchQuery"),
+                true,
+            ),
+            field(
+                "mode",
+                W::U16,
+                &[],
+                "ProductInteractionMode",
+                "\"chat\" | \"plan\" | \"review\" | \"build\"",
+                J::Enum(&["chat", "plan", "review", "build"]),
+                true,
+            ),
+        ],
+    },
+    AppTypeDescriptor {
+        name: "WorkbenchExecutionState",
+        rust_type: "WorkbenchExecutionState",
+        fields: &[
+            field(
+                "snapshot",
+                W::Struct,
+                &[],
+                "WorkbenchSnapshot",
+                "WorkbenchSnapshot",
+                J::Ref("WorkbenchSnapshot"),
+                true,
+            ),
+            field("run", W::Option, &[B::NonZero], "Option<RunId>", "RunId", J::Identifier, false),
+            field("goal", W::Boolean, &[], "bool", "boolean", J::Boolean, true),
+        ],
+    },
+    AppTypeDescriptor {
         name: "WorkbenchExecutionSettings",
         rust_type: "WorkbenchExecutionSettings",
         fields: &[

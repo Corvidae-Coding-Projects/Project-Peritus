@@ -6,10 +6,10 @@ use crate::{
 };
 use peritus_app_client::Client;
 use peritus_app_protocol::{
-    AppRequestPayload, AppResponsePayload, ProductInteractionMode, ProductInteractionRequest,
-    ProductModelChoice, ProductModelEffort, ProductModelQuery, ProductProviderSelection,
-    ProductRoleModels, ProductRunControl, ProductRunControlAction, ProductRunConversationQuery,
-    ProductRunQuery, ProductRunRequest, ProductRunSnapshot,
+    AppErrorCode, AppRequestPayload, AppResponsePayload, ConversationId, ConversationTitle,
+    ProductInteractionMode, ProductInteractionQuery, ProductModelChoice, ProductModelEffort,
+    ProductModelQuery, ProductProviderSelection, ProductRoleModels, ProductRunControl,
+    ProductRunControlAction, ProductRunQuery, ProductRunSnapshot, WorkbenchQuery,
 };
 use peritus_types::{ProviderProfileId, RunId, WorkspaceId};
 use serde_json::{Value, json};
@@ -115,12 +115,25 @@ pub fn facts(app: &App, project: &Project) -> Result<Value> {
 }
 
 mod chat;
+mod conversation;
 pub mod improvements;
 mod readiness;
 pub mod receipts;
 #[cfg(all(test, unix))]
 mod tests;
 pub use readiness::ready_facts;
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+struct PreparedChat {
+    query: WorkbenchQuery,
+    run: RunId,
+    title: ConversationTitle,
+    providers: ProductProviderSelection,
+    mode: ProductInteractionMode,
+    models: ProductRoleModels,
+    text: String,
+}
+
 async fn request(app: &App, payload: AppRequestPayload) -> Result<AppResponsePayload> {
     let response = raw_request(app, payload).await?;
     if let AppResponsePayload::Error(error) = &response {
@@ -148,11 +161,110 @@ pub async fn status(app: &App) -> Result<Value> {
     }
 }
 fn snapshot(value: &ProductRunSnapshot) -> Value {
-    json!({"id":hex(value.run_id().as_bytes()),"workspace":hex(value.workspace_id().as_bytes()),"providers":{"writer":hex(value.providers().writer().as_bytes()),"reviewer":hex(value.providers().reviewer().as_bytes()),"fixer":hex(value.providers().fixer().as_bytes())},"phase":format!("{:?}",value.phase()),"busy":!value.phase().terminal(),"task":value.task(),"status":value.status(),"diff":value.diff(),"gates":value.gates(),"review":value.review(),"summary":value.summary(),"deliverable":value.deliverable().map(|d|json!({"root":d.workspace_path(),"paths":d.changed_paths(),"instructions":d.run_instructions(),"qualification":format!("{:?}",d.qualification()),"accepted":d.accepted(),"commitRevision":d.commit_revision(),"exportPath":d.export_path(),"discarded":d.discarded()}))})
+    let controls = value.operation().legal_controls();
+    json!({"id":hex(value.run_id().as_bytes()),"workspace":hex(value.workspace_id().as_bytes()),"providers":{"writer":hex(value.providers().writer().as_bytes()),"reviewer":hex(value.providers().reviewer().as_bytes()),"fixer":hex(value.providers().fixer().as_bytes())},"phase":format!("{:?}",value.phase()),"task":value.task(),"status":value.status(),"diff":value.diff(),"gates":value.gates(),"review":value.review(),"summary":value.summary(),"operation":{"kind":format!("{:?}",value.operation().kind()),"state":format!("{:?}",value.operation().state()),"identity":value.operation().identity(),"known":value.operation().known(),"uncertainty":value.operation().uncertainty(),"legalControls":{"stop":controls.cancel(),"retry":controls.retry(),"accept":controls.accept(),"commit":controls.commit(),"export":controls.export(),"discard":controls.discard(),"acknowledge":controls.acknowledge()}},"deliverable":value.deliverable().map(|d|json!({"root":d.workspace_path(),"paths":d.changed_paths(),"instructions":d.run_instructions(),"qualification":format!("{:?}",d.qualification()),"accepted":d.accepted(),"commitRevision":d.commit_revision(),"exportPath":d.export_path(),"discarded":d.discarded()}))})
 }
 fn model_values(models: &ProductRoleModels) -> Value {
     let choice = |value: &ProductModelChoice| json!({"id":value.id(),"manual":value.manual(),"effort":value.effort().label()});
     json!({"writer":choice(models.writer()),"reviewer":choice(models.reviewer()),"fixer":choice(models.fixer())})
+}
+fn model_choice(value: &Value, role: &str) -> Result<ProductModelChoice> {
+    let model = value[role]["id"].as_str().unwrap_or("");
+    let choice = if model.is_empty() {
+        ProductModelChoice::default()
+    } else {
+        ProductModelChoice::new(model.into(), value[role]["manual"].as_bool().unwrap_or(false))
+            .map_err(problem)?
+    };
+    let effort = ProductModelEffort::parse(value[role]["effort"].as_str().unwrap_or("default"))
+        .ok_or_else(|| problem("Unknown model effort"))?;
+    Ok(choice.with_effort(effort))
+}
+fn role_models(value: &Value) -> Result<ProductRoleModels> {
+    Ok(ProductRoleModels::new(
+        model_choice(value, "writer")?,
+        model_choice(value, "reviewer")?,
+        model_choice(value, "fixer")?,
+    ))
+}
+fn interaction_mode(value: &str) -> Result<ProductInteractionMode> {
+    match value {
+        "chat" => Ok(ProductInteractionMode::Chat),
+        "plan" => Ok(ProductInteractionMode::Plan),
+        "review" => Ok(ProductInteractionMode::Review),
+        "build" => Ok(ProductInteractionMode::Build),
+        _ => Err(problem("Unknown conversation mode")),
+    }
+}
+impl PreparedChat {
+    fn retained(&self) -> Value {
+        json!({
+            "version":1,
+            "conversation":hex(self.query.conversation().as_bytes()),
+            "workspace":hex(self.query.workspace().as_bytes()),
+            "run":hex(self.run.as_bytes()),
+            "title":self.title.as_str(),
+            "providers":{
+                "writer":hex(self.providers.writer().as_bytes()),
+                "reviewer":hex(self.providers.reviewer().as_bytes()),
+                "fixer":hex(self.providers.fixer().as_bytes())
+            },
+            "mode":format!("{:?}",self.mode).to_lowercase(),
+            "models":model_values(&self.models),
+            "text":self.text
+        })
+    }
+    fn from_retained(value: &Value) -> Result<Self> {
+        if value["version"] != 1 {
+            return Err(problem("Unsupported prepared message context"));
+        }
+        let identity = |name: &str| -> Result<[u8; 16]> {
+            bytes(
+                value[name]
+                    .as_str()
+                    .ok_or_else(|| problem("Incomplete prepared message context"))?,
+            )
+        };
+        let provider = |role: &str| -> Result<ProviderProfileId> {
+            ProviderProfileId::new(bytes(
+                value["providers"][role]
+                    .as_str()
+                    .ok_or_else(|| problem("Incomplete prepared provider context"))?,
+            )?)
+            .map_err(|error| problem(format!("{error:?}")))
+        };
+        Ok(Self {
+            query: WorkbenchQuery::new(
+                ConversationId::new(identity("conversation")?)
+                    .map_err(|error| problem(format!("{error:?}")))?,
+                WorkspaceId::new(identity("workspace")?)
+                    .map_err(|error| problem(format!("{error:?}")))?,
+            ),
+            run: RunId::new(identity("run")?).map_err(|error| problem(format!("{error:?}")))?,
+            title: ConversationTitle::new(
+                value["title"]
+                    .as_str()
+                    .ok_or_else(|| problem("Incomplete prepared message title"))?
+                    .to_owned(),
+            )
+            .map_err(problem)?,
+            providers: ProductProviderSelection::new(
+                provider("writer")?,
+                provider("reviewer")?,
+                provider("fixer")?,
+            ),
+            mode: interaction_mode(
+                value["mode"]
+                    .as_str()
+                    .ok_or_else(|| problem("Incomplete prepared message mode"))?,
+            )?,
+            models: role_models(&value["models"])?,
+            text: value["text"]
+                .as_str()
+                .ok_or_else(|| problem("Incomplete prepared message text"))?
+                .to_owned(),
+        })
+    }
 }
 pub fn response(value: AppResponsePayload) -> Result<Value> {
     match value {
@@ -169,14 +281,9 @@ pub fn response(value: AppResponsePayload) -> Result<Value> {
     }
 }
 pub async fn conversation(app: &App, session: &str) -> Result<Value> {
-    app.session(session)?;
-    let run = RunId::new(bytes(session)?).map_err(|e| problem(format!("{e:?}")))?;
-    response(
-        request(app, AppRequestPayload::QueryInteraction(ProductRunConversationQuery::new(run)))
-            .await?,
-    )
+    conversation::observe(app, session).await
 }
-fn prepare(app: &App, input: &Value) -> Result<ProductInteractionRequest> {
+fn prepare(app: &App, input: &Value) -> Result<PreparedChat> {
     let session = app.session(input["session"].as_str().unwrap_or(""))?;
     let project = app.project(&session.project)?;
     let facts = facts(app, &project)?;
@@ -200,57 +307,39 @@ fn prepare(app: &App, input: &Value) -> Result<ProductInteractionRequest> {
             .ok_or_else(|| problem("Select a provider in Setup console."))?;
         ProviderProfileId::new(bytes(id)?).map_err(|e| problem(format!("{e:?}")))
     };
-    let choice = |role: &str| -> Result<ProductModelChoice> {
-        let model = input["models"][role]["id"].as_str().unwrap_or("");
-        let choice = if model.is_empty() {
-            ProductModelChoice::default()
-        } else {
-            ProductModelChoice::new(
-                model.into(),
-                input["models"][role]["manual"].as_bool().unwrap_or(false),
-            )
-            .map_err(problem)?
-        };
-        let effort = ProductModelEffort::parse(
-            input["models"][role]["effort"].as_str().unwrap_or("default"),
-        )
-        .ok_or_else(|| problem("Unknown model effort"))?;
-        Ok(choice.with_effort(effort))
-    };
-    let mode = match input["mode"].as_str().unwrap_or("chat") {
-        "chat" => ProductInteractionMode::Chat,
-        "plan" => ProductInteractionMode::Plan,
-        "review" => ProductInteractionMode::Review,
-        "build" => ProductInteractionMode::Build,
-        _ => return Err(problem("Unknown conversation mode")),
-    };
-    let request_value = ProductRunRequest::new(
-        RunId::new(bytes(&session.id)?).map_err(|e| problem(format!("{e:?}")))?,
-        workspace,
-        ProductProviderSelection::new(
+    let mode = interaction_mode(input["mode"].as_str().unwrap_or("chat"))?;
+    Ok(PreparedChat {
+        query: WorkbenchQuery::new(
+            ConversationId::new(bytes(&session.conversation)?)
+                .map_err(|e| problem(format!("{e:?}")))?,
+            workspace,
+        ),
+        run: RunId::new(bytes(&session.run)?).map_err(|e| problem(format!("{e:?}")))?,
+        title: ConversationTitle::new(session.title).map_err(problem)?,
+        providers: ProductProviderSelection::new(
             provider("writer")?,
             provider("reviewer")?,
             provider("fixer")?,
         ),
-        input["text"].as_str().unwrap_or("").into(),
-    )
-    .map_err(problem)?;
-    Ok(ProductInteractionRequest::new(
-        request_value,
         mode,
-        ProductRoleModels::new(choice("writer")?, choice("reviewer")?, choice("fixer")?),
-    ))
+        models: role_models(&input["models"])?,
+        text: input["text"].as_str().unwrap_or("").to_owned(),
+    })
 }
 pub async fn send(app: &App, input: &Value) -> Result<Value> {
     chat::send(app, input).await
 }
+pub async fn recover_send(app: &App, operation: &str) -> Result<Option<Value>> {
+    chat::recover(app, operation).await
+}
 pub async fn control(app: &App, session: &str, action: &str, operation: &str) -> Result<Value> {
-    app.session(session)?;
+    let session = app.session(session)?;
     let action = match action {
         "stop" => ProductRunControlAction::Cancel,
         "retry" => ProductRunControlAction::Retry,
         "export" => ProductRunControlAction::Export,
         "discard" => ProductRunControlAction::Discard,
+        "acknowledge" => ProductRunControlAction::Acknowledge,
         _ => {
             return Err(problem(
                 "Use the candidate console for acceptance and commit, including exact qualification confirmation.",
@@ -262,7 +351,7 @@ pub async fn control(app: &App, session: &str, action: &str, operation: &str) ->
             app,
             operation,
             AppRequestPayload::ControlProductRun(ProductRunControl::new(
-                RunId::new(bytes(session)?).map_err(|e| problem(format!("{e:?}")))?,
+                RunId::new(bytes(&session.run)?).map_err(|e| problem(format!("{e:?}")))?,
                 action,
             )),
         )
@@ -286,11 +375,10 @@ pub async fn models(app: &App, profile: &str) -> Result<Value> {
     }
 }
 pub async fn runs(app: &App) -> Result<Value> {
-    match request(app, AppRequestPayload::QueryProductRuns(ProductRunQuery::recent())).await? {
-        AppResponsePayload::ProductRuns(runs) => {
-            Ok(json!(runs.iter().map(snapshot).collect::<Vec<_>>()))
-        }
-        AppResponsePayload::ProductRunSettlements(runs) => {
+    match request(app, AppRequestPayload::QueryProductRunObservations(ProductRunQuery::recent()))
+        .await?
+    {
+        AppResponsePayload::ProductRunObservations(runs) => {
             Ok(json!(runs.iter().map(|run| snapshot(run.snapshot())).collect::<Vec<_>>()))
         }
         _ => Err(problem("Unexpected runs response")),

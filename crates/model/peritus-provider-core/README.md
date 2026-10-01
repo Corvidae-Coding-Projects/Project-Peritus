@@ -89,7 +89,14 @@ Ordinary prose, transport frames, runtime lifecycle events, names and IDs are ne
 delimiters or values, duplicate keys, multiple JSON candidates and unsupported syntax still fail.
 The C5 canonical parser, tool schemas, permissions and effect admission remain unchanged.
 
-Each repair emits a bounded `peritus.response_healing` event with policy `syntax-only-v1`, its
+The separate `private_envelope` entry point also accepts a plain prelude separated by a blank
+line from one complete object ending the payload. It is reserved for completed private model
+envelopes, such as Claude's `result` string. It never applies to public assistant prose, ordinary
+tool arguments, or the enclosing runtime JSON. Quotes, fences, container delimiters in the
+prelude, additional candidates, and trailing text are rejected.
+
+Each repair emits a bounded `peritus.response_healing` event with policy `syntax-only-v1`
+(or `private-envelope-v1` for that entry point), its
 target, original input and repaired JSON. These sensitive values belong to the private durable
 provider trace, not diagnostic logs or public chat. The daemon emits only a safe repair status.
 No setting or third-party plugin is needed. Syntax repair does not certify a tool's meaning or

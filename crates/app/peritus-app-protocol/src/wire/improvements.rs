@@ -2,11 +2,12 @@
 
 use super::{
     primitive::{invalid, read_digest, read_id, unknown, write_digest, write_id},
-    product::{read_run_request, write_run_request},
+    product::{read_providers, write_providers},
 };
 use crate::{
-    ImprovementCandidate, ImprovementEvidence, ImprovementInbox, ImprovementRequest,
-    ImprovementText, MAX_IMPROVEMENT_EVIDENCE, MAX_IMPROVEMENTS,
+    ImprovementCandidate, ImprovementEvaluation, ImprovementEvaluationRequest, ImprovementEvidence,
+    ImprovementInbox, ImprovementRequest, ImprovementText, MAX_IMPROVEMENT_EVIDENCE,
+    MAX_IMPROVEMENTS,
 };
 use peritus_codec::{CanonicalReader, CanonicalWriter, CodecError, CodecErrorKind};
 use peritus_types::{RunId, WorkspaceId};
@@ -27,10 +28,12 @@ pub(super) fn write_request(
             w.write_u16(3)?;
             write_digest(w, *candidate)
         }
-        ImprovementRequest::Evaluate { candidate, run, .. } => {
+        ImprovementRequest::Evaluate { candidate, evaluation, .. } => {
             w.write_u16(4)?;
             write_digest(w, *candidate)?;
-            write_run_request(w, run)
+            write_id(w, evaluation.run().as_bytes())?;
+            write_id(w, evaluation.target().as_bytes())?;
+            write_providers(w, evaluation.providers())
         }
     }
 }
@@ -48,7 +51,11 @@ pub(super) fn read_request(r: &mut CanonicalReader<'_>) -> Result<ImprovementReq
         4 => ImprovementRequest::Evaluate {
             workspace,
             candidate: read_digest(r)?,
-            run: read_run_request(r)?,
+            evaluation: ImprovementEvaluationRequest::new(
+                read_id(r, RunId::new)?,
+                read_id(r, WorkspaceId::new)?,
+                read_providers(r)?,
+            ),
         },
         _ => return unknown(r.offset()),
     })
@@ -68,8 +75,10 @@ pub(super) fn write_inbox(
         w.write_str(item.proposal().as_str())?;
         w.write_bool(item.dismissed())?;
         w.write_option_tag(item.evaluation().is_some())?;
-        if let Some(run) = item.evaluation() {
-            write_id(w, run.as_bytes())?;
+        if let Some(evaluation) = item.evaluation() {
+            write_id(w, evaluation.conversation().as_bytes())?;
+            write_id(w, evaluation.run().as_bytes())?;
+            write_id(w, evaluation.target().as_bytes())?;
         }
         w.write_u16(
             u16::try_from(item.evidence().len())
@@ -92,7 +101,15 @@ pub(super) fn read_inbox(r: &mut CanonicalReader<'_>) -> Result<ImprovementInbox
         let id = read_digest(r)?;
         let proposal = read_text(r)?;
         let dismissed = r.read_bool()?;
-        let evaluation = if r.read_option_tag()? { Some(read_id(r, RunId::new)?) } else { None };
+        let evaluation = if r.read_option_tag()? {
+            Some(ImprovementEvaluation::new(
+                read_id(r, crate::ConversationId::new)?,
+                read_id(r, RunId::new)?,
+                read_id(r, WorkspaceId::new)?,
+            ))
+        } else {
+            None
+        };
         let count = read_count(r, MAX_IMPROVEMENT_EVIDENCE)?;
         let mut evidence = Vec::with_capacity(count);
         for _ in 0..count {

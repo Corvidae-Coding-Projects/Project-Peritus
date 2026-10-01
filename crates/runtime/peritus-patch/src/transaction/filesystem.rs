@@ -229,29 +229,52 @@ fn reject_nested_repository(directory: &Path) -> Result<(), PatchError> {
 }
 
 pub(super) fn set_mode(path: &Path, mode: FileMode) -> Result<(), PatchError> {
-    let mut permissions = fs::metadata(path)
+    let permissions = fs::metadata(path)
         .map_err(|error| {
             PatchError::io(PatchOperationContext::StageFinal, RollbackStatus::NotRequired, error)
         })?
         .permissions();
-    set_portable_mode(&mut permissions, mode);
-    fs::set_permissions(path, permissions).map_err(|error| {
+    fs::set_permissions(path, portable_permissions(permissions, mode)).map_err(|error| {
         PatchError::io(PatchOperationContext::StageFinal, RollbackStatus::NotRequired, error)
     })
 }
 
 #[cfg(unix)]
-fn set_portable_mode(permissions: &mut fs::Permissions, mode: FileMode) {
+fn portable_permissions(mut permissions: fs::Permissions, mode: FileMode) -> fs::Permissions {
     use std::os::unix::fs::PermissionsExt as _;
-    permissions.set_mode(match mode {
-        FileMode::Regular => 0o644,
-        FileMode::Executable => 0o755,
-    });
+    let bits = permissions.mode();
+    let execute = match mode {
+        FileMode::Regular => 0,
+        FileMode::Executable if bits & 0o111 != 0 => bits & 0o111,
+        FileMode::Executable => (bits & 0o444) >> 2 | 0o100,
+    };
+    permissions.set_mode((bits & !0o111) | execute);
+    permissions
+}
+
+pub(super) fn preserve_replacement_permissions(
+    staged: &Path,
+    backup: &Path,
+    mode: FileMode,
+) -> Result<(), PatchError> {
+    let copy = || {
+        let permissions = portable_permissions(fs::metadata(backup)?.permissions(), mode);
+        #[cfg(windows)]
+        let file = fs::OpenOptions::new().write(true).open(staged)?;
+        #[cfg(not(windows))]
+        let file = File::open(staged)?;
+        fs::set_permissions(staged, permissions)?;
+        file.sync_all()
+    };
+    copy().map_err(|error| {
+        PatchError::io(PatchOperationContext::InstallFinal, RollbackStatus::Indeterminate, error)
+    })
 }
 
 #[cfg(not(unix))]
-fn set_portable_mode(permissions: &mut fs::Permissions, _mode: FileMode) {
-    permissions.set_readonly(false);
+const fn portable_permissions(permissions: fs::Permissions, _mode: FileMode) -> fs::Permissions {
+    // Executable mode is rejected before staging on these platforms; preserve readonly.
+    permissions
 }
 
 #[cfg(unix)]

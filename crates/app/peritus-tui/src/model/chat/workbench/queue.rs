@@ -18,11 +18,8 @@ impl AppModel {
             return Vec::new();
         }
         if self.chat.workbench.selected.is_none() {
-            self.notice(
-                NoticeLevel::Warning,
-                "Select a conversation with /sessions first; draft retained.",
-            );
-            return Vec::new();
+            return self
+                .create_command_conversation("New conversation", format!("/queue {arguments}"));
         }
         let (action, text) = split(arguments);
         self.chat.workbench.mode = WorkbenchMode::Queue;
@@ -36,6 +33,7 @@ impl AppModel {
             self.notice(NoticeLevel::Warning, "Resolve the pending control receipt before another queue operation. Draft retained.");
             return Vec::new();
         }
+        self.chat.workbench.message.clear();
         if text.is_empty() && matches!(action, "" | "pending" | "history") {
             self.chat.workbench.queue_detail = None;
             return self.refresh_queue(0, 0, action == "history");
@@ -45,6 +43,7 @@ impl AppModel {
                 Ok(selected) => {
                     self.chat.workbench.queue_detail = Some(selected);
                     self.chat.workbench.scroll = 0;
+                    self.clear_chat_command();
                 }
                 Err(message) => self.notice(NoticeLevel::Warning, message),
             }
@@ -58,6 +57,7 @@ impl AppModel {
             let offset = if action == "next" {
                 let next = page.query().offset().saturating_add(page_size);
                 if next >= page.total() {
+                    self.clear_chat_command();
                     return Vec::new();
                 }
                 next
@@ -74,7 +74,40 @@ impl AppModel {
             }
         };
         let Some(query) = self.chat.workbench.selected else { return Vec::new() };
-        self.submit_workbench(WorkbenchIntent::Queue(intent), query.workspace())
+        // Resolve row numbers once, against the page the user inspected. Refresh only the
+        // aggregate fence; never reinterpret the user's row against a reordered queue.
+        self.request(
+            AppRequestPayload::QueryWorkbench(query),
+            PendingRequest::WorkbenchQueueCommand {
+                query,
+                intent,
+                draft: self.chat.buffer.clone(),
+            },
+        )
+        .into_iter()
+        .collect()
+    }
+
+    pub(in crate::model) fn accept_queue_command_snapshot(
+        &mut self,
+        query: peritus_app_protocol::WorkbenchQuery,
+        intent: WorkbenchQueueIntent,
+        draft: &str,
+        snapshot: &peritus_app_protocol::WorkbenchSnapshot,
+    ) -> Vec<Effect> {
+        if snapshot.query() != query
+            || self.chat.workbench.selected != Some(query)
+            || self.chat.workbench.mode != WorkbenchMode::Queue
+            || self.chat.buffer != draft
+            || !self.queue_available()
+            || self.workbench_request_pending()
+            || self.chat.workbench.unresolved.is_some()
+        {
+            return Vec::new();
+        }
+        self.chat.workbench.inspection_draft = None;
+        self.chat.workbench.snapshot = Some(snapshot.clone());
+        self.submit_bound_workbench(WorkbenchIntent::Queue(intent), query, snapshot.revision())
     }
 
     fn queue_intent(
@@ -112,6 +145,33 @@ impl AppModel {
         }
         let (row, replacement) = split(text);
         let selected = self.queue_selection(row)?;
+        let state = self
+            .chat
+            .workbench
+            .queue
+            .as_ref()
+            .and_then(|page| page.rows().iter().find(|row| row.selected() == selected))
+            .map(peritus_app_protocol::WorkbenchInputRow::state);
+        if action == "correct"
+            && state != Some(peritus_app_protocol::WorkbenchInputState::Incorporated)
+        {
+            return Err(
+                "This input has not been incorporated. Use /queue edit <row> <text> to change a pending input; corrections apply to incorporated history. Draft retained.",
+            );
+        }
+        if action == "edit"
+            && !matches!(
+                state,
+                Some(
+                    peritus_app_protocol::WorkbenchInputState::Queued
+                        | peritus_app_protocol::WorkbenchInputState::Held
+                )
+            )
+        {
+            return Err(
+                "This revision is no longer pending. Use /queue correct <row> <text> for incorporated history. Draft retained.",
+            );
+        }
         match action {
             "edit" => Ok(WorkbenchQueueIntent::Edit { selected, text: input_text(replacement)? }),
             "correct" => Ok(WorkbenchQueueIntent::Correct {
@@ -181,6 +241,7 @@ impl AppModel {
             return;
         }
         self.chat.workbench.queue = Some(page);
+        self.complete_workbench_inspection();
         self.chat.workbench.queue_detail = None;
         self.chat.workbench.scroll = 0;
     }

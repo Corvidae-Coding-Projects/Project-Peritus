@@ -28,13 +28,12 @@ pub fn ensure_configured(
     {
         return activate_repository(prepared, discovered);
     }
-    if prepared
-        .state()
-        .workspaces()
-        .active()
-        .is_some_and(|profile| health(profile) != WorkspaceHealth::NeedsRepair)
-    {
-        return Ok(prepared);
+    if let Some(profile) = prepared.state().workspaces().active().cloned() {
+        match health(&profile) {
+            WorkspaceHealth::Advanced => return refresh_advanced(&prepared, profile),
+            WorkspaceHealth::NeedsRepair => {}
+            _ => return Ok(prepared),
+        }
     }
     choose_workspace(prepared)
 }
@@ -113,8 +112,10 @@ fn activate_repository(
     {
         let selected = ProductBootstrap::new(prepared.layout().clone())
             .select_workspace(existing.workspace_id())?;
-        if health(&existing) != WorkspaceHealth::NeedsRepair {
-            return Ok(selected);
+        match health(&existing) {
+            WorkspaceHealth::Advanced => return refresh_advanced(&selected, existing),
+            WorkspaceHealth::NeedsRepair => {}
+            _ => return Ok(selected),
         }
         let mut terminal = Terminal::stdio();
         terminal.line("")?;
@@ -178,8 +179,10 @@ fn choose_workspace(prepared: PreparedProduct) -> Result<PreparedProduct, Launch
             let profile = recent(&prepared, index)?.clone();
             let selected = ProductBootstrap::new(prepared.layout().clone())
                 .select_workspace(profile.workspace_id())?;
-            if health(&profile) != WorkspaceHealth::NeedsRepair {
-                return Ok(selected);
+            match health(&profile) {
+                WorkspaceHealth::Advanced => return refresh_advanced(&selected, profile),
+                WorkspaceHealth::NeedsRepair => {}
+                _ => return Ok(selected),
             }
             terminal.line("That workspace needs repair. Choose t<number> in `peritus workspaces`, or select another repository.")?;
         } else {
@@ -232,6 +235,15 @@ fn persist_profile(
     profile: WorkspaceProfile,
 ) -> Result<PreparedProduct, LauncherError> {
     ProductBootstrap::new(prepared.layout().clone()).configure_workspace(profile)
+}
+
+fn refresh_advanced(
+    prepared: &PreparedProduct,
+    profile: WorkspaceProfile,
+) -> Result<PreparedProduct, LauncherError> {
+    let repository = DiscoveredRepository::open(Path::new(profile.repository_root()))?;
+    let refreshed = trust(prepared.layout(), &repository, profile)?;
+    persist_profile(prepared, refreshed)
 }
 
 fn recent(prepared: &PreparedProduct, index: usize) -> Result<&WorkspaceProfile, LauncherError> {

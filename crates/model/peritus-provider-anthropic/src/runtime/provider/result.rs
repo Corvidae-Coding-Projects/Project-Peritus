@@ -19,6 +19,19 @@ pub(super) fn normalize(
     provider: ProviderName,
     cancellation: CancellationToken,
 ) -> Result<OwnedModelStream, ProviderCoreError> {
+    let decoded = decode(output.stdout(), &runtime.allowed_tools, runtime.max_calls);
+    // The official client exits nonzero for complete structured error responses too.
+    // Preserve those actionable errors; a successful turn still requires a clean exit.
+    if let Err(
+        error @ (DecodeFailure::Authentication
+        | DecodeFailure::Capacity
+        | DecodeFailure::ContextLimit
+        | DecodeFailure::InvalidModel
+        | DecodeFailure::Reported),
+    ) = &decoded
+    {
+        return decode_failure(request, provider, cancellation, *error);
+    }
     if !output.exit().success() {
         let (category, certainty, code) = if output.stdout().is_empty() {
             (
@@ -40,7 +53,7 @@ pub(super) fn normalize(
             cancellation,
         );
     }
-    let turn = match decode(output.stdout(), &runtime.allowed_tools, runtime.max_calls) {
+    let turn = match decoded {
         Ok(turn) => turn,
         Err(error) => return decode_failure(request, provider, cancellation, error),
     };
@@ -81,6 +94,15 @@ fn decode_failure(
                 "anthropic.claude_runtime.context_limit",
             )?,
             b"claude-runtime-context-limit".as_slice(),
+        ),
+        DecodeFailure::InvalidModel => (
+            runtime_failure(
+                provider,
+                FailureCategory::InvalidRequest,
+                OutcomeCertainty::DefinitelyNotAccepted,
+                "anthropic.claude_runtime.invalid_model",
+            )?,
+            b"claude-runtime-invalid-model".as_slice(),
         ),
         DecodeFailure::Reported => (
             runtime_failure(

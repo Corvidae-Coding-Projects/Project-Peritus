@@ -37,6 +37,8 @@ pub use crate::plan::{
     BackendResourceFidelity, BackendSelection, ExecutionIsolation, ExecutionPlan,
 };
 pub use crate::platform::ProcessTreeIdentity;
+#[cfg(windows)]
+pub use crate::platform::current_process_resident_memory_bytes;
 pub use crate::result_api::{
     HolderQuiescenceObservation, OsExitObservation, OutputArtifact, OutputSummary,
     ProbeObservation, ProcessInstant, ProcessProbe, ProcessResourceDimension,

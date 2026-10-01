@@ -17,11 +17,15 @@ impl ControlStore {
         &self,
         actor: ActorId,
         request: &WorkbenchCompactionRequest,
-    ) -> Result<peritus_types::RunId, Error> {
+    ) -> Result<Option<peritus_types::RunId>, Error> {
         let record = self.compaction_record(actor, request)?;
-        let execution = record.execution().ok_or(ControlError::InvalidInput)?;
-        peritus_types::RunId::new(*execution.run_bytes())
-            .map_err(|_| ControlError::InvalidInput.into())
+        record
+            .execution()
+            .map(|execution| {
+                peritus_types::RunId::new(*execution.run_bytes())
+                    .map_err(|_| ControlError::InvalidInput.into())
+            })
+            .transpose()
     }
 
     pub(crate) fn compaction_preview(
@@ -33,6 +37,19 @@ impl ControlStore {
         let record = self.compaction_record(actor, request)?;
         let generation =
             record.prompt_view().generation().checked_add(1).ok_or(ControlError::Capacity)?;
+        if record.execution().is_none() {
+            let preview = WorkbenchCompactionPreview::new(
+                request.clone(),
+                generation,
+                0,
+                0,
+                0,
+                0,
+                Vec::new(),
+            )
+            .map_err(|_| ControlError::InvalidInput)?;
+            return Ok((None, preview));
+        }
         let metadata = record
             .replies()
             .iter()

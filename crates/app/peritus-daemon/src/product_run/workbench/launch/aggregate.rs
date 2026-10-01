@@ -3,6 +3,31 @@
 use super::*;
 
 impl ProductRunService {
+    pub(in crate::product_run::workbench) fn resolve_preview_receipt(
+        &self,
+        actor: ActorId,
+        command: &WorkbenchCommand,
+    ) -> AppResponsePayload {
+        let result = (|| {
+            self.preview_scope(actor, command)?;
+            let run = self.preview_run(command)?;
+            self.validate_preview_binding(run, command.query())?;
+            let fingerprint = command.fingerprint()?;
+            let records = self.inner.records.read().map_err(|_| app_error(Code::Backpressure))?;
+            let record = records.get(&run).ok_or_else(|| app_error(Code::InvalidIdentifier))?;
+            let prior = record
+                .preview
+                .operations
+                .get(&command.operation())
+                .ok_or_else(|| app_error(Code::InvalidIdentifier))?;
+            if prior.fingerprint != fingerprint {
+                return Err(app_error(Code::IdempotencyConflict));
+            }
+            receipt(command, prior.accepted_revision, fingerprint)
+        })();
+        result.map_or_else(AppResponsePayload::Error, AppResponsePayload::WorkbenchReceipt)
+    }
+
     pub(super) fn admit_preview(
         &self,
         command: &WorkbenchCommand,

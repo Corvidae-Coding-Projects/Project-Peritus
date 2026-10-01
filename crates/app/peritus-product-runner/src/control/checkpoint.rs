@@ -299,6 +299,24 @@ impl UserCheckpoint {
         self.sealed_by_run = Some(run);
         Ok(())
     }
+    pub(in crate::control) fn seal_restoration(
+        &mut self,
+        versions: &[(String, CheckpointFileVersion)],
+    ) -> Result<(), ControlError> {
+        if self.automatic_run.is_some()
+            || self.sealed_by_run.is_some()
+            || self.paths.len() != versions.len()
+        {
+            return Err(ControlError::InvalidInput);
+        }
+        for (path, (name, version)) in self.paths.iter_mut().zip(versions) {
+            if path.path() != name {
+                return Err(ControlError::InvalidInput);
+            }
+            path.seal(*version);
+        }
+        Ok(())
+    }
     fn validate(&self) -> Result<(), ControlError> {
         if self.paths.len() > MAX_CHECKPOINT_PATHS
             || self.exclusions.len() > MAX_CHECKPOINT_PATHS

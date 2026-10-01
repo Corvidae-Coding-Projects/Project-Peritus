@@ -83,8 +83,8 @@ pub(super) fn direct_decision(
     if request.change().is_user_clarification() && request.affects(section.id()) {
         return ReuseDecision::Invalidate(InvalidationReason::UserClarification);
     }
-    let same_conversation = binding.candidate().conversation_revision()
-        == current.conversation_revision();
+    let same_conversation = binding.candidate().requirements_revision()
+        == current.requirements_revision();
     if section.kind().depends_on_conversation()
         && !same_conversation
         && !request.change().is_user_clarification()

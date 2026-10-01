@@ -70,7 +70,7 @@ async fn selected_explanation_produces_a_reviewer_reply_without_writer_work() {
         );
     }
     let interaction =
-        service.query_interaction(ProductRunConversationQuery::new(run)).expect("interaction");
+        service.query_interaction(ProductInteractionQuery::new(run)).expect("interaction");
     assert_eq!(interaction.mode(), ProductInteractionMode::Review);
     assert!(interaction.activities().iter().any(|activity| {
         activity.kind() == peritus_app_protocol::ProductActivityKind::Assistant
@@ -262,6 +262,7 @@ fn review_service_rejects_stale_add_then_projects_and_rebinds_a_persisted_stale_
                 prior.gates().to_owned(),
                 prior.review().to_owned(),
                 prior.summary().to_owned(),
+                prior.operation().clone(),
             )
             .expect("later projection");
             record.checkpoint = None;

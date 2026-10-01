@@ -1,6 +1,7 @@
 use super::*;
 use peritus_run_settlement::{
-    CandidateCheckpoint, CandidateIdentity, EvidenceRecord, QualificationEvidence,
+    CandidateCheckpoint, CandidateIdentity, EvidenceDependencies, EvidenceRecord,
+    QualificationEvidence,
 };
 use peritus_types::{RunId, Sha256Digest, WorkspaceId};
 
@@ -10,6 +11,8 @@ fn incomplete_candidate_names_each_missing_acceptance_boundary() {
         RunId::new([1; 16]).expect("run"),
         WorkspaceId::new([2; 16]).expect("workspace"),
         Sha256Digest::new([3; 32]),
+        Sha256Digest::new([3; 32]),
+        None,
         1,
         1,
     )
@@ -38,12 +41,17 @@ fn qualified_candidate_has_no_remaining_work() {
         RunId::new([1; 16]).expect("run"),
         WorkspaceId::new([2; 16]).expect("workspace"),
         Sha256Digest::new([3; 32]),
+        Sha256Digest::new([3; 32]),
+        None,
         1,
         1,
     )
     .expect("identity");
-    let satisfied =
-        EvidenceStatus::Current(EvidenceRecord::new(identity, QualificationEvidence::Satisfied));
+    let satisfied = EvidenceStatus::Current(EvidenceRecord::new(
+        identity,
+        EvidenceDependencies::OBLIGATIONS,
+        QualificationEvidence::Satisfied,
+    ));
     let checkpoint = CandidateCheckpoint::new(
         identity,
         CandidateStage::Qualified,

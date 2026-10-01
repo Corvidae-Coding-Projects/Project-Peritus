@@ -20,7 +20,7 @@ impl ProcessStore {
             if manifest.phase != LifecyclePhase::Closed
                 || result.process_id() != process_id
                 || result.plan_digest() != manifest.plan_digest
-                || !manifest.matches_terminal(result)
+                || !manifest.matches_terminal_at_publication(result)
             {
                 return Err(store_error(
                     "terminal process result is out of sequence or mismatched",

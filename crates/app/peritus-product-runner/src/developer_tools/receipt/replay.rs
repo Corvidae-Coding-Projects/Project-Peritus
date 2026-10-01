@@ -16,7 +16,13 @@ impl EffectReceiptLedger {
             .checked_add(1)
             .ok_or_else(|| tool("effect receipt ordinal overflowed"))?;
         let digest = request_digest(call);
-        let Some(existing) = self.entries.get(&ordinal) else { return Ok(None) };
+        let Some(existing) = self.entries.get(&ordinal) else {
+            if let Some(decision) = self.prior_command_barrier(call, &digest)? {
+                self.next_ordinal = ordinal;
+                return Ok(Some(decision));
+            }
+            return Ok(None);
+        };
         if existing.tool != call.name().as_str() || existing.request_sha256 != digest {
             self.next_ordinal = ordinal;
             return Ok(Some(ReceiptDecision::Refuse {
@@ -49,6 +55,15 @@ impl EffectReceiptLedger {
             ReceiptState::Ambiguous => ReceiptDecision::Refuse {
                 detail: ambiguous(&self.scope, ordinal, &existing.call_id),
                 ambiguous: true,
+            },
+            ReceiptState::Reviewed => ReceiptDecision::Replay {
+                value: existing
+                    .output
+                    .clone()
+                    .ok_or_else(|| tool("reviewed receipt lost its result"))?,
+                is_error: existing
+                    .is_error
+                    .ok_or_else(|| tool("reviewed receipt lost its result status"))?,
             },
             ReceiptState::Started => return Ok(None),
         };

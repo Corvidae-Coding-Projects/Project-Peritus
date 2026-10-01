@@ -10,22 +10,26 @@ mod brief;
 mod checkpoints;
 mod compaction;
 mod context;
+mod conversation;
 mod files;
 mod fork;
 mod goal;
 mod images;
 mod init;
+mod library;
 mod memory;
 mod navigation;
 mod permissions;
 mod queue;
 mod receipts;
+mod refresh;
 mod sessions;
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 enum WorkbenchMode {
     #[default]
     Sessions,
+    Library,
     Queue,
     Brief,
     Compaction,
@@ -60,6 +64,8 @@ pub struct WorkbenchUi {
     pub(crate) selected: Option<WorkbenchQuery>,
     pub(crate) snapshot: Option<WorkbenchSnapshot>,
     pub(crate) library: Option<peritus_app_protocol::ConversationLibraryPage>,
+    library_query: Option<peritus_app_protocol::ConversationLibraryQuery>,
+    pub(crate) library_selected: usize,
     pub(crate) scroll: usize,
     pub(crate) message: String,
     mode: WorkbenchMode,
@@ -74,6 +80,10 @@ pub struct WorkbenchUi {
     pub(crate) goal: Option<peritus_app_protocol::WorkbenchGoalSnapshot>,
     pub(crate) goal_draft: Option<goal::GoalDraft>,
     pub(crate) goal_clear_pending: bool,
+    pub(crate) goal_confirm_pending: Option<peritus_app_protocol::WorkbenchInputText>,
+    receipted_revision: u64,
+    goal_refresh_command: Option<(ControlOperationId, String)>,
+    pub(in crate::model::chat) snapshot_refresh_command: Option<(WorkbenchQuery, String, String)>,
     pub(crate) checkpoint_receipt: Option<peritus_app_protocol::WorkbenchCheckpointReceipt>,
     pub(crate) rewind_request: Option<peritus_app_protocol::WorkbenchRewindRequest>,
     pub(crate) rewind_preview: Option<peritus_app_protocol::WorkbenchRewindPreview>,
@@ -83,9 +93,16 @@ pub struct WorkbenchUi {
     pub(crate) memory: Option<peritus_app_protocol::WorkbenchMemory>,
     memory_view: WorkbenchMemoryView,
     pub(crate) unresolved: Option<(WorkbenchCommand, String)>,
+    rejected_control: Option<peritus_app_protocol::AppErrorCode>,
+    pub(crate) inspection_draft: Option<String>,
+    submission: Option<conversation::Submission>,
 }
 
 impl WorkbenchUi {
+    pub(crate) const fn library_open(&self) -> bool {
+        matches!(self.mode, WorkbenchMode::Library)
+    }
+
     pub(crate) const fn queue_open(&self) -> bool {
         matches!(self.mode, WorkbenchMode::Queue)
     }
@@ -124,6 +141,33 @@ impl WorkbenchUi {
 }
 
 impl AppModel {
+    pub(in crate::model) fn select_workbench_conversation(
+        &mut self,
+        query: Option<WorkbenchQuery>,
+    ) {
+        if self.chat.workbench.selected == query {
+            return;
+        }
+        self.abandon_chat_observations();
+        self.abandon_workbench_inspection();
+        let library = self.chat.workbench.library.take();
+        let open = self.chat.workbench.open;
+        self.chat.workbench = WorkbenchUi::default();
+        self.chat.workbench.open = open;
+        self.chat.workbench.library = library;
+        self.chat.workbench.selected = query;
+        self.chat.run_id = None;
+        self.chat.snapshot = None;
+    }
+
+    pub(in crate::model) fn complete_workbench_inspection(&mut self) {
+        if let Some(draft) = self.chat.workbench.inspection_draft.take()
+            && self.chat.buffer == draft
+        {
+            self.clear_chat_command();
+        }
+    }
+
     fn submit_workbench(
         &mut self,
         intent: WorkbenchIntent,
@@ -132,6 +176,15 @@ impl AppModel {
         let Some((query, revision)) = self.workbench_command_binding(&intent, workspace) else {
             return Vec::new();
         };
+        self.submit_bound_workbench(intent, query, revision)
+    }
+
+    fn submit_bound_workbench(
+        &mut self,
+        intent: WorkbenchIntent,
+        query: WorkbenchQuery,
+        revision: u64,
+    ) -> Vec<Effect> {
         let Ok(operation) = ControlOperationId::new(self.ids.bytes(b"workbench-operation")) else {
             return Vec::new();
         };
@@ -143,6 +196,7 @@ impl AppModel {
             return Vec::new();
         };
         self.chat.workbench.unresolved = Some((command, self.chat.buffer.clone()));
+        self.chat.workbench.rejected_control = None;
         self.chat.workbench.open = true;
         "Awaiting durable receipt; not yet accepted.".clone_into(&mut self.chat.workbench.message);
         vec![effect]
@@ -213,7 +267,7 @@ impl AppModel {
         workspace: peritus_types::WorkspaceId,
     ) -> Option<(WorkbenchQuery, u64)> {
         let Some(brief) = self.chat.workbench.brief.as_ref().filter(|brief| {
-            self.chat.workbench.mode == WorkbenchMode::Brief
+            (self.chat.workbench.mode == WorkbenchMode::Brief || self.chat.workbench.goal_mode)
                 && brief.query().workspace() == workspace
                 && self.chat.workbench.selected == Some(brief.query())
         }) else {

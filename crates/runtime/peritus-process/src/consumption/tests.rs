@@ -209,7 +209,7 @@ fn terminal_records_can_be_retired_without_losing_recovery_required_state() {
 
     {
         let mut state = store.lock_state();
-        super::retire_terminal_records(
+        super::retire_settled_records(
             &store.inner.claims,
             &store.inner.manifests,
             &store.inner.spools,
@@ -219,7 +219,7 @@ fn terminal_records_can_be_retired_without_losing_recovery_required_state() {
         .expect("retire terminal record");
     }
 
-    assert_eq!(store.recovery_work_count(), 0);
+    assert_eq!(store.unsettled_ownership_count(), 0);
     assert!(store.terminal_result(execution.process_id()).is_err());
     assert!(!store.claim_path(execution.process_id()).exists());
     let manifest_path = store.inner.manifests.join(format!(
@@ -229,5 +229,5 @@ fn terminal_records_can_be_retired_without_losing_recovery_required_state() {
     assert!(!manifest_path.exists());
     drop(store);
     let reopened = ProcessStore::open(registry.registry(), registry.workspace()).expect("reopen");
-    assert_eq!(reopened.recovery_work_count(), 0);
+    assert_eq!(reopened.unsettled_ownership_count(), 0);
 }

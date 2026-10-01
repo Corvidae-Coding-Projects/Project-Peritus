@@ -7,7 +7,7 @@ use std::{
 
 use peritus_app_protocol::{
     AppProtocolLimits, ClientHello, DaemonReadiness, NegotiatedProtocol, NegotiationOutcome,
-    ProtocolContext, ProtocolFeatureName, ServerCapabilities, ServerHello, VersionRange,
+    ProtocolContext, ProtocolFeatureName, ServerCapabilities, ServerHello,
     WellKnownProtocolFeature, negotiate,
 };
 use peritus_journal::{ApplicationPrincipalState, ApplicationSessionState, NewApplicationSession};
@@ -156,12 +156,16 @@ fn server_capabilities() -> Result<ServerCapabilities, DaemonError> {
         WellKnownProtocolFeature::ApprovalPrompts,
         WellKnownProtocolFeature::UserInput,
         WellKnownProtocolFeature::TerminalStreaming,
+        WellKnownProtocolFeature::TerminalFailure,
+        WellKnownProtocolFeature::TerminalPipes,
         WellKnownProtocolFeature::ReadOnlyDiagnostics,
         WellKnownProtocolFeature::ProductDiagnostics,
         WellKnownProtocolFeature::HarnessImprovements,
         WellKnownProtocolFeature::WorkbenchControl,
         WellKnownProtocolFeature::WorkbenchInputs,
         WellKnownProtocolFeature::WorkbenchExecution,
+        WellKnownProtocolFeature::WorkbenchConversation,
+        WellKnownProtocolFeature::WorkbenchRunBinding,
         WellKnownProtocolFeature::WorkbenchContext,
         WellKnownProtocolFeature::WorkbenchCompaction,
         WellKnownProtocolFeature::WorkbenchBrief,
@@ -171,6 +175,7 @@ fn server_capabilities() -> Result<ServerCapabilities, DaemonError> {
         WellKnownProtocolFeature::WorkbenchBudgets,
         WellKnownProtocolFeature::WorkbenchReview,
         WellKnownProtocolFeature::WorkbenchPreview,
+        WellKnownProtocolFeature::WorkbenchPreviewOutput,
         WellKnownProtocolFeature::WorkbenchCheckpoints,
         WellKnownProtocolFeature::ConversationLibrary,
         WellKnownProtocolFeature::ConversationForks,
@@ -184,7 +189,7 @@ fn server_capabilities() -> Result<ServerCapabilities, DaemonError> {
     .collect::<Result<Vec<_>, _>>()
     .map_err(protocol_error)?;
     ServerCapabilities::new(
-        vec![VersionRange::new(1, 0, 0).map_err(protocol_error)?],
+        vec![peritus_app_protocol::CURRENT_PROTOCOL_RANGE],
         features,
         AppProtocolLimits::PRODUCTION,
         format!("peritusd/{DAEMON_VERSION}"),

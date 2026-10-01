@@ -5,10 +5,10 @@ use crate::{
     state::{App, Session, hex},
 };
 use peritus_app_protocol::{
-    AppRequestPayload, AppResponsePayload, ProductModelChoice, ProductModelEffort,
-    ProductModelUpdate, ProductRoleModels, ProductRunConversationQuery,
+    AppRequestPayload, AppResponsePayload, ConversationId, ProductInteractionQuery,
+    ProductModelChoice, ProductModelEffort, ProductModelUpdate, ProductRoleModels, WorkbenchQuery,
 };
-use peritus_types::{ProviderProfileId, RunId};
+use peritus_types::{ProviderProfileId, RunId, WorkspaceId};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use std::collections::BTreeMap;
@@ -55,13 +55,14 @@ impl Settings {
 
 pub async fn configure(app: &App, input: &Value) -> Result<Value> {
     let id = input["session"].as_str().ok_or_else(|| problem("Choose a session"))?;
-    app.session(id)?;
+    let session = app.session(id)?;
     let settings: Settings = serde_json::from_value(input["settings"].clone())?;
     let models = settings.validate()?;
     // Existing conversations own their governing models. Save through the same native
     // update used by the TUI; both clients observe the daemon-owned selection.
     let conversation = if input["existing"].as_bool().unwrap_or(false) {
-        let run = RunId::new(daemon::bytes(id)?).map_err(|e| problem(format!("{e:?}")))?;
+        let run =
+            RunId::new(daemon::bytes(&session.run)?).map_err(|e| problem(format!("{e:?}")))?;
         daemon::response(
             daemon::receipts::recorded(
                 app,
@@ -97,15 +98,17 @@ pub async fn open_run(app: &App, id: &str) -> Result<Value> {
     let run_id = RunId::new(daemon::bytes(id)?).map_err(|e| problem(format!("{e:?}")))?;
     let reply = daemon::raw_request(
         app,
-        AppRequestPayload::QueryInteraction(ProductRunConversationQuery::new(run_id)),
+        AppRequestPayload::QueryInteractionBinding(ProductInteractionQuery::new(run_id)),
     )
     .await?;
-    let AppResponsePayload::Interaction(conversation) = reply else {
+    let AppResponsePayload::InteractionBinding(binding) = reply else {
         return Err(problem(
-            "This run has no interactive conversation. Inspect it or use its exact-run CLI controls.",
+            "This run has no durable conversation. Inspect it or use its exact-run CLI controls.",
         ));
     };
-    let workspace_id = hex(conversation.snapshot().workspace_id().as_bytes());
+    let conversation = binding.conversation();
+    let interaction = binding.interaction();
+    let workspace_id = hex(interaction.snapshot().workspace_id().as_bytes());
     let project = app
         .snapshot()?
         .projects
@@ -121,18 +124,85 @@ pub async fn open_run(app: &App, id: &str) -> Result<Value> {
             .find(|p| p.id == project.id)
             .ok_or_else(|| problem("Project missing"))?;
         project.closed = false;
-        if let Some(session) = state.sessions.iter_mut().find(|s| s.id == id) {
+        if let Some(session) = state.sessions.iter_mut().find(|s| s.run == id) {
             if session.project != project.id {
                 return Err(problem("Run belongs to another project"));
+            }
+            session.closed = false;
+            session.conversation = hex(conversation.conversation().as_bytes());
+            return Ok(json!(session));
+        }
+        let session = Session {
+            id: crate::state::id()?,
+            conversation: hex(conversation.conversation().as_bytes()),
+            run: id.into(),
+            project: project.id.clone(),
+            parent: None,
+            title: interaction.snapshot().task().chars().take(60).collect(),
+            closed: false,
+            settings: Settings::default(),
+        };
+        state.sessions.push(session.clone());
+        Ok(json!(session))
+    })
+}
+
+pub async fn open_workbench(
+    app: &App,
+    conversation: &str,
+    run: &str,
+    target: &str,
+) -> Result<Value> {
+    let conversation =
+        ConversationId::new(daemon::bytes(conversation)?).map_err(|e| problem(format!("{e:?}")))?;
+    let run_id = RunId::new(daemon::bytes(run)?).map_err(|e| problem(format!("{e:?}")))?;
+    let target = WorkspaceId::new(daemon::bytes(target)?).map_err(|e| problem(format!("{e:?}")))?;
+    let query = WorkbenchQuery::new(conversation, target);
+    let reply = daemon::raw_request(app, AppRequestPayload::QueryWorkbench(query)).await?;
+    let snapshot = match reply {
+        AppResponsePayload::Workbench(snapshot) if snapshot.query() == query => snapshot,
+        AppResponsePayload::Error(error) => {
+            return Err(problem(format!(
+                "The durable evaluation workbench is unavailable: {}",
+                error.actionable_message()
+            )));
+        }
+        _ => return Err(problem("The daemon returned another evaluation workbench")),
+    };
+    let target_hex = hex(target.as_bytes());
+    let project = app
+        .snapshot()?
+        .projects
+        .into_iter()
+        .find(|project| {
+            daemon::facts(app, project).is_ok_and(|facts| facts["workspace"]["id"] == target_hex)
+        })
+        .ok_or_else(|| problem("Open the evaluation target project before its workbench."))?;
+    app.update(|state| {
+        let project = state
+            .projects
+            .iter_mut()
+            .find(|candidate| candidate.id == project.id)
+            .ok_or_else(|| problem("Project missing"))?;
+        project.closed = false;
+        let conversation_hex = hex(conversation.as_bytes());
+        let run_hex = hex(run_id.as_bytes());
+        if let Some(session) =
+            state.sessions.iter_mut().find(|session| session.conversation == conversation_hex)
+        {
+            if session.project != project.id || session.run != run_hex {
+                return Err(problem("Evaluation workbench belongs to another local session"));
             }
             session.closed = false;
             return Ok(json!(session));
         }
         let session = Session {
-            id: id.into(),
+            id: crate::state::id()?,
+            conversation: conversation_hex,
+            run: run_hex,
             project: project.id.clone(),
             parent: None,
-            title: conversation.snapshot().task().chars().take(60).collect(),
+            title: snapshot.title().as_str().to_owned(),
             closed: false,
             settings: Settings::default(),
         };

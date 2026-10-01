@@ -18,30 +18,10 @@ use peritus_provider_core::{CancellationToken, ModelProvider};
 use peritus_types::{RunId, WorkspaceId};
 
 use support::{
-    FixedConversation, ScriptedProvider, design_response, git, list_arguments, named_tool_response,
-    named_tool_response_with_id, profile, read_arguments, text_response, tool_response,
-    write_arguments,
+    FixedConversation, ScriptedProvider, command_arguments, design_response, git, list_arguments,
+    named_tool_response, named_tool_response_with_id, profile, read_arguments, text_response,
+    tool_response, write_arguments,
 };
-
-fn command_arguments(program: &str, args: &[&str], purpose: &str) -> Vec<u8> {
-    let value = serde_json::Value::Object(
-        [
-            ("program".to_owned(), serde_json::Value::String(program.to_owned())),
-            (
-                "args".to_owned(),
-                serde_json::Value::Array(
-                    args.iter()
-                        .map(|argument| serde_json::Value::String((*argument).to_owned()))
-                        .collect(),
-                ),
-            ),
-            ("purpose".to_owned(), serde_json::Value::String(purpose.to_owned())),
-        ]
-        .into_iter()
-        .collect(),
-    );
-    serde_json::to_vec(&value).expect("command arguments")
-}
 
 fn git_output(root: &Path, arguments: &[&str]) -> String {
     let output =

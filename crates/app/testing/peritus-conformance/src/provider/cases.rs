@@ -2,11 +2,11 @@
 
 mod checks;
 
-use super::{ProviderConformanceSubject, ProviderScenario};
+use super::{ProviderConformanceError, ProviderConformanceSubject, ProviderScenario};
 use crate::{
     AssertionFailure, CaseDescriptor, CaseId, CaseResult, ConformanceCase, ConformanceFuture,
     FailureCode, Observation, ObservationId, ObservationValue, ReportText, StaticSuite,
-    SuiteDescriptor, SuiteId,
+    SubjectFailure, SuiteDescriptor, SuiteId,
 };
 
 struct ProviderCase {
@@ -136,7 +136,19 @@ fn boxed<S: ProviderConformanceSubject + 'static>(
     })
 }
 
-fn result(exact: bool, scenario: ProviderScenario) -> CaseResult {
+fn result(exact: Result<bool, ProviderConformanceError>, scenario: ProviderScenario) -> CaseResult {
+    let exact = match exact {
+        Ok(exact) => exact,
+        Err(ProviderConformanceError::Infrastructure) => {
+            return CaseResult::infrastructure(
+                Vec::new(),
+                SubjectFailure::new(
+                    FailureCode::catalog("PERITUS-PROVIDER-INFRASTRUCTURE"),
+                    ReportText::literal("provider scenario could not be exercised or observed"),
+                ),
+            );
+        }
+    };
     let observations =
         vec![Observation::new(ObservationId::catalog("exact"), ObservationValue::Boolean(exact))];
     if exact {

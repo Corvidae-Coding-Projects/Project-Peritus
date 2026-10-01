@@ -3,6 +3,7 @@ import {test,expect,type Page} from '@playwright/test';
 import {spawn,type ChildProcess} from 'node:child_process';
 import {mkdtemp,mkdir,writeFile,rm,symlink} from 'node:fs/promises';
 import {join,resolve} from 'node:path';
+import {tmpdir} from 'node:os';
 import AxeBuilder from '@axe-core/playwright';
 
 // Full Chromium includes the real PDF extension; headless shell has no renderer.
@@ -11,7 +12,7 @@ let directory:string,root:string,project:string,token:string,pdf:Buffer,server:C
 const filename='report #1.PDF',origin='http://127.0.0.1:4174';
 
 test.beforeAll(async({browser,request})=>{
-  directory=await mkdtemp('/tmp/opencode/peritus-pdf-e2e-');root=join(directory,'project');await mkdir(root);
+  directory=await mkdtemp(join(tmpdir(),'peritus-pdf-e2e-'));root=join(directory,'project');await mkdir(root);
   const document=await browser.newPage();
   await document.setContent('<!doctype html><html lang="en"><head><title>Peritus PDF fixture</title><style>body{font:18px sans-serif;padding:36px}section{break-after:page}section:last-child{break-after:auto}</style></head><body><section><h1>PDF preview regression</h1><p>Synthetic test document. This page must be visible inside Peritus.</p><p>Native browser rendering, not the UTF-8 editor.</p></section><section><h1>Second page</h1><p>Pagination remains available in the browser PDF controls.</p></section></body></html>');
   pdf=await document.pdf({format:'A4'});await document.close();

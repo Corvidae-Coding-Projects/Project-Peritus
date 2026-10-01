@@ -40,7 +40,7 @@ async fn incompatible_hello_returns_no_session_and_closes_the_connection_async()
     let mut frames = AppFrameStream::new(stream, AppProtocolLimits::PRODUCTION);
     let client = ClientHello::new(
         ProtocolId::new([71; 16]).expect("protocol identity"),
-        vec![VersionRange::new(2, 0, 0).expect("unsupported version")],
+        vec![VersionRange::new(1, 0, 0).expect("retired version")],
         Vec::new(),
         Vec::new(),
         AppProtocolLimits::PRODUCTION,
@@ -186,7 +186,7 @@ fn run_async_test(test: impl Future<Output = ()>) {
 fn compatible_hello(identity: u8) -> ClientHello {
     ClientHello::new(
         ProtocolId::new([identity; 16]).expect("protocol identity"),
-        vec![VersionRange::new(1, 0, 0).expect("version")],
+        vec![peritus_app_protocol::CURRENT_PROTOCOL_RANGE],
         Vec::new(),
         Vec::new(),
         AppProtocolLimits::PRODUCTION,

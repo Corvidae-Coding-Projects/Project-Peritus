@@ -42,7 +42,7 @@ pub(super) fn decode_terminal_payload(
 pub(super) fn terminal_binding_valid(manifest: &ExecutionManifest) -> Result<bool, ProcessError> {
     match (manifest.phase, manifest.terminal_digest, manifest.terminal.as_ref()) {
         (LifecyclePhase::Terminal, Some(digest), Some(terminal)) => {
-            Ok(digest == terminal_digest(terminal)? && manifest.matches_terminal(terminal))
+            Ok(digest == terminal_digest(terminal)? && manifest.retains_terminal(terminal))
         }
         (LifecyclePhase::Terminal, _, _) => Ok(false),
         (_, None, None) => Ok(true),

@@ -15,6 +15,39 @@ use crate::{JournalError, JournalErrorKind, SqliteJournal};
 const WORKSPACE_COLUMNS: &str = "workspace_id, registration_bytes, registration_digest, state";
 
 impl SqliteJournal {
+    /// Replaces a registration after its domain owner validates an authorized baseline refresh.
+    ///
+    /// # Errors
+    /// Returns conflict if the exact previous registration changed or is missing.
+    pub fn refresh_application_workspace(
+        &mut self,
+        expected: &ApplicationWorkspace,
+        replacement: &NewApplicationWorkspace,
+    ) -> Result<ApplicationWorkspace, JournalError> {
+        if expected.workspace_id() != replacement.workspace_id {
+            return Err(conflict("workspace refresh cannot change identity"));
+        }
+        let changed = self
+            .connection
+            .execute(
+                "UPDATE app_workspaces SET registration_bytes = ?1, registration_digest = ?2
+             WHERE workspace_id = ?3 AND registration_bytes = ?4 AND registration_digest = ?5",
+                params![
+                    replacement.registration_bytes,
+                    replacement.registration_digest.as_bytes().as_slice(),
+                    expected.workspace_id().as_bytes().as_slice(),
+                    expected.registration_bytes(),
+                    expected.registration_digest().as_bytes().as_slice()
+                ],
+            )
+            .map_err(|error| JournalError::sqlite("refresh application workspace", error))?;
+        if changed != 1 {
+            return Err(conflict("workspace registration changed during refresh"));
+        }
+        load_workspace(&self.connection, replacement.workspace_id)?
+            .ok_or_else(|| corrupt("refreshed workspace disappeared"))
+    }
+
     /// Registers exact workspace configuration bytes.
     ///
     /// Repeating the exact registration is idempotent.

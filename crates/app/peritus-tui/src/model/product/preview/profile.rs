@@ -64,7 +64,7 @@ impl AppModel {
                 .as_ref()
                 .and_then(super::super::ProductUi::selected_settlement)
                 .and_then(peritus_run_settlement::RunSettlement::checkpoint)
-                .map(|checkpoint| checkpoint.identity().candidate_digest())
+                .map(|checkpoint| checkpoint.identity().repository_digest())
                 .ok_or_else(missing)?;
             WorkbenchLaunchSource::new(
                 WorkbenchLaunchSourceKind::ManagedCandidate,

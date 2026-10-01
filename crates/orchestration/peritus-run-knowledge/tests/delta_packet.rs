@@ -97,6 +97,8 @@ fn late_digest_candidate() -> CandidateIdentity {
         RunId::new([41; 16]).expect("run id"),
         WorkspaceId::new([42; 16]).expect("workspace id"),
         Sha256Digest::new(bytes),
+        Sha256Digest::new(bytes),
+        None,
         1,
         1,
     )

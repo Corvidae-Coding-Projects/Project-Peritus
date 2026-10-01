@@ -17,38 +17,39 @@ use std::{
 const MAX_OPERATION_RECORDS: usize = 4_096;
 
 #[derive(Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct Project {
     pub(crate) id: String,
     pub(crate) root: PathBuf,
     pub(crate) name: String,
     pub(crate) repository: PathBuf,
-    #[serde(default)]
     pub(crate) closed: bool,
 }
 #[derive(Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct Session {
-    #[serde(default)]
     pub(crate) settings: crate::sessions::Settings,
     pub(crate) id: String,
+    pub(crate) conversation: String,
+    pub(crate) run: String,
     pub(crate) project: String,
     pub(crate) parent: Option<String>,
     pub(crate) title: String,
     pub(crate) closed: bool,
 }
 #[derive(Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct Operation {
     pub(crate) input: Value,
+    pub(crate) prepared: Option<Value>,
     pub(crate) result: Option<Value>,
 }
 #[derive(Clone, Default, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct Workspace {
     pub(crate) projects: Vec<Project>,
     pub(crate) sessions: Vec<Session>,
-    #[serde(default)]
     pub(crate) operations: BTreeMap<String, Operation>,
-    #[serde(default)]
     pub(crate) attachments: BTreeMap<String, crate::files::attachments::Attachment>,
 }
 pub struct App {
@@ -150,6 +151,19 @@ impl App {
     pub(crate) fn record_operation(&self, operation: String, input: Value) -> Result<()> {
         self.update(|workspace| insert_operation(workspace, operation, input))
     }
+    pub(crate) fn retain_prepared_operation(&self, operation: &str, prepared: Value) -> Result<()> {
+        self.update(|workspace| {
+            let record = workspace
+                .operations
+                .get_mut(operation)
+                .ok_or_else(|| problem("Original operation record missing"))?;
+            if record.prepared.as_ref().is_some_and(|existing| existing != &prepared) {
+                return Err(problem("Original operation execution context changed"));
+            }
+            record.prepared = Some(prepared);
+            Ok(())
+        })
+    }
     pub(crate) fn project(&self, id: &str) -> Result<Project> {
         self.snapshot()?
             .projects
@@ -184,6 +198,8 @@ impl App {
             workspace.sessions.push(Session {
                 settings: crate::sessions::Settings::default(),
                 id: id()?,
+                conversation: id()?,
+                run: id()?,
                 project: project.id.clone(),
                 parent: None,
                 title: "New conversation".into(),
@@ -244,26 +260,40 @@ impl App {
 
 fn prune_operations(workspace: &mut Workspace) {
     while workspace.operations.len() > MAX_OPERATION_RECORDS {
-        let Some(completed) = workspace
-            .operations
-            .iter()
-            .find_map(|(id, record)| record.result.is_some().then(|| id.clone()))
-        else {
+        let Some(completed) = removable_completed_operation(workspace) else {
             break;
         };
         workspace.operations.remove(&completed);
     }
 }
 
+fn removable_completed_operation(workspace: &Workspace) -> Option<String> {
+    workspace.operations.iter().find_map(|(id, record)| {
+        (record.result.is_some() && !has_unresolved_native_parent(workspace, id))
+            .then(|| id.clone())
+    })
+}
+
+fn has_unresolved_native_parent(workspace: &Workspace, key: &str) -> bool {
+    let Some(native) = key.strip_prefix("daemon:") else { return false };
+    let parent = native.split(':').next().unwrap_or(native);
+    workspace.operations.get(parent).is_some_and(|record| record.result.is_none())
+}
+
+pub fn native_operation_belongs_to(key: &str, operation: &str) -> bool {
+    let transport = format!("daemon:{operation}");
+    key == transport || key.starts_with(&format!("{transport}:"))
+}
+
 fn insert_operation(workspace: &mut Workspace, operation: String, input: Value) -> Result<()> {
     if workspace.operations.len() >= MAX_OPERATION_RECORDS
-        && !workspace.operations.values().any(|record| record.result.is_some())
+        && removable_completed_operation(workspace).is_none()
     {
         return Err(problem(
             "The operation ledger is full of unresolved actions. Resolve an original operation before starting another action.",
         ));
     }
-    workspace.operations.insert(operation, Operation { input, result: None });
+    workspace.operations.insert(operation, Operation { input, prepared: None, result: None });
     Ok(())
 }
 
@@ -273,10 +303,12 @@ fn recover_unsubmitted_native_operations(workspace: &mut Workspace) -> bool {
         .iter()
         .filter_map(|(id, record)| {
             let command = record.input["command"].as_str()?;
+            let submitted =
+                workspace.operations.keys().any(|key| native_operation_belongs_to(key, id));
             (record.result.is_none()
                 && ["send", "control", "session-settings", "improvements"].contains(&command)
-                && !workspace.operations.contains_key(&format!("daemon:{id}")))
-            .then(|| id.clone())
+                && !submitted)
+                .then(|| id.clone())
         })
         .collect::<Vec<_>>();
     for id in &orphaned {

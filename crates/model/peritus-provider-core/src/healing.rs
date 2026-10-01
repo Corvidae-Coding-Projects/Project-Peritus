@@ -52,16 +52,41 @@ pub fn object(
     target: &str,
     limits: ProtocolLimits,
 ) -> Result<HealedJson, ProviderCoreError> {
-    parse(input, target, limits, true)
+    parse(input, target, limits, Context::Object)
+}
+
+/// Parses one complete private model envelope, allowing a plain prelude and blank line.
+///
+/// Use only for the model-authored private envelope of a completed runtime result, never
+/// public assistant content, ordinary tool arguments, or the runtime transport itself.
+/// A prelude cannot contain quotes, fences, or container delimiters. The object must be
+/// the sole structured candidate and end the payload. Schema and authorization checks follow.
+///
+/// # Errors
+/// Rejects anything rejected by [`object`], except this explicitly delimited plain prelude.
+pub fn private_envelope(
+    input: &str,
+    target: &str,
+    limits: ProtocolLimits,
+) -> Result<HealedJson, ProviderCoreError> {
+    parse(input, target, limits, Context::PrivateEnvelope)
+}
+
+#[derive(Clone, Copy, Eq, PartialEq)]
+enum Context {
+    Object,
+    PrivateEnvelope,
+    StructuredOutput,
 }
 
 fn parse(
     input: &str,
     target: &str,
     limits: ProtocolLimits,
-    object_required: bool,
+    context: Context,
 ) -> Result<HealedJson, ProviderCoreError> {
     let bounds = JsonBounds::value(limits);
+    let object_required = context != Context::StructuredOutput;
     if let Ok(value) = CanonicalJson::parse(input, bounds)
         && (!object_required || value.is_object())
     {
@@ -72,7 +97,9 @@ fn parse(
     }
     // Exactly one redundant JSON-string encoding is reversible; never coerce other types.
     let decoded = serde_json::from_str::<String>(input).ok();
-    let extracted = syntax::extract(decoded.as_deref().unwrap_or(input)).ok_or_else(invalid)?;
+    let extracted =
+        syntax::extract(decoded.as_deref().unwrap_or(input), context == Context::PrivateEnvelope)
+            .ok_or_else(invalid)?;
     let repaired = syntax::normalize(extracted).ok_or_else(invalid)?;
     let value = CanonicalJson::parse(&repaired, bounds).map_err(|_| invalid())?;
     if object_required && !value.is_object() {
@@ -80,7 +107,14 @@ fn parse(
     }
     // These are private journal contents like tool arguments, not redacted log diagnostics.
     let record = Value::from_iter([
-        ("policy", Value::from("syntax-only-v1")),
+        (
+            "policy",
+            Value::from(if context == Context::PrivateEnvelope {
+                "private-envelope-v1"
+            } else {
+                "syntax-only-v1"
+            }),
+        ),
         ("target", Value::from(target)),
         ("original", Value::from(input)),
         (
@@ -133,7 +167,8 @@ pub fn structured_output(
     let content = if CanonicalJson::parse(text, JsonBounds::value(limits)).is_ok() {
         bytes
     } else {
-        let (value, audit) = parse(text, item_id.expose_for_wire(), limits, false)?.into_parts();
+        let (value, audit) =
+            parse(text, item_id.expose_for_wire(), limits, Context::StructuredOutput)?.into_parts();
         events.extend(audit);
         repaired = value;
         repaired.canonical_bytes()

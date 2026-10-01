@@ -1,50 +1,22 @@
 //! Canonical product-run request and observation encoding.
 
+pub(super) mod observations;
 mod settlement;
 
-pub(super) use settlement::{
-    read_settlement_snapshot, read_settlement_snapshots, write_settlement_snapshot,
-    write_settlement_snapshots,
-};
+pub(super) use settlement::{read_settlement_snapshot, write_settlement_snapshot};
 
 use peritus_codec::{CanonicalReader, CanonicalWriter, CodecError, CodecErrorKind};
 use peritus_run_settlement::CandidateStage;
 use peritus_types::{ProviderProfileId, RunId, WorkspaceId};
 
 use crate::{
-    MAX_PRODUCT_DELIVERABLE_COMMANDS, MAX_PRODUCT_DELIVERABLE_PATHS, MAX_PRODUCT_MESSAGES,
-    MAX_PRODUCT_RUNS, ProductConversationMessage, ProductConversationRole, ProductDeliverable,
-    ProductProviderSelection, ProductRunContinuation, ProductRunControl, ProductRunControlAction,
-    ProductRunConversation, ProductRunConversationQuery, ProductRunPhase, ProductRunQuery,
-    ProductRunRequest, ProductRunSnapshot,
+    MAX_PRODUCT_DELIVERABLE_COMMANDS, MAX_PRODUCT_DELIVERABLE_PATHS, ProductDeliverable,
+    ProductInteractionQuery, ProductProviderSelection, ProductRunControl, ProductRunControlAction,
+    ProductRunLegalControls, ProductRunOperation, ProductRunOperationKind,
+    ProductRunOperationState, ProductRunPhase, ProductRunQuery, ProductRunSnapshot,
 };
 
 use super::primitive::{invalid, read_id, write_id};
-
-pub(super) fn write_run_request(
-    writer: &mut CanonicalWriter,
-    value: &ProductRunRequest,
-) -> Result<(), CodecError> {
-    write_id(writer, value.run_id().as_bytes())?;
-    write_id(writer, value.workspace_id().as_bytes())?;
-    write_providers(writer, value.providers())?;
-    writer.write_str(value.task())
-}
-
-pub(super) fn read_run_request(
-    reader: &mut CanonicalReader<'_>,
-) -> Result<ProductRunRequest, CodecError> {
-    let offset = reader.offset();
-    invalid(
-        offset,
-        ProductRunRequest::new(
-            read_id(reader, RunId::new)?,
-            read_id(reader, WorkspaceId::new)?,
-            read_providers(reader)?,
-            reader.read_str()?.to_owned(),
-        ),
-    )
-}
 
 pub(super) fn write_run_control(
     writer: &mut CanonicalWriter,
@@ -85,70 +57,17 @@ pub(super) fn read_run_query(
     }
 }
 
-pub(super) fn write_run_continuation(
-    writer: &mut CanonicalWriter,
-    value: &ProductRunContinuation,
-) -> Result<(), CodecError> {
-    write_id(writer, value.run_id().as_bytes())?;
-    writer.write_str(value.message())
-}
-
-pub(super) fn read_run_continuation(
-    reader: &mut CanonicalReader<'_>,
-) -> Result<ProductRunContinuation, CodecError> {
-    let offset = reader.offset();
-    invalid(
-        offset,
-        ProductRunContinuation::new(read_id(reader, RunId::new)?, reader.read_str()?.to_owned()),
-    )
-}
-
 pub(super) fn write_conversation_query(
     writer: &mut CanonicalWriter,
-    value: ProductRunConversationQuery,
+    value: ProductInteractionQuery,
 ) -> Result<(), CodecError> {
     write_id(writer, value.run_id().as_bytes())
 }
 
 pub(super) fn read_conversation_query(
     reader: &mut CanonicalReader<'_>,
-) -> Result<ProductRunConversationQuery, CodecError> {
-    Ok(ProductRunConversationQuery::new(read_id(reader, RunId::new)?))
-}
-
-pub(super) fn write_conversation(
-    writer: &mut CanonicalWriter,
-    value: &ProductRunConversation,
-) -> Result<(), CodecError> {
-    write_id(writer, value.run_id().as_bytes())?;
-    writer.write_collection_len(value.messages().len())?;
-    for message in value.messages() {
-        writer.write_u16(message.role().tag())?;
-        writer.write_str(message.content())?;
-    }
-    Ok(())
-}
-
-pub(super) fn read_conversation(
-    reader: &mut CanonicalReader<'_>,
-) -> Result<ProductRunConversation, CodecError> {
-    let offset = reader.offset();
-    let run_id = read_id(reader, RunId::new)?;
-    let length = reader.read_collection_len()?;
-    if length > MAX_PRODUCT_MESSAGES {
-        return Err(CodecError::at(CodecErrorKind::LimitExceeded, offset));
-    }
-    let mut messages = Vec::with_capacity(length);
-    for _ in 0..length {
-        let role_offset = reader.offset();
-        let role = ProductConversationRole::from_tag(reader.read_u16()?)
-            .ok_or_else(|| CodecError::at(CodecErrorKind::UnknownTag, role_offset))?;
-        messages.push(invalid(
-            offset,
-            ProductConversationMessage::new(role, reader.read_str()?.to_owned()),
-        )?);
-    }
-    invalid(offset, ProductRunConversation::new(run_id, messages))
+) -> Result<ProductInteractionQuery, CodecError> {
+    Ok(ProductInteractionQuery::new(read_id(reader, RunId::new)?))
 }
 
 pub(super) fn write_snapshot(
@@ -173,6 +92,7 @@ fn write_snapshot_inner(
     {
         writer.write_str(text)?;
     }
+    write_operation(writer, value.operation())?;
     writer.write_option_tag(value.deliverable().is_some())?;
     if let Some(deliverable) = value.deliverable() {
         write_deliverable(writer, deliverable, allow_unqualified)?;
@@ -204,6 +124,7 @@ fn read_snapshot_inner(
     let gates = reader.read_str()?.to_owned();
     let review = reader.read_str()?.to_owned();
     let summary = reader.read_str()?.to_owned();
+    let operation = read_operation(reader)?;
     let snapshot = invalid(
         offset,
         ProductRunSnapshot::new(
@@ -218,6 +139,7 @@ fn read_snapshot_inner(
             gates,
             review,
             summary,
+            operation,
         ),
     )?;
     if reader.read_option_tag()? {
@@ -225,6 +147,57 @@ fn read_snapshot_inner(
     } else {
         Ok(snapshot)
     }
+}
+
+fn write_operation(
+    writer: &mut CanonicalWriter,
+    value: &ProductRunOperation,
+) -> Result<(), CodecError> {
+    writer.write_u16(value.kind().tag())?;
+    writer.write_u16(value.state().tag())?;
+    writer.write_str(value.identity())?;
+    writer.write_str(value.known())?;
+    writer.write_str(value.uncertainty())?;
+    let controls = value.legal_controls();
+    for allowed in [
+        controls.cancel(),
+        controls.retry(),
+        controls.accept(),
+        controls.commit(),
+        controls.export(),
+        controls.discard(),
+        controls.acknowledge(),
+    ] {
+        writer.write_bool(allowed)?;
+    }
+    Ok(())
+}
+
+fn read_operation(reader: &mut CanonicalReader<'_>) -> Result<ProductRunOperation, CodecError> {
+    let offset = reader.offset();
+    let kind = ProductRunOperationKind::from_tag(reader.read_u16()?)
+        .ok_or_else(|| CodecError::at(CodecErrorKind::UnknownTag, offset))?;
+    let state_offset = reader.offset();
+    let state = ProductRunOperationState::from_tag(reader.read_u16()?)
+        .ok_or_else(|| CodecError::at(CodecErrorKind::UnknownTag, state_offset))?;
+    let identity = reader.read_str()?.to_owned();
+    let known = reader.read_str()?.to_owned();
+    let uncertainty = reader.read_str()?.to_owned();
+    let mut controls = ProductRunLegalControls::none();
+    for action in [
+        ProductRunControlAction::Cancel,
+        ProductRunControlAction::Retry,
+        ProductRunControlAction::Accept,
+        ProductRunControlAction::Commit,
+        ProductRunControlAction::Export,
+        ProductRunControlAction::Discard,
+        ProductRunControlAction::Acknowledge,
+    ] {
+        if reader.read_bool()? {
+            controls = controls.with(action);
+        }
+    }
+    invalid(offset, ProductRunOperation::new(kind, state, identity, known, uncertainty, controls))
 }
 
 fn write_deliverable(
@@ -302,29 +275,7 @@ fn read_deliverable(
     invalid(offset, deliverable)
 }
 
-pub(super) fn write_snapshots(
-    writer: &mut CanonicalWriter,
-    values: &[ProductRunSnapshot],
-) -> Result<(), CodecError> {
-    writer.write_collection_len(values.len())?;
-    for value in values {
-        write_snapshot(writer, value)?;
-    }
-    Ok(())
-}
-
-pub(super) fn read_snapshots(
-    reader: &mut CanonicalReader<'_>,
-) -> Result<Vec<ProductRunSnapshot>, CodecError> {
-    let offset = reader.offset();
-    let length = reader.read_collection_len()?;
-    if length > MAX_PRODUCT_RUNS {
-        return Err(CodecError::at(CodecErrorKind::LimitExceeded, offset));
-    }
-    (0..length).map(|_| read_snapshot(reader)).collect()
-}
-
-fn write_providers(
+pub(super) fn write_providers(
     writer: &mut CanonicalWriter,
     value: ProductProviderSelection,
 ) -> Result<(), CodecError> {
@@ -334,7 +285,7 @@ fn write_providers(
     Ok(())
 }
 
-fn read_providers(
+pub(super) fn read_providers(
     reader: &mut CanonicalReader<'_>,
 ) -> Result<ProductProviderSelection, CodecError> {
     Ok(ProductProviderSelection::new(

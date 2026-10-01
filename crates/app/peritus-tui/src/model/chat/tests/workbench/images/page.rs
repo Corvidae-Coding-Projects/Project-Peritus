@@ -62,6 +62,7 @@ fn image_selection_binds_inspected_revision_and_waits_for_a_receipt() {
 fn wrong_scope_and_stale_page_disable_selection_without_losing_drafts() {
     let mut model = opened();
     let (_, page) = inspect(&mut model);
+    model.chat.buffer = "retained image notes".to_owned();
     let sent = request(&key(&mut model, KeyCode::Char('r')));
     let wrong = WorkbenchQuery::new(
         ConversationId::new([99; 16]).expect("other"),
@@ -83,7 +84,7 @@ fn wrong_scope_and_stale_page_disable_selection_without_losing_drafts() {
     );
     assert!(model.chat.workbench.images.page.is_none());
     assert!(key(&mut model, KeyCode::Char(' ')).is_empty());
-    assert_eq!(model.chat.buffer, "/attach");
+    assert_eq!(model.chat.buffer, "retained image notes");
 }
 
 #[test]
@@ -104,6 +105,7 @@ fn image_list_row_navigation_scroll_and_import_switch_preserve_drafts() {
             assert!(text.contains("eligible next turn: true"));
         }
     }
+    model.chat.viewport = Some(ratatui::layout::Rect::new(0, 0, 40, 12));
     key(&mut model, KeyCode::Right);
     assert_eq!(model.chat.workbench.images.selected, 1);
     key(&mut model, KeyCode::PageDown);
@@ -121,10 +123,12 @@ fn narrow_image_details_are_reachable_line_by_line_without_skipping_identity_or_
     use ratatui::{Terminal, backend::TestBackend};
     let mut model = opened();
     inspect(&mut model);
+    model.chat.viewport = Some(ratatui::layout::Rect::new(0, 0, 40, 12));
     let mut terminal = Terminal::new(TestBackend::new(40, 12)).expect("terminal");
     let mut observed = String::new();
+    let maximum = crate::render::workbench_scroll_limit(&model);
     for offset in 0..50 {
-        assert_eq!(model.chat.workbench.scroll, offset);
+        assert_eq!(model.chat.workbench.scroll, offset.min(maximum));
         let frame = terminal.draw(|frame| crate::render::draw(frame, &model)).expect("draw");
         observed.extend(frame.buffer.content().iter().map(ratatui::buffer::Cell::symbol));
         key(&mut model, KeyCode::Down);

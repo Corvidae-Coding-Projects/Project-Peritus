@@ -3,7 +3,7 @@ use crate::{
     daemon,
     error::{Result, problem},
     files,
-    state::{App, Workspace},
+    state::{App, Workspace, native_operation_belongs_to},
 };
 use serde_json::{Value, json};
 
@@ -25,6 +25,12 @@ pub async fn observe(app: &App, id: &str) -> Result<Value> {
                     .then(|| json!({"revision":hash,"bytes":bytes.len(),"recovered":true})))
             };
             check().unwrap_or(None)
+        } else if record.input["command"] == "send" {
+            match daemon::recover_send(app, id).await {
+                Ok(result) => result,
+                Err(error) if error.1 => return Err(error),
+                Err(error) => Some(json!({"error":error.0,"recovered":true})),
+            }
         } else {
             daemon::receipts::observed(app, id).await?
         };
@@ -62,7 +68,7 @@ fn acknowledge_review(state: &mut Workspace, id: &str) -> Result<()> {
     // Manual review is the terminal disposition for an unprovable native request. Retaining its
     // unresolved transport child forever would eventually fill the durable operation ledger even
     // though the user had already resolved the parent ambiguity.
-    state.operations.remove(&format!("daemon:{id}"));
+    state.operations.retain(|key, _| !native_operation_belongs_to(key, id));
     state.operations.get_mut(id).ok_or_else(|| problem("Operation not found"))?.result = Some(
         json!({"reviewed":true,"error":"Outcome manually reviewed by the user. No acceptance was inferred and the operation was not repeated."}),
     );
@@ -79,16 +85,30 @@ mod tests {
         let mut workspace = Workspace::default();
         workspace.operations.insert(
             "original".into(),
-            Operation { input: json!({"command":"send"}), result: None },
+            Operation { input: json!({"command":"send"}), prepared: None, result: None },
         );
         workspace.operations.insert(
             "daemon:original".into(),
-            Operation { input: json!({"command":"daemon-request"}), result: None },
+            Operation { input: json!({"command":"daemon-request"}), prepared: None, result: None },
+        );
+        workspace.operations.insert(
+            "daemon:original:workbench:create".into(),
+            Operation {
+                input: json!({"command":"daemon-request"}),
+                prepared: None,
+                result: Some(json!({"accepted":true})),
+            },
+        );
+        workspace.operations.insert(
+            "daemon:original-other".into(),
+            Operation { input: json!({"command":"daemon-request"}), prepared: None, result: None },
         );
 
         acknowledge_review(&mut workspace, "original").expect("manual review");
 
         assert!(workspace.operations["original"].result.is_some());
         assert!(!workspace.operations.contains_key("daemon:original"));
+        assert!(!workspace.operations.contains_key("daemon:original:workbench:create"));
+        assert!(workspace.operations.contains_key("daemon:original-other"));
     }
 }

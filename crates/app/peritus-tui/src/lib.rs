@@ -8,6 +8,7 @@ mod client;
 mod entry;
 mod error;
 pub(crate) mod file_import;
+mod help;
 pub(crate) mod image_import;
 mod input;
 mod model;
@@ -15,6 +16,8 @@ mod render;
 mod runtime;
 mod sanitize;
 mod terminal;
+#[cfg(test)]
+mod test_support;
 mod title;
 
 pub use entry::run_env;

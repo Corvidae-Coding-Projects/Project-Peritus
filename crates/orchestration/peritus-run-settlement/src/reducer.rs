@@ -91,7 +91,7 @@ impl SettlementReducer {
         Ok(settlement)
     }
 
-    /// Strongest admitted candidate checkpoint.
+    /// Latest admitted candidate checkpoint.
     #[must_use]
     pub const fn checkpoint(&self) -> (value: Option<&CandidateCheckpoint>)
         ensures match value {

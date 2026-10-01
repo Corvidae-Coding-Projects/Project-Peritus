@@ -89,9 +89,10 @@ impl HolderQuiescenceObservation {
 impl ProcessStore {
     /// Inspects the complete decoded registry for one exact fenced lease holder.
     ///
-    /// A successful observation proves every matching process is terminal, its owned tree is
-    /// quiescent, and every support task joined. The method does not infer quiescence from process
-    /// absence or a partial index.
+    /// A successful observation proves every matching process has a durably observed quiescent
+    /// tree and joined support tasks. The command outcome may remain explicitly unknown after
+    /// restart; holder quiescence concerns resource ownership rather than result knowledge. The
+    /// method does not infer quiescence from a phase label, process absence, or a partial index.
     ///
     /// # Errors
     ///
@@ -135,11 +136,7 @@ impl ProcessStore {
             ) {
                 return Err(QuiescenceBlocker::LiveProcess(process_id));
             }
-            if manifest.phase != LifecyclePhase::Terminal
-                || !manifest.tree_quiescent
-                || !manifest.support_tasks_joined
-                || manifest.terminal_digest.is_none()
-            {
+            if !manifest.ownership_settled() {
                 return Err(QuiescenceBlocker::UnresolvedProcess(process_id));
             }
         }

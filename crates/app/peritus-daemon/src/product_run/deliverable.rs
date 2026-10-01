@@ -2,6 +2,7 @@
 
 use std::{
     fs,
+    io::Write as _,
     path::{Path, PathBuf},
     process::Command,
 };
@@ -15,6 +16,11 @@ use super::persistence::persist_record;
 use super::snapshot::replace_snapshot;
 use super::{ProductRunService, ProductRunServiceError};
 
+pub(in crate::product_run) mod commit;
+pub(super) mod discard;
+#[cfg(test)]
+use commit::commit_deliverable;
+
 impl ProductRunService {
     pub(super) fn control_deliverable(
         &self,
@@ -27,17 +33,43 @@ impl ProductRunService {
         if !record.snapshot.phase().terminal() {
             return Err(ProductRunServiceError::InvalidState);
         }
-        let deliverable =
+        let saved_export = action == ProductRunControlAction::Export
+            && record.snapshot.deliverable().is_some_and(export_available);
+        // Returning an existing immutable export does not depend on mutable-workspace recovery.
+        if !saved_export && discard::recover_completed(&self.inner.directory, record)? {
+            persist_record(&self.inner.directory, record)?;
+        }
+        let mut deliverable =
             record.snapshot.deliverable().cloned().ok_or(ProductRunServiceError::InvalidState)?;
+        let pending = discard::Pending::read(&self.inner.directory, record)?;
+        if pending.is_some() && action != ProductRunControlAction::Discard && !saved_export {
+            return Err(ProductRunServiceError::InvalidState);
+        }
         if let Some(snapshot) = repeated_action(record, action, &deliverable) {
+            // An earlier attempt may have completed its effects but failed to save
+            // the result. A retry must make that result durable before acknowledging it.
+            persist_record(&self.inner.directory, record)?;
             return Ok(snapshot);
         }
+        let workspace_id = record.request.workspace_id();
+        if pending.is_none() {
+            discard::workspace_available(&self.inner.directory, &records, workspace_id)?;
+        }
+        let record = records.get_mut(&run_id).ok_or(ProductRunServiceError::NotFound)?;
         let workspace = self
             .inner
             .workspaces
             .get(&record.request.workspace_id())
             .ok_or(ProductRunServiceError::WorkspaceUnavailable)?;
-        validate_exact_candidate(record, &deliverable, workspace)?;
+        if pending.is_some() && Path::new(deliverable.workspace_path()) != workspace {
+            return Err(ProductRunServiceError::InvalidState);
+        }
+        if action == ProductRunControlAction::Commit {
+            deliverable =
+                commit::validate_retry(&self.inner.directory, record, &deliverable, workspace)?;
+        } else if pending.is_none() {
+            validate_exact_candidate(record, &deliverable, workspace)?;
+        }
         let (deliverable, status) = match action {
             ProductRunControlAction::Accept => {
                 let status = if deliverable.qualification() == CandidateStage::Qualified {
@@ -48,16 +80,15 @@ impl ProductRunService {
                 (deliverable.mark_accepted(), status.to_owned())
             }
             ProductRunControlAction::Commit => {
-                let revision = commit_deliverable(&deliverable, record.request.task())?;
-                (
-                    deliverable
-                        .mark_committed(revision.clone())
-                        .map_err(|_| ProductRunServiceError::InvalidMessage)?,
-                    format!("Deliverable committed as {revision}"),
-                )
+                commit::with_recovery(&self.inner.directory, record, deliverable)?
             }
             ProductRunControlAction::Export => {
-                let path = export_deliverable(&self.inner.directory, run_id, &deliverable)?;
+                let path = export_deliverable(
+                    &self.inner.directory,
+                    run_id,
+                    &deliverable,
+                    record.task_baseline.as_deref(),
+                )?;
                 let display = path.to_string_lossy().into_owned();
                 (
                     deliverable
@@ -70,10 +101,45 @@ impl ProductRunService {
                 if !deliverable.commit_revision().is_empty() {
                     return Err(ProductRunServiceError::InvalidState);
                 }
-                discard_deliverable(&deliverable)?;
-                (deliverable.mark_discarded(), "Deliverable discarded".to_owned())
+                let completion =
+                    discard::Reservation::prepare(&self.inner.directory, record, &deliverable)?;
+                let pending = match pending {
+                    Some(pending) => Some(pending),
+                    None => discard::Pending::prepare(&self.inner.directory, record, workspace)?,
+                };
+                let recovered = if let Some(pending) = pending {
+                    match pending.execute(&self.inner.directory, record) {
+                        Ok(paths) => paths,
+                        Err(error) => {
+                            discard::Pending::mark_interrupted(record)?;
+                            persist_record(&self.inner.directory, record)?;
+                            return Err(error);
+                        }
+                    }
+                } else {
+                    let baseline = record
+                        .task_baseline
+                        .as_deref()
+                        .ok_or(ProductRunServiceError::WorkspaceUnavailable)?;
+                    ProductRunner::discard_from_baseline(
+                        workspace,
+                        baseline,
+                        deliverable.changed_paths(),
+                    )
+                    .map_err(|error| {
+                        ProductRunServiceError::internal(
+                            "restore task preimages",
+                            error.to_string(),
+                        )
+                    })?
+                };
+                let status = discard_status(&recovered);
+                completion.complete(&status)?;
+                (deliverable.mark_discarded(), status)
             }
-            ProductRunControlAction::Cancel | ProductRunControlAction::Retry => {
+            ProductRunControlAction::Cancel
+            | ProductRunControlAction::Retry
+            | ProductRunControlAction::Acknowledge => {
                 return Err(ProductRunServiceError::InvalidState);
             }
         };
@@ -85,9 +151,35 @@ impl ProductRunService {
         )?
         .with_deliverable(deliverable);
         record.snapshot = snapshot;
+        if action == ProductRunControlAction::Discard {
+            discard::Pending::clear_interruption(record);
+        }
         persist_record(&self.inner.directory, record)?;
         Ok(record.snapshot.clone())
     }
+}
+
+fn discard_status(recovered: &[PathBuf]) -> String {
+    let mut status = "Deliverable discarded".to_owned();
+    if !recovered.is_empty() {
+        status.push_str("\nGit history was preserved. Restored nested repositories may use a detached HEAD or a new unborn branch; recovery records below explain how to revisit saved work.");
+    }
+    for (index, path) in recovered.iter().enumerate() {
+        let line = format!("\nRepository recovery: {}", path.display());
+        if status.len().saturating_add(line.len())
+            > peritus_app_protocol::MAX_PRODUCT_DETAIL_BYTES - 256
+        {
+            use std::fmt::Write as _;
+            let _ = write!(
+                status,
+                "\n{} additional recovery records are in peritus/discarded under their enclosing Git directories.",
+                recovered.len() - index
+            );
+            break;
+        }
+        status.push_str(&line);
+    }
+    status
 }
 
 fn repeated_action(
@@ -98,11 +190,17 @@ fn repeated_action(
     let already_done = match action {
         ProductRunControlAction::Accept => deliverable.accepted(),
         ProductRunControlAction::Commit => !deliverable.commit_revision().is_empty(),
-        ProductRunControlAction::Export => !deliverable.export_path().is_empty(),
+        ProductRunControlAction::Export => export_available(deliverable),
         ProductRunControlAction::Discard => deliverable.discarded(),
-        ProductRunControlAction::Cancel | ProductRunControlAction::Retry => false,
+        ProductRunControlAction::Cancel
+        | ProductRunControlAction::Retry
+        | ProductRunControlAction::Acknowledge => false,
     };
     already_done.then(|| record.snapshot.clone())
+}
+
+pub(in crate::product_run) fn export_available(deliverable: &ProductDeliverable) -> bool {
+    !deliverable.export_path().is_empty() && Path::new(deliverable.export_path()).is_file()
 }
 
 fn validate_exact_candidate(
@@ -122,12 +220,7 @@ fn validate_exact_candidate(
     if Path::new(deliverable.workspace_path()) != workspace {
         return Err(ProductRunServiceError::InvalidState);
     }
-    let Some(checkpoint) = record.checkpoint.as_ref() else {
-        // Legacy qualified handoffs predate digest persistence and remain operable.
-        return (deliverable.qualification() == CandidateStage::Qualified)
-            .then_some(())
-            .ok_or(ProductRunServiceError::InvalidState);
-    };
+    let checkpoint = record.checkpoint.as_ref().ok_or(ProductRunServiceError::InvalidState)?;
     if checkpoint.stage() != deliverable.qualification()
         || checkpoint.identity().run_id() != record.request.run_id()
         || checkpoint.identity().workspace_id() != record.request.workspace_id()
@@ -136,61 +229,31 @@ fn validate_exact_candidate(
     }
     let current = ProductRunner::candidate_digest(Path::new(deliverable.workspace_path()))
         .map_err(|_| ProductRunServiceError::WorkspaceUnavailable)?;
-    if current != checkpoint.identity().candidate_digest() {
+    if current != checkpoint.identity().repository_digest() {
         return Err(ProductRunServiceError::InvalidState);
     }
     Ok(())
-}
-
-fn commit_deliverable(
-    deliverable: &ProductDeliverable,
-    task: &str,
-) -> Result<String, ProductRunServiceError> {
-    let root = Path::new(deliverable.workspace_path());
-    let add = Command::new("git")
-        .arg("add")
-        .arg("--")
-        .args(deliverable.changed_paths())
-        .current_dir(root)
-        .status()
-        .map_err(|_| ProductRunServiceError::Unavailable)?;
-    if !add.success() {
-        return Err(ProductRunServiceError::Unavailable);
-    }
-    let subject = task.lines().next().unwrap_or("completed task").trim();
-    let subject = &subject[..subject.floor_char_boundary(subject.len().min(64))];
-    let commit = Command::new("git")
-        .args(["commit", "--only", "-m", &format!("peritus: {subject}"), "--"])
-        .args(deliverable.changed_paths())
-        .current_dir(root)
-        .status()
-        .map_err(|_| ProductRunServiceError::Unavailable)?;
-    if !commit.success() {
-        return Err(ProductRunServiceError::Unavailable);
-    }
-    let revision = Command::new("git")
-        .args(["rev-parse", "HEAD"])
-        .current_dir(root)
-        .output()
-        .map_err(|_| ProductRunServiceError::Unavailable)?;
-    if !revision.status.success() {
-        return Err(ProductRunServiceError::Unavailable);
-    }
-    String::from_utf8(revision.stdout)
-        .map(|value| value.trim().to_owned())
-        .map_err(|_| ProductRunServiceError::Unavailable)
 }
 
 fn export_deliverable(
     product_run_directory: &Path,
     run_id: RunId,
     deliverable: &ProductDeliverable,
+    baseline: Option<&str>,
 ) -> Result<PathBuf, ProductRunServiceError> {
     let root = Path::new(deliverable.workspace_path());
     let bytes = if deliverable.commit_revision().is_empty() {
-        uncommitted_patch(root, deliverable.changed_paths())?
+        match baseline {
+            Some(baseline) => ProductRunner::candidate_patch_from_baseline(root, baseline)
+                .map_err(|_| ProductRunServiceError::WorkspaceUnavailable)?,
+            #[cfg(test)]
+            None => uncommitted_patch(root, deliverable.changed_paths())?,
+            #[cfg(not(test))]
+            None => return Err(ProductRunServiceError::WorkspaceUnavailable),
+        }
     } else {
         let output = Command::new("git")
+            .env("GIT_LITERAL_PATHSPECS", "1")
             .args(["format-patch", "-1", "--stdout", deliverable.commit_revision()])
             .current_dir(root)
             .output()
@@ -207,17 +270,23 @@ fn export_deliverable(
     fs::create_dir_all(&directory).map_err(|_| ProductRunServiceError::Unavailable)?;
     let path = directory.join(format!("{}.patch", run_hex(run_id)));
     let temporary = path.with_extension("patch.new");
-    fs::write(&temporary, bytes).map_err(|_| ProductRunServiceError::Unavailable)?;
-    #[cfg(windows)]
-    if path.is_file() {
-        fs::remove_file(&path).map_err(|_| ProductRunServiceError::Unavailable)?;
-    }
+    let mut file = fs::File::create(&temporary).map_err(|_| ProductRunServiceError::Unavailable)?;
+    file.write_all(&bytes)
+        .and_then(|()| file.sync_all())
+        .map_err(|_| ProductRunServiceError::Unavailable)?;
+    drop(file);
     fs::rename(temporary, &path).map_err(|_| ProductRunServiceError::Unavailable)?;
+    #[cfg(unix)]
+    fs::File::open(&directory)
+        .and_then(|file| file.sync_all())
+        .map_err(|_| ProductRunServiceError::Unavailable)?;
     Ok(path)
 }
 
+#[cfg(test)]
 fn uncommitted_patch(root: &Path, paths: &[String]) -> Result<Vec<u8>, ProductRunServiceError> {
     let output = Command::new("git")
+        .env("GIT_LITERAL_PATHSPECS", "1")
         .arg("diff")
         .arg("--binary")
         .arg("HEAD")
@@ -235,6 +304,7 @@ fn uncommitted_patch(root: &Path, paths: &[String]) -> Result<Vec<u8>, ProductRu
             continue;
         }
         let output = Command::new("git")
+            .env("GIT_LITERAL_PATHSPECS", "1")
             .args(["diff", "--no-index", "--binary", "--", null_device(), path])
             .current_dir(root)
             .output()
@@ -247,6 +317,7 @@ fn uncommitted_patch(root: &Path, paths: &[String]) -> Result<Vec<u8>, ProductRu
     Ok(patch)
 }
 
+#[cfg(test)]
 fn discard_deliverable(deliverable: &ProductDeliverable) -> Result<(), ProductRunServiceError> {
     let root = Path::new(deliverable.workspace_path());
     let mut tracked_paths = Vec::new();
@@ -263,6 +334,7 @@ fn discard_deliverable(deliverable: &ProductDeliverable) -> Result<(), ProductRu
     }
     if !tracked_paths.is_empty() {
         let status = Command::new("git")
+            .env("GIT_LITERAL_PATHSPECS", "1")
             .args(["restore", "--staged", "--worktree", "--source=HEAD", "--"])
             .args(tracked_paths)
             .current_dir(root)
@@ -275,8 +347,10 @@ fn discard_deliverable(deliverable: &ProductDeliverable) -> Result<(), ProductRu
     Ok(())
 }
 
+#[cfg(test)]
 fn tracked(root: &Path, path: &str) -> Result<bool, ProductRunServiceError> {
     Command::new("git")
+        .env("GIT_LITERAL_PATHSPECS", "1")
         .args(["ls-files", "--error-unmatch", "--", path])
         .current_dir(root)
         .output()
@@ -284,17 +358,17 @@ fn tracked(root: &Path, path: &str) -> Result<bool, ProductRunServiceError> {
         .map_err(|_| ProductRunServiceError::Unavailable)
 }
 
-#[cfg(windows)]
+#[cfg(all(test, windows))]
 const fn null_device() -> &'static str {
     "NUL"
 }
 
-#[cfg(not(windows))]
+#[cfg(all(test, not(windows)))]
 const fn null_device() -> &'static str {
     "/dev/null"
 }
 
-fn run_hex(run_id: RunId) -> String {
+pub(super) fn run_hex(run_id: RunId) -> String {
     run_id.as_bytes().iter().fold(String::new(), |mut value, byte| {
         use core::fmt::Write as _;
         let _ = write!(value, "{byte:02x}");

@@ -1,8 +1,8 @@
 //! Stable JSON projection of verified candidate checkpoints and settlements.
 
 use peritus_run_settlement::{
-    CandidateCheckpoint, CandidateIdentity, CandidateStage, EvidenceRecord, EvidenceStatus,
-    QualificationEvidence, RunSettlement, SettlementCause, SettlementReducer,
+    CandidateCheckpoint, CandidateIdentity, CandidateStage, EvidenceDependencies, EvidenceRecord,
+    EvidenceStatus, QualificationEvidence, RunSettlement, SettlementCause, SettlementReducer,
 };
 use peritus_types::{RunId, Sha256Digest, WorkspaceId};
 use serde::Deserialize;
@@ -25,8 +25,10 @@ pub(super) struct PersistedCheckpoint {
 struct PersistedIdentity {
     run_id: [u8; 16],
     workspace_id: [u8; 16],
-    candidate_digest: [u8; 32],
-    conversation_revision: u64,
+    content_digest: [u8; 32],
+    repository_digest: [u8; 32],
+    execution_digest: Option<[u8; 32]>,
+    requirements_revision: u64,
     checkpoint_sequence: u64,
 }
 
@@ -35,6 +37,7 @@ struct PersistedIdentity {
 struct PersistedEvidence {
     status: u16,
     provenance: Option<PersistedIdentity>,
+    dependencies: Option<u16>,
     value: Option<u16>,
 }
 
@@ -65,25 +68,27 @@ impl PersistedCheckpoint {
 }
 
 impl PersistedIdentity {
-    const fn from_identity(value: CandidateIdentity) -> Self {
+    fn from_identity(value: CandidateIdentity) -> Self {
         Self {
             run_id: *value.run_id().as_bytes(),
             workspace_id: *value.workspace_id().as_bytes(),
-            candidate_digest: *value.candidate_digest().as_bytes(),
-            conversation_revision: value.conversation_revision(),
+            content_digest: value.content_digest().into_bytes(),
+            repository_digest: value.repository_digest().into_bytes(),
+            execution_digest: value.execution_digest().map(Sha256Digest::into_bytes),
+            requirements_revision: value.requirements_revision(),
             checkpoint_sequence: value.checkpoint_sequence(),
         }
     }
 
     fn into_identity(self) -> Result<CandidateIdentity, ProductRunServiceError> {
-        let run_id = RunId::new(self.run_id).map_err(|_| ProductRunServiceError::InvalidMessage)?;
-        let workspace_id = WorkspaceId::new(self.workspace_id)
-            .map_err(|_| ProductRunServiceError::InvalidMessage)?;
         CandidateIdentity::new(
-            run_id,
-            workspace_id,
-            Sha256Digest::new(self.candidate_digest),
-            self.conversation_revision,
+            RunId::new(self.run_id).map_err(|_| ProductRunServiceError::InvalidMessage)?,
+            WorkspaceId::new(self.workspace_id)
+                .map_err(|_| ProductRunServiceError::InvalidMessage)?,
+            Sha256Digest::new(self.content_digest),
+            Sha256Digest::new(self.repository_digest),
+            self.execution_digest.map(Sha256Digest::new),
+            self.requirements_revision,
             self.checkpoint_sequence,
         )
         .map_err(|_| ProductRunServiceError::InvalidMessage)
@@ -97,6 +102,7 @@ impl PersistedEvidence {
             provenance: value
                 .record()
                 .map(|record| PersistedIdentity::from_identity(*record.provenance())),
+            dependencies: value.record().map(|record| record.dependencies().tag()),
             value: value.record().map(|record| record.value().tag()),
         }
     }
@@ -105,18 +111,22 @@ impl PersistedEvidence {
         self,
     ) -> Result<EvidenceStatus<QualificationEvidence>, ProductRunServiceError> {
         if self.status == 1 {
-            if self.provenance.is_some() || self.value.is_some() {
+            if self.provenance.is_some() || self.dependencies.is_some() || self.value.is_some() {
                 return Err(ProductRunServiceError::InvalidMessage);
             }
             return Ok(EvidenceStatus::Missing);
         }
         let provenance =
             self.provenance.ok_or(ProductRunServiceError::InvalidMessage)?.into_identity()?;
+        let dependencies = EvidenceDependencies::from_tag(
+            self.dependencies.ok_or(ProductRunServiceError::InvalidMessage)?,
+        )
+        .ok_or(ProductRunServiceError::InvalidMessage)?;
         let value = QualificationEvidence::from_tag(
             self.value.ok_or(ProductRunServiceError::InvalidMessage)?,
         )
         .ok_or(ProductRunServiceError::InvalidMessage)?;
-        let record = EvidenceRecord::new(provenance, value);
+        let record = EvidenceRecord::new(provenance, dependencies, value);
         match self.status {
             2 => Ok(EvidenceStatus::Current(record)),
             3 => Ok(EvidenceStatus::Failed(record)),
@@ -142,42 +152,42 @@ pub(super) fn restore_settlement(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use peritus_run_settlement::RunDisposition;
-
     #[test]
-    fn checkpoint_and_settlement_round_trip_without_losing_evidence() {
-        let identity = CandidateIdentity::new(
-            RunId::new([1; 16]).expect("run"),
-            WorkspaceId::new([2; 16]).expect("workspace"),
-            Sha256Digest::new([3; 32]),
-            4,
-            5,
-        )
-        .expect("identity");
-        let passing = EvidenceStatus::Current(EvidenceRecord::new(
-            identity,
-            QualificationEvidence::Satisfied,
-        ));
-        let checkpoint = CandidateCheckpoint::new(
-            identity,
-            CandidateStage::ReviewPending,
-            passing,
-            passing,
-            EvidenceStatus::Missing,
-        )
-        .expect("checkpoint");
-
+    fn dependency_aware_checkpoint_round_trips_exactly() {
+        let checkpoint = dependency_checkpoint();
         let encoded = serde_json::to_vec(&PersistedCheckpoint::from_checkpoint(&checkpoint))
             .expect("encode checkpoint");
         let persisted: PersistedCheckpoint =
             serde_json::from_slice(&encoded).expect("decode checkpoint");
-        let restored = persisted.into_checkpoint().expect("restore checkpoint");
-        let settlement = restore_settlement(Some(restored), Some(SettlementCause::Review.tag()))
-            .expect("settlement")
-            .expect("present settlement");
 
-        assert_eq!(restored, checkpoint);
-        assert_eq!(settlement.disposition(), RunDisposition::CandidateAvailable);
-        assert_eq!(settlement.checkpoint(), Some(&checkpoint));
+        assert_eq!(persisted.into_checkpoint().expect("restore checkpoint"), checkpoint);
+    }
+
+    fn dependency_checkpoint() -> CandidateCheckpoint {
+        let identity = CandidateIdentity::new(
+            RunId::new([1; 16]).expect("run"),
+            WorkspaceId::new([2; 16]).expect("workspace"),
+            Sha256Digest::new([3; 32]),
+            Sha256Digest::new([4; 32]),
+            Some(Sha256Digest::new([5; 32])),
+            6,
+            7,
+        )
+        .expect("identity");
+        let evidence = |dependencies| {
+            EvidenceStatus::Current(EvidenceRecord::new(
+                identity,
+                dependencies,
+                QualificationEvidence::Satisfied,
+            ))
+        };
+        CandidateCheckpoint::new(
+            identity,
+            CandidateStage::Qualified,
+            evidence(EvidenceDependencies::GATES),
+            evidence(EvidenceDependencies::OBLIGATIONS),
+            evidence(EvidenceDependencies::REVIEW),
+        )
+        .expect("checkpoint")
     }
 }

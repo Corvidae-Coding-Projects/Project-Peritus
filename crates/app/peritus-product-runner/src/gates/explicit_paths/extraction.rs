@@ -53,11 +53,13 @@ pub(super) fn extract(root: &Path, transcript: &str) -> PathRequirements {
         let mut line_mentions = Vec::new();
         let mut line_removals = BTreeMap::new();
         for (index, word) in words.iter().enumerate() {
-            if descriptive_extension(word, words.get(index + 1).copied()) {
-                continue;
-            }
             // Only the leading list path inherits the declaration, not inputs in its description.
             let listed_path = listed_output == Some(index);
+            if descriptive_extension(word, words.get(index + 1).copied())
+                || !listed_path && numeric_value(word, &words[..index])
+            {
+                continue;
+            }
             let required_output = (listed_path || output_context(&words[..index]))
                 && !conditional_clause(&words[..index]);
             let quoted_bare_name = required_output
@@ -114,6 +116,25 @@ pub(super) fn extract(root: &Path, transcript: &str) -> PathRequirements {
         alternatives,
         removals,
     }
+}
+
+// Decimal quantities, addresses, and version numbers are values unless directly named as
+// files. A dot alone cannot turn an instruction such as "implement version 2.0" into a path.
+fn numeric_value(raw: &str, preceding: &[&str]) -> bool {
+    let token = trim_delimiters(raw).trim_end_matches('.');
+    let token = token.strip_prefix(['v', 'V', '-']).unwrap_or(token);
+    let core = token.split(['-', '+']).next().unwrap_or(token);
+    if !core.contains('.')
+        || core.split('.').any(|part| part.is_empty() || !part.bytes().all(|b| b.is_ascii_digit()))
+    {
+        return false;
+    }
+    let file_cue = preceding.last().is_some_and(|word| super::language::path_noun(word))
+        || preceding
+            .last()
+            .is_some_and(|word| matches!(normalized(word).as_str(), "named" | "called"))
+            && preceding.iter().rev().nth(1).is_some_and(|word| super::language::path_noun(word));
+    !file_cue
 }
 
 fn apply_removal(

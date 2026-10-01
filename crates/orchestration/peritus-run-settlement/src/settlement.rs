@@ -1,11 +1,11 @@
-//! Immutable terminal settlement derived from the strongest candidate checkpoint.
+//! Immutable terminal settlement derived from the latest candidate checkpoint.
 
 use crate::{CandidateCheckpoint, RunDisposition, SettlementCause};
 use vstd::prelude::*;
 
 verus! {
 
-/// Exact terminal truth for one run and its optional strongest candidate.
+/// Exact terminal truth for one run and its optional current candidate.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct RunSettlement {
     disposition: RunDisposition,

@@ -225,6 +225,8 @@ async fn dispatch(app: &Arc<App>, input: &Value) -> Result<Value> {
             let session = Session {
                 settings: crate::sessions::Settings::default(),
                 id: id()?,
+                conversation: id()?,
+                run: id()?,
                 project: app.project(string("project"))?.id,
                 parent: input["parent"].as_str().map(String::from),
                 title: if string("title").is_empty() {
@@ -244,6 +246,15 @@ async fn dispatch(app: &Arc<App>, input: &Value) -> Result<Value> {
         "session" => edit_session(app, input),
         "session-settings" => crate::sessions::configure(app, input).await,
         "open-run" => crate::sessions::open_run(app, string("run")).await,
+        "open-workbench" => {
+            crate::sessions::open_workbench(
+                app,
+                string("conversation"),
+                string("run"),
+                string("target"),
+            )
+            .await
+        }
         "workbench" => crate::consoles::workbench(app, input),
         "repository" => {
             let mut project = app.project(string("project"))?;

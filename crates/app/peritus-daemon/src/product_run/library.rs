@@ -5,14 +5,13 @@ use crate::product_control::{ControlStore, ControlStoreError};
 use peritus_app_protocol::{
     AppResponsePayload, ControlOperationId, ConversationLibraryItem, ConversationLibraryPage,
     ConversationLibraryQuery, ConversationMessageSource, ConversationSearchSnippet,
-    ConversationTitle, ProductConversationMessage, WorkbenchBranchLineage, WorkbenchForkBudget,
-    WorkbenchForkMode, WorkbenchGoalState, WorkbenchQuery,
+    ConversationTitle, WorkbenchBranchLineage, WorkbenchForkBudget, WorkbenchForkMode,
+    WorkbenchGoalState, WorkbenchQuery,
 };
-use peritus_codec::sha256;
 use peritus_product_runner::control::{
     ConversationBranch, ConversationBranchMode, ConversationRecord, GoalState,
 };
-use peritus_types::{ActorId, RunId, WorkspaceId};
+use peritus_types::{ActorId, WorkspaceId};
 
 struct GovernedItem {
     record: ConversationRecord,
@@ -34,65 +33,6 @@ impl ProductRunService {
             Ok(items) => items,
             Err(error) => return super::ProductRunServiceError::from(error).response(),
         };
-        let records = match self.inner.records.read() {
-            Ok(records) => records,
-            Err(_) => return super::ProductRunServiceError::Unavailable.response(),
-        };
-        for (run, record) in records.iter() {
-            if record.request.workspace_id() != query.workspace()
-                || record.interaction.as_ref().is_some_and(|options| options.workbench.is_some())
-            {
-                continue;
-            }
-            let messages = match record.conversation.messages() {
-                Ok(messages) => messages,
-                Err(error) => return error.response(),
-            };
-            let snippet = match query
-                .literal()
-                .and_then(|literal| legacy_snippet(*run, &messages, literal.as_str()))
-            {
-                Some(Ok(value)) => Some(value),
-                Some(Err(_)) => return super::ProductRunServiceError::InvalidMessage.response(),
-                None => None,
-            };
-            if query.literal().is_some_and(|literal| {
-                !record.request.task().contains(literal.as_str()) && snippet.is_none()
-            }) {
-                continue;
-            }
-            let conversation = match legacy_conversation(*run, query.workspace()) {
-                Ok(value) => value,
-                Err(error) => return super::ProductRunServiceError::Control(error).response(),
-            };
-            let title = match ConversationTitle::new(bounded_title(record.request.task())) {
-                Ok(value) => value,
-                Err(_) => return super::ProductRunServiceError::InvalidMessage.response(),
-            };
-            let handoff = if record.snapshot.summary().is_empty() {
-                record.snapshot.status().to_owned()
-            } else {
-                record.snapshot.summary().to_owned()
-            };
-            let query_scope = WorkbenchQuery::new(conversation, query.workspace());
-            match ConversationLibraryItem::new(
-                query_scope,
-                title,
-                false,
-                false,
-                u64::from(record.snapshot.cycle()).saturating_add(1),
-                Some(*run),
-                None,
-                false,
-                bounded_handoff(&handoff),
-                snippet,
-                None,
-            ) {
-                Ok(item) => items.push(item),
-                Err(_) => return super::ProductRunServiceError::InvalidMessage.response(),
-            }
-        }
-        drop(records);
         items.sort_by(|left, right| {
             right
                 .pinned()
@@ -188,7 +128,6 @@ fn project_governed(
         value.pinned(),
         value.archived(),
         activity,
-        None,
         goal_state,
         branch.as_ref().is_some_and(|branch| branch.objective().is_some())
             && value.execution().is_none(),
@@ -238,27 +177,6 @@ fn governed_snippet(
     Ok(None)
 }
 
-fn legacy_snippet(
-    run: RunId,
-    messages: &[ProductConversationMessage],
-    literal: &str,
-) -> Option<Result<ConversationSearchSnippet, peritus_app_protocol::AppProtocolError>> {
-    messages.iter().enumerate().find_map(|(index, message)| {
-        message.content().contains(literal).then(|| {
-            let index = u32::try_from(index).map_err(|_| {
-                peritus_app_protocol::AppProtocolError::new(
-                    peritus_app_protocol::AppErrorCode::InvalidLimits,
-                    None,
-                )
-            })?;
-            ConversationSearchSnippet::new(
-                ConversationMessageSource::Legacy { run, index },
-                excerpt(message.content(), literal),
-            )
-        })
-    })
-}
-
 fn excerpt(text: &str, literal: &str) -> String {
     let match_start = text.find(literal).unwrap_or(0);
     let mut start = match_start.saturating_sub(192);
@@ -270,21 +188,6 @@ fn excerpt(text: &str, literal: &str) -> String {
         end -= 1;
     }
     text[start..end].to_owned()
-}
-
-fn legacy_conversation(
-    run: RunId,
-    workspace: WorkspaceId,
-) -> Result<peritus_app_protocol::ConversationId, peritus_product_runner::control::ControlError> {
-    let mut binding = b"peritus-conversation-library/legacy-run/v1".to_vec();
-    binding.extend_from_slice(workspace.as_bytes());
-    binding.extend_from_slice(run.as_bytes());
-    let digest = sha256(&binding);
-    let mut bytes = [0; 16];
-    bytes.copy_from_slice(&digest.as_bytes()[..16]);
-    bytes[0] |= 1;
-    peritus_app_protocol::ConversationId::new(bytes)
-        .map_err(|_| peritus_product_runner::control::ControlError::InvalidInput)
 }
 
 fn public_lineage(value: &ConversationBranch) -> Result<WorkbenchBranchLineage, ControlStoreError> {
@@ -341,21 +244,32 @@ const fn public_goal_state(value: GoalState) -> WorkbenchGoalState {
     }
 }
 
-fn bounded_title(value: &str) -> String {
-    bounded(value, 256)
-}
-
 fn bounded_handoff(value: &str) -> String {
     bounded(value, 1024)
 }
 
 fn bounded(value: &str, maximum: usize) -> String {
+    // Library rows are single-line labels, while task text and summaries may be multiline.
+    // Normalize only this presentation; immutable messages and exact search snippets stay intact.
+    let value: String = value.chars().map(|ch| if ch.is_control() { ' ' } else { ch }).collect();
     if value.len() <= maximum {
-        return value.to_owned();
+        return value;
     }
     let mut end = maximum;
     while !value.is_char_boundary(end) {
         end -= 1;
     }
     value[..end].to_owned()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn multiline_task_and_handoff_project_as_bounded_library_labels() {
+        let handoff = bounded_handoff(&format!("Done\n{}\r\n", "λ".repeat(1024)));
+        assert!(handoff.len() <= 1024);
+        assert!(!handoff.chars().any(char::is_control));
+    }
 }

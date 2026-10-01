@@ -5,7 +5,7 @@ import { parseSlash } from './commands/slash';
 import { gitCommand } from './commands/git';
 import {forgetFile} from './files/drafts.svelte';
 import {recovery,restoreOperations,forgetOperation} from './operations.svelte';
-import type { Attachment,Bootstrap, ConsoleSession, Conversation, Facts, FileTab, GitStatus, Mode, Preferences, Project, Run, Session, Workspace } from './types';
+import type { Attachment,Bootstrap, ConsoleSession, Conversation, Facts, FileTab, GitStatus, ImprovementEvaluation, Mode, Preferences, Project, Run, RunLegalControls, Session, Workspace } from './types';
 
 export const defaults: Preferences = { theme:'nixie',density:'comfortable',motion:true,sound:false,font_size:14,font_family:'Barlow, sans-serif',mono_family:'ui-monospace, monospace',explorer_width:248,controls_visible:true,explorer_visible:true,word_wrap:true,markdown_preview:true,shortcuts:{commands:'Mod+k',files:'Mod+Shift+e',git:'Mod+Shift+g',new:'Mod+Alt+n',settings:'Mod+,'},tokens:{},aliases:{} };
 export const ui = $state({
@@ -24,6 +24,11 @@ export function openProjects(): Project[] { return ui.workspace.projects.filter(
 export function project(): Project|undefined { return openProjects().find(p=>p.id===ui.projectId); }
 export function session(): Session|undefined { return ui.workspace.sessions.find(s=>s.id===ui.sessionId); }
 export function notify(text:string,error=false) { ui.notice=text;ui.noticeError=error; }
+export function runActive(run:Run|undefined):boolean { return run?.operation.state==='Running'; }
+export function runInspection(run:Run):string {
+  const legal=(Object.entries(run.operation.legalControls) as [keyof RunLegalControls,boolean][]).filter(([,allowed])=>allowed).map(([name])=>name).join(', ')||'none';
+  return [`Operation: ${run.operation.kind} / ${run.operation.state}`,`Identity: ${run.operation.identity}`,`Known: ${run.operation.known}`,`Uncertain: ${run.operation.uncertainty||'nothing material'}`,`Legal controls: ${legal}`,run.status,run.summary,run.gates,run.review].filter(Boolean).join('\n\n');
+}
 export async function attempt(work:()=>Promise<unknown>) {
   try { await work(); } catch(error) { notify(error instanceof Error?error.message:String(error),true); }
 }
@@ -118,7 +123,7 @@ export async function poll() {
   if(projectId)try{const facts=await api.query<Facts>('facts',{project:projectId});if(ui.projectId===projectId){ui.facts=facts;ui.factsError='';}}catch(error){if(ui.projectId===projectId){ui.facts=null;ui.factsError=error instanceof Error?error.message:String(error);}}
   await reconcileOperations();
   const selected=ui.sessionId;
-  const ids=new Set([selected,...Object.entries(ui.conversations).filter(([,c])=>c.run?.busy).map(([id])=>id)]);
+  const ids=new Set([selected,...Object.entries(ui.conversations).filter(([,c])=>runActive(c.run)).map(([id])=>id)]);
   await Promise.all([...ids].filter(Boolean).map(async id=>{
     try{observeConversation(id,await api.query<Conversation>('conversation',{session:id}));}
     catch(error){if(ui.conversations[id]?.run)notify(`Could not refresh this run: ${error instanceof Error?error.message:error}`,true);}
@@ -141,7 +146,7 @@ export async function send() {
     observeConversation(id,value);if(ui.drafts[id]===original)ui.drafts[id]='';
     ui.attachments[id]=(ui.attachments[id]??[]).filter(file=>!attachments.some(sent=>sent.id===file.id));
     if(ui.workspace.sessions.find(s=>s.id===id)?.title==='New conversation')await editSession(id,{title:text.slice(0,60)});
-    notify('Message received. Incorporation is shown when observed by the daemon.');
+    notify(value.workbench?.observation??'Message received. Incorporation is shown when observed by the daemon.',!!value.workbench);
   }finally{ui.pending[id]=false;}
 }
 export async function attachFile(path:string,projectId=ui.projectId){
@@ -191,6 +196,10 @@ export async function openRun(id:string) {
   const value=await api.action<Session>('open-run',{run:id});
   await refresh();await selectProject(value.project);selectSession(value.id);await poll();ui.overlay='';
 }
+export async function openEvaluation(evaluation:ImprovementEvaluation) {
+  const value=await api.action<Session>('open-workbench',{conversation:evaluation.conversation,run:evaluation.run,target:evaluation.target});
+  await refresh();await selectProject(value.project);selectSession(value.id);await poll();ui.overlay='';
+}
 export async function openWorkbench(suggestion='') {
   const value=await api.action<ConsoleSession>('workbench',{session:ui.sessionId,suggestion});
   ui.consoles.push(value);ui.consoleId=value.id;ui.overlay='console';
@@ -219,14 +228,17 @@ export async function dispatch(id:string,args:string[]=[],depth=0):Promise<void>
     case 'details':ui.details=!ui.details;return;
     case 'status':case 'diff':{
       const run=ui.conversations[ui.sessionId]?.run;ui.reportTitle=id==='diff'?'Candidate diff':'Run status';
-      ui.reportText=run?(id==='diff'?run.diff:run.status):'No run has been observed in this session yet.';ui.overlay='report';return;
+      ui.reportText=run?(id==='diff'?run.diff:runInspection(run)):'No run has been observed in this session yet.';ui.overlay='report';return;
     }
     case 'improvements':ui.overlay='improvements';return;
     case 'runs':ui.runs=await api.query<Run[]>('runs');ui.overlay='runs';return;
-    case 'stop':case 'retry':case 'export':
+    case 'stop':case 'retry':case 'export':case 'acknowledge':
       observeConversation(ui.sessionId,await api.action<Conversation>('control',{session:ui.sessionId,action:id}));notify(`Requested ${id} for this run.`);return;
     case 'discard':ui.overlay='discard';return;
-    case 'accept':case 'commit':return openConsole(['runs',id,'--run',ui.sessionId],`${command.label} · ${session()?.title}`,true);
+    case 'accept':case 'commit':{
+      const selected=session();if(!selected)throw new Error('Open the exact run before using this control.');
+      return openConsole(['runs',id,'--run',selected.run],`${command.label} · ${selected.title}`,true);
+    }
     case 'providers':case 'workspaces':case 'update':return openConsole([id],command.label);
     case 'consoles':
       ui.consoles=await api.query<ConsoleSession[]>('consoles');

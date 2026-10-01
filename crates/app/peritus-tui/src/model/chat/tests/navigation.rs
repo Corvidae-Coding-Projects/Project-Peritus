@@ -13,6 +13,25 @@ fn draft(text: &str) -> AppModel {
     model
 }
 
+#[test]
+fn inactive_composer_is_not_edited_by_paste_into_an_inspection_or_picker() {
+    for overlay in 0..3 {
+        let mut model = draft("unsent draft");
+        model.chat.cursor = 3;
+        model.chat.selection_anchor = Some(0);
+        match overlay {
+            0 => model.chat.workbench.open = true,
+            1 => model.chat.show_model_picker(),
+            _ => model.chat.show_effort_picker(),
+        }
+        let effects = model.update(Action::TerminalEvent(Event::Paste("accidental paste".into())));
+        assert!(effects.is_empty());
+        assert_eq!(model.chat.buffer, "unsent draft", "overlay {overlay}");
+        assert_eq!(model.chat.cursor, 3);
+        assert_eq!(model.chat.selection_anchor, Some(0));
+    }
+}
+
 fn mouse(
     model: &mut AppModel,
     kind: MouseEventKind,
@@ -37,6 +56,52 @@ fn render(model: &mut AppModel, width: u16, height: u16) -> Terminal<TestBackend
         })
         .expect("draw");
     terminal
+}
+
+#[test]
+fn inspection_pages_scroll_and_home_returns_to_the_start() {
+    use peritus_app_protocol::{ProductRunPhase, ProductRunSnapshot};
+    let mut model = model();
+    model.view = View::Review;
+    key(&mut model, KeyCode::PageDown);
+    assert_eq!(model.product.as_ref().expect("product").inspection_scroll, 0);
+    let product = model.product.as_ref().expect("product");
+    let run = ProductRunSnapshot::new(
+        RunId::new([49; 16]).expect("run"),
+        product.launch.workspace_id(),
+        model.chat_providers().expect("providers"),
+        ProductRunPhase::Complete,
+        1,
+        "inspect long result".to_owned(),
+        "complete".to_owned(),
+        "diff line\n".repeat(100),
+        String::new(),
+        "review line\n".repeat(100),
+        String::new(),
+        crate::test_support::run_operation(
+            RunId::new([49; 16]).expect("run"),
+            ProductRunPhase::Complete,
+        ),
+    )
+    .expect("run");
+    model.accept_product_run(run);
+    for view in [View::Diff, View::Review] {
+        model.view = view;
+        let _ = key(&mut model, KeyCode::PageDown);
+        assert_eq!(model.product.as_ref().expect("product").inspection_scroll, 12);
+        let _ = key(&mut model, KeyCode::PageUp);
+        assert_eq!(model.product.as_ref().expect("product").inspection_scroll, 0);
+        let _ = key(&mut model, KeyCode::PageDown);
+        let _ = key(&mut model, KeyCode::Home);
+        assert_eq!(model.product.as_ref().expect("product").inspection_scroll, 0);
+        for _ in 0..100 {
+            key(&mut model, KeyCode::PageDown);
+        }
+        let bottom = model.product.as_ref().expect("product").inspection_scroll;
+        key(&mut model, KeyCode::PageUp);
+        assert_eq!(model.product.as_ref().expect("product").inspection_scroll, bottom - 12);
+        key(&mut model, KeyCode::Home);
+    }
 }
 
 #[test]
@@ -123,7 +188,7 @@ fn paste_over_backwards_command_selection_cannot_acquire_keyboard_intent() {
 }
 
 #[test]
-fn escape_completion_submission_and_restore_clear_selection() {
+fn escape_completion_and_submission_clear_selection() {
     let mut model = draft("/he");
     modified(&mut model, KeyCode::Home, KeyModifiers::SHIFT);
     modified(&mut model, KeyCode::Esc, KeyModifiers::NONE);
@@ -131,14 +196,12 @@ fn escape_completion_submission_and_restore_clear_selection() {
     modified(&mut model, KeyCode::End, KeyModifiers::SHIFT);
     modified(&mut model, KeyCode::Tab, KeyModifiers::NONE);
     assert_eq!(model.chat.selection_anchor, None);
-    model.restore_chat_draft("question");
+    model.chat.buffer = "question".to_owned();
+    model.chat.cursor = model.chat.buffer.len();
     modified(&mut model, KeyCode::Home, KeyModifiers::SHIFT);
+    enable_durable_chat(&mut model);
     assert!(!key(&mut model, KeyCode::Enter).is_empty());
     assert_eq!(model.chat.selection_anchor, None);
-    model.chat.mouse_anchor = Some(1);
-    model.restore_chat_draft("restored");
-    assert_eq!(model.chat.selection_anchor, None);
-    assert_eq!(model.chat.mouse_anchor, None);
 }
 
 #[test]
@@ -197,4 +260,21 @@ fn borders_other_views_and_panels_do_not_capture_composer_clicks() {
     model.chat.workbench.open = false;
     mouse(&mut model, MouseEventKind::Down(MouseButton::Left), 0, 0, KeyModifiers::NONE);
     assert_eq!(model.chat.cursor, 5);
+}
+
+#[test]
+fn vertical_arrows_follow_wrapped_unicode_rows_and_shift_selects() {
+    let mut model = draft("ab界cdλz");
+    let _ = render(&mut model, 6, 20);
+    modified(&mut model, KeyCode::Up, KeyModifiers::SHIFT);
+    assert_eq!(model.chat.cursor, "ab界".len());
+    assert_eq!(model.chat.selection(), Some("ab界".len()..model.chat.buffer.len()));
+    modified(&mut model, KeyCode::Up, KeyModifiers::SHIFT);
+    assert_eq!(model.chat.cursor, 0);
+    assert_eq!(model.chat.selection(), Some(0..model.chat.buffer.len()));
+    modified(&mut model, KeyCode::Down, KeyModifiers::NONE);
+    assert_eq!(model.chat.selection(), None);
+    assert_eq!(model.chat.cursor, "ab界".len());
+    modified(&mut model, KeyCode::Char('!'), KeyModifiers::NONE);
+    assert_eq!(model.chat.buffer, "ab界!cdλz");
 }

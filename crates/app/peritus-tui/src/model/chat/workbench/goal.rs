@@ -11,6 +11,7 @@ use peritus_app_protocol::{
 
 mod budget;
 mod draft;
+mod refresh;
 use budget::parse_budget;
 
 const RUNNER_CRITERION: &str = "Pass the existing strict runner acceptance gate.";
@@ -46,11 +47,8 @@ impl AppModel {
             return Vec::new();
         }
         if self.chat.workbench.selected.is_none() {
-            self.notice(
-                NoticeLevel::Warning,
-                "Select a conversation with /sessions first; draft retained.",
-            );
-            return Vec::new();
+            return self
+                .create_command_conversation("New conversation", format!("/goal {arguments}"));
         }
         self.open_goal_panel();
         if self.workbench_request_pending() || self.chat.workbench.unresolved.is_some() {
@@ -82,6 +80,7 @@ impl AppModel {
                     "Clear will cancel future continuation of goal {} at a safe boundary; history and completed effects remain. Run /goal clear confirm.",
                     crate::model::format_id(goal.goal().as_bytes())
                 );
+                self.clear_chat_command();
                 Vec::new()
             }
             "clear confirm" => self.clear_goal(),
@@ -92,6 +91,9 @@ impl AppModel {
     pub(in crate::model::chat) fn pause_goal_command(&mut self, arguments: &str) -> Vec<Effect> {
         if !self.prepare_goal_control() {
             return Vec::new();
+        }
+        if let Some(refresh) = self.refresh_stale_goal_control() {
+            return refresh;
         }
         let mode = match arguments {
             "" | "after-operation" => WorkbenchGoalPauseMode::AfterOperation,
@@ -114,6 +116,9 @@ impl AppModel {
     pub(in crate::model::chat) fn resume_goal_command(&mut self, arguments: &str) -> Vec<Effect> {
         if !self.prepare_goal_control() {
             return Vec::new();
+        }
+        if let Some(refresh) = self.refresh_stale_goal_control() {
+            return refresh;
         }
         let Some((goal, workspace)) = self.current_goal_binding() else {
             return self.inspect_goal_before("resuming it");
@@ -166,6 +171,9 @@ impl AppModel {
             );
             return Vec::new();
         }
+        if let Some(refresh) = self.refresh_stale_goal_control() {
+            return refresh;
+        }
         let current = self
             .chat
             .workbench
@@ -189,6 +197,7 @@ impl AppModel {
             draft.budget = budget;
             "Draft limits updated locally; /goal confirm is still required."
                 .clone_into(&mut self.chat.workbench.message);
+            self.clear_chat_command();
             return Vec::new();
         }
         let Some((goal, workspace)) = self.current_goal_binding() else {
@@ -214,17 +223,44 @@ impl AppModel {
         &mut self,
         query: WorkbenchQuery,
         goal: WorkbenchGoalSnapshot,
-    ) {
+    ) -> Vec<Effect> {
         if goal.query() != query
             || self.chat.workbench.selected != Some(query)
             || !self.chat.workbench.goal_mode
         {
-            return;
+            return Vec::new();
         }
+        let run = goal.run();
+        let retain_clear = self.chat.workbench.goal_clear_pending
+            && self
+                .chat
+                .workbench
+                .goal
+                .as_ref()
+                .is_some_and(|current| current.goal() == goal.goal());
         self.chat.workbench.goal = Some(goal);
-        self.chat.workbench.goal_clear_pending = false;
+        if let Some(effects) = self.complete_goal_control_refresh() {
+            return effects;
+        }
+        self.complete_workbench_inspection();
+        self.chat.workbench.goal_clear_pending = retain_clear;
         self.chat.workbench.scroll = 0;
-        self.chat.workbench.message.clear();
+        if !retain_clear && self.chat.workbench.unresolved.is_none() {
+            self.chat.workbench.message.clear();
+        }
+        if self.chat.run_id == Some(run) {
+            return Vec::new();
+        }
+        self.chat.run_id = Some(run);
+        self.chat.snapshot = None;
+        self.request(
+            AppRequestPayload::QueryInteraction(
+                peritus_app_protocol::ProductInteractionQuery::new(run),
+            ),
+            PendingRequest::ChatOpen { run_id: run },
+        )
+        .into_iter()
+        .collect()
     }
 
     fn clear_goal(&mut self) -> Vec<Effect> {

@@ -76,8 +76,8 @@ pub(super) fn validate_command(
     Ok(())
 }
 
-/// Starts only the work explicitly denoted by a newly accepted review input. Public legacy
-/// continuation remains unavailable for governed runs, and preferences/constraints start nothing.
+/// Starts only the work explicitly denoted by a newly accepted review input.
+/// Preferences and constraints do not start execution.
 pub(super) async fn resume_feedback(
     service: &ProductRunService,
     actor: ActorId,
@@ -127,13 +127,17 @@ pub(super) async fn resume_feedback(
         if workspace_has_active_run(&records, workspace, Some(run)) {
             return Err(ProductRunServiceError::InvalidState);
         }
+        crate::product_run::deliverable::discard::workspace_available(
+            &service.inner.directory,
+            &records,
+            workspace,
+        )?;
         let record = records.get_mut(&run).ok_or(ProductRunServiceError::NotFound)?;
-        if !record.snapshot.phase().terminal() {
+        if !super::super::operation::may_start_execution(&service.inner.directory, record)? {
             return Err(ProductRunServiceError::InvalidState);
         }
-        let mut options = record.interaction.clone().ok_or(ProductRunServiceError::InvalidState)?;
-        let providers =
-            service.resolve_selected_providers(record.request.providers(), Some(&options))?;
+        let mut options = record.interaction.clone();
+        let providers = service.resolve_selected_providers(record.request.providers(), &options)?;
         let root = service
             .inner
             .workspaces
@@ -158,7 +162,7 @@ pub(super) async fn resume_feedback(
         let token = CancellationToken::new();
         record.cancelled = Arc::clone(&cancelled);
         record.provider_cancellation = token.clone();
-        record.interaction = Some(options);
+        record.interaction = options;
         record.snapshot = initial_snapshot(&record.request)?;
         record.snapshot = replace_snapshot(
             &record.snapshot,
@@ -184,14 +188,11 @@ pub(super) async fn resume_feedback(
             providers,
             cancelled,
             token,
-            Arc::clone(&record.conversation),
             record.finding_state.clone(),
             record.resume.clone(),
         )
     };
-    service
-        .spawn(launch.0, launch.1, launch.2, launch.3, launch.4, launch.5, launch.6, launch.7)
-        .await;
+    service.spawn(launch.0, launch.1, launch.2, launch.3, launch.4, launch.5, launch.6).await;
     Ok(())
 }
 
@@ -265,11 +266,7 @@ fn current_targets(
     let records =
         service.inner.records.read().map_err(|_| Error::Corrupt("run owner lock poisoned"))?;
     let record = records.get(&run).ok_or(ControlError::NotFound)?;
-    let start = record
-        .interaction
-        .as_ref()
-        .and_then(|options| options.workbench.as_ref())
-        .ok_or(ControlError::ScopeMismatch)?;
+    let start = &record.interaction.workbench;
     if start.conversation() != control.id()
         || start.workspace_bytes() != control.workspace_bytes()
         || start.actor_bytes() != control.owner_bytes()
@@ -277,7 +274,9 @@ fn current_targets(
     {
         return Err(ControlError::ScopeMismatch.into());
     }
-    if !record.snapshot.phase().terminal() {
+    if !super::super::operation::may_start_execution(&service.inner.directory, record)
+        .map_err(|_| Error::Corrupt("operation projection unavailable"))?
+    {
         return Err(ControlError::InvalidInput.into());
     }
     let workspace = service
@@ -290,7 +289,7 @@ fn current_targets(
     let candidate = record
         .checkpoint
         .as_ref()
-        .map_or(live_candidate, |checkpoint| checkpoint.identity().candidate_digest());
+        .map_or(live_candidate, |checkpoint| checkpoint.identity().repository_digest());
     if candidate != live_candidate {
         return Err(ControlError::StaleRevision.into());
     }

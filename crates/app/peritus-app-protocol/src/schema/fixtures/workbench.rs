@@ -16,6 +16,7 @@ pub(super) fn cases(limits: CodecLimits) -> Result<Vec<GeneratedFixtureCase>, Co
         WorkbenchQuery::new(id(41, ConversationId::new), id(32, peritus_types::WorkspaceId::new));
     let operation = id(42, ControlOperationId::new);
     let title = ConversationTitle::new("Tetris workbench".to_owned()).expect("title");
+    let title_for_execution = title.clone();
     let create = WorkbenchCommand::new(
         operation,
         query,
@@ -97,6 +98,61 @@ pub(super) fn cases(limits: CodecLimits) -> Result<Vec<GeneratedFixtureCase>, Co
                     peritus_types::Sha256Digest::new([43; 32]),
                 )
                 .expect("receipt"),
+            ),
+        ),
+    ] {
+        let response = AppResponseEnvelope::new(
+            context(),
+            id(10, crate::RequestId::new),
+            id(11, crate::CorrelationId::new),
+            payload,
+        );
+        cases.push(encoded(name, FixtureClass::Realistic, &response, limits)?);
+    }
+    cases.extend(execution_cases(limits, query, title_for_execution)?);
+    Ok(cases)
+}
+
+fn execution_cases(
+    limits: CodecLimits,
+    query: WorkbenchQuery,
+    title: ConversationTitle,
+) -> Result<Vec<GeneratedFixtureCase>, CodecError> {
+    let mut cases = Vec::new();
+    for (name, payload) in [
+        ("minimal-workbench-execution-query", AppRequestPayload::QueryWorkbenchExecution(query)),
+        (
+            "minimal-workbench-execution-continue",
+            AppRequestPayload::ContinueWorkbenchExecution(crate::WorkbenchContinuation::new(
+                query,
+                crate::ProductInteractionMode::Chat,
+            )),
+        ),
+    ] {
+        cases.push(encoded(name, FixtureClass::Minimal, &request(payload), limits)?);
+    }
+    for (name, payload) in [
+        (
+            "minimal-workbench-execution-empty",
+            AppResponsePayload::WorkbenchExecution(
+                crate::WorkbenchExecutionState::new(
+                    WorkbenchSnapshot::new(query, 1, title.clone(), false, false)
+                        .expect("snapshot"),
+                    None,
+                    false,
+                )
+                .expect("state"),
+            ),
+        ),
+        (
+            "realistic-workbench-execution-bound",
+            AppResponsePayload::WorkbenchExecution(
+                crate::WorkbenchExecutionState::new(
+                    WorkbenchSnapshot::new(query, 7, title, false, false).expect("snapshot"),
+                    Some(id(31, peritus_types::RunId::new)),
+                    true,
+                )
+                .expect("state"),
             ),
         ),
     ] {

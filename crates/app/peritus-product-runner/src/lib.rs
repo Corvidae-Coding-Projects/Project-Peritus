@@ -20,6 +20,7 @@ mod design;
 pub(crate) mod developer_tools;
 #[cfg(not(verus_only))]
 mod diagnostic;
+mod discard_recovery;
 #[cfg(not(verus_only))]
 mod engineering_workflow;
 mod error;

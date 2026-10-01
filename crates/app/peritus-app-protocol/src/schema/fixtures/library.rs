@@ -72,7 +72,6 @@ pub(super) fn cases(limits: CodecLimits) -> Result<Vec<GeneratedFixtureCase>, Co
         true,
         false,
         21,
-        None,
         Some(crate::WorkbenchGoalState::Paused),
         true,
         "Paused at an explicit safe boundary.".to_owned(),

@@ -206,7 +206,11 @@ Reviewed sources: [create message](https://platform.claude.com/docs/en/api/messa
 The separate `AnthropicClaudeRuntime` dialect invokes an already-authenticated official
 `claude -p` executable for one stateless turn. Safe mode is enabled; the native tool set, slash
 commands, browser integration, MCP servers, and session persistence are disabled; and a fixed
-system prompt plus private JSON schema constrain the result. Credential and endpoint-routing
+system prompt plus private JSON schema constrain the result. `--max-turns 1` bounds the client
+to one inference turn. The schema is carried in the instructions rather than `--json-schema`,
+which formats output after Claude Code's agent workflow. The private `result` envelope contains
+public `content` and inert `tool_calls`; bounded syntax healing accepts a single fenced JSON
+object while rejecting truncated objects, duplicate keys, and undeclared tools. Credential and endpoint-routing
 environment overrides are removed. The decoder accepts only bounded schema-valid text, inert
 tool-call proposals, usage, and terminal state.
 
@@ -216,7 +220,8 @@ prove, including remote cancellation/resume, cache semantics, multimodal input, 
 ceiling.
 
 Reviewed sources: [Claude Agent SDK overview](https://code.claude.com/docs/en/agent-sdk/overview)
-and [Claude plan usage update](https://support.claude.com/en/articles/15036540-use-the-claude-agent-sdk-with-your-claude-plan).
+and [Claude plan usage update](https://support.claude.com/en/articles/15036540-use-the-claude-agent-sdk-with-your-claude-plan),
+plus the [Claude CLI reference](https://code.claude.com/docs/en/cli-reference).
 
 ### Google Gemini
 

@@ -32,14 +32,27 @@ pub struct FileUi {
     upload: Option<Upload>,
     expected: Option<(WorkbenchFileMetadata, String)>,
     import_request: Option<WorkbenchFileImportRequest>,
+    pending_preview: Option<(WorkbenchQuery, String, String, bool)>,
 }
 
 impl FileUi {
+    pub(super) fn upload_binding(
+        &self,
+    ) -> Option<(peritus_app_protocol::TransferId, peritus_types::ArtifactId)> {
+        let metadata = &self.upload.as_ref()?.metadata;
+        Some((metadata.transfer_id(), metadata.artifact_id()))
+    }
+
+    pub(super) fn cancel_pending_preview(&mut self) {
+        self.pending_preview = None;
+    }
+
     pub(super) fn discard_preview(&mut self) {
         self.preview = None;
         self.import_preview = None;
         self.expected = None;
         self.import_request = None;
+        self.pending_preview = None;
     }
 }
 
@@ -82,15 +95,12 @@ impl AppModel {
             );
             return Vec::new();
         }
-        if self.chat.workbench.selected.is_none()
-            || self.workbench_request_pending()
-            || self.chat.workbench.unresolved.is_some()
-        {
-            self.notice(
-                NoticeLevel::Warning,
-                "Select a conversation and resolve pending receipts before attaching a file.",
-            );
+        if self.workbench_request_pending() || self.chat.workbench.unresolved.is_some() {
+            self.notice(NoticeLevel::Warning, "Resolve pending receipts before attaching a file.");
             return Vec::new();
+        }
+        if self.chat.workbench.selected.is_none() {
+            return self.create_command_conversation("File conversation", format!("/files {path}"));
         }
         self.chat.workbench.open = true;
         self.chat.workbench.files.open = true;
@@ -101,6 +111,7 @@ impl AppModel {
         if !path.is_empty() {
             path.clone_into(&mut self.chat.workbench.files.path);
             self.chat.workbench.files.discard_preview();
+            self.clear_chat_command();
         }
         self.refresh_file_panel()
     }
@@ -113,10 +124,7 @@ impl AppModel {
         };
         let snapshot =
             self.chat.workbench.snapshot.as_ref().filter(|snapshot| snapshot.query() == query);
-        if let Some(snapshot) = snapshot {
-            if self.chat.workbench.files.list {
-                return self.file_page(snapshot.revision(), 0);
-            }
+        if snapshot.is_some() && !self.chat.workbench.files.list {
             return Vec::new();
         }
         self.request(
@@ -125,6 +133,16 @@ impl AppModel {
         )
         .into_iter()
         .collect()
+    }
+    pub(in crate::model) fn complete_file_list_refresh(&mut self) -> Vec<Effect> {
+        if !self.chat.workbench.open
+            || !self.chat.workbench.files.open
+            || !self.chat.workbench.files.list
+        {
+            return Vec::new();
+        }
+        let Some(snapshot) = &self.chat.workbench.snapshot else { return Vec::new() };
+        self.file_page(snapshot.revision(), 0)
     }
     fn file_page(&mut self, revision: u64, offset: u32) -> Vec<Effect> {
         let Some(query) = self.chat.workbench.selected else {
@@ -144,6 +162,29 @@ impl AppModel {
         if !self.files_available() {
             return Vec::new();
         }
+        let Some(query) = self.chat.workbench.selected else { return Vec::new() };
+        let file = &mut self.chat.workbench.files;
+        file.discard_preview();
+        file.pending_preview = Some((query, file.path.clone(), file.range.clone(), file.refresh));
+        self.refresh_selected_snapshot()
+    }
+
+    pub(in crate::model) fn complete_file_snapshot_refresh(&mut self) -> Option<Vec<Effect>> {
+        let (query, path, range, refresh) = self.chat.workbench.files.pending_preview.take()?;
+        let file = &self.chat.workbench.files;
+        if !self.chat.workbench.open
+            || !file.open
+            || self.chat.workbench.selected != Some(query)
+            || file.path != path
+            || file.range != range
+            || file.refresh != refresh
+        {
+            return Some(Vec::new());
+        }
+        Some(self.preview_file_at_snapshot())
+    }
+
+    fn preview_file_at_snapshot(&mut self) -> Vec<Effect> {
         let Some(snapshot) = &self.chat.workbench.snapshot else {
             return self.refresh_file_panel();
         };
@@ -215,6 +256,7 @@ impl AppModel {
     ) {
         if page.query() == query && self.chat.workbench.selected == Some(query.query()) {
             self.chat.workbench.files.page = Some(page);
+            self.complete_workbench_inspection();
             self.chat.workbench.files.selected = 0;
             self.chat.workbench.scroll = 0;
         }

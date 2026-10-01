@@ -4,8 +4,8 @@ use std::path::Path;
 
 use peritus_app_protocol::{
     AppMessage, AppProtocolLimits, ClientHello, NegotiationOutcome, ProtocolContext,
-    ProtocolFeatureName, ProtocolId, ServerHello, VersionRange, WellKnownProtocolFeature,
-    decode_app_message, encode_app_message,
+    ProtocolFeatureName, ProtocolId, ServerHello, WellKnownProtocolFeature, decode_app_message,
+    encode_app_message,
 };
 use peritus_codec::{HEADER_LEN, MAGIC};
 use peritus_types::SessionId;
@@ -41,8 +41,16 @@ pub struct EstablishedConnection {
 )]
 #[derive(Debug)]
 pub enum ClientEvent {
-    Message(AppMessage),
-    Disconnected(String),
+    Message { context: ProtocolContext, message: AppMessage },
+    Disconnected { context: ProtocolContext, error: String },
+}
+
+impl ClientEvent {
+    pub(crate) const fn context(&self) -> ProtocolContext {
+        match self {
+            Self::Message { context, .. } | Self::Disconnected { context, .. } => *context,
+        }
+    }
 }
 
 #[allow(
@@ -82,14 +90,15 @@ impl ClientSession {
         };
         let established = establish(protocol_id, &server_hello)?;
         let limits = established.limits;
+        let context = established.context;
         let (read_half, write_half) = tokio::io::split(io);
         let (writer, writer_rx) = mpsc::channel(256);
         let reader_events = events.clone();
         let reader_task = tokio::spawn(async move {
-            reader_loop(read_half, limits, reader_events).await;
+            reader_loop(read_half, limits, context, reader_events).await;
         });
         let writer_task = tokio::spawn(async move {
-            writer_loop(write_half, limits, writer_rx, events).await;
+            writer_loop(write_half, limits, context, writer_rx, events).await;
         });
         Ok(Self { established, writer, reader_task, writer_task })
     }
@@ -98,24 +107,33 @@ impl ClientSession {
         &self.established
     }
 
-    pub(crate) async fn send(&self, message: AppMessage) -> Result<(), TuiError> {
-        tokio::time::timeout(WRITE_TIMEOUT, self.writer.send(WriterCommand::Message(message)))
-            .await
-            .map_err(|_| {
-                TuiError::Task("daemon writer queue did not accept the request in time".to_owned())
-            })?
-            .map_err(|_| TuiError::Task("daemon writer is no longer available".to_owned()))
+    pub(crate) fn send(
+        &self,
+        message: AppMessage,
+    ) -> impl Future<Output = Result<(), TuiError>> + Send + 'static {
+        let writer = self.writer.clone();
+        async move {
+            tokio::time::timeout(WRITE_TIMEOUT, writer.send(WriterCommand::Message(message)))
+                .await
+                .map_err(|_| {
+                    TuiError::Task(
+                        "daemon writer queue did not accept the request in time".to_owned(),
+                    )
+                })?
+                .map_err(|_| TuiError::Task("daemon writer is no longer available".to_owned()))
+        }
     }
 
-    pub(crate) async fn close(self, final_messages: Vec<AppMessage>) -> Result<(), TuiError> {
+    pub(crate) async fn close(mut self, final_messages: Vec<AppMessage>) -> Result<(), TuiError> {
+        let deadline = tokio::time::Instant::now() + CLOSE_TIMEOUT;
         let (completed_tx, completed_rx) = oneshot::channel();
-        let sent = tokio::time::timeout(
-            CLOSE_TIMEOUT,
+        let sent = tokio::time::timeout_at(
+            deadline,
             self.writer.send(WriterCommand::Close { final_messages, completed: completed_tx }),
         )
         .await;
         let write_result = match sent {
-            Ok(Ok(())) => match tokio::time::timeout(CLOSE_TIMEOUT, completed_rx).await {
+            Ok(Ok(())) => match tokio::time::timeout_at(deadline, completed_rx).await {
                 Ok(Ok(Ok(()))) => Ok(()),
                 Ok(Ok(Err(error))) => Err(TuiError::Task(error)),
                 Ok(Err(_)) => Err(TuiError::Task(
@@ -132,16 +150,15 @@ impl ClientSession {
         };
 
         self.reader_task.abort();
-        let reader_result = self.reader_task.await;
+        let reader_result = (&mut self.reader_task).await;
         if let Err(error) = reader_result
             && !error.is_cancelled()
         {
             return Err(TuiError::Task(error.to_string()));
         }
-        let mut writer_task = self.writer_task;
-        let Ok(joined) = tokio::time::timeout(CLOSE_TIMEOUT, &mut writer_task).await else {
-            writer_task.abort();
-            let _ = writer_task.await;
+        let Ok(joined) = tokio::time::timeout_at(deadline, &mut self.writer_task).await else {
+            self.writer_task.abort();
+            let _ = (&mut self.writer_task).await;
             return Err(TuiError::Task(
                 "daemon writer did not stop before the close deadline".to_owned(),
             ));
@@ -151,19 +168,34 @@ impl ClientSession {
     }
 }
 
-async fn reader_loop<R>(mut reader: R, limits: AppProtocolLimits, events: mpsc::Sender<ClientEvent>)
-where
+impl Drop for ClientSession {
+    fn drop(&mut self) {
+        // Terminal failures and cancellation can bypass orderly close. Never detach
+        // a reader or writer that still owns a live daemon connection.
+        self.reader_task.abort();
+        self.writer_task.abort();
+    }
+}
+
+async fn reader_loop<R>(
+    mut reader: R,
+    limits: AppProtocolLimits,
+    context: ProtocolContext,
+    events: mpsc::Sender<ClientEvent>,
+) where
     R: AsyncRead + Unpin,
 {
     loop {
         match read_frame(&mut reader, limits).await {
             Ok(message) => {
-                if events.send(ClientEvent::Message(message)).await.is_err() {
+                if events.send(ClientEvent::Message { context, message }).await.is_err() {
                     return;
                 }
             }
             Err(error) => {
-                let _ = events.send(ClientEvent::Disconnected(error.to_string())).await;
+                let _ = events
+                    .send(ClientEvent::Disconnected { context, error: error.to_string() })
+                    .await;
                 return;
             }
         }
@@ -173,6 +205,7 @@ where
 async fn writer_loop<W>(
     mut writer: W,
     limits: AppProtocolLimits,
+    context: ProtocolContext,
     mut commands: mpsc::Receiver<WriterCommand>,
     events: mpsc::Sender<ClientEvent>,
 ) where
@@ -182,7 +215,9 @@ async fn writer_loop<W>(
         match command {
             WriterCommand::Message(message) => {
                 if let Err(error) = write_frame(&mut writer, &message, limits).await {
-                    let _ = events.send(ClientEvent::Disconnected(error.to_string())).await;
+                    let _ = events
+                        .send(ClientEvent::Disconnected { context, error: error.to_string() })
+                        .await;
                     return;
                 }
             }
@@ -217,11 +252,15 @@ fn client_hello(
         WellKnownProtocolFeature::ApprovalPrompts,
         WellKnownProtocolFeature::UserInput,
         WellKnownProtocolFeature::TerminalStreaming,
+        WellKnownProtocolFeature::TerminalFailure,
+        WellKnownProtocolFeature::TerminalPipes,
         WellKnownProtocolFeature::ReadOnlyDiagnostics,
         WellKnownProtocolFeature::ProductDiagnostics,
         WellKnownProtocolFeature::WorkbenchControl,
         WellKnownProtocolFeature::WorkbenchInputs,
         WellKnownProtocolFeature::WorkbenchExecution,
+        WellKnownProtocolFeature::WorkbenchConversation,
+        WellKnownProtocolFeature::WorkbenchRunBinding,
         WellKnownProtocolFeature::WorkbenchContext,
         WellKnownProtocolFeature::WorkbenchCompaction,
         WellKnownProtocolFeature::WorkbenchBrief,
@@ -231,6 +270,7 @@ fn client_hello(
         WellKnownProtocolFeature::WorkbenchBudgets,
         WellKnownProtocolFeature::WorkbenchReview,
         WellKnownProtocolFeature::WorkbenchPreview,
+        WellKnownProtocolFeature::WorkbenchPreviewOutput,
         WellKnownProtocolFeature::WorkbenchCheckpoints,
         WellKnownProtocolFeature::ConversationLibrary,
         WellKnownProtocolFeature::ConversationForks,
@@ -245,7 +285,7 @@ fn client_hello(
     Ok(ClientHello::new_with_session(
         protocol_id,
         requested_session,
-        vec![VersionRange::new(1, 0, 0)?],
+        vec![peritus_app_protocol::CURRENT_PROTOCOL_RANGE],
         Vec::new(),
         optional,
         limits,
@@ -274,6 +314,11 @@ fn establish(
             )));
         }
     };
+    if protocol.version() != peritus_app_protocol::CURRENT_PROTOCOL_VERSION {
+        return Err(TuiError::ProtocolViolation(
+            "daemon selected a version outside the offered range".to_owned(),
+        ));
+    }
     Ok(EstablishedConnection {
         features: protocol.features().as_slice().to_vec(),
         context: ProtocolContext::new(expected_protocol, protocol.version(), session),

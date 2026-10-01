@@ -13,7 +13,7 @@ fn transcript(messages: &[&str]) -> Vec<u8> {
 }
 
 #[test]
-fn preliminary_prose_is_accepted_only_with_an_exact_unambiguous_final_binding() {
+fn private_final_artifact_owns_the_only_host_result() {
     let final_message = r#"{"content":"done","tool_calls":[]}"#;
     let bytes = transcript(&["I will inspect the workspace.", final_message]);
     let allowed = BTreeSet::new();
@@ -22,10 +22,14 @@ fn preliminary_prose_is_accepted_only_with_an_exact_unambiguous_final_binding() 
     assert_eq!(result.content, "done");
     assert_eq!(result.usage.input_tokens(), Some(10));
     let competing = transcript(&[r#"{"content":"different","tool_calls":[]}"#, final_message]);
-    assert!(matches!(
-        decode(&competing, &allowed, 0..=0, Some(final_message)),
-        Err(DecodeFailure::MultipleMessages)
-    ));
+    let result = decode(&competing, &allowed, 0..=0, Some(final_message)).unwrap();
+    assert_eq!(result.content, "done", "discarded drafts cannot become host proposals");
+    let duplicate = transcript(&[final_message, final_message]);
+    assert_eq!(
+        decode(&duplicate, &allowed, 0..=0, Some(final_message)).unwrap().content,
+        "done",
+        "byte-equivalent repeated final observations are idempotent"
+    );
     let after = transcript(&[final_message, "More prose after the supposedly final result."]);
     assert!(matches!(
         decode(&after, &allowed, 0..=0, Some(final_message)),
@@ -34,6 +38,33 @@ fn preliminary_prose_is_accepted_only_with_an_exact_unambiguous_final_binding() 
     assert!(
         decode(&bytes, &allowed, 0..=0, Some(r#"{"content":"forged","tool_calls":[]}"#)).is_err()
     );
+}
+
+#[test]
+fn first_valid_host_tool_batch_is_a_turn_suspension_boundary() {
+    let proposal = json!({
+        "content": "",
+        "tool_calls": [{"name": "lookup", "arguments_json": "{\"value\":\"first\"}"}],
+    })
+    .to_string();
+    let final_message = r#"{"content":"I am waiting for the host results.","tool_calls":[]}"#;
+    let bytes = transcript(&[&proposal, final_message]);
+    let result =
+        decode(&bytes, &BTreeSet::from(["lookup".to_owned()]), 0..=1, Some(final_message)).unwrap();
+    assert_eq!(result.tool_calls.len(), 1);
+    assert_eq!(result.tool_calls[0].name, "lookup");
+    assert!(result.content.is_empty());
+
+    let invalid = json!({
+        "content": "",
+        "tool_calls": [{"name": "lookup", "arguments_json": "not-json"}],
+    })
+    .to_string();
+    let bytes = transcript(&[&invalid, final_message]);
+    assert!(matches!(
+        decode(&bytes, &BTreeSet::from(["lookup".to_owned()]), 0..=1, Some(final_message)),
+        Err(DecodeFailure::InvalidToolArguments)
+    ));
 }
 
 #[test]

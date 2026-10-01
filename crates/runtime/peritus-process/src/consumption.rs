@@ -21,12 +21,15 @@ use crate::{
 
 mod errors;
 mod retention;
+mod state;
 mod terminal_store;
 #[cfg(test)]
 mod tests;
+mod watchdog;
 
 use errors::{overlap_error, reused, store_error};
-use retention::{execution_record_count, retire_terminal_records};
+use retention::{execution_record_count, retire_settled_records};
+use watchdog::configured_crash_watchdog;
 
 const MAX_EXECUTION_RECORDS: usize = 16_384;
 const RETIRE_BATCH: usize = 1_024;
@@ -42,6 +45,7 @@ struct StoreInner {
     manifests: PathBuf,
     claims: PathBuf,
     spools: PathBuf,
+    crash_watchdog: Option<PathBuf>,
     state: Mutex<StoreState>,
 }
 
@@ -65,11 +69,42 @@ impl ProcessStore {
         root: impl AsRef<Path>,
         agent_workspace_root: impl AsRef<Path>,
     ) -> Result<Self, ProcessError> {
-        std::fs::create_dir_all(root.as_ref())
+        Self::open_configured(root.as_ref(), agent_workspace_root.as_ref(), None)
+    }
+
+    /// Opens a registry whose launched process groups are guarded by an installed crash watchdog.
+    ///
+    /// The watchdog is an independent process that retains only an owner-liveness channel and an
+    /// exact process birth identity. If this process dies without disarming it, the watchdog
+    /// terminates the exact owned process group before exiting.
+    ///
+    /// # Errors
+    ///
+    /// Returns a typed error when the watchdog is missing, aliased, non-executable, or overlaps
+    /// the protected process registry or agent-visible workspace.
+    #[cfg(target_os = "linux")]
+    pub fn open_with_crash_watchdog(
+        root: impl AsRef<Path>,
+        agent_workspace_root: impl AsRef<Path>,
+        crash_watchdog: impl AsRef<Path>,
+    ) -> Result<Self, ProcessError> {
+        Self::open_configured(
+            root.as_ref(),
+            agent_workspace_root.as_ref(),
+            Some(crash_watchdog.as_ref()),
+        )
+    }
+
+    fn open_configured(
+        root: &Path,
+        agent_workspace_root: &Path,
+        crash_watchdog: Option<&Path>,
+    ) -> Result<Self, ProcessError> {
+        std::fs::create_dir_all(root)
             .map_err(|_| store_error("process registry root cannot be created"))?;
-        let root = std::fs::canonicalize(root.as_ref())
+        let root = std::fs::canonicalize(root)
             .map_err(|_| store_error("process registry root cannot be canonicalized"))?;
-        let workspace = std::fs::canonicalize(agent_workspace_root.as_ref())
+        let workspace = std::fs::canonicalize(agent_workspace_root)
             .map_err(|_| store_error("agent workspace root cannot be canonicalized"))?;
         if root.starts_with(&workspace) || workspace.starts_with(&root) {
             return Err(overlap_error());
@@ -94,7 +129,7 @@ impl ProcessStore {
             &mut state.manifests,
             &mut state.quarantined_records,
         )?;
-        retire_terminal_records(
+        retire_settled_records(
             &claims,
             &manifests,
             &spools,
@@ -104,12 +139,14 @@ impl ProcessStore {
         if execution_record_count(&state) > MAX_EXECUTION_RECORDS {
             return Err(store_error("process registry exceeds its record bound"));
         }
+        let crash_watchdog = configured_crash_watchdog(crash_watchdog, &root, &workspace)?;
         Ok(Self {
             inner: Arc::new(StoreInner {
                 root,
                 manifests,
                 claims,
                 spools,
+                crash_watchdog,
                 state: Mutex::new(state),
             }),
         })
@@ -121,31 +158,8 @@ impl ProcessStore {
         &self.inner.root
     }
 
-    /// Returns paths quarantined while opening this registry.
-    #[must_use]
-    pub fn quarantined_records(&self) -> Vec<PathBuf> {
-        self.lock_state().quarantined_records.clone()
-    }
-
-    /// Returns the exact number of durable executions that still require terminal reconciliation.
-    ///
-    /// This includes every nonterminal manifest and every consumption claim whose manifest is
-    /// absent. It performs no platform observation and therefore cannot manufacture quiescence.
-    #[must_use]
-    pub fn recovery_work_count(&self) -> usize {
-        let state = self.lock_state();
-        let nonterminal = state
-            .manifests
-            .values()
-            .filter(|manifest| manifest.phase != LifecyclePhase::Terminal)
-            .count();
-        let orphan_claims = state
-            .claims
-            .keys()
-            .filter(|process_id| !state.manifests.contains_key(process_id))
-            .count();
-        drop(state);
-        nonterminal + orphan_claims
+    pub(crate) fn crash_watchdog(&self) -> Option<&Path> {
+        self.inner.crash_watchdog.as_deref()
     }
 
     pub(crate) fn consume(
@@ -164,7 +178,7 @@ impl ProcessStore {
             return Err(reused());
         }
         if execution_record_count(&state) >= MAX_EXECUTION_RECORDS {
-            retire_terminal_records(
+            retire_settled_records(
                 &self.inner.claims,
                 &self.inner.manifests,
                 &self.inner.spools,
@@ -329,60 +343,6 @@ impl ProcessStore {
             manifest.phase = LifecyclePhase::Closed;
             Ok(())
         })
-    }
-
-    pub(crate) fn manifests(&self) -> Vec<ExecutionManifest> {
-        self.lock_state().manifests.values().cloned().collect()
-    }
-
-    pub(crate) fn recovery_records(
-        &self,
-    ) -> (Vec<ExecutionManifest>, BTreeMap<ProcessId, ConsumptionClaim>) {
-        let state = self.lock_state();
-        (state.manifests.values().cloned().collect(), state.claims.clone())
-    }
-
-    pub(crate) fn reconcile_manifest(
-        &self,
-        process_id: ProcessId,
-        tree_quiescent: bool,
-    ) -> Result<(), ProcessError> {
-        self.update(process_id, |manifest| {
-            if manifest.phase == LifecyclePhase::Terminal {
-                return Ok(());
-            }
-            manifest.exit = Some(OsExitObservation::Unavailable);
-            manifest.tree_quiescent = tree_quiescent;
-            manifest.support_tasks_joined = true;
-            manifest.phase = LifecyclePhase::Closed;
-            Ok(())
-        })
-    }
-
-    fn update(
-        &self,
-        process_id: ProcessId,
-        update: impl FnOnce(&mut ExecutionManifest) -> Result<(), ProcessError>,
-    ) -> Result<(), ProcessError> {
-        let mut state = self.lock_state();
-        let manifest = state
-            .manifests
-            .get_mut(&process_id)
-            .ok_or_else(|| store_error("process manifest is missing"))?;
-        let mut next = manifest.clone();
-        update(&mut next)?;
-        write_manifest(&self.inner.manifests, &next)?;
-        *manifest = next;
-        drop(state);
-        Ok(())
-    }
-
-    fn claim_path(&self, process_id: ProcessId) -> PathBuf {
-        self.inner.claims.join(format!("{}.claim", hex(process_id.as_bytes())))
-    }
-
-    fn lock_state(&self) -> std::sync::MutexGuard<'_, StoreState> {
-        self.inner.state.lock().unwrap_or_else(std::sync::PoisonError::into_inner)
     }
 }
 

@@ -27,9 +27,15 @@ pub(super) fn validate(
         20
     } else if [
         (".github/workflows/ci.yml", "jobs.rust"),
+        (".github/workflows/formal-governance.yml", "jobs.rust-shards"),
+    ]
+    .iter()
+    .any(|(workflow, job)| path == Path::new(workflow) && location == *job)
+    {
+        30
+    } else if [
         (".github/workflows/ci.yml", "jobs.verus"),
         (".github/workflows/formal-governance.yml", "jobs.verus-shards"),
-        (".github/workflows/formal-governance.yml", "jobs.rust-shards"),
         (".github/workflows/security-qualification.yml", "jobs.native-security"),
     ]
     .iter()
@@ -44,7 +50,7 @@ pub(super) fn validate(
         diagnostics.push(Diagnostic::at(
             path,
             format!("`{location}` does not have a timeout from 1 through {maximum} minutes"),
-            "keep ordinary jobs within ten minutes, named Rust, Verus, and H0 jobs within fifteen, and named native binary and release compilation jobs within twenty",
+            "keep ordinary jobs within ten minutes, named Verus and H0 jobs within fifteen, named native binary and release compilation jobs within twenty, and cross-platform Rust matrices within thirty",
         ));
     }
 }
@@ -71,11 +77,26 @@ mod tests {
 
     #[test]
     fn qualification_allowance_is_bounded_and_scoped_to_exact_jobs() {
-        let allowed = [
+        let rust_matrices = [
             (".github/workflows/ci.yml", "jobs.rust"),
+            (".github/workflows/formal-governance.yml", "jobs.rust-shards"),
+        ];
+        for (path, job) in rust_matrices {
+            let path = std::path::Path::new(".github/workflows")
+                .join(std::path::Path::new(path).file_name().expect("workflow filename"));
+            for (minutes, valid) in [(1, true), (15, true), (30, true), (0, false), (31, false)] {
+                let mapping = yaml_rust2::yaml::Hash::from_iter([(
+                    yaml_rust2::Yaml::String("timeout-minutes".into()),
+                    yaml_rust2::Yaml::Integer(minutes),
+                )]);
+                let mut diagnostics = Vec::new();
+                super::validate(&mapping, &path, job, &mut diagnostics);
+                assert_eq!(diagnostics.is_empty(), valid, "{path:?}/{job}/{minutes}");
+            }
+        }
+        let allowed = [
             (".github/workflows/ci.yml", "jobs.verus"),
             (".github/workflows/formal-governance.yml", "jobs.verus-shards"),
-            (".github/workflows/formal-governance.yml", "jobs.rust-shards"),
             (".github/workflows/security-qualification.yml", "jobs.native-security"),
         ];
         for (path, job) in allowed {

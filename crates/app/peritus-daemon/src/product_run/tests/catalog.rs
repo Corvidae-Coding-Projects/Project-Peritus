@@ -12,6 +12,9 @@ struct CatalogProvider {
     inner: Arc<ScriptedProvider>,
     calls: AtomicU32,
     fail: AtomicBool,
+    pause: AtomicBool,
+    started: tokio::sync::Notify,
+    resume: tokio::sync::Notify,
 }
 impl ModelProvider for CatalogProvider {
     fn profile(&self) -> &ProviderProfile {
@@ -30,6 +33,10 @@ impl ModelProvider for CatalogProvider {
     ) -> BoxFuture<'a, Result<Vec<DiscoveredModel>, ProviderCoreError>> {
         Box::pin(async move {
             self.calls.fetch_add(1, Ordering::SeqCst);
+            if self.pause.load(Ordering::SeqCst) {
+                self.started.notify_one();
+                self.resume.notified().await;
+            }
             if self.fail.load(Ordering::SeqCst) {
                 return Err(ProviderCoreError::configuration(
                     "fixture",
@@ -57,6 +64,9 @@ async fn cache_scenario() {
         inner: Arc::clone(&writer),
         calls: AtomicU32::new(0),
         fail: AtomicBool::new(false),
+        pause: AtomicBool::new(false),
+        started: tokio::sync::Notify::new(),
+        resume: tokio::sync::Notify::new(),
     });
     let mut service = service(
         state.path(),
@@ -88,13 +98,13 @@ async fn cache_scenario() {
     let selected = ProductProviderSelection::new(profile, profile, profile);
     let advertised = ProductModelChoice::new("new-advertised-model".to_owned(), false)
         .expect("advertised choice");
-    let advertised_options = super::super::interaction::InteractionOptions::new(
+    let advertised_options = super::super::interaction::InteractionOptions::test(
         ProductInteractionMode::Chat,
         ProductRoleModels::new(advertised.clone(), advertised.clone(), advertised),
     );
-    assert!(service.validate_models(selected, &advertised_options).await.is_ok());
+    assert!(service.validate_models(selected, &advertised_options.models).await.is_ok());
     let choice = ProductModelChoice::new("not-advertised".to_owned(), false).expect("choice");
-    let options = super::super::interaction::InteractionOptions::new(
+    let options = super::super::interaction::InteractionOptions::test(
         ProductInteractionMode::Chat,
         ProductRoleModels::new(
             choice,
@@ -102,6 +112,64 @@ async fn cache_scenario() {
             ProductModelChoice::default(),
         ),
     );
-    assert!(service.validate_models(selected, &options).await.is_err());
+    assert!(service.validate_models(selected, &options.models).await.is_err());
     service.shutdown(Duration::from_secs(1)).await;
+}
+
+#[test]
+fn slow_discovery_does_not_block_cached_models_or_another_provider() {
+    interaction::block_on(async {
+        let repository = repository();
+        let state = tempfile::tempdir().unwrap();
+        let writer = scripted(0x61, "writer", Vec::new());
+        let reviewer = scripted(0x62, "reviewer", Vec::new());
+        let provider = |inner: &Arc<ScriptedProvider>| {
+            Arc::new(CatalogProvider {
+                inner: Arc::clone(inner),
+                calls: AtomicU32::new(0),
+                fail: AtomicBool::new(false),
+                pause: AtomicBool::new(false),
+                started: tokio::sync::Notify::new(),
+                resume: tokio::sync::Notify::new(),
+            })
+        };
+        let slow = provider(&writer);
+        let fast = provider(&reviewer);
+        let slow_id = slow.profile().profile_id();
+        let fast_id = fast.profile().profile_id();
+        let mut service = service(
+            state.path(),
+            repository.path(),
+            WorkspaceId::new([0x63; 16]).unwrap(),
+            [&writer, &reviewer, &writer],
+        );
+        let inner = Arc::get_mut(&mut service.inner).unwrap();
+        inner.providers.insert(slow_id, slow.clone());
+        inner.providers.insert(fast_id, fast.clone());
+        service.query_models(ProductModelQuery::new(slow_id, false)).await.unwrap();
+        slow.pause.store(true, Ordering::SeqCst);
+        let background = service.clone();
+        let refresh = tokio::spawn(async move {
+            background.query_models(ProductModelQuery::new(slow_id, true)).await
+        });
+        tokio::time::timeout(Duration::from_secs(1), slow.started.notified()).await.unwrap();
+        let available = tokio::time::timeout(Duration::from_secs(1), async {
+            let cached =
+                service.query_models(ProductModelQuery::new(slow_id, false)).await.unwrap();
+            let fresh = service.query_models(ProductModelQuery::new(fast_id, false)).await.unwrap();
+            let busy = service.query_models(ProductModelQuery::new(slow_id, true)).await.unwrap();
+            (cached, fresh, busy)
+        })
+        .await;
+        slow.resume.notify_one();
+        refresh.await.unwrap().unwrap();
+        service.shutdown(Duration::from_secs(1)).await;
+        let (cached, fresh, busy) = available.expect("independent model catalogs remain available");
+        assert!(cached.cached());
+        assert!(!fresh.cached());
+        assert!(busy.cached());
+        assert!(!busy.error().is_empty());
+        assert_eq!(slow.calls.load(Ordering::SeqCst), 2, "refreshes cannot pile up");
+        assert_eq!(fast.calls.load(Ordering::SeqCst), 1);
+    });
 }

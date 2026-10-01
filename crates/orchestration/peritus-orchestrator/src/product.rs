@@ -93,9 +93,12 @@ mod tests {
     #[test]
     fn complete_is_impossible_without_exact_changed_target_evidence() {
         let root = tempfile::tempdir().expect("root");
-        let plan =
-            TargetGatePlan::discover(root.path(), vec![PathBuf::from("uncovered/new-file.txt")])
-                .expect("plan");
+        let plan = TargetGatePlan::discover(
+            root.path(),
+            vec![PathBuf::from("uncovered/new-file.txt")],
+            &[],
+        )
+        .expect("plan");
         let report = TargetGateReport::from_execution(&plan, Vec::<GateExecutionRecord>::new());
         let coordinator = ProductionRunCoordinator::new(2).expect("coordinator");
         assert_eq!(

@@ -18,8 +18,13 @@ use crate::{ProductRunnerError, control::HostPermissions};
 
 mod command_runtime;
 mod effect_stubs;
-pub use command_runtime::{CommandRuntime, FolderPatchAuthority, FolderPatchAuthorityPlan};
-pub use effect_stubs::checked_protected_file;
+pub use command_runtime::{
+    CommandRuntime, FolderPatchAuthority, FolderPatchAuthorityPlan, PreviewTerminal,
+};
+pub use effect_stubs::{
+    UncertainEffect, UncertainEffectState, acknowledge_uncertain_effect, checked_protected_file,
+    uncertain_effects,
+};
 
 /// Maximum wall-clock duration of one uninterrupted product-run attempt.
 pub const PRODUCT_RUN_MAX_ELAPSED: Duration = Duration::from_hours(8);

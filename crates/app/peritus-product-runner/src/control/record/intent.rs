@@ -311,6 +311,10 @@ pub enum ControlIntent {
         /// Exact terminal transaction evidence digest. Applied restores always retain evidence;
         /// crash-reconciled non-success states may retain a distinct recovery record.
         transaction_manifest_digest: Option<[u8; 32]>,
+        /// Seal the recovery checkpoint from the applied transaction's exact target versions.
+        /// Missing on historical operations so their replay roots remain byte-identical.
+        #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+        seal_recovery: bool,
     },
     /// Changes only the workspace-scoped user restriction overlay. Lower authority remains required.
     SetPermissions {

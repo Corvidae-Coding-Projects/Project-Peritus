@@ -1,9 +1,7 @@
 //! Active product-run task ownership and terminal projection.
 mod runtime;
 
-use peritus_app_protocol::{
-    ProductConversationRole, ProductDeliverable, ProductRunPhase, ProductRunSnapshot,
-};
+use peritus_app_protocol::{ProductDeliverable, ProductRunPhase, ProductRunSnapshot};
 use peritus_product_runner::ProductRunOutcome;
 use peritus_product_runner::control::GoalSettlement;
 use peritus_run_settlement::RunDisposition;
@@ -12,8 +10,11 @@ use peritus_types::RunId;
 use super::persistence::persist_record;
 use super::snapshot::replace_snapshot;
 use super::{ProductRunService, ProductRunServiceError};
+mod baseline;
 mod goal;
+mod handoff;
 mod launch;
+use handoff::{fail_handoff, terminal_summary};
 #[cfg(test)]
 pub use launch::inject_finish_barrier;
 
@@ -46,13 +47,13 @@ impl ProductRunService {
         };
         if phase != record.snapshot.phase()
             && update.phase != peritus_product_runner::ProductRunPhase::Finalizing
-            && let Some(options) = &mut record.interaction
             && matches!(
-                options.mode,
+                record.interaction.mode,
                 peritus_app_protocol::ProductInteractionMode::Build
                     | peritus_app_protocol::ProductInteractionMode::Chat
             )
         {
+            let options = &mut record.interaction;
             let message = match phase {
                 ProductRunPhase::Designing => {
                     "I'm inspecting the workspace and preparing the design."
@@ -81,19 +82,22 @@ impl ProductRunService {
                 return;
             }
         }
-        if let Ok(snapshot) = ProductRunSnapshot::new(
-            run_id,
-            record.request.workspace_id(),
-            record.request.providers(),
-            phase,
-            update.cycle,
-            record.request.task().to_owned(),
-            update.status,
-            update.diff,
-            update.gates,
-            update.review,
-            update.summary,
-        ) {
+        if let Ok(operation) = super::operation::retained_execution(run_id, phase, "")
+            && let Ok(snapshot) = ProductRunSnapshot::new(
+                run_id,
+                record.request.workspace_id(),
+                record.request.providers(),
+                phase,
+                update.cycle,
+                record.request.display_task().to_owned(),
+                update.status,
+                update.diff,
+                update.gates,
+                update.review,
+                update.summary,
+                operation,
+            )
+        {
             record.snapshot = snapshot;
             let _ = persist_record(&self.inner.directory, record);
         }
@@ -123,18 +127,17 @@ impl ProductRunService {
             if matches!(
                 outcome.settlement().disposition(),
                 RunDisposition::Accepted | RunDisposition::WaitingForUser
-            ) && let Some(start) =
-                record.interaction.as_ref().and_then(|options| options.workbench.as_ref())
-            {
+            ) {
                 // The runner has returned, so its in-place writes have reached a completed owned
                 // boundary. A failed seal remains visibly unsealed and can never be overwritten.
-                let _ = self.seal_latest_checkpoint(start, run_id);
+                let _ = self.seal_latest_checkpoint(&record.interaction.workbench, run_id);
             }
         }
-        if self.settle_workbench_goal(record, &result).is_err() {
-            if let Some(options) = &record.interaction {
-                options.persistence_failed.store(true, std::sync::atomic::Ordering::Release);
-            }
+        if !self.retain_task_baseline(record) {
+            return;
+        }
+        let Ok(goal_status) = self.settle_workbench_goal(record, &result) else {
+            record.interaction.persistence_failed.store(true, std::sync::atomic::Ordering::Release);
             if let Ok(snapshot) = replace_snapshot(
                 &record.snapshot,
                 ProductRunPhase::RecoveryRequired,
@@ -145,7 +148,7 @@ impl ProductRunService {
             }
             let _ = persist_record(&self.inner.directory, record);
             return;
-        }
+        };
         let public_reply = match result {
             Ok(outcome) if outcome.settlement().disposition() == RunDisposition::Accepted => {
                 let Some(output) = outcome.candidate() else {
@@ -162,15 +165,19 @@ impl ProductRunService {
                     let _ = persist_record(&self.inner.directory, record);
                     return;
                 }
-                if let Ok(snapshot) = ProductRunSnapshot::new(
+                if let Ok(operation) = super::operation::retained_execution(
+                    run_id,
+                    ProductRunPhase::Complete,
+                    &record.interruption_cause,
+                ) && let Ok(snapshot) = ProductRunSnapshot::new(
                     run_id,
                     record.request.workspace_id(),
                     record.request.providers(),
                     ProductRunPhase::Complete,
                     output.fixer_cycles + 1,
-                    record.request.task().to_owned(),
+                    record.request.display_task().to_owned(),
                     if deliverable.is_some() {
-                        "Accepted — passing checks and independent review".to_owned()
+                        "Qualified — passing checks and independent review".to_owned()
                     } else {
                         "Completed in place — tracked task files passed checks and independent review".to_owned()
                     },
@@ -178,6 +185,7 @@ impl ProductRunService {
                     output.gates.clone(),
                     output.review.clone(),
                     output.summary.clone(),
+                    operation,
                 ) {
                     record.snapshot = match deliverable {
                         Some(deliverable) => snapshot.with_deliverable(deliverable),
@@ -196,9 +204,8 @@ impl ProductRunService {
                     let _ = persist_record(&self.inner.directory, record);
                     return;
                 };
-                let chatting = record.interaction.as_ref().is_some_and(|interaction| {
-                    interaction.mode != peritus_app_protocol::ProductInteractionMode::Build
-                });
+                let chatting =
+                    record.interaction.mode != peritus_app_protocol::ProductInteractionMode::Build;
                 let status = if chatting {
                     if outcome.candidate().is_some() {
                         "Idle — unqualified changes retained"
@@ -243,10 +250,18 @@ impl ProductRunService {
                 )
             }
         };
-        if let Err(error) = self.collect_improvement(record)
-            && let Some(options) = &mut record.interaction
+        if let Some(status) = goal_status
+            && let Ok(snapshot) = replace_snapshot(
+                &record.snapshot,
+                record.snapshot.phase(),
+                status,
+                record.snapshot.summary(),
+            )
         {
-            let _ = options.append(
+            record.snapshot = snapshot;
+        }
+        if let Err(error) = self.collect_improvement(record) {
+            let _ = record.interaction.append(
                 peritus_app_protocol::ProductActivityKind::Error,
                 "Could not collect an improvement suggestion. Open the inbox to retry collection.",
                 &error.describe(),
@@ -290,18 +305,24 @@ impl ProductRunService {
         let detail = outcome.detail().unwrap_or(status);
         let summary = terminal_summary(outcome, detail);
         if let Some(output) = outcome.candidate()
+            && let Ok(operation) = super::operation::retained_execution(
+                record.request.run_id(),
+                phase,
+                &record.interruption_cause,
+            )
             && let Ok(snapshot) = ProductRunSnapshot::new(
                 record.request.run_id(),
                 record.request.workspace_id(),
                 record.request.providers(),
                 phase,
                 output.fixer_cycles.saturating_add(1),
-                record.request.task().to_owned(),
+                record.request.display_task().to_owned(),
                 status.to_owned(),
                 output.diff.clone(),
                 output.gates.clone(),
                 output.review.clone(),
                 summary.clone(),
+                operation,
             )
         {
             record.snapshot = self.with_candidate(record, outcome, snapshot);
@@ -317,18 +338,13 @@ impl ProductRunService {
     }
 
     fn deliver_public_reply(&self, record: &mut super::RunRecord, text: String) {
-        if let Some(start) =
-            record.interaction.as_ref().and_then(|options| options.workbench.as_ref())
-            && self.with_controls(false, |store| store.publish_reply(start, &text)).is_err()
+        if self
+            .with_controls(false, |store| store.publish_reply(&record.interaction.workbench, &text))
+            .is_err()
         {
             fail_handoff(record);
-            if let Some(options) = &record.interaction {
-                options.persistence_failed.store(true, std::sync::atomic::Ordering::Release);
-            }
-            return;
+            record.interaction.persistence_failed.store(true, std::sync::atomic::Ordering::Release);
         }
-        // Workbench history is authoritative in C0; legacy JSON keeps its bounded projection.
-        let _ = record.conversation.append(ProductConversationRole::Agent, text);
     }
 
     fn with_candidate(
@@ -363,32 +379,4 @@ impl ProductRunService {
         )
         .ok()
     }
-}
-
-fn terminal_summary(outcome: &ProductRunOutcome, detail: &str) -> String {
-    let mut summary = outcome
-        .candidate()
-        .map_or_else(|| detail.to_owned(), |candidate| candidate.summary.clone());
-    if !detail.is_empty() && !summary.contains(detail) {
-        summary.push_str("\n\nInterruption: ");
-        summary.push_str(detail);
-    }
-    if !outcome.remaining_work().is_empty() && !summary.contains("Remaining work:") {
-        summary.push_str("\n\nRemaining work:\n- ");
-        summary.push_str(&outcome.remaining_work().join("\n- "));
-    }
-    summary
-}
-
-fn fail_handoff(record: &mut super::RunRecord) {
-    let detail = "Passing checks could not be projected into a durable deliverable handoff";
-    if let Ok(snapshot) = replace_snapshot(
-        &record.snapshot,
-        ProductRunPhase::Failed,
-        "Create durable deliverable handoff failed",
-        detail,
-    ) {
-        record.snapshot = snapshot;
-    }
-    let _ = record.conversation.append(ProductConversationRole::Agent, detail.to_owned());
 }

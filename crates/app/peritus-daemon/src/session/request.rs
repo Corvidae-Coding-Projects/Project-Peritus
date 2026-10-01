@@ -6,6 +6,9 @@ use peritus_app_protocol::{
 };
 use tokio::sync::mpsc;
 
+mod discovery;
+pub(super) use discovery::CatalogRequests;
+
 use super::{ShutdownCommand, ShutdownEventReceiver};
 
 use crate::{
@@ -27,13 +30,14 @@ pub(super) async fn handle_request<S>(
     terminals: &TerminalRegistry,
     product_runs: &ProductRunService,
     terminal_bindings: &mut Vec<peritus_app_protocol::TerminalBinding>,
-    actor_id: peritus_types::ActorId,
-    limits: AppProtocolLimits,
+    context: &super::negotiation::ConnectionContext,
     request: AppRequestEnvelope,
 ) -> Result<Option<ShutdownEventReceiver>, DaemonError>
 where
     S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin,
 {
+    let actor_id = context.actor_id();
+    let limits = context.limits();
     let payload = if let Err(error) =
         product_runs.authorize_workbench_request(actor_id, request.payload())
     {
@@ -65,6 +69,9 @@ where
             AppRequestPayload::PreviewWorkbenchCompaction(value) => {
                 product_runs.preview_workbench_compaction(actor_id, value)
             }
+            AppRequestPayload::QueryWorkbenchPreview(query) => {
+                product_runs.workbench_preview(actor_id, *query)
+            }
             AppRequestPayload::QueryWorkbenchResult(query) => {
                 product_runs.workbench_result(actor_id, *query)
             }
@@ -90,6 +97,15 @@ where
                 workbench::respond(authority, product_runs, actor_id, limits, &request, command)
                     .await?
             }
+            AppRequestPayload::ContinueWorkbenchExecution(query) => {
+                product_runs.continue_workbench_execution(actor_id, *query).await
+            }
+            AppRequestPayload::QueryWorkbenchExecution(query) => {
+                product_runs.workbench_execution(actor_id, *query)
+            }
+            AppRequestPayload::QueryInteractionBinding(query) => product_runs
+                .query_interaction_binding(actor_id, *query)
+                .map_or_else(product_run_error, AppResponsePayload::InteractionBinding),
             AppRequestPayload::QueryWorkbench(query) => {
                 product_runs.workbench_query(actor_id, *query)
             }
@@ -182,22 +198,17 @@ where
                 }
             }
             AppRequestPayload::Improvements(value) => {
-                match product_runs.improvements(value).await {
+                match product_runs.improvements(actor_id, value).await {
                     Ok(inbox) => AppResponsePayload::Improvements(inbox),
                     Err(error) => product_run_error(error),
                 }
             }
-            AppRequestPayload::Interact(value) => {
-                match product_runs.interact(value.clone()).await {
+            AppRequestPayload::UpdateModels(value) => {
+                match product_runs.update_models(actor_id, value).await {
                     Ok(snapshot) => AppResponsePayload::Interaction(snapshot),
                     Err(error) => product_run_error(error),
                 }
             }
-            AppRequestPayload::UpdateModels(value) => match product_runs.update_models(value).await
-            {
-                Ok(snapshot) => AppResponsePayload::Interaction(snapshot),
-                Err(error) => product_run_error(error),
-            },
             AppRequestPayload::QueryInteraction(value) => {
                 match product_runs.query_interaction(*value) {
                     Ok(snapshot) => AppResponsePayload::Interaction(snapshot),
@@ -210,32 +221,11 @@ where
                     Err(error) => product_run_error(error),
                 }
             }
-            AppRequestPayload::StartProductRun(value) => {
-                match product_runs.start(value.clone()).await {
-                    Ok(snapshot) => product_run_projection(product_runs.project(snapshot)),
-                    Err(error) => product_run_error(error),
-                }
+            AppRequestPayload::ControlProductRun(value) => {
+                product_runs.control_authenticated(actor_id, request.request_id(), *value).await
             }
-            AppRequestPayload::ControlProductRun(value) => match product_runs.control(*value).await
-            {
-                Ok(snapshot) => product_run_projection(product_runs.project(snapshot)),
-                Err(error) => product_run_error(error),
-            },
-            AppRequestPayload::QueryProductRuns(value) => match product_runs.query(*value) {
-                Ok(snapshots) => product_run_collection(product_runs.project_many(snapshots)),
-                Err(error) => product_run_error(error),
-            },
-            AppRequestPayload::ContinueProductRun(value) => {
-                match product_runs.continue_run(value).await {
-                    Ok(snapshot) => product_run_projection(product_runs.project(snapshot)),
-                    Err(error) => product_run_error(error),
-                }
-            }
-            AppRequestPayload::QueryProductRunConversation(value) => {
-                match product_runs.query_conversation(*value) {
-                    Ok(conversation) => AppResponsePayload::ProductRunConversation(conversation),
-                    Err(error) => product_run_error(error),
-                }
+            AppRequestPayload::QueryProductRunObservations(value) => {
+                response::product_run_observations(product_runs, *value)
             }
             AppRequestPayload::AnswerPrompt(answer) => {
                 let prompt_id = answer.correlation().prompt_id();
@@ -297,20 +287,7 @@ where
                 }
             }
             AppRequestPayload::AttachTerminal(binding) => {
-                match terminals.attach(
-                    actor_id,
-                    request.context().session_id(),
-                    *binding,
-                    limits.max_terminal_chunk_bytes(),
-                ) {
-                    Ok(_) => {
-                        if !terminal_bindings.contains(binding) {
-                            terminal_bindings.push(*binding);
-                        }
-                        AppResponsePayload::TerminalAttached(*binding)
-                    }
-                    Err(error) => terminal_error_payload(&error),
-                }
+                attachment::attach(product_runs, terminals, context, *binding, terminal_bindings)
             }
             AppRequestPayload::TerminalInput(input) => terminal_operation(
                 request.request_id(),
@@ -329,12 +306,15 @@ where
                     Err(error) => terminal_error_payload(&error),
                 }
             }
-            AppRequestPayload::CancelTerminal(cancellation) => terminal_operation(
-                request.request_id(),
-                terminals
-                    .cancel(actor_id, request.context().session_id(), *cancellation)
-                    .map(|_| ()),
-            ),
+            AppRequestPayload::CancelTerminal(cancellation) => {
+                match terminals.cancel(actor_id, request.context().session_id(), *cancellation) {
+                    Ok(_) => {
+                        terminal_bindings.retain(|binding| binding != &cancellation.binding());
+                        acknowledged(&request)
+                    }
+                    Err(error) => terminal_error_payload(&error),
+                }
+            }
             AppRequestPayload::Shutdown(value) => {
                 AppResponsePayload::ShutdownAccepted(ShutdownAccepted::new(*value))
             }
@@ -369,12 +349,12 @@ where
     Ok(shutdown_events)
 }
 
+mod attachment;
 mod media;
 mod response;
 mod workbench;
 use response::terminal_error_payload;
 use response::{
     acknowledged, artifact_error_payload, canonical_request_frame, constrain_error_diagnostic,
-    product_run_collection, product_run_error, product_run_projection, prompt_error_payload,
-    subscription_error_code, terminal_operation,
+    product_run_error, prompt_error_payload, subscription_error_code, terminal_operation,
 };

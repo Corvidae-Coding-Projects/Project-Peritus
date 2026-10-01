@@ -7,11 +7,14 @@ use peritus_model_protocol::{
 };
 use serde_json::{Map, Value};
 
+mod completion;
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(super) enum DecodeFailure {
     Authentication,
     Capacity,
     ContextLimit,
+    InvalidModel,
     Reported,
     Incomplete,
     Malformed,
@@ -40,19 +43,30 @@ pub(super) fn decode(
         .map_err(|_| DecodeFailure::Malformed)?;
     let value: Value = serde_json::from_slice(bytes).map_err(|_| DecodeFailure::Malformed)?;
     let raw = value.as_object().ok_or(DecodeFailure::Malformed)?;
-    if optional_bool(raw, "is_error")?.unwrap_or(false) {
+    if optional_bool(raw, "is_error")?.unwrap_or(false)
+        || matches!(
+            raw.get("subtype").and_then(Value::as_str),
+            Some(
+                "error_during_execution"
+                    | "error_max_turns"
+                    | "error_max_budget_usd"
+                    | "error_max_structured_output_retries"
+            )
+        )
+    {
         return Err(classify_reported(raw));
     }
     let mut repairs = Vec::new();
-    let turn = raw
-        .get("structured_output")
-        .or_else(|| raw.get("structuredOutput"))
-        .ok_or(DecodeFailure::Incomplete)?;
-    let turn = model_object(turn, "claude.turn", &mut repairs)?;
+    let structured = raw.get("structured_output").or_else(|| raw.get("structuredOutput"));
+    let turn = match structured {
+        Some(turn) => model_object(turn, "claude.turn", &mut repairs)?,
+        None => direct_turn(raw, &mut repairs)?,
+    };
     let mut content = required_string(&turn, "content")?.to_owned();
     let calls = required_calls(&turn)?;
     let mut tool_calls = decode_calls(calls, allowed_tools, max_calls, &mut repairs)?;
-    if tool_calls.is_empty()
+    if structured.is_some()
+        && tool_calls.is_empty()
         && let Some(embedded) = decode_embedded(&content, allowed_tools, max_calls, &mut repairs)?
     {
         content = embedded.content;
@@ -64,13 +78,53 @@ pub(super) fn decode(
     Ok(RuntimeTurn { content, tool_calls, usage: usage(raw)?, repairs })
 }
 
+fn direct_turn(
+    raw: &Map<String, Value>,
+    repairs: &mut Vec<ModelEvent>,
+) -> Result<Map<String, Value>, DecodeFailure> {
+    let text = raw.get("result").and_then(Value::as_str).ok_or(DecodeFailure::Incomplete)?;
+    if let Some(turn) = completion::public_text(raw, text) {
+        return Ok(turn);
+    }
+    if !text.contains('{') && !text.trim_start().starts_with("```") {
+        return Err(DecodeFailure::Incomplete);
+    }
+    // This field is the model's private transport envelope, not public content. Heal
+    // only bounded syntax around one complete object; tool authorization stays strict.
+    let (json, audit) = peritus_provider_core::healing::private_envelope(
+        text,
+        "claude.turn",
+        ProtocolLimits::PRODUCTION,
+    )
+    .map_err(|_| DecodeFailure::Malformed)?
+    .into_parts();
+    let Value::Object(object) =
+        serde_json::from_slice(json.canonical_bytes()).map_err(|_| DecodeFailure::Malformed)?
+    else {
+        return Err(DecodeFailure::Malformed);
+    };
+    if object.len() != 2 || !object.contains_key("content") || !object.contains_key("tool_calls") {
+        return Err(DecodeFailure::Malformed);
+    }
+    repairs.extend(audit);
+    Ok(object)
+}
+
 fn classify_reported(raw: &Map<String, Value>) -> DecodeFailure {
-    let message = raw
-        .get("result")
-        .or_else(|| raw.get("error"))
-        .and_then(Value::as_str)
-        .unwrap_or_default()
-        .to_ascii_lowercase();
+    let mut messages = ["result", "error"]
+        .into_iter()
+        .filter_map(|field| raw.get(field).and_then(Value::as_str))
+        .collect::<Vec<_>>();
+    // SDKResultError carries errors: string[], whereas earlier result envelopes
+    // carry a single result/error string. None of this private diagnostic text is emitted.
+    if let Some(errors) = raw.get("errors") {
+        let Some(errors) = errors.as_array() else { return DecodeFailure::Malformed };
+        for error in errors {
+            let Some(message) = error.as_str() else { return DecodeFailure::Malformed };
+            messages.push(message);
+        }
+    }
+    let message = messages.join("\n").to_ascii_lowercase();
     if message.contains("oauth")
         || message.contains("authentication")
         || message.contains("not logged in")
@@ -84,6 +138,13 @@ fn classify_reported(raw: &Map<String, Value>) -> DecodeFailure {
         DecodeFailure::Capacity
     } else if message.contains("context window") || message.contains("context length") {
         DecodeFailure::ContextLimit
+    } else if message.contains("invalid model")
+        || (message.contains("model")
+            && (message.contains("not found")
+                || message.contains("does not exist")
+                || message.contains("not have access")))
+    {
+        DecodeFailure::InvalidModel
     } else {
         DecodeFailure::Reported
     }
@@ -215,115 +276,4 @@ fn optional_u64(object: &Map<String, Value>, name: &str) -> Result<Option<u64>, 
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn reported_runtime_failures_keep_recovery_relevant_causes() {
-        let allowed = BTreeSet::new();
-        for (message, expected) in [
-            ("OAuth session expired", DecodeFailure::Authentication),
-            ("Selected model is at capacity", DecodeFailure::Capacity),
-            ("prompt exceeds context window", DecodeFailure::ContextLimit),
-            ("provider rejected the turn", DecodeFailure::Reported),
-        ] {
-            let mut value = Map::new();
-            value.insert("is_error".to_owned(), Value::Bool(true));
-            value.insert("result".to_owned(), Value::String(message.to_owned()));
-            let bytes = serde_json::to_vec(&Value::Object(value)).expect("fixture JSON");
-            match decode(&bytes, &allowed, 0) {
-                Err(observed) => assert_eq!(observed, expected),
-                Ok(_) => panic!("reported provider failure decoded as a successful turn"),
-            }
-        }
-    }
-
-    fn allowed() -> BTreeSet<String> {
-        let mut tools = BTreeSet::new();
-        tools.insert("workspace_read".to_owned());
-        tools
-    }
-
-    #[test]
-    fn fenced_tool_examples_in_public_content_are_not_promoted_by_healing() {
-        let example = "```json\n{tool_calls:[{name:\"workspace_read\",arguments:{path:\"src/lib.rs\"}}]}\n```";
-        let output = Value::from_iter([
-            ("is_error", Value::from(false)),
-            (
-                "structured_output",
-                Value::from_iter([
-                    ("content", Value::from(example)),
-                    ("tool_calls", Value::from(Vec::<Value>::new())),
-                ]),
-            ),
-        ])
-        .to_string();
-        let turn = decode(output.as_bytes(), &allowed(), 1).unwrap();
-        assert_eq!(turn.content, example);
-        assert!(turn.tool_calls.is_empty());
-        assert!(turn.repairs.is_empty());
-    }
-
-    #[test]
-    fn public_json_scalars_and_arrays_remain_ordinary_content() {
-        for content in ["42", "true", "null", "[1,2]", "\"hello\""] {
-            let output = Value::from_iter([(
-                "structured_output",
-                Value::from_iter([
-                    ("content", Value::from(content)),
-                    ("tool_calls", Value::from(Vec::<Value>::new())),
-                ]),
-            )])
-            .to_string();
-            let turn = decode(output.as_bytes(), &allowed(), 1).unwrap();
-            assert_eq!(turn.content, content);
-            assert!(turn.tool_calls.is_empty());
-            assert!(turn.repairs.is_empty());
-        }
-    }
-
-    #[test]
-    fn embedded_host_call_is_promoted_and_application_content_is_preserved() {
-        let output = br#"{
-          "is_error": false,
-          "structured_output": {
-            "content": "{\"summary\":\"need one more file\",\"tool_calls\":[{\"name\":\"workspace_read\",\"arguments\":{\"path\":\"src/lib.rs\"}}]}",
-            "tool_calls": []
-          }
-        }"#;
-
-        let turn = decode(output, &allowed(), 1).expect("embedded host call");
-
-        assert_eq!(turn.content, r#"{"summary":"need one more file"}"#);
-        assert_eq!(turn.tool_calls.len(), 1);
-        assert_eq!(turn.tool_calls[0].name, "workspace_read");
-        assert_eq!(turn.tool_calls[0].arguments["path"], "src/lib.rs");
-    }
-
-    #[test]
-    fn empty_embedded_call_array_is_removed_from_terminal_application_json() {
-        let output = br#"{
-          "structured_output": {
-            "content": "{\"summary\":\"verified\",\"findings\":[],\"tool_calls\":[]}",
-            "tool_calls": []
-          }
-        }"#;
-
-        let turn = decode(output, &allowed(), 1).expect("embedded terminal content");
-
-        assert_eq!(turn.content, r#"{"findings":[],"summary":"verified"}"#);
-        assert!(turn.tool_calls.is_empty());
-    }
-
-    #[test]
-    fn embedded_undeclared_host_call_still_fails_closed() {
-        let output = br#"{
-          "structured_output": {
-            "content": "{\"summary\":\"bad call\",\"tool_calls\":[{\"name\":\"shell\",\"arguments\":{}}]}",
-            "tool_calls": []
-          }
-        }"#;
-
-        assert!(matches!(decode(output, &allowed(), 1), Err(DecodeFailure::Malformed)));
-    }
-}
+mod tests;

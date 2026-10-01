@@ -38,9 +38,17 @@ pub struct RawShellDispatcher<'gateway, 'authority> {
     plan: Option<ExecutionPlan>,
     artifacts: Option<ArtifactStore>,
     descriptor: peritus_tool_protocol::ToolDescriptor,
+    observed: Option<peritus_process::ProcessControl>,
 }
 
 impl<'gateway, 'authority> RawShellDispatcher<'gateway, 'authority> {
+    /// Borrows the control minted by the successfully authorized native launch.
+    /// The C4 execution retains its move-only process owner.
+    #[must_use]
+    pub fn process_control(&self) -> Option<peritus_process::ProcessControl> {
+        self.observed.clone()
+    }
+
     /// Binds one exact C4-linked C2 raw-effect plan and its already-committed authority.
     ///
     /// # Errors
@@ -62,6 +70,7 @@ impl<'gateway, 'authority> RawShellDispatcher<'gateway, 'authority> {
             plan: Some(plan),
             artifacts: Some(artifacts),
             descriptor,
+            observed: None,
         })
     }
 }
@@ -187,6 +196,7 @@ impl ToolDispatcher for RawShellDispatcher<'_, '_> {
             .gateway
             .launch(self.authorization, plan)
             .map_err(|error| failure::process(&error))?;
+        self.observed = Some(owner.control());
         Ok(ToolStart::Active(Box::new(ShellExecution::new(
             prepared,
             owner,

@@ -59,6 +59,7 @@ fn prepared_restore_reserves_child_until_exact_publication_even_after_reopen() {
                     status: RestoreStatus::Applied,
                     conflicts: Vec::new(),
                     transaction_manifest_digest: Some(sha256(b"applied").into_bytes()),
+                    seal_recovery: false,
                 },
             ),
             Some(b"applied".to_vec()),

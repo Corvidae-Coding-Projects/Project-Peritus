@@ -8,7 +8,7 @@ use vstd::prelude::*;
 
 verus! {
 
-/// Strongest observed state of one exact candidate at one monotonic sequence.
+/// Currently supported qualification of one exact candidate at one monotonic sequence.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct CandidateCheckpoint {
     identity: CandidateIdentity,
@@ -94,16 +94,13 @@ impl CandidateCheckpoint {
             && self.spec_review().spec_is_current_and_satisfied(&self.spec_identity())
     }
 
-    /// Exact successor rejection category with lineage, sequence, then stage precedence.
+    /// Exact successor rejection category with lineage then sequence precedence.
     pub open spec fn spec_successor_error(&self, previous: &Self) -> Option<SettlementErrorKind> {
         if !self.spec_identity().spec_same_lineage(&previous.spec_identity()) {
             Some(SettlementErrorKind::CandidateLineageMismatch)
         } else if self.spec_identity().spec_checkpoint_sequence()
             <= previous.spec_identity().spec_checkpoint_sequence() {
             Some(SettlementErrorKind::CheckpointDidNotAdvance)
-        } else if self.spec_identity().spec_same_candidate(&previous.spec_identity())
-            && self.spec_stage().spec_rank() < previous.spec_stage().spec_rank() {
-            Some(SettlementErrorKind::CandidateStageRegressed)
         } else {
             None
         }
@@ -190,7 +187,7 @@ impl CandidateCheckpoint {
         ensures *value == self.spec_identity(),
     { &self.identity }
 
-    /// Strongest completed stage.
+    /// Currently supported qualification stage.
     #[must_use]
     pub const fn stage(&self) -> (value: CandidateStage)
         ensures value == self.spec_stage(),
@@ -234,8 +231,8 @@ impl CandidateCheckpoint {
     ///
     /// # Errors
     ///
-    /// Rejects lineage changes, non-advancing sequences, and stage regression for the same exact
-    /// candidate.
+    /// Rejects lineage changes and non-advancing sequences. New observations may reduce
+    /// qualification for unchanged content; current evidence remains checked by construction.
     pub fn validate_successor(&self, previous: &Self) -> (result: Result<(), SettlementError>)
         ensures
             result.is_ok() == self.spec_successor_error(previous).is_none(),
@@ -249,16 +246,6 @@ impl CandidateCheckpoint {
         }
         if self.identity.checkpoint_sequence() <= previous.identity.checkpoint_sequence() {
             return Err(SettlementError::new(SettlementErrorKind::CheckpointDidNotAdvance));
-        }
-        if self.identity.same_candidate(&previous.identity)
-            && !crate::verified::checkpoint_advances(
-                previous.identity.checkpoint_sequence(),
-                self.identity.checkpoint_sequence(),
-                previous.stage.rank(),
-                self.stage.rank(),
-            )
-        {
-            return Err(SettlementError::new(SettlementErrorKind::CandidateStageRegressed));
         }
         Ok(())
     }

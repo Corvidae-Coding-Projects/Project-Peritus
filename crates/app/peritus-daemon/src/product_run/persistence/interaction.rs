@@ -15,13 +15,12 @@ mod tests;
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(super) struct PersistedInteraction {
-    #[serde(default)]
-    pub(super) workbench: Option<peritus_product_runner::control::ControlOperation>,
+    pub(super) workbench: peritus_product_runner::control::ControlOperation,
     mode: u16,
     models: [(String, bool); 3],
-    #[serde(default)]
     efforts: [u16; 3],
     incorporated: u64,
+    public_input_count: usize,
     next_sequence: u64,
     activities: Vec<(u64, u16, String, String)>,
 }
@@ -35,6 +34,7 @@ impl PersistedInteraction {
             efforts: [value.models.writer(), value.models.reviewer(), value.models.fixer()]
                 .map(|choice| choice.effort().tag()),
             incorporated: value.incorporated,
+            public_input_count: value.public_input_count,
             next_sequence: value.next_sequence,
             activities: value
                 .activities
@@ -64,8 +64,19 @@ impl PersistedInteraction {
                 ProductModelEffort::from_tag(self.efforts[index]).ok_or_else(invalid)?,
             ))
         });
-        let mut value =
-            InteractionOptions::new(mode, ProductRoleModels::new(writer?, reviewer?, fixer?));
+        self.workbench.canonical_bytes().map_err(|_| invalid())?;
+        if !matches!(
+            self.workbench.intent(),
+            peritus_product_runner::control::ControlIntent::StartExecution { .. }
+                | peritus_product_runner::control::ControlIntent::StartGoal { .. }
+        ) {
+            return Err(invalid());
+        }
+        let mut value = InteractionOptions::new(
+            self.workbench,
+            mode,
+            ProductRoleModels::new(writer?, reviewer?, fixer?),
+        );
         if self.activities.len() > MAX_PRODUCT_ACTIVITIES || self.next_sequence == 0 {
             return Err(invalid());
         }
@@ -89,36 +100,19 @@ impl PersistedInteraction {
         }
         value.next_sequence = self.next_sequence;
         value.incorporated = self.incorporated;
-        if let Some(operation) = &self.workbench {
-            operation.canonical_bytes().map_err(|_| invalid())?;
-            if !matches!(
-                operation.intent(),
-                peritus_product_runner::control::ControlIntent::StartExecution { .. }
-            ) {
-                return Err(invalid());
-            }
-        }
-        value.workbench = self.workbench;
+        value.public_input_count = self.public_input_count;
         Ok(value)
     }
 }
 
 impl Serialize for PersistedInteraction {
     fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        // Keep default records readable by binaries predating explicit effort selection.
-        let explicit_effort = self.efforts.iter().any(|effort| *effort != 0);
-        let mut state = serializer.serialize_struct(
-            "PersistedInteraction",
-            5 + usize::from(explicit_effort) + usize::from(self.workbench.is_some()),
-        )?;
-        if let Some(operation) = &self.workbench {
-            state.serialize_field("workbench", operation)?;
-        }
+        let mut state = serializer.serialize_struct("PersistedInteraction", 8)?;
+        state.serialize_field("workbench", &self.workbench)?;
         state.serialize_field("mode", &self.mode)?;
         state.serialize_field("models", &self.models)?;
-        if explicit_effort {
-            state.serialize_field("efforts", &self.efforts)?;
-        }
+        state.serialize_field("efforts", &self.efforts)?;
+        state.serialize_field("public_input_count", &self.public_input_count)?;
         state.serialize_field("incorporated", &self.incorporated)?;
         state.serialize_field("next_sequence", &self.next_sequence)?;
         state.serialize_field("activities", &self.activities)?;

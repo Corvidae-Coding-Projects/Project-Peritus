@@ -6,8 +6,8 @@ use super::{
 use crate::error::uncertain;
 use base64::{Engine, engine::general_purpose::STANDARD};
 use peritus_app_protocol::{
-    AppErrorCode, AppMessage, AppRequestEnvelope, ProductActivityKind, ProductRunControlAction,
-    ProductRunConversationQuery, ProductRunPhase, encode_app_message,
+    AppErrorCode, AppMessage, AppRequestEnvelope, ProductInteractionQuery, ProductRunControlAction,
+    ProductRunPhase, WorkbenchCommand, encode_app_message,
 };
 
 pub async fn recorded(
@@ -65,6 +65,195 @@ pub async fn recorded(
     Ok(response.payload().clone())
 }
 
+/// Sends one domain-idempotent workbench command or reconciles its original durable operation.
+/// A missing authoritative receipt permits retransmission only with the same command identity.
+pub async fn workbench_command(
+    app: &App,
+    operation: &str,
+    command: WorkbenchCommand,
+) -> Result<AppResponsePayload> {
+    let key = format!("daemon:{operation}");
+    let payload = AppRequestPayload::WorkbenchCommand(command.clone());
+    let Some(record) = app.snapshot()?.operations.get(&key).cloned() else {
+        return recorded(app, operation, payload).await;
+    };
+    let frame = STANDARD
+        .decode(record.input["frame"].as_str().ok_or_else(|| problem("Missing daemon request"))?)
+        .map_err(problem)?;
+    let AppMessage::Request(original) = peritus_app_protocol::decode_app_message(
+        &frame,
+        peritus_app_protocol::AppProtocolLimits::PRODUCTION,
+    )
+    .map_err(problem)?
+    else {
+        return Err(problem("Invalid retained daemon request"));
+    };
+    if original.payload() != &payload {
+        return Err(problem("The workbench operation identity was reused for different input"));
+    }
+    if let Some(result) = record.result {
+        return retained_response(&result);
+    }
+    match super::raw_request(app, AppRequestPayload::QueryWorkbenchReceipt(command.clone())).await {
+        Ok(AppResponsePayload::WorkbenchReceipt(receipt))
+            if receipt.operation() == command.operation() && receipt.query() == command.query() =>
+        {
+            let payload = AppResponsePayload::WorkbenchReceipt(receipt);
+            retain_reconciled_response(app, &key, &original, payload.clone())?;
+            Ok(payload)
+        }
+        Ok(AppResponsePayload::Error(error)) if error.code() == AppErrorCode::InvalidIdentifier => {
+            retransmit(app, &key, &original, payload).await
+        }
+        Ok(AppResponsePayload::Error(error)) => {
+            Err(problem(format!("Daemon rejected receipt reconciliation: {error}")))
+        }
+        Ok(_) => Err(problem("Unexpected workbench receipt response")),
+        Err(error) => Err(uncertain(format!(
+            "The original workbench operation could not be reconciled: {}",
+            error.0
+        ))),
+    }
+}
+
+pub fn retained_workbench_command(app: &App, operation: &str) -> Result<Option<WorkbenchCommand>> {
+    let Some(record) = app.snapshot()?.operations.get(&format!("daemon:{operation}")).cloned()
+    else {
+        return Ok(None);
+    };
+    let frame = STANDARD
+        .decode(record.input["frame"].as_str().ok_or_else(|| problem("Missing daemon request"))?)
+        .map_err(problem)?;
+    let AppMessage::Request(request) = peritus_app_protocol::decode_app_message(
+        &frame,
+        peritus_app_protocol::AppProtocolLimits::PRODUCTION,
+    )
+    .map_err(problem)?
+    else {
+        return Err(problem("Invalid retained daemon request"));
+    };
+    match request.payload() {
+        AppRequestPayload::WorkbenchCommand(command) => Ok(Some(command.clone())),
+        _ => Err(problem("Retained workbench stage is not a command")),
+    }
+}
+
+/// Reconciles the workbench continuation request against a fresh authoritative interaction.
+/// Retransmission is legal only while the exact durable input remains pending on a terminal run.
+pub async fn workbench_continuation(
+    app: &App,
+    operation: &str,
+    continuation: peritus_app_protocol::WorkbenchContinuation,
+    observed: &peritus_app_protocol::ProductInteractionSnapshot,
+) -> Result<AppResponsePayload> {
+    let key = format!("daemon:{operation}");
+    let payload = AppRequestPayload::ContinueWorkbenchExecution(continuation);
+    let Some(record) = app.snapshot()?.operations.get(&key).cloned() else {
+        return recorded(app, operation, payload).await;
+    };
+    let frame = STANDARD
+        .decode(record.input["frame"].as_str().ok_or_else(|| problem("Missing daemon request"))?)
+        .map_err(problem)?;
+    let AppMessage::Request(original) = peritus_app_protocol::decode_app_message(
+        &frame,
+        peritus_app_protocol::AppProtocolLimits::PRODUCTION,
+    )
+    .map_err(problem)?
+    else {
+        return Err(problem("Invalid retained daemon request"));
+    };
+    if original.payload() != &payload {
+        return Err(problem("The continuation operation identity was reused for different input"));
+    }
+    if let Some(result) = record.result {
+        return retained_response(&result);
+    }
+    let operation = observed.snapshot().operation();
+    let resume_admissible = operation.may_start_execution();
+    if observed.incorporated() >= observed.received() || !resume_admissible {
+        let recovered = AppResponsePayload::Interaction(observed.clone());
+        retain_reconciled_response(app, &key, &original, recovered.clone())?;
+        return Ok(recovered);
+    }
+    retransmit(app, &key, &original, payload).await
+}
+
+fn retained_response(result: &Value) -> Result<AppResponsePayload> {
+    let frame = STANDARD
+        .decode(result["frame"].as_str().ok_or_else(|| problem("Missing daemon receipt"))?)
+        .map_err(problem)?;
+    let AppMessage::Response(response) = peritus_app_protocol::decode_app_message(
+        &frame,
+        peritus_app_protocol::AppProtocolLimits::PRODUCTION,
+    )
+    .map_err(problem)?
+    else {
+        return Err(problem("Invalid retained daemon receipt"));
+    };
+    if let AppResponsePayload::Error(error) = response.payload() {
+        return Err(problem(format!("Daemon rejected the request: {error}")));
+    }
+    Ok(response.payload().clone())
+}
+
+fn retain_reconciled_response(
+    app: &App,
+    key: &str,
+    original: &AppRequestEnvelope,
+    payload: AppResponsePayload,
+) -> Result<()> {
+    let response = peritus_app_protocol::AppResponseEnvelope::new(
+        original.context(),
+        original.request_id(),
+        original.correlation_id(),
+        payload,
+    );
+    let frame = STANDARD.encode(
+        encode_app_message(
+            &AppMessage::Response(response),
+            peritus_app_protocol::AppProtocolLimits::PRODUCTION,
+        )
+        .map_err(problem)?,
+    );
+    app.update(|state| {
+        state.operations.get_mut(key).ok_or_else(|| problem("Daemon receipt missing"))?.result =
+            Some(json!({"frame":frame}));
+        Ok(())
+    })
+}
+
+async fn retransmit(
+    app: &App,
+    key: &str,
+    original: &AppRequestEnvelope,
+    payload: AppRequestPayload,
+) -> Result<AppResponsePayload> {
+    let endpoint = endpoint(app)?;
+    let required = payload.required_workbench_feature().into_iter().collect::<Vec<_>>();
+    let mut client =
+        Client::connect(endpoint.as_os_str(), None, Duration::from_secs(30), &required)
+            .await
+            .map_err(problem)?;
+    let identity = Client::new_request_identity().map_err(problem)?;
+    let response = client.request(identity, payload).await.map_err(|error| {
+        uncertain(format!("The exact workbench retry has an unknown outcome: {error}"))
+    })?;
+    let payload = response.payload().clone();
+    if let AppResponsePayload::Error(error) = &payload
+        && matches!(
+            error.code(),
+            AppErrorCode::Internal | AppErrorCode::Backpressure | AppErrorCode::NotReady
+        )
+    {
+        return Err(uncertain(format!("Daemon reported an indeterminate outcome: {error}")));
+    }
+    retain_reconciled_response(app, key, original, payload.clone())?;
+    if let AppResponsePayload::Error(error) = &payload {
+        return Err(problem(format!("Daemon rejected the request: {error}")));
+    }
+    Ok(payload)
+}
+
 /// Returns a retained exact response, or proves the requested postcondition from a fresh durable
 /// run observation and the pre-request baseline. It never retransmits an uncertain mutation.
 pub async fn observed(app: &App, operation: &str) -> Result<Option<Value>> {
@@ -100,17 +289,12 @@ pub async fn observed(app: &App, operation: &str) -> Result<Option<Value>> {
 
 async fn recovery_baseline(app: &App, payload: &AppRequestPayload) -> Result<Value> {
     let run_id = match payload {
-        AppRequestPayload::Interact(request) => request.request().run_id(),
-        AppRequestPayload::ControlProductRun(control)
-            if control.action() == ProductRunControlAction::Retry =>
-        {
-            control.run_id()
-        }
+        AppRequestPayload::ControlProductRun(control) => control.run_id(),
         _ => return Ok(Value::Null),
     };
     match super::raw_request(
         app,
-        AppRequestPayload::QueryInteraction(ProductRunConversationQuery::new(run_id)),
+        AppRequestPayload::QueryInteraction(ProductInteractionQuery::new(run_id)),
     )
     .await?
     {
@@ -126,7 +310,6 @@ async fn recovery_baseline(app: &App, payload: &AppRequestPayload) -> Result<Val
 
 const fn run_id(payload: &AppRequestPayload) -> Option<peritus_types::RunId> {
     match payload {
-        AppRequestPayload::Interact(request) => Some(request.request().run_id()),
         AppRequestPayload::UpdateModels(update) => Some(update.run_id()),
         AppRequestPayload::ControlProductRun(control) => Some(control.run_id()),
         _ => None,
@@ -141,7 +324,7 @@ async fn reconcile(
     let Some(run_id) = run_id(request) else { return Ok(None) };
     let Ok(current) = super::raw_request(
         app,
-        AppRequestPayload::QueryInteraction(ProductRunConversationQuery::new(run_id)),
+        AppRequestPayload::QueryInteraction(ProductInteractionQuery::new(run_id)),
     )
     .await
     else {
@@ -149,27 +332,10 @@ async fn reconcile(
     };
     let AppResponsePayload::Interaction(snapshot) = current else { return Ok(None) };
     let proven = match request {
-        AppRequestPayload::Interact(interaction) => {
-            let previous = if baseline["missing"] == true {
-                Some(0)
-            } else {
-                baseline["received"].as_str().and_then(|value| value.parse::<u64>().ok())
-            };
-            previous.is_some_and(|previous| snapshot.received() == previous.saturating_add(1))
-                && snapshot
-                    .activities()
-                    .iter()
-                    .rev()
-                    .find(|activity| activity.kind() == ProductActivityKind::User)
-                    .is_some_and(|activity| activity.text() == interaction.request().task())
-        }
         AppRequestPayload::UpdateModels(update) => snapshot.models() == update.models(),
-        AppRequestPayload::ControlProductRun(control) => control_postcondition(
-            control.action(),
-            snapshot.snapshot().phase(),
-            snapshot.snapshot().deliverable(),
-            baseline,
-        ),
+        AppRequestPayload::ControlProductRun(control) => {
+            control_postcondition(control.action(), snapshot.snapshot(), baseline)
+        }
         _ => false,
     };
     if !proven {
@@ -184,10 +350,11 @@ async fn reconcile(
 
 fn control_postcondition(
     action: ProductRunControlAction,
-    phase: ProductRunPhase,
-    deliverable: Option<&peritus_app_protocol::ProductDeliverable>,
+    snapshot: &peritus_app_protocol::ProductRunSnapshot,
     baseline: &Value,
 ) -> bool {
+    let phase = snapshot.phase();
+    let deliverable = snapshot.deliverable();
     match action {
         ProductRunControlAction::Cancel => phase == ProductRunPhase::Cancelled,
         ProductRunControlAction::Retry => {
@@ -201,6 +368,10 @@ fn control_postcondition(
         }
         ProductRunControlAction::Discard => {
             deliverable.is_some_and(peritus_app_protocol::ProductDeliverable::discarded)
+        }
+        ProductRunControlAction::Acknowledge => {
+            baseline["run"]["operation"]["legalControls"]["acknowledge"] == true
+                && baseline["run"]["operation"]["identity"] != snapshot.operation().identity()
         }
         ProductRunControlAction::Accept | ProductRunControlAction::Commit => false,
     }

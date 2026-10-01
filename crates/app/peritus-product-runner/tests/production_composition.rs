@@ -13,6 +13,7 @@ use std::{
     },
 };
 
+use peritus_agent::DeveloperReviewRetryReason::InvalidSubmission;
 use peritus_product_runner::{
     PRODUCT_RUN_MAX_ELAPSED, ProductDeliveryScope, ProductRunInput, ProductRunPhase, ProductRunner,
     RoleProviders, RunObserver,
@@ -20,13 +21,13 @@ use peritus_product_runner::{
 use peritus_provider_core::{
     BoxFuture, CancellationToken, ModelProvider, OwnedModelStream, ProviderCoreError,
 };
-use peritus_run_settlement::{RunDisposition, SettlementCause};
+use peritus_run_settlement::{CandidateStage, RunDisposition, SettlementCause};
 use peritus_types::{RunId, WorkspaceId};
 
 use support::{
-    FixedConversation, ScriptedProvider, cargo, design_response, git, list_arguments,
-    named_tool_response, patch_arguments, profile, read_arguments, text_response, tool_response,
-    write_arguments,
+    FixedConversation, ScriptedProvider, cargo, command_arguments, design_response, git,
+    list_arguments, named_tool_response, patch_arguments, profile, read_arguments, text_response,
+    tool_response, write_arguments,
 };
 
 struct CorrectionRecordingProvider {
@@ -54,17 +55,16 @@ impl ModelProvider for CorrectionRecordingProvider {
     }
 }
 
-#[test]
-fn product_run_future_leaves_room_for_composing_callers() {
-    const fn future_size<A, B, F: Future>(_: fn(A, B) -> F) -> usize {
-        size_of::<F>()
-    }
-    let bytes = future_size(ProductRunner::run);
-    assert!(bytes <= 8192, "product run future uses {bytes} bytes before caller state");
-}
+#[path = "production_composition/composition_size.rs"]
+mod composition_size;
+
+#[path = "production_composition/malformed_terminal.rs"]
+mod malformed_terminal;
 
 #[path = "production_composition/provider_failure.rs"]
 mod provider_failure;
+#[path = "production_composition/recovery_observer.rs"]
+mod recovery_observer;
 
 #[test]
 #[allow(clippy::too_many_lines, reason = "one complete production composition fixture")]
@@ -144,6 +144,12 @@ mod tests {
                     text_response(b"not a review object"),
                     named_tool_response("workspace_list", list_arguments("", 3)),
                     named_tool_response("workspace_read", read_arguments("Cargo.toml")),
+                    text_response(b"still not a review object"),
+                    named_tool_response("workspace_list", list_arguments("", 3)),
+                    named_tool_response("workspace_read", read_arguments("Cargo.toml")),
+                    text_response(b"another malformed review"),
+                    named_tool_response("workspace_list", list_arguments("", 3)),
+                    named_tool_response("workspace_read", read_arguments("Cargo.toml")),
                     text_response(
                         br#"{"findings":[],"summary":"The requested API and test are present and exact-target gates passed."}"#,
                     ),
@@ -151,10 +157,14 @@ mod tests {
             });
             let phases = Arc::new(Mutex::new(Vec::new()));
             let phase_log = Arc::clone(&phases);
+            let retry_counts = Arc::new(Mutex::new(Vec::new()));
+            let counts = Arc::clone(&retry_counts);
             let observer: RunObserver = Arc::new(move |update| {
                 phase_log.lock().expect("phases").push(update.phase);
+                counts.lock().expect("counts").push((update.phase, update.progress.retries()));
             });
             let task = "Add a tested answer function that returns 42.".to_owned();
+            let conversation = Arc::new(recovery_observer::ObservedConversation::new(task.clone()));
             let run_id = RunId::new([0x83; 16]).expect("run ID");
             let command_runtime = support::command_runtime(state.path(), repository.path(), run_id);
 
@@ -170,7 +180,7 @@ mod tests {
                     task: task.clone(),
                     max_elapsed: PRODUCT_RUN_MAX_ELAPSED,
                     delivery_scope: ProductDeliveryScope::WorkspaceChanges,
-                    conversation: Arc::new(FixedConversation(task)),
+                    conversation: conversation.clone(),
                     providers: RoleProviders {
                         writer: Arc::clone(&writer),
                         reviewer,
@@ -186,6 +196,14 @@ mod tests {
             .await
             .expect("production run");
             assert!(outcome.settlement().is_accepted());
+            assert_eq!(conversation.retries.lock().expect("notices").as_slice(), &[
+                (2, 3, InvalidSubmission),
+                (3, 3, InvalidSubmission),
+            ]);
+            let counts = retry_counts.lock().expect("counts");
+            let before_review = counts.iter().find(|(phase, _)| *phase == ProductRunPhase::Reviewing).expect("review begins").1;
+            assert_eq!(counts.last().expect("final progress").1 - before_review, 2, "both rejected reviews are counted");
+            drop(counts);
             assert!(correction_observed.load(Ordering::SeqCst), "workspace progress must preserve the malformed-terminal correction");
             let output = outcome.candidate().expect("accepted candidate");
 

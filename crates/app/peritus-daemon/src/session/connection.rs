@@ -1,10 +1,10 @@
-//! One sequential bounded A3 connection task.
+//! One bounded A3 connection owner with independent read-only provider discovery.
 
-use std::{
-    future::{Future, poll_fn},
-    task::Poll,
-    time::Duration,
-};
+use std::time::Duration;
+
+mod select;
+#[cfg(test)]
+mod terminal_tests;
 
 use peritus_app_protocol::{
     AppErrorCode, AppEventEnvelope, AppEventPayload, AppMessage, AppProtocolError,
@@ -15,8 +15,10 @@ use tokio::sync::{mpsc, watch};
 use tokio::time::MissedTickBehavior;
 
 use super::{
-    ShutdownCommand, ShutdownEventReceiver, heartbeat::ConnectionHeartbeat, negotiation::establish,
-    request::handle_request,
+    ShutdownCommand, ShutdownEventReceiver,
+    heartbeat::ConnectionHeartbeat,
+    negotiation::establish,
+    request::{CatalogRequests, handle_request},
 };
 use crate::{
     AuthenticatedConnection, AuthorityHandle, DaemonError, DaemonErrorCode, DaemonRecovery,
@@ -60,31 +62,18 @@ pub async fn run_connection(
     heartbeat_tick.set_missed_tick_behavior(MissedTickBehavior::Skip);
     heartbeat_tick.tick().await;
     let mut resources_released = false;
+    let mut catalogs = CatalogRequests::default();
 
     let result = async {
         loop {
-            let action = {
-                let mut changed = Box::pin(stop.changed());
-                let mut message = Box::pin(frames.read_or_eof());
-                let mut delivery = Box::pin(delivery_tick.tick());
-                let mut heartbeat = Box::pin(heartbeat_tick.tick());
-                poll_fn(|poll_context| {
-                    if let Poll::Ready(changed) = changed.as_mut().poll(poll_context) {
-                        return Poll::Ready(ConnectionAction::Stop(changed));
-                    }
-                    if let Poll::Ready(message) = message.as_mut().poll(poll_context) {
-                        return Poll::Ready(ConnectionAction::Message(message));
-                    }
-                    if delivery.as_mut().poll(poll_context).is_ready() {
-                        return Poll::Ready(ConnectionAction::Delivery);
-                    }
-                    if heartbeat.as_mut().poll(poll_context).is_ready() {
-                        return Poll::Ready(ConnectionAction::Heartbeat);
-                    }
-                    Poll::Pending
-                })
-                .await
-            };
+            let action = select::next_action(
+                &mut frames,
+                &mut stop,
+                &mut delivery_tick,
+                &mut heartbeat_tick,
+                &mut catalogs,
+            )
+            .await;
             match action {
                 ConnectionAction::Stop(changed) => {
                     if changed.is_err() || *stop.borrow() {
@@ -112,6 +101,21 @@ pub async fn run_connection(
                             .await?;
                             continue;
                         }
+                        if matches!(
+                            request.payload(),
+                            peritus_app_protocol::AppRequestPayload::QueryModels(_)
+                        ) {
+                            if !catalogs.start(
+                                &product_runs,
+                                context.actor_id(),
+                                context.limits(),
+                                &request,
+                            ) {
+                                write_error(&mut frames, &request, AppErrorCode::Backpressure)
+                                    .await?;
+                            }
+                            continue;
+                        }
                         let shutdown_events = handle_request(
                             &mut frames,
                             &authority,
@@ -121,8 +125,7 @@ pub async fn run_connection(
                             &terminals,
                             &product_runs,
                             &mut terminal_bindings,
-                            context.actor_id(),
-                            context.limits(),
+                            &context,
                             request,
                         )
                         .await?;
@@ -178,8 +181,23 @@ pub async fn run_connection(
                         context.actor_id(),
                         context.protocol().session_id(),
                         context.protocol(),
+                        context.supports(
+                            peritus_app_protocol::WellKnownProtocolFeature::TerminalFailure,
+                        ),
                     )
                     .await?;
+                }
+                ConnectionAction::Catalog(response) => {
+                    let response = response.map_err(|error| {
+                        DaemonError::with_source(
+                            DaemonErrorCode::Transport,
+                            DaemonRecovery::Retry,
+                            "finish model discovery",
+                            "model discovery task did not complete",
+                            error,
+                        )
+                    })?;
+                    frames.write(&AppMessage::Response(response)).await?;
                 }
                 ConnectionAction::Heartbeat => {
                     heartbeat.send(&mut frames, authority.status().await?).await?;
@@ -188,6 +206,7 @@ pub async fn run_connection(
         }
     }
     .await;
+    catalogs.shutdown().await;
     let cleanup = if resources_released {
         Ok(())
     } else {
@@ -240,6 +259,7 @@ enum ConnectionAction {
     Message(Result<Option<AppMessage>, DaemonError>),
     Delivery,
     Heartbeat,
+    Catalog(Result<AppResponseEnvelope, tokio::task::JoinError>),
 }
 
 async fn pump_terminals<S>(
@@ -249,14 +269,27 @@ async fn pump_terminals<S>(
     actor_id: peritus_types::ActorId,
     session_id: peritus_types::SessionId,
     context: peritus_app_protocol::ProtocolContext,
+    report_attachment_failure: bool,
 ) -> Result<(), DaemonError>
 where
     S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin,
 {
     let mut completed = Vec::new();
     for binding in bindings.iter().copied() {
-        let events =
-            terminals.poll(actor_id, session_id, binding).map_err(terminal_bridge_error)?;
+        let events = match terminals.poll(actor_id, session_id, binding) {
+            Ok(events) => events,
+            Err(error) => {
+                terminals.release_attachments(actor_id, session_id, &[binding]);
+                completed.push(binding);
+                let payload = if report_attachment_failure {
+                    AppEventPayload::TerminalUnavailable(binding)
+                } else {
+                    terminal_diagnostic(&error)?
+                };
+                frames.write(&AppMessage::Event(AppEventEnvelope::new(context, payload))).await?;
+                continue;
+            }
+        };
         for event in events {
             let (payload, terminal) = match event {
                 TerminalBridgeEvent::Output(output) => {
@@ -270,7 +303,14 @@ where
             frames.write(&AppMessage::Event(AppEventEnvelope::new(context, payload))).await?;
             if let Some((binding, process_id)) = terminal {
                 completed.push(binding);
-                terminals.retire(process_id).map_err(terminal_bridge_error)?;
+                if let Err(error) = terminals.retire(process_id) {
+                    frames
+                        .write(&AppMessage::Event(AppEventEnvelope::new(
+                            context,
+                            terminal_diagnostic(&error)?,
+                        )))
+                        .await?;
+                }
             }
         }
     }
@@ -278,14 +318,18 @@ where
     Ok(())
 }
 
-fn terminal_bridge_error(error: TerminalBridgeError) -> DaemonError {
-    DaemonError::with_source(
-        DaemonErrorCode::RecoveryRequired,
-        DaemonRecovery::Reconcile,
-        "pump terminal attachment",
-        "live terminal output became unavailable",
-        error,
+fn terminal_diagnostic(error: &TerminalBridgeError) -> Result<AppEventPayload, DaemonError> {
+    // Only the stable category is public, never provider/process diagnostic contents.
+    let text = format!(
+        "Terminal delivery unavailable ({:?}); process state is unchanged. Inspect the preview or explicitly cancel it.",
+        error.kind()
+    );
+    peritus_app_protocol::AppDiagnostic::new(
+        text,
+        AppProtocolLimits::PRODUCTION.max_diagnostic_bytes(),
     )
+    .map(AppEventPayload::Diagnostic)
+    .map_err(|_| invalid("terminal failure diagnostic exceeds its bound"))
 }
 
 fn handle_control(

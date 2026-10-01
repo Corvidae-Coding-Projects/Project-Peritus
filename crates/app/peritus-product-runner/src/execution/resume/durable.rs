@@ -1,10 +1,10 @@
-//! Versioned persistence for the otherwise opaque product-run continuation.
+//! Canonical persistence for the otherwise opaque product-run continuation.
 
 use std::path::PathBuf;
 
 use peritus_run_settlement::{
-    CandidateCheckpoint, CandidateIdentity, CandidateStage, EvidenceRecord, EvidenceStatus,
-    QualificationEvidence,
+    CandidateCheckpoint, CandidateIdentity, CandidateStage, EvidenceDependencies, EvidenceRecord,
+    EvidenceStatus, QualificationEvidence,
 };
 use peritus_types::{RunId, Sha256Digest, WorkspaceId};
 use serde::Deserialize;
@@ -17,7 +17,7 @@ use crate::{
     developer_tools::{CommandPurpose, SuccessfulCommand},
 };
 
-const DURABLE_VERSION: u16 = 1;
+const DURABLE_VERSION: u16 = 2;
 
 #[derive(Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
@@ -25,6 +25,8 @@ struct DurableResume {
     version: u16,
     checkpoint: DurableCheckpoint,
     baseline_head: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    managed_baseline: Option<crate::candidate::managed::ManagedBaseline>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     in_place_baseline: Option<crate::workspace_delivery::scope::ScopedBaseline>,
     next_phase: u16,
@@ -59,8 +61,11 @@ struct DurableCheckpoint {
 struct DurableIdentity {
     run_id: [u8; 16],
     workspace_id: [u8; 16],
-    candidate_digest: [u8; 32],
-    conversation_revision: u64,
+    content_digest: [u8; 32],
+    repository_digest: [u8; 32],
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    execution_digest: Option<[u8; 32]>,
+    requirements_revision: u64,
     checkpoint_sequence: u64,
 }
 
@@ -70,6 +75,8 @@ struct DurableEvidence {
     status: u16,
     provenance: Option<DurableIdentity>,
     value: Option<u16>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    dependencies: Option<u16>,
 }
 
 #[derive(Deserialize, Serialize)]
@@ -84,6 +91,7 @@ pub(super) fn encode(resume: &ProductRunResume) -> Result<Vec<u8>, ProductRunner
         version: DURABLE_VERSION,
         checkpoint: DurableCheckpoint::from_checkpoint(&resume.checkpoint),
         baseline_head: resume.baseline.head().to_owned(),
+        managed_baseline: resume.baseline.managed().cloned(),
         in_place_baseline: resume.baseline.scope().cloned(),
         next_phase: phase_tag(resume.next_phase),
         design_path: resume.design_path.clone(),
@@ -112,18 +120,39 @@ pub(super) fn decode(
     bytes: &[u8],
     transcript: &str,
 ) -> Result<ProductRunResume, ProductRunnerError> {
+    decode_inner(bytes, transcript, true)
+}
+
+pub(super) fn decode_retained(
+    bytes: &[u8],
+    transcript: &str,
+) -> Result<ProductRunResume, ProductRunnerError> {
+    decode_inner(bytes, transcript, false)
+}
+
+fn decode_inner(
+    bytes: &[u8],
+    transcript: &str,
+    reconcile_execution: bool,
+) -> Result<ProductRunResume, ProductRunnerError> {
     let payload: DurableResume =
         serde_json::from_slice(bytes).map_err(|error| durable_error(error.to_string()))?;
     if payload.version != DURABLE_VERSION {
         return Err(durable_error("unsupported durable resume version"));
     }
     let checkpoint = payload.checkpoint.into_checkpoint()?;
+    let checkpoint = if reconcile_execution {
+        crate::ProductRunner::reconcile_checkpoint_after_restart(checkpoint)?
+    } else {
+        checkpoint
+    };
     let next_phase = restored_phase(payload.next_phase)?;
     let baseline = match payload.in_place_baseline {
         Some(scope) if payload.baseline_head.is_empty() => CandidateBaseline::in_place(scope),
         Some(_) => return Err(durable_error("resume mixes Git and in-place baselines")),
         None => CandidateBaseline::restored(payload.baseline_head)?,
     };
+    let baseline = baseline.with_managed(payload.managed_baseline)?;
     let successful_commands = payload
         .successful_commands
         .into_iter()
@@ -188,12 +217,14 @@ impl DurableCheckpoint {
 }
 
 impl DurableIdentity {
-    const fn from_identity(value: CandidateIdentity) -> Self {
+    fn from_identity(value: CandidateIdentity) -> Self {
         Self {
             run_id: *value.run_id().as_bytes(),
             workspace_id: *value.workspace_id().as_bytes(),
-            candidate_digest: *value.candidate_digest().as_bytes(),
-            conversation_revision: value.conversation_revision(),
+            content_digest: value.content_digest().into_bytes(),
+            repository_digest: value.repository_digest().into_bytes(),
+            execution_digest: value.execution_digest().map(Sha256Digest::into_bytes),
+            requirements_revision: value.requirements_revision(),
             checkpoint_sequence: value.checkpoint_sequence(),
         }
     }
@@ -206,8 +237,10 @@ impl DurableIdentity {
         CandidateIdentity::new(
             run_id,
             workspace_id,
-            Sha256Digest::new(self.candidate_digest),
-            self.conversation_revision,
+            Sha256Digest::new(self.content_digest),
+            Sha256Digest::new(self.repository_digest),
+            self.execution_digest.map(Sha256Digest::new),
+            self.requirements_revision,
             self.checkpoint_sequence,
         )
         .map_err(|error| durable_error(error.to_string()))
@@ -222,12 +255,13 @@ impl DurableEvidence {
                 .record()
                 .map(|record| DurableIdentity::from_identity(*record.provenance())),
             value: value.record().map(|record| record.value().tag()),
+            dependencies: value.record().map(|record| record.dependencies().tag()),
         }
     }
 
     fn into_evidence(self) -> Result<EvidenceStatus<QualificationEvidence>, ProductRunnerError> {
         if self.status == 1 {
-            if self.provenance.is_some() || self.value.is_some() {
+            if self.provenance.is_some() || self.value.is_some() || self.dependencies.is_some() {
                 return Err(durable_error("missing evidence retained an unexpected value"));
             }
             return Ok(EvidenceStatus::Missing);
@@ -240,7 +274,12 @@ impl DurableEvidence {
             self.value.ok_or_else(|| durable_error("retained evidence omitted its value"))?,
         )
         .ok_or_else(|| durable_error("retained evidence has an invalid value"))?;
-        let record = EvidenceRecord::new(provenance, value);
+        let dependencies = EvidenceDependencies::from_tag(
+            self.dependencies
+                .ok_or_else(|| durable_error("retained evidence omitted its dependencies"))?,
+        )
+        .ok_or_else(|| durable_error("retained evidence dependencies are invalid"))?;
+        let record = EvidenceRecord::new(provenance, dependencies, value);
         match self.status {
             2 => Ok(EvidenceStatus::Current(record)),
             3 => Ok(EvidenceStatus::Failed(record)),

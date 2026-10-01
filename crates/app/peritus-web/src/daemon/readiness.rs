@@ -1,6 +1,6 @@
 //! Saved launcher metadata is not proof that the running daemon admits a workspace.
 use super::{
-    App, AppRequestPayload, AppResponsePayload, ProductInteractionRequest, Project,
+    App, AppRequestPayload, AppResponsePayload, ProductProviderSelection, Project,
     ProviderProfileId, Result, Value, WorkspaceId, bytes, facts, json, problem, request, status,
 };
 use peritus_app_protocol::{DoctorQuery, DoctorStatus};
@@ -56,7 +56,11 @@ pub async fn ready_facts(app: &App, project: &Project) -> Result<Value> {
     }
     Ok(value)
 }
-pub async fn ensure_ready(app: &App, prepared: &ProductInteractionRequest) -> Result<()> {
+pub async fn ensure_ready(
+    app: &App,
+    workspace: WorkspaceId,
+    selected: ProductProviderSelection,
+) -> Result<()> {
     let status = status(app).await?;
     if status["ready"] != true {
         return Err(problem(format!(
@@ -64,18 +68,11 @@ pub async fn ensure_ready(app: &App, prepared: &ProductInteractionRequest) -> Re
             status["readiness"].as_str().unwrap_or("unavailable")
         )));
     }
-    let selected = prepared.request().providers();
     for provider in
         std::collections::BTreeSet::from([selected.writer(), selected.reviewer(), selected.fixer()])
     {
-        match request(
-            app,
-            AppRequestPayload::Doctor(DoctorQuery::new(
-                prepared.request().workspace_id(),
-                Some(provider),
-            )),
-        )
-        .await?
+        match request(app, AppRequestPayload::Doctor(DoctorQuery::new(workspace, Some(provider))))
+            .await?
         {
             AppResponsePayload::Doctor(report) => {
                 if let Some(finding) =

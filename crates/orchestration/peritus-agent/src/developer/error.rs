@@ -35,6 +35,8 @@ pub enum DeveloperLoopError {
     LimitExceeded,
     /// The request was cancelled.
     Cancelled,
+    /// A host deadline or effect boundary requires explicit exact-run recovery.
+    RecoveryRequired(String),
     /// A terminal provider response contained no usable result.
     EmptyResponse,
 }
@@ -61,6 +63,7 @@ impl fmt::Display for DeveloperLoopError {
             Self::Refused => formatter.write_str("provider refused the developer request"),
             Self::LimitExceeded => formatter.write_str("developer loop limit was exhausted"),
             Self::Cancelled => formatter.write_str("developer loop was cancelled"),
+            Self::RecoveryRequired(detail) => formatter.write_str(detail),
             Self::EmptyResponse => {
                 formatter.write_str("provider returned no tool calls or usable final response")
             }
@@ -80,6 +83,7 @@ impl std::error::Error for DeveloperLoopError {
             | Self::Refused
             | Self::LimitExceeded
             | Self::Cancelled
+            | Self::RecoveryRequired(_)
             | Self::EmptyResponse => None,
         }
     }

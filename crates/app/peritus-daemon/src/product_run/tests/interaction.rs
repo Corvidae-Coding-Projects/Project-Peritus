@@ -1,8 +1,7 @@
 use super::support::{named_tool_response, text_response};
 use super::*;
 use peritus_app_protocol::{
-    ProductActivityKind, ProductInteractionMode, ProductInteractionRequest, ProductRoleModels,
-    ProductRunContinuation, ProductRunConversationQuery,
+    ProductActivityKind, ProductInteractionMode, ProductInteractionQuery, ProductRoleModels,
 };
 
 pub(super) fn block_on(future: impl Future<Output = ()>) {
@@ -40,11 +39,7 @@ async fn question_scenario() {
     )
     .expect("request");
     let first = service
-        .interact(ProductInteractionRequest::new(
-            request,
-            ProductInteractionMode::Chat,
-            ProductRoleModels::default(),
-        ))
+        .start_interaction(request, ProductInteractionMode::Chat, ProductRoleModels::default())
         .await
         .expect("start chat");
     assert_eq!(first.received(), 1);
@@ -53,10 +48,37 @@ async fn question_scenario() {
     assert!(terminal.status().starts_with("Idle"));
     assert!(terminal.deliverable().is_none());
     assert!(!repository.path().join(".design").exists());
-    let snapshot = service
-        .query_interaction(ProductRunConversationQuery::new(run_id))
-        .expect("chat observation");
+    let snapshot =
+        service.query_interaction(ProductInteractionQuery::new(run_id)).expect("chat observation");
     assert_eq!(snapshot.incorporated(), 1);
+    let actor = {
+        let records = service.inner.records.read().unwrap();
+        let bytes = *records.get(&run_id).unwrap().interaction.workbench.actor_bytes();
+        peritus_types::ActorId::new(bytes).unwrap()
+    };
+    let binding =
+        service.query_interaction_binding(actor, ProductInteractionQuery::new(run_id)).unwrap();
+    assert_eq!(
+        binding.conversation(),
+        peritus_app_protocol::WorkbenchQuery::new(
+            peritus_app_protocol::ConversationId::new(
+                *service
+                    .inner
+                    .records
+                    .read()
+                    .unwrap()
+                    .get(&run_id)
+                    .unwrap()
+                    .interaction
+                    .workbench
+                    .conversation()
+                    .as_bytes(),
+            )
+            .unwrap(),
+            workspace_id,
+        )
+    );
+    assert_eq!(binding.interaction(), &snapshot);
     {
         let requests = writer.requests.lock().expect("observed provider requests");
         assert!(
@@ -89,15 +111,11 @@ async fn question_scenario() {
     let bytes = encode_app_message(&AppMessage::Response(response), AppProtocolLimits::PRODUCTION)
         .expect("wire-safe chat");
     assert!(!bytes.is_empty());
-    let records =
-        super::super::persistence::load_records(&service.inner.directory).expect("reload records");
-    let restored =
-        records.get(&run_id).expect("durable run").interaction.as_ref().expect("durable mode");
+    let records = service.load_test_records().expect("reload records");
+    let restored = &records.get(&run_id).expect("durable run").interaction;
     assert_eq!(restored.mode, ProductInteractionMode::Chat);
     assert_eq!(restored.incorporated, 1);
     assert_eq!(restored.activities, snapshot.activities());
-    pending_idle_input_is_restarted_without_claiming_prior_incorporation(&service, &writer, run_id)
-        .await;
     service.shutdown(Duration::from_secs(5)).await;
 }
 
@@ -122,29 +140,38 @@ fn idle_chat_releases_workspace_ownership_for_a_new_conversation() {
         let service =
             service(state.path(), repository.path(), workspace, [&writer, &reviewer, &fixer]);
         let request = |run_id, text: &str| {
-            ProductInteractionRequest::new(
-                ProductRunRequest::new(run_id, workspace, providers, text.to_owned())
-                    .expect("request"),
+            ProductRunRequest::new(run_id, workspace, providers, text.to_owned()).expect("request")
+        };
+        let first = RunId::new([0x55; 16]).expect("first run");
+        service
+            .start_interaction(
+                request(first, "First question"),
                 ProductInteractionMode::Chat,
                 ProductRoleModels::default(),
             )
-        };
-        let first = RunId::new([0x55; 16]).expect("first run");
-        service.interact(request(first, "First question")).await.expect("first chat");
+            .await
+            .expect("first chat");
         assert_eq!(
             wait_for_terminal(&service, first).await.phase(),
             ProductRunPhase::WaitingForUser
         );
 
         let second = RunId::new([0x56; 16]).expect("second run");
-        service.interact(request(second, "Second question")).await.expect("new idle chat");
+        service
+            .start_interaction(
+                request(second, "Second question"),
+                ProductInteractionMode::Chat,
+                ProductRoleModels::default(),
+            )
+            .await
+            .expect("new idle chat");
         assert_eq!(
             wait_for_terminal(&service, second).await.phase(),
             ProductRunPhase::WaitingForUser
         );
         assert_eq!(
             service
-                .query_interaction(ProductRunConversationQuery::new(first))
+                .query_interaction(ProductInteractionQuery::new(first))
                 .expect("retained first conversation")
                 .snapshot()
                 .phase(),
@@ -178,17 +205,13 @@ fn public_start_message_is_visible_before_a_stalled_provider_finishes() {
         )
         .expect("request");
         service
-            .interact(ProductInteractionRequest::new(
-                request,
-                ProductInteractionMode::Chat,
-                ProductRoleModels::default(),
-            ))
+            .start_interaction(request, ProductInteractionMode::Chat, ProductRoleModels::default())
             .await
             .expect("start");
         let snapshot = tokio::time::timeout(Duration::from_secs(5), async {
             loop {
                 let snapshot = service
-                    .query_interaction(ProductRunConversationQuery::new(run_id))
+                    .query_interaction(ProductInteractionQuery::new(run_id))
                     .expect("live snapshot");
                 if snapshot.incorporated() == 1 {
                     break snapshot;
@@ -220,138 +243,25 @@ fn public_start_message_is_visible_before_a_stalled_provider_finishes() {
     });
 }
 
-#[test]
-fn interactive_build_narrates_stages_without_changing_terminal_contracts() {
-    block_on(pipeline_scenario(ProductInteractionMode::Build));
-}
-
-#[test]
-fn chat_hands_off_to_the_existing_pipeline_with_the_selected_independent_reviewer() {
-    block_on(pipeline_scenario(ProductInteractionMode::Chat));
-}
-
-async fn pipeline_scenario(mode: ProductInteractionMode) {
-    let repository = repository();
-    let state = tempfile::tempdir().expect("state");
-    let mut responses = Vec::new();
-    if mode == ProductInteractionMode::Chat {
-        responses.push(named_tool_response("run_pipeline", b"{}".to_vec()));
-    }
-    responses.extend(complete_writer(CORRECT));
-    let writer = scripted(0x81, "writer", responses);
-    let reviewer = scripted(0x82, "reviewer", clean_review());
-    let fixer = scripted(0x83, "fixer", Vec::new());
-    let workspace_id = WorkspaceId::new([0x84; 16]).expect("workspace");
-    let run_id = RunId::new([0x85; 16]).expect("run");
-    let service =
-        service(state.path(), repository.path(), workspace_id, [&writer, &reviewer, &fixer]);
-    let request = ProductRunRequest::new(
-        run_id,
-        workspace_id,
-        ProductProviderSelection::new(
-            writer.profile.profile_id(),
-            reviewer.profile.profile_id(),
-            fixer.profile.profile_id(),
-        ),
-        "Add a tested answer function that returns 42.".to_owned(),
-    )
-    .expect("request");
-    service
-        .interact(ProductInteractionRequest::new(request, mode, ProductRoleModels::default()))
-        .await
-        .expect("start build");
-    let terminal = wait_for_terminal(&service, run_id).await;
-    assert_eq!(terminal.phase(), ProductRunPhase::Complete, "{}", terminal.summary());
-    assert_eq!(reviewer.requests.lock().expect("review requests").len(), 3);
-    assert!(fixer.requests.lock().expect("no fixes needed").is_empty());
-    let expected_requests = if mode == ProductInteractionMode::Chat { 12 } else { 11 };
-    assert_eq!(
-        service
-            .inner
-            .records
-            .read()
-            .expect("records")
-            .get(&run_id)
-            .expect("record")
-            .progress
-            .model_requests,
-        expected_requests,
-        "Chat handoff and pipeline must share one accounting total"
-    );
-    assert_eq!(
-        terminal.deliverable().expect("qualified candidate").qualification(),
-        CandidateStage::Qualified
-    );
-    let snapshot =
-        service.query_interaction(ProductRunConversationQuery::new(run_id)).expect("conversation");
-    let public = snapshot
-        .activities()
-        .iter()
-        .map(peritus_app_protocol::ProductActivity::text)
-        .collect::<Vec<_>>();
-    for message in [
-        "I'm moving on to the implementation.",
-        "The changes are ready for checks. I'm verifying them now.",
-        "The candidate is ready for independent review. I'll check it against your request.",
-    ] {
-        assert!(public.contains(&message), "missing stage: {message}; {public:?}");
-    }
-    if mode == ProductInteractionMode::Chat {
-        let requests_before = writer.requests.lock().expect("requests").len();
-        {
-            let mut records = service.inner.records.write().expect("run records");
-            let record = records.get_mut(&run_id).expect("complete chat record");
-            record
-                .conversation
-                .append(
-                    peritus_app_protocol::ProductConversationRole::User,
-                    "Durable input awaiting explicit continuation".to_owned(),
-                )
-                .expect("append recovery-shaped pending input");
-        }
-        assert!(
-            matches!(
-                service.retry(run_id).await,
-                Err(crate::product_run::ProductRunServiceError::InvalidState)
-            ),
-            "generic retry must not reopen a complete chat with pending input",
-        );
-        assert_eq!(writer.requests.lock().expect("requests").len(), requests_before);
-    }
-    service.shutdown(Duration::from_secs(5)).await;
-}
-
-async fn pending_idle_input_is_restarted_without_claiming_prior_incorporation(
-    service: &ProductRunService,
-    writer: &Arc<ScriptedProvider>,
-    run_id: RunId,
-) {
-    writer.responses.lock().expect("responses").push_back(text_response(b"New input considered."));
-    {
-        let mut records = service.inner.records.write().expect("records");
-        let record = records.get_mut(&run_id).expect("run");
-        record
-            .conversation
-            .append(
-                peritus_app_protocol::ProductConversationRole::User,
-                "A correction arriving at the finalization boundary".to_owned(),
-            )
-            .expect("receive");
-        super::super::persist_record(&service.inner.directory, record).expect("durable receipt");
-    }
-    assert!(service.pending_interactive_input(run_id));
-    let before =
-        service.query_interaction(ProductRunConversationQuery::new(run_id)).expect("snapshot");
-    assert_eq!((before.received(), before.incorporated()), (2, 1));
-    service.retry(run_id).await.expect("resume pending input");
-    let _ = wait_for_terminal(service, run_id).await;
-    let after =
-        service.query_interaction(ProductRunConversationQuery::new(run_id)).expect("snapshot");
-    assert_eq!((after.received(), after.incorporated()), (2, 2));
-    assert!(!service.pending_interactive_input(run_id));
-}
-
-#[path = "interaction/continuation.rs"]
-mod continuation;
 #[path = "interaction/read_only.rs"]
 mod read_only;
+
+fn assert_recovery_notice_persisted(
+    service: &ProductRunService,
+    run: RunId,
+    activities: &[peritus_app_protocol::ProductActivity],
+) {
+    let notices = activities
+        .iter()
+        .filter(|activity| activity.detail() == "Host recovery notice")
+        .collect::<Vec<_>>();
+    assert_eq!(notices.len(), 1);
+    let notice = notices[0];
+    assert_eq!(notice.kind(), ProductActivityKind::Assistant);
+    assert!(notice.text().contains("attempt 2 of 3"));
+    assert!(notice.text().contains("invalid review"));
+    let records = service.load_test_records().expect("durable records");
+    let record = records.get(&run).expect("run record");
+    assert_eq!(record.progress.retries, 1);
+    assert!(record.interaction.activities.contains(notice));
+}

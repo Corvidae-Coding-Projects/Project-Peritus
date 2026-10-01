@@ -1,6 +1,6 @@
 //! Local resource support admission, sampling, and ceiling enforcement.
 
-use std::{path::Path, time::Instant};
+use std::time::Instant;
 
 use crate::{
     BackendResourceFidelity, ErrorCode, ExecutionIsolation, ExecutionPlan, ProcessError,
@@ -11,6 +11,10 @@ use crate::{
 };
 
 use super::{elapsed_millis, emit};
+
+mod disk;
+
+use disk::disk_usage;
 
 const SAMPLE_INTERVAL_MILLIS: u64 = 20;
 const DISK_SAMPLE_INTERVAL_MILLIS: u64 = 1_000;
@@ -227,29 +231,6 @@ const fn observation(
     fidelity: ResourceFidelity,
 ) -> ProcessResourceObservation {
     ProcessResourceObservation::new(dimension, value, ceiling, fidelity)
-}
-
-fn disk_usage(root: &Path) -> Result<u64, ProcessError> {
-    let mut pending = vec![root.to_path_buf()];
-    let mut total = 0_u64;
-    while let Some(directory) = pending.pop() {
-        let entries = std::fs::read_dir(directory)
-            .map_err(|_| resource_error("workspace disk usage cannot be observed"))?;
-        for entry in entries {
-            let entry = entry.map_err(|_| resource_error("workspace entry cannot be observed"))?;
-            let metadata = std::fs::symlink_metadata(entry.path())
-                .map_err(|_| resource_error("workspace metadata cannot be observed"))?;
-            if metadata.file_type().is_symlink() {
-                continue;
-            }
-            if metadata.is_dir() {
-                pending.push(entry.path());
-            } else if metadata.is_file() {
-                total = total.saturating_add(metadata.len());
-            }
-        }
-    }
-    Ok(total)
 }
 
 const fn resource_error(detail: &'static str) -> ProcessError {

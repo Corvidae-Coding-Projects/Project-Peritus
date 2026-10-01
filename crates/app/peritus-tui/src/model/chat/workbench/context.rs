@@ -15,11 +15,8 @@ impl AppModel {
             return Vec::new();
         }
         if self.chat.workbench.selected.is_none() {
-            self.notice(
-                NoticeLevel::Warning,
-                "Select a conversation with /sessions first; draft retained.",
-            );
-            return Vec::new();
+            return self
+                .create_command_conversation("New conversation", format!("/context {arguments}"));
         }
         if self.workbench_request_pending() || self.chat.workbench.unresolved.is_some() {
             self.notice(
@@ -74,10 +71,12 @@ impl AppModel {
         else {
             return Vec::new();
         };
+        self.chat.workbench.open = true;
         let size = u32::try_from(MAX_WORKBENCH_CONTEXT_PAGE).unwrap_or(u32::MAX);
         let offset = if forward {
             let next = page.query().offset().saturating_add(size);
             if next >= page.total() {
+                self.clear_chat_command();
                 return Vec::new();
             }
             next
@@ -163,6 +162,7 @@ impl AppModel {
             return;
         }
         self.chat.workbench.context_page = Some(page);
+        self.complete_workbench_inspection();
         self.chat.workbench.scroll = 0;
         self.chat.workbench.message.clear();
     }

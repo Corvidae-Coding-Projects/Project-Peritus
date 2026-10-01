@@ -9,7 +9,10 @@ use peritus_model_protocol::{
 fn final_artifact_and_full_stream_are_checked_before_emitting_any_host_call() {
     for (model, tools, expected) in [
         ("commentary", false, None),
+        ("competing-final", false, None),
+        ("tool-then-final", true, None),
         ("missing-final", false, Some("openai.codex_runtime.invalid_envelope")),
+        ("missing-final-multiple", false, Some("openai.codex_runtime.multiple_messages")),
         ("bad-arguments", true, Some("openai.codex_runtime.invalid_tool_arguments")),
         ("native-tool", false, Some("openai.codex_runtime.native_tool")),
     ] {
@@ -51,11 +54,20 @@ fn final_artifact_and_full_stream_are_checked_before_emitting_any_host_call() {
             if model == "native-tool" {
                 assert_eq!(failure.category(), FailureCategory::Safety);
                 assert_eq!(failure.retryability(), Retryability::Never);
+            } else if model == "missing-final-multiple" {
+                assert_eq!(failure.category(), FailureCategory::MalformedPayload);
+                assert_eq!(failure.retryability(), Retryability::Never);
             } else {
                 assert!(probe.events.iter().any(|event| matches!(event.event(), ModelEvent::Usage(usage) if usage.counters().total_tokens() == Some(17))), "known usage survives a rejected response");
             }
         } else {
-            assert!(probe.completed(), "preliminary prose must not reject the valid final result");
+            assert!(probe.completed(), "discarded messages must not reject the bound final result");
+            if model == "tool-then-final" {
+                assert!(probe.events.iter().any(|event| matches!(
+                    event.event(),
+                    ModelEvent::ToolCallStarted { name, .. } if name.as_str() == "lookup"
+                )));
+            }
         }
     }
 }

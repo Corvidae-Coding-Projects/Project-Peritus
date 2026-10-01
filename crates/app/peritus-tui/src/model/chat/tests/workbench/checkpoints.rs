@@ -7,6 +7,8 @@ use peritus_app_protocol::{
 };
 use peritus_types::Sha256Digest;
 
+mod drafts;
+
 fn checkpoint_model() -> AppModel {
     let mut model = enabled_model();
     model.features.push(
@@ -26,7 +28,7 @@ fn rewind_modes_bind_new_logical_identity_and_visible_budget() {
             "/rewind {} {mode} time=1000 requests=2 tools=3 tokens=400",
             crate::model::format_id(&[91; 16])
         );
-        let sent = request(&key(&mut model, KeyCode::Enter));
+        let sent = request(&enter_with_metadata(&mut model));
         let AppRequestPayload::PreviewWorkbenchRewind(selection) = sent.payload() else {
             panic!("rewind selection")
         };
@@ -95,7 +97,7 @@ fn preview_and_cancel(
     let checkpoint_id = crate::model::format_id(checkpoint.operation().as_bytes());
     key(model, KeyCode::Esc);
     model.chat.buffer = format!("/rewind {checkpoint_id}");
-    let request = request(&key(model, KeyCode::Enter));
+    let request = request(&enter_with_metadata(model));
     let AppRequestPayload::PreviewWorkbenchRewind(rewind) = request.payload() else {
         panic!("rewind preview request")
     };
@@ -121,6 +123,7 @@ fn preview_and_cancel(
             .is_empty()
     );
     assert!(model.chat.workbench.restore_receipt.is_none());
+    assert!(model.chat.buffer.is_empty(), "successful rewind inspection clears its command");
     assert_preview_render(model);
     assert!(key(model, KeyCode::Esc).is_empty());
     assert!(model.chat.workbench.rewind_preview.is_none());
@@ -134,7 +137,7 @@ fn checkpoint_preview_cancel_and_exact_rewind_confirmation_are_native_and_correl
     let initial = selected(&mut model);
     key(&mut model, KeyCode::Esc);
     model.chat.buffer = "/checkpoint before owned edit".to_owned();
-    let checkpoint_request = request(&key(&mut model, KeyCode::Enter));
+    let checkpoint_request = request(&enter_with_metadata(&mut model));
     let AppRequestPayload::WorkbenchCommand(checkpoint_command) = checkpoint_request.payload()
     else {
         panic!("checkpoint command")
@@ -178,7 +181,7 @@ fn checkpoint_preview_cancel_and_exact_rewind_confirmation_are_native_and_correl
 
     let checkpoint_id = crate::model::format_id(checkpoint_command.operation().as_bytes());
     model.chat.buffer = format!("/rewind {checkpoint_id}");
-    let second_request = request(&key(&mut model, KeyCode::Enter));
+    let second_request = request(&enter_with_metadata(&mut model));
     respond(
         &mut model,
         &second_request,
@@ -232,7 +235,7 @@ fn checkpoint_show_loads_exact_historical_references_without_mutation() {
     let draft = format!("/checkpoint show {}", crate::model::format_id(checkpoint.as_bytes()));
     model.chat.buffer.clone_from(&draft);
 
-    let request = request(&key(&mut model, KeyCode::Enter));
+    let request = request(&enter_with_metadata(&mut model));
     let AppRequestPayload::InspectWorkbenchCheckpoint(inspect) = request.payload() else {
         panic!("checkpoint inspection request")
     };
@@ -256,6 +259,97 @@ fn checkpoint_show_loads_exact_historical_references_without_mutation() {
             .is_empty()
     );
     assert_eq!(model.chat.workbench.checkpoint_receipt.as_ref(), Some(&receipt));
-    assert_eq!(model.chat.buffer, draft);
+    assert!(model.chat.buffer.is_empty(), "successful checkpoint inspection clears its command");
     assert!(model.chat.workbench.message.contains("Checkpoint loaded"));
+}
+
+#[test]
+fn checkpoint_after_another_panel_edit_refreshes_without_overwriting_a_new_draft() {
+    for changed_mind in [false, true] {
+        let mut model = checkpoint_model();
+        let selected = selected(&mut model);
+        model.features.push(
+            ProtocolFeatureName::well_known(WellKnownProtocolFeature::WorkbenchBrief)
+                .expect("brief feature"),
+        );
+        key(&mut model, KeyCode::Esc);
+        model.chat.buffer = "/brief".to_owned();
+        let inspect_brief = request(&key(&mut model, KeyCode::Enter));
+        let brief = |revision| {
+            peritus_app_protocol::WorkbenchBrief::with_sources(
+                selected.query(),
+                revision,
+                Vec::new(),
+                Vec::new(),
+                Vec::new(),
+                0,
+            )
+            .expect("brief")
+        };
+        respond(&mut model, &inspect_brief, AppResponsePayload::WorkbenchBrief(brief(1)));
+        key(&mut model, KeyCode::Esc);
+        model.chat.buffer = "/brief constraints Preserve my draft".to_owned();
+        let edit_brief = request(&key(&mut model, KeyCode::Enter));
+        let AppRequestPayload::WorkbenchCommand(command) = edit_brief.payload() else {
+            panic!("brief edit")
+        };
+        let refresh_brief = request(&respond(&mut model, &edit_brief, receipt(command)));
+        respond(&mut model, &refresh_brief, AppResponsePayload::WorkbenchBrief(brief(2)));
+        key(&mut model, KeyCode::Esc);
+        model.chat.buffer = "/checkpoint Keep this boundary".to_owned();
+        let inspect = request(&key(&mut model, KeyCode::Enter));
+        assert!(
+            matches!(inspect.payload(), AppRequestPayload::QueryWorkbench(query) if *query == selected.query())
+        );
+        assert!(model.chat.workbench.unresolved.is_none());
+        if changed_mind {
+            model.chat.buffer = "Actually wait".to_owned();
+        }
+        let current =
+            WorkbenchSnapshot::new(selected.query(), 2, selected.title().clone(), false, false)
+                .expect("current metadata");
+        let effects = respond(&mut model, &inspect, AppResponsePayload::Workbench(current));
+        if changed_mind {
+            assert!(effects.is_empty());
+            assert_eq!(model.chat.buffer, "Actually wait");
+            assert!(model.chat.workbench.unresolved.is_none());
+        } else {
+            let edit = request(&effects);
+            assert!(
+                matches!(edit.payload(), AppRequestPayload::WorkbenchCommand(command) if command.expected_revision() == 2 && matches!(command.intent(), peritus_app_protocol::WorkbenchIntent::CreateCheckpoint(name) if name.as_str() == "Keep this boundary"))
+            );
+            assert_eq!(model.chat.buffer, "/checkpoint Keep this boundary");
+        }
+    }
+}
+
+#[test]
+fn rewind_refreshes_unobserved_automatic_edits_and_refresh_key_rebinds_revision() {
+    let mut model = checkpoint_model();
+    let source = selected(&mut model);
+    key(&mut model, KeyCode::Esc);
+    model.chat.buffer = format!("/rewind {} files", "51".repeat(16));
+    let sent = request(&key(&mut model, KeyCode::Enter));
+    assert!(matches!(sent.payload(), AppRequestPayload::QueryWorkbench(_)));
+    let fresh = |revision| {
+        WorkbenchSnapshot::new(source.query(), revision, source.title().clone(), false, false)
+            .unwrap()
+    };
+    let preview = request(&respond(&mut model, &sent, AppResponsePayload::Workbench(fresh(30))));
+    assert!(
+        matches!(preview.payload(), AppRequestPayload::PreviewWorkbenchRewind(request) if request.revision() == 30)
+    );
+    let AppRequestPayload::PreviewWorkbenchRewind(selection) = preview.payload() else {
+        panic!("preview")
+    };
+    let receipt =
+        WorkbenchRewindPreview::new(*selection, Vec::new(), Vec::new(), Vec::new()).unwrap();
+    respond(&mut model, &preview, AppResponsePayload::WorkbenchRewindPreview(receipt));
+    let refresh = request(&key(&mut model, KeyCode::Char('r')));
+    assert!(matches!(refresh.payload(), AppRequestPayload::QueryWorkbench(_)));
+    assert!(model.chat.workbench.rewind_preview.is_none());
+    let next = request(&respond(&mut model, &refresh, AppResponsePayload::Workbench(fresh(31))));
+    assert!(
+        matches!(next.payload(), AppRequestPayload::PreviewWorkbenchRewind(request) if request.revision() == 31)
+    );
 }

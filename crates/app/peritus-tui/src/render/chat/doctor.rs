@@ -22,6 +22,24 @@ pub(super) fn draw(frame: &mut Frame<'_>, area: Rect, model: &AppModel) {
             .style(Style::default().fg(super::ACCENT)),
         regions[0],
     );
+    let lines = content(model);
+    let lines = super::wrapped_lines(lines, usize::from(regions[1].width));
+    let offset = panel.scroll.min(lines.len().saturating_sub(usize::from(regions[1].height)));
+    frame.render_widget(
+        Paragraph::new(
+            lines.into_iter().skip(offset).take(usize::from(regions[1].height)).collect::<Vec<_>>(),
+        ),
+        regions[1],
+    );
+    frame.render_widget(
+        Paragraph::new("Esc back · ↑↓/PgUp/PgDn · Home/End · r refresh")
+            .style(Style::default().fg(super::MUTED)),
+        regions[2],
+    );
+}
+
+fn content(model: &AppModel) -> Vec<Line<'static>> {
+    let Some(panel) = &model.chat.doctor else { return Vec::new() };
     let mut lines = Vec::new();
     if let Some(error) = &panel.error {
         lines.push(Line::styled(error.clone(), Style::default().fg(super::BAD)));
@@ -68,16 +86,15 @@ pub(super) fn draw(frame: &mut Frame<'_>, area: Rect, model: &AppModel) {
     } else {
         lines.push(Line::from("Waiting for the daemon's local diagnostic report…"));
     }
-    let lines = super::wrapped_lines(lines, usize::from(regions[1].width));
-    let offset = panel.scroll.min(lines.len().saturating_sub(usize::from(regions[1].height)));
-    frame.render_widget(
-        Paragraph::new(
-            lines.into_iter().skip(offset).take(usize::from(regions[1].height)).collect::<Vec<_>>(),
-        ),
-        regions[1],
-    );
-    frame.render_widget(
-        Paragraph::new("Esc back · ↑↓ scroll · r refresh").style(Style::default().fg(super::MUTED)),
-        regions[2],
-    );
+    lines
+}
+
+pub fn scroll_limit(model: &AppModel) -> usize {
+    let area = super::inspector::panel_area(model);
+    let regions =
+        Layout::vertical([Constraint::Length(1), Constraint::Min(1), Constraint::Length(1)])
+            .split(area);
+    super::wrapped_lines(content(model), usize::from(regions[1].width))
+        .len()
+        .saturating_sub(usize::from(regions[1].height))
 }

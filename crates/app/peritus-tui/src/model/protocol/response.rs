@@ -8,35 +8,19 @@ use crate::model::{
 };
 
 impl AppModel {
-    pub(in crate::model) fn expire_pending_requests(&mut self) -> bool {
-        const REQUEST_TIMEOUT_TICKS: u64 = 120;
-
-        let expired = self
-            .pending_started
-            .iter()
-            .filter_map(|(request, started)| {
-                (self.tick_count.saturating_sub(*started) >= REQUEST_TIMEOUT_TICKS)
-                    .then_some(*request)
+    pub(in crate::model) fn interrupt_pending_requests(&mut self) {
+        self.recover_editor_drafts();
+        let prompts = self
+            .pending
+            .values()
+            .filter_map(|pending| match pending {
+                PendingRequest::Prompt(prompt) => Some(*prompt),
+                _ => None,
             })
             .collect::<Vec<_>>();
-        if expired.is_empty() {
-            return false;
+        for prompt in prompts {
+            self.set_prompt_phase(prompt, PromptPhase::Failed);
         }
-        for request in expired {
-            self.pending_started.remove(&request);
-            match self.pending.remove(&request) {
-                Some(PendingRequest::ChatSubmit { text, .. }) => self.restore_chat_draft(&text),
-                Some(PendingRequest::Prompt(prompt)) => {
-                    self.set_prompt_phase(prompt, PromptPhase::Failed);
-                }
-                _ => {}
-            }
-        }
-        self.notice(
-            NoticeLevel::Error,
-            "daemon request timed out; reconnecting to reconcile its outcome before another action",
-        );
-        true
     }
 
     fn response_error(
@@ -44,9 +28,38 @@ impl AppModel {
         error: &peritus_app_protocol::AppProtocolError,
         pending: Option<&PendingRequest>,
     ) -> Vec<Effect> {
+        if pending.is_none() {
+            // A dismissed inspection no longer owns the current screen or its notices.
+            return Vec::new();
+        }
+        if matches!(pending, Some(PendingRequest::ArtifactCancel))
+            && error.code() == peritus_app_protocol::AppErrorCode::InvalidIdentifier
+        {
+            // Completion or an earlier rejection may have already removed this owned transfer.
+            return Vec::new();
+        }
+        if let Some(PendingRequest::TerminalLineInput(binding)) = pending
+            && let Some(terminal) = &mut self.terminal
+            && terminal.binding() == *binding
+        {
+            terminal.settle_line_input(false);
+        }
         let absent_goal = matches!(pending, Some(PendingRequest::WorkbenchGoal(_)))
             && error.code() == peritus_app_protocol::AppErrorCode::InvalidIdentifier;
+        if let Some(effects) = self.resolve_rejected_control(pending, error.code()) {
+            return effects;
+        }
         self.workbench_error(pending, error.code());
+        if matches!(
+            pending,
+            Some(
+                PendingRequest::WorkbenchExecution(_)
+                    | PendingRequest::WorkbenchChatContinue { .. }
+                    | PendingRequest::WorkbenchChatStarted { .. }
+            )
+        ) {
+            self.reset_workbench_submission();
+        }
         self.image_request_error(pending, error.code());
         if absent_goal {
             return Vec::new();
@@ -66,22 +79,39 @@ impl AppModel {
                 "Selected reasoning effort is unsupported by this provider. Prior model/effort retained; choose another level or default.");
             return Vec::new();
         }
-        if matches!(pending, Some(PendingRequest::ModelQuery)) {
+        if matches!(pending, Some(PendingRequest::ModelQuery(_))) {
             self.chat.close_model_picker();
         }
-        if let Some(PendingRequest::ChatOpen { run_id }) = pending {
+        if let Some(PendingRequest::ProductMessageBinding { run_id, .. }) = pending {
+            if self.chat.run_id == Some(*run_id) {
+                self.chat.run_id = None;
+                self.chat.binding_checked = None;
+                self.select_workbench_conversation(None);
+            }
+            self.notice(
+                NoticeLevel::Error,
+                format!("{}. Message draft retained.", error.actionable_message()),
+            );
+            return Vec::new();
+        }
+        if let Some(
+            PendingRequest::ChatOpen { run_id } | PendingRequest::ChatBinding { run_id, .. },
+        ) = pending
+        {
             if self.chat.run_id != Some(*run_id) {
                 return Vec::new();
             }
-            self.chat.run_id = None;
-            self.open_product_message_composer();
-            self.notice(NoticeLevel::Error, error.actionable_message());
+            if !matches!(pending, Some(PendingRequest::ChatBinding { opening: false, .. })) {
+                self.view = View::Conversation;
+            }
+            self.notice(
+                NoticeLevel::Error,
+                format!(
+                    "{}. Run and draft retained; retry opening the run or reconnect with Ctrl-R.",
+                    error.actionable_message()
+                ),
+            );
             return Vec::new();
-        }
-        if let Some(PendingRequest::ChatSubmit { run_id, text }) = pending
-            && self.chat.run_id == Some(*run_id)
-        {
-            self.restore_chat_draft(text);
         }
         if let Some(PendingRequest::Prompt(prompt_id)) = pending {
             self.set_prompt_phase(*prompt_id, PromptPhase::Failed);
@@ -102,7 +132,17 @@ impl AppModel {
             );
             return Vec::new();
         }
-        let pending = self.pending.remove(&response.request_id());
+        let Some(pending) = self.pending.remove(&response.request_id()) else {
+            // Responses only project while their request still owns its continuation. In
+            // particular, an expired exact query must never become an unscoped list reply.
+            return Vec::new();
+        };
+        let pending = Some(pending);
+        if let Some(editor) = self.pending_editor_drafts.remove(&response.request_id())
+            && matches!(response.payload(), AppResponsePayload::Error(_))
+        {
+            self.restore_editor(editor, false);
+        }
         self.pending_started.remove(&response.request_id());
         let exact_run = match &pending {
             Some(PendingRequest::ProductExactQuery(run_id)) => Some(*run_id),
@@ -120,12 +160,16 @@ impl AppModel {
         exact_run: Option<peritus_types::RunId>,
     ) -> Vec<Effect> {
         match payload {
+            AppResponsePayload::InteractionBinding(binding) => {
+                return self.accept_chat_binding(binding, pending);
+            }
             AppResponsePayload::Improvements(inbox) => {
                 self.notice(NoticeLevel::Info, format!("{} harness improvement suggestions. Inspect them in the GUI inbox or with peritus improvements list.", inbox.candidates().len()));
             }
             AppResponsePayload::WorkbenchCheckpoint(_)
             | AppResponsePayload::WorkbenchRewindPreview(_)
             | AppResponsePayload::WorkbenchRestore(_)
+            | AppResponsePayload::WorkbenchExecution(_)
             | AppResponsePayload::Workbench(_)
             | AppResponsePayload::ConversationLibrary(_)
             | AppResponsePayload::WorkbenchPermissions(_)
@@ -141,25 +185,19 @@ impl AppModel {
             | AppResponsePayload::WorkbenchBrief(_)
             | AppResponsePayload::WorkbenchGoal(_)
             | AppResponsePayload::WorkbenchResult(_)
+            | AppResponsePayload::WorkbenchPreview(_)
             | AppResponsePayload::WorkbenchContext(_)
             | AppResponsePayload::WorkbenchQueue(_)
             | AppResponsePayload::WorkbenchReceipt(_)
             | AppResponsePayload::Doctor(_) => unreachable!("handled above"),
             AppResponsePayload::Interaction(snapshot) => {
-                if self.chat.run_id != Some(snapshot.snapshot().run_id()) {
+                if matches!(pending, Some(PendingRequest::ProductInteractionQuery)) {
+                    self.accept_product_interaction(snapshot.clone());
                     return Vec::new();
                 }
-                if matches!(pending, Some(PendingRequest::ChatOpen { .. })) {
-                    self.chat.mode = snapshot.mode();
-                    self.view = View::Conversation;
-                }
-                self.accept_chat(snapshot.clone());
-                if matches!(pending, Some(PendingRequest::ModelUpdate { run_id }) if *run_id == snapshot.snapshot().run_id())
-                {
-                    self.notice(NoticeLevel::Info, "Model and effort selection saved for subsequent model turns; any in-flight turn is unchanged.");
-                }
+                return self.interaction_response(snapshot, pending);
             }
-            AppResponsePayload::Models(catalog) => self.accept_model_catalog(catalog.clone()),
+            AppResponsePayload::Models(catalog) => self.accept_model_response(catalog, pending),
             AppResponsePayload::SubscriptionStarted(started) => {
                 self.subscription = Some(started.subscription_id());
                 self.notice(
@@ -170,8 +208,13 @@ impl AppModel {
             AppResponsePayload::DaemonStatus(status) => {
                 self.daemon_status = Some(status.clone());
             }
-            AppResponsePayload::TerminalAttached(binding) => {
-                self.accept_terminal(*binding);
+            AppResponsePayload::TerminalAttached(binding)
+            | AppResponsePayload::TerminalPipeAttached(binding) => {
+                return self.accept_terminal_response(
+                    *binding,
+                    matches!(payload, AppResponsePayload::TerminalPipeAttached(_)),
+                    pending,
+                );
             }
             AppResponsePayload::PromptAccepted(prompt_id) => {
                 self.set_prompt_phase(*prompt_id, PromptPhase::Accepted);
@@ -197,8 +240,8 @@ impl AppModel {
                 self.accept_product_run(snapshot.clone());
                 self.notice(NoticeLevel::Info, format!("coding run: {}", snapshot.status()));
             }
-            AppResponsePayload::ProductRuns(snapshots) => {
-                self.accept_product_query(snapshots, exact_run);
+            AppResponsePayload::ProductRunObservations(observations) => {
+                self.accept_observation_query(observations, exact_run);
             }
             AppResponsePayload::ProductRunSettled(settled) => {
                 self.accept_product_settlement(settled);
@@ -207,12 +250,31 @@ impl AppModel {
                     format!("coding run settled: {:?}", settled.settlement().disposition()),
                 );
             }
-            AppResponsePayload::ProductRunSettlements(settled) => {
-                self.accept_settlement_query(settled, exact_run);
-            }
-            AppResponsePayload::ProductRunConversation(conversation) => {
-                self.accept_product_conversation(conversation.clone());
-            }
+        }
+        Vec::new()
+    }
+    fn interaction_response(
+        &mut self,
+        snapshot: &peritus_app_protocol::ProductInteractionSnapshot,
+        pending: Option<&PendingRequest>,
+    ) -> Vec<Effect> {
+        if self.chat.run_id != Some(snapshot.snapshot().run_id()) {
+            return Vec::new();
+        }
+        if matches!(pending, Some(PendingRequest::ChatOpen { .. })) {
+            self.chat.mode = snapshot.mode();
+            self.view = View::Conversation;
+        }
+        self.accept_chat(snapshot.clone());
+        if let Some(PendingRequest::WorkbenchChatContinue { run, goal, mode }) = pending {
+            return self.continue_workbench_chat(*run, *goal, *mode);
+        }
+        if let Some(PendingRequest::WorkbenchChatStarted { run }) = pending {
+            return self.workbench_chat_started(*run);
+        }
+        if matches!(pending, Some(PendingRequest::ModelUpdate { run_id }) if *run_id == snapshot.snapshot().run_id())
+        {
+            self.notice(NoticeLevel::Info, "Model and effort selection saved for subsequent model turns; any in-flight turn is unchanged.");
         }
         Vec::new()
     }
@@ -224,9 +286,18 @@ impl AppModel {
             Some(PendingRequest::WorkbenchImageUpload { transfer, step }) => {
                 return self.image_upload_ack(*transfer, *step);
             }
-            Some(PendingRequest::TerminalDetach) => {
-                self.terminal = None;
-                self.notice(NoticeLevel::Info, "terminal detached");
+            Some(PendingRequest::TerminalDetach(binding)) => {
+                if self.terminal.as_ref().is_some_and(|terminal| terminal.binding() == *binding) {
+                    self.terminal = None;
+                    self.notice(NoticeLevel::Info, "terminal detached");
+                }
+            }
+            Some(PendingRequest::TerminalLineInput(binding)) => {
+                if let Some(terminal) = &mut self.terminal
+                    && terminal.binding() == *binding
+                {
+                    terminal.settle_line_input(true);
+                }
             }
             Some(PendingRequest::TerminalCancel) => {
                 self.notice(NoticeLevel::Warning, "terminal cancellation was acknowledged");
@@ -235,18 +306,45 @@ impl AppModel {
         }
         Vec::new()
     }
-    fn accept_terminal(&mut self, binding: peritus_app_protocol::TerminalBinding) {
+    fn accept_terminal_response(
+        &mut self,
+        binding: peritus_app_protocol::TerminalBinding,
+        pipes: bool,
+        pending: Option<&PendingRequest>,
+    ) -> Vec<Effect> {
+        if matches!(pending, Some(PendingRequest::TerminalAttach(expected)) if *expected == binding)
+        {
+            return self.accept_terminal(binding, pipes);
+        }
+        self.notice(
+            NoticeLevel::Error,
+            "ignored a terminal attachment that did not match the pending request",
+        );
+        Vec::new()
+    }
+    fn accept_terminal(
+        &mut self,
+        binding: peritus_app_protocol::TerminalBinding,
+        pipes: bool,
+    ) -> Vec<Effect> {
         match TerminalSession::new(binding, self.limits.max_terminal_chunk_bytes()) {
-            Ok(terminal) => {
+            Ok(mut terminal) => {
+                if pipes {
+                    terminal.use_pipes();
+                }
                 self.terminal = Some(terminal);
                 self.view = View::Terminal;
                 self.notice(
                     NoticeLevel::Info,
                     "terminal attached; Ctrl-] releases keyboard capture",
                 );
+                if let Some(viewport) = self.chat.viewport {
+                    return self.send_terminal_resize(viewport.width, viewport.height);
+                }
             }
             Err(error) => self.notice(NoticeLevel::Error, error.to_string()),
         }
+        Vec::new()
     }
 }
 
@@ -256,6 +354,7 @@ const fn is_control_payload(payload: &AppResponsePayload) -> bool {
         AppResponsePayload::WorkbenchCheckpoint(_)
             | AppResponsePayload::WorkbenchRewindPreview(_)
             | AppResponsePayload::WorkbenchRestore(_)
+            | AppResponsePayload::WorkbenchExecution(_)
             | AppResponsePayload::Workbench(_)
             | AppResponsePayload::ConversationLibrary(_)
             | AppResponsePayload::WorkbenchPermissions(_)
@@ -271,6 +370,7 @@ const fn is_control_payload(payload: &AppResponsePayload) -> bool {
             | AppResponsePayload::WorkbenchGoal(_)
             | AppResponsePayload::WorkbenchReview(_)
             | AppResponsePayload::WorkbenchResult(_)
+            | AppResponsePayload::WorkbenchPreview(_)
             | AppResponsePayload::WorkbenchContext(_)
             | AppResponsePayload::WorkbenchQueue(_)
             | AppResponsePayload::WorkbenchReceipt(_)

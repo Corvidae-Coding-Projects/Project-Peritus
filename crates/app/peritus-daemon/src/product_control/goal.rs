@@ -179,6 +179,9 @@ impl ControlStore {
         let Some((record, goal)) = self.goal_record(start)? else {
             return Ok(());
         };
+        if !matches!(goal.state(), GoalState::Active | GoalState::Pausing) {
+            return Ok(());
+        }
         let attempt = goal.attempt();
         let goal_id = goal.id();
         let mut semantic = Vec::with_capacity(44);

@@ -32,7 +32,9 @@ use crate::{AuthorityHandle, artifact::ArtifactScope};
 mod aggregate;
 mod capture;
 mod evidence;
+mod output;
 mod process;
+mod terminal;
 
 use aggregate::{
     find_capture, has_launch, mutate_launch, rebuild_launch, rebuild_launch_with, replace_page,
@@ -76,7 +78,7 @@ impl ProductRunService {
         maximum_chunk_bytes: usize,
         command: &WorkbenchCommand,
     ) -> Result<WorkbenchReceipt, AppProtocolError> {
-        let scope = self.image_scope(actor, command.query(), command.expected_revision())?;
+        let scope = self.preview_scope(actor, command)?;
         let run = self.preview_run(command)?;
         self.validate_preview_binding(run, command.query())?;
         let required = super::super::permissions::command_permissions(command.intent());
@@ -111,9 +113,29 @@ impl ProductRunService {
         command: &WorkbenchCommand,
     ) -> AppResponsePayload {
         let result = self
-            .image_scope(actor, command.query(), command.expected_revision())
+            .preview_scope(actor, command)
             .and_then(|_| self.apply_preview_local_command(command));
         result.map_or_else(AppResponsePayload::Error, AppResponsePayload::WorkbenchReceipt)
+    }
+
+    fn preview_scope(
+        &self,
+        actor: ActorId,
+        command: &WorkbenchCommand,
+    ) -> Result<ArtifactScope, AppProtocolError> {
+        // Preview mutations have their own exact launch/capture identities and receipts.
+        // Unrelated conversation edits and goal accounting cannot change those identities.
+        // Source/build digests and current permissions are checked again before effects.
+        match self.workbench_execution(actor, command.query()) {
+            AppResponsePayload::WorkbenchExecution(state)
+                if command.expected_revision() > 0
+                    && command.expected_revision() <= state.snapshot().revision() =>
+            {
+                Ok(ArtifactScope::new(actor, command.query()))
+            }
+            AppResponsePayload::Error(error) => Err(error),
+            _ => Err(app_error(Code::StaleRevision)),
+        }
     }
 
     fn apply_preview_local_command(

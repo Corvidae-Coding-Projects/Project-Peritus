@@ -17,6 +17,10 @@ fn serde_metadata_preserves_closed_import_and_callback_rules() {
             optional: Option<u8>,
             #[serde(default, skip_serializing_if = "super::TaskBrief::is_empty")]
             brief: TaskBrief,
+            #[serde(default, skip_serializing_if = "String::is_empty")]
+            stderr: String,
+            #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+            truncated: bool,
         }
     "#,
     );
@@ -33,6 +37,8 @@ fn serde_metadata_preserves_closed_import_and_callback_rules() {
         "default, unknown",
         "default, skip_serializing_if = \"adversary::hide\"",
         "default, skip_serializing_if = \"Option::is_none()\"",
+        "default, skip_serializing_if = \"adversary::Not::not\"",
+        "default, skip_serializing_if = \"std::ops::Not::not()\"",
         "default, skip_serializing_if = \"Option::is_none\", flatten",
     ] {
         let source = format!(
@@ -59,6 +65,8 @@ fn audited_expression_macros_keep_payload_contracts_visible() {
             tokio::pin!(operation);
             tokio::select! { biased; result = &mut operation => return result, () = wait() => {} }
             println!("observation");
+            eprintln!("diagnostic");
+            let _ = rusqlite::params![1_u8];
             writeln!(output, "observation");
             unreachable!("exhaustive state");
         }
@@ -74,6 +82,8 @@ fn audited_expression_macros_keep_payload_contracts_visible() {
     assert!(accepted.violations.is_empty(), "{:?}", accepted.violations);
     for source in [
         "serde_json::json!({ pub fn hidden() requires false {} 1 });",
+        "rusqlite::params![{ pub fn hidden() requires false {} 1 }];",
+        "eprintln!({ pub fn hidden() requires false {} });",
         "tokio::select! { _ = f() => { pub fn hidden() requires false {} } }",
         "#[tokio::test] pub async fn hidden() requires false {}",
         "#[ignore = \"native\"] pub fn hidden() requires false {}",
@@ -100,6 +110,12 @@ fn rejected_macro_namespaces_cannot_impersonate_reviewed_dependencies() {
         "use serde_json::json as renamed; renamed!({});",
         "use serde_json::*; json!({});",
         "mod serde_json {} serde_json::json!({});",
+        "mod rusqlite {} rusqlite::params![1];",
+        "use adversary as rusqlite; rusqlite::params![1];",
+        "crate::rusqlite::params![1];",
+        "::rusqlite::params![1];",
+        "rusqlite::r#params![1];",
+        "use adversary::eprintln; eprintln!(\"hidden\");",
         "mod tokio {} tokio::select! { _ = f() => {} }",
         "use adversary as tokio; #[tokio::test] async fn hidden() { let _ = 1_u8; }",
         "extern crate adversary as tokio; tokio::pin!(operation);",

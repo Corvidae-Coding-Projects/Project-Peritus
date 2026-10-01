@@ -32,6 +32,7 @@ pub enum Action {
         server: String,
         downgraded: bool,
     },
+    Connecting,
     ConnectionFailed(String),
     Disconnected(String),
     Message(AppMessage),
@@ -62,5 +63,10 @@ pub enum Effect {
         candidate_digest: Sha256Digest,
     },
     Reconnect,
+    OpenConversation(peritus_app_protocol::WorkbenchQuery),
+    OpenRun {
+        run: peritus_types::RunId,
+        workspace: peritus_types::WorkspaceId,
+    },
     Quit,
 }

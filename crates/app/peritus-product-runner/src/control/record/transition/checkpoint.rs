@@ -53,6 +53,7 @@ impl ConversationRecord {
                 status,
                 conflicts,
                 transaction_manifest_digest,
+                seal_recovery,
             } => {
                 let restore = self
                     .restores
@@ -64,6 +65,29 @@ impl ConversationRecord {
                     conflicts.clone(),
                     transaction_manifest_digest.map(peritus_types::Sha256Digest::new),
                 )?;
+                if *seal_recovery && *status == crate::control::RestoreStatus::Applied {
+                    let source_id = restore.checkpoint();
+                    let recovery_id = restore.recovery_checkpoint();
+                    let source = self
+                        .checkpoints
+                        .iter()
+                        .find(|value| value.id() == source_id)
+                        .ok_or(ControlError::NotFound)?;
+                    let versions: Vec<_> = source
+                        .paths()
+                        .iter()
+                        .map(|path| (path.path().to_owned(), path.checkpoint()))
+                        .collect();
+                    let recovery = self
+                        .checkpoints
+                        .iter_mut()
+                        .find(|value| value.id() == recovery_id)
+                        .ok_or(ControlError::NotFound)?;
+                    // Conversation-only rewind has no filesystem effects or coverage.
+                    if !recovery.paths().is_empty() {
+                        recovery.seal_restoration(&versions)?;
+                    }
+                }
                 if matches!(
                     status,
                     crate::control::RestoreStatus::Applied

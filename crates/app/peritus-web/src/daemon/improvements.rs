@@ -4,8 +4,8 @@ use super::{
     App, AppRequestPayload, AppResponsePayload, Result, Value, bytes, facts, json, problem,
 };
 use peritus_app_protocol::{
-    ImprovementInbox, ImprovementRequest, ImprovementText, ProductProviderSelection,
-    ProductRunRequest,
+    ImprovementEvaluationRequest, ImprovementInbox, ImprovementRequest, ImprovementText,
+    ProductProviderSelection,
 };
 use peritus_types::{ProviderProfileId, RunId, Sha256Digest, WorkspaceId};
 
@@ -22,7 +22,11 @@ fn workspace(app: &App, project: &str) -> Result<WorkspaceId> {
 pub(super) fn projection(inbox: &ImprovementInbox) -> Value {
     json!({"workspace":crate::state::hex(inbox.workspace().as_bytes()), "candidates":inbox.candidates().iter().map(|item| json!({
         "id":crate::state::hex(item.id().as_bytes()), "proposal":item.proposal().as_str(), "dismissed":item.dismissed(),
-        "evaluation":item.evaluation().map(|r|crate::state::hex(r.as_bytes())),
+        "evaluation":item.evaluation().map(|evaluation|json!({
+            "conversation":crate::state::hex(evaluation.conversation().as_bytes()),
+            "run":crate::state::hex(evaluation.run().as_bytes()),
+            "target":crate::state::hex(evaluation.target().as_bytes())
+        })),
         "evidence":item.evidence().iter().map(|e|json!({"run":crate::state::hex(e.run().as_bytes()),"digest":crate::state::hex(e.digest().as_bytes()),"summary":e.summary().as_str()})).collect::<Vec<_>>()
     })).collect::<Vec<_>>()})
 }
@@ -63,13 +67,11 @@ pub async fn action(app: &App, input: &Value) -> Result<Value> {
             ImprovementRequest::Evaluate {
                 workspace: workspace_id,
                 candidate: candidate(string("candidate"))?,
-                run: ProductRunRequest::new(
+                evaluation: ImprovementEvaluationRequest::new(
                     run,
                     workspace(app, &target.id)?,
                     ProductProviderSelection::new(provider, provider, provider),
-                    "Evaluate selected harness suggestion".into(),
-                )
-                .map_err(problem)?,
+                ),
             }
         }
         _ => return Err(problem("Unknown improvement action")),

@@ -46,6 +46,7 @@ impl AppModel {
         let image = &mut self.chat.workbench.images;
         image.selected = 0;
         image.page = Some(page);
+        self.complete_workbench_inspection();
         self.chat.workbench.scroll = 0;
     }
 

@@ -134,7 +134,7 @@ mod tests {
     #[test]
     fn partial_handoffs_do_not_label_failed_or_interrupted_gates_as_successful() {
         let root = tempfile::tempdir().expect("root");
-        let plan = TargetGatePlan::discover(root.path(), Vec::new()).expect("plan");
+        let plan = TargetGatePlan::discover(root.path(), Vec::new(), &[]).expect("plan");
         let records = [("passed", Some(0)), ("failed", Some(1)), ("interrupted", None)]
             .into_iter()
             .map(|(name, exit_code)| GateExecutionRecord {
@@ -145,7 +145,11 @@ mod tests {
             })
             .collect();
         let report = TargetGateReport::from_execution_with_constraints(&plan, Vec::new(), records);
-        let gates = gates::GateReport { report, output: String::new() };
+        let gates = gates::GateReport {
+            report,
+            output: String::new(),
+            execution_context: peritus_types::Sha256Digest::new([0xEC; 32]),
+        };
         assert_eq!(
             successful_command_lines(
                 ProductDeliveryScope::WorkspaceChanges,
@@ -185,9 +189,13 @@ mod tests {
     #[test]
     fn external_evidence_never_weakens_the_default_workspace_scope() {
         let root = tempfile::tempdir().expect("root");
-        let plan = TargetGatePlan::discover(root.path(), Vec::new()).expect("empty plan");
+        let plan = TargetGatePlan::discover(root.path(), Vec::new(), &[]).expect("empty plan");
         let report = TargetGateReport::from_execution(&plan, Vec::<GateExecutionRecord>::new());
-        let gates = gates::GateReport { report, output: String::new() };
+        let gates = gates::GateReport {
+            report,
+            output: String::new(),
+            execution_context: peritus_types::Sha256Digest::new([0xEC; 32]),
+        };
         let commands =
             [command(CommandPurpose::ExternalEffect), command(CommandPurpose::Verification)];
         let coordinator = ProductionRunCoordinator::new(2).expect("coordinator");

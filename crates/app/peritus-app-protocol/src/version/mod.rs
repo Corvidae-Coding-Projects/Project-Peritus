@@ -9,4 +9,7 @@ pub use negotiation::{
     ClientHello, ImplementationMetadata, IncompatibilityReason, NegotiatedProtocol,
     NegotiationOutcome, ServerCapabilities, ServerHello, negotiate,
 };
-pub use range::{ProtocolVersion, ProtocolVersionRange, VersionRange};
+pub use range::{
+    CURRENT_PROTOCOL_RANGE, CURRENT_PROTOCOL_VERSION, ProtocolVersion, ProtocolVersionRange,
+    VersionRange,
+};

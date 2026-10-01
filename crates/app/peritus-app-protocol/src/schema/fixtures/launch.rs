@@ -49,8 +49,34 @@ pub(super) fn cases(limits: CodecLimits) -> Result<Vec<GeneratedFixtureCase>, Co
             launch,
             capture,
             target,
-            profile,
+            profile.clone(),
         ))),
+        limits,
+    )?);
+    cases.push(encoded(
+        "minimal-workbench-preview-query",
+        FixtureClass::Minimal,
+        &request(AppRequestPayload::QueryWorkbenchPreview(result_query)),
+        limits,
+    )?);
+    cases.push(encoded(
+        "realistic-workbench-preview-output",
+        FixtureClass::Realistic,
+        &response(AppResponsePayload::WorkbenchPreview(
+            crate::WorkbenchPreviewSnapshot::new(
+                result_page(result_query, launch, capture, target, profile),
+                vec![
+                    crate::WorkbenchPreviewOutput::new(
+                        launch,
+                        "READY\nName? ".to_owned(),
+                        "diagnostic\n".to_owned(),
+                        false,
+                    )
+                    .expect("output"),
+                ],
+            )
+            .expect("preview"),
+        )),
         limits,
     )?);
     Ok(cases)

@@ -137,8 +137,15 @@ impl ExecutionContext {
         .await?
         {
             AppliedTurn::Applied(applied) => applied,
-            AppliedTurn::Waiting { question, conversation_revision } => {
+            AppliedTurn::Waiting { question, conversation_revision, host } => {
+                self.state =
+                    Some(RunState::interrupted(input, design.clone(), restored_findings, host)?);
                 return Ok(Some((question, conversation_revision)));
+            }
+            AppliedTurn::Rejected { error, host } => {
+                self.state =
+                    Some(RunState::interrupted(input, design.clone(), restored_findings, host)?);
+                return Err(error);
             }
         };
         let stage =
@@ -151,7 +158,11 @@ impl ExecutionContext {
             };
         let _ =
             self.recorder.record(stage, applied.conversation_revision, CheckpointEvidence::None)?;
-        self.state = Some(RunState::new(input, design.clone(), restored_findings, applied)?);
+        let mut run_state = RunState::new(input, design.clone(), restored_findings, applied)?;
+        if let Some(resume) = &input.resume {
+            run_state.merge_resume_host(resume);
+        }
+        self.state = Some(run_state);
         self.next_phase = ProductRunPhase::Checking;
         Ok(None)
     }
@@ -208,13 +219,67 @@ impl RunState {
             design,
             fix_summaries: resume.fix_summaries().to_vec(),
             tool_calls: resume.tool_calls(),
-            conversation_revision: resume.checkpoint().identity().conversation_revision(),
+            conversation_revision: resume.checkpoint().identity().requirements_revision(),
             findings: review::restore_ledger(resume.finding_state())?,
             fix_progress: crate::execution::fix_progress::FixProgress::new(input.checkpoint()?),
             coordinator: coordinator(resume.fixer_cycles())?,
             developer_evidence: resume.developer_evidence().to_owned(),
             successful_commands: resume.successful_commands().to_vec(),
         })
+    }
+
+    pub(super) fn interrupted(
+        input: &ProductRunInput,
+        design: design::DesignDocument,
+        findings: ProductFindingLedger,
+        host: super::HostTurnEvidence,
+    ) -> Result<Self, ProductRunnerError> {
+        let mut state = Self {
+            task_summary: "Peritus retained host-observed work after the developer's terminal report could not be accepted."
+                .to_owned(),
+            run_instructions: "Resume this Peritus run to complete verification and acceptance."
+                .to_owned(),
+            design,
+            fix_summaries: Vec::new(),
+            tool_calls: host.tool_calls,
+            conversation_revision: host.conversation_revision,
+            findings,
+            fix_progress: crate::execution::fix_progress::FixProgress::new(input.checkpoint()?),
+            coordinator: coordinator(0)?,
+            developer_evidence: host.verification_evidence,
+            successful_commands: host.successful_commands,
+        };
+        if let Some(resume) = &input.resume {
+            state.merge_resume_host(resume);
+        }
+        Ok(state)
+    }
+
+    pub(super) fn merge_host(&mut self, host: &super::HostTurnEvidence) {
+        self.tool_calls = self.tool_calls.saturating_add(host.tool_calls);
+        self.conversation_revision = host.conversation_revision;
+        crate::developer_tools::merge_rendered(
+            &mut self.developer_evidence,
+            &host.verification_evidence,
+        );
+        crate::developer_tools::merge_successful(
+            &mut self.successful_commands,
+            &host.successful_commands,
+        );
+    }
+
+    fn merge_resume_host(&mut self, resume: &ProductRunResume) {
+        self.tool_calls = self.tool_calls.saturating_add(resume.tool_calls());
+        let current_evidence = std::mem::take(&mut self.developer_evidence);
+        resume.developer_evidence().clone_into(&mut self.developer_evidence);
+        crate::developer_tools::merge_rendered(&mut self.developer_evidence, &current_evidence);
+        let mut retained = resume.successful_commands().to_vec();
+        for command in std::mem::take(&mut self.successful_commands) {
+            if !retained.contains(&command) {
+                retained.push(command);
+            }
+        }
+        self.successful_commands = retained;
     }
 }
 

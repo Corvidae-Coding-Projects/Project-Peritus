@@ -6,7 +6,7 @@ import { resolve, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { randomUUID } from 'node:crypto';
 
-let temporary:string,root:string,server:ChildProcess,token:string,project:string,session:string;
+let temporary:string,root:string,server:ChildProcess,token:string,project:string,session:string,run:string;
 const origin='http://127.0.0.1:4174';
 async function startServer(){
   server=spawn(resolve('../target/debug/peritus-web'),['--port','4174','--root',root,'--config',join(temporary,'webui.toml'),'--state',join(temporary,'workspace.json'),'--daemon-config',join(temporary,'absent.toml'),'--endpoint',join(temporary,'absent.sock'),'--product-state',join(temporary,'absent-state'),'--assets',resolve('dist'),'--cli',join(temporary,'cli')],{stdio:['ignore','pipe','pipe']});
@@ -22,7 +22,7 @@ test.beforeAll(async({request})=>{
   await writeFile(join(root,'README.md'),'# Session integration fixture\n');
   await writeFile(join(temporary,'cli'),'#!/bin/sh\nprintf "%s\\n" "$@"\n',{mode:0o700});
   await startServer();
-  const boot=await (await request.get(`${origin}/api/bootstrap`)).json();token=boot.token;project=boot.workspace.projects[0].id;session=boot.workspace.sessions[0].id;
+  const boot=await (await request.get(`${origin}/api/bootstrap`)).json();token=boot.token;project=boot.workspace.projects[0].id;session=boot.workspace.sessions[0].id;run=boot.workspace.sessions[0].run;
 });
 test.afterAll(async()=>{await stopServer();if(temporary)await rm(temporary,{recursive:true,force:true});});
 
@@ -65,21 +65,63 @@ test('workbench binds exact browser session, project and daemon without executin
   expect(opened).toMatchObject({session,project,suggestion:'/context next'});
   let terminal:any;
   await expect.poll(async()=>{terminal=await (await request.get(`/api/terminal/${opened.id}`,{headers:{'x-peritus-token':token}})).json();return terminal.ended;}).toBe(true);
-  expect(Buffer.from(terminal.data,'base64').toString().replaceAll('\r','').trim().split('\n')).toEqual(['--endpoint',join(temporary,'absent.sock'),'open',root,'--run',session]);
+  expect(Buffer.from(terminal.data,'base64').toString().replaceAll('\r','').trim().split('\n')).toEqual(['--endpoint',join(temporary,'absent.sock'),'open',root,'--run',run]);
   expect((await (await request.get('/api/bootstrap')).json()).consoles).toContainEqual(expect.objectContaining({id:opened.id,session,suggestion:'/context next'}));
   expect((await action(request,'workbench',{session:'missing'})).error).toContain('Session');
   await action(request,'close-console',{id:opened.id});
+});
+
+test('unknown command outcomes expose authoritative facts and their legal recovery control',async({page})=>{
+  const boot=await (await page.request.get(`${origin}/api/bootstrap`)).json();
+  const selected=boot.workspace.sessions[0];
+  const controls={stop:false,retry:false,accept:false,commit:false,export:false,discard:false,acknowledge:true};
+  const run={id:selected.run,workspace:'44'.repeat(16),providers:{},phase:'RecoveryRequired',task:'Interrupted command',status:'Command outcome requires inspection',diff:'',gates:'',review:'',summary:'Useful workspace changes remain available.',operation:{kind:'Command',state:'OutcomeUnknown',identity:'command/exact-operation',known:'The original command receipt is durable and replay is forbidden.',uncertainty:'The host cannot prove whether the command changed the workspace.',legalControls:controls},deliverable:null};
+  const conversation={run,received:'1',incorporated:'1',activities:[{id:'1',kind:'status',text:'Command interrupted',detail:'Inspect the authoritative operation.'}]};
+  const actions:string[]=[];
+  await page.route('**/api/query?**',async route=>{
+    const kind=new URL(route.request().url()).searchParams.get('kind');
+    if(kind==='daemon')return route.fulfill({json:{ready:true,readiness:'ReadyReadWrite'}});
+    if(kind==='facts')return route.fulfill({json:{providers:[],workspace:{id:run.workspace,root,execution:root,trust:'trusted'},endpoint:'fixture',ready:true,reason:'Ready'}});
+    if(kind==='conversation')return route.fulfill({json:conversation});
+    if(kind==='consoles')return route.fulfill({json:[]});
+    if(kind==='runs')return route.fulfill({json:[run]});
+    await route.continue();
+  });
+  await page.route('**/api/action',async route=>{
+    const input=route.request().postDataJSON();
+    if(input.command==='control'){
+      actions.push(input.action);
+      run.operation={...run.operation,state:'RecoveryRequired',known:'The unknown outcome was reviewed without replay.',uncertainty:'Replacement mutations remain frozen until exact retry.',legalControls:{...controls,retry:true,acknowledge:false}};
+      return route.fulfill({json:conversation});
+    }
+    await route.continue();
+  });
+  await page.goto('/');
+  const operation=page.locator('.operation-observation');
+  await expect(operation.getByText('Authoritative operation',{exact:true})).toBeVisible();
+  await expect(operation).toContainText('The original command receipt is durable and replay is forbidden.');
+  await expect(operation).toContainText('The host cannot prove whether the command changed the workspace.');
+  await expect(page.getByRole('button',{name:/^Stop work/})).toBeDisabled();
+  await page.screenshot({path:'/tmp/peritus-operation-recovery.png',fullPage:true});
+  await page.getByRole('button',{name:'Acknowledge unknown outcome',exact:true}).click();
+  await expect.poll(()=>actions).toEqual(['acknowledge']);
+  await expect(operation.getByText('RecoveryRequired',{exact:true})).toBeVisible();
+  await expect(page.getByRole('button',{name:'Exact retry',exact:true})).toBeVisible();
+  const composer=page.getByRole('textbox',{name:'Message Peritus or enter a slash command'});
+  await composer.fill('/status');await composer.press('Enter');
+  await expect(page.getByRole('dialog')).toContainText('command/exact-operation');
+  await expect(page.getByRole('dialog')).toContainText('Legal controls: retry');
 });
 
 test('improvement inbox stays passive until explicit evaluation and preserves evidence controls',async({page,request})=>{
   const boot=await (await request.get('/api/bootstrap')).json();
   const current=boot.workspace.sessions[0],workspace='44'.repeat(16),candidate='55'.repeat(32);
   const mutations:Record<string,unknown>[]=[];
-  const inbox={workspace,candidates:[{id:candidate,proposal:'Investigate repeated verification failures',dismissed:false,evaluation:null as string|null,evidence:[{run:current.id,digest:'66'.repeat(32),summary:'A completed run required three repair cycles.'}]}]};
+  const inbox={workspace,candidates:[{id:candidate,proposal:'Investigate repeated verification failures',dismissed:false,evaluation:null as {conversation:string;run:string;target:string}|null,evidence:[{run:current.run,digest:'66'.repeat(32),summary:'A completed run required three repair cycles.'}]}]};
   await page.route('**/api/query?**',async route=>{
     const kind=new URL(route.request().url()).searchParams.get('kind');
     if(kind==='improvements')return route.fulfill({json:inbox});
-    if(kind==='runs')return route.fulfill({json:[{id:current.id,workspace,task:'Evidence fixture',phase:'Complete',busy:false}]});
+    if(kind==='runs')return route.fulfill({json:[{id:current.run,workspace,task:'Evidence fixture',phase:'Complete',operation:{kind:'Execution',state:'Succeeded',identity:`run/${current.run}`,known:'The run completed.',uncertainty:'',legalControls:{stop:false,retry:false,accept:false,commit:false,export:false,discard:false,acknowledge:false}}}]});
     await route.continue();
   });
   await page.route('**/api/action',async route=>{
@@ -87,10 +129,10 @@ test('improvement inbox stays passive until explicit evaluation and preserves ev
     if(input.command==='improvements'){
       mutations.push(input);
       if(input.action==='dismiss')inbox.candidates[0]!.dismissed=true;
-      if(input.action==='evaluate')inbox.candidates[0]!.evaluation=current.id;
+      if(input.action==='evaluate')inbox.candidates[0]!.evaluation={conversation:current.conversation,run:current.run,target:workspace};
       return route.fulfill({json:inbox});
     }
-    if(input.command==='open-run')return route.fulfill({json:current});
+    if(input.command==='open-run'||input.command==='open-workbench')return route.fulfill({json:current});
     await route.continue();
   });
   await page.goto('/');
@@ -110,7 +152,7 @@ test('improvement inbox stays passive until explicit evaluation and preserves ev
   expect(mutations).toHaveLength(1);
   expect(mutations[0]).toMatchObject({action:'evaluate',candidate,target:current.project});
   await page.getByRole('button',{name:'Improvement inbox',exact:true}).click();
-  await expect(page.getByRole('button',{name:'Open evaluation / review patch',exact:true})).toBeVisible();
+  await expect(page.getByRole('button',{name:'Open evaluation workbench / review patch',exact:true})).toBeVisible();
   await page.getByRole('button',{name:'Dismiss',exact:true}).click();
   await expect(page.getByText('No suggestions in this view.',{exact:false})).toBeVisible();
   await page.getByLabel('Show dismissed suggestions',{exact:true}).check();

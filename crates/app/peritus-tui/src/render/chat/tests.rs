@@ -22,6 +22,10 @@ fn model() -> AppModel {
         String::new(),
         String::new(),
         String::new(),
+        crate::test_support::run_operation(
+            RunId::new([3; 16]).expect("run"),
+            ProductRunPhase::Writing,
+        ),
     )
     .expect("run");
     let activities = (1..=30)
@@ -57,6 +61,26 @@ fn screen(model: &AppModel, width: u16, height: u16) -> (String, (u16, u16)) {
     let text = frame.buffer.content().iter().map(ratatui::buffer::Cell::symbol).collect::<String>();
     let cursor = terminal.get_cursor_position().expect("composer cursor");
     (text, (cursor.x, cursor.y))
+}
+
+#[test]
+fn disconnected_composer_keeps_reconnect_visible_after_notice_expiry_at_narrow_widths() {
+    let mut model = model();
+    model.connection = ConnectionStatus::Disconnected("transport unavailable".into());
+    model.notice = None;
+    model.chat.buffer = "retained draft".into();
+    model.chat.cursor = model.chat.buffer.len();
+    for width in [32, 40, 80] {
+        let (text, _) = screen(&model, width, 24);
+        assert!(text.starts_with("Peritus · disconnected"));
+        assert!(text.contains("Offline · Ctrl-R reconnects"));
+        assert!(text.contains("retained draft"));
+        assert!(!text.contains("Enter sends"));
+    }
+    model.connection = ConnectionStatus::Connecting;
+    let (text, _) = screen(&model, 80, 24);
+    assert!(text.contains("Connecting · draft kept"));
+    assert!(!text.contains("Enter sends"));
 }
 
 #[test]
@@ -261,19 +285,19 @@ fn tool_entries_show_actual_commands_and_bounded_sanitized_results_without_detai
 }
 
 #[test]
-fn one_working_idler_updates_elapsed_seconds_without_adding_transcript_rows() {
+fn one_working_idler_uses_daemon_status_without_inventing_client_elapsed_time() {
     use crate::action::Action;
     use std::time::{Duration, Instant};
     let mut model = conversation_with_diagnostics();
     let started = Instant::now();
     let _ = model.update(Action::Tick(started));
     let (initial, _) = screen(&model, 100, 32);
-    assert!(initial.contains("*working (0s)"));
+    assert!(initial.contains("*working · Responding"));
     let _ = model.update(Action::Tick(started + Duration::from_secs(40)));
     let (later, _) = screen(&model, 100, 32);
-    assert!(later.contains("*working (40s)"));
+    assert!(later.contains("*working · Responding"));
     assert_eq!(later.matches("*working").count(), 1);
-    assert!(!later.contains("*working (0s)"));
+    assert!(!later.contains("*working (40s)"));
     assert!(!later.contains("Requesting model"));
     assert!(later.contains("I'll inspect the parser."));
     let _ = model.update(Action::Disconnected("socket closed".to_owned()));
@@ -298,7 +322,7 @@ fn working_indicator_is_bold_white_directly_above_the_composer() {
                 model.chat.scroll = scroll;
                 let mut terminal = Terminal::new(TestBackend::new(width, height)).unwrap();
                 let frame = terminal.draw(|frame| draw(frame, &model)).unwrap();
-                let label = "*working (40s)";
+                let label = "*working · Responding";
                 let composer_row = (0..height)
                     .find(|row| {
                         (0..width)
@@ -307,7 +331,14 @@ fn working_indicator_is_bold_white_directly_above_the_composer() {
                             .contains("Message / steer active work")
                     })
                     .expect("composer must remain visible");
-                let indicator_row = composer_row.checked_sub(1).expect("row above composer");
+                let indicator_row = (0..composer_row)
+                    .find(|row| {
+                        (0..width)
+                            .map(|column| frame.buffer[(column, *row)].symbol())
+                            .collect::<String>()
+                            .contains(label)
+                    })
+                    .expect("progress above composer");
                 for (column, character) in label.chars().enumerate() {
                     let cell = &frame.buffer[(u16::try_from(column).unwrap(), indicator_row)];
                     assert_eq!(cell.symbol(), character.to_string());

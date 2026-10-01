@@ -35,6 +35,7 @@ impl ProductProviderOption {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ProductLaunchContext {
     run_id: Option<peritus_types::RunId>,
+    conversation: Option<peritus_app_protocol::WorkbenchQuery>,
     workspace_id: WorkspaceId,
     workspace_label: String,
     providers: Vec<ProductProviderOption>,
@@ -64,6 +65,7 @@ impl ProductLaunchContext {
         }
         Ok(Self {
             run_id: None,
+            conversation: None,
             workspace_id,
             workspace_label,
             providers,
@@ -77,7 +79,30 @@ impl ProductLaunchContext {
     #[must_use]
     pub const fn with_run(mut self, run: Option<peritus_types::RunId>) -> Self {
         self.run_id = run;
+        self.conversation = None;
         self
+    }
+
+    /// Selects a durable conversation without starting its execution.
+    ///
+    /// # Errors
+    /// Rejects a conversation outside this launcher-resolved workspace.
+    pub fn with_conversation(
+        mut self,
+        query: peritus_app_protocol::WorkbenchQuery,
+    ) -> Result<Self, TuiError> {
+        if query.workspace() != self.workspace_id {
+            return Err(TuiError::InvalidValue("conversation belongs to another workspace".into()));
+        }
+        self.run_id = None;
+        self.conversation = Some(query);
+        Ok(self)
+    }
+
+    /// Exact initial durable conversation selected by the caller.
+    #[must_use]
+    pub const fn conversation(&self) -> Option<peritus_app_protocol::WorkbenchQuery> {
+        self.conversation
     }
 
     /// Exact initial conversation selected by the caller.

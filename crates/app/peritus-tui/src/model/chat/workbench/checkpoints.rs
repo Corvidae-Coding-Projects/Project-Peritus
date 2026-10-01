@@ -207,12 +207,26 @@ impl AppModel {
             return Vec::new();
         }
         let Some(request) = self.chat.workbench.rewind_request else { return Vec::new() };
-        self.request(
-            AppRequestPayload::PreviewWorkbenchRewind(request),
-            PendingRequest::WorkbenchRewind(request),
-        )
-        .into_iter()
-        .collect()
+        let mode = match request.mode() {
+            peritus_app_protocol::WorkbenchRewindMode::FilesOnly => "files",
+            peritus_app_protocol::WorkbenchRewindMode::ConversationOnly => "conversation",
+            peritus_app_protocol::WorkbenchRewindMode::Combined => "combined",
+        };
+        let mut command =
+            format!("/rewind {} {mode}", crate::model::format_id(request.checkpoint().as_bytes()));
+        if let Some(budget) = request.allocation() {
+            use std::fmt::Write as _;
+            let _ = write!(
+                command,
+                " time={} requests={} tools={} tokens={}",
+                budget.active_millis(),
+                budget.requests(),
+                budget.tool_calls(),
+                budget.total_tokens()
+            );
+        }
+        self.chat.workbench.rewind_preview = None;
+        self.refresh_snapshot_for_command(request.query(), command)
     }
 
     pub(in crate::model) fn accept_workbench_rewind(
@@ -228,6 +242,7 @@ impl AppModel {
             return;
         }
         self.chat.workbench.rewind_preview = Some(preview);
+        self.complete_workbench_inspection();
         self.chat.workbench.scroll = 0;
         self.chat.workbench.message.clear();
     }

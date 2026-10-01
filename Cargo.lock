@@ -100,6 +100,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7d902e3d592a523def97af8f317b08ce16b7ab854c1985a0c671e6f15cebc236"
 
 [[package]]
+name = "arrayvec"
+version = "0.7.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d3fb67a6e08acf24fdeccbac2cb6ac4305825bd1f117462e0e6f2f193345ad56"
+
+[[package]]
 name = "async-broadcast"
 version = "0.7.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3085,6 +3091,7 @@ dependencies = [
  "bytes",
  "futures-core",
  "futures-util",
+ "libc",
  "peritus-model-protocol",
  "peritus-types",
  "reqwest",
@@ -3581,6 +3588,7 @@ dependencies = [
  "base64",
  "crossterm",
  "libc",
+ "nix 0.31.3",
  "peritus-app-protocol",
  "peritus-codec",
  "peritus-product-runner",
@@ -3588,11 +3596,14 @@ dependencies = [
  "peritus-run-settlement",
  "peritus-tools-shell",
  "peritus-types",
+ "portable-pty",
  "ratatui",
  "sha2 0.11.0",
+ "signal-hook",
  "tempfile",
  "thiserror 2.0.20",
  "tokio",
+ "vt100",
  "windows-sys 0.61.2",
 ]
 
@@ -5114,6 +5125,27 @@ dependencies = [
  "verus_builtin",
  "verus_builtin_macros",
  "verus_state_machines_macros",
+]
+
+[[package]]
+name = "vt100"
+version = "0.16.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "054ff75fb8fa83e609e685106df4faeffdf3a735d3c74ebce97ec557d5d36fd9"
+dependencies = [
+ "itoa",
+ "unicode-width",
+ "vte",
+]
+
+[[package]]
+name = "vte"
+version = "0.15.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a5924018406ce0063cd67f8e008104968b74b563ee1b85dde3ed1f7cb87d3dbd"
+dependencies = [
+ "arrayvec",
+ "memchr",
 ]
 
 [[package]]

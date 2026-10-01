@@ -33,8 +33,38 @@ struct PathRequirements {
     removals: Vec<removals::Removal>,
 }
 
-pub(super) fn run(root: &Path, transcript: &str, changed_paths: &[PathBuf]) -> GateExecutionRecord {
-    let requirements = extract(root, transcript);
+pub(super) struct Analysis {
+    requirements: PathRequirements,
+    requests_single_file: bool,
+}
+
+impl Analysis {
+    pub(super) fn required_outputs(&self) -> Vec<PathBuf> {
+        self.requirements
+            .mentions
+            .iter()
+            .filter_map(|mention| mention.required_output.then_some(mention.relative.clone()))
+            .collect()
+    }
+
+    pub(super) const fn requests_single_file(&self) -> bool {
+        self.requests_single_file
+    }
+}
+
+pub(super) fn analyze(root: &Path, transcript: &str) -> Analysis {
+    Analysis {
+        requirements: extract(root, transcript),
+        requests_single_file: transcript_requests_single_file(transcript),
+    }
+}
+
+pub(super) fn run_analyzed(
+    root: &Path,
+    analysis: &Analysis,
+    changed_paths: &[PathBuf],
+) -> GateExecutionRecord {
+    let requirements = &analysis.requirements;
     let mut checked = Vec::new();
     let mut failures = Vec::new();
     let mut presence = BTreeMap::new();
@@ -155,15 +185,17 @@ fn output_list_directory(root: &Path, words: &[&str]) -> Option<PathBuf> {
     })
 }
 
-pub(super) fn required_outputs(root: &Path, transcript: &str) -> Vec<PathBuf> {
-    extract(root, transcript)
-        .mentions
-        .into_iter()
-        .filter_map(|mention| mention.required_output.then_some(mention.relative))
-        .collect()
+#[cfg(test)]
+fn run(root: &Path, transcript: &str, changed_paths: &[PathBuf]) -> GateExecutionRecord {
+    run_analyzed(root, &analyze(root, transcript), changed_paths)
 }
 
-pub(super) fn requests_single_file(transcript: &str) -> bool {
+#[cfg(test)]
+pub(super) fn required_outputs(root: &Path, transcript: &str) -> Vec<PathBuf> {
+    analyze(root, transcript).required_outputs()
+}
+
+fn transcript_requests_single_file(transcript: &str) -> bool {
     transcript.lines().any(|line| {
         let words = line.split_whitespace().collect::<Vec<_>>();
         words.iter().enumerate().any(|(index, word)| {

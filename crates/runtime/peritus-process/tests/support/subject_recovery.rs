@@ -1,4 +1,4 @@
-use std::{thread, time::Duration};
+use std::time::{Duration, Instant};
 
 use peritus_conformance::{
     ProcessConformanceError, ProcessConformanceObservation, ProcessDisposition,
@@ -41,20 +41,34 @@ pub fn exercise(
             resource_fidelity: peritus_sandbox::ResourceFidelity::Reference,
         },
     )
-    .map_err(|_| infrastructure())?;
-    let mut owned = Some(subject::launch(root, ids, execution)?);
+    .map_err(|error| failed(requested, "create plan", error))?;
+    let mut owned = Some(
+        subject::launch(root, ids, execution)
+            .map_err(|error| failed(requested, "launch owner", error))?,
+    );
     let process = owned.as_ref().ok_or_else(infrastructure)?;
     let control = process.control();
     if requested == ProcessRecoveryProbe::Terminal {
-        owned.take().ok_or_else(infrastructure)?.wait().map_err(|_| infrastructure())?;
+        owned
+            .take()
+            .ok_or_else(infrastructure)?
+            .wait()
+            .map_err(|error| failed(requested, "wait for terminal", error))?;
     } else {
-        wait_for_start(&control)?;
+        wait_for_start(&control).map_err(|error| failed(requested, "wait for start", error))?;
     }
-    let store =
-        ProcessStore::open(root.registry(), root.workspace()).map_err(|_| infrastructure())?;
+    let store = ProcessStore::open(root.registry(), root.workspace())
+        .map_err(|error| failed(requested, "reopen store", error))?;
     let mut probe = FixedProbe::new(requested);
-    let report = store.reconcile(&mut probe).map_err(|_| infrastructure())?;
+    let report =
+        store.reconcile(&mut probe).map_err(|error| failed(requested, "reconcile", error))?;
     let entry = report.entries().first().copied().ok_or_else(infrastructure)?;
+    // The catalog reports one failed contract. Keep the exact subprobe evidence in the
+    // test's captured output so a native CI failure identifies the actual classification.
+    eprintln!(
+        "recovery fixture {requested:?}: {entry:?}; terminal={:?}",
+        control.terminal_result()
+    );
     if requested != ProcessRecoveryProbe::Terminal {
         let _ = control.cancel(CancellationReason::SupervisorShutdown);
         let _ = owned.take().ok_or_else(infrastructure)?.wait();
@@ -87,17 +101,31 @@ pub fn exercise(
 fn wait_for_start(
     control: &peritus_process::ProcessControl,
 ) -> Result<(), ProcessConformanceError> {
-    for _ in 0..100 {
-        if control
-            .read_events(ProcessCursor::after(0), 32)
-            .iter()
-            .any(|event| matches!(event.kind(), ProcessEventKind::Started { .. }))
-        {
-            return Ok(());
+    let deadline = Instant::now() + Duration::from_secs(5);
+    let mut cursor = ProcessCursor::after(0);
+    while Instant::now() < deadline {
+        let remaining = deadline.saturating_duration_since(Instant::now());
+        for event in control.wait_events(cursor, 32, remaining) {
+            cursor = ProcessCursor::after(event.sequence());
+            if matches!(event.kind(), ProcessEventKind::Started { .. }) {
+                return Ok(());
+            }
         }
-        thread::sleep(Duration::from_millis(5));
+        if control.terminal_result().is_some() {
+            break;
+        }
     }
+    eprintln!("recovery start was not observed: terminal={:?}", control.terminal_result());
     Err(infrastructure())
+}
+
+fn failed(
+    probe: ProcessRecoveryProbe,
+    stage: &str,
+    error: impl std::fmt::Debug,
+) -> ProcessConformanceError {
+    eprintln!("recovery fixture {probe:?} failed to {stage}: {error:?}");
+    infrastructure()
 }
 
 struct FixedProbe {
@@ -136,7 +164,7 @@ impl ProcessProbe for FixedProbe {
 
 const fn recovery_disposition(value: RecoveryDisposition) -> ProcessRecoveryDisposition {
     match value {
-        RecoveryDisposition::AlreadyTerminal => ProcessRecoveryDisposition::Terminal,
+        RecoveryDisposition::Terminal => ProcessRecoveryDisposition::Terminal,
         RecoveryDisposition::LiveOwned => ProcessRecoveryDisposition::LiveOwned,
         RecoveryDisposition::AbsentUnobserved => ProcessRecoveryDisposition::AbsentUnobserved,
         RecoveryDisposition::Indeterminate => ProcessRecoveryDisposition::Indeterminate,

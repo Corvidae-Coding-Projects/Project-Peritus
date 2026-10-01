@@ -37,6 +37,50 @@ fn active_goal(journal: &mut ControlStore) -> ControlOperation {
 }
 
 #[test]
+fn accounting_does_not_invalidate_user_edits_but_competing_edits_do() {
+    let root = tempfile::tempdir().expect("root");
+    let mut journal = store(root.path());
+    let start = active_goal(&mut journal);
+    let inspected = journal.load(start.conversation()).expect("load").expect("record").revision();
+    journal.observe_goal_progress(&start, 100, 0, 0, 0, 0, 0, 0).expect("clock");
+    let budget = operation(
+        4,
+        inspected,
+        ControlIntent::UpdateGoalBudget {
+            goal: start.id(),
+            budget: GoalBudget::new(Some(60_000), None, None, None).expect("budget"),
+            now_unix_millis: 2,
+        },
+    );
+    let receipt = journal.accept(&budget).expect("budget survives accounting");
+    let revision = receipt.accepted_revision();
+    journal.observe_goal_progress(&start, 200, 0, 0, 0, 0, 0, 0).expect("clock");
+    let brief = operation(
+        5,
+        revision,
+        ControlIntent::SetBrief {
+            field: BriefField::Objective,
+            text: ControlText::new("Updated objective".to_owned()).expect("text"),
+        },
+    );
+    journal.accept(&brief).expect("brief survives accounting");
+    let competing = operation(
+        6,
+        revision,
+        ControlIntent::SetBrief {
+            field: BriefField::Objective,
+            text: ControlText::new("Stale competing objective".to_owned()).expect("text"),
+        },
+    );
+    assert!(matches!(journal.accept(&competing), Err(Error::Control(ControlError::StaleRevision))));
+    let expected = journal.load(start.conversation()).expect("load").expect("record");
+    drop(journal);
+    let mut journal = store(root.path());
+    assert_eq!(journal.load(start.conversation()).expect("replay").expect("record"), expected);
+    assert_eq!(journal.accept(&budget).expect("exact original receipt"), receipt);
+}
+
+#[test]
 fn tool_sequence_identity_is_scoped_to_role_and_loop_invocation_with_exact_replay() {
     let root = tempfile::tempdir().expect("root");
     let mut journal = store(root.path());

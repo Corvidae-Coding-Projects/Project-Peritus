@@ -2,8 +2,8 @@
 use super::*;
 use crate::product_run::ProductRunServiceError;
 use peritus_app_protocol::{
-    ProductInteractionMode, ProductInteractionRequest, ProductModelChoice, ProductModelEffort,
-    ProductModelUpdate, ProductRoleModels, ProductRunConversationQuery,
+    ProductInteractionMode, ProductInteractionQuery, ProductModelChoice, ProductModelEffort,
+    ProductModelUpdate, ProductRoleModels,
 };
 use peritus_model_protocol::{ModelName, ModelRequest, ProviderProfile};
 use peritus_provider_core::{BoxFuture, CancellationToken, OwnedModelStream, ProviderCoreError};
@@ -134,7 +134,7 @@ async fn effort_scenario(
         base.profile().profile_id(),
     );
     service
-        .interact(ProductInteractionRequest::new(
+        .start_interaction(
             ProductRunRequest::new(
                 run,
                 workspace,
@@ -144,13 +144,13 @@ async fn effort_scenario(
             .expect("request"),
             mode,
             ProductRoleModels::default(),
-        ))
+        )
         .await
         .expect("start");
     tokio::time::timeout(Duration::from_secs(5), provider.started.notified())
         .await
         .expect("old model in flight");
-    let before = service.query_interaction(ProductRunConversationQuery::new(run)).expect("before");
+    let before = service.query_interaction(ProductInteractionQuery::new(run)).expect("before");
     let models = choices(mode, selected.profile().model().as_str());
     let models = if mode == ProductInteractionMode::Review {
         ProductRoleModels::new(
@@ -165,8 +165,9 @@ async fn effort_scenario(
             models.fixer().clone(),
         )
     };
+    let actor = service.test_actor(run).expect("run owner");
     let updated = service
-        .update_models(&ProductModelUpdate::new(run, models.clone()))
+        .update_models(actor, &ProductModelUpdate::new(run, models.clone()))
         .await
         .expect("active update");
     assert_eq!(updated.models(), &models);
@@ -178,28 +179,22 @@ async fn effort_scenario(
         ProductModelChoice::default(),
     );
     assert_eq!(
-        service.update_models(&ProductModelUpdate::new(run, unsupported)).await,
+        service.update_models(actor, &ProductModelUpdate::new(run, unsupported)).await,
         Err(ProductRunServiceError::EffortUnsupported),
         "unmapped controls must reject before saving"
     );
     assert!(!updated.snapshot().phase().terminal());
     assert!(selected.requests.lock().expect("requests").is_empty(), "in-flight turn is unchanged");
-    let invalid =
-        service.update_models(&ProductModelUpdate::new(run, choices(mode, "unsupported"))).await;
+    let invalid = service
+        .update_models(actor, &ProductModelUpdate::new(run, choices(mode, "unsupported")))
+        .await;
     assert!(invalid.is_err());
     assert_eq!(
-        service
-            .query_interaction(ProductRunConversationQuery::new(run))
-            .expect("unchanged")
-            .models(),
+        service.query_interaction(ProductInteractionQuery::new(run)).expect("unchanged").models(),
         &models
     );
-    let restored =
-        super::super::persistence::load_records(&service.inner.directory).expect("durable");
-    assert_eq!(
-        &restored.get(&run).expect("run").interaction.as_ref().expect("options").models,
-        &models
-    );
+    let restored = service.load_test_records().expect("durable");
+    assert_eq!(&restored.get(&run).expect("run").interaction.models, &models);
     provider.release.notify_one();
     let terminal = wait_for_terminal(&service, run).await;
     assert_eq!(terminal.phase(), ProductRunPhase::WaitingForUser, "{}", terminal.summary());
@@ -233,7 +228,7 @@ async fn effort_scenario(
         );
     }
     let idle = service
-        .update_models(&ProductModelUpdate::new(run, ProductRoleModels::default()))
+        .update_models(actor, &ProductModelUpdate::new(run, ProductRoleModels::default()))
         .await
         .expect("idle reset");
     assert_eq!(idle.snapshot().phase(), ProductRunPhase::WaitingForUser);
@@ -251,20 +246,27 @@ async fn assert_failed_persistence_keeps_prior_selection(
     run: RunId,
     models: ProductRoleModels,
 ) {
-    let saved = fs::read_dir(&service.inner.directory)
-        .expect("state directory")
-        .map(|entry| entry.expect("entry").path())
-        .find(|path| path.extension().is_some_and(|extension| extension == "json"))
-        .expect("one saved run");
+    let saved = fs::read_dir(
+        service.inner.directory.parent().expect("state root").join("workbench-v1/runs"),
+    )
+    .expect("state directory")
+    .map(|entry| entry.expect("entry").path())
+    .find(|path| path.extension().is_some_and(|extension| extension == "json"))
+    .expect("one saved run");
     let before = fs::read(&saved).expect("saved bytes");
     fs::create_dir(saved.with_extension("json.new")).expect("block temporary file publication");
-    assert!(service.update_models(&ProductModelUpdate::new(run, models)).await.is_err());
+    assert!(
+        service
+            .update_models(
+                service.test_actor(run).expect("run owner"),
+                &ProductModelUpdate::new(run, models)
+            )
+            .await
+            .is_err()
+    );
     assert_eq!(fs::read(saved).expect("prior durable bytes"), before);
     let records = service.inner.records.read().expect("records");
-    assert_eq!(
-        records.get(&run).expect("run").interaction.as_ref().expect("options").models,
-        ProductRoleModels::default()
-    );
+    assert_eq!(records.get(&run).expect("run").interaction.models, ProductRoleModels::default());
 }
 
 fn scenario_service(

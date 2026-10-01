@@ -1,6 +1,42 @@
 use super::*;
 
 #[test]
+fn escape_cancels_unconfirmed_image_read_or_upload_but_retains_the_caption() {
+    for uploading in [false, true] {
+        let mut model = opened();
+        let operation = read_request(&mut model);
+        model.chat.workbench.images.caption = "Keep this caption".into();
+        let sent = uploading.then(|| {
+            request(&model.update(Action::ImageRead { operation, result: Ok(bytes(b"pixels")) }))
+        });
+        let effects = key(&mut model, KeyCode::Esc);
+        assert!(!model.workbench_request_pending());
+        if let Some(sent) = sent {
+            let cancel = request(&effects);
+            let AppRequestPayload::BeginWorkbenchImageUpload(upload) = sent.payload() else {
+                panic!("upload")
+            };
+            assert!(matches!(cancel.payload(), AppRequestPayload::CancelArtifact(cancel)
+                if cancel.transfer_id() == upload.metadata().transfer_id()
+                && cancel.artifact_id() == upload.metadata().artifact_id()));
+            assert!(ack(&mut model, &cancel).is_empty());
+            assert!(ack(&mut model, &sent).is_empty());
+        } else {
+            assert!(effects.is_empty());
+            assert!(
+                model
+                    .update(Action::ImageRead { operation, result: Ok(bytes(b"pixels")) })
+                    .is_empty()
+            );
+        }
+        assert!(model.chat.workbench.images.preview.is_none());
+        assert_eq!(model.chat.workbench.images.caption, "Keep this caption");
+        assert_eq!(model.chat.buffer, "/attach /explicit/reference.gif");
+        assert!(model.chat.workbench.unresolved.is_none());
+    }
+}
+
+#[test]
 fn reconnect_resolves_the_exact_confirmed_preview_and_never_creates_a_second_import() {
     let mut model = opened();
     let (sent, preview) = upload(&mut model, b"fixture pixels");

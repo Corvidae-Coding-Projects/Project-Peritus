@@ -1,4 +1,6 @@
 use super::*;
+mod cancellation;
+mod onboarding;
 use crate::file_import::FileBytes;
 use peritus_app_protocol::{
     ConversationId, OperationAcknowledgement, WorkbenchFileImportPreview, WorkbenchFileMetadata,
@@ -31,6 +33,59 @@ fn opened() -> AppModel {
     model
 }
 
+fn refreshed_preview(model: &mut AppModel) -> Vec<Effect> {
+    let snapshot = model.chat.workbench.snapshot.clone().expect("snapshot");
+    let sent = request(&key(model, KeyCode::Char('p')));
+    assert!(matches!(sent.payload(), AppRequestPayload::QueryWorkbench(_)));
+    respond(model, &sent, AppResponsePayload::Workbench(snapshot))
+}
+
+#[test]
+fn file_preview_refreshes_revision_and_cancels_when_panel_is_closed() {
+    let mut model = opened();
+    let sent = request(&key(&mut model, KeyCode::Char('p')));
+    let previous = model.chat.workbench.snapshot.clone().unwrap();
+    let fresh =
+        WorkbenchSnapshot::new(previous.query(), 20, previous.title().clone(), false, false)
+            .unwrap();
+    let preview =
+        request(&respond(&mut model, &sent, AppResponsePayload::Workbench(fresh.clone())));
+    let AppRequestPayload::PreviewWorkbenchFile(selection) = preview.payload() else {
+        panic!("preview")
+    };
+    assert_eq!(selection.revision(), 20);
+
+    let mut model = opened();
+    let sent = request(&key(&mut model, KeyCode::Char('p')));
+    key(&mut model, KeyCode::Esc);
+    assert!(respond(&mut model, &sent, AppResponsePayload::Workbench(fresh)).is_empty());
+}
+
+#[test]
+fn file_list_refreshes_revision_and_does_not_continue_after_escape() {
+    for close in [false, true] {
+        let mut model = opened();
+        let old = model.chat.workbench.snapshot.clone().unwrap();
+        let sent = request(&key(&mut model, KeyCode::Char('l')));
+        assert!(matches!(sent.payload(), AppRequestPayload::QueryWorkbench(_)));
+        if close {
+            key(&mut model, KeyCode::Esc);
+        }
+        let fresh =
+            WorkbenchSnapshot::new(old.query(), 20, old.title().clone(), false, false).unwrap();
+        let effects = respond(&mut model, &sent, AppResponsePayload::Workbench(fresh));
+        if close {
+            assert!(effects.is_empty());
+        } else {
+            let sent = request(&effects);
+            let AppRequestPayload::QueryWorkbenchFiles(query) = sent.payload() else {
+                panic!("file list")
+            };
+            assert_eq!(query.revision(), 20);
+        }
+    }
+}
+
 fn ack(model: &mut AppModel, sent: &AppRequestEnvelope) -> Vec<Effect> {
     respond(
         model,
@@ -47,7 +102,7 @@ fn external_file_read_upload_preview_and_confirmation_bind_exact_snapshot() {
     model.chat.workbench.files.path = external.to_owned();
     model.chat.workbench.files.range = "lines:2:2".to_owned();
     model.chat.workbench.files.caption = "Use this exact external line".to_owned();
-    let effects = key(&mut model, KeyCode::Char('p'));
+    let effects = refreshed_preview(&mut model);
     let [Effect::ReadFile { operation, path, range }] = effects.as_slice() else {
         panic!("read: {effects:?}")
     };
@@ -113,7 +168,7 @@ fn preview(model: &mut AppModel) -> WorkbenchFilePreview {
     key(model, KeyCode::Char('t'));
     model.update(Action::TerminalEvent(Event::Paste("Use the selected line".to_owned())));
     assert!(key(model, KeyCode::Enter).is_empty());
-    let sent = request(&key(model, KeyCode::Char('p')));
+    let sent = request(&refreshed_preview(model));
     let AppRequestPayload::PreviewWorkbenchFile(selection) = sent.payload() else {
         panic!("preview")
     };
@@ -142,7 +197,7 @@ fn preview(model: &mut AppModel) -> WorkbenchFilePreview {
 fn file_draft_paste_preview_confirm_and_receipt_do_not_start_inference() {
     let mut model = opened();
     let preview = preview(&mut model);
-    assert_eq!(model.chat.buffer, "@src/reference.txt");
+    assert!(model.chat.buffer.is_empty());
     let sent = request(&key(&mut model, KeyCode::Char('c')));
     let AppRequestPayload::WorkbenchCommand(command) = sent.payload() else { panic!("confirm") };
     assert_eq!(command.expected_revision(), 9);

@@ -1,7 +1,9 @@
 //! Local diagnostic observations. No provider calls, command execution, repairs, or uploads.
 
 use super::{ProductRunService, ProductRunServiceError};
-use peritus_app_protocol::{DoctorFinding, DoctorQuery, DoctorReport, DoctorStatus as Status};
+use peritus_app_protocol::{
+    DoctorFinding, DoctorQuery, DoctorReport, DoctorStatus as Status, ProductRunOperationState,
+};
 
 impl ProductRunService {
     pub(crate) fn doctor(
@@ -43,22 +45,51 @@ impl ProductRunService {
             "Daemon-owned product records are readable in memory; they were validated at startup.",
             "This is not a full on-disk integrity scan or a repair.",
         )?);
-        let active = records.values().any(|record| {
-            record.request.workspace_id() == query.workspace()
-                && !record.snapshot.phase().terminal()
-        });
-        findings.push(if active {
+        let (live, unresolved) = records
+            .values()
+            .filter(|record| record.request.workspace_id() == query.workspace())
+            .try_fold((false, false), |(live, unresolved), record| {
+                let state = super::operation::project(&self.inner.directory, record)?.state();
+                Ok::<_, ProductRunServiceError>((
+                    live || matches!(
+                        state,
+                        ProductRunOperationState::Running
+                            | ProductRunOperationState::WaitingForUser
+                    ),
+                    unresolved
+                        || matches!(
+                            state,
+                            ProductRunOperationState::RecoveryRequired
+                                | ProductRunOperationState::OutcomeUnknown
+                        ),
+                ))
+            })?;
+        findings.push(if live && unresolved {
             finding(
                 "workspace-activity",
                 Status::Warning,
-                "The selected workspace has active daemon-owned work.",
+                "The selected workspace has live daemon-owned work and an operation requiring explicit reconciliation.",
+                "Use the legal controls shown on each run; diagnostics did not pause, retry, acknowledge, or alter either operation.",
+            )?
+        } else if unresolved {
+            finding(
+                "workspace-activity",
+                Status::Warning,
+                "The selected workspace has an operation requiring explicit reconciliation.",
+                "Use the legal controls shown on that run; diagnostics did not retry, acknowledge, or alter it.",
+            )?
+        } else if live {
+            finding(
+                "workspace-activity",
+                Status::Warning,
+                "The selected workspace has a live daemon-owned operation.",
                 "Diagnostics did not pause, cancel, restart, or alter that work.",
             )?
         } else {
             finding(
                 "workspace-activity",
                 Status::Healthy,
-                "No active product run is registered for the selected workspace.",
+                "No live or unresolved product operation is registered for the selected workspace.",
                 "Opening diagnostics does not start a run.",
             )?
         });

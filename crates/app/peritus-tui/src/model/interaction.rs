@@ -1,21 +1,26 @@
 //! Keyboard interaction and request construction for mutable UI workflows.
 
 use super::*;
+mod prompts;
+mod terminal;
 
 impl AppModel {
     pub(super) fn handle_terminal_event(&mut self, event: Event) -> Vec<Effect> {
         match event {
             Event::Key(key) => self.handle_key(key),
             Event::Paste(text) => {
-                if let Some(editor) = &mut self.editor {
-                    editor.buffer.insert_str(editor.cursor, &text);
-                    editor.cursor += text.len();
+                if self.editor.is_some() {
+                    self.paste_editor_event(&text);
                     Vec::new()
                 } else if self.view == View::Conversation {
                     self.paste_chat_event(&text);
                     Vec::new()
-                } else if self.terminal.as_ref().is_some_and(TerminalSession::capture_input) {
-                    self.send_terminal_input(text.into_bytes())
+                } else if self.view == View::Terminal
+                    && let Some(terminal) =
+                        self.terminal.as_mut().filter(|terminal| terminal.capture_input())
+                {
+                    let bytes = terminal.paste_bytes(&text);
+                    self.send_terminal_input(bytes)
                 } else {
                     Vec::new()
                 }
@@ -39,6 +44,19 @@ impl AppModel {
         if self.view == View::Conversation && self.editor.is_none() {
             return self.handle_chat_key(key);
         }
+        if key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('q') {
+            self.quitting = true;
+            return vec![Effect::Quit];
+        }
+        if self.view == View::Terminal
+            && self.editor.is_none()
+            && self.terminal.as_ref().is_some_and(TerminalSession::capture_input)
+        {
+            return self.captured_terminal_key(key);
+        }
+        if key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('r') {
+            return self.request_reconnect();
+        }
         if key.code == KeyCode::Esc && self.product.is_some() && self.editor.is_none() {
             self.return_to_conversation();
             return Vec::new();
@@ -52,23 +70,34 @@ impl AppModel {
         if self.editor.is_some() {
             return self.handle_editor_key(key);
         }
-        if self.view == View::Terminal
-            && self.terminal.as_ref().is_some_and(TerminalSession::capture_input)
+        if self.view == View::Help
+            && crate::help::scroll(&mut self.help_scroll, key, self.chat.viewport)
         {
-            if key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char(']') {
-                if let Some(terminal) = &mut self.terminal {
-                    terminal.set_capture_input(false);
-                }
-                self.notice(NoticeLevel::Info, "terminal keyboard capture released");
-                return Vec::new();
-            }
-            return terminal_bytes(key)
-                .map_or_else(Vec::new, |bytes| self.send_terminal_input(bytes));
+            return Vec::new();
         }
         if let Some(effects) = self.handle_product_key(key) {
             return effects;
         }
+        self.handle_panel_key(key)
+    }
 
+    fn handle_panel_key(&mut self, key: KeyEvent) -> Vec<Effect> {
+        if self.view == View::Approvals
+            && matches!(
+                key.code,
+                KeyCode::PageUp | KeyCode::PageDown | KeyCode::Home | KeyCode::End
+            )
+        {
+            let maximum = crate::render::inspection_scroll_limit(self);
+            let current = self.prompt_scroll.min(maximum);
+            self.prompt_scroll = match key.code {
+                KeyCode::PageUp => current.saturating_sub(12),
+                KeyCode::PageDown => current.saturating_add(12).min(maximum),
+                KeyCode::End => maximum,
+                _ => 0,
+            };
+            return Vec::new();
+        }
         match key.code {
             KeyCode::Char('1') => self.view = View::Runs,
             KeyCode::Char('2') => return self.open_diff_panel(),
@@ -77,8 +106,8 @@ impl AppModel {
             KeyCode::Char('5') => self.view = View::Evolution,
             KeyCode::Char('6') => self.view = View::Terminal,
             KeyCode::Char('7') => self.view = View::Approvals,
-            KeyCode::Char('8') if self.product.is_some() => self.view = View::Preview,
-            KeyCode::Char('?') => self.view = View::Help,
+            KeyCode::Char('8') => self.view = View::Preview,
+            KeyCode::Char('9' | '?') => self.view = View::Help,
             KeyCode::Tab => self.next_view(),
             KeyCode::BackTab => self.previous_view(),
             KeyCode::Up | KeyCode::Char('k') => self.select_previous(),
@@ -94,24 +123,34 @@ impl AppModel {
                 }
             }
             KeyCode::Char('r' | 'R') => {
-                self.connection = ConnectionStatus::Connecting;
-                return vec![Effect::Reconnect];
+                return self.request_reconnect();
             }
-            KeyCode::Char('a') if self.view == View::Terminal && self.terminal.is_none() => {
-                self.editor = Some(Editor {
+            KeyCode::Char('a')
+                if self.view == View::Terminal
+                    && !self.terminal.as_ref().is_some_and(TerminalSession::can_capture) =>
+            {
+                self.open_editor(Editor {
                     kind: EditorKind::ProcessId,
                     title: "Attach to daemon-owned process",
                     hint: "Enter the 32 hexadecimal digits of a ProcessId",
                     buffer: String::new(),
                     cursor: 0,
+                    pasted_command: false,
                 });
             }
             KeyCode::Char('i') if self.view == View::Terminal => {
-                if let Some(terminal) = &mut self.terminal {
+                if let Some(terminal) = &mut self.terminal
+                    && terminal.can_capture()
+                {
                     terminal.set_capture_input(true);
                     self.notice(
                         NoticeLevel::Info,
                         "terminal keyboard capture enabled; Ctrl-] releases it",
+                    );
+                } else {
+                    self.notice(
+                        NoticeLevel::Info,
+                        "No live terminal attachment; press a to attach after connecting.",
                     );
                 }
             }
@@ -136,290 +175,16 @@ impl AppModel {
         Vec::new()
     }
 
-    const fn return_to_conversation(&mut self) {
+    fn return_to_conversation(&mut self) {
         if let Some(terminal) = &mut self.terminal {
             terminal.set_capture_input(false);
         }
         self.view = View::Conversation;
     }
 
-    fn open_prompt_editor(&mut self) {
-        let Some(item) = self.selected_prompt_item() else {
-            return;
-        };
-        if item.phase != PromptPhase::Pending {
-            return;
-        }
-        let prompt_id = item.binding.correlation().prompt_id();
-        self.editor = Some(match item.binding.kind() {
-            PromptKind::Approval => Editor {
-                kind: EditorKind::ApprovalSignature(prompt_id),
-                title: "Submit externally signed approval decision",
-                hint: "Paste the base64-encoded canonical B1 signed-decision frame",
-                buffer: String::new(),
-                cursor: 0,
-            },
-            PromptKind::UserInput => Editor {
-                kind: EditorKind::PromptAnswer(prompt_id),
-                title: "Answer daemon prompt",
-                hint: "Enter text, an exact choice id, or an opaque secret reference as required",
-                buffer: String::new(),
-                cursor: 0,
-            },
-        });
-    }
-
-    pub(super) fn submit_signed_approval(
-        &mut self,
-        prompt_id: PromptId,
-        encoded: &str,
-    ) -> Vec<Effect> {
-        let decoded = match BASE64.decode(encoded.trim()) {
-            Ok(decoded) => decoded,
-            Err(error) => {
-                self.notice(NoticeLevel::Error, format!("invalid base64 decision: {error}"));
-                return Vec::new();
-            }
-        };
-        let decision =
-            match SignedApprovalDecisionFrame::new(decoded, self.limits.codec().max_frame_bytes) {
-                Ok(decision) => decision,
-                Err(error) => {
-                    self.notice(NoticeLevel::Error, format!("invalid signed decision: {error}"));
-                    return Vec::new();
-                }
-            };
-        let payload = match PromptAnswerPayload::signed_approval(
-            decision,
-            None,
-            self.limits.max_diagnostic_bytes(),
-        ) {
-            Ok(payload) => payload,
-            Err(error) => {
-                self.notice(NoticeLevel::Error, error.to_string());
-                return Vec::new();
-            }
-        };
-        self.submit_prompt_answer(prompt_id, payload)
-    }
-
-    pub(super) fn submit_user_input(&mut self, prompt_id: PromptId, value: String) -> Vec<Effect> {
-        let Some(item) = self.prompt(prompt_id) else {
-            return Vec::new();
-        };
-        let maximum = self.limits.codec().max_string_bytes;
-        let input = if item
-            .binding
-            .constraints()
-            .contains(&peritus_app_protocol::PromptConstraint::SecretReference)
-        {
-            UserInputValue::secret_reference(value, maximum)
-        } else if !item.binding.choices().is_empty()
-            || item
-                .binding
-                .constraints()
-                .contains(&peritus_app_protocol::PromptConstraint::BoundChoiceOnly)
-        {
-            UserInputValue::selection(value, maximum)
-        } else {
-            UserInputValue::text(value, maximum)
-        };
-        match input {
-            Ok(input) => {
-                self.submit_prompt_answer(prompt_id, PromptAnswerPayload::UserInput(input))
-            }
-            Err(error) => {
-                self.notice(NoticeLevel::Error, error.to_string());
-                Vec::new()
-            }
-        }
-    }
-
-    fn submit_prompt_answer(
-        &mut self,
-        prompt_id: PromptId,
-        payload: PromptAnswerPayload,
-    ) -> Vec<Effect> {
-        let Some(binding) = self.prompt(prompt_id).map(|item| item.binding.clone()) else {
-            return Vec::new();
-        };
-        let answer = match PromptAnswer::new(
-            binding.correlation(),
-            payload,
-            self.limits.codec().max_string_bytes,
-        ) {
-            Ok(answer) => answer,
-            Err(error) => {
-                self.notice(NoticeLevel::Error, error.to_string());
-                return Vec::new();
-            }
-        };
-        self.set_prompt_phase(prompt_id, PromptPhase::Submitting);
-        self.request(AppRequestPayload::AnswerPrompt(answer), PendingRequest::Prompt(prompt_id))
-            .into_iter()
-            .collect()
-    }
-
-    fn cancel_selected_prompt(&mut self) -> Vec<Effect> {
-        let Some(binding) = self.selected_prompt_item().map(|item| item.binding.clone()) else {
-            return Vec::new();
-        };
-        let prompt_id = binding.correlation().prompt_id();
-        if binding.kind() == PromptKind::Approval {
-            let payload = match PromptAnswerPayload::cancel_approval(
-                None,
-                self.limits.max_diagnostic_bytes(),
-            ) {
-                Ok(payload) => payload,
-                Err(error) => {
-                    self.notice(NoticeLevel::Error, error.to_string());
-                    return Vec::new();
-                }
-            };
-            return self.submit_prompt_answer(prompt_id, payload);
-        }
-        let Some(context) = self.context else {
-            return Vec::new();
-        };
-        let (Some(request), Some(correlation)) = (self.ids.request(), self.ids.correlation())
-        else {
-            return Vec::new();
-        };
-        let cancellation = PromptCancellation::new(binding.correlation(), correlation);
-        let Ok(envelope) = AppRequestEnvelope::new(
-            context,
-            request,
-            correlation,
-            AppRequestPayload::CancelPrompt(cancellation),
-        ) else {
-            return Vec::new();
-        };
-        self.pending.insert(request, PendingRequest::Prompt(prompt_id));
-        self.set_prompt_phase(prompt_id, PromptPhase::Submitting);
-        vec![Effect::Send(AppMessage::Request(envelope))]
-    }
-
-    pub(super) fn attach_terminal(&mut self, process_text: &str) -> Vec<Effect> {
-        let Some(context) = self.context else {
-            return Vec::new();
-        };
-        let Some(process_bytes) = decode_hex_16(process_text.trim()) else {
-            self.notice(NoticeLevel::Error, "ProcessId must contain 32 hexadecimal digits");
-            return Vec::new();
-        };
-        let process = match ProcessId::new(process_bytes) {
-            Ok(process) => process,
-            Err(error) => {
-                self.notice(NoticeLevel::Error, format!("invalid ProcessId: {error:?}"));
-                return Vec::new();
-            }
-        };
-        let (Some(request), Some(correlation), Some(attachment)) =
-            (self.ids.request(), self.ids.correlation(), self.ids.attachment())
-        else {
-            return Vec::new();
-        };
-        let binding = TerminalBinding::new(attachment, process, request);
-        let Ok(envelope) = AppRequestEnvelope::new(
-            context,
-            request,
-            correlation,
-            AppRequestPayload::AttachTerminal(binding),
-        ) else {
-            return Vec::new();
-        };
-        self.pending.insert(request, PendingRequest::TerminalAttach);
-        self.notice(NoticeLevel::Info, "terminal attachment requested");
-        vec![Effect::Send(AppMessage::Request(envelope))]
-    }
-
-    fn send_terminal_input(&mut self, bytes: Vec<u8>) -> Vec<Effect> {
-        let Some(binding) = self.terminal.as_ref().map(TerminalSession::binding) else {
-            return Vec::new();
-        };
-        let input = match TerminalInput::new(binding, bytes, self.limits.max_terminal_chunk_bytes())
-        {
-            Ok(input) => input,
-            Err(error) => {
-                self.notice(NoticeLevel::Error, error.to_string());
-                return Vec::new();
-            }
-        };
-        if let Some(terminal) = &self.terminal
-            && let Err(error) = terminal.validate_input(&input)
-        {
-            self.notice(NoticeLevel::Error, error.to_string());
-            return Vec::new();
-        }
-        self.request(AppRequestPayload::TerminalInput(input), PendingRequest::TerminalInput)
-            .into_iter()
-            .collect()
-    }
-
-    fn send_terminal_resize(&mut self, columns: u16, rows: u16) -> Vec<Effect> {
-        let Some(binding) = self.terminal.as_ref().map(TerminalSession::binding) else {
-            return Vec::new();
-        };
-        let resize = match TerminalResize::new(binding, columns, rows, u16::MAX, u16::MAX) {
-            Ok(resize) => resize,
-            Err(error) => {
-                self.notice(NoticeLevel::Error, error.to_string());
-                return Vec::new();
-            }
-        };
-        if let Some(terminal) = &self.terminal
-            && let Err(error) = terminal.resize(resize)
-        {
-            self.notice(NoticeLevel::Error, error.to_string());
-            return Vec::new();
-        }
-        self.request(AppRequestPayload::TerminalResize(resize), PendingRequest::TerminalResize)
-            .into_iter()
-            .collect()
-    }
-
-    fn detach_terminal(&mut self) -> Vec<Effect> {
-        let (Some(context), Some(binding)) =
-            (self.context, self.terminal.as_ref().map(TerminalSession::binding))
-        else {
-            return Vec::new();
-        };
-        let (Some(request), Some(correlation)) = (self.ids.request(), self.ids.correlation())
-        else {
-            return Vec::new();
-        };
-        let Ok(envelope) = AppRequestEnvelope::new(
-            context,
-            request,
-            correlation,
-            AppRequestPayload::DetachTerminal(TerminalDetach::new(binding, correlation)),
-        ) else {
-            return Vec::new();
-        };
-        self.pending.insert(request, PendingRequest::TerminalDetach);
-        vec![Effect::Send(AppMessage::Request(envelope))]
-    }
-
-    fn cancel_terminal(&mut self) -> Vec<Effect> {
-        let (Some(context), Some(binding)) =
-            (self.context, self.terminal.as_ref().map(TerminalSession::binding))
-        else {
-            return Vec::new();
-        };
-        let (Some(request), Some(correlation)) = (self.ids.request(), self.ids.correlation())
-        else {
-            return Vec::new();
-        };
-        let Ok(envelope) = AppRequestEnvelope::new(
-            context,
-            request,
-            correlation,
-            AppRequestPayload::CancelTerminal(TerminalCancellation::new(binding, correlation)),
-        ) else {
-            return Vec::new();
-        };
-        self.pending.insert(request, PendingRequest::TerminalCancel);
-        vec![Effect::Send(AppMessage::Request(envelope))]
+    pub(super) fn request_reconnect(&mut self) -> Vec<Effect> {
+        self.connection = ConnectionStatus::Connecting;
+        vec![Effect::Reconnect]
     }
 
     fn subscription_control(&mut self, pause: bool) -> Vec<Effect> {
@@ -452,6 +217,7 @@ impl AppModel {
 
     fn select_previous(&mut self) {
         if self.view == View::Approvals {
+            self.prompt_scroll = 0;
             self.selected_prompt = self.selected_prompt.saturating_sub(1);
             return;
         }
@@ -474,6 +240,7 @@ impl AppModel {
 
     fn select_next(&mut self) {
         if self.view == View::Approvals {
+            self.prompt_scroll = 0;
             self.selected_prompt =
                 (self.selected_prompt + 1).min(self.prompts.len().saturating_sub(1));
             return;
@@ -509,7 +276,11 @@ impl AppModel {
     pub(super) fn notice(&mut self, level: NoticeLevel, text: impl Into<String>) {
         let mut text = text.into();
         if text.len() > self.limits.max_diagnostic_bytes() {
-            text.truncate(self.limits.max_diagnostic_bytes());
+            let mut end = self.limits.max_diagnostic_bytes();
+            while !text.is_char_boundary(end) {
+                end -= 1;
+            }
+            text.truncate(end);
         }
         self.notice = Some(Notice { level, text, ticks_remaining: NOTICE_TICKS });
     }

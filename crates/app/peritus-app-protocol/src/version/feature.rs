@@ -20,6 +20,10 @@ impl ProtocolFeatureName {
     pub const USER_INPUT: &'static str = "app.user-input";
     /// Version-one terminal streaming feature name.
     pub const TERMINAL_STREAMING: &'static str = "app.terminal-streaming";
+    /// Attachment-local output failure without a process-exit or connection-loss claim.
+    pub const TERMINAL_FAILURE: &'static str = "app.terminal-failure";
+    /// Bounded pipe attachments with explicit line-input semantics.
+    pub const TERMINAL_PIPES: &'static str = "app.terminal-pipes";
     /// Version-one read-only diagnostics feature name.
     pub const READ_ONLY_DIAGNOSTICS: &'static str = "app.read-only-diagnostics";
     /// Scoped local product diagnostics with bounded classified findings.
@@ -29,6 +33,10 @@ impl ProtocolFeatureName {
     /// Immutable input queue and exact request-incorporation controls.
     pub const WORKBENCH_INPUTS: &'static str = "app.workbench-inputs";
     /// Explicit execution over a durable queue, separate from non-running queue management.
+    pub const WORKBENCH_CONVERSATION: &'static str = "app.workbench-conversation";
+    /// Explicit run-to-conversation binding for reopening existing work.
+    pub const WORKBENCH_RUN_BINDING: &'static str = "app.workbench-run-binding";
+    /// Explicit execution over a durable queue.
     pub const WORKBENCH_EXECUTION: &'static str = "app.workbench-execution";
     /// Read-only eligible-input and sealed request-manifest inspection.
     pub const WORKBENCH_CONTEXT: &'static str = "app.workbench-context";
@@ -47,6 +55,8 @@ impl ProtocolFeatureName {
     /// Structured candidate review with content-bound conversational feedback.
     pub const WORKBENCH_REVIEW: &'static str = "app.workbench-review";
     /// Daemon-owned launch, selected-window capture and artifact feedback.
+    pub const WORKBENCH_PREVIEW_OUTPUT: &'static str = "app.workbench-preview-output";
+    /// Daemon-owned preview launch and evidence.
     pub const WORKBENCH_PREVIEW: &'static str = "app.workbench-preview";
     /// Covered-path checkpoints, preview-bound rewind and durable restore receipts.
     pub const WORKBENCH_CHECKPOINTS: &'static str = "app.workbench-checkpoints";
@@ -111,6 +121,10 @@ pub enum WellKnownProtocolFeature {
     UserInput,
     /// Attached terminal input and output streaming.
     TerminalStreaming,
+    /// Attachment-local output failure events.
+    TerminalFailure,
+    /// Explicit pipe attachment responses without PTY resize capability.
+    TerminalPipes,
     /// Read-only diagnostics.
     ReadOnlyDiagnostics,
     /// Scoped local product diagnostics.
@@ -121,6 +135,10 @@ pub enum WellKnownProtocolFeature {
     WorkbenchInputs,
     /// Explicit execution over a durable queue.
     WorkbenchExecution,
+    /// Durable conversation execution discovery and composer binding.
+    WorkbenchConversation,
+    /// Explicit run-to-conversation binding for reopening existing work.
+    WorkbenchRunBinding,
     /// Read-only eligible-input and sealed request-manifest inspection.
     WorkbenchContext,
     /// Deterministic local prompt-view preview and explicit publication.
@@ -139,6 +157,8 @@ pub enum WellKnownProtocolFeature {
     WorkbenchReview,
     /// Daemon-owned launch, selected-window capture and artifact feedback.
     WorkbenchPreview,
+    /// Bounded retained live preview streams.
+    WorkbenchPreviewOutput,
     /// Covered-path checkpoints and safe preview-bound rewind.
     WorkbenchCheckpoints,
     /// Local searchable conversation library.
@@ -166,10 +186,14 @@ impl WellKnownProtocolFeature {
             Self::ApprovalPrompts => ProtocolFeatureName::APPROVAL_PROMPTS,
             Self::UserInput => ProtocolFeatureName::USER_INPUT,
             Self::TerminalStreaming => ProtocolFeatureName::TERMINAL_STREAMING,
+            Self::TerminalFailure => ProtocolFeatureName::TERMINAL_FAILURE,
+            Self::TerminalPipes => ProtocolFeatureName::TERMINAL_PIPES,
             Self::ReadOnlyDiagnostics => ProtocolFeatureName::READ_ONLY_DIAGNOSTICS,
             Self::ProductDiagnostics => ProtocolFeatureName::PRODUCT_DIAGNOSTICS,
             Self::WorkbenchControl => ProtocolFeatureName::WORKBENCH_CONTROL,
             Self::WorkbenchInputs => ProtocolFeatureName::WORKBENCH_INPUTS,
+            Self::WorkbenchConversation => ProtocolFeatureName::WORKBENCH_CONVERSATION,
+            Self::WorkbenchRunBinding => ProtocolFeatureName::WORKBENCH_RUN_BINDING,
             Self::WorkbenchExecution => ProtocolFeatureName::WORKBENCH_EXECUTION,
             Self::WorkbenchContext => ProtocolFeatureName::WORKBENCH_CONTEXT,
             Self::WorkbenchCompaction => ProtocolFeatureName::WORKBENCH_COMPACTION,
@@ -179,6 +203,7 @@ impl WellKnownProtocolFeature {
             Self::WorkbenchGoals => ProtocolFeatureName::WORKBENCH_GOALS,
             Self::WorkbenchBudgets => ProtocolFeatureName::WORKBENCH_BUDGETS,
             Self::WorkbenchReview => ProtocolFeatureName::WORKBENCH_REVIEW,
+            Self::WorkbenchPreviewOutput => ProtocolFeatureName::WORKBENCH_PREVIEW_OUTPUT,
             Self::WorkbenchPreview => ProtocolFeatureName::WORKBENCH_PREVIEW,
             Self::WorkbenchCheckpoints => ProtocolFeatureName::WORKBENCH_CHECKPOINTS,
             Self::ConversationLibrary => ProtocolFeatureName::CONVERSATION_LIBRARY,

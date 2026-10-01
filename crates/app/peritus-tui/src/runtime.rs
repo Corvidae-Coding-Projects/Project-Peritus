@@ -1,8 +1,10 @@
 //! Orderly terminal ownership and asynchronous application runtime.
 
 mod candidate;
+mod connection;
 mod files;
 mod images;
+mod interrupts;
 mod product;
 mod state;
 mod terminal;
@@ -20,9 +22,10 @@ use tokio::sync::mpsc;
 use crate::{
     TuiError,
     action::{Action, Effect},
-    client::{ClientEvent, ClientSession},
+    client::ClientEvent,
     model::AppModel,
 };
+use connection::Connection;
 use terminal::{InputPump, TerminalOwner};
 
 pub use product::{ProductLaunchContext, ProductProviderOption};
@@ -35,6 +38,7 @@ const CONNECT_TIMEOUT: Duration = Duration::from_secs(8);
 struct LocalReads {
     files: files::FileReads,
     images: images::ImageReads,
+    interrupts: Option<interrupts::Interrupts>,
 }
 
 /// Runtime configuration for one interactive client process.
@@ -92,6 +96,15 @@ pub enum ExitReason {
     UserQuit,
     /// The product launcher must restore daemon readiness and reopen the interface.
     RecoverDaemon,
+    /// Open a durable conversation using its launcher-resolved workspace facts.
+    OpenConversation(peritus_app_protocol::WorkbenchQuery),
+    /// Open a saved run using its launcher-resolved workspace facts.
+    OpenRun {
+        /// Exact run selected from the dashboard.
+        run: peritus_types::RunId,
+        /// Workspace observed on that run.
+        workspace: peritus_types::WorkspaceId,
+    },
 }
 
 /// Runs the interactive TUI until the user exits.
@@ -114,72 +127,85 @@ pub async fn run_with_state(
     state: &mut TuiState,
 ) -> Result<ExitReason, TuiError> {
     let seed = process_seed(config.endpoint());
+    let mut reads = LocalReads { interrupts: Some(interrupts::listen()?), ..LocalReads::default() };
     let mut terminal = TerminalOwner::enter()?;
     let (input_tx, mut input_rx) = mpsc::channel(128);
     let mut input = InputPump::start(input_tx.clone())?;
     let (client_events_tx, mut client_events_rx) = mpsc::channel(512);
     let mut model = state.take_model(&config, seed);
-    let mut client = None;
-    let mut reads = LocalReads::default();
-    let mut connection_generation = 0_u64;
-    connect(&config, &mut model, &mut client, &client_events_tx, &mut connection_generation).await;
+    let mut connection = Connection::new(client_events_tx);
+    connection.start(&config, &mut model);
 
     let mut tick = tokio::time::interval(UI_TICK);
     tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
     let result = loop {
         terminal.draw(&mut model)?;
-        let action = tokio::select! {
-            input = input_rx.recv() => match input {
-                Some(event) => Action::TerminalEvent(event),
-                None => {
-                    break Err(TuiError::Task("terminal input worker stopped".to_owned()));
-                }
-            },
-            event = client_events_rx.recv() => match event {
-                Some(ClientEvent::Message(message)) => Action::Message(message),
-                Some(ClientEvent::Disconnected(error)) => Action::Disconnected(error),
-                None => Action::Disconnected("all daemon client tasks stopped".to_owned()),
-            },
-            _ = tick.tick() => Action::Tick(std::time::Instant::now()),
-            file = reads.files.next(), if reads.files.active() => file,
-            image = reads.images.next(), if reads.images.active() => image,
-        };
-        let effects = model.update(action);
-        match apply_effects(
-            effects,
-            &config,
+        let effects = match next_effects(
             &mut model,
-            &mut client,
-            &client_events_tx,
-            &mut connection_generation,
+            &mut input_rx,
+            &mut client_events_rx,
+            &mut tick,
             &mut reads,
+            &mut connection,
         )
         .await
         {
-            Ok(ControlFlow::Continue) => {}
-            Ok(ControlFlow::RunCandidate { workspace, instruction, candidate_digest }) => {
+            Ok(effects) => effects,
+            Err(error) => break Err(error),
+        };
+        match apply_effects(effects, &config, &mut model, &mut connection, &mut reads) {
+            ControlFlow::Continue => {}
+            ControlFlow::RunCandidate { workspace, instruction, candidate_digest } => {
                 input.stop()?;
                 terminal.suspend()?;
-                let outcome = candidate::execute(workspace, instruction, candidate_digest).await;
+                let interrupts = reads.interrupts.as_mut().ok_or_else(|| {
+                    TuiError::Task("terminal interrupt listener is unavailable".into())
+                })?;
+                let outcome =
+                    candidate::execute(workspace, instruction, candidate_digest, interrupts).await;
                 terminal.resume()?;
                 input = InputPump::start(input_tx.clone())?;
                 model.candidate_run_finished(outcome);
             }
-            Ok(ControlFlow::Quit) => break Ok(ExitReason::UserQuit),
-            Ok(ControlFlow::RecoverDaemon) => break Ok(ExitReason::RecoverDaemon),
-            Err(error) => break Err(error),
+            ControlFlow::Quit => break Ok(ExitReason::UserQuit),
+            ControlFlow::RecoverDaemon => break Ok(ExitReason::RecoverDaemon),
+            ControlFlow::OpenConversation(query) => break Ok(ExitReason::OpenConversation(query)),
+            ControlFlow::OpenRun { run, workspace } => {
+                break Ok(ExitReason::OpenRun { run, workspace });
+            }
         }
     };
 
     input.stop()?;
     let cleanup = model.cleanup_messages();
-    if let Some(session) = client {
-        session.close(cleanup).await?;
-    }
-    if matches!(result, Ok(ExitReason::RecoverDaemon)) {
+    let cleanup_result = connection.close(cleanup).await;
+    if matches!(
+        result,
+        Ok(ExitReason::RecoverDaemon
+            | ExitReason::OpenConversation(_)
+            | ExitReason::OpenRun { .. })
+    ) {
+        if let Err(error) = cleanup_result {
+            model.update(Action::Disconnected(error.to_string()));
+        }
         state.retain(config, model);
+    } else {
+        cleanup_result?;
     }
     result
+}
+
+fn client_action(
+    event: ClientEvent,
+    current: Option<peritus_app_protocol::ProtocolContext>,
+) -> Option<Action> {
+    if Some(event.context()) != current {
+        return None;
+    }
+    Some(match event {
+        ClientEvent::Message { message, .. } => Action::Message(message),
+        ClientEvent::Disconnected { error, .. } => Action::Disconnected(error),
+    })
 }
 
 enum ControlFlow {
@@ -191,17 +217,20 @@ enum ControlFlow {
     },
     Quit,
     RecoverDaemon,
+    OpenConversation(peritus_app_protocol::WorkbenchQuery),
+    OpenRun {
+        run: peritus_types::RunId,
+        workspace: peritus_types::WorkspaceId,
+    },
 }
 
-async fn apply_effects(
+fn apply_effects(
     effects: Vec<Effect>,
     config: &TuiConfig,
     model: &mut AppModel,
-    client: &mut Option<ClientSession>,
-    events: &mpsc::Sender<ClientEvent>,
-    generation: &mut u64,
+    connection: &mut Connection,
     reads: &mut LocalReads,
-) -> Result<ControlFlow, TuiError> {
+) -> ControlFlow {
     for effect in effects {
         match effect {
             Effect::ReadFile { operation, path, range } => {
@@ -225,89 +254,55 @@ async fn apply_effects(
                 }
             }
             Effect::Send(message) => {
-                if let Some(session) = client {
-                    if let Err(error) = session.send(message).await {
-                        let _ = model.update(Action::Disconnected(error.to_string()));
-                    }
-                } else {
-                    let _ = model.update(Action::ConnectionFailed(
-                        "request could not be sent while disconnected".to_owned(),
-                    ));
+                if let Err(error) = connection.send(message) {
+                    connection.sent(Err(error), model);
                 }
             }
             Effect::Reconnect => {
-                if let Some(session) = client.take() {
-                    let cleanup = model.cleanup_messages();
-                    let _ = session.close(cleanup).await;
-                }
                 if config.product().is_some() {
-                    return Ok(ControlFlow::RecoverDaemon);
+                    return ControlFlow::RecoverDaemon;
                 }
-                connect(config, model, client, events, generation).await;
+                connection.start(config, model);
             }
+            Effect::OpenConversation(query) => return ControlFlow::OpenConversation(query),
+            Effect::OpenRun { run, workspace } => return ControlFlow::OpenRun { run, workspace },
             Effect::RunCandidate { workspace, instruction, candidate_digest } => {
-                return Ok(ControlFlow::RunCandidate { workspace, instruction, candidate_digest });
+                return ControlFlow::RunCandidate { workspace, instruction, candidate_digest };
             }
-            Effect::Quit => return Ok(ControlFlow::Quit),
+            Effect::Quit => return ControlFlow::Quit,
         }
     }
-    Ok(ControlFlow::Continue)
+    ControlFlow::Continue
 }
 
-async fn connect(
-    config: &TuiConfig,
+async fn next_effects(
     model: &mut AppModel,
-    client: &mut Option<ClientSession>,
-    events: &mpsc::Sender<ClientEvent>,
-    generation: &mut u64,
-) {
-    *generation = generation.saturating_add(1);
-    let protocol_id = match protocol_id(process_seed(config.endpoint()), *generation) {
-        Ok(protocol_id) => protocol_id,
-        Err(error) => {
-            let _ = model.update(Action::ConnectionFailed(error.to_string()));
-            return;
-        }
-    };
-    let requested = model.retained_session().or_else(|| config.requested_session());
-    let attempt = tokio::time::timeout(
-        CONNECT_TIMEOUT,
-        ClientSession::connect(config.endpoint(), protocol_id, requested, events.clone()),
-    )
-    .await;
-    match attempt {
-        Ok(Ok(session)) => {
-            let established = session.established().clone();
-            *client = Some(session);
-            let mut effects = model.update(Action::Connected {
-                context: established.context,
-                limits: established.limits,
-                server: established.server,
-                downgraded: established.downgraded,
-            });
-            effects.extend(model.update(Action::NegotiatedFeatures {
-                context: established.context,
-                features: established.features,
-            }));
-            for effect in effects {
-                if let Effect::Send(message) = effect
-                    && let Some(session) = client
-                    && let Err(error) = session.send(message).await
-                {
-                    let _ = model.update(Action::Disconnected(error.to_string()));
-                    break;
-                }
-            }
-        }
-        Ok(Err(error)) => {
-            let _ = model.update(Action::ConnectionFailed(error.to_string()));
-        }
-        Err(_) => {
-            let _ = model.update(Action::ConnectionFailed(format!(
-                "connection timed out after {} seconds",
-                CONNECT_TIMEOUT.as_secs()
-            )));
-        }
+    input: &mut mpsc::Receiver<crossterm::event::Event>,
+    events: &mut mpsc::Receiver<ClientEvent>,
+    tick: &mut tokio::time::Interval,
+    reads: &mut LocalReads,
+    connection: &mut Connection,
+) -> Result<Vec<Effect>, TuiError> {
+    loop {
+        let action = tokio::select! {
+            () = interrupts::next(&mut reads.interrupts) => return Ok(vec![Effect::Quit]),
+            input = input.recv() => match input {
+                Some(event) => Action::TerminalEvent(event),
+                None => return Err(TuiError::Task("terminal input worker stopped".to_owned())),
+            },
+            event = events.recv() => match event {
+                Some(event) => match client_action(event, model.protocol_context()) {
+                    Some(action) => action,
+                    None => continue,
+                },
+                None => Action::Disconnected("all daemon client tasks stopped".to_owned()),
+            },
+            effects = connection.next(model), if connection.active() || connection.sending() => return Ok(effects),
+            _ = tick.tick() => Action::Tick(std::time::Instant::now()),
+            file = reads.files.next(), if reads.files.active() => file,
+            image = reads.images.next(), if reads.images.active() => image,
+        };
+        return Ok(model.update(action));
     }
 }
 

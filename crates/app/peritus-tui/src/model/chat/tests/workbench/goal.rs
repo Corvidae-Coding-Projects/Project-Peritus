@@ -1,5 +1,7 @@
 use super::*;
 mod criteria;
+mod recovery;
+mod refresh;
 use peritus_app_protocol::{
     ControlOperationId, ProductInteractionMode, WorkbenchBrief, WorkbenchBriefEntry,
     WorkbenchBriefField, WorkbenchGoalBudget, WorkbenchGoalCriterion,
@@ -64,6 +66,15 @@ fn snapshot(
     revision: u64,
     state: WorkbenchGoalState,
 ) -> WorkbenchGoalSnapshot {
+    snapshot_with_identity(query, revision, state, [73; 16])
+}
+
+fn snapshot_with_identity(
+    query: WorkbenchQuery,
+    revision: u64,
+    state: WorkbenchGoalState,
+    identity: [u8; 16],
+) -> WorkbenchGoalSnapshot {
     let runner = WorkbenchGoalCriterionDefinition::new(
         WorkbenchGoalCriterionKind::RunnerAcceptance,
         WorkbenchInputText::new("Strict gate".to_owned()).unwrap(),
@@ -72,7 +83,7 @@ fn snapshot(
     WorkbenchGoalSnapshot::new(
         query,
         revision,
-        ControlOperationId::new([73; 16]).unwrap(),
+        ControlOperationId::new(identity).unwrap(),
         RunId::new([74; 16]).unwrap(),
         WorkbenchInputText::new("Ship exact change".to_owned()).unwrap(),
         state,
@@ -86,6 +97,80 @@ fn snapshot(
         usage(Some(50), Some(10)),
     )
     .unwrap()
+}
+
+#[test]
+fn goal_clear_confirmation_survives_accounting_polls_only_for_the_same_goal() {
+    let mut model = goal_model();
+    let query = model.chat.workbench.selected.unwrap();
+    let goal = snapshot(query, 17, WorkbenchGoalState::Active);
+    model.chat.run_id = Some(goal.run());
+    model.chat.workbench.goal = Some(goal);
+    model.chat.buffer = "/goal clear".into();
+    assert!(key(&mut model, KeyCode::Enter).is_empty());
+    assert!(model.chat.workbench.goal_clear_pending);
+    model.accept_workbench_goal(query, snapshot(query, 18, WorkbenchGoalState::Active));
+    assert!(
+        model.chat.workbench.goal_clear_pending,
+        "routine accounting must not revoke confirmation"
+    );
+    assert!(model.chat.buffer.is_empty(), "confirmation instruction consumes its slash command");
+    assert!(model.chat.workbench.message.contains("/goal clear confirm"));
+    model.accept_workbench_goal(
+        query,
+        snapshot_with_identity(query, 19, WorkbenchGoalState::Active, [75; 16]),
+    );
+    assert!(
+        !model.chat.workbench.goal_clear_pending,
+        "a different goal requires fresh confirmation"
+    );
+}
+
+#[test]
+fn live_goal_accounting_is_polled_with_its_execution() {
+    let mut model = goal_model();
+    let query = model.chat.workbench.selected.unwrap();
+    let goal = snapshot(query, 17, WorkbenchGoalState::Active);
+    model.chat.run_id = Some(goal.run());
+    model.chat.workbench.goal = Some(goal);
+    model.chat.workbench.goal_mode = true;
+    let effects = model.poll_chat();
+    assert_eq!(effects.len(), 2);
+    assert!(effects.iter().any(|effect| matches!(effect,
+        Effect::Send(AppMessage::Request(request)) if matches!(request.payload(), AppRequestPayload::QueryWorkbenchGoal(actual) if *actual == query)
+    )));
+}
+
+#[test]
+fn new_conversation_cannot_inherit_the_old_goal_or_reject_a_fresh_objective() {
+    let mut model = goal_model();
+    let previous = model.chat.workbench.selected.unwrap();
+    model.chat.workbench.goal = Some(snapshot(previous, 17, WorkbenchGoalState::WaitingForUser));
+    model.chat.run_id = Some(RunId::new([74; 16]).unwrap());
+    let (sent, command) = create(&mut model);
+    let refresh = request(&respond(&mut model, &sent, receipt(&command)));
+    respond(
+        &mut model,
+        &refresh,
+        AppResponsePayload::Workbench(
+            WorkbenchSnapshot::new(
+                command.query(),
+                1,
+                ConversationTitle::new("New task".to_owned()).unwrap(),
+                false,
+                false,
+            )
+            .unwrap(),
+        ),
+    );
+    assert!(model.chat.workbench.goal.is_none());
+    assert!(model.chat.run_id.is_none());
+    key(&mut model, KeyCode::Esc);
+    model.chat.buffer = "/goal Read the converter".to_owned();
+    let request = request(&key(&mut model, KeyCode::Enter));
+    assert!(
+        matches!(request.payload(), AppRequestPayload::QueryWorkbenchBrief(query) if *query == command.query())
+    );
 }
 
 #[test]
@@ -130,6 +215,13 @@ fn goal_drafts_then_confirms_the_exact_brief_and_existing_runner_settings() {
     );
     assert!(model.chat.workbench.goal_draft.is_none());
     assert!(model.chat.buffer.is_empty());
+    let goal = snapshot(command.query(), 10, WorkbenchGoalState::Active);
+    let opened =
+        request(&respond(&mut model, &refresh, AppResponsePayload::WorkbenchGoal(goal.clone())));
+    assert!(
+        matches!(opened.payload(), AppRequestPayload::QueryInteraction(query) if query.run_id() == goal.run())
+    );
+    assert_eq!(model.chat.run_id, Some(goal.run()));
 }
 
 #[test]
@@ -173,6 +265,33 @@ fn pause_resume_and_budget_use_the_goal_identity_and_aggregate_revision() {
             }
             _ => panic!("wrong goal intent for {text}: {:?}", command.intent()),
         }
+    }
+}
+
+#[test]
+fn goal_control_receipts_accept_intervening_usage_without_losing_the_user_draft() {
+    for command_text in ["/pause now", "/budget time=2m"] {
+        let mut model = goal_model();
+        let query = model.chat.workbench.selected.unwrap();
+        model.chat.workbench.goal = Some(snapshot(query, 17, WorkbenchGoalState::Active));
+        model.chat.workbench.goal_mode = true;
+        model.chat.buffer = command_text.to_owned();
+        let sent = request(&key(&mut model, KeyCode::Enter));
+        let AppRequestPayload::WorkbenchCommand(command) = sent.payload() else {
+            panic!("pause command")
+        };
+        model.chat.buffer = "Actually keep the existing layout".to_owned();
+        let accepted = WorkbenchReceipt::new(
+            command.operation(),
+            query,
+            24,
+            peritus_types::Sha256Digest::new([9; 32]),
+        )
+        .unwrap();
+        let refresh = respond(&mut model, &sent, AppResponsePayload::WorkbenchReceipt(accepted));
+        assert!(!refresh.is_empty());
+        assert!(model.chat.workbench.unresolved.is_none());
+        assert_eq!(model.chat.buffer, "Actually keep the existing layout");
     }
 }
 
@@ -223,4 +342,44 @@ fn goal_panel_renders_unknown_usage_and_unavailable_later_phase_evidence() {
     ] {
         assert!(text.contains(expected), "missing {expected}: {text}");
     }
+}
+
+#[test]
+fn goal_confirmation_saves_a_missing_brief_objective_then_starts_only_after_its_receipt() {
+    let mut model = goal_model();
+    model.chat.buffer = "/goal Ship exact change".to_owned();
+    let inspect = request(&key(&mut model, KeyCode::Enter));
+    let query = model.chat.workbench.selected.unwrap();
+    respond(
+        &mut model,
+        &inspect,
+        AppResponsePayload::WorkbenchBrief(WorkbenchBrief::new(query, 1, vec![]).unwrap()),
+    );
+    key(&mut model, KeyCode::Esc);
+    model.chat.buffer = "/goal confirm".to_owned();
+    let save = request(&key(&mut model, KeyCode::Enter));
+    let AppRequestPayload::WorkbenchCommand(command) = save.payload() else {
+        panic!("brief command")
+    };
+    assert!(
+        matches!(command.intent(), WorkbenchIntent::SetBrief { field: WorkbenchBriefField::Objective, text } if text.as_str() == "Ship exact change")
+    );
+    assert!(model.chat.run_id.is_none());
+    assert!(model.chat.workbench.goal_confirm_pending.is_some());
+    let refreshed = request(&respond(&mut model, &save, receipt(command)));
+    assert!(matches!(refreshed.payload(), AppRequestPayload::QueryWorkbenchBrief(_)));
+    let start = request(&respond(
+        &mut model,
+        &refreshed,
+        AppResponsePayload::WorkbenchBrief(objective_brief(query, "Ship exact change", 2)),
+    ));
+    let AppRequestPayload::WorkbenchCommand(command) = start.payload() else {
+        panic!("goal command")
+    };
+    assert_eq!(command.expected_revision(), 2);
+    assert!(
+        matches!(command.intent(), WorkbenchIntent::StartGoal { definition, .. } if definition.objective().as_str() == "Ship exact change")
+    );
+    assert!(model.chat.workbench.goal_confirm_pending.is_none());
+    assert!(model.chat.run_id.is_none(), "goal receipt is still pending");
 }

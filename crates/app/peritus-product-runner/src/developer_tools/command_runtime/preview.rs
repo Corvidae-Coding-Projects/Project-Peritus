@@ -35,9 +35,34 @@ impl CommandRuntime {
         &self,
         launch: &PreviewLaunch,
     ) -> Result<PreviewObservation, ProductRunnerError> {
-        self.poll(&launch.handle)
+        let mut observation = self
+            .poll(&launch.handle)
             .map_err(|error| preview_error(error.to_string()))
-            .and_then(|value| parse_observation(&value))
+            .and_then(|value| parse_observation(&value))?;
+        if observation.state == PreviewProcessState::Running {
+            let control = self
+                .inner
+                .state
+                .lock()
+                .map_err(|_| preview_error("command runtime is poisoned"))?
+                .active
+                .get(&launch.handle)
+                .and_then(|active| active.control.clone());
+            if let Some(control) = control {
+                use peritus_process::OutputStream;
+                let terminal = control.retained_stream_output(OutputStream::Terminal);
+                let stdout = if terminal.is_empty() {
+                    control.retained_stream_output(OutputStream::Stdout)
+                } else {
+                    terminal
+                };
+                observation.stdout = String::from_utf8_lossy(&stdout).into_owned();
+                observation.stderr =
+                    String::from_utf8_lossy(&control.retained_stream_output(OutputStream::Stderr))
+                        .into_owned();
+            }
+        }
+        Ok(observation)
     }
 
     /// Sends bounded bytes only to the exact interactive preview process.
@@ -49,9 +74,8 @@ impl CommandRuntime {
         launch: &PreviewLaunch,
         bytes: Vec<u8>,
     ) -> Result<PreviewObservation, ProductRunnerError> {
-        self.stdin(&launch.handle, bytes)
-            .map_err(|error| preview_error(error.to_string()))
-            .and_then(|value| parse_observation(&value))
+        self.stdin(&launch.handle, bytes).map_err(|error| preview_error(error.to_string()))?;
+        self.observe_preview(launch)
     }
 
     /// Explicitly cancels the exact owned preview and returns its latest observation.
@@ -181,11 +205,25 @@ mod tests {
         .expect("profile");
         let launch = runtime.launch_preview(&command).expect("launch");
         assert_ne!(launch.process_id().as_bytes(), &[0; 16]);
-        wait_for_progress(&runtime, &launch, "started");
+        let began = Instant::now();
+        loop {
+            let observation = runtime.observe_preview(&launch).expect("live output");
+            assert_eq!(observation.state(), PreviewProcessState::Running);
+            if observation.stdout().contains("READY state=0") {
+                break;
+            }
+            assert!(
+                began.elapsed() < Duration::from_secs(5),
+                "readiness must be visible before exit or input"
+            );
+            thread::sleep(Duration::from_millis(10));
+        }
         let observation =
             runtime.interact_preview(&launch, b"MOVE_RIGHT\n".to_vec()).expect("interaction");
         assert_eq!(observation.state(), PreviewProcessState::Running);
-        wait_for_progress(&runtime, &launch, "stdin-accepted");
+        // interact_preview may consume the stdin acknowledgement itself. Confirm the
+        // child actually processed the bytes before stopping it, independent of poll timing.
+        wait_for_output(&runtime, &launch, "OBSERVED MOVE_RIGHT state=1");
         let terminal = runtime.stop_preview(&launch).expect("explicit stop");
         let terminal = wait_for_terminal(&runtime, &launch, terminal);
         assert_eq!(terminal.state(), PreviewProcessState::Cancelled);
@@ -193,11 +231,11 @@ mod tests {
         assert!(terminal.stdout().contains("OBSERVED MOVE_RIGHT state=1"));
     }
 
-    fn wait_for_progress(runtime: &CommandRuntime, launch: &PreviewLaunch, expected: &str) {
+    fn wait_for_output(runtime: &CommandRuntime, launch: &PreviewLaunch, expected: &str) {
         let began = Instant::now();
         loop {
             let observed = runtime.observe_preview(launch).expect("observe");
-            if observed.progress().iter().any(|message| message.contains(expected)) {
+            if observed.stdout().contains(expected) {
                 return;
             }
             assert!(began.elapsed() < Duration::from_secs(5), "missing {expected}");
@@ -219,3 +257,7 @@ mod tests {
         observed
     }
 }
+
+#[cfg(test)]
+#[path = "preview_backlog.rs"]
+mod backlog;

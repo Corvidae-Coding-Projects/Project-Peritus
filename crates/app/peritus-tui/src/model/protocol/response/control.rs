@@ -62,9 +62,7 @@ fn project_setup(
             AppResponsePayload::ConversationLibrary(page),
             Some(PendingRequest::ConversationLibrary(query)),
         ) if page.query() == &query => {
-            model.chat.workbench.library = Some(page.clone());
-            model.chat.workbench.message =
-                format!("{} matching durable conversations. No inference started.", page.total());
+            model.accept_library_page(page);
         }
         (
             AppResponsePayload::WorkbenchFileImportPreview(preview),
@@ -103,9 +101,9 @@ fn project_live(
         (
             AppResponsePayload::WorkbenchBrief(brief),
             Some(PendingRequest::WorkbenchBrief(query)),
-        ) => model.accept_workbench_brief(query, brief.clone()),
+        ) => return model.accept_workbench_brief(query, brief.clone()),
         (AppResponsePayload::WorkbenchGoal(goal), Some(PendingRequest::WorkbenchGoal(query))) => {
-            model.accept_workbench_goal(query, goal.clone());
+            return model.accept_workbench_goal(query, goal.clone());
         }
         (
             AppResponsePayload::WorkbenchContext(page),
@@ -115,15 +113,35 @@ fn project_live(
             model.accept_workbench_queue(query, page.clone());
         }
         (
+            AppResponsePayload::Workbench(snapshot),
+            Some(PendingRequest::WorkbenchQueueCommand { query, intent, draft }),
+        ) => return model.accept_queue_command_snapshot(query, intent, &draft, snapshot),
+        (
+            AppResponsePayload::WorkbenchPreview(snapshot),
+            Some(PendingRequest::WorkbenchResult(query)),
+        ) => model.accept_preview_output(query, snapshot),
+        (
             AppResponsePayload::WorkbenchResult(page),
             Some(PendingRequest::WorkbenchResult(query)),
         ) => model.accept_preview_page(query, page.clone()),
+        (
+            AppResponsePayload::WorkbenchExecution(state),
+            Some(PendingRequest::WorkbenchExecution(query)),
+        ) => {
+            return model.accept_workbench_execution(query, state);
+        }
         (AppResponsePayload::Workbench(snapshot), Some(PendingRequest::WorkbenchQuery(query))) => {
             if !model.accept_workbench_snapshot(query, snapshot.clone()) {
                 return Vec::new();
             }
+            if let Some(effects) = model.complete_command_snapshot_refresh() {
+                return effects;
+            }
+            if let Some(effects) = model.complete_file_snapshot_refresh() {
+                return effects;
+            }
             if model.chat.workbench.files.open && model.chat.workbench.files.list {
-                return model.refresh_file_panel();
+                return model.complete_file_list_refresh();
             }
             if model.chat.workbench.memory_open() {
                 return model.refresh_memory();
@@ -134,11 +152,12 @@ fn project_live(
         }
         (
             AppResponsePayload::WorkbenchReceipt(receipt),
-            Some(
-                PendingRequest::WorkbenchControl(command)
-                | PendingRequest::WorkbenchReceipt(command),
-            ),
+            Some(PendingRequest::WorkbenchControl(command)),
         ) => return model.accept_workbench_receipt(&command, receipt),
+        (
+            AppResponsePayload::WorkbenchReceipt(receipt),
+            Some(PendingRequest::WorkbenchReceipt(command)),
+        ) => return model.observe_workbench_receipt(&command, receipt),
         (AppResponsePayload::Doctor(report), Some(PendingRequest::Doctor(query))) => {
             model.accept_doctor(query, report.clone());
         }

@@ -1,25 +1,26 @@
 //! Durable product-run snapshots and restart recovery.
 
+#[cfg(test)]
+use std::collections::BTreeMap;
 use std::{
-    collections::BTreeMap,
     fs,
     path::{Path, PathBuf},
     sync::{Arc, atomic::AtomicBool},
 };
 
 use peritus_app_protocol::{
-    ProductConversationMessage, ProductConversationRole, ProductProviderSelection, ProductRunPhase,
-    ProductRunRequest, ProductRunSnapshot, encode_workbench_result_value,
+    ProductProviderSelection, ProductRunPhase, ProductRunSnapshot, encode_workbench_result_value,
 };
-use peritus_product_runner::{ConversationView, ProductRunResume};
+use peritus_product_runner::ProductRunResume;
 use peritus_provider_core::CancellationToken;
 use peritus_types::{ProviderProfileId, RunId, WorkspaceId};
 
 use super::progress::RunProgress;
 use super::{
-    PreviewAggregate, PreviewOperationRecord, ProductRunServiceError, RunRecord,
-    SharedConversation, filesystem,
+    PreviewAggregate, PreviewOperationRecord, ProductRunRequest, ProductRunServiceError, RunRecord,
 };
+#[cfg(test)]
+use super::{filesystem, invalid};
 use crate::DaemonError;
 
 mod deliverable;
@@ -35,100 +36,31 @@ use settlement::{PersistedCheckpoint, restore_settlement};
 
 mod types;
 use types::{
-    PersistedDeliverable, PersistedMessage, PersistedPreviewOperation, PersistedPreviewOutput,
-    PersistedProgress, PersistedRecord,
+    PersistedDeliverable, PersistedPreviewOperation, PersistedPreviewOutput, PersistedProgress,
+    PersistedRecord,
 };
 
 const MAX_PREVIEW_OPERATIONS: usize = 16_384;
 const MAX_PREVIEW_OUTPUT_BYTES: usize = 4 * 1_024 * 1_024;
 
 #[cfg(test)]
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum PersistenceFaultPoint {
-    BeforeWrite,
-    BeforeFileSync,
-    BeforeRename,
-    AfterRename,
-    BeforeDirectorySync,
-}
-
+mod fault;
 #[cfg(test)]
-static PERSISTENCE_FAULTS: std::sync::Mutex<Vec<([u8; 16], PersistenceFaultPoint)>> =
-    std::sync::Mutex::new(Vec::new());
-
+use fault::check_persistence_fault;
 #[cfg(test)]
-static PERSISTENT_PERSISTENCE_FAULTS: std::sync::Mutex<Vec<([u8; 16], PersistenceFaultPoint)>> =
-    std::sync::Mutex::new(Vec::new());
-
-#[cfg(test)]
-pub fn inject_persistence_fault(run_id: RunId, point: PersistenceFaultPoint) {
-    PERSISTENCE_FAULTS.lock().expect("persistence fault lock").push((run_id.into_bytes(), point));
-}
-
-#[cfg(test)]
-pub fn inject_persistent_persistence_fault(run_id: RunId, point: PersistenceFaultPoint) {
-    PERSISTENT_PERSISTENCE_FAULTS
-        .lock()
-        .expect("persistent persistence fault lock")
-        .push((run_id.into_bytes(), point));
-}
-
-#[cfg(test)]
-pub fn clear_persistent_persistence_fault(run_id: RunId, point: PersistenceFaultPoint) {
-    PERSISTENT_PERSISTENCE_FAULTS
-        .lock()
-        .expect("persistent persistence fault lock")
-        .retain(|candidate| candidate != &(run_id.into_bytes(), point));
-}
-
-#[cfg(test)]
-fn check_persistence_fault(
-    run_id: RunId,
-    point: PersistenceFaultPoint,
-) -> Result<(), ProductRunServiceError> {
-    if PERSISTENT_PERSISTENCE_FAULTS
-        .lock()
-        .map_err(|_| {
-            ProductRunServiceError::internal(
-                "read the persistent persistence fault schedule",
-                "the test fault lock was poisoned",
-            )
-        })?
-        .contains(&(run_id.into_bytes(), point))
-    {
-        return Err(ProductRunServiceError::persistence(
-            persistence_fault_operation(point),
-            "injected persistent persistence failure",
-        ));
-    }
-    let mut faults = PERSISTENCE_FAULTS.lock().map_err(|_| {
-        ProductRunServiceError::internal(
-            "read the persistence fault schedule",
-            "the test fault lock was poisoned",
-        )
-    })?;
-    if let Some(index) =
-        faults.iter().position(|candidate| candidate == &(run_id.into_bytes(), point))
-    {
-        faults.remove(index);
-        return Err(ProductRunServiceError::persistence(
-            persistence_fault_operation(point),
-            "injected persistence failure",
-        ));
-    }
-    Ok(())
-}
+pub(super) use fault::{
+    PersistenceFaultPoint, clear_persistent_persistence_fault, inject_persistence_fault,
+    inject_persistent_persistence_fault,
+};
 
 pub(super) fn persist_record(
     directory: &Path,
     record: &RunRecord,
 ) -> Result<(), ProductRunServiceError> {
     let result = write_record(directory, record);
-    if let Err(error) = &result
-        && let Some(options) = &record.interaction
-    {
-        options.record_persistence_failure(error.describe());
-        options.persistence_failed.store(true, std::sync::atomic::Ordering::Release);
+    if let Err(error) = &result {
+        record.interaction.record_persistence_failure(error.describe());
+        record.interaction.persistence_failed.store(true, std::sync::atomic::Ordering::Release);
         record.cancelled.store(true, std::sync::atomic::Ordering::Release);
         let _ = record.provider_cancellation.cancel();
     }
@@ -140,31 +72,18 @@ pub(super) fn write_record(
     record: &RunRecord,
 ) -> Result<(), ProductRunServiceError> {
     use std::io::Write as _;
-    let workbench_directory;
-    let workbench = record.interaction.as_ref().is_some_and(|options| options.workbench.is_some());
-    let directory = if workbench {
-        workbench_directory = directory
-            .parent()
-            .ok_or_else(|| {
-                ProductRunServiceError::internal(
-                    "resolve the workbench run directory",
-                    "the configured product-run directory has no parent",
-                )
-            })?
-            .join("workbench-v1")
-            .join("runs");
-        fs::create_dir_all(&workbench_directory).map_err(|error| {
-            ProductRunServiceError::persistence("create the workbench run directory", error)
-        })?;
-        workbench_directory.as_path()
-    } else {
-        directory
-    };
+    #[cfg(test)]
+    let fault_directory = directory;
+    let workbench_directory = record_directory(directory)?;
+    fs::create_dir_all(&workbench_directory).map_err(|error| {
+        ProductRunServiceError::persistence("create the workbench run directory", error)
+    })?;
+    let directory = workbench_directory.as_path();
     let persisted = PersistedRecord::from_record(record)?;
     let bytes = serde_json::to_vec_pretty(&persisted).map_err(|error| {
         ProductRunServiceError::persistence("serialize the product-run record", error)
     })?;
-    if workbench && bytes.len() as u64 > workbench::MAX_RUN_RECORD_BYTES {
+    if bytes.len() as u64 > workbench::MAX_RUN_RECORD_BYTES {
         return Err(ProductRunServiceError::persistence(
             "serialize the workbench run record",
             format!(
@@ -175,34 +94,49 @@ pub(super) fn write_record(
         ));
     }
     let path = directory.join(format!("{}.json", persisted.run_id));
-    if workbench {
-        workbench::make_room_for_record(directory, &path)?;
-    }
+    workbench::make_room_for_record(directory, &path)?;
     let temporary = path.with_extension("json.new");
     let mut file = fs::File::create(&temporary).map_err(|error| {
         ProductRunServiceError::persistence("create the product-run temporary record", error)
     })?;
     #[cfg(test)]
-    check_persistence_fault(record.request.run_id(), PersistenceFaultPoint::BeforeWrite)?;
+    check_persistence_fault(
+        fault_directory,
+        record.request.run_id(),
+        PersistenceFaultPoint::BeforeWrite,
+    )?;
     file.write_all(&bytes).map_err(|error| {
         ProductRunServiceError::persistence("write the product-run temporary record", error)
     })?;
     #[cfg(test)]
-    check_persistence_fault(record.request.run_id(), PersistenceFaultPoint::BeforeFileSync)?;
+    check_persistence_fault(
+        fault_directory,
+        record.request.run_id(),
+        PersistenceFaultPoint::BeforeFileSync,
+    )?;
     file.sync_all().map_err(|error| {
         ProductRunServiceError::persistence("sync the product-run temporary record", error)
     })?;
     #[cfg(test)]
-    check_persistence_fault(record.request.run_id(), PersistenceFaultPoint::BeforeRename)?;
+    check_persistence_fault(
+        fault_directory,
+        record.request.run_id(),
+        PersistenceFaultPoint::BeforeRename,
+    )?;
     fs::rename(temporary, path).map_err(|error| {
         ProductRunServiceError::persistence("replace the durable product-run record", error)
     })?;
     #[cfg(test)]
-    check_persistence_fault(record.request.run_id(), PersistenceFaultPoint::AfterRename)?;
+    check_persistence_fault(
+        fault_directory,
+        record.request.run_id(),
+        PersistenceFaultPoint::AfterRename,
+    )?;
     #[cfg(unix)]
     {
         #[cfg(test)]
         check_persistence_fault(
+            fault_directory,
             record.request.run_id(),
             PersistenceFaultPoint::BeforeDirectorySync,
         )?;
@@ -213,18 +147,59 @@ pub(super) fn write_record(
     Ok(())
 }
 
-#[cfg(test)]
-const fn persistence_fault_operation(point: PersistenceFaultPoint) -> &'static str {
-    match point {
-        PersistenceFaultPoint::BeforeWrite => "write the product-run temporary record",
-        PersistenceFaultPoint::BeforeFileSync => "sync the product-run temporary record",
-        PersistenceFaultPoint::BeforeRename => "replace the durable product-run record",
-        PersistenceFaultPoint::AfterRename => "complete durable product-run replacement",
-        PersistenceFaultPoint::BeforeDirectorySync => "sync the product-run directory",
+pub(super) fn record_directory(directory: &Path) -> Result<PathBuf, ProductRunServiceError> {
+    if directory.file_name().is_some_and(|name| name == "product-runs") {
+        return Ok(directory
+            .parent()
+            .ok_or_else(|| {
+                ProductRunServiceError::internal(
+                    "resolve the workbench run directory",
+                    "the configured product-run directory has no parent",
+                )
+            })?
+            .join("workbench-v1/runs"));
     }
+    Ok(directory.to_path_buf())
 }
 
+#[cfg(test)]
 pub(super) fn load_records(directory: &Path) -> Result<BTreeMap<RunId, RunRecord>, DaemonError> {
+    let root = directory
+        .parent()
+        .filter(|_| directory.file_name().is_some_and(|name| name == "product-runs"))
+        .map_or_else(
+            || directory.parent().unwrap_or(directory).to_path_buf(),
+            |parent| parent.join("workbench-v1"),
+        );
+    let controls = crate::product_control::ControlStore::open(
+        &root,
+        peritus_journal::StoreId::new([0x7f; 16]).map_err(|_| invalid("invalid test store"))?,
+    )
+    .map_err(|error| {
+        DaemonError::with_source(
+            crate::DaemonErrorCode::Storage,
+            crate::DaemonRecovery::Reconcile,
+            "open governed test state",
+            "the durable workbench control store could not be reopened",
+            error,
+        )
+    })?;
+    load_workbench_records(&root, Some(&controls))
+}
+
+#[cfg(test)]
+pub(super) fn load_unchecked_records(
+    directory: &Path,
+) -> Result<BTreeMap<RunId, RunRecord>, DaemonError> {
+    let workbench_directory = record_directory(directory).map_err(|error| {
+        DaemonError::new(
+            crate::DaemonErrorCode::Storage,
+            crate::DaemonRecovery::Reconcile,
+            "resolve product-run state",
+            error.describe(),
+        )
+    })?;
+    let directory = workbench_directory.as_path();
     let mut records = BTreeMap::new();
     for entry in fs::read_dir(directory).map_err(filesystem)? {
         let entry = match entry {
@@ -252,7 +227,9 @@ pub(super) fn load_records(directory: &Path) -> Result<BTreeMap<RunId, RunRecord
                 continue;
             }
         };
-        let record = match persisted.into_record() {
+        let record = match persisted
+            .into_record_with_context(Some("test-only persisted workbench context"))
+        {
             Ok(record) => record,
             Err(error) => {
                 quarantine_record(&path, "product-run state contains invalid values", Some(&error));
@@ -267,14 +244,6 @@ pub(super) fn load_records(directory: &Path) -> Result<BTreeMap<RunId, RunRecord
             );
             continue;
         }
-        if record.interaction.as_ref().is_some_and(|options| options.workbench.is_some()) {
-            quarantine_record(
-                &path,
-                "workbench execution state appeared in the legacy generation",
-                None,
-            );
-            continue;
-        }
         if records.contains_key(&record.request.run_id()) {
             quarantine_record(&path, "duplicate product-run identity", None);
             continue;
@@ -285,6 +254,9 @@ pub(super) fn load_records(directory: &Path) -> Result<BTreeMap<RunId, RunRecord
 }
 
 pub(super) fn quarantine_record(path: &Path, reason: &str, source: Option<&dyn std::fmt::Display>) {
+    if path.parent().and_then(Path::file_name).is_some_and(|name| name == ".quarantine") {
+        return;
+    }
     isolate_record(path, ".quarantine", reason, source);
 }
 

@@ -6,11 +6,29 @@ exact B3 command and event frame bindings, resumable at-least-once subscriptions
 prompt correlation, terminal streaming, daemon controls, verified candidate settlement, stable
 errors, deterministic schemas, and compatibility fixtures.
 
-Product responses preserve the legacy `ProductRunSnapshot` bytes and add append-only settlement
-payload tags. A settlement identifies the exact candidate and conversation revision, distinguishes
-automated qualification from the user's existing `ProductDeliverable::accepted` choice, and reports
-candidate work honestly even when a provider, gate, review, or adapter stops before acceptance.
-Legacy deliverables decode as qualified; new partial candidates use only the settlement payloads.
+The optional `app.terminal-failure` feature adds event tag 15, `TerminalUnavailable`, containing
+the exact `TerminalBinding`. It ends delivery for that attachment without asserting process exit,
+cancellation, or loss of the application connection. Existing event tags and bytes are unchanged.
+Servers send this event only to clients that negotiated the feature; older clients receive a
+bounded diagnostic instead.
+
+The optional `app.terminal-pipes` feature adds response tag 181, `TerminalPipeAttached`, carrying
+the exact attachment binding. It identifies an existing interactive preview with bounded stdin,
+stdout, and stderr pipes instead of a PTY. Clients must negotiate it before such an attachment
+is admitted. Stream offsets remain independent and event sequencing remains global; pipe mode
+does not grant resize support or new process-launch authority. `TerminalAttached` retains its
+existing PTY meaning and wire bytes.
+
+Product responses expose the current `ProductRunSnapshot` and settlement payloads. A settlement
+identifies the exact candidate and conversation revision, distinguishes automated qualification
+from the user's `ProductDeliverable::accepted` choice, and reports candidate work honestly even
+when a provider, gate, review, or adapter stops before acceptance. Earlier product protocol shapes
+are rejected rather than decoded or migrated.
+
+The `app.workbench-run-binding` feature uses request tag 45 and response tag 44 for authenticated
+discovery of a run's durable conversation. Every binding contains the interaction snapshot and its
+exact workbench destination. Runs without that binding are not admitted into the current product
+flow. Lookup errors retain the selected run for retry rather than implying a different run kind.
 
 The crate does not open sockets or named pipes, authenticate peers, access storage, supervise
 processes, or grant domain authority. Those effects belong to G0 and its B0/B1/C0/C2 dependencies.

@@ -11,6 +11,16 @@ fn developer_loop_exhaustion_is_a_local_budget_failure() {
 }
 
 #[test]
+fn provider_turn_deadline_requires_recovery_instead_of_provider_retry() {
+    let error = developer_error(&DeveloperLoopError::RecoveryRequired(
+        "provider turn deadline; exact run retry is required".to_owned(),
+    ));
+
+    assert_eq!(error.kind(), ProductRunnerErrorKind::Apply);
+    assert!(error.detail().contains("exact run retry"));
+}
+
+#[test]
 fn rejected_terminal_correction_requires_fresh_repository_grounding() {
     let error = ProductRunnerError::new(
         ProductRunnerErrorKind::InvalidModelOutput,

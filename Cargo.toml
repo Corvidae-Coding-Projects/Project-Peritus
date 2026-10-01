@@ -121,18 +121,23 @@ markup5ever_rcdom = "=0.39.0"
 nix = { version = "=0.31.3", default-features = false, features = ["signal", "term"] }
 portable-pty = { version = "=0.9.0", default-features = false }
 process-wrap = { version = "=9.1.0", default-features = false, features = ["creation-flags", "job-object", "process-group", "process-session", "std"] }
-ratatui = { version = "=0.30.2", default-features = false, features = ["crossterm_0_29"] }
+ratatui = { version = "=0.30.2", default-features = false, features = [
+    "crossterm_0_29",
+    "unstable-rendered-line-info",
+] }
 reqwest = { version = "=0.13.4", default-features = false, features = ["http2", "rustls", "stream"] }
 rusqlite = { version = "=0.40.2", default-features = false, features = ["backup", "bundled"] }
 serde = { version = "=1.0.229", features = ["derive"] }
 serde_json = "=1.0.149"
 sha2 = { version = "=0.11.0", default-features = false }
+signal-hook = "=0.3.18"
 seccompiler = { version = "=0.5.0", default-features = false }
 tempfile = "=3.27.0"
 thiserror = "=2.0.20"
 tokio = { version = "=1.53.1", default-features = false, features = ["fs", "io-util", "macros", "net", "rt", "rt-multi-thread", "signal", "sync", "time"] }
 toml = "=1.1.4"
 url = "=2.5.8"
+vt100 = "=0.16.2"
 zeroize = { version = "=1.9.0", default-features = false, features = ["alloc"] }
 windows-sys = { version = "=0.61.2", default-features = false }
 vstd = { version = "=0.0.0-2026-08-09-0044", git = "https://github.com/verus-lang/verus.git", rev = "92f466f247f45128c630d1c843fd6e27d2115587" }

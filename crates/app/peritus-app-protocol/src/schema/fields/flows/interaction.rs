@@ -22,32 +22,6 @@ pub(super) const INTERACTION_TYPES: &[AppTypeDescriptor] = &[
         ],
     },
     AppTypeDescriptor {
-        name: "ProductRunRequest",
-        rust_type: "ProductRunRequest",
-        fields: &[
-            field("runId", W::Identifier, &[B::NonZero], "RunId", "RunId", J::Identifier, true),
-            field(
-                "workspaceId",
-                W::Identifier,
-                &[B::NonZero],
-                "WorkspaceId",
-                "WorkspaceId",
-                J::Identifier,
-                true,
-            ),
-            field(
-                "providers",
-                W::Struct,
-                &[],
-                "ProductProviderSelection",
-                "ProductProviderSelection",
-                J::Ref("ProductProviderSelection"),
-                true,
-            ),
-            field("task", W::Utf8, &[B::ProductTaskBytes], "String", "string", J::String, true),
-        ],
-    },
-    AppTypeDescriptor {
         name: "ProductModelChoice",
         rust_type: "ProductModelChoice",
         fields: &[
@@ -100,39 +74,6 @@ pub(super) const INTERACTION_TYPES: &[AppTypeDescriptor] = &[
         ],
     },
     AppTypeDescriptor {
-        name: "ProductInteractionRequest",
-        rust_type: "ProductInteractionRequest",
-        fields: &[
-            field(
-                "request",
-                W::Struct,
-                &[],
-                "ProductRunRequest",
-                "ProductRunRequest",
-                J::Ref("ProductRunRequest"),
-                true,
-            ),
-            field(
-                "mode",
-                W::U16,
-                &[],
-                "ProductInteractionMode",
-                "\"chat\" | \"plan\" | \"review\" | \"build\"",
-                J::Enum(&["chat", "plan", "review", "build"]),
-                true,
-            ),
-            field(
-                "models",
-                W::Struct,
-                &[],
-                "ProductRoleModels",
-                "ProductRoleModels",
-                J::Ref("ProductRoleModels"),
-                true,
-            ),
-        ],
-    },
-    AppTypeDescriptor {
         name: "ProductActivity",
         rust_type: "ProductActivity",
         fields: &[
@@ -162,7 +103,7 @@ pub(super) const INTERACTION_TYPES: &[AppTypeDescriptor] = &[
         name: "ProductInteractionSnapshot",
         rust_type: "ProductInteractionSnapshot",
         fields: &[
-            // The tag selects a full typed settlement snapshot or an unsettled legacy snapshot.
+            // The tag selects settled candidate facts or the current unsettled run state.
             field("settled", W::Boolean, &[], "bool", "boolean", J::Boolean, true),
             field(
                 "state",
@@ -262,6 +203,31 @@ pub(super) const INTERACTION_TYPES: &[AppTypeDescriptor] = &[
                 "readonly ProductModelInfo[]",
                 J::ArrayRef("ProductModelInfo"),
                 true,
+            ),
+        ],
+    },
+    AppTypeDescriptor {
+        name: "ProductInteractionBinding",
+        rust_type: "ProductInteractionBinding",
+        fields: &[
+            field("hasEffort", W::Boolean, &[], "bool", "boolean", J::Boolean, true),
+            field(
+                "interaction",
+                W::Struct,
+                &[],
+                "ProductInteractionSnapshot",
+                "ProductInteractionSnapshot",
+                J::Ref("ProductInteractionSnapshot"),
+                true,
+            ),
+            field(
+                "conversation",
+                W::Option,
+                &[],
+                "Option<WorkbenchQuery>",
+                "WorkbenchQuery",
+                J::Ref("WorkbenchQuery"),
+                false,
             ),
         ],
     },

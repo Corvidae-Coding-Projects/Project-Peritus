@@ -295,7 +295,34 @@ fn bind_store(connection: &Connection, store_id: StoreId) -> Result<(), JournalE
             "store identity does not match the existing database",
         ));
     }
-    if version != super::schema::SCHEMA_VERSION {
+    if version == 1 {
+        let migration_owned: bool = connection.query_row(
+            "SELECT EXISTS(SELECT 1 FROM sqlite_schema WHERE type = 'table' AND name = 'schema_migrations')",
+            [], |row| row.get(0),
+        ).map_err(|error| JournalError::sqlite("inspect migration ownership", error))?;
+        if migration_owned {
+            return Err(JournalError::new(
+                JournalErrorKind::UnsupportedSchema,
+                "open journal",
+                "run the application migration owner before opening this journal",
+            ));
+        }
+        // Logical attachments have independent identities and ownership even when their
+        // content-addressed bytes are shared. Keep every original receipt during migration.
+        connection
+            .execute_batch("ALTER TABLE app_artifacts RENAME TO app_artifacts_v1;")
+            .map_err(|error| JournalError::sqlite("begin artifact identity migration", error))?;
+        connection
+            .execute_batch(super::schema::INSTALL_SCHEMA)
+            .map_err(|error| JournalError::sqlite("install artifact identity schema", error))?;
+        connection
+            .execute_batch(
+                "INSERT INTO app_artifacts SELECT * FROM app_artifacts_v1;
+                 DROP TABLE app_artifacts_v1;
+                 UPDATE store_meta SET schema_version = 2 WHERE singleton = 1;",
+            )
+            .map_err(|error| JournalError::sqlite("migrate artifact identities", error))?;
+    } else if version != super::schema::SCHEMA_VERSION {
         return Err(JournalError::new(
             JournalErrorKind::UnsupportedSchema,
             "open journal",

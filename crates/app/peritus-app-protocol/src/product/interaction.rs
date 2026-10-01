@@ -1,8 +1,6 @@
 //! Additive conversation-first execution requests and honest user-input lifecycle observations.
 
-use super::{
-    ProductRoleModels, ProductRunMessageError, ProductRunRequest, ProductRunSnapshot, bounded_text,
-};
+use super::{ProductRoleModels, ProductRunMessageError, ProductRunSnapshot, bounded_text};
 
 /// Changes model choices for an existing conversation without adding user input or restarting it.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -71,40 +69,6 @@ impl ProductInteractionMode {
             Self::Review => "Review · read-only",
             Self::Build => "Build",
         }
-    }
-}
-
-/// Starts or continues one exact conversation with explicit mode and model selections.
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct ProductInteractionRequest {
-    request: ProductRunRequest,
-    mode: ProductInteractionMode,
-    models: ProductRoleModels,
-}
-impl ProductInteractionRequest {
-    /// Uses the inner task as the next message, not as implicit authorization to build.
-    #[must_use]
-    pub const fn new(
-        request: ProductRunRequest,
-        mode: ProductInteractionMode,
-        models: ProductRoleModels,
-    ) -> Self {
-        Self { request, mode, models }
-    }
-    /// Exact conversation/workspace/provider identities and next user message.
-    #[must_use]
-    pub const fn request(&self) -> &ProductRunRequest {
-        &self.request
-    }
-    /// Selected interaction mode.
-    #[must_use]
-    pub const fn mode(&self) -> ProductInteractionMode {
-        self.mode
-    }
-    /// Exact model choices for the selected roles.
-    #[must_use]
-    pub const fn models(&self) -> &ProductRoleModels {
-        &self.models
     }
 }
 
@@ -200,7 +164,7 @@ impl ProductActivity {
     }
 }
 
-/// Conversation-first projection alongside the unchanged legacy product snapshot.
+/// Authoritative interaction projection for one governed product run.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ProductInteractionSnapshot {
     settlement: Option<peritus_run_settlement::RunSettlement>,
@@ -245,7 +209,7 @@ impl ProductInteractionSnapshot {
     pub const fn settlement(&self) -> Option<&peritus_run_settlement::RunSettlement> {
         self.settlement.as_ref()
     }
-    /// Legacy-compatible run status and exact candidate facts.
+    /// Run status and exact candidate facts.
     #[must_use]
     pub const fn snapshot(&self) -> &ProductRunSnapshot {
         &self.snapshot

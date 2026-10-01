@@ -2,7 +2,7 @@ use std::path::Path;
 
 use super::StoreState;
 use crate::{
-    LifecyclePhase, ProcessError,
+    ProcessError,
     registry_storage::{hex, retire_execution_record},
 };
 
@@ -11,7 +11,7 @@ pub(super) fn execution_record_count(state: &StoreState) -> usize {
         + state.manifests.keys().filter(|process_id| !state.claims.contains_key(process_id)).count()
 }
 
-pub(super) fn retire_terminal_records(
+pub(super) fn retire_settled_records(
     claims: &Path,
     manifests: &Path,
     spools: &Path,
@@ -21,10 +21,16 @@ pub(super) fn retire_terminal_records(
     if execution_record_count(state) <= target {
         return Ok(());
     }
-    let mut terminal = state
+    let mut settled = state
         .manifests
         .iter()
-        .filter(|(_, manifest)| manifest.phase == LifecyclePhase::Terminal)
+        .filter(|(process_id, manifest)| {
+            manifest.ownership_settled()
+                && state
+                    .claims
+                    .get(process_id)
+                    .is_some_and(|claim| claim.matches_manifest(manifest))
+        })
         .map(|(process_id, _)| {
             let path = manifests.join(format!("{}.manifest", hex(process_id.as_bytes())));
             let modified = path
@@ -34,8 +40,8 @@ pub(super) fn retire_terminal_records(
             (modified, *process_id)
         })
         .collect::<Vec<_>>();
-    terminal.sort_unstable_by_key(|(modified, process_id)| (*modified, *process_id));
-    for (_, process_id) in terminal {
+    settled.sort_unstable_by_key(|(modified, process_id)| (*modified, *process_id));
+    for (_, process_id) in settled {
         if execution_record_count(state) <= target {
             break;
         }

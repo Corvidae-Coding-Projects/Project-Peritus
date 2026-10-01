@@ -206,10 +206,7 @@ where
     let (observations, primary_failure) =
         match callback(FailurePhase::Exercise, || case.run(&mut subject)) {
             Ok(future) => match GuardedFuture::new(future, FailurePhase::Exercise).await {
-                Ok(result) => {
-                    let (observations, failure) = result.into_parts();
-                    (observations, failure.map(CaseFailure::Assertion))
-                }
+                Ok(result) => result.into_parts(),
                 Err(failure) => (Vec::new(), Some(CaseFailure::Panic(failure))),
             },
             Err(failure) => (Vec::new(), Some(CaseFailure::Panic(failure))),

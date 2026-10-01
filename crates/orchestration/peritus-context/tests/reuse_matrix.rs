@@ -42,6 +42,8 @@ fn candidate_at(checkpoint_sequence: u64) -> CandidateIdentity {
         RunId::new([31; 16]).expect("run"),
         WorkspaceId::new([32; 16]).expect("workspace"),
         digest(33),
+        digest(33),
+        None,
         1,
         checkpoint_sequence,
     )

@@ -167,3 +167,52 @@ fn narrowing_process_blocks_a_direct_preview_before_receipt_or_launch() {
         service.shutdown(Duration::from_secs(5)).await;
     });
 }
+
+#[test]
+fn ordinary_chat_enforces_the_workspace_overlay_without_a_workbench_binding() {
+    interaction::block_on(async {
+        let repository = repository();
+        let state = tempfile::tempdir().unwrap();
+        let writer =
+            scripted(0xa1, "ordinary-chat", vec![support::text_response(b"MUST_NOT_SEND")]);
+        let workspace = WorkspaceId::new([0xa2; 16]).unwrap();
+        let run = RunId::new([0xa3; 16]).unwrap();
+        let service =
+            service(state.path(), repository.path(), workspace, [&writer, &writer, &writer]);
+        queue(&service, workspace).await;
+        let restrict = command(
+            workspace,
+            0xa4,
+            3,
+            WorkbenchIntent::SetPermissions(WorkbenchPermissionChange::new(
+                0,
+                WorkbenchPermissionCapability::Network,
+                false,
+            )),
+        );
+        assert!(matches!(
+            service.workbench_command(actor(), &restrict).await,
+            AppResponsePayload::WorkbenchReceipt(_)
+        ));
+        let request = ProductRunRequest::new(
+            run,
+            workspace,
+            ProductProviderSelection::new(
+                writer.profile.profile_id(),
+                writer.profile.profile_id(),
+                writer.profile.profile_id(),
+            ),
+            "Read the current files.".to_owned(),
+        )
+        .unwrap();
+        service
+            .start_interaction(request, ProductInteractionMode::Chat, ProductRoleModels::default())
+            .await
+            .unwrap();
+        let terminal = wait_for_terminal(&service, run).await;
+        assert_eq!(terminal.phase(), ProductRunPhase::Failed);
+        assert!(writer.requests.lock().unwrap().is_empty());
+        assert!(!service.effective_permissions(run).unwrap().allows(PermissionCapability::Network));
+        service.shutdown(Duration::from_secs(5)).await;
+    });
+}

@@ -29,6 +29,13 @@ impl AppModel {
         if self.paste_file_field(text) || self.paste_image_field(text) {
             return;
         }
+        if self.chat.workbench.open
+            || self.chat.doctor.is_some()
+            || self.chat.model_picker()
+            || self.chat.effort_picker()
+        {
+            return;
+        }
         let previous = self.chat.buffer.clone();
         let cursor = self.chat.selection().map_or(self.chat.cursor, |range| range.start);
         self.paste_chat(text);
@@ -52,6 +59,7 @@ impl AppModel {
         }
         if key.modifiers.contains(KeyModifiers::CONTROL) {
             match key.code {
+                KeyCode::Char('r') => return self.request_reconnect(),
                 KeyCode::Char('q') => {
                     self.quitting = true;
                     return vec![Effect::Quit];
@@ -105,11 +113,15 @@ impl AppModel {
                 self.chat.command_selection =
                     (self.chat.command_selection + 1).min(commands.len() - 1);
             }
+            KeyCode::Up | KeyCode::Down => {
+                self.move_chat_cursor_vertically(key);
+            }
             KeyCode::PageUp => self.chat.scroll = self.chat.scroll.saturating_add(12),
             KeyCode::PageDown => self.chat.scroll = self.chat.scroll.saturating_sub(12),
             KeyCode::End if self.chat.buffer.is_empty() => self.chat.scroll = 0,
             KeyCode::Esc if self.chat.selection_anchor.take().is_some() => {}
             KeyCode::Esc => {
+                self.chat.workbench.snapshot_refresh_command = None;
                 self.chat.expanded = false;
                 self.chat.command_selection = 0;
             }
@@ -138,5 +150,20 @@ impl AppModel {
             }
         }
         Vec::new()
+    }
+
+    fn move_chat_cursor_vertically(&mut self, key: KeyEvent) {
+        if key.modifiers.contains(KeyModifiers::SHIFT) {
+            self.chat.selection_anchor.get_or_insert(self.chat.cursor);
+        } else {
+            self.chat.selection_anchor = None;
+        }
+        let width = self.chat.viewport.map_or(80, |area| area.width.saturating_sub(2));
+        self.chat.cursor = crate::input::composer::vertical_cursor(
+            &self.chat.buffer,
+            self.chat.cursor,
+            key.code == KeyCode::Down,
+            usize::from(width),
+        );
     }
 }

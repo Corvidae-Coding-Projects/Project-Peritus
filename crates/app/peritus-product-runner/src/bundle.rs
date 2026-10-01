@@ -14,6 +14,11 @@ pub fn diff(root: &Path, baseline: &CandidateBaseline) -> Result<String, Product
         return scope.diff(root);
     }
     let changed_paths = baseline.changed_paths(root)?;
+    if let Some(managed) = baseline.managed() {
+        let mut text = metadata_manifest(root, &changed_paths)?;
+        text.push_str(&String::from_utf8_lossy(&managed.patch(root)?));
+        return Ok(limit_text(&text, 1024 * 1024));
+    }
     let output = Command::new("git")
         .args(["-C", root_text(root)?, "diff", "--no-ext-diff"])
         .arg(baseline.head())

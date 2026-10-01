@@ -1,6 +1,41 @@
 use super::*;
 
 #[test]
+fn private_preludes_are_bounded_audited_and_never_enabled_for_other_payloads() {
+    for separator in ["\n\n", "\r\n\r\n", "\n\n  "] {
+        let input = format!("I will read the file.{separator}{{\"path\":\"README.md\"}}");
+        assert!(object(&input, "arguments", ProtocolLimits::PRODUCTION).is_err());
+        let item = ItemId::new("public-result".to_owned()).unwrap();
+        assert!(structured_output(input.as_bytes(), &item, ProtocolLimits::PRODUCTION).is_err());
+        let (value, audit) = private_envelope(&input, "private-turn", ProtocolLimits::PRODUCTION)
+            .unwrap()
+            .into_parts();
+        assert_eq!(value.canonical_bytes(), br#"{"path":"README.md"}"#);
+        let Some(ModelEvent::ProviderEvent(audit)) = audit else { panic!("missing audit") };
+        let record: Value = serde_json::from_slice(audit.value().canonical_bytes()).unwrap();
+        assert_eq!(record["original"], input);
+        assert_eq!(record["policy"], "private-envelope-v1");
+    }
+    for input in [
+        "I will read the file. {\"x\":1}",
+        "I will read the file.\n{\"x\":1}",
+        "\"Example\"\n\n{\"x\":1}",
+        "```Example```\n\n{\"x\":1}",
+        "I will read the file.\n\n```json\n{\"x\":1}\n```",
+        "[Example]\n\n{\"x\":1}",
+        "I will read the file.\n\n{\"x\":1",
+        "I will read the file.\n\n{\"x\":1,\"x\":2}",
+        "I will read the file.\n\n{\"x\":1} {}",
+        "I will read the file.\n\n{\"x\":1} trailing text",
+        "I will read the file.\n\n[1,2]",
+    ] {
+        assert!(private_envelope(input, "turn", ProtocolLimits::PRODUCTION).is_err(), "{input}");
+    }
+    let oversized = format!("{}\n\n{{\"x\":1}}", "a".repeat(MAX_REPAIR_BYTES));
+    assert!(private_envelope(&oversized, "turn", ProtocolLimits::PRODUCTION).is_err());
+}
+
+#[test]
 fn repairs_complete_formatting_and_keeps_original_provenance() {
     for input in [
         "```json\n{\"path\":\"src/é.rs\",}\n```",

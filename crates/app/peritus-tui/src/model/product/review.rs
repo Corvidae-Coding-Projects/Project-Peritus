@@ -10,11 +10,13 @@ use peritus_app_protocol::{
 use super::ProductUi;
 use crate::{
     action::Effect,
-    model::{AppModel, Editor, EditorKind, NoticeLevel, PendingRequest, View},
+    model::{AppModel, NoticeLevel, PendingRequest, View},
 };
 
+mod editor;
 mod state;
 
+pub use editor::ReviewDraft;
 pub use state::{DiffReviewUi, ReviewFocus};
 
 impl AppModel {
@@ -49,7 +51,7 @@ impl AppModel {
             }
             return Vec::new();
         }
-        if !run.phase().terminal() {
+        if !run.operation().may_start_execution() {
             if let Some(product) = &mut self.product {
                 product.review.page = None;
                 "Structured comments open at a terminal effect boundary; raw diff remains available."
@@ -87,6 +89,13 @@ impl AppModel {
         }
         if let Some(product) = &mut self.product {
             let review = &mut product.review;
+            if review
+                .page
+                .as_ref()
+                .is_none_or(|prior| prior.candidate_digest() != page.candidate_digest())
+            {
+                review.scroll = 0;
+            }
             review.file = review.file.min(page.files().len().saturating_sub(1));
             review.hunk = review.hunk.min(
                 page.files()
@@ -104,7 +113,10 @@ impl AppModel {
     }
 
     pub(in crate::model) fn review_key(&mut self, key: KeyEvent) -> Option<Vec<Effect>> {
-        let structured = self.product.as_ref().is_some_and(|product| product.review.page.is_some());
+        let structured = self
+            .product
+            .as_ref()
+            .is_some_and(|product| product.review.page.is_some() && !product.review.raw);
         match key.code {
             KeyCode::Char('t') => {
                 if let Some(product) = &mut self.product {
@@ -117,6 +129,7 @@ impl AppModel {
             _ if !structured => None,
             KeyCode::Tab => {
                 if let Some(product) = &mut self.product {
+                    product.review.scroll = 0;
                     product.review.focus = match product.review.focus {
                         ReviewFocus::File => ReviewFocus::Hunk,
                         ReviewFocus::Hunk => ReviewFocus::Comment,
@@ -135,12 +148,14 @@ impl AppModel {
             }
             KeyCode::Left => {
                 if let Some(product) = &mut self.product {
+                    product.review.scroll = 0;
                     product.review.hunk = product.review.hunk.saturating_sub(1);
                 }
                 Some(Vec::new())
             }
             KeyCode::Right => {
                 if let Some(product) = &mut self.product {
+                    product.review.scroll = 0;
                     let maximum = product
                         .review
                         .selected_file()
@@ -168,6 +183,7 @@ impl AppModel {
     fn move_review_selection(&mut self, forward: bool) {
         let Some(product) = &mut self.product else { return };
         let review = &mut product.review;
+        review.scroll = 0;
         match review.focus {
             ReviewFocus::File => {
                 let maximum =
@@ -198,87 +214,6 @@ impl AppModel {
                 };
             }
         }
-    }
-
-    fn open_review_editor(&mut self, feedback: WorkbenchReviewFeedback) -> Vec<Effect> {
-        if self.product.as_ref().and_then(|product| product.review.selected_anchor()).is_none() {
-            self.notice(NoticeLevel::Warning, "Select a structured file or hunk first.");
-            return Vec::new();
-        }
-        let (title, hint) = match feedback {
-            WorkbenchReviewFeedback::Explain => (
-                "Explain selected change",
-                "Ask a source-grounded question. This does not permit mutation.",
-            ),
-            WorkbenchReviewFeedback::RequestRevision => (
-                "Request selected revision",
-                "Describe the desired revision. Ordinary admission and requalification still apply.",
-            ),
-            WorkbenchReviewFeedback::KeepBehavior => (
-                "Keep selected behavior",
-                "Describe the behavior to preserve; this is a semantic preference.",
-            ),
-            WorkbenchReviewFeedback::LeaveAlone => (
-                "Protect selected path",
-                "Describe what must remain untouched. The host blocks writes to the complete path.",
-            ),
-        };
-        self.editor = Some(Editor {
-            kind: EditorKind::ReviewFeedback(feedback),
-            title,
-            hint,
-            buffer: String::new(),
-            cursor: 0,
-        });
-        Vec::new()
-    }
-
-    pub(in crate::model) fn submit_review_feedback(
-        &mut self,
-        feedback: WorkbenchReviewFeedback,
-        message: String,
-    ) -> Vec<Effect> {
-        let Ok(text) = peritus_app_protocol::WorkbenchInputText::new(message.clone()) else {
-            self.editor = Some(Editor {
-                kind: EditorKind::ReviewFeedback(feedback),
-                title: "Review comment",
-                hint: "Enter a nonempty bounded comment.",
-                cursor: message.len(),
-                buffer: message,
-            });
-            self.notice(
-                NoticeLevel::Warning,
-                "Review comment must be nonempty and within the input limit; draft retained.",
-            );
-            return Vec::new();
-        };
-        let Some((query, revision, anchor)) = self.product.as_ref().and_then(|product| {
-            let page = product.review.page.as_ref()?;
-            Some((
-                page.query().query(),
-                page.query().revision(),
-                product.review.selected_anchor()?.clone(),
-            ))
-        }) else {
-            self.notice(
-                NoticeLevel::Warning,
-                "Refresh and select a current structured target; draft retained.",
-            );
-            self.editor = Some(Editor {
-                kind: EditorKind::ReviewFeedback(feedback),
-                title: "Review comment",
-                hint: "Refresh before retrying this draft.",
-                cursor: message.len(),
-                buffer: message,
-            });
-            return Vec::new();
-        };
-        self.submit_review_intent(
-            query,
-            revision,
-            WorkbenchIntent::AddReview { anchor, feedback, message: text },
-            message,
-        )
     }
 
     fn rebind_selected_comment(&mut self) -> Vec<Effect> {

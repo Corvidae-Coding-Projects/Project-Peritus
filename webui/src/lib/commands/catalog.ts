@@ -20,6 +20,7 @@ export const commands: Command[] = [
   {id:'diff',label:'Candidate diff',detail:'Review exact candidate changes',group:'Results',slash:'/diff'},
   {id:'runs',label:'Run history',detail:'Inspect and resume daemon-owned runs',group:'Results',slash:'/runs'},
   {id:'retry',label:'Retry current run',detail:'Resume a failed or stopped run',group:'Results',slash:'/retry'},
+  {id:'acknowledge',label:'Acknowledge uncertain outcome',detail:'Record that an unknown external effect was reviewed without replaying it',group:'Results',slash:'/acknowledge'},
   {id:'export',label:'Export candidate',detail:'Export the exact candidate patch',group:'Results',slash:'/export'},
   {id:'accept',label:'Accept candidate',detail:'Open the exact-run CLI acceptance flow',group:'Results',slash:'/accept'},
   {id:'commit',label:'Commit candidate',detail:'Commit the managed candidate; distinct from Git commit',group:'Results',slash:'/commit'},

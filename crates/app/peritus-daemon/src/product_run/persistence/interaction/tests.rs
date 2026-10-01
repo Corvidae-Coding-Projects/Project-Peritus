@@ -1,16 +1,18 @@
 use super::*;
 
 fn options() -> InteractionOptions {
-    InteractionOptions::new(ProductInteractionMode::Chat, ProductRoleModels::default())
+    InteractionOptions::test(ProductInteractionMode::Chat, ProductRoleModels::default())
 }
 
 #[test]
-fn missing_efforts_preserves_legacy_default_and_unknown_values_reject() {
-    let legacy = serde_json::to_value(PersistedInteraction::capture(&options())).expect("capture");
-    assert!(legacy.get("efforts").is_none(), "default records keep the legacy stored shape");
-    let restored: PersistedInteraction = serde_json::from_value(legacy.clone()).expect("legacy");
-    assert!(!restored.restore().expect("restore").models.has_effort());
-    let mut corrupt = legacy;
+fn canonical_efforts_are_required_and_unknown_values_reject() {
+    let canonical =
+        serde_json::to_value(PersistedInteraction::capture(&options())).expect("capture");
+    assert!(canonical.get("efforts").is_some());
+    let mut missing = canonical.clone();
+    missing.as_object_mut().expect("object").remove("efforts");
+    assert!(serde_json::from_value::<PersistedInteraction>(missing).is_err());
+    let mut corrupt = canonical;
     corrupt["efforts"] = serde_json::Value::from(vec![99, 0, 0]);
     let restored: PersistedInteraction = serde_json::from_value(corrupt).expect("typed");
     assert!(restored.restore().is_err(), "unknown effort must not become default");

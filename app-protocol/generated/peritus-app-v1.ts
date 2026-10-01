@@ -55,7 +55,6 @@ export type AppPayloadKind =
   | "complete-artifact-upload"
   | "start-product-run"
   | "control-product-run"
-  | "query-product-runs"
   | "continue-product-run"
   | "query-product-run-conversation"
   | "interact"
@@ -79,9 +78,14 @@ export type AppPayloadKind =
   | "begin-workbench-file-upload"
   | "preview-workbench-file-import"
   | "preview-workbench-compaction"
+  | "query-workbench-execution"
+  | "continue-workbench-execution"
+  | "query-interaction-binding"
   | "query-workbench-goal"
   | "query-workbench-review"
   | "query-workbench-result"
+  | "query-workbench-preview"
+  | "query-product-run-observations"
   | "preview-workbench-rewind"
   | "inspect-workbench-checkpoint"
   | "query-conversation-library"
@@ -94,15 +98,14 @@ export type AppPayloadKind =
   | "artifact-opened"
   | "prompt-accepted"
   | "terminal-attached"
+  | "terminal-pipe-attached"
   | "acknowledged"
   | "daemon-status"
   | "shutdown-accepted"
   | "error"
   | "product-run-accepted"
-  | "product-runs"
   | "product-run-conversation"
   | "product-run-settled"
-  | "product-run-settlements"
   | "interaction"
   | "models"
   | "interaction-with-effort"
@@ -118,9 +121,13 @@ export type AppPayloadKind =
   | "workbench-files"
   | "workbench-file-import-preview"
   | "workbench-compaction-preview"
+  | "workbench-execution"
+  | "interaction-binding"
   | "workbench-goal"
   | "workbench-review"
   | "workbench-result"
+  | "workbench-preview"
+  | "product-run-observations"
   | "workbench-checkpoint"
   | "workbench-rewind-preview"
   | "workbench-restore"
@@ -142,6 +149,7 @@ export type AppPayloadKind =
   | "heartbeat"
   | "shutdown-progress"
   | "shutdown-complete"
+  | "terminal-unavailable"
   | "acknowledge"
   | "cancel-subscription"
   | "cancel-artifact"
@@ -610,6 +618,17 @@ export interface WorkbenchDismissReviewIntent {
   readonly comment: ControlOperationId;
 }
 
+export interface WorkbenchContinuation {
+  readonly query: WorkbenchQuery;
+  readonly mode: "chat" | "plan" | "review" | "build";
+}
+
+export interface WorkbenchExecutionState {
+  readonly snapshot: WorkbenchSnapshot;
+  readonly run?: RunId;
+  readonly goal: boolean;
+}
+
 export interface WorkbenchExecutionSettings {
   readonly run: RunId;
   readonly providers: ProductProviderSelection;
@@ -743,6 +762,18 @@ export interface WorkbenchArtifactFeedbackIntent {
   readonly feedback: "explain" | "requestRevision" | "keepBehavior" | "leaveAlone";
   readonly message: string;
   readonly region?: WorkbenchArtifactRegion;
+}
+
+export interface WorkbenchPreviewOutput {
+  readonly launch: ControlOperationId;
+  readonly stdout: string;
+  readonly stderr: string;
+  readonly truncated: boolean;
+}
+
+export interface WorkbenchPreviewSnapshot {
+  readonly result: WorkbenchResultPage;
+  readonly outputs: readonly WorkbenchPreviewOutput[];
 }
 
 export interface WorkbenchInteractionReceipt {
@@ -1619,14 +1650,8 @@ export interface ConversationReplySource {
   readonly operation: ControlOperationId;
 }
 
-export interface ConversationLegacySource {
-  readonly kind: "legacy";
-  readonly run: RunId;
-  readonly index: number;
-}
-
 export interface ConversationSearchSnippet {
-  readonly source: ConversationInputSource | ConversationReplySource | ConversationLegacySource;
+  readonly source: ConversationInputSource | ConversationReplySource;
   readonly text: string;
 }
 
@@ -1647,7 +1672,6 @@ export interface ConversationLibraryItem {
   readonly pinned: boolean;
   readonly archived: boolean;
   readonly activityRevision: UInt64;
-  readonly legacyRun?: RunId;
   readonly goalState?: "active" | "waitingForUser" | "pausing" | "paused" | "blocked" | "budgetReached" | "achieved" | "cancelled";
   readonly goalDraft: boolean;
   readonly handoff: string;
@@ -1679,6 +1703,25 @@ export interface ProductDeliverable {
   readonly discarded: boolean;
 }
 
+export interface ProductRunLegalControls {
+  readonly cancel: boolean;
+  readonly retry: boolean;
+  readonly accept: boolean;
+  readonly commit: boolean;
+  readonly export: boolean;
+  readonly discard: boolean;
+  readonly acknowledge: boolean;
+}
+
+export interface ProductRunOperation {
+  readonly kind: ProductRunOperationKind;
+  readonly state: ProductRunOperationState;
+  readonly identity: string;
+  readonly known: string;
+  readonly uncertainty: string;
+  readonly legalControls: ProductRunLegalControls;
+}
+
 export interface ProductRunSnapshot {
   readonly runId: RunId;
   readonly workspaceId: WorkspaceId;
@@ -1691,19 +1734,28 @@ export interface ProductRunSnapshot {
   readonly gates: string;
   readonly review: string;
   readonly summary: string;
+  readonly operation: ProductRunOperation;
   readonly deliverable?: ProductDeliverable;
+}
+
+export interface ProductRunObservation {
+  readonly snapshot: ProductRunSnapshot;
+  readonly settlement?: RunSettlement;
 }
 
 export interface CandidateIdentity {
   readonly runId: RunId;
   readonly workspaceId: WorkspaceId;
-  readonly candidateDigest: Sha256Digest;
-  readonly conversationRevision: UInt64;
+  readonly contentDigest: Sha256Digest;
+  readonly repositoryDigest: Sha256Digest;
+  readonly executionDigest?: Sha256Digest;
+  readonly requirementsRevision: UInt64;
   readonly checkpointSequence: UInt64;
 }
 
 export interface QualificationEvidenceRecord {
   readonly provenance: CandidateIdentity;
+  readonly dependencies: number;
   readonly result: QualificationEvidence;
 }
 
@@ -1736,13 +1788,6 @@ export interface ProductModelUpdate {
   readonly models: ProductRoleModels;
 }
 
-export interface ProductRunRequest {
-  readonly runId: RunId;
-  readonly workspaceId: WorkspaceId;
-  readonly providers: ProductProviderSelection;
-  readonly task: string;
-}
-
 export interface ProductModelChoice {
   readonly id: string;
   readonly manual: boolean;
@@ -1753,12 +1798,6 @@ export interface ProductRoleModels {
   readonly writer: ProductModelChoice;
   readonly reviewer: ProductModelChoice;
   readonly fixer: ProductModelChoice;
-}
-
-export interface ProductInteractionRequest {
-  readonly request: ProductRunRequest;
-  readonly mode: "chat" | "plan" | "review" | "build";
-  readonly models: ProductRoleModels;
 }
 
 export interface ProductActivity {
@@ -1796,6 +1835,12 @@ export interface ProductModelCatalog {
   readonly cached: boolean;
   readonly error: string;
   readonly models: readonly ProductModelInfo[];
+}
+
+export interface ProductInteractionBinding {
+  readonly hasEffort: boolean;
+  readonly interaction: ProductInteractionSnapshot;
+  readonly conversation?: WorkbenchQuery;
 }
 
 export interface CanonicalAppMessage {

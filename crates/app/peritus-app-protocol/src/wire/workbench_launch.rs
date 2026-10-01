@@ -1,5 +1,7 @@
 //! Canonical bounded launch, capture, result and artifact-feedback codecs.
 
+mod output;
+pub(super) use output::{read_preview, write_preview};
 mod profile;
 #[cfg(test)]
 mod tests;

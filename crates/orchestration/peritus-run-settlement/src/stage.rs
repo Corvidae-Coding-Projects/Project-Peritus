@@ -1,10 +1,10 @@
-//! Monotonic qualification stage for one exact candidate.
+//! Currently supported qualification stage for one exact candidate.
 
 use vstd::prelude::*;
 
 verus! {
 
-/// Strongest qualification boundary completed for one exact candidate.
+/// Qualification currently supported by observations for one exact candidate.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum CandidateStage {
     /// Candidate content was observed.
@@ -22,7 +22,7 @@ pub enum CandidateStage {
 }
 
 impl CandidateStage {
-    /// Mathematical qualification order for an unchanged candidate.
+    /// Mathematical order of qualification strength, not observation chronology.
     pub open spec fn spec_rank(self) -> u8 {
         match self {
             Self::Observed => 1,
@@ -76,7 +76,7 @@ impl CandidateStage {
         }
     }
 
-    /// Returns whether `next` does not regress the same candidate.
+    /// Compares qualification strength; this does not authorize a state transition.
     #[must_use]
     pub const fn permits(self, next: Self) -> bool { self.rank() <= next.rank() }
 }

@@ -13,6 +13,8 @@ mod context;
 pub use context::*;
 mod compaction;
 pub use compaction::*;
+mod conversation;
+pub use conversation::{WorkbenchContinuation, WorkbenchExecutionState};
 mod execution;
 pub use execution::WorkbenchExecutionSettings;
 mod goal;

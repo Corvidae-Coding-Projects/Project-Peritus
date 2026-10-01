@@ -11,10 +11,21 @@ fn file_snapshot_and_refresh_modes_deliver_the_right_version_through_the_real_ru
     }
 }
 async fn scenario(refresh: bool) {
-    let repository = repository();
+    let state = tempfile::tempdir().expect("state");
+    let source = repository();
+    let repository =
+        tempfile::tempdir_in(state.path()).expect("managed repository under daemon state");
+    assert!(
+        std::process::Command::new("git")
+            .args(["clone", "--quiet"])
+            .arg(source.path())
+            .arg(repository.path())
+            .status()
+            .expect("clone managed repository")
+            .success()
+    );
     let path = repository.path().join("reference.txt");
     fs::write(&path, "UNSELECTED_FIRST\nORIGINAL_REFERENCE\nUNSELECTED_LAST\n").expect("source");
-    let state = tempfile::tempdir().expect("state");
     let writer = scripted(0x61, "chat", vec![support::text_response(b"Reference received.")]);
     let reviewer = scripted(0x62, "review", Vec::new());
     let fixer = scripted(0x63, "fix", Vec::new());

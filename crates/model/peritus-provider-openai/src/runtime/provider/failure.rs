@@ -67,6 +67,9 @@ pub(super) fn decode_failure(
         DecodeFailure::NativeTool => {
             (FailureCategory::Safety, Retryability::Never, decoding_code(reason))
         }
+        DecodeFailure::MultipleMessages => {
+            (FailureCategory::MalformedPayload, Retryability::Never, decoding_code(reason))
+        }
         DecodeFailure::Malformed
         | DecodeFailure::InvalidLifecycle
         | DecodeFailure::InvalidEnvelope
@@ -74,7 +77,6 @@ pub(super) fn decode_failure(
         | DecodeFailure::InvalidToolChoice
         | DecodeFailure::OutputLimit
         | DecodeFailure::InvalidUsage
-        | DecodeFailure::MultipleMessages
         | DecodeFailure::UnsupportedEvent => {
             (FailureCategory::MalformedPayload, Retryability::CallerDecision, decoding_code(reason))
         }

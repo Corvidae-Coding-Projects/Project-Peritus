@@ -6,8 +6,7 @@ use std::{
 };
 
 use peritus_app_protocol::{
-    TerminalBinding, TerminalCancellation, TerminalDetach, TerminalExit, TerminalInput,
-    TerminalOutput, TerminalResize, TerminalTransitionDisposition,
+    TerminalBinding, TerminalExit, TerminalInput, TerminalOutput, TerminalResize,
 };
 use peritus_process::CancellationReason;
 use peritus_types::{ActorId, ProcessId, SessionId};
@@ -20,6 +19,12 @@ use super::{
 
 mod launch;
 mod lookup;
+mod receipts;
+mod retirement;
+mod transitions;
+
+#[cfg(test)]
+mod tests;
 
 use lookup::{capacity, exact_bridge_mut, process_mut, rejected};
 
@@ -45,6 +50,7 @@ struct RegistryState {
     limits: TerminalRegistryLimits,
     processes: BTreeMap<ProcessId, TerminalBridge>,
     attachments: BTreeMap<peritus_app_protocol::TerminalAttachmentId, ProcessId>,
+    receipts: receipts::TerminalReceipts,
 }
 
 /// Cloneable access handle to the bounded live terminal registry.
@@ -71,6 +77,7 @@ impl TerminalRegistry {
                 limits,
                 processes: BTreeMap::new(),
                 attachments: BTreeMap::new(),
+                receipts: receipts::TerminalReceipts::default(),
             })),
         })
     }
@@ -84,6 +91,7 @@ impl TerminalRegistry {
         &self,
         registration: LiveTerminalRegistration,
     ) -> Result<(), TerminalBridgeError> {
+        self.reap_completed()?;
         let mut state = self.lock();
         let process_id = registration.process_id();
         if state.processes.contains_key(&process_id) {
@@ -97,6 +105,16 @@ impl TerminalRegistry {
         }
         state.processes.insert(process_id, TerminalBridge::new(registration));
         Ok(())
+    }
+
+    pub(crate) fn uses_pipes(
+        &self,
+        actor: ActorId,
+        session: SessionId,
+        process: ProcessId,
+    ) -> Result<bool, TerminalBridgeError> {
+        let mut state = self.lock();
+        Ok(process_mut(&mut state, process, actor, session)?.uses_pipes())
     }
 
     /// Opens or idempotently confirms one exact actor/session/process attachment.
@@ -114,6 +132,12 @@ impl TerminalRegistry {
     ) -> Result<AttachmentDisposition, TerminalBridgeError> {
         let mut state = self.lock();
         let process_id = binding.process_id();
+        if state.receipts.contains(binding.attachment_id()) {
+            return Err(rejected(
+                TerminalBridgeErrorKind::RegistrationConflict,
+                "terminal attachment identity already has a retained completion receipt",
+            ));
+        }
         if let Some(indexed_process) = state.attachments.get(&binding.attachment_id())
             && *indexed_process != process_id
         {
@@ -165,38 +189,6 @@ impl TerminalRegistry {
     ) -> Result<(), TerminalBridgeError> {
         let mut state = self.lock();
         exact_bridge_mut(&mut state, actor_id, session_id, resize.binding())?.resize(resize)
-    }
-
-    /// Detaches without terminating the underlying process.
-    ///
-    /// # Errors
-    ///
-    /// Rejects a mismatched binding, actor/session ownership, or conflicting terminal fact.
-    pub(crate) fn detach(
-        &self,
-        actor_id: ActorId,
-        session_id: SessionId,
-        detach: TerminalDetach,
-    ) -> Result<TerminalTransitionDisposition, TerminalBridgeError> {
-        let mut state = self.lock();
-        exact_bridge_mut(&mut state, actor_id, session_id, detach.binding())?.detach(detach)
-    }
-
-    /// Propagates one idempotent user cancellation through C2.
-    ///
-    /// # Errors
-    ///
-    /// Rejects a mismatched binding, actor/session ownership, conflicting fact, or C2 control
-    /// refusal.
-    pub(crate) fn cancel(
-        &self,
-        actor_id: ActorId,
-        session_id: SessionId,
-        cancellation: TerminalCancellation,
-    ) -> Result<TerminalTransitionDisposition, TerminalBridgeError> {
-        let mut state = self.lock();
-        exact_bridge_mut(&mut state, actor_id, session_id, cancellation.binding())?
-            .cancel(cancellation)
     }
 
     /// Observes C2 and drains one bounded A3 event page for an exact attachment.
@@ -273,7 +265,9 @@ impl TerminalRegistry {
                     "process has no live terminal control in this daemon",
                 )
             })?;
-            bridge.observe(limits)?;
+            if !bridge.observe_detached_completion()? {
+                bridge.observe(limits)?;
+            }
             if !bridge.can_retire() {
                 return Ok(false);
             }
@@ -330,6 +324,7 @@ impl TerminalRegistry {
         let bridges = {
             let mut state = self.lock();
             state.attachments.clear();
+            state.receipts = receipts::TerminalReceipts::default();
             std::mem::take(&mut state.processes).into_values().collect::<Vec<_>>()
         };
         let count = bridges.len();

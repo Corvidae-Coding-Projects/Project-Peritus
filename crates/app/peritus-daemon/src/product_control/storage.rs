@@ -183,9 +183,11 @@ impl ControlStore {
         operation: &ControlOperation,
         mut artifacts: Vec<StateInstall>,
     ) -> Result<ControlReceipt, Error> {
-        let current = self.load(operation.conversation())?;
+        let mut replay = self.load_replay(operation.conversation())?;
+        let current = replay.current().cloned();
         self.check_creation_reservation(operation, current.is_none())?;
-        let (next, receipt) = ConversationRecord::apply(current.as_ref(), operation)?;
+        let receipt = replay.apply(operation)?;
+        let next = replay.current().ok_or(Error::Corrupt("missing accepted successor"))?;
         let payload = operation.canonical_bytes()?;
         let aggregate = aggregate(operation.conversation())?;
         let head = self.journal.head(aggregate)?;

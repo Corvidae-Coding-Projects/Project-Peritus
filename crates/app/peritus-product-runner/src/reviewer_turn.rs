@@ -107,12 +107,13 @@ pub async fn complete(
         let submission = grounded_submission(&tools, &result.text, review_cycle);
         match submission {
             Ok(submission) => return Ok(submission),
-            Err(error) => {
+            Err(rejected) => {
                 invalid_reviews = invalid_reviews.saturating_add(1);
                 if invalid_reviews >= MAX_INVALID_REVIEWS {
-                    return Err(error);
+                    return Err(rejected.error);
                 }
-                correction = Some(correction_prompt(&error));
+                correction =
+                    Some(record_rejected_review(input, invalid_reviews, &rejected, accounting)?);
             }
         }
     }
@@ -165,9 +166,38 @@ fn grounded_submission(
     tools: &WorkspaceDeveloperTools,
     text: &str,
     cycle: u32,
-) -> Result<ProductReviewSubmission, ProductRunnerError> {
-    tools.grounding().validate().map_err(grounding)?;
-    review::parse(text, cycle)
+) -> Result<ProductReviewSubmission, RejectedReview> {
+    tools.grounding().validate().map_err(|detail| RejectedReview {
+        error: grounding(detail),
+        reason: peritus_agent::DeveloperReviewRetryReason::MissingGrounding,
+    })?;
+    review::parse(text, cycle).map_err(|error| RejectedReview {
+        error,
+        reason: peritus_agent::DeveloperReviewRetryReason::InvalidSubmission,
+    })
+}
+
+struct RejectedReview {
+    error: ProductRunnerError,
+    reason: peritus_agent::DeveloperReviewRetryReason,
+}
+
+fn record_rejected_review(
+    input: &ProductRunInput,
+    invalid_reviews: u8,
+    rejected: &RejectedReview,
+    accounting: &mut RunAccounting,
+) -> Result<String, ProductRunnerError> {
+    accounting.record_role_retry()?;
+    if let Some(port) = input.conversation.interaction() {
+        port.observe(peritus_agent::DeveloperActivity::ReviewRetry {
+            next_attempt: invalid_reviews.saturating_add(1),
+            max_attempts: MAX_INVALID_REVIEWS,
+            reason: rejected.reason,
+        })
+        .map_err(|error| turn::developer_error(&error))?;
+    }
+    Ok(correction_prompt(&rejected.error))
 }
 
 fn correction_prompt(error: &ProductRunnerError) -> String {
@@ -195,6 +225,17 @@ fn grounding(detail: &'static str) -> ProductRunnerError {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn ungrounded_review_has_a_typed_public_reason_without_response_bytes() {
+        let root = tempfile::tempdir().expect("workspace");
+        let tools = WorkspaceDeveloperTools::read_only(root.path().to_owned());
+        let Err(rejected) = grounded_submission(&tools, "PRIVATE_RESPONSE_CANARY", 1) else {
+            panic!("uninspected review cannot be accepted")
+        };
+        assert_eq!(rejected.reason, peritus_agent::DeveloperReviewRetryReason::MissingGrounding);
+        assert!(!rejected.error.detail().contains("PRIVATE_RESPONSE_CANARY"));
+    }
 
     #[test]
     fn rejected_review_requires_fresh_authoritative_reads() {

@@ -18,6 +18,14 @@ impl ConversationRecord {
         current: Option<&Self>,
         operation: &ControlOperation,
     ) -> Result<(Self, ControlReceipt), ControlError> {
+        Self::apply_after_accounting(current, operation, current.map_or(0, Self::revision))
+    }
+
+    pub(super) fn apply_after_accounting(
+        current: Option<&Self>,
+        operation: &ControlOperation,
+        edit_revision: u64,
+    ) -> Result<(Self, ControlReceipt), ControlError> {
         operation.validate()?;
         if let Some(current) = current {
             current.validate()?;
@@ -29,7 +37,13 @@ impl ConversationRecord {
             }
         }
         let revision = current.map_or(0, Self::revision);
-        if revision != operation.expected_revision {
+        // A pause narrows an exact goal's authority. New usage observations must never prevent
+        // it; goal identity and lifecycle are still checked by apply_goal_lifecycle below.
+        let after_accounting = operation.can_follow_accounting()
+            && operation.expected_revision > 0
+            && operation.expected_revision >= edit_revision
+            && operation.expected_revision < revision;
+        if !operation.accepts_revision(revision) && !after_accounting {
             return Err(ControlError::StaleRevision);
         }
         let next_revision = revision.checked_add(1).ok_or(ControlError::Capacity)?;

@@ -1,14 +1,18 @@
 //! Conservative byte scanner: strings are opaque and only complete containers are extracted.
 
-pub(super) fn extract(input: &str) -> Option<&str> {
+pub(super) fn extract(input: &str, allow_plain_prelude: bool) -> Option<&str> {
     let text = input.trim();
     if let Some(fenced) = text.strip_prefix("```json").or_else(|| text.strip_prefix("```")) {
         return fenced.strip_suffix("```").map(str::trim);
     }
     let start = text.find(['{', '['])?;
     // A second structured candidate or markdown fence is ambiguous, not explanatory prose.
-    if text[..start].contains(['[', ']', '{', '}', '`', '"'])
-        || start > 0 && !text[..start].trim_end().ends_with(':')
+    let prelude = &text[..start];
+    let separated = prelude.trim_end_matches([' ', '\t']);
+    let plain_prelude =
+        allow_plain_prelude && (separated.ends_with("\n\n") || separated.ends_with("\r\n\r\n"));
+    if prelude.contains(['[', ']', '{', '}', '`', '"'])
+        || start > 0 && !prelude.trim_end().ends_with(':') && !plain_prelude
     {
         return None;
     }

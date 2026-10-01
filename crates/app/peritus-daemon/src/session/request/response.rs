@@ -1,9 +1,8 @@
 //! Stable public response/error mapping for authenticated request dispatch.
 
 use crate::{
-    DaemonError, DaemonErrorCode, DaemonRecovery,
-    product_run::ProductRunServiceError,
-    terminal::{TerminalBridgeError, TerminalBridgeErrorKind},
+    DaemonError, DaemonErrorCode, DaemonRecovery, product_run::ProductRunServiceError,
+    terminal::TerminalBridgeError,
 };
 use peritus_app_protocol::{
     AppDiagnostic, AppErrorCode, AppMessage, AppProtocolError, AppProtocolLimits,
@@ -11,20 +10,21 @@ use peritus_app_protocol::{
     RetryDisposition, encode_app_message,
 };
 
+pub(super) fn product_run_observations(
+    service: &crate::product_run::ProductRunService,
+    query: peritus_app_protocol::ProductRunQuery,
+) -> AppResponsePayload {
+    match service.query_observations(query) {
+        Ok(observations) => AppResponsePayload::ProductRunObservations(observations),
+        Err(error) => product_run_error(error),
+    }
+}
+
 pub(super) fn product_run_error(error: ProductRunServiceError) -> AppResponsePayload {
     error.response()
 }
 
 pub(super) fn product_run_projection(
-    result: Result<AppResponsePayload, ProductRunServiceError>,
-) -> AppResponsePayload {
-    match result {
-        Ok(payload) => payload,
-        Err(error) => product_run_error(error),
-    }
-}
-
-pub(super) fn product_run_collection(
     result: Result<AppResponsePayload, ProductRunServiceError>,
 ) -> AppResponsePayload {
     match result {
@@ -64,7 +64,7 @@ pub(super) fn prompt_error_payload(error: &DaemonError) -> AppResponsePayload {
     AppResponsePayload::Error(AppProtocolError::new(code, daemon_diagnostic(error)))
 }
 
-pub(super) const fn terminal_operation(
+pub(super) fn terminal_operation(
     request_id: peritus_app_protocol::RequestId,
     result: Result<(), TerminalBridgeError>,
 ) -> AppResponsePayload {
@@ -75,22 +75,7 @@ pub(super) const fn terminal_operation(
 }
 
 pub(super) const fn terminal_error_payload(error: &TerminalBridgeError) -> AppResponsePayload {
-    let code = match error.kind() {
-        TerminalBridgeErrorKind::Capacity => AppErrorCode::LimitExceeded,
-        TerminalBridgeErrorKind::Backpressure => AppErrorCode::Backpressure,
-        TerminalBridgeErrorKind::OwnershipMismatch => AppErrorCode::SessionMismatch,
-        TerminalBridgeErrorKind::InvalidLimit => AppErrorCode::Internal,
-        TerminalBridgeErrorKind::ProcessNotRegistered
-        | TerminalBridgeErrorKind::RegistrationConflict
-        | TerminalBridgeErrorKind::NotPty
-        | TerminalBridgeErrorKind::BirthIdentityUnavailable
-        | TerminalBridgeErrorKind::ProcessIdentityMismatch
-        | TerminalBridgeErrorKind::ReplayUnavailable
-        | TerminalBridgeErrorKind::Protocol
-        | TerminalBridgeErrorKind::Process
-        | TerminalBridgeErrorKind::ProcessNotLive => AppErrorCode::TerminalState,
-    };
-    AppResponsePayload::Error(AppProtocolError::new(code, None))
+    AppResponsePayload::Error(error.protocol_error())
 }
 
 pub(super) const fn public_error_code(error: &DaemonError) -> AppErrorCode {

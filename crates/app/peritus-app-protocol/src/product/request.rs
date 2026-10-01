@@ -1,8 +1,6 @@
 //! Checked requests and provider-role selection for product runs.
 
-use peritus_types::{ProviderProfileId, RunId, WorkspaceId};
-
-use super::{MAX_PRODUCT_TASK_BYTES, ProductRunMessageError, bounded_text};
+use peritus_types::ProviderProfileId;
 
 /// Checked provider roles selected for one writer-reviewer-fixer loop.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
@@ -37,52 +35,5 @@ impl ProductProviderSelection {
     #[must_use]
     pub const fn fixer(self) -> ProviderProfileId {
         self.fixer
-    }
-}
-
-/// Request to begin one natural-language coding run.
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct ProductRunRequest {
-    run_id: RunId,
-    workspace_id: WorkspaceId,
-    providers: ProductProviderSelection,
-    task: String,
-}
-
-impl ProductRunRequest {
-    /// Creates a checked run request.
-    ///
-    /// # Errors
-    ///
-    /// Rejects an empty, whitespace-only, or oversized task.
-    pub fn new(
-        run_id: RunId,
-        workspace_id: WorkspaceId,
-        providers: ProductProviderSelection,
-        task: String,
-    ) -> Result<Self, ProductRunMessageError> {
-        bounded_text(&task, MAX_PRODUCT_TASK_BYTES)?;
-        Ok(Self { run_id, workspace_id, providers, task })
-    }
-
-    /// Requested run identity.
-    #[must_use]
-    pub const fn run_id(&self) -> RunId {
-        self.run_id
-    }
-    /// Exact managed workspace identity.
-    #[must_use]
-    pub const fn workspace_id(&self) -> WorkspaceId {
-        self.workspace_id
-    }
-    /// Explicit role providers.
-    #[must_use]
-    pub const fn providers(&self) -> ProductProviderSelection {
-        self.providers
-    }
-    /// Natural-language task.
-    #[must_use]
-    pub fn task(&self) -> &str {
-        &self.task
     }
 }

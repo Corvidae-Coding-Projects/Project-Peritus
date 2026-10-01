@@ -3,14 +3,16 @@
 use std::{path::PathBuf, time::Duration};
 
 use peritus_process::ProcessStore;
+use peritus_run_settlement::CandidateCheckpoint;
 use peritus_types::{RevisionTuple, RunId};
 use peritus_workspace::WorkspaceAuthorizationRequest;
 
 use crate::{
     CommandRuntime, ConversationView, FolderPatchAuthority, FolderPatchAuthorityPlan,
     FolderPatchAuthorityPlanRequest, LocalContextConfig, PreviewCommand, PreviewLaunch,
-    PreviewObservation, PreviewProcessState, ProductRunnerError, WorkspaceMutationKind,
-    checked_protected_file,
+    PreviewObservation, PreviewProcessState, ProductRunResume, ProductRunnerError, UncertainEffect,
+    UncertainEffectState, WorkspaceMutationKind, acknowledge_uncertain_effect,
+    checked_protected_file, uncertain_effects,
 };
 
 #[allow(dead_code, clippy::too_many_arguments)]
@@ -54,10 +56,18 @@ fn command_effects(
         runtime.commit_folder_patch_authority(plan, Vec::new());
     let _: Result<PreviewLaunch, ProductRunnerError> = runtime.launch_preview(command);
     let _: Result<PreviewObservation, ProductRunnerError> = runtime.observe_preview(launch);
+    let _: Result<crate::PreviewTerminal, ProductRunnerError> = runtime.preview_terminal(launch);
     let _: Result<PreviewObservation, ProductRunnerError> =
         runtime.interact_preview(launch, Vec::new());
     let _: Result<PreviewObservation, ProductRunnerError> = runtime.stop_preview(launch);
     let _: Result<PreviewObservation, ProductRunnerError> = runtime.run_preview_helper(command);
+}
+
+#[allow(dead_code)]
+fn terminal_lease(lease: crate::PreviewTerminal) {
+    let _: &peritus_process::ExecutionPlan = lease.plan();
+    let _: peritus_process::ProcessControl = lease.control();
+    let _: Result<peritus_process::TerminalResult, ProductRunnerError> = lease.wait();
 }
 
 #[allow(dead_code)]
@@ -119,10 +129,61 @@ fn protected_file(root: &std::path::Path, relative: &str, contract: &str, protec
 }
 
 #[allow(dead_code)]
+fn uncertain_effect(effect: &UncertainEffect, path: &std::path::Path) {
+    let _: &str = effect.identity();
+    let _: &str = effect.tool();
+    let _: UncertainEffectState = effect.state();
+    let _: Option<u64> = effect.requirements_revision();
+    let _: Result<Vec<UncertainEffect>, ProductRunnerError> = uncertain_effects(path);
+    let _: Result<(), ProductRunnerError> = acknowledge_uncertain_effect(path, effect.identity());
+}
+
+#[allow(dead_code)]
+fn retained_resume(
+    bytes: &[u8],
+    transcript: &str,
+    resume: ProductRunResume,
+    checkpoint: &CandidateCheckpoint,
+) {
+    let _: Result<ProductRunResume, ProductRunnerError> =
+        ProductRunResume::decode_durable(bytes, transcript);
+    let _: Result<ProductRunResume, ProductRunnerError> =
+        ProductRunResume::decode_durable_retained(bytes, transcript);
+    let _: Result<ProductRunResume, ProductRunnerError> = resume.reconcile_candidate(*checkpoint);
+}
+
+#[allow(dead_code)]
 fn shared_control_and_attachment(
     _conversation: crate::control::ConversationId,
     _file: crate::attachment::ValidatedFileText,
     _input: peritus_agent::DeveloperInput,
     _admission: peritus_agent::DeveloperRequestAdmission,
 ) {
+}
+
+#[allow(dead_code)]
+fn task_baseline(
+    workspace: &std::path::Path,
+    trace: &std::path::Path,
+    bytes: &str,
+    paths: &[String],
+    binding: peritus_types::Sha256Digest,
+    candidate: peritus_types::Sha256Digest,
+) {
+    let _: Result<peritus_types::Sha256Digest, ProductRunnerError> =
+        crate::ProductRunner::candidate_source_digest(workspace);
+    let _: Result<String, ProductRunnerError> = crate::ProductRunner::retained_task_baseline(trace);
+    let _: Result<(), ProductRunnerError> = crate::ProductRunner::validate_task_baseline(bytes);
+    let _: Result<Vec<u8>, ProductRunnerError> =
+        crate::ProductRunner::candidate_patch_from_baseline(workspace, bytes);
+    let _: Result<Vec<PathBuf>, ProductRunnerError> =
+        crate::ProductRunner::discard_from_baseline(workspace, bytes, paths);
+    let _: Result<peritus_types::Sha256Digest, ProductRunnerError> =
+        crate::ProductRunner::prepare_discard_transaction(
+            workspace, bytes, paths, trace, binding, candidate,
+        );
+    let _: Result<Option<crate::DiscardTransactionState>, ProductRunnerError> =
+        crate::ProductRunner::inspect_discard_transaction(trace, binding, candidate);
+    let _: Result<Vec<PathBuf>, ProductRunnerError> =
+        crate::ProductRunner::execute_discard_transaction(trace, binding, candidate);
 }

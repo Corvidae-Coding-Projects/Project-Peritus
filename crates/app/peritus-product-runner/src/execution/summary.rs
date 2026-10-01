@@ -6,7 +6,6 @@ use super::ProductDeliveryScope;
 use crate::delivery_requirement::ExternalEffectRequirement;
 
 pub(super) fn completion_summary(
-    task: &str,
     writer: &str,
     fixes: &[String],
     changed_paths: &[PathBuf],
@@ -14,11 +13,12 @@ pub(super) fn completion_summary(
     delivery_scope: ProductDeliveryScope,
     effect_requirement: ExternalEffectRequirement,
 ) -> String {
-    let mut summary = format!(
-        "Completed the requested task: {}\n\nImplementation: {}",
-        task.trim(),
-        writer.trim(),
-    );
+    let generated = [writer.find("\n\nVerified fixes:\n- "), writer.find("\n\nDeliverable: ")]
+        .into_iter()
+        .flatten()
+        .min()
+        .unwrap_or(writer.len());
+    let mut summary = writer[..generated].trim().to_owned();
     if !fixes.is_empty() {
         summary.push_str("\n\nVerified fixes:");
         for fix in fixes {

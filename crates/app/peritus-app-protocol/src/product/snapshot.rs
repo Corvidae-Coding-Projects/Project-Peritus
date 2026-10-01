@@ -4,7 +4,8 @@ use peritus_types::{RunId, WorkspaceId};
 
 use super::{
     MAX_PRODUCT_DETAIL_BYTES, MAX_PRODUCT_TASK_BYTES, ProductDeliverable, ProductProviderSelection,
-    ProductRunMessageError, ProductRunPhase, bounded_text, optional_bounded_text,
+    ProductRunMessageError, ProductRunOperation, ProductRunPhase, bounded_text,
+    optional_bounded_text,
 };
 
 /// Complete bounded observation of one product run.
@@ -21,6 +22,7 @@ pub struct ProductRunSnapshot {
     gates: String,
     review: String,
     summary: String,
+    operation: ProductRunOperation,
     deliverable: Option<ProductDeliverable>,
 }
 
@@ -43,6 +45,7 @@ impl ProductRunSnapshot {
         gates: String,
         review: String,
         summary: String,
+        operation: ProductRunOperation,
     ) -> Result<Self, ProductRunMessageError> {
         bounded_text(&task, MAX_PRODUCT_TASK_BYTES)?;
         bounded_text(&status, MAX_PRODUCT_DETAIL_BYTES)?;
@@ -61,6 +64,7 @@ impl ProductRunSnapshot {
             gates,
             review,
             summary,
+            operation,
             deliverable: None,
         })
     }
@@ -119,6 +123,19 @@ impl ProductRunSnapshot {
     #[must_use]
     pub fn summary(&self) -> &str {
         &self.summary
+    }
+
+    /// Authoritative operation knowledge and controls for this observation.
+    #[must_use]
+    pub const fn operation(&self) -> &ProductRunOperation {
+        &self.operation
+    }
+
+    /// Replaces only the read-only operation projection.
+    #[must_use]
+    pub fn with_operation(mut self, operation: ProductRunOperation) -> Self {
+        self.operation = operation;
+        self
     }
 
     /// Durable handoff for the exact candidate when one exists.

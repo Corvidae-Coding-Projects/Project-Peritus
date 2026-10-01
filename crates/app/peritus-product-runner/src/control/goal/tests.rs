@@ -81,6 +81,22 @@ fn pause_boundaries_do_not_admit_mutation_or_complete_from_model_text() {
 }
 
 #[test]
+fn pausing_an_idle_goal_produces_a_valid_resumable_record() {
+    for mode in [GoalPauseMode::Now, GoalPauseMode::AfterOperation, GoalPauseMode::BeforeEdit] {
+        let mut value = goal(GoalBudget::default());
+        value.settle(1, GoalSettlement::WaitingForUser, Some(7), false, 11).unwrap();
+        assert_eq!(value.state(), GoalState::WaitingForUser);
+        value.pause(mode, 12).unwrap();
+        value.validate().expect("idle pause must persist");
+        assert_eq!(value.state(), GoalState::Paused);
+        assert_eq!(value.pause_mode(), None);
+        value.resume(13).unwrap();
+        value.validate().expect("resumed record");
+        assert_eq!(value.state(), GoalState::Active);
+    }
+}
+
+#[test]
 fn only_fresh_strict_settlement_achieves_goal() {
     let mut stale = goal(GoalBudget::default());
     stale.settle(1, GoalSettlement::Accepted, Some(6), false, 11).unwrap();
@@ -142,4 +158,31 @@ fn graphical_evidence_is_independent_fresh_and_revision_fenced() {
     goal.requirements_changed(8, false, 16).unwrap();
     assert!(goal.criteria().iter().all(|criterion| criterion.state() == GoalCriterionState::Stale));
     assert_eq!(goal.state(), GoalState::Blocked);
+}
+
+#[test]
+fn observed_token_and_time_overshoot_is_retained_and_blocks_further_admission() {
+    let mut value = goal(GoalBudget::new(Some(100), None, None, Some(8)).unwrap());
+    value.reserve_request(GoalRole::Writer, 1, 11).unwrap();
+    assert_eq!(
+        value
+            .complete_request(
+                GoalRole::Writer,
+                1,
+                GoalUsageReport { total_tokens: Some(12), ..GoalUsageReport::default() },
+                12
+            )
+            .unwrap(),
+        GoalAdmission::BudgetReached
+    );
+    value.validate().expect("actual token overshoot is valid durable evidence");
+    value.observe_progress(1, 125, 0, 0, 0, 0, 0, 0, 13).unwrap();
+    value.validate().expect("actual active time is never clamped or discarded");
+    assert_eq!(value.usage().total_tokens(), 12);
+    assert_eq!(value.usage().active_millis(), 125);
+    assert_eq!(
+        value.reserve_request(GoalRole::Writer, 1, 14).unwrap(),
+        GoalAdmission::BudgetReached
+    );
+    assert!(value.resume(15).is_err());
 }

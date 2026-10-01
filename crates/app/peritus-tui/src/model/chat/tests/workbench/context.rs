@@ -64,7 +64,7 @@ fn context_is_read_only_feature_gated_and_retains_draft_when_a_late_response_arr
     model.chat.cursor = 3;
     respond(&mut model, &sent, AppResponsePayload::WorkbenchContext(page(*query, 1)));
     assert!(!model.chat.workbench.open);
-    assert!(model.chat.workbench.context_page.is_some());
+    assert!(model.chat.workbench.context_page.is_none(), "dismissed lookup must remain abandoned");
     assert_eq!(model.chat.buffer, "my retained draft λ");
     assert_eq!(model.chat.cursor, 3);
     assert!(model.chat.run_id.is_none());
@@ -85,6 +85,11 @@ fn context_pagination_uses_the_inspected_revision_and_rejects_cross_view_respons
     respond(&mut model, &sent, AppResponsePayload::WorkbenchContext(page(*query, 33)));
     assert_eq!(model.chat.workbench.context_page.as_ref().expect("page").rows().len(), 1);
     assert!(model.chat.workbench.open);
+    key(&mut model, KeyCode::Esc);
+    model.chat.buffer = "/context more".to_owned();
+    assert!(key(&mut model, KeyCode::Enter).is_empty());
+    assert!(model.chat.buffer.is_empty(), "last-page navigation consumes the command");
+    assert!(model.chat.workbench.open, "last-page navigation retains the inspected panel");
     key(&mut model, KeyCode::Esc);
     model.chat.buffer = "/context next".to_owned();
     let sent = request(&key(&mut model, KeyCode::Enter));

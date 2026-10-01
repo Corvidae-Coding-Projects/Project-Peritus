@@ -29,6 +29,23 @@ budget, cancellation, and recovery terminals therefore retain the strongest cand
 remaining evidence. A fresh finalization observation clears a candidate that was completely
 reverted, while an explicitly authorized external effect remains a valid candidate boundary.
 
+Discard prepares source files and symlinks for every affected repository before publishing source,
+index, HEAD, or repository-archive changes. Preimage materialization failures preserve the current
+candidate and release the prepared Git locks, so fixing the filesystem condition permits retry.
+Source staging stays outside paths being replaced and uses existing destination directories;
+successful publication synchronizes new parents and replacement directory entries.
+
+The explicit discard transaction API retains a checksummed, receipt-bound intent before restoration.
+Inspection is inert. An explicit retry admits each owned source, staged-index entry, and nested HEAD
+only at its captured candidate value or intended task preimage; unrelated staged entries survive.
+Repository archives prove directory-move gaps, and a completed transaction returns its retained
+history without touching later edits. Cleanup requires owned nonce markers, sealed preparation
+contents, and recognized ordinary leaves. Incomplete or changed preparation is preserved and
+reported; unknown native Git locks are never removed. This is explicit recovery across publication
+boundaries, not an atomic swap of an entire workspace. Ordinary directory modes absent from legacy
+task baselines cannot be reconstructed. Interrupted repository preparations remain beside the
+independent backup when their safe cleanup cannot be established.
+
 Continuation state is bound to the exact run, managed-workspace lineage, candidate digest,
 conversation revision, and checkpoint sequence. S1 knowledge invalidation selects the first stale
 phase; S2 obligation evidence participates in gates, reviewer input, acceptance, and fixer routing.
@@ -106,7 +123,10 @@ an observed workspace listing, reads the authoritative inputs and changed files 
 read-only tool executor, and only then admits the typed review. The executor rejects write, patch,
 remove, and process calls even if a provider emits an undeclared tool name, so reviewer grounding
 does not grant mutation authority. Malformed or ungrounded reviews receive their exact rejection
-on a fresh bounded attempt.
+on a fresh bounded attempt. Each retry is counted and publishes a host recovery notice with the
+reason and next attempt number. The ordinary conversation displays that notice separately from
+provider text; the original response remains in the private trace. The three-attempt limit,
+fresh-read requirement, and typed acceptance checks are unchanged.
 
 The crate consumes already resolved provider and managed-workspace capabilities. It emits bounded
 progress and deliverable evidence; it does not own UI, provider login, workspace trust, or Git

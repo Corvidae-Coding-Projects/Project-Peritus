@@ -146,3 +146,41 @@ impl WorkbenchCommand {
         Ok(peritus_codec::sha256(&writer.into_bytes()))
     }
 }
+
+pub(super) fn write_execution(
+    w: &mut CanonicalWriter,
+    value: &crate::WorkbenchExecutionState,
+) -> Result<(), CodecError> {
+    write_snapshot(w, value.snapshot())?;
+    w.write_bool(value.run().is_some())?;
+    if let Some(run) = value.run() {
+        write_id(w, run.as_bytes())?;
+    }
+    w.write_bool(value.has_goal())
+}
+pub(super) fn read_execution(
+    r: &mut CanonicalReader<'_>,
+) -> Result<crate::WorkbenchExecutionState, CodecError> {
+    let offset = r.offset();
+    let snapshot = read_snapshot(r)?;
+    let run = if r.read_bool()? { Some(read_id(r, peritus_types::RunId::new)?) } else { None };
+    let goal = r.read_bool()?;
+    invalid(offset, crate::WorkbenchExecutionState::new(snapshot, run, goal))
+}
+
+pub(super) fn write_continuation(
+    w: &mut CanonicalWriter,
+    value: crate::WorkbenchContinuation,
+) -> Result<(), CodecError> {
+    write_query(w, value.query())?;
+    w.write_u16(value.mode().tag())
+}
+pub(super) fn read_continuation(
+    r: &mut CanonicalReader<'_>,
+) -> Result<crate::WorkbenchContinuation, CodecError> {
+    let query = read_query(r)?;
+    let offset = r.offset();
+    let mode = crate::ProductInteractionMode::from_tag(r.read_u16()?)
+        .ok_or_else(|| CodecError::at(CodecErrorKind::UnknownTag, offset))?;
+    Ok(crate::WorkbenchContinuation::new(query, mode))
+}

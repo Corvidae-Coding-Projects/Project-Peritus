@@ -22,7 +22,7 @@ mod types;
 pub use cancellation::check_cancelled;
 pub use checkpoint::CandidateRecorder;
 pub use resume::ProductRunResume;
-pub use turn_result::{AppliedTurn, AppliedWrite};
+pub use turn_result::{AppliedTurn, AppliedWrite, HostTurnEvidence};
 pub use types::{
     ConversationView, ProductDeliveryScope, ProductRunInput, ProductRunOutcome, ProductRunOutput,
     ProductRunPhase, ProductRunQuestion, ProductRunUpdate, ProductRunner, RoleProviders,
@@ -31,10 +31,13 @@ pub use types::{
 
 use peritus_obligations::FailureDisposition;
 use peritus_orchestrator::ProductionDecision;
-use peritus_run_settlement::SettlementCause;
+use peritus_run_settlement::{CandidateStage, SettlementCause};
 
 use crate::{ProductRunnerError, ProductRunnerErrorKind, budget::RunAccounting, review};
-use cycle::{GateInspection, apply_fix, create_design, inspect_gates, retained_inspection};
+use checkpoint::CheckpointEvidence;
+use cycle::{
+    CycleInspection, GateInspection, apply_fix, create_design, inspect_gates, retained_inspection,
+};
 use fix_progress::FixProgressObservation;
 use state::{ExecutionContext, RunState};
 use summary::completion_summary;
@@ -114,12 +117,17 @@ impl ProductRunner {
                         state.fix_progress.reset(input.checkpoint()?);
                         execution.next_phase = ProductRunPhase::Checking;
                     }
-                    AppliedTurn::Waiting { question, conversation_revision } => {
+                    AppliedTurn::Waiting { question, conversation_revision, host } => {
+                        state.merge_host(&host);
                         return Ok(ActiveExit::waiting(
                             question,
                             conversation_revision,
                             ProductRunPhase::Writing,
                         ));
+                    }
+                    AppliedTurn::Rejected { error, host } => {
+                        state.merge_host(&host);
+                        return Err(error);
                     }
                 }
                 continue;
@@ -140,10 +148,35 @@ impl ProductRunner {
                     execution.evidence = checked.evidence.clone();
                     if checked.conversation_changed {
                         execution.next_phase = ProductRunPhase::Designing;
+                        continue;
+                    }
+                    let checkpoint = execution.recorder.checkpoint()?.ok_or_else(|| {
+                        ProductRunnerError::new(
+                            ProductRunnerErrorKind::InternalInvariant,
+                            "reuse current candidate evidence",
+                            "completed gates did not produce a candidate checkpoint",
+                        )
+                    })?;
+                    let identity = checkpoint.identity();
+                    if checked.gates_satisfied
+                        && checkpoint.obligations().is_current_and_satisfied(identity)
+                        && checkpoint.review().is_current_and_satisfied(identity)
+                    {
+                        let _ = execution.recorder.record(
+                            CandidateStage::Qualified,
+                            state.conversation_revision,
+                            CheckpointEvidence::None,
+                        )?;
+                        CycleInspection {
+                            gates: checked.gates,
+                            evidence: checked.evidence,
+                            conversation_changed: false,
+                            qualification: obligations::QualificationState::new(true, true, true),
+                        }
                     } else {
                         execution.next_phase = ProductRunPhase::Reviewing;
+                        continue;
                     }
-                    continue;
                 }
                 ProductRunPhase::Reviewing => {
                     let checked = GateInspection {
@@ -262,7 +295,6 @@ impl ProductRunner {
                         &state.successful_commands,
                     );
                     state.task_summary = completion_summary(
-                        &input.task,
                         &state.task_summary,
                         &state.fix_summaries,
                         &changed_paths,

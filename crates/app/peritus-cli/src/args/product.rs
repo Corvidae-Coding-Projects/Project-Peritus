@@ -17,7 +17,6 @@ pub(super) fn parse_product(parser: &mut Parser) -> Result<Command, CliError> {
             ProductRunArgs::List
         }
         "show" => ProductRunArgs::Show { run_id: run_id(parser)? },
-        "continue" => continuation(parser)?,
         "execute" => ProductRunArgs::Execute { run_id: run_id(parser)? },
         "accept" => control(parser, ProductRunControlAction::Accept, true)?,
         "commit" => control(parser, ProductRunControlAction::Commit, true)?,
@@ -25,6 +24,7 @@ pub(super) fn parse_product(parser: &mut Parser) -> Result<Command, CliError> {
         "discard" => control(parser, ProductRunControlAction::Discard, false)?,
         "retry" => control(parser, ProductRunControlAction::Retry, false)?,
         "cancel" => control(parser, ProductRunControlAction::Cancel, false)?,
+        "acknowledge" => control(parser, ProductRunControlAction::Acknowledge, false)?,
         _ => return Err(CliError::usage(format!("unknown runs subcommand: {subcommand}"))),
     };
     Ok(Command::ProductRuns(arguments))
@@ -45,28 +45,6 @@ fn run_id(parser: &mut Parser) -> Result<RunId, CliError> {
     }
     RunId::new(required(run, "--run")?)
         .map_err(|_| CliError::usage("--run cannot be the all-zero identifier"))
-}
-
-fn continuation(parser: &mut Parser) -> Result<ProductRunArgs, CliError> {
-    let mut run = None;
-    let mut message = None;
-    while let Some(option) = parser.peek_utf8()? {
-        match option {
-            "--run" => {
-                parser.pop();
-                let value = parser.value_utf8("--run")?;
-                set_once(&mut run, parse_hex_id(&value, "--run")?, "--run")?;
-            }
-            "--message" => {
-                parser.pop();
-                set_once(&mut message, parser.value_utf8("--message")?, "--message")?;
-            }
-            _ => return Err(CliError::usage(format!("unknown runs continue option: {option}"))),
-        }
-    }
-    let run_id = RunId::new(required(run, "--run")?)
-        .map_err(|_| CliError::usage("--run cannot be the all-zero identifier"))?;
-    Ok(ProductRunArgs::Continue { run_id, message: required(message, "--message")? })
 }
 
 fn control(

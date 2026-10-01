@@ -63,6 +63,18 @@ fn test(terminal: &mut Terminal<'_>, profile: &DirectProviderProfile) -> Result<
         Err(error) => {
             terminal.line(&format!("Connection test failed: {error}"))?;
             terminal.line("Check the API key, billing/model access, and selected protocol. You can replace settings or test again.")?;
+            if profile.kind() == peritus_product_state::ProviderKind::CompatibleEndpoint {
+                let route = match profile.compatible_protocol() {
+                    Some(peritus_product_state::CompatibleProtocol::Responses) => "/v1/responses",
+                    Some(peritus_product_state::CompatibleProtocol::ChatCompletions) => {
+                        "/v1/chat/completions"
+                    }
+                    _ => "the selected protocol operation path",
+                };
+                terminal.line(&format!(
+                    "Peritus posts to the exact configured URL. Verify that it includes {route}, rather than only the API base URL."
+                ))?;
+            }
         }
     }
     Ok(())

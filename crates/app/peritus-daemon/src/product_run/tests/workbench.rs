@@ -3,8 +3,8 @@
 use super::*;
 use peritus_app_protocol::{
     AppResponsePayload, ControlOperationId, ConversationId, ConversationLibraryQuery,
-    ConversationSearchText, ConversationTitle, ProductInteractionMode, ProductRoleModels,
-    ProductRunConversationQuery, WorkbenchBriefField, WorkbenchCommand, WorkbenchExecutionSettings,
+    ConversationSearchText, ConversationTitle, ProductInteractionMode, ProductInteractionQuery,
+    ProductRoleModels, WorkbenchBriefField, WorkbenchCommand, WorkbenchExecutionSettings,
     WorkbenchForkBudget, WorkbenchForkMode, WorkbenchForkRequest, WorkbenchGoalBudget,
     WorkbenchGoalCriterionDefinition, WorkbenchGoalCriterionKind, WorkbenchGoalDefinition,
     WorkbenchGoalPauseMode, WorkbenchGoalState, WorkbenchInputId, WorkbenchInputOrder,
@@ -23,6 +23,7 @@ use peritus_types::ActorId;
 
 mod admission;
 mod checkpoints;
+mod conversation;
 mod files;
 mod goals;
 mod images;
@@ -33,6 +34,7 @@ mod permissions;
 mod review;
 
 mod preview;
+mod preview_output;
 mod tetris;
 
 fn actor() -> ActorId {

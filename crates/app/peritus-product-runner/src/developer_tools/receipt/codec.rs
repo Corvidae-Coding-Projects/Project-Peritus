@@ -22,6 +22,7 @@ pub(super) fn encode(record: &ReceiptRecord) -> Value {
                 ReceiptState::Applied => "applied",
                 ReceiptState::Completed => "completed",
                 ReceiptState::Ambiguous => "ambiguous",
+                ReceiptState::Reviewed => "reviewed",
             }
             .to_owned(),
         ),
@@ -46,6 +47,7 @@ pub(super) fn decode(value: &Value) -> Result<ReceiptRecord, DeveloperLoopError>
         "applied" => ReceiptState::Applied,
         "completed" => ReceiptState::Completed,
         "ambiguous" => ReceiptState::Ambiguous,
+        "reviewed" => ReceiptState::Reviewed,
         _ => return Err(tool("effect receipt state is unknown")),
     };
     Ok(ReceiptRecord {

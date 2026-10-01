@@ -1,4 +1,5 @@
 use super::*;
+mod freshness;
 use peritus_app_protocol::{
     WorkbenchInputId, WorkbenchInputOrder, WorkbenchInputRow, WorkbenchInputSelection,
     WorkbenchInputState, WorkbenchInputText, WorkbenchIntent, WorkbenchQueueIntent,
@@ -55,6 +56,27 @@ fn inspect(model: &mut AppModel) {
                 .expect("page"),
         ),
     );
+    assert!(model.chat.buffer.is_empty(), "successful inspection consumes its slash command");
+}
+
+fn fresh_metadata(model: &mut AppModel, sent: &AppRequestEnvelope, revision: u64) -> Vec<Effect> {
+    let AppRequestPayload::QueryWorkbench(query) = sent.payload() else {
+        panic!("fresh metadata query")
+    };
+    respond(
+        model,
+        sent,
+        AppResponsePayload::Workbench(
+            WorkbenchSnapshot::new(
+                *query,
+                revision,
+                ConversationTitle::new("Current title".into()).unwrap(),
+                false,
+                false,
+            )
+            .unwrap(),
+        ),
+    )
 }
 
 #[test]
@@ -63,7 +85,9 @@ fn queue_uses_exact_inspected_content_revision_and_only_clears_draft_after_recei
     inspect(&mut model);
     key(&mut model, KeyCode::Esc);
     model.chat.buffer = "/queue edit 1 Corrected instruction".to_owned();
-    let sent = request(&key(&mut model, KeyCode::Enter));
+    let refresh = request(&key(&mut model, KeyCode::Enter));
+    assert!(model.chat.workbench.unresolved.is_none());
+    let sent = request(&fresh_metadata(&mut model, &refresh, 5));
     let AppRequestPayload::WorkbenchCommand(command) = sent.payload() else { panic!("command") };
     assert_eq!(command.expected_revision(), 5);
     assert!(
@@ -78,10 +102,53 @@ fn queue_uses_exact_inspected_content_revision_and_only_clears_draft_after_recei
 }
 
 #[test]
+fn queue_mutation_keeps_its_exact_input_after_a_metadata_receipt_advances_the_conversation() {
+    let mut model = opened();
+    inspect(&mut model);
+    let query = model.chat.workbench.queue.as_ref().unwrap().query().query();
+    key(&mut model, KeyCode::Esc);
+    model.chat.buffer = "/sessions rename Renamed".to_owned();
+    let refresh = request(&key(&mut model, KeyCode::Enter));
+    let metadata = |revision| {
+        WorkbenchSnapshot::new(
+            query,
+            revision,
+            ConversationTitle::new("Renamed".to_owned()).unwrap(),
+            false,
+            false,
+        )
+        .unwrap()
+    };
+    let rename =
+        request(&respond(&mut model, &refresh, AppResponsePayload::Workbench(metadata(5))));
+    let AppRequestPayload::WorkbenchCommand(command) = rename.payload() else {
+        panic!("rename command")
+    };
+    let refreshed = request(&respond(&mut model, &rename, receipt(command)));
+    respond(&mut model, &refreshed, AppResponsePayload::Workbench(metadata(6)));
+    key(&mut model, KeyCode::Esc);
+    model.chat.buffer = "/queue hold 1".to_owned();
+    let refresh = request(&key(&mut model, KeyCode::Enter));
+    let hold = request(&fresh_metadata(&mut model, &refresh, 7));
+    let AppRequestPayload::WorkbenchCommand(command) = hold.payload() else { panic!("queue hold") };
+    assert_eq!(command.expected_revision(), 7, "use fresh aggregate metadata");
+    assert!(
+        matches!(command.intent(), WorkbenchIntent::Queue(WorkbenchQueueIntent::Hold { selected, held: true }) if *selected == row(WorkbenchInputState::Queued).selected())
+    );
+    assert_eq!(model.chat.buffer, "/queue hold 1", "keep the draft until its exact receipt");
+}
+
+#[test]
 fn queue_rejects_uninspected_rows_and_unsupported_operations_without_losing_text() {
     let mut model = opened();
     inspect(&mut model);
-    for text in ["/queue hold 2", "/queue edit 1", "/queue order invalid", "/queue hold 1 extra"] {
+    for text in [
+        "/queue hold 2",
+        "/queue edit 1",
+        "/queue order invalid",
+        "/queue hold 1 extra",
+        "/queue correct 1 changed pending text",
+    ] {
         key(&mut model, KeyCode::Esc);
         model.chat.buffer = text.to_owned();
         assert!(key(&mut model, KeyCode::Enter).is_empty());
@@ -136,6 +203,7 @@ fn exact_input_detail_reaches_text_beyond_the_compact_list_and_old_scroll_ceilin
     key(&mut model, KeyCode::Esc);
     model.chat.buffer = "/queue show 1".to_owned();
     assert!(key(&mut model, KeyCode::Enter).is_empty(), "inspection performs no request");
+    assert!(model.chat.buffer.is_empty(), "successful local inspection consumes its command");
     for _ in 0..240 {
         key(&mut model, KeyCode::PageDown);
     }

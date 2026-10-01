@@ -1,6 +1,6 @@
 <script lang="ts">
   import { tick } from 'svelte';
-  import { ui,project,session,attempt,openProject,editSession,selectSession,dispatch,notify,refresh,openRun } from '../workspace.svelte';
+  import { ui,project,session,attempt,openProject,editSession,selectSession,dispatch,notify,refresh,openRun,runInspection } from '../workspace.svelte';
   import { action } from '../api';
   import { parseSlash } from '../commands/slash';
   import Icon from './Icon.svelte';
@@ -33,7 +33,7 @@
     {:else if ui.overlay==='improvements'}{#key ui.projectId}<Improvements/>{/key}
     {:else if ui.overlay==='runs'}
       <p class="dialog-description">Actual observations from the daemon, including runs started by other clients.</p>
-      {#each ui.runs as run}<div class="library-row"><Icon name="layers"/><span><strong>{run.task}</strong><small>{run.phase} · {run.id.slice(0,8)}</small></span><button class="key small" onclick={()=>void attempt(()=>openRun(run.id))}>Open conversation</button><button class="key small" onclick={()=>{ui.reportTitle=run.task;ui.reportText=[run.status,run.summary,run.gates,run.review].filter(Boolean).join('\n\n');ui.overlay='report';}}>Inspect</button></div>{/each}
+      {#each ui.runs as run}<div class="library-row"><Icon name="layers"/><span><strong>{run.task}</strong><small>{run.operation.state} · {run.id.slice(0,8)}</small></span><button class="key small" onclick={()=>void attempt(()=>openRun(run.id))}>Open conversation</button><button class="key small" onclick={()=>{ui.reportTitle=run.task;ui.reportText=runInspection(run);ui.overlay='report';}}>Inspect</button></div>{/each}
       {#if !ui.runs.length}<div class="small-empty">No daemon-owned runs have been observed yet. Start a conversation to begin.</div>{/if}
     {:else if ui.overlay==='console'}
       <div class="console-tabs">{#each ui.consoles.filter(c=>c.project===ui.projectId) as console}<button class:active={console.id===ui.consoleId} onclick={()=>ui.consoleId=console.id}>{console.title}{console.ended?' · exited':''}</button>{/each}</div>
@@ -43,7 +43,7 @@
       <p class="dialog-description">Run any normal Peritus CLI command in a retained console. Arguments are passed directly, without shell expansion. The selected project is the working directory.</p>
       <form class="cli-form" onsubmit={(event)=>{event.preventDefault();void attempt(runCli);}}><label>Command template<select onchange={(event)=>cli=event.currentTarget.value}><option value="status">Choose a command…</option>{#each cliPresets as preset}<option value={preset[1]}>{preset[0]}</option>{/each}</select></label><label>Arguments after <code>peritus</code><textarea rows="4" bind:value={cli} spellcheck="false"></textarea></label><p class="setting-note">Replace ID, PATH, and TOPIC placeholders with exact values. Daemon commands receive the configured endpoint automatically.</p><div class="dialog-actions"><button class="key primary">Run in console<Icon name="terminal"/></button></div></form>
     {:else if ui.overlay==='discard'}
-      <p>This removes the current run’s candidate changes. Export a patch first if you need to keep them.</p><code>{ui.sessionId}</code><div class="dialog-actions"><button class="key" onclick={()=>ui.overlay=''}>Keep changes</button><button class="key danger" onclick={()=>void attempt(async()=>{await action('control',{session:ui.sessionId,action:'discard'});ui.overlay='';notify('Candidate discard requested.');})}>Discard candidate</button></div>
+      <p>This removes the current run’s candidate changes. Export a patch first if you need to keep them.</p><code>{session()?.run}</code><div class="dialog-actions"><button class="key" onclick={()=>ui.overlay=''}>Keep changes</button><button class="key danger" onclick={()=>void attempt(async()=>{await action('control',{session:ui.sessionId,action:'discard'});ui.overlay='';notify('Candidate discard requested.');})}>Discard candidate</button></div>
     {/if}
   </div>
 </dialog>

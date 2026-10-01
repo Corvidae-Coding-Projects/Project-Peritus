@@ -39,7 +39,7 @@ pub fn classify_restart(
     report.entries().iter().find(|entry| entry.process_id() == process_id).map_or(
         RestartTerminalDisposition::UnknownProcess,
         |entry| match entry.disposition() {
-            RecoveryDisposition::AlreadyTerminal => RestartTerminalDisposition::Indeterminate,
+            RecoveryDisposition::Terminal => RestartTerminalDisposition::Indeterminate,
             RecoveryDisposition::LiveOwned => RestartTerminalDisposition::LiveControlUnavailable,
             RecoveryDisposition::AbsentUnobserved => RestartTerminalDisposition::AbsentUnobserved,
             RecoveryDisposition::Indeterminate => RestartTerminalDisposition::Indeterminate,

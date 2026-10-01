@@ -165,7 +165,7 @@ impl InputPump {
                     match event::poll(INPUT_POLL) {
                         Ok(true) => match event::read() {
                             Ok(event) => {
-                                if sender.blocking_send(event).is_err() {
+                                if !forward_event(&sender, event, &worker_stop) {
                                     return;
                                 }
                             }
@@ -182,6 +182,7 @@ impl InputPump {
     pub(super) fn stop(&mut self) -> Result<(), TuiError> {
         self.stop.store(true, Ordering::Release);
         if let Some(thread) = self.thread.take() {
+            thread.thread().unpark();
             thread
                 .join()
                 .map_err(|_| TuiError::Task("terminal input worker panicked".to_owned()))?;
@@ -190,11 +191,31 @@ impl InputPump {
     }
 }
 
+fn forward_event(sender: &mpsc::Sender<Event>, mut event: Event, stop: &AtomicBool) -> bool {
+    loop {
+        if stop.load(Ordering::Acquire) {
+            return false;
+        }
+        match sender.try_send(event) {
+            Ok(()) => return true,
+            Err(mpsc::error::TrySendError::Closed(_)) => return false,
+            Err(mpsc::error::TrySendError::Full(pending)) => event = pending,
+        }
+        // The UI may be shutting down or suspending for a candidate process instead
+        // of draining the queue. Retain input while active, but keep stop cancellable.
+        thread::park_timeout(INPUT_POLL);
+    }
+}
+
 impl Drop for InputPump {
     fn drop(&mut self) {
         self.stop.store(true, Ordering::Release);
         if let Some(thread) = self.thread.take() {
+            thread.thread().unpark();
             let _ = thread.join();
         }
     }
 }
+
+#[cfg(test)]
+mod tests;

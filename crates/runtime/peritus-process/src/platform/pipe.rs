@@ -48,6 +48,8 @@ pub(super) fn launch(
     for variable in plan.environment().variables() {
         command.env(variable.name(), variable.value());
     }
+    #[cfg(target_os = "linux")]
+    super::configure_parent_death(&mut command);
     #[cfg(windows)]
     if let Some(channels) = handshake.as_ref().and_then(|value| value.windows_channels) {
         command.env(crate::NATIVE_WINDOWS_STATUS_HANDLE_ENV, channels.status_handle().to_string());

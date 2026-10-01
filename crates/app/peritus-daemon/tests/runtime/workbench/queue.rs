@@ -135,9 +135,9 @@ async fn assert_history_without_execution(
     assert_eq!(history.rows().len(), 2);
     assert_eq!(history.rows()[0].state(), WorkbenchInputState::Superseded);
     assert_eq!(history.rows()[0].text().as_str(), "original exact instruction");
-    assert!(matches!(request(client, 4, AppRequestPayload::QueryProductRuns(
+    assert!(matches!(request(client, 4, AppRequestPayload::QueryProductRunObservations(
         peritus_app_protocol::ProductRunQuery::recent(),
-    )).await, AppResponsePayload::ProductRunSettlements(runs) if runs.is_empty()));
+    )).await, AppResponsePayload::ProductRunObservations(runs) if runs.is_empty()));
 }
 
 async fn assert_execution_unavailable(client: &mut (AppFrameStream<UnixStream>, ProtocolContext)) {

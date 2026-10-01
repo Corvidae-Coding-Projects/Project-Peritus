@@ -195,12 +195,12 @@ impl GoalRecord {
             return Err(ControlError::InvalidInput);
         }
         self.user_revision = self.user_revision.checked_add(1).ok_or(ControlError::Capacity)?;
-        self.pause_mode = Some(mode);
         self.state = if self.state == GoalState::WaitingForUser {
             GoalState::Paused
         } else {
             GoalState::Pausing
         };
+        self.pause_mode = (self.state == GoalState::Pausing).then_some(mode);
         self.reason = ControlText::new(
             match self.state {
                 GoalState::Paused => "Paused at the existing idle boundary.",

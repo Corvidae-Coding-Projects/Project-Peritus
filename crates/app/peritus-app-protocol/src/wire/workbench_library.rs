@@ -8,7 +8,7 @@ use crate::{
     WorkbenchForkRequest,
 };
 use peritus_codec::{CanonicalReader, CanonicalWriter, CodecError, CodecErrorKind};
-use peritus_types::{RunId, WorkspaceId};
+use peritus_types::WorkspaceId;
 
 pub(super) fn write_query(
     w: &mut CanonicalWriter,
@@ -141,10 +141,6 @@ fn write_item(w: &mut CanonicalWriter, value: &ConversationLibraryItem) -> Resul
     w.write_bool(value.pinned())?;
     w.write_bool(value.archived())?;
     w.write_u64(value.activity_revision())?;
-    w.write_bool(value.legacy_run().is_some())?;
-    if let Some(run) = value.legacy_run() {
-        write_id(w, run.as_bytes())?;
-    }
     w.write_bool(value.goal_state().is_some())?;
     if let Some(state) = value.goal_state() {
         super::workbench_goal::write_state(w, state)?;
@@ -169,7 +165,6 @@ fn read_item(r: &mut CanonicalReader<'_>) -> Result<ConversationLibraryItem, Cod
     let pinned = r.read_bool()?;
     let archived = r.read_bool()?;
     let activity_revision = r.read_u64()?;
-    let legacy_run = if r.read_bool()? { Some(read_id(r, RunId::new)?) } else { None };
     let goal_state =
         if r.read_bool()? { Some(super::workbench_goal::read_state(r)?) } else { None };
     let goal_draft = r.read_bool()?;
@@ -188,7 +183,6 @@ fn read_item(r: &mut CanonicalReader<'_>) -> Result<ConversationLibraryItem, Cod
             pinned,
             archived,
             activity_revision,
-            legacy_run,
             goal_state,
             goal_draft,
             handoff,
@@ -214,11 +208,6 @@ fn write_snippet(
             write_id(w, conversation.as_bytes())?;
             write_id(w, operation.as_bytes())?;
         }
-        ConversationMessageSource::Legacy { run, index } => {
-            w.write_u16(3)?;
-            write_id(w, run.as_bytes())?;
-            w.write_u32(index)?;
-        }
     }
     w.write_str(value.text())
 }
@@ -235,9 +224,6 @@ fn read_snippet(r: &mut CanonicalReader<'_>) -> Result<ConversationSearchSnippet
             conversation: read_id(r, ConversationId::new)?,
             operation: read_id(r, ControlOperationId::new)?,
         },
-        3 => {
-            ConversationMessageSource::Legacy { run: read_id(r, RunId::new)?, index: r.read_u32()? }
-        }
         _ => return unknown(offset),
     };
     let text_offset = r.offset();
