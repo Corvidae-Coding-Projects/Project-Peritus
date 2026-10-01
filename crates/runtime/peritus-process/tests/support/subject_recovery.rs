@@ -164,7 +164,7 @@ impl ProcessProbe for FixedProbe {
 
 const fn recovery_disposition(value: RecoveryDisposition) -> ProcessRecoveryDisposition {
     match value {
-        RecoveryDisposition::AlreadyTerminal => ProcessRecoveryDisposition::Terminal,
+        RecoveryDisposition::Terminal => ProcessRecoveryDisposition::Terminal,
         RecoveryDisposition::LiveOwned => ProcessRecoveryDisposition::LiveOwned,
         RecoveryDisposition::AbsentUnobserved => ProcessRecoveryDisposition::AbsentUnobserved,
         RecoveryDisposition::Indeterminate => ProcessRecoveryDisposition::Indeterminate,

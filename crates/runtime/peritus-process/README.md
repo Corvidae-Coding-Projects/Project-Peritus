@@ -29,6 +29,11 @@ publication error carrying the latest durable terminal result, while
 `ProcessStore::retry_artifact_publication` resumes only missing streams and is idempotent across
 restart.
 
+Restart recovery keeps result knowledge separate from resource ownership. Exact absence can settle
+the owned tree and support tasks without inventing an exit result; that record remains explicitly
+absent-unobserved while no longer blocking daemon shutdown or lease-holder quiescence. Mismatched or
+unverifiable identities remain unsettled.
+
 ## Focused checks
 
 From the repository root:

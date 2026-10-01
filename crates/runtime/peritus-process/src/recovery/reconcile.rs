@@ -37,8 +37,8 @@ pub trait ProcessProbe {
 /// Stable recovery outcome for one durable execution.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum RecoveryDisposition {
-    /// The durable record was already terminal and required no platform action.
-    AlreadyTerminal,
+    /// A complete durable result exists and resource ownership is settled.
+    Terminal,
     /// The exact live owned tree was found and termination was requested.
     LiveOwned,
     /// The process was absent without a committed terminal observation.
@@ -103,14 +103,11 @@ impl RecoveryReport {
         self.quarantined_records
     }
 
-    /// Returns whether every record was already terminal.
+    /// Returns whether every record has a complete result and settled ownership.
     #[must_use]
     pub fn all_terminal(&self) -> bool {
         self.quarantined_records == 0
-            && self
-                .entries
-                .iter()
-                .all(|entry| entry.disposition == RecoveryDisposition::AlreadyTerminal)
+            && self.entries.iter().all(|entry| entry.disposition == RecoveryDisposition::Terminal)
     }
 }
 
@@ -133,27 +130,35 @@ impl ProcessStore {
                 claims.remove(&process_id).is_some_and(|claim| claim.matches_manifest(&manifest));
             let (disposition, signal_sent) = if !claim_matches {
                 (RecoveryDisposition::Indeterminate, false)
-            } else if manifest.phase == LifecyclePhase::Terminal {
-                (RecoveryDisposition::AlreadyTerminal, false)
+            } else if manifest.phase == LifecyclePhase::Terminal && manifest.ownership_settled() {
+                (RecoveryDisposition::Terminal, false)
             } else if let Some(tree) = manifest.tree {
                 match probe.observe(tree)? {
                     ProbeObservation::ExactLive => {
                         probe.terminate(tree)?;
-                        self.reconcile_manifest(process_id, false)?;
+                        self.reconcile_ownership(process_id, false)?;
                         (RecoveryDisposition::LiveOwned, true)
                     }
                     ProbeObservation::ExactAbsent => {
-                        self.reconcile_manifest(process_id, true)?;
-                        (RecoveryDisposition::AbsentUnobserved, false)
+                        self.reconcile_ownership(process_id, true)?;
+                        if manifest.phase == LifecyclePhase::Terminal {
+                            (RecoveryDisposition::Terminal, false)
+                        } else {
+                            (RecoveryDisposition::AbsentUnobserved, false)
+                        }
                     }
                     ProbeObservation::Mismatched | ProbeObservation::Unverifiable => {
-                        self.reconcile_manifest(process_id, false)?;
+                        self.reconcile_ownership(process_id, false)?;
                         (RecoveryDisposition::Indeterminate, false)
                     }
                 }
             } else {
-                self.reconcile_manifest(process_id, true)?;
-                (RecoveryDisposition::AbsentUnobserved, false)
+                self.reconcile_ownership(process_id, true)?;
+                if manifest.phase == LifecyclePhase::Terminal {
+                    (RecoveryDisposition::Terminal, false)
+                } else {
+                    (RecoveryDisposition::AbsentUnobserved, false)
+                }
             };
             entries.push(RecoveryEntry::new(process_id, disposition, signal_sent));
         }
