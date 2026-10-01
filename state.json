@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1907,
-        "tip_oid": "e1394546a8aeacf67d744a1d7a086eee7cff1f5b",
-        "prefix_sha256": "82f72193a33a21f505f3b4ec2af35625a9863bb0ee19c680fbe5c5a91c6a4d05"
+        "sequence": 1908,
+        "tip_oid": "61bc32a36d28cca1a9852757b8593067c244740e",
+        "prefix_sha256": "be4cbadeda426dca0e64b2f65576e1c4ea7bc1af8906365337a597998c5eb096"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 2027,
+  "next_comment_id": 2028,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -16544,7 +16544,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-28T00:58:41.412806074Z",
-      "updated_at": "2026-10-01T13:14:16.699917876Z",
+      "updated_at": "2026-10-01T13:19:30.146641243Z",
       "labels": [
         "bug"
       ],
@@ -17466,6 +17466,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAJXFKmubYu9I/epazAVRad+j6FX5OqgI0g5G5NH1vhg3cmf4rWKyxDl2XeM+Ys2r2WI6d2Y5ISCM5wHyzx16BAA=="
+        },
+        "8cd9e009-31db-418b-9666-588140467ea7": {
+          "display_id": 2027,
+          "author": "6ME5",
+          "content": "[action] Repaired cross-platform watchdog compilation, source-layout runner policy failures, macOS canonical fixture paths, and Windows candidate transaction path identity/publication; pushed exact head a8bdede42 and monitoring hosted matrices.",
+          "created_at": "2026-10-01T13:19:30.142848975Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAPsjkfKugz9xtFi1FetJCinEYxScHL/Mp/4SM/WcTxKeMEz6KtC8vpgs5+n3vV4o1ScT0tQC+oAnqDYtUPnlFDg=="
         },
         "8d940eb3-80af-4892-8544-dd58f076ae14": {
           "display_id": 1861,
