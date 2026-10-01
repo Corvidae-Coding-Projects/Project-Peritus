@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1932,
-        "tip_oid": "808f55bfd537521f21dc413e7e5df68f3c95ec65",
-        "prefix_sha256": "8829763b3a1a483650152155c482906c595b865096e14cfedf66bedbbe8fd1e0"
+        "sequence": 1933,
+        "tip_oid": "3999518af027dd527bba7ea6686c7f4b83edadaf",
+        "prefix_sha256": "63659e25edaa9863e6e385bb08d80bf41daca991ed73bed466d35116c0e888e7"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 2046,
+  "next_comment_id": 2047,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -16607,7 +16607,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-28T00:58:41.412806074Z",
-      "updated_at": "2026-10-01T17:51:10.576050775Z",
+      "updated_at": "2026-10-01T18:34:00.850141307Z",
       "labels": [
         "bug"
       ],
@@ -17736,6 +17736,15 @@
           "kind": "handoff",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABALq+DD1lfw/sRIusOk+KANnb+EToJrAXBtunFKLgvTOc6qWUJQ6IzSkWI4fSHXG5Y3VLftTqdY2Y+Jb6ir9w6Bw=="
+        },
+        "a389b027-768c-49e7-8a22-7c9e78003f85": {
+          "display_id": 2046,
+          "author": "6ME5",
+          "content": "Runner deadline repair committed as signed e9809eb4d. Exact-head Gate A Windows test-daemon-product was externally canceled at 15 minutes with passing tests still running (STATUS_CONTROL_C_EXIT). Raised only Gate A/Foundation cross-platform Rust matrices to a reviewed 30-minute bound, updated canonical governance and fail-closed validators, and kept other timeout classes unchanged. cargo test -p xtask (470 passed, 1 ignored) and cargo xtask all pass.",
+          "created_at": "2026-10-01T18:34:00.846037258Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAthVczQtm4T2n1S8NYzDGakj9oyfFnQwTiAprNc7zRuYSdqe6MZ21z7pRXXJ/xA8KRSg8cWgWRSgi6rNpQXQUBA=="
         },
         "a6123bd5-ea6a-4794-8d0f-a1d8620bd442": {
           "display_id": 1875,
