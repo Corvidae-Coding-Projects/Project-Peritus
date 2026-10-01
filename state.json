@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1813,
-        "tip_oid": "b0ab92ae83a42fad0f8deb7481a3f9899f24b0bd",
-        "prefix_sha256": "ba418ec99dc6464c5d7179526836b7d988d7808b9a570a9bfecdcad01acc6cb6"
+        "sequence": 1814,
+        "tip_oid": "59b9551bc9ffb9b97cd67400a9194e91c405851b",
+        "prefix_sha256": "6219eccc93f9e8c4bfc0b19f37b3f811a9e8ea260487b631d583e634cf81d00f"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 1953,
+  "next_comment_id": 1954,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -16544,7 +16544,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-28T00:58:41.412806074Z",
-      "updated_at": "2026-10-01T01:15:25.251163410Z",
+      "updated_at": "2026-10-01T01:18:12.459254915Z",
       "labels": [
         "bug"
       ],
@@ -16809,6 +16809,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAqnclKrcLZtj1wIhzFBTsUDT2G+Kw5wbG9uouZbNulgXyaPAwJHuBgcm7Xk8M3WQslN8hEpaqY/UwGSlaoHWtDg=="
+        },
+        "4a944e64-2cbe-4562-95ef-0a10ee1aa5cb": {
+          "display_id": 1953,
+          "author": "6ME5",
+          "content": "[action] Signed055eddd1c pushed and confirmed as PR105 head. First architecture ownership increment verified with live account-backed normal accept/export/commit/Run, second restart/reopen/Run and file preservation. Current tracked worktree clean; original unrelated untracked artifacts/stash preserved. Four-priority attachment goal remains active; checkpoint /tmp/peritus-functional-resume-y5ndk7bl/evidence/ontology-resume-checkpoint.json, design .design/daily-driver-state-ownership.md. Next content/context dependency migration, then authoritative normal UI recovery and host facts across malformed reports; no merge/close.",
+          "created_at": "2026-10-01T01:18:12.455347148Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAqyriRqFyHk1I1egjwFHQ8Lr6drjzC3OXypp7qiHImWGRum87BRjibPGuH9I9Y9jk6Q6WK+fLRxPuWo69v6YyAA=="
         },
         "4e477f9a-617a-4b99-9329-6e44b6dd65b7": {
           "display_id": 1934,
