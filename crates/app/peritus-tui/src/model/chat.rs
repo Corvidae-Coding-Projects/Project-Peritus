@@ -15,9 +15,8 @@ mod working;
 
 use super::{AppModel, Effect, NoticeLevel, PendingRequest};
 use peritus_app_protocol::{
-    AppRequestPayload, ProductInteractionMode, ProductInteractionRequest,
-    ProductInteractionSnapshot, ProductModelCatalog, ProductRoleModels, ProductRunControlAction,
-    ProductRunRequest,
+    AppRequestPayload, ProductInteractionMode, ProductInteractionSnapshot, ProductModelCatalog,
+    ProductRoleModels, ProductRunControlAction,
 };
 use peritus_types::RunId;
 
@@ -151,57 +150,22 @@ impl AppModel {
                 .into_iter()
                 .collect();
         }
-        if self.chat.workbench.selected.is_some()
-            || (self.chat.run_id.is_none() && self.workbench_conversation_available())
-        {
-            return self.send_workbench_chat(text);
-        }
-        let Some(product) = &self.product else {
-            return Vec::new();
-        };
-        let Some(providers) = self.chat_providers() else {
+        if self.chat.run_id.is_some() && self.chat.workbench.selected.is_none() {
+            self.chat.run_id = None;
+            self.chat.binding_checked = None;
             self.notice(
                 NoticeLevel::Warning,
-                "No provider configured. Run peritus providers first.",
+                "This run has no durable conversation destination and was detached. Press Enter again to start a new conversation; draft retained.",
             );
             return Vec::new();
-        };
-        let workspace = product.launch.workspace_id();
-        let Some(run_id) = self.chat.run_id.or_else(|| self.ids.run()) else {
-            return Vec::new();
-        };
-        let request = match ProductRunRequest::new(run_id, workspace, providers, text.clone()) {
-            Ok(request) => request,
-            Err(error) => {
-                self.notice(NoticeLevel::Error, error.to_string());
-                return Vec::new();
-            }
-        };
-        let effect = self.request(
-            AppRequestPayload::Interact(ProductInteractionRequest::new(
-                request,
-                self.chat.mode,
-                self.chat.models.clone(),
-            )),
-            PendingRequest::ChatSubmit { run_id, text },
-        );
-        if effect.is_some() {
-            self.chat.run_id = Some(run_id);
-            self.chat.buffer.clear();
-            self.chat.cursor = 0;
-            self.chat.selection_anchor = None;
-            self.chat.mouse_anchor = None;
-            self.chat.scroll = 0;
-            self.notice(NoticeLevel::Info, "Sending input; durable receipt not yet confirmed");
         }
-        effect.into_iter().collect()
+        self.send_workbench_chat(text)
     }
     pub(super) fn poll_chat(&mut self) -> Vec<Effect> {
         if self.pending.values().any(|pending| {
             matches!(
                 pending,
                 PendingRequest::ChatQuery
-                    | PendingRequest::ChatSubmit { .. }
                     | PendingRequest::ChatOpen { .. }
                     | PendingRequest::ChatBinding { .. }
             )
@@ -266,29 +230,6 @@ impl AppModel {
         }
         self.chat.snapshot = Some(snapshot);
     }
-    pub(super) fn restore_chat_draft(&mut self, text: &str) {
-        self.chat.buffer = if self.chat.buffer.is_empty() {
-            text.to_owned()
-        } else {
-            format!("{text}\n{}", self.chat.buffer)
-        };
-        self.chat.cursor = self.chat.buffer.len();
-        self.chat.selection_anchor = None;
-        self.chat.mouse_anchor = None;
-    }
-    pub(super) fn recover_chat_drafts(&mut self) {
-        let messages = self
-            .pending
-            .values()
-            .filter_map(|pending| match pending {
-                PendingRequest::ChatSubmit { text, .. } => Some(text.clone()),
-                _ => None,
-            })
-            .collect::<Vec<_>>();
-        for text in messages {
-            self.restore_chat_draft(&text);
-        }
-    }
     pub(super) fn chat_control(&mut self, action: ProductRunControlAction) -> Vec<Effect> {
         if action == ProductRunControlAction::Cancel {
             if let Some(effects) = self.stop_workbench_submission() {
@@ -318,9 +259,7 @@ impl AppModel {
         self.control_selected_product_run(action)
     }
     pub(super) fn chat_work_active(&self) -> bool {
-        self.chat.active() || self.workbench_chat_starting() || self.pending.values().any(|pending| {
-            matches!(pending, PendingRequest::ChatSubmit { run_id, .. } if Some(*run_id) == self.chat.run_id)
-        })
+        self.chat.active() || self.workbench_chat_starting()
     }
     pub(super) fn chat_submission_pending(&self) -> bool {
         self.chat_mutation_pending()

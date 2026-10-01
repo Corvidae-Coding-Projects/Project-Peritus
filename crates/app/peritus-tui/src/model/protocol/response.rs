@@ -9,7 +9,6 @@ use crate::model::{
 
 impl AppModel {
     pub(in crate::model) fn interrupt_pending_requests(&mut self) {
-        self.recover_chat_drafts();
         self.recover_editor_drafts();
         let prompts = self
             .pending
@@ -103,11 +102,6 @@ impl AppModel {
             self.open_run_message_composer(*run_id);
             self.notice(NoticeLevel::Error, error.actionable_message());
             return Vec::new();
-        }
-        if let Some(PendingRequest::ChatSubmit { run_id, text }) = pending
-            && self.chat.run_id == Some(*run_id)
-        {
-            self.restore_chat_draft(text);
         }
         if let Some(PendingRequest::Prompt(prompt_id)) = pending {
             self.set_prompt_phase(*prompt_id, PromptPhase::Failed);

@@ -125,8 +125,17 @@ goal remains active until all delivery and ordinary-interface recovery evidence 
 The clean cut is partly implemented. Product-run records now require format 3 and quarantine
 earlier complete records without migration. Current clients and the daemon negotiate application
 protocol 2.0; protocol 1.0 and the retired product-start tag are rejected. The TUI no longer has a
-second task composer in `/runs`; `/build` and ordinary conversation both enter through the durable
-workbench conversation and input ledger.
+second task composer in `/runs` or a direct `Interact` submission fallback. `/build` and ordinary
+conversation both enter through the durable workbench conversation and input ledger. Runs without
+an exact durable conversation are detached with their draft retained instead of being continued
+through the legacy path.
+
+A real PTY probe against a separately running daemon and a declared writable folder exercised the
+ordinary interface without a model provider. `/sessions new Real PTY smoke` moved from an explicit
+unconfirmed state to durable revision 1, appeared in `/sessions`, and remained discoverable after
+both the TUI and daemon restarted on the same state directory. This establishes process-boundary
+admission, projection, and restart persistence for that path; it is not evidence for provider
+execution, interruption during external effects, or multi-day installed use.
 
 The remaining generation split is concrete. The WebUI and performance qualification probe still
 submit the public `Interact` request, while internal improvement work can still create an

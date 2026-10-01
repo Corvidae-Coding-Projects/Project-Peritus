@@ -6,13 +6,15 @@ use peritus_app_protocol::{
 };
 use peritus_run_settlement::{SettlementCause, SettlementReducer};
 
+mod binding;
+
 #[test]
 fn a_slow_run_lookup_does_not_trap_new_conversation_navigation_or_late_reply_routing() {
     use peritus_app_protocol::{
         AppResponseEnvelope, AppResponsePayload, ConversationId, ProductInteractionBinding,
         WorkbenchQuery,
     };
-    let mut model = model();
+    let mut model = durable_chat_model();
     let old_run = RunId::new([98; 16]).unwrap();
     let workspace = WorkspaceId::new([4; 16]).unwrap();
     model.chat.run_id = Some(old_run);
@@ -32,8 +34,9 @@ fn a_slow_run_lookup_does_not_trap_new_conversation_navigation_or_late_reply_rou
     model.chat.buffer = "Different task instead".into();
     let effects = key(&mut model, KeyCode::Enter);
     assert!(matches!(effects.as_slice(), [Effect::Send(AppMessage::Request(sent))]
-        if matches!(sent.payload(), AppRequestPayload::Interact(interaction) if interaction.request().run_id() != old_run)));
-    let new_run = model.chat.run_id;
+        if matches!(sent.payload(), AppRequestPayload::WorkbenchCommand(command)
+            if matches!(command.intent(), peritus_app_protocol::WorkbenchIntent::CreateConversation(_)))));
+    let new_conversation = model.chat.workbench.selected;
     let snapshot = ProductRunSnapshot::new(
         old_run,
         workspace,
@@ -68,8 +71,8 @@ fn a_slow_run_lookup_does_not_trap_new_conversation_navigation_or_late_reply_rou
         old_request.correlation_id(),
         AppResponsePayload::InteractionBinding(binding),
     ))));
-    assert_eq!(model.chat.run_id, new_run);
-    assert!(model.chat.workbench.selected.is_none());
+    assert!(model.chat.run_id.is_none());
+    assert_eq!(model.chat.workbench.selected, new_conversation);
 }
 
 #[test]
@@ -225,14 +228,10 @@ fn run_binding_routes_the_next_message_to_the_observed_conversation_without_star
         AppResponseEnvelope, AppResponsePayload, ConversationId, ProductInteractionBinding,
         WorkbenchQuery,
     };
-    let mut model = model();
-    for feature in [
-        WellKnownProtocolFeature::WorkbenchRunBinding,
-        WellKnownProtocolFeature::WorkbenchControl,
-        WellKnownProtocolFeature::WorkbenchConversation,
-    ] {
-        model.features.push(ProtocolFeatureName::well_known(feature).unwrap());
-    }
+    let mut model = durable_chat_model();
+    model.features.push(
+        ProtocolFeatureName::well_known(WellKnownProtocolFeature::WorkbenchRunBinding).unwrap(),
+    );
     let run = RunId::new([83; 16]).unwrap();
     let query = WorkbenchQuery::new(
         ConversationId::new([84; 16]).unwrap(),

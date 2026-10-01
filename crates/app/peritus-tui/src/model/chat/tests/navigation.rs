@@ -142,7 +142,7 @@ fn paste_over_backwards_command_selection_cannot_acquire_keyboard_intent() {
 }
 
 #[test]
-fn escape_completion_submission_and_restore_clear_selection() {
+fn escape_completion_and_submission_clear_selection() {
     let mut model = draft("/he");
     modified(&mut model, KeyCode::Home, KeyModifiers::SHIFT);
     modified(&mut model, KeyCode::Esc, KeyModifiers::NONE);
@@ -150,14 +150,12 @@ fn escape_completion_submission_and_restore_clear_selection() {
     modified(&mut model, KeyCode::End, KeyModifiers::SHIFT);
     modified(&mut model, KeyCode::Tab, KeyModifiers::NONE);
     assert_eq!(model.chat.selection_anchor, None);
-    model.restore_chat_draft("question");
+    model.chat.buffer = "question".to_owned();
+    model.chat.cursor = model.chat.buffer.len();
     modified(&mut model, KeyCode::Home, KeyModifiers::SHIFT);
+    enable_durable_chat(&mut model);
     assert!(!key(&mut model, KeyCode::Enter).is_empty());
     assert_eq!(model.chat.selection_anchor, None);
-    model.chat.mouse_anchor = Some(1);
-    model.restore_chat_draft("restored");
-    assert_eq!(model.chat.selection_anchor, None);
-    assert_eq!(model.chat.mouse_anchor, None);
 }
 
 #[test]

@@ -8,10 +8,10 @@ use peritus_app_protocol::{
 
 fn library_model() -> AppModel {
     let mut model = enabled_model();
-    model.features.extend([
+    enable_durable_chat(&mut model);
+    model.features.push(
         ProtocolFeatureName::well_known(WellKnownProtocolFeature::ConversationLibrary).unwrap(),
-        ProtocolFeatureName::well_known(WellKnownProtocolFeature::WorkbenchConversation).unwrap(),
-    ]);
+    );
     model
 }
 

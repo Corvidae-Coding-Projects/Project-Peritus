@@ -38,8 +38,13 @@ pub(super) fn active(model: &mut AppModel) -> ProductInteractionSnapshot {
 
 #[test]
 fn active_model_selection_is_sent_and_only_confirmed_after_daemon_acknowledgement() {
-    let mut model = model();
+    let mut model = durable_chat_model();
     let before = active(&mut model);
+    let conversation = peritus_app_protocol::WorkbenchQuery::new(
+        peritus_app_protocol::ConversationId::new([0x42; 16]).expect("conversation"),
+        before.snapshot().workspace_id(),
+    );
+    model.chat.workbench.selected = Some(conversation);
     let discovery = model.slash_command("/model writer");
     let [Effect::Send(AppMessage::Request(query))] = discovery.as_slice() else {
         panic!("catalog query")
@@ -104,7 +109,10 @@ fn active_model_selection_is_sent_and_only_confirmed_after_daemon_acknowledgemen
     assert_eq!(model.chat.models.writer().id(), "gpt-6-astra");
     assert!(model.notice.as_ref().expect("notice").text.contains("in-flight turn is unchanged"));
     let sent = key(&mut model, KeyCode::Enter);
-    assert!(sent.iter().any(|effect| matches!(effect, Effect::Send(AppMessage::Request(request)) if matches!(request.payload(), AppRequestPayload::Interact(value) if value.models().writer().id() == "gpt-6-astra" && value.request().task() == "keep this draft"))));
+    assert!(matches!(sent.as_slice(), [Effect::Send(AppMessage::Request(request))]
+        if matches!(request.payload(), AppRequestPayload::QueryWorkbenchExecution(query)
+            if *query == conversation)));
+    assert_eq!(model.chat.buffer, "keep this draft");
 }
 
 #[test]

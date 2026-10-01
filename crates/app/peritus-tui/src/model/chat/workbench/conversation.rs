@@ -39,9 +39,15 @@ impl AppModel {
     }
 
     pub(in crate::model::chat) fn workbench_conversation_available(&self) -> bool {
+        const REQUIRED: [WellKnownProtocolFeature; 4] = [
+            WellKnownProtocolFeature::WorkbenchControl,
+            WellKnownProtocolFeature::WorkbenchInputs,
+            WellKnownProtocolFeature::WorkbenchExecution,
+            WellKnownProtocolFeature::WorkbenchConversation,
+        ];
         self.context.is_some()
-            && self.features.iter().any(|feature| {
-                feature.as_str() == WellKnownProtocolFeature::WorkbenchConversation.as_str()
+            && REQUIRED.into_iter().all(|required| {
+                self.features.iter().any(|feature| feature.as_str() == required.as_str())
             })
     }
 
@@ -94,6 +100,8 @@ impl AppModel {
             queued: false,
             stopped: false,
         });
+        self.chat.selection_anchor = None;
+        self.chat.mouse_anchor = None;
         if let Some((query, title)) = creation {
             self.submit_workbench_chat_intent(WorkbenchIntent::CreateConversation(title), query, 0)
         } else {

@@ -214,10 +214,6 @@ enum PendingRequest {
     WorkbenchControl(peritus_app_protocol::WorkbenchCommand),
     WorkbenchReceipt(peritus_app_protocol::WorkbenchCommand),
     Doctor(peritus_app_protocol::DoctorQuery),
-    ChatSubmit {
-        run_id: RunId,
-        text: String,
-    },
     ChatQuery,
     ChatOpen {
         run_id: RunId,

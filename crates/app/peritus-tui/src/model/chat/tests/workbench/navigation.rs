@@ -6,12 +6,11 @@ fn dismissing_a_slow_inspector_allows_a_new_task_without_waiting_for_its_reply()
         ["/sessions", "/brief", "/queue", "/context", "/memory", "/permissions", "/goal", "/init"]
     {
         let mut model = enabled_model();
+        enable_durable_chat(&mut model);
         model.features.extend(
             [
                 WellKnownProtocolFeature::ConversationLibrary,
-                WellKnownProtocolFeature::WorkbenchConversation,
                 WellKnownProtocolFeature::WorkbenchBrief,
-                WellKnownProtocolFeature::WorkbenchInputs,
                 WellKnownProtocolFeature::WorkbenchContext,
                 WellKnownProtocolFeature::WorkbenchMemory,
                 WellKnownProtocolFeature::WorkbenchPermissions,

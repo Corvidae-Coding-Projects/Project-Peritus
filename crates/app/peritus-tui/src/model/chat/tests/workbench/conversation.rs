@@ -4,13 +4,15 @@ use peritus_app_protocol::{
     WorkbenchQueueIntent,
 };
 
+fn chat_model() -> AppModel {
+    let mut model = enabled_model();
+    enable_durable_chat(&mut model);
+    model
+}
+
 #[test]
 fn composer_queues_in_selected_session_then_starts_only_after_receipt() {
-    let mut model = enabled_model();
-    model.features.push(
-        ProtocolFeatureName::well_known(WellKnownProtocolFeature::WorkbenchConversation)
-            .expect("feature"),
-    );
+    let mut model = chat_model();
     let (create_request, create_command) = create(&mut model);
     let refresh = request(&respond(&mut model, &create_request, receipt(&create_command)));
     let query = create_command.query();
@@ -43,11 +45,7 @@ fn composer_queues_in_selected_session_then_starts_only_after_receipt() {
 
 #[test]
 fn reopening_a_durable_session_discovers_its_run_without_execution() {
-    let mut model = enabled_model();
-    model.features.push(
-        ProtocolFeatureName::well_known(WellKnownProtocolFeature::WorkbenchConversation)
-            .expect("feature"),
-    );
+    let mut model = chat_model();
     let query = WorkbenchQuery::new(
         peritus_app_protocol::ConversationId::new([8; 16]).expect("id"),
         WorkspaceId::new([4; 16]).expect("workspace"),
@@ -81,11 +79,7 @@ fn state(query: WorkbenchQuery, revision: u64, run: Option<RunId>) -> AppRespons
 
 #[test]
 fn new_chat_detaches_durable_session_but_cannot_abandon_an_input_receipt() {
-    let mut model = enabled_model();
-    model.features.push(
-        ProtocolFeatureName::well_known(WellKnownProtocolFeature::WorkbenchConversation)
-            .expect("feature"),
-    );
+    let mut model = chat_model();
     let query = WorkbenchQuery::new(
         peritus_app_protocol::ConversationId::new([8; 16]).expect("id"),
         WorkspaceId::new([4; 16]).expect("workspace"),
@@ -118,11 +112,7 @@ fn new_chat_detaches_durable_session_but_cannot_abandon_an_input_receipt() {
 #[test]
 fn stop_at_each_admission_boundary_never_loses_receipts_or_restarts_work() {
     for boundary in 0..3 {
-        let mut model = enabled_model();
-        model.features.push(
-            ProtocolFeatureName::well_known(WellKnownProtocolFeature::WorkbenchConversation)
-                .expect("feature"),
-        );
+        let mut model = chat_model();
         let workspace = model.product.as_ref().expect("product").launch.workspace_id();
         let query = WorkbenchQuery::new(
             peritus_app_protocol::ConversationId::new([8; 16]).expect("id"),
@@ -169,11 +159,7 @@ fn stop_at_each_admission_boundary_never_loses_receipts_or_restarts_work() {
 
 #[test]
 fn stop_while_continuation_acknowledgement_is_pending_cancels_the_bound_run() {
-    let mut model = enabled_model();
-    model.features.push(
-        ProtocolFeatureName::well_known(WellKnownProtocolFeature::WorkbenchConversation)
-            .expect("feature"),
-    );
+    let mut model = chat_model();
     let workspace = model.product.as_ref().expect("product").launch.workspace_id();
     let query = WorkbenchQuery::new(
         peritus_app_protocol::ConversationId::new([8; 16]).expect("id"),
@@ -225,11 +211,7 @@ fn stop_while_continuation_acknowledgement_is_pending_cancels_the_bound_run() {
 #[test]
 fn ordinary_new_chat_creates_a_session_before_queuing_and_can_stop_at_creation() {
     for stop in [false, true] {
-        let mut model = enabled_model();
-        model.features.push(
-            ProtocolFeatureName::well_known(WellKnownProtocolFeature::WorkbenchConversation)
-                .expect("feature"),
-        );
+        let mut model = chat_model();
         model.chat.buffer = "Read the README and explain it".to_owned();
         let creation = request(&key(&mut model, KeyCode::Enter));
         let AppRequestPayload::WorkbenchCommand(command) = creation.payload() else {

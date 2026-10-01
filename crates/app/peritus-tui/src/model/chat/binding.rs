@@ -47,12 +47,10 @@ impl AppModel {
 
     pub(super) fn chat_mutation_pending(&self) -> bool {
         self.workbench_chat_pending()
-            || self.pending.values().any(|pending| {
-                matches!(
-                    pending,
-                    PendingRequest::ChatSubmit { .. } | PendingRequest::ModelUpdate { .. }
-                )
-            })
+            || self
+                .pending
+                .values()
+                .any(|pending| matches!(pending, PendingRequest::ModelUpdate { .. }))
     }
 
     pub(super) fn abandon_chat_observations(&mut self) {
@@ -122,7 +120,16 @@ impl AppModel {
             );
             return Vec::new();
         }
-        self.select_workbench_conversation(binding.conversation());
+        let Some(conversation) = binding.conversation() else {
+            self.chat.run_id = None;
+            self.chat.binding_checked = None;
+            self.notice(
+                NoticeLevel::Error,
+                "This run has no durable conversation destination and cannot be continued. It was detached; press Enter to start a new conversation with the retained draft.",
+            );
+            return Vec::new();
+        };
+        self.select_workbench_conversation(Some(conversation));
         self.chat.run_id = Some(run);
         self.chat.binding_checked = Some(run);
         if matches!(pending, Some(PendingRequest::ChatBinding { opening: true, .. })) {

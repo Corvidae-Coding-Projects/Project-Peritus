@@ -50,7 +50,6 @@ impl PendingRequest {
             | Self::WorkbenchChatStarted { .. }
             | Self::WorkbenchControl(_)
             | Self::WorkbenchReceipt(_)
-            | Self::ChatSubmit { .. }
             | Self::ModelUpdate { .. }
             | Self::Subscribe
             | Self::Prompt(_)
@@ -115,7 +114,6 @@ impl AppModel {
                         unconfirmed_terminal_input = true;
                     }
                 }
-                PendingRequest::ChatSubmit { text, .. } => self.restore_chat_draft(&text),
                 PendingRequest::Prompt(prompt) => {
                     self.set_prompt_phase(prompt, PromptPhase::Failed);
                 }

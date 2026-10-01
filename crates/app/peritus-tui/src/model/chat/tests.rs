@@ -7,7 +7,8 @@ use crate::{
 use crossterm::event::Event;
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use peritus_app_protocol::{
-    AppMessage, AppProtocolLimits, ProtocolContext, ProtocolId, ProtocolVersion,
+    AppMessage, AppProtocolLimits, CURRENT_PROTOCOL_VERSION, ProtocolContext, ProtocolFeatureName,
+    ProtocolId, WellKnownProtocolFeature,
 };
 use peritus_types::{ProviderProfileId, SessionId, WorkspaceId};
 
@@ -35,13 +36,31 @@ fn model() -> AppModel {
     let _ = model.update(Action::Connected {
         context: ProtocolContext::new(
             ProtocolId::new([1; 16]).expect("protocol"),
-            ProtocolVersion::new(1, 0).expect("version"),
+            CURRENT_PROTOCOL_VERSION,
             SessionId::new([2; 16]).expect("session"),
         ),
         limits: AppProtocolLimits::PRODUCTION,
         server: "fixture".to_owned(),
         downgraded: false,
     });
+    model
+}
+fn enable_durable_chat(model: &mut AppModel) {
+    for feature in [
+        WellKnownProtocolFeature::WorkbenchControl,
+        WellKnownProtocolFeature::WorkbenchInputs,
+        WellKnownProtocolFeature::WorkbenchExecution,
+        WellKnownProtocolFeature::WorkbenchConversation,
+    ] {
+        let feature = ProtocolFeatureName::well_known(feature).expect("feature");
+        if !model.features.contains(&feature) {
+            model.features.push(feature);
+        }
+    }
+}
+fn durable_chat_model() -> AppModel {
+    let mut model = model();
+    enable_durable_chat(&mut model);
     model
 }
 fn key(model: &mut AppModel, code: KeyCode) -> Vec<Effect> {
@@ -94,20 +113,24 @@ fn enter_selects_every_advertised_model_for_every_role() {
 
 #[test]
 fn default_composer_types_hotkey_letters_and_submits_chat_not_a_build() {
-    let mut model = model();
+    let mut model = durable_chat_model();
     assert_eq!(model.view, View::Conversation);
     for character in "what is this? λ".chars() {
         assert!(key(&mut model, KeyCode::Char(character)).is_empty());
     }
     assert!(model.editor.is_none());
     let effects = key(&mut model, KeyCode::Enter);
-    assert!(effects.iter().any(|effect| matches!(effect, Effect::Send(AppMessage::Request(request)) if matches!(request.payload(), AppRequestPayload::Interact(interaction) if interaction.mode() == ProductInteractionMode::Chat && interaction.request().task() == "what is this? λ"))));
-    assert!(model.chat.buffer.is_empty());
+    assert!(matches!(effects.as_slice(), [Effect::Send(AppMessage::Request(request))]
+        if matches!(request.payload(), AppRequestPayload::WorkbenchCommand(command)
+            if matches!(command.intent(), peritus_app_protocol::WorkbenchIntent::CreateConversation(title)
+                if title.as_str() == "what is this? λ"))));
+    assert_eq!(model.chat.mode, ProductInteractionMode::Chat);
+    assert_eq!(model.chat.buffer, "what is this? λ");
 }
 
 #[test]
 fn unknown_commands_preserve_draft_and_completion_is_local() {
-    let mut model = model();
+    let mut model = durable_chat_model();
     model.paste_chat("/nonsense");
     assert!(key(&mut model, KeyCode::Enter).is_empty());
     assert_eq!(model.chat.buffer, "/nonsense");
@@ -117,7 +140,10 @@ fn unknown_commands_preserve_draft_and_completion_is_local() {
     assert_eq!(model.chat.buffer, "/plan ");
     model.paste_chat("inspect the options");
     let effects = key(&mut model, KeyCode::Enter);
-    assert!(effects.iter().any(|effect| matches!(effect, Effect::Send(AppMessage::Request(request)) if matches!(request.payload(), AppRequestPayload::Interact(interaction) if interaction.mode() == ProductInteractionMode::Plan))));
+    assert!(matches!(effects.as_slice(), [Effect::Send(AppMessage::Request(request))]
+        if matches!(request.payload(), AppRequestPayload::WorkbenchCommand(command)
+            if matches!(command.intent(), peritus_app_protocol::WorkbenchIntent::CreateConversation(_)))));
+    assert_eq!(model.chat.mode, ProductInteractionMode::Plan);
 }
 
 #[test]
@@ -276,16 +302,16 @@ fn stop_without_active_work_is_an_explained_local_noop() {
 
 #[test]
 fn stop_during_initial_submission_targets_the_exact_conversation() {
-    let mut model = model();
+    let mut model = durable_chat_model();
     model.paste_chat("hello");
     let _ = key(&mut model, KeyCode::Enter);
-    let run_id = model.chat.run_id.expect("pending conversation");
-    model.paste_chat("retain this steering draft");
+    let conversation = model.chat.workbench.selected.expect("pending conversation");
+    model.chat.buffer = "retain this steering draft".to_owned();
+    model.chat.cursor = model.chat.buffer.len();
     let effects = model.handle_chat_key(KeyEvent::new(KeyCode::Char('c'), KeyModifiers::CONTROL));
-    assert!(effects.iter().any(|effect| matches!(effect,
-        Effect::Send(AppMessage::Request(request)) if matches!(request.payload(),
-            AppRequestPayload::ControlProductRun(control) if control.run_id() == run_id
-                && control.action() == ProductRunControlAction::Cancel))));
+    assert!(effects.is_empty());
+    assert_eq!(model.chat.workbench.selected, Some(conversation));
+    assert!(model.workbench_chat_starting());
     assert_eq!(model.chat.buffer, "retain this steering draft");
     assert!(!model.quitting);
     let effects = model.handle_chat_key(KeyEvent::new(KeyCode::Char('c'), KeyModifiers::CONTROL));
@@ -295,7 +321,7 @@ fn stop_during_initial_submission_targets_the_exact_conversation() {
 
 #[test]
 fn editing_after_an_interrupt_resets_the_second_press_exit() {
-    let mut model = model();
+    let mut model = durable_chat_model();
     model.paste_chat("hello");
     let _ = key(&mut model, KeyCode::Enter);
     let _ = model.handle_chat_key(KeyEvent::new(KeyCode::Char('c'), KeyModifiers::CONTROL));
@@ -317,7 +343,7 @@ fn candidate_commands_without_an_observed_chat_run_fail_closed() {
 
 #[test]
 fn folder_conversation_remains_available_without_git_candidate_commands() {
-    let mut model = model();
+    let mut model = durable_chat_model();
     let product = model.product.as_mut().expect("product");
     product.launch = product.launch.clone().with_direct_folder(true);
     assert_eq!(model.direct_folder_chat(), Some(true));
@@ -326,7 +352,11 @@ fn folder_conversation_remains_available_without_git_candidate_commands() {
         assert_eq!(model.chat.mode, ProductInteractionMode::Chat);
     }
     model.paste_chat("Create the requested file here");
-    assert!(key(&mut model, KeyCode::Enter).iter().any(|effect| matches!(effect, Effect::Send(AppMessage::Request(request)) if matches!(request.payload(), AppRequestPayload::Interact(value) if value.mode() == ProductInteractionMode::Chat))));
+    assert!(matches!(key(&mut model, KeyCode::Enter).as_slice(),
+        [Effect::Send(AppMessage::Request(request))]
+        if matches!(request.payload(), AppRequestPayload::WorkbenchCommand(command)
+            if matches!(command.intent(), peritus_app_protocol::WorkbenchIntent::CreateConversation(_)))));
+    assert_eq!(model.chat.mode, ProductInteractionMode::Chat);
 }
 
 #[test]
