@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1911,
-        "tip_oid": "fb30a5d42e0d0a48d78bb5d8358f04fe7e0c147d",
-        "prefix_sha256": "6d720d0f3fd080c65648b321c9843210f606e33869e78401f3d2c14f3c1eb74e"
+        "sequence": 1912,
+        "tip_oid": "c4dc9a81b61da6742409d214127082ae69218734",
+        "prefix_sha256": "063176edb0703840534c08bf345302c240ffa8a3ff081d57945a4f14f35ba6d0"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 2029,
+  "next_comment_id": 2030,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -16544,7 +16544,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-28T00:58:41.412806074Z",
-      "updated_at": "2026-10-01T13:19:53.819896300Z",
+      "updated_at": "2026-10-01T14:27:24.328928359Z",
       "labels": [
         "bug"
       ],
@@ -16782,6 +16782,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA3zM4tJ0ZsWbMURN73kwIbicDf6qkzVguogkmLlEb2beV8TI91rt2AGdL3XyxED2ghe/4JbYf+j2+xRvnRpCzDQ=="
+        },
+        "2c0ecb35-64d9-439a-badf-5152bd4f3d20": {
+          "display_id": 2029,
+          "author": "6ME5",
+          "content": "[action] Resuming PR #105 cross-platform repair: native Windows failures reproduced under Wine; remaining transaction failures are path identity validation.",
+          "created_at": "2026-10-01T14:27:24.324678412Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAF7X8CDtz4c8Pb+cF6/6xlim9b/JrbDv4B4t3fgTncFhjc4rI5BDhRQWoxw9KcNB3WRrOwxwexBrufITdDsO6Bw=="
         },
         "30551c65-a2fd-446a-8320-b6c1cb77edde": {
           "display_id": 1980,
