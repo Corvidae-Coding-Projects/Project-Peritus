@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1892,
-        "tip_oid": "81c7cb10190408714d90d8ff6b714988389fc5bf",
-        "prefix_sha256": "6a4fcb6cb77b4211c4b5cf7ecabd41029af6da9a66312562ebddd7d27c45891e"
+        "sequence": 1894,
+        "tip_oid": "b0c9bc041089cb973941a0c1a5c81d360ea947db",
+        "prefix_sha256": "b116c26e44074220f9ab4b7c3528c12f24bcc7a7afa1139ac34d44dd336b043a"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 2014,
+  "next_comment_id": 2015,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -192,10 +192,6 @@
     "97": {
       "agent_id": "6ME5",
       "claimed_at": "2026-09-27T23:34:45.783730261Z"
-    },
-    "99": {
-      "agent_id": "6ME5",
-      "claimed_at": "2026-10-01T10:58:13.189659383Z"
     }
   },
   "issues": {
@@ -16544,7 +16540,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-28T00:58:41.412806074Z",
-      "updated_at": "2026-10-01T11:32:29.800502910Z",
+      "updated_at": "2026-10-01T11:34:38.690120294Z",
       "labels": [
         "bug"
       ],
@@ -17385,6 +17381,15 @@
           "kind": "handoff",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABACil7DdE3IvZfF1NCrk0usSKZHCuZAbwSOTyZo4pYz/66paIfm691MGpSDdV3CzmF2m+/h2Hf2/Dm1L2LT9LpDQ=="
+        },
+        "89bbb977-8ed6-4715-bc66-1dd7335b4d96": {
+          "display_id": 2014,
+          "author": "6ME5",
+          "content": "[action] Resumed after stale-session warning. Treating pre-release compatibility as removable per user; investigating the durable process record that keeps public daemon shutdown at processes=1.",
+          "created_at": "2026-10-01T11:34:38.686309660Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAb8fFFNZt/rnnS1I3DbyuUu66oMNCGx7g6lLetDHuD2/JD5J6BqoZE3PkPhD+eB4vb7vS8wivQy4hNVC2CVr1DA=="
         },
         "89fb9d74-eea1-4300-9451-cdeedb970cfe": {
           "display_id": 1951,
