@@ -4,11 +4,9 @@ use serde::Deserialize;
 
 /// Product-run provider recovery policy.
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq)]
-#[serde(deny_unknown_fields)]
+#[serde(default, deny_unknown_fields)]
 pub struct ProductRunPolicy {
-    #[serde(default)]
     automatic_provider_failover: bool,
-    #[serde(default = "default_provider_turn_timeout_seconds")]
     provider_turn_timeout_seconds: u64,
 }
 
