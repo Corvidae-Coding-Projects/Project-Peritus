@@ -8,11 +8,14 @@ use serde::de::{self, Deserializer, MapAccess, Visitor};
 use serde_json::Value;
 
 mod failure;
+mod selection;
 
 use failure::reported_failure;
+use selection::select_turn;
 
 const MAX_JSONL_LINES: usize = 100_000;
 const MAX_JSONL_LINE_BYTES: usize = 4 * 1024 * 1024;
+const MAX_AGENT_MESSAGES: usize = 1_024;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum DecodeFailure {
@@ -198,26 +201,19 @@ fn decode_turn(
             return Err(DecodeFailure::InvalidLifecycle);
         }
         let event: Value = serde_json::from_slice(line).map_err(|_| DecodeFailure::Malformed)?;
-        decode_event(&event, state, final_message)?;
+        decode_event(&event, state)?;
     }
     if !state.completed {
         return Err(DecodeFailure::Incomplete);
     }
-    let encoded = state.assistant_message.as_ref().ok_or(DecodeFailure::InvalidEnvelope)?;
-    let (value, audit) =
-        peritus_provider_core::healing::object(encoded, "codex.turn", ProtocolLimits::PRODUCTION)
-            .map_err(|_| DecodeFailure::InvalidEnvelope)?
-            .into_parts();
-    let turn: StructuredTurn = serde_json::from_slice(value.canonical_bytes())
-        .map_err(|_| DecodeFailure::InvalidEnvelope)?;
-    validate_turn(turn, allowed_tools, call_bounds, state, audit.into_iter().collect())
+    select_turn(state, final_message, allowed_tools, call_bounds)
 }
 
 struct State {
     thread_started: bool,
     turn_started: bool,
     completed: bool,
-    assistant_message: Option<String>,
+    assistant_messages: Vec<String>,
     usage: UsageCounters,
     raw_events: usize,
     duplicates: usize,
@@ -229,7 +225,7 @@ impl Default for State {
             thread_started: false,
             turn_started: false,
             completed: false,
-            assistant_message: None,
+            assistant_messages: Vec::new(),
             usage: UsageCounters::new(None, None, None, None, None, None, None, None),
             raw_events: 0,
             duplicates: 0,
@@ -237,11 +233,7 @@ impl Default for State {
     }
 }
 
-fn decode_event(
-    event: &Value,
-    state: &mut State,
-    final_message: Option<&str>,
-) -> Result<(), DecodeFailure> {
+fn decode_event(event: &Value, state: &mut State) -> Result<(), DecodeFailure> {
     let event_type = string(event, "type")?;
     match event_type {
         "thread.started" => {
@@ -258,9 +250,7 @@ fn decode_event(
             state.turn_started = true;
             Ok(())
         }
-        "item.started" | "item.updated" | "item.completed" => {
-            decode_item(event, event_type, state, final_message)
-        }
+        "item.started" | "item.updated" | "item.completed" => decode_item(event, event_type, state),
         "turn.completed" => {
             state.usage = decode_usage(event.get("usage"))?;
             state.completed = true;
@@ -271,12 +261,7 @@ fn decode_event(
     }
 }
 
-fn decode_item(
-    event: &Value,
-    event_type: &str,
-    state: &mut State,
-    final_message: Option<&str>,
-) -> Result<(), DecodeFailure> {
+fn decode_item(event: &Value, event_type: &str, state: &mut State) -> Result<(), DecodeFailure> {
     let item = event.get("item").and_then(Value::as_object).ok_or(DecodeFailure::Malformed)?;
     let item_type = item.get("type").and_then(Value::as_str).ok_or(DecodeFailure::Malformed)?;
     if native_tool_item(item_type) {
@@ -290,22 +275,10 @@ fn decode_item(
             if text.len() > ProtocolLimits::PRODUCTION.max_text_bytes() || text.contains('\0') {
                 return Err(DecodeFailure::OutputLimit);
             }
-            if let Some(expected) = final_message
-                && text.trim() != expected.trim()
-            {
-                // A proven final-message file permits preliminary plain public prose, not
-                // competing structured results or discarded host-tool proposals.
-                if state.assistant_message.is_some() {
-                    return Err(DecodeFailure::InvalidLifecycle);
-                }
-                if text.trim_start().starts_with(['{', '[', '`']) {
-                    return Err(DecodeFailure::MultipleMessages);
-                }
-                return Ok(());
+            if state.assistant_messages.len() >= MAX_AGENT_MESSAGES {
+                return Err(DecodeFailure::OutputLimit);
             }
-            if state.assistant_message.replace(text.to_owned()).is_some() {
-                return Err(DecodeFailure::MultipleMessages);
-            }
+            state.assistant_messages.push(text.to_owned());
             Ok(())
         }
         _ => Err(DecodeFailure::UnsupportedEvent),

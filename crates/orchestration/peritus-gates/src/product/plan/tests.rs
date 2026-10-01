@@ -315,3 +315,47 @@ fn standalone_changed_python_source_gets_syntax_acceptance() {
         ["Source layout", "Python compile"]
     );
 }
+
+#[test]
+fn standalone_python_change_covers_adjacent_supporting_documentation() {
+    let temporary = tempfile::tempdir().expect("temporary workspace");
+    let project = temporary.path().join("in/scripts");
+    std::fs::create_dir_all(&project).expect("project directory");
+    std::fs::write(project.join("catalog.py"), "def lookup(value):\n    return value\n")
+        .expect("standalone source");
+    std::fs::write(project.join("README.md"), "# Catalog\n").expect("support documentation");
+
+    let plan = TargetGatePlan::discover(
+        temporary.path(),
+        vec![PathBuf::from("in/scripts/README.md"), PathBuf::from("in/scripts/catalog.py")],
+    )
+    .expect("standalone Python plan");
+
+    assert!(plan.has_complete_coverage());
+    assert!(plan.uncovered_paths().is_empty());
+    assert_eq!(plan.projects().len(), 1);
+    assert_eq!(plan.projects()[0].kind(), ProjectKind::Python);
+    assert_eq!(plan.projects()[0].root(), Path::new("in/scripts"));
+    assert_eq!(
+        plan.commands().iter().map(GateCommandSpec::label).collect::<Vec<_>>(),
+        ["Source layout", "Python compile"]
+    );
+}
+
+#[test]
+fn standalone_python_change_does_not_cover_unrelated_nested_file() {
+    let temporary = tempfile::tempdir().expect("temporary workspace");
+    std::fs::write(temporary.path().join("catalog.py"), "VALUE = 1\n").expect("standalone source");
+    std::fs::create_dir(temporary.path().join("unrelated")).expect("unrelated directory");
+    std::fs::write(temporary.path().join("unrelated/README.md"), "# Other\n")
+        .expect("unrelated documentation");
+
+    let plan = TargetGatePlan::discover(
+        temporary.path(),
+        vec![PathBuf::from("catalog.py"), PathBuf::from("unrelated/README.md")],
+    )
+    .expect("standalone Python plan");
+
+    assert!(!plan.has_complete_coverage());
+    assert_eq!(plan.uncovered_paths(), [PathBuf::from("unrelated/README.md")]);
+}

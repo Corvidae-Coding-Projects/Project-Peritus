@@ -359,4 +359,26 @@ mod tests {
         assert!(report.output.contains("candidate main.py.c has the requested basename"));
         assert!(report.output.contains("Exact-target acceptance: FAIL"));
     }
+
+    #[test]
+    fn standalone_python_source_and_adjacent_readme_pass_exact_target_gate() {
+        let root = tempfile::tempdir().expect("root");
+        fs::write(root.path().join("dailylog.py"), "print('ready')\n").expect("Python source");
+        fs::write(root.path().join("README.md"), "# Daily log\n").expect("documentation");
+
+        let report = run_scoped(
+            root.path(),
+            vec![PathBuf::from("README.md"), PathBuf::from("dailylog.py")],
+            None,
+            ProductDeliveryScope::WorkspaceChanges,
+            "",
+        )
+        .expect("gate report");
+
+        assert!(report.report.passed(), "{}", report.output);
+        assert!(report.report.uncovered_paths().is_empty());
+        assert!(report.output.contains("[Source layout]"));
+        assert!(report.output.contains("[Python compile]"));
+        assert!(report.output.contains("Exact-target acceptance: PASS"));
+    }
 }

@@ -147,6 +147,9 @@ impl TargetGatePlan {
             projects.extend(found);
         }
         let projects = projects.into_iter().collect::<Vec<_>>();
+        uncovered_paths.retain(|path| {
+            !projects.iter().any(|project| adjacent_to_manifestless_project(path, project))
+        });
         let mut commands = Vec::new();
         for project in &projects {
             commands.extend(commands_for(workspace_root, project, &changed_paths)?);
@@ -190,6 +193,10 @@ impl TargetGatePlan {
                 .iter()
                 .all(|project| self.commands.iter().any(|command| command.project() == project))
     }
+}
+
+fn adjacent_to_manifestless_project(path: &Path, project: &AffectedProject) -> bool {
+    project.manifest().is_none() && path.parent().unwrap_or_else(|| Path::new("")) == project.root()
 }
 
 fn nearest_projects(workspace_root: &Path, changed: &Path) -> Vec<AffectedProject> {

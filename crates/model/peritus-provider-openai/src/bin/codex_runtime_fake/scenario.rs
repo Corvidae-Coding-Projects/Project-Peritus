@@ -5,8 +5,35 @@ use super::trace;
 const SUCCESS: &str = "{\"type\":\"thread.started\",\"thread_id\":\"fake-thread\"}\n{\"type\":\"turn.started\"}\n{\"type\":\"item.completed\",\"item\":{\"type\":\"agent_message\",\"text\":\"{\\\"content\\\":\\\"routed\\\",\\\"tool_calls\\\":[]}\"}}\n{\"type\":\"turn.completed\",\"usage\":{\"input_tokens\":12,\"cached_input_tokens\":2,\"output_tokens\":5,\"total_tokens\":17}}\n";
 const TOOL: &str = "{\"type\":\"thread.started\",\"thread_id\":\"fake-thread\"}\n{\"type\":\"turn.started\"}\n{\"type\":\"item.completed\",\"item\":{\"type\":\"agent_message\",\"text\":\"{\\\"content\\\":\\\"\\\",\\\"tool_calls\\\":[{\\\"name\\\":\\\"lookup\\\",\\\"arguments_json\\\":\\\"{\\\\\\\"value\\\\\\\":\\\\\\\"fragmented-arguments-for-host-tool\\\\\\\"}\\\"}]}\"}}\n{\"type\":\"turn.completed\",\"usage\":{\"input_tokens\":12,\"output_tokens\":5,\"total_tokens\":17}}\n";
 const ORDERED: &str = "{\"type\":\"thread.started\",\"thread_id\":\"fake-thread\"}\n{\"type\":\"item.started\",\"item\":{\"type\":\"reasoning\"}}\n{\"type\":\"item.started\",\"item\":{\"type\":\"reasoning\"}}\n{\"type\":\"item.completed\",\"item\":{\"type\":\"agent_message\",\"text\":\"{\\\"content\\\":\\\"ordered\\\",\\\"tool_calls\\\":[]}\"}}\n{\"type\":\"turn.completed\",\"usage\":{\"input_tokens\":3,\"output_tokens\":2,\"total_tokens\":5}}\n";
+const COMPETING_FINAL: &str = r#"{"type":"thread.started","thread_id":"fake-thread"}
+{"type":"turn.started"}
+{"type":"item.completed","item":{"id":"draft","type":"agent_message","text":"{\"content\":\"discarded\",\"tool_calls\":[]}"}}
+{"type":"item.completed","item":{"id":"final","type":"agent_message","text":"{\"content\":\"routed\",\"tool_calls\":[]}"}}
+{"type":"turn.completed","usage":{"input_tokens":12,"output_tokens":5,"total_tokens":17}}
+"#;
+const TOOL_THEN_FINAL: &str = r#"{"type":"thread.started","thread_id":"fake-thread"}
+{"type":"turn.started"}
+{"type":"item.completed","item":{"id":"proposal","type":"agent_message","text":"{\"content\":\"\",\"tool_calls\":[{\"name\":\"lookup\",\"arguments_json\":\"{\\\"value\\\":\\\"first\\\"}\"}]}"}}
+{"type":"item.completed","item":{"id":"final","type":"agent_message","text":"{\"content\":\"waiting for host results\",\"tool_calls\":[]}"}}
+{"type":"turn.completed","usage":{"input_tokens":12,"output_tokens":5,"total_tokens":17}}
+"#;
+const MISSING_FINAL_MULTIPLE: &str = r#"{"type":"thread.started","thread_id":"fake-thread"}
+{"type":"turn.started"}
+{"type":"item.completed","item":{"id":"first","type":"agent_message","text":"first"}}
+{"type":"item.completed","item":{"id":"second","type":"agent_message","text":"second"}}
+{"type":"turn.completed","usage":{"input_tokens":12,"output_tokens":5,"total_tokens":17}}
+"#;
 
 pub(super) fn output(model: &str, invocation: u64) -> (&'static str, i32) {
+    if model.contains("competing-final") {
+        return (COMPETING_FINAL, 0);
+    }
+    if model.contains("tool-then-final") {
+        return (TOOL_THEN_FINAL, 0);
+    }
+    if model.contains("missing-final-multiple") {
+        return (MISSING_FINAL_MULTIPLE, 0);
+    }
     if model.contains("commentary") {
         return (
             r#"{"type":"thread.started","thread_id":"fake-thread"}
