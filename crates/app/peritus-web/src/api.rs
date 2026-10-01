@@ -225,6 +225,8 @@ async fn dispatch(app: &Arc<App>, input: &Value) -> Result<Value> {
             let session = Session {
                 settings: crate::sessions::Settings::default(),
                 id: id()?,
+                conversation: id()?,
+                run: id()?,
                 project: app.project(string("project"))?.id,
                 parent: input["parent"].as_str().map(String::from),
                 title: if string("title").is_empty() {

@@ -1,5 +1,5 @@
-export interface Project { id: string; root: string; name: string; repository: string; closed?: boolean }
-export interface Session { id: string; project: string; parent: string | null; title: string; closed: boolean; settings?: SessionSettings }
+export interface Project { id: string; root: string; name: string; repository: string; closed: boolean }
+export interface Session { id: string; conversation: string; run: string; project: string; parent: string | null; title: string; closed: boolean; settings: SessionSettings }
 export interface SessionSettings { models:Record<string,ModelChoice>; providers:Record<string,string> }
 export interface ConsoleSession { id:string;title:string;project:string;session:string|null;suggestion:string;ended?:boolean }
 export interface Workspace { projects: Project[]; sessions: Session[] }
@@ -19,7 +19,8 @@ export interface GitRemote { name: string; fetch: string[]; push: string[] }
 export interface GitStatus { root: string; branch: string; changes: GitChange[]; remotes: string; branches: GitBranch[]; remoteDetails: GitRemote[] }
 export interface Activity { id: string; kind: 'user' | 'assistant' | 'tool' | 'status' | 'error'; text: string; detail: string }
 export interface Run { providers?:Record<string,string>; id: string; workspace: string; phase: string; busy: boolean; task: string; status: string; diff: string; gates: string; review: string; summary: string; deliverable: {root: string; paths: string[]; instructions: string; qualification: string} | null }
-export interface Conversation { models?:Record<string,ModelChoice>; mode?:Mode; run?: Run; received?: string; incorporated?: string; activities?: Activity[] }
+export interface WorkbenchNotice { conversation:string; revision:string; queued:boolean; started:boolean; observation:string; action:string; detail:string }
+export interface Conversation { models?:Record<string,ModelChoice>; mode?:Mode; run?: Run; received?: string; incorporated?: string; activities?: Activity[]; workbench?:WorkbenchNotice }
 export interface Facts { providers: {id: string; kind: string; model: string}[]; workspace: { id: string; root: string; execution: string; trust: string } | null; endpoint: string; ready:boolean;reason:string }
 export interface Attachment {id:string;session:string;project:string;path:string;bytes:number;digest:string;media:string}
 export interface ModelChoice { id: string; manual: boolean; effort: string }

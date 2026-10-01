@@ -129,6 +129,7 @@
           {:else}
             {#if !admissionReady}<div class="connection-banner"><span><Icon name="link" size={15}/>{!ui.ready?ui.connectionMessage:ui.facts?.reason||ui.factsError||'Connect this project to start a conversation.'}</span><button class="key small" onclick={()=>void attempt(()=>dispatch('reconnect'))}>Recheck</button><button class="key small" onclick={()=>void attempt(()=>dispatch('terminal'))}>Set up project<Icon name="arrow" size={14}/></button></div>{/if}
             <Recovery/>
+            {#if current?.workbench}<div class="connection-banner" role="status"><span><Icon name="terminal" size={15}/><strong>{current.workbench.observation}</strong> {current.workbench.action}<small>{current.workbench.detail}</small></span><button class="key small" onclick={()=>void attempt(()=>dispatch('terminal'))}>Open Workbench<Icon name="arrow" size={14}/></button></div>{/if}
             <!-- svelte-ignore a11y_no_noninteractive_tabindex (the scrollable transcript needs a keyboard focus target) -->
             <div class="transcript" role="region" aria-label="Conversation transcript" tabindex="0" bind:this={transcript} onscroll={()=>following=transcript.scrollHeight-transcript.scrollTop-transcript.clientHeight<80}>
               {#if !activities.length}

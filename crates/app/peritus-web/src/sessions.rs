@@ -55,13 +55,14 @@ impl Settings {
 
 pub async fn configure(app: &App, input: &Value) -> Result<Value> {
     let id = input["session"].as_str().ok_or_else(|| problem("Choose a session"))?;
-    app.session(id)?;
+    let session = app.session(id)?;
     let settings: Settings = serde_json::from_value(input["settings"].clone())?;
     let models = settings.validate()?;
     // Existing conversations own their governing models. Save through the same native
     // update used by the TUI; both clients observe the daemon-owned selection.
     let conversation = if input["existing"].as_bool().unwrap_or(false) {
-        let run = RunId::new(daemon::bytes(id)?).map_err(|e| problem(format!("{e:?}")))?;
+        let run =
+            RunId::new(daemon::bytes(&session.run)?).map_err(|e| problem(format!("{e:?}")))?;
         daemon::response(
             daemon::receipts::recorded(
                 app,
@@ -97,15 +98,19 @@ pub async fn open_run(app: &App, id: &str) -> Result<Value> {
     let run_id = RunId::new(daemon::bytes(id)?).map_err(|e| problem(format!("{e:?}")))?;
     let reply = daemon::raw_request(
         app,
-        AppRequestPayload::QueryInteraction(ProductRunConversationQuery::new(run_id)),
+        AppRequestPayload::QueryInteractionBinding(ProductRunConversationQuery::new(run_id)),
     )
     .await?;
-    let AppResponsePayload::Interaction(conversation) = reply else {
+    let AppResponsePayload::InteractionBinding(binding) = reply else {
         return Err(problem(
-            "This run has no interactive conversation. Inspect it or use its exact-run CLI controls.",
+            "This run has no durable conversation. Inspect it or use its exact-run CLI controls.",
         ));
     };
-    let workspace_id = hex(conversation.snapshot().workspace_id().as_bytes());
+    let conversation = binding.conversation().ok_or_else(|| {
+        problem("This run predates durable conversation ownership and cannot open in the WebUI.")
+    })?;
+    let interaction = binding.interaction();
+    let workspace_id = hex(interaction.snapshot().workspace_id().as_bytes());
     let project = app
         .snapshot()?
         .projects
@@ -121,18 +126,21 @@ pub async fn open_run(app: &App, id: &str) -> Result<Value> {
             .find(|p| p.id == project.id)
             .ok_or_else(|| problem("Project missing"))?;
         project.closed = false;
-        if let Some(session) = state.sessions.iter_mut().find(|s| s.id == id) {
+        if let Some(session) = state.sessions.iter_mut().find(|s| s.run == id) {
             if session.project != project.id {
                 return Err(problem("Run belongs to another project"));
             }
             session.closed = false;
+            session.conversation = hex(conversation.conversation().as_bytes());
             return Ok(json!(session));
         }
         let session = Session {
-            id: id.into(),
+            id: crate::state::id()?,
+            conversation: hex(conversation.conversation().as_bytes()),
+            run: id.into(),
             project: project.id.clone(),
             parent: None,
-            title: conversation.snapshot().task().chars().take(60).collect(),
+            title: interaction.snapshot().task().chars().take(60).collect(),
             closed: false,
             settings: Settings::default(),
         };

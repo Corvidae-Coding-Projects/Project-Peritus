@@ -6,7 +6,7 @@ import { resolve, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { randomUUID } from 'node:crypto';
 
-let temporary:string,root:string,server:ChildProcess,token:string,project:string,session:string;
+let temporary:string,root:string,server:ChildProcess,token:string,project:string,session:string,run:string;
 const origin='http://127.0.0.1:4174';
 async function startServer(){
   server=spawn(resolve('../target/debug/peritus-web'),['--port','4174','--root',root,'--config',join(temporary,'webui.toml'),'--state',join(temporary,'workspace.json'),'--daemon-config',join(temporary,'absent.toml'),'--endpoint',join(temporary,'absent.sock'),'--product-state',join(temporary,'absent-state'),'--assets',resolve('dist'),'--cli',join(temporary,'cli')],{stdio:['ignore','pipe','pipe']});
@@ -22,7 +22,7 @@ test.beforeAll(async({request})=>{
   await writeFile(join(root,'README.md'),'# Session integration fixture\n');
   await writeFile(join(temporary,'cli'),'#!/bin/sh\nprintf "%s\\n" "$@"\n',{mode:0o700});
   await startServer();
-  const boot=await (await request.get(`${origin}/api/bootstrap`)).json();token=boot.token;project=boot.workspace.projects[0].id;session=boot.workspace.sessions[0].id;
+  const boot=await (await request.get(`${origin}/api/bootstrap`)).json();token=boot.token;project=boot.workspace.projects[0].id;session=boot.workspace.sessions[0].id;run=boot.workspace.sessions[0].run;
 });
 test.afterAll(async()=>{await stopServer();if(temporary)await rm(temporary,{recursive:true,force:true});});
 
@@ -65,7 +65,7 @@ test('workbench binds exact browser session, project and daemon without executin
   expect(opened).toMatchObject({session,project,suggestion:'/context next'});
   let terminal:any;
   await expect.poll(async()=>{terminal=await (await request.get(`/api/terminal/${opened.id}`,{headers:{'x-peritus-token':token}})).json();return terminal.ended;}).toBe(true);
-  expect(Buffer.from(terminal.data,'base64').toString().replaceAll('\r','').trim().split('\n')).toEqual(['--endpoint',join(temporary,'absent.sock'),'open',root,'--run',session]);
+  expect(Buffer.from(terminal.data,'base64').toString().replaceAll('\r','').trim().split('\n')).toEqual(['--endpoint',join(temporary,'absent.sock'),'open',root,'--run',run]);
   expect((await (await request.get('/api/bootstrap')).json()).consoles).toContainEqual(expect.objectContaining({id:opened.id,session,suggestion:'/context next'}));
   expect((await action(request,'workbench',{session:'missing'})).error).toContain('Session');
   await action(request,'close-console',{id:opened.id});
@@ -75,11 +75,11 @@ test('improvement inbox stays passive until explicit evaluation and preserves ev
   const boot=await (await request.get('/api/bootstrap')).json();
   const current=boot.workspace.sessions[0],workspace='44'.repeat(16),candidate='55'.repeat(32);
   const mutations:Record<string,unknown>[]=[];
-  const inbox={workspace,candidates:[{id:candidate,proposal:'Investigate repeated verification failures',dismissed:false,evaluation:null as string|null,evidence:[{run:current.id,digest:'66'.repeat(32),summary:'A completed run required three repair cycles.'}]}]};
+  const inbox={workspace,candidates:[{id:candidate,proposal:'Investigate repeated verification failures',dismissed:false,evaluation:null as string|null,evidence:[{run:current.run,digest:'66'.repeat(32),summary:'A completed run required three repair cycles.'}]}]};
   await page.route('**/api/query?**',async route=>{
     const kind=new URL(route.request().url()).searchParams.get('kind');
     if(kind==='improvements')return route.fulfill({json:inbox});
-    if(kind==='runs')return route.fulfill({json:[{id:current.id,workspace,task:'Evidence fixture',phase:'Complete',busy:false}]});
+    if(kind==='runs')return route.fulfill({json:[{id:current.run,workspace,task:'Evidence fixture',phase:'Complete',busy:false}]});
     await route.continue();
   });
   await page.route('**/api/action',async route=>{

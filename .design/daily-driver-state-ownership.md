@@ -137,12 +137,28 @@ both the TUI and daemon restarted on the same state directory. This establishes 
 admission, projection, and restart persistence for that path; it is not evidence for provider
 execution, interruption during external effects, or multi-day installed use.
 
-The remaining generation split is concrete. The WebUI and performance qualification probe still
-submit the public `Interact` request, while internal improvement work can still create an
+The WebUI now uses the same durable create, queue, and start controls. Its browser tab,
+conversation, and run identities are separate required facts; controls and exact-run CLI handoffs
+use the run, while workbench operations use the conversation/workspace query. Before the first
+mutating daemon request, the gateway retains the exact prepared execution context independently of
+the mutable browser draft and current settings. Each stage has a deterministic identity and uses
+the daemon's authoritative receipt query after interruption. A definitively accepted queue whose
+execution cannot be confirmed is displayed as durable and pending with an ordinary Workbench route,
+rather than as a total send failure that invites a duplicate message. Earlier or incomplete WebUI
+state is quarantined; there is no compatibility decoder or missing-field default for the cut.
+
+The real browser/gateway suite exercised 24 HTTP, persistence, restart, auth, recovery-banner, Git,
+file, PDF, and exact-PTY flows against freshly built binaries. The first run exposed a stale-binary
+precondition and hard-coded `/tmp/opencode` fixture roots; the workflow now builds the exact binary
+and uses the operating system's temporary directory. This is process-boundary evidence for the
+gateway and ordinary recovery UI, not provider-execution or multi-day evidence.
+
+The performance qualification probe already uses the durable create, queue, and start path. The
+remaining generation split is the internal improvement-work producer, which can still create an
 interaction without workbench ownership. `RunRecord.interaction`, its workbench start operation,
-the public run binding, and conversation-library legacy identity are therefore still optional.
-Persistence, restart, library projection, and TUI navigation retain branches for that optional
-shape. The next removal slice must migrate or delete those producers first, then make workbench
-ownership required and remove the old wire tags, loader branches, library fields, and UI fallbacks
-together. The installed multi-day qualification must begin after that state-model cut so it does
-not accumulate evidence against a generation scheduled for deletion.
+the public run binding, and conversation-library legacy identity therefore remain optional.
+Persistence, restart, and library projection retain branches for that shape. The next removal slice
+must migrate or delete that producer, then make workbench ownership required and remove the old wire
+tags, loader branches, library fields, and UI fallbacks together. The installed multi-day
+qualification must begin after that state-model cut so it does not accumulate evidence against a
+generation scheduled for deletion.

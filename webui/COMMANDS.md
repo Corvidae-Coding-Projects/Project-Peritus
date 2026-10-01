@@ -9,7 +9,7 @@ Peritus executable in a retained PTY**, not a mock terminal or a shell string.
 
 | Commands | Native behavior |
 | --- | --- |
-| `/new`, `/nest` | Create a sibling/child browser session with a distinct daemon run identity |
+| `/new`, `/nest` | Create a sibling/child browser tab with distinct tab, durable conversation, and daemon run identities |
 | `/open [PATH]` | Open a canonical project, or show the project form |
 | `/close-project` | Close the selected project tab, retaining its sessions and daemon work |
 | `/sessions` | Find and reopen retained browser session tabs |
@@ -111,8 +111,9 @@ version's actual help; its command grammar is the authority for advanced flags.
 ## Verification scope
 
 Native Git and workspace/file/configuration paths have integration coverage.
-Native conversations have a negotiated local-socket fixture proving exact
-mode, target, provider/model/effort serialization and observation projection.
+Native conversations have a negotiated local-socket fixture proving the durable
+create, queue, and start sequence, exact target, provider/model/effort
+serialization, and observation projection.
 Regressions cover saved session choices across restart, native run adoption and
 model-update recovery, retained terminal rediscovery, exact PTY arguments, and
 CLI/TUI run selection. The actual CLI's `--version` is exercised through a PTY. Provider onboarding, inference, and all advanced workflows

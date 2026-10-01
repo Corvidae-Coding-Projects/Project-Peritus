@@ -141,7 +141,7 @@ export async function send() {
     observeConversation(id,value);if(ui.drafts[id]===original)ui.drafts[id]='';
     ui.attachments[id]=(ui.attachments[id]??[]).filter(file=>!attachments.some(sent=>sent.id===file.id));
     if(ui.workspace.sessions.find(s=>s.id===id)?.title==='New conversation')await editSession(id,{title:text.slice(0,60)});
-    notify('Message received. Incorporation is shown when observed by the daemon.');
+    notify(value.workbench?.observation??'Message received. Incorporation is shown when observed by the daemon.',!!value.workbench);
   }finally{ui.pending[id]=false;}
 }
 export async function attachFile(path:string,projectId=ui.projectId){
@@ -226,7 +226,10 @@ export async function dispatch(id:string,args:string[]=[],depth=0):Promise<void>
     case 'stop':case 'retry':case 'export':
       observeConversation(ui.sessionId,await api.action<Conversation>('control',{session:ui.sessionId,action:id}));notify(`Requested ${id} for this run.`);return;
     case 'discard':ui.overlay='discard';return;
-    case 'accept':case 'commit':return openConsole(['runs',id,'--run',ui.sessionId],`${command.label} · ${session()?.title}`,true);
+    case 'accept':case 'commit':{
+      const selected=session();if(!selected)throw new Error('Open the exact run before using this control.');
+      return openConsole(['runs',id,'--run',selected.run],`${command.label} · ${selected.title}`,true);
+    }
     case 'providers':case 'workspaces':case 'update':return openConsole([id],command.label);
     case 'consoles':
       ui.consoles=await api.query<ConsoleSession[]>('consoles');

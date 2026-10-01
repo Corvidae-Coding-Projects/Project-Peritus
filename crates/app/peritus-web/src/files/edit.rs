@@ -59,7 +59,9 @@ pub async fn save(
         return Ok(Json(result));
     }
     app.update(|state| {
-        state.operations.insert(args.operation.clone(), Operation { input, result: None });
+        state
+            .operations
+            .insert(args.operation.clone(), Operation { input, prepared: None, result: None });
         Ok(())
     })?;
     let result =
