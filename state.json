@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1923,
-        "tip_oid": "7de126632df20b53b3aaf282d83a314d87cbf5d3",
-        "prefix_sha256": "7c86185d63ce13caa3ca916e6178ce3206bc3f77484beb8f739b38311515337f"
+        "sequence": 1924,
+        "tip_oid": "a417a27b4fc6be253259af3d5e8fee2044e1a1ef",
+        "prefix_sha256": "3584d23bea796d06d8196e7eb05aebf63dbfc3c6bcaa02bfb462fd7b9522ec78"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 2038,
+  "next_comment_id": 2039,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -10661,7 +10661,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-27T23:40:33.365528994Z",
-      "updated_at": "2026-10-01T16:17:42.914425599Z",
+      "updated_at": "2026-10-01T16:19:10.479557221Z",
       "comments": {
         "172fb531-7617-4dd5-afb2-b7d95cab7e0d": {
           "display_id": 1850,
@@ -10698,6 +10698,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAzVvjjzQ1lBH3B/F0bM/eOsP4EtoC4algrBAH7rdQFpd8hg1iAeNFyl9J0dixo/YzmrKJyF1zE8borvjUMKAIBg=="
+        },
+        "5469a540-03ab-4746-b3de-4c9cb351b431": {
+          "display_id": 2038,
+          "author": "6ME5",
+          "content": "Exact PR #105 installed workflow qualification completed. Run fbd55b0c185fa117076f421aac232c81 ended Cancelled with no candidate after >40m; recovery isolation and cancellation passed, but task completion, progress freshness, recovery discoverability, steering enforcement, and reconnect timing failed daily-driver expectations. Issue #98 result comment 2037 contains evidence and repair/soak plan. Test TUI, WebUI, and exact isolated daemon stopped; unrelated daemon 523239 preserved. Source remains at 29d877de with only pre-existing untracked files; evidence retained in /tmp/peritus-human-route-29d877dee.",
+          "created_at": "2026-10-01T16:19:10.476283926Z",
+          "kind": "handoff",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA9bRDNuCJmVB3jBwLzuLlEastk3tgoCQhXp9HeiXqbSEZQZVqW3iR6BXoDMrYX/TW9jVK9wAVcrpWScLAtCgsCQ=="
         },
         "5950fe6c-71bb-4ccf-82b0-a79c0d623b33": {
           "display_id": 2037,
