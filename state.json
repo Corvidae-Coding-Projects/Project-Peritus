@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1867,
-        "tip_oid": "2535203a1d7dec335a7627281c2bf74e1dc90d01",
-        "prefix_sha256": "2b85710416a8d6521e4cf35e9bac23273319634dacac084a8184124e5770cd72"
+        "sequence": 1868,
+        "tip_oid": "ae3f4164b68a6bd73fa32fc634ebf4492786666a",
+        "prefix_sha256": "d9c7f3af0ecddcdc15d90bc1802aab7dbfeb65b1bb37d9d48b6cffa438132c0b"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 1995,
+  "next_comment_id": 1996,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -16544,7 +16544,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-28T00:58:41.412806074Z",
-      "updated_at": "2026-10-01T09:48:19.257242063Z",
+      "updated_at": "2026-10-01T09:48:58.911332521Z",
       "labels": [
         "bug"
       ],
@@ -17277,6 +17277,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA8P9yG3k/HfpFZZhM4Te6VyFhCl3Bfp8S9+eNLQisk9OLNnRRb5nNHXeW9uqhjP+EvWh56gx9hX8zLt2fKunNDg=="
+        },
+        "8734333e-fcef-408b-82ef-a14363142678": {
+          "display_id": 1995,
+          "author": "6ME5",
+          "content": "63380bfc4 refactor(test): restore source ownership boundaries. Moved the product operation fixture into its owning module and the inspection scrolling test into navigation, resolving hosted Foundation policy without exemptions. Verification: source-layout-check passes 4,844 files; protocol and TUI tests pass (protocol 66 plus integrations, TUI 304 passed/1 ignored); strict affected-package Clippy passes; cargo xtask all passes all 86 packages; fmt, diff, generated-asset, and placeholder scans pass.",
+          "created_at": "2026-10-01T09:48:58.907868442Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAapedSV6LPlELIxXTNWF/ZerXHgvxGuLCKF1E2F62KmAayLI3gS3MfjnTTMqEUSzqF25hdybUJoCk7pg/NMCxDw=="
         },
         "87d30145-df03-4850-83c4-1b5e55646aa0": {
           "display_id": 1895,
