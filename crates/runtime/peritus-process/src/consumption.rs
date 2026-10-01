@@ -25,9 +25,11 @@ mod state;
 mod terminal_store;
 #[cfg(test)]
 mod tests;
+mod watchdog;
 
 use errors::{overlap_error, reused, store_error};
 use retention::{execution_record_count, retire_settled_records};
+use watchdog::configured_crash_watchdog;
 
 const MAX_EXECUTION_RECORDS: usize = 16_384;
 const RETIRE_BATCH: usize = 1_024;
@@ -137,9 +139,7 @@ impl ProcessStore {
         if execution_record_count(&state) > MAX_EXECUTION_RECORDS {
             return Err(store_error("process registry exceeds its record bound"));
         }
-        let crash_watchdog = crash_watchdog
-            .map(|path| validate_crash_watchdog(path, &root, &workspace))
-            .transpose()?;
+        let crash_watchdog = configured_crash_watchdog(crash_watchdog, &root, &workspace)?;
         Ok(Self {
             inner: Arc::new(StoreInner {
                 root,
@@ -344,35 +344,6 @@ impl ProcessStore {
             Ok(())
         })
     }
-}
-
-#[cfg(target_os = "linux")]
-fn validate_crash_watchdog(
-    path: &Path,
-    registry_root: &Path,
-    workspace_root: &Path,
-) -> Result<PathBuf, ProcessError> {
-    use std::os::unix::fs::PermissionsExt as _;
-
-    if !path.is_absolute() {
-        return Err(store_error("process crash watchdog path is not absolute"));
-    }
-    let metadata = std::fs::symlink_metadata(path)
-        .map_err(|_| store_error("process crash watchdog cannot be inspected"))?;
-    if !metadata.file_type().is_file() || metadata.permissions().mode() & 0o111 == 0 {
-        return Err(store_error("process crash watchdog is not an executable regular file"));
-    }
-    let canonical = std::fs::canonicalize(path)
-        .map_err(|_| store_error("process crash watchdog cannot be canonicalized"))?;
-    if canonical != path
-        || canonical.starts_with(registry_root)
-        || canonical.starts_with(workspace_root)
-    {
-        return Err(store_error(
-            "process crash watchdog is aliased or overlaps protected mutable state",
-        ));
-    }
-    Ok(canonical)
 }
 
 const fn legal_manifest_advance(before: LifecyclePhase, after: LifecyclePhase) -> bool {
