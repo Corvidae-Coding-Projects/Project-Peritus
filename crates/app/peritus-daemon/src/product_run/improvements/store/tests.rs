@@ -125,17 +125,41 @@ fn corrupt_and_future_records_are_not_treated_as_empty_inboxes() {
 }
 
 #[test]
-fn pre_release_schema_is_rejected_without_migration() {
+fn pre_release_schema_is_quarantined_without_migration() {
     let temp = tempfile::tempdir().expect("state");
     let path = temp.path().join("inbox.sqlite3");
     let connection = Connection::open(&path).expect("open fixture");
     connection
         .execute_batch(
-            "CREATE TABLE improvements (workspace BLOB NOT NULL, id BLOB NOT NULL, record TEXT NOT NULL, PRIMARY KEY(workspace,id)); PRAGMA user_version=1;",
+            "CREATE TABLE improvements (workspace BLOB NOT NULL, id BLOB NOT NULL, record TEXT NOT NULL, PRIMARY KEY(workspace,id)); INSERT INTO improvements VALUES (x'01', x'02', 'legacy'); PRAGMA user_version=1;",
         )
         .expect("old schema");
     drop(connection);
-    assert!(Store::open(&path).is_err());
+    let store = Store::open(&path).expect("clean cut opens current store");
+    assert!(store.inbox(workspace(1)).expect("empty current inbox").candidates().is_empty());
+    drop(store);
+    let current = Connection::open(&path).expect("current store");
+    let current_version: u32 =
+        current.pragma_query_value(None, "user_version", |row| row.get(0)).expect("version");
+    assert_eq!(current_version, CURRENT_SCHEMA);
+    assert_eq!(
+        current
+            .query_row("SELECT count(*) FROM improvements", [], |row| row.get::<_, u32>(0))
+            .unwrap(),
+        0
+    );
+    let retained = temp.path().join("improvements-quarantine/inbox.sqlite3.schema-1");
+    let legacy = Connection::open_with_flags(&retained, rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY)
+        .expect("retained legacy store");
+    let legacy_version: u32 =
+        legacy.pragma_query_value(None, "user_version", |row| row.get(0)).expect("version");
+    assert_eq!(legacy_version, PRE_RELEASE_SCHEMA);
+    assert_eq!(
+        legacy
+            .query_row("SELECT record FROM improvements", [], |row| row.get::<_, String>(0))
+            .unwrap(),
+        "legacy"
+    );
 }
 
 #[test]

@@ -8,7 +8,14 @@ use peritus_app_protocol::{
 use peritus_types::{ActorId, RunId, Sha256Digest, WorkspaceId};
 use rusqlite::{Connection, OptionalExtension, params};
 use serde::{Deserialize, Serialize};
-use std::path::Path;
+use std::{
+    fs,
+    path::{Path, PathBuf},
+};
+
+const CURRENT_SCHEMA: u32 = 2;
+const PRE_RELEASE_SCHEMA: u32 = 1;
+const SQLITE_SIDECARS: [&str; 3] = ["-wal", "-shm", "-journal"];
 
 pub(in crate::product_run) struct Store(Connection);
 
@@ -113,17 +120,20 @@ impl Candidate {
 
 impl Store {
     pub(in crate::product_run) fn open(path: &Path) -> Result<Self, Error> {
-        let conn = Connection::open(path).map_err(problem)?;
-        conn.busy_timeout(std::time::Duration::from_secs(5)).map_err(problem)?;
+        let conn = connection(path)?;
         let version: u32 =
             conn.pragma_query_value(None, "user_version", |row| row.get(0)).map_err(problem)?;
-        if version != 0 && version != 2 {
+        if version == PRE_RELEASE_SCHEMA {
+            drop(conn);
+            quarantine_pre_release(path)?;
+            return initialize(connection(path)?);
+        }
+        if version != 0 && version != CURRENT_SCHEMA {
             return Err(problem(
-                "unsupported improvement inbox schema; remove the pre-release inbox to start fresh",
+                "unsupported improvement inbox schema; use the Peritus version that owns this state",
             ));
         }
-        conn.execute_batch("PRAGMA journal_mode=WAL; PRAGMA synchronous=FULL; CREATE TABLE IF NOT EXISTS improvements (workspace BLOB NOT NULL, id BLOB NOT NULL, record TEXT NOT NULL, PRIMARY KEY(workspace,id)); PRAGMA user_version=2;").map_err(problem)?;
-        Ok(Self(conn))
+        initialize(conn)
     }
 
     pub(super) fn collect(
@@ -270,6 +280,72 @@ impl Store {
         transaction.execute("INSERT INTO improvements(workspace,id,record) VALUES (?1,?2,?3) ON CONFLICT(workspace,id) DO UPDATE SET record=excluded.record", params![item.workspace, item.id, value]).map_err(problem)?;
         transaction.commit().map_err(problem)
     }
+}
+
+fn connection(path: &Path) -> Result<Connection, Error> {
+    let connection = Connection::open(path).map_err(problem)?;
+    connection.busy_timeout(std::time::Duration::from_secs(5)).map_err(problem)?;
+    Ok(connection)
+}
+
+fn initialize(connection: Connection) -> Result<Store, Error> {
+    connection.execute_batch("PRAGMA journal_mode=WAL; PRAGMA synchronous=FULL; CREATE TABLE IF NOT EXISTS improvements (workspace BLOB NOT NULL, id BLOB NOT NULL, record TEXT NOT NULL, PRIMARY KEY(workspace,id)); PRAGMA user_version=2;").map_err(problem)?;
+    Ok(Store(connection))
+}
+
+fn quarantine_pre_release(path: &Path) -> Result<(), Error> {
+    let parent =
+        path.parent().ok_or_else(|| problem("improvement inbox has no parent directory"))?;
+    let quarantine = parent.join("improvements-quarantine");
+    fs::create_dir_all(&quarantine).map_err(problem)?;
+    sync_directory(parent)?;
+    let destination = available_quarantine_path(&quarantine, path);
+    for suffix in SQLITE_SIDECARS {
+        let source = sqlite_sidecar(path, suffix);
+        if source.exists() {
+            fs::rename(source, sqlite_sidecar(&destination, suffix)).map_err(problem)?;
+        }
+    }
+    fs::rename(path, &destination).map_err(problem)?;
+    sync_directory(&quarantine)?;
+    sync_directory(parent)?;
+    crate::diagnostic::report(&format!(
+        "peritusd: isolated unsupported pre-release improvement inbox {} at {}",
+        path.display(),
+        destination.display()
+    ));
+    Ok(())
+}
+
+fn available_quarantine_path(directory: &Path, source: &Path) -> PathBuf {
+    let name =
+        source.file_name().and_then(|value| value.to_str()).unwrap_or("improvements.sqlite3");
+    for suffix in 0_u32.. {
+        let ending = if suffix == 0 { String::new() } else { format!(".{suffix}") };
+        let candidate = directory.join(format!("{name}.schema-{PRE_RELEASE_SCHEMA}{ending}"));
+        if !candidate.exists()
+            && SQLITE_SIDECARS.iter().all(|suffix| !sqlite_sidecar(&candidate, suffix).exists())
+        {
+            return candidate;
+        }
+    }
+    unreachable!("u32 quarantine suffixes are exhaustive")
+}
+
+fn sqlite_sidecar(path: &Path, suffix: &str) -> PathBuf {
+    let mut value = path.as_os_str().to_os_string();
+    value.push(suffix);
+    value.into()
+}
+
+#[cfg(unix)]
+fn sync_directory(path: &Path) -> Result<(), Error> {
+    fs::File::open(path).and_then(|directory| directory.sync_all()).map_err(problem)
+}
+
+#[cfg(not(unix))]
+const fn sync_directory(_path: &Path) -> Result<(), Error> {
+    Ok(())
 }
 
 fn text(value: &str) -> Result<ImprovementText, Error> {
