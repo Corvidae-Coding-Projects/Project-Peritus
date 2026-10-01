@@ -34,7 +34,7 @@ fn process_kill_recovers_preparation_and_each_published_effect() {
                 let root = repository();
                 let child = repository();
                 let nested = root.path().join("nested");
-                fs::rename(child.path(), &nested).unwrap();
+                fs::rename(child.keep(), &nested).unwrap();
                 let baseline = ManagedBaseline::capture(root.path(), true).unwrap();
                 fs::write(nested.join("tracked.txt"), "candidate committed\n").unwrap();
                 git(&nested, &["commit", "-am", "candidate"], None).unwrap();
@@ -44,7 +44,7 @@ fn process_kill_recovers_preparation_and_each_published_effect() {
                 let root = repository();
                 let baseline = ManagedBaseline::capture(root.path(), true).unwrap();
                 let added = repository();
-                fs::rename(added.path(), root.path().join("added")).unwrap();
+                fs::rename(added.keep(), root.path().join("added")).unwrap();
                 Fixture::changed(root, baseline)
             }
             _ => Fixture::new(),

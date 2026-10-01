@@ -229,7 +229,7 @@ impl PreparedIndex {
     fn publish(mut self, journal: Option<&mut Journal>) -> Result<(), ProductRunnerError> {
         let directory =
             self.directory.take().ok_or_else(|| failure("Git index was not prepared"))?;
-        fs::rename(directory.path().join("index"), &self.path).map_err(failure)?;
+        super::publish_file(&directory.path().join("index"), &self.path)?;
         recovery::sync_directory(
             self.path.parent().ok_or_else(|| failure("Git index has no parent"))?,
         )?;

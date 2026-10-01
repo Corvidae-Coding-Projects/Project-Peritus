@@ -187,7 +187,7 @@ impl Symbolic {
     }
 
     fn publish(mut self, journal: Option<&mut Journal>) -> Result<(), ProductRunnerError> {
-        fs::rename(self.directory.path().join("HEAD"), &self.head).map_err(failure)?;
+        super::super::restore::publish_file(&self.directory.path().join("HEAD"), &self.head)?;
         recovery::sync_directory(self.head.parent().ok_or_else(|| failure("HEAD has no parent"))?)?;
         self.lock.take().ok_or_else(|| failure("HEAD lock is closed"))?.release()?;
         if let Some(journal) = journal {

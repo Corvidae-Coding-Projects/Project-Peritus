@@ -54,7 +54,7 @@ fn new_repository_discard_preserves_complete_recovery_copy() {
     let baseline = ManagedBaseline::capture(root.path(), true).unwrap();
     let child = repository();
     let nested = root.path().join("generated");
-    fs::rename(child.path(), &nested).unwrap();
+    fs::rename(child.keep(), &nested).unwrap();
     fs::write(nested.join(".gitignore"), "ignored.txt\n").unwrap();
     fs::write(nested.join("ignored.txt"), "retain ignored work\n").unwrap();
     fs::write(nested.join("tracked.txt"), "task source\n").unwrap();
@@ -98,7 +98,7 @@ fn invalid_preimage_prevents_archiving_and_all_other_restore_effects() {
     fs::write(root.path().join("tracked.txt"), b"task change\n").unwrap();
     let child = repository();
     let nested = root.path().join("generated");
-    fs::rename(child.path(), &nested).unwrap();
+    fs::rename(child.keep(), &nested).unwrap();
     let paths = baseline.changed_paths(root.path()).unwrap();
     assert!(baseline.discard(root.path(), &paths).is_err());
     assert!(nested.join(".git").exists());

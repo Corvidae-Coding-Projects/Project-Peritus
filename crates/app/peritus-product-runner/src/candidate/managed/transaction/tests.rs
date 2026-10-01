@@ -242,7 +242,7 @@ fn new_repository_is_retained_and_its_removed_root_remains_a_valid_postimage() {
     let baseline = ManagedBaseline::capture(root.path(), true).unwrap();
     let added = repository();
     let nested = root.path().join("added");
-    fs::rename(added.path(), &nested).unwrap();
+    fs::rename(added.keep(), &nested).unwrap();
     let fixture = Fixture::changed(root, baseline);
     let recovered = execute(&fixture.path, fixture.binding, fixture.digest).unwrap();
     assert_eq!(recovered.len(), 1);
@@ -260,7 +260,7 @@ fn a_manually_removed_repository_is_not_mistaken_for_an_owned_archive() {
     let baseline = ManagedBaseline::capture(root.path(), true).unwrap();
     let added = repository();
     let nested = root.path().join("added");
-    fs::rename(added.path(), &nested).unwrap();
+    fs::rename(added.keep(), &nested).unwrap();
     let fixture = Fixture::changed(root, baseline);
     fs::remove_dir_all(nested).unwrap();
     let before = fs::read(fixture.repository.path().join(".git/index")).unwrap();
@@ -289,7 +289,7 @@ fn deleted_original_repository_is_reconstructed_from_its_independent_backup() {
     let root = repository();
     let child = repository();
     let nested = root.path().join("nested");
-    fs::rename(child.path(), &nested).unwrap();
+    fs::rename(child.keep(), &nested).unwrap();
     fs::write(nested.join("tracked.txt"), "prior nested unstaged\n").unwrap();
     let baseline = ManagedBaseline::capture(root.path(), true).unwrap();
     fs::remove_dir_all(&nested).unwrap();
@@ -304,7 +304,7 @@ fn committed_nested_head_restores_without_rewriting_the_previous_branch() {
     let root = repository();
     let child = repository();
     let nested = root.path().join("nested");
-    fs::rename(child.path(), &nested).unwrap();
+    fs::rename(child.keep(), &nested).unwrap();
     let original = git(&nested, &["rev-parse", "HEAD"], None).unwrap();
     let baseline = ManagedBaseline::capture(root.path(), true).unwrap();
     fs::write(nested.join("tracked.txt"), "candidate committed\n").unwrap();

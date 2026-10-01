@@ -153,6 +153,7 @@ impl Journal {
     }
 
     pub fn seal_directory(&mut self, path: &Path) -> Result<(), ProductRunnerError> {
+        let path = Asset::normalized(path)?;
         let asset = self
             .state
             .assets
@@ -164,6 +165,7 @@ impl Journal {
     }
 
     pub fn cleanup_directory(&self, path: &Path) -> Result<(), ProductRunnerError> {
+        let path = Asset::normalized(path)?;
         let asset = self
             .state
             .assets

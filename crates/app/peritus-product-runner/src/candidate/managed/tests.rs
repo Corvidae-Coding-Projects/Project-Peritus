@@ -90,7 +90,7 @@ fn nested_repository_changes_are_owned_relative_to_their_dirty_start() {
     let root = repository();
     let child = repository();
     let nested = root.path().join("nested");
-    fs::rename(child.path(), &nested).expect("nested repository");
+    fs::rename(child.keep(), &nested).expect("nested repository");
     fs::write(nested.join("tracked.txt"), "prior nested edit\n").expect("prior");
     let baseline = ManagedBaseline::capture(root.path(), true).expect("capture");
     assert!(baseline.changed_paths(root.path()).expect("clean task").is_empty());
@@ -238,7 +238,7 @@ fn nested_head_change_is_discarded_without_rewriting_the_task_branch() {
     let root = repository();
     let child = repository();
     let nested = root.path().join("nested");
-    fs::rename(child.path(), &nested).expect("nested");
+    fs::rename(child.keep(), &nested).expect("nested");
     let baseline = ManagedBaseline::capture(root.path(), true).expect("baseline");
     fs::write(nested.join("tracked.txt"), "new commit\n").expect("edit");
     git(&nested, &["commit", "-am", "task commit"], None).expect("commit");
@@ -262,11 +262,11 @@ fn newly_created_nested_repository_exports_complete_source_files() {
     let baseline = ManagedBaseline::capture(root.path(), true).expect("baseline");
     let child = repository();
     let nested = root.path().join("generated");
-    fs::rename(child.path(), &nested).expect("nested repository");
+    fs::rename(child.keep(), &nested).expect("nested repository");
     fs::write(nested.join("tracked.txt"), b"new application source\n").expect("source");
     fs::write(nested.join("extra.txt"), b"uncommitted source\n").expect("untracked");
     let grandchild = repository();
-    fs::rename(grandchild.path(), nested.join("component")).expect("deep repository");
+    fs::rename(grandchild.keep(), nested.join("component")).expect("deep repository");
     let binary = b"\0\xff\x01binary source\n";
     fs::write(nested.join("component/asset.bin"), binary).expect("binary asset");
     let paths = baseline.changed_paths(root.path()).expect("changed paths");

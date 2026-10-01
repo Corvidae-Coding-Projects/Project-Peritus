@@ -79,7 +79,7 @@ impl Sources {
         let directory = self.0.remove(path).ok_or_else(|| failure("source was not prepared"))?;
         let parent = path.parent().ok_or_else(|| failure("restore has no parent"))?;
         create_parents(parent)?;
-        fs::rename(directory.path().join("source"), path).map_err(failure)?;
+        super::publish_file(&directory.path().join("source"), path)?;
         recovery::sync_directory(parent)?;
         if let Some(journal) = journal {
             journal.cleanup_directory(directory.path())?;

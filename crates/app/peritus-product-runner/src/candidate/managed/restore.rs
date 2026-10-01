@@ -187,8 +187,21 @@ pub(super) fn restore_link(path: &Path, bytes: &[u8]) -> Result<(), ProductRunne
     let prepared = staging.path().join("link");
     create_link(&prepared, bytes)?;
     super::recovery::sync_directory(staging.path())?;
-    fs::rename(&prepared, path).map_err(failure)?;
+    publish_file(&prepared, path)?;
     super::recovery::sync_directory(parent)
+}
+
+pub(super) fn publish_file(prepared: &Path, path: &Path) -> Result<(), ProductRunnerError> {
+    #[cfg(windows)]
+    match fs::remove_file(path) {
+        // Windows rename refuses an existing destination. The durable restore journal retains
+        // `prepared` across this gap, so interruption remains recoverable without losing the
+        // admitted preimage; a concurrent replacement makes the following rename fail closed.
+        Ok(()) => {}
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+        Err(error) => return Err(failure(error)),
+    }
+    fs::rename(prepared, path).map_err(failure)
 }
 
 fn create_link(path: &Path, bytes: &[u8]) -> Result<(), ProductRunnerError> {

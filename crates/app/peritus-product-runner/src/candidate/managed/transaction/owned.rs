@@ -36,7 +36,17 @@ impl Asset {
         }
         marker.push('\n');
         let marker = marker.into_bytes();
-        Ok(Self { path: path.to_path_buf(), kind, marker, sealed: None })
+        Ok(Self { path: Self::normalized(path)?, kind, marker, sealed: None })
+    }
+
+    pub(super) fn normalized(path: &Path) -> Result<PathBuf, ProductRunnerError> {
+        let parent = path
+            .parent()
+            .ok_or_else(|| failure("discard preparation has no parent"))?
+            .canonicalize()
+            .map_err(failure)?;
+        let name = path.file_name().ok_or_else(|| failure("discard preparation has no name"))?;
+        Ok(parent.join(name))
     }
 
     pub(super) fn validate(&self, plan: &Plan) -> Result<(), ProductRunnerError> {
@@ -237,7 +247,8 @@ impl Lock {
         if let Some(journal) = journal {
             journal.register(asset.clone())?;
         }
-        let parent = path
+        let parent = asset
+            .path
             .parent()
             .ok_or_else(|| failure("Git lock has no parent"))?
             .canonicalize()
@@ -248,7 +259,7 @@ impl Lock {
             .and_then(|()| temporary.as_file().sync_all())
             .map_err(failure)?;
         // Publish a complete marker without ever replacing another Git operation's lock.
-        let file = temporary.persist_noclobber(path).map_err(failure)?;
+        let file = temporary.persist_noclobber(&asset.path).map_err(failure)?;
         recovery::sync_directory(&parent)?;
         Ok(Self { file: Some(file), asset, parent })
     }
