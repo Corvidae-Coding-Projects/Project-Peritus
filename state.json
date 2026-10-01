@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1930,
-        "tip_oid": "a00ed99f96d79407e93d2c0ee512a652f1ed7c12",
-        "prefix_sha256": "1e9e8ef48509ec0b2800f8b4a99dfb1caf8be3c1de1804f626f8a5c7ee7c0c0e"
+        "sequence": 1931,
+        "tip_oid": "6fcee90beee9b54f2cd151c36037086a5b880511",
+        "prefix_sha256": "346e52a45dbb9b448f1af91c4e26e04f99ce2f1507f021f798841ad3e7e346fc"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 2044,
+  "next_comment_id": 2045,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -16598,7 +16598,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-28T00:58:41.412806074Z",
-      "updated_at": "2026-10-01T17:44:26.791033169Z",
+      "updated_at": "2026-10-01T17:51:10.576050775Z",
       "labels": [
         "bug"
       ],
@@ -16908,6 +16908,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABALpiD/cSVKgHeuUiiq77243dSMPo8dqFFMJM5vQNKBqMynbuuC5TDi9Hw/X7qD68O5oAKfRawKV6H0hro9H66Dg=="
+        },
+        "32c39642-9b4c-4c0a-98ab-fa7ec133dca2": {
+          "display_id": 2044,
+          "author": "6ME5",
+          "content": "CI policy repair committed as signed 8b492894f after exact-head failures: split request-admission tests below the 400-line source budget and changed product policy defaults to the formal-boundary-supported struct default. Exact failing commands now pass: cargo xtask source-layout-check, cargo xtask ordinary-api-check, and cargo xtask all. Agent/daemon tests and strict Clippy also pass.",
+          "created_at": "2026-10-01T17:51:10.561176235Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAXs8QDScLL8of7YLcp8IO5U+Vp5RjZD3JHNgwWy8bjmqPPCyj1YkmPceia58z1uQEH8QYOOHJEHaioKvboLZnCw=="
         },
         "348c740d-d300-48a9-b441-29e711973aff": {
           "display_id": 2017,
