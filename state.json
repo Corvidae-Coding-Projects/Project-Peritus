@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1815,
-        "tip_oid": "62d1957447f344bb3b0e81bb24f7327e3afd6f5f",
-        "prefix_sha256": "966129096db9643eceb41dea276242e5aea975cb7a6cb31c34c2ebeff47357f8"
+        "sequence": 1816,
+        "tip_oid": "b8a6c90d4155abbed7524e8ef03c0a8fc43b6a0e",
+        "prefix_sha256": "c668a716bd218799cec2a6270d74a1cd1ebe241002da08cde9ef329c5cd10759"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 1954,
+  "next_comment_id": 1955,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -16540,7 +16540,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-28T00:58:41.412806074Z",
-      "updated_at": "2026-10-01T01:18:12.459254915Z",
+      "updated_at": "2026-10-01T01:19:27.792600999Z",
       "labels": [
         "bug"
       ],
@@ -16967,6 +16967,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAluHseJ5DCGplnWjqY1R/lzWq/NRIClg5WQNcT2whAkrFFYOnt9bE9WwjOX3FzHEdRiaLlf0sn7pbf9QbIGndBg=="
+        },
+        "76b59875-853c-4e7e-a238-603cd8f283a1": {
+          "display_id": 1954,
+          "author": "6ME5",
+          "content": "Architecture goal remains active; no pause, merge or close. Signed055eddd1c is pushed and confirmed PR105 head. Central current-evidence reconciliation, revocable qualification, postcommit bind and truthful acceptance wording delivered. Normal live57573 accept/export/commit/Run and restart/reopen/Run passed; source9 and managed8 files/modes, staged README and human draft preserved. Workspace3695, affected1082, final handoff4, Verus75, strict Linux/WindowsGNU lint, build/fmt/xtaskall passed. Tracked worktree clean; unrelated artifacts/stash preserved. Owned TUI remains open on committed candidate, no active provider work or test/build process. Resume from /tmp/peritus-functional-resume-y5ndk7bl/evidence/ontology-resume-checkpoint.json and .design/daily-driver-state-ownership.md. Next content/context dependency migration using actual gates and knowledge code; then authoritative operation/recovery UI, host facts across malformed reports, persistent daily-job qualification. Four-priority attachment goal must not be declared complete after this first increment.",
+          "created_at": "2026-10-01T01:19:27.789333276Z",
+          "kind": "handoff",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABABJ9DupOAN1EefV2xpm5bk/nwVQ/34GkE0MJ3t6rhSZu2w9wkkWb7rZ4BH7xg3oI5zA8d61WS0YzuSV9Hk33/Bg=="
         },
         "7abad5cd-2946-411f-95ce-8489d398dfaf": {
           "display_id": 1909,
