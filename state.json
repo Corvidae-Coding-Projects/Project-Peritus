@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1820,
-        "tip_oid": "0d5bae4ad92efbde669a4a49ee8888fe74e725ce",
-        "prefix_sha256": "b5988a02822b89dab5cb3e7594a55c2af041aff88fcaea3b79ee7d92f895b9c6"
+        "sequence": 1821,
+        "tip_oid": "b14fde9cab567de7420c195f4bf1a3365b7537ec",
+        "prefix_sha256": "7ce6f52cc56a6302a10dff90fc70bc661cbe917b69a4edeca9cc42831dfcd2d8"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 1958,
+  "next_comment_id": 1959,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -16544,7 +16544,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-28T00:58:41.412806074Z",
-      "updated_at": "2026-10-01T03:41:20.721829073Z",
+      "updated_at": "2026-10-01T05:23:59.901849833Z",
       "labels": [
         "bug"
       ],
@@ -17430,6 +17430,15 @@
           "kind": "handoff",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAywHZ8uuQc0pkxA/LORwuC7VFeu+msoQv5EbO5lWMFkV/P4Ngem2F7l/Nc1lKaPgHeSXtkKECby4/cSuMaQu2Ag=="
+        },
+        "f406e91e-5bea-4d0d-81d3-966067c70583": {
+          "display_id": 1958,
+          "author": "6ME5",
+          "content": "[action] Completed authoritative operation and interruption ontology repair: strict current protocol, daemon-owned legal controls, receipt-backed unknown outcomes and acknowledgement, cross-invocation mutation fence, retained host evidence after malformed model reports, and DRY receipt decoder. Live SIGKILL proof preserved one command effect, rejected blind retry, survived acknowledgement and restart, blocked cross-role replacement mutation, and retained an unqualified candidate after cancellation. Final affected suites, Linux and Windows GNU strict clippy, eight app-runner/app-shell Verus operations, codegen, fmt, diff check, and xtask all passed.",
+          "created_at": "2026-10-01T05:23:59.898013259Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAtRdRBS0XbkDzX09s3DtyyUxU4185gdEnQRgnTvLUxg5RVE8sAP3jqJHwRWsBGxvww3d4kf1q9JeXP5oKrtl6Dw=="
         },
         "f4271316-1b4c-4ba7-b00e-d1dab1a9cba3": {
           "display_id": 1952,
