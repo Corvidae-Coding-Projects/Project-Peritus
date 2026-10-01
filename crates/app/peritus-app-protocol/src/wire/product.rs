@@ -13,8 +13,9 @@ use crate::{
     MAX_PRODUCT_DELIVERABLE_COMMANDS, MAX_PRODUCT_DELIVERABLE_PATHS, MAX_PRODUCT_MESSAGES,
     ProductConversationMessage, ProductConversationRole, ProductDeliverable,
     ProductProviderSelection, ProductRunContinuation, ProductRunControl, ProductRunControlAction,
-    ProductRunConversation, ProductRunConversationQuery, ProductRunPhase, ProductRunQuery,
-    ProductRunRequest, ProductRunSnapshot,
+    ProductRunConversation, ProductRunConversationQuery, ProductRunLegalControls,
+    ProductRunOperation, ProductRunOperationKind, ProductRunOperationState, ProductRunPhase,
+    ProductRunQuery, ProductRunRequest, ProductRunSnapshot,
 };
 
 use super::primitive::{invalid, read_id, write_id};
@@ -171,6 +172,7 @@ fn write_snapshot_inner(
     {
         writer.write_str(text)?;
     }
+    write_operation(writer, value.operation())?;
     writer.write_option_tag(value.deliverable().is_some())?;
     if let Some(deliverable) = value.deliverable() {
         write_deliverable(writer, deliverable, allow_unqualified)?;
@@ -202,6 +204,7 @@ fn read_snapshot_inner(
     let gates = reader.read_str()?.to_owned();
     let review = reader.read_str()?.to_owned();
     let summary = reader.read_str()?.to_owned();
+    let operation = read_operation(reader)?;
     let snapshot = invalid(
         offset,
         ProductRunSnapshot::new(
@@ -217,12 +220,64 @@ fn read_snapshot_inner(
             review,
             summary,
         ),
-    )?;
+    )?
+    .with_operation(operation);
     if reader.read_option_tag()? {
         Ok(snapshot.with_deliverable(read_deliverable(reader, allow_unqualified)?))
     } else {
         Ok(snapshot)
     }
+}
+
+fn write_operation(
+    writer: &mut CanonicalWriter,
+    value: &ProductRunOperation,
+) -> Result<(), CodecError> {
+    writer.write_u16(value.kind().tag())?;
+    writer.write_u16(value.state().tag())?;
+    writer.write_str(value.identity())?;
+    writer.write_str(value.known())?;
+    writer.write_str(value.uncertainty())?;
+    let controls = value.legal_controls();
+    for allowed in [
+        controls.cancel(),
+        controls.retry(),
+        controls.accept(),
+        controls.commit(),
+        controls.export(),
+        controls.discard(),
+        controls.acknowledge(),
+    ] {
+        writer.write_bool(allowed)?;
+    }
+    Ok(())
+}
+
+fn read_operation(reader: &mut CanonicalReader<'_>) -> Result<ProductRunOperation, CodecError> {
+    let offset = reader.offset();
+    let kind = ProductRunOperationKind::from_tag(reader.read_u16()?)
+        .ok_or_else(|| CodecError::at(CodecErrorKind::UnknownTag, offset))?;
+    let state_offset = reader.offset();
+    let state = ProductRunOperationState::from_tag(reader.read_u16()?)
+        .ok_or_else(|| CodecError::at(CodecErrorKind::UnknownTag, state_offset))?;
+    let identity = reader.read_str()?.to_owned();
+    let known = reader.read_str()?.to_owned();
+    let uncertainty = reader.read_str()?.to_owned();
+    let mut controls = ProductRunLegalControls::none();
+    for action in [
+        ProductRunControlAction::Cancel,
+        ProductRunControlAction::Retry,
+        ProductRunControlAction::Accept,
+        ProductRunControlAction::Commit,
+        ProductRunControlAction::Export,
+        ProductRunControlAction::Discard,
+        ProductRunControlAction::Acknowledge,
+    ] {
+        if reader.read_bool()? {
+            controls = controls.with(action);
+        }
+    }
+    invalid(offset, ProductRunOperation::new(kind, state, identity, known, uncertainty, controls))
 }
 
 fn write_deliverable(

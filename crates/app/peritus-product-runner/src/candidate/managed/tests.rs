@@ -65,6 +65,27 @@ fn restarted_task_excludes_prior_edits_and_discard_restores_staging_and_untracke
 }
 
 #[test]
+fn interrupted_task_reuses_its_pre_effect_baseline_until_a_new_task_clears_it() {
+    let root = repository();
+    let state = tempfile::tempdir().expect("state");
+    let trace = state.path().join("task.trace");
+    let first = super::super::CandidateBaseline::capture_task(root.path(), &trace).expect("first");
+    assert!(first.changed_paths(root.path()).expect("initial paths").is_empty());
+
+    fs::write(root.path().join("crash-effect.txt"), "applied once\n").expect("effect");
+    let restarted =
+        super::super::CandidateBaseline::capture_task(root.path(), &trace).expect("restart");
+    assert_eq!(
+        restarted.changed_paths(root.path()).expect("retained task paths"),
+        vec![PathBuf::from("crash-effect.txt")],
+    );
+
+    fs::remove_file(trace.with_extension("baseline")).expect("start new task");
+    let next = super::super::CandidateBaseline::capture_task(root.path(), &trace).expect("next");
+    assert!(next.changed_paths(root.path()).expect("new task paths").is_empty());
+}
+
+#[test]
 fn nested_repository_changes_are_owned_relative_to_their_dirty_start() {
     let root = repository();
     let child = repository();

@@ -12,6 +12,7 @@ mod improvements;
 mod interaction;
 mod library;
 mod lifecycle;
+mod operation;
 mod permissions;
 mod persistence;
 mod progress;
@@ -292,9 +293,13 @@ impl ProductRunService {
                 peritus_product_runner::control::ControlError::UnsupportedSchema,
             ));
         }
+        self.ensure_control_legal(control.run_id(), control.action())?;
         match control.action() {
             ProductRunControlAction::Cancel => self.cancel(control.run_id()),
             ProductRunControlAction::Retry => self.retry(control.run_id()).await,
+            ProductRunControlAction::Acknowledge => {
+                self.acknowledge_command_outcome(control.run_id())
+            }
             ProductRunControlAction::Accept
             | ProductRunControlAction::Commit
             | ProductRunControlAction::Export
@@ -319,7 +324,7 @@ impl ProductRunService {
         if let Some(run_id) = query.run_id() {
             return records
                 .get(&run_id)
-                .map(live_snapshot)
+                .map(|record| live_snapshot(&self.inner.directory, record))
                 .transpose()
                 .map(|snapshot| snapshot.into_iter().collect());
         }
@@ -327,7 +332,7 @@ impl ProductRunService {
             .values()
             .rev()
             .take(peritus_app_protocol::MAX_PRODUCT_RUNS)
-            .map(live_snapshot)
+            .map(|record| live_snapshot(&self.inner.directory, record))
             .collect()
     }
 
@@ -337,7 +342,7 @@ impl ProductRunService {
     ) -> Result<AppResponsePayload, ProductRunServiceError> {
         let records = self.inner.records.read().map_err(|_| ProductRunServiceError::Unavailable)?;
         let record = records.get(&snapshot.run_id()).ok_or(ProductRunServiceError::NotFound)?;
-        project_snapshot(record, snapshot)
+        project_snapshot(&self.inner.directory, record, snapshot)
     }
 
     pub(super) fn query_conversation(

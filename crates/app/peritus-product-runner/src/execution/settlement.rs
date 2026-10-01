@@ -330,6 +330,11 @@ fn remaining_work(
         SettlementCause::Recovery => {
             remaining.push("reconcile the interrupted command boundary".to_owned());
         }
+        SettlementCause::Adapter => {
+            remaining.push(
+                "resume the retained host work and return a valid terminal report".to_owned(),
+            );
+        }
         _ => {}
     }
     remaining

@@ -11,6 +11,14 @@ use std::{
 mod attempt;
 mod handoff;
 
+pub(in crate::product_run) fn attempt_matches(
+    directory: &Path,
+    record: &super::super::RunRecord,
+    deliverable: &ProductDeliverable,
+) -> Result<bool, ProductRunServiceError> {
+    attempt::matches(directory, record, deliverable)
+}
+
 pub(super) fn validate_retry(
     directory: &Path,
     record: &mut super::super::RunRecord,

@@ -25,6 +25,7 @@ pub(super) fn parse_product(parser: &mut Parser) -> Result<Command, CliError> {
         "discard" => control(parser, ProductRunControlAction::Discard, false)?,
         "retry" => control(parser, ProductRunControlAction::Retry, false)?,
         "cancel" => control(parser, ProductRunControlAction::Cancel, false)?,
+        "acknowledge" => control(parser, ProductRunControlAction::Acknowledge, false)?,
         _ => return Err(CliError::usage(format!("unknown runs subcommand: {subcommand}"))),
     };
     Ok(Command::ProductRuns(arguments))

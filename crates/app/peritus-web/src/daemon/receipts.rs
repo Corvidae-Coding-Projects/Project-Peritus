@@ -101,11 +101,7 @@ pub async fn observed(app: &App, operation: &str) -> Result<Option<Value>> {
 async fn recovery_baseline(app: &App, payload: &AppRequestPayload) -> Result<Value> {
     let run_id = match payload {
         AppRequestPayload::Interact(request) => request.request().run_id(),
-        AppRequestPayload::ControlProductRun(control)
-            if control.action() == ProductRunControlAction::Retry =>
-        {
-            control.run_id()
-        }
+        AppRequestPayload::ControlProductRun(control) => control.run_id(),
         _ => return Ok(Value::Null),
     };
     match super::raw_request(
@@ -164,12 +160,9 @@ async fn reconcile(
                     .is_some_and(|activity| activity.text() == interaction.request().task())
         }
         AppRequestPayload::UpdateModels(update) => snapshot.models() == update.models(),
-        AppRequestPayload::ControlProductRun(control) => control_postcondition(
-            control.action(),
-            snapshot.snapshot().phase(),
-            snapshot.snapshot().deliverable(),
-            baseline,
-        ),
+        AppRequestPayload::ControlProductRun(control) => {
+            control_postcondition(control.action(), snapshot.snapshot(), baseline)
+        }
         _ => false,
     };
     if !proven {
@@ -184,10 +177,11 @@ async fn reconcile(
 
 fn control_postcondition(
     action: ProductRunControlAction,
-    phase: ProductRunPhase,
-    deliverable: Option<&peritus_app_protocol::ProductDeliverable>,
+    snapshot: &peritus_app_protocol::ProductRunSnapshot,
     baseline: &Value,
 ) -> bool {
+    let phase = snapshot.phase();
+    let deliverable = snapshot.deliverable();
     match action {
         ProductRunControlAction::Cancel => phase == ProductRunPhase::Cancelled,
         ProductRunControlAction::Retry => {
@@ -201,6 +195,10 @@ fn control_postcondition(
         }
         ProductRunControlAction::Discard => {
             deliverable.is_some_and(peritus_app_protocol::ProductDeliverable::discarded)
+        }
+        ProductRunControlAction::Acknowledge => {
+            baseline["run"]["operation"]["legalControls"]["acknowledge"] == true
+                && baseline["run"]["operation"]["identity"] != snapshot.operation().identity()
         }
         ProductRunControlAction::Accept | ProductRunControlAction::Commit => false,
     }

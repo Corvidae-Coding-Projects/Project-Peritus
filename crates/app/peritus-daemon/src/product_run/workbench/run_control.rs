@@ -69,6 +69,9 @@ impl ProductRunService {
         {
             return self.control_goal_run(actor, request, query, control).await;
         }
+        if let Err(error) = self.ensure_control_legal(control.run_id(), control.action()) {
+            return error.response();
+        }
         let required: &[peritus_product_runner::control::PermissionCapability] =
             match control.action() {
                 ProductRunControlAction::Commit | ProductRunControlAction::Discard => {
@@ -85,6 +88,9 @@ impl ProductRunService {
         let result = match control.action() {
             ProductRunControlAction::Cancel => self.cancel(control.run_id()),
             ProductRunControlAction::Retry => self.retry(control.run_id()).await,
+            ProductRunControlAction::Acknowledge => {
+                self.acknowledge_command_outcome(control.run_id())
+            }
             action => self.control_deliverable(control.run_id(), action),
         };
         result

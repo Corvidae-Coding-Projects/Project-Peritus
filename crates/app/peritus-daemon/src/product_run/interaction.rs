@@ -256,7 +256,7 @@ impl ProductRunService {
         let record = records.get(&query.run_id()).ok_or(ProductRunServiceError::NotFound)?;
         let options = record.interaction.as_ref().ok_or(ProductRunServiceError::InvalidState)?;
         let persistence_failure = options.persistence_failure();
-        let mut snapshot = live_snapshot(record)?;
+        let mut snapshot = live_snapshot(&self.inner.directory, record)?;
         let mut activities = if record.checkpoint.is_some() {
             options.activities.iter().map(presentation::pipeline_activity).collect()
         } else {

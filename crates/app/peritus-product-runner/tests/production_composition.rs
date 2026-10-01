@@ -21,13 +21,13 @@ use peritus_product_runner::{
 use peritus_provider_core::{
     BoxFuture, CancellationToken, ModelProvider, OwnedModelStream, ProviderCoreError,
 };
-use peritus_run_settlement::{RunDisposition, SettlementCause};
+use peritus_run_settlement::{CandidateStage, RunDisposition, SettlementCause};
 use peritus_types::{RunId, WorkspaceId};
 
 use support::{
-    FixedConversation, ScriptedProvider, cargo, design_response, git, list_arguments,
-    named_tool_response, patch_arguments, profile, read_arguments, text_response, tool_response,
-    write_arguments,
+    FixedConversation, ScriptedProvider, cargo, command_arguments, design_response, git,
+    list_arguments, named_tool_response, patch_arguments, profile, read_arguments, text_response,
+    tool_response, write_arguments,
 };
 
 struct CorrectionRecordingProvider {
@@ -55,14 +55,11 @@ impl ModelProvider for CorrectionRecordingProvider {
     }
 }
 
-#[test]
-fn product_run_future_leaves_room_for_composing_callers() {
-    const fn future_size<A, B, F: Future>(_: fn(A, B) -> F) -> usize {
-        size_of::<F>()
-    }
-    let bytes = future_size(ProductRunner::run);
-    assert!(bytes <= 8192, "product run future uses {bytes} bytes before caller state");
-}
+#[path = "production_composition/composition_size.rs"]
+mod composition_size;
+
+#[path = "production_composition/malformed_terminal.rs"]
+mod malformed_terminal;
 
 #[path = "production_composition/provider_failure.rs"]
 mod provider_failure;

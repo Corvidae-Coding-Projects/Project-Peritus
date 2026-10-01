@@ -171,7 +171,7 @@ fn completed_product_run_exposes_all_four_handoff_controls() {
             downgraded: false,
         });
         let run_id = RunId::new([74; 16]).expect("run");
-        model.accept_product_run(
+        model.accept_product_run(super::with_controls(
             ProductRunSnapshot::new(
                 run_id,
                 workspace_id,
@@ -196,7 +196,13 @@ fn completed_product_run_exposes_all_four_handoff_controls() {
                 )
                 .expect("deliverable"),
             ),
-        );
+            peritus_app_protocol::ProductRunOperationState::Succeeded,
+            peritus_app_protocol::ProductRunLegalControls::none()
+                .with(ProductRunControlAction::Accept)
+                .with(ProductRunControlAction::Commit)
+                .with(ProductRunControlAction::Export)
+                .with(ProductRunControlAction::Discard),
+        ));
 
         let effects = model.update(Action::TerminalEvent(Event::Key(KeyEvent::new(
             KeyCode::Char(key),
@@ -212,6 +218,74 @@ fn completed_product_run_exposes_all_four_handoff_controls() {
                 )
         )));
     }
+}
+
+#[test]
+fn unknown_command_outcome_exposes_acknowledgement_without_retry() {
+    use peritus_app_protocol::{
+        ProductProviderSelection, ProductRunControlAction, ProductRunLegalControls,
+        ProductRunOperation, ProductRunOperationKind, ProductRunOperationState, ProductRunPhase,
+        ProductRunSnapshot,
+    };
+    use peritus_types::RunId;
+
+    let provider = ProviderProfileId::new([75; 16]).expect("provider");
+    let workspace = WorkspaceId::new([76; 16]).expect("workspace");
+    let product = ProductLaunchContext::new(
+        workspace,
+        "/managed/project".to_owned(),
+        vec![ProductProviderOption::new(provider, "Codex")],
+        Some(0),
+    )
+    .expect("product context");
+    let mut model = AppModel::with_product([77; 32], Some(product));
+    model.view = View::Runs;
+    let _ = model.update(Action::Connected {
+        context: context(),
+        limits: AppProtocolLimits::PRODUCTION,
+        server: "peritusd/test".to_owned(),
+        downgraded: false,
+    });
+    let run = RunId::new([78; 16]).expect("run");
+    let snapshot = ProductRunSnapshot::new(
+        run,
+        workspace,
+        ProductProviderSelection::new(provider, provider, provider),
+        ProductRunPhase::RecoveryRequired,
+        1,
+        "run a command".to_owned(),
+        "interrupted".to_owned(),
+        String::new(),
+        String::new(),
+        String::new(),
+        String::new(),
+    )
+    .expect("snapshot")
+    .with_operation(
+        ProductRunOperation::new(
+            ProductRunOperationKind::Command,
+            ProductRunOperationState::OutcomeUnknown,
+            "command/test".to_owned(),
+            "The receipt is retained.".to_owned(),
+            "The host cannot prove whether it took effect.".to_owned(),
+            ProductRunLegalControls::none().with(ProductRunControlAction::Acknowledge),
+        )
+        .expect("operation"),
+    );
+    model.accept_product_run(snapshot);
+
+    assert!(model.control_selected_product_run(ProductRunControlAction::Retry).is_empty());
+    let effects = model.update(Action::TerminalEvent(Event::Key(KeyEvent::new(
+        KeyCode::Char('u'),
+        KeyModifiers::NONE,
+    ))));
+    assert!(effects.iter().any(|effect| matches!(
+        effect,
+        Effect::Send(AppMessage::Request(request))
+            if matches!(request.payload(), AppRequestPayload::ControlProductRun(control)
+                if control.run_id() == run
+                    && control.action() == ProductRunControlAction::Acknowledge)
+    )));
 }
 
 #[test]

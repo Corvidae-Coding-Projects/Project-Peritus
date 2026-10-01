@@ -110,6 +110,19 @@ impl ProductRunService {
                 // retain their continuation because the message is correcting or completing the
                 // same unfinished turn.
                 if prior_phase == ProductRunPhase::Complete {
+                    let baseline = self
+                        .inner
+                        .directory
+                        .join(super::deliverable::run_hex(continuation.run_id()))
+                        .with_extension("baseline");
+                    if let Err(error) = std::fs::remove_file(&baseline)
+                        && error.kind() != std::io::ErrorKind::NotFound
+                    {
+                        return Err(ProductRunServiceError::internal(
+                            "start fresh follow-up task",
+                            error.to_string(),
+                        ));
+                    }
                     next.finding_state.clear();
                     next.checkpoint = None;
                     next.resume = None;

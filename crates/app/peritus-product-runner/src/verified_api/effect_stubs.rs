@@ -7,6 +7,60 @@ use peritus_types::Sha256Digest;
 use super::{ProductRunResume, ProductRunner};
 use crate::{ProductRunnerError, ProductRunnerErrorKind};
 
+/// Verification-only shape of a command effect whose outcome cannot safely be replayed.
+pub struct UncertainEffect {
+    identity: String,
+    tool: String,
+    state: UncertainEffectState,
+    requirements_revision: Option<u64>,
+}
+
+/// Verification-only shape of the durable uncertain-effect states.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum UncertainEffectState {
+    /// The command was admitted and may still be running under the live run owner.
+    Started,
+    /// Recovery proved only that the command may have taken effect.
+    Ambiguous,
+    /// The unknown outcome was explicitly reviewed without being inferred.
+    Reviewed,
+}
+
+impl UncertainEffect {
+    /// Stable identity of the original effect admission.
+    pub fn identity(&self) -> &str {
+        &self.identity
+    }
+
+    /// Developer tool that owns the uncertain effect.
+    pub fn tool(&self) -> &str {
+        &self.tool
+    }
+
+    /// Current durable state.
+    pub const fn state(&self) -> UncertainEffectState {
+        self.state
+    }
+
+    /// Requirements revision that admitted the effect, when present.
+    pub const fn requirements_revision(&self) -> Option<u64> {
+        self.requirements_revision
+    }
+}
+
+/// Verification-only builds cannot inspect the production receipt ledger.
+pub fn uncertain_effects(_path: &Path) -> Result<Vec<UncertainEffect>, ProductRunnerError> {
+    Err(effect_receipts_unavailable())
+}
+
+/// Verification-only builds cannot mutate the production receipt ledger.
+pub fn acknowledge_uncertain_effect(
+    _path: &Path,
+    _identity: &str,
+) -> Result<(), ProductRunnerError> {
+    Err(effect_receipts_unavailable())
+}
+
 /// Verification-only builds cannot inspect workspace path metadata.
 pub fn checked_protected_file(
     _root: &Path,
@@ -174,5 +228,13 @@ fn baseline_unavailable() -> ProductRunnerError {
         ProductRunnerErrorKind::InvalidPrecondition,
         "inspect task baseline",
         "task baseline effects are unavailable in a verus_only build",
+    )
+}
+
+fn effect_receipts_unavailable() -> ProductRunnerError {
+    ProductRunnerError::new(
+        ProductRunnerErrorKind::InvalidPrecondition,
+        "inspect developer effect receipts",
+        "effect receipts are unavailable in a verus_only build",
     )
 }

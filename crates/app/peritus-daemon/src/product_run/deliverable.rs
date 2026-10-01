@@ -16,7 +16,7 @@ use super::persistence::persist_record;
 use super::snapshot::replace_snapshot;
 use super::{ProductRunService, ProductRunServiceError};
 
-mod commit;
+pub(in crate::product_run) mod commit;
 pub(super) mod discard;
 #[cfg(test)]
 use commit::commit_deliverable;
@@ -137,7 +137,9 @@ impl ProductRunService {
                 completion.complete(&status)?;
                 (deliverable.mark_discarded(), status)
             }
-            ProductRunControlAction::Cancel | ProductRunControlAction::Retry => {
+            ProductRunControlAction::Cancel
+            | ProductRunControlAction::Retry
+            | ProductRunControlAction::Acknowledge => {
                 return Err(ProductRunServiceError::InvalidState);
             }
         };
@@ -190,12 +192,14 @@ fn repeated_action(
         ProductRunControlAction::Commit => !deliverable.commit_revision().is_empty(),
         ProductRunControlAction::Export => export_available(deliverable),
         ProductRunControlAction::Discard => deliverable.discarded(),
-        ProductRunControlAction::Cancel | ProductRunControlAction::Retry => false,
+        ProductRunControlAction::Cancel
+        | ProductRunControlAction::Retry
+        | ProductRunControlAction::Acknowledge => false,
     };
     already_done.then(|| record.snapshot.clone())
 }
 
-fn export_available(deliverable: &ProductDeliverable) -> bool {
+pub(in crate::product_run) fn export_available(deliverable: &ProductDeliverable) -> bool {
     !deliverable.export_path().is_empty() && Path::new(deliverable.export_path()).is_file()
 }
 
@@ -364,7 +368,7 @@ const fn null_device() -> &'static str {
     "/dev/null"
 }
 
-fn run_hex(run_id: RunId) -> String {
+pub(super) fn run_hex(run_id: RunId) -> String {
     run_id.as_bytes().iter().fold(String::new(), |mut value, byte| {
         use core::fmt::Write as _;
         let _ = write!(value, "{byte:02x}");

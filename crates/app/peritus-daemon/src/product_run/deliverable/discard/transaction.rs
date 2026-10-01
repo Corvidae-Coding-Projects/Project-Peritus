@@ -1,5 +1,7 @@
 //! A bound pending discard keeps its original authority across partial workspace changes.
 
+use core::fmt::Write as _;
+
 use super::{
     ProductRunServiceError, RunRecord, binding, failure, path, read_record, sync_directory,
 };
@@ -29,6 +31,14 @@ pub(in crate::product_run) struct Pending {
 }
 
 impl Pending {
+    pub(in crate::product_run) fn identity(&self) -> String {
+        let mut value = String::with_capacity(64);
+        for byte in self.plan {
+            let _ = write!(value, "{byte:02x}");
+        }
+        value
+    }
+
     pub(in crate::product_run) fn read(
         directory: &Path,
         record: &RunRecord,

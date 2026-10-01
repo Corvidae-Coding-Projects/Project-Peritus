@@ -1,7 +1,8 @@
 //! Dashboard, diff, and review presentation for daemon-owned coding runs.
 
 #[cfg(test)]
-use peritus_app_protocol::{ProductRunPhase, ProductRunSnapshot};
+use peritus_app_protocol::ProductRunPhase;
+use peritus_app_protocol::ProductRunSnapshot;
 #[cfg(test)]
 use peritus_run_settlement::CandidateStage;
 use ratatui::{
@@ -93,11 +94,14 @@ pub(super) fn dashboard(frame: &mut Frame<'_>, area: Rect, model: &AppModel) {
         )
     });
     let maximum = detail_scroll_limit(&detail, areas.detail);
+    let controls = product.selected_run().map_or_else(|| "Progress".to_owned(), control_title);
     frame.render_widget(
         Paragraph::new(detail)
-            .block(Block::default().borders(Borders::ALL).title(
-                " Progress · PgUp/PgDn · Home/End · i inspect · v run · a accept · c commit · p export · D discard ",
-            ))
+            .block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .title(format!(" {controls} · PgUp/PgDn · Home/End · i inspect ")),
+            )
             .wrap(Wrap { trim: false })
             .scroll((product.detail_scroll.min(maximum), 0)),
         areas.detail,
@@ -113,6 +117,29 @@ pub(super) fn dashboard(frame: &mut Frame<'_>, area: Rect, model: &AppModel) {
             .wrap(Wrap { trim: false }),
         areas.conversation,
     );
+}
+
+fn control_title(run: &ProductRunSnapshot) -> String {
+    let controls = run.operation().legal_controls();
+    let mut actions = Vec::new();
+    for (allowed, label) in [
+        (controls.cancel(), "x cancel"),
+        (controls.retry(), "r exact retry"),
+        (controls.accept(), "a accept"),
+        (controls.commit(), "c commit"),
+        (controls.export(), "p export"),
+        (controls.discard(), "D discard"),
+        (controls.acknowledge(), "u acknowledge uncertainty"),
+    ] {
+        if allowed {
+            actions.push(label);
+        }
+    }
+    if actions.is_empty() {
+        "Progress · no operation controls available".to_owned()
+    } else {
+        format!("Progress · {}", actions.join(" · "))
+    }
 }
 
 #[derive(Clone, Copy)]

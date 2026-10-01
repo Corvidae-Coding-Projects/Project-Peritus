@@ -341,8 +341,13 @@ pub(super) async fn apply_fix(
             )?;
             Ok(None)
         }
-        AppliedTurn::Waiting { question, conversation_revision } => {
+        AppliedTurn::Waiting { question, conversation_revision, host } => {
+            state.merge_host(&host);
             Ok(Some((question, conversation_revision)))
+        }
+        AppliedTurn::Rejected { error, host } => {
+            state.merge_host(&host);
+            Err(error)
         }
     }
 }

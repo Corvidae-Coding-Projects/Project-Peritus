@@ -59,7 +59,7 @@ COMMANDS:
   runs continue --run <ID> --message <TEXT>
   runs execute --run <ID>
   runs <accept|commit> --run <ID> [--confirm-unqualified <CANDIDATE-DIGEST>]
-  runs <export|discard|retry|cancel> --run <ID>
+  runs <export|discard|retry|cancel|acknowledge> --run <ID>
   completions <bash|zsh|fish|powershell>
 
 EXIT CATEGORIES:

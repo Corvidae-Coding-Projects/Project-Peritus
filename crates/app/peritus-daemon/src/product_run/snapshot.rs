@@ -22,17 +22,22 @@ impl super::ProductRunService {
             .filter(|record| query.run_id().is_none_or(|run| record.snapshot.run_id() == run))
             .take(peritus_app_protocol::MAX_PRODUCT_RUNS)
             .map(|record| {
-                ProductRunObservation::new(live_snapshot(record)?, delivery_settlement(record))
-                    .map_err(|_| ProductRunServiceError::InvalidState)
+                ProductRunObservation::new(
+                    live_snapshot(&self.inner.directory, record)?,
+                    delivery_settlement(record),
+                )
+                .map_err(|_| ProductRunServiceError::InvalidState)
             })
             .collect()
     }
 }
 
 pub(super) fn project_snapshot(
+    directory: &std::path::Path,
     record: &RunRecord,
     snapshot: ProductRunSnapshot,
 ) -> Result<AppResponsePayload, ProductRunServiceError> {
+    let snapshot = snapshot.with_operation(super::operation::project(directory, record)?);
     match delivery_settlement(record) {
         Some(settlement) => ProductRunSettlementSnapshot::new(snapshot, settlement)
             .map(AppResponsePayload::ProductRunSettled)
@@ -52,17 +57,20 @@ pub(super) fn delivery_settlement(
 }
 
 pub(super) fn live_snapshot(
+    directory: &std::path::Path,
     record: &RunRecord,
 ) -> Result<ProductRunSnapshot, ProductRunServiceError> {
-    if record.snapshot.phase().terminal() {
-        return Ok(record.snapshot.clone());
-    }
-    replace_snapshot(
-        &record.snapshot,
-        record.snapshot.phase(),
-        &record.progress.live_status(record.snapshot.status()),
-        record.snapshot.summary(),
-    )
+    let snapshot = if record.snapshot.phase().terminal() {
+        record.snapshot.clone()
+    } else {
+        replace_snapshot(
+            &record.snapshot,
+            record.snapshot.phase(),
+            &record.progress.live_status(record.snapshot.status()),
+            record.snapshot.summary(),
+        )?
+    };
+    Ok(snapshot.with_operation(super::operation::project(directory, record)?))
 }
 
 pub(super) fn initial_snapshot(
@@ -136,7 +144,8 @@ pub(super) fn replace_snapshot(
         current.review().to_owned(),
         summary.to_owned(),
     )
-    .map_err(|_| ProductRunServiceError::InvalidMessage)?;
+    .map_err(|_| ProductRunServiceError::InvalidMessage)?
+    .with_operation(current.operation().clone());
     Ok(match current.deliverable().cloned() {
         Some(deliverable) => snapshot.with_deliverable(deliverable),
         None => snapshot,

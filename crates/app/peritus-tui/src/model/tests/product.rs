@@ -1,8 +1,9 @@
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
 use peritus_app_protocol::{
     AppMessage, AppProtocolLimits, AppRequestPayload, ProductDeliverable, ProductProviderSelection,
-    ProductRunControlAction, ProductRunObservation, ProductRunPhase, ProductRunSettlementSnapshot,
-    ProductRunSnapshot,
+    ProductRunControlAction, ProductRunLegalControls, ProductRunObservation, ProductRunOperation,
+    ProductRunOperationKind, ProductRunOperationState, ProductRunPhase,
+    ProductRunSettlementSnapshot, ProductRunSnapshot,
 };
 use peritus_run_settlement::{
     CandidateCheckpoint, CandidateIdentity, CandidateStage, EvidenceStatus, SettlementCause,
@@ -18,6 +19,24 @@ use crate::{
 
 mod handoff;
 mod polling;
+
+fn with_controls(
+    snapshot: ProductRunSnapshot,
+    state: ProductRunOperationState,
+    controls: ProductRunLegalControls,
+) -> ProductRunSnapshot {
+    snapshot.with_operation(
+        ProductRunOperation::new(
+            ProductRunOperationKind::Execution,
+            state,
+            "run/test".to_owned(),
+            "The daemon projected this exact operation.".to_owned(),
+            String::new(),
+            controls,
+        )
+        .expect("operation"),
+    )
+}
 
 fn unqualified_model() -> (AppModel, RunId, WorkspaceId) {
     let provider_id = ProviderProfileId::new([81; 16]).expect("provider");
@@ -59,20 +78,29 @@ fn unqualified_model() -> (AppModel, RunId, WorkspaceId) {
     let mut reducer = SettlementReducer::new();
     reducer.observe(checkpoint).expect("observe");
     let settlement = reducer.settle(SettlementCause::Provider).expect("settle");
-    let snapshot = ProductRunSnapshot::new(
-        run_id,
-        workspace_id,
-        ProductProviderSelection::new(provider_id, provider_id, provider_id),
-        ProductRunPhase::Failed,
-        1,
-        "build tetris".to_owned(),
-        "Candidate available".to_owned(),
-        "diff --git".to_owned(),
-        String::new(),
-        String::new(),
-        "Remaining work: checks and review".to_owned(),
+    let snapshot = with_controls(
+        ProductRunSnapshot::new(
+            run_id,
+            workspace_id,
+            ProductProviderSelection::new(provider_id, provider_id, provider_id),
+            ProductRunPhase::Failed,
+            1,
+            "build tetris".to_owned(),
+            "Candidate available".to_owned(),
+            "diff --git".to_owned(),
+            String::new(),
+            String::new(),
+            "Remaining work: checks and review".to_owned(),
+        )
+        .expect("snapshot"),
+        ProductRunOperationState::Failed,
+        ProductRunLegalControls::none()
+            .with(ProductRunControlAction::Retry)
+            .with(ProductRunControlAction::Accept)
+            .with(ProductRunControlAction::Commit)
+            .with(ProductRunControlAction::Export)
+            .with(ProductRunControlAction::Discard),
     )
-    .expect("snapshot")
     .with_deliverable(
         ProductDeliverable::candidate(
             "/managed/project".to_owned(),
@@ -160,7 +188,18 @@ fn discarded_candidate_cannot_be_launched_or_submitted_for_another_handoff_actio
     let product = model.product.as_mut().unwrap();
     let run = product.runs[0].clone();
     let discarded = run.deliverable().unwrap().clone().mark_discarded();
-    product.runs[0] = run.with_deliverable(discarded);
+    product.runs[0] = ProductRunSnapshot::with_operation(
+        run.with_deliverable(discarded),
+        ProductRunOperation::new(
+            ProductRunOperationKind::Execution,
+            ProductRunOperationState::Failed,
+            "run/test".to_owned(),
+            "The candidate was discarded.".to_owned(),
+            String::new(),
+            ProductRunLegalControls::none(),
+        )
+        .expect("discarded operation"),
+    );
     for action in [
         ProductRunControlAction::Accept,
         ProductRunControlAction::Commit,

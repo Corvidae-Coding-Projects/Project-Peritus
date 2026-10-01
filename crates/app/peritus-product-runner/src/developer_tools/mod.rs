@@ -53,6 +53,10 @@ pub use folder_patch_request::FolderPatchAuthorityPlanRequest;
 #[cfg(not(verus_only))]
 pub use ownership::WorkspaceOwnership;
 pub use preview::{PreviewCommand, PreviewLaunch, PreviewObservation, PreviewProcessState};
+#[cfg(not(verus_only))]
+pub use receipt::{
+    UncertainEffect, UncertainEffectState, acknowledge_uncertain_effect, uncertain_effects,
+};
 
 #[cfg(not(verus_only))]
 pub fn merge_rendered(retained: &mut String, incoming: &str) {

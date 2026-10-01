@@ -110,6 +110,16 @@ fn restart_keeps_original_partial_discard_binding_and_only_exact_discard_can_res
         let original =
             fixture.running.inner.records.read().unwrap()[&fixture.run].checkpoint.unwrap();
         fixture.pending();
+        let prepared =
+            fixture.running.query_observations(ProductRunQuery::exact(fixture.run)).unwrap();
+        let operation = prepared[0].snapshot().operation();
+        assert_eq!(operation.kind(), peritus_app_protocol::ProductRunOperationKind::Discard);
+        assert_eq!(
+            operation.state(),
+            peritus_app_protocol::ProductRunOperationState::RecoveryRequired
+        );
+        assert!(operation.legal_controls().discard());
+        assert!(!operation.legal_controls().retry());
         fixture.partial_source();
         let before = ProductRunner::candidate_digest(fixture.repository.path()).unwrap();
         let index = fs::read(fixture.repository.path().join(".git/index")).unwrap();
@@ -121,6 +131,13 @@ fn restart_keeps_original_partial_discard_binding_and_only_exact_discard_can_res
         assert_eq!(ProductRunner::candidate_digest(fixture.repository.path()).unwrap(), before);
         assert_eq!(fs::read(fixture.repository.path().join(".git/index")).unwrap(), index);
         *fixture.running.inner.records.write().unwrap() = records;
+        let restoring =
+            fixture.running.query_observations(ProductRunQuery::exact(fixture.run)).unwrap();
+        assert_eq!(
+            restoring[0].snapshot().operation().state(),
+            peritus_app_protocol::ProductRunOperationState::OutcomeUnknown
+        );
+        assert!(restoring[0].snapshot().operation().legal_controls().discard());
         for action in [
             ProductRunControlAction::Accept,
             ProductRunControlAction::Commit,

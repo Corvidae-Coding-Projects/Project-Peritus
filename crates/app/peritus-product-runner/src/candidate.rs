@@ -100,8 +100,14 @@ impl CandidateBaseline {
 
     pub(crate) fn capture_task(root: &Path, trace: &Path) -> Result<Self, ProductRunnerError> {
         let mut baseline = Self::capture(root)?;
-        let managed = managed::ManagedBaseline::capture(root, true)?;
-        managed.save(&trace.with_extension("baseline"))?;
+        let path = trace.with_extension("baseline");
+        let managed = if let Some(retained) = managed::ManagedBaseline::load(&path)? {
+            retained
+        } else {
+            let captured = managed::ManagedBaseline::capture(root, true)?;
+            captured.save(&path)?;
+            captured
+        };
         baseline.managed = Some(managed);
         Ok(baseline)
     }

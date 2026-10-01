@@ -8,13 +8,49 @@ async fn lost_control_response_is_reconciled_without_reissuing_the_mutation() {
     let listener = UnixListener::bind(&endpoint).unwrap();
     let app = isolated_app(root, endpoint.clone());
     let server = tokio::spawn(async move {
+        let (mut stream, request) = receive_request(&listener).await;
+        assert!(matches!(request.payload(), AppRequestPayload::QueryInteraction(_)));
+        let run = RunId::new([1; 16]).unwrap();
+        let provider = ProviderProfileId::new([2; 16]).unwrap();
+        let baseline = ProductRunSnapshot::new(
+            run,
+            WorkspaceId::new([3; 16]).unwrap(),
+            ProductProviderSelection::new(provider, provider, provider),
+            ProductRunPhase::Writing,
+            1,
+            "Cancellation fixture".into(),
+            "Writing".into(),
+            String::new(),
+            String::new(),
+            String::new(),
+            String::new(),
+        )
+        .unwrap();
+        let observation = ProductInteractionSnapshot::new(
+            baseline,
+            ProductInteractionMode::Chat,
+            ProductRoleModels::default(),
+            1,
+            1,
+            Vec::new(),
+            None,
+        )
+        .unwrap();
+        write_message(
+            &mut stream,
+            AppMessage::Response(AppResponseEnvelope::new(
+                request.context(),
+                request.request_id(),
+                request.correlation_id(),
+                AppResponsePayload::Interaction(observation),
+            )),
+        )
+        .await;
         let (stream, request) = receive_request(&listener).await;
         assert!(matches!(request.payload(), AppRequestPayload::ControlProductRun(_)));
         drop(stream);
         let (mut stream, request) = receive_request(&listener).await;
         assert!(matches!(request.payload(), AppRequestPayload::QueryInteraction(_)));
-        let run = RunId::new([1; 16]).unwrap();
-        let provider = ProviderProfileId::new([2; 16]).unwrap();
         let snapshot = ProductRunSnapshot::new(
             run,
             WorkspaceId::new([3; 16]).unwrap(),

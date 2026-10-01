@@ -2415,6 +2415,33 @@ Rust type: `ProductDeliverable`
 | `exportPath` | yes | `len+utf8` | `String` | `string` | `product.max-detail-bytes` |
 | `discarded` | yes | `bool/u8` | `bool` | `boolean` | — |
 
+### `ProductRunLegalControls`
+
+Rust type: `ProductRunLegalControls`
+
+| Field | Required | Canonical wire | Rust | TypeScript | Bounds |
+|---|:---:|---|---|---|---|
+| `cancel` | yes | `bool/u8` | `bool` | `boolean` | — |
+| `retry` | yes | `bool/u8` | `bool` | `boolean` | — |
+| `accept` | yes | `bool/u8` | `bool` | `boolean` | — |
+| `commit` | yes | `bool/u8` | `bool` | `boolean` | — |
+| `export` | yes | `bool/u8` | `bool` | `boolean` | — |
+| `discard` | yes | `bool/u8` | `bool` | `boolean` | — |
+| `acknowledge` | yes | `bool/u8` | `bool` | `boolean` | — |
+
+### `ProductRunOperation`
+
+Rust type: `ProductRunOperation`
+
+| Field | Required | Canonical wire | Rust | TypeScript | Bounds |
+|---|:---:|---|---|---|---|
+| `kind` | yes | `u16-be` | `ProductRunOperationKind` | `ProductRunOperationKind` | — |
+| `state` | yes | `u16-be` | `ProductRunOperationState` | `ProductRunOperationState` | — |
+| `identity` | yes | `len+utf8` | `String` | `string` | `product.max-detail-bytes` |
+| `known` | yes | `len+utf8` | `String` | `string` | `product.max-detail-bytes` |
+| `uncertainty` | yes | `len+utf8` | `String` | `string` | `product.max-detail-bytes` |
+| `legalControls` | yes | `ordered-fields` | `ProductRunLegalControls` | `ProductRunLegalControls` | — |
+
 ### `ProductRunSnapshot`
 
 Rust type: `ProductRunSnapshot`
@@ -2432,6 +2459,7 @@ Rust type: `ProductRunSnapshot`
 | `gates` | yes | `len+utf8` | `String` | `string` | `product.max-detail-bytes` |
 | `review` | yes | `len+utf8` | `String` | `string` | `product.max-detail-bytes` |
 | `summary` | yes | `len+utf8` | `String` | `string` | `product.max-detail-bytes` |
+| `operation` | yes | `ordered-fields` | `ProductRunOperation` | `ProductRunOperation` | — |
 | `deliverable` | no | `option+value` | `Option<ProductDeliverable>` | `ProductDeliverable` | — |
 
 ### `ProductRunObservation`

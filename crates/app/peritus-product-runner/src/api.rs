@@ -14,7 +14,8 @@ pub use crate::conversation_mode::ConversationMode;
 #[cfg(not(verus_only))]
 pub use crate::developer_tools::{
     CommandRuntime, FolderPatchAuthority, FolderPatchAuthorityPlan, PreviewTerminal,
-    checked_protected_file,
+    UncertainEffect, UncertainEffectState, acknowledge_uncertain_effect, checked_protected_file,
+    uncertain_effects,
 };
 pub use crate::developer_tools::{
     FolderPatchAuthorityPlanRequest, PreviewCommand, PreviewLaunch, PreviewObservation,
@@ -37,7 +38,8 @@ pub use crate::verified_api::{
     PRODUCT_RUN_MAX_PEAK_RSS_BYTES, PRODUCT_RUN_MAX_TOOL_CALLS, PRODUCT_RUN_MAX_TOTAL_TOKENS,
     PRODUCT_RUN_MAX_WORKSPACE_GROWTH_BYTES, PreviewTerminal, ProductDeliveryScope, ProductRunInput,
     ProductRunOutcome, ProductRunOutput, ProductRunPhase, ProductRunProgress, ProductRunQuestion,
-    ProductRunResume, ProductRunUpdate, ProductRunner, RoleProviders, RunObserver,
-    WorkspaceMutationKind, checked_protected_file,
+    ProductRunResume, ProductRunUpdate, ProductRunner, RoleProviders, RunObserver, UncertainEffect,
+    UncertainEffectState, WorkspaceMutationKind, acknowledge_uncertain_effect,
+    checked_protected_file, uncertain_effects,
 };
 pub use crate::workspace_kind::ProductWorkspaceKind;

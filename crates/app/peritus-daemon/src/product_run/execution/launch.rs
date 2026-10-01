@@ -146,9 +146,13 @@ impl ProductRunService {
                         None => ProductRunner::run(input, observer).await,
                     }
                 };
-                let result = service
-                    .with_goal_clock(run_id, cancelled, provider_cancellation, execution)
-                    .await;
+                let result = Box::pin(service.with_goal_clock(
+                    run_id,
+                    cancelled,
+                    provider_cancellation,
+                    execution,
+                ))
+                .await;
                 #[cfg(test)]
                 pause_before_finish(run_id).await;
                 service.finish(run_id, result);

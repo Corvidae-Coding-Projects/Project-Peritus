@@ -10,8 +10,9 @@ use peritus_workspace::WorkspaceAuthorizationRequest;
 use crate::{
     CommandRuntime, ConversationView, FolderPatchAuthority, FolderPatchAuthorityPlan,
     FolderPatchAuthorityPlanRequest, LocalContextConfig, PreviewCommand, PreviewLaunch,
-    PreviewObservation, PreviewProcessState, ProductRunResume, ProductRunnerError,
-    WorkspaceMutationKind, checked_protected_file,
+    PreviewObservation, PreviewProcessState, ProductRunResume, ProductRunnerError, UncertainEffect,
+    UncertainEffectState, WorkspaceMutationKind, acknowledge_uncertain_effect,
+    checked_protected_file, uncertain_effects,
 };
 
 #[allow(dead_code, clippy::too_many_arguments)]
@@ -125,6 +126,16 @@ fn conversation(view: &dyn ConversationView) {
 fn protected_file(root: &std::path::Path, relative: &str, contract: &str, protected: &[PathBuf]) {
     let _: Result<PathBuf, ProductRunnerError> =
         checked_protected_file(root, relative, contract, protected);
+}
+
+#[allow(dead_code)]
+fn uncertain_effect(effect: &UncertainEffect, path: &std::path::Path) {
+    let _: &str = effect.identity();
+    let _: &str = effect.tool();
+    let _: UncertainEffectState = effect.state();
+    let _: Option<u64> = effect.requirements_revision();
+    let _: Result<Vec<UncertainEffect>, ProductRunnerError> = uncertain_effects(path);
+    let _: Result<(), ProductRunnerError> = acknowledge_uncertain_effect(path, effect.identity());
 }
 
 #[allow(dead_code)]

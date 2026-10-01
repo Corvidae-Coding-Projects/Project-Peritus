@@ -79,6 +79,11 @@ impl AppModel {
             KeyCode::Char('r') if self.product.is_some() => {
                 return Some(self.control_selected_product_run(ProductRunControlAction::Retry));
             }
+            KeyCode::Char('u') => {
+                return Some(
+                    self.control_selected_product_run(ProductRunControlAction::Acknowledge),
+                );
+            }
             KeyCode::Char('w') => self.cycle_product_provider(ProviderRole::Writer),
             KeyCode::Char('e') => self.cycle_product_provider(ProviderRole::Reviewer),
             KeyCode::Char('f') => self.cycle_product_provider(ProviderRole::Fixer),

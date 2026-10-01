@@ -17,6 +17,8 @@ pub enum ProductRunControlAction {
     Export,
     /// Revert and remove the exact deliverable paths.
     Discard,
+    /// Record that the user reviewed an unprovable command outcome without replaying it.
+    Acknowledge,
 }
 
 impl ProductRunControlAction {
@@ -30,6 +32,7 @@ impl ProductRunControlAction {
             Self::Commit => 4,
             Self::Export => 5,
             Self::Discard => 6,
+            Self::Acknowledge => 7,
         }
     }
 
@@ -43,6 +46,7 @@ impl ProductRunControlAction {
             4 => Some(Self::Commit),
             5 => Some(Self::Export),
             6 => Some(Self::Discard),
+            7 => Some(Self::Acknowledge),
             _ => None,
         }
     }

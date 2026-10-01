@@ -1,4 +1,7 @@
-use peritus_app_protocol::{ProductDeliverable, ProductProviderSelection};
+use peritus_app_protocol::{
+    ProductDeliverable, ProductProviderSelection, ProductRunLegalControls, ProductRunOperation,
+    ProductRunOperationKind, ProductRunOperationState,
+};
 use peritus_types::{ProviderProfileId, RunId, WorkspaceId};
 
 use super::*;
@@ -199,6 +202,7 @@ fn dependency_candidate(
         summary.to_owned(),
     )
     .expect("snapshot")
+    .with_operation(source_run.operation().clone())
     .with_deliverable(deliverable);
     (run, settlement)
 }
@@ -218,7 +222,7 @@ fn candidate_inspection_scroll_reaches_the_diff_without_a_blank_tail() {
     let mut model = AppModel::with_product([91; 32], Some(launch));
     model.product.as_mut().expect("product").runs.push(run);
     let mut terminal = Terminal::new(TestBackend::new(60, 10)).expect("terminal");
-    for (offset, expected) in [(0, "Workspace"), (u16::MAX, "diff --git")] {
+    for (offset, expected) in [(0, "Operation"), (u16::MAX, "diff --git")] {
         model.product.as_mut().expect("product").inspection_scroll = offset;
         let frame = terminal.draw(|frame| diff(frame, frame.area(), &model)).expect("draw");
         let text =
@@ -266,7 +270,8 @@ fn terminal_state_snapshot_distinguishes_each_user_outcome() {
         stopped.review().to_owned(),
         stopped.summary().to_owned(),
     )
-    .expect("stopped snapshot");
+    .expect("stopped snapshot")
+    .with_operation(operation_for(ProductRunPhase::Failed));
     assert_eq!(product_state(&stopped), "Stopped with no candidate");
 }
 
@@ -290,6 +295,7 @@ fn candidate_snapshot_with_status(phase: ProductRunPhase, status: &str) -> Produ
         "remaining work".to_owned(),
     )
     .expect("snapshot")
+    .with_operation(operation_for(phase))
     .with_deliverable(
         ProductDeliverable::candidate(
             "/managed/tetris".to_owned(),
@@ -300,6 +306,32 @@ fn candidate_snapshot_with_status(phase: ProductRunPhase, status: &str) -> Produ
         )
         .expect("deliverable"),
     )
+}
+
+fn operation_for(phase: ProductRunPhase) -> ProductRunOperation {
+    let state = match phase {
+        ProductRunPhase::Queued
+        | ProductRunPhase::Designing
+        | ProductRunPhase::Writing
+        | ProductRunPhase::Checking
+        | ProductRunPhase::Reviewing
+        | ProductRunPhase::Fixing
+        | ProductRunPhase::Verifying => ProductRunOperationState::Running,
+        ProductRunPhase::WaitingForUser => ProductRunOperationState::WaitingForUser,
+        ProductRunPhase::Complete => ProductRunOperationState::Succeeded,
+        ProductRunPhase::Failed => ProductRunOperationState::Failed,
+        ProductRunPhase::Cancelled => ProductRunOperationState::Cancelled,
+        ProductRunPhase::RecoveryRequired => ProductRunOperationState::RecoveryRequired,
+    };
+    ProductRunOperation::new(
+        ProductRunOperationKind::Execution,
+        state,
+        "run/test".to_owned(),
+        "The daemon projected this exact operation.".to_owned(),
+        String::new(),
+        ProductRunLegalControls::none(),
+    )
+    .expect("operation")
 }
 
 #[test]

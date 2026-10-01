@@ -170,26 +170,17 @@ impl AppModel {
             return Vec::new();
         };
         let run_id = snapshot.run_id();
-        let phase = snapshot.phase();
         let qualification =
             snapshot.deliverable().map(peritus_app_protocol::ProductDeliverable::qualification);
         let has_deliverable = snapshot.deliverable().is_some();
-        if matches!(action, ProductRunControlAction::Cancel)
-            && phase.terminal()
-            && phase != peritus_app_protocol::ProductRunPhase::WaitingForUser
-        {
-            self.notice(NoticeLevel::Warning, "the selected coding run is already finished");
-            return Vec::new();
-        }
-        if matches!(action, ProductRunControlAction::Retry) && !phase.retryable() {
-            self.notice(
-                NoticeLevel::Warning,
-                "retry is available only for failed, cancelled, or interrupted runs",
-            );
-            return Vec::new();
-        }
-        if let Some((level, message)) = unavailable_handoff(&snapshot, action) {
-            self.notice(level, message);
+        if !snapshot.operation().legal_controls().allows(action) {
+            let uncertainty = snapshot.operation().uncertainty();
+            let message = if uncertainty.is_empty() {
+                format!("That control is unavailable. {}", snapshot.operation().known())
+            } else {
+                format!("That control is unavailable while the outcome is uncertain. {uncertainty}")
+            };
+            self.notice(NoticeLevel::Warning, message);
             return Vec::new();
         }
         if matches!(action, ProductRunControlAction::Accept | ProductRunControlAction::Commit)
@@ -305,40 +296,4 @@ fn append_evidence(
     if let Some(state) = state {
         missing.push(format!("{name} {state}"));
     }
-}
-
-fn unavailable_handoff(
-    snapshot: &ProductRunSnapshot,
-    action: ProductRunControlAction,
-) -> Option<(NoticeLevel, &'static str)> {
-    let deliverable_action = matches!(
-        action,
-        ProductRunControlAction::Accept
-            | ProductRunControlAction::Commit
-            | ProductRunControlAction::Export
-            | ProductRunControlAction::Discard
-    );
-    if deliverable_action && (!snapshot.phase().terminal() || snapshot.deliverable().is_none()) {
-        return Some((
-            NoticeLevel::Warning,
-            "deliverable actions are available after the run stops with a candidate",
-        ));
-    }
-    let deliverable = snapshot.deliverable()?;
-    if deliverable_action
-        && deliverable.discarded()
-        && (action != ProductRunControlAction::Export || deliverable.export_path().is_empty())
-    {
-        return Some((
-            NoticeLevel::Info,
-            "This candidate was discarded. Continue the conversation to create a new candidate.",
-        ));
-    }
-    if action == ProductRunControlAction::Discard && !deliverable.commit_revision().is_empty() {
-        return Some((
-            NoticeLevel::Info,
-            "This candidate is already committed. Use Git to revert the commit.",
-        ));
-    }
-    None
 }

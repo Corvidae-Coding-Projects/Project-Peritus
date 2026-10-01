@@ -1,7 +1,8 @@
 //! Run status, deliverable, conversation, phase, and scrollable text rendering.
 
 use peritus_app_protocol::{
-    ProductConversationRole, ProductRunConversation, ProductRunPhase, ProductRunSnapshot,
+    ProductConversationRole, ProductRunConversation, ProductRunOperationState, ProductRunPhase,
+    ProductRunSnapshot,
 };
 use peritus_run_settlement::{
     CandidateStage, EvidenceStatus, QualificationEvidence, RunSettlement,
@@ -66,6 +67,25 @@ pub(super) fn run_detail(
         Line::from(timeline(run.phase())),
         Line::from(""),
         field("Current work", safe(run.status())),
+        Line::from(""),
+        Line::styled(
+            "Operation authority",
+            Style::default().fg(Color::White).add_modifier(Modifier::BOLD),
+        ),
+        field("Knowledge", format!("{:?}", run.operation().state())),
+        field(
+            "Uncertain",
+            if run.operation().uncertainty().is_empty() {
+                "nothing material".to_owned()
+            } else {
+                safe(run.operation().uncertainty())
+            },
+        ),
+        field("Known", safe(run.operation().known())),
+        field("Legal controls", legal_controls(run)),
+        field("Identity", safe(run.operation().identity())),
+        field("Kind", format!("{:?}", run.operation().kind())),
+        Line::from(""),
         field("Cycle", run.cycle().to_string()),
         field("Task", safe(run.task())),
         Line::from(""),
@@ -151,7 +171,15 @@ pub(super) fn inspect_text(run: &ProductRunSnapshot) -> String {
         deliverable.successful_commands().join("\n")
     };
     format!(
-        "Workspace\n{}\n\nStatus\n{}\n\nExact candidate paths\n{}\n\nSuccessful commands\n{}\n\nRun instructions\n{}\n\nDiff\n{}",
+        "Operation\n{}\nKnown\n{}\nUncertain\n{}\nLegal controls\n{}\n\nWorkspace\n{}\n\nStatus\n{}\n\nExact candidate paths\n{}\n\nSuccessful commands\n{}\n\nRun instructions\n{}\n\nDiff\n{}",
+        run.operation().identity(),
+        run.operation().known(),
+        if run.operation().uncertainty().is_empty() {
+            "nothing material"
+        } else {
+            run.operation().uncertainty()
+        },
+        legal_controls(run),
         deliverable.workspace_path(),
         run.status(),
         paths,
@@ -162,6 +190,9 @@ pub(super) fn inspect_text(run: &ProductRunSnapshot) -> String {
 }
 
 pub(super) fn product_state(run: &ProductRunSnapshot) -> String {
+    if run.operation().state() == ProductRunOperationState::OutcomeUnknown {
+        return "Outcome unknown — inspect before recovery".to_owned();
+    }
     match (run.phase(), run.deliverable()) {
         (_, Some(deliverable)) if deliverable.discarded() => "Discarded".to_owned(),
         (_, Some(deliverable)) if !deliverable.commit_revision().is_empty() => {
@@ -181,13 +212,34 @@ pub(super) fn product_state(run: &ProductRunSnapshot) -> String {
 }
 
 fn product_state_style(run: &ProductRunSnapshot) -> Style {
-    if run.deliverable().is_some_and(peritus_app_protocol::ProductDeliverable::discarded) {
+    if run.operation().state() == ProductRunOperationState::OutcomeUnknown {
+        Style::default().fg(WARN)
+    } else if run.deliverable().is_some_and(peritus_app_protocol::ProductDeliverable::discarded) {
         Style::default().fg(MUTED)
     } else if run.phase() == ProductRunPhase::Failed && run.deliverable().is_some() {
         Style::default().fg(WARN)
     } else {
         phase_style(run.phase())
     }
+}
+
+fn legal_controls(run: &ProductRunSnapshot) -> String {
+    let controls = run.operation().legal_controls();
+    let mut values = Vec::new();
+    for (allowed, name) in [
+        (controls.cancel(), "cancel"),
+        (controls.retry(), "exact retry"),
+        (controls.accept(), "accept"),
+        (controls.commit(), "commit"),
+        (controls.export(), "export"),
+        (controls.discard(), "discard"),
+        (controls.acknowledge(), "acknowledge uncertainty"),
+    ] {
+        if allowed {
+            values.push(name);
+        }
+    }
+    if values.is_empty() { "none".to_owned() } else { values.join(", ") }
 }
 
 const fn qualification_name(stage: CandidateStage) -> &'static str {

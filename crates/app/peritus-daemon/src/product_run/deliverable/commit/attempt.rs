@@ -20,7 +20,7 @@ struct Attempt {
     patch: [u8; 32],
 }
 
-pub(super) fn matches(
+pub(in crate::product_run) fn matches(
     directory: &Path,
     record: &RunRecord,
     deliverable: &ProductDeliverable,

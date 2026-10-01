@@ -1710,6 +1710,25 @@ export interface ProductDeliverable {
   readonly discarded: boolean;
 }
 
+export interface ProductRunLegalControls {
+  readonly cancel: boolean;
+  readonly retry: boolean;
+  readonly accept: boolean;
+  readonly commit: boolean;
+  readonly export: boolean;
+  readonly discard: boolean;
+  readonly acknowledge: boolean;
+}
+
+export interface ProductRunOperation {
+  readonly kind: ProductRunOperationKind;
+  readonly state: ProductRunOperationState;
+  readonly identity: string;
+  readonly known: string;
+  readonly uncertainty: string;
+  readonly legalControls: ProductRunLegalControls;
+}
+
 export interface ProductRunSnapshot {
   readonly runId: RunId;
   readonly workspaceId: WorkspaceId;
@@ -1722,6 +1741,7 @@ export interface ProductRunSnapshot {
   readonly gates: string;
   readonly review: string;
   readonly summary: string;
+  readonly operation: ProductRunOperation;
   readonly deliverable?: ProductDeliverable;
 }
 

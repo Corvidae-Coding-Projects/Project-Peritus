@@ -148,7 +148,8 @@ pub async fn status(app: &App) -> Result<Value> {
     }
 }
 fn snapshot(value: &ProductRunSnapshot) -> Value {
-    json!({"id":hex(value.run_id().as_bytes()),"workspace":hex(value.workspace_id().as_bytes()),"providers":{"writer":hex(value.providers().writer().as_bytes()),"reviewer":hex(value.providers().reviewer().as_bytes()),"fixer":hex(value.providers().fixer().as_bytes())},"phase":format!("{:?}",value.phase()),"busy":!value.phase().terminal(),"task":value.task(),"status":value.status(),"diff":value.diff(),"gates":value.gates(),"review":value.review(),"summary":value.summary(),"deliverable":value.deliverable().map(|d|json!({"root":d.workspace_path(),"paths":d.changed_paths(),"instructions":d.run_instructions(),"qualification":format!("{:?}",d.qualification()),"accepted":d.accepted(),"commitRevision":d.commit_revision(),"exportPath":d.export_path(),"discarded":d.discarded()}))})
+    let controls = value.operation().legal_controls();
+    json!({"id":hex(value.run_id().as_bytes()),"workspace":hex(value.workspace_id().as_bytes()),"providers":{"writer":hex(value.providers().writer().as_bytes()),"reviewer":hex(value.providers().reviewer().as_bytes()),"fixer":hex(value.providers().fixer().as_bytes())},"phase":format!("{:?}",value.phase()),"busy":!value.phase().terminal(),"task":value.task(),"status":value.status(),"diff":value.diff(),"gates":value.gates(),"review":value.review(),"summary":value.summary(),"operation":{"kind":format!("{:?}",value.operation().kind()),"state":format!("{:?}",value.operation().state()),"identity":value.operation().identity(),"known":value.operation().known(),"uncertainty":value.operation().uncertainty(),"legalControls":{"stop":controls.cancel(),"retry":controls.retry(),"accept":controls.accept(),"commit":controls.commit(),"export":controls.export(),"discard":controls.discard(),"acknowledge":controls.acknowledge()}},"deliverable":value.deliverable().map(|d|json!({"root":d.workspace_path(),"paths":d.changed_paths(),"instructions":d.run_instructions(),"qualification":format!("{:?}",d.qualification()),"accepted":d.accepted(),"commitRevision":d.commit_revision(),"exportPath":d.export_path(),"discarded":d.discarded()}))})
 }
 fn model_values(models: &ProductRoleModels) -> Value {
     let choice = |value: &ProductModelChoice| json!({"id":value.id(),"manual":value.manual(),"effort":value.effort().label()});
@@ -251,6 +252,7 @@ pub async fn control(app: &App, session: &str, action: &str, operation: &str) ->
         "retry" => ProductRunControlAction::Retry,
         "export" => ProductRunControlAction::Export,
         "discard" => ProductRunControlAction::Discard,
+        "acknowledge" => ProductRunControlAction::Acknowledge,
         _ => {
             return Err(problem(
                 "Use the candidate console for acceptance and commit, including exact qualification confirmation.",

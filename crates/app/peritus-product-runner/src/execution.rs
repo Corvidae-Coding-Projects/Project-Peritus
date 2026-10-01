@@ -22,7 +22,7 @@ mod types;
 pub use cancellation::check_cancelled;
 pub use checkpoint::CandidateRecorder;
 pub use resume::ProductRunResume;
-pub use turn_result::{AppliedTurn, AppliedWrite};
+pub use turn_result::{AppliedTurn, AppliedWrite, HostTurnEvidence};
 pub use types::{
     ConversationView, ProductDeliveryScope, ProductRunInput, ProductRunOutcome, ProductRunOutput,
     ProductRunPhase, ProductRunQuestion, ProductRunUpdate, ProductRunner, RoleProviders,
@@ -117,12 +117,17 @@ impl ProductRunner {
                         state.fix_progress.reset(input.checkpoint()?);
                         execution.next_phase = ProductRunPhase::Checking;
                     }
-                    AppliedTurn::Waiting { question, conversation_revision } => {
+                    AppliedTurn::Waiting { question, conversation_revision, host } => {
+                        state.merge_host(&host);
                         return Ok(ActiveExit::waiting(
                             question,
                             conversation_revision,
                             ProductRunPhase::Writing,
                         ));
+                    }
+                    AppliedTurn::Rejected { error, host } => {
+                        state.merge_host(&host);
+                        return Err(error);
                     }
                 }
                 continue;

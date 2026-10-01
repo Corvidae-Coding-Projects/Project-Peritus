@@ -2634,6 +2634,35 @@
       },
       "required": ["workspacePath", "changedPaths", "successfulCommands", "runInstructions", "accepted", "commitRevision", "exportPath", "discarded"]
     },
+    "ProductRunLegalControls": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "ProductRunLegalControls",
+      "properties": {
+        "cancel": { "type": "boolean", "x-canonical-wire": "bool/u8", "x-rust-type": "bool" },
+        "retry": { "type": "boolean", "x-canonical-wire": "bool/u8", "x-rust-type": "bool" },
+        "accept": { "type": "boolean", "x-canonical-wire": "bool/u8", "x-rust-type": "bool" },
+        "commit": { "type": "boolean", "x-canonical-wire": "bool/u8", "x-rust-type": "bool" },
+        "export": { "type": "boolean", "x-canonical-wire": "bool/u8", "x-rust-type": "bool" },
+        "discard": { "type": "boolean", "x-canonical-wire": "bool/u8", "x-rust-type": "bool" },
+        "acknowledge": { "type": "boolean", "x-canonical-wire": "bool/u8", "x-rust-type": "bool" }
+      },
+      "required": ["cancel", "retry", "accept", "commit", "export", "discard", "acknowledge"]
+    },
+    "ProductRunOperation": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "ProductRunOperation",
+      "properties": {
+        "kind": { "type": "string", "enum": ["execution", "commit", "discard", "command"], "x-canonical-wire": "u16-be", "x-rust-type": "ProductRunOperationKind" },
+        "state": { "type": "string", "enum": ["running", "waiting-for-user", "succeeded", "failed", "cancelled", "recovery-required", "outcome-unknown"], "x-canonical-wire": "u16-be", "x-rust-type": "ProductRunOperationState" },
+        "identity": { "type": "string", "x-canonical-wire": "len+utf8", "x-rust-type": "String", "x-bounds": ["product.max-detail-bytes"] },
+        "known": { "type": "string", "x-canonical-wire": "len+utf8", "x-rust-type": "String", "x-bounds": ["product.max-detail-bytes"] },
+        "uncertainty": { "type": "string", "x-canonical-wire": "len+utf8", "x-rust-type": "String", "x-bounds": ["product.max-detail-bytes"] },
+        "legalControls": { "$ref": "#/$defs/ProductRunLegalControls", "x-canonical-wire": "ordered-fields", "x-rust-type": "ProductRunLegalControls" }
+      },
+      "required": ["kind", "state", "identity", "known", "uncertainty", "legalControls"]
+    },
     "ProductRunSnapshot": {
       "type": "object",
       "additionalProperties": false,
@@ -2650,9 +2679,10 @@
         "gates": { "type": "string", "x-canonical-wire": "len+utf8", "x-rust-type": "String", "x-bounds": ["product.max-detail-bytes"] },
         "review": { "type": "string", "x-canonical-wire": "len+utf8", "x-rust-type": "String", "x-bounds": ["product.max-detail-bytes"] },
         "summary": { "type": "string", "x-canonical-wire": "len+utf8", "x-rust-type": "String", "x-bounds": ["product.max-detail-bytes"] },
+        "operation": { "$ref": "#/$defs/ProductRunOperation", "x-canonical-wire": "ordered-fields", "x-rust-type": "ProductRunOperation" },
         "deliverable": { "$ref": "#/$defs/ProductDeliverable", "x-canonical-wire": "option+value", "x-rust-type": "Option<ProductDeliverable>" }
       },
-      "required": ["runId", "workspaceId", "providers", "phase", "cycle", "task", "status", "diff", "gates", "review", "summary"]
+      "required": ["runId", "workspaceId", "providers", "phase", "cycle", "task", "status", "diff", "gates", "review", "summary", "operation"]
     },
     "ProductRunObservation": {
       "type": "object",

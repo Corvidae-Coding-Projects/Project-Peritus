@@ -1,18 +1,19 @@
 //! Scriptable inspection and control of daemon-owned product runs.
 
-use std::{ffi::OsStr, fmt::Write as _, path::Path, process::Command, time::Duration};
+mod presentation;
+
+use std::{ffi::OsStr, path::Path, process::Command, time::Duration};
 
 use peritus_app_protocol::{
-    AppRequestPayload, AppResponsePayload, ProductDeliverable, ProductRunContinuation,
-    ProductRunControl, ProductRunControlAction, ProductRunPhase, ProductRunQuery,
-    ProductRunSettlementSnapshot, ProductRunSnapshot,
+    AppRequestPayload, AppResponsePayload, ProductRunContinuation, ProductRunControl,
+    ProductRunControlAction, ProductRunQuery, ProductRunSettlementSnapshot, ProductRunSnapshot,
 };
 use peritus_product_runner::ProductRunner;
-use peritus_run_settlement::{
-    CandidateCheckpoint, CandidateStage, EvidenceStatus, QualificationEvidence, RunSettlement,
-};
+use peritus_run_settlement::{CandidateStage, RunSettlement};
 use peritus_tools_shell::ExecInput;
 use peritus_types::{RunId, SessionId};
+
+use presentation::{missing_evidence, observed_human, observed_json};
 
 use crate::{
     args::ProductRunArgs, client::Client, error::CliError, id::hex, operation::response_error,
@@ -83,6 +84,22 @@ async fn control(
     confirmed_digest: Option<[u8; 32]>,
     output: &Output,
 ) -> Result<(), CliError> {
+    let observed = query_exact(client, run_id).await?;
+    if !observed.snapshot.operation().legal_controls().allows(action) {
+        let operation = observed.snapshot.operation();
+        let reason = if operation.uncertainty().is_empty() {
+            operation.known()
+        } else {
+            operation.uncertainty()
+        };
+        return Err(CliError::remote_failure(
+            "control product run",
+            format!(
+                "the daemon does not admit {action:?} for operation {}: {reason}",
+                operation.identity(),
+            ),
+        ));
+    }
     if matches!(action, ProductRunControlAction::Accept | ProductRunControlAction::Commit) {
         confirm_unqualified(client, run_id, confirmed_digest).await?;
     }
@@ -217,152 +234,6 @@ fn observed_response(payload: &AppResponsePayload) -> Result<ObservedRun, CliErr
 
 fn observed_settlement(value: &ProductRunSettlementSnapshot) -> ObservedRun {
     ObservedRun { snapshot: value.snapshot().clone(), settlement: Some(*value.settlement()) }
-}
-
-fn observed_json(run: &ObservedRun) -> serde_json::Value {
-    let snapshot = &run.snapshot;
-    let deliverable = snapshot.deliverable();
-    serde_json::json!({
-        "run_id": hex(snapshot.run_id().as_bytes()),
-        "workspace_id": hex(snapshot.workspace_id().as_bytes()),
-        "state": state_name(snapshot),
-        "phase": format!("{:?}", snapshot.phase()),
-        "cycle": snapshot.cycle(),
-        "task": snapshot.task(),
-        "status": snapshot.status(),
-        "summary": snapshot.summary(),
-        "diff": snapshot.diff(),
-        "checks": snapshot.gates(),
-        "review": snapshot.review(),
-        "settlement": run.settlement.as_ref().map(|value| serde_json::json!({
-            "disposition": format!("{:?}", value.disposition()),
-            "cause": format!("{:?}", value.cause()),
-            "repository_digest": value.checkpoint().map(|checkpoint| hex(checkpoint.identity().repository_digest().as_bytes())),
-            "evidence": value.checkpoint().map(evidence_json),
-        })),
-        "deliverable": deliverable.map(deliverable_json),
-    })
-}
-
-fn deliverable_json(value: &ProductDeliverable) -> serde_json::Value {
-    serde_json::json!({
-        "workspace": value.workspace_path(),
-        "changed_paths": value.changed_paths(),
-        "successful_commands": value.successful_commands(),
-        "run_instructions": value.run_instructions(),
-        "qualification": qualification_name(value.qualification()),
-        "accepted": value.accepted(),
-        "commit_revision": value.commit_revision(),
-        "export_path": value.export_path(),
-        "discarded": value.discarded(),
-    })
-}
-
-fn evidence_json(value: &CandidateCheckpoint) -> serde_json::Value {
-    serde_json::json!({
-        "checks": evidence_name(value.gates()),
-        "requirements": evidence_name(value.obligations()),
-        "review": evidence_name(value.review()),
-    })
-}
-
-fn observed_human(run: &ObservedRun) -> String {
-    let snapshot = &run.snapshot;
-    let mut text = format!(
-        "{}  {}\n{}\n{}",
-        hex(snapshot.run_id().as_bytes()),
-        state_name(snapshot),
-        snapshot.task(),
-        snapshot.status(),
-    );
-    if !snapshot.summary().is_empty() {
-        text.push_str("\n\n");
-        text.push_str(snapshot.summary());
-    }
-    if let Some(settlement) = &run.settlement {
-        let _ = write!(
-            text,
-            "\n\nStopped because: {:?}\nDisposition: {:?}",
-            settlement.cause(),
-            settlement.disposition(),
-        );
-        if let Some(checkpoint) = settlement.checkpoint() {
-            let _ = write!(
-                text,
-                "\nRepository digest: {}\nChecks: {}; requirements: {}; review: {}",
-                hex(checkpoint.identity().repository_digest().as_bytes()),
-                evidence_name(checkpoint.gates()),
-                evidence_name(checkpoint.obligations()),
-                evidence_name(checkpoint.review()),
-            );
-        }
-    }
-    if let Some(deliverable) = snapshot.deliverable() {
-        let _ = write!(
-            text,
-            "\n\nWorkspace: {}\nQualification: {}\nChanged paths:\n{}\nSuccessful commands:\n{}\nRun: {}",
-            deliverable.workspace_path(),
-            qualification_name(deliverable.qualification()),
-            display_list(deliverable.changed_paths()),
-            display_list(deliverable.successful_commands()),
-            deliverable.run_instructions(),
-        );
-    }
-    text
-}
-
-fn display_list(values: &[String]) -> String {
-    if values.is_empty() { "  (none)".to_owned() } else { format!("  {}", values.join("\n  ")) }
-}
-
-const fn state_name(snapshot: &ProductRunSnapshot) -> &'static str {
-    match (snapshot.phase(), snapshot.deliverable()) {
-        (ProductRunPhase::Complete, _) => "Accepted",
-        (ProductRunPhase::WaitingForUser, _) => "Waiting for you",
-        (ProductRunPhase::Failed, Some(_)) => "Candidate available",
-        (ProductRunPhase::Failed, None) => "Stopped with no candidate",
-        (ProductRunPhase::Cancelled, Some(_)) => "Cancelled; candidate available",
-        (ProductRunPhase::Cancelled, None) => "Cancelled",
-        (ProductRunPhase::RecoveryRequired, _) => "Recovery required",
-        _ => "Running",
-    }
-}
-
-const fn qualification_name(value: CandidateStage) -> &'static str {
-    match value {
-        CandidateStage::Observed => "observed",
-        CandidateStage::Changed => "changed",
-        CandidateStage::SelfChecked => "self-checked",
-        CandidateStage::GatesPassed => "checks passed",
-        CandidateStage::ReviewPending => "review pending",
-        CandidateStage::Qualified => "qualified",
-    }
-}
-
-fn missing_evidence(value: &CandidateCheckpoint) -> String {
-    [("checks", value.gates()), ("requirements", value.obligations()), ("review", value.review())]
-        .into_iter()
-        .filter_map(|(name, evidence)| {
-            let state = evidence_name(evidence);
-            (state != "passed").then(|| format!("{name} {state}"))
-        })
-        .collect::<Vec<_>>()
-        .join(", ")
-}
-
-const fn evidence_name(value: &EvidenceStatus<QualificationEvidence>) -> &'static str {
-    match value {
-        EvidenceStatus::Missing => "missing",
-        EvidenceStatus::Failed(_) => "failed",
-        EvidenceStatus::Stale(_) => "stale",
-        EvidenceStatus::Current(record) => {
-            if record.value().satisfied() {
-                "passed"
-            } else {
-                "failed"
-            }
-        }
-    }
 }
 
 fn run_command(root: &str, instruction: &str) -> Result<std::process::ExitStatus, CliError> {
