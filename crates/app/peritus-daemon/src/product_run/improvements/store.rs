@@ -2,10 +2,10 @@
 
 use super::{Error, digest};
 use peritus_app_protocol::{
-    ImprovementCandidate, ImprovementEvidence, ImprovementInbox, ImprovementText,
-    MAX_IMPROVEMENT_EVIDENCE, MAX_IMPROVEMENTS,
+    ConversationId, ImprovementCandidate, ImprovementEvaluation, ImprovementEvidence,
+    ImprovementInbox, ImprovementText, MAX_IMPROVEMENT_EVIDENCE, MAX_IMPROVEMENTS,
 };
-use peritus_types::{RunId, Sha256Digest, WorkspaceId};
+use peritus_types::{ActorId, RunId, Sha256Digest, WorkspaceId};
 use rusqlite::{Connection, OptionalExtension, params};
 use serde::{Deserialize, Serialize};
 use std::path::Path;
@@ -13,13 +13,17 @@ use std::path::Path;
 pub(in crate::product_run) struct Store(Connection);
 
 #[derive(Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub(super) struct Evaluation {
+    pub(super) actor: [u8; 16],
+    pub(super) conversation: [u8; 16],
     pub(super) run: [u8; 16],
     pub(super) target: [u8; 16],
     pub(super) providers: [[u8; 16]; 3],
 }
 
 #[derive(Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct Evidence {
     run: [u8; 16],
     digest: [u8; 32],
@@ -27,6 +31,7 @@ struct Evidence {
 }
 
 #[derive(Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub(super) struct Candidate {
     pub(super) id: [u8; 32],
     pub(super) workspace: [u8; 16],
@@ -52,6 +57,27 @@ impl Candidate {
         {
             return Err(problem("improvement evidence or proposal digest mismatch"));
         }
+        let evaluation = self
+            .evaluation
+            .as_ref()
+            .map(|e| {
+                let actor =
+                    ActorId::new(e.actor).map_err(|_| problem("invalid evaluation actor"))?;
+                let conversation = ConversationId::new(e.conversation)
+                    .map_err(|_| problem("invalid evaluation conversation"))?;
+                let run = RunId::new(e.run).map_err(|_| problem("invalid evaluation run"))?;
+                let target = WorkspaceId::new(e.target)
+                    .map_err(|_| problem("invalid evaluation workspace"))?;
+                let source = WorkspaceId::new(self.workspace)
+                    .map_err(|_| problem("invalid source workspace"))?;
+                if super::evaluation::derived_conversation(actor, source, self.id, run)?
+                    != conversation
+                {
+                    return Err(problem("evaluation conversation identity mismatch"));
+                }
+                Ok(ImprovementEvaluation::new(conversation, run, target))
+            })
+            .transpose()?;
         ImprovementCandidate::new(
             Sha256Digest::new(self.id),
             text(&self.proposal)?,
@@ -65,22 +91,23 @@ impl Candidate {
                     ))
                 })
                 .collect::<Result<_, Error>>()?,
-            self.evaluation
-                .as_ref()
-                .map(|e| RunId::new(e.run).map_err(|_| problem("invalid evidence run")))
-                .transpose()?,
+            evaluation,
             self.dismissed,
         )
         .map_err(problem)
     }
-    pub(super) fn evidence_prompt(&self) -> String {
+    pub(super) fn evaluation_evidence_inputs(&self) -> Vec<String> {
         self.evidence
             .iter()
             .map(|e| {
-                format!("Run {} (observation {}):\n{}", hex(&e.run), hex(&e.digest), e.summary)
+                format!(
+                    "UNTRUSTED RUN OBSERVATION\nSource run: {}\nObservation digest: {}\n\n{}",
+                    hex(&e.run),
+                    hex(&e.digest),
+                    e.summary
+                )
             })
-            .collect::<Vec<_>>()
-            .join("\n\n")
+            .collect()
     }
 }
 
@@ -90,10 +117,12 @@ impl Store {
         conn.busy_timeout(std::time::Duration::from_secs(5)).map_err(problem)?;
         let version: u32 =
             conn.pragma_query_value(None, "user_version", |row| row.get(0)).map_err(problem)?;
-        if version > 1 {
-            return Err(problem("unsupported improvement inbox schema"));
+        if version != 0 && version != 2 {
+            return Err(problem(
+                "unsupported improvement inbox schema; remove the pre-release inbox to start fresh",
+            ));
         }
-        conn.execute_batch("PRAGMA journal_mode=WAL; PRAGMA synchronous=FULL; CREATE TABLE IF NOT EXISTS improvements (workspace BLOB NOT NULL, id BLOB NOT NULL, record TEXT NOT NULL, PRIMARY KEY(workspace,id)); PRAGMA user_version=1;").map_err(problem)?;
+        conn.execute_batch("PRAGMA journal_mode=WAL; PRAGMA synchronous=FULL; CREATE TABLE IF NOT EXISTS improvements (workspace BLOB NOT NULL, id BLOB NOT NULL, record TEXT NOT NULL, PRIMARY KEY(workspace,id)); PRAGMA user_version=2;").map_err(problem)?;
         Ok(Self(conn))
     }
 
@@ -218,10 +247,13 @@ impl Store {
             ));
         }
         if let Some(prior) = &item.evaluation {
-            if prior.target != evaluation.target || prior.providers != evaluation.providers {
+            if prior.actor != evaluation.actor
+                || prior.target != evaluation.target
+                || prior.providers != evaluation.providers
+            {
                 return Err(Error::invalid_data(
                     "evaluate improvement",
-                    "This suggestion already has an evaluation with different workspace or providers. Open its original run",
+                    "This suggestion already has an evaluation owned by another actor, workspace, or provider selection. Open its original durable conversation",
                 ));
             }
         } else {

@@ -5,10 +5,10 @@ use crate::{
     state::{App, Session, hex},
 };
 use peritus_app_protocol::{
-    AppRequestPayload, AppResponsePayload, ProductModelChoice, ProductModelEffort,
-    ProductModelUpdate, ProductRoleModels, ProductRunConversationQuery,
+    AppRequestPayload, AppResponsePayload, ConversationId, ProductModelChoice, ProductModelEffort,
+    ProductModelUpdate, ProductRoleModels, ProductRunConversationQuery, WorkbenchQuery,
 };
-use peritus_types::{ProviderProfileId, RunId};
+use peritus_types::{ProviderProfileId, RunId, WorkspaceId};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use std::collections::BTreeMap;
@@ -141,6 +141,70 @@ pub async fn open_run(app: &App, id: &str) -> Result<Value> {
             project: project.id.clone(),
             parent: None,
             title: interaction.snapshot().task().chars().take(60).collect(),
+            closed: false,
+            settings: Settings::default(),
+        };
+        state.sessions.push(session.clone());
+        Ok(json!(session))
+    })
+}
+
+pub async fn open_workbench(
+    app: &App,
+    conversation: &str,
+    run: &str,
+    target: &str,
+) -> Result<Value> {
+    let conversation =
+        ConversationId::new(daemon::bytes(conversation)?).map_err(|e| problem(format!("{e:?}")))?;
+    let run_id = RunId::new(daemon::bytes(run)?).map_err(|e| problem(format!("{e:?}")))?;
+    let target = WorkspaceId::new(daemon::bytes(target)?).map_err(|e| problem(format!("{e:?}")))?;
+    let query = WorkbenchQuery::new(conversation, target);
+    let reply = daemon::raw_request(app, AppRequestPayload::QueryWorkbench(query)).await?;
+    let snapshot = match reply {
+        AppResponsePayload::Workbench(snapshot) if snapshot.query() == query => snapshot,
+        AppResponsePayload::Error(error) => {
+            return Err(problem(format!(
+                "The durable evaluation workbench is unavailable: {}",
+                error.actionable_message()
+            )));
+        }
+        _ => return Err(problem("The daemon returned another evaluation workbench")),
+    };
+    let target_hex = hex(target.as_bytes());
+    let project = app
+        .snapshot()?
+        .projects
+        .into_iter()
+        .find(|project| {
+            daemon::facts(app, project).is_ok_and(|facts| facts["workspace"]["id"] == target_hex)
+        })
+        .ok_or_else(|| problem("Open the evaluation target project before its workbench."))?;
+    app.update(|state| {
+        let project = state
+            .projects
+            .iter_mut()
+            .find(|candidate| candidate.id == project.id)
+            .ok_or_else(|| problem("Project missing"))?;
+        project.closed = false;
+        let conversation_hex = hex(conversation.as_bytes());
+        let run_hex = hex(run_id.as_bytes());
+        if let Some(session) =
+            state.sessions.iter_mut().find(|session| session.conversation == conversation_hex)
+        {
+            if session.project != project.id || session.run != run_hex {
+                return Err(problem("Evaluation workbench belongs to another local session"));
+            }
+            session.closed = false;
+            return Ok(json!(session));
+        }
+        let session = Session {
+            id: crate::state::id()?,
+            conversation: conversation_hex,
+            run: run_hex,
+            project: project.id.clone(),
+            parent: None,
+            title: snapshot.title().as_str().to_owned(),
             closed: false,
             settings: Settings::default(),
         };

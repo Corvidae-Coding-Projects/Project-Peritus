@@ -75,7 +75,7 @@ test('improvement inbox stays passive until explicit evaluation and preserves ev
   const boot=await (await request.get('/api/bootstrap')).json();
   const current=boot.workspace.sessions[0],workspace='44'.repeat(16),candidate='55'.repeat(32);
   const mutations:Record<string,unknown>[]=[];
-  const inbox={workspace,candidates:[{id:candidate,proposal:'Investigate repeated verification failures',dismissed:false,evaluation:null as string|null,evidence:[{run:current.run,digest:'66'.repeat(32),summary:'A completed run required three repair cycles.'}]}]};
+  const inbox={workspace,candidates:[{id:candidate,proposal:'Investigate repeated verification failures',dismissed:false,evaluation:null as {conversation:string;run:string;target:string}|null,evidence:[{run:current.run,digest:'66'.repeat(32),summary:'A completed run required three repair cycles.'}]}]};
   await page.route('**/api/query?**',async route=>{
     const kind=new URL(route.request().url()).searchParams.get('kind');
     if(kind==='improvements')return route.fulfill({json:inbox});
@@ -87,10 +87,10 @@ test('improvement inbox stays passive until explicit evaluation and preserves ev
     if(input.command==='improvements'){
       mutations.push(input);
       if(input.action==='dismiss')inbox.candidates[0]!.dismissed=true;
-      if(input.action==='evaluate')inbox.candidates[0]!.evaluation=current.id;
+      if(input.action==='evaluate')inbox.candidates[0]!.evaluation={conversation:current.conversation,run:current.run,target:workspace};
       return route.fulfill({json:inbox});
     }
-    if(input.command==='open-run')return route.fulfill({json:current});
+    if(input.command==='open-run'||input.command==='open-workbench')return route.fulfill({json:current});
     await route.continue();
   });
   await page.goto('/');
@@ -110,7 +110,7 @@ test('improvement inbox stays passive until explicit evaluation and preserves ev
   expect(mutations).toHaveLength(1);
   expect(mutations[0]).toMatchObject({action:'evaluate',candidate,target:current.project});
   await page.getByRole('button',{name:'Improvement inbox',exact:true}).click();
-  await expect(page.getByRole('button',{name:'Open evaluation / review patch',exact:true})).toBeVisible();
+  await expect(page.getByRole('button',{name:'Open evaluation workbench / review patch',exact:true})).toBeVisible();
   await page.getByRole('button',{name:'Dismiss',exact:true}).click();
   await expect(page.getByText('No suggestions in this view.',{exact:false})).toBeVisible();
   await page.getByLabel('Show dismissed suggestions',{exact:true}).check();

@@ -6,7 +6,7 @@ use crate::{
 };
 use peritus_app_client::Client;
 use peritus_app_protocol::{
-    AppRequestPayload, AppResponsePayload, ConversationId, ConversationTitle,
+    AppErrorCode, AppRequestPayload, AppResponsePayload, ConversationId, ConversationTitle,
     ProductInteractionMode, ProductModelChoice, ProductModelEffort, ProductModelQuery,
     ProductProviderSelection, ProductRoleModels, ProductRunControl, ProductRunControlAction,
     ProductRunConversationQuery, ProductRunQuery, ProductRunSnapshot, WorkbenchQuery,
@@ -115,6 +115,7 @@ pub fn facts(app: &App, project: &Project) -> Result<Value> {
 }
 
 mod chat;
+mod conversation;
 pub mod improvements;
 mod readiness;
 pub mod receipts;
@@ -280,12 +281,7 @@ pub fn response(value: AppResponsePayload) -> Result<Value> {
     }
 }
 pub async fn conversation(app: &App, session: &str) -> Result<Value> {
-    let session = app.session(session)?;
-    let run = RunId::new(bytes(&session.run)?).map_err(|e| problem(format!("{e:?}")))?;
-    response(
-        request(app, AppRequestPayload::QueryInteraction(ProductRunConversationQuery::new(run)))
-            .await?,
-    )
+    conversation::observe(app, session).await
 }
 fn prepare(app: &App, input: &Value) -> Result<PreparedChat> {
     let session = app.session(input["session"].as_str().unwrap_or(""))?;

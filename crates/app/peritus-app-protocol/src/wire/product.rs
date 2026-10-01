@@ -355,7 +355,7 @@ fn read_deliverable(
     invalid(offset, deliverable)
 }
 
-fn write_providers(
+pub(super) fn write_providers(
     writer: &mut CanonicalWriter,
     value: ProductProviderSelection,
 ) -> Result<(), CodecError> {
@@ -365,7 +365,7 @@ fn write_providers(
     Ok(())
 }
 
-fn read_providers(
+pub(super) fn read_providers(
     reader: &mut CanonicalReader<'_>,
 ) -> Result<ProductProviderSelection, CodecError> {
     Ok(ProductProviderSelection::new(

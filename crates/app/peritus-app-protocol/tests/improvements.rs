@@ -1,10 +1,10 @@
 //! Candidate inbox wire compatibility and input validation.
 use peritus_app_protocol::{
     AppMessage, AppProtocolLimits, AppRequestEnvelope, AppRequestPayload, AppResponseEnvelope,
-    AppResponsePayload, CorrelationId, ImprovementCandidate, ImprovementEvidence, ImprovementInbox,
-    ImprovementRequest, ImprovementText, ProductProviderSelection, ProductRunRequest,
-    ProtocolContext, ProtocolId, ProtocolVersion, RequestId, WellKnownProtocolFeature,
-    decode_app_message, encode_app_message,
+    AppResponsePayload, CorrelationId, ImprovementCandidate, ImprovementEvaluation,
+    ImprovementEvaluationRequest, ImprovementEvidence, ImprovementInbox, ImprovementRequest,
+    ImprovementText, ProductProviderSelection, ProtocolContext, ProtocolId, ProtocolVersion,
+    RequestId, WellKnownProtocolFeature, decode_app_message, encode_app_message,
 };
 use peritus_types::{ProviderProfileId, RunId, SessionId, Sha256Digest, WorkspaceId};
 
@@ -39,13 +39,11 @@ fn all_inbox_operations_round_trip_and_require_explicit_capability() {
         ImprovementRequest::Evaluate {
             workspace,
             candidate,
-            run: ProductRunRequest::new(
+            evaluation: ImprovementEvaluationRequest::new(
                 run,
                 workspace,
                 ProductProviderSelection::new(provider, provider, provider),
-                "Evaluate".into(),
-            )
-            .expect("evaluation"),
+            ),
         },
     ] {
         let payload = AppRequestPayload::Improvements(request);
@@ -69,7 +67,11 @@ fn all_inbox_operations_round_trip_and_require_explicit_capability() {
         candidate,
         text("Investigate verification"),
         vec![evidence.clone()],
-        Some(run),
+        Some(ImprovementEvaluation::new(
+            peritus_app_protocol::ConversationId::new([9; 16]).expect("conversation"),
+            run,
+            workspace,
+        )),
         false,
     )
     .expect("candidate");

@@ -27,5 +27,6 @@ export interface ModelChoice { id: string; manual: boolean; effort: string }
 export type Mode = 'chat' | 'plan' | 'review' | 'build';
 export interface FileTab { path: string; session: string; project: string }
 
-export interface ImprovementCandidate { id:string;proposal:string;dismissed:boolean;evaluation:string|null;evidence:{run:string;digest:string;summary:string}[] }
+export interface ImprovementEvaluation {conversation:string;run:string;target:string}
+export interface ImprovementCandidate { id:string;proposal:string;dismissed:boolean;evaluation:ImprovementEvaluation|null;evidence:{run:string;digest:string;summary:string}[] }
 export interface ImprovementInbox {workspace:string;candidates:ImprovementCandidate[]}

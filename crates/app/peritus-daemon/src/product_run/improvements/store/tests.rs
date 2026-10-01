@@ -40,7 +40,17 @@ fn evaluation_reservation_is_stable_and_freezes_evidence() {
     let mut store = Store::open(&path).expect("open");
     store.collect(workspace(1), run(2), "Improve validation", "observation").expect("collect");
     let id = store.inbox(workspace(1)).expect("read").candidates()[0].id().into_bytes();
-    let original = Evaluation { run: [3; 16], target: [4; 16], providers: [[5; 16]; 3] };
+    let actor = ActorId::new([9; 16]).expect("actor");
+    let conversation =
+        super::super::evaluation::derived_conversation(actor, workspace(1), id, run(3))
+            .expect("conversation");
+    let original = Evaluation {
+        actor: actor.into_bytes(),
+        conversation: conversation.into_bytes(),
+        run: [3; 16],
+        target: [4; 16],
+        providers: [[5; 16]; 3],
+    };
     store.reserve(workspace(1), id, original.clone()).expect("reserve");
     store.collect(workspace(1), run(6), "Improve validation", "later evidence").expect("frozen");
     drop(store);
@@ -56,7 +66,13 @@ fn evaluation_reservation_is_stable_and_freezes_evidence() {
             .reserve(
                 workspace(9),
                 id,
-                Evaluation { run: [7; 16], target: [4; 16], providers: [[5; 16]; 3] }
+                Evaluation {
+                    actor: [9; 16],
+                    conversation: [10; 16],
+                    run: [7; 16],
+                    target: [4; 16],
+                    providers: [[5; 16]; 3],
+                }
             )
             .is_err()
     );
@@ -76,7 +92,20 @@ fn dismissal_is_durable_and_cannot_be_auto_reactivated() {
             .reserve(
                 workspace(1),
                 id,
-                Evaluation { run: [4; 16], target: [1; 16], providers: [[5; 16]; 3] }
+                Evaluation {
+                    actor: [9; 16],
+                    conversation: super::super::evaluation::derived_conversation(
+                        ActorId::new([9; 16]).expect("actor"),
+                        workspace(1),
+                        id,
+                        run(4),
+                    )
+                    .expect("conversation")
+                    .into_bytes(),
+                    run: [4; 16],
+                    target: [1; 16],
+                    providers: [[5; 16]; 3],
+                }
             )
             .is_err()
     );
@@ -92,6 +121,20 @@ fn corrupt_and_future_records_are_not_treated_as_empty_inboxes() {
     assert!(store.inbox(workspace(1)).is_err());
     store.0.execute_batch("PRAGMA user_version=99").expect("future schema");
     drop(store);
+    assert!(Store::open(&path).is_err());
+}
+
+#[test]
+fn pre_release_schema_is_rejected_without_migration() {
+    let temp = tempfile::tempdir().expect("state");
+    let path = temp.path().join("inbox.sqlite3");
+    let connection = Connection::open(&path).expect("open fixture");
+    connection
+        .execute_batch(
+            "CREATE TABLE improvements (workspace BLOB NOT NULL, id BLOB NOT NULL, record TEXT NOT NULL, PRIMARY KEY(workspace,id)); PRAGMA user_version=1;",
+        )
+        .expect("old schema");
+    drop(connection);
     assert!(Store::open(&path).is_err());
 }
 

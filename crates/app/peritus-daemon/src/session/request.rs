@@ -198,7 +198,7 @@ where
                 }
             }
             AppRequestPayload::Improvements(value) => {
-                match product_runs.improvements(value).await {
+                match product_runs.improvements(actor_id, value).await {
                     Ok(inbox) => AppResponsePayload::Improvements(inbox),
                     Err(error) => product_run_error(error),
                 }

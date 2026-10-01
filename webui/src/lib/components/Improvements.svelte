@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { query, action } from '../api';
-  import { ui, attempt, openRun, notify } from '../workspace.svelte';
+  import { ui, attempt, openEvaluation, openRun, notify } from '../workspace.svelte';
   import type { ImprovementInbox, ImprovementCandidate, Run } from '../types';
   let inbox = $state<ImprovementInbox>({workspace:'',candidates:[]});
   let runs = $state<Run[]>([]), proposal = $state(''), source = $state('');
@@ -20,8 +20,8 @@
   }
   async function evaluate(item:ImprovementCandidate) {
     await mutate({action:'evaluate',candidate:item.id,target});
-    const run=inbox.candidates.find(c=>c.id===item.id)?.evaluation;
-    if(run) await openRun(run);
+    const evaluation=inbox.candidates.find(c=>c.id===item.id)?.evaluation;
+    if(evaluation) await openEvaluation(evaluation);
   }
 </script>
 
@@ -41,7 +41,7 @@
     <p>{item.proposal}</p>
     <details><summary>Inspect evidence</summary>{#each item.evidence as evidence}<div class="evidence"><button class="flat" onclick={()=>void attempt(()=>openRun(evidence.run))}>Open run {evidence.run.slice(0,8)}</button><pre>{evidence.summary}</pre><small>Observation {evidence.digest}</small></div>{/each}</details>
     <div class="dialog-actions">
-      {#if item.evaluation}<button class="key" onclick={()=>void attempt(()=>openRun(item.evaluation!))}>Open evaluation / review patch</button>{/if}
+      {#if item.evaluation}<button class="key" onclick={()=>void attempt(()=>openEvaluation(item.evaluation!))}>Open evaluation workbench / review patch</button>{/if}
       {#if !item.dismissed}<button class="key" disabled={busy||!target} onclick={()=>void attempt(()=>evaluate(item))}>{item.evaluation?'Resume evaluation request':'Generate patch & evaluate'}</button><button class="flat" disabled={busy} onclick={()=>void attempt(()=>mutate({action:'dismiss',candidate:item.id}))}>Dismiss</button>{/if}
     </div>
   </article>

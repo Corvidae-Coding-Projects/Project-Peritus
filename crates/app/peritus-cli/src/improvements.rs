@@ -30,7 +30,11 @@ pub async fn execute(
     };
     let rows = inbox.candidates().iter().map(|item| json!({
         "id":hex(item.id().as_bytes()),"proposal":item.proposal().as_str(),"dismissed":item.dismissed(),
-        "evaluation":item.evaluation().map(|r|hex(r.as_bytes())),
+        "evaluation":item.evaluation().map(|evaluation|json!({
+            "conversation":hex(evaluation.conversation().as_bytes()),
+            "run":hex(evaluation.run().as_bytes()),
+            "target":hex(evaluation.target().as_bytes())
+        })),
         "evidence":item.evidence().iter().map(|e|json!({"run":hex(e.run().as_bytes()),"digest":hex(e.digest().as_bytes()),"summary":e.summary().as_str()})).collect::<Vec<_>>()
     })).collect::<Vec<_>>();
     let human = if rows.is_empty() {
@@ -56,9 +60,10 @@ pub async fn execute(
                         .map(|e| hex(e.run().as_bytes()))
                         .collect::<Vec<_>>()
                         .join(", "),
-                    item.evaluation().map_or_else(String::new, |r| format!(
-                        "\nReview with: peritus runs show --run {}",
-                        hex(r.as_bytes())
+                    item.evaluation().map_or_else(String::new, |evaluation| format!(
+                        "\nConversation: {}\nRun: {}",
+                        hex(evaluation.conversation().as_bytes()),
+                        hex(evaluation.run().as_bytes())
                     ))
                 )
             })

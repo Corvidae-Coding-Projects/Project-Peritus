@@ -6,7 +6,7 @@ use crate::{
     id::{parse_hex_digest, parse_hex_id},
 };
 use peritus_app_protocol::{
-    ImprovementRequest, ImprovementText, ProductProviderSelection, ProductRunRequest,
+    ImprovementEvaluationRequest, ImprovementRequest, ImprovementText, ProductProviderSelection,
 };
 use peritus_types::{ProviderProfileId, RunId, Sha256Digest, WorkspaceId};
 use std::collections::BTreeMap;
@@ -63,13 +63,11 @@ pub(super) fn parse(parser: &mut Parser) -> Result<Command, CliError> {
             ImprovementRequest::Evaluate {
                 workspace,
                 candidate: candidate()?,
-                run: ProductRunRequest::new(
+                evaluation: ImprovementEvaluationRequest::new(
                     run,
                     target,
                     ProductProviderSelection::new(provider, provider, provider),
-                    "Evaluate selected harness suggestion".into(),
-                )
-                .map_err(|e| CliError::usage(e.to_string()))?,
+                ),
             }
         }
         _ => unreachable!("action checked above"),

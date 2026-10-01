@@ -5,7 +5,7 @@ import { parseSlash } from './commands/slash';
 import { gitCommand } from './commands/git';
 import {forgetFile} from './files/drafts.svelte';
 import {recovery,restoreOperations,forgetOperation} from './operations.svelte';
-import type { Attachment,Bootstrap, ConsoleSession, Conversation, Facts, FileTab, GitStatus, Mode, Preferences, Project, Run, Session, Workspace } from './types';
+import type { Attachment,Bootstrap, ConsoleSession, Conversation, Facts, FileTab, GitStatus, ImprovementEvaluation, Mode, Preferences, Project, Run, Session, Workspace } from './types';
 
 export const defaults: Preferences = { theme:'nixie',density:'comfortable',motion:true,sound:false,font_size:14,font_family:'Barlow, sans-serif',mono_family:'ui-monospace, monospace',explorer_width:248,controls_visible:true,explorer_visible:true,word_wrap:true,markdown_preview:true,shortcuts:{commands:'Mod+k',files:'Mod+Shift+e',git:'Mod+Shift+g',new:'Mod+Alt+n',settings:'Mod+,'},tokens:{},aliases:{} };
 export const ui = $state({
@@ -189,6 +189,10 @@ export async function openConsole(args:string[]=[],title='Harness console',daemo
 }
 export async function openRun(id:string) {
   const value=await api.action<Session>('open-run',{run:id});
+  await refresh();await selectProject(value.project);selectSession(value.id);await poll();ui.overlay='';
+}
+export async function openEvaluation(evaluation:ImprovementEvaluation) {
+  const value=await api.action<Session>('open-workbench',{conversation:evaluation.conversation,run:evaluation.run,target:evaluation.target});
   await refresh();await selectProject(value.project);selectSession(value.id);await poll();ui.overlay='';
 }
 export async function openWorkbench(suggestion='') {

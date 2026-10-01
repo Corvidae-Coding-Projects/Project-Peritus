@@ -143,7 +143,7 @@ async fn native_message_uses_durable_conversation_queue_and_execution_receipts()
                     execution_queries += 1;
                     if execution_queries == 1 {
                         AppResponsePayload::Error(peritus_app_protocol::AppProtocolError::new(
-                            peritus_app_protocol::AppErrorCode::InvalidIdentifier,
+                            AppErrorCode::InvalidIdentifier,
                             None,
                         ))
                     } else {

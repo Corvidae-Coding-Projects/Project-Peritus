@@ -153,12 +153,16 @@ precondition and hard-coded `/tmp/opencode` fixture roots; the workflow now buil
 and uses the operating system's temporary directory. This is process-boundary evidence for the
 gateway and ordinary recovery UI, not provider-execution or multi-day evidence.
 
-The performance qualification probe already uses the durable create, queue, and start path. The
-remaining generation split is the internal improvement-work producer, which can still create an
-interaction without workbench ownership. `RunRecord.interaction`, its workbench start operation,
-the public run binding, and conversation-library legacy identity therefore remain optional.
-Persistence, restart, and library projection retain branches for that shape. The next removal slice
-must migrate or delete that producer, then make workbench ownership required and remove the old wire
-tags, loader branches, library fields, and UI fallbacks together. The installed multi-day
-qualification must begin after that state-model cut so it does not accumulate evidence against a
-generation scheduled for deletion.
+The performance qualification probe and the internal improvement evaluator now use the durable
+create, queue, and start path. Improvement evaluation persists a stable actor-owned conversation
+before the first workbench mutation, separates the candidate and each evidence observation into
+bounded queue inputs, and makes the evaluation directive depend on those exact inputs. Its public
+projection exposes the conversation, run, and target workspace even when execution admission has
+not completed, and the WebUI can open that durable workbench directly. The old improvement request's
+ignored task field is gone, and pre-release improvement schema 1 is rejected rather than migrated.
+
+No production caller now creates a new interaction without workbench ownership. The remaining
+state-model cut is mechanical but broad: make interaction and workbench ownership required, remove
+the old `Interact` wire variant and daemon handler, then delete loader, library, and UI branches that
+only describe ownerless runs. The installed multi-day qualification must begin after that cut so it
+does not accumulate evidence against a generation scheduled for deletion.
