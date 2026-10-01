@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1926,
-        "tip_oid": "5989351fdca25a57587cef95418c7159bf48f1e8",
-        "prefix_sha256": "878e6b42b6dc76c6c562d8c391ca7c977828893bb7fd1f20d1c3414e0b4c08b6"
+        "sequence": 1927,
+        "tip_oid": "91acdf6602af6271d3ed13c10ab0a6ec851cb377",
+        "prefix_sha256": "9edfc390899fa801762c115d57a7a846f4a709e9bfd2f40d26f90c9e0fbffe10"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 2040,
+  "next_comment_id": 2041,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -16589,7 +16589,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-28T00:58:41.412806074Z",
-      "updated_at": "2026-10-01T15:05:03.085724314Z",
+      "updated_at": "2026-10-01T17:10:24.121873821Z",
       "labels": [
         "bug"
       ],
@@ -17988,6 +17988,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAc0OU1Kv7b1kSyuEmQn61M25+xgna4YgIR8XbUUpS8pa+d+Lsr4QiankZ1pCwCnkHwpq78n7n0IsIL05qzy/XCg=="
+        },
+        "dffb2c46-5105-4b2b-95e5-a98200a68960": {
+          "display_id": 2040,
+          "author": "6ME5",
+          "content": "Implemented the six ordered resilience repairs. Public-route qualification on run fbd55b0c185fa117076f421aac232c81 showed the rebuilt TUI slash picker exposing retry, live provider age/deadline/latest-event/counters with durable 1h33m elapsed time after daemon restarts, and the rebuilt daemon moving that exact run from retry to RecoveryRequired at the configured 5s provider-turn deadline. Atomic steering admission and immutable-read bounds are covered by behavioral integration tests. Combined affected-crate tests, fmt check, strict all-target/all-feature Clippy, and diff check pass. Evidence is retained under /tmp/peritus-human-route-29d877dee/rebuilt-run-observations.ndjson and rebuilt-final-run.json. Changes remain uncommitted.",
+          "created_at": "2026-10-01T17:10:24.108040912Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAzraeBH8ycplJ+WLDtJ+OztD6RSYNGsWgX1L+HaLaZT+sSIxtMURVnCjF76DG8Fdm94Qi8ILz29yFSCt09RdUCA=="
         },
         "e24a8696-a56f-4d90-a861-759c020533d3": {
           "display_id": 1927,
