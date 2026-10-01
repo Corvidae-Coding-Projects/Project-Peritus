@@ -42,6 +42,7 @@ struct StoreInner {
     manifests: PathBuf,
     claims: PathBuf,
     spools: PathBuf,
+    crash_watchdog: Option<PathBuf>,
     state: Mutex<StoreState>,
 }
 
@@ -65,11 +66,42 @@ impl ProcessStore {
         root: impl AsRef<Path>,
         agent_workspace_root: impl AsRef<Path>,
     ) -> Result<Self, ProcessError> {
-        std::fs::create_dir_all(root.as_ref())
+        Self::open_configured(root.as_ref(), agent_workspace_root.as_ref(), None)
+    }
+
+    /// Opens a registry whose launched process groups are guarded by an installed crash watchdog.
+    ///
+    /// The watchdog is an independent process that retains only an owner-liveness channel and an
+    /// exact process birth identity. If this process dies without disarming it, the watchdog
+    /// terminates the exact owned process group before exiting.
+    ///
+    /// # Errors
+    ///
+    /// Returns a typed error when the watchdog is missing, aliased, non-executable, or overlaps
+    /// the protected process registry or agent-visible workspace.
+    #[cfg(target_os = "linux")]
+    pub fn open_with_crash_watchdog(
+        root: impl AsRef<Path>,
+        agent_workspace_root: impl AsRef<Path>,
+        crash_watchdog: impl AsRef<Path>,
+    ) -> Result<Self, ProcessError> {
+        Self::open_configured(
+            root.as_ref(),
+            agent_workspace_root.as_ref(),
+            Some(crash_watchdog.as_ref()),
+        )
+    }
+
+    fn open_configured(
+        root: &Path,
+        agent_workspace_root: &Path,
+        crash_watchdog: Option<&Path>,
+    ) -> Result<Self, ProcessError> {
+        std::fs::create_dir_all(root)
             .map_err(|_| store_error("process registry root cannot be created"))?;
-        let root = std::fs::canonicalize(root.as_ref())
+        let root = std::fs::canonicalize(root)
             .map_err(|_| store_error("process registry root cannot be canonicalized"))?;
-        let workspace = std::fs::canonicalize(agent_workspace_root.as_ref())
+        let workspace = std::fs::canonicalize(agent_workspace_root)
             .map_err(|_| store_error("agent workspace root cannot be canonicalized"))?;
         if root.starts_with(&workspace) || workspace.starts_with(&root) {
             return Err(overlap_error());
@@ -104,12 +136,16 @@ impl ProcessStore {
         if execution_record_count(&state) > MAX_EXECUTION_RECORDS {
             return Err(store_error("process registry exceeds its record bound"));
         }
+        let crash_watchdog = crash_watchdog
+            .map(|path| validate_crash_watchdog(path, &root, &workspace))
+            .transpose()?;
         Ok(Self {
             inner: Arc::new(StoreInner {
                 root,
                 manifests,
                 claims,
                 spools,
+                crash_watchdog,
                 state: Mutex::new(state),
             }),
         })
@@ -119,6 +155,10 @@ impl ProcessStore {
     #[must_use]
     pub fn root(&self) -> &Path {
         &self.inner.root
+    }
+
+    pub(crate) fn crash_watchdog(&self) -> Option<&Path> {
+        self.inner.crash_watchdog.as_deref()
     }
 
     /// Returns paths quarantined while opening this registry.
@@ -384,6 +424,35 @@ impl ProcessStore {
     fn lock_state(&self) -> std::sync::MutexGuard<'_, StoreState> {
         self.inner.state.lock().unwrap_or_else(std::sync::PoisonError::into_inner)
     }
+}
+
+#[cfg(target_os = "linux")]
+fn validate_crash_watchdog(
+    path: &Path,
+    registry_root: &Path,
+    workspace_root: &Path,
+) -> Result<PathBuf, ProcessError> {
+    use std::os::unix::fs::PermissionsExt as _;
+
+    if !path.is_absolute() {
+        return Err(store_error("process crash watchdog path is not absolute"));
+    }
+    let metadata = std::fs::symlink_metadata(path)
+        .map_err(|_| store_error("process crash watchdog cannot be inspected"))?;
+    if !metadata.file_type().is_file() || metadata.permissions().mode() & 0o111 == 0 {
+        return Err(store_error("process crash watchdog is not an executable regular file"));
+    }
+    let canonical = std::fs::canonicalize(path)
+        .map_err(|_| store_error("process crash watchdog cannot be canonicalized"))?;
+    if canonical != path
+        || canonical.starts_with(registry_root)
+        || canonical.starts_with(workspace_root)
+    {
+        return Err(store_error(
+            "process crash watchdog is aliased or overlaps protected mutable state",
+        ));
+    }
+    Ok(canonical)
 }
 
 const fn legal_manifest_advance(before: LifecyclePhase, after: LifecyclePhase) -> bool {

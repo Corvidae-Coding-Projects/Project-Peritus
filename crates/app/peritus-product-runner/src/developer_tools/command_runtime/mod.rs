@@ -143,6 +143,17 @@ impl CommandRuntime {
     }
 
     pub(super) fn run(&self, request: StartCommand<'_>) -> Result<Value, DeveloperLoopError> {
+        if tokio::runtime::Handle::try_current().is_ok_and(|handle| {
+            matches!(handle.runtime_flavor(), tokio::runtime::RuntimeFlavor::MultiThread)
+        }) {
+            // Tool execution is a synchronous interface. Tell Tokio before waiting so this run's
+            // worker can be replaced and the daemon control plane remains schedulable.
+            return tokio::task::block_in_place(|| self.run_to_completion(request));
+        }
+        self.run_to_completion(request)
+    }
+
+    fn run_to_completion(&self, request: StartCommand<'_>) -> Result<Value, DeveloperLoopError> {
         let started = self.start_owned(request)?;
         loop {
             let observation = self.poll(&started.handle)?;

@@ -167,6 +167,7 @@ pub struct DaemonConfig {
     product: ProductRunPolicy,
     context: ContextPolicy,
     telemetry: TelemetryExport,
+    process_crash_watchdog: Option<PathBuf>,
 }
 
 impl DaemonConfig {
@@ -238,6 +239,13 @@ impl DaemonConfig {
     #[must_use]
     pub const fn paths(&self) -> &DaemonPaths {
         &self.paths
+    }
+    pub(crate) fn with_process_crash_watchdog(mut self, executable: PathBuf) -> Self {
+        self.process_crash_watchdog = Some(executable);
+        self
+    }
+    pub(crate) fn process_crash_watchdog(&self) -> Option<&Path> {
+        self.process_crash_watchdog.as_deref()
     }
     /// Borrows the required public approval credential-registry declaration.
     #[must_use]

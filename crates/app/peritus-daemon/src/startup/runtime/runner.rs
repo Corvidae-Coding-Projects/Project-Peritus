@@ -77,9 +77,7 @@ impl DaemonRuntime {
         let evidence = EvidenceStore::open(&database, EvidenceStoreOptions::default())
             .map_err(|error| component_error("open evidence store", error))?;
         progress.complete(StartupPhase::Evidence)?;
-        let processes =
-            ProcessStore::open(config.paths().process_root(), config.paths().workspace_root())
-                .map_err(|error| component_error("open process registry", error))?;
+        let processes = open_process_store(&config)?;
         let components = DaemonComponents::build(&config)?;
         let terminals = TerminalRegistry::new(TerminalRegistryLimits::PRODUCTION)
             .map_err(|error| component_error("construct terminal registry", error))?;
@@ -188,6 +186,20 @@ impl DaemonRuntime {
             _instance: instance,
         })
     }
+}
+
+fn open_process_store(config: &DaemonConfig) -> Result<ProcessStore, DaemonError> {
+    #[cfg(target_os = "linux")]
+    if let Some(watchdog) = config.process_crash_watchdog() {
+        return ProcessStore::open_with_crash_watchdog(
+            config.paths().process_root(),
+            config.paths().workspace_root(),
+            watchdog,
+        )
+        .map_err(|error| component_error("open process registry", error));
+    }
+    ProcessStore::open(config.paths().process_root(), config.paths().workspace_root())
+        .map_err(|error| component_error("open process registry", error))
 }
 
 fn install_local_principal(

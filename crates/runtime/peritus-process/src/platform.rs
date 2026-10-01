@@ -7,6 +7,8 @@ mod pty;
 mod resource;
 #[cfg(windows)]
 mod self_memory;
+#[cfg(target_os = "linux")]
+mod watchdog;
 
 use std::{
     io::{Read, Write},
@@ -19,6 +21,8 @@ use peritus_types::Sha256Digest;
 
 use crate::{GracefulAction, NativeProtectedHandle, OutputStream, ProcessError, TerminalSize};
 
+#[cfg(target_os = "linux")]
+pub(crate) use inheritance::configure_parent_death;
 pub(crate) use inheritance::configure_protected_inheritance;
 pub use ownership::ProcessTreeIdentity;
 pub(crate) use ownership::current_start_token;
@@ -94,6 +98,7 @@ pub(crate) fn launch(
     plan: &crate::ExecutionPlan,
     command: &crate::CommandSpec,
     handshake: Option<NativeHandshake<'_>>,
+    crash_watchdog: Option<&std::path::Path>,
 ) -> Result<Box<dyn PlatformProcess>, ProcessError> {
     #[cfg(windows)]
     if matches!(plan.io_mode(), crate::IoMode::Pty(_))
@@ -101,10 +106,17 @@ pub(crate) fn launch(
     {
         return pipe::launch(plan, command, handshake);
     }
-    match plan.io_mode() {
+    let process = match plan.io_mode() {
         crate::IoMode::Pipes => pipe::launch(plan, command, handshake),
         crate::IoMode::Pty(size) => pty::launch(plan, command, handshake, size),
+    }?;
+    #[cfg(target_os = "linux")]
+    if let Some(executable) = crash_watchdog {
+        return watchdog::attach(process, executable);
     }
+    #[cfg(not(target_os = "linux"))]
+    let _ = crash_watchdog;
+    Ok(process)
 }
 
 pub(crate) fn verify_helper_record<F>(
