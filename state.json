@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1811,
-        "tip_oid": "a7c3c7ba06a61cdde33b368de5ab085aff8d884b",
-        "prefix_sha256": "7d7f35b3ad0bebec0e06d088925cab1ebc2f0f6c80df097454e8ba1697e42f9e"
+        "sequence": 1812,
+        "tip_oid": "5e3ddce34504d045919700815061238cfeff9746",
+        "prefix_sha256": "f97a53d3f2260ae4449303168cd93de44170f0cd0e73a609907f2a981a66d969"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 1951,
+  "next_comment_id": 1952,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -16544,7 +16544,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-28T00:58:41.412806074Z",
-      "updated_at": "2026-10-01T00:49:14.436431096Z",
+      "updated_at": "2026-10-01T01:08:07.315348127Z",
       "labels": [
         "bug"
       ],
@@ -17052,6 +17052,15 @@
           "kind": "handoff",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABACil7DdE3IvZfF1NCrk0usSKZHCuZAbwSOTyZo4pYz/66paIfm691MGpSDdV3CzmF2m+/h2Hf2/Dm1L2LT9LpDQ=="
+        },
+        "89fb9d74-eea1-4300-9451-cdeedb970cfe": {
+          "display_id": 1951,
+          "author": "6ME5",
+          "content": "[action] Architecture goal in progress. Centralized checkpoint reconciliation in settlement domain; unchanged-candidate fresh gate failure reproduced then repaired; Verus75 passed. Full workspace3695 passed0 failed19 ignored, affected1082, strict Linux/WindowsGNU lint, app build and xtaskall pass. Live fresh candidate57573 accepted/exported/committed through normal TUI to3070e11 with only greet/test; foreground v executed20 checks and restored UI. All8 managed hashes/modes, all9 source files and adjacent staged README/human draft preserved. Completing second restart/Run proof and selected diff review before signed PR105 push. Content/context metadata, authoritative recovery projections, unknown-command normal UI recovery and host-report retention still required under active goal.",
+          "created_at": "2026-10-01T01:08:07.300823027Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA/M3KFXLkspduozo21eswaLMmk5Cg8BjRdhwatkb9hIV4MW26+9OK5JbPM10QZPQnsglHQ9HcFm8ZFqfODqFjDQ=="
         },
         "8aaaa245-31b8-4715-91a8-410840d69c86": {
           "display_id": 1857,
