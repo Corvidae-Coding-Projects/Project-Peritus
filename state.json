@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1858,
-        "tip_oid": "27cc14ea549af1a9e750d381c2506c2553b57da8",
-        "prefix_sha256": "6663c1c410db443ae6671be439e72311fdb2abd528c1beffd5b0431c259b4ba2"
+        "sequence": 1861,
+        "tip_oid": "e21386f72ad06d879cb2843dd4c62446d6bc81e4",
+        "prefix_sha256": "c59facaabcfee6029a7ea31867541d4e2dfb595b8c19ded2aae2761917a57f70"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 1987,
+  "next_comment_id": 1990,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -16540,7 +16540,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-28T00:58:41.412806074Z",
-      "updated_at": "2026-10-01T09:03:15.136808457Z",
+      "updated_at": "2026-10-01T09:36:53.628165732Z",
       "labels": [
         "bug"
       ],
@@ -16752,6 +16752,15 @@
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAN+Qo6zScUD9i8GUl/kcy5ikqROzBOO6tx9pqjLHpTsCkS9DKMnu8vDDiHpHq6+K37X/0MiB81OiVvLbk01SLAQ=="
         },
+        "3109f275-2f57-427e-9b3f-8168822fb684": {
+          "display_id": 1988,
+          "author": "6ME5",
+          "content": "Session auto-ended (stale after 489 minutes). No handoff notes provided.",
+          "created_at": "2026-10-01T09:30:48.197869346Z",
+          "kind": "handoff",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA4JUhAR3y4jqIv1iH1aYUXllrSVjtKA9cN8sKP1xd3Pho0w2LqkWJHHhTdhnxewGl+exuVBlbnq37BjqnHVWRAw=="
+        },
         "31af2a9f-d46d-44bb-b8c4-8377aaf88e9d": {
           "display_id": 1918,
           "author": "6ME5",
@@ -16805,6 +16814,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAHFnzTxKZnc7ZKmVU6UScAJCsqRyp8005toUUndwubACN/cB5ji5f9P7F87cT4E+NHmlnDYCMpIS7+/GhZ4O1DA=="
+        },
+        "3d614994-1a82-4601-b8e8-f8ef616c5ae0": {
+          "display_id": 1989,
+          "author": "6ME5",
+          "content": "[action] Completed authoritative public operation projection slice: WebUI/TUI/gateway consume stable owner facts and legal controls; unknown command outcomes block duplicate continuation until acknowledgement; Doctor reports unresolved operations from the same projector. Affected Rust suites, strict Clippy, frontend checks/build, rebuilt-browser recovery, codegen, fmt, and diff checks pass. Preparing signed commit; multi-day qualification remains open.",
+          "created_at": "2026-10-01T09:36:53.624210676Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAMrSIAZa6Lr9G5acxst1S1THXBxhKLc+QWYKuDgdrGjNTreprtUbazJkAgjiRLUFiG8D0zgLrAGPrpV/at4t8AQ=="
         },
         "3d801b96-54de-489f-a58c-8ff8fa6a92cb": {
           "display_id": 1870,
@@ -17300,6 +17318,15 @@
           "kind": "handoff",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA1DQiDUznSjsMYY9M2W73/4NuMA/oCA0cAwHAMb7v5rw5CUbMcM2XqES7xZ5iljQzpFyb4dyEZi3GiD2aWomFCw=="
+        },
+        "8ea35b16-e335-4954-9aa7-0b336d3dbdfa": {
+          "display_id": 1987,
+          "author": "6ME5",
+          "content": "Session auto-ended (stale after 471 minutes). No handoff notes provided.",
+          "created_at": "2026-10-01T09:12:49.762341729Z",
+          "kind": "handoff",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAZ+mPFxvB97GvGbzlp10KuX7TyfBZ3b/3+75zFWYJvzXuFrkFrVJ5gxaSVD1IyZ/3fNb9oFcmqLxtKPiGoi5PCA=="
         },
         "9141a047-496b-4bbd-9691-f60085923804": {
           "display_id": 1929,
