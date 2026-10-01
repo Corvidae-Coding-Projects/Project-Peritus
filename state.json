@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1838,
-        "tip_oid": "1d312f42a23483b494cad82647cea91d46e0b699",
-        "prefix_sha256": "933c99e8068cfdc50b15906280b5a57740a9dd67a4455ec69ee83333d9e0e58b"
+        "sequence": 1842,
+        "tip_oid": "301585a2dce65529f3e47e791f1c0c33ce4f79bf",
+        "prefix_sha256": "650322f03ddad1f78f20aa758a03ab34411c8f4afba429f33e7af43d25c7a02c"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 1972,
+  "next_comment_id": 1975,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -192,10 +192,6 @@
     "97": {
       "agent_id": "6ME5",
       "claimed_at": "2026-09-27T23:34:45.783730261Z"
-    },
-    "99": {
-      "agent_id": "6ME5",
-      "claimed_at": "2026-10-01T06:24:43.309253871Z"
     }
   },
   "issues": {
@@ -16544,7 +16540,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-28T00:58:41.412806074Z",
-      "updated_at": "2026-10-01T06:35:52.475754873Z",
+      "updated_at": "2026-10-01T07:11:21.507686767Z",
       "labels": [
         "bug"
       ],
@@ -16882,6 +16878,15 @@
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAuQuyS+dR0+Jc8MY9+P5kFH4dr+zX6vVBcdsz327DfebQj9VsA4zrlky8wWVv7zBzoitYcwWekdEOkdoiW4zVDQ=="
         },
+        "4ec087c3-1073-4baa-8435-796700ef0d1f": {
+          "display_id": 1972,
+          "author": "6ME5",
+          "content": "[action] Validated protocol-2 clean cut: removed legacy StartProductRun wire/daemon/TUI entry point, made /build the sole checked-work launcher, rejected v1 peers and retired tag 17, and caught/closed TUI acceptance of a falsely compatible retired version. Daemon, protocol/client/TUI suites, strict Clippy, fmt, diff check, and xtask all pass.",
+          "created_at": "2026-10-01T06:47:29.467220348Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAWdosC5s1o7Voz57+Lk1Y836dyZ+4J9tY3W8yTePkgQae3RFY1gtGgwgkeglUIX6QosI03EcZZqQr5+k7+CH1Dg=="
+        },
         "50ceefa7-0b39-4494-9911-58bfa0c81d2d": {
           "display_id": 1853,
           "author": "6ME5",
@@ -16998,6 +17003,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAZXMXPP7rh/aiQqlbx91ARbu6ZIeva+7UPNKMgHiPUQg1XwIa1SsnGb3M0Xk+dnkUyerNoHjnzxc58brjZhcBBw=="
+        },
+        "62e7c4b2-1f88-491f-a30c-abb14228643b": {
+          "display_id": 1973,
+          "author": "6ME5",
+          "content": "Session auto-ended (stale after 335 minutes). No handoff notes provided.",
+          "created_at": "2026-10-01T06:56:02.450730905Z",
+          "kind": "handoff",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAe2AJ8u5ZhXR4mO7lFX/bFcWnsDl+RivizzqRL9/24YXcN+zckY/hufzvzr0Otv/ENePD9L9r+9tzm6lqNf7WDA=="
         },
         "6b40f320-f698-4294-8a3f-972c015aa654": {
           "display_id": 1856,
@@ -17133,6 +17147,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAUrvbq+HDeQ4kigfnRRe3XI/EVoMgwehakbp+Vky2jxxkpnw6rO3ZOGgh/snnK72dlZ62RIJxO/PjccsJAF3JAA=="
+        },
+        "85b439d8-fef2-46bd-8df7-34672134038f": {
+          "display_id": 1974,
+          "author": "6ME5",
+          "content": "Committed 00f37fc64: removed the TUI direct Interact fallback and ChatSubmit state, require the durable workbench capability bundle, detach unbound historical runs while retaining their draft, and document the protocol-2 cut. Real PTY qualification created a conversation through /sessions, observed durable revision 1, browsed it through the ordinary UI, restarted both client and daemon on the same state, and rediscovered it. cargo xtask all, peritus-tui all-target tests (305 passed, 1 ignored), strict Clippy, fmt, and diff checks pass.",
+          "created_at": "2026-10-01T07:11:21.503946810Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA3x0tPL1GAB8Whr5G/OUqI4t4yOfuNXeGAF5AocvqO4Dy1VDeAdc2+zlu/nLS6TmkZvml+w41roYJyZ84jZMSBA=="
         },
         "8712b427-04fc-4d57-a628-45e7779cc5b1": {
           "display_id": 1937,
