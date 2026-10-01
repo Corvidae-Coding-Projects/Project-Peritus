@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1888,
-        "tip_oid": "2b899865cda20258ec151aa68fb6cb95a92b8fda",
-        "prefix_sha256": "659beb51897ac8e2ca9ddd7683d73949657934f5db9be8638f3006a8bcc1b14e"
+        "sequence": 1889,
+        "tip_oid": "b499adf637edc1460c3017d5ba7eb08a1993134b",
+        "prefix_sha256": "ff35d470e0b98fd2f3697482497102f8b6212e9c03aa3045c0127d65a2b21b44"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 2010,
+  "next_comment_id": 2011,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -16544,7 +16544,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-28T00:58:41.412806074Z",
-      "updated_at": "2026-10-01T11:00:29.771165200Z",
+      "updated_at": "2026-10-01T11:19:55.437711511Z",
       "labels": [
         "bug"
       ],
@@ -16665,6 +16665,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAwM0XIqITCKeGKkW3Iant2gtDSMvOrBs2kClBjcOgK5NPMQK2/Y85XbTNfQ4eZOeYRKDreiytejT/g8ASj+WPBA=="
+        },
+        "1b4de73b-9376-4fca-b36d-ccdd16818acb": {
+          "display_id": 2010,
+          "author": "6ME5",
+          "content": "Installed commit 9e1a436cf passed both targeted behavioral repairs. During a live 60-second run_command, five public runs-list requests completed in 0.00 seconds each. During an external-effect run, SIGKILL of daemon 1591763 removed effect PID 1595782 and watchdog PID 1595783 within 50 ms; the token remained exactly once, reconnect projected OutcomeUnknown with acknowledge as the only legal control, and user evidence resumed without replay. New blocker reproduced twice: host-observed exact output files result.txt (10-byte RESPONSIVE and 14-byte CRASH-RECOVERY) remained Uncovered candidate files even after exact byte checks, forcing wasteful Fixing loops (325k and 456k tokens). Both runs were cancelled through public controls with candidates preserved. Evidence is under /home/doll/Peritus-Daily-Driver/qualification-format6-9e1a436cf.",
+          "created_at": "2026-10-01T11:19:55.433679063Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAzECLaoPij/u2TyatLGnazUXREnasRPZTQniBvAAva9WEl4hXgIGkGW/+L8IFbUyVIoDOucVxR9vCxjAe9ggfCw=="
         },
         "1b7799f1-2ff1-4b7b-9c00-dceaf9bbe1a8": {
           "display_id": 1950,
