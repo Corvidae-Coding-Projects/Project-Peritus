@@ -251,7 +251,10 @@ fn artifact_commands(
     workspace_root: &Path,
     project: &AffectedProject,
 ) -> Result<Vec<GateCommandSpec>, GateError> {
-    let path = workspace_root.join(required_manifest(project)?);
+    let Some(manifest) = project.manifest() else {
+        return Ok(Vec::new());
+    };
+    let path = workspace_root.join(manifest);
     let text = std::fs::read_to_string(&path)
         .map_err(|_| planning("artifact workspace manifest is unreadable"))?;
     let value = toml::from_str::<toml::Value>(&text)
@@ -314,7 +317,7 @@ mod tests {
             std::fs::write(root.path().join("peritus-workspace.toml"), manifest)
                 .expect("artifact manifest");
             assert!(
-                TargetGatePlan::discover(root.path(), vec![PathBuf::from("out/result.txt")])
+                TargetGatePlan::discover(root.path(), vec![PathBuf::from("out/result.txt")], &[])
                     .is_err()
             );
         }

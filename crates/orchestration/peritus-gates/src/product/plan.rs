@@ -15,7 +15,10 @@ pub const PRODUCT_MAX_SOURCE_LINES: usize = 500;
 /// Supported project families with deterministic production checks.
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub enum ProjectKind {
-    /// Explicit general artifact workspace whose semantic oracle is host-owned.
+    /// General artifact output whose semantic oracle is host-owned.
+    ///
+    /// A checked-in `peritus-workspace.toml` or an exact caller-requested output can establish
+    /// this project kind. The optional manifest distinguishes those two host-observed contracts.
     Artifact,
     /// Cargo package or workspace.
     Rust,
@@ -133,14 +136,24 @@ impl TargetGatePlan {
     pub fn discover(
         workspace_root: &Path,
         mut changed_paths: Vec<PathBuf>,
+        requested_artifacts: &[PathBuf],
     ) -> Result<Self, GateError> {
         changed_paths.sort();
         changed_paths.dedup();
+        let requested_artifacts = requested_artifacts.iter().collect::<BTreeSet<_>>();
         let mut projects = BTreeSet::new();
         let mut uncovered_paths = Vec::new();
         for path in &changed_paths {
             let found = nearest_projects(workspace_root, path);
             if found.is_empty() {
+                if requested_artifacts.contains(path) {
+                    projects.insert(AffectedProject {
+                        kind: ProjectKind::Artifact,
+                        root: path.parent().unwrap_or_else(|| Path::new("")).to_path_buf(),
+                        manifest: None,
+                    });
+                    continue;
+                }
                 uncovered_paths.push(path.clone());
                 continue;
             }
@@ -196,7 +209,9 @@ impl TargetGatePlan {
 }
 
 fn adjacent_to_manifestless_project(path: &Path, project: &AffectedProject) -> bool {
-    project.manifest().is_none() && path.parent().unwrap_or_else(|| Path::new("")) == project.root()
+    project.manifest().is_none()
+        && matches!(project.kind(), ProjectKind::Python | ProjectKind::Node)
+        && path.parent().unwrap_or_else(|| Path::new("")) == project.root()
 }
 
 fn nearest_projects(workspace_root: &Path, changed: &Path) -> Vec<AffectedProject> {

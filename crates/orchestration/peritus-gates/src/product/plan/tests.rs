@@ -13,8 +13,9 @@ fn rust_plan_builds_the_exact_nested_package() {
     std::fs::write(project.join("src/main.rs"), "fn main() { println!(\"game\"); }\n")
         .expect("nested package source");
 
-    let plan = TargetGatePlan::discover(temporary.path(), vec![PathBuf::from("game/src/main.rs")])
-        .expect("exact target plan");
+    let plan =
+        TargetGatePlan::discover(temporary.path(), vec![PathBuf::from("game/src/main.rs")], &[])
+            .expect("exact target plan");
     let manifest = PathBuf::from("game").join("Cargo.toml").to_string_lossy().into_owned();
 
     let build = plan
@@ -60,8 +61,9 @@ fn explicit_artifact_workspace_covers_general_outputs() {
     std::fs::create_dir(temporary.path().join("out")).expect("output directory");
     std::fs::write(temporary.path().join("out/result.txt"), "result\n").expect("output artifact");
 
-    let plan = TargetGatePlan::discover(temporary.path(), vec![PathBuf::from("out/result.txt")])
-        .expect("artifact plan");
+    let plan =
+        TargetGatePlan::discover(temporary.path(), vec![PathBuf::from("out/result.txt")], &[])
+            .expect("artifact plan");
 
     assert!(plan.has_complete_coverage());
     assert!(plan.uncovered_paths().is_empty());
@@ -69,6 +71,35 @@ fn explicit_artifact_workspace_covers_general_outputs() {
     assert_eq!(plan.commands().len(), 2);
     assert_eq!(plan.commands()[0].label(), "Source layout");
     assert_eq!(plan.commands()[1].label(), "Artifact CSV structure");
+}
+
+#[test]
+fn exact_requested_artifact_does_not_cover_an_unrequested_sibling() {
+    let temporary = tempfile::tempdir().expect("temporary workspace");
+    std::fs::write(temporary.path().join("result.txt"), "result").expect("requested artifact");
+    std::fs::write(temporary.path().join("notes.txt"), "notes").expect("unrequested artifact");
+
+    let requested = [PathBuf::from("result.txt")];
+    let exact =
+        TargetGatePlan::discover(temporary.path(), vec![PathBuf::from("result.txt")], &requested)
+            .expect("requested artifact plan");
+
+    assert!(exact.has_complete_coverage());
+    assert!(exact.uncovered_paths().is_empty());
+    assert_eq!(exact.projects()[0].kind(), ProjectKind::Artifact);
+    assert_eq!(exact.projects()[0].manifest(), None);
+    assert_eq!(exact.commands().len(), 1);
+    assert_eq!(exact.commands()[0].label(), "Source layout");
+
+    let with_sibling = TargetGatePlan::discover(
+        temporary.path(),
+        vec![PathBuf::from("result.txt"), PathBuf::from("notes.txt")],
+        &requested,
+    )
+    .expect("mixed artifact plan");
+
+    assert!(!with_sibling.has_complete_coverage());
+    assert_eq!(with_sibling.uncovered_paths(), [PathBuf::from("notes.txt")]);
 }
 
 #[test]
@@ -83,8 +114,9 @@ fn changed_json_artifact_gets_structural_acceptance() {
     std::fs::write(temporary.path().join("out/result.json"), "{\"ok\":true}\n")
         .expect("JSON artifact");
 
-    let plan = TargetGatePlan::discover(temporary.path(), vec![PathBuf::from("out/result.json")])
-        .expect("artifact plan");
+    let plan =
+        TargetGatePlan::discover(temporary.path(), vec![PathBuf::from("out/result.json")], &[])
+            .expect("artifact plan");
 
     assert!(plan.has_complete_coverage());
     assert!(plan.commands().iter().any(|command| command.label() == "JSON structure"));
@@ -116,6 +148,7 @@ fn manifestless_python_tests_use_their_nearest_conventional_project() {
             PathBuf::from("in/ordercalc/tests/TEST_INTENT.md"),
             PathBuf::from("in/ordercalc/tests/test_pricing.py"),
         ],
+        &[],
     )
     .expect("manifestless Python plan");
 
@@ -149,6 +182,7 @@ fn manifestless_node_module_runs_adjacent_test_files() {
     let plan = TargetGatePlan::discover(
         temporary.path(),
         vec![PathBuf::from("in/cart-ui/src/cartState.js")],
+        &[],
     )
     .expect("manifestless Node plan");
 
@@ -186,6 +220,7 @@ fn conventional_sqlite_workspace_runs_migration_verification() {
     let plan = TargetGatePlan::discover(
         temporary.path(),
         vec![PathBuf::from("in/db/migration.sql"), PathBuf::from("in/db/migration_report.md")],
+        &[],
     )
     .expect("SQLite plan");
 
@@ -225,6 +260,7 @@ fn root_level_python_tests_cover_workflow_and_documentation_changes() {
             PathBuf::from("in/project/.github/workflows/ci.yml"),
             PathBuf::from("in/project/ci_design_notes.md"),
         ],
+        &[],
     )
     .expect("manifestless root-test plan");
 
@@ -262,6 +298,7 @@ fn python_requirements_are_verified_without_installing_or_network_access() {
     let plan = TargetGatePlan::discover(
         temporary.path(),
         vec![PathBuf::from("in/depsvc/requirements.txt")],
+        &[],
     )
     .expect("Python dependency plan");
 
@@ -301,9 +338,12 @@ fn standalone_changed_python_source_gets_syntax_acceptance() {
     std::fs::write(project.join("catalog.py"), "def lookup(value):\n    return value\n")
         .expect("standalone source");
 
-    let plan =
-        TargetGatePlan::discover(temporary.path(), vec![PathBuf::from("in/scripts/catalog.py")])
-            .expect("standalone Python plan");
+    let plan = TargetGatePlan::discover(
+        temporary.path(),
+        vec![PathBuf::from("in/scripts/catalog.py")],
+        &[],
+    )
+    .expect("standalone Python plan");
 
     assert!(plan.has_complete_coverage());
     assert_eq!(plan.projects().len(), 1);
@@ -328,6 +368,7 @@ fn standalone_python_change_covers_adjacent_supporting_documentation() {
     let plan = TargetGatePlan::discover(
         temporary.path(),
         vec![PathBuf::from("in/scripts/README.md"), PathBuf::from("in/scripts/catalog.py")],
+        &[],
     )
     .expect("standalone Python plan");
 
@@ -353,6 +394,7 @@ fn standalone_python_change_does_not_cover_unrelated_nested_file() {
     let plan = TargetGatePlan::discover(
         temporary.path(),
         vec![PathBuf::from("catalog.py"), PathBuf::from("unrelated/README.md")],
+        &[],
     )
     .expect("standalone Python plan");
 

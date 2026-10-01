@@ -55,15 +55,18 @@ fn run_scoped(
     delivery_scope: ProductDeliveryScope,
     transcript: &str,
 ) -> Result<GateReport, ProductRunnerError> {
-    let explicit_paths = explicit_paths::run(root, transcript, &changed_paths);
-    let deliverable_inventory = deliverable_inventory::run(root, transcript, &changed_paths);
-    let plan = TargetGatePlan::discover(root, changed_paths).map_err(|error| {
-        ProductRunnerError::new(
-            ProductRunnerErrorKind::Gate,
-            "plan exact-target gates",
-            error.to_string(),
-        )
-    })?;
+    let path_analysis = explicit_paths::analyze(root, transcript);
+    let requested_artifacts = path_analysis.required_outputs();
+    let explicit_paths = explicit_paths::run_analyzed(root, &path_analysis, &changed_paths);
+    let deliverable_inventory = deliverable_inventory::run(&path_analysis, &changed_paths);
+    let plan =
+        TargetGatePlan::discover(root, changed_paths, &requested_artifacts).map_err(|error| {
+            ProductRunnerError::new(
+                ProductRunnerErrorKind::Gate,
+                "plan exact-target gates",
+                error.to_string(),
+            )
+        })?;
     let execution_context = execution_context(root, &plan);
     let mut records = Vec::new();
     for specification in plan.commands() {
@@ -259,6 +262,26 @@ mod tests {
     use std::fs;
 
     use super::*;
+
+    #[test]
+    fn literal_manifestless_output_is_covered_by_its_host_owned_request() {
+        let root = tempfile::tempdir().expect("root");
+        fs::write(root.path().join("result.txt"), "RESPONSIVE").expect("requested output");
+
+        let report = run_scoped(
+            root.path(),
+            vec![PathBuf::from("result.txt")],
+            None,
+            ProductDeliveryScope::WorkspaceChanges,
+            "Create result.txt containing exactly RESPONSIVE.",
+        )
+        .expect("gate report");
+
+        assert!(report.report.passed(), "{}", report.output);
+        assert!(report.report.uncovered_paths().is_empty());
+        assert!(report.output.contains("result.txt: present"));
+        assert!(report.output.contains("Exact-target acceptance: PASS"));
+    }
 
     #[test]
     fn artifact_layout_checks_candidate_sources_without_rejecting_untouched_vendor_code() {
