@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1836,
-        "tip_oid": "691a10ba09f63df8d2e9b2e0850749390e5f094b",
-        "prefix_sha256": "406bda5f74bc9c85ca24a571f91c6ce6db1931f4a362b9b6a0ddcddb0d4ed24d"
+        "sequence": 1837,
+        "tip_oid": "c5fc2281ddb01ca367a1f1fde0ab24958f29350a",
+        "prefix_sha256": "d0fd59dac0bb60179a1b5274af3f64a045d69ad5c8f328273db7b6eb7bf556e6"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 1970,
+  "next_comment_id": 1971,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -16544,7 +16544,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-28T00:58:41.412806074Z",
-      "updated_at": "2026-10-01T06:34:27.939059744Z",
+      "updated_at": "2026-10-01T06:34:51.738269019Z",
       "labels": [
         "bug"
       ],
@@ -16782,6 +16782,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAsHkP5vbtnbKzJLlUBpjW01Rru+HtO8gsFJqM4zjRk+E5Nx7pRlTt0B6OLiWJvNp5lKfjgPvXhOzcStNSWGu4Ag=="
+        },
+        "3c406fe5-cd9e-49cb-b472-1b804b7f60d7": {
+          "display_id": 1970,
+          "author": "6ME5",
+          "content": "[action] Published signed 17a02424d to PR105: format-3 product-run record clean cut, complete v2 records quarantined without migration, DRY/YAGNI design now requires removal of parallel legacy product generation. Daemon265/6ignored, strict Clippy, fmt, diff and xtask all pass. Persistent multi-day qualification and legacy product-path deletion remain.",
+          "created_at": "2026-10-01T06:34:51.734209289Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAHFnzTxKZnc7ZKmVU6UScAJCsqRyp8005toUUndwubACN/cB5ji5f9P7F87cT4E+NHmlnDYCMpIS7+/GhZ4O1DA=="
         },
         "3d801b96-54de-489f-a58c-8ff8fa6a92cb": {
           "display_id": 1870,
