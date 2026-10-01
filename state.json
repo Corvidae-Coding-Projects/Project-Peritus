@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1825,
-        "tip_oid": "5d8059c44cce1b8a24ef66ecac1a80ac093bf206",
-        "prefix_sha256": "40254e41b81fcfba11dda585bc6e9222bc2a9c2f247a126da4d82cd4b4716654"
+        "sequence": 1832,
+        "tip_oid": "518634d0ebe2d486e6d1e4e47d9f5a24f46d3c45",
+        "prefix_sha256": "e4b68f2429f41065ceecbfe62f69f0975b6dc90d27d192ec02294d71dbf1b4e1"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 1961,
+  "next_comment_id": 1966,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -195,7 +195,7 @@
     },
     "99": {
       "agent_id": "6ME5",
-      "claimed_at": "2026-10-01T06:08:40.681138795Z"
+      "claimed_at": "2026-10-01T06:24:43.309253871Z"
     }
   },
   "issues": {
@@ -16544,7 +16544,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-28T00:58:41.412806074Z",
-      "updated_at": "2026-10-01T06:08:25.596383256Z",
+      "updated_at": "2026-10-01T06:24:24.277103757Z",
       "labels": [
         "bug"
       ],
@@ -16638,6 +16638,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAK+P5SRtm5LSmOXtz4xgon+u8lBrzH3kvh2ctaTVrkCFDHy/0wTqwqyjXNpeXiiEPeQabUt+iHrmOs2hv8SHDBA=="
+        },
+        "133ab975-c1a7-4fab-a1ca-57ae1d02b95d": {
+          "display_id": 1961,
+          "author": "6ME5",
+          "content": "[action] Repair manifestless project support-file gate membership found by installed daily-driver run",
+          "created_at": "2026-10-01T06:09:33.183163918Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA092Ntz2uNuRaX7NXMTkfco1r6ZGSFy+bW2xKGUefYwFwecuCKqvqfP+Psr4ElXy4QeHUcDTyS2DiznYoYwLBDA=="
         },
         "14efa088-04df-4ecc-a585-73f8e614b229": {
           "display_id": 1939,
@@ -17017,6 +17026,24 @@
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABABJ9DupOAN1EefV2xpm5bk/nwVQ/34GkE0MJ3t6rhSZu2w9wkkWb7rZ4BH7xg3oI5zA8d61WS0YzuSV9Hk33/Bg=="
         },
+        "77073cca-ecdc-40f4-8d86-49f8e1acb52b": {
+          "display_id": 1963,
+          "author": "6ME5",
+          "content": "[action] Final live qualification passed on installed package: run b530db805ef46402efa1d9ef2bc02a9c reached Qualified, exported mode-0600 patch, and committed managed revision 2c7e2c1; affected suites, Linux and Windows strict clippy, xtask all, Verus verify/build, and package lifecycle smoke passed",
+          "created_at": "2026-10-01T06:21:04.108429862Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAD/yNom3UOneAgq0MNOMQfgaASst85WsN+ZG9u8Op1lvuzpmsZIF4NTAKHkuB4Sh4MZOOsNEyUe60ARaT0n7nBQ=="
+        },
+        "79b1d303-c5fb-4cc8-a0df-57b068b9e8f5": {
+          "display_id": 1964,
+          "author": "6ME5",
+          "content": "Delivered signed commit ae7a1770b to PR 105. Provider runtime now treats the first validated nonempty host-tool batch as the suspension boundary, rejects unbound multiple results without automatic retry, and keeps content-only final selection bound to the private artifact. Manifestless projects now cover only adjacent support files after source discovery. Installed run b530db805ef46402efa1d9ef2bc02a9c retried under the same identity, reached Qualified, exported a private patch, and committed 2c7e2c1. Affected suites, Linux/Windows strict clippy, xtask all, Verus verify/build, and native package lifecycle smoke passed. Residual daily-driver limitation: independently dirty source changes are preserved but require an explicit merge/import handoff.",
+          "created_at": "2026-10-01T06:21:53.354421169Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAO2f528ROwTiqAbUTehcGuyYW/YJglVpx7zLjkUKln8H3oZPWuyAJWLBCcHzl11z559BjpZfZPod3a+5OEPTRDg=="
+        },
         "79eafa21-a352-4706-a6a9-9aaf4ae17efb": {
           "display_id": 1955,
           "author": "6ME5",
@@ -17223,6 +17250,15 @@
           "kind": "handoff",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAAf9uUizg2xM+aGt4IVhrjSUyvtQqWUacPceX/bEc2/ZvAU+OzAGy8oOOepaOduUDMNQ2oTlc+qCScwxTduHYDw=="
+        },
+        "a70fa6cc-6ebb-4353-b3a6-67cba899195a": {
+          "display_id": 1965,
+          "author": "6ME5",
+          "content": "Session auto-ended (stale after 303 minutes). No handoff notes provided.",
+          "created_at": "2026-10-01T06:24:24.273569836Z",
+          "kind": "handoff",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAqXiwiW0WgogC1mfdomEKtpIrfG0GaXjIJXYIpqpJKx6Xx5J7qqkltuxL8hBdgJopqsa8/76AH/1kOmdnnCUjCA=="
         },
         "a717071d-dae2-4edc-87fa-98110a7225fc": {
           "display_id": 1876,
@@ -17466,6 +17502,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAiWtvK8xZX5qWB2OW+okcU6PFFrgJYPW9+fTsGATxDBwcDvLtvIE2yJk+jiPafudDgCPGwg5TcMWV4C8Tzv8FAg=="
+        },
+        "f6fb23c5-8621-4810-9994-4ceaa6ee1872": {
+          "display_id": 1962,
+          "author": "6ME5",
+          "content": "Installed 0.0.4 daily-driver run b530db805ef46402efa1d9ef2bc02a9c reproduced two provider-turn ontology failures and one manifestless-project gate membership failure. Current fixes make the first validated host-tool batch a suspension boundary, classify unbound multiple results as non-retryable, and cover same-directory support files only after a manifestless source project is discovered. Exact-identity retry reached Qualified, exported a private patch, and committed 2c7e2c1 while the dirty source checkout remained byte-identical. Residual handoff finding: the exported patch conflicts with the independently staged source README, so source-to-managed divergence still needs an explicit merge/import contract.",
+          "created_at": "2026-10-01T06:17:44.853867312Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA7XJ9vYbnn9j9+Ia/yAl4quA+9g5pErflopf7ncnqLDyVvlnheaVPdFEUCKSRtWCJaV8HPUP1qQvmk7EDl8QhCQ=="
         },
         "f8a85ebd-f43a-410c-bee5-67d4ddaf7ac5": {
           "display_id": 1878,
