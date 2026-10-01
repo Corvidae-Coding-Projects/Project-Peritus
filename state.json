@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1870,
-        "tip_oid": "639416bdd531f13a9af10edde607f0bd1ddc03ec",
-        "prefix_sha256": "39c881d9bf1f0e60850df74e8597a5011527ab408114018272aa71ad7e9d6eb6"
+        "sequence": 1871,
+        "tip_oid": "1ff517dc44edac03c502dcd0fab03760734db82e",
+        "prefix_sha256": "1ff7d3cb790d11918b5c1117d87b77d216d0080a7693c9e7df7118a577622e67"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 1998,
+  "next_comment_id": 1999,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -16544,7 +16544,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-28T00:58:41.412806074Z",
-      "updated_at": "2026-10-01T09:56:50.419397100Z",
+      "updated_at": "2026-10-01T10:11:12.296549074Z",
       "labels": [
         "bug"
       ],
@@ -17781,6 +17781,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAiWtvK8xZX5qWB2OW+okcU6PFFrgJYPW9+fTsGATxDBwcDvLtvIE2yJk+jiPafudDgCPGwg5TcMWV4C8Tzv8FAg=="
+        },
+        "f6f6aec7-5d4a-403a-9b65-9ecc37d7e2fd": {
+          "display_id": 1998,
+          "author": "6ME5",
+          "content": "[action] Installed commit 86c675234 Day 0: automatic schema-1 inbox quarantine reached Chat; run 3f22fe8fbaf557956f354d4cd7b647e1 incorporated steering, qualified, accepted, exported, and committed as managed 43c745a. Source staged/untracked inputs remained byte-identical. Independent behavior passed. Client restart and forced installed-daemon SIGKILL recovered via Ctrl-R with exact run identity. Multi-day and remaining effect-boundary qualification remain open.",
+          "created_at": "2026-10-01T10:11:12.292613849Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAv/eKwJ2GxsbDuMcc3ZU+zuqnyEAF4qFlfw7qDW4qmx6/yY5f3mN+OMA73CUKGgh+uCN2q5J9t1nY7akBtetGCQ=="
         },
         "f6fb23c5-8621-4810-9994-4ceaa6ee1872": {
           "display_id": 1962,
