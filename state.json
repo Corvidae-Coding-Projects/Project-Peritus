@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1876,
-        "tip_oid": "c21f1be69cd263f3de36e3340a1b3218a323a06e",
-        "prefix_sha256": "623eeabaab2bdd9c47511c6d56f945f419bc8b3b5ed53f8e2d99a240629a4172"
+        "sequence": 1877,
+        "tip_oid": "0d4f1242e6c2c7bdbc2625d2f633c11147c69cec",
+        "prefix_sha256": "6a1d5e9b19aa2b895c3f2e8cb78d9d4c612143d0312568834b159b5ed680213d"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 2002,
+  "next_comment_id": 2003,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -16544,7 +16544,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-28T00:58:41.412806074Z",
-      "updated_at": "2026-10-01T10:25:45.030111095Z",
+      "updated_at": "2026-10-01T10:26:35.504415854Z",
       "labels": [
         "bug"
       ],
@@ -17313,6 +17313,15 @@
           "kind": "action",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAadSfpkgrThwkqBD4hRj+dnGTxagA3MXsvxLphgeMHdzTwxmwFmqPWP5Om37t2t+Eg51ny6let+7Ufekcm+LvCQ=="
+        },
+        "883903a4-0a21-4554-a2d8-096c3fa0db2f": {
+          "display_id": 2002,
+          "author": "6ME5",
+          "content": "DD6 effect-boundary qualification on installed 86c675234: run 1937d79e9673b0fe800d0e0dd68da03d preserved the exact interrupted command identity, projected OutcomeUnknown with known/uncertain/legal controls, forbade automatic replay, accepted an ordinary TUI evidence message, resumed the same run, and completed with effect token dd6-effect-001 exactly once. Managed commit 9f6f5378b233a5965e0b998fb294ef9e4127dc1c. Open blocker DD6-002: direct command PID 1465100 remained alive at least 5s after daemon PID 1460918 was SIGKILLed, then startup reconciliation reaped it. Open finding DD6-003: a concurrent public runs list client stalled while the long command was active; isolate before assigning cause. Evidence: /home/doll/Peritus-Daily-Driver/qualification-format6-86c675234/effect-boundary/evidence/report.md",
+          "created_at": "2026-10-01T10:26:35.500694538Z",
+          "kind": "observation",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA4yXNdhOx1WHgM60nbvKc+aLh1TqXYh2wK/92HrTtpXkq8ZbBmMhL0NHvYkfKq4zKcys3zczYMHpkQQSuNzvjDw=="
         },
         "88521f55-d8ac-4d3b-b83a-f0d0bae0f2dc": {
           "display_id": 1912,
