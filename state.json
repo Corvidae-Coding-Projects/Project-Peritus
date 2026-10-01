@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1908,
-        "tip_oid": "61bc32a36d28cca1a9852757b8593067c244740e",
-        "prefix_sha256": "be4cbadeda426dca0e64b2f65576e1c4ea7bc1af8906365337a597998c5eb096"
+        "sequence": 1909,
+        "tip_oid": "d0a0b9418a59c5f7af14b685a4afa62f718f93ae",
+        "prefix_sha256": "7691f1d18347b5a17807940ec1faf67f093fff196b409819b4119ffaac71c723"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 2028,
+  "next_comment_id": 2029,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -16544,7 +16544,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-28T00:58:41.412806074Z",
-      "updated_at": "2026-10-01T13:19:30.146641243Z",
+      "updated_at": "2026-10-01T13:19:53.819896300Z",
       "labels": [
         "bug"
       ],
@@ -17178,6 +17178,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABArPtFsAzpiVOojlnsSOO7VCJPE3eSxiI34vp3QHF4gc5REPB2r1VsACeNJ/kcTVsyFuJ2hPFP/EtgjKNEy5uSBA=="
+        },
+        "5f6229f4-484b-4e6f-8c7f-dad471202f08": {
+          "display_id": 2028,
+          "author": "6ME5",
+          "content": "Cross-platform runner repair pushed in e7ec60cb3, 203dca462, and a8bdede42. Local evidence: 72 candidate recovery tests pass; full peritus-product-runner all-features suite passed; strict Windows-target Clippy, source-layout-check (4,850 files), formatting, and diff checks pass. Hosted exact-head Windows candidate shard is queued; final status pending.",
+          "created_at": "2026-10-01T13:19:53.816421840Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAQPHBFG4KyRn113FxOcVdEcR9EdAaTQYMaB7lzYG/5919aOvQQxvuUzJttDDwIO/YjFShP4NCP4zOv/Lwnw2RBQ=="
         },
         "61ee5fdf-d93d-4372-bce1-56f42d4e3f1d": {
           "display_id": 1859,
