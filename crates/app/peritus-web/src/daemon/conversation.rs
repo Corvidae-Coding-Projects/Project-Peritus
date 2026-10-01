@@ -2,18 +2,15 @@
 
 use super::{
     App, AppErrorCode, AppRequestPayload, AppResponsePayload, ConversationId,
-    ProductRunConversationQuery, Result, RunId, Value, WorkbenchQuery, WorkspaceId, bytes, facts,
-    hex, json, problem, raw_request, response,
+    ProductInteractionQuery, Result, RunId, Value, WorkbenchQuery, WorkspaceId, bytes, facts, hex,
+    json, problem, raw_request, response,
 };
 
 pub(super) async fn observe(app: &App, session_id: &str) -> Result<Value> {
     let session = app.session(session_id)?;
     let run = RunId::new(bytes(&session.run)?).map_err(|e| problem(format!("{e:?}")))?;
-    match raw_request(
-        app,
-        AppRequestPayload::QueryInteraction(ProductRunConversationQuery::new(run)),
-    )
-    .await?
+    match raw_request(app, AppRequestPayload::QueryInteraction(ProductInteractionQuery::new(run)))
+        .await?
     {
         AppResponsePayload::Interaction(value) => response(AppResponsePayload::Interaction(value)),
         AppResponsePayload::Error(error) if error.code() == AppErrorCode::InvalidIdentifier => {

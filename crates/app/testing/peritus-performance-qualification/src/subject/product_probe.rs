@@ -7,8 +7,8 @@ use std::{
 
 use peritus_app_protocol::{
     AppRequestPayload, AppResponsePayload, ControlOperationId, ConversationId, ConversationTitle,
-    CorrelationId, ProductActivityKind, ProductInteractionMode, ProductProviderSelection,
-    ProductRoleModels, ProductRunConversationQuery, ProductRunPhase, RequestId, WorkbenchCommand,
+    CorrelationId, ProductActivityKind, ProductInteractionMode, ProductInteractionQuery,
+    ProductProviderSelection, ProductRoleModels, ProductRunPhase, RequestId, WorkbenchCommand,
     WorkbenchExecutionSettings, WorkbenchInputId, WorkbenchInputOrder, WorkbenchInputText,
     WorkbenchIntent, WorkbenchNewInput, WorkbenchQuery, WorkbenchQueueIntent, WorkbenchReceipt,
 };
@@ -86,7 +86,7 @@ pub(super) fn qualify(
         request(
             client,
             identities,
-            AppRequestPayload::QueryInteraction(ProductRunConversationQuery::new(run)),
+            AppRequestPayload::QueryInteraction(ProductInteractionQuery::new(run)),
         )?,
         run,
         false,
@@ -97,7 +97,7 @@ pub(super) fn qualify(
         let response = request(
             client,
             identities,
-            AppRequestPayload::QueryInteraction(ProductRunConversationQuery::new(run)),
+            AppRequestPayload::QueryInteraction(ProductInteractionQuery::new(run)),
         )?;
         if require_interaction(response, run, true)? {
             return Ok(());

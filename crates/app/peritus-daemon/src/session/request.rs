@@ -203,12 +203,6 @@ where
                     Err(error) => product_run_error(error),
                 }
             }
-            AppRequestPayload::Interact(value) => {
-                match product_runs.interact(value.clone()).await {
-                    Ok(snapshot) => AppResponsePayload::Interaction(snapshot),
-                    Err(error) => product_run_error(error),
-                }
-            }
             AppRequestPayload::UpdateModels(value) => {
                 match product_runs.update_models(actor_id, value).await {
                     Ok(snapshot) => AppResponsePayload::Interaction(snapshot),
@@ -232,18 +226,6 @@ where
             }
             AppRequestPayload::QueryProductRunObservations(value) => {
                 response::product_run_observations(product_runs, *value)
-            }
-            AppRequestPayload::ContinueProductRun(value) => {
-                match product_runs.continue_run(value).await {
-                    Ok(snapshot) => product_run_projection(product_runs.project(snapshot)),
-                    Err(error) => product_run_error(error),
-                }
-            }
-            AppRequestPayload::QueryProductRunConversation(value) => {
-                match product_runs.query_conversation(*value) {
-                    Ok(conversation) => AppResponsePayload::ProductRunConversation(conversation),
-                    Err(error) => product_run_error(error),
-                }
             }
             AppRequestPayload::AnswerPrompt(answer) => {
                 let prompt_id = answer.correlation().prompt_id();
@@ -374,6 +356,5 @@ mod workbench;
 use response::terminal_error_payload;
 use response::{
     acknowledged, artifact_error_payload, canonical_request_frame, constrain_error_diagnostic,
-    product_run_error, product_run_projection, prompt_error_payload, subscription_error_code,
-    terminal_operation,
+    product_run_error, prompt_error_payload, subscription_error_code, terminal_operation,
 };

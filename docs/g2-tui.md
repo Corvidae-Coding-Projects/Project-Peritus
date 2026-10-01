@@ -31,8 +31,8 @@ only explicitly enrolled task files before effects; it never initializes Git or 
 whole folder. Retry retains the original task baseline, while a follow-up after completion starts
 a new scope. Checks and review use the same qualification machinery. Missing checks or interrupted
 work remain unqualified, with effects retained. The public snapshot shows status, scoped diff,
-gates, and review, but no managed deliverable or accept/discard controls. The legacy candidate
-settlement wire format remains managed-delivery-only; in-place checkpoints stay daemon-owned.
+gates, and review, but no managed deliverable or accept/discard controls. Candidate settlement
+remains managed-delivery-only; in-place checkpoints stay daemon-owned.
 
 ### Conversational progress
 

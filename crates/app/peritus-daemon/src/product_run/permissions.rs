@@ -196,11 +196,7 @@ impl ProductRunService {
             .map_err(|_| Error::Corrupt("product run registry lock poisoned"))?;
         let record = records.get(&run).ok_or(ControlError::NotFound)?;
         let workspace = record.request.workspace_id();
-        let conversation = record
-            .interaction
-            .as_ref()
-            .and_then(|options| options.workbench.as_ref())
-            .map(peritus_product_runner::control::ControlOperation::conversation);
+        let conversation = record.interaction.workbench.conversation();
         let host = self.inner.host_permissions.get(workspace)?.permissions;
         drop(records);
         let owner = self
@@ -208,14 +204,8 @@ impl ProductRunService {
             .controls
             .lock()
             .map_err(|_| Error::Corrupt("control owner lock poisoned"))?;
-        let Some(store) = owner.as_ref() else {
-            return if conversation.is_none() {
-                Ok(host)
-            } else {
-                Err(ControlError::NotFound.into())
-            };
-        };
-        let branch = conversation.map(|id| store.branch(id)).transpose()?.flatten();
+        let store = owner.as_ref().ok_or(ControlError::NotFound)?;
+        let branch = store.branch(conversation)?;
         let host = branch_permissions(host, branch.as_ref());
         Ok(store.permission_policy(workspace)?.effective_permissions(host))
     }

@@ -2,7 +2,7 @@
 
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
-use super::{AppModel, Editor, EditorKind};
+use super::{AppModel, Editor, EditorKind, PendingRequest};
 use crate::{action::Effect, input::edit_text};
 
 mod input;
@@ -169,8 +169,10 @@ impl AppModel {
     }
 
     pub(super) fn recover_editor_drafts(&mut self) {
-        for editor in std::mem::take(&mut self.pending_editor_drafts).into_values() {
-            self.restore_editor(editor, true);
+        for (request, editor) in std::mem::take(&mut self.pending_editor_drafts) {
+            let ambiguous =
+                self.pending.get(&request).is_none_or(PendingRequest::editor_outcome_is_ambiguous);
+            self.restore_editor(editor, ambiguous);
         }
     }
 }

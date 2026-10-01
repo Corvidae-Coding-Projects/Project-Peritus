@@ -77,7 +77,7 @@ mod tests {
     fn review_retry_is_visible_and_separate_from_provider_text_and_wait_status() {
         use peritus_agent::DeveloperReviewRetryReason::{InvalidSubmission, MissingGrounding};
         let mut options =
-            InteractionOptions::new(ProductInteractionMode::Build, ProductRoleModels::default());
+            InteractionOptions::test(ProductInteractionMode::Build, ProductRoleModels::default());
         options.text(b"Original reviewer output").expect("provider text");
         review_retry(&mut options, 2, 3, MissingGrounding).expect("grounding notice");
         waiting(&mut options, 20).expect("status");
@@ -101,7 +101,7 @@ mod tests {
     #[test]
     fn repeated_waits_preserve_the_conversation_and_update_one_notice() {
         let mut options =
-            InteractionOptions::new(ProductInteractionMode::Chat, ProductRoleModels::default());
+            InteractionOptions::test(ProductInteractionMode::Chat, ProductRoleModels::default());
         options.append(ProductActivityKind::User, "Check my code", "").expect("user");
         waiting(&mut options, 20).expect("first wait");
         for seconds in (40..=4000).step_by(20) {

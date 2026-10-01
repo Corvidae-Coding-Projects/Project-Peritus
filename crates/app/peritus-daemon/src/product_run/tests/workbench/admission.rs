@@ -30,7 +30,7 @@ fn governed_queue_reaches_real_runner_and_exact_binding_survives_fenced_restart(
             final_state.summary()
         );
         let snapshot =
-            service.query_interaction(ProductRunConversationQuery::new(run)).expect("interaction");
+            service.query_interaction(ProductInteractionQuery::new(run)).expect("interaction");
         assert_eq!((snapshot.received(), snapshot.incorporated()), (2, 2));
         let request_digest = {
             let requests = writer.requests.lock().expect("requests");
@@ -51,9 +51,14 @@ fn governed_queue_reaches_real_runner_and_exact_binding_survives_fenced_restart(
         service.shutdown(Duration::from_secs(5)).await;
         drop(service);
         assert!(
-            crate::product_run::persistence::load_records(&state.path().join("product-runs"))
-                .expect("legacy generation")
-                .is_empty()
+            fs::read_dir(state.path().join("product-runs"))
+                .expect("runtime artifact directory")
+                .all(|entry| entry
+                    .expect("runtime artifact")
+                    .path()
+                    .extension()
+                    .is_none_or(|extension| extension != "json")),
+            "run projections must exist only under the governed workbench store"
         );
         let controls = crate::product_control::ControlStore::open(
             &state.path().join("workbench-v1"),
@@ -79,11 +84,12 @@ fn governed_queue_reaches_real_runner_and_exact_binding_survives_fenced_restart(
         assert_eq!(record.inputs().invocations()[0].request_digest(), request_digest);
         assert_eq!(record.inputs().revisions()[0].state(), InputState::Superseded);
         assert_eq!(record.inputs().revisions()[1].state(), InputState::Incorporated);
-        assert_eq!(
-            restored.control(ProductRunControl::new(run, ProductRunControlAction::Retry)).await,
-            Err(crate::product_run::ProductRunServiceError::Control(
-                ControlError::UnsupportedSchema
-            ))
+        assert!(
+            restored
+                .control(ProductRunControl::new(run, ProductRunControlAction::Retry))
+                .await
+                .is_err(),
+            "an idle run cannot be restarted without new durable input"
         );
         assert_eq!(
             restored
@@ -108,7 +114,7 @@ fn governed_queue_reaches_real_runner_and_exact_binding_survives_fenced_restart(
         assert_eq!(
             writer.requests.lock().expect("requests").len(),
             1,
-            "opening, receipt replay and legacy retry cannot start work"
+            "opening, receipt replay and an illegal retry cannot start work"
         );
         restored.shutdown(Duration::from_secs(5)).await;
     });

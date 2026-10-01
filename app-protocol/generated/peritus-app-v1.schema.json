@@ -2539,23 +2539,12 @@
       },
       "required": ["kind", "conversation", "operation"]
     },
-    "ConversationLegacySource": {
-      "type": "object",
-      "additionalProperties": false,
-      "x-rust-type": "ConversationMessageSource",
-      "properties": {
-        "kind": { "type": "string", "enum": ["legacy"], "x-canonical-wire": "u16-be", "x-rust-type": "ConversationMessageSource" },
-        "run": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "RunId", "x-bounds": ["nonzero"] },
-        "index": { "type": "integer", "minimum": 0, "maximum": 4294967295, "x-canonical-wire": "u32-be", "x-rust-type": "u32" }
-      },
-      "required": ["kind", "run", "index"]
-    },
     "ConversationSearchSnippet": {
       "type": "object",
       "additionalProperties": false,
       "x-rust-type": "ConversationSearchSnippet",
       "properties": {
-        "source": { "oneOf": [{ "$ref": "#/$defs/ConversationInputSource" }, { "$ref": "#/$defs/ConversationReplySource" }, { "$ref": "#/$defs/ConversationLegacySource" }], "x-canonical-wire": "ordered-fields", "x-rust-type": "ConversationMessageSource" },
+        "source": { "oneOf": [{ "$ref": "#/$defs/ConversationInputSource" }, { "$ref": "#/$defs/ConversationReplySource" }], "x-canonical-wire": "ordered-fields", "x-rust-type": "ConversationMessageSource" },
         "text": { "type": "string", "x-canonical-wire": "len+utf8", "x-rust-type": "String", "x-bounds": ["workbench.max-conversation-snippet-bytes (512)"] }
       },
       "required": ["source", "text"]
@@ -2586,7 +2575,6 @@
         "pinned": { "type": "boolean", "x-canonical-wire": "bool/u8", "x-rust-type": "bool" },
         "archived": { "type": "boolean", "x-canonical-wire": "bool/u8", "x-rust-type": "bool" },
         "activityRevision": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64", "x-bounds": ["nonzero"] },
-        "legacyRun": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "option+value", "x-rust-type": "Option<RunId>", "x-bounds": ["nonzero"] },
         "goalState": { "type": "string", "enum": ["active", "waitingForUser", "pausing", "paused", "blocked", "budgetReached", "achieved", "cancelled"], "x-canonical-wire": "option+value", "x-rust-type": "Option<WorkbenchGoalState>" },
         "goalDraft": { "type": "boolean", "x-canonical-wire": "bool/u8", "x-rust-type": "bool" },
         "handoff": { "type": "string", "x-canonical-wire": "len+utf8", "x-rust-type": "String", "x-bounds": ["workbench.max-conversation-handoff-bytes (1024)"] },
@@ -2774,18 +2762,6 @@
       },
       "required": ["runId", "models"]
     },
-    "ProductRunRequest": {
-      "type": "object",
-      "additionalProperties": false,
-      "x-rust-type": "ProductRunRequest",
-      "properties": {
-        "runId": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "RunId", "x-bounds": ["nonzero"] },
-        "workspaceId": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "WorkspaceId", "x-bounds": ["nonzero"] },
-        "providers": { "$ref": "#/$defs/ProductProviderSelection", "x-canonical-wire": "ordered-fields", "x-rust-type": "ProductProviderSelection" },
-        "task": { "type": "string", "x-canonical-wire": "len+utf8", "x-rust-type": "String", "x-bounds": ["product.max-task-bytes"] }
-      },
-      "required": ["runId", "workspaceId", "providers", "task"]
-    },
     "ProductModelChoice": {
       "type": "object",
       "additionalProperties": false,
@@ -2807,17 +2783,6 @@
         "fixer": { "$ref": "#/$defs/ProductModelChoice", "x-canonical-wire": "ordered-fields", "x-rust-type": "ProductModelChoice" }
       },
       "required": ["writer", "reviewer", "fixer"]
-    },
-    "ProductInteractionRequest": {
-      "type": "object",
-      "additionalProperties": false,
-      "x-rust-type": "ProductInteractionRequest",
-      "properties": {
-        "request": { "$ref": "#/$defs/ProductRunRequest", "x-canonical-wire": "ordered-fields", "x-rust-type": "ProductRunRequest" },
-        "mode": { "type": "string", "enum": ["chat", "plan", "review", "build"], "x-canonical-wire": "u16-be", "x-rust-type": "ProductInteractionMode" },
-        "models": { "$ref": "#/$defs/ProductRoleModels", "x-canonical-wire": "ordered-fields", "x-rust-type": "ProductRoleModels" }
-      },
-      "required": ["request", "mode", "models"]
     },
     "ProductActivity": {
       "type": "object",

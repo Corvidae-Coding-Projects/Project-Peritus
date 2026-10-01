@@ -16,8 +16,9 @@ impl AppModel {
     pub(in crate::model) fn paste_editor(&mut self, text: &str) {
         let Some(editor) = &mut self.editor else { return };
         let maximum = match editor.kind {
-            EditorKind::ProductMessage(_) => peritus_app_protocol::MAX_PRODUCT_MESSAGE_BYTES,
-            EditorKind::ReviewFeedback(_) => peritus_app_protocol::MAX_WORKBENCH_INPUT_BYTES,
+            EditorKind::ProductMessage(_) | EditorKind::ReviewFeedback(_) => {
+                peritus_app_protocol::MAX_WORKBENCH_INPUT_BYTES
+            }
             // Leave room for pasted whitespace and a fixable typo around a 32-digit identifier.
             EditorKind::ProcessId => 256,
             EditorKind::ApprovalSignature(_) => {

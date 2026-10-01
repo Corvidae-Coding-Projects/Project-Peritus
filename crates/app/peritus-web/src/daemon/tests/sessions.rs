@@ -76,7 +76,7 @@ async fn imports_exact_cli_run_reopens_it_and_rejects_another_workspace() {
                     AppResponsePayload::InteractionBinding(
                         ProductInteractionBinding::new(
                             observation,
-                            Some(WorkbenchQuery::new(conversation, workspace)),
+                            WorkbenchQuery::new(conversation, workspace),
                         )
                         .unwrap(),
                     ),

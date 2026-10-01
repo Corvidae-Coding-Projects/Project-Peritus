@@ -70,7 +70,7 @@ async fn selected_explanation_produces_a_reviewer_reply_without_writer_work() {
         );
     }
     let interaction =
-        service.query_interaction(ProductRunConversationQuery::new(run)).expect("interaction");
+        service.query_interaction(ProductInteractionQuery::new(run)).expect("interaction");
     assert_eq!(interaction.mode(), ProductInteractionMode::Review);
     assert!(interaction.activities().iter().any(|activity| {
         activity.kind() == peritus_app_protocol::ProductActivityKind::Assistant

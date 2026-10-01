@@ -102,12 +102,12 @@ impl ProductRunService {
     pub(super) async fn validate_models(
         &self,
         providers: ProductProviderSelection,
-        options: &InteractionOptions,
+        models: &peritus_app_protocol::ProductRoleModels,
     ) -> Result<(), ProductRunServiceError> {
         for (profile, choice) in [
-            (providers.writer(), options.models.writer()),
-            (providers.reviewer(), options.models.reviewer()),
-            (providers.fixer(), options.models.fixer()),
+            (providers.writer(), models.writer()),
+            (providers.reviewer(), models.reviewer()),
+            (providers.fixer(), models.fixer()),
         ] {
             if choice.id().is_empty() || choice.manual() {
                 continue;
@@ -123,11 +123,8 @@ impl ProductRunService {
     pub(super) fn resolve_selected_providers(
         &self,
         selected: ProductProviderSelection,
-        options: Option<&InteractionOptions>,
+        options: &InteractionOptions,
     ) -> Result<RoleProviders, ProductRunServiceError> {
-        let Some(options) = options else {
-            return self.resolve_providers(selected);
-        };
         Ok(RoleProviders {
             writer: self.select_provider(selected.writer(), options.models.writer())?,
             reviewer: self.select_provider(selected.reviewer(), options.models.reviewer())?,

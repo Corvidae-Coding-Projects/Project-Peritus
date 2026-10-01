@@ -3,7 +3,7 @@
 use super::{
     Arc, BTreeMap, DaemonComponents, DaemonError, Inner, Mutex, Path, PreviewCaptureHost,
     ProcessStore, ProductRunService, RwLock, WorkspaceCatalog, filesystem, fs, invalid,
-    load_records, permissions, persistence, reconcile_restored_candidates,
+    permissions, persistence, reconcile_restored_candidates,
 };
 
 impl ProductRunService {
@@ -29,7 +29,7 @@ impl ProductRunService {
                 .ok_or_else(|| invalid("configured product provider could not be resolved"))?;
             providers.insert(key.profile_id(), provider);
         }
-        let mut records = load_records(&directory)?;
+        let mut records = BTreeMap::new();
         let workspace_roots = workspaces.roots();
         let control_root = state_root.join("workbench-v1");
         let controls = if control_root.join("control.sqlite3").exists() {
@@ -49,11 +49,7 @@ impl ProductRunService {
         };
         for (run, record) in persistence::load_workbench_records(&control_root, controls.as_ref())?
         {
-            if records.insert(run, record).is_some() {
-                return Err(invalid(
-                    "run identity exists in both legacy and governed state generations",
-                ));
-            }
+            records.insert(run, record);
         }
         reconcile_restored_candidates(&directory, &mut records, &workspace_roots)?;
         Ok(Self {

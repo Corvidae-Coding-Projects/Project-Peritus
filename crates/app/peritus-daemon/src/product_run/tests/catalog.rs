@@ -98,13 +98,13 @@ async fn cache_scenario() {
     let selected = ProductProviderSelection::new(profile, profile, profile);
     let advertised = ProductModelChoice::new("new-advertised-model".to_owned(), false)
         .expect("advertised choice");
-    let advertised_options = super::super::interaction::InteractionOptions::new(
+    let advertised_options = super::super::interaction::InteractionOptions::test(
         ProductInteractionMode::Chat,
         ProductRoleModels::new(advertised.clone(), advertised.clone(), advertised),
     );
-    assert!(service.validate_models(selected, &advertised_options).await.is_ok());
+    assert!(service.validate_models(selected, &advertised_options.models).await.is_ok());
     let choice = ProductModelChoice::new("not-advertised".to_owned(), false).expect("choice");
-    let options = super::super::interaction::InteractionOptions::new(
+    let options = super::super::interaction::InteractionOptions::test(
         ProductInteractionMode::Chat,
         ProductRoleModels::new(
             choice,
@@ -112,7 +112,7 @@ async fn cache_scenario() {
             ProductModelChoice::default(),
         ),
     );
-    assert!(service.validate_models(selected, &options).await.is_err());
+    assert!(service.validate_models(selected, &options.models).await.is_err());
     service.shutdown(Duration::from_secs(1)).await;
 }
 

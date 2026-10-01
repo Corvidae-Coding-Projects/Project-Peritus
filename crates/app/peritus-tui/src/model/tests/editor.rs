@@ -135,7 +135,7 @@ fn late_rejection_keeps_the_new_draft_and_recovers_the_old_one_separately() {
 }
 
 #[test]
-fn disconnect_and_timeout_retain_text_without_resubmitting_it() {
+fn disconnect_and_binding_timeout_retain_an_unsubmitted_product_message() {
     for disconnect in [true, false] {
         let mut model = model();
         draft(
@@ -149,11 +149,11 @@ fn disconnect_and_timeout_retain_text_without_resubmitting_it() {
             assert!(effects.is_empty());
         } else {
             model.tick_count = 121;
-            assert!(model.expire_pending_requests());
+            assert!(!model.expire_pending_requests());
         }
         let editor = model.editor.as_ref().unwrap();
         assert_eq!(editor.buffer, "retain unknown outcome");
-        assert!(editor.hint.contains("may already have been accepted"));
+        assert!(!editor.hint.contains("may already have been accepted"));
         assert!(model.pending.is_empty());
     }
 }
@@ -177,7 +177,7 @@ fn modal_up_and_down_follow_the_visible_unicode_rows() {
 #[test]
 fn modal_paste_and_typing_enforce_submission_limits_without_truncating_the_draft() {
     let mut model = model();
-    let maximum = peritus_app_protocol::MAX_PRODUCT_MESSAGE_BYTES;
+    let maximum = peritus_app_protocol::MAX_WORKBENCH_INPUT_BYTES;
     let original = "x".repeat(maximum - 1);
     draft(
         &mut model,

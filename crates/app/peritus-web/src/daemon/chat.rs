@@ -252,9 +252,9 @@ async fn interaction(
 ) -> Result<peritus_app_protocol::ProductInteractionSnapshot> {
     match super::raw_request(
         app,
-        AppRequestPayload::QueryInteraction(
-            peritus_app_protocol::ProductRunConversationQuery::new(run),
-        ),
+        AppRequestPayload::QueryInteraction(peritus_app_protocol::ProductInteractionQuery::new(
+            run,
+        )),
     )
     .await?
     {

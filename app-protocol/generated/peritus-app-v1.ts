@@ -1650,14 +1650,8 @@ export interface ConversationReplySource {
   readonly operation: ControlOperationId;
 }
 
-export interface ConversationLegacySource {
-  readonly kind: "legacy";
-  readonly run: RunId;
-  readonly index: number;
-}
-
 export interface ConversationSearchSnippet {
-  readonly source: ConversationInputSource | ConversationReplySource | ConversationLegacySource;
+  readonly source: ConversationInputSource | ConversationReplySource;
   readonly text: string;
 }
 
@@ -1678,7 +1672,6 @@ export interface ConversationLibraryItem {
   readonly pinned: boolean;
   readonly archived: boolean;
   readonly activityRevision: UInt64;
-  readonly legacyRun?: RunId;
   readonly goalState?: "active" | "waitingForUser" | "pausing" | "paused" | "blocked" | "budgetReached" | "achieved" | "cancelled";
   readonly goalDraft: boolean;
   readonly handoff: string;
@@ -1795,13 +1788,6 @@ export interface ProductModelUpdate {
   readonly models: ProductRoleModels;
 }
 
-export interface ProductRunRequest {
-  readonly runId: RunId;
-  readonly workspaceId: WorkspaceId;
-  readonly providers: ProductProviderSelection;
-  readonly task: string;
-}
-
 export interface ProductModelChoice {
   readonly id: string;
   readonly manual: boolean;
@@ -1812,12 +1798,6 @@ export interface ProductRoleModels {
   readonly writer: ProductModelChoice;
   readonly reviewer: ProductModelChoice;
   readonly fixer: ProductModelChoice;
-}
-
-export interface ProductInteractionRequest {
-  readonly request: ProductRunRequest;
-  readonly mode: "chat" | "plan" | "review" | "build";
-  readonly models: ProductRoleModels;
 }
 
 export interface ProductActivity {

@@ -3,10 +3,9 @@
 use super::{FixtureClass, GeneratedFixtureCase};
 use crate::{
     AppRequestPayload, AppResponseEnvelope, AppResponsePayload, ProductActivity,
-    ProductActivityKind, ProductInteractionMode, ProductInteractionRequest,
-    ProductInteractionSnapshot, ProductModelCatalog, ProductModelInfo, ProductModelQuery,
-    ProductProviderSelection, ProductRoleModels, ProductRunPhase, ProductRunRequest,
-    ProductRunSnapshot,
+    ProductActivityKind, ProductInteractionMode, ProductInteractionSnapshot, ProductModelCatalog,
+    ProductModelInfo, ProductModelQuery, ProductProviderSelection, ProductRoleModels,
+    ProductRunPhase, ProductRunSnapshot,
 };
 use peritus_codec::{CodecError, CodecLimits};
 use peritus_types::{ProviderProfileId, RunId, WorkspaceId};
@@ -17,9 +16,6 @@ pub(super) fn cases(limits: CodecLimits) -> Result<Vec<GeneratedFixtureCase>, Co
     let run_id = id(31, RunId::new);
     let workspace_id = id(32, WorkspaceId::new);
     let providers = ProductProviderSelection::new(profile, profile, profile);
-    let request_value =
-        ProductRunRequest::new(run_id, workspace_id, providers, "Explain this project".to_owned())
-            .expect("fixture request");
     let snapshot = ProductRunSnapshot::new(
         run_id,
         workspace_id,
@@ -81,16 +77,6 @@ pub(super) fn cases(limits: CodecLimits) -> Result<Vec<GeneratedFixtureCase>, Co
         model_update(run_id, limits)?,
         model_update_with_effort(run_id, limits)?,
         encoded(
-            "realistic-interaction-request",
-            FixtureClass::Realistic,
-            &request(AppRequestPayload::Interact(ProductInteractionRequest::new(
-                request_value,
-                ProductInteractionMode::Chat,
-                ProductRoleModels::default(),
-            ))),
-            limits,
-        )?,
-        encoded(
             "realistic-interaction-response",
             FixtureClass::Realistic,
             &response(AppResponsePayload::Interaction(interaction)),
@@ -132,7 +118,7 @@ fn binding_cases(
             "minimal-interaction-binding-query",
             FixtureClass::Minimal,
             &request(AppRequestPayload::QueryInteractionBinding(
-                crate::ProductRunConversationQuery::new(run_id),
+                crate::ProductInteractionQuery::new(run_id),
             )),
             limits,
         )?,
@@ -142,10 +128,7 @@ fn binding_cases(
             &response(AppResponsePayload::InteractionBinding(
                 crate::ProductInteractionBinding::new(
                     interaction,
-                    Some(crate::WorkbenchQuery::new(
-                        id(34, crate::ConversationId::new),
-                        workspace_id,
-                    )),
+                    crate::WorkbenchQuery::new(id(34, crate::ConversationId::new), workspace_id),
                 )
                 .expect("binding"),
             )),

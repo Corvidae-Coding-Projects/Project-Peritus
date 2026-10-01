@@ -3,8 +3,8 @@
 use super::*;
 use peritus_app_protocol::{
     AppResponsePayload, ControlOperationId, ConversationId, ConversationLibraryQuery,
-    ConversationSearchText, ConversationTitle, ProductInteractionMode, ProductRoleModels,
-    ProductRunConversationQuery, WorkbenchBriefField, WorkbenchCommand, WorkbenchExecutionSettings,
+    ConversationSearchText, ConversationTitle, ProductInteractionMode, ProductInteractionQuery,
+    ProductRoleModels, WorkbenchBriefField, WorkbenchCommand, WorkbenchExecutionSettings,
     WorkbenchForkBudget, WorkbenchForkMode, WorkbenchForkRequest, WorkbenchGoalBudget,
     WorkbenchGoalCriterionDefinition, WorkbenchGoalCriterionKind, WorkbenchGoalDefinition,
     WorkbenchGoalPauseMode, WorkbenchGoalState, WorkbenchInputId, WorkbenchInputOrder,

@@ -77,12 +77,7 @@ pub(in crate::product_run) fn load_workbench_records(
                 continue;
             }
         };
-        let Some(operation) =
-            persisted.interaction.as_ref().and_then(|options| options.workbench.clone())
-        else {
-            quarantine_record(&path, "workbench run projection has no exact start binding", None);
-            continue;
-        };
+        let operation = persisted.interaction.workbench.clone();
         if recovering
             && !matches!(
                 operation.intent(),
@@ -167,12 +162,10 @@ pub(in crate::product_run) fn load_workbench_records(
                 }
             };
         }
-        if captured.as_ref().is_some_and(|capture| {
-            record
-                .interaction
-                .as_ref()
-                .is_some_and(|options| options.incorporated > capture.inputs().generation())
-        }) {
+        if captured
+            .as_ref()
+            .is_some_and(|capture| record.interaction.incorporated > capture.inputs().generation())
+        {
             quarantine_record(
                 &path,
                 "workbench incorporation exceeds its authoritative input generation",

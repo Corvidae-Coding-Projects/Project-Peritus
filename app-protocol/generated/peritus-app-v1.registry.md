@@ -2327,23 +2327,13 @@ Rust type: `ConversationMessageSource`
 | `conversation` | yes | `fixed[16]` | `ConversationId` | `ConversationId` | `nonzero` |
 | `operation` | yes | `fixed[16]` | `ControlOperationId` | `ControlOperationId` | `nonzero` |
 
-### `ConversationLegacySource`
-
-Rust type: `ConversationMessageSource`
-
-| Field | Required | Canonical wire | Rust | TypeScript | Bounds |
-|---|:---:|---|---|---|---|
-| `kind` | yes | `u16-be` | `ConversationMessageSource` | `"legacy"` | — |
-| `run` | yes | `fixed[16]` | `RunId` | `RunId` | `nonzero` |
-| `index` | yes | `u32-be` | `u32` | `number` | — |
-
 ### `ConversationSearchSnippet`
 
 Rust type: `ConversationSearchSnippet`
 
 | Field | Required | Canonical wire | Rust | TypeScript | Bounds |
 |---|:---:|---|---|---|---|
-| `source` | yes | `ordered-fields` | `ConversationMessageSource` | `ConversationInputSource | ConversationReplySource | ConversationLegacySource` | — |
+| `source` | yes | `ordered-fields` | `ConversationMessageSource` | `ConversationInputSource | ConversationReplySource` | — |
 | `text` | yes | `len+utf8` | `String` | `string` | `workbench.max-conversation-snippet-bytes (512)` |
 
 ### `WorkbenchBranchLineage`
@@ -2372,7 +2362,6 @@ Rust type: `ConversationLibraryItem`
 | `pinned` | yes | `bool/u8` | `bool` | `boolean` | — |
 | `archived` | yes | `bool/u8` | `bool` | `boolean` | — |
 | `activityRevision` | yes | `u64-be` | `u64` | `UInt64` | `nonzero` |
-| `legacyRun` | no | `option+value` | `Option<RunId>` | `RunId` | `nonzero` |
 | `goalState` | no | `option+value` | `Option<WorkbenchGoalState>` | `"active" | "waitingForUser" | "pausing" | "paused" | "blocked" | "budgetReached" | "achieved" | "cancelled"` | — |
 | `goalDraft` | yes | `bool/u8` | `bool` | `boolean` | — |
 | `handoff` | yes | `len+utf8` | `String` | `string` | `workbench.max-conversation-handoff-bytes (1024)` |
@@ -2544,17 +2533,6 @@ Rust type: `ProductModelUpdate`
 | `runId` | yes | `fixed[16]` | `RunId` | `RunId` | `nonzero` |
 | `models` | yes | `ordered-fields` | `ProductRoleModels` | `ProductRoleModels` | — |
 
-### `ProductRunRequest`
-
-Rust type: `ProductRunRequest`
-
-| Field | Required | Canonical wire | Rust | TypeScript | Bounds |
-|---|:---:|---|---|---|---|
-| `runId` | yes | `fixed[16]` | `RunId` | `RunId` | `nonzero` |
-| `workspaceId` | yes | `fixed[16]` | `WorkspaceId` | `WorkspaceId` | `nonzero` |
-| `providers` | yes | `ordered-fields` | `ProductProviderSelection` | `ProductProviderSelection` | — |
-| `task` | yes | `len+utf8` | `String` | `string` | `product.max-task-bytes` |
-
 ### `ProductModelChoice`
 
 Rust type: `ProductModelChoice`
@@ -2574,16 +2552,6 @@ Rust type: `ProductRoleModels`
 | `writer` | yes | `ordered-fields` | `ProductModelChoice` | `ProductModelChoice` | — |
 | `reviewer` | yes | `ordered-fields` | `ProductModelChoice` | `ProductModelChoice` | — |
 | `fixer` | yes | `ordered-fields` | `ProductModelChoice` | `ProductModelChoice` | — |
-
-### `ProductInteractionRequest`
-
-Rust type: `ProductInteractionRequest`
-
-| Field | Required | Canonical wire | Rust | TypeScript | Bounds |
-|---|:---:|---|---|---|---|
-| `request` | yes | `ordered-fields` | `ProductRunRequest` | `ProductRunRequest` | — |
-| `mode` | yes | `u16-be` | `ProductInteractionMode` | `"chat" | "plan" | "review" | "build"` | — |
-| `models` | yes | `ordered-fields` | `ProductRoleModels` | `ProductRoleModels` | — |
 
 ### `ProductActivity`
 

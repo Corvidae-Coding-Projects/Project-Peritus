@@ -7,9 +7,9 @@ use crate::{
 use peritus_app_client::Client;
 use peritus_app_protocol::{
     AppErrorCode, AppRequestPayload, AppResponsePayload, ConversationId, ConversationTitle,
-    ProductInteractionMode, ProductModelChoice, ProductModelEffort, ProductModelQuery,
-    ProductProviderSelection, ProductRoleModels, ProductRunControl, ProductRunControlAction,
-    ProductRunConversationQuery, ProductRunQuery, ProductRunSnapshot, WorkbenchQuery,
+    ProductInteractionMode, ProductInteractionQuery, ProductModelChoice, ProductModelEffort,
+    ProductModelQuery, ProductProviderSelection, ProductRoleModels, ProductRunControl,
+    ProductRunControlAction, ProductRunQuery, ProductRunSnapshot, WorkbenchQuery,
 };
 use peritus_types::{ProviderProfileId, RunId, WorkspaceId};
 use serde_json::{Value, json};

@@ -1,4 +1,4 @@
-//! Additive conversation and discovery codecs; legacy payload bytes remain unchanged.
+//! Interaction and model-discovery codecs.
 
 use super::{
     primitive::{invalid, read_id, write_id},
@@ -6,9 +6,8 @@ use super::{
 };
 use crate::{
     MAX_PRODUCT_ACTIVITIES, MAX_PRODUCT_MODELS, ProductActivity, ProductActivityKind,
-    ProductInteractionMode, ProductInteractionRequest, ProductInteractionSnapshot,
-    ProductModelCatalog, ProductModelChoice, ProductModelEffort, ProductModelInfo,
-    ProductModelQuery, ProductRoleModels,
+    ProductInteractionMode, ProductInteractionSnapshot, ProductModelCatalog, ProductModelChoice,
+    ProductModelEffort, ProductModelInfo, ProductModelQuery, ProductRoleModels,
 };
 use peritus_codec::{CanonicalReader, CanonicalWriter, CodecError, CodecErrorKind};
 use peritus_types::ProviderProfileId;
@@ -29,24 +28,6 @@ pub(super) fn read_model_update(
         read_id(r, peritus_types::RunId::new)?,
         read_models(r, efforts)?,
     ))
-}
-
-pub(super) fn write_request(
-    w: &mut CanonicalWriter,
-    value: &ProductInteractionRequest,
-) -> Result<(), CodecError> {
-    product::write_run_request(w, value.request())?;
-    w.write_u16(value.mode().tag())?;
-    write_models(w, value.models())
-}
-
-pub(super) fn read_request(
-    r: &mut CanonicalReader<'_>,
-    efforts: bool,
-) -> Result<ProductInteractionRequest, CodecError> {
-    let request = product::read_run_request(r)?;
-    let mode = read_mode(r)?;
-    Ok(ProductInteractionRequest::new(request, mode, read_models(r, efforts)?))
 }
 
 fn read_mode(r: &mut CanonicalReader<'_>) -> Result<ProductInteractionMode, CodecError> {
@@ -154,11 +135,7 @@ pub(super) fn write_binding(
 ) -> Result<(), CodecError> {
     writer.write_option_tag(binding.interaction().models().has_effort())?;
     write_snapshot(writer, binding.interaction())?;
-    writer.write_option_tag(binding.conversation().is_some())?;
-    if let Some(query) = binding.conversation() {
-        super::workbench::write_query(writer, query)?;
-    }
-    Ok(())
+    super::workbench::write_query(writer, binding.conversation())
 }
 
 pub(super) fn read_binding(
@@ -167,8 +144,7 @@ pub(super) fn read_binding(
     let offset = reader.offset();
     let efforts = reader.read_option_tag()?;
     let interaction = read_snapshot(reader, efforts)?;
-    let conversation =
-        if reader.read_option_tag()? { Some(super::workbench::read_query(reader)?) } else { None };
+    let conversation = super::workbench::read_query(reader)?;
     invalid(offset, crate::ProductInteractionBinding::new(interaction, conversation))
 }
 

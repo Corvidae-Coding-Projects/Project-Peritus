@@ -46,9 +46,7 @@ impl LiveConversation {
         {
             return Ok(DeveloperRequestAdmission::Stale);
         }
-        let options = record.interaction.as_ref().ok_or_else(|| {
-            super::port_internal("admit the provider request", "the run has no interaction state")
-        })?;
+        let options = &record.interaction;
         if options.persistence_failed.load(std::sync::atomic::Ordering::Acquire) {
             return Err(super::port_internal(
                 "admit the provider request",
@@ -58,39 +56,37 @@ impl LiveConversation {
                     .unwrap_or("the previous persistence operation failed"),
             ));
         }
-        if let Some(start) = &options.workbench {
-            if self.service.refresh_request_files(start, request).map_err(|error| {
-                port_error("refresh files attached to the provider request", error)
-            })? {
-                return Ok(DeveloperRequestAdmission::Stale);
-            }
-            let admission = self
-                .service
-                .with_controls(false, |store| {
-                    let admission = store.prepare_execution(start, revision, request)?;
-                    if admission.developer_admission() == DeveloperRequestAdmission::Stale {
-                        return Ok(DeveloperRequestAdmission::Stale);
-                    }
-                    let goal = store.reserve_goal_request(
-                        start,
-                        goal_role(role),
-                        request.request_id().expose_for_wire(),
-                    )?;
-                    Ok(if goal == peritus_product_runner::control::GoalAdmission::Accepted {
-                        DeveloperRequestAdmission::Accepted
-                    } else {
-                        DeveloperRequestAdmission::Stopped
-                    })
+        let start = &options.workbench;
+        if self
+            .service
+            .refresh_request_files(start, request)
+            .map_err(|error| port_error("refresh files attached to the provider request", error))?
+        {
+            return Ok(DeveloperRequestAdmission::Stale);
+        }
+        let admission = self
+            .service
+            .with_controls(false, |store| {
+                let admission = store.prepare_execution(start, revision, request)?;
+                if admission.developer_admission() == DeveloperRequestAdmission::Stale {
+                    return Ok(DeveloperRequestAdmission::Stale);
+                }
+                let goal = store.reserve_goal_request(
+                    start,
+                    goal_role(role),
+                    request.request_id().expose_for_wire(),
+                )?;
+                Ok(if goal == peritus_product_runner::control::GoalAdmission::Accepted {
+                    DeveloperRequestAdmission::Accepted
+                } else {
+                    DeveloperRequestAdmission::Stopped
                 })
-                .map_err(|error| {
-                    port_error(
-                        "reserve the provider request in durable control state",
-                        error.into(),
-                    )
-                })?;
-            if admission != DeveloperRequestAdmission::Accepted {
-                return Ok(admission);
-            }
+            })
+            .map_err(|error| {
+                port_error("reserve the provider request in durable control state", error.into())
+            })?;
+        if admission != DeveloperRequestAdmission::Accepted {
+            return Ok(admission);
         }
         let mut next = record.clone();
         let mut options = options.clone();
@@ -107,9 +103,7 @@ impl LiveConversation {
                 )
                 .map_err(|error| port_error("record provider request admission", error))?;
         }
-        next.interaction.replace(options).ok_or_else(|| {
-            super::port_internal("admit the provider request", "the run has no interaction state")
-        })?;
+        next.interaction = options;
         crate::product_run::persistence::write_record(&self.service.inner.directory, &next)
             .map_err(|error| port_error("persist provider request admission", error))?;
         *record = next;
@@ -118,7 +112,7 @@ impl LiveConversation {
 
     pub(super) fn workbench_start(
         &self,
-    ) -> Result<Option<peritus_product_runner::control::ControlOperation>, DeveloperLoopError> {
+    ) -> Result<peritus_product_runner::control::ControlOperation, DeveloperLoopError> {
         self.workbench_start_record()
             .map_err(|error| port_error("read the active workbench execution", error))
     }
@@ -140,9 +134,7 @@ impl LiveConversation {
             )
         })?;
         let mut next = record.clone();
-        let options = next.interaction.as_mut().ok_or_else(|| {
-            super::port_internal("record conversation activity", "the run has no interaction state")
-        })?;
+        let options = &mut next.interaction;
         change(options).map_err(|error| port_error("record conversation activity", error))?;
         if options.mode != ProductInteractionMode::Build
             && next.snapshot.phase() == peritus_app_protocol::ProductRunPhase::Queued

@@ -1,4 +1,4 @@
-//! Additive preview output codec; legacy evidence encoding remains unchanged.
+//! Preview output codec.
 
 use super::{
     CanonicalReader, CanonicalWriter, CodecError, ControlOperationId, MAX_WORKBENCH_LAUNCHES,

@@ -32,11 +32,7 @@ impl ConversationView for LiveConversation {
                 .read()
                 .map_err(|_| ProductRunServiceError::Unavailable)?;
             let record = records.get(&self.run_id).ok_or(ProductRunServiceError::NotFound)?;
-            let Some(start) =
-                record.interaction.as_ref().and_then(|options| options.workbench.as_ref())
-            else {
-                return Ok(record.conversation.render());
-            };
+            let start = &record.interaction.workbench;
             self.service.with_controls(false, |store| {
                 store.capture_execution(start)?;
                 let record = store.load(start.conversation())?.ok_or(peritus_product_runner::control::ControlError::NotFound)?;
@@ -55,10 +51,7 @@ impl ConversationView for LiveConversation {
             .read()
             .ok()
             .and_then(|records| {
-                records
-                    .get(&self.run_id)
-                    .and_then(|record| record.interaction.as_ref())
-                    .map(|options| options.incorporated)
+                records.get(&self.run_id).map(|record| record.interaction.incorporated)
             })
             .unwrap_or(0)
     }
@@ -93,10 +86,7 @@ impl ConversationView for LiveConversation {
         self.review_record()
             // An unavailable narrowing record must prevent mutation while retaining read-only
             // diagnosis. Empty relative path means the complete workspace mutation surface.
-            .map_or_else(
-                |_| vec![PathBuf::new()],
-                |record| record.map_or_else(Vec::new, |record| record.reviews().protected_paths()),
-            )
+            .map_or_else(|_| vec![PathBuf::new()], |record| record.reviews().protected_paths())
     }
     fn effective_permissions(&self) -> HostPermissions {
         // Tool boundaries must not retain ambient authority when the durable policy cannot be
@@ -105,9 +95,7 @@ impl ConversationView for LiveConversation {
     }
     fn permits_pipeline_handoff(&self) -> bool {
         self.review_record().is_ok_and(|record| {
-            record.is_none_or(|record| {
-                record.reviews().pending_pipeline_permission(record.inputs()).unwrap_or(true)
-            })
+            record.reviews().pending_pipeline_permission(record.inputs()).unwrap_or(true)
         })
     }
     fn checkpoint_before_workspace_mutation(
@@ -118,7 +106,6 @@ impl ConversationView for LiveConversation {
         let start = self
             .workbench_start_record()
             .map_err(|_| "automatic workspace checkpoint is unavailable".to_owned())?;
-        let Some(start) = start else { return Ok(()) };
         self.service
             .capture_automatic_checkpoint(&start, self.run_id, relative_path, kind)
             .map_err(|_| "automatic workspace checkpoint could not be durably captured".to_owned())
@@ -132,7 +119,6 @@ impl ConversationView for LiveConversation {
         let start = self
             .workbench_start_record()
             .map_err(|_| "automatic workspace checkpoint is unavailable".to_owned())?;
-        let Some(start) = start else { return Ok(()) };
         self.service
             .seal_automatic_checkpoint(&start, self.run_id, relative_path, kind, owned_postchange)
             .map_err(|_| "automatic workspace checkpoint could not be durably sealed".to_owned())
@@ -145,7 +131,7 @@ impl ConversationView for LiveConversation {
 #[cfg(not(verus_only))]
 impl DeveloperInteraction for LiveConversation {
     fn allows_semantic_compaction(&self) -> bool {
-        self.service.governed_run(self.run_id).is_ok_and(|governed| !governed)
+        false
     }
     fn provider(
         &self,
@@ -157,9 +143,7 @@ impl DeveloperInteraction for LiveConversation {
         let record = records.get(&self.run_id).ok_or_else(|| {
             port_internal("select the run provider", "the product-run record was not found")
         })?;
-        let options = record.interaction.as_ref().ok_or_else(|| {
-            port_internal("select the run provider", "the run has no interaction state")
-        })?;
+        let options = &record.interaction;
         if options.persistence_failed.load(std::sync::atomic::Ordering::Acquire) {
             return Err(port_internal(
                 "select the run provider",
@@ -193,13 +177,10 @@ impl DeveloperInteraction for LiveConversation {
         let record = records.get(&self.run_id).ok_or_else(|| {
             port_internal("read the governing conversation", "the product-run record was not found")
         })?;
-        if record.interaction.as_ref().is_some_and(|options| {
-            options.persistence_failed.load(std::sync::atomic::Ordering::Acquire)
-        }) {
+        if record.interaction.persistence_failed.load(std::sync::atomic::Ordering::Acquire) {
             let detail = record
                 .interaction
-                .as_ref()
-                .and_then(InteractionOptions::persistence_failure)
+                .persistence_failure()
                 .unwrap_or_else(|| "the previous persistence operation failed".to_owned());
             return Err(port_internal("read the governing conversation", &detail));
         }
@@ -230,9 +211,7 @@ impl DeveloperInteraction for LiveConversation {
         request_id: &str,
         usage: peritus_model_protocol::UsageCounters,
     ) -> Result<DeveloperControlFlow, DeveloperLoopError> {
-        let Some(start) = self.workbench_start()? else {
-            return Ok(DeveloperControlFlow::Continue);
-        };
+        let start = self.workbench_start()?;
         let admission = self
             .service
             .with_controls(false, |store| {
@@ -251,9 +230,7 @@ impl DeveloperInteraction for LiveConversation {
         sequence: u32,
         effect: DeveloperToolEffect,
     ) -> Result<DeveloperControlFlow, DeveloperLoopError> {
-        let Some(start) = self.workbench_start()? else {
-            return Ok(DeveloperControlFlow::Continue);
-        };
+        let start = self.workbench_start()?;
         let admission = self
             .service
             .with_controls(false, |store| {
@@ -277,9 +254,7 @@ impl DeveloperInteraction for LiveConversation {
         invocation: &str,
         sequence: u32,
     ) -> Result<DeveloperControlFlow, DeveloperLoopError> {
-        let Some(start) = self.workbench_start()? else {
-            return Ok(DeveloperControlFlow::Continue);
-        };
+        let start = self.workbench_start()?;
         let admission = self
             .service
             .with_controls(false, |store| {

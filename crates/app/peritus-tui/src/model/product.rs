@@ -12,8 +12,8 @@ use std::collections::BTreeMap;
 use std::path::PathBuf;
 
 use peritus_app_protocol::{
-    AppRequestPayload, ProductProviderSelection, ProductRunControl, ProductRunControlAction,
-    ProductRunConversation, ProductRunSnapshot,
+    AppRequestPayload, ProductInteractionSnapshot, ProductProviderSelection, ProductRunControl,
+    ProductRunControlAction, ProductRunSnapshot,
 };
 use peritus_run_settlement::{
     CandidateCheckpoint, CandidateIdentity, CandidateStage, EvidenceStatus, QualificationEvidence,
@@ -29,7 +29,7 @@ pub struct ProductUi {
     pub launch: ProductLaunchContext,
     pub runs: Vec<ProductRunSnapshot>,
     pub selected: usize,
-    pub conversation: Option<ProductRunConversation>,
+    pub conversation: Option<ProductInteractionSnapshot>,
     pub settlements: BTreeMap<RunId, RunSettlement>,
     pub confirmation: Option<CandidateConfirmation>,
     pub detail_scroll: u16,
@@ -72,9 +72,11 @@ impl ProductUi {
     pub fn selected_run(&self) -> Option<&ProductRunSnapshot> {
         self.runs.get(self.selected)
     }
-    pub fn selected_conversation(&self) -> Option<&ProductRunConversation> {
+    pub fn selected_conversation(&self) -> Option<&ProductInteractionSnapshot> {
         let selected = self.selected_run()?.run_id();
-        self.conversation.as_ref().filter(|conversation| conversation.run_id() == selected)
+        self.conversation
+            .as_ref()
+            .filter(|conversation| conversation.snapshot().run_id() == selected)
     }
     pub fn selected_settlement(&self) -> Option<&RunSettlement> {
         self.settlements.get(&self.selected_run()?.run_id())

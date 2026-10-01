@@ -43,14 +43,14 @@ async fn run(
 
 fn spawn(request: &ProcessRequest) -> Result<Child, ProviderCoreError> {
     let mut command = Command::new(request.executable().as_path());
+    crate::process_containment::configure(&mut command);
     #[cfg(windows)]
     command.creation_flags(0x0800_0000); // CREATE_NO_WINDOW: provider transport uses pipes only.
     command
         .args(request.arguments())
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .kill_on_drop(true);
+        .stderr(Stdio::piped());
     if let Some(current_dir) = request.current_dir() {
         command.current_dir(current_dir);
     }

@@ -110,7 +110,6 @@ impl AppModel {
             return Vec::new();
         };
         let query = item.query();
-        let legacy = item.legacy_run();
         if self
             .product
             .as_ref()
@@ -123,22 +122,12 @@ impl AppModel {
                 );
                 return Vec::new();
             }
-            return vec![legacy.map_or(Effect::OpenConversation(query), |run| Effect::OpenRun {
-                run,
-                workspace: query.workspace(),
-            })];
+            return vec![Effect::OpenConversation(query)];
         }
         self.abandon_chat_observations();
-        self.select_workbench_conversation(if legacy.is_some() { None } else { Some(query) });
+        self.select_workbench_conversation(Some(query));
         self.chat.workbench.mode = WorkbenchMode::Sessions;
         self.chat.workbench.scroll = 0;
-        if let Some(run) = legacy {
-            self.chat.workbench.open = false;
-            self.chat.run_id = Some(run);
-            self.chat.snapshot = None;
-            self.query_chat_binding(run, true).into_iter().collect()
-        } else {
-            self.discover_workbench_execution()
-        }
+        self.discover_workbench_execution()
     }
 }

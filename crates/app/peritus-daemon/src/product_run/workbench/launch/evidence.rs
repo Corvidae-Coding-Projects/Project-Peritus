@@ -181,11 +181,10 @@ impl ProductRunService {
         let (start, launch, operations) = {
             let records = self.inner.records.read().map_err(|_| app_error(Code::Backpressure))?;
             let record = records.get(&run).ok_or_else(|| app_error(Code::InvalidIdentifier))?;
-            let start = record.interaction.as_ref().and_then(|options| options.workbench.clone());
+            let start = record.interaction.workbench.clone();
             let launch = require_launch(&record.preview, launch_id)?.clone();
             (start, launch, record.preview.operations.clone())
         };
-        let Some(start) = start else { return Ok(()) };
         if !matches!(start.intent(), ControlIntent::StartGoal { .. })
             || launch.profile().run() != run
             || launch.profile().build().is_none()
@@ -295,12 +294,9 @@ pub(super) fn record_matches_query(
     record: &super::super::super::RunRecord,
     query: WorkbenchQuery,
 ) -> bool {
-    record.interaction.as_ref().and_then(|options| options.workbench.as_ref()).is_some_and(
-        |operation| {
-            operation.conversation().as_bytes() == query.conversation().as_bytes()
-                && operation.workspace_bytes() == query.workspace().as_bytes()
-        },
-    )
+    let operation = &record.interaction.workbench;
+    operation.conversation().as_bytes() == query.conversation().as_bytes()
+        && operation.workspace_bytes() == query.workspace().as_bytes()
 }
 
 pub(super) fn active_launch_run(

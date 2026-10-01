@@ -22,22 +22,11 @@ impl ProductRunService {
                 |records| {
                     let record =
                         records.get(&control.run_id()).ok_or(ProductRunServiceError::NotFound)?;
-                    Ok(record
-                        .interaction
-                        .as_ref()
-                        .and_then(|options| options.workbench.as_ref())
-                        .cloned())
+                    Ok(record.interaction.workbench.clone())
                 },
             );
         let binding = match binding {
-            Ok(Some(binding)) => binding,
-            Ok(None) => {
-                return self
-                    .control(control)
-                    .await
-                    .and_then(|snapshot| self.project(snapshot))
-                    .unwrap_or_else(ProductRunServiceError::response);
-            }
+            Ok(binding) => binding,
             Err(error) => return error.response(),
         };
         if binding.actor_bytes() != actor.as_bytes() {
@@ -126,7 +115,7 @@ impl ProductRunService {
         let command = WorkbenchCommand::new(operation, query, goal.aggregate_revision(), intent);
         match self.workbench_command(actor, &command).await {
             AppResponsePayload::WorkbenchReceipt(_) => self
-                .query_interaction(peritus_app_protocol::ProductRunConversationQuery::new(
+                .query_interaction(peritus_app_protocol::ProductInteractionQuery::new(
                     control.run_id(),
                 ))
                 .map_or_else(ProductRunServiceError::response, AppResponsePayload::Interaction),

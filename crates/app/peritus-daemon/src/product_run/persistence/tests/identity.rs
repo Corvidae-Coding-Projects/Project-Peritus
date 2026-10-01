@@ -3,8 +3,8 @@ use super::*;
 #[test]
 fn malformed_projection_is_quarantined_without_blocking_startup() {
     let state = tempfile::tempdir().expect("state");
-    let directory = state.path().join("product-runs");
-    fs::create_dir(&directory).expect("run directory");
+    let directory = state.path().join("workbench-v1/runs");
+    fs::create_dir_all(&directory).expect("run directory");
     let corrupt = directory.join("broken.json");
     fs::write(&corrupt, b"{not-json").expect("corrupt projection");
 
@@ -21,8 +21,8 @@ fn malformed_projection_is_quarantined_without_blocking_startup() {
 #[test]
 fn previous_format_projection_is_quarantined_without_migration() {
     let state = tempfile::tempdir().expect("state");
-    let directory = state.path().join("product-runs");
-    fs::create_dir(&directory).expect("run directory");
+    let directory = state.path().join("workbench-v1/runs");
+    fs::create_dir_all(&directory).expect("run directory");
     let path = directory.join("01010101010101010101010101010101.json");
     fs::write(
         &path,

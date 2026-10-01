@@ -6,8 +6,8 @@ use super::{
 use crate::error::uncertain;
 use base64::{Engine, engine::general_purpose::STANDARD};
 use peritus_app_protocol::{
-    AppErrorCode, AppMessage, AppRequestEnvelope, ProductRunControlAction,
-    ProductRunConversationQuery, ProductRunPhase, WorkbenchCommand, encode_app_message,
+    AppErrorCode, AppMessage, AppRequestEnvelope, ProductInteractionQuery, ProductRunControlAction,
+    ProductRunPhase, WorkbenchCommand, encode_app_message,
 };
 
 pub async fn recorded(
@@ -292,7 +292,7 @@ async fn recovery_baseline(app: &App, payload: &AppRequestPayload) -> Result<Val
     };
     match super::raw_request(
         app,
-        AppRequestPayload::QueryInteraction(ProductRunConversationQuery::new(run_id)),
+        AppRequestPayload::QueryInteraction(ProductInteractionQuery::new(run_id)),
     )
     .await?
     {
@@ -322,7 +322,7 @@ async fn reconcile(
     let Some(run_id) = run_id(request) else { return Ok(None) };
     let Ok(current) = super::raw_request(
         app,
-        AppRequestPayload::QueryInteraction(ProductRunConversationQuery::new(run_id)),
+        AppRequestPayload::QueryInteraction(ProductInteractionQuery::new(run_id)),
     )
     .await
     else {

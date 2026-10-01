@@ -17,7 +17,7 @@ pub(super) fn restore_preview(
     outputs: Vec<PersistedPreviewOutput>,
     run: RunId,
     workspace: WorkspaceId,
-    interaction: Option<&super::super::interaction::InteractionOptions>,
+    interaction: &super::super::interaction::InteractionOptions,
 ) -> Result<PreviewAggregate, ProductRunServiceError> {
     if operations.len() > MAX_PREVIEW_OPERATIONS
         || outputs
@@ -36,13 +36,11 @@ pub(super) fn restore_preview(
         .transpose()?;
     if let Some(page) = &page {
         let query = page.query();
-        let binding = interaction.and_then(|options| options.workbench.as_ref());
+        let binding = &interaction.workbench;
         if query.run() != run
             || query.query().workspace() != workspace
-            || binding.is_none_or(|operation| {
-                operation.conversation().as_bytes() != query.query().conversation().as_bytes()
-                    || operation.workspace_bytes() != query.query().workspace().as_bytes()
-            })
+            || binding.conversation().as_bytes() != query.query().conversation().as_bytes()
+            || binding.workspace_bytes() != query.query().workspace().as_bytes()
         {
             return Err(ProductRunServiceError::InvalidMessage);
         }

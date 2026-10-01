@@ -48,7 +48,7 @@ fn launcher_recovery_preserves_the_open_message_modal_and_its_cursor() {
 }
 
 #[test]
-fn launcher_recovery_preserves_ambiguous_message_without_replaying_it() {
+fn launcher_recovery_preserves_message_while_its_binding_lookup_was_in_flight() {
     let config = config();
     let mut state = TuiState::default();
     let mut model = state.take_model(&config, [46; 32]);
@@ -69,8 +69,8 @@ fn launcher_recovery_preserves_ambiguous_message_without_replaying_it() {
         kind: EditorKind::ProductMessage(RunId::new([50; 16]).unwrap()),
         title: "Message",
         hint: "fixture",
-        buffer: "already sent once".into(),
-        cursor: 17,
+        buffer: "waiting for its destination".into(),
+        cursor: "waiting for its destination".len(),
         pasted_command: false,
     });
     let sent = model.update(Action::TerminalEvent(Event::Key(KeyEvent::new(
@@ -81,12 +81,12 @@ fn launcher_recovery_preserves_ambiguous_message_without_replaying_it() {
     assert!(model.editor.is_none());
     state.retain(config.clone(), model);
     let mut restored = state.take_model(&config, [49; 32]);
-    let editor = restored.editor.as_ref().expect("uncertain message draft");
-    assert_eq!(editor.buffer, "already sent once");
-    assert!(editor.hint.contains("may already have been accepted"));
+    let editor = restored.editor.as_ref().expect("unsubmitted message draft");
+    assert_eq!(editor.buffer, "waiting for its destination");
+    assert!(!editor.hint.contains("may already have been accepted"));
     let effects = restored.update(connected());
     assert!(!effects.iter().any(|effect| matches!(effect,
-        Effect::Send(peritus_app_protocol::AppMessage::Request(request)) if matches!(request.payload(), peritus_app_protocol::AppRequestPayload::ContinueProductRun(_))
+        Effect::Send(peritus_app_protocol::AppMessage::Request(request)) if matches!(request.payload(), peritus_app_protocol::AppRequestPayload::QueryInteractionBinding(_))
     )));
 }
 

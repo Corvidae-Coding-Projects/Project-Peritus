@@ -1,11 +1,17 @@
 use super::*;
+use peritus_run_settlement::CandidateStage;
 
 #[test]
 fn canonical_record_rejects_omitted_current_fields() {
     let record = PersistedRecord {
-        format_version: 3,
+        format_version: 6,
         goal_resume: None,
-        interaction: None,
+        interaction: interaction::PersistedInteraction::capture(
+            &crate::product_run::interaction::InteractionOptions::test(
+                peritus_app_protocol::ProductInteractionMode::Build,
+                peritus_app_protocol::ProductRoleModels::default(),
+            ),
+        ),
         run_id: "01010101010101010101010101010101".to_owned(),
         workspace_id: "02020202020202020202020202020202".to_owned(),
         writer: "03030303030303030303030303030303".to_owned(),
@@ -13,6 +19,7 @@ fn canonical_record_rejects_omitted_current_fields() {
         fixer: "05050505050505050505050505050505".to_owned(),
         phase: ProductRunPhase::Complete.tag(),
         cycle: 1,
+        execution_task: "Execute the selected durable workbench inputs.".to_owned(),
         task: "build tetris".to_owned(),
         status: "qualified".to_owned(),
         diff: "diff --git".to_owned(),
@@ -32,11 +39,6 @@ fn canonical_record_rejects_omitted_current_fields() {
             export_path: String::new(),
             discarded: false,
         }),
-        messages: vec![PersistedMessage {
-            role: ProductConversationRole::User.tag(),
-            content: "build tetris".to_owned(),
-        }],
-        conversation_revision: 1,
         progress: PersistedProgress::default(),
         checkpoint: None,
         settlement_cause: None,
@@ -52,17 +54,14 @@ fn canonical_record_rejects_omitted_current_fields() {
     };
     let canonical = serde_json::to_value(record).expect("canonical record JSON");
 
-    for field in [
-        "format_version",
-        "conversation_revision",
-        "candidate_actionable",
-        "task_baseline_required",
-    ] {
+    for field in
+        ["format_version", "execution_task", "candidate_actionable", "task_baseline_required"]
+    {
         let mut missing = canonical.clone();
         missing.as_object_mut().expect("record object").remove(field);
         assert!(
             serde_json::from_value::<PersistedRecord>(missing).is_err(),
-            "omitted current field {field} must not acquire a compatibility default",
+            "omitted current field {field} must be rejected",
         );
     }
 
@@ -77,7 +76,7 @@ fn canonical_record_rejects_omitted_current_fields() {
     );
 
     let mut previous = canonical;
-    previous["format_version"] = serde_json::Value::from(2);
+    previous["format_version"] = serde_json::Value::from(5);
     let previous = serde_json::from_value::<PersistedRecord>(previous)
         .expect("complete previous-format shape");
     assert!(

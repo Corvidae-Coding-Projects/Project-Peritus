@@ -17,7 +17,7 @@ fn automated_qualification_wording_does_not_create_a_human_decision() {
     let directory = state.path().join("product-runs");
     fs::create_dir(&directory).unwrap();
     persist_record(&directory, &record).unwrap();
-    let mut restored = crate::product_run::persistence::load_records(&directory).unwrap();
+    let mut restored = crate::product_run::persistence::load_unchecked_records(&directory).unwrap();
     let loaded = &restored[&record.request.run_id()];
     assert_eq!(loaded.snapshot.status(), "Qualified — passing checks and independent review");
     assert!(!loaded.snapshot.deliverable().unwrap().accepted());
@@ -90,7 +90,7 @@ fn committed_handoff_binds_current_files_without_reissuing_old_qualification() {
     assert_eq!(fs::read(root.join("human-draft.txt")).unwrap(), b"human untracked source\n");
     ProductRunSettlementSnapshot::new(record.snapshot.clone(), record.settlement.unwrap()).unwrap();
 
-    let mut restored = crate::product_run::persistence::load_records(&directory).unwrap();
+    let mut restored = crate::product_run::persistence::load_unchecked_records(&directory).unwrap();
     let workspaces =
         std::collections::BTreeMap::from([(record.request.workspace_id(), root.to_path_buf())]);
     crate::product_run::recovery::reconcile_restored_candidates(

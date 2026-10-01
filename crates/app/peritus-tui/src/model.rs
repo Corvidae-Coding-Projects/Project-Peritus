@@ -170,6 +170,10 @@ enum PendingRequest {
         run_id: RunId,
         opening: bool,
     },
+    ProductMessageBinding {
+        run_id: RunId,
+        message: String,
+    },
     WorkbenchCheckpointInspect(peritus_app_protocol::WorkbenchRewindRequest),
     WorkbenchRewind(peritus_app_protocol::WorkbenchRewindRequest),
     WorkbenchMemory(peritus_app_protocol::WorkbenchMemoryQuery),
@@ -234,8 +238,15 @@ enum PendingRequest {
     ProductQuery,
     ProductExactQuery(RunId),
     ProductControl,
-    ProductContinue,
-    ProductConversationQuery,
+    ProductInteractionQuery,
+}
+
+impl PendingRequest {
+    const fn editor_outcome_is_ambiguous(&self) -> bool {
+        // Looking up the durable destination cannot submit the retained product
+        // message. Only the later workbench command can make its outcome unknown.
+        !matches!(self, Self::ProductMessageBinding { .. })
+    }
 }
 
 /// The kind of value being collected by the modal editor.

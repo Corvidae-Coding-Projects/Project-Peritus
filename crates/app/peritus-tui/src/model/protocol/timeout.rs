@@ -16,11 +16,12 @@ impl PendingRequest {
             | Self::ModelQuery(_)
             | Self::Status
             | Self::ChatBinding { .. }
+            | Self::ProductMessageBinding { .. }
             | Self::ChatQuery
             | Self::ChatOpen { .. }
             | Self::ProductQuery
             | Self::ProductExactQuery(_)
-            | Self::ProductConversationQuery
+            | Self::ProductInteractionQuery
             | Self::TerminalLineInput(_) => Recovery::Read,
             Self::WorkbenchCheckpointInspect(_)
             | Self::WorkbenchRewind(_)
@@ -58,8 +59,7 @@ impl PendingRequest {
             | Self::TerminalResize
             | Self::TerminalDetach(_)
             | Self::TerminalCancel
-            | Self::ProductControl
-            | Self::ProductContinue => Recovery::Reconnect,
+            | Self::ProductControl => Recovery::Reconnect,
         }
     }
 }
@@ -85,10 +85,13 @@ impl AppModel {
         let mut unconfirmed_terminal_input = false;
         for request in expired {
             self.pending_started.remove(&request);
+            let pending = self.pending.remove(&request);
             if let Some(editor) = self.pending_editor_drafts.remove(&request) {
-                self.restore_editor(editor, true);
+                let ambiguous =
+                    pending.as_ref().is_none_or(PendingRequest::editor_outcome_is_ambiguous);
+                self.restore_editor(editor, ambiguous);
             }
-            let Some(pending) = self.pending.remove(&request) else { continue };
+            let Some(pending) = pending else { continue };
             match pending.timeout_recovery() {
                 Recovery::Read => {
                     if matches!(pending, PendingRequest::Doctor(_))

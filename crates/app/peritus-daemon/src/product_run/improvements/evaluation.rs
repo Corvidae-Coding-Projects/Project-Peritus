@@ -41,7 +41,7 @@ impl ProductRunService {
                 "The selected target is not a Peritus source workspace. Register and select the Peritus repository",
             ));
         }
-        self.resolve_selected_providers(request.providers(), None)?;
+        self.resolve_providers(request.providers())?;
         let providers = request.providers();
         let prior = locked(&self.inner.improvements)?.get(workspace, id)?.ok_or(Error::NotFound)?;
         if prior.evaluation.is_none()
@@ -84,13 +84,10 @@ impl ProductRunService {
         if let Some(existing) =
             self.inner.records.read().map_err(|_| Error::Unavailable)?.get(&run_id)
         {
-            let bound =
-                existing.interaction.as_ref().and_then(|options| options.workbench.as_ref());
+            let bound = &existing.interaction.workbench;
             if existing.request.workspace_id() != target
                 || existing.request.providers() != providers
-                || bound.is_none_or(|operation| {
-                    operation.conversation().as_bytes() != conversation.as_bytes()
-                })
+                || bound.conversation().as_bytes() != conversation.as_bytes()
             {
                 return Err(Error::invalid_data(
                     "evaluate improvement",

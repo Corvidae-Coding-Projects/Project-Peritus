@@ -11,7 +11,7 @@ use crate::{
 };
 
 #[test]
-fn product_launch_queries_runs_and_legacy_task_key_is_inert() {
+fn product_launch_queries_runs_and_retired_task_key_is_inert() {
     let product = ProductLaunchContext::new(
         WorkspaceId::new([41; 16]).expect("workspace"),
         "/managed/project".to_owned(),
@@ -125,7 +125,7 @@ fn selected_product_run_accepts_conversational_followup() {
     assert!(effects.iter().any(|effect| matches!(
         effect,
         Effect::Send(AppMessage::Request(request))
-            if matches!(request.payload(), AppRequestPayload::ContinueProductRun(_))
+            if matches!(request.payload(), AppRequestPayload::QueryInteractionBinding(_))
     )));
 }
 

@@ -17,10 +17,7 @@ use super::{
     },
     error::{read_app_error, write_app_error},
     primitive::{read_context, read_id, unknown, write_context, write_id},
-    product::{
-        read_conversation, read_settlement_snapshot, read_snapshot, write_conversation,
-        write_settlement_snapshot, write_snapshot,
-    },
+    product::{read_settlement_snapshot, read_snapshot, write_settlement_snapshot, write_snapshot},
     terminal::{read_terminal_binding, write_terminal_binding},
 };
 
@@ -137,7 +134,6 @@ fn write_payload(
         AppResponsePayload::ProductRunObservations(value) => {
             super::product::observations::write_observations(writer, value)
         }
-        AppResponsePayload::ProductRunConversation(value) => write_conversation(writer, value),
         AppResponsePayload::ProductRunSettled(value) => write_settlement_snapshot(writer, value),
     }
 }
@@ -168,7 +164,6 @@ fn payload_tag(payload: &AppResponsePayload) -> u16 {
         AppResponsePayload::Error(_) => 9,
         AppResponsePayload::ProductRunAccepted(_) => 10,
         AppResponsePayload::ProductRunObservations(_) => 102,
-        AppResponsePayload::ProductRunConversation(_) => 12,
         AppResponsePayload::ProductRunSettled(_) => 13,
         AppResponsePayload::Interaction(value) => {
             if value.models().has_effort() {
@@ -252,7 +247,6 @@ pub(super) fn read_response(
         102 => AppResponsePayload::ProductRunObservations(
             super::product::observations::read_observations(reader)?,
         ),
-        12 => AppResponsePayload::ProductRunConversation(read_conversation(reader)?),
         13 => AppResponsePayload::ProductRunSettled(read_settlement_snapshot(reader)?),
         15 => AppResponsePayload::Interaction(super::interaction::read_snapshot(reader, false)?),
         16 => AppResponsePayload::Models(super::interaction::read_catalog(reader)?),

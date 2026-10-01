@@ -3,12 +3,17 @@
 use super::{
     ProductRunService, domain_operation, error_response, receipt_projection, resolve_user_operation,
 };
-use crate::product_run::{ProductRunServiceError, interaction::InteractionOptions};
-use peritus_app_protocol::{
-    AppResponsePayload, ProductRunRequest, WorkbenchCommand, WorkbenchIntent,
+use crate::product_run::{
+    ProductRunRequest, ProductRunServiceError, interaction::InteractionOptions,
 };
-use peritus_product_runner::control::{ControlError, ConversationRecord};
+use peritus_app_protocol::{AppResponsePayload, WorkbenchCommand, WorkbenchIntent};
+use peritus_product_runner::control::{ControlError, ControlReceipt, ConversationRecord};
 use peritus_types::ActorId;
+
+enum Admission {
+    Existing(ControlReceipt),
+    Fresh { title: String },
+}
 
 impl ProductRunService {
     pub(super) async fn start_workbench(
@@ -30,7 +35,7 @@ impl ProductRunService {
         };
         let admission = self.with_controls(false, |store| {
             if let Some(receipt) = resolve_user_operation(store, &operation)? {
-                return Ok(Some(receipt));
+                return Ok(Admission::Existing(receipt));
             }
             let current = store.load(operation.conversation())?.ok_or(ControlError::NotFound)?;
             if let Some(branch) = store.branch(operation.conversation())?
@@ -40,34 +45,36 @@ impl ProductRunService {
             }
             // Pure preflight before creating any run record; the actual publication checks CAS again.
             ConversationRecord::apply(Some(&current), &operation)?;
-            Ok(None)
+            Ok(Admission::Fresh { title: current.title().to_owned() })
         });
-        match admission {
-            Ok(Some(receipt)) => {
+        let title = match admission {
+            Ok(Admission::Existing(receipt)) => {
                 return receipt_projection(command, &receipt)
                     .map_or_else(error_response, AppResponsePayload::WorkbenchReceipt);
             }
-            Ok(None) => {}
+            Ok(Admission::Fresh { title }) => title,
             Err(error) => return error_response(error),
-        }
+        };
         // All governing user content comes from the captured ledger at D0's exact request boundary.
-        // Keeping this immutable label inert prevents withdrawn/editable input leaking through the
-        // legacy initial-task path while a request is rebuilt.
+        // The conversation title is presentation metadata; the fixed execution directive prevents
+        // renamed, withdrawn, or edited display text from becoming model input.
         let request = match ProductRunRequest::new(
             settings.run(),
             command.query().workspace(),
             settings.providers(),
             "Execute the selected durable workbench inputs.".to_owned(),
-        ) {
+        )
+        .and_then(|request| request.with_display_task(title))
+        {
             Ok(request) => request,
             Err(_) => return ProductRunServiceError::InvalidMessage.response(),
         };
-        let mut options = InteractionOptions::new(settings.mode(), settings.models().clone());
-        options.workbench = Some(operation.clone());
-        if let Err(error) = self.validate_models(settings.providers(), &options).await {
+        let options =
+            InteractionOptions::new(operation.clone(), settings.mode(), settings.models().clone());
+        if let Err(error) = self.validate_models(settings.providers(), &options.models).await {
             return error.response();
         }
-        match self.start_configured(request, Some(options)).await {
+        match self.start_configured(request, options).await {
             Ok(_) => self
                 .with_controls(false, |store| {
                     resolve_user_operation(store, &operation)?
@@ -191,9 +198,9 @@ mod tests {
         let wrong_goal = start_goal(GoalBudget::new(Some(11), Some(2), Some(3), Some(40)).unwrap());
         assert!(!branch_execution_allowed(&governed, &wrong_goal, ProductInteractionMode::Chat));
 
-        let legacy_unallocated_governed = branch(1, None);
+        let unallocated_governed = branch(1, None);
         assert!(!branch_execution_allowed(
-            &legacy_unallocated_governed,
+            &unallocated_governed,
             &execution,
             ProductInteractionMode::Chat
         ));

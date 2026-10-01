@@ -5,8 +5,8 @@ mod presentation;
 use std::{ffi::OsStr, path::Path, process::Command, time::Duration};
 
 use peritus_app_protocol::{
-    AppRequestPayload, AppResponsePayload, ProductRunContinuation, ProductRunControl,
-    ProductRunControlAction, ProductRunQuery, ProductRunSettlementSnapshot, ProductRunSnapshot,
+    AppRequestPayload, AppResponsePayload, ProductRunControl, ProductRunControlAction,
+    ProductRunQuery, ProductRunSettlementSnapshot, ProductRunSnapshot,
 };
 use peritus_product_runner::ProductRunner;
 use peritus_run_settlement::{CandidateStage, RunSettlement};
@@ -36,9 +36,6 @@ pub async fn execute(
     match arguments {
         ProductRunArgs::List => list(&mut client, output).await,
         ProductRunArgs::Show { run_id } => show(&mut client, run_id, output).await,
-        ProductRunArgs::Continue { run_id, message } => {
-            continue_run(&mut client, run_id, message, output).await
-        }
         ProductRunArgs::Execute { run_id } => execute_candidate(&mut client, run_id, output).await,
         ProductRunArgs::Control { run_id, action, confirmed_digest } => {
             control(&mut client, run_id, action, confirmed_digest, output).await
@@ -60,21 +57,6 @@ async fn list(client: &mut Client, output: &Output) -> Result<(), CliError> {
 async fn show(client: &mut Client, run_id: RunId, output: &Output) -> Result<(), CliError> {
     let run = query_exact(client, run_id).await?;
     output.success("product-run", observed_json(&run), &observed_human(&run))
-}
-
-async fn continue_run(
-    client: &mut Client,
-    run_id: RunId,
-    message: String,
-    output: &Output,
-) -> Result<(), CliError> {
-    let continuation = ProductRunContinuation::new(run_id, message)
-        .map_err(|error| CliError::usage(error.to_string()))?;
-    let identity = Client::new_request_identity()?;
-    let response =
-        client.request(identity, AppRequestPayload::ContinueProductRun(continuation)).await?;
-    let run = observed_response(response.payload())?;
-    output.success("product-run-continued", observed_json(&run), &observed_human(&run))
 }
 
 async fn control(

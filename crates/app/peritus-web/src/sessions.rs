@@ -5,8 +5,8 @@ use crate::{
     state::{App, Session, hex},
 };
 use peritus_app_protocol::{
-    AppRequestPayload, AppResponsePayload, ConversationId, ProductModelChoice, ProductModelEffort,
-    ProductModelUpdate, ProductRoleModels, ProductRunConversationQuery, WorkbenchQuery,
+    AppRequestPayload, AppResponsePayload, ConversationId, ProductInteractionQuery,
+    ProductModelChoice, ProductModelEffort, ProductModelUpdate, ProductRoleModels, WorkbenchQuery,
 };
 use peritus_types::{ProviderProfileId, RunId, WorkspaceId};
 use serde::{Deserialize, Serialize};
@@ -98,7 +98,7 @@ pub async fn open_run(app: &App, id: &str) -> Result<Value> {
     let run_id = RunId::new(daemon::bytes(id)?).map_err(|e| problem(format!("{e:?}")))?;
     let reply = daemon::raw_request(
         app,
-        AppRequestPayload::QueryInteractionBinding(ProductRunConversationQuery::new(run_id)),
+        AppRequestPayload::QueryInteractionBinding(ProductInteractionQuery::new(run_id)),
     )
     .await?;
     let AppResponsePayload::InteractionBinding(binding) = reply else {
@@ -106,9 +106,7 @@ pub async fn open_run(app: &App, id: &str) -> Result<Value> {
             "This run has no durable conversation. Inspect it or use its exact-run CLI controls.",
         ));
     };
-    let conversation = binding.conversation().ok_or_else(|| {
-        problem("This run predates durable conversation ownership and cannot open in the WebUI.")
-    })?;
+    let conversation = binding.conversation();
     let interaction = binding.interaction();
     let workspace_id = hex(interaction.snapshot().workspace_id().as_bytes());
     let project = app

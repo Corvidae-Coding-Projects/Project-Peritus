@@ -1,7 +1,7 @@
 use super::*;
 
 fn options() -> InteractionOptions {
-    InteractionOptions::new(ProductInteractionMode::Chat, ProductRoleModels::default())
+    InteractionOptions::test(ProductInteractionMode::Chat, ProductRoleModels::default())
 }
 
 #[test]

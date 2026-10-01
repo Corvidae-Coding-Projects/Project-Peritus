@@ -2,8 +2,8 @@
 
 use crate::{
     AppProtocolError, ArtifactMetadata, CommandResult, CorrelationId, EventCursor,
-    ProductRunConversation, ProductRunSettlementSnapshot, ProductRunSnapshot, PromptId, RequestId,
-    ShutdownAccepted, SubscriptionId, TerminalBinding,
+    ProductRunSettlementSnapshot, ProductRunSnapshot, PromptId, RequestId, ShutdownAccepted,
+    SubscriptionId, TerminalBinding,
 };
 
 use super::ProtocolContext;
@@ -145,8 +145,6 @@ pub enum AppResponsePayload {
     ProductRunAccepted(ProductRunSnapshot),
     /// Bounded mixed active and settled runs with per-run qualification evidence.
     ProductRunObservations(Vec<crate::ProductRunObservation>),
-    /// Complete bounded conversation for one exact product run.
-    ProductRunConversation(ProductRunConversation),
     /// One exact product run paired with its verified terminal settlement.
     ProductRunSettled(ProductRunSettlementSnapshot),
 }

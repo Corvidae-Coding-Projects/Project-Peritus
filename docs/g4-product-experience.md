@@ -67,7 +67,8 @@ Messages submitted during work show separate received and incorporated revisions
 fences remaining stale tool calls at the next safe boundary; it cannot undo an effect already
 running. Ctrl-C or `/stop` interrupts work, while Ctrl-Q or `/quit` only detaches the client.
 `/new` preserves prior work. `/runs` opens the dashboard and Enter reopens a selected conversation.
-Legacy runs retain their existing message composer.
+Every listed run resolves to its durable workbench conversation; there is no parallel run-local
+message composer.
 
 `/model` queries the configured provider's catalog without inference. Tab changes the role,
 `r` refreshes, and Enter selects the exact advertised ID. A retained cache is marked with its

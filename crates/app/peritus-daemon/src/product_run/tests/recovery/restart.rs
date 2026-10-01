@@ -45,8 +45,7 @@ fn qualified_restart_reacquires_gates_without_replaying_a_provider() {
 
         let restarted =
             service(state.path(), repository.path(), workspace_id, [&writer, &reviewer, &fixer]);
-        let mut records =
-            super::super::super::load_records(&restarted.inner.directory).expect("restore runs");
+        let mut records = restarted.load_test_records().expect("restore runs");
         super::super::super::reconcile_restored_candidates(
             &restarted.inner.directory,
             &mut records,
@@ -155,8 +154,7 @@ async fn restart_scenario(user_cancelled: bool) {
     // Retry or Continue and without appending a new user instruction.
     let restarted =
         service(state.path(), repository.path(), workspace_id, [&writer, &reviewer, &fixer]);
-    let mut records =
-        super::super::super::load_records(&restarted.inner.directory).expect("restore runs");
+    let mut records = restarted.load_test_records().expect("restore runs");
     super::super::super::reconcile_restored_candidates(
         &restarted.inner.directory,
         &mut records,

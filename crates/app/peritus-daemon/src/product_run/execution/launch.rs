@@ -1,8 +1,7 @@
 //! Owned asynchronous run launch and provider/runtime composition.
 
 use super::runtime;
-use crate::product_run::{ProductRunService, SharedConversation};
-use peritus_app_protocol::ProductRunRequest;
+use crate::product_run::{ProductRunRequest, ProductRunService};
 use peritus_product_runner::{
     ConversationView, PRODUCT_RUN_MAX_ELAPSED, ProductDeliveryScope, ProductRunInput,
     ProductRunResume, ProductRunner, RoleProviders, RunObserver,
@@ -71,7 +70,6 @@ impl ProductRunService {
         providers: RoleProviders,
         cancelled: Arc<AtomicBool>,
         provider_cancellation: CancellationToken,
-        conversation: Arc<SharedConversation>,
         finding_state: String,
         resume: Option<ProductRunResume>,
     ) -> peritus_provider_core::BoxFuture<'_, ()> {
@@ -90,16 +88,11 @@ impl ProductRunService {
                         return;
                     }
                 };
-                let interaction_mode = service.inner.records.read().ok().and_then(|records| {
-                    records.get(&run_id).and_then(|record| {
-                        record.interaction.as_ref().map(|interaction| interaction.mode)
-                    })
-                });
-                let conversation: Arc<dyn ConversationView> = if interaction_mode.is_some() {
-                    service.live_conversation(run_id)
-                } else {
-                    conversation
-                };
+                let interaction_mode =
+                    service.inner.records.read().ok().and_then(|records| {
+                        records.get(&run_id).map(|record| record.interaction.mode)
+                    });
+                let conversation: Arc<dyn ConversationView> = service.live_conversation(run_id);
                 let input = ProductRunInput {
                     workspace_kind: peritus_product_runner::ProductWorkspaceKind::Managed,
                     run_id,
@@ -108,7 +101,7 @@ impl ProductRunService {
                     trace_path,
                     command_runtime,
                     finding_state,
-                    task: request.task().to_owned(),
+                    task: request.execution_task().to_owned(),
                     max_elapsed: PRODUCT_RUN_MAX_ELAPSED,
                     delivery_scope: ProductDeliveryScope::WorkspaceChanges,
                     conversation,

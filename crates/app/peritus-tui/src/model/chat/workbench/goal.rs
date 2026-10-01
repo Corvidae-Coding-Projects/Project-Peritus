@@ -255,7 +255,7 @@ impl AppModel {
         self.chat.snapshot = None;
         self.request(
             AppRequestPayload::QueryInteraction(
-                peritus_app_protocol::ProductRunConversationQuery::new(run),
+                peritus_app_protocol::ProductInteractionQuery::new(run),
             ),
             PendingRequest::ChatOpen { run_id: run },
         )

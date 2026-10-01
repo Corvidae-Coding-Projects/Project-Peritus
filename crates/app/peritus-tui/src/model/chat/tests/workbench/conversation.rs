@@ -1,6 +1,6 @@
 use super::*;
 use peritus_app_protocol::{
-    ProductRunConversationQuery, WorkbenchExecutionState, WorkbenchIntent, WorkbenchQuery,
+    ProductInteractionQuery, WorkbenchExecutionState, WorkbenchIntent, WorkbenchQuery,
     WorkbenchQueueIntent,
 };
 
@@ -38,7 +38,7 @@ fn composer_queues_in_selected_session_then_starts_only_after_receipt() {
     let interaction = request(&respond(&mut model, &start, receipt(command)));
     assert_eq!(
         interaction.payload(),
-        &AppRequestPayload::QueryInteraction(ProductRunConversationQuery::new(settings.run()))
+        &AppRequestPayload::QueryInteraction(ProductInteractionQuery::new(settings.run()))
     );
     assert_eq!(model.chat.run_id, Some(settings.run()));
 }
@@ -56,7 +56,7 @@ fn reopening_a_durable_session_discovers_its_run_without_execution() {
     let observed = request(&respond(&mut model, &lookup, state(query, 8, Some(run))));
     assert_eq!(
         observed.payload(),
-        &AppRequestPayload::QueryInteraction(ProductRunConversationQuery::new(run))
+        &AppRequestPayload::QueryInteraction(ProductInteractionQuery::new(run))
     );
     assert_eq!(model.chat.run_id, Some(run));
 }

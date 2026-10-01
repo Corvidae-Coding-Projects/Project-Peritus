@@ -27,8 +27,8 @@ use super::{
     daemon::{read_shutdown_request, write_shutdown_request},
     primitive::{invalid, read_context, read_id, unknown, write_context, write_id},
     product::{
-        read_conversation_query, read_run_continuation, read_run_control, read_run_query,
-        write_conversation_query, write_run_continuation, write_run_control, write_run_query,
+        read_conversation_query, read_run_control, read_run_query, write_conversation_query,
+        write_run_control, write_run_query,
     },
     prompt::{
         read_prompt_answer, read_prompt_cancellation, write_prompt_answer,
@@ -102,12 +102,8 @@ fn write_payload(
             super::workbench_inputs::write_query(writer, *value)
         }
         AppRequestPayload::Doctor(value) => super::doctor::write_query(writer, *value),
-        AppRequestPayload::Interact(value) => super::interaction::write_request(writer, value),
         AppRequestPayload::QueryInteractionBinding(value)
-        | AppRequestPayload::QueryInteraction(value)
-        | AppRequestPayload::QueryProductRunConversation(value) => {
-            write_conversation_query(writer, *value)
-        }
+        | AppRequestPayload::QueryInteraction(value) => write_conversation_query(writer, *value),
         AppRequestPayload::QueryModels(value) => {
             super::interaction::write_model_query(writer, *value)
         }
@@ -131,7 +127,6 @@ fn write_payload(
         }
         AppRequestPayload::ControlProductRun(value) => write_run_control(writer, *value),
         AppRequestPayload::QueryProductRunObservations(value) => write_run_query(writer, *value),
-        AppRequestPayload::ContinueProductRun(value) => write_run_continuation(writer, value),
         AppRequestPayload::UpdateModels(value) => {
             super::interaction::write_model_update(writer, value)
         }
@@ -185,15 +180,6 @@ fn payload_tag(payload: &AppRequestPayload) -> u16 {
         AppRequestPayload::CompleteArtifactUpload(_) => 16,
         AppRequestPayload::ControlProductRun(_) => 18,
         AppRequestPayload::QueryProductRunObservations(_) => 102,
-        AppRequestPayload::ContinueProductRun(_) => 20,
-        AppRequestPayload::QueryProductRunConversation(_) => 21,
-        AppRequestPayload::Interact(value) => {
-            if value.models().has_effort() {
-                26
-            } else {
-                22
-            }
-        }
         AppRequestPayload::QueryInteraction(_) => 23,
         AppRequestPayload::QueryModels(_) => 24,
         AppRequestPayload::UpdateModels(value) => {
@@ -277,15 +263,11 @@ fn read_payload(
         16 => AppRequestPayload::CompleteArtifactUpload(read_artifact_completion(reader)?),
         18 => AppRequestPayload::ControlProductRun(read_run_control(reader)?),
         102 => AppRequestPayload::QueryProductRunObservations(read_run_query(reader)?),
-        20 => AppRequestPayload::ContinueProductRun(read_run_continuation(reader)?),
-        21 => AppRequestPayload::QueryProductRunConversation(read_conversation_query(reader)?),
-        22 => AppRequestPayload::Interact(super::interaction::read_request(reader, false)?),
         23 => AppRequestPayload::QueryInteraction(read_conversation_query(reader)?),
         24 => AppRequestPayload::QueryModels(super::interaction::read_model_query(reader)?),
         25 => {
             AppRequestPayload::UpdateModels(super::interaction::read_model_update(reader, false)?)
         }
-        26 => AppRequestPayload::Interact(super::interaction::read_request(reader, true)?),
         27 => AppRequestPayload::UpdateModels(super::interaction::read_model_update(reader, true)?),
         28 => AppRequestPayload::Doctor(super::doctor::read_query(reader)?),
         60 => AppRequestPayload::QueryWorkbenchGoal(super::workbench::read_query(reader)?),

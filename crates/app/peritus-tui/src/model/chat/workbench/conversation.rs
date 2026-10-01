@@ -5,7 +5,7 @@ use super::{
     WorkbenchQuery,
 };
 use peritus_app_protocol::{
-    ProductRunConversationQuery, WellKnownProtocolFeature, WorkbenchCommand,
+    ProductInteractionQuery, WellKnownProtocolFeature, WorkbenchCommand,
     WorkbenchExecutionSettings, WorkbenchExecutionState, WorkbenchInputId, WorkbenchInputOrder,
     WorkbenchInputText, WorkbenchNewInput, WorkbenchQueueIntent,
 };
@@ -198,7 +198,7 @@ impl AppModel {
             self.chat.workbench.open = false;
             return self
                 .request(
-                    AppRequestPayload::QueryInteraction(ProductRunConversationQuery::new(run)),
+                    AppRequestPayload::QueryInteraction(ProductInteractionQuery::new(run)),
                     pending,
                 )
                 .into_iter()
@@ -253,7 +253,7 @@ impl AppModel {
                 }
                 Some(
                     self.request(
-                        AppRequestPayload::QueryInteraction(ProductRunConversationQuery::new(run)),
+                        AppRequestPayload::QueryInteraction(ProductInteractionQuery::new(run)),
                         PendingRequest::ChatOpen { run_id: run },
                     )
                     .into_iter()

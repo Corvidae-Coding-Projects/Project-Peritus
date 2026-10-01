@@ -2,11 +2,10 @@
 
 use crate::{
     AppErrorCode, AppProtocolError, ArtifactCancellation, ArtifactChunk, ArtifactCompletion,
-    ArtifactMetadata, CommandBinding, CorrelationId, EventCursor, ProductRunContinuation,
-    ProductRunControl, ProductRunConversationQuery, ProductRunQuery, PromptAnswer,
-    PromptCancellation, RequestId, ShutdownRequest, SubscriptionFilter, SubscriptionId,
-    TerminalBinding, TerminalCancellation, TerminalDetach, TerminalInput, TerminalResize,
-    TransferId,
+    ArtifactMetadata, CommandBinding, CorrelationId, EventCursor, ProductInteractionQuery,
+    ProductRunControl, ProductRunQuery, PromptAnswer, PromptCancellation, RequestId,
+    ShutdownRequest, SubscriptionFilter, SubscriptionId, TerminalBinding, TerminalCancellation,
+    TerminalDetach, TerminalInput, TerminalResize, TransferId,
 };
 use peritus_types::ArtifactId;
 
@@ -148,7 +147,7 @@ pub enum AppRequestPayload {
     /// Discovers the authorized durable conversation execution without inference.
     QueryWorkbenchExecution(crate::WorkbenchQuery),
     /// Reads a run and its exact durable conversation destination without starting work.
-    QueryInteractionBinding(ProductRunConversationQuery),
+    QueryInteractionBinding(ProductInteractionQuery),
     /// Incorporates already receipted pending inputs in a non-goal execution.
     ContinueWorkbenchExecution(crate::WorkbenchContinuation),
     /// Resolves the original receipt for an exact actor-bound operation without reapplying it.
@@ -157,10 +156,8 @@ pub enum AppRequestPayload {
     Doctor(crate::DoctorQuery),
     /// Durably selects models for subsequent turns of an existing conversation.
     UpdateModels(crate::ProductModelUpdate),
-    /// Starts or steers a conversation with explicit execution semantics.
-    Interact(crate::ProductInteractionRequest),
     /// Reads public activity and exact input incorporation status.
-    QueryInteraction(ProductRunConversationQuery),
+    QueryInteraction(ProductInteractionQuery),
     /// Discovers models from one configured provider route.
     QueryModels(crate::ProductModelQuery),
     /// Submits one exact, idempotent B3 command binding.
@@ -181,10 +178,6 @@ pub enum AppRequestPayload {
     ControlProductRun(ProductRunControl),
     /// Queries recent or exact runs while retaining every candidate's qualification evidence.
     QueryProductRunObservations(ProductRunQuery),
-    /// Adds user context to an active or resumable product run.
-    ContinueProductRun(ProductRunContinuation),
-    /// Queries the conversation for one exact product run.
-    QueryProductRunConversation(ProductRunConversationQuery),
     /// Answers an approval or user-input prompt.
     AnswerPrompt(PromptAnswer),
     /// Cancels an outstanding prompt.
@@ -206,8 +199,7 @@ pub enum AppRequestPayload {
 }
 
 impl AppRequestPayload {
-    /// Returns the independently negotiated capability required by additive workbench operations.
-    /// Legacy payloads retain their original admission contracts.
+    /// Returns the independently negotiated capability required by workbench operations.
     #[must_use]
     pub const fn required_workbench_feature(&self) -> Option<crate::WellKnownProtocolFeature> {
         match self {

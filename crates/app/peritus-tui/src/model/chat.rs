@@ -30,7 +30,7 @@ pub struct ChatUi {
     pub(crate) viewport: Option<ratatui::layout::Rect>,
     mouse_anchor: Option<usize>,
     pub(crate) run_id: Option<RunId>,
-    binding_checked: Option<RunId>,
+    pub(in crate::model) binding_checked: Option<RunId>,
     pub(crate) snapshot: Option<ProductInteractionSnapshot>,
     pub(crate) mode: ProductInteractionMode,
     pub(crate) models: ProductRoleModels,
@@ -168,6 +168,7 @@ impl AppModel {
                 PendingRequest::ChatQuery
                     | PendingRequest::ChatOpen { .. }
                     | PendingRequest::ChatBinding { .. }
+                    | PendingRequest::ProductMessageBinding { .. }
             )
         }) {
             return Vec::new();

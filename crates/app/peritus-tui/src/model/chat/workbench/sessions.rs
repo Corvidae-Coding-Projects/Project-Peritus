@@ -8,37 +8,6 @@ use peritus_app_protocol::{
 };
 
 impl AppModel {
-    fn open_legacy_library_conversation(
-        &mut self,
-        id: ConversationId,
-        workspace: peritus_types::WorkspaceId,
-    ) -> Option<Vec<Effect>> {
-        let run = self
-            .chat
-            .workbench
-            .library
-            .as_ref()
-            .and_then(|page| {
-                page.items().iter().find(|item| item.query() == WorkbenchQuery::new(id, workspace))
-            })
-            .and_then(peritus_app_protocol::ConversationLibraryItem::legacy_run)?;
-        self.select_workbench_conversation(None);
-        self.chat.workbench.open = false;
-        self.chat.run_id = Some(run);
-        self.chat.snapshot = None;
-        self.clear_chat_command();
-        Some(
-            self.request(
-                AppRequestPayload::QueryInteraction(
-                    peritus_app_protocol::ProductRunConversationQuery::new(run),
-                ),
-                PendingRequest::ChatOpen { run_id: run },
-            )
-            .into_iter()
-            .collect(),
-        )
-    }
-
     pub(in crate::model::chat) fn sessions_command(&mut self, arguments: &str) -> Vec<Effect> {
         if !self.workbench_available() {
             self.notice(NoticeLevel::Warning, "Workbench controls unavailable/offline; /reconnect or upgrade daemon. Draft retained.");
@@ -90,9 +59,6 @@ impl AppModel {
             if target != workspace {
                 self.chat.workbench.message = format!("Opening /sessions open {text}");
                 return vec![Effect::OpenConversation(WorkbenchQuery::new(id, target))];
-            }
-            if let Some(effects) = self.open_legacy_library_conversation(id, workspace) {
-                return effects;
             }
             self.select_workbench_conversation(Some(WorkbenchQuery::new(id, workspace)));
             self.chat.workbench.mode = WorkbenchMode::Sessions;

@@ -106,12 +106,15 @@ async fn suggestions_require_real_terminal_evidence_and_only_explicit_evaluation
     {
         let records = service.inner.records.read().expect("records");
         let record = records.get(&evaluation).expect("launched record");
-        assert_eq!(record.request.task(), "Execute the selected durable workbench inputs.");
-        let operation = record
-            .interaction
-            .as_ref()
-            .and_then(|options| options.workbench.as_ref())
-            .expect("workbench-owned run");
+        assert_eq!(
+            record.request.execution_task(),
+            "Execute the selected durable workbench inputs."
+        );
+        assert!(
+            record.snapshot.task().starts_with("Harness improvement "),
+            "dashboard identity comes from the durable conversation title"
+        );
+        let operation = &record.interaction.workbench;
         assert_eq!(operation.conversation().as_bytes(), route.conversation().as_bytes());
     }
     let query = WorkbenchQuery::new(route.conversation(), route.target());

@@ -25,11 +25,7 @@ fn folder_provider_failure_retains_unqualified_effects_and_durable_retry_reuses_
         let (service, request) = folder_service(root.path(), &writer, true);
         let id = request.run_id();
         service
-            .interact(ProductInteractionRequest::new(
-                request,
-                Mode::Chat,
-                ProductRoleModels::default(),
-            ))
+            .start_interaction(request, Mode::Chat, ProductRoleModels::default())
             .await
             .expect("start");
         let failed = wait_for_terminal(&service, id).await;
@@ -40,12 +36,11 @@ fn folder_provider_failure_retains_unqualified_effects_and_durable_retry_reuses_
             fs::read_to_string(root.path().join("note.txt")).expect("retained effect"),
             "requested text"
         );
-        service.query_interaction(ProductRunConversationQuery::new(id)).expect("wire-safe failure");
+        service.query_interaction(ProductInteractionQuery::new(id)).expect("wire-safe failure");
         for action in [ProductRunControlAction::Accept, ProductRunControlAction::Discard] {
             assert!(service.control(ProductRunControl::new(id, action)).await.is_err());
         }
-        let restored = crate::product_run::persistence::load_records(&service.inner.directory)
-            .expect("durable restore");
+        let restored = service.load_test_records().expect("durable restore");
         let resume = restored
             .get(&id)
             .expect("restored record")
@@ -69,61 +64,8 @@ fn folder_provider_failure_retains_unqualified_effects_and_durable_retry_reuses_
         assert!(completed.diff().contains("+requested text"));
         assert!(completed.deliverable().is_none());
         assert!(writer.responses.lock().expect("scripts").is_empty());
-        service
-            .query_interaction(ProductRunConversationQuery::new(id))
-            .expect("wire-safe completion");
+        service.query_interaction(ProductInteractionQuery::new(id)).expect("wire-safe completion");
         assert!(!root.path().join(".git").exists());
-        service.shutdown(Duration::from_secs(5)).await;
-    });
-}
-
-#[test]
-fn completed_followup_uses_a_new_in_place_baseline() {
-    block_on(async {
-        let root = tempfile::tempdir().expect("folder");
-        fs::write(root.path().join("note.txt"), "original").expect("source");
-        artifact_contract(root.path());
-        let writer = scripted(
-            0x6a,
-            "followup-pipeline",
-            pipeline_prefix()
-                .into_iter()
-                .chain([write("requested text"), complete()])
-                .chain(pipeline_review("note.txt"))
-                .collect(),
-        );
-        let (service, request) = folder_service(root.path(), &writer, true);
-        let id = request.run_id();
-        service
-            .interact(ProductInteractionRequest::new(
-                request,
-                Mode::Chat,
-                ProductRoleModels::default(),
-            ))
-            .await
-            .expect("start");
-        assert_eq!(wait_for_terminal(&service, id).await.phase(), ProductRunPhase::Complete);
-        writer.responses.lock().expect("scripts").extend(
-            pipeline_prefix()
-                .into_iter()
-                .chain([write("second requested text"), complete()])
-                .chain(pipeline_review("note.txt")),
-        );
-        service
-            .continue_run(
-                &ProductRunContinuation::new(
-                    id,
-                    "Now replace note.txt with second requested text.".to_owned(),
-                )
-                .expect("followup"),
-            )
-            .await
-            .expect("continue");
-        let completed = wait_for_terminal(&service, id).await;
-        assert_eq!(completed.phase(), ProductRunPhase::Complete, "{}", completed.summary());
-        assert!(completed.diff().contains("-requested text"), "{}", completed.diff());
-        assert!(!completed.diff().contains("-original"));
-        assert!(completed.diff().contains("+second requested text"));
         service.shutdown(Duration::from_secs(5)).await;
     });
 }
@@ -146,11 +88,7 @@ fn unsupported_folder_checks_do_not_become_success_from_clean_reviewer_prose() {
         let (service, request) = folder_service(root.path(), &writer, true);
         let id = request.run_id();
         service
-            .interact(ProductInteractionRequest::new(
-                request,
-                Mode::Chat,
-                ProductRoleModels::default(),
-            ))
+            .start_interaction(request, Mode::Chat, ProductRoleModels::default())
             .await
             .expect("start");
         let failed = wait_for_terminal(&service, id).await;
@@ -182,11 +120,7 @@ fn cancellation_during_folder_review_retains_effects_without_qualification_or_co
         let (service, request) = folder_service(root.path(), &writer, true);
         let id = request.run_id();
         service
-            .interact(ProductInteractionRequest::new(
-                request,
-                Mode::Chat,
-                ProductRoleModels::default(),
-            ))
+            .start_interaction(request, Mode::Chat, ProductRoleModels::default())
             .await
             .expect("start");
         tokio::time::timeout(Duration::from_secs(5), async {
@@ -223,63 +157,6 @@ fn cancellation_during_folder_review_retains_effects_without_qualification_or_co
 }
 
 #[test]
-fn a_question_about_interrupted_folder_work_preserves_its_continuation_without_running_it() {
-    block_on(async {
-        let root = tempfile::tempdir().expect("folder");
-        fs::write(root.path().join("note.txt"), "original").expect("source");
-        artifact_contract(root.path());
-        let writer = scripted(
-            0x6d,
-            "discuss-interruption",
-            pipeline_prefix().into_iter().chain([write("requested text"), complete()]).collect(),
-        );
-        let (service, request) = folder_service(root.path(), &writer, true);
-        let id = request.run_id();
-        service
-            .interact(ProductInteractionRequest::new(
-                request,
-                Mode::Chat,
-                ProductRoleModels::default(),
-            ))
-            .await
-            .expect("start");
-        assert_eq!(wait_for_terminal(&service, id).await.phase(), ProductRunPhase::Failed);
-        let before = writer.requests.lock().expect("requests").len();
-        writer.responses.lock().expect("scripts").push_back(text_response(
-            b"The edit is retained, but review was interrupted. No new work has run.",
-        ));
-        service
-            .continue_run(
-                &ProductRunContinuation::new(
-                    id,
-                    "Why did it stop? Explain only; do not change anything.".to_owned(),
-                )
-                .expect("question"),
-            )
-            .await
-            .expect("discuss");
-        let idle = wait_for_terminal(&service, id).await;
-        assert_eq!(idle.phase(), ProductRunPhase::WaitingForUser, "{}", idle.summary());
-        assert_eq!(writer.requests.lock().expect("requests").len(), before + 1);
-        assert_eq!(
-            fs::read_to_string(root.path().join("note.txt")).expect("retained"),
-            "requested text"
-        );
-        let restored = crate::product_run::persistence::load_records(&service.inner.directory)
-            .expect("reload");
-        let record = restored.get(&id).expect("record");
-        assert!(record.resume.is_some());
-        assert!(record.checkpoint.is_some());
-        assert!(!record.settlement.expect("settlement").is_accepted());
-        assert!(!record.candidate_actionable);
-        service
-            .query_interaction(ProductRunConversationQuery::new(id))
-            .expect("wire-safe question");
-        service.shutdown(Duration::from_secs(5)).await;
-    });
-}
-
-#[test]
 fn folder_effort_selection_follows_writer_reviewer_fixer_and_fresh_review() {
     block_on(async {
         let root = tempfile::tempdir().expect("folder");
@@ -308,10 +185,7 @@ fn folder_effort_selection_follows_writer_reviewer_fixer_and_fresh_review() {
             ProductModelChoice::default().with_effort(ProductModelEffort::XHigh),
             ProductModelChoice::default().with_effort(ProductModelEffort::Max),
         );
-        service
-            .interact(ProductInteractionRequest::new(request, Mode::Chat, models))
-            .await
-            .expect("start");
+        service.start_interaction(request, Mode::Chat, models).await.expect("start");
         let completed = wait_for_terminal(&service, id).await;
         assert_eq!(completed.phase(), ProductRunPhase::Complete, "{}", completed.summary());
         assert!(completed.cycle() >= 2);
@@ -320,7 +194,7 @@ fn folder_effort_selection_follows_writer_reviewer_fixer_and_fresh_review() {
             "requested text"
         );
         let snapshot =
-            service.query_interaction(ProductRunConversationQuery::new(id)).expect("snapshot");
+            service.query_interaction(ProductInteractionQuery::new(id)).expect("snapshot");
         assert!(
             snapshot
                 .activities()

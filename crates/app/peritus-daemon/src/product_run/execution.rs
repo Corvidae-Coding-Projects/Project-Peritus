@@ -1,9 +1,7 @@
 //! Active product-run task ownership and terminal projection.
 mod runtime;
 
-use peritus_app_protocol::{
-    ProductConversationRole, ProductDeliverable, ProductRunPhase, ProductRunSnapshot,
-};
+use peritus_app_protocol::{ProductDeliverable, ProductRunPhase, ProductRunSnapshot};
 use peritus_product_runner::ProductRunOutcome;
 use peritus_product_runner::control::GoalSettlement;
 use peritus_run_settlement::RunDisposition;
@@ -49,13 +47,13 @@ impl ProductRunService {
         };
         if phase != record.snapshot.phase()
             && update.phase != peritus_product_runner::ProductRunPhase::Finalizing
-            && let Some(options) = &mut record.interaction
             && matches!(
-                options.mode,
+                record.interaction.mode,
                 peritus_app_protocol::ProductInteractionMode::Build
                     | peritus_app_protocol::ProductInteractionMode::Chat
             )
         {
+            let options = &mut record.interaction;
             let message = match phase {
                 ProductRunPhase::Designing => {
                     "I'm inspecting the workspace and preparing the design."
@@ -90,7 +88,7 @@ impl ProductRunService {
             record.request.providers(),
             phase,
             update.cycle,
-            record.request.task().to_owned(),
+            record.request.display_task().to_owned(),
             update.status,
             update.diff,
             update.gates,
@@ -126,21 +124,17 @@ impl ProductRunService {
             if matches!(
                 outcome.settlement().disposition(),
                 RunDisposition::Accepted | RunDisposition::WaitingForUser
-            ) && let Some(start) =
-                record.interaction.as_ref().and_then(|options| options.workbench.as_ref())
-            {
+            ) {
                 // The runner has returned, so its in-place writes have reached a completed owned
                 // boundary. A failed seal remains visibly unsealed and can never be overwritten.
-                let _ = self.seal_latest_checkpoint(start, run_id);
+                let _ = self.seal_latest_checkpoint(&record.interaction.workbench, run_id);
             }
         }
         if !self.retain_task_baseline(record) {
             return;
         }
         let Ok(goal_status) = self.settle_workbench_goal(record, &result) else {
-            if let Some(options) = &record.interaction {
-                options.persistence_failed.store(true, std::sync::atomic::Ordering::Release);
-            }
+            record.interaction.persistence_failed.store(true, std::sync::atomic::Ordering::Release);
             if let Ok(snapshot) = replace_snapshot(
                 &record.snapshot,
                 ProductRunPhase::RecoveryRequired,
@@ -174,7 +168,7 @@ impl ProductRunService {
                     record.request.providers(),
                     ProductRunPhase::Complete,
                     output.fixer_cycles + 1,
-                    record.request.task().to_owned(),
+                    record.request.display_task().to_owned(),
                     if deliverable.is_some() {
                         "Qualified — passing checks and independent review".to_owned()
                     } else {
@@ -202,9 +196,8 @@ impl ProductRunService {
                     let _ = persist_record(&self.inner.directory, record);
                     return;
                 };
-                let chatting = record.interaction.as_ref().is_some_and(|interaction| {
-                    interaction.mode != peritus_app_protocol::ProductInteractionMode::Build
-                });
+                let chatting =
+                    record.interaction.mode != peritus_app_protocol::ProductInteractionMode::Build;
                 let status = if chatting {
                     if outcome.candidate().is_some() {
                         "Idle — unqualified changes retained"
@@ -259,10 +252,8 @@ impl ProductRunService {
         {
             record.snapshot = snapshot;
         }
-        if let Err(error) = self.collect_improvement(record)
-            && let Some(options) = &mut record.interaction
-        {
-            let _ = options.append(
+        if let Err(error) = self.collect_improvement(record) {
+            let _ = record.interaction.append(
                 peritus_app_protocol::ProductActivityKind::Error,
                 "Could not collect an improvement suggestion. Open the inbox to retry collection.",
                 &error.describe(),
@@ -312,7 +303,7 @@ impl ProductRunService {
                 record.request.providers(),
                 phase,
                 output.fixer_cycles.saturating_add(1),
-                record.request.task().to_owned(),
+                record.request.display_task().to_owned(),
                 status.to_owned(),
                 output.diff.clone(),
                 output.gates.clone(),
@@ -333,18 +324,13 @@ impl ProductRunService {
     }
 
     fn deliver_public_reply(&self, record: &mut super::RunRecord, text: String) {
-        if let Some(start) =
-            record.interaction.as_ref().and_then(|options| options.workbench.as_ref())
-            && self.with_controls(false, |store| store.publish_reply(start, &text)).is_err()
+        if self
+            .with_controls(false, |store| store.publish_reply(&record.interaction.workbench, &text))
+            .is_err()
         {
             fail_handoff(record);
-            if let Some(options) = &record.interaction {
-                options.persistence_failed.store(true, std::sync::atomic::Ordering::Release);
-            }
-            return;
+            record.interaction.persistence_failed.store(true, std::sync::atomic::Ordering::Release);
         }
-        // Workbench history is authoritative in C0; legacy JSON keeps its bounded projection.
-        let _ = record.conversation.append(ProductConversationRole::Agent, text);
     }
 
     fn with_candidate(

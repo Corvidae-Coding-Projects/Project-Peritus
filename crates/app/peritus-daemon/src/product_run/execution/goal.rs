@@ -12,15 +12,9 @@ impl ProductRunService {
         record: &super::super::RunRecord,
         result: &Result<ProductRunOutcome, peritus_product_runner::ProductRunnerError>,
     ) -> Result<Option<&'static str>, ProductRunServiceError> {
-        let Some(start) = record.interaction.as_ref().and_then(|options| options.workbench.clone())
-        else {
-            return Ok(None);
-        };
-        let evidence_input_generation = record
-            .interaction
-            .as_ref()
-            .map(|options| options.incorporated)
-            .filter(|revision| *revision > 0);
+        let start = record.interaction.workbench.clone();
+        let evidence_input_generation =
+            (record.interaction.incorporated > 0).then_some(record.interaction.incorporated);
         let (settlement, unresolved_effects) = match result {
             Ok(outcome) => {
                 let settlement = match outcome.settlement().disposition() {
@@ -104,8 +98,9 @@ impl ProductRunService {
 
     fn record_goal_clock_failure(&self, run: peritus_types::RunId, error: &ProductRunServiceError) {
         if let Ok(records) = self.inner.records.read()
-            && let Some(options) = records.get(&run).and_then(|record| record.interaction.as_ref())
+            && let Some(record) = records.get(&run)
         {
+            let options = &record.interaction;
             options.record_persistence_failure(format!(
                 "Could not save goal progress: {}",
                 error.describe()
@@ -121,10 +116,7 @@ impl ProductRunService {
     ) -> Result<Option<u64>, ProductRunServiceError> {
         let records = self.inner.records.read().map_err(|_| ProductRunServiceError::Unavailable)?;
         let record = records.get(&run).ok_or(ProductRunServiceError::NotFound)?;
-        let Some(start) = record.interaction.as_ref().and_then(|options| options.workbench.clone())
-        else {
-            return Ok(None);
-        };
+        let start = record.interaction.workbench.clone();
         let progress = record.progress.clone();
         drop(records);
         self.with_controls(false, |store| {

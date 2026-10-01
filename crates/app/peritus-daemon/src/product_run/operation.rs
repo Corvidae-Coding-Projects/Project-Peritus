@@ -5,8 +5,7 @@ use peritus_app_protocol::{
     ProductRunOperationKind as Kind, ProductRunOperationState as State, ProductRunPhase,
 };
 use peritus_product_runner::{
-    ConversationView, DiscardTransactionState, UncertainEffectState, acknowledge_uncertain_effect,
-    uncertain_effects,
+    DiscardTransactionState, UncertainEffectState, acknowledge_uncertain_effect, uncertain_effects,
 };
 use std::path::Path;
 
@@ -152,7 +151,7 @@ pub(super) fn project(
     }
     let reviewed_current = uncertain.iter().any(|effect| {
         effect.state() == UncertainEffectState::Reviewed
-            && effect.requirements_revision() == Some(record.conversation.revision())
+            && effect.requirements_revision() == Some(record.interaction.incorporated)
     });
 
     if let Some(deliverable) = record.snapshot.deliverable()

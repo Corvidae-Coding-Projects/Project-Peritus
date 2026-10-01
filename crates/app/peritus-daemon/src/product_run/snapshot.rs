@@ -3,12 +3,12 @@
 use std::collections::BTreeMap;
 
 use peritus_app_protocol::{
-    AppResponsePayload, ProductRunObservation, ProductRunPhase, ProductRunRequest,
-    ProductRunSettlementSnapshot, ProductRunSnapshot,
+    AppResponsePayload, ProductRunObservation, ProductRunPhase, ProductRunSettlementSnapshot,
+    ProductRunSnapshot,
 };
 use peritus_types::{RunId, WorkspaceId};
 
-use super::{ProductRunServiceError, RunRecord};
+use super::{ProductRunRequest, ProductRunServiceError, RunRecord};
 
 impl super::ProductRunService {
     pub(crate) fn query_observations(
@@ -115,7 +115,7 @@ fn queued_snapshot(
         request.providers(),
         ProductRunPhase::Queued,
         1,
-        request.task().to_owned(),
+        request.display_task().to_owned(),
         status.to_owned(),
         String::new(),
         String::new(),

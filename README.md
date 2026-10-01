@@ -158,8 +158,8 @@ In `/runs`, select a task before using these dashboard keys:
 
 | Key | Action |
 | --- | --- |
-| Enter | Open the conversation; older runs use their existing message composer. |
-| `m` | Send a follow-up through the legacy task composer. |
+| Enter | Open the run's durable conversation. |
+| `m` | Send a follow-up through the durable workbench conversation. |
 | `i` | Inspect the result. |
 | `a` | Accept the result. |
 | `c` | Commit the changed files. |
@@ -194,7 +194,7 @@ for API sources, discovery behavior, and test limits.
 Setup and `/model` query provider-advertised model catalogs. No built-in model list is substituted
 when discovery fails; `/model manual MODEL_ID` is an explicit, unverified fallback.
 Model changes apply at an idle boundary. Interactive selections never silently fail over.
-Legacy coding-run provider failover requires permission in provider settings and is off by default.
+Automatic coding-run provider failover requires permission in provider settings and is off by default.
 
 ## Update
 

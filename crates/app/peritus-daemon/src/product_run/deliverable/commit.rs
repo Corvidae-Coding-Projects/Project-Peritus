@@ -83,7 +83,7 @@ pub(super) fn with_recovery(
     .with_deliverable(deliverable.clone());
     super::persist_record(directory, record)?;
     let description = if record.snapshot.summary().trim().is_empty() {
-        record.request.task()
+        record.request.display_task()
     } else {
         record.snapshot.summary()
     };

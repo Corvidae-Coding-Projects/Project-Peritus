@@ -126,19 +126,8 @@ pub(super) async fn checkpoint_scenario(
     );
 
     // A verification command observes all changed scoped files again without editing them.
-    let start_binding = service
-        .inner
-        .records
-        .read()
-        .unwrap()
-        .get(&run)
-        .unwrap()
-        .interaction
-        .as_ref()
-        .unwrap()
-        .workbench
-        .clone()
-        .unwrap();
+    let start_binding =
+        service.inner.records.read().unwrap().get(&run).unwrap().interaction.workbench.clone();
     let postimage = peritus_product_runner::control::CheckpointFileVersion::present(
         peritus_codec::sha256(b"Peritus owned edit\n"),
         19,

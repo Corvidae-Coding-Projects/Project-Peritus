@@ -66,7 +66,7 @@ fn accepted_result_stays_complete_when_shutdown_follows_late_cancellation() {
 
         let live = wait_for_terminal(&running, run_id).await;
         assert_eq!(live.phase(), ProductRunPhase::Complete);
-        let restored = super::super::load_records(&running.inner.directory).expect("reload runs");
+        let restored = running.load_test_records().expect("reload runs");
         assert_eq!(
             restored.get(&run_id).expect("restored run").snapshot.phase(),
             live.phase(),
@@ -171,7 +171,7 @@ fn abrupt_cancel_survives_process_termination() {
         let workspace_id = WorkspaceId::new([0xf5; 16]).expect("workspace");
         let restarted =
             service(state.path(), repository.path(), workspace_id, [&writer, &reviewer, &fixer]);
-        let records = super::super::load_records(&restarted.inner.directory).expect("reload runs");
+        let records = restarted.load_test_records().expect("reload runs");
         assert_eq!(
             records.get(&run_id).expect("durable run").snapshot.phase(),
             ProductRunPhase::Cancelled,

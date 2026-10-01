@@ -10,7 +10,7 @@ pub(super) struct PersistedRecord {
     pub(super) format_version: u16,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(super) goal_resume: Option<[u8; 16]>,
-    pub(super) interaction: Option<interaction::PersistedInteraction>,
+    pub(super) interaction: interaction::PersistedInteraction,
     pub(super) run_id: String,
     pub(super) workspace_id: String,
     pub(super) writer: String,
@@ -18,6 +18,7 @@ pub(super) struct PersistedRecord {
     pub(super) fixer: String,
     pub(super) phase: u16,
     pub(super) cycle: u32,
+    pub(super) execution_task: String,
     pub(super) task: String,
     pub(super) status: String,
     pub(super) diff: String,
@@ -27,8 +28,6 @@ pub(super) struct PersistedRecord {
     pub(super) user_cancelled: bool,
     pub(super) finding_state: String,
     pub(super) deliverable: Option<PersistedDeliverable>,
-    pub(super) messages: Vec<PersistedMessage>,
-    pub(super) conversation_revision: u64,
     pub(super) progress: PersistedProgress,
     pub(super) checkpoint: Option<PersistedCheckpoint>,
     pub(super) settlement_cause: Option<u16>,
@@ -79,12 +78,6 @@ pub(super) struct PersistedProgress {
     pub(super) workspace_bytes: u64,
     pub(super) workspace_growth_bytes: u64,
     pub(super) peak_rss_bytes: u64,
-}
-
-#[derive(Serialize, Deserialize)]
-pub(super) struct PersistedMessage {
-    pub(super) role: u16,
-    pub(super) content: String,
 }
 
 #[derive(Serialize, Deserialize)]

@@ -108,7 +108,7 @@ fn completed_discard_is_recovered_after_result_persistence_failure_and_restart()
                 .is_err()
         );
         assert_eq!(fs::read(repository.path().join("src/lib.rs")).unwrap(), original);
-        let mut records = super::super::load_records(&directory).unwrap();
+        let mut records = running.load_test_records().unwrap();
         assert!(!records[&run].snapshot.deliverable().unwrap().discarded());
         // A new user edit after completed discard must survive recovery of the acknowledgement.
         fs::write(repository.path().join("src/lib.rs"), b"new user draft after discard\n").unwrap();
@@ -127,11 +127,7 @@ fn completed_discard_is_recovered_after_result_persistence_failure_and_restart()
             b"new user draft after discard\n"
         );
         assert!(
-            super::super::load_records(&directory).unwrap()[&run]
-                .snapshot
-                .deliverable()
-                .unwrap()
-                .discarded()
+            running.load_test_records().unwrap()[&run].snapshot.deliverable().unwrap().discarded()
         );
         running.shutdown(Duration::from_secs(5)).await;
     });
@@ -185,7 +181,7 @@ fn repeated_deliverable_actions_retry_failed_persistence_before_reporting_succes
                 "{action:?} must not report success while its result still cannot be saved"
             );
             let confirmed = running.control(ProductRunControl::new(run, action)).await.unwrap();
-            let restored = super::super::load_records(&running.inner.directory).unwrap();
+            let restored = running.load_test_records().unwrap();
             assert_eq!(restored[&run].snapshot.deliverable(), confirmed.deliverable());
         }
         running.shutdown(Duration::from_secs(5)).await;
@@ -237,13 +233,13 @@ fn restarted_deliverable_exports_and_discards_from_embedded_preimages() {
             .collect::<Vec<_>>();
         assert_eq!(sidecars.len(), 1);
         fs::remove_file(&sidecars[0]).expect("simulate lost baseline sidecar");
-        let records = super::super::load_records(&directory).expect("restore records");
+        let restarted =
+            service(state.path(), repository.path(), workspace, [&writer, &reviewer, &fixer]);
+        let records = restarted.load_test_records().expect("restore records");
         assert_eq!(
             records.get(&run).expect("record").task_baseline.as_deref(),
             Some(baseline.as_str())
         );
-        let restarted =
-            service(state.path(), repository.path(), workspace, [&writer, &reviewer, &fixer]);
         *restarted.inner.records.write().expect("records") = records;
         let exported = restarted
             .control(ProductRunControl::new(run, ProductRunControlAction::Export))

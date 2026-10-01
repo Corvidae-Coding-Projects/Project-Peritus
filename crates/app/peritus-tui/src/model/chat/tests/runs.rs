@@ -6,8 +6,6 @@ use peritus_app_protocol::{
 };
 use peritus_run_settlement::{SettlementCause, SettlementReducer};
 
-mod binding;
-
 #[test]
 fn a_slow_run_lookup_does_not_trap_new_conversation_navigation_or_late_reply_routing() {
     use peritus_app_protocol::{
@@ -62,7 +60,7 @@ fn a_slow_run_lookup_does_not_trap_new_conversation_navigation_or_late_reply_rou
             None,
         )
         .unwrap(),
-        Some(WorkbenchQuery::new(ConversationId::new([99; 16]).unwrap(), workspace)),
+        WorkbenchQuery::new(ConversationId::new([99; 16]).unwrap(), workspace),
     )
     .unwrap();
     model.update(Action::Message(AppMessage::Response(AppResponseEnvelope::new(
@@ -107,7 +105,7 @@ fn delayed_binding_cannot_retarget_a_new_selection_or_steal_focus_from_an_inspec
             None,
         )
         .unwrap(),
-        Some(query),
+        query,
     )
     .unwrap();
     let pending = PendingRequest::ChatBinding { run_id: run, opening: false };
@@ -162,9 +160,12 @@ fn initial_run_lookup_failure_retains_the_destination_and_draft_for_retry() {
     use peritus_app_protocol::{
         AppErrorCode, AppProtocolError, AppResponseEnvelope, AppResponsePayload,
     };
-    for code in
-        [AppErrorCode::Internal, AppErrorCode::InvalidIdentifier, AppErrorCode::SessionMismatch]
-    {
+    for code in [
+        AppErrorCode::Internal,
+        AppErrorCode::InvalidIdentifier,
+        AppErrorCode::SessionMismatch,
+        AppErrorCode::IdempotencyConflict,
+    ] {
         let mut model = model();
         let run = RunId::new([93; 16]).unwrap();
         model.chat.run_id = Some(run);
@@ -192,34 +193,6 @@ fn initial_run_lookup_failure_retains_the_destination_and_draft_for_retry() {
         assert!(matches!(effects.as_slice(), [Effect::Send(AppMessage::Request(request))]
             if matches!(request.payload(), AppRequestPayload::QueryInteractionBinding(query) if query.run_id() == run)));
     }
-}
-
-#[test]
-fn noninteractive_run_fallback_editor_uses_the_requested_run_not_the_dashboard_selection() {
-    use peritus_app_protocol::{
-        AppErrorCode, AppProtocolError, AppResponseEnvelope, AppResponsePayload,
-    };
-    let mut model = model();
-    let run = RunId::new([94; 16]).unwrap();
-    model.chat.run_id = Some(run);
-    model.features.push(
-        ProtocolFeatureName::well_known(WellKnownProtocolFeature::WorkbenchRunBinding).unwrap(),
-    );
-    model.chat.buffer = "retained composer draft".into();
-    let effects = key(&mut model, KeyCode::Enter);
-    let [Effect::Send(AppMessage::Request(request))] = effects.as_slice() else {
-        panic!("binding")
-    };
-    model.update(Action::Message(AppMessage::Response(AppResponseEnvelope::new(
-        request.context(),
-        request.request_id(),
-        request.correlation_id(),
-        AppResponsePayload::Error(AppProtocolError::new(AppErrorCode::IdempotencyConflict, None)),
-    ))));
-    assert!(
-        matches!(model.editor.as_ref().map(|editor| &editor.kind), Some(crate::model::EditorKind::ProductMessage(actual)) if *actual == run)
-    );
-    assert_eq!(model.chat.buffer, "retained composer draft");
 }
 
 #[test]
@@ -274,7 +247,7 @@ fn run_binding_routes_the_next_message_to_the_observed_conversation_without_star
         request.request_id(),
         request.correlation_id(),
         AppResponsePayload::InteractionBinding(
-            ProductInteractionBinding::new(interaction, Some(query)).unwrap(),
+            ProductInteractionBinding::new(interaction, query).unwrap(),
         ),
     ))));
     assert!(effects.is_empty(), "opening must not start inference");

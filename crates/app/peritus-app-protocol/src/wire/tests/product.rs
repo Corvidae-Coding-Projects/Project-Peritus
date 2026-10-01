@@ -2,12 +2,10 @@
 
 use crate::{
     AppProtocolLimits, AppRequestEnvelope, AppRequestPayload, AppResponseEnvelope,
-    AppResponsePayload, CorrelationId, ProductConversationMessage, ProductConversationRole,
-    ProductDeliverable, ProductProviderSelection, ProductRunContinuation, ProductRunControl,
-    ProductRunControlAction, ProductRunConversation, ProductRunConversationQuery,
-    ProductRunLegalControls, ProductRunObservation, ProductRunOperation, ProductRunOperationKind,
-    ProductRunOperationState, ProductRunPhase, ProductRunSnapshot, ProtocolContext, ProtocolId,
-    ProtocolVersion, RequestId,
+    AppResponsePayload, CorrelationId, ProductDeliverable, ProductProviderSelection,
+    ProductRunControl, ProductRunControlAction, ProductRunLegalControls, ProductRunObservation,
+    ProductRunOperation, ProductRunOperationKind, ProductRunOperationState, ProductRunPhase,
+    ProductRunSnapshot, ProtocolContext, ProtocolId, ProtocolVersion, RequestId,
 };
 use peritus_run_settlement::CandidateStage;
 use peritus_types::{ProviderProfileId, RunId, SessionId, WorkspaceId};
@@ -127,71 +125,4 @@ fn all_product_controls_round_trip() -> Result<(), Box<dyn std::error::Error>> {
         );
     }
     Ok(())
-}
-
-#[test]
-fn product_run_followups_and_conversations_round_trip() -> Result<(), Box<dyn std::error::Error>> {
-    let context = ProtocolContext::new(
-        ProtocolId::new([51; 16]).expect("protocol"),
-        ProtocolVersion::new(1, 0)?,
-        SessionId::new([52; 16]).expect("session"),
-    );
-    let run_id = RunId::new([53; 16]).expect("run");
-    for payload in [
-        AppRequestPayload::ContinueProductRun(ProductRunContinuation::new(
-            run_id,
-            "keep the controls on the left".to_owned(),
-        )?),
-        AppRequestPayload::QueryProductRunConversation(ProductRunConversationQuery::new(run_id)),
-    ] {
-        let request = AppRequestEnvelope::new(
-            context,
-            RequestId::new([payload_tag(&payload); 16]).expect("request"),
-            CorrelationId::new([55; 16]).expect("correlation"),
-            payload,
-        )?;
-        let encoded = encode_app_message(
-            &AppMessage::Request(request.clone()),
-            AppProtocolLimits::PRODUCTION,
-        )?;
-        assert_eq!(
-            decode_app_message(&encoded, AppProtocolLimits::PRODUCTION)?,
-            AppMessage::Request(request)
-        );
-    }
-
-    let conversation = ProductRunConversation::new(
-        run_id,
-        vec![
-            ProductConversationMessage::new(
-                ProductConversationRole::User,
-                "build the game".to_owned(),
-            )?,
-            ProductConversationMessage::new(
-                ProductConversationRole::Agent,
-                "Which rendering library do you prefer?".to_owned(),
-            )?,
-        ],
-    )?;
-    let response = AppResponseEnvelope::new(
-        context,
-        RequestId::new([56; 16]).expect("request"),
-        CorrelationId::new([57; 16]).expect("correlation"),
-        AppResponsePayload::ProductRunConversation(conversation),
-    );
-    let encoded =
-        encode_app_message(&AppMessage::Response(response.clone()), AppProtocolLimits::PRODUCTION)?;
-    assert_eq!(
-        decode_app_message(&encoded, AppProtocolLimits::PRODUCTION)?,
-        AppMessage::Response(response)
-    );
-    Ok(())
-}
-
-fn payload_tag(payload: &AppRequestPayload) -> u8 {
-    match payload {
-        AppRequestPayload::ContinueProductRun(_) => 54,
-        AppRequestPayload::QueryProductRunConversation(_) => 58,
-        _ => 59,
-    }
 }

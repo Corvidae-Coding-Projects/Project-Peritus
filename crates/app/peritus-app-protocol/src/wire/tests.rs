@@ -7,8 +7,8 @@ use crate::{
     AppProtocolLimits, AppRequestEnvelope, AppRequestPayload, AppResponseEnvelope,
     AppResponsePayload, ClientHello, ControlEnvelope, ControlPayload, CorrelationId, EventCursor,
     HeartbeatId, HeartbeatReply, ImplementationMetadata, IncompatibilityReason, NegotiationOutcome,
-    ProtocolContext, ProtocolId, ProtocolVersion, RequestId, ServerHello, SubscriptionFilter,
-    SubscriptionId, SubscriptionRequest, VersionRange,
+    OperationAcknowledgement, ProtocolContext, ProtocolId, ProtocolVersion, RequestId, ServerHello,
+    SubscriptionFilter, SubscriptionId, SubscriptionRequest, VersionRange,
 };
 use peritus_codec::{CodecLimits, decode_message, encode_frame, encode_message};
 use peritus_types::SessionId;
@@ -126,13 +126,33 @@ fn dispatcher_separates_family_schema_tag_and_frame_failures()
 }
 
 #[test]
-fn retired_legacy_product_start_tag_is_rejected() -> Result<(), Box<dyn std::error::Error>> {
+fn retired_product_request_and_response_tags_are_rejected() -> Result<(), Box<dyn std::error::Error>>
+{
     let limits = AppProtocolLimits::PRODUCTION;
-    let mut encoded = encode_app_message(&AppMessage::Request(minimal_status_request()?), limits)?;
-    let tag_offset = encoded.len() - size_of::<u16>();
-    encoded[tag_offset..].copy_from_slice(&17_u16.to_be_bytes());
+    let status = minimal_status_request()?;
+    let encoded = encode_app_message(&AppMessage::Request(status.clone()), limits)?;
+    let request_tag_offset = encoded.len() - size_of::<u16>();
+    for tag in [17_u16, 20, 21, 22, 26] {
+        let mut retired = encoded.clone();
+        retired[request_tag_offset..].copy_from_slice(&tag.to_be_bytes());
+        assert_eq!(
+            decode_app_message(&retired, limits).map_err(|error| error.code()),
+            Err(AppErrorCode::UnknownTag),
+        );
+    }
+
+    let acknowledgement = AppResponseEnvelope::new(
+        status.context(),
+        status.request_id(),
+        status.correlation_id(),
+        AppResponsePayload::Acknowledged(OperationAcknowledgement::new(status.request_id())),
+    );
+    let mut retired = encode_app_message(&AppMessage::Response(acknowledgement), limits)?;
+    let response_tag_offset = retired.len() - size_of::<[u8; 16]>() - size_of::<u16>();
+    retired[response_tag_offset..response_tag_offset + size_of::<u16>()]
+        .copy_from_slice(&12_u16.to_be_bytes());
     assert_eq!(
-        decode_app_message(&encoded, limits).map_err(|error| error.code()),
+        decode_app_message(&retired, limits).map_err(|error| error.code()),
         Err(AppErrorCode::UnknownTag),
     );
     Ok(())

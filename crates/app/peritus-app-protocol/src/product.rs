@@ -2,7 +2,6 @@
 
 mod binding;
 mod control;
-mod conversation;
 mod effort;
 mod error;
 mod interaction;
@@ -11,12 +10,12 @@ mod models;
 mod observation;
 mod operation;
 mod phase;
+mod query;
 mod request;
 mod settlement;
 mod snapshot;
 
 pub use control::*;
-pub use conversation::*;
 pub use effort::ProductModelEffort;
 pub use error::ProductRunMessageError;
 pub use interaction::*;
@@ -24,6 +23,7 @@ pub use models::*;
 pub use observation::ProductRunObservation;
 pub use operation::*;
 pub use phase::*;
+pub use query::*;
 pub use request::*;
 pub use settlement::*;
 pub use snapshot::*;

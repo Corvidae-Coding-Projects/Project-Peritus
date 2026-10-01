@@ -1,7 +1,7 @@
 //! Polling and daemon-observation updates for the product-run screen.
 
 use peritus_app_protocol::{
-    AppRequestPayload, ProductRunConversation, ProductRunConversationQuery, ProductRunQuery,
+    AppRequestPayload, ProductInteractionQuery, ProductInteractionSnapshot, ProductRunQuery,
     ProductRunSettlementSnapshot, ProductRunSnapshot,
 };
 use peritus_types::RunId;
@@ -85,17 +85,15 @@ impl AppModel {
         if !self
             .pending
             .values()
-            .any(|pending| matches!(pending, PendingRequest::ProductConversationQuery))
+            .any(|pending| matches!(pending, PendingRequest::ProductInteractionQuery))
             && let Some(run_id) = self
                 .product
                 .as_ref()
                 .and_then(ProductUi::selected_run)
                 .map(ProductRunSnapshot::run_id)
             && let Some(effect) = self.request(
-                AppRequestPayload::QueryProductRunConversation(ProductRunConversationQuery::new(
-                    run_id,
-                )),
-                PendingRequest::ProductConversationQuery,
+                AppRequestPayload::QueryInteraction(ProductInteractionQuery::new(run_id)),
+                PendingRequest::ProductInteractionQuery,
             )
         {
             effects.push(effect);
@@ -140,12 +138,15 @@ impl AppModel {
         }
     }
 
-    pub(in crate::model) fn accept_product_conversation(
+    pub(in crate::model) fn accept_product_interaction(
         &mut self,
-        conversation: ProductRunConversation,
+        conversation: ProductInteractionSnapshot,
     ) {
         let Some(product) = &mut self.product else { return };
-        if product.selected_run().is_some_and(|run| run.run_id() == conversation.run_id()) {
+        if product
+            .selected_run()
+            .is_some_and(|run| run.run_id() == conversation.snapshot().run_id())
+        {
             product.conversation = Some(conversation);
         }
     }

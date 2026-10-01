@@ -131,11 +131,7 @@ impl ProductRunService {
         {
             return Ok(false);
         }
-        let start = record
-            .interaction
-            .as_ref()
-            .and_then(|options| options.workbench.as_ref())
-            .ok_or(ProductRunServiceError::Control(ControlError::InvalidInput))?;
+        let start = &record.interaction.workbench;
         let peritus_product_runner::control::ControlIntent::ResumeGoal { goal, .. } =
             operation.intent()
         else {

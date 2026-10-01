@@ -83,7 +83,7 @@ impl ProductRunService {
 fn collect(store: &mut Store, record: &RunRecord) -> Result<(), Error> {
     let snapshot = &record.snapshot;
     if !snapshot.phase().terminal()
-        || record.request.task().starts_with("PERITUS HARNESS EVALUATION\n")
+        || record.request.execution_task().starts_with("PERITUS HARNESS EVALUATION\n")
     {
         return Ok(());
     }

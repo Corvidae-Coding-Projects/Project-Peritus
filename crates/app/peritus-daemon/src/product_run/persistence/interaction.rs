@@ -15,7 +15,7 @@ mod tests;
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(super) struct PersistedInteraction {
-    pub(super) workbench: Option<peritus_product_runner::control::ControlOperation>,
+    pub(super) workbench: peritus_product_runner::control::ControlOperation,
     mode: u16,
     models: [(String, bool); 3],
     efforts: [u16; 3],
@@ -64,8 +64,19 @@ impl PersistedInteraction {
                 ProductModelEffort::from_tag(self.efforts[index]).ok_or_else(invalid)?,
             ))
         });
-        let mut value =
-            InteractionOptions::new(mode, ProductRoleModels::new(writer?, reviewer?, fixer?));
+        self.workbench.canonical_bytes().map_err(|_| invalid())?;
+        if !matches!(
+            self.workbench.intent(),
+            peritus_product_runner::control::ControlIntent::StartExecution { .. }
+                | peritus_product_runner::control::ControlIntent::StartGoal { .. }
+        ) {
+            return Err(invalid());
+        }
+        let mut value = InteractionOptions::new(
+            self.workbench,
+            mode,
+            ProductRoleModels::new(writer?, reviewer?, fixer?),
+        );
         if self.activities.len() > MAX_PRODUCT_ACTIVITIES || self.next_sequence == 0 {
             return Err(invalid());
         }
@@ -90,17 +101,6 @@ impl PersistedInteraction {
         value.next_sequence = self.next_sequence;
         value.incorporated = self.incorporated;
         value.public_input_count = self.public_input_count;
-        if let Some(operation) = &self.workbench {
-            operation.canonical_bytes().map_err(|_| invalid())?;
-            if !matches!(
-                operation.intent(),
-                peritus_product_runner::control::ControlIntent::StartExecution { .. }
-                    | peritus_product_runner::control::ControlIntent::StartGoal { .. }
-            ) {
-                return Err(invalid());
-            }
-        }
-        value.workbench = self.workbench;
         Ok(value)
     }
 }

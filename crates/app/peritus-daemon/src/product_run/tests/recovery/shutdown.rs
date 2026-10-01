@@ -14,7 +14,6 @@ fn explicit_cancel_racing_shutdown_remains_cancelled_in_durable_state() {
         let workspace_id = WorkspaceId::new([0xe5; 16]).expect("workspace");
         let running =
             service(state.path(), repository.path(), workspace_id, [&writer, &reviewer, &fixer]);
-        let durable_directory = running.inner.directory.clone();
         let request = ProductRunRequest::new(
             run_id,
             workspace_id,
@@ -37,10 +36,8 @@ fn explicit_cancel_racing_shutdown_remains_cancelled_in_durable_state() {
         .expect("writer reached the provider boundary");
         running.cancel(run_id).expect("explicit user stop");
         running.shutdown(Duration::from_secs(5)).await;
+        let records = running.load_test_records().expect("reload durable runs");
         drop(running);
-
-        let records =
-            super::super::super::load_records(&durable_directory).expect("reload durable runs");
         assert_eq!(
             records.get(&run_id).expect("durable run").snapshot.phase(),
             ProductRunPhase::Cancelled,

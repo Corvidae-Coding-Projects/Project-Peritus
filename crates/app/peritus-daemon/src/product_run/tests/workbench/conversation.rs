@@ -31,13 +31,13 @@ fn selected_conversation_continues_receipted_input_without_legacy_admission() {
             AppResponsePayload::WorkbenchReceipt(_)
         ));
         wait_for_terminal(&service, run).await;
-        let lookup = ProductRunConversationQuery::new(run);
+        let lookup = ProductInteractionQuery::new(run);
         assert!(
             service.query_interaction_binding(ActorId::new([99; 16]).unwrap(), lookup).is_err()
         );
         let reopened =
             service.query_interaction_binding(actor(), lookup).expect("exact run binding");
-        assert_eq!(reopened.conversation(), Some(query(workspace)));
+        assert_eq!(reopened.conversation(), query(workspace));
         assert_eq!(reopened.interaction().snapshot().run_id(), run);
         assert!(
             reopened.interaction().snapshot().phase().terminal(),
@@ -101,8 +101,7 @@ fn selected_conversation_continues_receipted_input_without_legacy_admission() {
                 .await,
             AppResponsePayload::Interaction(_)
         ));
-        let latest =
-            service.query_interaction(ProductRunConversationQuery::new(run)).expect("mode");
+        let latest = service.query_interaction(ProductInteractionQuery::new(run)).expect("mode");
         assert_eq!(
             latest.mode(),
             ProductInteractionMode::Plan,
@@ -129,7 +128,7 @@ fn selected_conversation_continues_receipted_input_without_legacy_admission() {
         assert!(bytes.windows(b"CHANGED_MY_MIND".len()).any(|bytes| bytes == b"CHANGED_MY_MIND"));
         drop(requests);
         let snapshot = service
-            .query_interaction(ProductRunConversationQuery::new(run))
+            .query_interaction(ProductInteractionQuery::new(run))
             .expect("public transcript");
         assert!(
             snapshot
@@ -150,7 +149,7 @@ fn selected_conversation_continues_receipted_input_without_legacy_admission() {
         assert!(!matches!(stopped, AppResponsePayload::Error(_)), "{stopped:?}");
         assert_eq!(
             service
-                .query_interaction(ProductRunConversationQuery::new(run))
+                .query_interaction(ProductInteractionQuery::new(run))
                 .expect("stopped")
                 .snapshot()
                 .phase(),

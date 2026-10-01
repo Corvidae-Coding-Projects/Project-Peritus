@@ -3091,6 +3091,7 @@ dependencies = [
  "bytes",
  "futures-core",
  "futures-util",
+ "libc",
  "peritus-model-protocol",
  "peritus-types",
  "reqwest",

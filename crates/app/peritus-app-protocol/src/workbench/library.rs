@@ -4,7 +4,7 @@ use crate::{
     AppErrorCode, AppProtocolError, ControlOperationId, ConversationId, ConversationTitle,
     WorkbenchGoalState, WorkbenchQuery,
 };
-use peritus_types::{RunId, WorkspaceId};
+use peritus_types::WorkspaceId;
 
 const MAX_QUERY_BYTES: usize = 256;
 const MAX_SNIPPET_BYTES: usize = 512;
@@ -115,13 +115,6 @@ pub enum ConversationMessageSource {
         conversation: ConversationId,
         /// Exact reply-publication operation.
         operation: ControlOperationId,
-    },
-    /// Durable message in a legacy run record.
-    Legacy {
-        /// Durable legacy run identity.
-        run: RunId,
-        /// Zero-based message position in the exact stored transcript.
-        index: u32,
     },
 }
 
@@ -241,7 +234,6 @@ pub struct ConversationLibraryItem {
     pinned: bool,
     archived: bool,
     activity_revision: u64,
-    legacy_run: Option<RunId>,
     goal_state: Option<WorkbenchGoalState>,
     goal_draft: bool,
     handoff: String,
@@ -263,7 +255,6 @@ impl ConversationLibraryItem {
         pinned: bool,
         archived: bool,
         activity_revision: u64,
-        legacy_run: Option<RunId>,
         goal_state: Option<WorkbenchGoalState>,
         goal_draft: bool,
         handoff: String,
@@ -279,7 +270,6 @@ impl ConversationLibraryItem {
             pinned,
             archived,
             activity_revision,
-            legacy_run,
             goal_state,
             goal_draft,
             handoff: checked_text(handoff, MAX_HANDOFF_BYTES, true)?,
@@ -311,11 +301,6 @@ impl ConversationLibraryItem {
     #[must_use]
     pub const fn activity_revision(&self) -> u64 {
         self.activity_revision
-    }
-    /// Returns legacy run source when this is a stable legacy mapping.
-    #[must_use]
-    pub const fn legacy_run(&self) -> Option<RunId> {
-        self.legacy_run
     }
     /// Returns current governed goal state.
     #[must_use]

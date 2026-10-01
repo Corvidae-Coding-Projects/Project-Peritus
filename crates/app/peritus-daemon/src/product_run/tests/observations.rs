@@ -1,6 +1,5 @@
 //! A running task beside an unqualified candidate must not disconnect any client.
 use super::*;
-use crate::product_run::ProductRunServiceError;
 use peritus_app_protocol::AppResponsePayload;
 use peritus_app_protocol::{ProductRunOperationKind, ProductRunOperationState};
 
@@ -37,14 +36,14 @@ fn mixed_active_and_candidate_queries_encode_with_exact_evidence() {
         let failed = wait_for_terminal(&service, candidate).await;
         assert_eq!(failed.phase(), ProductRunPhase::Failed);
         assert!(failed.deliverable().is_some());
-        let binding = service.query_interaction_binding(
-            peritus_types::ActorId::new([1; 16]).unwrap(),
-            peritus_app_protocol::ProductRunConversationQuery::new(candidate),
-        );
-        assert!(
-            matches!(binding, Err(ProductRunServiceError::InvalidState)),
-            "noninteractive coding runs keep their explicit follow-up editor fallback"
-        );
+        let binding = service
+            .query_interaction_binding(
+                service.test_actor(candidate).expect("run owner"),
+                peritus_app_protocol::ProductInteractionQuery::new(candidate),
+            )
+            .expect("durable follow-up destination");
+        assert_eq!(binding.interaction().snapshot().run_id(), candidate);
+        assert_eq!(binding.conversation().workspace(), workspace);
         service
             .start(
                 ProductRunRequest::new(

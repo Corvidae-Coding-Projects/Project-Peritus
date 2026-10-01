@@ -1,6 +1,6 @@
 //! Terminal user-facing summaries and explicit handoff failure projection.
 
-use super::{ProductConversationRole, ProductRunOutcome, ProductRunPhase, replace_snapshot};
+use super::{ProductRunOutcome, ProductRunPhase, replace_snapshot};
 
 pub(super) fn terminal_summary(outcome: &ProductRunOutcome, detail: &str) -> String {
     let mut summary = outcome
@@ -27,5 +27,9 @@ pub(super) fn fail_handoff(record: &mut super::super::RunRecord) {
     ) {
         record.snapshot = snapshot;
     }
-    let _ = record.conversation.append(ProductConversationRole::Agent, detail.to_owned());
+    let _ = record.interaction.append(
+        peritus_app_protocol::ProductActivityKind::Status,
+        detail,
+        "Durable handoff failure",
+    );
 }

@@ -1,7 +1,7 @@
 //! Run status, deliverable, conversation, phase, and scrollable text rendering.
 
 use peritus_app_protocol::{
-    ProductConversationRole, ProductRunConversation, ProductRunOperationState, ProductRunPhase,
+    ProductActivityKind, ProductInteractionSnapshot, ProductRunOperationState, ProductRunPhase,
     ProductRunSnapshot,
 };
 use peritus_run_settlement::{
@@ -278,22 +278,34 @@ pub(super) fn empty_detail() -> Text<'static> {
     ])
 }
 
-pub(super) fn conversation_text(conversation: Option<&ProductRunConversation>) -> Text<'static> {
+pub(super) fn conversation_text(
+    conversation: Option<&ProductInteractionSnapshot>,
+) -> Text<'static> {
     let Some(conversation) = conversation else {
         return Text::from(vec![
             Line::styled("Select a run to load its conversation.", Style::default().fg(MUTED)),
             Line::from("Press Enter or m to send a message."),
         ]);
     };
-    let start = conversation.messages().len().saturating_sub(12);
+    let start = conversation.activities().len().saturating_sub(12);
     let mut lines = Vec::new();
-    for message in &conversation.messages()[start..] {
-        let (speaker, style) = match message.role() {
-            ProductConversationRole::User => ("You", Style::default().fg(Color::White)),
-            ProductConversationRole::Agent => ("Peritus", Style::default().fg(ACCENT)),
+    for activity in &conversation.activities()[start..] {
+        let (speaker, style) = match activity.kind() {
+            ProductActivityKind::User => ("You", Style::default().fg(Color::White)),
+            ProductActivityKind::Assistant => ("Peritus", Style::default().fg(ACCENT)),
+            ProductActivityKind::Tool => ("Tool", Style::default().fg(Color::Cyan)),
+            ProductActivityKind::Status => ("Status", Style::default().fg(MUTED)),
+            ProductActivityKind::Error => ("Error", Style::default().fg(Color::Red)),
         };
         lines.push(Line::styled(speaker, style.add_modifier(Modifier::BOLD)));
-        lines.extend(safe(message.content()).lines().map(|line| Line::from(line.to_owned())));
+        lines.extend(safe(activity.text()).lines().map(|line| Line::from(line.to_owned())));
+        if !activity.detail().is_empty() {
+            lines.extend(
+                safe(activity.detail())
+                    .lines()
+                    .map(|line| Line::styled(line.to_owned(), Style::default().fg(MUTED))),
+            );
+        }
         lines.push(Line::from(""));
     }
     if lines.is_empty() {

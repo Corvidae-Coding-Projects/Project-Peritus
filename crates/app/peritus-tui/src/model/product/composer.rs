@@ -2,7 +2,9 @@
 
 use super::ProductUi;
 use crate::model::{AppModel, Editor, EditorKind, Effect, NoticeLevel, PendingRequest};
-use peritus_app_protocol::{AppRequestPayload, ProductRunContinuation, ProductRunSnapshot};
+use peritus_app_protocol::{
+    AppRequestPayload, ProductInteractionQuery, ProductRunSnapshot, WorkbenchInputText,
+};
 use peritus_types::RunId;
 
 impl AppModel {
@@ -32,16 +34,28 @@ impl AppModel {
         run_id: RunId,
         message: String,
     ) -> Vec<Effect> {
-        let continuation = match ProductRunContinuation::new(run_id, message) {
-            Ok(continuation) => continuation,
-            Err(error) => {
-                self.notice(NoticeLevel::Error, error.to_string());
-                return Vec::new();
-            }
-        };
+        if let Err(error) = WorkbenchInputText::new(message.clone()) {
+            self.notice(NoticeLevel::Error, error.to_string());
+            return Vec::new();
+        }
+        if self.context.is_none() {
+            self.notice(
+                NoticeLevel::Warning,
+                "Disconnected; draft retained. Ctrl-R reconnects without replacing your message.",
+            );
+            return Vec::new();
+        }
+        self.abandon_chat_observations();
+        if self.chat.run_id != Some(run_id) {
+            self.select_workbench_conversation(None);
+            self.chat.binding_checked = None;
+        }
+        self.chat.run_id = Some(run_id);
+        self.chat.buffer.clone_from(&message);
+        self.chat.snapshot = None;
         self.request(
-            AppRequestPayload::ContinueProductRun(continuation),
-            PendingRequest::ProductContinue,
+            AppRequestPayload::QueryInteractionBinding(ProductInteractionQuery::new(run_id)),
+            PendingRequest::ProductMessageBinding { run_id, message },
         )
         .into_iter()
         .collect()

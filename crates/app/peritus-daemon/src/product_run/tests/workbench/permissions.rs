@@ -206,11 +206,7 @@ fn ordinary_chat_enforces_the_workspace_overlay_without_a_workbench_binding() {
         )
         .unwrap();
         service
-            .interact(peritus_app_protocol::ProductInteractionRequest::new(
-                request,
-                ProductInteractionMode::Chat,
-                ProductRoleModels::default(),
-            ))
+            .start_interaction(request, ProductInteractionMode::Chat, ProductRoleModels::default())
             .await
             .unwrap();
         let terminal = wait_for_terminal(&service, run).await;

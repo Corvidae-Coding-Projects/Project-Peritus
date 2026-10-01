@@ -82,6 +82,18 @@ impl AppModel {
         if matches!(pending, Some(PendingRequest::ModelQuery(_))) {
             self.chat.close_model_picker();
         }
+        if let Some(PendingRequest::ProductMessageBinding { run_id, .. }) = pending {
+            if self.chat.run_id == Some(*run_id) {
+                self.chat.run_id = None;
+                self.chat.binding_checked = None;
+                self.select_workbench_conversation(None);
+            }
+            self.notice(
+                NoticeLevel::Error,
+                format!("{}. Message draft retained.", error.actionable_message()),
+            );
+            return Vec::new();
+        }
         if let Some(
             PendingRequest::ChatOpen { run_id } | PendingRequest::ChatBinding { run_id, .. },
         ) = pending
@@ -89,18 +101,16 @@ impl AppModel {
             if self.chat.run_id != Some(*run_id) {
                 return Vec::new();
             }
-            if error.code() != peritus_app_protocol::AppErrorCode::IdempotencyConflict {
-                if !matches!(pending, Some(PendingRequest::ChatBinding { opening: false, .. })) {
-                    self.view = View::Conversation;
-                }
-                self.notice(NoticeLevel::Error, format!("{}. Run and draft retained; retry opening the run or reconnect with Ctrl-R.", error.actionable_message()));
-                return Vec::new();
+            if !matches!(pending, Some(PendingRequest::ChatBinding { opening: false, .. })) {
+                self.view = View::Conversation;
             }
-            // QueryInteraction reports InvalidState only for coding runs that have no
-            // interactive transcript. Those retain the coding-run follow-up editor.
-            self.chat.run_id = None;
-            self.open_run_message_composer(*run_id);
-            self.notice(NoticeLevel::Error, error.actionable_message());
+            self.notice(
+                NoticeLevel::Error,
+                format!(
+                    "{}. Run and draft retained; retry opening the run or reconnect with Ctrl-R.",
+                    error.actionable_message()
+                ),
+            );
             return Vec::new();
         }
         if let Some(PendingRequest::Prompt(prompt_id)) = pending {
@@ -181,6 +191,10 @@ impl AppModel {
             | AppResponsePayload::WorkbenchReceipt(_)
             | AppResponsePayload::Doctor(_) => unreachable!("handled above"),
             AppResponsePayload::Interaction(snapshot) => {
+                if matches!(pending, Some(PendingRequest::ProductInteractionQuery)) {
+                    self.accept_product_interaction(snapshot.clone());
+                    return Vec::new();
+                }
                 return self.interaction_response(snapshot, pending);
             }
             AppResponsePayload::Models(catalog) => self.accept_model_response(catalog, pending),
@@ -235,9 +249,6 @@ impl AppModel {
                     NoticeLevel::Info,
                     format!("coding run settled: {:?}", settled.settlement().disposition()),
                 );
-            }
-            AppResponsePayload::ProductRunConversation(conversation) => {
-                self.accept_product_conversation(conversation.clone());
             }
         }
         Vec::new()

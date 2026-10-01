@@ -8,7 +8,7 @@ use std::{
     time::Duration,
 };
 
-use peritus_app_protocol::{ProductConversationRole, ProductRunPhase, ProductRunSnapshot};
+use peritus_app_protocol::{ProductRunPhase, ProductRunSnapshot};
 use peritus_provider_core::CancellationToken;
 use peritus_types::RunId;
 
@@ -84,10 +84,11 @@ impl ProductRunService {
                 "Run cancelled",
                 "Cancelled while waiting for your reply",
             )?;
-            let _ = record.conversation.append(
-                ProductConversationRole::Agent,
-                "Cancelled while waiting for your reply".to_owned(),
-            );
+            record.interaction.append(
+                peritus_app_protocol::ProductActivityKind::Status,
+                "Run cancelled",
+                "Cancelled while waiting for your reply",
+            )?;
             persist_record(&self.inner.directory, record)?;
             return Ok(record.snapshot.clone());
         }
@@ -119,17 +120,7 @@ impl ProductRunService {
         run_id: RunId,
         goal_resume: Option<&peritus_product_runner::control::ControlOperation>,
     ) -> Result<ProductRunSnapshot, ProductRunServiceError> {
-        let (
-            request,
-            root,
-            providers,
-            cancelled,
-            token,
-            conversation,
-            finding_state,
-            resume,
-            snapshot,
-        ) = {
+        let (request, root, providers, cancelled, token, finding_state, resume, snapshot) = {
             let mut records =
                 self.inner.records.write().map_err(|_| ProductRunServiceError::Unavailable)?;
             let workspace_id = records
@@ -156,11 +147,7 @@ impl ProductRunService {
             )?;
             let record = records.get_mut(&run_id).expect("checked product run exists");
             let pending_chat = (record.snapshot.phase() == ProductRunPhase::WaitingForUser
-                || (record.snapshot.phase() == ProductRunPhase::Complete
-                    && record
-                        .interaction
-                        .as_ref()
-                        .is_some_and(|options| options.workbench.is_some())))
+                || record.snapshot.phase() == ProductRunPhase::Complete)
                 && self.pending_record_input(record)?;
             let explicit_idle = explicit_goal
                 && matches!(
@@ -170,11 +157,9 @@ impl ProductRunService {
             if !(record.snapshot.phase().retryable() || pending_chat || explicit_idle) {
                 return Err(ProductRunServiceError::InvalidState);
             }
-            self.validate_workspace_mode(workspace_id, record.interaction.as_ref())?;
-            let providers = self.resolve_selected_providers(
-                record.request.providers(),
-                record.interaction.as_ref(),
-            )?;
+            self.validate_workspace_mode(workspace_id, record.interaction.mode)?;
+            let providers =
+                self.resolve_selected_providers(record.request.providers(), &record.interaction)?;
             let root = self
                 .inner
                 .workspaces
@@ -205,14 +190,12 @@ impl ProductRunService {
                 providers,
                 cancelled,
                 token,
-                Arc::clone(&record.conversation),
                 record.finding_state.clone(),
                 record.resume.clone(),
                 record.snapshot.clone(),
             )
         };
-        self.spawn(request, root, providers, cancelled, token, conversation, finding_state, resume)
-            .await;
+        self.spawn(request, root, providers, cancelled, token, finding_state, resume).await;
         Ok(snapshot)
     }
 }

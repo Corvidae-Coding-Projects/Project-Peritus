@@ -79,7 +79,7 @@ impl Fixture {
     }
 
     fn reconcile(&self) -> BTreeMap<RunId, super::super::RunRecord> {
-        let mut records = super::super::load_records(&self.running.inner.directory).unwrap();
+        let mut records = self.running.load_test_records().unwrap();
         super::super::recovery::reconcile_restored_candidates(
             &self.running.inner.directory,
             &mut records,
@@ -147,15 +147,6 @@ fn restart_keeps_original_partial_discard_binding_and_only_exact_discard_can_res
                 fixture.running.control(ProductRunControl::new(fixture.run, action)).await.is_err()
             );
         }
-        assert!(
-            fixture
-                .running
-                .continue_run(
-                    &ProductRunContinuation::new(fixture.run, "continue".to_owned()).unwrap()
-                )
-                .await
-                .is_err()
-        );
         let saved = fixture
             .running
             .control(ProductRunControl::new(fixture.run, ProductRunControlAction::Export))

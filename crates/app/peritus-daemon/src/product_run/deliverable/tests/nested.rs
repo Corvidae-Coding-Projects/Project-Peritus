@@ -29,8 +29,8 @@ fn partial_nested_commit_retries_after_reconciliation_only_for_unchanged_source(
     let run = record.request.run_id();
     let workspaces =
         std::collections::BTreeMap::from([(record.request.workspace_id(), root.to_path_buf())]);
-    let mut records =
-        crate::product_run::persistence::load_records(&directory).expect("restart persisted run");
+    let mut records = crate::product_run::persistence::load_unchecked_records(&directory)
+        .expect("restart persisted run");
     crate::product_run::recovery::reconcile_restored_candidates(
         &directory,
         &mut records,
@@ -79,8 +79,9 @@ fn failed_signer_keeps_a_durable_source_patch_available() {
     assert!(String::from_utf8_lossy(&patch).contains("+recover this candidate"));
     assert!(repeated_action(&record, ProductRunControlAction::Export, deliverable).is_some());
     assert!(record.snapshot.status().contains("Commit did not complete"));
+    let records = crate::product_run::persistence::record_directory(&directory).unwrap();
     let saved: serde_json::Value = serde_json::from_slice(
-        &fs::read(directory.join(format!("{}.json", run_hex(record.request.run_id())))).unwrap(),
+        &fs::read(records.join(format!("{}.json", run_hex(record.request.run_id())))).unwrap(),
     )
     .unwrap();
     assert!(saved.to_string().contains("Commit did not complete"));

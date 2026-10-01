@@ -1,8 +1,6 @@
 use super::*;
-use peritus_app_protocol::{
-    ProductConversationMessage, ProductConversationRole, ProductProviderSelection,
-    ProductRunRequest,
-};
+use crate::product_run::ProductRunRequest;
+use peritus_app_protocol::ProductProviderSelection;
 use peritus_provider_core::CancellationToken;
 use peritus_run_settlement::{
     CandidateCheckpoint, CandidateIdentity, CandidateStage, EvidenceDependencies, EvidenceRecord,
@@ -324,26 +322,19 @@ fn candidate_record(repository: &TempDir) -> crate::product_run::RunRecord {
     )
     .expect("snapshot")
     .with_deliverable(deliverable);
-    let conversation = crate::product_run::SharedConversation::new(
-        run_id,
-        vec![
-            ProductConversationMessage::new(
-                ProductConversationRole::User,
-                "finish game".to_owned(),
-            )
-            .expect("message"),
-        ],
-    )
-    .expect("conversation");
     crate::product_run::RunRecord {
-        interaction: None,
+        interaction: crate::product_run::interaction::InteractionOptions::test_for_run(
+            peritus_app_protocol::ProductInteractionMode::Build,
+            peritus_app_protocol::ProductRoleModels::default(),
+            run_id,
+            workspace_id,
+        ),
         goal_resume: None,
         request,
         snapshot,
         cancelled: Arc::new(AtomicBool::new(false)),
         user_cancelled: false,
         provider_cancellation: CancellationToken::new(),
-        conversation,
         finding_state: String::new(),
         progress: crate::product_run::RunProgress::default(),
         checkpoint: Some(checkpoint),

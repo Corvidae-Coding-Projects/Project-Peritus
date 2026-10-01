@@ -6,8 +6,7 @@ use super::interaction::block_on;
 use super::support::{named_tool_response, text_response};
 use super::*;
 use peritus_app_protocol::{
-    ProductInteractionMode as Mode, ProductInteractionRequest, ProductRoleModels,
-    ProductRunConversationQuery,
+    ProductInteractionMode as Mode, ProductInteractionQuery, ProductRoleModels,
 };
 
 fn pipeline_prefix() -> Vec<std::collections::VecDeque<peritus_model_protocol::EventEnvelope>> {
@@ -99,11 +98,7 @@ fn greeting_in_a_non_git_home_shaped_folder_needs_no_baseline_or_scan() {
         let (service, request) = folder_service(root.path(), &writer, false);
         let id = request.run_id();
         service
-            .interact(ProductInteractionRequest::new(
-                request,
-                Mode::Chat,
-                ProductRoleModels::default(),
-            ))
+            .start_interaction(request, Mode::Chat, ProductRoleModels::default())
             .await
             .expect("start");
         let result = wait_for_terminal(&service, id).await;
@@ -112,20 +107,10 @@ fn greeting_in_a_non_git_home_shaped_folder_needs_no_baseline_or_scan() {
         assert!(!root.path().join(".git").exists());
         assert!(!root.path().join(".design").exists());
         let snapshot =
-            service.query_interaction(ProductRunConversationQuery::new(id)).expect("snapshot");
+            service.query_interaction(ProductInteractionQuery::new(id)).expect("snapshot");
         assert_eq!(snapshot.incorporated(), 1);
-        let records =
-            super::super::persistence::load_records(&service.inner.directory).expect("restore");
-        assert_eq!(
-            records
-                .get(&id)
-                .expect("restored conversation")
-                .interaction
-                .as_ref()
-                .expect("interaction")
-                .incorporated,
-            1
-        );
+        let records = service.load_test_records().expect("restore");
+        assert_eq!(records.get(&id).expect("restored conversation").interaction.incorporated, 1);
         service.shutdown(Duration::from_secs(5)).await;
     });
 }
@@ -156,11 +141,7 @@ fn requested_edits_land_in_the_original_folder_and_cannot_overwrite_private_stat
         let (service, request) = folder_service(root.path(), &writer, true);
         let id = request.run_id();
         service
-            .interact(ProductInteractionRequest::new(
-                request,
-                Mode::Chat,
-                ProductRoleModels::default(),
-            ))
+            .start_interaction(request, Mode::Chat, ProductRoleModels::default())
             .await
             .expect("start");
         let result = wait_for_terminal(&service, id).await;
@@ -217,11 +198,7 @@ fn folder_trust_and_read_only_modes_are_enforced_in_the_daemon() {
             let (service, request) = folder_service(root.path(), &writer, writable);
             let id = request.run_id();
             service
-                .interact(ProductInteractionRequest::new(
-                    request,
-                    mode,
-                    ProductRoleModels::default(),
-                ))
+                .start_interaction(request, mode, ProductRoleModels::default())
                 .await
                 .expect("start");
             let result = wait_for_terminal(&service, id).await;
@@ -242,11 +219,7 @@ fn git_candidate_delivery_is_rejected_before_admitting_a_folder_run() {
         let writer = scripted(0x66, "folder", Vec::new());
         let (service, request) = folder_service(root.path(), &writer, true);
         let error = service
-            .interact(ProductInteractionRequest::new(
-                request,
-                Mode::Build,
-                ProductRoleModels::default(),
-            ))
+            .start_interaction(request, Mode::Build, ProductRoleModels::default())
             .await
             .expect_err("Git delivery requires its real capabilities");
         assert_eq!(error, super::super::ProductRunServiceError::GitRequired);
@@ -277,17 +250,13 @@ fn requested_command_runs_in_the_original_folder_with_daemon_owned_processes() {
         )
         .expect("command request");
         service
-            .interact(ProductInteractionRequest::new(
-                request,
-                Mode::Chat,
-                ProductRoleModels::default(),
-            ))
+            .start_interaction(request, Mode::Chat, ProductRoleModels::default())
             .await
             .expect("start");
         let result = wait_for_terminal(&service, id).await;
         assert_eq!(result.phase(), ProductRunPhase::Complete, "{}", result.summary());
         let snapshot =
-            service.query_interaction(ProductRunConversationQuery::new(id)).expect("snapshot");
+            service.query_interaction(ProductInteractionQuery::new(id)).expect("snapshot");
         assert!(root.path().join("command-result.txt").exists(), "{snapshot:?}");
         let command = snapshot
             .activities()
@@ -306,24 +275,10 @@ fn requested_command_runs_in_the_original_folder_with_daemon_owned_processes() {
             "completion updates the original entry"
         );
         // Persistence retains exact model envelopes; the public snapshot presents their prose.
-        let durable_activities = service
-            .inner
-            .records
-            .read()
-            .unwrap()
-            .get(&id)
-            .unwrap()
-            .interaction
-            .as_ref()
-            .unwrap()
-            .activities
-            .clone();
-        let restored = super::super::persistence::load_records(&service.inner.directory)
-            .expect("durable activities");
-        assert_eq!(
-            restored.get(&id).unwrap().interaction.as_ref().unwrap().activities,
-            durable_activities
-        );
+        let durable_activities =
+            service.inner.records.read().unwrap().get(&id).unwrap().interaction.activities.clone();
+        let restored = service.load_test_records().expect("durable activities");
+        assert_eq!(restored.get(&id).unwrap().interaction.activities, durable_activities);
         assert_eq!(
             fs::read_to_string(root.path().join("command-result.txt")).expect("command effect"),
             "requested"

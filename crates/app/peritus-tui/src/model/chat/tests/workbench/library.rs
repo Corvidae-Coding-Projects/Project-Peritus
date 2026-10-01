@@ -24,7 +24,7 @@ fn page(query: &ConversationLibraryQuery) -> ConversationLibraryPage {
         ConversationLibraryItem::new(
             WorkbenchQuery::new(ConversationId::new(bytes).unwrap(), query.workspace()),
             ConversationTitle::new(format!("Saved session {id:03} with a long Unicode title 界界界界界界界界界界界界界界界界界界界界界界界界")).unwrap(),
-            false, false, 1, None, None, false, String::new(), None, None,
+            false, false, 1, None, false, String::new(), None, None,
         ).unwrap()
     }).collect();
     ConversationLibraryPage::new(query.clone(), 130, (end < 130).then_some(end), items).unwrap()

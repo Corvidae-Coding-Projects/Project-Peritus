@@ -9,7 +9,7 @@ impl ProductRunService {
     pub(crate) fn query_interaction_binding(
         &self,
         actor: ActorId,
-        query: peritus_app_protocol::ProductRunConversationQuery,
+        query: peritus_app_protocol::ProductInteractionQuery,
     ) -> Result<
         peritus_app_protocol::ProductInteractionBinding,
         crate::product_run::ProductRunServiceError,
@@ -18,18 +18,14 @@ impl ProductRunService {
         let conversation = {
             let records = self.inner.records.read().map_err(|_| Error::Unavailable)?;
             let record = records.get(&query.run_id()).ok_or(Error::NotFound)?;
-            record
-                .interaction
-                .as_ref()
-                .and_then(|options| options.workbench.as_ref())
-                .map(|operation| {
-                    peritus_app_protocol::ConversationId::new(*operation.conversation().as_bytes())
-                        .map(|id| WorkbenchQuery::new(id, record.request.workspace_id()))
-                        .map_err(|_| Error::InvalidMessage)
-                })
-                .transpose()?
+            peritus_app_protocol::ConversationId::new(
+                *record.interaction.workbench.conversation().as_bytes(),
+            )
+            .map(|id| WorkbenchQuery::new(id, record.request.workspace_id()))
+            .map_err(|_| Error::InvalidMessage)?
         };
-        if let Some(scope) = conversation {
+        {
+            let scope = conversation;
             self.control_workspace(scope)?;
             let id =
                 ConversationId::new(scope.conversation().into_bytes()).map_err(Error::Control)?;
@@ -122,11 +118,10 @@ impl ProductRunService {
             Ok(false) => {}
             Err(error) => return error.response(),
         }
-        self.query_interaction(peritus_app_protocol::ProductRunConversationQuery::new(run))
-            .map_or_else(
-                crate::product_run::ProductRunServiceError::response,
-                AppResponsePayload::Interaction,
-            )
+        self.query_interaction(peritus_app_protocol::ProductInteractionQuery::new(run)).map_or_else(
+            crate::product_run::ProductRunServiceError::response,
+            AppResponsePayload::Interaction,
+        )
     }
 }
 
@@ -140,7 +135,7 @@ impl ProductRunService {
         let (providers, mut selection) = {
             let records = self.inner.records.read().map_err(|_| Error::Unavailable)?;
             let record = records.get(&run).ok_or(Error::NotFound)?;
-            let options = record.interaction.as_ref().ok_or(Error::InvalidState)?;
+            let options = &record.interaction;
             if options.mode == mode {
                 return Ok(());
             }
@@ -150,15 +145,15 @@ impl ProductRunService {
             (record.request.providers(), options.clone())
         };
         selection.mode = mode;
-        self.validate_models(providers, &selection).await?;
-        self.resolve_selected_providers(providers, Some(&selection))?;
+        self.validate_models(providers, &selection.models).await?;
+        self.resolve_selected_providers(providers, &selection)?;
         let mut records = self.inner.records.write().map_err(|_| Error::Unavailable)?;
         let record = records.get_mut(&run).ok_or(Error::NotFound)?;
         if !record.snapshot.phase().terminal() {
             return Err(Error::InvalidState);
         }
         let previous = record.clone();
-        let options = record.interaction.as_mut().ok_or(Error::InvalidState)?;
+        let options = &mut record.interaction;
         if options.models != selection.models {
             return Err(Error::InvalidState);
         }

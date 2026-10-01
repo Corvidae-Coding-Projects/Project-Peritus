@@ -200,23 +200,6 @@ pub(super) const LIBRARY_TYPES: &[AppTypeDescriptor] = &[
         ],
     },
     AppTypeDescriptor {
-        name: "ConversationLegacySource",
-        rust_type: "ConversationMessageSource",
-        fields: &[
-            field(
-                "kind",
-                W::U16,
-                &[],
-                "ConversationMessageSource",
-                "\"legacy\"",
-                J::Enum(&["legacy"]),
-                true,
-            ),
-            field("run", W::Identifier, &[B::NonZero], "RunId", "RunId", J::Identifier, true),
-            field("index", W::U32, &[], "u32", "number", J::U32, true),
-        ],
-    },
-    AppTypeDescriptor {
         name: "ConversationSearchSnippet",
         rust_type: "ConversationSearchSnippet",
         fields: &[
@@ -225,12 +208,8 @@ pub(super) const LIBRARY_TYPES: &[AppTypeDescriptor] = &[
                 W::Struct,
                 &[],
                 "ConversationMessageSource",
-                "ConversationInputSource | ConversationReplySource | ConversationLegacySource",
-                J::OneOfRef(&[
-                    "ConversationInputSource",
-                    "ConversationReplySource",
-                    "ConversationLegacySource",
-                ]),
+                "ConversationInputSource | ConversationReplySource",
+                J::OneOfRef(&["ConversationInputSource", "ConversationReplySource"]),
                 true,
             ),
             field(
@@ -291,15 +270,6 @@ pub(super) const LIBRARY_TYPES: &[AppTypeDescriptor] = &[
             field("pinned", W::Boolean, &[], "bool", "boolean", J::Boolean, true),
             field("archived", W::Boolean, &[], "bool", "boolean", J::Boolean, true),
             field("activityRevision", W::U64, &[B::NonZero], "u64", "UInt64", J::U64String, true),
-            field(
-                "legacyRun",
-                W::Option,
-                &[B::NonZero],
-                "Option<RunId>",
-                "RunId",
-                J::Identifier,
-                false,
-            ),
             field(
                 "goalState",
                 W::Option,

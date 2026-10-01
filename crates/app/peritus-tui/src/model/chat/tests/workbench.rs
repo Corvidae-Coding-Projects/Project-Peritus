@@ -310,12 +310,19 @@ fn normal_slash_navigation_leaves_goal_for_each_other_workbench_panel() {
 fn sessions_literal_query_accepts_exact_source_linked_library_page() {
     use peritus_app_protocol::{
         ConversationLibraryItem, ConversationLibraryPage, ConversationMessageSource,
-        ConversationSearchSnippet, ConversationSearchText,
+        ConversationSearchSnippet, ConversationSearchText, WorkbenchExecutionState,
     };
     let mut model = enabled_model();
     model.features.push(
         ProtocolFeatureName::well_known(WellKnownProtocolFeature::ConversationLibrary).unwrap(),
     );
+    for feature in [
+        WellKnownProtocolFeature::WorkbenchInputs,
+        WellKnownProtocolFeature::WorkbenchExecution,
+        WellKnownProtocolFeature::WorkbenchConversation,
+    ] {
+        model.features.push(ProtocolFeatureName::well_known(feature).unwrap());
+    }
     model.chat.buffer = "/sessions ancient phrase".to_owned();
     let sent = request(&key(&mut model, KeyCode::Enter));
     let AppRequestPayload::QueryConversationLibrary(query) = sent.payload() else {
@@ -327,7 +334,11 @@ fn sessions_literal_query_accepts_exact_source_linked_library_page() {
         query.workspace(),
     );
     let snippet = ConversationSearchSnippet::new(
-        ConversationMessageSource::Legacy { run: RunId::new([62; 16]).unwrap(), index: 0 },
+        ConversationMessageSource::Input {
+            conversation: scope.conversation(),
+            input: peritus_app_protocol::WorkbenchInputId::new([62; 16]).unwrap(),
+            revision: 1,
+        },
         "exact ancient phrase source".to_owned(),
     )
     .unwrap();
@@ -337,7 +348,6 @@ fn sessions_literal_query_accepts_exact_source_linked_library_page() {
         true,
         false,
         7,
-        Some(RunId::new([62; 16]).unwrap()),
         None,
         false,
         "preserved handoff".to_owned(),
@@ -353,9 +363,30 @@ fn sessions_literal_query_accepts_exact_source_linked_library_page() {
         format!("/sessions open {}", crate::model::format_id(scope.conversation().as_bytes()));
     let opened = request(&key(&mut model, KeyCode::Enter));
     assert!(
-        matches!(opened.payload(), AppRequestPayload::QueryInteraction(query) if query.run_id() == RunId::new([62; 16]).unwrap())
+        matches!(opened.payload(), AppRequestPayload::QueryWorkbenchExecution(query) if *query == scope)
     );
-    assert!(model.chat.workbench.selected.is_none());
-    assert!(!model.chat.workbench.open);
+    assert_eq!(model.chat.workbench.selected, Some(scope));
+    assert_eq!(
+        model.chat.buffer,
+        format!("/sessions open {}", crate::model::format_id(scope.conversation().as_bytes()))
+    );
+    let snapshot = WorkbenchSnapshot::new(
+        scope,
+        7,
+        ConversationTitle::new("Older work".to_owned()).unwrap(),
+        false,
+        false,
+    )
+    .unwrap();
+    assert!(
+        respond(
+            &mut model,
+            &opened,
+            AppResponsePayload::WorkbenchExecution(
+                WorkbenchExecutionState::new(snapshot, None, false).unwrap(),
+            ),
+        )
+        .is_empty()
+    );
     assert!(model.chat.buffer.is_empty());
 }

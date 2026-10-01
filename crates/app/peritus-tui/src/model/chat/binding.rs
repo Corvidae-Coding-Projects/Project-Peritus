@@ -2,8 +2,7 @@
 
 use super::{AppModel, Effect, NoticeLevel, PendingRequest};
 use peritus_app_protocol::{
-    AppRequestPayload, ProductInteractionBinding, ProductRunConversationQuery,
-    WellKnownProtocolFeature,
+    AppRequestPayload, ProductInteractionBinding, ProductInteractionQuery, WellKnownProtocolFeature,
 };
 use peritus_types::RunId;
 
@@ -53,7 +52,7 @@ impl AppModel {
                 .any(|pending| matches!(pending, PendingRequest::ModelUpdate { .. }))
     }
 
-    pub(super) fn abandon_chat_observations(&mut self) {
+    pub(in crate::model) fn abandon_chat_observations(&mut self) {
         let requests: Vec<_> = self
             .pending
             .iter()
@@ -63,6 +62,7 @@ impl AppModel {
                     PendingRequest::ChatQuery
                         | PendingRequest::ChatOpen { .. }
                         | PendingRequest::ChatBinding { .. }
+                        | PendingRequest::ProductMessageBinding { .. }
                 )
                 .then_some(*id)
             })
@@ -74,7 +74,7 @@ impl AppModel {
     }
 
     pub(super) fn query_chat_binding(&mut self, run_id: RunId, opening: bool) -> Option<Effect> {
-        let query = ProductRunConversationQuery::new(run_id);
+        let query = ProductInteractionQuery::new(run_id);
         if self.chat.binding_checked != Some(run_id)
             && self.features.iter().any(|feature| {
                 feature.as_str() == WellKnownProtocolFeature::WorkbenchRunBinding.as_str()
@@ -102,8 +102,14 @@ impl AppModel {
         pending: Option<&PendingRequest>,
     ) -> Vec<Effect> {
         let run = binding.interaction().snapshot().run_id();
-        if !matches!(pending, Some(PendingRequest::ChatBinding { run_id, .. }) if *run_id == run)
-            || self.chat.run_id != Some(run)
+        if !matches!(
+            pending,
+            Some(
+                PendingRequest::ChatBinding { run_id, .. }
+                    | PendingRequest::ProductMessageBinding { run_id, .. },
+            )
+                if *run_id == run
+        ) || self.chat.run_id != Some(run)
         {
             self.notice(
                 NoticeLevel::Error,
@@ -120,15 +126,7 @@ impl AppModel {
             );
             return Vec::new();
         }
-        let Some(conversation) = binding.conversation() else {
-            self.chat.run_id = None;
-            self.chat.binding_checked = None;
-            self.notice(
-                NoticeLevel::Error,
-                "This run has no durable conversation destination and cannot be continued. It was detached; press Enter to start a new conversation with the retained draft.",
-            );
-            return Vec::new();
-        };
+        let conversation = binding.conversation();
         self.select_workbench_conversation(Some(conversation));
         self.chat.run_id = Some(run);
         self.chat.binding_checked = Some(run);
@@ -137,6 +135,11 @@ impl AppModel {
             self.view = crate::model::View::Conversation;
         }
         self.accept_chat(binding.interaction().clone());
+        if let Some(PendingRequest::ProductMessageBinding { message, .. }) = pending {
+            self.view = crate::model::View::Conversation;
+            self.chat.buffer.clone_from(message);
+            return self.send_chat_message(message.clone());
+        }
         Vec::new()
     }
 }
