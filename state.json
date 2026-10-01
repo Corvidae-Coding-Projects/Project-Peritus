@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1912,
-        "tip_oid": "c4dc9a81b61da6742409d214127082ae69218734",
-        "prefix_sha256": "063176edb0703840534c08bf345302c240ffa8a3ff081d57945a4f14f35ba6d0"
+        "sequence": 1913,
+        "tip_oid": "65b651a58f764a247da8bdc8fc72e7b4d443f259",
+        "prefix_sha256": "6a6be719f0b98b572446e28ecbd8c06dcc2c30b0fc35304f146de663f7f53008"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 2030,
+  "next_comment_id": 2031,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -16544,7 +16544,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-28T00:58:41.412806074Z",
-      "updated_at": "2026-10-01T14:27:24.328928359Z",
+      "updated_at": "2026-10-01T14:39:36.363679630Z",
       "labels": [
         "bug"
       ],
@@ -16719,6 +16719,15 @@
           "kind": "observation",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAeuCKHIBQgQWOrRVJ7x6qA/wBABcfHrpiQeqTHdJq3LQWtKCFguR47gGnpYB3HvDOPmX0wUN09pd+oWv3JKi0CQ=="
+        },
+        "1ca5ce5d-f9fe-4c3f-adc3-32a6ec2adf71": {
+          "display_id": 2030,
+          "author": "6ME5",
+          "content": "Windows candidate-transaction root causes repaired in commit 29d877dee: prepared indexes are opened writable before sync_all; Git subprocess paths and retained metadata operands use ordinary Windows spelling; recovery Git owners are canonicalized before durable validation. Verification: 72/72 managed-candidate tests passed on Linux; full peritus-product-runner suite passed (474 executed, 5 ignored); strict x86_64-pc-windows-gnu Clippy passed; source-layout-check passed for 4,850 files; both formerly failing Windows cases passed individually under Wine/MinGit, including all crash publication boundaries. Broad Wine batch had two transient Wine sharing violations, and both cases pass in isolation; native GitHub Windows remains authoritative.",
+          "created_at": "2026-10-01T14:39:36.359716794Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA8ffjjjcadFBTiK4FAZXJXzvvD8WP41kRxrrnOifjYpr29qZmZa2PKEL+iia5XyVcbqKMjvLpAjCZ7dKpwBoIAw=="
         },
         "1deea89c-584b-45d6-b523-96aa2806c208": {
           "display_id": 1910,
