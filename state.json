@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1810,
-        "tip_oid": "a9886b8addd44ff375b0779bb7e38c9a323657d1",
-        "prefix_sha256": "1efa176b3ae0f56c9c088ec65365875f8d6ac96191e303d76376cf7a4834036d"
+        "sequence": 1811,
+        "tip_oid": "a7c3c7ba06a61cdde33b368de5ab085aff8d884b",
+        "prefix_sha256": "7d7f35b3ad0bebec0e06d088925cab1ebc2f0f6c80df097454e8ba1697e42f9e"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 1950,
+  "next_comment_id": 1951,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -16544,7 +16544,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-28T00:58:41.412806074Z",
-      "updated_at": "2026-10-01T00:42:43.524519521Z",
+      "updated_at": "2026-10-01T00:49:14.436431096Z",
       "labels": [
         "bug"
       ],
@@ -16620,6 +16620,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAQzDkW8S5TRDk1GQyrvM8s0iP3U6HaJ2HMqrur3hkSs21i+3ra2V9cDOnPOCk/I6RxJrsLTkObo5KdYQIltmADA=="
+        },
+        "1b7799f1-2ff1-4b7b-9c00-dceaf9bbe1a8": {
+          "display_id": 1950,
+          "author": "6ME5",
+          "content": "Architecture goal read in full: one owner per fact; separate content from execution context and declare evidence dependencies; ordinary interruption/uncertainty with exact operation recovery; host-observed effects independent of model reports; normal UI route from each recoverable block. Current inspection found freshness duplicated in recorder, startup and commit handoff, plus monotone qualification conflicting with newer negative evidence on unchanged content. First compatible increment centralizes reconciliation in peritus-run-settlement and removes unsupported historical-stage carry. Remaining metadata migration, authority projections, command reconciliation UI and host-report recovery stay required. Existing own 9-path patch retained with saved diff; unrelated artifacts/stash preserved.",
+          "created_at": "2026-10-01T00:49:14.431751573Z",
+          "kind": "decision",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAyQJKBnuOguKpXRv6uYrQN1kSoxp4iPmdhRtIPGY5+5GToP/cXjPQ3hUdyuX+LElBYb/fRdMM0AB88s8ZZ7LgDg=="
         },
         "1c991f6f-e4ba-4bb2-af13-0af72dcae5dc": {
           "display_id": 1880,
