@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1882,
-        "tip_oid": "625a342d97c0e2733f5e6b90649b961cc86073f3",
-        "prefix_sha256": "fcc8cba46bff191c7905578eb308bb6ac289345c75d29b62d541b9e4e501ce25"
+        "sequence": 1883,
+        "tip_oid": "bc73904bdf916b125eb5b215f54fd34252501ea9",
+        "prefix_sha256": "0659bdc450a4536f844c8df4c3fcdce6d2866997ba2eae466b700cefc7b65a90"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 2006,
+  "next_comment_id": 2007,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -16544,7 +16544,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-28T00:58:41.412806074Z",
-      "updated_at": "2026-10-01T10:53:11.046872956Z",
+      "updated_at": "2026-10-01T10:55:59.762070974Z",
       "labels": [
         "bug"
       ],
@@ -16872,6 +16872,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABArsNPNNGTbpzoZx8eoSACZLwHiDCKpz/WZqdZd4UysGUseiZ7PwQBvExSIgN6jBsF1P9dCa2qK+5c957huWD6CA=="
+        },
+        "422bffb6-44bb-48ba-9e4f-d78a0eb59f3d": {
+          "display_id": 2006,
+          "author": "6ME5",
+          "content": "The prior installed DD6 responsiveness daemon accepted a public shutdown request after the terminal run completed, but  reported  after all 6 progress frames. The daemon exited and removed its endpoint. Treat this as a separate lifecycle finding; do not infer clean shutdown from process exit.",
+          "created_at": "2026-10-01T10:55:59.758188778Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA0EzXTZ1ba9eJcCp9dTb42LK5Gvboje227yynKzoTSTRBaUthQ4uVtJNU13uVXgAzQ/d1k0ZRc/2ocwVuxvvWBA=="
         },
         "42a341c0-09ae-4825-aa63-2b882d082858": {
           "display_id": 1986,
