@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1886,
-        "tip_oid": "304b29f33997ccb12de4ab6f7eef45d5341b110a",
-        "prefix_sha256": "442c96ac161914708f858d07c1c9d768999bfcbfe42f575d721f69c9737a5e32"
+        "sequence": 1887,
+        "tip_oid": "43b357b93ff11e3ce2d403bfd445467747c33e07",
+        "prefix_sha256": "e02cc402eaff4b56fc96e3e17d0dcc879805beaee27194cb5e5bbe0a925814eb"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 2008,
+  "next_comment_id": 2009,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -16544,7 +16544,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-28T00:58:41.412806074Z",
-      "updated_at": "2026-10-01T10:56:27.714662177Z",
+      "updated_at": "2026-10-01T11:00:00.337770832Z",
       "labels": [
         "bug"
       ],
@@ -17745,6 +17745,15 @@
           "kind": "handoff",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAroU60Kd+XVxSxjXm2ywRxEkN7fAXIUDK3P9/vcLqhW9bANOOLsW/ya6ptrwPZIFh20cm9Tf1PKyG1FikLO4sCw=="
+        },
+        "e3c18a9b-7957-4226-afef-849214430fde": {
+          "display_id": 2008,
+          "author": "6ME5",
+          "content": "[action] Validated the narrow DD6 repair: Tokio block_in_place at the synchronous command wait, exact-identity Linux owner-death watchdog in peritusd, parent-death signal for native launches; staged 15 intended files only; fmt, diff check, process tests, daemon build, serial daemon suite, strict clippy, and live watchdog drills pass.",
+          "created_at": "2026-10-01T11:00:00.333857083Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAu/t+J2F6ShGbwnWdbtLHo+HFPadxRyBczpzktdwP863GC4TGUrbonGi+MwYQisobX6lceT2akDNwPBeRiRMPAA=="
         },
         "e4a479d7-d0e8-4598-9f22-6324236e88f4": {
           "display_id": 1858,
