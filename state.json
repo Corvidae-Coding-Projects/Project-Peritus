@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1896,
-        "tip_oid": "5b2020479f5506ad6a09788bb5c189ae8a18fa87",
-        "prefix_sha256": "e038c63e1b9ac2fba29f3ddeb818244c2dcf0d39be2f3fedda70dd8433ae515f"
+        "sequence": 1897,
+        "tip_oid": "3f4dd57888b31c8688c6169c43faef879bfc30e2",
+        "prefix_sha256": "da905942d4a34b801ae7d8c3900b6e98187ef835cc62a8d21e5e4a7a1e53a791"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 2017,
+  "next_comment_id": 2018,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -16540,7 +16540,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-28T00:58:41.412806074Z",
-      "updated_at": "2026-10-01T11:53:28.488742079Z",
+      "updated_at": "2026-10-01T11:53:52.431464532Z",
       "labels": [
         "bug"
       ],
@@ -16823,6 +16823,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABALpiD/cSVKgHeuUiiq77243dSMPo8dqFFMJM5vQNKBqMynbuuC5TDi9Hw/X7qD68O5oAKfRawKV6H0hro9H66Dg=="
+        },
+        "348c740d-d300-48a9-b441-29e711973aff": {
+          "display_id": 2017,
+          "author": "6ME5",
+          "content": "[action] Published and installed ef926a7aa. Same-state public shutdown is clean twice without deleting or terminalizing the two absent-unobserved records; evidence retained under qualification-ownership-ef926a7aa.",
+          "created_at": "2026-10-01T11:53:52.427399840Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAoZBFRxzEPy4WflFz8GTMHxdIUKRVfOnWQwqwlPk2l2+2ATxooysJe5hjcgwEHWrs4B+Sde0C8W+T9NEtBZKwBg=="
         },
         "35605e95-430e-4692-9b6d-6ce1b7e5eb8c": {
           "display_id": 1863,
