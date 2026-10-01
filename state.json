@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1910,
-        "tip_oid": "6e29011d6180239c2581656ada7aee5f4246b75c",
-        "prefix_sha256": "414ea5f6ba94952f1cc09ad995f10e866dcac767458ba9ddde815a769a083c01"
+        "sequence": 1911,
+        "tip_oid": "fb30a5d42e0d0a48d78bb5d8358f04fe7e0c147d",
+        "prefix_sha256": "6d720d0f3fd080c65648b321c9843210f606e33869e78401f3d2c14f3c1eb74e"
       },
       "NWAR": {
         "sequence": 39,
@@ -192,6 +192,10 @@
     "97": {
       "agent_id": "6ME5",
       "claimed_at": "2026-09-27T23:34:45.783730261Z"
+    },
+    "99": {
+      "agent_id": "6ME5",
+      "claimed_at": "2026-10-01T14:26:36.658273451Z"
     }
   },
   "issues": {
