@@ -121,3 +121,19 @@ checks support the observations; their counts do not establish daily-driver viab
 
 Implementation and qualification are in progress under issue 99 and PR 105. The four-priority
 goal remains active until all delivery and ordinary-interface recovery evidence is present.
+
+The clean cut is partly implemented. Product-run records now require format 3 and quarantine
+earlier complete records without migration. Current clients and the daemon negotiate application
+protocol 2.0; protocol 1.0 and the retired product-start tag are rejected. The TUI no longer has a
+second task composer in `/runs`; `/build` and ordinary conversation both enter through the durable
+workbench conversation and input ledger.
+
+The remaining generation split is concrete. The WebUI and performance qualification probe still
+submit the public `Interact` request, while internal improvement work can still create an
+interaction without workbench ownership. `RunRecord.interaction`, its workbench start operation,
+the public run binding, and conversation-library legacy identity are therefore still optional.
+Persistence, restart, library projection, and TUI navigation retain branches for that optional
+shape. The next removal slice must migrate or delete those producers first, then make workbench
+ownership required and remove the old wire tags, loader branches, library fields, and UI fallbacks
+together. The installed multi-day qualification must begin after that state-model cut so it does
+not accumulate evidence against a generation scheduled for deletion.
