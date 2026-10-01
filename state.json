@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1883,
-        "tip_oid": "bc73904bdf916b125eb5b215f54fd34252501ea9",
-        "prefix_sha256": "0659bdc450a4536f844c8df4c3fcdce6d2866997ba2eae466b700cefc7b65a90"
+        "sequence": 1884,
+        "tip_oid": "279a9e0e4f5adcea6c1343f25a3b8d000a4c5c20",
+        "prefix_sha256": "08b7e7ce67ae32009143499b5b4d1f50b23020b44017c6933d51ebf7ef6440ea"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 2007,
+  "next_comment_id": 2008,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -16544,7 +16544,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-28T00:58:41.412806074Z",
-      "updated_at": "2026-10-01T10:55:59.762070974Z",
+      "updated_at": "2026-10-01T10:56:27.714662177Z",
       "labels": [
         "bug"
       ],
@@ -16800,6 +16800,15 @@
           "kind": "handoff",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA5DLf998b7acIv8lv/nksFtldrxZYwlrOl8mwXILMty+7KJv1j7oW+06HEzBoLy6t8on8KXOZrRgxpeLtTreSBQ=="
+        },
+        "3227c1b5-6d15-47ec-a63b-d8f7cec10fc3": {
+          "display_id": 2007,
+          "author": "6ME5",
+          "content": "The prior installed DD6 responsiveness daemon accepted a public shutdown request after the terminal run completed, but shutdown --wait reported unclean completion with remaining processes=1 after all 6 progress frames. The daemon exited and removed its endpoint. This retained process record needs reconciliation; process exit alone is not clean-shutdown evidence.",
+          "created_at": "2026-10-01T10:56:27.710956494Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABALpiD/cSVKgHeuUiiq77243dSMPo8dqFFMJM5vQNKBqMynbuuC5TDi9Hw/X7qD68O5oAKfRawKV6H0hro9H66Dg=="
         },
         "35605e95-430e-4692-9b6d-6ce1b7e5eb8c": {
           "display_id": 1863,
