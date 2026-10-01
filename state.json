@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1900,
-        "tip_oid": "00f0b51e1af4817a5159caec7c33556411677449",
-        "prefix_sha256": "72fb3957ec3b7ea567d8663173a176c6369a8b8099ea31decc0abee09e9fcb12"
+        "sequence": 1901,
+        "tip_oid": "92788a75a022b322bdc39c4984b768ff9a24c940",
+        "prefix_sha256": "4e8073880a0d12b7f3bb5e3849e579417c0d874eda4618d567772f184254f862"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 2021,
+  "next_comment_id": 2022,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -16540,7 +16540,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-28T00:58:41.412806074Z",
-      "updated_at": "2026-10-01T12:16:24.940828856Z",
+      "updated_at": "2026-10-01T12:23:50.576156088Z",
       "labels": [
         "bug"
       ],
@@ -17327,6 +17327,15 @@
           "kind": "observation",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABATuro2WAVOxM2/QUxppSEKLnfVmpOevEDx8n/sJCRlSktZhZonf6Sq2J7zjZzzLUCg6C+XI2NitLszUmuBg4nCg=="
+        },
+        "83a97902-75b8-4ec4-8e32-6c2e32d3d0f4": {
+          "display_id": 2021,
+          "author": "6ME5",
+          "content": "e7ec60cb3 fix(runtime): restore cross-platform watchdog builds. Restored non-Linux compilation by separating Linux watchdog validation and daemon wiring at cfg-owned module boundaries; split two runner test modules to satisfy source-layout policy without changing behavior. Verified full workspace tests, strict native and Windows workspace Clippy, Windows workspace cross-target check, cargo fmt, git diff check, and xtask all across 86 packages and 4,850 source files.",
+          "created_at": "2026-10-01T12:23:50.547732994Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABARJ5CVnMw26b41f+xZPCegX74K2x2qtk/+mTXMmnCEh9UEYVrL4H+BcXkUm35MCx+XCrS2J6NfYx4EYIi6imsDA=="
         },
         "840ed77e-2279-4918-9399-bf575bfbfc0d": {
           "display_id": 1999,
