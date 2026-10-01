@@ -197,6 +197,96 @@ fn steering_skips_remaining_calls_and_reaches_the_next_model_request() {
     });
 }
 
+struct AdmissionSteeringRace {
+    revision: AtomicU64,
+    skipped: AtomicU64,
+    applied: Mutex<Vec<u64>>,
+}
+
+impl DeveloperInteraction for AdmissionSteeringRace {
+    fn input(&self) -> Result<DeveloperInput, DeveloperLoopError> {
+        let revision = self.revision.load(Ordering::SeqCst);
+        Ok(DeveloperInput {
+            revision,
+            conversation: if revision == 1 {
+                "Read the file"
+            } else {
+                "Do not dispatch that tool; answer without it"
+            }
+            .to_owned(),
+            images: Vec::new(),
+        })
+    }
+
+    fn prepare_request(
+        &self,
+        revision: u64,
+        _: &ModelRequest,
+    ) -> Result<peritus_agent::DeveloperRequestAdmission, DeveloperLoopError> {
+        self.applied.lock().expect("applied").push(revision);
+        Ok(peritus_agent::DeveloperRequestAdmission::Accepted)
+    }
+
+    fn admit_tool(
+        &self,
+        _: peritus_agent::DeveloperModelRole,
+        _: &str,
+        _: u32,
+        input_revision: u64,
+        _: peritus_agent::DeveloperToolEffect,
+    ) -> Result<peritus_agent::DeveloperControlFlow, DeveloperLoopError> {
+        assert_eq!(input_revision, 1);
+        self.revision.store(2, Ordering::SeqCst);
+        Ok(peritus_agent::DeveloperControlFlow::Yield)
+    }
+
+    fn observe(&self, activity: DeveloperActivity<'_>) -> Result<(), DeveloperLoopError> {
+        if matches!(activity, DeveloperActivity::ToolSkipped { .. }) {
+            self.skipped.fetch_add(1, Ordering::SeqCst);
+        }
+        Ok(())
+    }
+}
+
+#[test]
+fn steering_arriving_at_atomic_tool_admission_prevents_dispatch() {
+    block_on(async {
+        let provider = ScriptedProvider {
+            profile: parallel_profile(),
+            responses: Mutex::new(VecDeque::from([tool_response(), text_response()])),
+            requests: Mutex::new(Vec::new()),
+        };
+        let port = AdmissionSteeringRace {
+            revision: AtomicU64::new(1),
+            skipped: AtomicU64::new(0),
+            applied: Mutex::new(Vec::new()),
+        };
+        let mut tools = RecordingTool::default();
+        DeveloperLoop::run_interactive(
+            &provider,
+            request(CancellationToken::new()),
+            &mut tools,
+            &mut RecordingTrace::default(),
+            None,
+            &port,
+        )
+        .await
+        .expect("steered admission");
+
+        assert_eq!(tools.calls, 0, "stale tool call must never reach the executor");
+        assert_eq!(port.skipped.load(Ordering::SeqCst), 1);
+        assert_eq!(*port.applied.lock().expect("applied"), [1, 2]);
+        let requests = provider.requests.lock().expect("requests").clone();
+        assert_eq!(requests.len(), 2);
+        assert!(requests[1].messages().iter().any(|message| message.content().iter().any(
+            |block| {
+                matches!(block, ContentBlock::Text(text)
+                if text.expose_for_wire().contains("Do not dispatch that tool"))
+            }
+        )));
+    });
+}
+
 #[test]
 fn cancellation_between_calls_prevents_the_remaining_effects() {
     block_on(async {

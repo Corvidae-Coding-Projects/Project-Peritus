@@ -98,7 +98,7 @@ fn render_configuration(layout: &AppLayout, state: &ProductState) -> Result<Stri
         daemon_root.join("backups"),
     )?;
     let mut text = format!(
-        "version = 1\nstore_id = {:?}\n\n[paths]\nstate_root = {}\nartifact_root = {}\nevidence_root = {}\nworkspace_root = {}\nprocess_root = {}\ntransaction_root = {}\nbackup_root = {}\n\n[approval_registry]\npayload_file = {}\ngeneration = 1\n\n[human]\nactor_id = {:?}\n\n[product]\nautomatic_provider_failover = {}\n\n[telemetry]\nmode = \"disabled\"\n",
+        "version = 1\nstore_id = {:?}\n\n[paths]\nstate_root = {}\nartifact_root = {}\nevidence_root = {}\nworkspace_root = {}\nprocess_root = {}\ntransaction_root = {}\nbackup_root = {}\n\n[approval_registry]\npayload_file = {}\ngeneration = 1\n\n[human]\nactor_id = {:?}\n\n[product]\nautomatic_provider_failover = {}\nprovider_turn_timeout_seconds = 600\n\n[telemetry]\nmode = \"disabled\"\n",
         state.identity().store_id(),
         toml_path(paths.state_root())?,
         toml_path(paths.artifact_root())?,

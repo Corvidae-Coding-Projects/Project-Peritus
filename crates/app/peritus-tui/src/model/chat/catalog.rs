@@ -42,6 +42,7 @@ pub(super) enum Command {
     Approvals,
     Details,
     Stop,
+    Retry,
     Accept,
     Commit,
     Export,

@@ -108,6 +108,23 @@ impl WorkspaceDeveloperTools {
             )
         })
     }
+
+    fn finish_observation(
+        &mut self,
+        call: &CompletedToolCall,
+        arguments: &Value,
+        value: &Value,
+        is_error: bool,
+        accepted: bool,
+        mutation_boundary: bool,
+    ) -> Result<DeveloperToolObservation, DeveloperLoopError> {
+        if accepted {
+            self.record_success(call.name().as_str(), arguments, value);
+        }
+        self.observe_delivery_progress(call.name().as_str(), arguments, value, accepted);
+        self.inspection_progress.observe(call.name().as_str(), arguments, value, mutation_boundary);
+        observation(value, is_error)
+    }
 }
 
 fn first_missing_permission(
@@ -272,14 +289,7 @@ impl DeveloperToolExecutor for WorkspaceDeveloperTools {
                     .complete(&value, is_error)?;
             }
         }
-        if accepted {
-            self.record_success(call.name().as_str(), &arguments, &value);
-        }
-        self.observe_delivery_progress(call.name().as_str(), &arguments, &value, accepted);
-        if self.mode == WorkspaceToolMode::ReadWrite {
-            self.inspection_progress.observe(call.name().as_str(), &arguments, &value);
-        }
-        observation(&value, is_error)
+        self.finish_observation(call, &arguments, &value, is_error, accepted, effect && accepted)
     }
 
     fn observe_model_context(&mut self, messages: &[Message]) -> Result<(), DeveloperLoopError> {

@@ -13,6 +13,12 @@ pub(super) fn draw(frame: &mut Frame<'_>, area: Rect, model: &AppModel) {
 }
 
 fn online_status(model: &AppModel) -> String {
+    if model.chat.snapshot.as_ref().is_some_and(|snapshot| {
+        snapshot.snapshot().phase() == peritus_app_protocol::ProductRunPhase::RecoveryRequired
+    }) {
+        return "Recovery required · /retry retries this exact run · /runs opens details"
+            .to_owned();
+    }
     if !model.chat.expanded && model.chat.working.elapsed_seconds().is_some() {
         "Ctrl-C stops".to_owned()
     } else {

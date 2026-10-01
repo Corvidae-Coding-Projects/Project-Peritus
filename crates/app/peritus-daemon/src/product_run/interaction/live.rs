@@ -130,6 +130,10 @@ impl ConversationView for LiveConversation {
 }
 #[cfg(not(verus_only))]
 impl DeveloperInteraction for LiveConversation {
+    fn provider_turn_timeout(&self) -> std::time::Duration {
+        std::time::Duration::from_secs(self.service.inner.provider_turn_timeout_seconds)
+    }
+
     fn allows_semantic_compaction(&self) -> bool {
         false
     }
@@ -220,6 +224,10 @@ impl DeveloperInteraction for LiveConversation {
             .map_err(|error| {
                 port_error("commit model request usage to durable control state", error.into())
             })?;
+        self.update(|_, progress| {
+            progress.complete_provider_request(usage);
+            Ok(())
+        })?;
         Ok(control_flow(admission))
     }
 
@@ -228,24 +236,30 @@ impl DeveloperInteraction for LiveConversation {
         role: DeveloperModelRole,
         invocation: &str,
         sequence: u32,
+        input_revision: u64,
         effect: DeveloperToolEffect,
     ) -> Result<DeveloperControlFlow, DeveloperLoopError> {
         let start = self.workbench_start()?;
         let admission = self
             .service
             .with_controls(false, |store| {
-                store.reserve_goal_tool(
-                    &start,
-                    goal_role(role),
-                    invocation,
-                    sequence,
-                    effect == DeveloperToolEffect::MutationCapable,
-                )
+                if store.capture_execution(&start)?.inputs().generation() != input_revision {
+                    return Ok(None);
+                }
+                store
+                    .reserve_goal_tool(
+                        &start,
+                        goal_role(role),
+                        invocation,
+                        sequence,
+                        effect == DeveloperToolEffect::MutationCapable,
+                    )
+                    .map(Some)
             })
             .map_err(|error| {
                 port_error("reserve a tool call in durable control state", error.into())
             })?;
-        Ok(control_flow(admission))
+        Ok(admission.map_or(DeveloperControlFlow::Yield, control_flow))
     }
 
     fn complete_tool(
@@ -267,10 +281,18 @@ impl DeveloperInteraction for LiveConversation {
     }
 
     fn observe(&self, activity: DeveloperActivity<'_>) -> Result<(), DeveloperLoopError> {
-        self.update(|options| match activity {
-            DeveloperActivity::Text(bytes) => options.text(bytes),
-            DeveloperActivity::ReasoningSummary(bytes) => options.summary(bytes),
-            DeveloperActivity::ModelStarted { model, reasoning } => {
+        self.update(|options, progress| {
+            match activity {
+            DeveloperActivity::Text(bytes) => {
+                progress.mark_event("provider text received");
+                options.text(bytes)
+            }
+            DeveloperActivity::ReasoningSummary(bytes) => {
+                progress.mark_event("provider summary received");
+                options.summary(bytes)
+            }
+            DeveloperActivity::ModelStarted { model, reasoning, deadline_seconds } => {
+                progress.begin_provider_request(deadline_seconds);
                 options.streaming_text = false;
                 let effort = match reasoning {
                     peritus_model_protocol::ReasoningPolicy::Disabled => "not requested",
@@ -281,32 +303,45 @@ impl DeveloperInteraction for LiveConversation {
                 };
                 options.append(
                     ProductActivityKind::Status,
-                    &format!("Requesting model {model} · effort {effort}"),
+                    &format!(
+                        "Requesting model {model} · effort {effort} · deadline {deadline_seconds}s"
+                    ),
                     "",
                 )
             }
             DeveloperActivity::ModelWaiting { elapsed_seconds } => {
+                progress.mark_event("provider still waiting");
                 narration::waiting(options, elapsed_seconds)
             }
-            DeveloperActivity::ResponseHealed => options.append(
-                ProductActivityKind::Status,
-                "Repaired model JSON formatting",
-                "Original and repaired values are retained in the private trace. Tool validation and permissions still apply.",
-            ),
+            DeveloperActivity::ResponseHealed => {
+                progress.mark_event("provider response repaired");
+                options.append(
+                    ProductActivityKind::Status,
+                    "Repaired model JSON formatting",
+                    "Original and repaired values are retained in the private trace. Tool validation and permissions still apply.",
+                )
+            }
             DeveloperActivity::ReviewRetry { next_attempt, max_attempts, reason } => {
+                progress.mark_event("review retry scheduled");
                 narration::review_retry(options, next_attempt, max_attempts, reason)
             }
             DeveloperActivity::ToolStarted { name, arguments } => {
+                progress.begin_tool(name);
                 tool_activity::started(options, name, arguments)
             }
             DeveloperActivity::ToolFinished { name, output, is_error } => {
+                progress.mark_event(&format!("tool finished: {name}"));
                 tool_activity::finished(options, name, output, is_error)
             }
-            DeveloperActivity::ToolSkipped { name } => options.append(
-                ProductActivityKind::Status,
-                &format!("Skipped {name}: control returned before execution"),
-                "",
-            ),
+            DeveloperActivity::ToolSkipped { name } => {
+                progress.mark_event(&format!("tool skipped: {name}"));
+                options.append(
+                    ProductActivityKind::Status,
+                    &format!("Skipped {name}: control returned before execution"),
+                    "",
+                )
+            }
+        }
         })
     }
 }

@@ -111,6 +111,7 @@ impl AppModel {
             Command::Approvals => self.view = View::Approvals,
             Command::Details => self.chat.expanded = !self.chat.expanded,
             Command::Stop => return self.chat_control(Control::Cancel),
+            Command::Retry => return self.chat_control(Control::Retry),
             Command::Accept => return self.chat_control(Control::Accept),
             Command::Commit => return self.chat_control(Control::Commit),
             Command::Export => return self.chat_control(Control::Export),

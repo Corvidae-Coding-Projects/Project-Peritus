@@ -94,6 +94,12 @@ pub(super) const COMMANDS: &[CommandSpec] = &[
         arguments: Arguments::None,
     },
     CommandSpec {
+        command: Command::Retry,
+        name: "/retry",
+        description: "Retry the exact interrupted run",
+        arguments: Arguments::None,
+    },
+    CommandSpec {
         command: Command::Accept,
         name: "/accept",
         description: "Accept the exact candidate",

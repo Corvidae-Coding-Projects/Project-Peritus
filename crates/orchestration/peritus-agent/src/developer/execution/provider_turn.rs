@@ -213,6 +213,7 @@ fn admit_role_request(
     port.observe(DeveloperActivity::ModelStarted {
         model: profile.model().as_str(),
         reasoning: request.options().reasoning(),
+        deadline_seconds: port.provider_turn_timeout().as_secs(),
     })?;
     Ok(true)
 }

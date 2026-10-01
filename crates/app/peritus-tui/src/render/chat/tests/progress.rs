@@ -121,3 +121,82 @@ fn working_idler_stops_at_every_idle_or_terminal_phase() {
         assert!(!screen(&model, 100, 32).0.contains("*working"));
     }
 }
+
+#[test]
+fn recovery_and_reconnected_work_show_durable_daemon_status() {
+    use crate::action::Action;
+    use std::time::Instant;
+
+    let mut model = model();
+    let previous = model.chat.snapshot.take().expect("snapshot");
+    let current = previous.snapshot();
+    let active = ProductRunSnapshot::new(
+        current.run_id(),
+        current.workspace_id(),
+        current.providers(),
+        ProductRunPhase::Writing,
+        current.cycle(),
+        current.task().to_owned(),
+        "Inspecting the repository and writing a design; recoverable attempts retry automatically | provider turn 2m 3s · deadline 7m 57s remaining | latest event provider still waiting · 7s ago | counters 30 requests · 101 tools · 2 retries · 1.1M tokens · 37.1k cached input | elapsed 12m 3s | run horizon 7h 47m remaining | 0 B workspace growth | 65.1 MiB observed memory"
+            .to_owned(),
+        String::new(),
+        String::new(),
+        String::new(),
+        String::new(),
+        crate::test_support::run_operation(current.run_id(), ProductRunPhase::Writing),
+    )
+    .expect("active snapshot");
+    model.chat.snapshot = Some(
+        ProductInteractionSnapshot::new(
+            active,
+            previous.mode(),
+            previous.models().clone(),
+            previous.received(),
+            previous.incorporated(),
+            previous.activities().to_vec(),
+            None,
+        )
+        .expect("interaction"),
+    );
+    let _ = model.update(Action::Tick(Instant::now()));
+    let (active_text, _) = screen(&model, 80, 32);
+    assert!(active_text.contains("elapsed 12m 3s"), "{active_text}");
+    assert!(active_text.contains("latest"), "{active_text}");
+    assert!(active_text.contains("event provider still waiting"), "{active_text}");
+    assert!(active_text.contains("provider still waiting"));
+    assert!(active_text.contains("7s ago"));
+    assert!(active_text.contains("counters 30 requests · 101 tools"), "{active_text}");
+    assert!(!active_text.contains("*working (0s)"));
+
+    let previous = model.chat.snapshot.take().expect("snapshot");
+    let current = previous.snapshot();
+    let recovery = ProductRunSnapshot::new(
+        current.run_id(),
+        current.workspace_id(),
+        current.providers(),
+        ProductRunPhase::RecoveryRequired,
+        current.cycle(),
+        current.task().to_owned(),
+        "Recovery required".to_owned(),
+        String::new(),
+        String::new(),
+        String::new(),
+        String::new(),
+        crate::test_support::run_operation(current.run_id(), ProductRunPhase::RecoveryRequired),
+    )
+    .expect("recovery snapshot");
+    model.chat.snapshot = Some(
+        ProductInteractionSnapshot::new(
+            recovery,
+            previous.mode(),
+            previous.models().clone(),
+            previous.received(),
+            previous.incorporated(),
+            previous.activities().to_vec(),
+            None,
+        )
+        .expect("interaction"),
+    );
+    let (recovery_text, _) = screen(&model, 100, 32);
+    assert!(recovery_text.contains("/retry retries this exact run"));
+}

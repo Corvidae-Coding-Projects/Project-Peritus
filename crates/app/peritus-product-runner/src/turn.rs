@@ -354,7 +354,9 @@ pub fn developer_error(error: &DeveloperLoopError) -> ProductRunnerError {
         DeveloperLoopError::Cancelled => ProductRunnerErrorKind::Cancelled,
         DeveloperLoopError::LimitExceeded => ProductRunnerErrorKind::Budget,
         DeveloperLoopError::Trace(_) => ProductRunnerErrorKind::Repository,
-        DeveloperLoopError::Tool(_) => ProductRunnerErrorKind::Apply,
+        DeveloperLoopError::Tool(_) | DeveloperLoopError::RecoveryRequired(_) => {
+            ProductRunnerErrorKind::Apply
+        }
         _ => ProductRunnerErrorKind::Provider,
     };
     ProductRunnerError::new(kind, "execute D0 developer loop", error.to_string())

@@ -107,7 +107,7 @@ impl DaemonRuntime {
             config.store_identity()?,
             &components,
             &workspaces,
-            config.product().automatic_provider_failover(),
+            config.product(),
             config.context().local().clone(),
             processes.clone(),
         )?;

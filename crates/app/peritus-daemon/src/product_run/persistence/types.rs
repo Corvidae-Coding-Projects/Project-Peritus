@@ -78,6 +78,12 @@ pub(super) struct PersistedProgress {
     pub(super) workspace_bytes: u64,
     pub(super) workspace_growth_bytes: u64,
     pub(super) peak_rss_bytes: u64,
+    #[serde(default)]
+    pub(super) last_event: String,
+    #[serde(default)]
+    pub(super) provider_started_unix_millis: Option<u64>,
+    #[serde(default)]
+    pub(super) provider_deadline_seconds: u64,
 }
 
 #[derive(Serialize, Deserialize)]

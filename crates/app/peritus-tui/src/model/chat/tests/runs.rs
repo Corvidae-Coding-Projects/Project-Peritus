@@ -1,10 +1,40 @@
 //! Run dashboard navigation and mixed settlement observations.
 use super::*;
 use peritus_app_protocol::{
-    ProductProviderSelection, ProductRunObservation, ProductRunPhase, ProductRunSnapshot,
-    ProtocolFeatureName, WellKnownProtocolFeature,
+    ProductProviderSelection, ProductRunControlAction, ProductRunObservation, ProductRunPhase,
+    ProductRunSnapshot, ProtocolFeatureName, WellKnownProtocolFeature,
 };
 use peritus_run_settlement::{SettlementCause, SettlementReducer};
+
+#[test]
+fn retry_command_controls_the_exact_recovery_run_from_chat() {
+    let mut model = model();
+    let run = RunId::new([79; 16]).expect("run");
+    let workspace = WorkspaceId::new([4; 16]).expect("workspace");
+    let snapshot = ProductRunSnapshot::new(
+        run,
+        workspace,
+        model.chat_providers().expect("providers"),
+        ProductRunPhase::RecoveryRequired,
+        2,
+        "Repair the parser".to_owned(),
+        "Recovery required".to_owned(),
+        String::new(),
+        String::new(),
+        String::new(),
+        String::new(),
+        crate::test_support::run_operation(run, ProductRunPhase::RecoveryRequired),
+    )
+    .expect("snapshot");
+    model.accept_product_runs(vec![snapshot]);
+    model.chat.run_id = Some(run);
+    model.paste_chat("/retry");
+
+    let effects = key(&mut model, KeyCode::Enter);
+    assert!(matches!(effects.as_slice(), [Effect::Send(AppMessage::Request(request))]
+        if matches!(request.payload(), AppRequestPayload::ControlProductRun(control)
+            if control.run_id() == run && control.action() == ProductRunControlAction::Retry)));
+}
 
 #[test]
 fn a_slow_run_lookup_does_not_trap_new_conversation_navigation_or_late_reply_routing() {

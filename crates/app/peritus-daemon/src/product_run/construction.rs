@@ -12,7 +12,7 @@ impl ProductRunService {
         control_store: peritus_journal::StoreId,
         components: &DaemonComponents,
         workspaces: &WorkspaceCatalog,
-        automatic_provider_failover: bool,
+        product_policy: crate::config::ProductRunPolicy,
         local_context: peritus_product_runner::LocalContextConfig,
         processes: ProcessStore,
     ) -> Result<Self, DaemonError> {
@@ -71,7 +71,8 @@ impl ProductRunService {
                 directory,
                 records: RwLock::new(records),
                 providers,
-                automatic_provider_failover,
+                automatic_provider_failover: product_policy.automatic_provider_failover(),
+                provider_turn_timeout_seconds: product_policy.provider_turn_timeout_seconds(),
                 local_context,
                 workspaces: workspace_roots,
                 folders: workspaces.folders().clone(),

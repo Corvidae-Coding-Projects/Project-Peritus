@@ -13,6 +13,8 @@ pub(super) struct ProviderProgress<'a> {
     interaction: Option<&'a dyn DeveloperInteraction>,
     cancellation: &'a CancellationToken,
     started: Instant,
+    deadline: Instant,
+    deadline_seconds: u64,
     next_notice: Instant,
 }
 
@@ -22,7 +24,16 @@ impl<'a> ProviderProgress<'a> {
         cancellation: &'a CancellationToken,
     ) -> Self {
         let started = Instant::now();
-        Self { interaction, cancellation, started, next_notice: started + NOTICE_INTERVAL }
+        let timeout = interaction
+            .map_or(Duration::from_mins(10), DeveloperInteraction::provider_turn_timeout);
+        Self {
+            interaction,
+            cancellation,
+            started,
+            deadline: started + timeout,
+            deadline_seconds: timeout.as_secs(),
+            next_notice: started + NOTICE_INTERVAL,
+        }
     }
 
     pub(super) fn text_received(&mut self) {
@@ -37,19 +48,27 @@ impl<'a> ProviderProgress<'a> {
         &mut self,
         operation: impl Future<Output = Result<T, DeveloperLoopError>>,
     ) -> Result<T, DeveloperLoopError> {
-        let Some(interaction) = self.interaction else { return operation.await };
         tokio::pin!(operation);
         loop {
             tokio::select! {
                 biased;
                 result = &mut operation => return result,
+                () = tokio::time::sleep_until(self.deadline) => {
+                    let _ = self.cancellation.cancel();
+                    return Err(DeveloperLoopError::RecoveryRequired(format!(
+                        "provider turn exceeded the configured {}s deadline; exact run retry is required",
+                        self.deadline_seconds,
+                    )));
+                }
                 () = tokio::time::sleep_until(self.next_notice) => {
-                    let elapsed_seconds = self.started.elapsed().as_secs();
-                    if let Err(error) = interaction.observe(DeveloperActivity::ModelWaiting {
-                        elapsed_seconds,
-                    }) {
-                        let _ = self.cancellation.cancel();
-                        return Err(error);
+                    if let Some(interaction) = self.interaction {
+                        let elapsed_seconds = self.started.elapsed().as_secs();
+                        if let Err(error) = interaction.observe(DeveloperActivity::ModelWaiting {
+                            elapsed_seconds,
+                        }) {
+                            let _ = self.cancellation.cancel();
+                            return Err(error);
+                        }
                     }
                     self.next_notice = Instant::now() + NOTICE_INTERVAL;
                 }
@@ -67,9 +86,14 @@ mod tests {
     struct Observer {
         notices: AtomicUsize,
         fail: bool,
+        timeout: Duration,
     }
 
     impl DeveloperInteraction for Observer {
+        fn provider_turn_timeout(&self) -> Duration {
+            self.timeout
+        }
+
         fn input(&self) -> Result<DeveloperInput, DeveloperLoopError> {
             Ok(DeveloperInput { revision: 1, conversation: String::new(), images: Vec::new() })
         }
@@ -95,7 +119,8 @@ mod tests {
 
     #[tokio::test]
     async fn notice_arrives_while_the_same_provider_future_is_still_pending() {
-        let observer = Observer { notices: AtomicUsize::new(0), fail: false };
+        let observer =
+            Observer { notices: AtomicUsize::new(0), fail: false, timeout: Duration::from_secs(1) };
         let cancellation = CancellationToken::new();
         let mut progress = ProviderProgress::new(Some(&observer), &cancellation);
         progress.next_notice = Instant::now();
@@ -118,7 +143,8 @@ mod tests {
 
     #[tokio::test]
     async fn failed_observation_cancels_the_owned_pending_request() {
-        let observer = Observer { notices: AtomicUsize::new(0), fail: true };
+        let observer =
+            Observer { notices: AtomicUsize::new(0), fail: true, timeout: Duration::from_secs(1) };
         let cancellation = CancellationToken::new();
         let mut progress = ProviderProgress::new(Some(&observer), &cancellation);
         progress.next_notice = Instant::now();
@@ -134,7 +160,8 @@ mod tests {
 
     #[tokio::test]
     async fn ready_results_and_streaming_text_do_not_get_wait_notices() {
-        let observer = Observer { notices: AtomicUsize::new(0), fail: false };
+        let observer =
+            Observer { notices: AtomicUsize::new(0), fail: false, timeout: Duration::from_secs(1) };
         let cancellation = CancellationToken::new();
         let mut progress = ProviderProgress::new(Some(&observer), &cancellation);
         progress.next_notice = Instant::now();
@@ -148,5 +175,20 @@ mod tests {
             .await
             .expect("streamed fragment");
         assert_eq!(observer.notices.load(Ordering::SeqCst), 0);
+    }
+
+    #[tokio::test]
+    async fn configured_deadline_cancels_the_pending_provider_turn_for_exact_run_recovery() {
+        let observer = Observer {
+            notices: AtomicUsize::new(0),
+            fail: false,
+            timeout: Duration::from_millis(10),
+        };
+        let cancellation = CancellationToken::new();
+        let mut progress = ProviderProgress::new(Some(&observer), &cancellation);
+        let result = progress.wait(std::future::pending::<Result<(), DeveloperLoopError>>()).await;
+        assert!(matches!(result, Err(DeveloperLoopError::RecoveryRequired(detail))
+            if detail.contains("configured 0s deadline") && detail.contains("exact run retry")));
+        assert!(cancellation.is_cancelled());
     }
 }

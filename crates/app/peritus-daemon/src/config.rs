@@ -324,6 +324,7 @@ impl DaemonConfig {
         catalog::validate(&self.projects, &self.workspaces, &self.tools)?;
         folder::validate(&self.folders)?;
         provider::validate(&self.providers)?;
+        self.product.validate()?;
         self.context.validate(&self.providers, self.product)?;
         if let TelemetryExport::LocalFile { directory, quota_bytes } = &self.telemetry
             && (!directory.is_absolute()

@@ -30,6 +30,7 @@ impl DeveloperInteraction for ToolIdentity {
         role: DeveloperModelRole,
         invocation: &str,
         sequence: u32,
+        _: u64,
         _: DeveloperToolEffect,
     ) -> Result<DeveloperControlFlow, DeveloperLoopError> {
         self.boundaries.lock().expect("boundaries").push((

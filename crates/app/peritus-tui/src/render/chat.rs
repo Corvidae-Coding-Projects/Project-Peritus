@@ -58,17 +58,15 @@ pub(super) fn draw(frame: &mut Frame<'_>, model: &AppModel) {
         regions[0],
     );
     if let Some(seconds) = working_seconds {
-        let progress = model
-            .chat
-            .snapshot
-            .as_ref()
-            .and_then(|snapshot| snapshot.activities().last())
-            .filter(|activity| activity.kind() == ProductActivityKind::Status)
-            .map_or("", |activity| activity.text());
+        let progress = model.chat.snapshot.as_ref().map_or_else(
+            || format!("elapsed {seconds}s"),
+            |snapshot| snapshot.snapshot().status().to_owned(),
+        );
         frame.render_widget(
             Paragraph::new(crate::sanitize::sanitize_display_text(&format!(
-                "*working ({seconds}s) {progress}"
+                "*working · {progress}"
             )))
+            .wrap(Wrap { trim: false })
             .style(Style::default().fg(Color::White).add_modifier(Modifier::BOLD)),
             regions[2],
         );

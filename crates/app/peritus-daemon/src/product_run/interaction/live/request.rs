@@ -119,7 +119,10 @@ impl LiveConversation {
 
     pub(super) fn update(
         &self,
-        change: impl FnOnce(&mut InteractionOptions) -> Result<(), ProductRunServiceError>,
+        change: impl FnOnce(
+            &mut InteractionOptions,
+            &mut super::super::super::progress::RunProgress,
+        ) -> Result<(), ProductRunServiceError>,
     ) -> Result<(), DeveloperLoopError> {
         let mut records = self.service.inner.records.write().map_err(|_| {
             super::port_internal(
@@ -134,8 +137,9 @@ impl LiveConversation {
             )
         })?;
         let mut next = record.clone();
+        change(&mut next.interaction, &mut next.progress)
+            .map_err(|error| port_error("record conversation activity", error))?;
         let options = &mut next.interaction;
-        change(options).map_err(|error| port_error("record conversation activity", error))?;
         if options.mode != ProductInteractionMode::Build
             && next.snapshot.phase() == peritus_app_protocol::ProductRunPhase::Queued
         {

@@ -165,6 +165,7 @@ fn service(
             records: std::sync::RwLock::new(BTreeMap::new()),
             providers: registry,
             automatic_provider_failover: false,
+            provider_turn_timeout_seconds: 600,
             local_context: peritus_product_runner::LocalContextConfig::default(),
             workspaces: BTreeMap::from([(workspace_id, workspace.to_owned())]),
             folders: BTreeMap::new(),
