@@ -32,6 +32,7 @@ pub struct ProductUi {
     pub conversation: Option<ProductRunConversation>,
     pub settlements: BTreeMap<RunId, RunSettlement>,
     pub confirmation: Option<CandidateConfirmation>,
+    pub detail_scroll: u16,
     pub inspection_scroll: u16,
     pub preview: Option<peritus_app_protocol::WorkbenchResultPage>,
     pub preview_scroll: u16,
@@ -54,6 +55,7 @@ impl ProductUi {
             conversation: None,
             settlements: BTreeMap::new(),
             confirmation: None,
+            detail_scroll: 0,
             inspection_scroll: 0,
             preview: None,
             preview_scroll: 0,
@@ -138,7 +140,7 @@ impl AppModel {
                 Some((
                     PathBuf::from(deliverable.workspace_path()),
                     deliverable.run_instructions().to_owned(),
-                    checkpoint.identity().candidate_digest(),
+                    checkpoint.identity().repository_digest(),
                 ))
             })
         else {
@@ -264,6 +266,7 @@ impl AppModel {
         product.selected = product.selected.saturating_sub(1);
         product.conversation = None;
         product.confirmation = None;
+        product.detail_scroll = 0;
         product.review.clear();
         true
     }
@@ -273,6 +276,7 @@ impl AppModel {
         product.selected = (product.selected + 1).min(product.runs.len().saturating_sub(1));
         product.conversation = None;
         product.confirmation = None;
+        product.detail_scroll = 0;
         product.review.clear();
         true
     }

@@ -68,8 +68,9 @@ pub(in crate::schema::fields) const SETTLEMENT_TYPES: &[AppTypeDescriptor] = &[
                 J::Identifier,
                 true,
             ),
+            field("contentDigest", W::Digest, &[], "Sha256Digest", "Sha256Digest", J::Digest, true),
             field(
-                "candidateDigest",
+                "repositoryDigest",
                 W::Digest,
                 &[],
                 "Sha256Digest",
@@ -77,7 +78,16 @@ pub(in crate::schema::fields) const SETTLEMENT_TYPES: &[AppTypeDescriptor] = &[
                 J::Digest,
                 true,
             ),
-            field("conversationRevision", W::U64, &[], "u64", "UInt64", J::U64String, true),
+            field(
+                "executionDigest",
+                W::Option,
+                &[],
+                "Option<Sha256Digest>",
+                "Sha256Digest",
+                J::Digest,
+                false,
+            ),
+            field("requirementsRevision", W::U64, &[], "u64", "UInt64", J::U64String, true),
             field(
                 "checkpointSequence",
                 W::U64,
@@ -102,6 +112,7 @@ pub(in crate::schema::fields) const SETTLEMENT_TYPES: &[AppTypeDescriptor] = &[
                 J::Ref("CandidateIdentity"),
                 true,
             ),
+            field("dependencies", W::U16, &[], "EvidenceDependencies", "number", J::U16, true),
             field(
                 "result",
                 W::U16,

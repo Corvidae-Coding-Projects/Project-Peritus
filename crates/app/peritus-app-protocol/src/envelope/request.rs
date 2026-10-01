@@ -181,9 +181,7 @@ pub enum AppRequestPayload {
     StartProductRun(ProductRunRequest),
     /// Cancels or retries one exact product run.
     ControlProductRun(ProductRunControl),
-    /// Queries recent or exact product-run observations.
-    QueryProductRuns(ProductRunQuery),
-    /// Queries mixed active and settled runs while retaining every candidate's evidence.
+    /// Queries recent or exact runs while retaining every candidate's qualification evidence.
     QueryProductRunObservations(ProductRunQuery),
     /// Adds user context to an active or resumable product run.
     ContinueProductRun(ProductRunContinuation),
@@ -215,9 +213,6 @@ impl AppRequestPayload {
     #[must_use]
     pub const fn required_workbench_feature(&self) -> Option<crate::WellKnownProtocolFeature> {
         match self {
-            Self::QueryProductRunObservations(_) => {
-                Some(crate::WellKnownProtocolFeature::ProductRunObservations)
-            }
             Self::Improvements(_) => Some(crate::WellKnownProtocolFeature::HarnessImprovements),
             Self::PreviewWorkbenchRewind(_) | Self::InspectWorkbenchCheckpoint(_) => {
                 Some(crate::WellKnownProtocolFeature::WorkbenchCheckpoints)

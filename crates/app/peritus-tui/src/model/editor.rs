@@ -44,6 +44,9 @@ impl AppModel {
             return Vec::new();
         }
         if key.code == KeyCode::Enter {
+            if self.open_runs_dashboard_from_typed_command() {
+                return Vec::new();
+            }
             let Some(editor) = self.editor.take() else {
                 return Vec::new();
             };
@@ -89,6 +92,41 @@ impl AppModel {
             let _ = edit_text(&mut editor.buffer, &mut editor.cursor, key);
         }
         Vec::new()
+    }
+
+    fn open_runs_dashboard_from_typed_command(&mut self) -> bool {
+        let Some((run_id, pasted_command)) = self.editor.as_ref().and_then(|editor| {
+            if editor.buffer.trim() != "/runs" {
+                return None;
+            }
+            match editor.kind {
+                EditorKind::ProductMessage(run_id) => Some((run_id, editor.pasted_command)),
+                _ => None,
+            }
+        }) else {
+            return false;
+        };
+        if pasted_command {
+            self.notice(
+                super::NoticeLevel::Warning,
+                "Pasted commands do not execute. Type /runs to return to the run dashboard; draft retained.",
+            );
+            return true;
+        }
+        self.editor = None;
+        self.chat.run_id = None;
+        if let Some(product) = &mut self.product
+            && let Some(index) = product.runs.iter().position(|run| run.run_id() == run_id)
+        {
+            product.selected = index;
+            self.view = super::View::Runs;
+        } else {
+            self.notice(
+                super::NoticeLevel::Warning,
+                "This coding run is no longer present in the dashboard.",
+            );
+        }
+        true
     }
 
     fn submit_editor(&mut self, editor: Editor) -> Vec<Effect> {

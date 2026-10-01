@@ -3,8 +3,8 @@
 use std::collections::BTreeMap;
 
 use peritus_app_protocol::{
-    AppResponsePayload, ProductRunPhase, ProductRunRequest, ProductRunSettlementSnapshot,
-    ProductRunSnapshot,
+    AppResponsePayload, ProductRunObservation, ProductRunPhase, ProductRunRequest,
+    ProductRunSettlementSnapshot, ProductRunSnapshot,
 };
 use peritus_types::{RunId, WorkspaceId};
 
@@ -14,7 +14,7 @@ impl super::ProductRunService {
     pub(crate) fn query_observations(
         &self,
         query: peritus_app_protocol::ProductRunQuery,
-    ) -> Result<Vec<peritus_app_protocol::ProductRunObservation>, ProductRunServiceError> {
+    ) -> Result<Vec<ProductRunObservation>, ProductRunServiceError> {
         let records = self.inner.records.read().map_err(|_| ProductRunServiceError::Unavailable)?;
         records
             .values()
@@ -22,11 +22,8 @@ impl super::ProductRunService {
             .filter(|record| query.run_id().is_none_or(|run| record.snapshot.run_id() == run))
             .take(peritus_app_protocol::MAX_PRODUCT_RUNS)
             .map(|record| {
-                peritus_app_protocol::ProductRunObservation::new(
-                    live_snapshot(record)?,
-                    delivery_settlement(record),
-                )
-                .map_err(|_| ProductRunServiceError::InvalidState)
+                ProductRunObservation::new(live_snapshot(record)?, delivery_settlement(record))
+                    .map_err(|_| ProductRunServiceError::InvalidState)
             })
             .collect()
     }
@@ -44,58 +41,8 @@ pub(super) fn project_snapshot(
     }
 }
 
-pub(super) fn project_collection(
-    records: &BTreeMap<RunId, RunRecord>,
-    snapshots: Vec<ProductRunSnapshot>,
-) -> Result<AppResponsePayload, ProductRunServiceError> {
-    let settled = snapshots
-        .iter()
-        .map(|snapshot| {
-            records
-                .get(&snapshot.run_id())
-                .and_then(delivery_settlement)
-                .map(|settlement| ProductRunSettlementSnapshot::new(snapshot.clone(), settlement))
-                .transpose()
-        })
-        .collect::<Result<Vec<_>, _>>()
-        .map_err(|_| ProductRunServiceError::InvalidState)?;
-    if settled.iter().all(Option::is_some) {
-        Ok(AppResponsePayload::ProductRunSettlements(settled.into_iter().flatten().collect()))
-    } else {
-        // Legacy collections cannot encode candidate qualification. Keep their status
-        // visible without asserting acceptance; exact queries retain the full evidence.
-        let summaries = snapshots.into_iter().map(legacy_summary).collect::<Result<_, _>>()?;
-        Ok(AppResponsePayload::ProductRuns(summaries))
-    }
-}
-
-fn legacy_summary(
-    snapshot: ProductRunSnapshot,
-) -> Result<ProductRunSnapshot, ProductRunServiceError> {
-    if !snapshot.deliverable().is_some_and(|value| {
-        value.qualification() != peritus_run_settlement::CandidateStage::Qualified
-    }) {
-        return Ok(snapshot);
-    }
-    ProductRunSnapshot::new(
-        snapshot.run_id(),
-        snapshot.workspace_id(),
-        snapshot.providers(),
-        snapshot.phase(),
-        snapshot.cycle(),
-        snapshot.task().to_owned(),
-        snapshot.status().to_owned(),
-        snapshot.diff().to_owned(),
-        snapshot.gates().to_owned(),
-        snapshot.review().to_owned(),
-        snapshot.summary().to_owned(),
-    )
-    .map_err(|_| ProductRunServiceError::InvalidState)
-}
-
-/// The legacy settlement wire shape requires a managed deliverable for every checkpoint.
-/// In-place execution retains that checkpoint internally but publishes its phase and evidence
-/// through the ordinary snapshot, without inventing a Git handoff or changing the wire contract.
+/// Managed candidates expose their exact settlement with the corresponding handoff snapshot.
+/// In-place execution retains its checkpoint internally without inventing a Git handoff.
 pub(super) fn delivery_settlement(
     record: &RunRecord,
 ) -> Option<peritus_run_settlement::RunSettlement> {
@@ -121,6 +68,39 @@ pub(super) fn live_snapshot(
 pub(super) fn initial_snapshot(
     request: &ProductRunRequest,
 ) -> Result<ProductRunSnapshot, ProductRunServiceError> {
+    queued_snapshot(request, "Queued to inspect the workspace and prepare the design")
+}
+
+pub(super) fn retry_snapshot(
+    request: &ProductRunRequest,
+    resume: Option<&peritus_product_runner::ProductRunResume>,
+) -> Result<ProductRunSnapshot, ProductRunServiceError> {
+    let status = match resume.map(peritus_product_runner::ProductRunResume::next_phase) {
+        Some(peritus_product_runner::ProductRunPhase::Designing) => {
+            "Queued to refresh the design for the current request"
+        }
+        Some(peritus_product_runner::ProductRunPhase::Writing) => "Queued to resume implementation",
+        Some(peritus_product_runner::ProductRunPhase::Checking) => {
+            "Queued to reacquire stale checks"
+        }
+        Some(peritus_product_runner::ProductRunPhase::Reviewing) => {
+            "Queued to reacquire independent review"
+        }
+        Some(peritus_product_runner::ProductRunPhase::Fixing) => "Queued to resume fixes",
+        Some(
+            peritus_product_runner::ProductRunPhase::Verifying
+            | peritus_product_runner::ProductRunPhase::Finalizing
+            | peritus_product_runner::ProductRunPhase::Complete,
+        ) => "Queued to refresh terminal evidence",
+        None => "Queued to inspect the workspace and prepare a fresh design",
+    };
+    queued_snapshot(request, status)
+}
+
+fn queued_snapshot(
+    request: &ProductRunRequest,
+    status: &str,
+) -> Result<ProductRunSnapshot, ProductRunServiceError> {
     ProductRunSnapshot::new(
         request.run_id(),
         request.workspace_id(),
@@ -128,7 +108,7 @@ pub(super) fn initial_snapshot(
         ProductRunPhase::Queued,
         1,
         request.task().to_owned(),
-        "Queued for the writer".to_owned(),
+        status.to_owned(),
         String::new(),
         String::new(),
         String::new(),

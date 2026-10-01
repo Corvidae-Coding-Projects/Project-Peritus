@@ -1,7 +1,8 @@
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
 use peritus_app_protocol::{
     AppMessage, AppProtocolLimits, AppRequestPayload, ProductDeliverable, ProductProviderSelection,
-    ProductRunControlAction, ProductRunPhase, ProductRunSettlementSnapshot, ProductRunSnapshot,
+    ProductRunControlAction, ProductRunObservation, ProductRunPhase, ProductRunSettlementSnapshot,
+    ProductRunSnapshot,
 };
 use peritus_run_settlement::{
     CandidateCheckpoint, CandidateIdentity, CandidateStage, EvidenceStatus, SettlementCause,
@@ -15,6 +16,7 @@ use crate::{
     runtime::{ProductLaunchContext, ProductProviderOption},
 };
 
+mod handoff;
 mod polling;
 
 fn unqualified_model() -> (AppModel, RunId, WorkspaceId) {
@@ -36,8 +38,16 @@ fn unqualified_model() -> (AppModel, RunId, WorkspaceId) {
         downgraded: false,
     });
     let run_id = RunId::new([84; 16]).expect("run");
-    let identity = CandidateIdentity::new(run_id, workspace_id, Sha256Digest::new([85; 32]), 1, 1)
-        .expect("identity");
+    let identity = CandidateIdentity::new(
+        run_id,
+        workspace_id,
+        Sha256Digest::new([85; 32]),
+        Sha256Digest::new([85; 32]),
+        None,
+        1,
+        1,
+    )
+    .expect("identity");
     let checkpoint = CandidateCheckpoint::new(
         identity,
         CandidateStage::Changed,
@@ -110,8 +120,16 @@ fn confirmation_does_not_transfer_to_a_new_candidate_in_the_same_run() {
     let (mut model, run_id, workspace_id) = unqualified_model();
     assert!(model.control_selected_product_run(ProductRunControlAction::Commit).is_empty());
     let snapshot = model.product.as_ref().unwrap().selected_run().unwrap().clone();
-    let identity =
-        CandidateIdentity::new(run_id, workspace_id, Sha256Digest::new([99; 32]), 1, 2).unwrap();
+    let identity = CandidateIdentity::new(
+        run_id,
+        workspace_id,
+        Sha256Digest::new([99; 32]),
+        Sha256Digest::new([99; 32]),
+        None,
+        1,
+        2,
+    )
+    .unwrap();
     let checkpoint = CandidateCheckpoint::new(
         identity,
         CandidateStage::Changed,
@@ -124,10 +142,12 @@ fn confirmation_does_not_transfer_to_a_new_candidate_in_the_same_run() {
     reducer.observe(checkpoint).unwrap();
     let settlement = reducer.settle(SettlementCause::Provider).unwrap();
     let polled = ProductRunSettlementSnapshot::new(snapshot, settlement).unwrap();
-    model.accept_settlement_query(std::slice::from_ref(&polled), Some(run_id));
+    let observation =
+        ProductRunObservation::new(polled.snapshot().clone(), Some(*polled.settlement())).unwrap();
+    model.accept_observation_query(std::slice::from_ref(&observation), Some(run_id));
     assert!(model.control_selected_product_run(ProductRunControlAction::Commit).is_empty());
     // Polling the same candidate must not make confirmation impossible.
-    model.accept_settlement_query(&[polled], Some(run_id));
+    model.accept_observation_query(&[observation], Some(run_id));
     let confirmed = model.control_selected_product_run(ProductRunControlAction::Commit);
     assert!(confirmed.iter().any(|effect| matches!(effect,
         Effect::Send(AppMessage::Request(request)) if matches!(request.payload(), AppRequestPayload::ControlProductRun(control)
@@ -189,19 +209,27 @@ fn exact_run_poll_does_not_replace_the_list_or_undo_navigation() {
         assert!(model.select_next_product());
         for effect in effects {
             let Effect::Send(AppMessage::Request(request)) = effect else { continue };
-            let AppRequestPayload::QueryProductRuns(query) = request.payload() else { continue };
-            let payload = if query.run_id().is_none() {
-                AppResponsePayload::ProductRuns(snapshots.to_vec())
-            } else if settled_response {
-                let settlement =
-                    SettlementReducer::new().settle(SettlementCause::Provider).expect("settlement");
-                AppResponsePayload::ProductRunSettlements(vec![
-                    ProductRunSettlementSnapshot::new(snapshots[0].clone(), settlement)
-                        .expect("settled snapshot"),
-                ])
-            } else {
-                AppResponsePayload::ProductRuns(vec![snapshots[0].clone()])
+            let AppRequestPayload::QueryProductRunObservations(query) = request.payload() else {
+                continue;
             };
+            let observations = if query.run_id().is_none() {
+                snapshots
+                    .iter()
+                    .cloned()
+                    .map(|snapshot| {
+                        ProductRunObservation::new(snapshot, None).expect("observation")
+                    })
+                    .collect()
+            } else {
+                let settlement = settled_response.then(|| {
+                    SettlementReducer::new().settle(SettlementCause::Provider).expect("settlement")
+                });
+                vec![
+                    ProductRunObservation::new(snapshots[0].clone(), settlement)
+                        .expect("observation"),
+                ]
+            };
+            let payload = AppResponsePayload::ProductRunObservations(observations);
             let _ = model.update(Action::Message(AppMessage::Response(AppResponseEnvelope::new(
                 request.context(),
                 request.request_id(),

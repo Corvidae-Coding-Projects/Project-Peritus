@@ -26,6 +26,7 @@ fn draft(model: &mut AppModel, kind: EditorKind, text: &str) {
         hint: "Enter submits",
         buffer: text.to_owned(),
         cursor: text.len(),
+        pasted_command: false,
     });
 }
 

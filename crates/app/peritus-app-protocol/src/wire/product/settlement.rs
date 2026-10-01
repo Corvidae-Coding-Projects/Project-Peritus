@@ -1,13 +1,14 @@
-//! Candidate settlement encoding layered over the legacy product snapshot bytes.
+//! Canonical candidate settlement encoding.
 
 use peritus_codec::{CanonicalReader, CanonicalWriter, CodecError, CodecErrorKind};
 use peritus_run_settlement::{
-    CandidateCheckpoint, CandidateIdentity, CandidateStage, EvidenceRecord, EvidenceStatus,
-    QualificationEvidence, RunDisposition, RunSettlement, SettlementCause, SettlementReducer,
+    CandidateCheckpoint, CandidateIdentity, CandidateStage, EvidenceDependencies, EvidenceRecord,
+    EvidenceStatus, QualificationEvidence, RunDisposition, RunSettlement, SettlementCause,
+    SettlementReducer,
 };
 use peritus_types::{RunId, WorkspaceId};
 
-use crate::{MAX_PRODUCT_RUNS, ProductRunSettlementSnapshot};
+use crate::ProductRunSettlementSnapshot;
 
 use super::{read_snapshot_inner, write_snapshot_inner};
 use crate::wire::primitive::{invalid, read_digest, read_id, write_digest, write_id};
@@ -35,28 +36,6 @@ pub(in crate::wire) fn read_settlement_snapshot(
         snapshot = snapshot.with_deliverable(deliverable);
     }
     invalid(offset, ProductRunSettlementSnapshot::new(snapshot, settlement))
-}
-
-pub(in crate::wire) fn write_settlement_snapshots(
-    writer: &mut CanonicalWriter,
-    values: &[ProductRunSettlementSnapshot],
-) -> Result<(), CodecError> {
-    writer.write_collection_len(values.len())?;
-    for value in values {
-        write_settlement_snapshot(writer, value)?;
-    }
-    Ok(())
-}
-
-pub(in crate::wire) fn read_settlement_snapshots(
-    reader: &mut CanonicalReader<'_>,
-) -> Result<Vec<ProductRunSettlementSnapshot>, CodecError> {
-    let offset = reader.offset();
-    let length = reader.read_collection_len()?;
-    if length > MAX_PRODUCT_RUNS {
-        return Err(CodecError::at(CodecErrorKind::LimitExceeded, offset));
-    }
-    (0..length).map(|_| read_settlement_snapshot(reader)).collect()
 }
 
 fn write_settlement(writer: &mut CanonicalWriter, value: &RunSettlement) -> Result<(), CodecError> {
@@ -106,10 +85,16 @@ fn read_checkpoint(reader: &mut CanonicalReader<'_>) -> Result<CandidateCheckpoi
     let stage_offset = reader.offset();
     let stage = CandidateStage::from_tag(reader.read_u16()?)
         .ok_or_else(|| CodecError::at(CodecErrorKind::UnknownTag, stage_offset))?;
-    let gates = read_evidence(reader)?;
-    let obligations = read_evidence(reader)?;
-    let review = read_evidence(reader)?;
-    invalid(offset, CandidateCheckpoint::new(identity, stage, gates, obligations, review))
+    invalid(
+        offset,
+        CandidateCheckpoint::new(
+            identity,
+            stage,
+            read_evidence(reader)?,
+            read_evidence(reader)?,
+            read_evidence(reader)?,
+        ),
+    )
 }
 
 fn write_candidate_identity(
@@ -118,8 +103,13 @@ fn write_candidate_identity(
 ) -> Result<(), CodecError> {
     write_id(writer, value.run_id().as_bytes())?;
     write_id(writer, value.workspace_id().as_bytes())?;
-    write_digest(writer, value.candidate_digest())?;
-    writer.write_u64(value.conversation_revision())?;
+    write_digest(writer, value.content_digest())?;
+    write_digest(writer, value.repository_digest())?;
+    writer.write_option_tag(value.execution_digest().is_some())?;
+    if let Some(execution) = value.execution_digest() {
+        write_digest(writer, execution)?;
+    }
+    writer.write_u64(value.requirements_revision())?;
     writer.write_u64(value.checkpoint_sequence())
 }
 
@@ -127,12 +117,19 @@ fn read_candidate_identity(
     reader: &mut CanonicalReader<'_>,
 ) -> Result<CandidateIdentity, CodecError> {
     let offset = reader.offset();
+    let run = read_id(reader, RunId::new)?;
+    let workspace = read_id(reader, WorkspaceId::new)?;
+    let content = read_digest(reader)?;
+    let repository = read_digest(reader)?;
+    let execution = if reader.read_option_tag()? { Some(read_digest(reader)?) } else { None };
     invalid(
         offset,
         CandidateIdentity::new(
-            read_id(reader, RunId::new)?,
-            read_id(reader, WorkspaceId::new)?,
-            read_digest(reader)?,
+            run,
+            workspace,
+            content,
+            repository,
+            execution,
             reader.read_u64()?,
             reader.read_u64()?,
         ),
@@ -146,6 +143,7 @@ fn write_evidence(
     writer.write_u16(value.tag())?;
     if let Some(record) = value.record() {
         write_candidate_identity(writer, record.provenance())?;
+        writer.write_u16(record.dependencies().tag())?;
         writer.write_u16(record.value().tag())?;
     }
     Ok(())
@@ -163,10 +161,13 @@ fn read_evidence(
         return Err(CodecError::at(CodecErrorKind::UnknownTag, offset));
     }
     let provenance = read_candidate_identity(reader)?;
+    let dependencies_offset = reader.offset();
+    let dependencies = EvidenceDependencies::from_tag(reader.read_u16()?)
+        .ok_or_else(|| CodecError::at(CodecErrorKind::UnknownTag, dependencies_offset))?;
     let evidence_offset = reader.offset();
     let value = QualificationEvidence::from_tag(reader.read_u16()?)
         .ok_or_else(|| CodecError::at(CodecErrorKind::UnknownTag, evidence_offset))?;
-    let record = EvidenceRecord::new(provenance, value);
+    let record = EvidenceRecord::new(provenance, dependencies, value);
     match tag {
         2 => Ok(EvidenceStatus::Current(record)),
         3 => Ok(EvidenceStatus::Failed(record)),

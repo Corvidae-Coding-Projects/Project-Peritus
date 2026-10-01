@@ -45,6 +45,7 @@ impl AppModel {
             hint,
             buffer: String::new(),
             cursor: 0,
+            pasted_command: false,
         });
         Vec::new()
     }

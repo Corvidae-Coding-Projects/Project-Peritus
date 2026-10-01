@@ -1,7 +1,7 @@
 use super::*;
 
 #[test]
-fn malformed_legacy_projection_is_quarantined_without_blocking_startup() {
+fn malformed_projection_is_quarantined_without_blocking_startup() {
     let state = tempfile::tempdir().expect("state");
     let directory = state.path().join("product-runs");
     fs::create_dir(&directory).expect("run directory");
@@ -19,11 +19,11 @@ fn malformed_legacy_projection_is_quarantined_without_blocking_startup() {
 }
 
 #[test]
-fn misnamed_legacy_projection_is_quarantined_instead_of_aliasing_another_run() {
+fn previous_format_projection_is_quarantined_without_migration() {
     let state = tempfile::tempdir().expect("state");
     let directory = state.path().join("product-runs");
     fs::create_dir(&directory).expect("run directory");
-    let path = directory.join("ffffffffffffffffffffffffffffffff.json");
+    let path = directory.join("01010101010101010101010101010101.json");
     fs::write(
         &path,
         br#"{
@@ -48,5 +48,5 @@ fn misnamed_legacy_projection_is_quarantined_instead_of_aliasing_another_run() {
 
     assert!(records.is_empty());
     assert!(!path.exists());
-    assert!(directory.join(".quarantine/ffffffffffffffffffffffffffffffff.json").is_file());
+    assert!(directory.join(".quarantine/01010101010101010101010101010101.json").is_file());
 }

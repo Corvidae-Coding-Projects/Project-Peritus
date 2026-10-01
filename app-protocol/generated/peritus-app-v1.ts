@@ -55,7 +55,6 @@ export type AppPayloadKind =
   | "complete-artifact-upload"
   | "start-product-run"
   | "control-product-run"
-  | "query-product-runs"
   | "continue-product-run"
   | "query-product-run-conversation"
   | "interact"
@@ -105,10 +104,8 @@ export type AppPayloadKind =
   | "shutdown-accepted"
   | "error"
   | "product-run-accepted"
-  | "product-runs"
   | "product-run-conversation"
   | "product-run-settled"
-  | "product-run-settlements"
   | "interaction"
   | "models"
   | "interaction-with-effort"
@@ -1736,13 +1733,16 @@ export interface ProductRunObservation {
 export interface CandidateIdentity {
   readonly runId: RunId;
   readonly workspaceId: WorkspaceId;
-  readonly candidateDigest: Sha256Digest;
-  readonly conversationRevision: UInt64;
+  readonly contentDigest: Sha256Digest;
+  readonly repositoryDigest: Sha256Digest;
+  readonly executionDigest?: Sha256Digest;
+  readonly requirementsRevision: UInt64;
   readonly checkpointSequence: UInt64;
 }
 
 export interface QualificationEvidenceRecord {
   readonly provenance: CandidateIdentity;
+  readonly dependencies: number;
   readonly result: QualificationEvidence;
 }
 

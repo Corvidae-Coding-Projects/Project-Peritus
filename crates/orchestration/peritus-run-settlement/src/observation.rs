@@ -55,12 +55,20 @@ impl CandidateCheckpoint {
             Err(_) => true,
         },
     {
-        let stage = if self.identity().same_candidate(&identity) {
+        // Repository-only and execution-context changes are reconciled by each evidence record's
+        // dependencies. Changed content or requirements starts again at Changed.
+        let requested_stage = if self.identity().same_content_and_requirements(&identity) {
             self.stage()
         } else {
             CandidateStage::Changed
         };
-        let current = Self::observe(identity, stage, *self.gates(), *self.obligations(), *self.review())?;
+        let current = Self::observe(
+            identity,
+            requested_stage,
+            *self.gates(),
+            *self.obligations(),
+            *self.review(),
+        )?;
         current.validate_successor(self)?;
         Ok(current)
     }

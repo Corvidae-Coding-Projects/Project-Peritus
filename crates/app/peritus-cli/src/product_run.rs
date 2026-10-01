@@ -117,7 +117,7 @@ async fn confirm_unqualified(
                 "daemon omitted the exact candidate settlement",
             )
         })?;
-    let digest = *checkpoint.identity().candidate_digest().as_bytes();
+    let digest = *checkpoint.identity().repository_digest().as_bytes();
     if confirmed_digest != Some(digest) {
         return Err(CliError::usage(format!(
             "candidate is unqualified ({missing}); repeat with --confirm-unqualified {digest}",
@@ -149,7 +149,7 @@ async fn execute_candidate(
     let current = ProductRunner::candidate_digest(workspace).map_err(|error| {
         CliError::runtime("validate exact candidate", error.detail().to_owned())
     })?;
-    if current != checkpoint.identity().candidate_digest() {
+    if current != checkpoint.identity().repository_digest() {
         return Err(CliError::usage(
             "candidate changed after settlement; continue the run to inspect and requalify it",
         ));
@@ -186,16 +186,16 @@ async fn query_exact(client: &mut Client, run_id: RunId) -> Result<ObservedRun, 
 
 async fn query(client: &mut Client, query: ProductRunQuery) -> Result<Vec<ObservedRun>, CliError> {
     let identity = Client::new_request_identity()?;
-    let response = client.request(identity, AppRequestPayload::QueryProductRuns(query)).await?;
+    let response =
+        client.request(identity, AppRequestPayload::QueryProductRunObservations(query)).await?;
     match response.payload() {
-        AppResponsePayload::ProductRuns(runs) => Ok(runs
+        AppResponsePayload::ProductRunObservations(runs) => Ok(runs
             .iter()
-            .cloned()
-            .map(|snapshot| ObservedRun { snapshot, settlement: None })
+            .map(|run| ObservedRun {
+                snapshot: run.snapshot().clone(),
+                settlement: run.settlement(),
+            })
             .collect()),
-        AppResponsePayload::ProductRunSettlements(runs) => {
-            Ok(runs.iter().map(observed_settlement).collect())
-        }
         AppResponsePayload::ProductRunAccepted(snapshot) => {
             Ok(vec![ObservedRun { snapshot: snapshot.clone(), settlement: None }])
         }
@@ -237,7 +237,7 @@ fn observed_json(run: &ObservedRun) -> serde_json::Value {
         "settlement": run.settlement.as_ref().map(|value| serde_json::json!({
             "disposition": format!("{:?}", value.disposition()),
             "cause": format!("{:?}", value.cause()),
-            "candidate_digest": value.checkpoint().map(|checkpoint| hex(checkpoint.identity().candidate_digest().as_bytes())),
+            "repository_digest": value.checkpoint().map(|checkpoint| hex(checkpoint.identity().repository_digest().as_bytes())),
             "evidence": value.checkpoint().map(evidence_json),
         })),
         "deliverable": deliverable.map(deliverable_json),
@@ -289,8 +289,8 @@ fn observed_human(run: &ObservedRun) -> String {
         if let Some(checkpoint) = settlement.checkpoint() {
             let _ = write!(
                 text,
-                "\nCandidate digest: {}\nChecks: {}; requirements: {}; review: {}",
-                hex(checkpoint.identity().candidate_digest().as_bytes()),
+                "\nRepository digest: {}\nChecks: {}; requirements: {}; review: {}",
+                hex(checkpoint.identity().repository_digest().as_bytes()),
                 evidence_name(checkpoint.gates()),
                 evidence_name(checkpoint.obligations()),
                 evidence_name(checkpoint.review()),

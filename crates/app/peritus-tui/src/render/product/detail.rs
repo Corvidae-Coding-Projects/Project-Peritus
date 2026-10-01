@@ -15,7 +15,7 @@ use ratatui::{
 };
 
 use crate::{
-    model::AppModel,
+    model::{AppModel, format_digest},
     render::{ACCENT, BAD, GOOD, MUTED, WARN, field, short_text},
 };
 
@@ -90,9 +90,27 @@ pub(super) fn run_detail(
             qualification_name(deliverable.qualification()).to_owned(),
         ));
         if let Some(checkpoint) = settlement.and_then(RunSettlement::checkpoint) {
-            lines.push(field("Checks", evidence_name(checkpoint.gates()).to_owned()));
-            lines.push(field("Requirements", evidence_name(checkpoint.obligations()).to_owned()));
-            lines.push(field("Review", evidence_name(checkpoint.review()).to_owned()));
+            let identity = checkpoint.identity();
+            lines.push(field(
+                "Content",
+                short_text(&format_digest(identity.content_digest().as_bytes()), 16),
+            ));
+            lines.push(field(
+                "Repository context",
+                short_text(&format_digest(identity.repository_digest().as_bytes()), 16),
+            ));
+            lines
+                .push(field("Requirements revision", identity.requirements_revision().to_string()));
+            lines.push(field(
+                "Execution context",
+                identity.execution_digest().map_or_else(
+                    || "not observed".to_owned(),
+                    |digest| short_text(&format_digest(digest.as_bytes()), 16),
+                ),
+            ));
+            lines.push(field("Checks", evidence_name(checkpoint.gates())));
+            lines.push(field("Requirements", evidence_name(checkpoint.obligations())));
+            lines.push(field("Review", evidence_name(checkpoint.review())));
         }
         lines.push(field("Changed files", deliverable.changed_paths().len().to_string()));
         lines.push(field("Run", safe(deliverable.run_instructions())));
@@ -183,16 +201,22 @@ const fn qualification_name(stage: CandidateStage) -> &'static str {
     }
 }
 
-const fn evidence_name(evidence: &EvidenceStatus<QualificationEvidence>) -> &'static str {
-    if let EvidenceStatus::Current(record) = evidence {
-        return if record.value().satisfied() { "passed" } else { "failed" };
-    }
-    match evidence {
-        EvidenceStatus::Missing => "missing",
-        EvidenceStatus::Failed(_) => "failed",
+fn evidence_name(evidence: &EvidenceStatus<QualificationEvidence>) -> String {
+    let state = match evidence {
+        EvidenceStatus::Missing => return "missing".to_owned(),
         EvidenceStatus::Stale(_) => "stale",
-        EvidenceStatus::Current(_) => unreachable!(),
-    }
+        EvidenceStatus::Current(record) if record.value().satisfied() => "passed",
+        EvidenceStatus::Failed(_) | EvidenceStatus::Current(_) => "failed",
+    };
+    let dependencies = evidence.record().map_or_else(String::new, |record| {
+        let dependency = record.dependencies();
+        if dependency.execution() {
+            "content + requirements + execution".to_owned()
+        } else {
+            "content + requirements".to_owned()
+        }
+    });
+    format!("{state} · {dependencies}")
 }
 
 pub(super) fn empty_detail() -> Text<'static> {

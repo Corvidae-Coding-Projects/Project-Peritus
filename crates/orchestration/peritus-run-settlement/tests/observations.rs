@@ -1,8 +1,8 @@
 //! Reconciliation retains facts while qualification follows current observations.
 
 use peritus_run_settlement::{
-    CandidateCheckpoint, CandidateIdentity, CandidateStage, EvidenceRecord, EvidenceStatus,
-    QualificationEvidence, SettlementErrorKind,
+    CandidateCheckpoint, CandidateIdentity, CandidateStage, EvidenceDependencies, EvidenceRecord,
+    EvidenceStatus, QualificationEvidence, SettlementErrorKind,
 };
 use peritus_types::{RunId, Sha256Digest, WorkspaceId};
 
@@ -11,6 +11,8 @@ fn identity(digest: u8, sequence: u64) -> CandidateIdentity {
         RunId::new([1; 16]).unwrap(),
         WorkspaceId::new([2; 16]).unwrap(),
         Sha256Digest::new([digest; 32]),
+        Sha256Digest::new([digest; 32]),
+        None,
         3,
         sequence,
     )
@@ -18,7 +20,41 @@ fn identity(digest: u8, sequence: u64) -> CandidateIdentity {
 }
 
 const fn positive(identity: CandidateIdentity) -> EvidenceStatus<QualificationEvidence> {
-    EvidenceStatus::Current(EvidenceRecord::new(identity, QualificationEvidence::Satisfied))
+    EvidenceStatus::Current(EvidenceRecord::new(
+        identity,
+        EvidenceDependencies::OBLIGATIONS,
+        QualificationEvidence::Satisfied,
+    ))
+}
+
+const fn positive_with(
+    identity: CandidateIdentity,
+    dependencies: EvidenceDependencies,
+) -> EvidenceStatus<QualificationEvidence> {
+    EvidenceStatus::Current(EvidenceRecord::new(
+        identity,
+        dependencies,
+        QualificationEvidence::Satisfied,
+    ))
+}
+
+fn observed_identity(
+    content: u8,
+    repository: u8,
+    execution: Option<u8>,
+    requirements: u64,
+    sequence: u64,
+) -> CandidateIdentity {
+    CandidateIdentity::new(
+        RunId::new([1; 16]).unwrap(),
+        WorkspaceId::new([2; 16]).unwrap(),
+        Sha256Digest::new([content; 32]),
+        Sha256Digest::new([repository; 32]),
+        execution.map(|value| Sha256Digest::new([value; 32])),
+        requirements,
+        sequence,
+    )
+    .unwrap()
 }
 
 #[test]
@@ -35,6 +71,7 @@ fn unchanged_candidate_preserves_provenance_but_new_review_failure_revokes_quali
     let current_identity = identity(4, 2);
     let failed_review = EvidenceStatus::Failed(EvidenceRecord::new(
         current_identity,
+        EvidenceDependencies::REVIEW,
         QualificationEvidence::Unsatisfied,
     ));
     let current = CandidateCheckpoint::observe(
@@ -101,4 +138,33 @@ fn matching_future_evidence_and_nonadvancing_reobservations_are_rejected() {
         prior.reobserve(current).unwrap_err().kind(),
         SettlementErrorKind::CheckpointDidNotAdvance
     );
+}
+
+#[test]
+fn only_evidence_depending_on_a_changed_axis_becomes_stale() {
+    let original = observed_identity(4, 5, Some(6), 7, 1);
+    let qualified = CandidateCheckpoint::new(
+        original,
+        CandidateStage::Qualified,
+        positive_with(original, EvidenceDependencies::GATES),
+        positive_with(original, EvidenceDependencies::OBLIGATIONS),
+        positive_with(original, EvidenceDependencies::REVIEW),
+    )
+    .unwrap();
+
+    let committed = qualified.reobserve(observed_identity(4, 8, Some(6), 7, 2)).unwrap();
+    assert!(committed.is_qualified(), "Git-only context does not revoke source evidence");
+    assert!(matches!(committed.gates(), EvidenceStatus::Current(_)));
+
+    let new_host = committed.reobserve(observed_identity(4, 8, Some(9), 7, 3)).unwrap();
+    assert!(matches!(new_host.gates(), EvidenceStatus::Stale(_)));
+    assert!(matches!(new_host.obligations(), EvidenceStatus::Current(_)));
+    assert!(matches!(new_host.review(), EvidenceStatus::Current(_)));
+    assert_eq!(new_host.stage(), CandidateStage::SelfChecked);
+
+    let changed = new_host.reobserve(observed_identity(10, 11, Some(9), 7, 4)).unwrap();
+    assert!(matches!(changed.gates(), EvidenceStatus::Stale(_)));
+    assert!(matches!(changed.obligations(), EvidenceStatus::Stale(_)));
+    assert!(matches!(changed.review(), EvidenceStatus::Stale(_)));
+    assert_eq!(changed.stage(), CandidateStage::Changed);
 }

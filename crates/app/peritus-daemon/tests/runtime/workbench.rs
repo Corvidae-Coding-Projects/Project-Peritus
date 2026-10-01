@@ -146,10 +146,7 @@ fn control_negotiation_exact_receipts_and_stale_edits_survive_daemon_restart() {
             request(&mut client, 1, AppRequestPayload::QueryWorkbench(query)).await,
             AppErrorCode::InvalidIdentifier,
         );
-        assert!(
-            !temporary.path().join("state/workbench-v1").exists(),
-            "inspection must not initialize a journal"
-        );
+        assert!(!temporary.path().join("state/workbench-v1").exists());
         let original =
             request(&mut client, 2, AppRequestPayload::WorkbenchCommand(command.clone())).await;
         let AppResponsePayload::WorkbenchReceipt(receipt) = &original else {
@@ -209,11 +206,13 @@ fn control_negotiation_exact_receipts_and_stale_edits_survive_daemon_restart() {
         let doctor = request(
             &mut client,
             4,
-            AppRequestPayload::QueryProductRuns(peritus_app_protocol::ProductRunQuery::recent()),
+            AppRequestPayload::QueryProductRunObservations(
+                peritus_app_protocol::ProductRunQuery::recent(),
+            ),
         )
         .await;
         assert!(
-            matches!(doctor, AppResponsePayload::ProductRunSettlements(ref runs) if runs.is_empty())
+            matches!(doctor, AppResponsePayload::ProductRunObservations(ref runs) if runs.is_empty())
         );
         drop(client);
         restarted.shutdown().await.expect("shutdown");

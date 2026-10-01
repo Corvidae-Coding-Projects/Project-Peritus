@@ -1,4 +1,4 @@
-//! Product-run settlement wire compatibility and validation matrix.
+//! Product-run settlement wire and validation matrix.
 
 use peritus_app_protocol::{
     AppMessage, AppProtocolLimits, AppResponseEnvelope, AppResponsePayload, CorrelationId,
@@ -7,8 +7,8 @@ use peritus_app_protocol::{
     ProtocolVersion, RequestId, encode_app_message,
 };
 use peritus_run_settlement::{
-    CandidateCheckpoint, CandidateIdentity, CandidateStage, EvidenceStatus, RunDisposition,
-    SettlementCause, SettlementReducer,
+    CandidateCheckpoint, CandidateIdentity, CandidateStage, EvidenceDependencies, EvidenceRecord,
+    EvidenceStatus, QualificationEvidence, RunDisposition, SettlementCause, SettlementReducer,
 };
 use peritus_types::{ProviderProfileId, RunId, SessionId, Sha256Digest, WorkspaceId};
 
@@ -40,6 +40,8 @@ fn candidate_identity() -> CandidateIdentity {
         id(6, RunId::new),
         id(7, WorkspaceId::new),
         Sha256Digest::new([8; 32]),
+        Sha256Digest::new([8; 32]),
+        None,
         3,
         1,
     )
@@ -117,18 +119,6 @@ fn candidate_available_round_trips_without_becoming_accepted() {
 }
 
 #[test]
-fn bounded_settlement_collection_round_trips() {
-    let snapshots = vec![available_snapshot(), available_snapshot()];
-    let message = response(AppResponsePayload::ProductRunSettlements(snapshots));
-    let bytes = encode_app_message(&message, AppProtocolLimits::PRODUCTION).expect("encode");
-    assert_eq!(
-        peritus_app_protocol::decode_app_message(&bytes, AppProtocolLimits::PRODUCTION)
-            .expect("decode"),
-        message,
-    );
-}
-
-#[test]
 fn mixed_observations_retain_candidate_evidence_without_settling_active_work() {
     use peritus_app_protocol::ProductRunObservation;
     let candidate = available_snapshot();
@@ -172,55 +162,68 @@ fn mixed_observations_retain_candidate_evidence_without_settling_active_work() {
 }
 
 #[test]
-fn settlement_collection_rejects_the_first_out_of_bounds_item() {
-    let message = response(AppResponsePayload::ProductRunSettlements(vec![
-        available_snapshot();
-        MAX_PRODUCT_RUNS + 1
-    ]));
-    assert_eq!(
-        encode_app_message(&message, AppProtocolLimits::PRODUCTION)
-            .expect_err("oversized settlement collection")
-            .code(),
-        peritus_app_protocol::AppErrorCode::LimitExceeded,
-    );
-}
+fn dependency_bound_observations_round_trip_on_the_canonical_wire() {
+    use peritus_app_protocol::ProductRunObservation;
 
-#[test]
-fn legacy_deliverable_bytes_decode_as_qualified() {
-    let identity = candidate_identity();
-    let deliverable = ProductDeliverable::new(
-        "/managed/worktree".to_owned(),
-        vec!["src/lib.rs".to_owned()],
-        vec!["cargo test".to_owned()],
-        "cargo test".to_owned(),
+    let identity = CandidateIdentity::new(
+        id(6, RunId::new),
+        id(7, WorkspaceId::new),
+        Sha256Digest::new([0x11; 32]),
+        Sha256Digest::new([0x12; 32]),
+        Some(Sha256Digest::new([0x13; 32])),
+        3,
+        4,
     )
-    .expect("legacy deliverable");
+    .expect("observed identity");
+    let passing = |dependencies| {
+        EvidenceStatus::Current(EvidenceRecord::new(
+            identity,
+            dependencies,
+            QualificationEvidence::Satisfied,
+        ))
+    };
+    let checkpoint = CandidateCheckpoint::new(
+        identity,
+        CandidateStage::Qualified,
+        passing(EvidenceDependencies::GATES),
+        passing(EvidenceDependencies::OBLIGATIONS),
+        passing(EvidenceDependencies::REVIEW),
+    )
+    .expect("qualified checkpoint");
+    let mut reducer = SettlementReducer::new();
+    reducer.observe(checkpoint).expect("observe");
+    let settlement = reducer.settle(SettlementCause::Completed).expect("settlement");
     let snapshot = ProductRunSnapshot::new(
         identity.run_id(),
         identity.workspace_id(),
         providers(),
         ProductRunPhase::Complete,
         1,
-        "implement settlement".to_owned(),
-        "complete".to_owned(),
+        "implement bindings".to_owned(),
+        "Qualified".to_owned(),
         "diff --git".to_owned(),
-        "cargo test passed".to_owned(),
+        "gates passed".to_owned(),
         "no blockers".to_owned(),
-        "implemented".to_owned(),
+        "candidate retained".to_owned(),
     )
     .expect("snapshot")
-    .with_deliverable(deliverable);
-    let legacy = response(AppResponsePayload::ProductRuns(vec![snapshot]));
-    let bytes = encode_app_message(&legacy, AppProtocolLimits::PRODUCTION).expect("legacy encode");
-    let decoded = peritus_app_protocol::decode_app_message(&bytes, AppProtocolLimits::PRODUCTION)
-        .expect("legacy decode");
-    let AppMessage::Response(envelope) = decoded else { panic!("response") };
-    let AppResponsePayload::ProductRuns(snapshots) = envelope.payload() else {
-        panic!("legacy product runs")
-    };
+    .with_deliverable(
+        ProductDeliverable::candidate(
+            "/managed/worktree".to_owned(),
+            vec!["src/lib.rs".to_owned()],
+            vec!["cargo test".to_owned()],
+            "cargo test".to_owned(),
+            CandidateStage::Qualified,
+        )
+        .expect("deliverable"),
+    );
+    let observation = ProductRunObservation::new(snapshot, Some(settlement)).expect("observation");
+    let message = response(AppResponsePayload::ProductRunObservations(vec![observation]));
+    let bytes = encode_app_message(&message, AppProtocolLimits::PRODUCTION).expect("encode");
     assert_eq!(
-        snapshots[0].deliverable().expect("legacy deliverable").qualification(),
-        CandidateStage::Qualified,
+        peritus_app_protocol::decode_app_message(&bytes, AppProtocolLimits::PRODUCTION)
+            .expect("decode"),
+        message,
     );
 }
 

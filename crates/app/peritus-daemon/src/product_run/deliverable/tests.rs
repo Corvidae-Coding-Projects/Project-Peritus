@@ -5,10 +5,10 @@ use peritus_app_protocol::{
 };
 use peritus_provider_core::CancellationToken;
 use peritus_run_settlement::{
-    CandidateCheckpoint, CandidateIdentity, CandidateStage, EvidenceRecord, EvidenceStatus,
-    QualificationEvidence, RunDisposition, SettlementCause, SettlementReducer,
+    CandidateCheckpoint, CandidateIdentity, CandidateStage, EvidenceDependencies, EvidenceRecord,
+    EvidenceStatus, QualificationEvidence, RunDisposition, SettlementCause, SettlementReducer,
 };
-use peritus_types::{ProviderProfileId, WorkspaceId};
+use peritus_types::{ProviderProfileId, Sha256Digest, WorkspaceId};
 use std::process::Output;
 use std::sync::{Arc, atomic::AtomicBool};
 use tempfile::TempDir;
@@ -29,11 +29,12 @@ fn export_and_discard_are_limited_to_exact_deliverable_paths() {
     fs::write(repository.path().join("unrelated.txt"), "unrelated change\n")
         .expect("unrelated change");
     fs::write(repository.path().join("new.txt"), "new file\n").expect("new file");
-    let deliverable = ProductDeliverable::new(
+    let deliverable = ProductDeliverable::candidate(
         repository.path().to_string_lossy().into_owned(),
         vec!["chosen.txt".to_owned(), "new.txt".to_owned()],
         vec!["cargo test --manifest-path game/Cargo.toml".to_owned()],
         "cargo run --manifest-path game/Cargo.toml".to_owned(),
+        CandidateStage::Qualified,
     )
     .expect("deliverable");
 
@@ -61,11 +62,12 @@ fn commit_excludes_an_unrelated_pre_staged_change() {
     fs::write(repository.path().join("unrelated.txt"), "unrelated change\n")
         .expect("unrelated change");
     git(repository.path(), &["add", "--", "unrelated.txt"]);
-    let deliverable = ProductDeliverable::new(
+    let deliverable = ProductDeliverable::candidate(
         repository.path().to_string_lossy().into_owned(),
         vec!["chosen.txt".to_owned()],
         vec!["cargo test --manifest-path game/Cargo.toml".to_owned()],
         "cargo run --manifest-path game/Cargo.toml".to_owned(),
+        CandidateStage::Qualified,
     )
     .expect("deliverable");
 
@@ -107,11 +109,12 @@ fn bracketed_filename_does_not_commit_or_discard_a_matching_unrelated_file() {
     git(root, &["commit", "-qm", "bracket names"]);
     fs::write(root.join(chosen), b"task change\n").unwrap();
     fs::write(root.join(unrelated), b"unrelated change\n").unwrap();
-    let deliverable = ProductDeliverable::new(
+    let deliverable = ProductDeliverable::candidate(
         root.to_string_lossy().into_owned(),
         vec![chosen.to_owned()],
         vec!["true".to_owned()],
         "inspect".to_owned(),
+        CandidateStage::Qualified,
     )
     .unwrap();
     let patch =
@@ -231,11 +234,21 @@ fn restart_marks_changed_candidate_evidence_stale() {
 
 fn qualified_record(mut record: crate::product_run::RunRecord) -> crate::product_run::RunRecord {
     let identity = *record.checkpoint.as_ref().expect("checkpoint").identity();
-    let evidence =
-        EvidenceStatus::Current(EvidenceRecord::new(identity, QualificationEvidence::Satisfied));
-    let checkpoint =
-        CandidateCheckpoint::new(identity, CandidateStage::Qualified, evidence, evidence, evidence)
-            .expect("qualified checkpoint");
+    let positive = |dependencies| {
+        EvidenceStatus::Current(EvidenceRecord::new(
+            identity,
+            dependencies,
+            QualificationEvidence::Satisfied,
+        ))
+    };
+    let checkpoint = CandidateCheckpoint::new(
+        identity,
+        CandidateStage::Qualified,
+        positive(EvidenceDependencies::GATES),
+        positive(EvidenceDependencies::OBLIGATIONS),
+        positive(EvidenceDependencies::REVIEW),
+    )
+    .expect("qualified checkpoint");
     let mut reducer = SettlementReducer::new();
     reducer.observe(checkpoint).expect("observe checkpoint");
     record.settlement = Some(reducer.settle(SettlementCause::Completed).expect("settlement"));
@@ -267,8 +280,19 @@ fn candidate_record(repository: &TempDir) -> crate::product_run::RunRecord {
     let providers = ProductProviderSelection::new(profile, profile, profile);
     let request = ProductRunRequest::new(run_id, workspace_id, providers, "finish game".to_owned())
         .expect("request");
-    let digest = ProductRunner::candidate_digest(repository.path()).expect("digest");
-    let identity = CandidateIdentity::new(run_id, workspace_id, digest, 1, 1).expect("identity");
+    let repository_digest = ProductRunner::candidate_digest(repository.path()).expect("digest");
+    let content_digest =
+        ProductRunner::candidate_source_digest(repository.path()).expect("source digest");
+    let identity = CandidateIdentity::new(
+        run_id,
+        workspace_id,
+        content_digest,
+        repository_digest,
+        Some(Sha256Digest::new([0xEC; 32])),
+        1,
+        1,
+    )
+    .expect("identity");
     let checkpoint = CandidateCheckpoint::new(
         identity,
         CandidateStage::Changed,

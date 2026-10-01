@@ -92,14 +92,13 @@ impl ClientSession {
     }
 }
 
-const COMMAND_FEATURES: [WellKnownProtocolFeature; 7] = [
+const COMMAND_FEATURES: [WellKnownProtocolFeature; 6] = [
     WellKnownProtocolFeature::ConversationLibrary,
     WellKnownProtocolFeature::ConversationForks,
     WellKnownProtocolFeature::WorkbenchExecution,
     WellKnownProtocolFeature::WorkbenchConversation,
     WellKnownProtocolFeature::WorkbenchRunBinding,
     WellKnownProtocolFeature::WorkbenchPreviewOutput,
-    WellKnownProtocolFeature::ProductRunObservations,
 ];
 
 fn command_features() -> Vec<ProtocolFeatureName> {

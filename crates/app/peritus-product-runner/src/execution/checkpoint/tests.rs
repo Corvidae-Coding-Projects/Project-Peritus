@@ -12,15 +12,11 @@ fn retry_preserves_a_clean_review_when_failed_gates_are_reacquired() {
         CandidateRecorder::new(root.path(), baseline, run_id(), workspace_id(), None, false)
             .expect("recorder");
     fs::write(root.path().join("candidate.txt"), "changed").expect("candidate");
-    recorder
-        .record(CandidateStage::SelfChecked, 1, CheckpointEvidence::Gates(false))
-        .expect("failed gates");
+    recorder.record(CandidateStage::SelfChecked, 1, gate_evidence(false)).expect("failed gates");
     recorder
         .record(CandidateStage::SelfChecked, 1, CheckpointEvidence::Review(true))
         .expect("clean review");
-    recorder
-        .record(CandidateStage::GatesPassed, 1, CheckpointEvidence::Gates(true))
-        .expect("reacquired gates");
+    recorder.record(CandidateStage::GatesPassed, 1, gate_evidence(true)).expect("reacquired gates");
     recorder.record_pending_review(1).expect("start another review");
     let checkpoint = recorder.checkpoint().expect("state").expect("candidate");
     assert_eq!(checkpoint.stage(), CandidateStage::GatesPassed);
@@ -36,9 +32,7 @@ fn changed_candidate_stales_prior_gate_evidence() {
         CandidateRecorder::new(root.path(), baseline, run_id(), workspace_id(), None, false)
             .expect("recorder");
     fs::write(root.path().join("candidate.txt"), "first").expect("first mutation");
-    recorder
-        .record(CandidateStage::GatesPassed, 1, CheckpointEvidence::Gates(true))
-        .expect("gates");
+    recorder.record(CandidateStage::GatesPassed, 1, gate_evidence(true)).expect("gates");
     fs::write(root.path().join("candidate.txt"), "second").expect("second mutation");
 
     let checkpoint = recorder
@@ -58,14 +52,12 @@ fn conversation_revision_stales_prior_evidence() {
         CandidateRecorder::new(root.path(), baseline, run_id(), workspace_id(), None, false)
             .expect("recorder");
     fs::write(root.path().join("candidate.txt"), "changed").expect("mutation");
-    recorder
-        .record(CandidateStage::GatesPassed, 1, CheckpointEvidence::Gates(true))
-        .expect("gates");
+    recorder.record(CandidateStage::GatesPassed, 1, gate_evidence(true)).expect("gates");
 
     let checkpoint = recorder.refresh(2).expect("refresh").expect("candidate");
 
     assert!(matches!(checkpoint.gates(), EvidenceStatus::Stale(_)));
-    assert_eq!(checkpoint.identity().conversation_revision(), 2);
+    assert_eq!(checkpoint.identity().requirements_revision(), 2);
 }
 
 #[test]
@@ -76,9 +68,7 @@ fn fresh_failed_check_revokes_qualification_without_changing_the_candidate() {
         CandidateRecorder::new(root.path(), baseline, run_id(), workspace_id(), None, false)
             .expect("recorder");
     fs::write(root.path().join("candidate.txt"), "changed").expect("mutation");
-    recorder
-        .record(CandidateStage::GatesPassed, 1, CheckpointEvidence::Gates(true))
-        .expect("gates");
+    recorder.record(CandidateStage::GatesPassed, 1, gate_evidence(true)).expect("gates");
     recorder
         .record(CandidateStage::GatesPassed, 1, CheckpointEvidence::Obligations(true))
         .expect("requirements");
@@ -89,7 +79,7 @@ fn fresh_failed_check_revokes_qualification_without_changing_the_candidate() {
     assert!(qualified.is_qualified());
 
     let current = recorder
-        .record(CandidateStage::SelfChecked, 1, CheckpointEvidence::Gates(false))
+        .record(CandidateStage::SelfChecked, 1, gate_evidence(false))
         .expect("a fresh negative observation must be representable")
         .expect("candidate stays accessible");
     assert!(current.identity().same_candidate(qualified.identity()));
@@ -140,4 +130,8 @@ fn run_id() -> RunId {
 
 fn workspace_id() -> WorkspaceId {
     WorkspaceId::new([2; 16]).expect("workspace id")
+}
+
+fn gate_evidence(satisfied: bool) -> CheckpointEvidence {
+    CheckpointEvidence::Gates { satisfied, execution_context: Sha256Digest::new([0xEC; 32]) }
 }

@@ -1,8 +1,9 @@
 //! Public run-settlement transition and failure matrix.
 
 use peritus_run_settlement::{
-    CandidateCheckpoint, CandidateIdentity, CandidateStage, EvidenceRecord, EvidenceStatus,
-    QualificationEvidence, RunDisposition, SettlementCause, SettlementErrorKind, SettlementReducer,
+    CandidateCheckpoint, CandidateIdentity, CandidateStage, EvidenceDependencies, EvidenceRecord,
+    EvidenceStatus, QualificationEvidence, RunDisposition, SettlementCause, SettlementErrorKind,
+    SettlementReducer,
 };
 use peritus_types::{RunId, Sha256Digest, WorkspaceId};
 
@@ -11,6 +12,8 @@ fn identity(digest: u8, revision: u64, sequence: u64) -> CandidateIdentity {
         RunId::new([1; 16]).expect("run"),
         WorkspaceId::new([2; 16]).expect("workspace"),
         Sha256Digest::new([digest; 32]),
+        Sha256Digest::new([digest; 32]),
+        None,
         revision,
         sequence,
     )
@@ -21,7 +24,11 @@ const fn status(
     candidate: CandidateIdentity,
     evidence: QualificationEvidence,
 ) -> EvidenceStatus<QualificationEvidence> {
-    EvidenceStatus::Current(EvidenceRecord::new(candidate, evidence))
+    EvidenceStatus::Current(EvidenceRecord::new(
+        candidate,
+        EvidenceDependencies::OBLIGATIONS,
+        evidence,
+    ))
 }
 
 fn qualified(candidate: CandidateIdentity) -> CandidateCheckpoint {
@@ -173,7 +180,11 @@ fn evidence_from_another_candidate_is_rejected_or_stale() {
         CandidateCheckpoint::new(
             current,
             CandidateStage::Changed,
-            EvidenceStatus::Stale(EvidenceRecord::new(old, QualificationEvidence::Satisfied)),
+            EvidenceStatus::Stale(EvidenceRecord::new(
+                old,
+                EvidenceDependencies::OBLIGATIONS,
+                QualificationEvidence::Satisfied,
+            )),
             EvidenceStatus::Missing,
             EvidenceStatus::Missing,
         )
@@ -243,8 +254,10 @@ fn rejected_observations_and_terminal_updates_preserve_the_complete_reducer() {
         CandidateIdentity::new(
             RunId::new([9; 16]).expect("different run"),
             first.identity().workspace_id(),
-            first.identity().candidate_digest(),
-            first.identity().conversation_revision(),
+            first.identity().repository_digest(),
+            first.identity().repository_digest(),
+            None,
+            first.identity().requirements_revision(),
             2,
         )
         .expect("foreign lineage"),
@@ -281,6 +294,8 @@ fn candidate_comparison_uses_every_identity_byte_and_ignores_only_checkpoint_seq
             candidate.run_id(),
             candidate.workspace_id(),
             Sha256Digest::new(digest),
+            Sha256Digest::new(digest),
+            None,
             7,
             2,
         )
@@ -297,9 +312,16 @@ fn candidate_comparison_uses_every_identity_byte_and_ignores_only_checkpoint_seq
             (RunId::new(run).expect("changed run"), candidate.workspace_id()),
             (candidate.run_id(), WorkspaceId::new(workspace).expect("changed workspace")),
         ] {
-            let changed =
-                CandidateIdentity::new(run_id, workspace_id, candidate.candidate_digest(), 7, 2)
-                    .expect("changed lineage");
+            let changed = CandidateIdentity::new(
+                run_id,
+                workspace_id,
+                candidate.content_digest(),
+                candidate.repository_digest(),
+                None,
+                7,
+                2,
+            )
+            .expect("changed lineage");
             assert!(!candidate.same_lineage(&changed));
             assert!(!candidate.same_candidate(&changed));
         }
@@ -353,7 +375,11 @@ fn every_stable_tag_round_trips_and_unknown_tags_reject() {
     assert_eq!(QualificationEvidence::from_tag(0), None);
 
     let candidate = identity(3, 7, 1);
-    let record = EvidenceRecord::new(candidate, QualificationEvidence::Satisfied);
+    let record = EvidenceRecord::new(
+        candidate,
+        EvidenceDependencies::OBLIGATIONS,
+        QualificationEvidence::Satisfied,
+    );
     for (evidence, tag) in [
         (EvidenceStatus::Missing, 1),
         (EvidenceStatus::Current(record), 2),

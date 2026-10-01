@@ -45,6 +45,7 @@ impl PersistedProgress {
             workspace_bytes: self.workspace_bytes,
             workspace_growth_bytes: self.workspace_growth_bytes,
             peak_rss_bytes: self.peak_rss_bytes,
+            attempt_base: super::super::progress::AttemptBase::default(),
         }
     }
 }

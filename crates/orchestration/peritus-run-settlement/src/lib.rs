@@ -23,7 +23,9 @@ pub use cause::SettlementCause;
 pub use checkpoint::CandidateCheckpoint;
 pub use disposition::RunDisposition;
 pub use error::{SettlementError, SettlementErrorKind};
-pub use evidence::{EvidenceRecord, EvidenceStatus, QualificationEvidence};
+pub use evidence::{
+    EvidenceDependencies, EvidenceRecord, EvidenceStatus, QualificationEvidence,
+};
 pub use identity::CandidateIdentity;
 pub use reducer::SettlementReducer;
 pub use settlement::RunSettlement;

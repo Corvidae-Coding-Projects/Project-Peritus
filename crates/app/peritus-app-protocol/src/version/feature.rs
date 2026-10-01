@@ -8,8 +8,6 @@ use peritus_types::CapabilityName;
 pub struct ProtocolFeatureName(CapabilityName);
 
 impl ProtocolFeatureName {
-    /// Mixed active and settled run collections with exact candidate evidence.
-    pub const PRODUCT_RUN_OBSERVATIONS: &'static str = "app.product-run-observations";
     /// Evidence-backed suggestion collection and explicit patch evaluation.
     pub const HARNESS_IMPROVEMENTS: &'static str = "app.harness-improvements";
     /// Version-one event subscription feature name.
@@ -111,8 +109,6 @@ impl ProtocolFeatureName {
 /// Closed list of well-known application-protocol version-one features.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum WellKnownProtocolFeature {
-    /// Mixed active and settled run collections with exact candidate evidence.
-    ProductRunObservations,
     /// Evidence-backed suggestion inbox and explicit evaluation.
     HarnessImprovements,
     /// Replayable event subscriptions.
@@ -184,7 +180,6 @@ impl WellKnownProtocolFeature {
     #[must_use]
     pub const fn as_str(self) -> &'static str {
         match self {
-            Self::ProductRunObservations => ProtocolFeatureName::PRODUCT_RUN_OBSERVATIONS,
             Self::HarnessImprovements => ProtocolFeatureName::HARNESS_IMPROVEMENTS,
             Self::EventSubscriptions => ProtocolFeatureName::EVENT_SUBSCRIPTIONS,
             Self::ArtifactTransfer => ProtocolFeatureName::ARTIFACT_TRANSFER,

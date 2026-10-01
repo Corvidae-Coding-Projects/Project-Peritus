@@ -59,26 +59,6 @@ pub struct ProductDeliverable {
 }
 
 impl ProductDeliverable {
-    /// Creates a bounded pending handoff.
-    ///
-    /// # Errors
-    /// Rejects missing paths/instructions, empty candidate paths, or oversized collections.
-    pub fn new(
-        workspace_path: String,
-        changed_paths: Vec<String>,
-        successful_commands: Vec<String>,
-        run_instructions: String,
-    ) -> Result<Self, ProductRunMessageError> {
-        Self::checked(
-            workspace_path,
-            changed_paths,
-            successful_commands,
-            run_instructions,
-            CandidateStage::Qualified,
-            true,
-        )
-    }
-
     fn checked(
         workspace_path: String,
         changed_paths: Vec<String>,
@@ -152,12 +132,10 @@ impl ProductDeliverable {
 
     /// Creates a bounded handoff at an explicit automated qualification stage.
     ///
-    /// This constructor is used by the settlement protocol. [`Self::new`] remains the legacy
-    /// accepted-E0 constructor and therefore defaults to [`CandidateStage::Qualified`].
-    ///
     /// # Errors
     ///
-    /// Applies the same path, command, and text validation as [`Self::new`].
+    /// Rejects missing paths or instructions, empty candidate paths, invalid qualification, or
+    /// oversized collections.
     pub fn candidate(
         workspace_path: String,
         changed_paths: Vec<String>,

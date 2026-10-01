@@ -286,11 +286,10 @@ pub async fn models(app: &App, profile: &str) -> Result<Value> {
     }
 }
 pub async fn runs(app: &App) -> Result<Value> {
-    match request(app, AppRequestPayload::QueryProductRuns(ProductRunQuery::recent())).await? {
-        AppResponsePayload::ProductRuns(runs) => {
-            Ok(json!(runs.iter().map(snapshot).collect::<Vec<_>>()))
-        }
-        AppResponsePayload::ProductRunSettlements(runs) => {
+    match request(app, AppRequestPayload::QueryProductRunObservations(ProductRunQuery::recent()))
+        .await?
+    {
+        AppResponsePayload::ProductRunObservations(runs) => {
             Ok(json!(runs.iter().map(|run| snapshot(run.snapshot())).collect::<Vec<_>>()))
         }
         _ => Err(problem("Unexpected runs response")),

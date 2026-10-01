@@ -67,6 +67,7 @@ fn launcher_recovery_preserves_ambiguous_submission_without_replaying_it() {
         hint: "fixture",
         buffer: "already sent once".into(),
         cursor: 17,
+        pasted_command: false,
     });
     let sent = model.update(Action::TerminalEvent(Event::Key(KeyEvent::new(
         KeyCode::Enter,

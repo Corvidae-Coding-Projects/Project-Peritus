@@ -15,14 +15,11 @@ mod tests;
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(super) struct PersistedInteraction {
-    #[serde(default)]
     pub(super) workbench: Option<peritus_product_runner::control::ControlOperation>,
     mode: u16,
     models: [(String, bool); 3],
-    #[serde(default)]
     efforts: [u16; 3],
     incorporated: u64,
-    #[serde(default)]
     public_input_count: usize,
     next_sequence: u64,
     activities: Vec<(u64, u16, String, String)>,
@@ -110,25 +107,12 @@ impl PersistedInteraction {
 
 impl Serialize for PersistedInteraction {
     fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        // Keep default records readable by binaries predating explicit effort selection.
-        let explicit_effort = self.efforts.iter().any(|effort| *effort != 0);
-        let mut state = serializer.serialize_struct(
-            "PersistedInteraction",
-            5 + usize::from(explicit_effort)
-                + usize::from(self.workbench.is_some())
-                + usize::from(self.public_input_count != 0),
-        )?;
-        if let Some(operation) = &self.workbench {
-            state.serialize_field("workbench", operation)?;
-        }
+        let mut state = serializer.serialize_struct("PersistedInteraction", 8)?;
+        state.serialize_field("workbench", &self.workbench)?;
         state.serialize_field("mode", &self.mode)?;
         state.serialize_field("models", &self.models)?;
-        if explicit_effort {
-            state.serialize_field("efforts", &self.efforts)?;
-        }
-        if self.public_input_count != 0 {
-            state.serialize_field("public_input_count", &self.public_input_count)?;
-        }
+        state.serialize_field("efforts", &self.efforts)?;
+        state.serialize_field("public_input_count", &self.public_input_count)?;
         state.serialize_field("incorporated", &self.incorporated)?;
         state.serialize_field("next_sequence", &self.next_sequence)?;
         state.serialize_field("activities", &self.activities)?;

@@ -27,40 +27,48 @@ impl ProductRunner {
     pub fn candidate_digest(workspace_root: &Path) -> Result<Sha256Digest, ProductRunnerError> {
         WorkspaceCheckpoint::capture(workspace_root).map(|checkpoint| checkpoint.digest())
     }
+
+    /// Reconciles a durable checkpoint at a new process boundary. Execution-dependent evidence
+    /// becomes stale because the new process has not yet observed an execution context; content,
+    /// repository, and requirements evidence keeps its original dependency-based status.
+    ///
+    /// # Errors
+    /// Returns an invariant error if the checkpoint sequence cannot advance or reconciliation
+    /// detects invalid retained evidence.
+    pub fn reconcile_checkpoint_after_restart(
+        checkpoint: peritus_run_settlement::CandidateCheckpoint,
+    ) -> Result<peritus_run_settlement::CandidateCheckpoint, ProductRunnerError> {
+        let previous = checkpoint.identity();
+        if previous.execution_digest().is_none() {
+            return Ok(checkpoint);
+        }
+        let sequence = previous.checkpoint_sequence().checked_add(1).ok_or_else(|| {
+            ProductRunnerError::new(
+                crate::ProductRunnerErrorKind::InternalInvariant,
+                "reconcile candidate after restart",
+                "candidate checkpoint sequence overflowed",
+            )
+        })?;
+        let identity = peritus_run_settlement::CandidateIdentity::new(
+            previous.run_id(),
+            previous.workspace_id(),
+            previous.content_digest(),
+            previous.repository_digest(),
+            None,
+            previous.requirements_revision(),
+            sequence,
+        )
+        .map_err(restart_invariant)?;
+        checkpoint.reobserve(identity).map_err(restart_invariant)
+    }
 }
 
-impl ProductRunner {
-    /// Exports only edits made since this task began. `None` identifies a legacy run.
-    ///
-    /// # Errors
-    /// Returns an error if retained preimages or the current workspace cannot be read.
-    pub fn task_candidate_patch(
-        workspace: &Path,
-        trace: &Path,
-    ) -> Result<Option<Vec<u8>>, ProductRunnerError> {
-        crate::candidate::managed::ManagedBaseline::load(&trace.with_extension("baseline"))?
-            .map(|baseline| baseline.patch(workspace))
-            .transpose()
-    }
-
-    /// Restores task preimages and returns recovery directories. `None` identifies a legacy run.
-    /// The caller must first validate its candidate identity against the current workspace.
-    ///
-    /// # Errors
-    /// Returns an error when preimages are invalid or a restore cannot complete safely.
-    pub fn discard_task_candidate(
-        workspace: &Path,
-        trace: &Path,
-        paths: &[String],
-    ) -> Result<Option<Vec<std::path::PathBuf>>, ProductRunnerError> {
-        let Some(baseline) =
-            crate::candidate::managed::ManagedBaseline::load(&trace.with_extension("baseline"))?
-        else {
-            return Ok(None);
-        };
-        let paths = paths.iter().map(std::path::PathBuf::from).collect::<Vec<_>>();
-        baseline.discard(workspace, &paths).map(Some)
-    }
+fn restart_invariant(error: impl std::fmt::Display) -> ProductRunnerError {
+    ProductRunnerError::new(
+        crate::ProductRunnerErrorKind::InternalInvariant,
+        "reconcile candidate after restart",
+        error.to_string(),
+    )
 }
 
 impl ProductRunner {
@@ -68,10 +76,11 @@ impl ProductRunner {
     ///
     /// # Errors
     /// Rejects unreadable or invalid retained preimages.
-    pub fn retained_task_baseline(trace: &Path) -> Result<Option<String>, ProductRunnerError> {
-        crate::candidate::managed::ManagedBaseline::load(&trace.with_extension("baseline"))?
-            .map(|baseline| serde_json::to_string(&baseline).map_err(baseline_error))
-            .transpose()
+    pub fn retained_task_baseline(trace: &Path) -> Result<String, ProductRunnerError> {
+        let baseline =
+            crate::candidate::managed::ManagedBaseline::load(&trace.with_extension("baseline"))?
+                .ok_or_else(|| baseline_error("task baseline sidecar is missing"))?;
+        serde_json::to_string(&baseline).map_err(baseline_error)
     }
 
     /// Validates an embedded task baseline without workspace effects.

@@ -174,8 +174,8 @@ pub open spec fn current_section_fresh(
     &&& binding.spec_creation_sequence() <= candidate.spec_checkpoint_sequence()
     &&& section_sources_current(section, state)
     &&& (!section.spec_kind().spec_depends_on_conversation()
-        || binding.spec_candidate().spec_conversation_revision()
-            == candidate.spec_conversation_revision())
+        || binding.spec_candidate().spec_requirements_revision()
+            == candidate.spec_requirements_revision())
     &&& (!section.spec_kind().spec_depends_on_candidate()
         || binding.spec_candidate().spec_same_candidate(&candidate))
 }

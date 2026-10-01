@@ -36,12 +36,12 @@ impl ProductRunService {
                 .ok_or(ProductRunServiceError::NotFound)?
                 .request
                 .workspace_id();
-            let was_terminal = records
+            let prior_phase = records
                 .get(&continuation.run_id())
                 .expect("checked product run exists")
                 .snapshot
-                .phase()
-                .terminal();
+                .phase();
+            let was_terminal = prior_phase.terminal();
             if was_terminal
                 && workspace_has_active_run(&records, workspace_id, Some(continuation.run_id()))
             {
@@ -103,10 +103,20 @@ impl ProductRunService {
                 next.cancelled = Arc::clone(&cancelled);
                 next.user_cancelled = false;
                 next.provider_cancellation = token.clone();
-                // A follow-up changes the governing conversation revision, so the prior
-                // deliverable and its qualification cannot be projected as current while the
-                // replacement run is active. The checkpoint and resume state remain durable for
-                // phase planning and failure settlement.
+                // A message after successful completion starts a new turn against the files as
+                // they now exist. Prior execution state belongs to the completed turn; carrying
+                // its baseline, findings, or qualification into the new request would compare
+                // and settle the wrong candidate. Failed, cancelled, recovery, and waiting runs
+                // retain their continuation because the message is correcting or completing the
+                // same unfinished turn.
+                if prior_phase == ProductRunPhase::Complete {
+                    next.finding_state.clear();
+                    next.checkpoint = None;
+                    next.resume = None;
+                    next.remaining_work.clear();
+                    next.candidate_actionable = false;
+                    next.task_baseline = None;
+                }
                 next.snapshot = initial_snapshot(&next.request)?;
                 next.snapshot = replace_snapshot(
                     &next.snapshot,

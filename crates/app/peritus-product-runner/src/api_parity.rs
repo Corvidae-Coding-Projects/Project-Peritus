@@ -3,14 +3,15 @@
 use std::{path::PathBuf, time::Duration};
 
 use peritus_process::ProcessStore;
+use peritus_run_settlement::CandidateCheckpoint;
 use peritus_types::{RevisionTuple, RunId};
 use peritus_workspace::WorkspaceAuthorizationRequest;
 
 use crate::{
     CommandRuntime, ConversationView, FolderPatchAuthority, FolderPatchAuthorityPlan,
     FolderPatchAuthorityPlanRequest, LocalContextConfig, PreviewCommand, PreviewLaunch,
-    PreviewObservation, PreviewProcessState, ProductRunnerError, WorkspaceMutationKind,
-    checked_protected_file,
+    PreviewObservation, PreviewProcessState, ProductRunResume, ProductRunnerError,
+    WorkspaceMutationKind, checked_protected_file,
 };
 
 #[allow(dead_code, clippy::too_many_arguments)]
@@ -127,6 +128,20 @@ fn protected_file(root: &std::path::Path, relative: &str, contract: &str, protec
 }
 
 #[allow(dead_code)]
+fn retained_resume(
+    bytes: &[u8],
+    transcript: &str,
+    resume: ProductRunResume,
+    checkpoint: &CandidateCheckpoint,
+) {
+    let _: Result<ProductRunResume, ProductRunnerError> =
+        ProductRunResume::decode_durable(bytes, transcript);
+    let _: Result<ProductRunResume, ProductRunnerError> =
+        ProductRunResume::decode_durable_retained(bytes, transcript);
+    let _: Result<ProductRunResume, ProductRunnerError> = resume.reconcile_candidate(*checkpoint);
+}
+
+#[allow(dead_code)]
 fn shared_control_and_attachment(
     _conversation: crate::control::ConversationId,
     _file: crate::attachment::ValidatedFileText,
@@ -146,15 +161,10 @@ fn task_baseline(
 ) {
     let _: Result<peritus_types::Sha256Digest, ProductRunnerError> =
         crate::ProductRunner::candidate_source_digest(workspace);
-    let _: Result<Option<String>, ProductRunnerError> =
-        crate::ProductRunner::retained_task_baseline(trace);
+    let _: Result<String, ProductRunnerError> = crate::ProductRunner::retained_task_baseline(trace);
     let _: Result<(), ProductRunnerError> = crate::ProductRunner::validate_task_baseline(bytes);
-    let _: Result<Option<Vec<u8>>, ProductRunnerError> =
-        crate::ProductRunner::task_candidate_patch(workspace, trace);
     let _: Result<Vec<u8>, ProductRunnerError> =
         crate::ProductRunner::candidate_patch_from_baseline(workspace, bytes);
-    let _: Result<Option<Vec<PathBuf>>, ProductRunnerError> =
-        crate::ProductRunner::discard_task_candidate(workspace, trace, paths);
     let _: Result<Vec<PathBuf>, ProductRunnerError> =
         crate::ProductRunner::discard_from_baseline(workspace, bytes, paths);
     let _: Result<peritus_types::Sha256Digest, ProductRunnerError> =

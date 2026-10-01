@@ -36,16 +36,6 @@ impl AppModel {
         }
     }
 
-    fn product_query_payload(&self, query: ProductRunQuery) -> AppRequestPayload {
-        if self.features.iter().any(|feature| {
-            feature.as_str()
-                == peritus_app_protocol::WellKnownProtocolFeature::ProductRunObservations.as_str()
-        }) {
-            AppRequestPayload::QueryProductRunObservations(query)
-        } else {
-            AppRequestPayload::QueryProductRuns(query)
-        }
-    }
     pub(in crate::model) fn accept_product_query(
         &mut self,
         snapshots: &[ProductRunSnapshot],
@@ -57,24 +47,6 @@ impl AppModel {
             }
         } else {
             self.accept_product_runs(snapshots.to_vec());
-        }
-    }
-
-    pub(in crate::model) fn accept_settlement_query(
-        &mut self,
-        settled: &[ProductRunSettlementSnapshot],
-        exact: Option<RunId>,
-    ) {
-        if let Some(run_id) = exact {
-            if let Some(value) = settled.iter().find(|value| value.snapshot().run_id() == run_id) {
-                // Polling refreshes evidence; it is not a user control acknowledgement.
-                self.accept_product_run(value.snapshot().clone());
-                if let Some(product) = &mut self.product {
-                    product.settlements.insert(run_id, *value.settlement());
-                }
-            }
-        } else {
-            self.accept_product_settlements(settled);
         }
     }
 
@@ -98,13 +70,13 @@ impl AppModel {
             return effects;
         }
         effects.extend(self.request(
-            self.product_query_payload(ProductRunQuery::recent()),
+            AppRequestPayload::QueryProductRunObservations(ProductRunQuery::recent()),
             PendingRequest::ProductQuery,
         ));
         if let Some(run_id) =
             self.product.as_ref().and_then(ProductUi::selected_run).map(ProductRunSnapshot::run_id)
             && let Some(effect) = self.request(
-                self.product_query_payload(ProductRunQuery::exact(run_id)),
+                AppRequestPayload::QueryProductRunObservations(ProductRunQuery::exact(run_id)),
                 PendingRequest::ProductExactQuery(run_id),
             )
         {
@@ -141,22 +113,6 @@ impl AppModel {
             product
                 .settlements
                 .retain(|run_id, _| product.runs.iter().any(|run| run.run_id() == *run_id));
-        }
-    }
-
-    pub(in crate::model) fn accept_product_settlements(
-        &mut self,
-        settled: &[ProductRunSettlementSnapshot],
-    ) {
-        let snapshots = settled
-            .iter()
-            .map(|value| (value.snapshot().clone(), value.snapshot().run_id(), *value.settlement()))
-            .collect::<Vec<_>>();
-        self.accept_product_runs(snapshots.iter().map(|value| value.0.clone()).collect());
-        if let Some(product) = &mut self.product {
-            for (_, run_id, settlement) in snapshots {
-                product.settlements.insert(run_id, settlement);
-            }
         }
     }
 

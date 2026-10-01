@@ -1,4 +1,4 @@
-//! Exact candidate evidence alongside active work in canonical collection fixtures.
+//! Exact candidate state alongside active work in canonical collection fixtures.
 use super::values::{context, id};
 use crate::{
     AppResponseEnvelope, AppResponsePayload, CorrelationId, ProductDeliverable,
@@ -43,8 +43,16 @@ pub(super) fn settled() -> AppResponseEnvelope {
     .expect("fixture product snapshot")
     .with_deliverable(deliverable);
     let checkpoint = CandidateCheckpoint::new(
-        CandidateIdentity::new(run_id, workspace_id, Sha256Digest::new([36; 32]), 4, 2)
-            .expect("fixture candidate identity"),
+        CandidateIdentity::new(
+            run_id,
+            workspace_id,
+            Sha256Digest::new([36; 32]),
+            Sha256Digest::new([36; 32]),
+            None,
+            4,
+            2,
+        )
+        .expect("fixture candidate identity"),
         CandidateStage::Changed,
         EvidenceStatus::Missing,
         EvidenceStatus::Missing,

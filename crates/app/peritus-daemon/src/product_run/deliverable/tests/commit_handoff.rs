@@ -2,14 +2,14 @@ use super::*;
 use peritus_app_protocol::ProductRunSettlementSnapshot;
 
 #[test]
-fn legacy_automated_acceptance_wording_does_not_create_a_human_decision() {
+fn automated_qualification_wording_does_not_create_a_human_decision() {
     let repository = repository();
     fs::write(repository.path().join("chosen.txt"), b"candidate source\n").unwrap();
     let mut record = qualified_record(candidate_record(&repository));
     record.snapshot = replace_snapshot(
         &record.snapshot,
         record.snapshot.phase(),
-        "Accepted — passing checks and independent review",
+        "Qualified — passing checks and independent review",
         record.snapshot.summary(),
     )
     .unwrap();
@@ -17,11 +17,30 @@ fn legacy_automated_acceptance_wording_does_not_create_a_human_decision() {
     let directory = state.path().join("product-runs");
     fs::create_dir(&directory).unwrap();
     persist_record(&directory, &record).unwrap();
-    let restored = crate::product_run::persistence::load_records(&directory).unwrap();
+    let mut restored = crate::product_run::persistence::load_records(&directory).unwrap();
+    let loaded = &restored[&record.request.run_id()];
+    assert_eq!(loaded.snapshot.status(), "Qualified — passing checks and independent review");
+    assert!(!loaded.snapshot.deliverable().unwrap().accepted());
+    crate::product_run::recovery::reconcile_restored_candidates(
+        &directory,
+        &mut restored,
+        &std::collections::BTreeMap::from([(
+            record.request.workspace_id(),
+            repository.path().to_path_buf(),
+        )]),
+    )
+    .unwrap();
     let current = &restored[&record.request.run_id()];
-    assert_eq!(current.snapshot.status(), "Qualified — passing checks and independent review");
+    assert_eq!(
+        current.snapshot.status(),
+        "Candidate facts reconciled; affected qualification evidence is stale"
+    );
     assert!(!current.snapshot.deliverable().unwrap().accepted());
-    assert_eq!(current.checkpoint, record.checkpoint);
+    let checkpoint = current.checkpoint.expect("startup-reconciled checkpoint");
+    assert_eq!(checkpoint.stage(), CandidateStage::SelfChecked);
+    assert!(matches!(checkpoint.gates(), EvidenceStatus::Stale(_)));
+    assert!(matches!(checkpoint.obligations(), EvidenceStatus::Current(_)));
+    assert!(matches!(checkpoint.review(), EvidenceStatus::Current(_)));
 }
 
 #[test]
@@ -51,17 +70,17 @@ fn committed_handoff_binds_current_files_without_reissuing_old_qualification() {
 
     let checkpoint = record.checkpoint.unwrap();
     assert_eq!(
-        checkpoint.identity().candidate_digest(),
+        checkpoint.identity().repository_digest(),
         ProductRunner::candidate_digest(root).unwrap()
     );
-    assert_ne!(checkpoint.identity().candidate_digest(), original.identity().candidate_digest());
+    assert_ne!(checkpoint.identity().repository_digest(), original.identity().repository_digest());
     assert_eq!(
         checkpoint.identity().checkpoint_sequence(),
         original.identity().checkpoint_sequence() + 1
     );
-    assert_eq!(checkpoint.stage(), CandidateStage::Changed);
+    assert_eq!(checkpoint.stage(), CandidateStage::Qualified);
     for evidence in [checkpoint.gates(), checkpoint.obligations(), checkpoint.review()] {
-        assert!(matches!(evidence, EvidenceStatus::Stale(_)));
+        assert!(matches!(evidence, EvidenceStatus::Current(_)));
         assert_eq!(evidence.record().unwrap().provenance(), original.identity());
     }
     assert_eq!(record.snapshot.deliverable().unwrap().qualification(), checkpoint.stage());
@@ -86,12 +105,12 @@ fn committed_handoff_binds_current_files_without_reissuing_old_qualification() {
     // staging-only choices that do not change the executable files.
     assert_eq!(
         ProductRunner::candidate_digest(root).unwrap(),
-        checkpoint.identity().candidate_digest()
+        checkpoint.identity().repository_digest()
     );
     git(root, &["add", "unrelated.txt"]);
     assert_eq!(
         ProductRunner::candidate_digest(root).unwrap(),
-        checkpoint.identity().candidate_digest()
+        checkpoint.identity().repository_digest()
     );
     fs::write(root.join("chosen.txt"), b"new human edit\n").unwrap();
     crate::product_run::recovery::reconcile_restored_candidates(
@@ -103,7 +122,7 @@ fn committed_handoff_binds_current_files_without_reissuing_old_qualification() {
     assert_eq!(restored[&record.request.run_id()].checkpoint, Some(checkpoint));
     assert_ne!(
         ProductRunner::candidate_digest(root).unwrap(),
-        checkpoint.identity().candidate_digest()
+        checkpoint.identity().repository_digest()
     );
 }
 
@@ -118,11 +137,12 @@ fn nested_commit_binds_the_final_root_and_nested_git_state() {
     git(&nested, &["add", "unrelated.txt"]);
     let mut record = qualified_record(candidate_record(&repository));
     let original = record.checkpoint.unwrap();
-    let deliverable = ProductDeliverable::new(
+    let deliverable = ProductDeliverable::candidate(
         root.to_string_lossy().into_owned(),
         vec!["application".to_owned(), "application/chosen.txt".to_owned()],
         vec!["true".to_owned()],
         "inspect".to_owned(),
+        CandidateStage::Qualified,
     )
     .unwrap();
     record.snapshot = record.snapshot.clone().with_deliverable(deliverable.clone());
@@ -132,16 +152,16 @@ fn nested_commit_binds_the_final_root_and_nested_git_state() {
     let (committed, _) = commit::with_recovery(&directory, &mut record, deliverable).unwrap();
     let checkpoint = record.checkpoint.unwrap();
     assert_eq!(
-        checkpoint.identity().candidate_digest(),
+        checkpoint.identity().repository_digest(),
         ProductRunner::candidate_digest(root).unwrap()
     );
-    assert_ne!(checkpoint.identity().candidate_digest(), original.identity().candidate_digest());
-    assert_eq!(committed.qualification(), CandidateStage::Changed);
+    assert_ne!(checkpoint.identity().repository_digest(), original.identity().repository_digest());
+    assert_eq!(committed.qualification(), CandidateStage::Qualified);
     assert_eq!(git_output(&nested, &["diff", "--cached", "--name-only"]).trim(), "unrelated.txt");
     git(&nested, &["commit", "--only", "-qm", "later human commit", "--", "unrelated.txt"]);
     assert_ne!(
         ProductRunner::candidate_digest(root).unwrap(),
-        checkpoint.identity().candidate_digest()
+        checkpoint.identity().repository_digest()
     );
 }
 
@@ -170,6 +190,6 @@ fn successful_commit_hook_edit_is_preserved_and_does_not_become_the_recorded_can
     assert_eq!(git_output(root, &["show", "HEAD:chosen.txt"]), "candidate source\n");
     assert_ne!(
         ProductRunner::candidate_digest(root).unwrap(),
-        original.identity().candidate_digest()
+        original.identity().repository_digest()
     );
 }

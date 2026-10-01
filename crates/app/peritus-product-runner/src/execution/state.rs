@@ -208,7 +208,7 @@ impl RunState {
             design,
             fix_summaries: resume.fix_summaries().to_vec(),
             tool_calls: resume.tool_calls(),
-            conversation_revision: resume.checkpoint().identity().conversation_revision(),
+            conversation_revision: resume.checkpoint().identity().requirements_revision(),
             findings: review::restore_ledger(resume.finding_state())?,
             fix_progress: crate::execution::fix_progress::FixProgress::new(input.checkpoint()?),
             coordinator: coordinator(resume.fixer_cycles())?,

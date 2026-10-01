@@ -27,6 +27,8 @@ pub(super) fn binding(requirement: u8, evidence: u8) -> EvidenceBinding {
         RunId::new([31; 16]).expect("run id"),
         WorkspaceId::new([32; 16]).expect("workspace id"),
         digest(33),
+        digest(33),
+        None,
         1,
         1,
     )

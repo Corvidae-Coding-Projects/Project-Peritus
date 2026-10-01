@@ -14,9 +14,10 @@ pub(super) fn product_run_observations(
     service: &crate::product_run::ProductRunService,
     query: peritus_app_protocol::ProductRunQuery,
 ) -> AppResponsePayload {
-    product_run_collection(
-        service.query_observations(query).map(AppResponsePayload::ProductRunObservations),
-    )
+    match service.query_observations(query) {
+        Ok(observations) => AppResponsePayload::ProductRunObservations(observations),
+        Err(error) => product_run_error(error),
+    }
 }
 
 pub(super) fn product_run_error(error: ProductRunServiceError) -> AppResponsePayload {
@@ -24,15 +25,6 @@ pub(super) fn product_run_error(error: ProductRunServiceError) -> AppResponsePay
 }
 
 pub(super) fn product_run_projection(
-    result: Result<AppResponsePayload, ProductRunServiceError>,
-) -> AppResponsePayload {
-    match result {
-        Ok(payload) => payload,
-        Err(error) => product_run_error(error),
-    }
-}
-
-pub(super) fn product_run_collection(
     result: Result<AppResponsePayload, ProductRunServiceError>,
 ) -> AppResponsePayload {
     match result {

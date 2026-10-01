@@ -18,9 +18,8 @@ use super::{
     error::{read_app_error, write_app_error},
     primitive::{read_context, read_id, unknown, write_context, write_id},
     product::{
-        read_conversation, read_settlement_snapshot, read_settlement_snapshots, read_snapshot,
-        read_snapshots, write_conversation, write_settlement_snapshot, write_settlement_snapshots,
-        write_snapshot, write_snapshots,
+        read_conversation, read_settlement_snapshot, read_snapshot, write_conversation,
+        write_settlement_snapshot, write_snapshot,
     },
     terminal::{read_terminal_binding, write_terminal_binding},
 };
@@ -39,6 +38,10 @@ impl CanonicalEncode for AppResponseEnvelope {
     }
 }
 
+#[allow(
+    clippy::too_many_lines,
+    reason = "closed payload dispatch keeps every stable response tag in one audited match"
+)]
 fn write_payload(
     writer: &mut CanonicalWriter,
     payload: &AppResponsePayload,
@@ -131,15 +134,11 @@ fn write_payload(
         AppResponsePayload::ShutdownAccepted(value) => write_shutdown_accepted(writer, *value),
         AppResponsePayload::Error(value) => write_app_error(writer, value),
         AppResponsePayload::ProductRunAccepted(value) => write_snapshot(writer, value),
-        AppResponsePayload::ProductRuns(value) => write_snapshots(writer, value),
         AppResponsePayload::ProductRunObservations(value) => {
             super::product::observations::write_observations(writer, value)
         }
         AppResponsePayload::ProductRunConversation(value) => write_conversation(writer, value),
         AppResponsePayload::ProductRunSettled(value) => write_settlement_snapshot(writer, value),
-        AppResponsePayload::ProductRunSettlements(value) => {
-            write_settlement_snapshots(writer, value)
-        }
     }
 }
 
@@ -168,11 +167,9 @@ fn payload_tag(payload: &AppResponsePayload) -> u16 {
         AppResponsePayload::ShutdownAccepted(_) => 8,
         AppResponsePayload::Error(_) => 9,
         AppResponsePayload::ProductRunAccepted(_) => 10,
-        AppResponsePayload::ProductRuns(_) => 11,
         AppResponsePayload::ProductRunObservations(_) => 102,
         AppResponsePayload::ProductRunConversation(_) => 12,
         AppResponsePayload::ProductRunSettled(_) => 13,
-        AppResponsePayload::ProductRunSettlements(_) => 14,
         AppResponsePayload::Interaction(value) => {
             if value.models().has_effort() {
                 17
@@ -252,13 +249,11 @@ pub(super) fn read_response(
         8 => AppResponsePayload::ShutdownAccepted(read_shutdown_accepted(reader)?),
         9 => AppResponsePayload::Error(read_app_error(reader, limits)?),
         10 => AppResponsePayload::ProductRunAccepted(read_snapshot(reader)?),
-        11 => AppResponsePayload::ProductRuns(read_snapshots(reader)?),
         102 => AppResponsePayload::ProductRunObservations(
             super::product::observations::read_observations(reader)?,
         ),
         12 => AppResponsePayload::ProductRunConversation(read_conversation(reader)?),
         13 => AppResponsePayload::ProductRunSettled(read_settlement_snapshot(reader)?),
-        14 => AppResponsePayload::ProductRunSettlements(read_settlement_snapshots(reader)?),
         15 => AppResponsePayload::Interaction(super::interaction::read_snapshot(reader, false)?),
         16 => AppResponsePayload::Models(super::interaction::read_catalog(reader)?),
         17 => AppResponsePayload::Interaction(super::interaction::read_snapshot(reader, true)?),

@@ -8,11 +8,12 @@ fn partial_nested_commit_retries_after_reconciliation_only_for_unchanged_source(
     fs::rename(super::repository().keep(), &nested).unwrap();
     fs::write(nested.join("chosen.txt"), b"candidate source\n").unwrap();
     let mut record = qualified_record(candidate_record(&repository));
-    let deliverable = ProductDeliverable::new(
+    let deliverable = ProductDeliverable::candidate(
         root.to_string_lossy().into_owned(),
         vec!["application".to_owned(), "application/chosen.txt".to_owned()],
         vec!["true".to_owned()],
         "inspect".to_owned(),
+        CandidateStage::Qualified,
     )
     .unwrap();
     record.snapshot = record.snapshot.clone().with_deliverable(deliverable.clone());
@@ -48,7 +49,7 @@ fn partial_nested_commit_retries_after_reconciliation_only_for_unchanged_source(
     fs::write(nested.join("chosen.txt"), b"candidate source\n").unwrap();
     let retry = commit::validate_retry(&directory, record, &deliverable, root)
         .expect("retry retained source");
-    assert_eq!(retry.qualification(), CandidateStage::Changed);
+    assert_eq!(retry.qualification(), CandidateStage::SelfChecked);
     git(root, &["config", "commit.gpgsign", "false"]);
     let (committed, _) = commit::with_recovery(&directory, record, retry).unwrap();
     assert!(!committed.commit_revision().is_empty());
@@ -116,11 +117,12 @@ fn commit_handles_a_deep_unborn_repository() {
     git(&inner, &["config", "user.email", "peritus@example.invalid"]);
     git(&inner, &["config", "commit.gpgsign", "false"]);
     fs::write(inner.join("source.txt"), b"first source\n").unwrap();
-    let deliverable = ProductDeliverable::new(
+    let deliverable = ProductDeliverable::candidate(
         root.to_string_lossy().into_owned(),
         vec!["outer/inner/source.txt".to_owned()],
         vec!["true".to_owned()],
         "inspect".to_owned(),
+        CandidateStage::Qualified,
     )
     .unwrap();
     commit_deliverable(&deliverable, "commit new application").unwrap();
@@ -147,11 +149,12 @@ fn commit_saves_nested_source_and_preserves_unrelated_staged_changes() {
     git(&nested, &["add", "unrelated.txt"]);
     fs::write(root.join("unrelated.txt"), b"parent user change\n").unwrap();
     git(root, &["add", "unrelated.txt"]);
-    let deliverable = ProductDeliverable::new(
+    let deliverable = ProductDeliverable::candidate(
         root.to_string_lossy().into_owned(),
         vec!["application".to_owned(), "application/chosen.txt".to_owned()],
         vec!["true".to_owned()],
         "inspect".to_owned(),
+        CandidateStage::Qualified,
     )
     .unwrap();
     commit_deliverable(&deliverable, "save application").expect("commit nested deliverable");

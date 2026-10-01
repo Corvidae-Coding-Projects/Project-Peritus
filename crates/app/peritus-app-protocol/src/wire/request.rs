@@ -132,8 +132,7 @@ fn write_payload(
         }
         AppRequestPayload::StartProductRun(value) => write_run_request(writer, value),
         AppRequestPayload::ControlProductRun(value) => write_run_control(writer, *value),
-        AppRequestPayload::QueryProductRuns(value)
-        | AppRequestPayload::QueryProductRunObservations(value) => write_run_query(writer, *value),
+        AppRequestPayload::QueryProductRunObservations(value) => write_run_query(writer, *value),
         AppRequestPayload::ContinueProductRun(value) => write_run_continuation(writer, value),
         AppRequestPayload::UpdateModels(value) => {
             super::interaction::write_model_update(writer, value)
@@ -188,7 +187,6 @@ fn payload_tag(payload: &AppRequestPayload) -> u16 {
         AppRequestPayload::CompleteArtifactUpload(_) => 16,
         AppRequestPayload::StartProductRun(_) => 17,
         AppRequestPayload::ControlProductRun(_) => 18,
-        AppRequestPayload::QueryProductRuns(_) => 19,
         AppRequestPayload::QueryProductRunObservations(_) => 102,
         AppRequestPayload::ContinueProductRun(_) => 20,
         AppRequestPayload::QueryProductRunConversation(_) => 21,
@@ -282,7 +280,6 @@ fn read_payload(
         16 => AppRequestPayload::CompleteArtifactUpload(read_artifact_completion(reader)?),
         17 => AppRequestPayload::StartProductRun(read_run_request(reader)?),
         18 => AppRequestPayload::ControlProductRun(read_run_control(reader)?),
-        19 => AppRequestPayload::QueryProductRuns(read_run_query(reader)?),
         102 => AppRequestPayload::QueryProductRunObservations(read_run_query(reader)?),
         20 => AppRequestPayload::ContinueProductRun(read_run_continuation(reader)?),
         21 => AppRequestPayload::QueryProductRunConversation(read_conversation_query(reader)?),

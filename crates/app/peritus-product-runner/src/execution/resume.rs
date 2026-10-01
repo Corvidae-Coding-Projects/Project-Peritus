@@ -11,7 +11,10 @@ mod knowledge;
 use knowledge::RoleKnowledge;
 
 use super::ProductRunPhase;
-use crate::{ProductRunnerError, candidate::CandidateBaseline, developer_tools::SuccessfulCommand};
+use crate::{
+    ProductRunnerError, ProductRunnerErrorKind, candidate::CandidateBaseline,
+    developer_tools::SuccessfulCommand,
+};
 
 /// Opaque retained state sufficient to continue at the first stale or missing phase.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -124,6 +127,56 @@ impl ProductRunResume {
     /// Rejects malformed, unsupported, or internally inconsistent retained state.
     pub fn decode_durable(bytes: &[u8], transcript: &str) -> Result<Self, ProductRunnerError> {
         durable::decode(bytes, transcript)
+    }
+
+    /// Restores the exact stored continuation before the host reconciles current candidate facts.
+    ///
+    /// Hosts use this while loading a record so crash-safe handoff recovery can inspect the
+    /// original checkpoint before execution-context invalidation occurs.
+    ///
+    /// # Errors
+    ///
+    /// Rejects malformed, unsupported, or internally inconsistent retained state.
+    pub fn decode_durable_retained(
+        bytes: &[u8],
+        transcript: &str,
+    ) -> Result<Self, ProductRunnerError> {
+        durable::decode_retained(bytes, transcript)
+    }
+
+    /// Rebinds retained execution state to a host-reconciled candidate checkpoint.
+    ///
+    /// Source changes force a new design. Repository-only and execution-context changes retain
+    /// the completed writer state and resume at deterministic checks.
+    ///
+    /// # Errors
+    ///
+    /// Rejects a checkpoint from another run or workspace, or a checkpoint sequence that moves
+    /// backwards.
+    pub fn reconcile_candidate(
+        mut self,
+        checkpoint: CandidateCheckpoint,
+    ) -> Result<Self, ProductRunnerError> {
+        let previous = self.checkpoint.identity();
+        let current = checkpoint.identity();
+        if previous.run_id() != current.run_id()
+            || previous.workspace_id() != current.workspace_id()
+            || current.checkpoint_sequence() < previous.checkpoint_sequence()
+        {
+            return Err(ProductRunnerError::new(
+                ProductRunnerErrorKind::InvalidPrecondition,
+                "reconcile retained product candidate",
+                "host checkpoint does not continue the retained run lineage",
+            ));
+        }
+        self.next_phase = if previous.same_content_and_requirements(current) {
+            ProductRunPhase::Checking
+        } else {
+            ProductRunPhase::Designing
+        };
+        self.checkpoint = checkpoint;
+        self.gate_report = None;
+        Ok(self)
     }
 
     pub(super) const fn design_path(&self) -> &PathBuf {

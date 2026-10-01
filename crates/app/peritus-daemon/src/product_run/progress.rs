@@ -22,6 +22,24 @@ pub(super) struct RunProgress {
     pub(super) workspace_bytes: u64,
     pub(super) workspace_growth_bytes: u64,
     pub(super) peak_rss_bytes: u64,
+    pub(super) attempt_base: AttemptBase,
+}
+
+#[derive(Clone, Copy, Default)]
+pub(super) struct AttemptBase {
+    model_requests: u32,
+    tool_calls: u32,
+    retries: u32,
+    provider_failovers: u32,
+    compactions: u32,
+    input_tokens: u64,
+    cached_input_tokens: u64,
+    output_tokens: u64,
+    total_tokens: u64,
+    provider_cost_microunits: u64,
+    usage_observations: u32,
+    workspace_growth_bytes: u64,
+    peak_rss_bytes: u64,
 }
 
 impl Default for RunProgress {
@@ -44,27 +62,59 @@ impl Default for RunProgress {
             workspace_bytes: 0,
             workspace_growth_bytes: 0,
             peak_rss_bytes: 0,
+            attempt_base: AttemptBase::default(),
         }
     }
 }
 
 impl RunProgress {
+    /// Starts a new execution attempt while retaining the complete run's accounting.
+    pub(super) fn begin_attempt(&mut self) {
+        self.attempt_base = AttemptBase {
+            model_requests: self.model_requests,
+            tool_calls: self.tool_calls,
+            retries: self.retries,
+            provider_failovers: self.provider_failovers,
+            compactions: self.compactions,
+            input_tokens: self.input_tokens,
+            cached_input_tokens: self.cached_input_tokens,
+            output_tokens: self.output_tokens,
+            total_tokens: self.total_tokens,
+            provider_cost_microunits: self.provider_cost_microunits,
+            usage_observations: self.usage_observations,
+            workspace_growth_bytes: self.workspace_growth_bytes,
+            peak_rss_bytes: self.peak_rss_bytes,
+        };
+        self.last_effect_unix_millis = now_millis();
+    }
+
     pub(super) fn observe(&mut self, progress: ProductRunProgress) {
         self.last_effect_unix_millis = now_millis();
-        self.model_requests = progress.model_requests();
-        self.tool_calls = progress.tool_calls();
-        self.retries = progress.retries();
-        self.provider_failovers = progress.provider_failovers();
-        self.compactions = progress.compactions();
-        self.input_tokens = progress.input_tokens();
-        self.cached_input_tokens = progress.cached_input_tokens();
-        self.output_tokens = progress.output_tokens();
-        self.total_tokens = progress.total_tokens();
-        self.provider_cost_microunits = progress.provider_cost_microunits();
-        self.usage_observations = progress.usage_observations();
+        self.model_requests =
+            self.attempt_base.model_requests.saturating_add(progress.model_requests());
+        self.tool_calls = self.attempt_base.tool_calls.saturating_add(progress.tool_calls());
+        self.retries = self.attempt_base.retries.saturating_add(progress.retries());
+        self.provider_failovers =
+            self.attempt_base.provider_failovers.saturating_add(progress.provider_failovers());
+        self.compactions = self.attempt_base.compactions.saturating_add(progress.compactions());
+        self.input_tokens = self.attempt_base.input_tokens.saturating_add(progress.input_tokens());
+        self.cached_input_tokens =
+            self.attempt_base.cached_input_tokens.saturating_add(progress.cached_input_tokens());
+        self.output_tokens =
+            self.attempt_base.output_tokens.saturating_add(progress.output_tokens());
+        self.total_tokens = self.attempt_base.total_tokens.saturating_add(progress.total_tokens());
+        self.provider_cost_microunits = self
+            .attempt_base
+            .provider_cost_microunits
+            .saturating_add(progress.provider_cost_microunits());
+        self.usage_observations =
+            self.attempt_base.usage_observations.saturating_add(progress.usage_observations());
         self.workspace_bytes = progress.workspace_bytes();
-        self.workspace_growth_bytes = progress.workspace_growth_bytes();
-        self.peak_rss_bytes = progress.peak_rss_bytes();
+        self.workspace_growth_bytes = self
+            .attempt_base
+            .workspace_growth_bytes
+            .saturating_add(progress.workspace_growth_bytes());
+        self.peak_rss_bytes = self.attempt_base.peak_rss_bytes.max(progress.peak_rss_bytes());
     }
 
     pub(super) fn live_status(&self, base: &str) -> String {

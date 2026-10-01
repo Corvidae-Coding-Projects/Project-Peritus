@@ -232,9 +232,6 @@ impl AppModel {
                 self.accept_product_run(snapshot.clone());
                 self.notice(NoticeLevel::Info, format!("coding run: {}", snapshot.status()));
             }
-            AppResponsePayload::ProductRuns(snapshots) => {
-                self.accept_product_query(snapshots, exact_run);
-            }
             AppResponsePayload::ProductRunObservations(observations) => {
                 self.accept_observation_query(observations, exact_run);
             }
@@ -244,9 +241,6 @@ impl AppModel {
                     NoticeLevel::Info,
                     format!("coding run settled: {:?}", settled.settlement().disposition()),
                 );
-            }
-            AppResponsePayload::ProductRunSettlements(settled) => {
-                self.accept_settlement_query(settled, exact_run);
             }
             AppResponsePayload::ProductRunConversation(conversation) => {
                 self.accept_product_conversation(conversation.clone());

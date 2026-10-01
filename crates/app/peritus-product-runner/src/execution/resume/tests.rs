@@ -1,7 +1,10 @@
 use std::{fs, path::Path, process::Command};
 
 use super::*;
-use peritus_run_settlement::{CandidateIdentity, CandidateStage, EvidenceStatus};
+use peritus_run_settlement::{
+    CandidateIdentity, CandidateStage, EvidenceDependencies, EvidenceRecord, EvidenceStatus,
+    QualificationEvidence,
+};
 use peritus_types::{RunId, Sha256Digest, WorkspaceId};
 
 use crate::ProductRunnerErrorKind;
@@ -23,7 +26,9 @@ fn conversation_change_restarts_at_design() {
     let changed = CandidateIdentity::new(
         checkpoint.identity().run_id(),
         checkpoint.identity().workspace_id(),
-        checkpoint.identity().candidate_digest(),
+        checkpoint.identity().repository_digest(),
+        checkpoint.identity().repository_digest(),
+        None,
         2,
         8,
     )
@@ -59,6 +64,32 @@ fn durable_resume_retains_candidate_and_reacquires_effectful_gates() {
     assert_eq!(restored.task_summary(), "candidate");
     assert_eq!(restored.diff(), "candidate diff");
     assert!(restored.gate_report().is_none());
+}
+
+#[test]
+fn durable_restart_invalidates_only_execution_bound_evidence() {
+    let checkpoint = dependency_checkpoint();
+    let resume = fixture(&checkpoint, ProductRunPhase::Reviewing);
+
+    let restored = ProductRunResume::decode_durable(
+        &resume.encode_durable().expect("encode continuation"),
+        "User:\nBuild it.",
+    )
+    .expect("restore continuation");
+    let current = restored.checkpoint();
+
+    assert_eq!(current.identity().content_digest(), checkpoint.identity().content_digest());
+    assert_eq!(current.identity().repository_digest(), checkpoint.identity().repository_digest());
+    assert_eq!(current.identity().execution_digest(), None);
+    assert_eq!(
+        current.identity().checkpoint_sequence(),
+        checkpoint.identity().checkpoint_sequence() + 1
+    );
+    assert_eq!(current.stage(), CandidateStage::SelfChecked);
+    assert!(matches!(current.gates(), EvidenceStatus::Stale(_)));
+    assert!(matches!(current.obligations(), EvidenceStatus::Current(_)));
+    assert!(matches!(current.review(), EvidenceStatus::Current(_)));
+    assert_eq!(restored.next_phase(), ProductRunPhase::Checking);
 }
 
 #[test]
@@ -108,6 +139,8 @@ fn checkpoint(revision: u64, sequence: u64) -> CandidateCheckpoint {
         RunId::new([1; 16]).expect("run"),
         WorkspaceId::new([2; 16]).expect("workspace"),
         Sha256Digest::new([3; 32]),
+        Sha256Digest::new([3; 32]),
+        None,
         revision,
         sequence,
     )
@@ -118,6 +151,34 @@ fn checkpoint(revision: u64, sequence: u64) -> CandidateCheckpoint {
         EvidenceStatus::Missing,
         EvidenceStatus::Missing,
         EvidenceStatus::Missing,
+    )
+    .expect("checkpoint")
+}
+
+fn dependency_checkpoint() -> CandidateCheckpoint {
+    let identity = CandidateIdentity::new(
+        RunId::new([1; 16]).expect("run"),
+        WorkspaceId::new([2; 16]).expect("workspace"),
+        Sha256Digest::new([3; 32]),
+        Sha256Digest::new([4; 32]),
+        Some(Sha256Digest::new([5; 32])),
+        1,
+        7,
+    )
+    .expect("identity");
+    let evidence = |dependencies| {
+        EvidenceStatus::Current(EvidenceRecord::new(
+            identity,
+            dependencies,
+            QualificationEvidence::Satisfied,
+        ))
+    };
+    CandidateCheckpoint::new(
+        identity,
+        CandidateStage::Qualified,
+        evidence(EvidenceDependencies::GATES),
+        evidence(EvidenceDependencies::OBLIGATIONS),
+        evidence(EvidenceDependencies::REVIEW),
     )
     .expect("checkpoint")
 }

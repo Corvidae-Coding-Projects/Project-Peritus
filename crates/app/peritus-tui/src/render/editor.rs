@@ -66,6 +66,7 @@ mod tests {
             hint: "Enter submits",
             buffer: text.to_owned(),
             cursor: text.len(),
+            pasted_command: false,
         };
         let mut terminal = Terminal::new(TestBackend::new(80, 24)).unwrap();
         terminal.draw(|frame| render_editor(frame, &editor)).unwrap();
@@ -102,6 +103,7 @@ mod tests {
             hint: "Enter submits",
             buffer: "recover this exact task".to_owned(),
             cursor: 0,
+            pasted_command: false,
         });
         let mut terminal = Terminal::new(TestBackend::new(80, 24)).unwrap();
         terminal.draw(|frame| super::super::draw(frame, &model)).unwrap();
@@ -128,6 +130,7 @@ mod tests {
                 hint: "Enter a process identity",
                 buffer: "a".repeat(32),
                 cursor: 32,
+                pasted_command: false,
             });
             model.update(Action::TerminalEvent(Event::Key(KeyEvent::new(
                 KeyCode::Enter,

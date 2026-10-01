@@ -26,10 +26,7 @@ use detail::{
 };
 
 pub(super) fn dashboard(frame: &mut Frame<'_>, area: Rect, model: &AppModel) {
-    let regions = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([Constraint::Length(7), Constraint::Min(6)])
-        .split(area);
+    let areas = dashboard_areas(area);
     let Some(product) = &model.product else { return };
     let composer = Text::from(vec![
         Line::styled(
@@ -58,13 +55,9 @@ pub(super) fn dashboard(frame: &mut Frame<'_>, area: Rect, model: &AppModel) {
                     .title(" New coding run · n start · w/e/f choose providers "),
             )
             .wrap(Wrap { trim: false }),
-        regions[0],
+        areas.composer,
     );
 
-    let columns = Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints([Constraint::Percentage(38), Constraint::Percentage(62)])
-        .split(regions[1]);
     let items = if product.runs.is_empty() {
         vec![ListItem::new(Line::styled("No coding runs yet", Style::default().fg(MUTED)))]
     } else {
@@ -89,13 +82,9 @@ pub(super) fn dashboard(frame: &mut Frame<'_>, area: Rect, model: &AppModel) {
             .block(Block::default().borders(Borders::ALL).title(" Runs "))
             .highlight_symbol("▸ ")
             .highlight_style(Style::default().fg(ACCENT).add_modifier(Modifier::BOLD)),
-        columns[0],
+        areas.runs,
         &mut state,
     );
-    let right = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([Constraint::Percentage(43), Constraint::Percentage(57)])
-        .split(columns[1]);
     let detail = product.selected_run().map_or_else(empty_detail, |run| {
         run_detail(
             run,
@@ -103,13 +92,15 @@ pub(super) fn dashboard(frame: &mut Frame<'_>, area: Rect, model: &AppModel) {
             product.confirmation.as_ref().map(|value| value.warning.as_str()),
         )
     });
+    let maximum = detail_scroll_limit(&detail, areas.detail);
     frame.render_widget(
         Paragraph::new(detail)
             .block(Block::default().borders(Borders::ALL).title(
-                " Progress · i inspect · v run · a accept · c commit · p export · D discard ",
+                " Progress · PgUp/PgDn · Home/End · i inspect · v run · a accept · c commit · p export · D discard ",
             ))
-            .wrap(Wrap { trim: false }),
-        right[0],
+            .wrap(Wrap { trim: false })
+            .scroll((product.detail_scroll.min(maximum), 0)),
+        areas.detail,
     );
     frame.render_widget(
         Paragraph::new(conversation_text(product.selected_conversation()))
@@ -120,8 +111,44 @@ pub(super) fn dashboard(frame: &mut Frame<'_>, area: Rect, model: &AppModel) {
                     .title(" Conversation · Enter/m message this run "),
             )
             .wrap(Wrap { trim: false }),
-        right[1],
+        areas.conversation,
     );
+}
+
+#[derive(Clone, Copy)]
+struct DashboardAreas {
+    composer: Rect,
+    runs: Rect,
+    detail: Rect,
+    conversation: Rect,
+}
+
+fn dashboard_areas(area: Rect) -> DashboardAreas {
+    let regions = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Length(7), Constraint::Min(6)])
+        .split(area);
+    let columns = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([Constraint::Percentage(38), Constraint::Percentage(62)])
+        .split(regions[1]);
+    let right = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Percentage(43), Constraint::Percentage(57)])
+        .split(columns[1]);
+    DashboardAreas {
+        composer: regions[0],
+        runs: columns[0],
+        detail: right[0],
+        conversation: right[1],
+    }
+}
+
+fn detail_scroll_limit(detail: &Text<'_>, area: Rect) -> u16 {
+    let lines = Paragraph::new(detail.clone())
+        .wrap(Wrap { trim: false })
+        .line_count(area.width.saturating_sub(2));
+    content_scroll_limit(lines, area)
 }
 
 pub(super) fn diff(frame: &mut Frame<'_>, area: Rect, model: &AppModel) {
@@ -167,6 +194,17 @@ pub(super) fn scroll_limit(model: &AppModel, area: Rect) -> u16 {
         return structured_review::scroll_limit(model, area);
     }
     let lines = match model.view {
+        crate::model::View::Runs => {
+            let Some(product) = &model.product else { return 0 };
+            let detail = product.selected_run().map_or_else(empty_detail, |run| {
+                run_detail(
+                    run,
+                    product.selected_settlement(),
+                    product.confirmation.as_ref().map(|value| value.warning.as_str()),
+                )
+            });
+            return detail_scroll_limit(&detail, dashboard_areas(area).detail);
+        }
         crate::model::View::Preview => preview::content(model, area.width),
         crate::model::View::Diff => detail::run_text_lines(model, area.width, inspect_text, ""),
         crate::model::View::Review => detail::run_text_lines(
@@ -178,6 +216,10 @@ pub(super) fn scroll_limit(model: &AppModel, area: Rect) -> u16 {
         _ => Vec::new(),
     };
     content_scroll_limit(lines.len(), area)
+}
+
+pub(super) fn scroll_page(area: Rect) -> u16 {
+    dashboard_areas(area).detail.height.saturating_sub(2).max(1)
 }
 
 fn content_scroll_limit(lines: usize, area: Rect) -> u16 {

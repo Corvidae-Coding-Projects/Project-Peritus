@@ -1,4 +1,4 @@
-//! Bind a successful explicit commit without transferring qualification across Git identities.
+//! Bind a successful explicit commit while preserving source-bound qualification evidence.
 
 use super::{ProductDeliverable, ProductRunServiceError, attempt};
 use crate::product_run::{RunRecord, recovery};
@@ -24,16 +24,24 @@ pub(super) fn bind(
     }
     let current = ProductRunner::candidate_digest(Path::new(deliverable.workspace_path()))
         .map_err(|_| ProductRunServiceError::WorkspaceUnavailable)?;
+    let current_content =
+        ProductRunner::candidate_source_digest(Path::new(deliverable.workspace_path()))
+            .map_err(|_| ProductRunServiceError::WorkspaceUnavailable)?;
     if !attempt::matches(directory, record, &deliverable)? {
         return Ok((
             deliverable,
             "; workspace changed during commit; continue to inspect and requalify it",
         ));
     }
-    if current == previous.identity().candidate_digest() {
+    if current == previous.identity().repository_digest() {
         return Ok((deliverable, ""));
     }
-    let checkpoint = recovery::changed_checkpoint(previous, current)?;
+    let checkpoint = recovery::changed_checkpoint(
+        previous,
+        current_content,
+        current,
+        previous.identity().execution_digest(),
+    )?;
     let cause = record.settlement.map_or(SettlementCause::Completed, |value| value.cause());
     let mut reducer = SettlementReducer::new();
     reducer.observe(previous).map_err(|_| ProductRunServiceError::InvalidState)?;
@@ -55,6 +63,6 @@ pub(super) fn bind(
     record.candidate_actionable = true;
     Ok((
         current_deliverable,
-        "; Run is available; pre-commit checks and review remain historical evidence",
+        "; repository context changed; source-bound qualification was reconciled",
     ))
 }

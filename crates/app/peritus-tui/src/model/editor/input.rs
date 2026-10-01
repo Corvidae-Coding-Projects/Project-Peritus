@@ -3,6 +3,16 @@
 use crate::model::{AppModel, EditorKind, NoticeLevel};
 
 impl AppModel {
+    pub(in crate::model) fn paste_editor_event(&mut self, text: &str) {
+        self.paste_editor(text);
+        if let Some(editor) = &mut self.editor
+            && matches!(editor.kind, EditorKind::ProductMessage(_))
+            && editor.buffer.trim_start().starts_with('/')
+        {
+            editor.pasted_command = true;
+        }
+    }
+
     pub(in crate::model) fn paste_editor(&mut self, text: &str) {
         let Some(editor) = &mut self.editor else { return };
         let maximum = match editor.kind {

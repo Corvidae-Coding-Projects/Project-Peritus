@@ -7,11 +7,12 @@ use crate::{
     HeartbeatId, HeartbeatReply, ImplementationMetadata, IncompatibilityReason, NegotiationOutcome,
     ProductConversationMessage, ProductConversationRole, ProductDeliverable,
     ProductProviderSelection, ProductRunContinuation, ProductRunControl, ProductRunControlAction,
-    ProductRunConversation, ProductRunConversationQuery, ProductRunPhase, ProductRunRequest,
-    ProductRunSnapshot, ProtocolContext, ProtocolId, ProtocolVersion, RequestId, ServerHello,
-    SubscriptionFilter, SubscriptionId, SubscriptionRequest, VersionRange,
+    ProductRunConversation, ProductRunConversationQuery, ProductRunObservation, ProductRunPhase,
+    ProductRunRequest, ProductRunSnapshot, ProtocolContext, ProtocolId, ProtocolVersion, RequestId,
+    ServerHello, SubscriptionFilter, SubscriptionId, SubscriptionRequest, VersionRange,
 };
 use peritus_codec::{CodecLimits, decode_message, encode_frame, encode_message};
+use peritus_run_settlement::CandidateStage;
 use peritus_types::{ProviderProfileId, RunId, SessionId, WorkspaceId};
 
 use super::{AppMessage, decode_app_message, encode_app_message};
@@ -196,7 +197,7 @@ fn product_run_requests_and_snapshots_round_trip() -> Result<(), Box<dyn std::er
         "implemented".to_owned(),
     )?
     .with_deliverable(
-        ProductDeliverable::new(
+        ProductDeliverable::candidate(
             "/managed/worktree".to_owned(),
             vec!["game/src/main.rs".to_owned()],
             vec![
@@ -204,6 +205,7 @@ fn product_run_requests_and_snapshots_round_trip() -> Result<(), Box<dyn std::er
                     .to_owned(),
             ],
             "cargo run --manifest-path game/Cargo.toml".to_owned(),
+            CandidateStage::Qualified,
         )?
         .mark_accepted()
         .mark_exported("/state/exports/run.patch".to_owned())?,
@@ -212,7 +214,9 @@ fn product_run_requests_and_snapshots_round_trip() -> Result<(), Box<dyn std::er
         context,
         RequestId::new([40; 16]).expect("nonzero request id"),
         CorrelationId::new([41; 16]).expect("nonzero correlation id"),
-        AppResponsePayload::ProductRuns(vec![snapshot]),
+        AppResponsePayload::ProductRunObservations(vec![ProductRunObservation::new(
+            snapshot, None,
+        )?]),
     );
     let encoded =
         encode_app_message(&AppMessage::Response(response.clone()), AppProtocolLimits::PRODUCTION)?;

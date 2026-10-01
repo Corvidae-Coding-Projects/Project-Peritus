@@ -1,4 +1,4 @@
-//! Each run carries its own settlement discriminator; legacy bytes remain unchanged.
+//! Each run carries its own settlement discriminator.
 
 use super::{read_settlement_snapshot, read_snapshot, write_settlement_snapshot, write_snapshot};
 use crate::MAX_PRODUCT_RUNS;

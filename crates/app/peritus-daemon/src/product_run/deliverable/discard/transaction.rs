@@ -72,7 +72,7 @@ impl Pending {
             deliverable.changed_paths(),
             &path(directory, record).with_extension("discard-state"),
             Sha256Digest::new(binding),
-            checkpoint.identity().candidate_digest(),
+            checkpoint.identity().repository_digest(),
         )
         .map_err(failure)?;
         let pending = Self { version: 1, binding, plan: plan.into_bytes() };

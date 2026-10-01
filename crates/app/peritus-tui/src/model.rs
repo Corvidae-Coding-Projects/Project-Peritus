@@ -262,6 +262,7 @@ pub struct Editor {
     pub(crate) hint: &'static str,
     pub(crate) buffer: String,
     pub(crate) cursor: usize,
+    pub(crate) pasted_command: bool,
 }
 
 #[derive(Debug)]

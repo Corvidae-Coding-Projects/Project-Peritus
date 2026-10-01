@@ -20,6 +20,10 @@ use peritus_types::{
     ProviderProfileId, RevisionNumber, RevisionTuple, SessionId, Sha256Digest, WorkspaceId,
 };
 
+#[allow(
+    clippy::too_many_lines,
+    reason = "the canonical fixture registry intentionally enumerates every protocol flow"
+)]
 pub(super) fn generated_valid_cases(
     codec_limits: CodecLimits,
 ) -> Result<Vec<GeneratedFixtureCase>, CodecError> {

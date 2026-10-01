@@ -39,6 +39,30 @@ impl ProductRunResume {
             "effectful continuation state is unavailable in a verus_only build",
         ))
     }
+
+    /// Verification-only builds do not restore retained effectful continuation state.
+    pub fn decode_durable_retained(
+        _bytes: &[u8],
+        _transcript: &str,
+    ) -> Result<Self, ProductRunnerError> {
+        Err(ProductRunnerError::new(
+            ProductRunnerErrorKind::InvalidPrecondition,
+            "restore retained product-run continuation",
+            "effectful continuation state is unavailable in a verus_only build",
+        ))
+    }
+
+    /// Verification-only builds do not rebind retained effectful continuation state.
+    pub fn reconcile_candidate(
+        self,
+        _checkpoint: peritus_run_settlement::CandidateCheckpoint,
+    ) -> Result<Self, ProductRunnerError> {
+        Err(ProductRunnerError::new(
+            ProductRunnerErrorKind::InvalidPrecondition,
+            "reconcile retained product candidate",
+            "effectful continuation state is unavailable in a verus_only build",
+        ))
+    }
 }
 
 impl ProductRunner {
@@ -92,7 +116,7 @@ impl ProductRunner {
 // None may claim an empty diff or a successful restore in verification-only builds.
 impl ProductRunner {
     /// Baseline reads require the production filesystem boundary.
-    pub fn retained_task_baseline(_trace: &Path) -> Result<Option<String>, ProductRunnerError> {
+    pub fn retained_task_baseline(_trace: &Path) -> Result<String, ProductRunnerError> {
         Err(baseline_unavailable())
     }
     /// Baseline decoding requires the production persistence boundary.
@@ -100,25 +124,10 @@ impl ProductRunner {
         Err(baseline_unavailable())
     }
     /// Candidate export requires the production repository boundary.
-    pub fn task_candidate_patch(
-        _workspace: &Path,
-        _trace: &Path,
-    ) -> Result<Option<Vec<u8>>, ProductRunnerError> {
-        Err(baseline_unavailable())
-    }
-    /// Candidate export requires the production repository boundary.
     pub fn candidate_patch_from_baseline(
         _workspace: &Path,
         _bytes: &str,
     ) -> Result<Vec<u8>, ProductRunnerError> {
-        Err(baseline_unavailable())
-    }
-    /// Candidate restore requires the production repository boundary.
-    pub fn discard_task_candidate(
-        _workspace: &Path,
-        _trace: &Path,
-        _paths: &[String],
-    ) -> Result<Option<Vec<std::path::PathBuf>>, ProductRunnerError> {
         Err(baseline_unavailable())
     }
     /// Candidate restore requires the production repository boundary.

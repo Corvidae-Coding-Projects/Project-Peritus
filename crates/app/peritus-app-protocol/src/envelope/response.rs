@@ -143,16 +143,12 @@ pub enum AppResponsePayload {
     Error(AppProtocolError),
     /// The run was accepted and its initial state is observable.
     ProductRunAccepted(ProductRunSnapshot),
-    /// Bounded recent or exact product-run observations.
-    ProductRuns(Vec<ProductRunSnapshot>),
     /// Bounded mixed active and settled runs with per-run qualification evidence.
     ProductRunObservations(Vec<crate::ProductRunObservation>),
     /// Complete bounded conversation for one exact product run.
     ProductRunConversation(ProductRunConversation),
     /// One exact product run paired with its verified terminal settlement.
     ProductRunSettled(ProductRunSettlementSnapshot),
-    /// Bounded settled product-run observations.
-    ProductRunSettlements(Vec<ProductRunSettlementSnapshot>),
 }
 
 /// Complete typed terminal response to one request.

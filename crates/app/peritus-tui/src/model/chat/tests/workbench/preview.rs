@@ -41,7 +41,8 @@ fn preview_model() -> (AppModel, peritus_app_protocol::WorkbenchQuery, RunId, Sh
     );
     let run = RunId::new([72; 16]).expect("run");
     let digest = Sha256Digest::new([73; 32]);
-    let identity = CandidateIdentity::new(run, workspace, digest, 1, 1).expect("identity");
+    let identity =
+        CandidateIdentity::new(run, workspace, digest, digest, None, 1, 1).expect("identity");
     let checkpoint = CandidateCheckpoint::new(
         identity,
         CandidateStage::Changed,

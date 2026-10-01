@@ -29,9 +29,13 @@ pub(super) fn validate_retry(
             }
             let current = peritus_product_runner::ProductRunner::candidate_digest(workspace)
                 .map_err(|error| failure(workspace, "inspect commit retry", error))?;
-            // History changed during the prior attempt. Preserve its source patch,
-            // but do not carry qualification claims across a different Git identity.
-            super::super::recovery::mark_stale(record, current)?;
+            let content = peritus_product_runner::ProductRunner::candidate_source_digest(workspace)
+                .map_err(|error| failure(workspace, "inspect commit retry source", error))?;
+            // History changed during the prior attempt. Reconcile the new repository context
+            // while retaining evidence whose declared source and execution inputs still match.
+            let execution =
+                record.checkpoint.and_then(|checkpoint| checkpoint.identity().execution_digest());
+            super::super::recovery::mark_stale(record, content, current, execution)?;
             record.snapshot.deliverable().cloned().ok_or(ProductRunServiceError::InvalidState)
         }
     }

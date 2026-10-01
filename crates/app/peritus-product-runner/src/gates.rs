@@ -6,6 +6,8 @@ use std::{
 };
 
 use peritus_gates::{GateExecutionRecord, TargetGatePlan, TargetGateReport};
+use peritus_types::Sha256Digest;
+use sha2::{Digest as _, Sha256};
 
 mod artifact_csv;
 mod deliverable_inventory;
@@ -25,6 +27,15 @@ use crate::{
 pub struct GateReport {
     pub report: TargetGateReport,
     pub output: String,
+    pub(crate) execution_context: Sha256Digest,
+}
+
+impl GateReport {
+    /// Host-observed inputs that can change how the exact gate plan executes.
+    #[must_use]
+    pub const fn execution_context(&self) -> Sha256Digest {
+        self.execution_context
+    }
 }
 
 pub fn run_with_ownership(
@@ -53,6 +64,7 @@ fn run_scoped(
             error.to_string(),
         )
     })?;
+    let execution_context = execution_context(root, &plan);
     let mut records = Vec::new();
     for specification in plan.commands() {
         if specification.program() == "peritus-internal" {
@@ -131,7 +143,68 @@ fn run_scoped(
         vec![explicit_paths, deliverable_inventory],
     );
     let output = render(&report, delivery_scope);
-    Ok(GateReport { report, output })
+    Ok(GateReport { report, output, execution_context })
+}
+
+fn execution_context(root: &Path, plan: &TargetGatePlan) -> Sha256Digest {
+    let mut hasher = Sha256::new();
+    hasher.update(b"peritus-gate-execution-context-v1\0");
+    hash_bytes(&mut hasher, std::env::consts::OS.as_bytes());
+    hash_bytes(&mut hasher, std::env::consts::ARCH.as_bytes());
+    hash_bytes(&mut hasher, root.as_os_str().as_encoded_bytes());
+    let mut environment = std::env::vars_os().collect::<Vec<_>>();
+    environment.sort_by(|left, right| {
+        left.0
+            .as_encoded_bytes()
+            .cmp(right.0.as_encoded_bytes())
+            .then_with(|| left.1.as_encoded_bytes().cmp(right.1.as_encoded_bytes()))
+    });
+    for (name, value) in environment {
+        hasher.update([0]);
+        hash_bytes(&mut hasher, name.as_encoded_bytes());
+        hash_bytes(&mut hasher, value.as_encoded_bytes());
+    }
+    for command in plan.commands() {
+        hasher.update([1]);
+        hash_bytes(&mut hasher, command.display().as_bytes());
+        hash_bytes(&mut hasher, command.current_dir().as_os_str().as_encoded_bytes());
+        observe_program(&mut hasher, root, command.current_dir(), command.program());
+    }
+    Sha256Digest::new(hasher.finalize().into())
+}
+
+fn observe_program(hasher: &mut Sha256, root: &Path, current_dir: &Path, program: &str) {
+    let resolved = if Path::new(program).components().count() > 1 {
+        Some(root.join(current_dir).join(program))
+    } else {
+        std::env::var_os("PATH").and_then(|path| {
+            std::env::split_paths(&path)
+                .map(|directory| directory.join(program))
+                .find(|candidate| candidate.is_file())
+        })
+    };
+    let Some(path) = resolved else {
+        hasher.update([0]);
+        hash_bytes(hasher, program.as_bytes());
+        return;
+    };
+    hasher.update([1]);
+    hash_bytes(hasher, path.as_os_str().as_encoded_bytes());
+    match std::fs::read(&path) {
+        Ok(bytes) => {
+            hasher.update([1]);
+            hash_bytes(hasher, &bytes);
+        }
+        Err(error) => {
+            hasher.update([0]);
+            hash_bytes(hasher, error.to_string().as_bytes());
+        }
+    }
+}
+
+fn hash_bytes(hasher: &mut Sha256, bytes: &[u8]) {
+    hasher.update(u64::try_from(bytes.len()).unwrap_or(u64::MAX).to_le_bytes());
+    hasher.update(bytes);
 }
 
 #[allow(

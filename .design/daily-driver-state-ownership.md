@@ -39,11 +39,12 @@ supported. Observation sequence is monotone; qualification strength is not. A ne
 observation on identical files must produce an accessible unqualified candidate, not an invariant
 error or a retained success claim. Retained evidence keeps its producing identity.
 
-Next, introduce candidate content and execution-context identities at the host observation
-boundary. Evidence declares its dependencies; legacy records conservatively depend on the full
-snapshot they actually observed. Git-dependent gates and reviews must not be relabeled
-content-only. Include conversation requirements and declared environment/toolchain inputs in
-dependency binding. Newly observed metadata must not be invented for old records.
+Next, keep candidate content, repository context, requirements, and execution context as separate
+host observations. Evidence declares its dependencies. Deterministic gates bind content,
+requirements, and the execution context; obligations and review bind content and requirements.
+Repository context fences handoff operations without invalidating source-bound evidence. A daemon
+restart clears process-local execution context and retains a continuation that reacquires only the
+stale gates.
 
 Expose operation knowledge, uncertainty, and legal recovery from the authoritative domains.
 Startup and runtime use the same reconciliation methods. Retry means resuming the original
@@ -54,25 +55,23 @@ Finally, retain host tool observations independently of final model-report parsi
 of `RunState` creation. A model report supplies a summary and proposed run instructions. Its absence
 does not erase observed changes or exit statuses and does not authorize a guessed run command.
 
-## Alternative and compatibility
+## Alternative and canonical state
 
-A new universal event store could replace control, run records, and command receipts at once.
-It would also require migrating independently persisted state and every client before the first
-usable increment. Prefer consolidating each fact in its existing owner with explicit migrations.
+A new universal event store could replace control, run records, and command receipts at once, but
+that would add a second source of truth before it removed the first. Consolidate each fact in its
+existing owner and keep one canonical projection.
 
-The first reconciliation increment keeps all persisted and wire fields and tags unchanged. It
-permits lower qualification in a later observation while retaining strict evidence construction,
-lineage, sequence, and exactly-once terminal settlement. Old readers already decode lower stages.
-New content/context metadata and recovery capabilities will require versioned persistence and
-negotiated protocol additions, including CLI, TUI, WebUI, and generated schemas/fixtures. Older
-clients must receive conservative compatible projections or a clear unsupported-capability result.
-Rollback must never reinterpret an unknown effect as safe to rerun.
+There are no released users or durable user histories to migrate. Product-run persistence is one
+strict version-2 record, and the application protocol exposes one product-run observation query.
+Earlier records are quarantined rather than guessed or upgraded. CLI, TUI, WebUI, daemon, generated
+schemas, and fixtures move together. Rollback must never reinterpret an unknown effect as safe to
+rerun.
 
 ## Delivery and completion evidence
 
 1. Centralize evidence freshness and supported qualification; reproduce unchanged-content
    requalification failure, check domain refinement, preserve restart and commit behavior.
-2. Migrate candidate observations and explicit evidence dependencies through persistence,
+2. Carry candidate observations and explicit evidence dependencies through persistence,
    continuations, negotiated transport, and normal interface. Exercise content edits, Git-only
    commits, nested repositories, modes, symlinks, requirement changes, and environment changes.
 3. Publish authoritative operation/recovery projections and connect ordinary recovery controls.

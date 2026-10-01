@@ -145,6 +145,18 @@ impl CandidateBaseline {
             None => crate::progress::WorkspaceCheckpoint::capture(root),
         }
     }
+
+    pub(crate) fn content_digest(
+        &self,
+        root: &Path,
+    ) -> Result<peritus_types::Sha256Digest, ProductRunnerError> {
+        // An in-place run has no repository-history axis. Its exact enrolled file snapshot is both
+        // the source-content observation and the handoff fence.
+        self.in_place.as_ref().map_or_else(
+            || managed::ManagedBaseline::source_digest(root),
+            |scope| scope.progress_checkpoint(root).map(|checkpoint| checkpoint.digest()),
+        )
+    }
 }
 
 fn append_nested_repository_changes(

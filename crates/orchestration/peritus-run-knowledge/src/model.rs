@@ -127,8 +127,8 @@ pub open spec fn direct_reuse_inputs(
     &&& !(request.spec_change() == KnowledgeChange::UserClarification
         && clarification_affects(request.spec_affected_sections(), section.spec_id()))
     &&& (!section.spec_kind().spec_depends_on_conversation()
-        || binding.spec_candidate().spec_conversation_revision()
-            == current.spec_conversation_revision()
+        || binding.spec_candidate().spec_requirements_revision()
+            == current.spec_requirements_revision()
         || request.spec_change() == KnowledgeChange::UserClarification)
     &&& (!section.spec_kind().spec_depends_on_candidate()
         || binding.spec_candidate().spec_same_candidate(&current))
@@ -155,8 +155,8 @@ pub open spec fn direct_decision(
     {
         ReuseDecision::Invalidate(InvalidationReason::UserClarification)
     } else if section.spec_kind().spec_depends_on_conversation()
-        && binding.spec_candidate().spec_conversation_revision()
-            != current.spec_conversation_revision()
+        && binding.spec_candidate().spec_requirements_revision()
+            != current.spec_requirements_revision()
         && request.spec_change() != KnowledgeChange::UserClarification
     {
         ReuseDecision::Invalidate(InvalidationReason::ConversationRevisionChanged)

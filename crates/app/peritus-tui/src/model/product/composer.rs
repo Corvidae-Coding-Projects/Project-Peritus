@@ -30,6 +30,7 @@ impl AppModel {
             hint: "Describe the outcome. Shift-Enter adds a line; Enter starts the run.",
             buffer: String::new(),
             cursor: 0,
+            pasted_command: false,
         });
     }
 
@@ -73,9 +74,10 @@ impl AppModel {
         self.open_editor(Editor {
             kind: EditorKind::ProductMessage(run_id),
             title: "Message this coding run",
-            hint: "Reply, redirect, add context, or say continue. Shift-Enter adds a line.",
+            hint: "Reply, redirect, add context, or say continue. Type /runs to return to the dashboard.",
             buffer: String::new(),
             cursor: 0,
+            pasted_command: false,
         });
     }
 

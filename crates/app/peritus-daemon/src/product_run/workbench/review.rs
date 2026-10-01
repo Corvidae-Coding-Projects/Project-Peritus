@@ -295,7 +295,7 @@ fn current_targets(
     let candidate = record
         .checkpoint
         .as_ref()
-        .map_or(live_candidate, |checkpoint| checkpoint.identity().candidate_digest());
+        .map_or(live_candidate, |checkpoint| checkpoint.identity().repository_digest());
     if candidate != live_candidate {
         return Err(ControlError::StaleRevision.into());
     }

@@ -3,10 +3,7 @@
 pub(super) mod observations;
 mod settlement;
 
-pub(super) use settlement::{
-    read_settlement_snapshot, read_settlement_snapshots, write_settlement_snapshot,
-    write_settlement_snapshots,
-};
+pub(super) use settlement::{read_settlement_snapshot, write_settlement_snapshot};
 
 use peritus_codec::{CanonicalReader, CanonicalWriter, CodecError, CodecErrorKind};
 use peritus_run_settlement::CandidateStage;
@@ -14,7 +11,7 @@ use peritus_types::{ProviderProfileId, RunId, WorkspaceId};
 
 use crate::{
     MAX_PRODUCT_DELIVERABLE_COMMANDS, MAX_PRODUCT_DELIVERABLE_PATHS, MAX_PRODUCT_MESSAGES,
-    MAX_PRODUCT_RUNS, ProductConversationMessage, ProductConversationRole, ProductDeliverable,
+    ProductConversationMessage, ProductConversationRole, ProductDeliverable,
     ProductProviderSelection, ProductRunContinuation, ProductRunControl, ProductRunControlAction,
     ProductRunConversation, ProductRunConversationQuery, ProductRunPhase, ProductRunQuery,
     ProductRunRequest, ProductRunSnapshot,
@@ -301,28 +298,6 @@ fn read_deliverable(
         )
     };
     invalid(offset, deliverable)
-}
-
-pub(super) fn write_snapshots(
-    writer: &mut CanonicalWriter,
-    values: &[ProductRunSnapshot],
-) -> Result<(), CodecError> {
-    writer.write_collection_len(values.len())?;
-    for value in values {
-        write_snapshot(writer, value)?;
-    }
-    Ok(())
-}
-
-pub(super) fn read_snapshots(
-    reader: &mut CanonicalReader<'_>,
-) -> Result<Vec<ProductRunSnapshot>, CodecError> {
-    let offset = reader.offset();
-    let length = reader.read_collection_len()?;
-    if length > MAX_PRODUCT_RUNS {
-        return Err(CodecError::at(CodecErrorKind::LimitExceeded, offset));
-    }
-    (0..length).map(|_| read_snapshot(reader)).collect()
 }
 
 fn write_providers(

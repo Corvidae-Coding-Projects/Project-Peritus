@@ -96,9 +96,12 @@ impl CurrentKnowledgeState {
         ensures
             candidate.spec_run_id() == self.spec_candidate().spec_run_id(),
             candidate.spec_workspace_id() == self.spec_candidate().spec_workspace_id(),
-            candidate.spec_candidate_digest() == self.spec_candidate().spec_candidate_digest(),
-            candidate.spec_conversation_revision()
-                == self.spec_candidate().spec_conversation_revision(),
+            candidate.spec_content_digest() == self.spec_candidate().spec_content_digest(),
+            candidate.spec_repository_digest()
+                == self.spec_candidate().spec_repository_digest(),
+            candidate.spec_execution_digest() == self.spec_candidate().spec_execution_digest(),
+            candidate.spec_requirements_revision()
+                == self.spec_candidate().spec_requirements_revision(),
             candidate.spec_checkpoint_sequence()
                 == self.spec_candidate().spec_checkpoint_sequence(),
     { &self.candidate }

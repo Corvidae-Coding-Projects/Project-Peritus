@@ -18,6 +18,7 @@ impl AppModel {
                 hint: "Paste the base64-encoded canonical B1 signed-decision frame",
                 buffer: String::new(),
                 cursor: 0,
+                pasted_command: false,
             },
             PromptKind::UserInput => Editor {
                 kind: EditorKind::PromptAnswer(prompt_id),
@@ -25,6 +26,7 @@ impl AppModel {
                 hint: "Enter text, an exact choice id, or an opaque secret reference as required",
                 buffer: String::new(),
                 cursor: 0,
+                pasted_command: false,
             },
         });
     }

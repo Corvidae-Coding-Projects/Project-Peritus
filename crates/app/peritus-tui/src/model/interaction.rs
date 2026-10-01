@@ -10,7 +10,7 @@ impl AppModel {
             Event::Key(key) => self.handle_key(key),
             Event::Paste(text) => {
                 if self.editor.is_some() {
-                    self.paste_editor(&text);
+                    self.paste_editor_event(&text);
                     Vec::new()
                 } else if self.view == View::Conversation {
                     self.paste_chat_event(&text);
@@ -135,6 +135,7 @@ impl AppModel {
                     hint: "Enter the 32 hexadecimal digits of a ProcessId",
                     buffer: String::new(),
                     cursor: 0,
+                    pasted_command: false,
                 });
             }
             KeyCode::Char('i') if self.view == View::Terminal => {

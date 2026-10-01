@@ -253,7 +253,10 @@ pub(super) fn inspect_gates(
     let _ = recorder.record(
         gate_stage,
         state.conversation_revision,
-        CheckpointEvidence::Gates(gates_satisfied),
+        CheckpointEvidence::Gates {
+            satisfied: gates_satisfied,
+            execution_context: gate_report.execution_context(),
+        },
     )?;
     Ok(GateInspection {
         gates: gate_report,

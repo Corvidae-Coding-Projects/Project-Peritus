@@ -83,9 +83,6 @@ impl ProductRunService {
                 commit::with_recovery(&self.inner.directory, record, deliverable)?
             }
             ProductRunControlAction::Export => {
-                if record.task_baseline_required && record.task_baseline.is_none() {
-                    return Err(ProductRunServiceError::WorkspaceUnavailable);
-                }
                 let path = export_deliverable(
                     &self.inner.directory,
                     run_id,
@@ -106,7 +103,6 @@ impl ProductRunService {
                 }
                 let completion =
                     discard::Reservation::prepare(&self.inner.directory, record, &deliverable)?;
-                let trace = self.inner.directory.join(format!("{}.trace", run_hex(run_id)));
                 let pending = match pending {
                     Some(pending) => Some(pending),
                     None => discard::Pending::prepare(&self.inner.directory, record, workspace)?,
@@ -120,7 +116,11 @@ impl ProductRunService {
                             return Err(error);
                         }
                     }
-                } else if let Some(baseline) = &record.task_baseline {
+                } else {
+                    let baseline = record
+                        .task_baseline
+                        .as_deref()
+                        .ok_or(ProductRunServiceError::WorkspaceUnavailable)?;
                     ProductRunner::discard_from_baseline(
                         workspace,
                         baseline,
@@ -132,19 +132,6 @@ impl ProductRunService {
                             error.to_string(),
                         )
                     })?
-                } else if record.task_baseline_required {
-                    return Err(ProductRunServiceError::WorkspaceUnavailable);
-                } else if let Some(recovered) = ProductRunner::discard_task_candidate(
-                    workspace,
-                    &trace,
-                    deliverable.changed_paths(),
-                )
-                .map_err(|_| ProductRunServiceError::WorkspaceUnavailable)?
-                {
-                    recovered
-                } else {
-                    discard_deliverable(&deliverable)?;
-                    Vec::new()
                 };
                 let status = discard_status(&recovered);
                 completion.complete(&status)?;
@@ -229,12 +216,7 @@ fn validate_exact_candidate(
     if Path::new(deliverable.workspace_path()) != workspace {
         return Err(ProductRunServiceError::InvalidState);
     }
-    let Some(checkpoint) = record.checkpoint.as_ref() else {
-        // Legacy qualified handoffs predate digest persistence and remain operable.
-        return (deliverable.qualification() == CandidateStage::Qualified)
-            .then_some(())
-            .ok_or(ProductRunServiceError::InvalidState);
-    };
+    let checkpoint = record.checkpoint.as_ref().ok_or(ProductRunServiceError::InvalidState)?;
     if checkpoint.stage() != deliverable.qualification()
         || checkpoint.identity().run_id() != record.request.run_id()
         || checkpoint.identity().workspace_id() != record.request.workspace_id()
@@ -243,7 +225,7 @@ fn validate_exact_candidate(
     }
     let current = ProductRunner::candidate_digest(Path::new(deliverable.workspace_path()))
         .map_err(|_| ProductRunServiceError::WorkspaceUnavailable)?;
-    if current != checkpoint.identity().candidate_digest() {
+    if current != checkpoint.identity().repository_digest() {
         return Err(ProductRunServiceError::InvalidState);
     }
     Ok(())
@@ -257,18 +239,13 @@ fn export_deliverable(
 ) -> Result<PathBuf, ProductRunServiceError> {
     let root = Path::new(deliverable.workspace_path());
     let bytes = if deliverable.commit_revision().is_empty() {
-        let trace = product_run_directory.join(format!("{}.trace", run_hex(run_id)));
-        match baseline
-            .map(|baseline| ProductRunner::candidate_patch_from_baseline(root, baseline))
-            .transpose()
-            .and_then(|embedded| match embedded {
-                Some(bytes) => Ok(Some(bytes)),
-                None => ProductRunner::task_candidate_patch(root, &trace),
-            })
-            .map_err(|_| ProductRunServiceError::WorkspaceUnavailable)?
-        {
-            Some(patch) => patch,
+        match baseline {
+            Some(baseline) => ProductRunner::candidate_patch_from_baseline(root, baseline)
+                .map_err(|_| ProductRunServiceError::WorkspaceUnavailable)?,
+            #[cfg(test)]
             None => uncommitted_patch(root, deliverable.changed_paths())?,
+            #[cfg(not(test))]
+            None => return Err(ProductRunServiceError::WorkspaceUnavailable),
         }
     } else {
         let output = Command::new("git")
@@ -302,6 +279,7 @@ fn export_deliverable(
     Ok(path)
 }
 
+#[cfg(test)]
 fn uncommitted_patch(root: &Path, paths: &[String]) -> Result<Vec<u8>, ProductRunServiceError> {
     let output = Command::new("git")
         .env("GIT_LITERAL_PATHSPECS", "1")
@@ -335,6 +313,7 @@ fn uncommitted_patch(root: &Path, paths: &[String]) -> Result<Vec<u8>, ProductRu
     Ok(patch)
 }
 
+#[cfg(test)]
 fn discard_deliverable(deliverable: &ProductDeliverable) -> Result<(), ProductRunServiceError> {
     let root = Path::new(deliverable.workspace_path());
     let mut tracked_paths = Vec::new();
@@ -364,6 +343,7 @@ fn discard_deliverable(deliverable: &ProductDeliverable) -> Result<(), ProductRu
     Ok(())
 }
 
+#[cfg(test)]
 fn tracked(root: &Path, path: &str) -> Result<bool, ProductRunServiceError> {
     Command::new("git")
         .env("GIT_LITERAL_PATHSPECS", "1")
@@ -374,12 +354,12 @@ fn tracked(root: &Path, path: &str) -> Result<bool, ProductRunServiceError> {
         .map_err(|_| ProductRunServiceError::Unavailable)
 }
 
-#[cfg(windows)]
+#[cfg(all(test, windows))]
 const fn null_device() -> &'static str {
     "NUL"
 }
 
-#[cfg(not(windows))]
+#[cfg(all(test, not(windows)))]
 const fn null_device() -> &'static str {
     "/dev/null"
 }

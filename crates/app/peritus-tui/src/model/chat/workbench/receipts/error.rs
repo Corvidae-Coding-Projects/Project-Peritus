@@ -247,6 +247,7 @@ impl AppModel {
                 hint: "Ctrl-F refreshes the diff; Ctrl-B explicitly rebinds this draft to the selected target.",
                 cursor: draft.len(),
                 buffer: draft,
+                pasted_command: false,
             }, false);
         }
     }

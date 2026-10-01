@@ -14,7 +14,7 @@ fn slow_dashboard_request_does_not_starve_conversation_polling() {
     assert!(
         !effects.iter().any(|effect| matches!(effect,
         Effect::Send(AppMessage::Request(request)) if matches!(request.payload(),
-            AppRequestPayload::QueryProductRuns(_)))),
+            AppRequestPayload::QueryProductRunObservations(_)))),
         "no duplicate dashboard query"
     );
 }
@@ -25,7 +25,7 @@ fn expired_exact_reply_does_not_become_a_recent_runs_page() {
     let snapshot = model.product.as_ref().unwrap().runs[0].clone();
     let effect = model
         .request(
-            AppRequestPayload::QueryProductRuns(ProductRunQuery::exact(run)),
+            AppRequestPayload::QueryProductRunObservations(ProductRunQuery::exact(run)),
             PendingRequest::ProductExactQuery(run),
         )
         .unwrap();
@@ -37,7 +37,7 @@ fn expired_exact_reply_does_not_become_a_recent_runs_page() {
         request.context(),
         request.request_id(),
         request.correlation_id(),
-        AppResponsePayload::ProductRuns(Vec::new()),
+        AppResponsePayload::ProductRunObservations(Vec::new()),
     ))));
     assert_eq!(model.product.as_ref().unwrap().runs, vec![snapshot]);
 }

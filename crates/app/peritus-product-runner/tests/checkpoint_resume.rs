@@ -18,6 +18,9 @@ mod fixtures;
 #[path = "checkpoint_resume/effect_identity.rs"]
 mod effect_identity;
 
+#[path = "checkpoint_resume/restart.rs"]
+mod restart;
+
 use fixtures::*;
 
 // These scenarios run real compiler gates; cold native Windows setup can exceed one minute.

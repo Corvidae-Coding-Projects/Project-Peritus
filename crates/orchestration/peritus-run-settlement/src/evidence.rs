@@ -7,6 +7,55 @@ use vstd::prelude::*;
 
 verus! {
 
+/// Candidate axes on which one evidence observation actually depends.
+///
+/// Gate evidence observes content, public requirements, and the host execution context.
+/// Obligation and review conclusions observe content and public requirements. Repository history
+/// fences delivery but does not by itself invalidate those conclusions.
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub enum EvidenceDependencies {
+    /// Source content and public requirements.
+    Source,
+    /// Source content, public requirements, and the observed execution context.
+    SourceAndExecution,
+}
+
+impl EvidenceDependencies {
+    /// Deterministic gate dependency declaration.
+    pub const GATES: Self = Self::SourceAndExecution;
+    /// Public-obligation dependency declaration.
+    pub const OBLIGATIONS: Self = Self::Source;
+    /// Independent-review dependency declaration.
+    pub const REVIEW: Self = Self::OBLIGATIONS;
+
+    /// Stable tag for persistence and transport.
+    #[must_use]
+    pub const fn tag(self) -> u16 {
+        match self {
+            Self::Source => 1,
+            Self::SourceAndExecution => 2,
+        }
+    }
+
+    /// Restores one of the closed dependency declarations.
+    #[must_use]
+    pub const fn from_tag(tag: u16) -> Option<Self> {
+        match tag {
+            1 => Some(Self::Source),
+            2 => Some(Self::SourceAndExecution),
+            _ => None,
+        }
+    }
+
+    /// Whether host execution context is a declared dependency.
+    #[must_use]
+    pub const fn execution(self) -> (execution: bool)
+        ensures execution == (self == Self::SourceAndExecution),
+    {
+        matches!(self, Self::SourceAndExecution)
+    }
+}
+
 /// Minimal fail-closed conclusion shared by gates, obligations, and review.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum QualificationEvidence {
@@ -47,21 +96,39 @@ impl QualificationEvidence {
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct EvidenceRecord<T> {
     provenance: CandidateIdentity,
+    dependencies: EvidenceDependencies,
     value: T,
 }
 
 impl<T> EvidenceRecord<T> {
     /// Logical view of the exact producing checkpoint.
     pub closed spec fn spec_provenance(&self) -> CandidateIdentity { self.provenance }
+    /// Logical view of the declared dependency axes.
+    pub closed spec fn spec_dependencies(&self) -> EvidenceDependencies { self.dependencies }
     /// Logical view of the retained evidence value.
     pub closed spec fn spec_value(&self) -> T { self.value }
 
-    /// Binds a typed evidence value to its exact producing checkpoint.
+    /// Whether every declared dependency axis matches the supplied candidate.
+    pub open spec fn spec_binding_matches(&self, candidate: &CandidateIdentity) -> bool {
+        self.spec_provenance().spec_matches_evidence_axes(
+            candidate,
+            self.spec_dependencies() == EvidenceDependencies::SourceAndExecution,
+        )
+    }
+
+    /// Binds a typed value to its producing checkpoint and declared dependency axes.
     #[must_use]
-    pub const fn new(provenance: CandidateIdentity, value: T) -> (record: Self)
-        ensures record.spec_provenance() == provenance, record.spec_value() == value,
+    pub const fn new(
+        provenance: CandidateIdentity,
+        dependencies: EvidenceDependencies,
+        value: T,
+    ) -> (record: Self)
+        ensures
+            record.spec_provenance() == provenance,
+            record.spec_dependencies() == dependencies,
+            record.spec_value() == value,
     {
-        Self { provenance, value }
+        Self { provenance, dependencies, value }
     }
 
     /// Exact producing checkpoint.
@@ -70,11 +137,25 @@ impl<T> EvidenceRecord<T> {
         ensures *value == self.spec_provenance(),
     { &self.provenance }
 
+    /// Candidate axes required for this observation to remain current.
+    #[must_use]
+    pub const fn dependencies(&self) -> (value: EvidenceDependencies)
+        ensures value == self.spec_dependencies(),
+    { self.dependencies }
+
     /// Typed evidence payload.
     #[must_use]
     pub const fn value(&self) -> (value: &T)
         ensures *value == self.spec_value(),
     { &self.value }
+
+    /// Whether every declared dependency axis matches the supplied candidate.
+    #[must_use]
+    pub fn binding_matches(&self, candidate: &CandidateIdentity) -> (matches: bool)
+        ensures matches == self.spec_binding_matches(candidate),
+    {
+        self.provenance.matches_evidence_axes(candidate, self.dependencies.execution())
+    }
 }
 
 /// Freshness and acquisition status of one typed evidence observation.
@@ -99,11 +180,11 @@ impl<T> EvidenceStatus<T> {
         }
     }
 
-    /// Current or failed evidence has the exact candidate binding and an earlier or equal sequence.
+    /// Current or failed evidence matches its dependency axes and an earlier or equal sequence.
     pub open spec fn spec_is_current_for(&self, candidate: &CandidateIdentity) -> bool {
         match self {
             Self::Current(record) | Self::Failed(record) =>
-                record.spec_provenance().spec_same_candidate(candidate)
+                record.spec_binding_matches(candidate)
                     && record.spec_provenance().spec_checkpoint_sequence()
                         <= candidate.spec_checkpoint_sequence(),
             Self::Missing | Self::Stale(_) => false,
@@ -113,7 +194,7 @@ impl<T> EvidenceStatus<T> {
     /// A stale label is consistent only when the retained candidate binding differs.
     pub open spec fn spec_is_validly_stale_for(&self, candidate: &CandidateIdentity) -> bool {
         match self {
-            Self::Stale(record) => !record.spec_provenance().spec_same_candidate(candidate),
+            Self::Stale(record) => !record.spec_binding_matches(candidate),
             _ => true,
         }
     }
@@ -146,7 +227,7 @@ impl<T> EvidenceStatus<T> {
         match self {
             Self::Current(record) | Self::Failed(record) => {
                 crate::verified::evidence_is_current(
-                    record.provenance.same_candidate(candidate),
+                    record.binding_matches(candidate),
                     record.provenance.checkpoint_sequence(),
                     candidate.checkpoint_sequence(),
                     true,
@@ -162,7 +243,7 @@ impl<T> EvidenceStatus<T> {
         ensures valid == self.spec_is_validly_stale_for(candidate),
     {
         match self {
-            Self::Stale(record) => !record.provenance.same_candidate(candidate),
+            Self::Stale(record) => !record.binding_matches(candidate),
             _ => true,
         }
     }
@@ -188,14 +269,14 @@ impl EvidenceStatus<QualificationEvidence> {
             match result {
             Ok(Self::Missing) => self == Self::Missing,
             Ok(Self::Current(record)) => record.spec_value() == QualificationEvidence::Satisfied
-                && record.spec_provenance().spec_same_candidate(candidate)
+                && record.spec_binding_matches(candidate)
                 && record.spec_provenance().spec_checkpoint_sequence()
                     <= candidate.spec_checkpoint_sequence(),
             Ok(Self::Failed(record)) => record.spec_value() == QualificationEvidence::Unsatisfied
-                && record.spec_provenance().spec_same_candidate(candidate)
+                && record.spec_binding_matches(candidate)
                 && record.spec_provenance().spec_checkpoint_sequence()
                     <= candidate.spec_checkpoint_sequence(),
-            Ok(Self::Stale(record)) => !record.spec_provenance().spec_same_candidate(candidate),
+            Ok(Self::Stale(record)) => !record.spec_binding_matches(candidate),
             Err(error) => error.spec_kind()
                 == crate::SettlementErrorKind::CurrentEvidenceBindingMismatch,
         },
@@ -204,7 +285,7 @@ impl EvidenceStatus<QualificationEvidence> {
             Self::Missing => return Ok(Self::Missing),
             Self::Current(record) | Self::Failed(record) | Self::Stale(record) => record,
         };
-        if !record.provenance.same_candidate(candidate) {
+        if !record.binding_matches(candidate) {
             return Ok(Self::Stale(record));
         }
         if record.provenance.checkpoint_sequence() > candidate.checkpoint_sequence() {
@@ -236,7 +317,7 @@ impl EvidenceStatus<QualificationEvidence> {
         match self {
             Self::Current(record) => {
                 crate::verified::evidence_is_current(
-                    record.provenance.same_candidate(candidate),
+                    record.binding_matches(candidate),
                     record.provenance.checkpoint_sequence(),
                     candidate.checkpoint_sequence(),
                     true,

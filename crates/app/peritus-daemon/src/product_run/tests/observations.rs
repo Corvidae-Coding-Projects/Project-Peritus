@@ -4,7 +4,7 @@ use crate::product_run::ProductRunServiceError;
 use peritus_app_protocol::AppResponsePayload;
 
 #[test]
-fn mixed_active_and_candidate_queries_encode_with_exact_evidence_and_legacy_summaries() {
+fn mixed_active_and_candidate_queries_encode_with_exact_evidence() {
     interaction::block_on(async {
         let repository = repository();
         let state = tempfile::tempdir().expect("state");
@@ -68,26 +68,22 @@ fn mixed_active_and_candidate_queries_encode_with_exact_evidence_and_legacy_summ
             peritus_run_settlement::RunDisposition::CandidateAvailable
         );
         encode(AppResponsePayload::ProductRunObservations(values));
-        let legacy = service.project_many(ProductRunQuery::recent()).expect("legacy list");
-        let AppResponsePayload::ProductRuns(summaries) = &legacy else {
-            panic!("mixed legacy summaries")
-        };
+        let observations = service.query_observations(ProductRunQuery::recent()).expect("mixed");
         assert!(
-            summaries
+            observations
                 .iter()
-                .find(|v| v.run_id() == candidate)
-                .expect("candidate summary")
+                .find(|value| value.snapshot().run_id() == candidate)
+                .expect("candidate observation")
+                .snapshot()
                 .deliverable()
-                .is_none()
+                .is_some()
         );
-        encode(legacy);
+        encode(AppResponsePayload::ProductRunObservations(observations));
         let exact =
-            service.project_many(ProductRunQuery::exact(candidate)).expect("exact candidate");
-        let AppResponsePayload::ProductRunSettlements(settled) = &exact else {
-            panic!("exact evidence")
-        };
-        assert_eq!(settled[0].snapshot().deliverable(), failed.deliverable());
-        encode(exact);
+            service.query_observations(ProductRunQuery::exact(candidate)).expect("exact candidate");
+        assert!(exact[0].snapshot().deliverable().is_some());
+        assert!(exact[0].settlement().is_some());
+        encode(AppResponsePayload::ProductRunObservations(exact));
         service.shutdown(Duration::from_secs(5)).await;
     });
 }

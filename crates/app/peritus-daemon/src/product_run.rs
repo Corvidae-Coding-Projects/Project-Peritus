@@ -51,8 +51,7 @@ use persistence::{load_records, persist_record};
 use progress::RunProgress;
 use recovery::reconcile_restored_candidates;
 use snapshot::{
-    initial_snapshot, live_snapshot, project_collection, project_snapshot, replace_snapshot,
-    workspace_has_active_run,
+    initial_snapshot, live_snapshot, project_snapshot, replace_snapshot, workspace_has_active_run,
 };
 
 #[derive(Clone)]
@@ -339,21 +338,6 @@ impl ProductRunService {
         let records = self.inner.records.read().map_err(|_| ProductRunServiceError::Unavailable)?;
         let record = records.get(&snapshot.run_id()).ok_or(ProductRunServiceError::NotFound)?;
         project_snapshot(record, snapshot)
-    }
-
-    pub(super) fn project_many(
-        &self,
-        query: ProductRunQuery,
-    ) -> Result<AppResponsePayload, ProductRunServiceError> {
-        let records = self.inner.records.read().map_err(|_| ProductRunServiceError::Unavailable)?;
-        let snapshots = records
-            .values()
-            .rev()
-            .filter(|record| query.run_id().is_none_or(|id| record.snapshot.run_id() == id))
-            .take(peritus_app_protocol::MAX_PRODUCT_RUNS)
-            .map(live_snapshot)
-            .collect::<Result<Vec<_>, _>>()?;
-        project_collection(&records, snapshots)
     }
 
     pub(super) fn query_conversation(

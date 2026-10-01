@@ -73,6 +73,17 @@ pub fn inspection_scroll_limit(model: &AppModel) -> u16 {
     }
 }
 
+pub fn inspection_scroll_page(model: &AppModel) -> u16 {
+    if model.view != View::Runs {
+        return 12;
+    }
+    let area = model.chat.viewport.unwrap_or(Rect::new(0, 0, 80, 24));
+    let regions =
+        Layout::vertical([Constraint::Length(3), Constraint::Min(4), Constraint::Length(1)])
+            .split(area);
+    product::scroll_page(regions[1])
+}
+
 fn render_event_view(frame: &mut Frame<'_>, area: Rect, model: &AppModel) {
     let sections = Layout::default()
         .direction(Direction::Horizontal)

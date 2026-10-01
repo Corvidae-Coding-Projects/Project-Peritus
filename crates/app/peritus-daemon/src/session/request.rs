@@ -239,9 +239,6 @@ where
             AppRequestPayload::QueryProductRunObservations(value) => {
                 response::product_run_observations(product_runs, *value)
             }
-            AppRequestPayload::QueryProductRuns(value) => {
-                product_run_collection(product_runs.project_many(*value))
-            }
             AppRequestPayload::ContinueProductRun(value) => {
                 match product_runs.continue_run(value).await {
                     Ok(snapshot) => product_run_projection(product_runs.project(snapshot)),
@@ -383,6 +380,6 @@ mod workbench;
 use response::terminal_error_payload;
 use response::{
     acknowledged, artifact_error_payload, canonical_request_frame, constrain_error_diagnostic,
-    product_run_collection, product_run_error, product_run_projection, prompt_error_payload,
-    subscription_error_code, terminal_operation,
+    product_run_error, product_run_projection, prompt_error_payload, subscription_error_code,
+    terminal_operation,
 };

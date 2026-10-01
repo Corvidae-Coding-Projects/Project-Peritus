@@ -364,10 +364,6 @@ fn runs_selects_current_conversation_and_refresh_clears_only_active_settlements(
     assert!(!product.settlements.contains_key(&snapshots[0].run_id()));
     assert_eq!(product.settlements.get(&snapshots[1].run_id()), Some(&settlement));
     assert_eq!(product.selected, 1);
-    model.features.push(
-        ProtocolFeatureName::well_known(WellKnownProtocolFeature::ProductRunObservations)
-            .expect("feature"),
-    );
     model.pending.clear();
     let effects = model.poll_product_runs();
     assert!(effects.iter().any(|effect| matches!(effect, Effect::Send(AppMessage::Request(request)) if matches!(request.payload(), AppRequestPayload::QueryProductRunObservations(_)))));

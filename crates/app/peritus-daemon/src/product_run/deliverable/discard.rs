@@ -134,8 +134,8 @@ fn binding(
     let checkpoint = record.checkpoint.map(|checkpoint| {
         let identity = checkpoint.identity();
         (
-            identity.candidate_digest().into_bytes(),
-            identity.conversation_revision(),
+            identity.repository_digest().into_bytes(),
+            identity.requirements_revision(),
             identity.checkpoint_sequence(),
         )
     });

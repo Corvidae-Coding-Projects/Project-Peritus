@@ -5,6 +5,83 @@ use peritus_run_settlement::CandidateStage;
 mod identity;
 
 #[test]
+fn canonical_record_rejects_omitted_current_fields() {
+    let record = PersistedRecord {
+        format_version: 2,
+        goal_resume: None,
+        interaction: None,
+        run_id: "01010101010101010101010101010101".to_owned(),
+        workspace_id: "02020202020202020202020202020202".to_owned(),
+        writer: "03030303030303030303030303030303".to_owned(),
+        reviewer: "04040404040404040404040404040404".to_owned(),
+        fixer: "05050505050505050505050505050505".to_owned(),
+        phase: ProductRunPhase::Complete.tag(),
+        cycle: 1,
+        task: "build tetris".to_owned(),
+        status: "qualified".to_owned(),
+        diff: "diff --git".to_owned(),
+        gates: "cargo test: PASS".to_owned(),
+        review: "clean".to_owned(),
+        summary: "candidate retained".to_owned(),
+        user_cancelled: false,
+        finding_state: String::new(),
+        deliverable: Some(PersistedDeliverable {
+            workspace_path: "/managed/tetris".to_owned(),
+            changed_paths: vec!["src/main.rs".to_owned()],
+            successful_commands: vec!["cargo test".to_owned()],
+            run_instructions: "cargo run".to_owned(),
+            qualification: CandidateStage::Qualified.tag(),
+            accepted: false,
+            commit_revision: String::new(),
+            export_path: String::new(),
+            discarded: false,
+        }),
+        messages: vec![PersistedMessage {
+            role: ProductConversationRole::User.tag(),
+            content: "build tetris".to_owned(),
+        }],
+        conversation_revision: 1,
+        progress: PersistedProgress::default(),
+        checkpoint: None,
+        settlement_cause: None,
+        resume_state: None,
+        remaining_work: Vec::new(),
+        interruption_cause: String::new(),
+        candidate_actionable: true,
+        task_baseline_required: true,
+        task_baseline: None,
+        preview_page: None,
+        preview_operations: Vec::new(),
+        preview_outputs: Vec::new(),
+    };
+    let canonical = serde_json::to_value(record).expect("canonical record JSON");
+
+    for field in [
+        "format_version",
+        "conversation_revision",
+        "candidate_actionable",
+        "task_baseline_required",
+    ] {
+        let mut missing = canonical.clone();
+        missing.as_object_mut().expect("record object").remove(field);
+        assert!(
+            serde_json::from_value::<PersistedRecord>(missing).is_err(),
+            "omitted current field {field} must not acquire a compatibility default",
+        );
+    }
+
+    let mut missing_qualification = canonical;
+    missing_qualification["deliverable"]
+        .as_object_mut()
+        .expect("deliverable object")
+        .remove("qualification");
+    assert!(
+        serde_json::from_value::<PersistedRecord>(missing_qualification).is_err(),
+        "omitted qualification must not become an implicitly qualified candidate",
+    );
+}
+
+#[test]
 fn ungoverned_workbench_projection_is_quarantined_without_blocking_startup() {
     let state = tempfile::tempdir().expect("state");
     let root = state.path().join("workbench-v1");
@@ -24,38 +101,9 @@ fn ungoverned_workbench_projection_is_quarantined_without_blocking_startup() {
 }
 
 #[test]
-fn legacy_run_without_messages_gains_a_resumable_conversation() {
-    let json = r#"{
-        "run_id":"01010101010101010101010101010101",
-        "workspace_id":"02020202020202020202020202020202",
-        "writer":"03030303030303030303030303030303",
-        "reviewer":"04040404040404040404040404040404",
-        "fixer":"05050505050505050505050505050505",
-        "phase":8,
-        "cycle":1,
-        "task":"build tetris",
-        "status":"parse model file plan failed",
-        "diff":"",
-        "gates":"",
-        "review":"",
-        "summary":"invalid escape"
-    }"#;
-    let persisted: PersistedRecord = serde_json::from_str(json).expect("legacy record");
-    let record = persisted.into_record().expect("migrated record");
-    let conversation = record.conversation.snapshot().expect("conversation");
-
-    assert_eq!(record.snapshot.phase(), ProductRunPhase::Failed);
-    assert_eq!(record.progress.provider_failovers, 0);
-    assert_eq!(record.progress.workspace_growth_bytes, 0);
-    assert_eq!(record.progress.peak_rss_bytes, 0);
-    assert_eq!(conversation.messages().len(), 2);
-    assert_eq!(conversation.messages()[0].content(), "build tetris");
-    assert!(conversation.messages()[1].content().contains("invalid escape"));
-}
-
-#[test]
 fn cancelled_recovery_record_does_not_become_automatically_resumable() {
     let json = r#"{
+        "format_version":2,
         "run_id":"01010101010101010101010101010101",
         "workspace_id":"02020202020202020202020202020202",
         "writer":"03030303030303030303030303030303",
@@ -69,7 +117,22 @@ fn cancelled_recovery_record_does_not_become_automatically_resumable() {
         "gates":"",
         "review":"",
         "summary":"interrupted",
-        "user_cancelled":true
+        "user_cancelled":true,
+        "finding_state":"",
+        "deliverable":null,
+        "messages":[{"role":1,"content":"build tetris"}],
+        "conversation_revision":1,
+        "progress":{"started_unix_millis":0,"last_effect_unix_millis":0,"model_requests":0,"tool_calls":0,"retries":0,"provider_failovers":0,"compactions":0,"input_tokens":0,"cached_input_tokens":0,"output_tokens":0,"total_tokens":0,"provider_cost_microunits":0,"usage_observations":0,"workspace_bytes":0,"workspace_growth_bytes":0,"peak_rss_bytes":0},
+        "checkpoint":null,
+        "settlement_cause":null,
+        "resume_state":null,
+        "remaining_work":[],
+        "interruption_cause":"",
+        "candidate_actionable":false,
+        "task_baseline_required":false,
+        "preview_page":null,
+        "preview_operations":[],
+        "preview_outputs":[]
     }"#;
     let persisted: PersistedRecord = serde_json::from_str(json).expect("recovery record");
 
@@ -80,70 +143,9 @@ fn cancelled_recovery_record_does_not_become_automatically_resumable() {
 }
 
 #[test]
-fn cancelled_record_can_be_transformed_for_safe_legacy_downgrade() {
-    fn record(phase: u16, status: &str, interactive: bool) -> serde_json::Value {
-        let mut value = serde_json::json!({
-            "run_id":"01010101010101010101010101010101",
-            "workspace_id":"02020202020202020202020202020202",
-            "writer":"03030303030303030303030303030303",
-            "reviewer":"04040404040404040404040404040404",
-            "fixer":"05050505050505050505050505050505",
-            "phase": phase, "cycle":1, "task":"build tetris", "status":status,
-            "diff":"", "gates":"", "review":"", "summary":"interrupted",
-            "user_cancelled":true
-        });
-        if interactive {
-            value["interaction"] = serde_json::json!({
-                "mode": 1, "models": [["", false], ["", false], ["", false]],
-                "incorporated": 0, "next_sequence": 1, "activities": []
-            });
-        }
-        value
-    }
-
-    fn downgrade(mut value: serde_json::Value) -> serde_json::Value {
-        let object = value.as_object_mut().expect("record object");
-        let raw = u16::try_from(object["phase"].as_u64().expect("phase")).expect("u16 phase");
-        let offset = if let Some(interaction) = object.get("interaction") {
-            if interaction.get("workbench").is_some() { 200 } else { 100 }
-        } else {
-            0
-        };
-        let phase = raw
-            .checked_sub(offset)
-            .and_then(ProductRunPhase::from_tag)
-            .expect("known phase and interaction offset");
-        if !phase.terminal() || phase == ProductRunPhase::RecoveryRequired {
-            object.insert(
-                "phase".to_owned(),
-                serde_json::Value::from(offset + ProductRunPhase::Cancelled.tag()),
-            );
-            object.insert("status".to_owned(), serde_json::Value::from("Run cancelled"));
-        }
-        object.remove("user_cancelled");
-        value
-    }
-
-    for (raw_phase, status, interactive, expected_phase, expected_status) in [
-        (10, "recovery required", false, ProductRunPhase::Cancelled, "Run cancelled"),
-        (9, "Run cancelled", false, ProductRunPhase::Cancelled, "Run cancelled"),
-        (7, "Complete", false, ProductRunPhase::Complete, "Complete"),
-        (110, "recovery required", true, ProductRunPhase::Cancelled, "Run cancelled"),
-    ] {
-        let value = downgrade(record(raw_phase, status, interactive));
-        assert!(value.get("user_cancelled").is_none());
-        assert_eq!(value["status"], expected_status);
-        let persisted: PersistedRecord =
-            serde_json::from_value(value).expect("legacy-shape record");
-        let restored = persisted.into_record().expect("downgraded terminal record");
-        assert_eq!(restored.snapshot.phase(), expected_phase);
-        assert!(!restored.user_cancelled);
-    }
-}
-
-#[test]
 fn durable_finding_state_survives_record_restoration() {
     let json = r#"{
+        "format_version":2,
         "run_id":"11111111111111111111111111111111",
         "workspace_id":"12121212121212121212121212121212",
         "writer":"13131313131313131313131313131313",
@@ -157,7 +159,22 @@ fn durable_finding_state_survives_record_restoration() {
         "gates":"cargo test: PASS",
         "review":"nested target finding",
         "summary":"implementation retained",
-        "finding_state":"{\"cycle\":1,\"summary\":\"nested target finding\",\"findings\":[]}"
+        "user_cancelled":false,
+        "finding_state":"{\"cycle\":1,\"summary\":\"nested target finding\",\"findings\":[]}",
+        "deliverable":null,
+        "messages":[{"role":1,"content":"build tetris"}],
+        "conversation_revision":1,
+        "progress":{"started_unix_millis":0,"last_effect_unix_millis":0,"model_requests":0,"tool_calls":0,"retries":0,"provider_failovers":0,"compactions":0,"input_tokens":0,"cached_input_tokens":0,"output_tokens":0,"total_tokens":0,"provider_cost_microunits":0,"usage_observations":0,"workspace_bytes":0,"workspace_growth_bytes":0,"peak_rss_bytes":0},
+        "checkpoint":null,
+        "settlement_cause":null,
+        "resume_state":null,
+        "remaining_work":[],
+        "interruption_cause":"",
+        "candidate_actionable":false,
+        "task_baseline_required":false,
+        "preview_page":null,
+        "preview_operations":[],
+        "preview_outputs":[]
     }"#;
     let persisted: PersistedRecord = serde_json::from_str(json).expect("persisted record");
     let expected = persisted.finding_state.clone();
@@ -170,6 +187,7 @@ fn durable_finding_state_survives_record_restoration() {
 #[test]
 fn candidate_qualification_is_independent_from_user_disposition() {
     let json = r#"{
+        "format_version":2,
         "run_id":"21212121212121212121212121212121",
         "workspace_id":"22222222222222222222222222222222",
         "writer":"23232323232323232323232323232323",
@@ -183,6 +201,8 @@ fn candidate_qualification_is_independent_from_user_disposition() {
         "gates":"cargo test failed",
         "review":"review missing",
         "summary":"candidate retained",
+        "user_cancelled":false,
+        "finding_state":"",
         "deliverable":{
             "workspace_path":"/managed/tetris",
             "changed_paths":["src/main.rs"],
@@ -193,7 +213,20 @@ fn candidate_qualification_is_independent_from_user_disposition() {
             "commit_revision":"",
             "export_path":"/tmp/tetris.patch",
             "discarded":false
-        }
+        },
+        "messages":[{"role":1,"content":"build tetris"}],
+        "conversation_revision":1,
+        "progress":{"started_unix_millis":0,"last_effect_unix_millis":0,"model_requests":0,"tool_calls":0,"retries":0,"provider_failovers":0,"compactions":0,"input_tokens":0,"cached_input_tokens":0,"output_tokens":0,"total_tokens":0,"provider_cost_microunits":0,"usage_observations":0,"workspace_bytes":0,"workspace_growth_bytes":0,"peak_rss_bytes":0},
+        "checkpoint":null,
+        "settlement_cause":null,
+        "resume_state":null,
+        "remaining_work":[],
+        "interruption_cause":"",
+        "candidate_actionable":true,
+        "task_baseline_required":false,
+        "preview_page":null,
+        "preview_operations":[],
+        "preview_outputs":[]
     }"#;
     let persisted: PersistedRecord = serde_json::from_str(json).expect("candidate record");
     let record = persisted.into_record().expect("restored record");
@@ -205,51 +238,22 @@ fn candidate_qualification_is_independent_from_user_disposition() {
 }
 
 #[test]
-fn legacy_deliverable_without_qualification_migrates_as_qualified() {
-    let json = r#"{
-        "run_id":"31313131313131313131313131313131",
-        "workspace_id":"32323232323232323232323232323232",
-        "writer":"33333333333333333333333333333333",
-        "reviewer":"34343434343434343434343434343434",
-        "fixer":"35353535353535353535353535353535",
-        "phase":7,
-        "cycle":1,
-        "task":"build tetris",
-        "status":"complete",
-        "diff":"diff --git",
-        "gates":"pass",
-        "review":"pass",
-        "summary":"done",
-        "deliverable":{
-            "workspace_path":"/managed/tetris",
-            "changed_paths":["src/main.rs"],
-            "successful_commands":["cargo test"],
-            "run_instructions":"cargo run",
-            "accepted":false,
-            "commit_revision":"",
-            "export_path":"",
-            "discarded":false
-        }
-    }"#;
-    let persisted: PersistedRecord = serde_json::from_str(json).expect("legacy record");
-    let record = persisted.into_record().expect("migrated record");
-
-    assert_eq!(
-        record.snapshot.deliverable().expect("deliverable").qualification(),
-        CandidateStage::Qualified,
-    );
-}
-
-#[test]
 fn restart_restores_each_resumable_phase_and_preserves_completed_writer_state() {
     use peritus_run_settlement::{CandidateCheckpoint, CandidateIdentity, EvidenceStatus};
     use peritus_types::Sha256Digest;
 
     let run_id = RunId::new([0x41; 16]).expect("run");
     let workspace_id = WorkspaceId::new([0x42; 16]).expect("workspace");
-    let identity =
-        CandidateIdentity::new(run_id, workspace_id, Sha256Digest::new([0x43; 32]), 1, 2)
-            .expect("identity");
+    let identity = CandidateIdentity::new(
+        run_id,
+        workspace_id,
+        Sha256Digest::new([0x43; 32]),
+        Sha256Digest::new([0x43; 32]),
+        None,
+        1,
+        2,
+    )
+    .expect("identity");
     let checkpoint = CandidateCheckpoint::new(
         identity,
         CandidateStage::Changed,
@@ -269,6 +273,7 @@ fn restart_restores_each_resumable_phase_and_preserves_completed_writer_state() 
     ] {
         let resume = durable_resume_json(identity, phase_tag);
         let record = PersistedRecord {
+            format_version: 2,
             interaction: None,
             goal_resume: None,
             task_baseline_required: false,
@@ -293,7 +298,7 @@ fn restart_restores_each_resumable_phase_and_preserves_completed_writer_state() 
                 changed_paths: vec!["src/main.rs".to_owned()],
                 successful_commands: Vec::new(),
                 run_instructions: "cargo run".to_owned(),
-                qualification: Some(CandidateStage::Changed.tag()),
+                qualification: CandidateStage::Changed.tag(),
                 accepted: false,
                 commit_revision: String::new(),
                 export_path: String::new(),
@@ -310,7 +315,7 @@ fn restart_restores_each_resumable_phase_and_preserves_completed_writer_state() 
             resume_state: Some(resume),
             remaining_work: vec!["finish current phase".to_owned()],
             interruption_cause: "daemon restart".to_owned(),
-            candidate_actionable: Some(true),
+            candidate_actionable: true,
             preview_page: None,
             preview_operations: Vec::new(),
             preview_outputs: Vec::new(),
@@ -340,10 +345,15 @@ fn durable_resume_json(identity: peritus_run_settlement::CandidateIdentity, phas
             serde_json::to_value(identity.workspace_id().as_bytes()).expect("workspace ID"),
         ),
         (
-            "candidate_digest",
-            serde_json::to_value(identity.candidate_digest().as_bytes()).expect("digest"),
+            "content_digest",
+            serde_json::to_value(identity.content_digest().as_bytes()).expect("content digest"),
         ),
-        ("conversation_revision", Value::from(identity.conversation_revision())),
+        (
+            "repository_digest",
+            serde_json::to_value(identity.repository_digest().as_bytes())
+                .expect("repository digest"),
+        ),
+        ("requirements_revision", Value::from(identity.requirements_revision())),
         ("checkpoint_sequence", Value::from(identity.checkpoint_sequence())),
     ]);
     let checkpoint = json_object([
@@ -354,7 +364,7 @@ fn durable_resume_json(identity: peritus_run_settlement::CandidateIdentity, phas
         ("review", missing),
     ]);
     serde_json::to_vec(&json_object([
-        ("version", Value::from(1)),
+        ("version", Value::from(2)),
         ("checkpoint", checkpoint),
         ("baseline_head", Value::from("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")),
         ("next_phase", Value::from(phase)),

@@ -8,19 +8,14 @@ impl ProductRunService {
                 .directory
                 .join(format!("{}.trace", launch::run_hex(record.request.run_id())));
             match peritus_product_runner::ProductRunner::retained_task_baseline(&trace) {
-                Ok(Some(baseline)) => record.task_baseline = Some(baseline),
-                missing => {
+                Ok(baseline) => record.task_baseline = Some(baseline),
+                Err(error) => {
                     record.candidate_actionable = false;
-                    let detail = match missing {
-                        Err(error) => error.to_string(),
-                        _ => "Task baseline is missing; user preimages cannot be verified."
-                            .to_owned(),
-                    };
                     if let Ok(snapshot) = replace_snapshot(
                         &record.snapshot,
                         ProductRunPhase::RecoveryRequired,
                         "Retain task baseline failed",
-                        &detail,
+                        &error.to_string(),
                     ) {
                         record.snapshot = snapshot;
                     }

@@ -10,6 +10,8 @@ use super::{
     restore_settlement,
 };
 
+const FORMAT_VERSION: u16 = 2;
+
 impl PersistedRecord {
     pub(super) fn from_record(record: &RunRecord) -> Result<Self, ProductRunServiceError> {
         let snapshot = &record.snapshot;
@@ -24,6 +26,7 @@ impl PersistedRecord {
             })
             .collect();
         Ok(Self {
+            format_version: FORMAT_VERSION,
             goal_resume: record.goal_resume.map(|operation| *operation.as_bytes()),
             interaction: record
                 .interaction
@@ -34,7 +37,7 @@ impl PersistedRecord {
             writer: hex(providers.writer().as_bytes()),
             reviewer: hex(providers.reviewer().as_bytes()),
             fixer: hex(providers.fixer().as_bytes()),
-            // Old readers reject interactive records instead of retrying them as build runs.
+            // Interactive ownership occupies a separate tag range in the canonical record.
             phase: snapshot.phase().tag()
                 + record
                     .interaction
@@ -63,7 +66,7 @@ impl PersistedRecord {
                 .map_err(|_| ProductRunServiceError::Unavailable)?,
             remaining_work: record.remaining_work.clone(),
             interruption_cause: record.interruption_cause.clone(),
-            candidate_actionable: Some(record.candidate_actionable),
+            candidate_actionable: record.candidate_actionable,
             task_baseline_required: record.task_baseline_required,
             task_baseline: record.task_baseline.clone(),
             preview_page: record
@@ -107,6 +110,12 @@ impl PersistedRecord {
         self,
         governed: Option<&str>,
     ) -> Result<RunRecord, ProductRunServiceError> {
+        // Resumable execution crosses its process boundary while decoding the continuation.
+        // Terminal handoffs are reconciled later, after crash-safe commit/discard receipts have
+        // been inspected against the exact identity that created them.
+        if self.format_version != FORMAT_VERSION {
+            return Err(ProductRunServiceError::InvalidMessage);
+        }
         let interaction =
             self.interaction.map(interaction::PersistedInteraction::restore).transpose()?;
         if self.goal_resume.is_some()
@@ -169,21 +178,14 @@ impl PersistedRecord {
         } else if self.user_cancelled {
             (ProductRunPhase::Cancelled, "Run cancelled".to_owned())
         } else if loaded_phase == ProductRunPhase::RecoveryRequired {
-            let status = if self.status
-                == "Daemon restart interrupted this run; continuing automatically"
-            {
-                "Daemon restart interrupted this run; explicit retry is required to avoid replaying an indeterminate effect".to_owned()
-            } else {
-                self.status
-            };
-            (loaded_phase, status)
+            (loaded_phase, self.status)
         } else {
             (
                     ProductRunPhase::RecoveryRequired,
                     "Daemon restart interrupted this run; explicit retry is required to avoid replaying an indeterminate effect".to_owned(),
                 )
         };
-        let mut messages = self
+        let messages = self
             .messages
             .into_iter()
             .map(|message| {
@@ -193,29 +195,10 @@ impl PersistedRecord {
                     .map_err(|_| ProductRunServiceError::InvalidMessage)
             })
             .collect::<Result<Vec<_>, _>>()?;
-        if messages.is_empty() {
-            messages.push(
-                ProductConversationMessage::new(ProductConversationRole::User, self.task.clone())
-                    .map_err(|_| ProductRunServiceError::InvalidMessage)?,
-            );
-            if loaded_phase.terminal() && !self.summary.trim().is_empty() {
-                messages.push(
-                    ProductConversationMessage::new(
-                        ProductConversationRole::Agent,
-                        format!("{}: {}", status, self.summary),
-                    )
-                    .map_err(|_| ProductRunServiceError::InvalidMessage)?,
-                );
-            }
+        if messages.is_empty() || self.conversation_revision == 0 {
+            return Err(ProductRunServiceError::InvalidMessage);
         }
-        let conversation_revision = if self.conversation_revision == 0 {
-            messages
-                .iter()
-                .filter(|message| message.role() == ProductConversationRole::User)
-                .count() as u64
-        } else {
-            self.conversation_revision
-        };
+        let conversation_revision = self.conversation_revision;
         let conversation =
             SharedConversation::new_with_revision(run_id, messages, conversation_revision)?;
         if interaction.as_ref().is_some_and(|state| {
@@ -228,7 +211,10 @@ impl PersistedRecord {
         let resume = self
             .resume_state
             .map(|bytes| {
-                ProductRunResume::decode_durable(&bytes, governed.unwrap_or(&conversation.render()))
+                ProductRunResume::decode_durable_retained(
+                    &bytes,
+                    governed.unwrap_or(&conversation.render()),
+                )
             })
             .transpose()
             .map_err(|_| ProductRunServiceError::InvalidMessage)?;
@@ -240,17 +226,6 @@ impl PersistedRecord {
         if invalid_lineage || resume_mismatch {
             return Err(ProductRunServiceError::InvalidMessage);
         }
-        // Older records used human acceptance wording for automated qualification.
-        // A projection label cannot create a user decision or restore absent evidence.
-        let status = if status == "Accepted — passing checks and independent review" {
-            if checkpoint.is_some_and(|value| value.is_qualified()) {
-                "Qualified — passing checks and independent review".to_owned()
-            } else {
-                "Candidate available — inspect current qualification".to_owned()
-            }
-        } else {
-            status
-        };
         let mut snapshot = ProductRunSnapshot::new(
             run_id,
             workspace_id,
@@ -292,7 +267,7 @@ impl PersistedRecord {
             resume,
             remaining_work: self.remaining_work,
             interruption_cause: self.interruption_cause,
-            candidate_actionable: self.candidate_actionable.unwrap_or(true),
+            candidate_actionable: self.candidate_actionable,
             task_baseline_required: self.task_baseline_required,
             task_baseline: self.task_baseline,
             preview,

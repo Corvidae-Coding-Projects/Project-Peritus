@@ -16,15 +16,18 @@ impl AppModel {
         {
             return Some(effects);
         }
-        if matches!(self.view, View::Diff | View::Review | View::Preview)
+        if matches!(self.view, View::Runs | View::Diff | View::Review | View::Preview)
             && matches!(
                 key.code,
                 KeyCode::PageUp | KeyCode::PageDown | KeyCode::Home | KeyCode::End
             )
         {
             let maximum = crate::render::inspection_scroll_limit(self);
+            let page = crate::render::inspection_scroll_page(self);
             if let Some(product) = &mut self.product {
-                let offset = if self.view == View::Preview {
+                let offset = if self.view == View::Runs {
+                    &mut product.detail_scroll
+                } else if self.view == View::Preview {
                     &mut product.preview_scroll
                 } else if self.view == View::Diff
                     && product.review.page.is_some()
@@ -36,8 +39,8 @@ impl AppModel {
                 };
                 let current = (*offset).min(maximum);
                 *offset = match key.code {
-                    KeyCode::PageUp => current.saturating_sub(12),
-                    KeyCode::PageDown => current.saturating_add(12).min(maximum),
+                    KeyCode::PageUp => current.saturating_sub(page),
+                    KeyCode::PageDown => current.saturating_add(page).min(maximum),
                     KeyCode::End => maximum,
                     _ => 0,
                 };
