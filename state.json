@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1812,
-        "tip_oid": "5e3ddce34504d045919700815061238cfeff9746",
-        "prefix_sha256": "f97a53d3f2260ae4449303168cd93de44170f0cd0e73a609907f2a981a66d969"
+        "sequence": 1813,
+        "tip_oid": "b0ab92ae83a42fad0f8deb7481a3f9899f24b0bd",
+        "prefix_sha256": "ba418ec99dc6464c5d7179526836b7d988d7808b9a570a9bfecdcad01acc6cb6"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 1952,
+  "next_comment_id": 1953,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -16544,7 +16544,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-28T00:58:41.412806074Z",
-      "updated_at": "2026-10-01T01:08:07.315348127Z",
+      "updated_at": "2026-10-01T01:15:25.251163410Z",
       "labels": [
         "bug"
       ],
@@ -17385,6 +17385,15 @@
           "kind": "handoff",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAywHZ8uuQc0pkxA/LORwuC7VFeu+msoQv5EbO5lWMFkV/P4Ngem2F7l/Nc1lKaPgHeSXtkKECby4/cSuMaQu2Ag=="
+        },
+        "f4271316-1b4c-4ba7-b00e-d1dab1a9cba3": {
+          "display_id": 1952,
+          "author": "6ME5",
+          "content": "055eddd1c: fix(product): reconcile qualification from current evidence (#99). Signed28-file increment. One settlement-domain rule now reconciles retained evidence and current supported qualification across runtime, restart and commit handoff. Reproduced unchanged-file fresh failed-gate invariant, repaired; qualification may decrease while observation sequence advances. Explicit commit binds final snapshot while retaining historical evidence; normal TUI distinguishes qualification, acceptance and commitment, including old persisted wording. Live account-backed57573 qualified then inspected/accepted/exported/committed via UI to3070e11, only greet/test; v ran20 checks and restored UI, then saved conversation reopened after normal restart and v passed again with identical checkpoint/handoff. Source9 and managed8 file hashes/modes preserved, staged README and human draft intact. Workspace3695 passed0 failed19 ignored; affected1082; final handoff4; Verus75; strict Linux/WindowsGNU lint, workspace build, format and xtaskall passed. No wire/schema fields changed. Native hosted CI pending. Architecture goal remains active: explicit content/context evidence dependencies, authoritative recovery projections and unknown-command UI recovery, host facts retained across malformed reports, and persistent daily-job qualification remain required.",
+          "created_at": "2026-10-01T01:15:25.247077283Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAiWtvK8xZX5qWB2OW+okcU6PFFrgJYPW9+fTsGATxDBwcDvLtvIE2yJk+jiPafudDgCPGwg5TcMWV4C8Tzv8FAg=="
         },
         "f8a85ebd-f43a-410c-bee5-67d4ddaf7ac5": {
           "display_id": 1878,
