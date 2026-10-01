@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1889,
-        "tip_oid": "b499adf637edc1460c3017d5ba7eb08a1993134b",
-        "prefix_sha256": "ff35d470e0b98fd2f3697482497102f8b6212e9c03aa3045c0127d65a2b21b44"
+        "sequence": 1890,
+        "tip_oid": "94f72d04a9acc62c7f7d5fc7a9ef510f52c1d385",
+        "prefix_sha256": "bed44d6046ba08d90d4d7c7ce2c9e72271bdb609d5c9b4b7cfb82f08c285779c"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 2011,
+  "next_comment_id": 2012,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -16544,7 +16544,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-28T00:58:41.412806074Z",
-      "updated_at": "2026-10-01T11:19:55.437711511Z",
+      "updated_at": "2026-10-01T11:25:05.894624872Z",
       "labels": [
         "bug"
       ],
@@ -17583,6 +17583,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAU9hMT8WXURoxn3QU5lYWZAPXb0VNMKJRideAAj5/UQ0IOVE/G2HMk6nky6/6NWlwi0u06o9DvnsMFHG4kreNDA=="
+        },
+        "b4ac269d-96fd-49ff-92d8-d735534415a6": {
+          "display_id": 2011,
+          "author": "6ME5",
+          "content": "[action] Reproduced a second daily-driver blocker twice: exact requested result.txt outputs remained uncovered despite host presence and byte checks, causing 325k/456k-token fixer loops. Joined the single explicit-path analysis to target planning; exact requested manifestless artifacts now receive host-owned coverage while unrequested siblings remain uncovered. Focused suites, strict clippy, fmt, diff check, and daemon build pass.",
+          "created_at": "2026-10-01T11:25:05.890905597Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABApETUW7aLztebQB46G6x8Lkhfl24yaWincWGMGGMDS5YCqyxshHIBS0RdFdwHwuhCbEp1ZTTBy+Vtog6Bw/n6Bg=="
         },
         "b5040e54-d504-443e-89a9-dd72ee35f42c": {
           "display_id": 1879,
