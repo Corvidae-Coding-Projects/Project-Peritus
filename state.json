@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1851,
-        "tip_oid": "f032ae2f0c7ec1d241437f0ed075a976fc01c9db",
-        "prefix_sha256": "1b79d7ace3a98ec60ddcd4a21c7f4f90cebf041dcc4103cf27fca8b4e8931ab4"
+        "sequence": 1857,
+        "tip_oid": "fd0a47296c0452d48f389502185909d8ee810f6a",
+        "prefix_sha256": "44108ce6aa452c594041f15b8e3cf5a358b13963785ef5c6e3fa5a5766343422"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 1980,
+  "next_comment_id": 1986,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -16540,7 +16540,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-28T00:58:41.412806074Z",
-      "updated_at": "2026-10-01T07:56:44.184518552Z",
+      "updated_at": "2026-10-01T09:02:07.962247493Z",
       "labels": [
         "bug"
       ],
@@ -16698,6 +16698,15 @@
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAnMwu6QVPvKbBBiU/VlMTbSWkWDBAkOpWlqAHMWpPhQrKreN+5MiZ1FfKU8xXGnQZfTchRAKZi2DH2IFHF8xkBA=="
         },
+        "1eb8c52e-de15-4b0e-871d-324d646fb49b": {
+          "display_id": 1981,
+          "author": "6ME5",
+          "content": "Session auto-ended (stale after 421 minutes). No handoff notes provided.",
+          "created_at": "2026-10-01T08:22:43.164713271Z",
+          "kind": "handoff",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABASzHF1pNGX8tmfRddFXYA8fpDZNE3bl30UyKBeVhv2gsUZReMyMJneCq6MMzoeVhJQ1Ycnwb60qwoO8k1EuvoBQ=="
+        },
         "207f21fd-6df8-4c1c-812f-48cbb4ff2e77": {
           "display_id": 1943,
           "author": "6ME5",
@@ -16733,6 +16742,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA3zM4tJ0ZsWbMURN73kwIbicDf6qkzVguogkmLlEb2beV8TI91rt2AGdL3XyxED2ghe/4JbYf+j2+xRvnRpCzDQ=="
+        },
+        "30551c65-a2fd-446a-8320-b6c1cb77edde": {
+          "display_id": 1980,
+          "author": "6ME5",
+          "content": "Session auto-ended (stale after 405 minutes). No handoff notes provided.",
+          "created_at": "2026-10-01T08:06:06.178359677Z",
+          "kind": "handoff",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAN+Qo6zScUD9i8GUl/kcy5ikqROzBOO6tx9pqjLHpTsCkS9DKMnu8vDDiHpHq6+K37X/0MiB81OiVvLbk01SLAQ=="
         },
         "31af2a9f-d46d-44bb-b8c4-8377aaf88e9d": {
           "display_id": 1918,
@@ -16851,6 +16869,15 @@
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAuJ2jGUblj/uF5PaRPy7/G979/uEqRpuRq+rKCGMj8SSADmSdCOCAKW0kWvTmtSjZnG08TmeftlYQ4r9PPv5fAQ=="
         },
+        "48d82c65-36c0-4a21-b929-2a1a7edaed40": {
+          "display_id": 1984,
+          "author": "6ME5",
+          "content": "Session auto-ended (stale after 459 minutes). No handoff notes provided.",
+          "created_at": "2026-10-01T09:00:34.400890597Z",
+          "kind": "handoff",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABACZQ6dOPMODUmxGD/dP+RlMP6WTxTDRnsPP0jETj7Vy9TtqjMUekcUGbdv0WybMI9Z8MO+rE/Sx8/OzdErN1ODA=="
+        },
         "492ecb4c-be92-4590-bee4-a8b6cbf22898": {
           "display_id": 1888,
           "author": "6ME5",
@@ -16886,6 +16913,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAWdosC5s1o7Voz57+Lk1Y836dyZ+4J9tY3W8yTePkgQae3RFY1gtGgwgkeglUIX6QosI03EcZZqQr5+k7+CH1Dg=="
+        },
+        "4f5ece79-fa40-4f02-8d4c-148841f9f679": {
+          "display_id": 1983,
+          "author": "6ME5",
+          "content": "Session auto-ended (stale after 444 minutes). No handoff notes provided.",
+          "created_at": "2026-10-01T08:45:40.209835448Z",
+          "kind": "handoff",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAkZcFyXT0TzFS/TqtxLEblBsAHmTzuxk5tsdyDKnyKzAQow3eh3YwYtxCXXYAy/uKEDCAxW8Q+kmaa2RdRbnaDQ=="
         },
         "4ff38dd5-62bc-48f9-9059-f6ba1c5182d2": {
           "display_id": 1978,
@@ -16985,6 +17021,15 @@
           "kind": "observation",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABATUto4YuxYpCVxczrbZB7R3TnjNqNomGOdDu92FR94H+x3KYqQC8r+s7Ao2OafqU7kdNTxBI0I3+8hR+QqztLBg=="
+        },
+        "5caf5d2e-907e-487e-a017-afefc839bf67": {
+          "display_id": 1982,
+          "author": "6ME5",
+          "content": "Session auto-ended (stale after 434 minutes). No handoff notes provided.",
+          "created_at": "2026-10-01T08:35:21.570285679Z",
+          "kind": "handoff",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABACNwAaWKjbRTZdK1NgzqCgzenAvlwEY1ECMoLtS8UROS5rRd1Iu5MwcA0APsU3pXgKtE9GPUC09/qzv7iSfoEBQ=="
         },
         "5e8b4cd8-ca0e-428d-b51f-661637a3c1f2": {
           "display_id": 1942,
@@ -17354,6 +17399,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABALA+Fmy7z0jDhdmYV7o1ei2C9Xvjj3c7LzhVAz1+j5z0bb1kzMCHzI6Y2fHJsIBoHQiwuhjekp9J6V/zs5W5CDQ=="
+        },
+        "aa22a1e4-9f1c-46f5-a3ef-65f517d0de63": {
+          "display_id": 1985,
+          "author": "6ME5",
+          "content": "Published signed commit 4cd82f72d to draft PR #105. The product-run model now has one required durable workbench interaction owner and one conversation destination; direct/continuation compatibility paths and the public ProductRunRequest contract were removed. Persistence is strict format 6 with separate execution_task and user-facing title. Real TUI qualification created a run, restarted the TUI, restored its exact transcript/title, then killed the daemon and verified explicit interrupted-state recovery after reconnect. Linux provider children now receive parent-death containment. Gates passed: protocol/daemon/TUI/CLI/Web/provider suites, clippy -D warnings, workspace check, codegen, architecture, source layout, fmt, and diff check. Residual qualification: multi-day use and non-Linux hard-crash descendant containment remain.",
+          "created_at": "2026-10-01T09:02:07.958225573Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABACcset1nXCExWu7Ew5KdGPmdfK2aotSlO+y5+upwAaiYcUW/dmSvX7BB1sPAlESz0oLWkWD9v5zVEj9ZUB5XzAg=="
         },
         "ac529bc5-c60e-4f4b-ad06-95ea6b920d2a": {
           "display_id": 1977,
