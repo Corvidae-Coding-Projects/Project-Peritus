@@ -6,9 +6,11 @@ use std::{
 };
 
 use peritus_app_protocol::{
-    AppRequestPayload, AppResponsePayload, CorrelationId, ProductActivityKind,
-    ProductInteractionMode, ProductInteractionRequest, ProductProviderSelection, ProductRoleModels,
-    ProductRunConversationQuery, ProductRunPhase, ProductRunRequest, RequestId,
+    AppRequestPayload, AppResponsePayload, ControlOperationId, ConversationId, ConversationTitle,
+    CorrelationId, ProductActivityKind, ProductInteractionMode, ProductProviderSelection,
+    ProductRoleModels, ProductRunConversationQuery, ProductRunPhase, RequestId, WorkbenchCommand,
+    WorkbenchExecutionSettings, WorkbenchInputId, WorkbenchInputOrder, WorkbenchInputText,
+    WorkbenchIntent, WorkbenchNewInput, WorkbenchQuery, WorkbenchQueueIntent, WorkbenchReceipt,
 };
 use peritus_types::{ProviderProfileId, RunId, WorkspaceId};
 
@@ -26,15 +28,69 @@ pub(super) fn qualify(
     let workspace = WorkspaceId::new([0x55; 16]).map_err(SubjectError::Identifier)?;
     let provider = ProviderProfileId::new([0x44; 16]).map_err(SubjectError::Identifier)?;
     let providers = ProductProviderSelection::new(provider, provider, provider);
-    let interaction = ProductInteractionRequest::new(
-        ProductRunRequest::new(run, workspace, providers, TASK.to_owned()).map_err(|error| {
-            SubjectError::Configuration(format!("could not construct H3 product probe: {error:?}"))
-        })?,
-        ProductInteractionMode::Plan,
-        ProductRoleModels::default(),
+    let query = WorkbenchQuery::new(identities.next(ConversationId::new)?, workspace);
+    let create = WorkbenchCommand::new(
+        identities.next(ControlOperationId::new)?,
+        query,
+        0,
+        WorkbenchIntent::CreateConversation(
+            ConversationTitle::new("H3 product path probe".to_owned()).map_err(|error| {
+                SubjectError::Configuration(format!(
+                    "could not construct H3 probe title: {error:?}"
+                ))
+            })?,
+        ),
     );
-    let response = request(client, identities, AppRequestPayload::Interact(interaction))?;
-    require_interaction(response, run, false)?;
+    let created = require_receipt(
+        request(client, identities, AppRequestPayload::WorkbenchCommand(create.clone()))?,
+        &create,
+    )?;
+    let input = WorkbenchNewInput::new(
+        identities.next(WorkbenchInputId::new)?,
+        WorkbenchInputText::new(TASK.to_owned()).map_err(|error| {
+            SubjectError::Configuration(format!("could not construct H3 probe input: {error:?}"))
+        })?,
+        WorkbenchInputOrder::new(Vec::new()).map_err(|error| {
+            SubjectError::Configuration(format!("could not construct H3 probe order: {error:?}"))
+        })?,
+    )
+    .map_err(|error| {
+        SubjectError::Configuration(format!("could not construct H3 probe queue item: {error:?}"))
+    })?;
+    let enqueue = WorkbenchCommand::new(
+        identities.next(ControlOperationId::new)?,
+        query,
+        created.accepted_revision(),
+        WorkbenchIntent::Queue(WorkbenchQueueIntent::Enqueue(input)),
+    );
+    let queued = require_receipt(
+        request(client, identities, AppRequestPayload::WorkbenchCommand(enqueue.clone()))?,
+        &enqueue,
+    )?;
+    let start = WorkbenchCommand::new(
+        identities.next(ControlOperationId::new)?,
+        query,
+        queued.accepted_revision(),
+        WorkbenchIntent::StartExecution(WorkbenchExecutionSettings::new(
+            run,
+            providers,
+            ProductInteractionMode::Plan,
+            ProductRoleModels::default(),
+        )),
+    );
+    require_receipt(
+        request(client, identities, AppRequestPayload::WorkbenchCommand(start.clone()))?,
+        &start,
+    )?;
+    require_interaction(
+        request(
+            client,
+            identities,
+            AppRequestPayload::QueryInteraction(ProductRunConversationQuery::new(run)),
+        )?,
+        run,
+        false,
+    )?;
 
     let deadline = Instant::now() + PROBE_BOUND;
     loop {
@@ -53,6 +109,23 @@ pub(super) fn qualify(
         }
         thread::sleep(POLL_INTERVAL);
     }
+}
+
+fn require_receipt(
+    response: AppResponsePayload,
+    command: &WorkbenchCommand,
+) -> Result<WorkbenchReceipt, SubjectError> {
+    let AppResponsePayload::WorkbenchReceipt(receipt) = response else {
+        return Err(SubjectError::UnexpectedResponse(format!(
+            "H3 workbench probe returned {response:?}"
+        )));
+    };
+    if receipt.operation() != command.operation() || receipt.query() != command.query() {
+        return Err(SubjectError::UnexpectedResponse(
+            "H3 workbench probe returned a receipt for another operation".to_owned(),
+        ));
+    }
+    Ok(receipt)
 }
 
 fn request(
