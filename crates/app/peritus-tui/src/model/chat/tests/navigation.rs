@@ -59,6 +59,52 @@ fn render(model: &mut AppModel, width: u16, height: u16) -> Terminal<TestBackend
 }
 
 #[test]
+fn inspection_pages_scroll_and_home_returns_to_the_start() {
+    use peritus_app_protocol::{ProductRunPhase, ProductRunSnapshot};
+    let mut model = model();
+    model.view = View::Review;
+    key(&mut model, KeyCode::PageDown);
+    assert_eq!(model.product.as_ref().expect("product").inspection_scroll, 0);
+    let product = model.product.as_ref().expect("product");
+    let run = ProductRunSnapshot::new(
+        RunId::new([49; 16]).expect("run"),
+        product.launch.workspace_id(),
+        model.chat_providers().expect("providers"),
+        ProductRunPhase::Complete,
+        1,
+        "inspect long result".to_owned(),
+        "complete".to_owned(),
+        "diff line\n".repeat(100),
+        String::new(),
+        "review line\n".repeat(100),
+        String::new(),
+        crate::test_support::run_operation(
+            RunId::new([49; 16]).expect("run"),
+            ProductRunPhase::Complete,
+        ),
+    )
+    .expect("run");
+    model.accept_product_run(run);
+    for view in [View::Diff, View::Review] {
+        model.view = view;
+        let _ = key(&mut model, KeyCode::PageDown);
+        assert_eq!(model.product.as_ref().expect("product").inspection_scroll, 12);
+        let _ = key(&mut model, KeyCode::PageUp);
+        assert_eq!(model.product.as_ref().expect("product").inspection_scroll, 0);
+        let _ = key(&mut model, KeyCode::PageDown);
+        let _ = key(&mut model, KeyCode::Home);
+        assert_eq!(model.product.as_ref().expect("product").inspection_scroll, 0);
+        for _ in 0..100 {
+            key(&mut model, KeyCode::PageDown);
+        }
+        let bottom = model.product.as_ref().expect("product").inspection_scroll;
+        key(&mut model, KeyCode::PageUp);
+        assert_eq!(model.product.as_ref().expect("product").inspection_scroll, bottom - 12);
+        key(&mut model, KeyCode::Home);
+    }
+}
+
+#[test]
 fn word_navigation_handles_unicode_punctuation_whitespace_and_boundaries() {
     let mut model = draft("hello,  λ界\nnext_word");
     for expected in ["hello,  λ界\n".len(), 8, 5, 0, 0] {

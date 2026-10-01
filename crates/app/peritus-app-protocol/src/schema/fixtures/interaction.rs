@@ -28,7 +28,7 @@ pub(super) fn cases(limits: CodecLimits) -> Result<Vec<GeneratedFixtureCase>, Co
         String::new(),
         String::new(),
         String::new(),
-        super::values::run_operation(run_id, ProductRunOperationState::Running),
+        super::product::run_operation(run_id, ProductRunOperationState::Running),
     )
     .expect("snapshot");
     let interaction = ProductInteractionSnapshot::new(

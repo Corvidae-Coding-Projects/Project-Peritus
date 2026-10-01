@@ -20,6 +20,7 @@ mod launch;
 mod library;
 mod memory;
 mod permissions;
+mod product;
 mod review;
 mod run_observations;
 mod values;

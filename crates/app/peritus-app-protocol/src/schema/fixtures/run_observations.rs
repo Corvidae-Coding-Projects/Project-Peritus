@@ -39,7 +39,7 @@ pub(super) fn settled() -> AppResponseEnvelope {
         String::new(),
         String::new(),
         "candidate is preserved for continuation".to_owned(),
-        super::values::run_operation(run_id, ProductRunOperationState::Failed),
+        super::product::run_operation(run_id, ProductRunOperationState::Failed),
     )
     .expect("fixture product snapshot")
     .with_deliverable(deliverable);
@@ -91,7 +91,7 @@ pub(super) fn mixed() -> AppResponseEnvelope {
         String::new(),
         String::new(),
         String::new(),
-        super::values::run_operation(active_run, ProductRunOperationState::Running),
+        super::product::run_operation(active_run, ProductRunOperationState::Running),
     )
     .expect("active snapshot");
     AppResponseEnvelope::new(

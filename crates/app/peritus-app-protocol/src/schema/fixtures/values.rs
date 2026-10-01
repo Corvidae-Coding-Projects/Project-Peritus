@@ -6,48 +6,19 @@ use crate::{
     AppRequestPayload, AppResponseEnvelope, AppResponsePayload, ApprovalChallenge,
     ArtifactMetadata, CanonicalMediaType, ClientHello, CommandBinding, CommandSubmissionFrames,
     ControlEnvelope, ControlPayload, CorrelationId, EventCursor, HeartbeatId, HeartbeatReply,
-    IdempotencyKey, ImplementationMetadata, NegotiatedProtocol, NegotiationOutcome,
-    ProductRunControlAction, ProductRunLegalControls, ProductRunOperation, ProductRunOperationKind,
-    ProductRunOperationState, PromptBinding, PromptConstraint, PromptCorrelation, PromptId,
-    ProtocolContext, ProtocolFeatureName, ProtocolFeatureSet, ProtocolId, ProtocolVersion,
-    RequestId, ServerHello, ShutdownProgress, ShutdownRequest, SubscriptionFilter, SubscriptionId,
-    SubscriptionRequest, TerminalAttachmentId, TerminalBinding, TerminalOutput, TerminalStream,
-    TransferId, VersionRange, WellKnownProtocolFeature,
+    IdempotencyKey, ImplementationMetadata, NegotiatedProtocol, NegotiationOutcome, PromptBinding,
+    PromptConstraint, PromptCorrelation, PromptId, ProtocolContext, ProtocolFeatureName,
+    ProtocolFeatureSet, ProtocolId, ProtocolVersion, RequestId, ServerHello, ShutdownProgress,
+    ShutdownRequest, SubscriptionFilter, SubscriptionId, SubscriptionRequest, TerminalAttachmentId,
+    TerminalBinding, TerminalOutput, TerminalStream, TransferId, VersionRange,
+    WellKnownProtocolFeature,
 };
 use peritus_codec::{CanonicalEncode, CodecError, CodecLimits, encode_message};
 use peritus_protocol::schema::generated_binary_artifacts;
 use peritus_types::{
     AcceptanceSpecId, ActorId, ArtifactId, CommandId, Generation, HarnessId, PolicyId, ProcessId,
-    ProviderProfileId, RevisionNumber, RevisionTuple, RunId, SessionId, Sha256Digest, WorkspaceId,
+    ProviderProfileId, RevisionNumber, RevisionTuple, SessionId, Sha256Digest, WorkspaceId,
 };
-
-pub(super) fn run_operation(run: RunId, state: ProductRunOperationState) -> ProductRunOperation {
-    let identity = run.as_bytes().iter().fold("run/".to_owned(), |mut value, byte| {
-        use core::fmt::Write as _;
-        let _ = write!(value, "{byte:02x}");
-        value
-    });
-    let mut controls = ProductRunLegalControls::none();
-    if state == ProductRunOperationState::Running {
-        controls = controls.with(ProductRunControlAction::Cancel);
-    } else if matches!(
-        state,
-        ProductRunOperationState::Failed
-            | ProductRunOperationState::Cancelled
-            | ProductRunOperationState::RecoveryRequired
-    ) {
-        controls = controls.with(ProductRunControlAction::Retry);
-    }
-    ProductRunOperation::new(
-        ProductRunOperationKind::Execution,
-        state,
-        identity,
-        "The fixture operation owner supplied this exact observation.".to_owned(),
-        String::new(),
-        controls,
-    )
-    .expect("fixture operation")
-}
 
 #[allow(
     clippy::too_many_lines,
