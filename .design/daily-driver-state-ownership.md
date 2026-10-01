@@ -10,6 +10,9 @@ because individual tests, benchmarks, or a design document pass.
 The user requires four architectural priorities: one owner per important fact, content separated
 from execution context with explicit evidence dependencies, runtime and startup sharing recovery
 rules with stable operation identities, and host observations independent of model judgments.
+There are no existing users or released histories to preserve. Backward compatibility with earlier
+product state, request shapes, or UI flows is explicitly out of scope. Old state is retained only as
+quarantined evidence; it is never decoded through defaults, upgraded, or admitted into execution.
 
 ## Inspected boundaries and current findings
 
@@ -23,6 +26,29 @@ rules with stable operation identities, and host observations independent of mod
 | Command outcome | Developer effect receipts and command kernel/journal | Handle JSON is a projection. Restart currently converts a projected “running” label to indeterminate without exposing command reconciliation through the TUI. |
 | Host-observed successful commands | Developer-tool executor | `turn.rs` accumulates results before parsing the final model report, but an error return bypasses `AppliedWrite`; finalization without `RunState` loses those command observations. |
 | Candidate recovery after interruption | Durable run record and daemon recovery | Startup converts interrupted phases and reconciles terminal handoffs; these must converge with live observation and explicit recovery. |
+
+## DRY and YAGNI audit
+
+The current product layer still represents two generations of the same concept. A product run can
+exist without workbench ownership, `ProductInteractionBinding` makes its conversation optional for
+legacy runs, `PersistedRecord` makes interaction optional and encodes three meanings into numeric
+phase offsets, startup has separate product-run and workbench loaders, and the application protocol
+retains legacy snapshot and deliverable interpretations. A version-2 workbench record can also omit
+the `goal_resume` field and acquire `None` during deserialization; a test explicitly treated that
+shape as compatible after the field was introduced.
+
+This is semantic duplication, not merely repeated syntax. Admission, observation, persistence,
+recovery, and the TUI can disagree because each supports a different subset of the run ontology.
+DRY therefore means one owner and one transition definition for each fact. It does not mean hiding
+different facts behind a generic state helper. YAGNI means deleting the unused generation and its
+fallbacks rather than adding adapters between old and new shapes.
+
+The retained product has one durable workbench-run aggregate. Every run has an exact conversation,
+start operation, execution attempt, candidate identity, and recovery projection. Absence is valid
+only where it is a current domain fact, such as no candidate before any content exists; omission of
+a required serialized field is invalid. Optional facts may use the one representation defined by
+the current format. Live protocol negotiation and record version tags remain as fail-fast integrity
+boundaries, but they do not authorize compatibility decoding between format versions.
 
 This is a boundary map, not a whole-codebase coverage claim. Commands and paths were inspected
 in the repair worktree. Large files read in sections remain partial coverage in the evidence log.
@@ -61,11 +87,12 @@ A new universal event store could replace control, run records, and command rece
 that would add a second source of truth before it removed the first. Consolidate each fact in its
 existing owner and keep one canonical projection.
 
-There are no released users or durable user histories to migrate. Product-run persistence is one
-strict version-2 record, and the application protocol exposes one product-run observation query.
-Earlier records are quarantined rather than guessed or upgraded. CLI, TUI, WebUI, daemon, generated
-schemas, and fixtures move together. Rollback must never reinterpret an unknown effect as safe to
-rerun.
+Replace the parallel legacy and workbench product paths with one current record and one public
+admission, observation, and recovery protocol. Bump the record and application protocol at the cut;
+do not preserve old tags, missing-field defaults, optional legacy bindings, dual loaders, or legacy
+UI actions. Earlier records are quarantined rather than guessed or upgraded. CLI, TUI, WebUI,
+daemon, generated schemas, fixtures, and documentation move together. Rollback must never
+reinterpret an unknown effect as safe to rerun.
 
 ## Delivery and completion evidence
 
@@ -79,7 +106,10 @@ rerun.
    command uncertainty, and restoration of unavailable workspace/state storage.
 4. Retain host facts across missing/malformed model reports and process restart, with honest
    qualification and ordinary inspection/export/continuation paths.
-5. Qualify the installed artifact on persistent, real daily jobs. Keep one installation and its
+5. Remove the parallel legacy product generation. Require the current record shape, exact
+   conversation and start ownership, one loader, one observation projection, and one set of normal
+   recovery controls. Quarantine every older or incomplete record without compatibility decoding.
+6. Qualify the installed artifact on persistent, real daily jobs. Keep one installation and its
    history across days. Interrupt real workflows at effect boundaries. Compare intent, actual
    files/effects, displayed state, original operation identity, and available recovery actions.
 

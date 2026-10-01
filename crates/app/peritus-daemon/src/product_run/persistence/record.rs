@@ -10,7 +10,7 @@ use super::{
     restore_settlement,
 };
 
-const FORMAT_VERSION: u16 = 2;
+const FORMAT_VERSION: u16 = 3;
 
 impl PersistedRecord {
     pub(super) fn from_record(record: &RunRecord) -> Result<Self, ProductRunServiceError> {

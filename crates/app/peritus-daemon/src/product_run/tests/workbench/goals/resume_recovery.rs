@@ -145,7 +145,7 @@ fn failed_resume_projection_does_not_publish_an_in_memory_launch_or_call_provide
 }
 
 #[test]
-fn resume_projection_requires_an_exact_receipt_and_accepts_legacy_missing_marker() {
+fn resume_projection_requires_current_format_and_exact_receipt() {
     interaction::block_on(async {
         let repository = repository();
         let state = tempfile::tempdir().unwrap();
@@ -196,13 +196,14 @@ fn resume_projection_requires_an_exact_receipt_and_accepts_legacy_missing_marker
                     .unwrap();
             assert!(!loaded.contains_key(&run), "forged marker {marker} must be isolated");
         }
-        let mut legacy = saved;
-        legacy.as_object_mut().unwrap().remove("goal_resume");
-        fs::write(&path, serde_json::to_vec(&legacy).unwrap()).unwrap();
+        let mut previous = saved;
+        previous["format_version"] = serde_json::Value::from(2);
+        fs::write(&path, serde_json::to_vec(&previous).unwrap()).unwrap();
         assert!(
-            crate::product_run::persistence::load_workbench_records(&root, Some(&controls))
+            !crate::product_run::persistence::load_workbench_records(&root, Some(&controls))
                 .unwrap()
-                .contains_key(&run)
+                .contains_key(&run),
+            "a previous-format projection must be isolated"
         );
         assert_eq!(writer.requests.lock().unwrap().len(), 2, "recovery reads never launch work");
     });

@@ -27,6 +27,9 @@ fn previous_format_projection_is_quarantined_without_migration() {
     fs::write(
         &path,
         br#"{
+            "format_version":2,
+            "goal_resume":null,
+            "interaction":null,
             "run_id":"01010101010101010101010101010101",
             "workspace_id":"02020202020202020202020202020202",
             "writer":"03030303030303030303030303030303",
@@ -39,7 +42,24 @@ fn previous_format_projection_is_quarantined_without_migration() {
             "diff":"",
             "gates":"",
             "review":"",
-            "summary":"retained"
+            "summary":"retained",
+            "user_cancelled":false,
+            "finding_state":"",
+            "deliverable":null,
+            "messages":[],
+            "conversation_revision":0,
+            "progress":{"started_unix_millis":0,"last_effect_unix_millis":0,"model_requests":0,"tool_calls":0,"retries":0,"provider_failovers":0,"compactions":0,"input_tokens":0,"cached_input_tokens":0,"output_tokens":0,"total_tokens":0,"provider_cost_microunits":0,"usage_observations":0,"workspace_bytes":0,"workspace_growth_bytes":0,"peak_rss_bytes":0},
+            "checkpoint":null,
+            "settlement_cause":null,
+            "resume_state":null,
+            "remaining_work":[],
+            "interruption_cause":"",
+            "candidate_actionable":false,
+            "task_baseline_required":false,
+            "task_baseline":null,
+            "preview_page":null,
+            "preview_operations":[],
+            "preview_outputs":[]
         }"#,
     )
     .expect("misnamed projection");
