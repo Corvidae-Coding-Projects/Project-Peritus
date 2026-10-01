@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1931,
-        "tip_oid": "6fcee90beee9b54f2cd151c36037086a5b880511",
-        "prefix_sha256": "346e52a45dbb9b448f1af91c4e26e04f99ce2f1507f021f798841ad3e7e346fc"
+        "sequence": 1932,
+        "tip_oid": "808f55bfd537521f21dc413e7e5df68f3c95ec65",
+        "prefix_sha256": "8829763b3a1a483650152155c482906c595b865096e14cfedf66bedbbe8fd1e0"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 2045,
+  "next_comment_id": 2046,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -10665,7 +10665,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-27T23:40:33.365528994Z",
-      "updated_at": "2026-10-01T17:44:50.290541092Z",
+      "updated_at": "2026-10-01T17:51:34.478136587Z",
       "comments": {
         "172fb531-7617-4dd5-afb2-b7d95cab7e0d": {
           "display_id": 1850,
@@ -10765,6 +10765,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAvgzOHRXvoZH7E7lVtHu1hm/oXiPnT3KQY7XB0aME20fUjxDFSVGQygmWvefVmyJdu6Gj1MzrtTiPjPJso90eAg=="
+        },
+        "7f7beda1-ef52-4c9d-ba63-f50bc19f9ae0": {
+          "display_id": 2045,
+          "author": "6ME5",
+          "content": "[action] Fixed exact-head Gate A and foundation policy failures in signed 8b492894f; exact cargo xtask all passes locally; pushing replacement head for full runner qualification.",
+          "created_at": "2026-10-01T17:51:34.474085092Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAjNVn95iOSAYs6lrPOoeQXc1sRNDZjgKtJray699zfgE6DSrkqMb1/0BOZfB87ERvMmhiw0O64kiHirN5ATNsCQ=="
         },
         "a64d0b86-069a-4cd0-9476-6730c9c9fedb": {
           "display_id": 1849,
