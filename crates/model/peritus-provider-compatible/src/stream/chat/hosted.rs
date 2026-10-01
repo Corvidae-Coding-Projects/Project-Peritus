@@ -29,9 +29,8 @@ impl ChatDecoder {
             return Err(error::malformed("Chat-compatible multiple choices are not mapped"));
         }
         for choice in choices {
-            let accounting = self.service == Some(HostedService::OpenRouter)
-                && self.finish.is_some()
-                && value.get("usage").is_some_and(|value| !value.is_null());
+            let accounting =
+                self.finish.is_some() && value.get("usage").is_some_and(|value| !value.is_null());
             if accounting {
                 self.accounting(choice)?;
             } else {
@@ -103,10 +102,14 @@ impl ChatDecoder {
             .get("delta")
             .and_then(Value::as_object)
             .ok_or_else(|| error::malformed("final accounting chunk omitted delta"))?;
+        let finish_reason_matches = match choice.get("finish_reason") {
+            None | Some(Value::Null) => true,
+            Some(Value::String(reason)) => reason == &finish.wire_reason,
+            Some(_) => false,
+        };
         if finish.accounting_seen
             || integer(choice, "index")? != 0
-            || choice.get("finish_reason").and_then(Value::as_str)
-                != Some(finish.wire_reason.as_str())
+            || !finish_reason_matches
             || delta.iter().any(|(name, value)| {
                 name != "content" || !(value.is_null() || value.as_str() == Some(""))
             })

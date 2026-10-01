@@ -2,6 +2,7 @@ use peritus_model_protocol::{Capability, FailureCategory, ModelEvent, WireDialec
 use peritus_provider_core::{
     CancellationToken, FramingLimits, HttpLimits, MemoryByteStream, OwnedModelStream,
 };
+use std::fmt::Write as _;
 
 use super::support::{block_on, chat_profile, fixture, responses_profile};
 use crate::stream::CompatibleStream;
@@ -56,6 +57,95 @@ async fn collect_output(
         events.push(event);
     }
     events
+}
+
+fn chat_sse(chunks: &[serde_json::Value]) -> Vec<u8> {
+    let mut stream = String::new();
+    for chunk in chunks {
+        writeln!(stream, "data: {chunk}\n").expect("in-memory stream");
+    }
+    stream.push_str("data: [DONE]\n\n");
+    stream.into_bytes()
+}
+
+fn chat_chunk(delta: &serde_json::Value, finish: &serde_json::Value) -> serde_json::Value {
+    serde_json::json!({
+        "id": "gateway-request",
+        "object": "chat.completion.chunk",
+        "created": 1,
+        "model": "model-test",
+        "choices": [{"index": 0, "delta": delta, "finish_reason": finish}]
+    })
+}
+
+#[test]
+fn chat_usage_chunk_accepts_an_empty_choice_after_finish() {
+    block_on(async {
+        let mut usage = chat_chunk(&serde_json::json!({}), &serde_json::Value::Null);
+        usage["usage"] =
+            serde_json::json!({"prompt_tokens": 4, "completion_tokens": 2, "total_tokens": 6});
+        let events = collect_bytes(
+            chat_sse(&[
+                chat_chunk(&serde_json::json!({"content": "ok"}), &serde_json::Value::Null),
+                chat_chunk(&serde_json::json!({}), &serde_json::json!("stop")),
+                usage,
+            ]),
+            WireDialect::CompatibleChatCompletions,
+            false,
+        )
+        .await;
+        assert!(events.iter().any(|event| matches!(event.event(), ModelEvent::Usage(_))));
+        assert!(matches!(
+            events.last().expect("terminal event").event(),
+            ModelEvent::ResponseCompleted
+        ));
+    });
+}
+
+#[test]
+fn chat_accepts_bounded_reasoning_content_from_a_generic_compatible_endpoint() {
+    block_on(async {
+        let events = collect_bytes(
+            chat_sse(&[
+                chat_chunk(
+                    &serde_json::json!({"reasoning_content": "private reasoning"}),
+                    &serde_json::Value::Null,
+                ),
+                chat_chunk(&serde_json::json!({"content": "ok"}), &serde_json::Value::Null),
+                chat_chunk(&serde_json::json!({}), &serde_json::json!("stop")),
+            ]),
+            WireDialect::CompatibleChatCompletions,
+            false,
+        )
+        .await;
+        assert!(matches!(
+            events.last().expect("terminal event").event(),
+            ModelEvent::ResponseCompleted
+        ));
+    });
+}
+
+#[test]
+fn chat_preserves_known_gateway_metadata_as_ancillary_data() {
+    block_on(async {
+        let mut terminal = chat_chunk(&serde_json::json!({}), &serde_json::json!("stop"));
+        terminal["provider_specific_fields"] = serde_json::json!({"route": "internal"});
+        terminal["access_programs"] = serde_json::json!(["standard"]);
+        terminal["tool_usage"] = serde_json::json!({"searches": 0});
+        terminal["frequency_penalty"] = serde_json::json!(0.0);
+        terminal["presence_penalty"] = serde_json::json!(0.0);
+        let events =
+            collect_bytes(chat_sse(&[terminal]), WireDialect::CompatibleChatCompletions, false)
+                .await;
+        assert!(events.iter().any(|event| matches!(
+            event.event(),
+            ModelEvent::ProviderEvent(value) if value.name().as_str() == "compatible.ancillary"
+        )));
+        assert!(matches!(
+            events.last().expect("terminal event").event(),
+            ModelEvent::ResponseCompleted
+        ));
+    });
 }
 
 #[test]

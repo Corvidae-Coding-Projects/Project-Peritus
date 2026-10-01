@@ -137,6 +137,14 @@ impl ChatDecoder {
                 .ok_or_else(|| error::malformed("Chat-compatible provider metadata disappeared"))?;
             events.push(super::ancillary::event(metadata, self.limits)?);
         }
+        let gateway_metadata = object
+            .iter()
+            .filter(|(name, _)| fields::gateway_metadata(name))
+            .map(|(name, value)| (name.clone(), value.clone()))
+            .collect::<Map<_, _>>();
+        if !gateway_metadata.is_empty() {
+            events.push(super::ancillary::event(&Value::Object(gateway_metadata), self.limits)?);
+        }
         if self.service == Some(peritus_provider_core::hosted::HostedService::Groq)
             && let Some(metadata) = value.get("x_groq")
         {
@@ -224,9 +232,7 @@ impl ChatDecoder {
     ) -> Result<(), ProviderCoreError> {
         for name in delta.keys() {
             if !matches!(name.as_str(), "role" | "content" | "refusal" | "tool_calls")
-                && !self
-                    .service
-                    .is_some_and(|service| crate::hosted_reasoning::accepts(service, name))
+                && !self.accepts_reasoning(name)
             {
                 return Err(error::malformed("Chat-compatible delta field was unmapped"));
             }
@@ -238,7 +244,7 @@ impl ChatDecoder {
             return Err(error::malformed("Chat-compatible delta role was not assistant"));
         }
         for (name, value) in delta {
-            if self.service.is_some_and(|service| crate::hosted_reasoning::accepts(service, name)) {
+            if self.accepts_reasoning(name) {
                 crate::hosted_reasoning::append(
                     &mut self.reasoning,
                     name,
@@ -287,6 +293,12 @@ impl ChatDecoder {
             }
         }
         Ok(())
+    }
+
+    fn accepts_reasoning(&self, name: &str) -> bool {
+        self.service.map_or(name == "reasoning_content", |service| {
+            crate::hosted_reasoning::accepts(service, name)
+        })
     }
 
     fn ensure_text(&mut self, events: &mut Vec<ModelEvent>) -> Result<ItemId, ProviderCoreError> {

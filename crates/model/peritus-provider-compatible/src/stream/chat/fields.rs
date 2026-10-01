@@ -11,7 +11,7 @@ pub(super) fn validate_top_level(
     service: Option<peritus_provider_core::hosted::HostedService>,
 ) -> Result<(), ProviderCoreError> {
     for name in value.keys() {
-        if !matches!(
+        let generic = matches!(
             name.as_str(),
             "id" | "object"
                 | "created"
@@ -21,18 +21,32 @@ pub(super) fn validate_top_level(
                 | "system_fingerprint"
                 | "service_tier"
                 | "provider_metadata"
-        ) && !matches!(
-            (service, name.as_str()),
-            (Some(peritus_provider_core::hosted::HostedService::Groq), "x_groq")
-                | (
-                    Some(peritus_provider_core::hosted::HostedService::OpenRouter),
-                    "provider" | "error"
-                )
-        ) {
+        ) || gateway_metadata(name);
+        if !generic
+            && !matches!(
+                (service, name.as_str()),
+                (Some(peritus_provider_core::hosted::HostedService::Groq), "x_groq")
+                    | (
+                        Some(peritus_provider_core::hosted::HostedService::OpenRouter),
+                        "provider" | "error"
+                    )
+            )
+        {
             return Err(error::malformed("Chat-compatible top-level field was unmapped"));
         }
     }
     Ok(())
+}
+
+pub(super) fn gateway_metadata(name: &str) -> bool {
+    matches!(
+        name,
+        "provider_specific_fields"
+            | "access_programs"
+            | "tool_usage"
+            | "frequency_penalty"
+            | "presence_penalty"
+    )
 }
 
 pub(super) fn usage(value: &Value) -> Result<UsageObservation, ProviderCoreError> {
