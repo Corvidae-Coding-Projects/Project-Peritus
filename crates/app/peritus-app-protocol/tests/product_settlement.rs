@@ -2,7 +2,8 @@
 
 use peritus_app_protocol::{
     AppMessage, AppProtocolLimits, AppResponseEnvelope, AppResponsePayload, CorrelationId,
-    MAX_PRODUCT_RUNS, ProductDeliverable, ProductProviderSelection, ProductRunMessageError,
+    MAX_PRODUCT_RUNS, ProductDeliverable, ProductProviderSelection, ProductRunLegalControls,
+    ProductRunMessageError, ProductRunOperation, ProductRunOperationKind, ProductRunOperationState,
     ProductRunPhase, ProductRunSettlementSnapshot, ProductRunSnapshot, ProtocolContext, ProtocolId,
     ProtocolVersion, RequestId, encode_app_message,
 };
@@ -33,6 +34,18 @@ fn providers() -> ProductProviderSelection {
         id(4, ProviderProfileId::new),
         id(5, ProviderProfileId::new),
     )
+}
+
+fn operation(run: RunId, state: ProductRunOperationState) -> ProductRunOperation {
+    ProductRunOperation::new(
+        ProductRunOperationKind::Execution,
+        state,
+        format!("run/{:02x}", run.as_bytes()[0]),
+        "The settlement fixture owns this execution observation.".to_owned(),
+        String::new(),
+        ProductRunLegalControls::none(),
+    )
+    .expect("operation")
 }
 
 fn candidate_identity() -> CandidateIdentity {
@@ -83,6 +96,7 @@ fn available_snapshot() -> ProductRunSettlementSnapshot {
         String::new(),
         String::new(),
         "candidate retained".to_owned(),
+        operation(identity.run_id(), ProductRunOperationState::Succeeded),
     )
     .expect("product snapshot")
     .with_deliverable(deliverable);
@@ -134,6 +148,7 @@ fn mixed_observations_retain_candidate_evidence_without_settling_active_work() {
         String::new(),
         String::new(),
         String::new(),
+        operation(id(11, RunId::new), ProductRunOperationState::Running),
     )
     .expect("active");
     assert!(ProductRunObservation::new(candidate.snapshot().clone(), None).is_err());
@@ -205,6 +220,7 @@ fn dependency_bound_observations_round_trip_on_the_canonical_wire() {
         "gates passed".to_owned(),
         "no blockers".to_owned(),
         "candidate retained".to_owned(),
+        operation(identity.run_id(), ProductRunOperationState::Succeeded),
     )
     .expect("snapshot")
     .with_deliverable(

@@ -82,19 +82,22 @@ impl ProductRunService {
                 return;
             }
         }
-        if let Ok(snapshot) = ProductRunSnapshot::new(
-            run_id,
-            record.request.workspace_id(),
-            record.request.providers(),
-            phase,
-            update.cycle,
-            record.request.display_task().to_owned(),
-            update.status,
-            update.diff,
-            update.gates,
-            update.review,
-            update.summary,
-        ) {
+        if let Ok(operation) = super::operation::retained_execution(run_id, phase, "")
+            && let Ok(snapshot) = ProductRunSnapshot::new(
+                run_id,
+                record.request.workspace_id(),
+                record.request.providers(),
+                phase,
+                update.cycle,
+                record.request.display_task().to_owned(),
+                update.status,
+                update.diff,
+                update.gates,
+                update.review,
+                update.summary,
+                operation,
+            )
+        {
             record.snapshot = snapshot;
             let _ = persist_record(&self.inner.directory, record);
         }
@@ -162,7 +165,11 @@ impl ProductRunService {
                     let _ = persist_record(&self.inner.directory, record);
                     return;
                 }
-                if let Ok(snapshot) = ProductRunSnapshot::new(
+                if let Ok(operation) = super::operation::retained_execution(
+                    run_id,
+                    ProductRunPhase::Complete,
+                    &record.interruption_cause,
+                ) && let Ok(snapshot) = ProductRunSnapshot::new(
                     run_id,
                     record.request.workspace_id(),
                     record.request.providers(),
@@ -178,6 +185,7 @@ impl ProductRunService {
                     output.gates.clone(),
                     output.review.clone(),
                     output.summary.clone(),
+                    operation,
                 ) {
                     record.snapshot = match deliverable {
                         Some(deliverable) => snapshot.with_deliverable(deliverable),
@@ -297,6 +305,11 @@ impl ProductRunService {
         let detail = outcome.detail().unwrap_or(status);
         let summary = terminal_summary(outcome, detail);
         if let Some(output) = outcome.candidate()
+            && let Ok(operation) = super::operation::retained_execution(
+                record.request.run_id(),
+                phase,
+                &record.interruption_cause,
+            )
             && let Ok(snapshot) = ProductRunSnapshot::new(
                 record.request.run_id(),
                 record.request.workspace_id(),
@@ -309,6 +322,7 @@ impl ProductRunService {
                 output.gates.clone(),
                 output.review.clone(),
                 summary.clone(),
+                operation,
             )
         {
             record.snapshot = self.with_candidate(record, outcome, snapshot);

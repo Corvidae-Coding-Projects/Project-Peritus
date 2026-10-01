@@ -45,6 +45,7 @@ impl ProductRunSnapshot {
         gates: String,
         review: String,
         summary: String,
+        operation: ProductRunOperation,
     ) -> Result<Self, ProductRunMessageError> {
         bounded_text(&task, MAX_PRODUCT_TASK_BYTES)?;
         bounded_text(&status, MAX_PRODUCT_DETAIL_BYTES)?;
@@ -63,7 +64,7 @@ impl ProductRunSnapshot {
             gates,
             review,
             summary,
-            operation: ProductRunOperation::unreconciled(run_id),
+            operation,
             deliverable: None,
         })
     }

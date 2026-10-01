@@ -171,7 +171,45 @@ pub(super) fn project(
         );
     }
 
-    let state = match record.snapshot.phase() {
+    let state = execution_state(record.snapshot.phase());
+    let controls = deliverable_controls(record, execution_controls(state));
+    operation(
+        Kind::Execution,
+        state,
+        format!("run/{}", deliverable::run_hex(record.request.run_id())),
+        execution_known_fact(record.snapshot.phase()),
+        execution_uncertainty(state, &record.interruption_cause, reviewed_current),
+        controls,
+    )
+}
+
+pub(super) fn may_start_execution(
+    directory: &Path,
+    record: &RunRecord,
+) -> Result<bool, ProductRunServiceError> {
+    Ok(project(directory, record)?.may_start_execution())
+}
+
+/// Builds the execution projection retained inside a snapshot.
+/// Public observations replace it through [`project`] after inspecting command and handoff owners.
+pub(super) fn retained_execution(
+    run: peritus_types::RunId,
+    phase: ProductRunPhase,
+    interruption_cause: &str,
+) -> Result<ProductRunOperation, ProductRunServiceError> {
+    let state = execution_state(phase);
+    operation(
+        Kind::Execution,
+        state,
+        format!("run/{}", deliverable::run_hex(run)),
+        execution_known_fact(phase),
+        execution_uncertainty(state, interruption_cause, false),
+        execution_controls(state),
+    )
+}
+
+const fn execution_state(phase: ProductRunPhase) -> State {
+    match phase {
         ProductRunPhase::Queued
         | ProductRunPhase::Designing
         | ProductRunPhase::Writing
@@ -184,7 +222,10 @@ pub(super) fn project(
         ProductRunPhase::Failed => State::Failed,
         ProductRunPhase::Cancelled => State::Cancelled,
         ProductRunPhase::RecoveryRequired => State::RecoveryRequired,
-    };
+    }
+}
+
+fn execution_controls(state: State) -> ProductRunLegalControls {
     let mut controls = ProductRunLegalControls::none();
     if state == State::Running || state == State::WaitingForUser {
         controls = controls.with(Action::Cancel);
@@ -192,15 +233,7 @@ pub(super) fn project(
     if matches!(state, State::Failed | State::Cancelled | State::RecoveryRequired) {
         controls = controls.with(Action::Retry);
     }
-    controls = deliverable_controls(record, controls);
-    operation(
-        Kind::Execution,
-        state,
-        format!("run/{}", deliverable::run_hex(record.request.run_id())),
-        known_fact(record, state),
-        uncertainty(record, state, reviewed_current),
-        controls,
-    )
+    controls
 }
 
 fn effects_path(directory: &Path, record: &RunRecord) -> std::path::PathBuf {
@@ -239,11 +272,11 @@ fn deliverable_controls(
     controls
 }
 
-fn known_fact(record: &RunRecord, state: State) -> String {
+fn execution_known_fact(phase: ProductRunPhase) -> String {
+    let state = execution_state(phase);
     match state {
         State::Running => format!(
-            "The daemon owns this active run at phase {:?}; the latest durable boundary is visible in its status and progress.",
-            record.snapshot.phase()
+            "The daemon owns this active run at phase {phase:?}; the latest durable boundary is visible in its status and progress."
         ),
         State::WaitingForUser => {
             "The run stopped at a durable boundary and is waiting for user input.".to_owned()
@@ -262,17 +295,17 @@ fn known_fact(record: &RunRecord, state: State) -> String {
     }
 }
 
-fn uncertainty(record: &RunRecord, state: State, reviewed_command: bool) -> String {
+fn execution_uncertainty(state: State, interruption_cause: &str, reviewed_command: bool) -> String {
     if reviewed_command {
         return REVIEWED_COMMAND_UNCERTAINTY.to_owned();
     }
     if state != State::RecoveryRequired {
         return String::new();
     }
-    if record.interruption_cause.is_empty() {
+    if interruption_cause.is_empty() {
         "The interrupted provider phase did not reach a terminal settlement.".to_owned()
     } else {
-        record.interruption_cause.clone()
+        interruption_cause.to_owned()
     }
 }
 

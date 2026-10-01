@@ -79,15 +79,18 @@ impl ProductRunService {
             // Never take the run-record lock from inside the serialized control owner. The prior
             // worker must have settled before durable resume admission. Waiting for user input
             // is a safe boundary, but only this explicit goal command may resume unchanged input.
-            let retryable = self
+            let retryable = match self
                 .inner
                 .records
                 .read()
-                .ok()
+                .map_err(|_| ProductRunServiceError::Unavailable)
                 .and_then(|records| {
-                    records.get(&run).map(|record| record.snapshot.phase().terminal())
-                })
-                .unwrap_or(false);
+                    let record = records.get(&run).ok_or(ProductRunServiceError::NotFound)?;
+                    super::super::operation::may_start_execution(&self.inner.directory, record)
+                }) {
+                Ok(retryable) => retryable,
+                Err(error) => return error.response(),
+            };
             if !retryable {
                 return error_response(ControlError::InvalidInput.into());
             }

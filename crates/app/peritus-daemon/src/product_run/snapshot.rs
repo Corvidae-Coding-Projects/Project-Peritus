@@ -121,6 +121,7 @@ fn queued_snapshot(
         String::new(),
         String::new(),
         String::new(),
+        super::operation::retained_execution(request.run_id(), ProductRunPhase::Queued, "")?,
     )
     .map_err(|_| ProductRunServiceError::InvalidMessage)
 }
@@ -143,9 +144,13 @@ pub(super) fn replace_snapshot(
         current.gates().to_owned(),
         current.review().to_owned(),
         summary.to_owned(),
+        super::operation::retained_execution(
+            current.run_id(),
+            phase,
+            current.operation().uncertainty(),
+        )?,
     )
-    .map_err(|_| ProductRunServiceError::InvalidMessage)?
-    .with_operation(current.operation().clone());
+    .map_err(|_| ProductRunServiceError::InvalidMessage)?;
     Ok(match current.deliverable().cloned() {
         Some(deliverable) => snapshot.with_deliverable(deliverable),
         None => snapshot,

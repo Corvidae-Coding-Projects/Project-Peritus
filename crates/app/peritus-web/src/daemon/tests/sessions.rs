@@ -21,6 +21,7 @@ fn observation(
         String::new(),
         String::new(),
         String::new(),
+        operation(run, ProductRunOperationState::Running),
     )
     .unwrap();
     AppResponsePayload::Interaction(

@@ -319,6 +319,12 @@ fn candidate_record(repository: &TempDir) -> crate::product_run::RunRecord {
         String::new(),
         String::new(),
         "remaining work".to_owned(),
+        super::super::operation::retained_execution(
+            run_id,
+            peritus_app_protocol::ProductRunPhase::Failed,
+            "",
+        )
+        .expect("operation"),
     )
     .expect("snapshot")
     .with_deliverable(deliverable);

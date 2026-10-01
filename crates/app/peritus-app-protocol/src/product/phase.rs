@@ -23,7 +23,7 @@ pub enum ProductRunPhase {
     Failed,
     /// The user cancelled the run.
     Cancelled,
-    /// A daemon restart interrupted work that is automatically resumed when still admissible.
+    /// Work stopped at a retained boundary and requires an explicit exact retry.
     RecoveryRequired,
     /// The agent asked a material question and is waiting for a reply.
     WaitingForUser,

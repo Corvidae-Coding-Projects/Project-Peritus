@@ -16,7 +16,7 @@ mod working;
 use super::{AppModel, Effect, NoticeLevel, PendingRequest};
 use peritus_app_protocol::{
     AppRequestPayload, ProductInteractionMode, ProductInteractionSnapshot, ProductModelCatalog,
-    ProductRoleModels, ProductRunControlAction,
+    ProductRoleModels, ProductRunControlAction, ProductRunOperationState,
 };
 use peritus_types::RunId;
 
@@ -98,7 +98,9 @@ impl ChatUi {
         )
     }
     pub(crate) fn active(&self) -> bool {
-        self.snapshot.as_ref().is_some_and(|snapshot| !snapshot.snapshot().phase().terminal())
+        self.snapshot.as_ref().is_some_and(|snapshot| {
+            snapshot.snapshot().operation().state() == ProductRunOperationState::Running
+        })
     }
     pub(crate) fn matching_commands(&self) -> Vec<(String, &'static str)> {
         catalog::completions(&self.buffer)

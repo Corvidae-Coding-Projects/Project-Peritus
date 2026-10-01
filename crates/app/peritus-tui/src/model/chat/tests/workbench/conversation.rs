@@ -1,7 +1,8 @@
 use super::*;
 use peritus_app_protocol::{
-    ProductInteractionQuery, WorkbenchExecutionState, WorkbenchIntent, WorkbenchQuery,
-    WorkbenchQueueIntent,
+    ProductInteractionQuery, ProductRunControlAction, ProductRunLegalControls, ProductRunOperation,
+    ProductRunOperationKind, ProductRunOperationState, WorkbenchExecutionState, WorkbenchIntent,
+    WorkbenchQuery, WorkbenchQueueIntent,
 };
 
 fn chat_model() -> AppModel {
@@ -75,6 +76,62 @@ fn state(query: WorkbenchQuery, revision: u64, run: Option<RunId>) -> AppRespons
     AppResponsePayload::WorkbenchExecution(
         WorkbenchExecutionState::new(metadata(query, revision), run, false).expect("state"),
     )
+}
+
+#[test]
+fn pending_chat_input_does_not_resume_an_unknown_command_outcome() {
+    let mut model = chat_model();
+    let workspace = model.product.as_ref().expect("product").launch.workspace_id();
+    let query = WorkbenchQuery::new(
+        peritus_app_protocol::ConversationId::new([8; 16]).expect("conversation"),
+        workspace,
+    );
+    let run = RunId::new([9; 16]).expect("run");
+    model.select_workbench_conversation(Some(query));
+    model.chat.buffer = "Continue after checking the interrupted command.".to_owned();
+    let lookup = request(&key(&mut model, KeyCode::Enter));
+    let enqueue = request(&respond(&mut model, &lookup, state(query, 1, Some(run))));
+    let AppRequestPayload::WorkbenchCommand(queued) = enqueue.payload() else { panic!("queue") };
+    let lookup = request(&respond(&mut model, &enqueue, receipt(queued)));
+    let interaction = request(&respond(&mut model, &lookup, state(query, 2, Some(run))));
+    let snapshot = peritus_app_protocol::ProductRunSnapshot::new(
+        run,
+        workspace,
+        model.chat_providers().expect("providers"),
+        peritus_app_protocol::ProductRunPhase::RecoveryRequired,
+        1,
+        "Interrupted command".to_owned(),
+        "Outcome requires inspection".to_owned(),
+        String::new(),
+        String::new(),
+        String::new(),
+        String::new(),
+        ProductRunOperation::new(
+            ProductRunOperationKind::Command,
+            ProductRunOperationState::OutcomeUnknown,
+            "command/exact".to_owned(),
+            "The original command receipt is durable.".to_owned(),
+            "The host cannot prove whether the command changed the workspace.".to_owned(),
+            ProductRunLegalControls::none().with(ProductRunControlAction::Acknowledge),
+        )
+        .expect("operation"),
+    )
+    .expect("snapshot");
+    let payload = AppResponsePayload::Interaction(
+        ProductInteractionSnapshot::new(
+            snapshot,
+            ProductInteractionMode::Chat,
+            ProductRoleModels::default(),
+            2,
+            1,
+            Vec::new(),
+            None,
+        )
+        .expect("interaction"),
+    );
+    assert!(respond(&mut model, &interaction, payload).is_empty());
+    assert!(!model.workbench_chat_starting());
+    assert!(model.notice.as_ref().expect("notice").text.contains("must be reconciled"));
 }
 
 #[test]
@@ -185,6 +242,7 @@ fn stop_while_continuation_acknowledgement_is_pending_cancels_the_bound_run() {
         String::new(),
         String::new(),
         String::new(),
+        crate::test_support::run_operation(run, peritus_app_protocol::ProductRunPhase::Complete),
     )
     .expect("snapshot");
     let payload = AppResponsePayload::Interaction(

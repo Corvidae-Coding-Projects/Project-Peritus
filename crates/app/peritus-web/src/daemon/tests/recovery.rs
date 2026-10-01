@@ -24,6 +24,7 @@ async fn lost_control_response_is_reconciled_without_reissuing_the_mutation() {
             String::new(),
             String::new(),
             String::new(),
+            operation(run, ProductRunOperationState::Running),
         )
         .unwrap();
         let observation = ProductInteractionSnapshot::new(
@@ -63,6 +64,7 @@ async fn lost_control_response_is_reconciled_without_reissuing_the_mutation() {
             String::new(),
             String::new(),
             String::new(),
+            operation(run, ProductRunOperationState::Cancelled),
         )
         .unwrap();
         let observation = ProductInteractionSnapshot::new(

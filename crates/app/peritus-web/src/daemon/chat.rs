@@ -182,7 +182,8 @@ async fn after_queue(
         Ok(observed) => observed,
         Err(error) => return Ok(blocked_projection(&prepared, &queued, false, &error.0)),
     };
-    if state.has_goal() || !observed.snapshot().phase().terminal() {
+    let current = observed.snapshot().operation();
+    if state.has_goal() || !current.may_start_execution() {
         return response(AppResponsePayload::Interaction(observed));
     }
     match receipts::workbench_continuation(

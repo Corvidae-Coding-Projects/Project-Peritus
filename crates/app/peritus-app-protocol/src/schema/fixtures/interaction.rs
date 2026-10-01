@@ -5,7 +5,7 @@ use crate::{
     AppRequestPayload, AppResponseEnvelope, AppResponsePayload, ProductActivity,
     ProductActivityKind, ProductInteractionMode, ProductInteractionSnapshot, ProductModelCatalog,
     ProductModelInfo, ProductModelQuery, ProductProviderSelection, ProductRoleModels,
-    ProductRunPhase, ProductRunSnapshot,
+    ProductRunOperationState, ProductRunPhase, ProductRunSnapshot,
 };
 use peritus_codec::{CodecError, CodecLimits};
 use peritus_types::{ProviderProfileId, RunId, WorkspaceId};
@@ -28,6 +28,7 @@ pub(super) fn cases(limits: CodecLimits) -> Result<Vec<GeneratedFixtureCase>, Co
         String::new(),
         String::new(),
         String::new(),
+        super::values::run_operation(run_id, ProductRunOperationState::Running),
     )
     .expect("snapshot");
     let interaction = ProductInteractionSnapshot::new(

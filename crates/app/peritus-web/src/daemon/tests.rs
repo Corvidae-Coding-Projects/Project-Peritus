@@ -7,9 +7,11 @@ use super::*;
 use crate::config::Options;
 use peritus_app_protocol::{
     AppMessage, AppProtocolLimits, AppResponseEnvelope, ProductActivity, ProductActivityKind,
-    ProductInteractionSnapshot, ProductRunPhase, ServerCapabilities, WorkbenchCommand,
-    WorkbenchExecutionState, WorkbenchIntent, WorkbenchQueueIntent, WorkbenchReceipt,
-    WorkbenchSnapshot, decode_app_message, encode_app_message, negotiate,
+    ProductInteractionSnapshot, ProductRunControlAction, ProductRunLegalControls,
+    ProductRunOperation, ProductRunOperationKind, ProductRunOperationState, ProductRunPhase,
+    ServerCapabilities, WorkbenchCommand, WorkbenchExecutionState, WorkbenchIntent,
+    WorkbenchQueueIntent, WorkbenchReceipt, WorkbenchSnapshot, decode_app_message,
+    encode_app_message, negotiate,
 };
 use peritus_codec::HEADER_LEN;
 use peritus_types::SessionId;
@@ -32,6 +34,31 @@ async fn read_message(stream: &mut UnixStream) -> AppMessage {
 async fn write_message(stream: &mut UnixStream, message: AppMessage) {
     let bytes = encode_app_message(&message, AppProtocolLimits::PRODUCTION).unwrap();
     stream.write_all(&bytes).await.unwrap();
+}
+
+fn operation(run: RunId, state: ProductRunOperationState) -> ProductRunOperation {
+    let controls = match state {
+        ProductRunOperationState::Running | ProductRunOperationState::WaitingForUser => {
+            ProductRunLegalControls::none().with(ProductRunControlAction::Cancel)
+        }
+        ProductRunOperationState::Failed
+        | ProductRunOperationState::Cancelled
+        | ProductRunOperationState::RecoveryRequired => {
+            ProductRunLegalControls::none().with(ProductRunControlAction::Retry)
+        }
+        ProductRunOperationState::Succeeded | ProductRunOperationState::OutcomeUnknown => {
+            ProductRunLegalControls::none()
+        }
+    };
+    ProductRunOperation::new(
+        ProductRunOperationKind::Execution,
+        state,
+        format!("run/{}", hex(run.as_bytes())),
+        "The native fixture owns this exact execution observation.".to_owned(),
+        String::new(),
+        controls,
+    )
+    .expect("operation")
 }
 
 #[tokio::test]
@@ -217,6 +244,7 @@ async fn native_message_uses_durable_conversation_queue_and_execution_receipts()
                         String::new(),
                         String::new(),
                         String::new(),
+                        operation(expected_run, ProductRunOperationState::Running),
                     )
                     .unwrap();
                     let observation = ProductInteractionSnapshot::new(
@@ -279,7 +307,7 @@ async fn native_message_uses_durable_conversation_queue_and_execution_receipts()
         tokio::time::timeout(Duration::from_secs(3), send(&app, &input)).await.unwrap().unwrap();
     assert_eq!(output["run"]["id"], session.run);
     assert_eq!(output["run"]["workspace"], hex(workspace.as_bytes()));
-    assert_eq!(output["run"]["busy"], true);
+    assert_eq!(output["run"]["operation"]["state"], "Running");
     assert_eq!(output["received"], "1");
     assert_eq!(output["incorporated"], "0");
     assert_eq!(

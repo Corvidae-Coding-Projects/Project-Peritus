@@ -20,6 +20,7 @@ pub(super) fn active(model: &mut AppModel) -> ProductInteractionSnapshot {
         String::new(),
         String::new(),
         String::new(),
+        crate::test_support::run_operation(run, ProductRunPhase::Writing),
     )
     .expect("snapshot");
     let snapshot = ProductInteractionSnapshot::new(

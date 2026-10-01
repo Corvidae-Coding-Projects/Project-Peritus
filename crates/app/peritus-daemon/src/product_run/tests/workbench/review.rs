@@ -262,6 +262,7 @@ fn review_service_rejects_stale_add_then_projects_and_rebinds_a_persisted_stale_
                 prior.gates().to_owned(),
                 prior.review().to_owned(),
                 prior.summary().to_owned(),
+                prior.operation().clone(),
             )
             .expect("later projection");
             record.checkpoint = None;

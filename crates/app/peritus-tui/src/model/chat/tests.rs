@@ -178,6 +178,7 @@ fn rejected_chat_open_restores_navigation_and_shows_the_daemon_error() {
             String::new(),
             String::new(),
             String::new(),
+            crate::test_support::run_operation(run_id, ProductRunPhase::Failed),
         )
         .expect("snapshot"),
     ]);
@@ -271,6 +272,10 @@ fn inspection_pages_scroll_and_home_returns_to_the_start() {
         String::new(),
         "review line\n".repeat(100),
         String::new(),
+        crate::test_support::run_operation(
+            RunId::new([49; 16]).expect("run"),
+            ProductRunPhase::Complete,
+        ),
     )
     .expect("run");
     model.accept_product_run(run);
@@ -379,6 +384,7 @@ fn folder_diff_opens_observed_scoped_evidence_without_a_git_handoff() {
         "PASS".to_owned(),
         "Reviewed".to_owned(),
         "Updated".to_owned(),
+        crate::test_support::run_operation(run_id, ProductRunPhase::Complete),
     )
     .expect("snapshot");
     model.accept_chat(

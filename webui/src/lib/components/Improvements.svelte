@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { query, action } from '../api';
-  import { ui, attempt, openEvaluation, openRun, notify } from '../workspace.svelte';
+  import { ui, attempt, openEvaluation, openRun, notify, runActive } from '../workspace.svelte';
   import type { ImprovementInbox, ImprovementCandidate, Run } from '../types';
   let inbox = $state<ImprovementInbox>({workspace:'',candidates:[]});
   let runs = $state<Run[]>([]), proposal = $state(''), source = $state('');
@@ -28,7 +28,7 @@
 <p class="dialog-description">Collect evidence-backed suggestions here. Generate a patch and run tests only when you choose to evaluate one.</p>
 {#if error}<p role="alert">{error}</p><button class="key" onclick={()=>void refresh()}>Retry loading inbox</button>{/if}
 <form onsubmit={(event)=>{event.preventDefault();void attempt(async()=>{await mutate({action:'suggest',run:source,proposal});proposal='';notify('Suggestion saved. No evaluation started.');});}}>
-  <label for="improvement-source">Evidence run</label><select id="improvement-source" bind:value={source} required><option value="">Select a completed run</option>{#each runs.filter(r=>r.workspace===inbox.workspace&&!r.busy) as run}<option value={run.id}>{run.task.slice(0,90)} · {run.phase}</option>{/each}</select>
+  <label for="improvement-source">Evidence run</label><select id="improvement-source" bind:value={source} required><option value="">Select a completed run</option>{#each runs.filter(r=>r.workspace===inbox.workspace&&!runActive(r)) as run}<option value={run.id}>{run.task.slice(0,90)} · {run.phase}</option>{/each}</select>
   <label>Improvement suggestion<textarea bind:value={proposal} required maxlength="4096" rows="3" placeholder="What might improve the harness, and why does this run support investigating it?"></textarea></label>
   <button class="key" disabled={busy||!source||!proposal.trim()}>Collect suggestion</button>
 </form>

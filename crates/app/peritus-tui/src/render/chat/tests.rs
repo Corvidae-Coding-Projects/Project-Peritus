@@ -22,6 +22,10 @@ fn model() -> AppModel {
         String::new(),
         String::new(),
         String::new(),
+        crate::test_support::run_operation(
+            RunId::new([3; 16]).expect("run"),
+            ProductRunPhase::Writing,
+        ),
     )
     .expect("run");
     let activities = (1..=30)

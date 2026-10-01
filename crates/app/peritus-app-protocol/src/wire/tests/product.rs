@@ -48,15 +48,15 @@ fn product_run_snapshots_round_trip() -> Result<(), Box<dyn std::error::Error>> 
         "tests passed".to_owned(),
         "no blocking findings".to_owned(),
         "implemented".to_owned(),
+        ProductRunOperation::new(
+            ProductRunOperationKind::Command,
+            ProductRunOperationState::OutcomeUnknown,
+            "command/receipt-36".to_owned(),
+            "The original command receipt is retained.".to_owned(),
+            "The host cannot prove whether it took effect.".to_owned(),
+            ProductRunLegalControls::none().with(ProductRunControlAction::Acknowledge),
+        )?,
     )?
-    .with_operation(ProductRunOperation::new(
-        ProductRunOperationKind::Command,
-        ProductRunOperationState::OutcomeUnknown,
-        "command/receipt-36".to_owned(),
-        "The original command receipt is retained.".to_owned(),
-        "The host cannot prove whether it took effect.".to_owned(),
-        ProductRunLegalControls::none().with(ProductRunControlAction::Acknowledge),
-    )?)
     .with_deliverable(
         ProductDeliverable::candidate(
             "/managed/worktree".to_owned(),

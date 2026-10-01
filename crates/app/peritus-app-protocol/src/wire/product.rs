@@ -139,9 +139,9 @@ fn read_snapshot_inner(
             gates,
             review,
             summary,
+            operation,
         ),
-    )?
-    .with_operation(operation);
+    )?;
     if reader.read_option_tag()? {
         Ok(snapshot.with_deliverable(read_deliverable(reader, allow_unqualified)?))
     } else {

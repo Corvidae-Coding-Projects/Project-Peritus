@@ -101,6 +101,7 @@ fn working_idler_stops_at_every_idle_or_terminal_phase() {
             String::new(),
             String::new(),
             String::new(),
+            crate::test_support::run_operation(current.run_id(), phase),
         )
         .expect("phase snapshot");
         model.chat.snapshot = Some(

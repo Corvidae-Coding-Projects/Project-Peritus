@@ -1,6 +1,6 @@
 <script lang="ts">
   import { tick } from 'svelte';
-  import { ui,project,session,attempt,openProject,editSession,selectSession,dispatch,notify,refresh,openRun } from '../workspace.svelte';
+  import { ui,project,session,attempt,openProject,editSession,selectSession,dispatch,notify,refresh,openRun,runInspection } from '../workspace.svelte';
   import { action } from '../api';
   import { parseSlash } from '../commands/slash';
   import Icon from './Icon.svelte';
@@ -33,7 +33,7 @@
     {:else if ui.overlay==='improvements'}{#key ui.projectId}<Improvements/>{/key}
     {:else if ui.overlay==='runs'}
       <p class="dialog-description">Actual observations from the daemon, including runs started by other clients.</p>
-      {#each ui.runs as run}<div class="library-row"><Icon name="layers"/><span><strong>{run.task}</strong><small>{run.phase} · {run.id.slice(0,8)}</small></span><button class="key small" onclick={()=>void attempt(()=>openRun(run.id))}>Open conversation</button><button class="key small" onclick={()=>{ui.reportTitle=run.task;ui.reportText=[run.status,run.summary,run.gates,run.review].filter(Boolean).join('\n\n');ui.overlay='report';}}>Inspect</button></div>{/each}
+      {#each ui.runs as run}<div class="library-row"><Icon name="layers"/><span><strong>{run.task}</strong><small>{run.operation.state} · {run.id.slice(0,8)}</small></span><button class="key small" onclick={()=>void attempt(()=>openRun(run.id))}>Open conversation</button><button class="key small" onclick={()=>{ui.reportTitle=run.task;ui.reportText=runInspection(run);ui.overlay='report';}}>Inspect</button></div>{/each}
       {#if !ui.runs.length}<div class="small-empty">No daemon-owned runs have been observed yet. Start a conversation to begin.</div>{/if}
     {:else if ui.overlay==='console'}
       <div class="console-tabs">{#each ui.consoles.filter(c=>c.project===ui.projectId) as console}<button class:active={console.id===ui.consoleId} onclick={()=>ui.consoleId=console.id}>{console.title}{console.ended?' · exited':''}</button>{/each}</div>

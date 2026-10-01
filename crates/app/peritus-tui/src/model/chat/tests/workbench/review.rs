@@ -35,6 +35,7 @@ fn review_model() -> (AppModel, WorkbenchQuery, RunId) {
         "checks passed".to_owned(),
         "review passed".to_owned(),
         "done".to_owned(),
+        crate::test_support::run_operation(run, ProductRunPhase::Complete),
     )
     .expect("snapshot");
     model.accept_product_run(snapshot);

@@ -122,13 +122,13 @@ checks support the observations; their counts do not establish daily-driver viab
 Implementation and qualification are in progress under issue 99 and PR 105. The four-priority
 goal remains active until all delivery and ordinary-interface recovery evidence is present.
 
-The clean cut is partly implemented. Product-run records now require format 3 and quarantine
-earlier complete records without migration. Current clients and the daemon negotiate application
-protocol 2.0; protocol 1.0 and the retired product-start tag are rejected. The TUI no longer has a
-second task composer in `/runs` or a direct `Interact` submission fallback. `/build` and ordinary
-conversation both enter through the durable workbench conversation and input ledger. Runs without
-an exact durable conversation are detached with their draft retained instead of being continued
-through the legacy path.
+Delivery items 1 through 5 are implemented on the PR branch. Product-run records require format 6
+and reject every earlier shape without migration. Current clients and the daemon negotiate
+application protocol 2.0; protocol 1.0, direct product start, continuation-only requests, run-local
+conversation ownership, and ownerless interaction records are gone. `/build` and ordinary
+conversation enter through one required durable workbench conversation and input ledger. Candidate
+content, repository context, requirements, and execution context remain distinct observations with
+explicit evidence dependencies. Host command facts survive a missing or malformed model report.
 
 A real PTY probe against a separately running daemon and a declared writable folder exercised the
 ordinary interface without a model provider. `/sessions new Real PTY smoke` moved from an explicit
@@ -137,7 +137,7 @@ both the TUI and daemon restarted on the same state directory. This establishes 
 admission, projection, and restart persistence for that path; it is not evidence for provider
 execution, interruption during external effects, or multi-day installed use.
 
-The WebUI now uses the same durable create, queue, and start controls. Its browser tab,
+The WebUI uses the same durable create, queue, and start controls. Its browser tab,
 conversation, and run identities are separate required facts; controls and exact-run CLI handoffs
 use the run, while workbench operations use the conversation/workspace query. Before the first
 mutating daemon request, the gateway retains the exact prepared execution context independently of
@@ -145,7 +145,15 @@ the mutable browser draft and current settings. Each stage has a deterministic i
 the daemon's authoritative receipt query after interruption. A definitively accepted queue whose
 execution cannot be confirmed is displayed as durable and pending with an ordinary Workbench route,
 rather than as a total send failure that invites a duplicate message. Earlier or incomplete WebUI
-state is quarantined; there is no compatibility decoder or missing-field default for the cut.
+state is quarantined; there is no compatibility decoder or missing-field default for the cut. Run
+snapshots now require an explicit authoritative operation projection at construction. The browser
+uses that projection for activity, facts, uncertainty, and legal actions; it no longer infers a
+`busy` fact from the phase. Unknown command outcomes expose ordinary acknowledgement and exact
+retry controls without inviting replay. A queued message remains durable but cannot start a new
+provider request while command, commit, or discard ownership is unresolved; continuation becomes
+admissible only when the authoritative execution projection says it is at a recoverable boundary.
+`/doctor` reads that same projection and distinguishes live work from operations that require
+explicit reconciliation instead of deriving a reassuring answer from the broad lifecycle phase.
 
 The real browser/gateway suite exercised 24 HTTP, persistence, restart, auth, recovery-banner, Git,
 file, PDF, and exact-PTY flows against freshly built binaries. The first run exposed a stale-binary
@@ -161,8 +169,12 @@ projection exposes the conversation, run, and target workspace even when executi
 not completed, and the WebUI can open that durable workbench directly. The old improvement request's
 ignored task field is gone, and pre-release improvement schema 1 is rejected rather than migrated.
 
-No production caller now creates a new interaction without workbench ownership. The remaining
-state-model cut is mechanical but broad: make interaction and workbench ownership required, remove
-the old `Interact` wire variant and daemon handler, then delete loader, library, and UI branches that
-only describe ownerless runs. The installed multi-day qualification must begin after that cut so it
-does not accumulate evidence against a generation scheduled for deletion.
+No production caller creates a new interaction or product snapshot without explicit workbench and
+operation ownership. Startup and live queries converge on the same operation projector, and the
+daemon retains the stable original identity when it reports recovery or unknown effects.
+
+Delivery item 6 remains incomplete. The branch has real PTY restart and abrupt daemon termination
+evidence plus real browser/gateway recovery evidence, but it has not yet qualified one installed
+artifact across several days of real provider-backed work. Cross-platform descendant containment
+also remains unproven outside the Linux parent-death mechanism. Daily-driver viability therefore
+remains an active qualification claim rather than a completed result.

@@ -171,6 +171,8 @@ impl PersistedRecord {
         if invalid_lineage || resume_mismatch {
             return Err(ProductRunServiceError::InvalidMessage);
         }
+        let operation =
+            super::super::operation::retained_execution(run_id, phase, &self.interruption_cause)?;
         let mut snapshot = ProductRunSnapshot::new(
             run_id,
             workspace_id,
@@ -183,6 +185,7 @@ impl PersistedRecord {
             self.gates,
             self.review,
             self.summary,
+            operation,
         )
         .map_err(|_| ProductRunServiceError::InvalidMessage)?;
         if let Some(deliverable) = self.deliverable {

@@ -47,6 +47,7 @@ fn a_slow_run_lookup_does_not_trap_new_conversation_navigation_or_late_reply_rou
         String::new(),
         String::new(),
         String::new(),
+        crate::test_support::run_operation(old_run, ProductRunPhase::Complete),
     )
     .unwrap();
     let binding = ProductInteractionBinding::new(
@@ -92,6 +93,7 @@ fn delayed_binding_cannot_retarget_a_new_selection_or_steal_focus_from_an_inspec
         String::new(),
         String::new(),
         String::new(),
+        crate::test_support::run_operation(run, ProductRunPhase::Complete),
     )
     .unwrap();
     let binding = ProductInteractionBinding::new(
@@ -139,6 +141,7 @@ fn cross_workspace_run_switch_retains_drafts_and_hands_off_only_the_selected_ide
         String::new(),
         String::new(),
         String::new(),
+        crate::test_support::run_operation(run, ProductRunPhase::Complete),
     )
     .unwrap();
     model.accept_product_runs(vec![snapshot]);
@@ -222,6 +225,7 @@ fn run_binding_routes_the_next_message_to_the_observed_conversation_without_star
         String::new(),
         String::new(),
         String::new(),
+        crate::test_support::run_operation(run, ProductRunPhase::Complete),
     )
     .unwrap();
     model.accept_product_runs(vec![snapshot.clone()]);
@@ -283,6 +287,7 @@ fn opening_a_different_run_never_leaves_the_previous_conversation_as_the_input_t
             String::new(),
             String::new(),
             String::new(),
+            crate::test_support::run_operation(run, ProductRunPhase::Complete),
         )
         .unwrap(),
     ]);
@@ -313,6 +318,10 @@ fn runs_selects_current_conversation_and_refresh_clears_only_active_settlements(
             String::new(),
             String::new(),
             String::new(),
+            crate::test_support::run_operation(
+                RunId::new([id; 16]).expect("run"),
+                ProductRunPhase::Writing,
+            ),
         )
         .expect("snapshot")
     });

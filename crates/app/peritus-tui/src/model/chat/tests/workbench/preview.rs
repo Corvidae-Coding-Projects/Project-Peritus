@@ -66,6 +66,7 @@ fn preview_model() -> (AppModel, peritus_app_protocol::WorkbenchQuery, RunId, Sh
         String::new(),
         String::new(),
         String::new(),
+        crate::test_support::run_operation(run, ProductRunPhase::Complete),
     )
     .expect("run snapshot")
     .with_deliverable(
@@ -355,6 +356,10 @@ fn preview_uses_open_conversation_run_and_failed_query_remains_refreshable() {
         String::new(),
         String::new(),
         String::new(),
+        crate::test_support::run_operation(
+            RunId::new([99; 16]).expect("other run"),
+            ProductRunPhase::Complete,
+        ),
     )
     .expect("other snapshot");
     model.accept_product_run(other);

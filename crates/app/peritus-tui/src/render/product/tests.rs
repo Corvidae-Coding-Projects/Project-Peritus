@@ -30,6 +30,7 @@ fn dashboard_renders_a_multibyte_task_at_the_summary_cutoff() {
         String::new(),
         String::new(),
         String::new(),
+        crate::test_support::run_operation(RunId::new([4; 16]).unwrap(), ProductRunPhase::Complete),
     )
     .unwrap();
     model.product.as_mut().unwrap().runs.push(run);
@@ -200,6 +201,7 @@ fn dependency_candidate(
         source_run.gates().to_owned(),
         source_run.review().to_owned(),
         summary.to_owned(),
+        crate::test_support::run_operation(source_run.run_id(), source_run.phase()),
     )
     .expect("snapshot")
     .with_operation(source_run.operation().clone())
@@ -269,6 +271,7 @@ fn terminal_state_snapshot_distinguishes_each_user_outcome() {
         stopped.gates().to_owned(),
         stopped.review().to_owned(),
         stopped.summary().to_owned(),
+        crate::test_support::run_operation(stopped.run_id(), ProductRunPhase::Failed),
     )
     .expect("stopped snapshot")
     .with_operation(operation_for(ProductRunPhase::Failed));
@@ -293,6 +296,7 @@ fn candidate_snapshot_with_status(phase: ProductRunPhase, status: &str) -> Produ
         "cargo test failed".to_owned(),
         "review missing".to_owned(),
         "remaining work".to_owned(),
+        crate::test_support::run_operation(RunId::new([2; 16]).expect("run"), phase),
     )
     .expect("snapshot")
     .with_operation(operation_for(phase))

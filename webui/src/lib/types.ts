@@ -18,7 +18,9 @@ export interface GitBranch { name: string; ref: string; remote: boolean; current
 export interface GitRemote { name: string; fetch: string[]; push: string[] }
 export interface GitStatus { root: string; branch: string; changes: GitChange[]; remotes: string; branches: GitBranch[]; remoteDetails: GitRemote[] }
 export interface Activity { id: string; kind: 'user' | 'assistant' | 'tool' | 'status' | 'error'; text: string; detail: string }
-export interface Run { providers?:Record<string,string>; id: string; workspace: string; phase: string; busy: boolean; task: string; status: string; diff: string; gates: string; review: string; summary: string; deliverable: {root: string; paths: string[]; instructions: string; qualification: string} | null }
+export interface RunLegalControls { stop:boolean;retry:boolean;accept:boolean;commit:boolean;export:boolean;discard:boolean;acknowledge:boolean }
+export interface RunOperation { kind:string;state:string;identity:string;known:string;uncertainty:string;legalControls:RunLegalControls }
+export interface Run { providers?:Record<string,string>; id: string; workspace: string; phase: string; task: string; status: string; diff: string; gates: string; review: string; summary: string; operation:RunOperation; deliverable: {root: string; paths: string[]; instructions: string; qualification: string;accepted?:boolean;commitRevision?:string;exportPath?:string;discarded?:boolean} | null }
 export interface WorkbenchNotice { conversation:string; revision:string; queued:boolean; started:boolean; observation:string; action:string; detail:string }
 export interface Conversation { models?:Record<string,ModelChoice>; mode?:Mode; run?: Run; received?: string; incorporated?: string; activities?: Activity[]; workbench?:WorkbenchNotice }
 export interface Facts { providers: {id: string; kind: string; model: string}[]; workspace: { id: string; root: string; execution: string; trust: string } | null; endpoint: string; ready:boolean;reason:string }

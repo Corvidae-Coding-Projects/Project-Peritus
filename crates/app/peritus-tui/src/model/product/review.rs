@@ -51,7 +51,7 @@ impl AppModel {
             }
             return Vec::new();
         }
-        if !run.phase().terminal() {
+        if !run.operation().may_start_execution() {
             if let Some(product) = &mut self.product {
                 product.review.page = None;
                 "Structured comments open at a terminal effect boundary; raw diff remains available."

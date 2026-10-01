@@ -2,8 +2,8 @@
 use super::values::{context, id};
 use crate::{
     AppResponseEnvelope, AppResponsePayload, CorrelationId, ProductDeliverable,
-    ProductProviderSelection, ProductRunPhase, ProductRunSettlementSnapshot, ProductRunSnapshot,
-    RequestId,
+    ProductProviderSelection, ProductRunOperationState, ProductRunPhase,
+    ProductRunSettlementSnapshot, ProductRunSnapshot, RequestId,
 };
 use peritus_run_settlement::{
     CandidateCheckpoint, CandidateIdentity, CandidateStage, EvidenceStatus, SettlementCause,
@@ -39,6 +39,7 @@ pub(super) fn settled() -> AppResponseEnvelope {
         String::new(),
         String::new(),
         "candidate is preserved for continuation".to_owned(),
+        super::values::run_operation(run_id, ProductRunOperationState::Failed),
     )
     .expect("fixture product snapshot")
     .with_deliverable(deliverable);
@@ -77,8 +78,9 @@ pub(super) fn mixed() -> AppResponseEnvelope {
     let AppResponsePayload::ProductRunSettled(settled) = settled_response.payload() else {
         unreachable!("settlement fixture")
     };
+    let active_run = id(91, RunId::new);
     let active = ProductRunSnapshot::new(
-        id(91, RunId::new),
+        active_run,
         settled.snapshot().workspace_id(),
         settled.snapshot().providers(),
         ProductRunPhase::Writing,
@@ -89,6 +91,7 @@ pub(super) fn mixed() -> AppResponseEnvelope {
         String::new(),
         String::new(),
         String::new(),
+        super::values::run_operation(active_run, ProductRunOperationState::Running),
     )
     .expect("active snapshot");
     AppResponseEnvelope::new(

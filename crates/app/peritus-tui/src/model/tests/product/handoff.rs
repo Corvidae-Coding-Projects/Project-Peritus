@@ -76,6 +76,7 @@ fn selected_product_run_accepts_conversational_followup() {
             String::new(),
             String::new(),
             "invalid JSON".to_owned(),
+            crate::test_support::run_operation(run_id, ProductRunPhase::Failed),
         )
         .expect("snapshot"),
     );
@@ -174,6 +175,7 @@ fn completed_product_run_exposes_all_four_handoff_controls() {
                 "cargo test: PASS".to_owned(),
                 "No findings".to_owned(),
                 "completed".to_owned(),
+                crate::test_support::run_operation(run_id, ProductRunPhase::Complete),
             )
             .expect("snapshot")
             .with_deliverable(
@@ -249,6 +251,7 @@ fn unknown_command_outcome_exposes_acknowledgement_without_retry() {
         String::new(),
         String::new(),
         String::new(),
+        crate::test_support::run_operation(run, ProductRunPhase::RecoveryRequired),
     )
     .expect("snapshot")
     .with_operation(
@@ -328,6 +331,7 @@ fn completed_product_run_exposes_foreground_run_action() {
         String::new(),
         String::new(),
         "completed".to_owned(),
+        crate::test_support::run_operation(run_id, ProductRunPhase::Complete),
     )
     .expect("snapshot")
     .with_deliverable(

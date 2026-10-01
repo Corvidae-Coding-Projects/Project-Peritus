@@ -135,7 +135,8 @@ impl AppModel {
     pub(super) fn run_selected_product_candidate(&mut self) -> Vec<Effect> {
         let Some((workspace, instruction, candidate_digest)) =
             self.product.as_ref().and_then(|product| {
-                let run = product.selected_run().filter(|run| run.phase().terminal())?;
+                let run =
+                    product.selected_run().filter(|run| run.operation().may_start_execution())?;
                 let deliverable =
                     run.deliverable().filter(|deliverable| !deliverable.discarded())?;
                 let checkpoint = product.selected_settlement()?.checkpoint()?;

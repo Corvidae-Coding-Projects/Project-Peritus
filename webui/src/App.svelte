@@ -1,8 +1,8 @@
 <script lang="ts">
   import { onMount,tick } from 'svelte';
-  import { ui,start,persist,project,session,attempt,dispatch,selectProject,selectSession,newSession,editSession,openFile,closeFile,send,poll,notify,openProjects,closeProject,attachFile } from './lib/workspace.svelte';
+  import { ui,start,persist,project,session,attempt,dispatch,selectProject,selectSession,newSession,editSession,openFile,closeFile,send,poll,notify,openProjects,closeProject,attachFile,runActive } from './lib/workspace.svelte';
   import { commands,matchesShortcut,formatShortcut } from './lib/commands/catalog';
-  import type { Session,Mode } from './lib/types';
+  import type { RunLegalControls,Session,Mode } from './lib/types';
   import Icon from './lib/components/Icon.svelte';
   import Nixie from './lib/components/Nixie.svelte';
   import Explorer from './lib/components/Explorer.svelte';
@@ -35,7 +35,15 @@
   let draft=$derived(ui.drafts[ui.sessionId]??'');
   let projects=$derived(openProjects());
   let opened=$derived(ui.workspace.sessions.filter(s=>!s.closed&&projects.some(p=>p.id===s.project)));
-  let running=$derived(Object.values(ui.conversations).filter(c=>c.run?.busy).length);
+  let running=$derived(Object.values(ui.conversations).filter(c=>runActive(c.run)).length);
+  const operationActions:{control:keyof RunLegalControls;command:string;label:string}[]=[
+    {control:'retry',command:'retry',label:'Exact retry'},
+    {control:'accept',command:'accept',label:'Accept candidate'},
+    {control:'commit',command:'commit',label:'Commit candidate'},
+    {control:'export',command:'export',label:'Export candidate'},
+    {control:'discard',command:'discard',label:'Discard candidate'},
+    {control:'acknowledge',command:'acknowledge',label:'Acknowledge unknown outcome'},
+  ];
   let sessionFiles=$derived(ui.files.filter(f=>f.session===ui.sessionId));
   let activities=$derived((current?.activities??[]).filter(a=>ui.details||['user','assistant','error'].includes(a.kind)));
   let suggestions=$derived(draft.startsWith('/')&&!draft.includes(' ')?commands.filter(c=>c.slash.startsWith(draft)).slice(0,7):[]);
@@ -115,7 +123,7 @@
             <div class="session-level" style={`--level:${depth}`}><span class="level-connector">{#if depth===0}<Icon name="layers" size={15}/>{:else}<Icon name="branch" size={15}/>{/if}</span><div class="session-tabs" style:grid-template-columns={row.length?`repeat(${row.length},max-content)`:'none'}>
               {#if row.length}<div class="session-tab-list" role="tablist" aria-label={depth?`Nested sessions level ${depth}`:'Sessions'}>
               {#each row as item,index(item.id)}<div class="session-tab" style:grid-column={index+1} class:active={lineage.some(a=>a.id===item.id)} class:current={item.id===ui.sessionId} class:drop-ready={dragged&&dragged!==item.id}>
-                <button id={`session-${item.id}`} role="tab" aria-selected={lineage.some(a=>a.id===item.id)} tabindex={lineage.some(a=>a.id===item.id)?0:-1} title={`${item.title} · Drag onto another session to nest`} draggable="true" ondragstart={(event)=>{dragged=item.id;event.dataTransfer?.setData('text/peritus-session',item.id);}} ondragend={()=>dragged=''} ondragover={(event)=>event.preventDefault()} ondrop={(event)=>{event.preventDefault();const source=event.dataTransfer?.getData('text/peritus-session');if(source)void attempt(()=>editSession(source,{parent:item.id}));dragged='';}} onclick={()=>selectSession(item.id)} onkeydown={(event)=>tabKeys(event,row,index)}><span class="status-dot" class:busy={ui.conversations[item.id]?.run?.busy}></span><span class="session-tab-title">{item.title}</span></button>
+                <button id={`session-${item.id}`} role="tab" aria-selected={lineage.some(a=>a.id===item.id)} tabindex={lineage.some(a=>a.id===item.id)?0:-1} title={`${item.title} · Drag onto another session to nest`} draggable="true" ondragstart={(event)=>{dragged=item.id;event.dataTransfer?.setData('text/peritus-session',item.id);}} ondragend={()=>dragged=''} ondragover={(event)=>event.preventDefault()} ondrop={(event)=>{event.preventDefault();const source=event.dataTransfer?.getData('text/peritus-session');if(source)void attempt(()=>editSession(source,{parent:item.id}));dragged='';}} onclick={()=>selectSession(item.id)} onkeydown={(event)=>tabKeys(event,row,index)}><span class="status-dot" class:busy={runActive(ui.conversations[item.id]?.run)}></span><span class="session-tab-title">{item.title}</span></button>
                </div>{/each}
               </div>
               {#each row as item,index(item.id)}<button class="flat icon-button session-tab-close" style:grid-column={index+1} aria-label={`Close session: ${item.title}`} title="Close tab; keep work running" onclick={()=>void attempt(()=>closeTab(item.id))}><Icon name="close" size={14}/></button>{/each}{/if}
@@ -142,7 +150,7 @@
               {:else}
                 {#each activities as activity(activity.id)}<article class="message" class:user={activity.kind==='user'} class:system-message={!['user','assistant'].includes(activity.kind)}><div class="message-meta"><span class="message-avatar">{#if activity.kind==='assistant'}<Icon name="bolt" size={15}/>{:else if activity.kind==='user'}Y{:else}<Icon name="terminal" size={14}/>{/if}</span><strong>{activity.kind==='assistant'?'Peritus':activity.kind==='user'?'You':activity.kind}</strong><span class="message-sequence">{activity.id.padStart(3,'0')}</span></div><div class="message-content"><Markdown text={activity.text}/>{#if activity.detail}<details><summary>Details</summary><pre>{activity.detail}</pre></details>{/if}</div></article>{/each}
               {/if}
-              {#if current?.run?.busy}<div class="working-observation"><span class="status-dot busy"></span>Peritus is working<span>{current.run.phase}</span></div>{/if}
+              {#if runActive(current?.run)}<div class="working-observation"><span class="status-dot busy"></span>Peritus is working<span>{current?.run?.operation.state}</span></div>{/if}
             </div>
             <form class="composer" onsubmit={(event)=>{event.preventDefault();void attempt(send);}}>
               <Attachments/>
@@ -158,8 +166,9 @@
       <aside class="control-bank" aria-label="Harness controls"><div class="control-heading"><h2>Control bank</h2><span class="engraved-symbol">P / 01</span></div>
         <div class="connection-module"><span class="status-lamp" class:online={ui.ready}></span><div><strong>{!ui.connected?'Daemon offline':ui.ready?'Daemon ready':'Daemon connected · not ready'}</strong><small>{ui.readiness}</small></div><button class="flat icon-button" aria-label="Reconnect daemon" onclick={()=>void attempt(()=>dispatch('reconnect'))}><Icon name="refresh" size={15}/></button></div>
         <div class="target-readout"><h3>Execution target</h3><span class="target-type"><Icon name="shield" size={14}/>{ui.facts?.workspace?.trust==='trusted'?'Trusted workspace':'Setup required'}</span><code>{ui.facts?.workspace?.execution||activeProject?.root}</code><button class="flat" onclick={()=>void attempt(()=>dispatch('workspaces'))}>Configure workspace<Icon name="arrow" size={13}/></button></div>
-        <div class="run-controls"><div class="control-section-title"><h3>Session controls</h3><Icon name="bolt" size={14}/></div><button class="key stop-key" disabled={!current?.run?.busy} onclick={()=>void attempt(()=>dispatch('stop'))}><span class="stop-cap"><Icon name="stop" size={15}/></span>Stop work<kbd>/stop</kbd></button><div class="utility-keys">{#each [['details','Activity','layers'],['diff','Changes','git'],['runs','Runs','clock'],['terminal','Console','terminal']] as item}<button class="key" class:pressed={item[0]==='details'&&ui.details} onclick={()=>void attempt(()=>dispatch(item[0]!))}><Icon name={item[2]!}/>{item[1]}</button>{/each}</div></div>
-        <div class="signal-readout"><div><span>State</span><strong>{current?.run?.phase||'Idle'}</strong></div><div><span>Input received</span><strong>{current?.received??'—'}</strong></div><div><span>Incorporated</span><strong>{current?.incorporated??'—'}</strong></div><p>Observed by the daemon. A received message may still be waiting for a model request.</p></div>
+        <div class="run-controls"><div class="control-section-title"><h3>Session controls</h3><Icon name="bolt" size={14}/></div><button class="key stop-key" disabled={!current?.run?.operation.legalControls.stop} onclick={()=>void attempt(()=>dispatch('stop'))}><span class="stop-cap"><Icon name="stop" size={15}/></span>Stop work<kbd>/stop</kbd></button><div class="utility-keys">{#each [['details','Activity','layers'],['diff','Changes','git'],['runs','Runs','clock'],['terminal','Console','terminal']] as item}<button class="key" class:pressed={item[0]==='details'&&ui.details} onclick={()=>void attempt(()=>dispatch(item[0]!))}><Icon name={item[2]!}/>{item[1]}</button>{/each}</div></div>
+        {#if current?.run}<div class="operation-observation" class:uncertain={!!current.run.operation.uncertainty}><div class="control-section-title"><h3>Authoritative operation</h3><span>{current.run.operation.kind}</span></div><strong>{current.run.operation.state}</strong><p><b>Known</b>{current.run.operation.known}</p>{#if current.run.operation.uncertainty}<p class="uncertainty"><b>Uncertain</b>{current.run.operation.uncertainty}</p>{/if}<code>{current.run.operation.identity}</code><div class="operation-actions">{#each operationActions.filter(action=>current!.run!.operation.legalControls[action.control]) as action}<button class="key small" onclick={()=>void attempt(()=>dispatch(action.command))}>{action.label}</button>{/each}{#if !Object.values(current.run.operation.legalControls).some(Boolean)}<small>No operation controls are legal at this observation.</small>{/if}</div></div>{/if}
+        <div class="signal-readout"><div><span>State</span><strong>{current?.run?.operation.state||'Idle'}</strong></div><div><span>Input received</span><strong>{current?.received??'—'}</strong></div><div><span>Incorporated</span><strong>{current?.incorporated??'—'}</strong></div><p>Observed by the daemon. A received message may still be waiting for a model request.</p></div>
         <div class="advanced-controls"><h3>More control, when you need it.</h3><button class="flat" onclick={()=>void attempt(()=>dispatch('providers'))}><Icon name="settings" size={15}/>Providers & accounts<Icon name="chevron" size={13}/></button><button class="flat" onclick={()=>void attempt(()=>dispatch('sessions'))}><Icon name="layers" size={15}/>Session library<Icon name="chevron" size={13}/></button><button class="flat" onclick={()=>void attempt(()=>dispatch('improvements'))}><Icon name="layers" size={15}/>Improvement inbox<Icon name="chevron" size={13}/></button><button class="flat" onclick={()=>ui.palette=' '}><Icon name="terminal" size={15}/>All harness commands<Icon name="chevron" size={13}/></button></div>
         <div class="bank-nameplate"><span>PERITUS</span><small>LOCAL-FIRST / HUMAN-DIRECTED</small><i></i><i></i></div>
       </aside>

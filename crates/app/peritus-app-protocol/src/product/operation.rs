@@ -1,7 +1,5 @@
 //! Authoritative operation knowledge and legal controls projected with every product run.
 
-use core::fmt::Write as _;
-
 use super::{
     MAX_PRODUCT_DETAIL_BYTES, ProductRunControlAction, ProductRunMessageError, bounded_text,
     optional_bounded_text,
@@ -201,22 +199,6 @@ pub struct ProductRunOperation {
 }
 
 impl ProductRunOperation {
-    pub(super) fn unreconciled(run_id: peritus_types::RunId) -> Self {
-        let mut identity = String::with_capacity(36);
-        identity.push_str("run/");
-        for byte in run_id.as_bytes() {
-            let _ = write!(identity, "{byte:02x}");
-        }
-        Self {
-            kind: ProductRunOperationKind::Execution,
-            state: ProductRunOperationState::OutcomeUnknown,
-            identity,
-            known: "No authoritative operation observation is attached yet.".to_owned(),
-            uncertainty: "The operation owner has not been reconciled for transport.".to_owned(),
-            legal_controls: ProductRunLegalControls::none(),
-        }
-    }
-
     /// Creates a bounded operation projection.
     ///
     /// # Errors
@@ -268,5 +250,19 @@ impl ProductRunOperation {
     #[must_use]
     pub const fn legal_controls(&self) -> ProductRunLegalControls {
         self.legal_controls
+    }
+
+    /// Whether this exact operation owner is at a boundary where explicit input may start work.
+    #[must_use]
+    pub fn may_start_execution(&self) -> bool {
+        self.kind == ProductRunOperationKind::Execution
+            && matches!(
+                self.state,
+                ProductRunOperationState::WaitingForUser
+                    | ProductRunOperationState::Succeeded
+                    | ProductRunOperationState::Failed
+                    | ProductRunOperationState::Cancelled
+                    | ProductRunOperationState::RecoveryRequired
+            )
     }
 }

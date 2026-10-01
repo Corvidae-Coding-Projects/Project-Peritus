@@ -168,7 +168,9 @@ pub async fn workbench_continuation(
     if let Some(result) = record.result {
         return retained_response(&result);
     }
-    if observed.incorporated() >= observed.received() || !observed.snapshot().phase().terminal() {
+    let operation = observed.snapshot().operation();
+    let resume_admissible = operation.may_start_execution();
+    if observed.incorporated() >= observed.received() || !resume_admissible {
         let recovered = AppResponsePayload::Interaction(observed.clone());
         retain_reconciled_response(app, &key, &original, recovered.clone())?;
         return Ok(recovered);

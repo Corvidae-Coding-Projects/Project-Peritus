@@ -71,6 +71,48 @@ test('workbench binds exact browser session, project and daemon without executin
   await action(request,'close-console',{id:opened.id});
 });
 
+test('unknown command outcomes expose authoritative facts and their legal recovery control',async({page})=>{
+  const boot=await (await page.request.get(`${origin}/api/bootstrap`)).json();
+  const selected=boot.workspace.sessions[0];
+  const controls={stop:false,retry:false,accept:false,commit:false,export:false,discard:false,acknowledge:true};
+  const run={id:selected.run,workspace:'44'.repeat(16),providers:{},phase:'RecoveryRequired',task:'Interrupted command',status:'Command outcome requires inspection',diff:'',gates:'',review:'',summary:'Useful workspace changes remain available.',operation:{kind:'Command',state:'OutcomeUnknown',identity:'command/exact-operation',known:'The original command receipt is durable and replay is forbidden.',uncertainty:'The host cannot prove whether the command changed the workspace.',legalControls:controls},deliverable:null};
+  const conversation={run,received:'1',incorporated:'1',activities:[{id:'1',kind:'status',text:'Command interrupted',detail:'Inspect the authoritative operation.'}]};
+  const actions:string[]=[];
+  await page.route('**/api/query?**',async route=>{
+    const kind=new URL(route.request().url()).searchParams.get('kind');
+    if(kind==='daemon')return route.fulfill({json:{ready:true,readiness:'ReadyReadWrite'}});
+    if(kind==='facts')return route.fulfill({json:{providers:[],workspace:{id:run.workspace,root,execution:root,trust:'trusted'},endpoint:'fixture',ready:true,reason:'Ready'}});
+    if(kind==='conversation')return route.fulfill({json:conversation});
+    if(kind==='consoles')return route.fulfill({json:[]});
+    if(kind==='runs')return route.fulfill({json:[run]});
+    await route.continue();
+  });
+  await page.route('**/api/action',async route=>{
+    const input=route.request().postDataJSON();
+    if(input.command==='control'){
+      actions.push(input.action);
+      run.operation={...run.operation,state:'RecoveryRequired',known:'The unknown outcome was reviewed without replay.',uncertainty:'Replacement mutations remain frozen until exact retry.',legalControls:{...controls,retry:true,acknowledge:false}};
+      return route.fulfill({json:conversation});
+    }
+    await route.continue();
+  });
+  await page.goto('/');
+  const operation=page.locator('.operation-observation');
+  await expect(operation.getByText('Authoritative operation',{exact:true})).toBeVisible();
+  await expect(operation).toContainText('The original command receipt is durable and replay is forbidden.');
+  await expect(operation).toContainText('The host cannot prove whether the command changed the workspace.');
+  await expect(page.getByRole('button',{name:/^Stop work/})).toBeDisabled();
+  await page.screenshot({path:'/tmp/peritus-operation-recovery.png',fullPage:true});
+  await page.getByRole('button',{name:'Acknowledge unknown outcome',exact:true}).click();
+  await expect.poll(()=>actions).toEqual(['acknowledge']);
+  await expect(operation.getByText('RecoveryRequired',{exact:true})).toBeVisible();
+  await expect(page.getByRole('button',{name:'Exact retry',exact:true})).toBeVisible();
+  const composer=page.getByRole('textbox',{name:'Message Peritus or enter a slash command'});
+  await composer.fill('/status');await composer.press('Enter');
+  await expect(page.getByRole('dialog')).toContainText('command/exact-operation');
+  await expect(page.getByRole('dialog')).toContainText('Legal controls: retry');
+});
+
 test('improvement inbox stays passive until explicit evaluation and preserves evidence controls',async({page,request})=>{
   const boot=await (await request.get('/api/bootstrap')).json();
   const current=boot.workspace.sessions[0],workspace='44'.repeat(16),candidate='55'.repeat(32);
@@ -79,7 +121,7 @@ test('improvement inbox stays passive until explicit evaluation and preserves ev
   await page.route('**/api/query?**',async route=>{
     const kind=new URL(route.request().url()).searchParams.get('kind');
     if(kind==='improvements')return route.fulfill({json:inbox});
-    if(kind==='runs')return route.fulfill({json:[{id:current.run,workspace,task:'Evidence fixture',phase:'Complete',busy:false}]});
+    if(kind==='runs')return route.fulfill({json:[{id:current.run,workspace,task:'Evidence fixture',phase:'Complete',operation:{kind:'Execution',state:'Succeeded',identity:`run/${current.run}`,known:'The run completed.',uncertainty:'',legalControls:{stop:false,retry:false,accept:false,commit:false,export:false,discard:false,acknowledge:false}}}]});
     await route.continue();
   });
   await page.route('**/api/action',async route=>{

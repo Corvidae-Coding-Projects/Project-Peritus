@@ -5,7 +5,8 @@ use peritus_app_protocol::{
     AppResponsePayload, CorrelationId, ProductActivity, ProductActivityKind,
     ProductInteractionMode, ProductInteractionQuery, ProductInteractionSnapshot,
     ProductModelCatalog, ProductModelChoice, ProductModelInfo, ProductModelQuery,
-    ProductProviderSelection, ProductRoleModels, ProductRunPhase, ProductRunSnapshot,
+    ProductProviderSelection, ProductRoleModels, ProductRunLegalControls, ProductRunOperation,
+    ProductRunOperationKind, ProductRunOperationState, ProductRunPhase, ProductRunSnapshot,
     ProtocolContext, ProtocolId, ProtocolVersion, RequestId, decode_app_message,
     encode_app_message,
 };
@@ -23,6 +24,17 @@ fn profile() -> ProviderProfileId {
 }
 fn run() -> RunId {
     RunId::new([4; 16]).expect("run")
+}
+fn operation() -> ProductRunOperation {
+    ProductRunOperation::new(
+        ProductRunOperationKind::Execution,
+        ProductRunOperationState::Running,
+        "run/04040404040404040404040404040404".to_owned(),
+        "The interaction fixture owns an active execution.".to_owned(),
+        String::new(),
+        ProductRunLegalControls::none(),
+    )
+    .expect("operation")
 }
 fn models() -> ProductRoleModels {
     ProductRoleModels::new(
@@ -44,6 +56,7 @@ fn snapshot() -> ProductRunSnapshot {
         String::new(),
         String::new(),
         String::new(),
+        operation(),
     )
     .expect("snapshot")
 }

@@ -5,9 +5,10 @@ use super::{
     WorkbenchQuery,
 };
 use peritus_app_protocol::{
-    ProductInteractionQuery, WellKnownProtocolFeature, WorkbenchCommand,
-    WorkbenchExecutionSettings, WorkbenchExecutionState, WorkbenchInputId, WorkbenchInputOrder,
-    WorkbenchInputText, WorkbenchNewInput, WorkbenchQueueIntent,
+    ProductInteractionQuery, ProductRunOperationKind, ProductRunOperationState,
+    WellKnownProtocolFeature, WorkbenchCommand, WorkbenchExecutionSettings,
+    WorkbenchExecutionState, WorkbenchInputId, WorkbenchInputOrder, WorkbenchInputText,
+    WorkbenchNewInput, WorkbenchQueueIntent,
 };
 use peritus_types::RunId;
 
@@ -282,12 +283,8 @@ impl AppModel {
             self.notice(NoticeLevel::Info, "Input saved to this goal's queue; active work incorporates it at the next request. Use /resume if the goal is paused.");
             return Vec::new();
         }
-        if self
-            .chat
-            .snapshot
-            .as_ref()
-            .is_some_and(|snapshot| snapshot.snapshot().phase().terminal())
-        {
+        let operation = self.chat.snapshot.as_ref().map(|snapshot| snapshot.snapshot().operation());
+        if operation.is_some_and(peritus_app_protocol::ProductRunOperation::may_start_execution) {
             let Some(query) = self.chat.workbench.selected else { return Vec::new() };
             return self
                 .request(
@@ -298,6 +295,17 @@ impl AppModel {
                 )
                 .into_iter()
                 .collect();
+        }
+        if operation.is_some_and(|operation| {
+            operation.kind() != ProductRunOperationKind::Execution
+                || operation.state() == ProductRunOperationState::OutcomeUnknown
+        }) {
+            self.chat.workbench.submission = None;
+            self.notice(
+                NoticeLevel::Warning,
+                "Input saved, but the current operation must be reconciled before execution can resume.",
+            );
+            return Vec::new();
         }
         self.chat.workbench.submission = None;
         self.notice(NoticeLevel::Info, "Input saved; the next model request will incorporate it.");

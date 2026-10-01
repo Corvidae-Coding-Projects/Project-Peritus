@@ -91,6 +91,7 @@ fn unqualified_model() -> (AppModel, RunId, WorkspaceId) {
             String::new(),
             String::new(),
             "Remaining work: checks and review".to_owned(),
+            crate::test_support::run_operation(run_id, ProductRunPhase::Failed),
         )
         .expect("snapshot"),
         ProductRunOperationState::Failed,
@@ -238,6 +239,10 @@ fn exact_run_poll_does_not_replace_the_list_or_undo_navigation() {
                 String::new(),
                 String::new(),
                 String::new(),
+                crate::test_support::run_operation(
+                    RunId::new([id; 16]).expect("run"),
+                    ProductRunPhase::Failed,
+                ),
             )
             .expect("snapshot")
         });

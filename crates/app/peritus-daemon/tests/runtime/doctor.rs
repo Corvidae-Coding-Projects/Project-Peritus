@@ -73,7 +73,7 @@ fn doctor_requires_negotiation_and_reports_missing_prerequisites_without_startin
                 );
                 assert!(
                     report.findings().iter().any(|finding| finding.check() == "workspace-activity"
-                        && finding.observation().starts_with("No active"))
+                        && finding.observation().starts_with("No live or unresolved"))
                 );
             } else {
                 let AppResponsePayload::Error(error) = response.payload() else {
