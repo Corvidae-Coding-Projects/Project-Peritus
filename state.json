@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1846,
-        "tip_oid": "d33d669c490107dec084227b52c7eea71381fd27",
-        "prefix_sha256": "6dee71d1e950fa949b9150de6dccb731da689b37f7f43f9ffe4831e3318994f9"
+        "sequence": 1850,
+        "tip_oid": "be0093a1650e906eae79605032d8f672e406b5f3",
+        "prefix_sha256": "5ce5477302df1e5b2f31341bfc71fcbc5dfaa0722e0d17b543894364f2823667"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 1978,
+  "next_comment_id": 1979,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -192,10 +192,6 @@
     "97": {
       "agent_id": "6ME5",
       "claimed_at": "2026-09-27T23:34:45.783730261Z"
-    },
-    "99": {
-      "agent_id": "6ME5",
-      "claimed_at": "2026-10-01T07:20:49.328458497Z"
     }
   },
   "issues": {
@@ -16544,7 +16540,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-28T00:58:41.412806074Z",
-      "updated_at": "2026-10-01T07:35:02.287579400Z",
+      "updated_at": "2026-10-01T07:56:13.020846335Z",
       "labels": [
         "bug"
       ],
@@ -16890,6 +16886,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAWdosC5s1o7Voz57+Lk1Y836dyZ+4J9tY3W8yTePkgQae3RFY1gtGgwgkeglUIX6QosI03EcZZqQr5+k7+CH1Dg=="
+        },
+        "4ff38dd5-62bc-48f9-9059-f6ba1c5182d2": {
+          "display_id": 1978,
+          "author": "6ME5",
+          "content": "Result 85c47e4f0: improvement evaluation now reserves an actor-owned durable workbench before execution, persists conversation/run/target/provider identity in schema 2, queues candidate and evidence as explicit dependency inputs, replays deterministic preparation IDs after interruption, and exposes the ordinary WebUI workbench recovery route. Removed the ignored task field and rejected schema 1 rather than migrating it. Verified focused protocol/daemon/web tests, strict Clippy, frontend checks/build/E2E earlier in the slice, and cargo xtask all.",
+          "created_at": "2026-10-01T07:56:13.017245908Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAIlN+zuiP5rk6dAydZ/FGt1IYYULevbx56AQDIyzGhK1wO5maTW1CkN81qfzZPI61JKNFbk6sxrHT7dHGP2uSBg=="
         },
         "50ceefa7-0b39-4494-9911-58bfa0c81d2d": {
           "display_id": 1853,
