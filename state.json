@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1834,
-        "tip_oid": "a1538d57daa20f2d462bb13a48acebd6851824b4",
-        "prefix_sha256": "cedd21eeb7405c2f6669f726e56c98066d5fed4b27053d486018abfe8c7f9809"
+        "sequence": 1835,
+        "tip_oid": "b6c5d3e757734108a370877bbdad2024f70dd7bd",
+        "prefix_sha256": "1f6070f1a89b62c8ce9242e54b6b174e8dc492a6bb89b80a3f126caffa67bd9b"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 1968,
+  "next_comment_id": 1969,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -16544,7 +16544,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-28T00:58:41.412806074Z",
-      "updated_at": "2026-10-01T06:25:55.316436927Z",
+      "updated_at": "2026-10-01T06:26:17.545205528Z",
       "labels": [
         "bug"
       ],
@@ -17331,6 +17331,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAtoLjWXu7q64OHuByIqZchBGQF8k+el4uDxCSFhMuIcDN5P1FSB+mNDCjOMAhkwzECSwSNhID9A624rKn1JaEBw=="
+        },
+        "c42ad45b-94d1-47cf-9980-1411d90dfe7a": {
+          "display_id": 1968,
+          "author": "6ME5",
+          "content": "Architecture decision: backward compatibility with prior product versions is explicitly out of scope because there are no users or released histories. DRY/YAGNI audit found two product generations remain active: optional legacy conversation bindings, optional interaction ownership plus numeric phase offsets, dual startup loaders, legacy snapshot/deliverable decoding, legacy library mappings, and a v2 test that accepts an omitted goal_resume marker. Updated .design/daily-driver-state-ownership.md to require one current workbench-run aggregate, one admission/observation/recovery protocol, a version cut across daemon/CLI/TUI/WebUI/schema fixtures, strict required fields, and quarantine without migration or compatibility defaults. Integrity version tags and uncertain-effect reconciliation remain.",
+          "created_at": "2026-10-01T06:26:17.541199325Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAtYf7Sg8Tjd3bjzNZqitTienWi1iyE/jJMsulHQQmlsakGcKO+pm4Gi0Swdljv/wPo6uNqeXF4XwcNMa3YTIkCg=="
         },
         "c50af1de-5da6-41a8-b25c-f423531756f3": {
           "display_id": 1902,
