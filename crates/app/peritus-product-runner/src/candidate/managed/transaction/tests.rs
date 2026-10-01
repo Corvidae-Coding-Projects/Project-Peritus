@@ -196,7 +196,7 @@ fn replaced_staging_entries_are_preserved() {
     let fixture = Fixture::new();
     let mut state = state::read(&fixture.path).unwrap().unwrap();
     let owner = Owner::acquire(&fixture.path).unwrap();
-    let directory = fixture.repository.path().join(".peritus-restore-test");
+    let directory = state.plan.root.join(".peritus-restore-test");
     fs::create_dir(&directory).unwrap();
     state.phase = Phase::Restoring;
     let mut journal = Journal { path: fixture.path.clone(), state, _owner: owner };
