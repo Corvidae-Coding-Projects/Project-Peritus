@@ -12,7 +12,7 @@ from execution context with explicit evidence dependencies, runtime and startup 
 rules with stable operation identities, and host observations independent of model judgments.
 There are no existing users or released histories to preserve. Backward compatibility with earlier
 product state, request shapes, or UI flows is explicitly out of scope. Old state is retained only as
-quarantined evidence; it is never decoded through defaults, upgraded, or admitted into execution.
+quarantined evidence; it is never admitted through compatibility defaults, upgraded, or executed.
 
 ## Inspected boundaries and current findings
 
