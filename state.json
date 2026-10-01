@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1877,
-        "tip_oid": "0d4f1242e6c2c7bdbc2625d2f633c11147c69cec",
-        "prefix_sha256": "6a1d5e9b19aa2b895c3f2e8cb78d9d4c612143d0312568834b159b5ed680213d"
+        "sequence": 1878,
+        "tip_oid": "2ed1b235057a854a87f496bdffaf8a517bf1952c",
+        "prefix_sha256": "0ce323f2c526cd62346b0bf426df386c7e5c85e14c954d9eb42ddd6953b0ecaa"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 2003,
+  "next_comment_id": 2004,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -16544,7 +16544,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-28T00:58:41.412806074Z",
-      "updated_at": "2026-10-01T10:26:35.504415854Z",
+      "updated_at": "2026-10-01T10:32:51.095861346Z",
       "labels": [
         "bug"
       ],
@@ -17574,6 +17574,15 @@
           "kind": "defect",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAyJmaBdIvxAfgYtrjt50GLjFfCou6KujvUDwPMj7IgqRumAyyOrlwzvVjCAkbDK0pBvss3IjnVyUeWKMfPNjECQ=="
+        },
+        "bc9707a3-db57-4060-b2c4-73369a51d58b": {
+          "display_id": 2003,
+          "author": "6ME5",
+          "content": "DD6-003 confirmed on a fresh installed-product run bd828ea23dc3c713f96d559bf918a759. Before the command, public runs list completed in 0.01s during a provider wait. While ./hold_probe.py dd6-cli-001 was in its single 60s run_command, a fresh client connected to the Unix socket and sent ClientHello but received no ServerHello; it timed out at 5.00s. Immediately after command completion, runs list completed in 0.00s. Daemon had 24 Tokio workers and 64 configured connection capacity, so this is not single-thread or configured-capacity exhaustion. Evidence under /home/doll/Peritus-Daily-Driver/qualification-format6-86c675234/responsiveness/.",
+          "created_at": "2026-10-01T10:32:51.091751250Z",
+          "kind": "observation",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABANS7QaWyz+d9/1HOS3jCWz0yZWsIQwCOHV9FJ/t1lzrX2p7ZivPtLhA9SJiSvY8Bx3ruedQaPOodbEgIKqRlHDw=="
         },
         "bd83b532-63b4-4a5a-a8b4-c887e6cbd209": {
           "display_id": 1967,
