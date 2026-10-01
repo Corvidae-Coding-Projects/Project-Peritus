@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1875,
-        "tip_oid": "ded8f84fa754d93f9dd2f6c6bf0700fb2be3c3d0",
-        "prefix_sha256": "9f8aed33e9dd803ed9504b5ad4726b1e20712b8a5d90f4e3463345d54a750e7a"
+        "sequence": 1876,
+        "tip_oid": "c21f1be69cd263f3de36e3340a1b3218a323a06e",
+        "prefix_sha256": "623eeabaab2bdd9c47511c6d56f945f419bc8b3b5ed53f8e2d99a240629a4172"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 2001,
+  "next_comment_id": 2002,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -16544,7 +16544,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-28T00:58:41.412806074Z",
-      "updated_at": "2026-10-01T10:24:50.511876573Z",
+      "updated_at": "2026-10-01T10:25:45.030111095Z",
       "labels": [
         "bug"
       ],
@@ -17403,6 +17403,15 @@
           "kind": "handoff",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA25BaEaKuzP/5DtL7Q9uDG00Y46EEzAturWzQaLjIv8M8hI8Cj1La73WUU0fAMK2NzD2RteqSBTesu0mN0maGBg=="
+        },
+        "9bc88a1f-4ed3-44d3-8e85-d9b3af40b296": {
+          "display_id": 2001,
+          "author": "6ME5",
+          "content": "[action] Effect-boundary run proved command outcome projection and normal-input recovery; investigating orphaned command lifetime after SIGKILL and concurrent CLI stall.",
+          "created_at": "2026-10-01T10:25:45.026226087Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA8KERYfeXNOvjpjt2iDt6b0AQKp+aMoD5+hVgQhk2OLjrVFbMYy2MiZaUrwqydpu3Z+H90yR7Bmn4Jz3bsZXvAw=="
         },
         "9e209cc0-fd35-4d1c-bfd9-f8529a12b16a": {
           "display_id": 1901,
