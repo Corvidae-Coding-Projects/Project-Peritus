@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1914,
-        "tip_oid": "c23ae94d60a58aca71e4ad8094fd5b73a106fd00",
-        "prefix_sha256": "7f0f2359b3b141e40ef6393eca1740e9b4cc4ba0473cc88e1004ebd0651a180e"
+        "sequence": 1915,
+        "tip_oid": "d12ce0e50233c06ddc5cfa0e98ad686ec7b177f3",
+        "prefix_sha256": "99a5a4ebc6fc7aaf5583a4b3b21c94b91e61f15c158e8c437d646dd5be38e76e"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 2032,
+  "next_comment_id": 2033,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -16544,7 +16544,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-28T00:58:41.412806074Z",
-      "updated_at": "2026-10-01T14:40:01.332293489Z",
+      "updated_at": "2026-10-01T15:03:53.541583361Z",
       "labels": [
         "bug"
       ],
@@ -16962,6 +16962,15 @@
           "kind": "handoff",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAcdiTOHWvcQojLBXPXD1xNltIuPK7xP/5oOLcwKb5JX70WZa3ttlWUlW1B83+C1rHh3w/7zXgwdx9vDKyMFM8CQ=="
+        },
+        "42cdece0-32f0-495f-94b2-a743f5c2fd5f": {
+          "display_id": 2032,
+          "author": "6ME5",
+          "content": "Hosted verification for commit 29d877deee25f2fe810ec82a9dcc2662bf067854: Foundation job 110423163020, Foundation Rust test-runner-candidate app-runner (windows-2025), completed successfully in 12m49s. Its terminal log reports 66 passed, 0 failed, 362 filtered out in 400.91s. Current-head rollup at inspection: 290 successful checks, 4 skipped, 59 running, 91 queued, and no failed/cancelled/timed-out checks. Two superseded prior-head runs (Native product package 36870409985 and Gate A 36870409888) remained stuck after normal concurrency cancellation and were force-cancelled so exact-head work could start.",
+          "created_at": "2026-10-01T15:03:53.537768541Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAtUTLuDhmnTQ5PAu25DQlM5nuDoRIM3TmKNavuIx5hfmygFs8uCtE/phpW2zUPl48gTc51oRWZ+dgjU4BJAmhBA=="
         },
         "4436ceff-a9fc-43b4-96b0-3852690ede96": {
           "display_id": 1945,
