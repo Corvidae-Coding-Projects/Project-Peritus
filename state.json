@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1937,
-        "tip_oid": "83f0acb23897349bcff4f91454f31a970bd3ab09",
-        "prefix_sha256": "ba431aeddcd137a1874536b84ea01f67471dcb03a22dd7d41463c5b0d33ff0f5"
+        "sequence": 1938,
+        "tip_oid": "9724cb27136e7147199599c9df72530a9c025c7d",
+        "prefix_sha256": "8922aa48aa6694f45d3037dcbec19ee2bdea13c0cd91e7f731a5e5379e921dca"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 2051,
+  "next_comment_id": 2052,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -10665,7 +10665,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-27T23:40:33.365528994Z",
-      "updated_at": "2026-10-01T20:28:42.055656274Z",
+      "updated_at": "2026-10-01T20:31:12.546621408Z",
       "comments": {
         "172fb531-7617-4dd5-afb2-b7d95cab7e0d": {
           "display_id": 1850,
@@ -10783,6 +10783,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAjNVn95iOSAYs6lrPOoeQXc1sRNDZjgKtJray699zfgE6DSrkqMb1/0BOZfB87ERvMmhiw0O64kiHirN5ATNsCQ=="
+        },
+        "8af5e850-ddc4-4b68-ba62-6a4a4e5e0338": {
+          "display_id": 2051,
+          "author": "6ME5",
+          "content": "[action] Post-description final: PR #105 exact head e9809eb4 CLEAN with 582 passed, 6 expected skipped, zero pending/bad/cancelled; Closes #106 recorded in PR body.",
+          "created_at": "2026-10-01T20:31:12.542690676Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAfiaDGOsqBi3oo5ZyQtXYFMd83O+oDaxLxTyADy5wOTFZU4msstL701I+tRC+qcT1nFi7o7qYH1nvRI1J+xQGAw=="
         },
         "a64d0b86-069a-4cd0-9476-6730c9c9fedb": {
           "display_id": 1849,
