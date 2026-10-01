@@ -217,7 +217,11 @@ impl PreparedIndex {
         if let Some(permissions) = permissions {
             fs::set_permissions(&index, permissions).map_err(failure)?;
         }
-        fs::File::open(&index).and_then(|file| file.sync_all()).map_err(failure)?;
+        fs::OpenOptions::new()
+            .write(true)
+            .open(&index)
+            .and_then(|file| file.sync_all())
+            .map_err(failure)?;
         recovery::sync_directory(temporary.path())?;
         if let Some(journal) = journal {
             journal.seal_directory(temporary.path())?;

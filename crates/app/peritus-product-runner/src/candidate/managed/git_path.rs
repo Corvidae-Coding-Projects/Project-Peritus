@@ -1,4 +1,4 @@
-//! Keep native filesystem paths distinct from Git tree names and local fetch operands.
+//! Keep native filesystem paths distinct from Git tree names and local command operands.
 
 use super::failure;
 use crate::ProductRunnerError;
@@ -16,7 +16,7 @@ pub(super) fn tree_name(path: &Path) -> Result<String, ProductRunnerError> {
         .map(|parts| parts.join("/"))
 }
 
-pub(super) fn local_repository(path: &Path) -> Result<String, ProductRunnerError> {
+pub(super) fn local_path(path: &Path) -> Result<String, ProductRunnerError> {
     let absolute = path.canonicalize().map_err(failure)?;
     let text = absolute.to_str().ok_or_else(|| failure("repository path is not UTF-8"))?;
     #[cfg(windows)]
@@ -53,7 +53,7 @@ mod tests {
     #[test]
     fn canonical_repository_operand_remains_local() {
         let directory = tempfile::tempdir().unwrap();
-        let operand = local_repository(directory.path()).unwrap();
+        let operand = local_path(directory.path()).unwrap();
         assert_eq!(
             Path::new(&operand).canonicalize().unwrap(),
             directory.path().canonicalize().unwrap()

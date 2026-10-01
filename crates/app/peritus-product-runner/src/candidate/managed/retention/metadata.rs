@@ -74,13 +74,12 @@ fn capture_directory(
             )
         } else if metadata.is_file() {
             let absolute = entry.path();
-            let path =
-                absolute.to_str().ok_or_else(|| failure("Git metadata path is not UTF-8"))?;
+            let path = super::super::git_path::local_path(&absolute)?;
             (
                 file_metadata::git_file_mode(&metadata),
                 text(git(
                     &store.root,
-                    &["-c", "core.fsync=all", "hash-object", "--no-filters", "-w", "--", path],
+                    &["-c", "core.fsync=all", "hash-object", "--no-filters", "-w", "--", &path],
                     None,
                 )?)?,
             )

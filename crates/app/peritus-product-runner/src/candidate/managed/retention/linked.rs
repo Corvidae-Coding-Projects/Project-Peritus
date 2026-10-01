@@ -58,7 +58,7 @@ pub(super) fn initialize(destination: &Path, directory: &Path) -> Result<(), Pro
             return Err(failure("linked repository database was replaced; no restore started"));
         }
     }
-    let path = super::super::git_path::local_repository(directory)?;
+    let path = super::super::git_path::local_path(directory)?;
     let mut file = fs::File::create(destination.join(".git")).map_err(failure)?;
     file.write_all(format!("gitdir: {path}\n").as_bytes()).map_err(failure)?;
     file.sync_all().map_err(failure)

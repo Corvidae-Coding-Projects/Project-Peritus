@@ -68,7 +68,9 @@ pub(super) fn prepare(
         return Err(failure(String::from_utf8_lossy(&output.stderr)));
     };
     let git_directory =
-        PathBuf::from(text(git(root, &["rev-parse", "--absolute-git-dir"], None)?)?);
+        PathBuf::from(text(git(root, &["rev-parse", "--absolute-git-dir"], None)?)?)
+            .canonicalize()
+            .map_err(failure)?;
     let owner = git_directory.join("peritus");
     recovery::create_directory(&owner)?;
     let directory = owner.join("discarded");

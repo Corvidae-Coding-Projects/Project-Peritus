@@ -85,7 +85,7 @@ impl Store {
                 None,
             )?;
         }
-        let source = super::super::git_path::local_repository(root)?;
+        let source = super::super::git_path::local_path(root)?;
         git(
             &self.root,
             &[
@@ -197,7 +197,7 @@ impl Store {
             &["init", "--quiet", "--template=", &format!("--object-format={}", self.format)],
             None,
         )?;
-        let source = super::super::git_path::local_repository(&self.root)?;
+        let source = super::super::git_path::local_path(&self.root)?;
         // Fetch immutable roots before restoring original refs, which may otherwise
         // appear dangling to Git's negotiation while the new object database is empty.
         for roots in manifest.roots.chunks(64) {
