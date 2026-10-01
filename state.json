@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1844,
-        "tip_oid": "1572615186ce8f79d3aac5afe4828f87e9fb20d6",
-        "prefix_sha256": "79390de6b02c45c628d8817b1b4680bee39b35fc86e0427bb8085f5201eb7f8a"
+        "sequence": 1846,
+        "tip_oid": "d33d669c490107dec084227b52c7eea71381fd27",
+        "prefix_sha256": "6dee71d1e950fa949b9150de6dccb731da689b37f7f43f9ffe4831e3318994f9"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 1976,
+  "next_comment_id": 1978,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -16544,7 +16544,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-28T00:58:41.412806074Z",
-      "updated_at": "2026-10-01T07:20:37.844092155Z",
+      "updated_at": "2026-10-01T07:35:02.287579400Z",
       "labels": [
         "bug"
       ],
@@ -17251,6 +17251,15 @@
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAGhZfS/qUQ1p8P9RV8qApgIRnFMxV2wxQNZo5Q8knfV7J85np3FEqri5YOsZhxLXpUrt8sNwnBzV/IwPg2r3BAw=="
         },
+        "99ec9158-2f4b-4455-9e3a-908b97ab6c6a": {
+          "display_id": 1976,
+          "author": "6ME5",
+          "content": "[action] Migrated WebUI sends to durable workbench create/queue/start ownership; separated browser, conversation, and run IDs; retained exact prepared context; added receipt reconciliation and queued-blocked UI; quarantined pre-cut state; 27 Rust, 18 frontend unit, 24 real browser scenarios, strict clippy, and cargo xtask all pass. Preparing commit.",
+          "created_at": "2026-10-01T07:34:35.957461319Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA7tVSr8YNt8z1h6mZiUEh2i6yX31YrDOkcFQWovK0o49hsCdb1OKhT3EZ2Aod5qzkU0Vd9R/ApPKMIkVciKhZDQ=="
+        },
         "9e209cc0-fd35-4d1c-bfd9-f8529a12b16a": {
           "display_id": 1901,
           "author": "6ME5",
@@ -17340,6 +17349,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABALA+Fmy7z0jDhdmYV7o1ei2C9Xvjj3c7LzhVAz1+j5z0bb1kzMCHzI6Y2fHJsIBoHQiwuhjekp9J6V/zs5W5CDQ=="
+        },
+        "ac529bc5-c60e-4f4b-ad06-95ea6b920d2a": {
+          "display_id": 1977,
+          "author": "6ME5",
+          "content": "WebUI durable ownership slice committed as fc04dced2. Browser tab, durable conversation, and run identities are separate; send now retains exact prepared context and uses workbench create/queue/start with authoritative receipt recovery. Definitively queued but unstarted input is shown with an ordinary Workbench route; old/incomplete WebUI state is quarantined. Validation: cargo xtask all; peritus-web 27/27; strict clippy; frontend 18/18; freshly built gateway/CLI with Playwright 24/24.",
+          "created_at": "2026-10-01T07:35:02.283540483Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAOUKyTBCY0ynFzG45JiT//x2pkFul1ce0XxT0sQq+NPYcYiCZXjGeim4syqbpw4s4abnSOSwANAwKCdusAh5mAA=="
         },
         "b3926168-d075-4149-8306-019fb6c0c131": {
           "display_id": 1854,
