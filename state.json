@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1821,
-        "tip_oid": "b14fde9cab567de7420c195f4bf1a3365b7537ec",
-        "prefix_sha256": "7ce6f52cc56a6302a10dff90fc70bc661cbe917b69a4edeca9cc42831dfcd2d8"
+        "sequence": 1822,
+        "tip_oid": "88914e9f80cd29a6ed474d530117f5fd64434223",
+        "prefix_sha256": "4a0f07f8d22bd06260e1ad06dc1d4ca3ae7ac7bdb626e5c4d5dfef369e4077f6"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 1959,
+  "next_comment_id": 1960,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -16544,7 +16544,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-28T00:58:41.412806074Z",
-      "updated_at": "2026-10-01T05:23:59.901849833Z",
+      "updated_at": "2026-10-01T05:24:22.711215117Z",
       "labels": [
         "bug"
       ],
@@ -16620,6 +16620,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAu7g6aBXGPyyML70RvhpLv2E+/IXP/6IccEWscgfa9KSrdUO1Y6biKX6oXt6YXmJAQ+TdnF40w+ql+wv4dMCdBQ=="
+        },
+        "115acc0c-cf2d-4921-a942-b3c01d182d62": {
+          "display_id": 1959,
+          "author": "6ME5",
+          "content": "Implemented and qualified the priority 1, 3, and 4 ontology repair. Product observations now carry one daemon-projected operation owner with known facts, uncertainty, stable identity, and exact legal controls across CLI, TUI, and Web. Unknown command effects survive restart, cannot be blindly replayed, require explicit acknowledgement, and freeze replacement effects for the same requirements revision while new user input creates a new revision. Host-observed candidate changes and verification survive malformed terminal reports without becoming model claims. Current persistence and protocol shapes are strict; previous run records are quarantined and fixtures were regenerated, with no migration layer. Live run 3db33c8a37907269bbc5d827fa1da3c1 proved one effect after daemon SIGKILL, blind-retry rejection, acknowledgement persistence, same-run retry, and cross-role mutation refusal. Affected suites, strict Linux and Windows GNU clippy, eight Verus operations, codegen, fmt, diff check, and xtask all passed. Persistent daily-job qualification remains outstanding.",
+          "created_at": "2026-10-01T05:24:22.707387842Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAK+P5SRtm5LSmOXtz4xgon+u8lBrzH3kvh2ctaTVrkCFDHy/0wTqwqyjXNpeXiiEPeQabUt+iHrmOs2hv8SHDBA=="
         },
         "14efa088-04df-4ecc-a585-73f8e614b229": {
           "display_id": 1939,
