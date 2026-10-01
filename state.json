@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1920,
-        "tip_oid": "ef5e55d78973db3b657af8d3d31b01e1da7638ed",
-        "prefix_sha256": "776b0d473853cfe399352b341d129428dcfe817c25c7a22e37697a51587afce9"
+        "sequence": 1921,
+        "tip_oid": "7ec30c6827e96e0030caeebdfbb12c35a6d3762a",
+        "prefix_sha256": "53f13cc2c355d350e7c7bd8a4866c1410a8f4ee9c1cd2f755c171156494e970e"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 2036,
+  "next_comment_id": 2037,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -10665,7 +10665,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-27T23:40:33.365528994Z",
-      "updated_at": "2026-10-01T15:30:35.405017607Z",
+      "updated_at": "2026-10-01T15:54:00.268150596Z",
       "comments": {
         "172fb531-7617-4dd5-afb2-b7d95cab7e0d": {
           "display_id": 1850,
@@ -10693,6 +10693,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAN0NQ8gWH+ZglHtJLbKhU5UJ4YPvjFiBysObcljIKbEJ0nMeZEOKN5lKqgyhSYd4ErvXXFlvJpGBuF2XnRCj+AA=="
+        },
+        "4cc05f97-4474-443e-be9e-77559cd77c6f": {
+          "display_id": 2036,
+          "author": "6ME5",
+          "content": "[action] Crash recovery preserved run fbd55b0c185fa117076f421aac232c81 and managed workspace; public CLI exact retry requeued it after TUI wording and slash-command mismatch was reproduced.",
+          "created_at": "2026-10-01T15:54:00.254917876Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAzVvjjzQ1lBH3B/F0bM/eOsP4EtoC4algrBAH7rdQFpd8hg1iAeNFyl9J0dixo/YzmrKJyF1zE8borvjUMKAIBg=="
         },
         "62b32140-6336-421f-acdb-786e91393fce": {
           "display_id": 1843,
