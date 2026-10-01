@@ -205,7 +205,14 @@ impl Replacements {
             }
             let parent = destination.parent().ok_or_else(|| failure("repository has no parent"))?;
             fs::create_dir_all(parent).map_err(failure)?;
-            fs::rename(replacement.directory.path(), &destination).map_err(failure)?;
+            let prepared = replacement.directory.keep();
+            fs::rename(&prepared, &destination).map_err(|error| {
+                failure(format!(
+                    "cannot publish retained repository from {} to {}: {error}",
+                    prepared.display(),
+                    destination.display()
+                ))
+            })?;
             super::super::recovery::sync_directory(parent)?;
         }
         Ok(recovered)

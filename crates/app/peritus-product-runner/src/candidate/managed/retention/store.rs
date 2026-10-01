@@ -49,7 +49,14 @@ impl Store {
                     ],
                     None,
                 )?;
-                fs::rename(temporary.path(), &store.root).map_err(failure)?;
+                let temporary = temporary.keep();
+                fs::rename(&temporary, &store.root).map_err(|error| {
+                    failure(format!(
+                        "cannot publish repository retention store from {} to {}: {error}",
+                        temporary.display(),
+                        store.root.display()
+                    ))
+                })?;
                 super::super::recovery::sync_directory(&directory)?;
             }
             Err(error) => return Err(failure(error)),

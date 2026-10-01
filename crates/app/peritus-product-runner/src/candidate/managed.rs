@@ -191,10 +191,18 @@ fn git(
 
 fn repository_command(root: &Path) -> Result<Command, ProductRunnerError> {
     let mut command = Command::new("git");
+    // Rust preserves Windows filesystem identity with a verbatim path, while Git's process
+    // boundary requires the ordinary drive/UNC spelling used for local repository operands.
+    #[cfg(windows)]
+    command.current_dir(PathBuf::from(git_path::local_repository(root)?));
+    #[cfg(not(windows))]
     command.current_dir(root);
     // A submodule's core.worktree still names its missing original directory while
     // recovery operates in a private stage. The explicit caller root owns this operation.
     if fs::symlink_metadata(root.join(".git")).is_ok_and(|metadata| metadata.is_file()) {
+        #[cfg(windows)]
+        command.env("GIT_WORK_TREE", git_path::local_repository(root)?);
+        #[cfg(not(windows))]
         command.env("GIT_WORK_TREE", root.canonicalize().map_err(failure)?);
     }
     Ok(command)
