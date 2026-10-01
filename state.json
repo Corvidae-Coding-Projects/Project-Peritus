@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1871,
-        "tip_oid": "1ff517dc44edac03c502dcd0fab03760734db82e",
-        "prefix_sha256": "1ff7d3cb790d11918b5c1117d87b77d216d0080a7693c9e7df7118a577622e67"
+        "sequence": 1872,
+        "tip_oid": "f2f5366fd4f5ea2abb7688681584bd894c6d0f95",
+        "prefix_sha256": "8025ca38e95d52339116060d2eee1db7c4202d67a6235c92ee8a0ae2e8e0edbe"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 1999,
+  "next_comment_id": 2000,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -16544,7 +16544,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-28T00:58:41.412806074Z",
-      "updated_at": "2026-10-01T10:11:12.296549074Z",
+      "updated_at": "2026-10-01T10:11:56.716545118Z",
       "labels": [
         "bug"
       ],
@@ -17241,6 +17241,15 @@
           "kind": "observation",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABATuro2WAVOxM2/QUxppSEKLnfVmpOevEDx8n/sJCRlSktZhZonf6Sq2J7zjZzzLUCg6C+XI2NitLszUmuBg4nCg=="
+        },
+        "840ed77e-2279-4918-9399-bf575bfbfc0d": {
+          "display_id": 1999,
+          "author": "6ME5",
+          "content": "Installed Day 0 on 86c675234 passed the repaired startup boundary and real workflow. Schema-1 inbox was retained byte-for-byte and replaced by schema 2 through normal startup. Run 3f22fe8fbaf557956f354d4cd7b647e1 incorporated 2/2 inputs, qualified, accepted, exported mode-0600 patch 7379365, and committed managed 43c745a. Independent behavior passed; dirty source hashes remained exact. Client reopen plus installed-daemon SIGKILL/normal Ctrl-R recovery restored the same run and handoff facts. Foundation policy is green; multi-day and active-effect fault qualification remain open.",
+          "created_at": "2026-10-01T10:11:56.712957611Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAcYmWB9nZA+R8wRKNzoakzRRGQkMB6EUyXK//nGDDDTJ0Yt7HbsqpVC6Hu7/bYE3q5pUI8YEuz8yKYSIoUwHKBA=="
         },
         "843fe9ba-501e-45e5-9576-3642a4ed57ca": {
           "display_id": 1893,
