@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1894,
-        "tip_oid": "b0c9bc041089cb973941a0c1a5c81d360ea947db",
-        "prefix_sha256": "b116c26e44074220f9ab4b7c3528c12f24bcc7a7afa1139ac34d44dd336b043a"
+        "sequence": 1895,
+        "tip_oid": "6471bb001efb251c64732bac19d355f772f3b160",
+        "prefix_sha256": "2aaa9a9fff16e58aa8383527e6215bd5e268822f2d7b705a2ffeed5d90ce30d4"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 2015,
+  "next_comment_id": 2016,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -16540,7 +16540,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-28T00:58:41.412806074Z",
-      "updated_at": "2026-10-01T11:34:38.690120294Z",
+      "updated_at": "2026-10-01T11:49:30.577482534Z",
       "labels": [
         "bug"
       ],
@@ -16652,6 +16652,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAQzDkW8S5TRDk1GQyrvM8s0iP3U6HaJ2HMqrur3hkSs21i+3ra2V9cDOnPOCk/I6RxJrsLTkObo5KdYQIltmADA=="
+        },
+        "17ffeec6-c499-4204-aa6b-198bb58975bd": {
+          "display_id": 2015,
+          "author": "6ME5",
+          "content": "Result ef926a7aa: process recovery now separates command-result knowledge from resource ownership. One manifest-owned ownership_settled predicate governs shutdown counts, holder quiescence, and retention. Exact absence settles tree/support ownership without inventing a terminal result; mismatched claims remain indeterminate and non-retirable. Live same-state proof: old installed daemon exited 14 with remaining=1; rebuilt daemon reported six stages at remaining=0, exited 0, reopened, and repeated clean shutdown while both absent-unobserved manifests remained byte-identical. Process suite 25 unit + 3 native + 1 conformance + 25 integration passed; daemon lib 253 passed/6 ignored; strict Clippy, ordinary API, docs, format, fmt, and diff checks passed. Repository-wide architecture/source layout remains blocked only by two pre-existing HEAD line-budget violations in product-runner gates.rs and peritus-gates product/plan/tests.rs.",
+          "created_at": "2026-10-01T11:49:30.573305123Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAZqodHJkQc6vIGk0/4TkNeyN3KuZ2ih7EFMpEvLQymOOU9lmbH9y9dtAPy5rJ42Ff5y/j5+qBoPcXqabI0Dz7Aw=="
         },
         "199873b8-e8b0-4130-9c06-f31edb48017f": {
           "display_id": 2000,
