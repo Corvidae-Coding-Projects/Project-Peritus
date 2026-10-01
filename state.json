@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1913,
-        "tip_oid": "65b651a58f764a247da8bdc8fc72e7b4d443f259",
-        "prefix_sha256": "6a6be719f0b98b572446e28ecbd8c06dcc2c30b0fc35304f146de663f7f53008"
+        "sequence": 1914,
+        "tip_oid": "c23ae94d60a58aca71e4ad8094fd5b73a106fd00",
+        "prefix_sha256": "7f0f2359b3b141e40ef6393eca1740e9b4cc4ba0473cc88e1004ebd0651a180e"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 2031,
+  "next_comment_id": 2032,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -16544,7 +16544,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-28T00:58:41.412806074Z",
-      "updated_at": "2026-10-01T14:39:36.363679630Z",
+      "updated_at": "2026-10-01T14:40:01.332293489Z",
       "labels": [
         "bug"
       ],
@@ -16881,6 +16881,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAsHkP5vbtnbKzJLlUBpjW01Rru+HtO8gsFJqM4zjRk+E5Nx7pRlTt0B6OLiWJvNp5lKfjgPvXhOzcStNSWGu4Ag=="
+        },
+        "39d872b9-7690-4f3d-b883-9546da904837": {
+          "display_id": 2031,
+          "author": "6ME5",
+          "content": "[action] Committed Windows Git path and index-sync repair as 29d877dee after focused, full-suite, cross-target Clippy, and source-layout verification.",
+          "created_at": "2026-10-01T14:40:01.328605141Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAmsIxLdzIb44BDQXPmqtX39iijRDXAxO5fhGzP0HAgj+PG3Lwwl+RyEZpBzITLspIckoLbIKFVsyZfw2AyChUDQ=="
         },
         "3c406fe5-cd9e-49cb-b472-1b804b7f60d7": {
           "display_id": 1970,
