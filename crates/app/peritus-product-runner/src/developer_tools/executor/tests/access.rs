@@ -162,8 +162,10 @@ fn explicit_reference_corrects_unique_directory_and_file_casing() {
         &serde_json::json!({"path": requested_file}).to_string(),
     );
     assert!(!read.is_error, "{}", wire(&read));
-    assert!(wire(&read).contains("CASE_CORRECTED_CANARY"));
-    assert!(wire(&read).contains(actual_file.to_string_lossy().as_ref()));
+    let result: Value = serde_json::from_str(&wire(&read)).expect("reference read");
+    assert_eq!(result["content"], "1: CASE_CORRECTED_CANARY");
+    assert_eq!(result["path"], actual_file.to_string_lossy().as_ref());
+    assert_eq!(result["reference_root"], existing.to_string_lossy().as_ref());
 
     let missing = execute(
         &mut tools,
