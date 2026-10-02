@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1948,
-        "tip_oid": "43bff88a96cef0a1f5ba8aee7b090ea1df9dcab8",
-        "prefix_sha256": "a0e6e9e22ba0c1c3a489438db9ce5826e44cd3b0935136ba3cd5ec6f6dfa8aa7"
+        "sequence": 1949,
+        "tip_oid": "929b4522212653370ebf73d729d9b8b75edd1916",
+        "prefix_sha256": "9e687599b1082172550133776e833b14b2eac976d2dc48fb65fc0fe7bad1a6fd"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 2059,
+  "next_comment_id": 2060,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -10669,7 +10669,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-27T23:40:33.365528994Z",
-      "updated_at": "2026-10-02T14:54:05.788527576Z",
+      "updated_at": "2026-10-02T15:01:25.160831091Z",
       "comments": {
         "172fb531-7617-4dd5-afb2-b7d95cab7e0d": {
           "display_id": 1850,
@@ -10886,6 +10886,15 @@
           "kind": "handoff",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAzOhN+cox+aYu1K2DE1HfMZQOmfZReGsBW2sUd9nKh/HlV+Sj+hd5ZY0xzrxZQgQsLvJlbBf32NE0EO2p3eDlCg=="
+        },
+        "c9b52a22-74c8-4ba6-9a88-f9f90e940e42": {
+          "display_id": 2059,
+          "author": "6ME5",
+          "content": "[action] Continuing issue #98 invoice-plan blocker: add task-scoped read-only inspection for explicitly named absolute reference paths, with traversal/symlink rejection and truthful missing-path errors; then validate correct and wrong-case routes in the installed TUI.",
+          "created_at": "2026-10-02T15:01:25.157081740Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA9m52By8TR2NS9TO+c+PatRGwXRHjo98wX0KeoM5z66EQz8LwoBiqpy88ypLfWTW7pIV9nUZrAZRSRjIeqChpCw=="
         },
         "dda578f7-a653-483d-b1f5-1c54244c2218": {
           "display_id": 2049,
