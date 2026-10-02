@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1995,
-        "tip_oid": "269441c0b2e6ca76fe043fa79980dc3aab7ccc05",
-        "prefix_sha256": "b5cbf11bddb27312f2fc02965237002f41c05dfd7b3160c66e982cb240bcf495"
+        "sequence": 1996,
+        "tip_oid": "7536aed303ed00567c1945ab23ccf68ee12cb188",
+        "prefix_sha256": "1c2461873e15c177a19d6093b9e75a7217859369ee5f301233585689cb57b1be"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 101,
-  "next_comment_id": 2098,
+  "next_comment_id": 2099,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -18667,7 +18667,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-10-02T19:33:07.990520286Z",
-      "updated_at": "2026-10-02T22:00:46.857982126Z",
+      "updated_at": "2026-10-02T22:04:51.163892211Z",
       "labels": [
         "bug"
       ],
@@ -18698,6 +18698,15 @@
           "kind": "handoff",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAUK+iP17COZdeNBKNVvrnwqGtzgY51c8qYKY4LbtJQwG3b8G7VtI/7VgPNUTIt/HcEjxdjGFtr8e0eG/THHZ+AQ=="
+        },
+        "45bb7d38-afc5-4ea7-a8ab-e0fa9762191e": {
+          "display_id": 2098,
+          "author": "6ME5",
+          "content": "Compiled and installed the signed 9829473ef + 41962a22b source through PERITUS_INSTALL_DEPS=0 cargo xtask product-install. The optimized release build completed successfully in 2m23s. All eight package checksums passed. Installed CLI, daemon, TUI, sandbox helper, service definition, and uninstall adapter match the package exactly; all four binaries also match target/release, with verified user ownership and expected modes. Installed peritus and peritusd report 0.0.4. Existing process identities and start times were preserved, including installed daemon PID 2243353; the new daemon binary activates on its next start. Tracked worktree is clean; unrelated untracked files are preserved. No push, PR, migration, or daemon restart was performed.",
+          "created_at": "2026-10-02T22:04:51.160093427Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAU1zgkp3SdAP8fmuxy8R55NqE1A25DHK6OzgKzGuDrxZJyPha7yGbyJAULXW7LFX0ecj/unL10sT+PTIZdVBbAw=="
         },
         "4e63e1ea-5db9-4654-825f-eda3d180d8f3": {
           "display_id": 2091,
