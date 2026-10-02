@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1984,
-        "tip_oid": "3de426c4b72b2955ad91e0fa7781ebc23e4b01a6",
-        "prefix_sha256": "f77a44c8cc6d8b26be483ac14d7df17b106b0102e2742899be6ba57b09f21ae3"
+        "sequence": 1985,
+        "tip_oid": "7a9ca6727723c0337ed83caa83ed8b9bc0fec293",
+        "prefix_sha256": "d1cda79b58e32f51dc9283729c9e7ff10bcbad7fb76ff21ba0d5e560936a1b0d"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 101,
-  "next_comment_id": 2090,
+  "next_comment_id": 2091,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -18667,7 +18667,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-10-02T19:33:07.990520286Z",
-      "updated_at": "2026-10-02T19:54:58.625866419Z",
+      "updated_at": "2026-10-02T19:55:23.522392365Z",
       "labels": [
         "bug"
       ],
@@ -18680,6 +18680,15 @@
           "kind": "decision",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAdIvY3VtddnVELiIrW4djgrG/SB6i/KmoZlVfv5mITerrTatJp+PG/cqmwUgbJ/VB0cv5nK1TwVzVNFOvYFg6AA=="
+        },
+        "5dcf2021-8c44-4a33-9c98-b2579570c849": {
+          "display_id": 2090,
+          "author": "6ME5",
+          "content": "[action] Removing goal budgets and budget-driven lifecycle states from the human workflow after user correction",
+          "created_at": "2026-10-02T19:55:23.518573489Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAF3R30OM1eAZ5yGYqI/+TR3VI+DMZyV1JSCHwcOk2RzPskZGY9uP2WMkzNXUIjWtfCypiKXIdfKgKOGp9GwusAQ=="
         },
         "df21d55b-89da-4ebf-93dc-21e2dd87037b": {
           "display_id": 2089,
