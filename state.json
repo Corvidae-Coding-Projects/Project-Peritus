@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1955,
-        "tip_oid": "b76ae44121ecc422dea07c000bd8bf23dc814764",
-        "prefix_sha256": "4292fc90c0171f95fb0ea68727f962390f84ca9a3b973d67164e9b1310709764"
+        "sequence": 1956,
+        "tip_oid": "1b7b073636a6e6436970b89091d0483b80d41e2c",
+        "prefix_sha256": "8c78b139a5971a9689805441ef5e1aed7a9d33b0bda22ace409a6121a0162f5a"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 2066,
+  "next_comment_id": 2067,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -10669,7 +10669,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-27T23:40:33.365528994Z",
-      "updated_at": "2026-10-02T15:55:22.184128051Z",
+      "updated_at": "2026-10-02T15:59:28.763950149Z",
       "comments": {
         "0de6566f-5caa-4b10-ae55-f90ec9bc3946": {
           "display_id": 2063,
@@ -10715,6 +10715,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAN0NQ8gWH+ZglHtJLbKhU5UJ4YPvjFiBysObcljIKbEJ0nMeZEOKN5lKqgyhSYd4ErvXXFlvJpGBuF2XnRCj+AA=="
+        },
+        "44ec4872-5cd9-434a-b11f-0383be259ca5": {
+          "display_id": 2066,
+          "author": "6ME5",
+          "content": "Owner correction applied: removed tmux session peritus-paste-repro-1276873 and cleanly stopped its installed daemon; verified no installed Peritus process remains. On local unpublished branch fix/live-blocker-discovery at signed head b447378c2, removed the affected release artifacts (283 files, 751.3 MiB) and the previous package directory, then ran a fresh optimized cargo xtask product-install. Package checksum manifest passes; all installed binaries, helper, service definition, and uninstaller match the new package byte-for-byte. Nothing was launched after installation.",
+          "created_at": "2026-10-02T15:59:28.760056097Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA4dm+PlR1xzeYp2LwCAlYy6PM4qPZPAtI4sIBzOx8FlSWwpBOgwlSXXsIj6Be/E6mGcrCEe3kU5qW8+bG2dUMDQ=="
         },
         "48728775-1882-470a-8af3-702996909413": {
           "display_id": 2043,
