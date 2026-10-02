@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1965,
-        "tip_oid": "fa0900d4888dc4f9b969d4f9ab0b7b40299d7d03",
-        "prefix_sha256": "2a0336d32cc84c97456ce971dac2697c708dfc1a81218338134012f23f05a43f"
+        "sequence": 1966,
+        "tip_oid": "ebd283a95b0cbaabe7c9272fdc3438b87e6f8ad1",
+        "prefix_sha256": "6998f022eb9698fb65542d51a2f70787ccba8793c9325ead3d0c4948d809b7ef"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 2076,
+  "next_comment_id": 2077,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -10669,7 +10669,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-27T23:40:33.365528994Z",
-      "updated_at": "2026-10-02T17:55:23.941783432Z",
+      "updated_at": "2026-10-02T17:59:38.267152555Z",
       "comments": {
         "0de6566f-5caa-4b10-ae55-f90ec9bc3946": {
           "display_id": 2063,
@@ -10904,6 +10904,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAjNVn95iOSAYs6lrPOoeQXc1sRNDZjgKtJray699zfgE6DSrkqMb1/0BOZfB87ERvMmhiw0O64kiHirN5ATNsCQ=="
+        },
+        "88bf1e1d-bc59-4643-8257-fd60a0c3dec3": {
+          "display_id": 2076,
+          "author": "6ME5",
+          "content": "Signed commit 8d7c63d41 (feat(cli): resume latest workspace conversation) adds peritus resume for the current folder. It resolves the normal workspace, scans all workspace conversation-library pages by durable activity revision so pinned sessions cannot bias selection, opens the exact newest conversation without starting work, and visibly falls back when history is empty or unavailable. Verification: affected CLI/launcher/TUI suites passed; full workspace passed 3,741 with 19 intentional skips; strict Linux and Windows GNU Clippy, Rustdoc, fmt/diff, and cargo xtask all passed. No push or PR.",
+          "created_at": "2026-10-02T17:59:38.263362370Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAtrTzWf6KCjjDckHTqpUvdwh2dgsWZKRld+vIj+w7RmojfYZBfsxD9evMcoKqbeGMrOVHK9QrY81y5XxRJAOhDg=="
         },
         "894708cc-53cd-4102-bed9-0af517c1c4c5": {
           "display_id": 2057,
