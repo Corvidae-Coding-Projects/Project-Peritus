@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1962,
-        "tip_oid": "3514b715f7163068327edaebf9d0190d840e4d47",
-        "prefix_sha256": "1eca2e17507c8f249ec211fa295fd9b6ee1ee56ff02cbbe7fd942dc98eb84958"
+        "sequence": 1963,
+        "tip_oid": "d3b8d508bf710425e0190ee10a565d305f8dae93",
+        "prefix_sha256": "a41b65c74dde7e8c915625bc7a3f82265dd3de72eb7d269148347eb72c319687"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 2073,
+  "next_comment_id": 2074,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -10669,7 +10669,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-27T23:40:33.365528994Z",
-      "updated_at": "2026-10-02T17:29:40.622977936Z",
+      "updated_at": "2026-10-02T17:33:03.166270056Z",
       "comments": {
         "0de6566f-5caa-4b10-ae55-f90ec9bc3946": {
           "display_id": 2063,
@@ -10859,6 +10859,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAaJFNCRiaBbd7vLskU+bDP3Z9h7kz5ermhpUpoqnG3r0lG8bjBdYuvZJdGbBZYdXtstEqg8eIqE4uNcrBzpqPCg=="
+        },
+        "7678918b-e388-4711-a4ce-25afce972a4f": {
+          "display_id": 2073,
+          "author": "6ME5",
+          "content": "Signed local commit 00243d103 fix(harness): remove interactive wall-clock deadlines. Ordinary daemon product runs and individual provider turns now continue until completion or explicit user/system cancellation; the provider future remains owned and emits 20-second waiting observations. Explicit benchmark/test horizons, per-command 1..600 second limits, resource ceilings, retry limits, and goal active-time budgets remain bounded. Legacy generated configs containing provider_turn_timeout_seconds = 600 and persisted provider_deadline_seconds records remain readable without weakening other immutable-byte checks; new configs/state omit the obsolete deadline.\n\nVerification: cargo fmt --all -- --check and git diff --check passed; strict all-target/all-feature Clippy passed for all six affected packages on Linux and the Windows GNU target; cargo xtask all passed (86 packages, 4,853 source files, 3,823 formal-boundary files, 14,959 ordinary-safe entry points, 272 docs, 147 pinned actions); full locked workspace all-target/all-feature tests passed across 454 result groups (3,736 passed, 19 intentional ignores, 0 failed); workspace rustdoc passed with -D warnings. Placeholder/debug/credential scan was clean. Optimized product package rebuilt from exact clean tracked HEAD, SHA256SUMS passed, and rollback-capable upgrade installed byte-identical files with expected owner/modes. Installed peritus/peritusd report 0.0.4. Owner processes 1584093/1584166 were not signaled or restarted and retain their prior mapped executables; the next owner-controlled launch uses the new install. Branch remains unpublished: no push or PR.",
+          "created_at": "2026-10-02T17:33:03.162371921Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAr5sqeLpjxwLeozOvXB3romi1AadWlFzOJ99YctMoWxPpKVArkX5AUblD7VyDwMNCuYw4zePfhcCIf86g3lkkAQ=="
         },
         "7a34a9b9-f9df-449a-80f4-dc7f2088fe34": {
           "display_id": 2047,
