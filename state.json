@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1966,
-        "tip_oid": "ebd283a95b0cbaabe7c9272fdc3438b87e6f8ad1",
-        "prefix_sha256": "6998f022eb9698fb65542d51a2f70787ccba8793c9325ead3d0c4948d809b7ef"
+        "sequence": 1967,
+        "tip_oid": "70afbfeaa8af12b63a254a0bd130bd1d0ffd7ccb",
+        "prefix_sha256": "1e1bcd99bd4b2e488929993c767314dba06fda178cdd4d9c9fcfae6b6fe00091"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 2077,
+  "next_comment_id": 2078,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -10669,7 +10669,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-27T23:40:33.365528994Z",
-      "updated_at": "2026-10-02T17:59:38.267152555Z",
+      "updated_at": "2026-10-02T18:02:58.270049371Z",
       "comments": {
         "0de6566f-5caa-4b10-ae55-f90ec9bc3946": {
           "display_id": 2063,
@@ -11039,6 +11039,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAVUc0h15gxq/WVKPxXIpa2SXm/hMGdfQvKfhPr3PvwPjtQ8FdVgeXs57nWuJF6eaIUCv3z678DzR5iaoO9M7zDw=="
+        },
+        "e098f27d-3a1b-456b-9604-08581568cb6d": {
+          "display_id": 2077,
+          "author": "6ME5",
+          "content": "[action] Installed signed commit 8d7c63d peritus resume package with rollback-capable Upgrade-Peritus.sh; package hashes and installed byte identity verified; PID 1584166 and start time preserved without restart.",
+          "created_at": "2026-10-02T18:02:58.265817546Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA/r46qi9kZDUGvyY87AN+ngxfU5EL1qfDxBslB/o+JRCFNCIppWKq4JHbB891pRT4Gm7CDjZ/jtcj3nUrIYXACA=="
         },
         "e30ad1e9-55ce-41ab-8775-c5e33651710b": {
           "display_id": 2062,
