@@ -161,6 +161,51 @@ fn right_click_opens_terminal_selection_and_mouse_paste_returns_to_the_draft() {
 }
 
 #[test]
+fn mouse_wheel_scrolls_the_transcript_in_bounded_steps() {
+    let mut model = draft("unsent draft");
+    model.chat.mouse_anchor = Some(4);
+
+    mouse(&mut model, MouseEventKind::ScrollUp, 10, 4, KeyModifiers::NONE);
+    assert_eq!(model.chat.scroll, 3);
+    assert_eq!(model.chat.mouse_anchor, None);
+    mouse(&mut model, MouseEventKind::ScrollUp, 10, 4, KeyModifiers::CONTROL);
+    assert_eq!(model.chat.scroll, 6);
+    mouse(&mut model, MouseEventKind::ScrollDown, 10, 4, KeyModifiers::NONE);
+    assert_eq!(model.chat.scroll, 3);
+    mouse(&mut model, MouseEventKind::ScrollDown, 10, 4, KeyModifiers::NONE);
+    mouse(&mut model, MouseEventKind::ScrollDown, 10, 4, KeyModifiers::NONE);
+
+    assert_eq!(model.chat.scroll, 0);
+    assert_eq!(model.chat.buffer, "unsent draft");
+    assert_eq!(model.chat.cursor, model.chat.buffer.len());
+}
+
+#[test]
+fn mouse_wheel_does_not_scroll_behind_chat_overlays_or_other_views() {
+    for overlay in 0..4 {
+        let mut model = draft("unsent draft");
+        model.chat.scroll = 7;
+        match overlay {
+            0 => model.chat.workbench.open = true,
+            1 => model.chat.show_model_picker(),
+            2 => model.chat.show_effort_picker(),
+            _ => {
+                let _ = key(&mut model, KeyCode::F(2));
+                assert!(model.chat.selecting_output());
+            }
+        }
+        mouse(&mut model, MouseEventKind::ScrollUp, 10, 4, KeyModifiers::NONE);
+        assert_eq!(model.chat.scroll, 7, "overlay {overlay}");
+    }
+
+    let mut model = draft("unsent draft");
+    model.chat.scroll = 7;
+    model.view = View::Runs;
+    mouse(&mut model, MouseEventKind::ScrollUp, 10, 4, KeyModifiers::NONE);
+    assert_eq!(model.chat.scroll, 7);
+}
+
+#[test]
 fn shift_selection_reverses_collapses_and_replaces_without_splitting_utf8() {
     let mut model = draft("a λ界 tail");
     modified(&mut model, KeyCode::Left, KeyModifiers::CONTROL | KeyModifiers::SHIFT);

@@ -50,7 +50,7 @@ pub(super) fn draw(frame: &mut Frame<'_>, model: &AppModel) {
                 if model.chat.selecting_output() {
                     "Paste/F2/Esc returns · SELECT: drag, then terminal Copy · work continues"
                 } else {
-                    "Type / · /effort · Right-click/F2 select/copy · /model · /details"
+                    "Type / · /effort · Wheel scrolls · Right-click/F2 copy · /model · /details"
                 },
                 Style::default().fg(MUTED),
             ),

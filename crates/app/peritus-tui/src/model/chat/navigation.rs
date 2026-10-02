@@ -6,6 +6,8 @@ use ratatui::layout::Position;
 use super::{AppModel, ChatUi};
 use crate::{input::composer, model::View};
 
+const MOUSE_WHEEL_ROWS: usize = 3;
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum OutputMode {
     Live,
@@ -72,6 +74,19 @@ impl AppModel {
         {
             self.chat.mouse_anchor = None;
             return;
+        }
+        match mouse.kind {
+            MouseEventKind::ScrollUp => {
+                self.chat.mouse_anchor = None;
+                self.chat.scroll = self.chat.scroll.saturating_add(MOUSE_WHEEL_ROWS);
+                return;
+            }
+            MouseEventKind::ScrollDown => {
+                self.chat.mouse_anchor = None;
+                self.chat.scroll = self.chat.scroll.saturating_sub(MOUSE_WHEEL_ROWS);
+                return;
+            }
+            _ => {}
         }
         let extending = match mouse.kind {
             MouseEventKind::Down(MouseButton::Left) => {

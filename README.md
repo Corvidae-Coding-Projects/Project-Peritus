@@ -135,7 +135,7 @@ Type `/` to discover commands; Tab completes them.
 | `/stop` | Stop the current work and preserve effects already completed. |
 | `/runs` | Open the run and candidate dashboard. |
 
-Use Shift+Enter for a new line and PageUp/PageDown to scroll.
+Use Shift+Enter for a new line. The mouse wheel or PageUp/PageDown scrolls the conversation.
 In the message composer, Ctrl+Left/Right moves by word. Hold Shift with Left/Right,
 Ctrl+Left/Right, or Home/End to select text; typing, pasting, Backspace, and Delete
 replace or remove the selection. Escape clears it. Click to position the cursor,

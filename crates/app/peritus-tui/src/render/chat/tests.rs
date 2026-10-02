@@ -1,4 +1,6 @@
 use super::*;
+use crate::action::Action;
+use crossterm::event::{Event, KeyModifiers, MouseEvent, MouseEventKind};
 use peritus_app_protocol::{
     ProductActivity, ProductInteractionMode, ProductInteractionSnapshot, ProductProviderSelection,
     ProductRoleModels, ProductRunPhase, ProductRunSnapshot,
@@ -130,15 +132,34 @@ fn narrow_and_wide_screens_keep_composer_and_input_status_visible() {
 }
 
 #[test]
-fn transcript_scroll_reaches_earlier_activity_beyond_the_latest_twelve() {
+fn mouse_wheel_reaches_the_transcript_start_and_returns_to_the_tail() {
     let mut model = model();
+    model.view = crate::model::View::Conversation;
     let (tail, _) = screen(&model, 80, 24);
     assert!(tail.contains("Activity 30"));
     assert!(!tail.contains("Activity 01"));
-    model.chat.scroll = usize::MAX;
+    for _ in 0..100 {
+        let _ = model.update(Action::TerminalEvent(Event::Mouse(MouseEvent {
+            kind: MouseEventKind::ScrollUp,
+            column: 0,
+            row: 0,
+            modifiers: KeyModifiers::NONE,
+        })));
+    }
     let (head, _) = screen(&model, 80, 24);
     assert!(head.contains("Activity 01"));
     assert!(!head.contains("Activity 30"));
+    for _ in 0..100 {
+        let _ = model.update(Action::TerminalEvent(Event::Mouse(MouseEvent {
+            kind: MouseEventKind::ScrollDown,
+            column: 0,
+            row: 0,
+            modifiers: KeyModifiers::NONE,
+        })));
+    }
+    let (tail, _) = screen(&model, 80, 24);
+    assert!(tail.contains("Activity 30"));
+    assert!(!tail.contains("Activity 01"));
 }
 
 #[test]
