@@ -57,11 +57,18 @@ impl WorkspaceDeveloperTools {
         arguments: &Value,
     ) -> Result<Value, DeveloperLoopError> {
         use super::inspection;
+        use crate::developer_tools::reference;
         match call.name().as_str() {
+            "workspace_list" if routes_to_reference(&self.root, arguments) => {
+                reference::list(&self.references, arguments)
+            }
             "workspace_list" => {
                 inspection::list(&self.root, arguments, self.resources, &self.access_policy)
             }
             "workspace_search" => inspection::search(&self.root, arguments, &self.access_policy),
+            "workspace_read" if routes_to_reference(&self.root, arguments) => {
+                reference::read(&self.references, arguments)
+            }
             "workspace_read" => inspection::read(&self.root, arguments),
             "workspace_scope" => self.declare_in_place(arguments),
             "workspace_write" => self.write(arguments),
@@ -154,12 +161,17 @@ impl WorkspaceDeveloperTools {
 
     pub(super) fn record_success(&mut self, name: &str, arguments: &Value, result: &Value) {
         match name {
-            "workspace_list" => self.grounding.record_list(
-                string(arguments, "path").unwrap_or(""),
-                result.get("entries").and_then(Value::as_array).map_or(0, Vec::len),
-            ),
+            "workspace_list"
+                if result.get("path_kind").and_then(Value::as_str)
+                    == Some("workspace-relative") =>
+            {
+                self.grounding.record_list(
+                    string(arguments, "path").unwrap_or(""),
+                    result.get("entries").and_then(Value::as_array).map_or(0, Vec::len),
+                );
+            }
             "workspace_search" => self.grounding.record_search(),
-            "workspace_read" => {
+            "workspace_read" if result.get("reference_root").is_none() => {
                 if let Some(path) = string(arguments, "path") {
                     self.grounding.record_read(path);
                     self.ownership.observe_file(self.root.join(path));
@@ -173,7 +185,9 @@ impl WorkspaceDeveloperTools {
             "run_command" => self.command_evidence.record(arguments, result),
             _ => {}
         }
-        if name == "workspace_list" {
+        if name == "workspace_list"
+            && result.get("path_kind").and_then(Value::as_str) == Some("workspace-relative")
+        {
             for path in result
                 .get("entries")
                 .and_then(Value::as_array)
@@ -249,6 +263,13 @@ impl WorkspaceDeveloperTools {
     pub(super) fn remove(&self, arguments: &Value) -> Result<Value, DeveloperLoopError> {
         removal::remove(&self.root, &self.grounding, &self.ownership, arguments)
     }
+}
+
+fn routes_to_reference(root: &std::path::Path, arguments: &Value) -> bool {
+    string(arguments, "path").is_some_and(|raw| {
+        let path = std::path::Path::new(raw);
+        path.is_absolute() && !path.starts_with(root)
+    })
 }
 
 fn digest_hex(bytes: &[u8]) -> String {

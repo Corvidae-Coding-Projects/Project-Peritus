@@ -279,6 +279,11 @@ fn public_reply_is_immutable_and_enters_only_a_later_user_turn_after_restart() {
         "User: Original user question\n\nPeritus (public reply): Exact public answer with a question?\n\nUser: My exact follow-up"
     );
     assert_eq!(next.inputs().public_replies(), &[invocation]);
+    assert_eq!(
+        next.reference_authority_context(),
+        "User: Original user question\n\nUser: My exact follow-up"
+    );
+    assert!(!next.reference_authority_context().contains("public answer"));
     store
         .prepare_inputs(
             &next,
