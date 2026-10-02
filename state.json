@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1947,
-        "tip_oid": "cddeb46e06fe7c91e333d1b59127df97b7e163d2",
-        "prefix_sha256": "e0e55a7805eb1fc105ed360eac647f6ce27fd5d8969067d3d02fe2b513348e7d"
+        "sequence": 1948,
+        "tip_oid": "43bff88a96cef0a1f5ba8aee7b090ea1df9dcab8",
+        "prefix_sha256": "a0e6e9e22ba0c1c3a489438db9ce5826e44cd3b0935136ba3cd5ec6f6dfa8aa7"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 2058,
+  "next_comment_id": 2059,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -10669,7 +10669,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-27T23:40:33.365528994Z",
-      "updated_at": "2026-10-02T14:52:54.973912824Z",
+      "updated_at": "2026-10-02T14:54:05.788527576Z",
       "comments": {
         "172fb531-7617-4dd5-afb2-b7d95cab7e0d": {
           "display_id": 1850,
@@ -10733,6 +10733,15 @@
           "kind": "handoff",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA9bRDNuCJmVB3jBwLzuLlEastk3tgoCQhXp9HeiXqbSEZQZVqW3iR6BXoDMrYX/TW9jVK9wAVcrpWScLAtCgsCQ=="
+        },
+        "56653869-0edc-46c1-93f4-ca363b232196": {
+          "display_id": 2058,
+          "author": "6ME5",
+          "content": "Signed commit 5cc95cca3 implements mouse-first terminal selection and paste recovery, pushed as PR #108: https://github.com/Corvidae-Coding-Projects/Project-Peritus/pull/108. Installed optimized package was verified through a live PTY; local TUI tests, strict Clippy, format, and repository policy all pass. Hosted checks are running.",
+          "created_at": "2026-10-02T14:54:05.784637560Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAahes0LTcMZrbEu9jWfeYk3DxCieDQ14gAuQ3VwnJbJpxq6R/txHfBmab+OTsuJ5khkETF0TUsPR7hwhwgkXIBw=="
         },
         "5950fe6c-71bb-4ccf-82b0-a79c0d623b33": {
           "display_id": 2037,
