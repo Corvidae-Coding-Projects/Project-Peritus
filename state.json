@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1998,
-        "tip_oid": "e6b60f0f17c8fd293cd54da2acfe72b41258ccb6",
-        "prefix_sha256": "149f7a9e457627ea3b9198ca6ca5243b342802733b621bfd97108f91fad574f9"
+        "sequence": 1999,
+        "tip_oid": "b290a6c5422a3483124e7be6e4ff47aef8a1b6e2",
+        "prefix_sha256": "4ecb5164f3d1174f064397477f78bcb74f68809d492ec5fc27bde1019c291ccc"
       },
       "NWAR": {
         "sequence": 39,
@@ -54,7 +54,7 @@
       }
     }
   },
-  "next_display_id": 101,
+  "next_display_id": 102,
   "next_comment_id": 2099,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
@@ -77,6 +77,7 @@
     "2b288a30-b5b1-4452-81bd-20950bebd2d3": 9,
     "2b3a1a57-4a47-472a-ad1a-7116172f24f7": 97,
     "2c2c3fa4-13c7-40a8-abe4-66acc32fc61c": 31,
+    "2c8cebfd-8af0-4004-90ec-09df19bd2772": 101,
     "33571295-9ab8-483c-9535-a882d4e8556f": 34,
     "338b10ed-ebc5-4da2-a725-fa46ca662fda": 12,
     "3645385a-6f86-4945-b9e1-30121dbe707d": 91,
@@ -8766,6 +8767,17 @@
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAhukgrCPgx8B6DxCwfIO7IiccLV1ykfmPXeBjGZLUswIftjY6Q4onCzAmpid2nBx5hombkHQmZq+QtCCF+NVhDg=="
         }
       }
+    },
+    "2c8cebfd-8af0-4004-90ec-09df19bd2772": {
+      "uuid": "2c8cebfd-8af0-4004-90ec-09df19bd2772",
+      "display_id": 101,
+      "title": "Publish human workflow repairs and qualify GitHub CI",
+      "description": "Push fix/live-blocker-discovery, open a PR to develop covering the complete branch, monitor every triggered GitHub Actions workflow to completion, reproduce and repair failures without weakening gates, and verify final signed head and CI rollup.",
+      "status": "open",
+      "priority": "high",
+      "created_by": "6ME5",
+      "created_at": "2026-10-02T22:20:34.408394114Z",
+      "updated_at": "2026-10-02T22:20:34.408394114Z"
     },
     "33571295-9ab8-483c-9535-a882d4e8556f": {
       "uuid": "33571295-9ab8-483c-9535-a882d4e8556f",
