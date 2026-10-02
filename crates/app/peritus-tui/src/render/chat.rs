@@ -48,9 +48,9 @@ pub(super) fn draw(frame: &mut Frame<'_>, model: &AppModel) {
             Line::styled(title, Style::default().fg(ACCENT).add_modifier(Modifier::BOLD)),
             Line::styled(
                 if model.chat.selecting_output() {
-                    "F2/Esc returns · SELECT: drag, then terminal Copy (Ctrl+Shift+C) · work continues"
+                    "Paste/F2/Esc returns · SELECT: drag, then terminal Copy · work continues"
                 } else {
-                    "Type / for commands · /model · /effort · PageUp/PageDown scroll · F2 select/copy · /details"
+                    "Type / · /effort · Right-click/F2 select/copy · /model · /details"
                 },
                 Style::default().fg(MUTED),
             ),
