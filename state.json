@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1961,
-        "tip_oid": "455c763592227af6490e60426486e6e6ada57d6a",
-        "prefix_sha256": "4a3566a760e44a932f84c1760271755dd87ff397fa5b4ccda3aea000e283ece6"
+        "sequence": 1962,
+        "tip_oid": "3514b715f7163068327edaebf9d0190d840e4d47",
+        "prefix_sha256": "1eca2e17507c8f249ec211fa295fd9b6ee1ee56ff02cbbe7fd942dc98eb84958"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 2072,
+  "next_comment_id": 2073,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -10669,7 +10669,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-27T23:40:33.365528994Z",
-      "updated_at": "2026-10-02T16:58:31.113436726Z",
+      "updated_at": "2026-10-02T17:29:40.622977936Z",
       "comments": {
         "0de6566f-5caa-4b10-ae55-f90ec9bc3946": {
           "display_id": 2063,
@@ -10796,6 +10796,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAGtk5ulYAkXGQwupgjPV89TnfkXXhziW40YHHc7Z/ZPHHmKyRUxdpa8EJoZltjv3KowEr3m5HTIKwYStw0K7TAA=="
+        },
+        "55e87395-fda9-47cf-a700-a99eb30c7c40": {
+          "display_id": 2072,
+          "author": "6ME5",
+          "content": "[action] Removed the ordinary product-run and provider-turn wall-clock deadlines that interrupted interactive work after 600 seconds. Provider futures now remain owned and observable until completion or explicit cancellation; explicit benchmark/test horizons and per-command resource limits remain bounded. Added legacy config and persisted-state compatibility and completed full workspace, lint, policy, and documentation verification. Preparing a signed local commit only; no push, PR, or live-process control.",
+          "created_at": "2026-10-02T17:29:40.609663161Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA7/MQ22vXmy3a4CedkvlnIvpYUt2LVuZfz56SKbIDXb/nALPhYWpdNCa7Jz47g3vYsOCf0yCaa0pTBcqfQi8eAA=="
         },
         "56653869-0edc-46c1-93f4-ca363b232196": {
           "display_id": 2058,
