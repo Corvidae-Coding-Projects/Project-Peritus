@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1946,
-        "tip_oid": "3302d701ea8d4051fa57b8eacdd3b76d424ea7cb",
-        "prefix_sha256": "43cba9d07d1885c5344617f09861f4953545d429e5d69342b8a260f15a0b0f65"
+        "sequence": 1947,
+        "tip_oid": "cddeb46e06fe7c91e333d1b59127df97b7e163d2",
+        "prefix_sha256": "e0e55a7805eb1fc105ed360eac647f6ce27fd5d8969067d3d02fe2b513348e7d"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 2057,
+  "next_comment_id": 2058,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -10669,7 +10669,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-27T23:40:33.365528994Z",
-      "updated_at": "2026-10-02T14:44:42.275106995Z",
+      "updated_at": "2026-10-02T14:52:54.973912824Z",
       "comments": {
         "172fb531-7617-4dd5-afb2-b7d95cab7e0d": {
           "display_id": 1850,
@@ -10805,6 +10805,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAjNVn95iOSAYs6lrPOoeQXc1sRNDZjgKtJray699zfgE6DSrkqMb1/0BOZfB87ERvMmhiw0O64kiHirN5ATNsCQ=="
+        },
+        "894708cc-53cd-4102-bed9-0af517c1c4c5": {
+          "display_id": 2057,
+          "author": "6ME5",
+          "content": "Reproduced installed TUI paste loss after output-copy mode, then implemented the mouse-only route: right-click releases capture for native terminal selection, and bracketed/context-menu paste resumes live output and inserts into the composer without submission. Focused navigation tests pass 14/14; full peritus-tui passes 308 with 1 intentional ignored fixture; strict Clippy, fmt, diff check, and cargo xtask all pass. Optimized product package installed, and live PTY right-button plus bracketed paste displayed MOUSE_PASTE_REPRO_20261002 in the composer without sending it.",
+          "created_at": "2026-10-02T14:52:54.969832050Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAXzDVjh+hziH04rL64Trq8xeH1w6YiatIIq5DyD4TN13ltbOZa5wqg221pyiQfvYWljnb4HNZsHgUILcSg5yqBg=="
         },
         "8af5e850-ddc4-4b68-ba62-6a4a4e5e0338": {
           "display_id": 2051,
