@@ -219,6 +219,73 @@ fn explicit_reference_rejects_ambiguous_case_but_prefers_an_exact_name() {
     assert!(!wire(&sibling).contains("LOWER_CASE_CANARY"));
 }
 
+#[cfg(target_os = "linux")]
+#[test]
+fn exact_reference_name_wins_among_multiple_case_insensitive_siblings() {
+    let workspace = tempfile::tempdir().expect("workspace");
+    let references = tempfile::tempdir().expect("references");
+    let names = ["INVOICES", "Invoices", "invoices"];
+    for name in names {
+        let directory = references.path().join(name);
+        fs::create_dir(&directory).expect("case-sensitive directory");
+        fs::write(directory.join("example.txt"), name).expect("distinct contents");
+    }
+    for name in names {
+        let directory = references.path().join(name);
+        let mut tools = WorkspaceDeveloperTools::read_only(workspace.path().to_owned())
+            .with_reference_contract(&format!("Inspect {}", directory.display()));
+        let read = execute(
+            &mut tools,
+            "workspace_read",
+            &serde_json::json!({"path": directory.join("example.txt")}).to_string(),
+        );
+        assert!(!read.is_error, "{name}: {}", wire(&read));
+        let result: Value = serde_json::from_str(&wire(&read)).expect("reference read");
+        assert_eq!(result["content"], format!("1: {name}"), "exact name must win: {name}");
+        assert_eq!(result["reference_root"], directory.to_string_lossy().as_ref());
+    }
+}
+
+#[cfg(unix)]
+#[test]
+fn explicit_reference_allows_an_ancestor_alias_without_allowing_target_links() {
+    use std::os::unix::fs::symlink;
+
+    let workspace = tempfile::tempdir().expect("workspace");
+    let references = tempfile::tempdir().expect("references");
+    let storage = references.path().join("storage");
+    let directory = storage.join("Invoices");
+    fs::create_dir_all(&directory).expect("reference directory");
+    fs::write(directory.join("example.txt"), "ANCESTOR_ALIAS_CANARY").expect("contents");
+    let alias = references.path().join("ReferenceAnchor");
+    symlink(&storage, &alias).expect("ancestor alias");
+    let requested = references.path().join("referenceanchor").join("invoices");
+    let mut tools = WorkspaceDeveloperTools::read_only(workspace.path().to_owned())
+        .with_reference_contract(&format!("Inspect {}", requested.display()));
+    let read = execute(
+        &mut tools,
+        "workspace_read",
+        &serde_json::json!({"path": requested.join("EXAMPLE.TXT")}).to_string(),
+    );
+    assert!(!read.is_error, "{}", wire(&read));
+    assert!(wire(&read).contains("ANCESTOR_ALIAS_CANARY"));
+    let result: Value = serde_json::from_str(&wire(&read)).expect("reference read");
+    assert_eq!(result["reference_root"], alias.join("Invoices").to_string_lossy().as_ref());
+
+    let target = alias.join("target-link");
+    symlink(&directory, &target).expect("target link");
+    let mut target_tools = WorkspaceDeveloperTools::read_only(workspace.path().to_owned())
+        .with_reference_contract(&format!("Inspect {}", target.display()));
+    let rejected = execute(
+        &mut target_tools,
+        "workspace_read",
+        &serde_json::json!({"path": target.join("example.txt")}).to_string(),
+    );
+    assert!(rejected.is_error, "{}", wire(&rejected));
+    assert!(wire(&rejected).contains("symbolic"));
+    assert!(!wire(&rejected).contains("ANCESTOR_ALIAS_CANARY"));
+}
+
 #[cfg(unix)]
 #[test]
 fn explicit_reference_rejects_symbolic_link_targets() {

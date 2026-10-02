@@ -202,6 +202,9 @@ fn case_correct_path(path: &Path) -> Result<PathBuf, DeveloperLoopError> {
             }
         }
     }
+    // Ancestors of the user-named root may be system aliases such as macOS /var. The named
+    // target itself and every descendant must remain ordinary entries rather than redirects.
+    reject_symlink(&current)?;
     Ok(current)
 }
 
@@ -216,22 +219,16 @@ fn case_correct_descendant(
             return Err(tool("reference path contains an invalid descendant component"));
         };
         current = case_correct_component(&current, part)?;
+        reject_symlink(&current)?;
     }
     Ok(current)
 }
 
 fn case_correct_component(parent: &Path, requested: &OsStr) -> Result<PathBuf, DeveloperLoopError> {
-    let exact = parent.join(requested);
-    match fs::symlink_metadata(&exact) {
-        Ok(metadata) => {
-            reject_symlink(&metadata)?;
-            return Ok(exact);
-        }
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
-        Err(error) => return Err(tool(error.to_string())),
-    }
-
+    // A successful lookup does not prove the spelling is exact on a case-insensitive filesystem.
+    // Enumerate actual names, and defer ambiguity until an exact entry has had a chance to win.
     let mut matched = None;
+    let mut ambiguous = false;
     for entry in fs::read_dir(parent).map_err(|error| reference_io_error(&error))? {
         let entry = entry.map_err(|error| tool(error.to_string()))?;
         let actual = entry.file_name();
@@ -239,23 +236,27 @@ fn case_correct_component(parent: &Path, requested: &OsStr) -> Result<PathBuf, D
             continue;
         }
         if actual == requested {
-            let path = entry.path();
-            reject_symlink(&fs::symlink_metadata(&path).map_err(|error| tool(error.to_string()))?)?;
-            return Ok(path);
+            return Ok(entry.path());
         }
-        if matched.is_some() {
-            return Err(tool(
-                "ambiguous: multiple filesystem entries match a reference path component when case is ignored; use exact casing",
-            ));
-        }
+        ambiguous |= matched.is_some();
         matched = Some(entry.path());
     }
-    let path = matched.ok_or_else(reference_not_found)?;
-    reject_symlink(&fs::symlink_metadata(&path).map_err(|error| tool(error.to_string()))?)?;
-    Ok(path)
+    if ambiguous {
+        return Err(tool(
+            "ambiguous: multiple filesystem entries match a reference path component when case is ignored; use exact casing",
+        ));
+    }
+    if let Some(path) = matched {
+        return Ok(path);
+    }
+    // Windows short-name aliases may resolve without appearing among the long entry names.
+    let alias = parent.join(requested);
+    fs::symlink_metadata(&alias).map_err(|error| reference_io_error(&error))?;
+    Ok(alias)
 }
 
-fn reject_symlink(metadata: &fs::Metadata) -> Result<(), DeveloperLoopError> {
+fn reject_symlink(path: &Path) -> Result<(), DeveloperLoopError> {
+    let metadata = fs::symlink_metadata(path).map_err(|error| reference_io_error(&error))?;
     if metadata.file_type().is_symlink() {
         Err(tool("symbolic links are not explicit reference targets"))
     } else {

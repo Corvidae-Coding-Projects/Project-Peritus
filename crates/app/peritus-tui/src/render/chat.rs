@@ -16,6 +16,11 @@ mod memory;
 mod permissions;
 mod queue;
 mod status;
+mod transcript;
+#[cfg(test)]
+use transcript::append_tool;
+pub use transcript::transcript_rows;
+pub(super) use transcript::wrapped_lines;
 #[cfg(test)]
 mod tests;
 mod workbench;
@@ -24,12 +29,13 @@ use crate::{
     input::composer,
     model::{AppModel, ConnectionStatus},
 };
+#[cfg(test)]
 use peritus_app_protocol::ProductActivityKind;
 use ratatui::{
     Frame,
     layout::{Constraint, Layout, Rect},
     style::{Color, Modifier, Style},
-    text::{Line, Span, Text},
+    text::{Line, Text},
     widgets::{Block, Borders, List, ListItem, ListState, Paragraph, Wrap},
 };
 
@@ -50,7 +56,7 @@ pub(super) fn draw(frame: &mut Frame<'_>, model: &AppModel) {
                 if model.chat.selecting_output() {
                     "Paste/F2/Esc returns · SELECT: drag, then terminal Copy · work continues"
                 } else {
-                    "Type / · /effort · Wheel scrolls · Right-click/F2 copy · /model · /details"
+                    "/effort · Drag text · Right-click Copy · Wheel scrolls · F2 · Type /"
                 },
                 Style::default().fg(MUTED),
             ),
@@ -84,6 +90,18 @@ pub(super) fn draw(frame: &mut Frame<'_>, model: &AppModel) {
     }
     draw_composer(frame, regions[3], model, draft);
     status::draw(frame, regions[4], model);
+    if let Some(selection) = &model.chat.output_selection
+        && selection.area == regions[1]
+        && let Some(menu) = selection.menu
+    {
+        frame.render_widget(ratatui::widgets::Clear, menu);
+        frame.render_widget(
+            Paragraph::new(" Copy ")
+                .style(Style::default().fg(ACCENT))
+                .block(Block::default().borders(Borders::ALL)),
+            menu,
+        );
+    }
 }
 
 fn title(model: &AppModel) -> String {
@@ -177,145 +195,27 @@ fn draw_transcript(frame: &mut Frame<'_>, area: Rect, model: &AppModel) {
         );
         return;
     }
-    let mut lines = Vec::new();
-    if let Some(snapshot) = &model.chat.snapshot {
-        if snapshot.activities().first().is_some_and(|first| first.sequence() > 1) {
-            lines.push(Line::styled("Earlier activity is outside this bounded window. The durable conversation and trace remain available.", Style::default().fg(MUTED)));
-        }
-        for activity in snapshot.activities() {
-            let thinking = activity.kind() == ProductActivityKind::Status
-                && activity.detail() == "Provider thinking summary";
-            if !model.chat.expanded && activity.kind() == ProductActivityKind::Status && !thinking {
-                continue;
-            }
-            if activity.kind() == ProductActivityKind::Tool {
-                append_tool(&mut lines, activity, model.chat.expanded, usize::from(area.width));
-                continue;
-            }
-            let (label, color) = match activity.kind() {
-                ProductActivityKind::User => ("You", ACCENT),
-                ProductActivityKind::Assistant => {
-                    if activity.detail() == "Host recovery notice" {
-                        ("Recovery", ACCENT)
-                    } else {
-                        ("Peritus", GOOD)
-                    }
-                }
-                ProductActivityKind::Tool => ("Tool", MUTED),
-                ProductActivityKind::Status => {
-                    (if thinking { "Thinking" } else { "Status" }, MUTED)
-                }
-                ProductActivityKind::Error => ("Error", BAD),
-            };
-            lines
-                .push(Line::styled(label, Style::default().fg(color).add_modifier(Modifier::BOLD)));
-            append_lines(&mut lines, activity.text());
-            if (model.chat.expanded || activity.kind() == ProductActivityKind::Error)
-                && !activity.detail().is_empty()
-            {
-                append_lines(&mut lines, activity.detail());
-            }
-            lines.push(Line::from(""));
-        }
-    } else {
-        lines.extend([
-            Line::styled(
-                "What would you like to work on?",
-                Style::default().fg(ACCENT).add_modifier(Modifier::BOLD),
-            ),
-            Line::from(""),
-            Line::from("Ask a question, explore an idea, or request a change."),
-            Line::from(if model.direct_folder_chat().is_some() {
-                "/plan and /review are read-only. Ask for in-place work in /chat."
-            } else {
-                "/plan and /review are read-only. /build starts checked delivery."
-            }),
-            Line::from("/model discovers models from your configured provider."),
-            Line::from("/runs opens the existing run and candidate dashboard."),
-        ]);
-    }
-    let lines = wrapped_lines(lines, usize::from(area.width));
-    let offset =
-        lines.len().saturating_sub(usize::from(area.height)).saturating_sub(model.chat.scroll);
-    frame.render_widget(
-        Paragraph::new(Text::from(
-            lines.into_iter().skip(offset).take(usize::from(area.height)).collect::<Vec<_>>(),
-        )),
-        area,
+    let lines = model
+        .chat
+        .output_selection
+        .as_ref()
+        .filter(|selection| selection.area == area)
+        .map_or_else(
+            || transcript_rows(model, area).into_iter().map(|row| row.line).collect(),
+            crate::input::output::OutputSelection::highlighted_lines,
+        );
+    frame.render_widget(Paragraph::new(Text::from(lines)), area);
+}
+
+pub fn transcript_area(model: &AppModel, viewport: Rect) -> Rect {
+    let draft = composer::layout(
+        &model.chat.buffer,
+        model.chat.cursor,
+        model.chat.selection().as_ref(),
+        usize::from(viewport.width.saturating_sub(2)),
     );
-}
-
-fn append_lines(lines: &mut Vec<Line<'static>>, text: &str) {
-    let text = crate::sanitize::sanitize_display_text(text);
-    lines.extend(text.lines().map(|line| Line::from(line.to_owned())));
-}
-
-fn append_tool(
-    lines: &mut Vec<Line<'static>>,
-    activity: &peritus_app_protocol::ProductActivity,
-    expanded: bool,
-    width: usize,
-) {
-    let mut tool = vec![Line::styled(
-        format!("• {}", crate::sanitize::sanitize_display_text(activity.text())),
-        Style::default().fg(Color::White).add_modifier(Modifier::BOLD),
-    )];
-    let detail = crate::sanitize::sanitize_display_text(activity.detail());
-    tool.extend(
-        detail.lines().map(|line| Line::styled(format!("  │ {line}"), Style::default().fg(MUTED))),
-    );
-    let tool = wrapped_lines(tool, width);
-    if !expanded && tool.len() > 7 {
-        lines.extend(tool.iter().take(3).cloned());
-        lines.push(Line::styled(
-            format!("  └ … {} more lines · /details", tool.len() - 6),
-            Style::default().fg(MUTED),
-        ));
-        lines.extend(tool.iter().skip(tool.len() - 3).cloned());
-    } else {
-        lines.extend(tool);
-    }
-    lines.push(Line::from(""));
-}
-
-pub(super) fn wrapped_lines(lines: Vec<Line<'static>>, width: usize) -> Vec<Line<'static>> {
-    if width == 0 {
-        return Vec::new();
-    }
-    let mut result = Vec::new();
-    for line in lines {
-        let style = line.style;
-        if line.width() <= width {
-            result.push(line);
-            continue;
-        }
-        let mut current = Line::default().style(style);
-        let mut used = 0;
-        for span in line.spans {
-            let mut start = 0;
-            for (index, character) in span.content.char_indices() {
-                let mut bytes = [0; 4];
-                let cells = Span::raw(&*character.encode_utf8(&mut bytes)).width();
-                if used + cells > width {
-                    if start < index {
-                        current
-                            .spans
-                            .push(Span::styled(span.content[start..index].to_owned(), span.style));
-                    }
-                    result.push(current);
-                    current = Line::default().style(style);
-                    used = 0;
-                    start = index;
-                }
-                used += cells;
-            }
-            if start < span.content.len() {
-                current.spans.push(Span::styled(span.content[start..].to_owned(), span.style));
-            }
-        }
-        result.push(current);
-    }
-    result
+    composer::regions(viewport, draft.lines.len(), model.chat.working.elapsed_seconds().is_some())
+        [1]
 }
 
 fn draw_models(frame: &mut Frame<'_>, area: Rect, model: &AppModel) {

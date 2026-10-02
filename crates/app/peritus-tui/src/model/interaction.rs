@@ -27,12 +27,10 @@ impl AppModel {
             }
             Event::Resize(columns, rows) => {
                 self.chat.viewport = None;
+                self.chat.output_selection = None;
                 self.send_terminal_resize(columns, rows)
             }
-            Event::Mouse(mouse) => {
-                self.handle_chat_mouse(mouse);
-                Vec::new()
-            }
+            Event::Mouse(mouse) => self.handle_chat_mouse(mouse),
             Event::FocusGained | Event::FocusLost => Vec::new(),
         }
     }

@@ -17,6 +17,7 @@ mod doctor;
 mod effort;
 mod model_selection;
 mod navigation;
+mod output;
 mod runs;
 mod timeouts;
 mod workbench;

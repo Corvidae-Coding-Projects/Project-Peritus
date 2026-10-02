@@ -56,11 +56,13 @@ on-disk spelling; multiple case-insensitive matches fail as ambiguous instead of
 
 Type `/` to discover commands, use arrows and Tab to complete them, and use Shift-Enter for
 newlines. PageUp/PageDown scroll public activity; `/details` expands bounded tool summaries.
-Right-click or press F2 to select and copy the visible output with the terminal's normal mouse
-selection and Copy command. This freezes the display and releases mouse capture while daemon work
-continues. After right-clicking once, drag to select and use the terminal's context menu to copy or
-paste. Esc, F2, or pasting returns to live output. A paste enters the composer without submitting
-it. To copy another page, return to live output, scroll, then enter selection mode again.
+Drag across visible conversation text, right-click, then click Copy. The selected page stays
+still while daemon work continues; copying resumes live output. Screen wrapping does not add
+newlines to copied text. Esc, scrolling, typing, or clicking the composer clears the selection.
+Copy uses the desktop clipboard helper when available, then terminal OSC 52 as a fallback.
+If the terminal blocks clipboard writes, press F2 to freeze output and use native terminal
+selection and Copy; Esc, F2, or pasting resumes the live view.
+A paste enters the composer without submitting it.
 Raw tool arguments/results stay in the trace rather than being copied into the public activity
 projection. Provider-supplied display summaries appear as Thinking activity; opaque reasoning
 replay is never displayed. Summaries are requested only when the provider declares support;

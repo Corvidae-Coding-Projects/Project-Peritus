@@ -23,6 +23,7 @@ impl AppModel {
     }
 
     pub(in crate::model) fn paste_chat_event(&mut self, text: &str) {
+        self.chat.output_selection = None;
         self.chat.output_mode.resume_for_paste();
         if self.paste_file_field(text) || self.paste_image_field(text) {
             return;
@@ -47,7 +48,27 @@ impl AppModel {
             self.chat.pasted_command = true;
         }
     }
+    fn output_selection_key(&mut self, key: KeyEvent) -> Option<Vec<Effect>> {
+        self.chat.output_selection.as_ref()?;
+        if key.modifiers.contains(KeyModifiers::CONTROL)
+            && key.code == KeyCode::Char('c')
+            && self
+                .chat
+                .output_selection
+                .as_ref()
+                .is_some_and(|selection| selection.selected_text().is_some())
+        {
+            // Repeated copy keys while the helper is pending still belong to this selection.
+            return Some(self.copy_selected_output());
+        }
+        self.chat.output_selection = None;
+        (key.code == KeyCode::Esc).then(Vec::new)
+    }
+
     pub(in crate::model) fn handle_chat_key(&mut self, key: KeyEvent) -> Vec<Effect> {
+        if let Some(effects) = self.output_selection_key(key) {
+            return effects;
+        }
         if self.chat.output_mode.handle_key(key) {
             return Vec::new();
         }
@@ -55,29 +76,8 @@ impl AppModel {
         if !(key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('c')) {
             self.chat.interrupt_requested = false;
         }
-        if key.modifiers.contains(KeyModifiers::CONTROL) {
-            match key.code {
-                KeyCode::Char('r') => return self.request_reconnect(),
-                KeyCode::Char('q') => {
-                    self.quitting = true;
-                    return vec![Effect::Quit];
-                }
-                KeyCode::Char('c') => {
-                    if self.chat_work_active() && !self.chat.interrupt_requested {
-                        self.chat.interrupt_requested = true;
-                        let effects = self.chat_control(ProductRunControlAction::Cancel);
-                        self.notice(NoticeLevel::Info, if effects.is_empty() {
-                            "Stop could not be sent. Press Ctrl+C again to close; daemon work may continue."
-                        } else {
-                            "Stop requested. Press Ctrl+C again to close without waiting."
-                        });
-                        return effects;
-                    }
-                    self.quitting = true;
-                    return vec![Effect::Quit];
-                }
-                _ => {}
-            }
+        if let Some(effects) = self.chat_control_key(key) {
+            return effects;
         }
         if self.chat.doctor.is_some() {
             return self.doctor_key(key);
@@ -148,6 +148,34 @@ impl AppModel {
             }
         }
         Vec::new()
+    }
+
+    fn chat_control_key(&mut self, key: KeyEvent) -> Option<Vec<Effect>> {
+        if key.modifiers.contains(KeyModifiers::CONTROL) {
+            match key.code {
+                KeyCode::Char('r') => return Some(self.request_reconnect()),
+                KeyCode::Char('q') => {
+                    self.quitting = true;
+                    return Some(vec![Effect::Quit]);
+                }
+                KeyCode::Char('c') => {
+                    if self.chat_work_active() && !self.chat.interrupt_requested {
+                        self.chat.interrupt_requested = true;
+                        let effects = self.chat_control(ProductRunControlAction::Cancel);
+                        self.notice(NoticeLevel::Info, if effects.is_empty() {
+                            "Stop could not be sent. Press Ctrl+C again to close; daemon work may continue."
+                        } else {
+                            "Stop requested. Press Ctrl+C again to close without waiting."
+                        });
+                        return Some(effects);
+                    }
+                    self.quitting = true;
+                    return Some(vec![Effect::Quit]);
+                }
+                _ => {}
+            }
+        }
+        None
     }
 
     fn move_chat_cursor_vertically(&mut self, key: KeyEvent) {

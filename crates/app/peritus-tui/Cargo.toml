@@ -12,7 +12,7 @@ categories = ["command-line-utilities"]
 
 [dependencies]
 base64.workspace = true
-crossterm.workspace = true
+crossterm = { workspace = true, features = ["osc52"] }
 peritus-app-protocol = { version = "=0.0.4", path = "../peritus-app-protocol" }
 peritus-codec = { version = "=0.0.4", path = "../../foundation/peritus-codec" }
 peritus-protocol = { version = "=0.0.4", path = "../../foundation/peritus-protocol" }
@@ -23,7 +23,7 @@ peritus-types = { version = "=0.0.4", path = "../../foundation/peritus-types" }
 ratatui.workspace = true
 sha2.workspace = true
 thiserror.workspace = true
-tokio.workspace = true
+tokio = { workspace = true, features = ["process"] }
 vt100.workspace = true
 
 [target.'cfg(unix)'.dependencies]
