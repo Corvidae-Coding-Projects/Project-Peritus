@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1956,
-        "tip_oid": "1b7b073636a6e6436970b89091d0483b80d41e2c",
-        "prefix_sha256": "8c78b139a5971a9689805441ef5e1aed7a9d33b0bda22ace409a6121a0162f5a"
+        "sequence": 1957,
+        "tip_oid": "4a477311ae7727acb3eb4b937098431e36fb05ff",
+        "prefix_sha256": "84f12435f004922b891ccde0b281435ec05460615dd31fac42184b8e4daef2c2"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 2067,
+  "next_comment_id": 2068,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -10669,7 +10669,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-27T23:40:33.365528994Z",
-      "updated_at": "2026-10-02T15:59:28.763950149Z",
+      "updated_at": "2026-10-02T16:49:13.412336279Z",
       "comments": {
         "0de6566f-5caa-4b10-ae55-f90ec9bc3946": {
           "display_id": 2063,
@@ -10985,6 +10985,15 @@
           "kind": "handoff",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAYWNEdN1PmgE/wINWv0+uJarmw8ROrHoAOdLCeAMgUBqJNRKQ48ts1yny+8aCSG8twkNQdYki3j9GEcHSk4u4DQ=="
+        },
+        "eb96d01d-c04e-4c05-b2e0-55b8793677b2": {
+          "display_id": 2067,
+          "author": "6ME5",
+          "content": "Added signed unpublished branch commit fde84344c to correct explicit external-reference casing. Resolution stays inside the declared root, prefers exact names, selects one case-insensitive component match, returns actual casing on case-sensitive hosts, rejects case-colliding ambiguity, and still rejects traversal/symlinks/workspace authority. Full product-runner tests passed (460 unit pass, 5 intentional ignores, all integration targets pass); strict Clippy, Windows GNU check, fmt/diff, and cargo xtask all passed. Forced fresh optimized product rebuild/install completed and installed artifacts match the package byte-for-byte. Owner-started daemon PID 1584166 was preserved and remains on its old deleted executable; no tmux/test UI was created. The next owner-controlled launch uses the new install. No push or PR.",
+          "created_at": "2026-10-02T16:49:13.404369549Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA+KF1yXIFTYhgMZ2ppRnTGbY0jCZk7IAV96t2Mb9hlPoWKHH9ObXnYlC5j5bMLbvt8L/gu4vgyRtDukqIS6wGBQ=="
         }
       }
     },
