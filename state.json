@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1945,
-        "tip_oid": "be1713386f8fc3527081eaafb40cf7391d574490",
-        "prefix_sha256": "478de05851cb1ea4b902c3c1e5537547e9ee464245925524bd0b642635389b9c"
+        "sequence": 1946,
+        "tip_oid": "3302d701ea8d4051fa57b8eacdd3b76d424ea7cb",
+        "prefix_sha256": "43cba9d07d1885c5344617f09861f4953545d429e5d69342b8a260f15a0b0f65"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 2056,
+  "next_comment_id": 2057,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -10669,7 +10669,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-27T23:40:33.365528994Z",
-      "updated_at": "2026-10-02T14:36:50.244350475Z",
+      "updated_at": "2026-10-02T14:44:42.275106995Z",
       "comments": {
         "172fb531-7617-4dd5-afb2-b7d95cab7e0d": {
           "display_id": 1850,
@@ -10760,6 +10760,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABABHdd8ECfxd07+uVnZ7Khuqs/xz1gKmd+29aCJp8KkGQ8Wgr/+ndXdkmEiq0Y1D8KXBqgF/xwR4v5EYo+i9HeCw=="
+        },
+        "63544f2f-92db-4be0-9f5d-f18abe69c068": {
+          "display_id": 2056,
+          "author": "6ME5",
+          "content": "[action] Resumed paste-loss repair at clean develop cec90ce6; reproducer showed bracketed paste discarded while F2 output selection was active. Reading exact TUI input state machine and tests before edits.",
+          "created_at": "2026-10-02T14:44:42.271048749Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAZCLOd/iYNqMmRyisc+fUBb787EkgPjiZbWi80tGTWzZD8tzjM9C0VyylYRuWmj3k04iLv6fuxWcxSxKhIBIwAA=="
         },
         "70fd5a61-abb6-421e-9af4-b7da7287e251": {
           "display_id": 1851,
