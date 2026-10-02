@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 2007,
-        "tip_oid": "795836bed0070435214d67cf0bb6634bc998045f",
-        "prefix_sha256": "d4440d341cfa30b3eb344b383218261bd9d03f02ae91c4e19facb1d80877ebea"
+        "sequence": 2008,
+        "tip_oid": "e7c027c62bd12e5e68e3ae4570fc64e6bb79148e",
+        "prefix_sha256": "2146fb83b70c0829684808b4a0bca6d170ab5720e79cd4347a276b8b37293185"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 102,
-  "next_comment_id": 2105,
+  "next_comment_id": 2106,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -8781,7 +8781,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-10-02T22:20:34.408394114Z",
-      "updated_at": "2026-10-02T23:36:57.910840400Z",
+      "updated_at": "2026-10-02T23:37:33.470525649Z",
       "labels": [
         "maintenance"
       ],
@@ -8812,6 +8812,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAupT+g7ndeOE38yf6b9khTydIKW0d6oy0iP1m3dRcCV1737Kk5kdsTwTNOUAymJPVTSSKRXFy86YzONcA2TWCBQ=="
+        },
+        "51191a1d-e314-4836-b4b2-ec1a3eecf9bf": {
+          "display_id": 2105,
+          "author": "6ME5",
+          "content": "Committed signed test repair d649c0530: test: compare decoded reference paths on Windows. One scoped test file; exact decoded content, path, and reference root assertions retain and strengthen Windows casing verification. Corrected aggregate for the full runner command is 489 passed, 5 ignored, zero failures (the preceding comment undercounted by two); focused test, workspace formatting, and Linux/Windows GNU strict Clippy all passed. Production sources and installed binaries are unchanged by this test-only commit; unrelated untracked files remain preserved. Pushing this head to PR #110 for all native CI workflows.",
+          "created_at": "2026-10-02T23:37:33.466346066Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAEtufFWU1ANK96FUEm7FLYxF7aFiO+3Bx3v5/5HyOFPEfAekCqlsRAGAe6HGlNaQnmupS6gyHgKr9VwJWQH20Dg=="
         },
         "55667155-1e0d-49ec-9f2d-1a41a650c964": {
           "display_id": 2104,
