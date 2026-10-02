@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1957,
-        "tip_oid": "4a477311ae7727acb3eb4b937098431e36fb05ff",
-        "prefix_sha256": "84f12435f004922b891ccde0b281435ec05460615dd31fac42184b8e4daef2c2"
+        "sequence": 1958,
+        "tip_oid": "af05d4ffc82b7dec8e2754cf25086df17bb6407e",
+        "prefix_sha256": "7b625953b9b31e27d39fa43f870e926424775b41e885dbb74133eadfe6ad6f11"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 2068,
+  "next_comment_id": 2069,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -10669,7 +10669,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-27T23:40:33.365528994Z",
-      "updated_at": "2026-10-02T16:49:13.412336279Z",
+      "updated_at": "2026-10-02T16:57:09.052949874Z",
       "comments": {
         "0de6566f-5caa-4b10-ae55-f90ec9bc3946": {
           "display_id": 2063,
@@ -10913,6 +10913,15 @@
           "kind": "handoff",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAS5l4igPDy5taiO07pKoXSWfy7xd4Wn6fwyde4MhpSEAlVxFpUIiW6uOFRIEcZNUN1JJxxiutYduV7p/ZguCYCw=="
+        },
+        "bc0c602a-373b-4a89-921c-e0454cb45993": {
+          "display_id": 2068,
+          "author": "6ME5",
+          "content": "[action] Implemented conversation mouse-wheel scrolling on the consolidated unpublished issue #98 branch; added reducer and rendered transcript regressions plus user-facing guidance. Full peritus-tui suite, strict Clippy, Windows GNU check, fmt, diff check, and cargo xtask all pass; preparing signed local commit without push or PR.",
+          "created_at": "2026-10-02T16:57:09.040363004Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA3ZqaKHrOTte1L1hnPUO01YwwAmu2wa297qX87fmVx2S8DTbBdXMx1NBk1YDKenR6qumkfvjKwBGNYQFtGLAlCQ=="
         },
         "bf0b3e2a-d765-471d-935b-53d304166c07": {
           "display_id": 2055,
