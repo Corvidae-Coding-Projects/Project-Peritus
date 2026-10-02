@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1987,
-        "tip_oid": "bb6719d6eef7869e444832cce750e8cb3d4e456f",
-        "prefix_sha256": "7b54583539a760c337193c526610e12c8acb2299e382b3673c5712349a8ee0f3"
+        "sequence": 1988,
+        "tip_oid": "c434caa6dde341dd4c0cd15c1e1fbee2586e8f44",
+        "prefix_sha256": "f33e74112a23e199072a933d5dff3f5382a95746f73ad4278ee07bdeb4cf775c"
       },
       "NWAR": {
         "sequence": 39,
@@ -18662,12 +18662,12 @@
       "uuid": "d9215aa5-aa5a-4c94-a9d9-310a44ce857c",
       "display_id": 100,
       "title": "Remove benchmark-era limits from human workflows",
-      "description": "Audit production Rust, CLI/TUI/WebUI, and generated protocol paths for fixed limits introduced for benchmarks or qualification fixtures. Preserve safety, protocol, resource, and abuse bounds; redesign or remove arbitrary caps that can block ordinary long-lived human use, with migration/recovery behavior and regressions.",
+      "description": "Audit the production Rust, CLI/TUI/WebUI, persistence, and generated protocol paths for arbitrary limits that block ordinary long-lived human use. Remove goal budget controls and budget-driven states, cumulative run and history totals, repeated-finding and invalid-terminal stop counts, and fixed command-horizon ceilings. Preserve actual protocol, resource, and authority boundaries; verify continuation, retained evidence, restart, and exact-target Python environment selection. No migrations or installed-state changes.",
       "status": "open",
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-10-02T19:33:07.990520286Z",
-      "updated_at": "2026-10-02T20:56:06.541916793Z",
+      "updated_at": "2026-10-02T21:12:05.101757637Z",
       "labels": [
         "bug"
       ],
