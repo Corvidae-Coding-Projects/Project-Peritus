@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1993,
-        "tip_oid": "a97ca571e59f96035973ff51c3699718102145a1",
-        "prefix_sha256": "c7fb70d0e1bc4a2ccd5d7e9576354b2943d0ad253becd14da8bf7c7ae83155dc"
+        "sequence": 1994,
+        "tip_oid": "d7b155a47117cae8c7e1195aa03cc323221ec85a",
+        "prefix_sha256": "7340b412985fd31223d0d608a87c3b128cad4650b87cc209f2c986a12de4e18b"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 101,
-  "next_comment_id": 2096,
+  "next_comment_id": 2097,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -18667,7 +18667,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-10-02T19:33:07.990520286Z",
-      "updated_at": "2026-10-02T21:20:12.619268850Z",
+      "updated_at": "2026-10-02T22:00:21.926784871Z",
       "labels": [
         "bug"
       ],
@@ -18734,6 +18734,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAjOOaRSc6bf2UKG9yCngdbEVp7ppodkMhgpIRFsIrY32ot0gXUG/pOhniPJ+Mlwb/8YSC/+gtqFzb2hAsgo4YCw=="
+        },
+        "abd8055f-624d-42c5-a219-4b71cd398744": {
+          "display_id": 2096,
+          "author": "6ME5",
+          "content": "Signed commits 9829473efe5b4291a96a6dfaa716bc9d481af012 (remove human workflow limits) and 41962a22b (include the extracted continuation and timeout regression modules) contain all 240 requested paths. Verification passed: workspace tests and doc tests, Linux/Windows strict Clippy, strict affected-package Verus, warning-denied rustdoc, generated assets, fmt, diff, and workspace policy. Unrelated untracked files remain excluded. Optimized product package build and installation are now running; no push requested.",
+          "created_at": "2026-10-02T22:00:21.922769710Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAx1eIScmNnkedUu4qR0hPBhlYC+NMmlc8tkJS/c0W8diFoDb4Dnrdy0IO4AX3mt5Ugq4K+r5pZUhfjVqiUfIsBw=="
         },
         "df21d55b-89da-4ebf-93dc-21e2dd87037b": {
           "display_id": 2089,
