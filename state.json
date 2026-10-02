@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1973,
-        "tip_oid": "9cab43112273dcd1c4c51c91965899ca60e75ea6",
-        "prefix_sha256": "451eeb9c98928c27a8806f30e3fe6d98631dea9cd8bccb4d84b355319cb78f0e"
+        "sequence": 1974,
+        "tip_oid": "9dde3f8f45afb8824cccc3f09173b7ba0527c262",
+        "prefix_sha256": "704b3e700190024e004b6cdc4dd296c06946dbf49006821c7804a108890af06a"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 2083,
+  "next_comment_id": 2084,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -16886,7 +16886,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-28T00:58:41.412806074Z",
-      "updated_at": "2026-10-02T18:46:34.610423115Z",
+      "updated_at": "2026-10-02T19:12:25.469096165Z",
       "labels": [
         "bug"
       ],
@@ -18177,6 +18177,15 @@
           "kind": "handoff",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAWW3lUONYlr6UnKTgweqjrCB8F8TN83pURpK192ZEqkvgnOywqoPS9W4w3ykNDWgD32u2RqcSpz9n0m8QLa4OCQ=="
+        },
+        "b7155b3b-fb79-497b-af3e-e6b707935986": {
+          "display_id": 2083,
+          "author": "6ME5",
+          "content": "[action] Final review complete: replay-only automatic checkpoints preserve legacy recovery and exact rewind/fork/restart; full workspace previously passed, final invariant changes pass focused storage tests, native/Windows strict Clippy, fmt, diff, and xtask policy.",
+          "created_at": "2026-10-02T19:12:25.455816141Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAKQEPP+ozNHfGZHXiFC/ulfX+h4FxPk+BZ2aU6doYgELOfOj6rDuhB67rO8FpEZkmxSqeWdWKMGzOfbz7IXelBw=="
         },
         "b8ae5e43-2554-45ef-a717-c19f57a7bc90": {
           "display_id": 1996,
