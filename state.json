@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 2009,
-        "tip_oid": "934302da7d3c2b5dd6f05649d6563ced7f5e706a",
-        "prefix_sha256": "92c4af45b3be362d2a52a9c4eddc27e3f9ab690f7e109eec21b863e0a37a8a34"
+        "sequence": 2010,
+        "tip_oid": "6b2caaa829f18f5799b69645ffcf5193395ef06d",
+        "prefix_sha256": "355c5d416a18df111e533137071fb707e20845992380005aff03d58d65cb46b2"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 102,
-  "next_comment_id": 2107,
+  "next_comment_id": 2108,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -8781,7 +8781,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-10-02T22:20:34.408394114Z",
-      "updated_at": "2026-10-02T23:38:14.877660280Z",
+      "updated_at": "2026-10-02T23:45:10.280125929Z",
       "labels": [
         "maintenance"
       ],
@@ -8857,6 +8857,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABADt47tMNRYBirGRHOG3DzYjtXsyiihABbjjjk3BYnHljYQqAX2/xXAzVswIOMPujGIvyqAIkUd7QEU0ys+y1bCw=="
+        },
+        "b49ad523-6ae6-40c8-be2b-45639a393447": {
+          "display_id": 2107,
+          "author": "6ME5",
+          "content": "Latest-head CI d649c0530 has no failures so far. Superseded Gate A run 37077251756 (head 7b4efd69e) retained six queued always() aggregation jobs after automatic cancellation, leaving current Gate A 37078461308 pending. Explicit normal cancel was accepted but old run remained queued; used the documented force-cancel endpoint for this exact superseded run only. No workflow policy or latest-head checks changed.",
+          "created_at": "2026-10-02T23:45:10.275901954Z",
+          "kind": "action",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA8oP6MtO8IZX4dAsZ33IzdFnRp5cYsBS+KjOsanlsFSG0ZFjNd2nsQ0Sgacw0uigo6V0l3fRB4uXSxCHGpW5tAg=="
         }
       }
     },
