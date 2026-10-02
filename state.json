@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1977,
-        "tip_oid": "833882cb63448f41172b317d4a598dd92a1fe210",
-        "prefix_sha256": "6360ec96f7368560608b4e05e13ff450319cd544253d54419d5d23ff8c6c5d09"
+        "sequence": 1978,
+        "tip_oid": "ebde2070b4527de2f2cc9d4b9c782dcc370ce39b",
+        "prefix_sha256": "b17142e0fbb5dbc37e6450fe1dd92536f32cd9e180fc7105a6cfbdd2fda9c207"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 2086,
+  "next_comment_id": 2087,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -16882,7 +16882,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-28T00:58:41.412806074Z",
-      "updated_at": "2026-10-02T19:16:33.768228067Z",
+      "updated_at": "2026-10-02T19:17:26.963843089Z",
       "labels": [
         "bug"
       ],
@@ -17309,6 +17309,15 @@
           "kind": "observation",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAtJuSGU9+vwe2PJZASf7Ivy88I3V3SqQl5UXf/Dq+hrgcMs2xleI0dt4PCllPmelAD0YTXmcCCmsA42JBewSqBA=="
+        },
+        "40590ed7-d946-4ac1-abba-7b0445f1951c": {
+          "display_id": 2086,
+          "author": "6ME5",
+          "content": "Root-caused the live mutation failure to 64 legacy automatic checkpoints exhausting MAX_CHECKPOINTS before workspace write. Signed commit e5f80b72d moves future automatic checkpoints to replay-only durable history, preserves legacy recovery and exact inspect/seal/rewind/fork/restart semantics, improves safe errors, and adds capacity/lifecycle regressions. Full workspace and affected suites passed; final changes passed storage 28/28, native/Windows strict Clippy, fmt, rustdoc, diff, and xtask policy. Optimized verified package installed byte-identically without touching daemon PID 2035085; fix activates on its next natural start. No push or PR; broader issue #99 remains open.",
+          "created_at": "2026-10-02T19:17:26.960524280Z",
+          "kind": "handoff",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA8nZwAo6RDdifbayKTrvWHMGFIqpbY5WjowQM3ULEck3nc+faabHS7J+Jn/95d292I++i6X/F8GEOKWA1MYH/CA=="
         },
         "421d66a7-c64d-4473-ac7c-69982138d600": {
           "display_id": 1884,
