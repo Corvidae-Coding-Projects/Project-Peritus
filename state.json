@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1983,
-        "tip_oid": "db5179f29494591f3ef4c34839a764cf3b20d0b7",
-        "prefix_sha256": "5582ce8c1624dbb891aac7b47c7ed450cd4cd1db3cdecc561d17d913c3323aa3"
+        "sequence": 1984,
+        "tip_oid": "3de426c4b72b2955ad91e0fa7781ebc23e4b01a6",
+        "prefix_sha256": "f77a44c8cc6d8b26be483ac14d7df17b106b0102e2742899be6ba57b09f21ae3"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 101,
-  "next_comment_id": 2089,
+  "next_comment_id": 2090,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -18667,7 +18667,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-10-02T19:33:07.990520286Z",
-      "updated_at": "2026-10-02T19:45:30.994825763Z",
+      "updated_at": "2026-10-02T19:54:58.625866419Z",
       "labels": [
         "bug"
       ],
@@ -18680,6 +18680,15 @@
           "kind": "decision",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAdIvY3VtddnVELiIrW4djgrG/SB6i/KmoZlVfv5mITerrTatJp+PG/cqmwUgbJ/VB0cv5nK1TwVzVNFOvYFg6AA=="
+        },
+        "df21d55b-89da-4ebf-93dc-21e2dd87037b": {
+          "display_id": 2089,
+          "author": "6ME5",
+          "content": "Correction from user: optional goal budgets are not justified by the harness comparison either. Remove goal budget limits and every budget-driven stop from the human workflow; do not represent absence as numeric maxima or preserve the feature as an optional control.",
+          "created_at": "2026-10-02T19:54:58.621513151Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA5mWb9GnIshogZXIId8l+jMFKAH9xEG22fp6lr33EhkkbJth2tarOq/Z3qSnza5Bl39HFKEKz86YZnGd8PnbUDw=="
         },
         "fee5b767-58ca-4eae-9392-e0ae91ced72e": {
           "display_id": 2087,
