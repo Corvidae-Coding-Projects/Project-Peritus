@@ -13,6 +13,16 @@ pub enum OutputMode {
 }
 
 impl OutputMode {
+    pub(super) const fn begin_terminal_selection(&mut self) {
+        *self = Self::Selecting;
+    }
+
+    pub(super) fn resume_for_paste(&mut self) {
+        if *self == Self::Selecting {
+            *self = Self::Live;
+        }
+    }
+
     pub(super) fn handle_key(&mut self, key: crossterm::event::KeyEvent) -> bool {
         use crossterm::event::KeyCode;
         match *self {
@@ -40,6 +50,14 @@ impl ChatUi {
 
 impl AppModel {
     pub(in crate::model) fn handle_chat_mouse(&mut self, mouse: MouseEvent) {
+        if self.view == View::Conversation
+            && self.editor.is_none()
+            && matches!(mouse.kind, MouseEventKind::Down(MouseButton::Right))
+        {
+            self.chat.mouse_anchor = None;
+            self.chat.output_mode.begin_terminal_selection();
+            return;
+        }
         if matches!(mouse.kind, MouseEventKind::Up(MouseButton::Left)) {
             self.chat.mouse_anchor = None;
             return;

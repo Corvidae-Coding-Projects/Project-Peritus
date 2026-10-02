@@ -23,9 +23,7 @@ impl AppModel {
     }
 
     pub(in crate::model) fn paste_chat_event(&mut self, text: &str) {
-        if self.chat.selecting_output() {
-            return;
-        }
+        self.chat.output_mode.resume_for_paste();
         if self.paste_file_field(text) || self.paste_image_field(text) {
             return;
         }

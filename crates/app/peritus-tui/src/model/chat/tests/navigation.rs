@@ -125,13 +125,39 @@ fn output_selection_owns_copy_keys_without_cancelling_or_editing() {
     assert!(model.chat.selecting_output());
     modified(&mut model, KeyCode::Char('c'), KeyModifiers::CONTROL | KeyModifiers::SHIFT);
     modified(&mut model, KeyCode::Char('c'), KeyModifiers::CONTROL);
-    let _ = model.update(Action::TerminalEvent(Event::Paste("accidental paste".to_owned())));
     assert!(!model.quitting);
     assert_eq!(model.chat.buffer, "unsent draft");
     assert!(key(&mut model, KeyCode::Esc).is_empty());
     assert!(!model.chat.selecting_output());
     let _ = key(&mut model, KeyCode::Char('!'));
     assert_eq!(model.chat.buffer, "unsent draft!");
+}
+
+#[test]
+fn paste_after_output_copy_resumes_live_output_and_edits_the_draft() {
+    let mut model = draft("unsent draft");
+    assert!(key(&mut model, KeyCode::F(2)).is_empty());
+    assert!(model.chat.selecting_output());
+
+    let effects = model.update(Action::TerminalEvent(Event::Paste(" pasted text\n".to_owned())));
+
+    assert!(effects.is_empty());
+    assert!(!model.chat.selecting_output());
+    assert_eq!(model.chat.buffer, "unsent draft pasted text\n");
+    assert_eq!(model.chat.cursor, model.chat.buffer.len());
+}
+
+#[test]
+fn right_click_opens_terminal_selection_and_mouse_paste_returns_to_the_draft() {
+    let mut model = draft("mouse draft");
+    mouse(&mut model, MouseEventKind::Down(MouseButton::Right), 12, 4, KeyModifiers::NONE);
+    assert!(model.chat.selecting_output());
+
+    let effects = model.update(Action::TerminalEvent(Event::Paste(" pasted".to_owned())));
+
+    assert!(effects.is_empty());
+    assert!(!model.chat.selecting_output());
+    assert_eq!(model.chat.buffer, "mouse draft pasted");
 }
 
 #[test]
