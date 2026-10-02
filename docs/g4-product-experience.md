@@ -47,7 +47,10 @@ readiness, and resumes the durable application session.
 
 The default screen is a conversation with a persistent multiline composer. Type ordinary text to
 ask a question or request scoped work. Questions and diagnosis do not implicitly authorize changes.
-`/plan` and `/review` expose read-only tools; the latter uses a fresh reviewer invocation.
+`/plan` and `/review` expose read-only tools; the latter uses a fresh reviewer invocation. When the
+request explicitly names an absolute file or directory outside the workspace, Peritus can list and
+read that exact reference without granting write or command access there. Paths remain
+case-sensitive, and a missing exact path is reported instead of replaced with an assumed example.
 `/build <request>` explicitly commissions the checked delivery pipeline described below.
 
 Type `/` to discover commands, use arrows and Tab to complete them, and use Shift-Enter for

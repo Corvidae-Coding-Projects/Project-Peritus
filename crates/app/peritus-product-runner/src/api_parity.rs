@@ -108,6 +108,7 @@ fn conversation(view: &dyn ConversationView) {
     let _: u64 = view.incorporated_revision();
     let _: String = view.render();
     let _: String = view.stable_request_context();
+    let _: String = view.reference_authority_context();
     let _: Vec<PathBuf> = view.protected_paths();
     let _: crate::control::HostPermissions = view.effective_permissions();
     let _: bool = view.permits_pipeline_handoff();

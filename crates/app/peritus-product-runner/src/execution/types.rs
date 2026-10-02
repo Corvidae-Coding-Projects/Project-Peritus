@@ -103,6 +103,11 @@ pub trait ConversationView: Send + Sync {
     fn stable_request_context(&self) -> String {
         self.render()
     }
+    /// Exact user-authored text allowed to grant read-only access to explicitly named external
+    /// references. Governed hosts must exclude provider replies, tool output, and host guidance.
+    fn reference_authority_context(&self) -> String {
+        self.render()
+    }
     /// Current hard relative paths narrowed by explicit leave-alone review constraints.
     /// Implementations must fail closed when durable state cannot be read.
     fn protected_paths(&self) -> Vec<PathBuf> {

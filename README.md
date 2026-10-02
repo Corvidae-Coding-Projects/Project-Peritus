@@ -126,7 +126,7 @@ Type `/` to discover commands; Tab completes them.
 
 | Command | Action |
 | --- | --- |
-| `/plan` or `/review` | Discuss a plan or perform an independent review with read-only tools. |
+| `/plan` or `/review` | Discuss a plan or perform an independent review with read-only tools, including an exact absolute reference path named in your request. |
 | `/build <request>` | Start checked writer, reviewer, and fixer delivery. |
 | `/model` | Discover provider models; arrows and Enter select, Tab switches roles. |
 | `/effort` | Select per-role reasoning effort; also press `e` in the model picker. |

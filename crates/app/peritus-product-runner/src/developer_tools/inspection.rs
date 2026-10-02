@@ -20,7 +20,7 @@ use super::{
 };
 use crate::file_metadata;
 
-const MAX_FILE_BYTES: usize = 2 * 1024 * 1024;
+pub(super) const MAX_FILE_BYTES: usize = 2 * 1024 * 1024;
 
 pub(super) fn list(
     root: &Path,
@@ -185,7 +185,7 @@ pub(super) fn read(root: &Path, arguments: &Value) -> Result<Value, DeveloperLoo
     ]))
 }
 
-fn entry_kind(kind: fs::FileType) -> &'static str {
+pub(super) fn entry_kind(kind: fs::FileType) -> &'static str {
     if kind.is_dir() {
         "directory"
     } else if kind.is_file() {
@@ -197,7 +197,11 @@ fn entry_kind(kind: fs::FileType) -> &'static str {
     }
 }
 
-fn read_line_range(path: &Path, start: usize, end: usize) -> Result<String, DeveloperLoopError> {
+pub(super) fn read_line_range(
+    path: &Path,
+    start: usize,
+    end: usize,
+) -> Result<String, DeveloperLoopError> {
     let file = fs::File::open(path).map_err(|error| tool(error.to_string()))?;
     let mut reader = BufReader::new(file);
     let mut current = 1_usize;

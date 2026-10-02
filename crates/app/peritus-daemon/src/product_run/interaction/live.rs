@@ -44,6 +44,23 @@ impl ConversationView for LiveConversation {
             "Governing conversation unavailable; execution must stop.".to_owned()
         })
     }
+    fn reference_authority_context(&self) -> String {
+        let result = (|| {
+            let records = self
+                .service
+                .inner
+                .records
+                .read()
+                .map_err(|_| ProductRunServiceError::Unavailable)?;
+            let record = records.get(&self.run_id).ok_or(ProductRunServiceError::NotFound)?;
+            let start = &record.interaction.workbench;
+            self.service
+                .with_controls(false, |store| store.capture_execution(start))
+                .map(|capture| capture.reference_authority_context().to_owned())
+                .map_err(ProductRunServiceError::from)
+        })();
+        result.unwrap_or_default()
+    }
     fn incorporated_revision(&self) -> u64 {
         self.service
             .inner

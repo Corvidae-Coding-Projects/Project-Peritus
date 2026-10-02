@@ -95,6 +95,12 @@ retained. New inspection evidence or a different tool strategy resets the cycle.
 is not inspection repetition, and read-only reviewer/design tools do not use this delivery guard.
 This stop is nonretryable, so earlier file writes cannot turn it into another recovery loop.
 
+The developer catalog also exposes bounded read-only reference listing and text reads. Their roots
+come only from normal absolute paths in the current user-authored input, excluding provider replies
+and host guidance. A reference path never enrolls workspace ownership, satisfies workspace mutation
+grounding, or grants process access. Parent traversal and symbolic-link targets fail closed; missing
+paths retain case-sensitive diagnostics.
+
 Recovery progress is a content change, not a larger inspection scope: enrolling an unchanged or
 absent path does not replenish retry allowances. Policy, cancellation, integrity, and ambiguous
 terminals cannot be restarted merely because an earlier call changed a file. Malformed-response

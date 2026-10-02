@@ -15,7 +15,7 @@ pub fn definitions() -> Result<Vec<ToolDefinition>, ProductRunnerError> {
     definitions_from(&[
         (
             "workspace_list",
-            "List files and directories below one workspace-relative path with current byte size and permission metadata. The result reports the exact workspace_root, path semantics, and observed execution_resources including the recommended build parallelism. When the task names an absolute path below that root, remove the exact root prefix once instead of repeating the root directory. Call this first in every fresh writer or fixer turn; mutation and process tools remain locked until a successful listing and a targeted file read.",
+            "List files and directories below one workspace-relative path with current byte size and permission metadata. The result reports the exact workspace_root, path semantics, and observed execution_resources including the recommended build parallelism. When the task names an absolute path below that root, remove the exact root prefix once instead of repeating the root directory. An exact absolute directory outside the workspace is accepted only when the user's task explicitly named it; that result is read-only reference evidence and does not ground workspace mutation or commands. Call this first with a workspace-relative path in every fresh writer or fixer turn; mutation and process tools remain locked until a successful workspace listing and a targeted workspace file read.",
             WORKSPACE_LIST_SCHEMA,
         ),
         (
@@ -25,7 +25,7 @@ pub fn definitions() -> Result<Vec<ToolDefinition>, ProductRunnerError> {
         ),
         (
             "workspace_read",
-            "Read a bounded line range plus current byte size and permission metadata from one workspace-relative text file. Line numbers are one-based and both start_line and end_line are inclusive; the default is lines 1 through 500. Call this after workspace_list and read the exact current target before changing an existing file.",
+            "Read a bounded line range plus current byte size and permission metadata from one workspace-relative text file. Line numbers are one-based and both start_line and end_line are inclusive; the default is lines 1 through 500. An exact absolute file outside the workspace is accepted only when it is user-named reference evidence; it remains read-only and does not ground workspace mutation or commands. Call this after a workspace listing and read the exact current workspace target before changing an existing file.",
             WORKSPACE_READ_SCHEMA,
         ),
         (
@@ -91,7 +91,7 @@ pub fn read_only_definitions() -> Result<Vec<ToolDefinition>, ProductRunnerError
     definitions_from(&[
         (
             "workspace_list",
-            "List files and directories below one workspace-relative path with current byte size and permission metadata. The result reports the exact workspace_root and confirms that every workspace tool path is relative to it; remove that exact prefix once from absolute in-workspace paths.",
+            "List files and directories below one workspace-relative path with current byte size and permission metadata. The result reports the exact workspace_root and confirms that ordinary workspace paths are relative to it; remove that exact prefix once from absolute in-workspace paths. An exact user-named absolute directory outside the workspace is available only as read-only reference evidence.",
             WORKSPACE_LIST_SCHEMA,
         ),
         (
@@ -101,7 +101,7 @@ pub fn read_only_definitions() -> Result<Vec<ToolDefinition>, ProductRunnerError
         ),
         (
             "workspace_read",
-            "Read a bounded line range plus current byte size and permission metadata from one workspace-relative text file.",
+            "Read a bounded line range plus current byte size and permission metadata from one workspace-relative text file, or from an exact user-named absolute reference file outside the workspace. External references are case-sensitive and read-only.",
             WORKSPACE_READ_SCHEMA,
         ),
     ])
@@ -177,7 +177,10 @@ mod tests {
         assert!(description("workspace_list").contains("exact workspace_root"));
         assert!(description("workspace_list").contains("execution_resources"));
         assert!(description("workspace_list").contains("remove the exact root prefix once"));
-        assert!(description("workspace_read").contains("exact current target"));
+        assert!(description("workspace_read").contains("exact current workspace target"));
+        assert!(description("workspace_list").contains("read-only reference evidence"));
+        assert!(description("workspace_read").contains("user-named reference evidence"));
+        assert!(description("workspace_read").contains("does not ground workspace mutation"));
         assert!(description("workspace_patch").contains("in the current turn"));
         assert!(description("workspace_remove").contains("empty directory"));
         assert!(description("workspace_remove").contains("non-recursive"));
