@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 2002,
-        "tip_oid": "21199587e7ad91500a63f2734dabb88c4d0fbd53",
-        "prefix_sha256": "294e3b0079611b45523e1fb428c613261d06037fc1841746d77a822dee5f7def"
+        "sequence": 2003,
+        "tip_oid": "2b1dff3e7c7775ddd23474f8217c15b2f8157509",
+        "prefix_sha256": "144089be9106876243316787693ce72fdb5e6b80be275c41765e2a717262899c"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 102,
-  "next_comment_id": 2100,
+  "next_comment_id": 2101,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -8781,11 +8781,20 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-10-02T22:20:34.408394114Z",
-      "updated_at": "2026-10-02T22:23:30.335272018Z",
+      "updated_at": "2026-10-02T23:21:18.566491559Z",
       "labels": [
         "maintenance"
       ],
       "comments": {
+        "42c3213f-2b2c-46f3-a4b5-40923617e2a1": {
+          "display_id": 2100,
+          "author": "6ME5",
+          "content": "Prepared CI and UI repairs: enumerate actual filesystem spelling on case-insensitive filesystems, allow legitimate system ancestor aliases while rejecting named-root and descendant symlinks, keep steering on the conversation transcript during all receipt phases, and add drag/right-click/click Copy with asynchronous desktop clipboard helpers and OSC 52 fallback. Rendered Unicode, wrapping, selection, receipt, cancellation, timeout, and late-result regressions pass. Runner suite: 487 passed, 5 ignored; TUI suite: 325 passed, 1 ignored. Strict affected Linux and Windows GNU Clippy, canonical candidate policy (xtask all), format, docs, layout, architecture, ordinary API, reproducibility, whitespace, and scoped source scans passed. Standalone enforced verify-trust uses an unchanged archival inventory naming a source absent in origin/develop; candidate-mode trust checks pass and the protected CI authority remains unchanged.",
+          "created_at": "2026-10-02T23:21:18.553262556Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAiL47iZLV14G8/prLuIiRVbfY6PLGm3oK2CaH9CWr/8rCi0jY/Kd6y5xgrzznUA778ovOMqRu72oIOoxav9GkDQ=="
+        },
         "9cfd5d06-ec09-4f0c-9828-4f922eaac939": {
           "display_id": 2099,
           "author": "6ME5",
