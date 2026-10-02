@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1971,
-        "tip_oid": "8f6a59deabed0e4666b290953034bdb210cca69b",
-        "prefix_sha256": "9af11906263abf6b627d71ed31f7393ddd54c6f605838c809c855343e4f65333"
+        "sequence": 1972,
+        "tip_oid": "902760870a9bfbf2f3a657d5b2ef407f01f81980",
+        "prefix_sha256": "8715da15ef850548e22ff6df10411e298aa3dcf20e34aab39d96270418f1baab"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 2081,
+  "next_comment_id": 2082,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -16886,7 +16886,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-28T00:58:41.412806074Z",
-      "updated_at": "2026-10-02T18:31:44.882270019Z",
+      "updated_at": "2026-10-02T18:46:10.189144730Z",
       "labels": [
         "bug"
       ],
@@ -17754,6 +17754,15 @@
           "kind": "observation",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAwDSGjDvdk32A9cM4eAiz6IIk+UMKNt5AfxuRmzpykGYPmb3VRy35WNtAwwN//eu4ie12V9xZr/D7chph+CPQDA=="
+        },
+        "80285f96-39f8-49df-a48e-4380969e618e": {
+          "display_id": 2081,
+          "author": "6ME5",
+          "content": "[action] Root repair implemented: new automatic before-images are immutable replay-only control events instead of entries in the 64-slot user projection; legacy automatic entries remain readable and no longer consume new user-checkpoint allowance. Rewind, combined branch publication, sealing, body verification, retry, and restart support both retained and replay-only checkpoints. Regression fills all 64 legacy slots, admits 65 more distinct automatic paths, restarts, and preserves postimages; end-to-end replay-only rewind/branch passed. Focused checkpoint/control suites pass; broad validation in progress.",
+          "created_at": "2026-10-02T18:46:10.175764996Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAOcn6Yht0kCPu6VP2JRp/iAzTXrVKKS3qe/lZBM/KwEXJilRGnRbneG9ogQwpwR0n4/FcYoFB27i3p4LI998CAQ=="
         },
         "825794bb-cac8-4d4e-9781-a7cff3e5d2c0": {
           "display_id": 1975,
