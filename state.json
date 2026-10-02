@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1985,
-        "tip_oid": "7a9ca6727723c0337ed83caa83ed8b9bc0fec293",
-        "prefix_sha256": "d1cda79b58e32f51dc9283729c9e7ff10bcbad7fb76ff21ba0d5e560936a1b0d"
+        "sequence": 1986,
+        "tip_oid": "a97ec50e3cb3c16d639fa9a19afb302394d72ea1",
+        "prefix_sha256": "e0b7de44ef193ad1864b4fa2985d807793a695a674e317be3dcba74b41c010b9"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 101,
-  "next_comment_id": 2091,
+  "next_comment_id": 2092,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -18667,7 +18667,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-10-02T19:33:07.990520286Z",
-      "updated_at": "2026-10-02T19:55:23.522392365Z",
+      "updated_at": "2026-10-02T20:55:34.365882559Z",
       "labels": [
         "bug"
       ],
@@ -18680,6 +18680,15 @@
           "kind": "decision",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAdIvY3VtddnVELiIrW4djgrG/SB6i/KmoZlVfv5mITerrTatJp+PG/cqmwUgbJ/VB0cv5nK1TwVzVNFOvYFg6AA=="
+        },
+        "4e63e1ea-5db9-4654-825f-eda3d180d8f3": {
+          "display_id": 2091,
+          "author": "6ME5",
+          "content": "Removed human goal budget controls and budget-driven goal states; removed cumulative run ceilings, history totals, fixer/reviewer stop counts, and invalid task-terminal attempt ceilings. Invocation turn/tool limits now yield continuation segments. Repeated inspection feedback is advisory. Exact-target Python planning uses locked project runners or local virtual environments, including uv run --frozen python. Per-command horizons now pass the shared shell descriptor rather than hitting a hidden ten-minute ceiling. Focused composition, gate planning, wire roundtrip, and improvement persistence checks pass; full workspace verification is running.",
+          "created_at": "2026-10-02T20:55:34.347737895Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAp/lHP1YH5uEdzQ3PnNSZTtBVik2K/GWovDG/R6DK3HvKRpoNI1nX+KKjQTfCTH+G72LZUdZpnwpUtmxYXBsBDg=="
         },
         "5dcf2021-8c44-4a33-9c98-b2579570c849": {
           "display_id": 2090,
