@@ -133,23 +133,90 @@ fn explicit_references_are_read_only_and_confined_to_the_named_root() {
 }
 
 #[test]
-fn missing_explicit_reference_reports_exact_case_sensitive_path() {
+fn explicit_reference_corrects_unique_directory_and_file_casing() {
     let workspace = tempfile::tempdir().expect("workspace");
     let references = tempfile::tempdir().expect("references");
-    let existing = references.path().join("Invoices");
-    fs::create_dir(&existing).expect("existing directory");
-    fs::write(existing.join("example.txt"), "EXISTING_CASE_CANARY").expect("case fixture");
-    let missing = references.path().join("invoices");
-    let task = format!("Inspect {}", missing.display());
+    let existing = references.path().join("Documents").join("Invoices");
+    fs::create_dir_all(&existing).expect("existing directory");
+    let actual_file = existing.join("DS-2026-001.html");
+    fs::write(&actual_file, "CASE_CORRECTED_CANARY").expect("case fixture");
+    let requested = references.path().join("documents").join("invoices");
+    let task = format!("Inspect {}", requested.display());
     let mut tools = WorkspaceDeveloperTools::read_only(workspace.path().to_owned())
         .with_reference_contract(&task);
 
-    let result =
-        execute(&mut tools, "workspace_list", &serde_json::json!({"path": missing}).to_string());
-    assert!(result.is_error);
-    assert!(wire(&result).contains("not_found"));
-    assert!(wire(&result).contains("case-sensitive"));
-    assert!(!wire(&result).contains("EXISTING_CASE_CANARY"));
+    let listed =
+        execute(&mut tools, "workspace_list", &serde_json::json!({"path": requested}).to_string());
+    assert!(!listed.is_error, "{}", wire(&listed));
+    let listing: Value = serde_json::from_str(&wire(&listed)).expect("reference listing");
+    assert_eq!(listing["reference_root"], existing.to_string_lossy().as_ref());
+    assert!(listing["entries"].as_array().is_some_and(|entries| {
+        entries.iter().any(|entry| entry["path"] == actual_file.to_string_lossy().as_ref())
+    }));
+
+    let requested_file =
+        references.path().join("DOCUMENTS").join("INVOICES").join("ds-2026-001.HTML");
+    let read = execute(
+        &mut tools,
+        "workspace_read",
+        &serde_json::json!({"path": requested_file}).to_string(),
+    );
+    assert!(!read.is_error, "{}", wire(&read));
+    assert!(wire(&read).contains("CASE_CORRECTED_CANARY"));
+    assert!(wire(&read).contains(actual_file.to_string_lossy().as_ref()));
+
+    let missing = execute(
+        &mut tools,
+        "workspace_read",
+        &serde_json::json!({"path": requested.join("missing.txt")}).to_string(),
+    );
+    assert!(missing.is_error, "{}", wire(&missing));
+    assert!(wire(&missing).contains("not_found"));
+}
+
+#[cfg(target_os = "linux")]
+#[test]
+fn explicit_reference_rejects_ambiguous_case_but_prefers_an_exact_name() {
+    let workspace = tempfile::tempdir().expect("workspace");
+    let references = tempfile::tempdir().expect("references");
+    let title_case = references.path().join("Invoices");
+    let lower_case = references.path().join("invoices");
+    fs::create_dir(&title_case).expect("title-case directory");
+    fs::create_dir(&lower_case).expect("lower-case directory");
+    fs::write(title_case.join("title.txt"), "TITLE_CASE_CANARY").expect("title fixture");
+    fs::write(lower_case.join("lower.txt"), "LOWER_CASE_CANARY").expect("lower fixture");
+
+    let ambiguous = references.path().join("INVOICES");
+    let mut ambiguous_tools = WorkspaceDeveloperTools::read_only(workspace.path().to_owned())
+        .with_reference_contract(&format!("Inspect {}", ambiguous.display()));
+    let rejected = execute(
+        &mut ambiguous_tools,
+        "workspace_list",
+        &serde_json::json!({"path": ambiguous}).to_string(),
+    );
+    assert!(rejected.is_error, "{}", wire(&rejected));
+    assert!(wire(&rejected).contains("ambiguous"));
+    assert!(!wire(&rejected).contains("TITLE_CASE_CANARY"));
+    assert!(!wire(&rejected).contains("LOWER_CASE_CANARY"));
+
+    let mut exact_tools = WorkspaceDeveloperTools::read_only(workspace.path().to_owned())
+        .with_reference_contract(&format!("Inspect {}", title_case.display()));
+    let exact = execute(
+        &mut exact_tools,
+        "workspace_list",
+        &serde_json::json!({"path": title_case}).to_string(),
+    );
+    assert!(!exact.is_error, "{}", wire(&exact));
+    assert!(wire(&exact).contains("title.txt"));
+    assert!(!wire(&exact).contains("lower.txt"));
+
+    let sibling = execute(
+        &mut exact_tools,
+        "workspace_read",
+        &serde_json::json!({"path": lower_case.join("lower.txt")}).to_string(),
+    );
+    assert!(sibling.is_error, "{}", wire(&sibling));
+    assert!(!wire(&sibling).contains("LOWER_CASE_CANARY"));
 }
 
 #[cfg(unix)]
@@ -171,8 +238,8 @@ fn explicit_reference_rejects_symbolic_link_targets() {
         .with_reference_contract(&task);
 
     for (name, path) in [
-        ("workspace_read", named.join("file-link")),
-        ("workspace_list", named.join("directory-link")),
+        ("workspace_read", named.join("FILE-LINK")),
+        ("workspace_list", named.join("DIRECTORY-LINK")),
     ] {
         let result = execute(&mut tools, name, &serde_json::json!({"path": path}).to_string());
         assert!(result.is_error, "{name}: {}", wire(&result));

@@ -99,7 +99,9 @@ The developer catalog also exposes bounded read-only reference listing and text 
 come only from normal absolute paths in the current user-authored input, excluding provider replies
 and host guidance. A reference path never enrolls workspace ownership, satisfies workspace mutation
 grounding, or grants process access. Parent traversal and symbolic-link targets fail closed; missing
-paths retain case-sensitive diagnostics.
+path components are matched to a unique case-insensitive sibling and return the actual on-disk
+casing. An exact spelling wins, while case-colliding siblings fail as ambiguous instead of being
+guessed.
 
 Recovery progress is a content change, not a larger inspection scope: enrolling an unchanged or
 absent path does not replenish retry allowances. Policy, cancellation, integrity, and ambiguous

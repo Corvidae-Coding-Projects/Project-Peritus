@@ -2,6 +2,7 @@
 
 use std::{
     collections::{BTreeSet, VecDeque},
+    ffi::OsStr,
     fs,
     path::{Component, Path, PathBuf},
 };
@@ -31,7 +32,7 @@ impl ExplicitReferences {
         let mut roots = BTreeSet::new();
         for token in task_tokens(task) {
             let Some(path) = explicit_absolute_path(&token) else { continue };
-            if path.starts_with(workspace_root) {
+            if path_starts_with_case_insensitive(&path, workspace_root) {
                 continue;
             }
             roots.insert(path);
@@ -48,14 +49,17 @@ impl ExplicitReferences {
         let root = self
             .roots
             .iter()
-            .filter(|root| requested.starts_with(root))
+            .filter(|root| path_starts_with_case_insensitive(&requested, root))
             .max_by_key(|root| root.components().count())
             .cloned()
             .ok_or_else(|| {
                 tool("reference path was not explicitly named by the user's task; no read authority was granted")
             })?;
-        reject_symlink_route(&root, &requested)?;
-        Ok((root, requested))
+        let root_components = root.components().count();
+        let resolved_root = case_correct_path(&root)?;
+        let resolved_requested =
+            case_correct_descendant(&resolved_root, &requested, root_components)?;
+        Ok((resolved_root, resolved_requested))
     }
 }
 
@@ -151,35 +155,116 @@ pub(super) fn read(
 
 fn reference_io_error(error: &std::io::Error) -> DeveloperLoopError {
     if error.kind() == std::io::ErrorKind::NotFound {
-        tool(
-            "not_found: the exact explicit reference path does not exist; paths are case-sensitive",
-        )
+        reference_not_found()
     } else {
         tool(error.to_string())
     }
 }
 
-fn reject_symlink_route(root: &Path, requested: &Path) -> Result<(), DeveloperLoopError> {
-    let mut current = root.to_path_buf();
-    if fs::symlink_metadata(&current).is_ok_and(|metadata| metadata.file_type().is_symlink()) {
-        return Err(tool("explicit reference roots cannot be symbolic links"));
+fn reference_not_found() -> DeveloperLoopError {
+    tool(
+        "not_found: no exact or uniquely case-insensitive match exists for the explicit reference path",
+    )
+}
+
+fn path_starts_with_case_insensitive(path: &Path, root: &Path) -> bool {
+    let mut components = path.components();
+    root.components().all(|root_component| {
+        components.next().is_some_and(|component| components_match(component, root_component))
+    })
+}
+
+fn components_match(left: Component<'_>, right: Component<'_>) -> bool {
+    match (left, right) {
+        (Component::RootDir, Component::RootDir)
+        | (Component::CurDir, Component::CurDir)
+        | (Component::ParentDir, Component::ParentDir) => true,
+        (Component::Prefix(left), Component::Prefix(right)) => {
+            names_match(left.as_os_str(), right.as_os_str())
+        }
+        (Component::Normal(left), Component::Normal(right)) => names_match(left, right),
+        _ => false,
     }
-    let relative = requested.strip_prefix(root).map_err(|_| tool("reference path escaped root"))?;
-    for component in relative.components() {
-        let Component::Normal(part) = component else {
-            return Err(tool("reference path contains an invalid component"));
-        };
-        current.push(part);
-        match fs::symlink_metadata(&current) {
-            Ok(metadata) if metadata.file_type().is_symlink() => {
-                return Err(tool("symbolic links are not explicit reference targets"));
+}
+
+fn names_match(left: &OsStr, right: &OsStr) -> bool {
+    left == right
+        || left
+            .to_str()
+            .zip(right.to_str())
+            .is_some_and(|(left, right)| left.to_lowercase() == right.to_lowercase())
+}
+
+fn case_correct_path(path: &Path) -> Result<PathBuf, DeveloperLoopError> {
+    let mut current = PathBuf::new();
+    for component in path.components() {
+        match component {
+            Component::Prefix(_) | Component::RootDir => current.push(component.as_os_str()),
+            Component::Normal(part) => current = case_correct_component(&current, part)?,
+            Component::CurDir | Component::ParentDir => {
+                return Err(tool("reference path contains an invalid component"));
             }
-            Ok(_) => {}
-            Err(error) if error.kind() == std::io::ErrorKind::NotFound => break,
-            Err(error) => return Err(tool(error.to_string())),
         }
     }
-    Ok(())
+    Ok(current)
+}
+
+fn case_correct_descendant(
+    root: &Path,
+    requested: &Path,
+    root_components: usize,
+) -> Result<PathBuf, DeveloperLoopError> {
+    let mut current = root.to_path_buf();
+    for component in requested.components().skip(root_components) {
+        let Component::Normal(part) = component else {
+            return Err(tool("reference path contains an invalid descendant component"));
+        };
+        current = case_correct_component(&current, part)?;
+    }
+    Ok(current)
+}
+
+fn case_correct_component(parent: &Path, requested: &OsStr) -> Result<PathBuf, DeveloperLoopError> {
+    let exact = parent.join(requested);
+    match fs::symlink_metadata(&exact) {
+        Ok(metadata) => {
+            reject_symlink(&metadata)?;
+            return Ok(exact);
+        }
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+        Err(error) => return Err(tool(error.to_string())),
+    }
+
+    let mut matched = None;
+    for entry in fs::read_dir(parent).map_err(|error| reference_io_error(&error))? {
+        let entry = entry.map_err(|error| tool(error.to_string()))?;
+        let actual = entry.file_name();
+        if !names_match(&actual, requested) {
+            continue;
+        }
+        if actual == requested {
+            let path = entry.path();
+            reject_symlink(&fs::symlink_metadata(&path).map_err(|error| tool(error.to_string()))?)?;
+            return Ok(path);
+        }
+        if matched.is_some() {
+            return Err(tool(
+                "ambiguous: multiple filesystem entries match a reference path component when case is ignored; use exact casing",
+            ));
+        }
+        matched = Some(entry.path());
+    }
+    let path = matched.ok_or_else(reference_not_found)?;
+    reject_symlink(&fs::symlink_metadata(&path).map_err(|error| tool(error.to_string()))?)?;
+    Ok(path)
+}
+
+fn reject_symlink(metadata: &fs::Metadata) -> Result<(), DeveloperLoopError> {
+    if metadata.file_type().is_symlink() {
+        Err(tool("symbolic links are not explicit reference targets"))
+    } else {
+        Ok(())
+    }
 }
 
 fn explicit_absolute_path(raw: &str) -> Option<PathBuf> {
@@ -245,7 +330,7 @@ mod tests {
         let workspace = Path::new("/work/output");
         let references = ExplicitReferences::from_task(
             workspace,
-            "match '/reference files/invoices' and /work/output/src while ignoring https://host/a",
+            "match '/reference files/invoices' and /WORK/OUTPUT/src while ignoring https://host/a",
         );
         assert!(references.roots.iter().all(|root| !root.starts_with(workspace)));
         #[cfg(unix)]
