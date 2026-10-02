@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1967,
-        "tip_oid": "70afbfeaa8af12b63a254a0bd130bd1d0ffd7ccb",
-        "prefix_sha256": "1e1bcd99bd4b2e488929993c767314dba06fda178cdd4d9c9fcfae6b6fe00091"
+        "sequence": 1968,
+        "tip_oid": "1ac2f3d2f53fcc2ad6d1298e1bb3a066eb62d3b0",
+        "prefix_sha256": "67ef11232c377c8e5818f47d0e19e06162caf50a9136107ab4738997b12f0856"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 2078,
+  "next_comment_id": 2079,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -10669,7 +10669,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-27T23:40:33.365528994Z",
-      "updated_at": "2026-10-02T18:02:58.270049371Z",
+      "updated_at": "2026-10-02T18:03:22.018911905Z",
       "comments": {
         "0de6566f-5caa-4b10-ae55-f90ec9bc3946": {
           "display_id": 2063,
@@ -10940,6 +10940,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA2lMPbxhxN52wkwvd1aG7H5Zozly9vhgH1C05pPj94wWMAdjhvBXAgIEPeIWm9+jc1ox6p4dKPVFkT8jdRpnxDA=="
+        },
+        "a62f0b40-81c3-49a3-8308-8b329e374a73": {
+          "display_id": 2078,
+          "author": "6ME5",
+          "content": "Delivery verification for peritus resume: signed local commit 8d7c63d41aa5056b5bd90495bb5cd7b6e1a07d61; full serial workspace suite passed 3741 tests with 19 intentional ignores and zero failures; Linux and Windows strict Clippy, rustdoc, formatting, policy, focused CLI/launcher/TUI tests, and optimized packaging passed. SHA256SUMS passed; installed CLI, TUI, daemon, sandbox helper, service definition, and uninstaller match the package byte-for-byte with expected ownership and modes. Installed peritus 0.0.4 help exposes resume. Existing daemon PID 1584166 was not restarted or controlled and retains its original start time and deleted executable inode. No push or PR was performed.",
+          "created_at": "2026-10-02T18:03:22.015032326Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAZ6xCXA302ZZz0mzJEXjzliz30yhD8bjC/hu6Dyv/dWFaiFbWsha3449zEDU/9XB62EaHkiHLSmQJRVdE68F7BA=="
         },
         "a64d0b86-069a-4cd0-9476-6730c9c9fedb": {
           "display_id": 1849,
