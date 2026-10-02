@@ -35,6 +35,15 @@ pub enum ControlIntent {
         /// Host-observed acceptance timestamp.
         now_unix_millis: u64,
     },
+    /// Reserves a branch from an automatic checkpoint reconstructed outside the projection.
+    ReserveAutomaticFork {
+        /// Exact immutable parent/checkpoint/child binding.
+        branch: crate::control::ConversationBranch,
+        /// Exact replayed automatic checkpoint selected as the branch boundary.
+        checkpoint: Box<crate::control::UserCheckpoint>,
+        /// Host-observed acceptance timestamp.
+        now_unix_millis: u64,
+    },
     /// Creates the independent non-running child side of an accepted fork.
     CreateFork {
         /// The same exact branch binding committed on the source aggregate.
@@ -284,9 +293,23 @@ pub enum ControlIntent {
     },
     /// Publishes one bounded covered-path checkpoint; exact before-images are journal artifacts.
     CreateCheckpoint(crate::control::UserCheckpoint),
+    /// Publishes a host-owned automatic before-image outside the bounded user projection.
+    ///
+    /// The immutable operation remains the durable manifest. Replay reconstructs these entries
+    /// without letting an ordinary run consume the user's retained-checkpoint allowance.
+    CreateAutomaticCheckpoint(crate::control::UserCheckpoint),
     /// Seals expected post-change versions at a completed owned execution boundary. Host-only.
     SealCheckpoint {
         /// Checkpoint whose coverage was active for the owned execution.
+        checkpoint: crate::control::CheckpointId,
+        /// Completed owned run identity; this is lineage, not a process handle.
+        run: [u8; 16],
+        /// Canonical path/version pairs for every covered path.
+        versions: Vec<(String, crate::control::CheckpointFileVersion)>,
+    },
+    /// Advances one replayed automatic checkpoint's exact owned postimage. Host-only.
+    SealAutomaticCheckpoint {
+        /// Automatic checkpoint reconstructed from immutable control history.
         checkpoint: crate::control::CheckpointId,
         /// Completed owned run identity; this is lineage, not a process handle.
         run: [u8; 16],
@@ -297,6 +320,15 @@ pub enum ControlIntent {
     PrepareRestore {
         /// Preview-bound operation record.
         restore: crate::control::RestoreOperation,
+        /// Exact current covered versions retained before applying restore.
+        recovery: crate::control::UserCheckpoint,
+    },
+    /// Prepares rewind from a replay-only automatic checkpoint. Host-only.
+    PrepareAutomaticRestore {
+        /// Preview-bound operation record.
+        restore: crate::control::RestoreOperation,
+        /// Exact replayed automatic source selected by the preview.
+        checkpoint: Box<crate::control::UserCheckpoint>,
         /// Exact current covered versions retained before applying restore.
         recovery: crate::control::UserCheckpoint,
     },
@@ -315,6 +347,23 @@ pub enum ControlIntent {
         /// Missing on historical operations so their replay roots remain byte-identical.
         #[serde(default, skip_serializing_if = "std::ops::Not::not")]
         seal_recovery: bool,
+    },
+    /// Settles rewind from a replay-only automatic checkpoint. Host-only.
+    SettleAutomaticRestore {
+        /// Prepared restore identity.
+        restore: crate::control::RestoreId,
+        /// Replay-only source checkpoint identity.
+        checkpoint: crate::control::CheckpointId,
+        /// Terminal status.
+        status: crate::control::RestoreStatus,
+        /// Canonical conflicting paths, if any.
+        conflicts: Vec<String>,
+        /// Digest of exact C1 transaction evidence when retained.
+        transaction_manifest_digest: Option<[u8; 32]>,
+        /// Whether an applied restore seals its recovery checkpoint for undo.
+        seal_recovery: bool,
+        /// Exact target versions installed from the replay-only source.
+        checkpoint_versions: Vec<(String, crate::control::CheckpointFileVersion)>,
     },
     /// Changes only the workspace-scoped user restriction overlay. Lower authority remains required.
     SetPermissions {

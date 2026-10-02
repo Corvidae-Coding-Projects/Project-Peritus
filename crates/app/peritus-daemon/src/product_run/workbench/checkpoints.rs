@@ -60,15 +60,11 @@ impl ProductRunService {
         &self,
         source: &ConversationRecord,
         request: &peritus_app_protocol::WorkbenchForkRequest,
+        checkpoint: &UserCheckpoint,
     ) -> Result<(), Error> {
         if request.mode() == peritus_app_protocol::WorkbenchForkMode::ReadOnlyCurrentWorkspace {
             return Ok(());
         }
-        let checkpoint = source
-            .checkpoints()
-            .iter()
-            .find(|value| value.id().as_bytes() == request.checkpoint().as_bytes())
-            .ok_or(ControlError::NotFound)?;
         if checkpoint.paths().is_empty() {
             return Err(ControlError::InvalidInput.into());
         }
@@ -93,16 +89,17 @@ impl ProductRunService {
             self.with_controls(false, |store| {
                 let record = store.load(conversation)?.ok_or(ControlError::NotFound)?;
                 check_record(&record, actor, request.query(), Some(request.revision()))?;
-                let checkpoint = record
-                    .checkpoints()
-                    .iter()
-                    .find(|value| value.id().as_bytes() == request.checkpoint().as_bytes())
+                let checkpoint = store
+                    .load_checkpoint(
+                        conversation,
+                        CheckpointId::new(request.checkpoint().into_bytes())?,
+                    )?
                     .ok_or(ControlError::NotFound)?;
                 let operation = store
                     .operation(conversation, OperationId::new(request.checkpoint().into_bytes())?)?
                     .ok_or(ControlError::NotFound)?;
                 let receipt = store.resolve(&operation)?.ok_or(ControlError::NotFound)?;
-                public_checkpoint(request.query(), receipt.accepted_revision(), checkpoint)
+                public_checkpoint(request.query(), receipt.accepted_revision(), &checkpoint)
             })
         });
         result.map_or_else(error_response, AppResponsePayload::WorkbenchCheckpoint)

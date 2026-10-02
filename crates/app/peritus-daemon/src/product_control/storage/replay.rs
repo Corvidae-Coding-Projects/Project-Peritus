@@ -94,8 +94,11 @@ impl ControlStore {
         if matches!(
             operation.intent(),
             ControlIntent::CreateCheckpoint(_)
+                | ControlIntent::CreateAutomaticCheckpoint(_)
                 | ControlIntent::PrepareRestore { .. }
+                | ControlIntent::PrepareAutomaticRestore { .. }
                 | ControlIntent::SettleRestore { .. }
+                | ControlIntent::SettleAutomaticRestore { .. }
         ) {
             return self.verify_checkpoint_archive(operation, position);
         }
@@ -134,5 +137,21 @@ impl ControlStore {
             return Err(Error::Corrupt("request archive differs from atomic incorporation"));
         }
         super::super::inputs::verify_manifest(operation, manifest.bytes(), before)
+    }
+
+    /// Loads one retained or replay-only automatic checkpoint after complete history verification.
+    pub(crate) fn load_checkpoint(
+        &self,
+        conversation: ConversationId,
+        checkpoint: peritus_product_runner::control::CheckpointId,
+    ) -> Result<Option<peritus_product_runner::control::UserCheckpoint>, Error> {
+        let replay = self.load_replay(conversation)?;
+        if let Some(value) = replay
+            .current()
+            .and_then(|record| record.checkpoints().iter().find(|value| value.id() == checkpoint))
+        {
+            return Ok(Some(value.clone()));
+        }
+        Ok(replay.automatic_checkpoint(checkpoint).cloned())
     }
 }

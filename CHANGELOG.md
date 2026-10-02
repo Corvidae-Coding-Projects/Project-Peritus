@@ -15,6 +15,8 @@
   automatically promote the installed harness.
 - Keep long conversations usable by compacting complete reasoning exchanges, preserving replay
   data, and retrieving bounded prior assistant observations for continuing work.
+- Keep long workspace runs writable after more than 64 distinct paths by replaying automatic
+  before-images outside the bounded user-checkpoint list, while preserving rewind and restart.
 - Show provider thinking summaries when supported, and add terminal copy mode with F2 so output
   can be selected without interrupting background work.
 - Improve credential-store and product-run error messages, preserve interrupted work for explicit

@@ -20,7 +20,10 @@ impl ConversationRecord {
                 Ok(())
             }
             ControlIntent::ReserveFork { branch, now_unix_millis } => {
-                self.reserve_fork(branch, *now_unix_millis)
+                self.reserve_fork(branch, None, *now_unix_millis)
+            }
+            ControlIntent::ReserveAutomaticFork { branch, checkpoint, now_unix_millis } => {
+                self.reserve_fork(branch, Some(checkpoint.as_ref()), *now_unix_millis)
             }
             ControlIntent::PublishRestoreBranch { restore, branch } => {
                 let settled = self

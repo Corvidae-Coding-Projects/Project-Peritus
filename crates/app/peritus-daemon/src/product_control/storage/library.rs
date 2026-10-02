@@ -38,6 +38,15 @@ impl ControlStore {
             self.verify_fork(branch)?;
             return Ok(receipt);
         }
+        if let peritus_product_runner::control::ControlIntent::ReserveAutomaticFork {
+            checkpoint,
+            ..
+        } = source.intent()
+            && self.load_checkpoint(source.conversation(), checkpoint.id())?.as_ref()
+                != Some(checkpoint.as_ref())
+        {
+            return Err(ControlError::IdempotencyConflict.into());
+        }
         let source_current = self.load(source.conversation())?.ok_or(ControlError::NotFound)?;
         self.check_reserved_child(child.conversation(), Some(source))?;
         if self.load(child.conversation())?.is_some() {

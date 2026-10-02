@@ -8,7 +8,10 @@ use serde::Serialize;
 
 /// Maximum paths covered by one user checkpoint.
 pub const MAX_CHECKPOINT_PATHS: usize = 64;
-/// Maximum retained checkpoints in one conversation projection.
+/// Maximum nonautomatic checkpoint allowance checked when a user checkpoint is added.
+///
+/// Automatic checkpoints use immutable replay history. Legacy automatic entries remain readable
+/// but do not consume this allowance for new user checkpoints.
 pub const MAX_CHECKPOINTS: usize = 64;
 /// Maximum restore receipts retained in one conversation projection.
 pub const MAX_RESTORES: usize = 128;

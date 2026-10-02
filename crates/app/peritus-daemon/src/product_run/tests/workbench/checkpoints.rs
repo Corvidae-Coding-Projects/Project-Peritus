@@ -73,5 +73,7 @@ fn combined_rewind_conflict_never_publishes_a_child() {
 mod scenario;
 use scenario::checkpoint_scenario;
 
+mod automatic;
+
 mod support;
 use support::pipeline_responses;

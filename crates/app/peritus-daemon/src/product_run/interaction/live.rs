@@ -122,10 +122,10 @@ impl ConversationView for LiveConversation {
     ) -> Result<(), String> {
         let start = self
             .workbench_start_record()
-            .map_err(|_| "automatic workspace checkpoint is unavailable".to_owned())?;
+            .map_err(|error| format!("automatic workspace checkpoint is unavailable: {error}. Peritus did not change the workspace"))?;
         self.service
             .capture_automatic_checkpoint(&start, self.run_id, relative_path, kind)
-            .map_err(|_| "automatic workspace checkpoint could not be durably captured".to_owned())
+            .map_err(|error| format!("automatic workspace checkpoint could not be durably captured: {error}. Peritus did not change the workspace"))
     }
     fn seal_workspace_mutation_checkpoint(
         &self,
@@ -135,10 +135,10 @@ impl ConversationView for LiveConversation {
     ) -> Result<(), String> {
         let start = self
             .workbench_start_record()
-            .map_err(|_| "automatic workspace checkpoint is unavailable".to_owned())?;
+            .map_err(|error| format!("automatic workspace checkpoint is unavailable: {error}. Peritus stopped before accepting another workspace mutation"))?;
         self.service
             .seal_automatic_checkpoint(&start, self.run_id, relative_path, kind, owned_postchange)
-            .map_err(|_| "automatic workspace checkpoint could not be durably sealed".to_owned())
+            .map_err(|error| format!("automatic workspace checkpoint could not be durably sealed: {error}. Peritus stopped because the completed mutation could not be recorded durably"))
     }
     #[cfg(not(verus_only))]
     fn interaction(&self) -> Option<&dyn DeveloperInteraction> {

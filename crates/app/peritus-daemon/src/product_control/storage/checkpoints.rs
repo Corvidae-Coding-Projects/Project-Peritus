@@ -16,8 +16,10 @@ impl ControlStore {
         operation: &ControlOperation,
         bodies: &[Option<Vec<u8>>],
     ) -> Result<ControlReceipt, Error> {
-        let ControlIntent::CreateCheckpoint(checkpoint) = operation.intent() else {
-            return Err(ControlError::InvalidInput.into());
+        let checkpoint = match operation.intent() {
+            ControlIntent::CreateCheckpoint(checkpoint)
+            | ControlIntent::CreateAutomaticCheckpoint(checkpoint) => checkpoint,
+            _ => return Err(ControlError::InvalidInput.into()),
         };
         let installs = checkpoint_installs(checkpoint, bodies)?;
         if let Some(receipt) = self.resolve(operation)? {
@@ -32,8 +34,10 @@ impl ControlStore {
         operation: &ControlOperation,
         bodies: &[Option<Vec<u8>>],
     ) -> Result<ControlReceipt, Error> {
-        let ControlIntent::PrepareRestore { recovery, .. } = operation.intent() else {
-            return Err(ControlError::InvalidInput.into());
+        let recovery = match operation.intent() {
+            ControlIntent::PrepareRestore { recovery, .. }
+            | ControlIntent::PrepareAutomaticRestore { recovery, .. } => recovery,
+            _ => return Err(ControlError::InvalidInput.into()),
         };
         let installs = checkpoint_installs(recovery, bodies)?;
         if let Some(receipt) = self.resolve(operation)? {
@@ -48,10 +52,17 @@ impl ControlStore {
         operation: &ControlOperation,
         transaction_manifest: Option<Vec<u8>>,
     ) -> Result<ControlReceipt, Error> {
-        let ControlIntent::SettleRestore { restore, status, transaction_manifest_digest, .. } =
-            operation.intent()
-        else {
-            return Err(ControlError::InvalidInput.into());
+        let (restore, status, transaction_manifest_digest) = match operation.intent() {
+            ControlIntent::SettleRestore {
+                restore, status, transaction_manifest_digest, ..
+            }
+            | ControlIntent::SettleAutomaticRestore {
+                restore,
+                status,
+                transaction_manifest_digest,
+                ..
+            } => (restore, status, transaction_manifest_digest),
+            _ => return Err(ControlError::InvalidInput.into()),
         };
         let installs = match (status, transaction_manifest_digest, transaction_manifest) {
             (
@@ -101,13 +112,22 @@ impl ControlStore {
         position: u64,
     ) -> Result<(), Error> {
         match operation.intent() {
-            ControlIntent::CreateCheckpoint(checkpoint) => {
+            ControlIntent::CreateCheckpoint(checkpoint)
+            | ControlIntent::CreateAutomaticCheckpoint(checkpoint) => {
                 self.verify_checkpoint_bodies(checkpoint, position)
             }
-            ControlIntent::PrepareRestore { recovery, .. } => {
+            ControlIntent::PrepareRestore { recovery, .. }
+            | ControlIntent::PrepareAutomaticRestore { recovery, .. } => {
                 self.verify_checkpoint_bodies(recovery, position)
             }
             ControlIntent::SettleRestore {
+                restore,
+                status:
+                    RestoreStatus::Applied | RestoreStatus::Conflict | RestoreStatus::RecoveryRequired,
+                transaction_manifest_digest: Some(expected),
+                ..
+            }
+            | ControlIntent::SettleAutomaticRestore {
                 restore,
                 status:
                     RestoreStatus::Applied | RestoreStatus::Conflict | RestoreStatus::RecoveryRequired,
@@ -129,6 +149,11 @@ impl ControlStore {
                 Ok(())
             }
             ControlIntent::SettleRestore {
+                status: RestoreStatus::Conflict | RestoreStatus::RecoveryRequired,
+                transaction_manifest_digest: None,
+                ..
+            }
+            | ControlIntent::SettleAutomaticRestore {
                 status: RestoreStatus::Conflict | RestoreStatus::RecoveryRequired,
                 transaction_manifest_digest: None,
                 ..

@@ -26,16 +26,26 @@ impl ConversationRecord {
     pub(super) fn reserve_fork(
         &mut self,
         branch: &crate::control::ConversationBranch,
+        replayed_checkpoint: Option<&crate::control::UserCheckpoint>,
         now_unix_millis: u64,
     ) -> Result<(), ControlError> {
         if branch.source() != self.id {
             return Err(ControlError::StaleRevision);
         }
-        let checkpoint = self
+        let retained = self
             .checkpoints
             .iter()
-            .find(|value| value.id().as_bytes() == branch.checkpoint().as_bytes())
-            .ok_or(ControlError::NotFound)?;
+            .find(|value| value.id().as_bytes() == branch.checkpoint().as_bytes());
+        let checkpoint = match (retained, replayed_checkpoint) {
+            (Some(checkpoint), None) => checkpoint,
+            (None, Some(checkpoint))
+                if checkpoint.id().as_bytes() == branch.checkpoint().as_bytes()
+                    && checkpoint.automatic_run().is_some() =>
+            {
+                checkpoint
+            }
+            _ => return Err(ControlError::NotFound),
+        };
         let references = checkpoint.references();
         let saved = (
             references.source_conversation_revision(),

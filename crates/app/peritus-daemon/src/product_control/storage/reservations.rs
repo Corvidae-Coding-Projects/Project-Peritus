@@ -12,7 +12,8 @@ impl ControlStore {
         if creating {
             self.check_reserved_child(operation.conversation(), None)?;
         }
-        if let ControlIntent::PrepareRestore { restore, .. } = operation.intent()
+        if let ControlIntent::PrepareRestore { restore, .. }
+        | ControlIntent::PrepareAutomaticRestore { restore, .. } = operation.intent()
             && let Some(branch) = restore.branch()
         {
             if self.load(branch.child())?.is_some() {
