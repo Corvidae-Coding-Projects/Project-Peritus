@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1950,
-        "tip_oid": "e62d1d66cbdbf0c7ed6b5c27a41ca9731bdb1e5a",
-        "prefix_sha256": "347ec34108a6e5309d9a777d5a250bb1e4e76cef92dcac032ab50ab91d96d8c7"
+        "sequence": 1951,
+        "tip_oid": "4654829c761d046c8dd68d6ec758649a82dbc41d",
+        "prefix_sha256": "c45c9cc0eca7e223c94765f6eb0fb211b08c0d70eaec342cd93f99a8cc9a1265"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 2061,
+  "next_comment_id": 2062,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -10669,7 +10669,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-27T23:40:33.365528994Z",
-      "updated_at": "2026-10-02T15:30:52.400419520Z",
+      "updated_at": "2026-10-02T15:31:16.359524340Z",
       "comments": {
         "172fb531-7617-4dd5-afb2-b7d95cab7e0d": {
           "display_id": 1850,
@@ -10841,6 +10841,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAfiaDGOsqBi3oo5ZyQtXYFMd83O+oDaxLxTyADy5wOTFZU4msstL701I+tRC+qcT1nFi7o7qYH1nvRI1J+xQGAw=="
+        },
+        "a5f00346-bbd0-4f6f-b3dc-349d2a37e9b4": {
+          "display_id": 2061,
+          "author": "6ME5",
+          "content": "Installed final candidate verified task-scoped absolute reference inspection. Run c92cb2a46fef23059de0c04a8fab5408 listed /home/doll/Documents/Invoices, read DS-2026-007.html, listed workspace-relative . as empty /home/doll/invoice, and returned a cited DS-2026-009 plan with no mutation. Run d1423f6b3ec1fec01bf1283bef6f3e00 attempted exact /home/doll/documents/invoices, received case-sensitive not_found, and stopped without substitution or mutation. Full affected daemon/product-runner and integration suites, strict Clippy, Windows GNU cross-check, cargo xtask all, optimized package build/install, and installed hashes passed. Evidence: /tmp/peritus-external-reference-live.386Px3/evidence.",
+          "created_at": "2026-10-02T15:31:16.355009346Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA2lMPbxhxN52wkwvd1aG7H5Zozly9vhgH1C05pPj94wWMAdjhvBXAgIEPeIWm9+jc1ox6p4dKPVFkT8jdRpnxDA=="
         },
         "a64d0b86-069a-4cd0-9476-6730c9c9fedb": {
           "display_id": 1849,
