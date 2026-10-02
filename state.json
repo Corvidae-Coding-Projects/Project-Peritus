@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1970,
-        "tip_oid": "624edfbdb264060ed9f381f9f54e34564966e57f",
-        "prefix_sha256": "cfc4e3f4283d7b8cc8744f8f8ddcffb0f414e2a4d6e5406cc08cf685f6a3db30"
+        "sequence": 1971,
+        "tip_oid": "8f6a59deabed0e4666b290953034bdb210cca69b",
+        "prefix_sha256": "9af11906263abf6b627d71ed31f7393ddd54c6f605838c809c855343e4f65333"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 2080,
+  "next_comment_id": 2081,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -16886,7 +16886,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-28T00:58:41.412806074Z",
-      "updated_at": "2026-10-01T20:30:48.406437621Z",
+      "updated_at": "2026-10-02T18:31:44.882270019Z",
       "labels": [
         "bug"
       ],
@@ -16899,6 +16899,15 @@
           "kind": "handoff",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA2lIsetIzc0IiV7LRbq0g5v49BAxmwa4LNAMOb0fe5DDswILgsrPOTm4hlyT29wb1hTxDB1JPcoKS00mEsDK1Dw=="
+        },
+        "0372bca4-a3d6-4c7c-b0d4-08bb51561e3f": {
+          "display_id": 2080,
+          "author": "6ME5",
+          "content": "[action] Confirmed the live failure is exhaustion of the 64-entry automatic checkpoint projection; designing a lossless bounded lifecycle fix with legacy-full-record recovery before editing.",
+          "created_at": "2026-10-02T18:31:44.869500560Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABASQSHuYKVoZ3ZwobHoST5S8wY1VWNo0uUtJtMa19qpffmWdNOLN2siu+AJkI/3BQ+L8Zl1dA7Smbxl/CK97HdCw=="
         },
         "054198dd-711f-4b17-a860-fc7088be49c4": {
           "display_id": 1867,
