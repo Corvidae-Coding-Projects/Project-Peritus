@@ -147,10 +147,6 @@ impl ConversationView for LiveConversation {
 }
 #[cfg(not(verus_only))]
 impl DeveloperInteraction for LiveConversation {
-    fn provider_turn_timeout(&self) -> std::time::Duration {
-        std::time::Duration::from_secs(self.service.inner.provider_turn_timeout_seconds)
-    }
-
     fn allows_semantic_compaction(&self) -> bool {
         false
     }
@@ -308,8 +304,8 @@ impl DeveloperInteraction for LiveConversation {
                 progress.mark_event("provider summary received");
                 options.summary(bytes)
             }
-            DeveloperActivity::ModelStarted { model, reasoning, deadline_seconds } => {
-                progress.begin_provider_request(deadline_seconds);
+            DeveloperActivity::ModelStarted { model, reasoning } => {
+                progress.begin_provider_request();
                 options.streaming_text = false;
                 let effort = match reasoning {
                     peritus_model_protocol::ReasoningPolicy::Disabled => "not requested",
@@ -320,9 +316,7 @@ impl DeveloperInteraction for LiveConversation {
                 };
                 options.append(
                     ProductActivityKind::Status,
-                    &format!(
-                        "Requesting model {model} · effort {effort} · deadline {deadline_seconds}s"
-                    ),
+                    &format!("Requesting model {model} · effort {effort}"),
                     "",
                 )
             }

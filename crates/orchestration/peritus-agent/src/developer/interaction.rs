@@ -52,8 +52,6 @@ pub enum DeveloperActivity<'a> {
         model: &'a str,
         /// Reasoning control in the outgoing request, not an inferred provider outcome.
         reasoning: peritus_model_protocol::ReasoningPolicy,
-        /// Host-configured wall-clock deadline for this complete provider turn.
-        deadline_seconds: u64,
     },
     /// No public text has arrived while a provider request remains pending.
     ModelWaiting { elapsed_seconds: u64 },
@@ -82,11 +80,6 @@ pub enum DeveloperActivity<'a> {
 
 /// Daemon-owned live input and observation port; it cannot grant tool authority.
 pub trait DeveloperInteraction: Send + Sync {
-    /// Returns the complete provider-turn deadline enforced by the host.
-    fn provider_turn_timeout(&self) -> std::time::Duration {
-        std::time::Duration::from_mins(10)
-    }
-
     /// Whether this host explicitly permits legacy provider-authored automatic compaction.
     /// Governed workbench hosts disable it; deterministic local preparation remains available.
     fn allows_semantic_compaction(&self) -> bool {

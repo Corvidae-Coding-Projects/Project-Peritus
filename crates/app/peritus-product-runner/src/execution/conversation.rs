@@ -51,26 +51,27 @@ impl ProductRunner {
                 model.profile(),
                 accounting.latest_snapshot().model_requests(),
             )?;
-            let result = tokio::time::timeout(
-                accounting.remaining(),
-                crate::local_context::run_live_invocation(
-                    model.as_ref(),
-                    request,
-                    &mut tools,
-                    crate::local_context::InvocationAccounting {
-                        trace_path: &input.trace_path,
-                        accounting: &mut accounting,
-                    },
-                    memory.as_ref(),
-                    input.conversation.interaction(),
-                    if mode == ConversationMode::Review {
-                        peritus_agent::DeveloperModelRole::Reviewer
-                    } else {
-                        peritus_agent::DeveloperModelRole::Writer
-                    },
-                ),
-            )
-            .await;
+            let remaining = accounting.remaining();
+            let invocation = crate::local_context::run_live_invocation(
+                model.as_ref(),
+                request,
+                &mut tools,
+                crate::local_context::InvocationAccounting {
+                    trace_path: &input.trace_path,
+                    accounting: &mut accounting,
+                },
+                memory.as_ref(),
+                input.conversation.interaction(),
+                if mode == ConversationMode::Review {
+                    peritus_agent::DeveloperModelRole::Reviewer
+                } else {
+                    peritus_agent::DeveloperModelRole::Writer
+                },
+            );
+            let result = match remaining {
+                Some(remaining) => tokio::time::timeout(remaining, invocation).await,
+                None => Ok(invocation.await),
+            };
             let (cause, reply, detail) = match result {
                 Ok(Ok(result)) => {
                     accounting.check()?;

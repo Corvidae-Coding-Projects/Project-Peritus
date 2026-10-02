@@ -12,6 +12,7 @@ use peritus_product_state::{
 
 use crate::{AppLayout, LauncherError, persistence::read_exact_or_publish};
 pub(super) mod account;
+mod compatibility;
 mod folder;
 mod hosted;
 
@@ -77,7 +78,7 @@ pub fn ensure_configuration(
     let expected = DaemonConfig::parse(&text)?;
     let path = layout.daemon_config(state.generation());
     let actual = read_exact_or_publish(&path, text.as_bytes())?;
-    if actual != text.as_bytes() {
+    if !compatibility::matches_current_or_legacy_timeout_configuration(&actual, &text) {
         return Err(LauncherError::PlatformPaths(format!(
             "generated daemon configuration generation {} has different content",
             state.generation()
@@ -98,7 +99,7 @@ fn render_configuration(layout: &AppLayout, state: &ProductState) -> Result<Stri
         daemon_root.join("backups"),
     )?;
     let mut text = format!(
-        "version = 1\nstore_id = {:?}\n\n[paths]\nstate_root = {}\nartifact_root = {}\nevidence_root = {}\nworkspace_root = {}\nprocess_root = {}\ntransaction_root = {}\nbackup_root = {}\n\n[approval_registry]\npayload_file = {}\ngeneration = 1\n\n[human]\nactor_id = {:?}\n\n[product]\nautomatic_provider_failover = {}\nprovider_turn_timeout_seconds = 600\n\n[telemetry]\nmode = \"disabled\"\n",
+        "version = 1\nstore_id = {:?}\n\n[paths]\nstate_root = {}\nartifact_root = {}\nevidence_root = {}\nworkspace_root = {}\nprocess_root = {}\ntransaction_root = {}\nbackup_root = {}\n\n[approval_registry]\npayload_file = {}\ngeneration = 1\n\n[human]\nactor_id = {:?}\n\n[product]\nautomatic_provider_failover = {}\n\n[telemetry]\nmode = \"disabled\"\n",
         state.identity().store_id(),
         toml_path(paths.state_root())?,
         toml_path(paths.artifact_root())?,

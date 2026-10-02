@@ -2,6 +2,9 @@
 
 ## 0.0.4
 
+- Remove the hidden ten-minute provider-turn and eight-hour product-run cutoffs from normal
+  interactive work. Retain explicit cancellation, transport recovery, resource and progress
+  ceilings, per-command timeouts, and caller-selected benchmark limits.
 - Add an experimental browser workspace with persistent projects and sessions, file previews,
   live activity, and CLI consoles bound to the selected run. The WebUI remains an optional
   source-built companion; native installers continue to provide the CLI and terminal interface.

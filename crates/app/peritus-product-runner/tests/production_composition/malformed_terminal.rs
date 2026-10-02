@@ -70,7 +70,7 @@ fn malformed_terminal_retains_host_changes_and_verification_without_claiming_acc
                     ),
                     finding_state: String::new(),
                     task: task.clone(),
-                    max_elapsed: PRODUCT_RUN_MAX_ELAPSED,
+                    max_elapsed: Some(PRODUCT_RUN_MAX_ELAPSED),
                     delivery_scope: ProductDeliveryScope::WorkspaceChanges,
                     conversation: Arc::new(FixedConversation(task)),
                     providers: RoleProviders {

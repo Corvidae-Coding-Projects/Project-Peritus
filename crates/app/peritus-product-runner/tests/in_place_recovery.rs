@@ -75,7 +75,7 @@ fn absent_reads_do_not_replenish_recovery_and_failed_roles_are_fully_accounted()
             command_runtime: support::command_runtime(state.path(), workspace.path(), run_id),
             finding_state: String::new(),
             task: "Create a Rust game in this empty folder.".to_owned(),
-            max_elapsed: PRODUCT_RUN_MAX_ELAPSED,
+            max_elapsed: Some(PRODUCT_RUN_MAX_ELAPSED),
             delivery_scope: ProductDeliveryScope::WorkspaceChanges,
             conversation: Arc::new(support::FixedConversation("Create a Rust game in this empty folder.".to_owned())),
             providers: RoleProviders { writer: writer.clone(), reviewer: writer.clone(), fixer: writer, fallbacks: vec![] },
@@ -171,7 +171,7 @@ fn material_progress_cannot_restart_a_safety_terminal_or_switch_providers() {
                 command_runtime: support::command_runtime(state.path(), workspace.path(), run_id),
                 finding_state: String::new(),
                 task: "Create a text file in this empty folder.".to_owned(),
-                max_elapsed: PRODUCT_RUN_MAX_ELAPSED,
+                max_elapsed: Some(PRODUCT_RUN_MAX_ELAPSED),
                 delivery_scope: ProductDeliveryScope::WorkspaceChanges,
                 conversation: Arc::new(support::FixedConversation(
                     "Create a text file in this empty folder.".to_owned(),

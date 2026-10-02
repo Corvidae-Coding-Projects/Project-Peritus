@@ -72,7 +72,6 @@ struct Inner {
     records: RwLock<BTreeMap<RunId, RunRecord>>,
     providers: BTreeMap<ProviderProfileId, Arc<dyn ModelProvider>>,
     automatic_provider_failover: bool,
-    provider_turn_timeout_seconds: u64,
     local_context: peritus_product_runner::LocalContextConfig,
     workspaces: BTreeMap<WorkspaceId, PathBuf>,
     folders: BTreeMap<WorkspaceId, crate::config::FolderDeclaration>,

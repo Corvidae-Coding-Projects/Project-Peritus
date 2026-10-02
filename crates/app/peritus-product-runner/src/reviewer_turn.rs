@@ -130,7 +130,7 @@ fn prepare_request(
     evidence: &ReviewEvidence<'_>,
     max_input_tokens: u64,
     correction: Option<&str>,
-    remaining: std::time::Duration,
+    remaining: Option<std::time::Duration>,
     memory: Option<&crate::local_context::LocalContextHandle>,
 ) -> Result<ReviewRequest, ProductRunnerError> {
     let system = turn::reviewer_system(remaining) + input.delivery_instructions();

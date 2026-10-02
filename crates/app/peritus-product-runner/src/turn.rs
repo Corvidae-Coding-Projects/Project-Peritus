@@ -233,7 +233,7 @@ struct InvocationContext<'a> {
     findings: Option<&'a str>,
     correction: Option<&'a str>,
     ownership: &'a WorkspaceOwnership,
-    remaining: Duration,
+    remaining: Option<Duration>,
     recorder: &'a CandidateRecorder,
 }
 

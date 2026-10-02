@@ -34,7 +34,7 @@ fn provider_failure_before_first_response_retains_an_empty_trace() {
                     command_runtime,
                     finding_state: String::new(),
                     task: task.clone(),
-                    max_elapsed: PRODUCT_RUN_MAX_ELAPSED,
+                    max_elapsed: Some(PRODUCT_RUN_MAX_ELAPSED),
                     delivery_scope: ProductDeliveryScope::WorkspaceChanges,
                     conversation: Arc::new(FixedConversation(task)),
                     providers: RoleProviders {

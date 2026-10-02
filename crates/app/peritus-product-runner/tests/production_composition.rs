@@ -178,7 +178,7 @@ mod tests {
                     command_runtime,
                     finding_state: String::new(),
                     task: task.clone(),
-                    max_elapsed: PRODUCT_RUN_MAX_ELAPSED,
+                    max_elapsed: None,
                     delivery_scope: ProductDeliveryScope::WorkspaceChanges,
                     conversation: conversation.clone(),
                     providers: RoleProviders {
@@ -363,7 +363,7 @@ mod tests {
                     command_runtime,
                     finding_state: String::new(),
                     task: task.clone(),
-                    max_elapsed: PRODUCT_RUN_MAX_ELAPSED,
+                    max_elapsed: Some(PRODUCT_RUN_MAX_ELAPSED),
                     delivery_scope: ProductDeliveryScope::WorkspaceChanges,
                     conversation: Arc::new(FixedConversation(task)),
                     providers: RoleProviders {

@@ -5,7 +5,7 @@ use super::{
 };
 impl RunAccounting {
     /// Accounts provider, time, and process memory without a recursive directory inventory.
-    pub(crate) fn direct_folder(max_elapsed: Duration) -> Result<Self, ProductRunnerError> {
+    pub(crate) fn direct_folder(max_elapsed: Option<Duration>) -> Result<Self, ProductRunnerError> {
         validate_run_horizon(max_elapsed)?;
         Ok(Self {
             started: Instant::now(),

@@ -17,7 +17,7 @@ mod resource_probe;
 
 use resource_probe::RunResourceProbe;
 
-/// Maximum wall-clock duration of one uninterrupted product-run attempt.
+/// Maximum wall-clock duration accepted when a caller explicitly selects a run horizon.
 pub const PRODUCT_RUN_MAX_ELAPSED: Duration = Duration::from_hours(8);
 use crate::accounting::{
     AccountingError, AccountingState, BudgetViolation, UsageSnapshot, WorkEvent,
@@ -30,14 +30,17 @@ pub use crate::accounting::{
 
 pub struct RunAccounting {
     started: Instant,
-    max_elapsed: Duration,
+    max_elapsed: Option<Duration>,
     state: AccountingState,
     resources: RunResourceProbe,
     unavailable_providers: BTreeSet<ProviderProfileId>,
 }
 
 impl RunAccounting {
-    pub fn new(workspace_root: &Path, max_elapsed: Duration) -> Result<Self, ProductRunnerError> {
+    pub fn new(
+        workspace_root: &Path,
+        max_elapsed: Option<Duration>,
+    ) -> Result<Self, ProductRunnerError> {
         validate_run_horizon(max_elapsed)?;
         Ok(Self {
             started: Instant::now(),
@@ -145,12 +148,13 @@ impl RunAccounting {
         self.state.progress
     }
 
-    pub fn remaining(&self) -> Duration {
-        self.max_elapsed.saturating_sub(self.started.elapsed())
+    pub fn remaining(&self) -> Option<Duration> {
+        self.max_elapsed.map(|limit| limit.saturating_sub(self.started.elapsed()))
     }
 }
 
-pub fn validate_run_horizon(max_elapsed: Duration) -> Result<(), ProductRunnerError> {
+pub fn validate_run_horizon(max_elapsed: Option<Duration>) -> Result<(), ProductRunnerError> {
+    let Some(max_elapsed) = max_elapsed else { return Ok(()) };
     if max_elapsed.is_zero() {
         Err(invalid_horizon("configured run horizon must be greater than zero"))
     } else if max_elapsed > PRODUCT_RUN_MAX_ELAPSED {
@@ -163,18 +167,24 @@ pub fn validate_run_horizon(max_elapsed: Duration) -> Result<(), ProductRunnerEr
 fn budget_violation(
     progress: ProductRunProgress,
     elapsed: Duration,
-    max_elapsed: Duration,
+    max_elapsed: Option<Duration>,
 ) -> Option<&'static str> {
-    progress.budget_violation(elapsed > max_elapsed).map(|violation| match violation {
-        BudgetViolation::Elapsed => "the configured run horizon was exhausted",
-        BudgetViolation::ModelRequests => "the cumulative provider-request budget was exhausted",
-        BudgetViolation::ToolCalls => "the cumulative application-tool budget was exhausted",
-        BudgetViolation::TotalTokens => "the cumulative model-token budget was exhausted",
-        BudgetViolation::ProviderCost => {
-            "the cumulative provider-estimated cost budget was exhausted"
+    progress.budget_violation(max_elapsed.is_some_and(|limit| elapsed > limit)).map(|violation| {
+        match violation {
+            BudgetViolation::Elapsed => "the configured run horizon was exhausted",
+            BudgetViolation::ModelRequests => {
+                "the cumulative provider-request budget was exhausted"
+            }
+            BudgetViolation::ToolCalls => "the cumulative application-tool budget was exhausted",
+            BudgetViolation::TotalTokens => "the cumulative model-token budget was exhausted",
+            BudgetViolation::ProviderCost => {
+                "the cumulative provider-estimated cost budget was exhausted"
+            }
+            BudgetViolation::PeakRss => "the product-run peak resident-memory budget was exhausted",
+            BudgetViolation::WorkspaceGrowth => {
+                "the product-run workspace-growth budget was exhausted"
+            }
         }
-        BudgetViolation::PeakRss => "the product-run peak resident-memory budget was exhausted",
-        BudgetViolation::WorkspaceGrowth => "the product-run workspace-growth budget was exhausted",
     })
 }
 

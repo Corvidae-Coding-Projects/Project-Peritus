@@ -164,16 +164,20 @@ pub async fn create(
     }
 }
 
-fn system_prompt(remaining: std::time::Duration) -> String {
+fn system_prompt(remaining: Option<std::time::Duration>) -> String {
     let proportionality = "Scale the design to the actual change. Keep small changes concise while giving multi-module source work all detail needed for independent implementation. Do not repeat the same requirement across sections merely to make the document longer.";
     let instructions = format!(
         "You are the design architect in a serious coding harness. Inspect the actual repository with the read-only workspace tools before designing. Return only a detailed Markdown design document, not JSON and not a code fence. Preserve the requested ambition and cover the full requested product rather than proposing an MVP. Ground the document in concrete existing paths, manifests, interfaces, conventions, and constraints; for a greenfield repository, specify the exact structure to create. Begin acceptance reasoning from the original request's literal paths, values, operations, and grammatical scope. Do not override an explicit expected value with a model-derived invariant or manufacture a conflict by broadening a narrowly scoped rule. Respect the workspace's declared product kind: for an artifact workspace whose requested deliverables are generated outputs rather than retained code, design a bounded producer and independent artifact/effect verification without inventing package scaffolding. Include sections for Objective and acceptance criteria, Repository findings, Architecture and interfaces, Data and control flow, File and module plan, Implementation slices, Verification, and Risks or explicit non-goals. Make slices independently actionable where practical. Focus on realistic application behavior and avoid speculative adversarial edge cases. Do not edit files, run commands, implement code, or commit.\n\n{}\n\n{proportionality}",
         crate::engineering_workflow::architect(),
     );
-    format!(
-        "The complete run has approximately {} seconds left at this design invocation. Keep enough of that shared window for implementation, gates, independent review, and fixes.\n\n{instructions}",
-        remaining.as_secs()
-    )
+    if let Some(remaining) = remaining {
+        format!(
+            "The complete run has approximately {} seconds left at this design invocation. Keep enough of that shared window for implementation, gates, independent review, and fixes.\n\n{instructions}",
+            remaining.as_secs()
+        )
+    } else {
+        instructions
+    }
 }
 
 fn design_scope(workspace_root: &Path) -> DesignScope {
@@ -295,7 +299,7 @@ mod tests {
 
     #[test]
     fn design_keeps_literal_values_and_scoped_rules_authoritative() {
-        let prompt = system_prompt(std::time::Duration::from_mins(10));
+        let prompt = system_prompt(Some(std::time::Duration::from_mins(10)));
         assert!(prompt.contains("original request's literal paths, values, operations"));
         assert!(prompt.contains("Do not override an explicit expected value"));
         assert!(prompt.contains("broadening a narrowly scoped rule"));
@@ -305,6 +309,10 @@ mod tests {
         assert!(prompt.contains("opaque contract values"));
         assert!(prompt.contains("reversible requested artifact"));
         assert!(prompt.contains("without inventing package scaffolding"));
+
+        let unbounded = system_prompt(None);
+        assert!(!unbounded.contains("seconds left"));
+        assert!(!unbounded.contains("shared window"));
     }
 
     #[test]

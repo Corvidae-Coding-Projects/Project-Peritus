@@ -150,12 +150,13 @@ Verifying, Waiting for user, Complete, Failed, Cancelled, or Recovery required, 
 bounded conversation. The Runs view shows that state as text as well as color, the Diff view shows
 tracked and newly created text files, and the Review view shows the latest review or repository
 checks. While a run is active, its status reports elapsed time, time since the last completed
-durable effect, the remaining eight-hour uninterrupted run horizon, provider requests, tool calls,
-retries, compactions, and normalized token/cache/cost counters when the provider supplies them. A
+durable effect, current provider-turn elapsed time, provider requests, tool calls, retries,
+compactions, and normalized token/cache/cost counters when the provider supplies them. A
 provider-switch counter appears after an opted-in fallback. A long quiet provider call therefore
-remains visibly alive without inventing progress. The generous cumulative ceilings stop runaway
-execution across the entire designer-writer-reviewer-fixer run; they do not shorten productive
-segments or replace the existing progress-based continuation rule.
+remains visibly alive without inventing progress or forcing a manual retry at an arbitrary elapsed
+time. Normal interactive runs have no product or provider-turn wall-clock cutoff. The generous
+cumulative resource ceilings and progress rules still stop runaway execution across the complete
+designer-writer-reviewer-fixer run without shortening productive work.
 Before a writable filesystem or command tool starts, the runner syncs a bounded receipt containing
 the deterministic role/invocation/effect identity, provider call ID, tool name, and canonical
 request digest. It syncs the bounded result after completion. An exact completed call replays its

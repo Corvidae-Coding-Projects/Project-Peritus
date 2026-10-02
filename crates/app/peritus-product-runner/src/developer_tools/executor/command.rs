@@ -211,13 +211,12 @@ fn annotate_result(
     result.insert("deadline_limited".to_owned(), Value::Bool(command.deadline_limited));
     result.insert(
         "remaining_product_seconds".to_owned(),
-        Value::from(
-            tools
-                .command_budget
-                .as_ref()
-                .ok_or_else(|| tool("writable tools have no command budget"))?
-                .remaining_seconds(),
-        ),
+        tools
+            .command_budget
+            .as_ref()
+            .ok_or_else(|| tool("writable tools have no command budget"))?
+            .remaining_seconds()
+            .map_or(Value::Null, Value::from),
     );
     result.insert(
         "completion_reserve_seconds".to_owned(),

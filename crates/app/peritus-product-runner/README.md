@@ -50,8 +50,9 @@ Continuation state is bound to the exact run, managed-workspace lineage, candida
 conversation revision, and checkpoint sequence. S1 knowledge invalidation selects the first stale
 phase; S2 obligation evidence participates in gates, reviewer input, acceptance, and fixer routing.
 Provider recovery during review repeats review only, candidate changes repeat qualification, and a
-conversation revision returns to design. Phase admission preserves a protected finalization reserve
-so an open-ended model turn cannot consume the time needed to return an honest handoff.
+conversation revision returns to design. When an embedding caller explicitly supplies a run
+horizon, phase admission preserves a protected finalization reserve so an open-ended model turn
+cannot consume the time needed to return an honest handoff.
 The opaque continuation has a versioned durable encoding for the daemon. Restoring it rebuilds
 role knowledge from the current conversation and deliberately reacquires effectful gate reports
 instead of pretending an in-process runtime object survived restart.
@@ -141,15 +142,15 @@ progress and deliverable evidence; it does not own UI, provider login, workspace
 commit/export/discard authority. `Complete` is impossible for an empty or uncovered candidate, a
 failed or missing exact-target command, or any unresolved policy blocker.
 
-Run lifetime is deliberately separate from model-turn lifetime. The caller supplies the real
-wall-clock horizon, up to the product's eight-hour hard ceiling. Every architect, writer, reviewer,
-and fixer invocation receives the remaining shared time so it can do substantial work without
-spending the complete window on open-ended exploration or optimization. At the horizon, Peritus
-signals the shared provider cancellation token, gives the active operation a short settlement
-period, and returns a typed budget failure that the caller can persist and report.
+Normal interactive runs have no wall-clock product or provider-turn deadline. They continue until
+the work reaches a terminal result, the user cancels it, or a concrete provider, transport,
+resource, or progress boundary fails. Benchmark and embedding callers may still select an explicit
+horizon up to eight hours; only those bounded runs receive countdown prompts, reserve finalization
+time, and return a typed elapsed-budget failure at the selected horizon. Per-command timeouts remain
+independent so a stuck child process cannot consume an unbounded run.
 
-One provider attempt remains wall-clock bounded and one developer segment remains bounded to 48
-logical turns and 512 tool calls. If that segment changed the exact Git candidate, its content
+One developer segment remains bounded to 48 logical turns and 512 tool calls. If that segment
+changed the exact Git candidate, its content
 checkpoint starts another fresh, repository-grounded segment with a compact prompt. Therefore
 substantial work can continue for as many segments as it needs without retaining an ever-growing
 model context. A segment that exhausts its allowance without changing the candidate stops as
@@ -164,7 +165,8 @@ accounting interface. Git object storage is excluded because it is repository hi
 task growth; generated build trees remain included. The daemon persists and displays current
 workspace size, positive growth from the run baseline, and the highest observed resident memory.
 Generous 50 GiB growth and 12 GiB observed-memory ceilings fail with the same distinct budget
-category as token, request, tool, cost, and elapsed-time overruns.
+category as token, request, tool, and cost overruns. Explicitly bounded callers also retain an
+elapsed-time budget failure.
 
 Provider, filesystem, process, and Git effects remain ordinary Rust host adapters. In
 `verus_only` builds the crate exposes the same daemon-facing boundary as a fail-closed total

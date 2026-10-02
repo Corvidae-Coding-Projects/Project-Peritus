@@ -65,7 +65,7 @@ number as an argument. Point Peritus at the pinned unchanged task catalog with
 `PERITUS_HARNESSBENCH_TASKS_DIR`. The native adapter reads the current task's top-level
 `timeout_sec`, reserves ten percent (between 90 and 300 seconds) for cancellation and durable report
 publication, and fails visibly when deadline evidence is missing instead of silently using the
-normal eight-hour interactive horizon.
+unbounded interactive execution mode.
 
 ## Run an unchanged task
 

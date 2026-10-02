@@ -26,7 +26,7 @@ pub use effect_stubs::{
     uncertain_effects,
 };
 
-/// Maximum wall-clock duration of one uninterrupted product-run attempt.
+/// Maximum wall-clock duration accepted when a caller explicitly selects a run horizon.
 pub const PRODUCT_RUN_MAX_ELAPSED: Duration = Duration::from_hours(8);
 pub use crate::accounting::{
     PRODUCT_RUN_MAX_COST_MICROUNITS, PRODUCT_RUN_MAX_MODEL_REQUESTS,
@@ -202,8 +202,8 @@ pub struct ProductRunInput {
     pub finding_state: String,
     /// Natural-language coding task.
     pub task: String,
-    /// Caller-resolved wall-clock horizon, bounded by the product's eight-hour hard ceiling.
-    pub max_elapsed: Duration,
+    /// Optional caller-selected wall-clock horizon. `None` permits uninterrupted execution.
+    pub max_elapsed: Option<Duration>,
     /// Caller-authorized deliverable boundary. Ordinary product runs use workspace changes.
     pub delivery_scope: ProductDeliveryScope,
     /// Live conversation, including the original task and all follow-ups.
