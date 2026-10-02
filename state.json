@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1959,
-        "tip_oid": "22e04fe2295080399b3799777c9b09043555805b",
-        "prefix_sha256": "8d7c946bf5b8a267d3d1706447c125c2af9d40e60a3316b201fac4f2bf546cec"
+        "sequence": 1960,
+        "tip_oid": "b565ff96de1e1072707e55dedf51ebd15133006c",
+        "prefix_sha256": "631fb0c0e5b063bfc647c92350301b9ebe9d822667ff49307363eef588ba64bf"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 2070,
+  "next_comment_id": 2071,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -10669,7 +10669,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-27T23:40:33.365528994Z",
-      "updated_at": "2026-10-02T16:57:33.879624665Z",
+      "updated_at": "2026-10-02T16:58:07.158460944Z",
       "comments": {
         "0de6566f-5caa-4b10-ae55-f90ec9bc3946": {
           "display_id": 2063,
@@ -10760,6 +10760,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAK+o4cvZt2SZOr4ZuMFYBZ5ZPmLTL69iagysXAXJXSy+NjT6a6EqvH2l4yHoLt1W1BXPdBkNfrxeyUF8bkUUdDg=="
+        },
+        "4f1f70f3-ada1-4c81-a85a-b0b5a9b5c5fd": {
+          "display_id": 2070,
+          "author": "6ME5",
+          "content": "Signed local commit 64c82c442 delivers mouse-wheel conversation scrolling with reducer guards, rendered end-to-end regression coverage, and updated controls documentation. The branch remains unpublished as requested; no push or PR was created.",
+          "created_at": "2026-10-02T16:58:07.154323668Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA0zgK/zPz5r1FPkrUBrkEqVXx8E2rzM6YvwykRTnk2WNdbqTuWRSpZohJOLSOWSZ+qnOoJDpAVlZpqGN+z+ehBg=="
         },
         "5469a540-03ab-4746-b3de-4c9cb351b431": {
           "display_id": 2038,
