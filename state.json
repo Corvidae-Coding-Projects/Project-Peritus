@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1975,
-        "tip_oid": "7e3da179c843dca66741cda10ada649e2680f58d",
-        "prefix_sha256": "fe94a887f0052b2ef29d8ab0ec21044acc8a7afbfcf2e292df375a8043e022b4"
+        "sequence": 1976,
+        "tip_oid": "8e79f5dea4929b58fcd8f00fd7f67d75826f389f",
+        "prefix_sha256": "317aa4f67994c432652912616879e8a769e86c9493d26db5ba6336773a42ee45"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 2085,
+  "next_comment_id": 2086,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -16886,7 +16886,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-28T00:58:41.412806074Z",
-      "updated_at": "2026-10-02T19:13:04.480397870Z",
+      "updated_at": "2026-10-02T19:16:33.768228067Z",
       "labels": [
         "bug"
       ],
@@ -17124,6 +17124,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA0g2zCQ/wBOn0Ikipsvtmu5JkiiHPQQk1M5yGBN2wjSj6h4JUE1vSC3lzvSoKSQBSsRI3imda38QTAqPbIUkPDA=="
+        },
+        "27063aef-8093-4c21-91a1-6d5c15f55508": {
+          "display_id": 2085,
+          "author": "6ME5",
+          "content": "Installed the package built from e5f80b72d with Upgrade-Peritus.sh and dependency changes disabled. Package SHA256SUMS passed; peritus, peritus-tui, peritusd, sandbox helper, service template, and uninstaller are byte-identical to the package with expected owner/modes. Installed peritus/peritusd report 0.0.4 and help exposes resume. The pre-existing daemon PID 2035085 retained its Fri Oct 2 13:05:57 2026 start time and old inode 364644725; the new daemon is installed at inode 364702988. No process was stopped or restarted, so the repair activates at the next natural daemon start.",
+          "created_at": "2026-10-02T19:16:33.764138201Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA9VynlkUYArEQlb3UUZaXLvXfZ4fEzoq5qYVveNhOu5/P/md1t1j6qJDWp0wAmcFuWnHm4RrPWffDs0oY4+geDA=="
         },
         "29329fdb-7ecf-4b62-9184-fb4bafcc646e": {
           "display_id": 2048,
