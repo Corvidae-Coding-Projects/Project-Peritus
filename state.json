@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1996,
-        "tip_oid": "7536aed303ed00567c1945ab23ccf68ee12cb188",
-        "prefix_sha256": "1c2461873e15c177a19d6093b9e75a7217859369ee5f301233585689cb57b1be"
+        "sequence": 1997,
+        "tip_oid": "47fbaa5836199119b683403bc5a92f95c0d00514",
+        "prefix_sha256": "1c5f2b8f3403cfafa19b95bbce08845f3b62e608ccb21346b2622e6a29d48038"
       },
       "NWAR": {
         "sequence": 39,
@@ -18663,11 +18663,12 @@
       "display_id": 100,
       "title": "Remove benchmark-era limits from human workflows",
       "description": "Audit the production Rust, CLI/TUI/WebUI, persistence, and generated protocol paths for arbitrary limits that block ordinary long-lived human use. Remove goal budget controls and budget-driven states, cumulative run and history totals, repeated-finding and invalid-terminal stop counts, and fixed command-horizon ceilings. Preserve actual protocol, resource, and authority boundaries; verify continuation, retained evidence, restart, and exact-target Python environment selection. No migrations or installed-state changes.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-10-02T19:33:07.990520286Z",
-      "updated_at": "2026-10-02T22:04:51.163892211Z",
+      "updated_at": "2026-10-02T22:05:15.905460295Z",
+      "closed_at": "2026-10-02T22:05:15.904022921Z",
       "labels": [
         "bug"
       ],
