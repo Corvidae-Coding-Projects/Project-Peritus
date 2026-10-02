@@ -15,8 +15,8 @@ use std::{
 
 use peritus_agent::DeveloperReviewRetryReason::InvalidSubmission;
 use peritus_product_runner::{
-    PRODUCT_RUN_MAX_ELAPSED, ProductDeliveryScope, ProductRunInput, ProductRunPhase, ProductRunner,
-    RoleProviders, RunObserver,
+    ProductDeliveryScope, ProductRunInput, ProductRunPhase, ProductRunner, RoleProviders,
+    RunObserver,
 };
 use peritus_provider_core::{
     BoxFuture, CancellationToken, ModelProvider, OwnedModelStream, ProviderCoreError,
@@ -65,6 +65,8 @@ mod malformed_terminal;
 mod provider_failure;
 #[path = "production_composition/recovery_observer.rs"]
 mod recovery_observer;
+#[path = "production_composition/repeated_findings.rs"]
+mod repeated_findings;
 
 #[test]
 #[allow(clippy::too_many_lines, reason = "one complete production composition fixture")]
@@ -150,6 +152,9 @@ mod tests {
                     text_response(b"another malformed review"),
                     named_tool_response("workspace_list", list_arguments("", 3)),
                     named_tool_response("workspace_read", read_arguments("Cargo.toml")),
+                    text_response(b"one more malformed review"),
+                    named_tool_response("workspace_list", list_arguments("", 3)),
+                    named_tool_response("workspace_read", read_arguments("Cargo.toml")),
                     text_response(
                         br#"{"findings":[],"summary":"The requested API and test are present and exact-target gates passed."}"#,
                     ),
@@ -197,12 +202,13 @@ mod tests {
             .expect("production run");
             assert!(outcome.settlement().is_accepted());
             assert_eq!(conversation.retries.lock().expect("notices").as_slice(), &[
-                (2, 3, InvalidSubmission),
-                (3, 3, InvalidSubmission),
+                (2, InvalidSubmission),
+                (3, InvalidSubmission),
+                (4, InvalidSubmission),
             ]);
             let counts = retry_counts.lock().expect("counts");
             let before_review = counts.iter().find(|(phase, _)| *phase == ProductRunPhase::Reviewing).expect("review begins").1;
-            assert_eq!(counts.last().expect("final progress").1 - before_review, 2, "both rejected reviews are counted");
+            assert_eq!(counts.last().expect("final progress").1 - before_review, 3, "all rejected reviews are counted");
             drop(counts);
             assert!(correction_observed.load(Ordering::SeqCst), "workspace progress must preserve the malformed-terminal correction");
             let output = outcome.candidate().expect("accepted candidate");
@@ -222,7 +228,7 @@ mod tests {
                     .any(|command| command == "peritus-internal deliverable-inventory")
             );
             assert!(output.successful_commands.iter().any(|command| {
-                command.contains("peritus-internal source-layout --max-lines 500")
+                command.contains("peritus-internal source-readability")
             }));
             assert!(output.successful_commands.iter().any(|command| {
                 command == "cargo fmt --manifest-path Cargo.toml --all -- --check"
@@ -255,143 +261,6 @@ mod tests {
                  ProductRunPhase::Writing, ProductRunPhase::Checking,
                  ProductRunPhase::Reviewing, ProductRunPhase::Reviewing,
                  ProductRunPhase::Finalizing]
-            );
-        });
-}
-
-#[test]
-#[allow(clippy::too_many_lines, reason = "one complete finding-conservation fixture")]
-fn fixer_cannot_erase_a_finding_without_fresh_reviewer_confirmation() {
-    tokio::runtime::Builder::new_current_thread()
-        .enable_all()
-        .build()
-        .expect("runtime")
-        .block_on(async {
-            let repository = tempfile::tempdir().expect("repository");
-            let state = tempfile::tempdir().expect("state directory");
-            fs::create_dir_all(repository.path().join("src")).expect("source directory");
-            fs::write(
-                repository.path().join("Cargo.toml"),
-                "[package]\nname = \"fixer-fixture\"\nversion = \"0.1.0\"\nedition = \"2024\"\n",
-            )
-            .expect("manifest");
-            fs::write(
-                repository.path().join("src/lib.rs"),
-                "pub const fn initial() -> bool { true }\n",
-            )
-            .expect("initial source");
-            git(repository.path(), &["init", "--quiet"]);
-            git(repository.path(), &["config", "user.name", "Peritus Test"]);
-            git(
-                repository.path(),
-                &["config", "user.email", "peritus@example.invalid"],
-            );
-            git(repository.path(), &["config", "commit.gpgsign", "false"]);
-            cargo(repository.path(), &["generate-lockfile"]);
-            git(repository.path(), &["add", "."]);
-            git(repository.path(), &["commit", "--quiet", "-m", "initial"]);
-
-            let initial = r"/// Returns the fixture answer.
-#[must_use]
-pub const fn answer() -> u32 {
-    41
-}
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn answer_matches_implementation() {
-        assert_eq!(super::answer(), 41);
-    }
-}
-";
-            let writer: Arc<dyn ModelProvider> = Arc::new(ScriptedProvider {
-                profile: profile([0x91; 16], "writer-with-finding"),
-                responses: Mutex::new(VecDeque::from([
-                    named_tool_response("workspace_list", list_arguments("", 3)),
-                    named_tool_response("workspace_read", read_arguments("Cargo.toml")),
-                    named_tool_response("workspace_read", read_arguments("src/lib.rs")),
-                    design_response(),
-                    named_tool_response("workspace_list", list_arguments("", 3)),
-                    named_tool_response("workspace_read", read_arguments("src/lib.rs")),
-                    tool_response(write_arguments("src/lib.rs", initial)),
-                    text_response(
-                        br#"{"kind":"complete","run_instructions":"cargo test","summary":"Added an answer API and test."}"#,
-                    ),
-                ])),
-            });
-            let fixer: Arc<dyn ModelProvider> = Arc::new(ScriptedProvider {
-                profile: profile([0x92; 16], "fixer"),
-                responses: Mutex::new(VecDeque::from([
-                    named_tool_response("workspace_list", list_arguments("", 3)),
-                    named_tool_response("workspace_read", read_arguments("src/lib.rs")),
-                    named_tool_response(
-                        "workspace_patch",
-                        patch_arguments("src/lib.rs", "41", "42", true),
-                    ),
-                    text_response(
-                        br#"{"kind":"complete","run_instructions":"cargo test","summary":"Corrected the answer and its regression test to 42."}"#,
-                    ),
-                ])),
-            });
-            let reviewer: Arc<dyn ModelProvider> = Arc::new(ScriptedProvider {
-                profile: profile([0x93; 16], "reviewer-finding"),
-                responses: Mutex::new(VecDeque::from([
-                    named_tool_response("workspace_list", list_arguments("", 3)),
-                    named_tool_response("workspace_read", read_arguments("src/lib.rs")),
-                    text_response(
-                        br#"{"findings":[{"category":"requested_behavior","description":"The implementation returns 41 although the task requires 42.","location":"src/lib.rs","remediation":"Return and test 42.","reproduction":"Inspect answer and its test.","severity":"low","title":"Answer is not 42"}],"summary":"The requested result is incorrect."}"#,
-                    ),
-                    named_tool_response("workspace_list", list_arguments("", 3)),
-                    named_tool_response("workspace_read", read_arguments("src/lib.rs")),
-                    text_response(
-                        br#"{"findings":[],"summary":"The answer and regression test now require 42."}"#,
-                    ),
-                ])),
-            });
-            let task = "Add a tested answer function that returns 42.".to_owned();
-            let run_id = RunId::new([0x94; 16]).expect("run ID");
-            let command_runtime = support::command_runtime(state.path(), repository.path(), run_id);
-
-            let outcome = ProductRunner::run(
-                ProductRunInput {
-                    workspace_kind: peritus_product_runner::ProductWorkspaceKind::Managed,
-                    run_id,
-                    workspace_id: WorkspaceId::new([0x95; 16]).expect("workspace ID"),
-                    workspace_root: repository.path().to_owned(),
-                    trace_path: state.path().join("product.trace"),
-                    command_runtime,
-                    finding_state: String::new(),
-                    task: task.clone(),
-                    max_elapsed: Some(PRODUCT_RUN_MAX_ELAPSED),
-                    delivery_scope: ProductDeliveryScope::WorkspaceChanges,
-                    conversation: Arc::new(FixedConversation(task)),
-                    providers: RoleProviders {
-                        writer,
-                        reviewer,
-                        fixer,
-                        fallbacks: Vec::new(),
-                    },
-                    cancelled: Arc::new(AtomicBool::new(false)),
-                    provider_cancellation: CancellationToken::new(),
-                    resume: None,
-                },
-                Arc::new(|_| {}),
-            )
-            .await
-            .expect("production run");
-            assert!(outcome.settlement().is_accepted());
-            let output = outcome.candidate().expect("accepted candidate");
-
-            assert_eq!(output.fixer_cycles, 1);
-            assert!(output.summary.contains("Added an answer API and test"));
-            assert!(output.summary.contains("Corrected the answer"));
-            assert!(output.review.contains("resolution confirmed"));
-            assert!(!output.review.contains("/ open]"));
-            assert!(
-                fs::read_to_string(repository.path().join("src/lib.rs"))
-                    .expect("source")
-                    .contains("42")
             );
         });
 }

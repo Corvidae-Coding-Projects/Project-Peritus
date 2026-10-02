@@ -15,7 +15,6 @@ pub(super) fn equivalent_user_intent(left: &ControlIntent, right: &ControlIntent
                 settings_digest: left_settings,
                 objective: left_objective,
                 criteria: left_criteria,
-                budget: left_budget,
                 ..
             },
             ControlIntent::StartGoal {
@@ -23,12 +22,11 @@ pub(super) fn equivalent_user_intent(left: &ControlIntent, right: &ControlIntent
                 settings_digest: right_settings,
                 objective: right_objective,
                 criteria: right_criteria,
-                budget: right_budget,
                 ..
             },
         ) => {
-            (left_run, left_settings, left_objective, left_criteria, left_budget)
-                == (right_run, right_settings, right_objective, right_criteria, right_budget)
+            (left_run, left_settings, left_objective, left_criteria)
+                == (right_run, right_settings, right_objective, right_criteria)
         }
         (
             ControlIntent::PauseGoal { goal: a, mode: b, .. },
@@ -38,10 +36,6 @@ pub(super) fn equivalent_user_intent(left: &ControlIntent, right: &ControlIntent
         | (ControlIntent::ClearGoal { goal: a, .. }, ControlIntent::ClearGoal { goal: b, .. }) => {
             a == b
         }
-        (
-            ControlIntent::UpdateGoalBudget { goal: a, budget: b, .. },
-            ControlIntent::UpdateGoalBudget { goal: c, budget: d, .. },
-        ) => (a, b) == (c, d),
         _ => left == right,
     }
 }
@@ -193,7 +187,6 @@ fn domain_operation_resolved(
                 .iter()
                 .map(goal::domain_criterion)
                 .collect::<Result<Vec<_>, _>>()?,
-            budget: goal::domain_budget(definition.budget())?,
             now_unix_millis: goal::now_millis(),
         },
         WorkbenchIntent::PauseGoal { goal, mode } => ControlIntent::PauseGoal {
@@ -203,11 +196,6 @@ fn domain_operation_resolved(
         },
         WorkbenchIntent::ResumeGoal { goal } => ControlIntent::ResumeGoal {
             goal: OperationId::new(goal.into_bytes())?,
-            now_unix_millis: goal::now_millis(),
-        },
-        WorkbenchIntent::UpdateGoalBudget { goal, budget } => ControlIntent::UpdateGoalBudget {
-            goal: OperationId::new(goal.into_bytes())?,
-            budget: goal::domain_budget(*budget)?,
             now_unix_millis: goal::now_millis(),
         },
         WorkbenchIntent::ClearGoal { goal } => ControlIntent::ClearGoal {

@@ -8,7 +8,7 @@ use peritus_app_protocol::{
     WorkbenchRewindRequest,
 };
 
-const ALL_WORKBENCH_FEATURES: [WellKnownProtocolFeature; 18] = [
+const ALL_WORKBENCH_FEATURES: [WellKnownProtocolFeature; 17] = [
     WellKnownProtocolFeature::WorkbenchControl,
     WellKnownProtocolFeature::WorkbenchInputs,
     WellKnownProtocolFeature::WorkbenchExecution,
@@ -18,7 +18,6 @@ const ALL_WORKBENCH_FEATURES: [WellKnownProtocolFeature; 18] = [
     WellKnownProtocolFeature::WorkbenchImages,
     WellKnownProtocolFeature::WorkbenchFiles,
     WellKnownProtocolFeature::WorkbenchGoals,
-    WellKnownProtocolFeature::WorkbenchBudgets,
     WellKnownProtocolFeature::WorkbenchReview,
     WellKnownProtocolFeature::WorkbenchPreview,
     WellKnownProtocolFeature::WorkbenchCheckpoints,
@@ -204,7 +203,7 @@ async fn preview_rewind(
         .expect("rewind request");
     if mode != WorkbenchRewindMode::FilesOnly {
         rewind = rewind
-            .with_branch(mode, ConversationId::new([child; 16]).expect("rewind child"), None)
+            .with_branch(mode, ConversationId::new([child; 16]).expect("rewind child"))
             .expect("logical rewind branch");
     }
     let response =

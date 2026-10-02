@@ -144,7 +144,6 @@ impl ConversationRecord {
             | ControlIntent::StartGoal { .. }
             | ControlIntent::PauseGoal { .. }
             | ControlIntent::ResumeGoal { .. }
-            | ControlIntent::UpdateGoalBudget { .. }
             | ControlIntent::ClearGoal { .. }
             | ControlIntent::ReserveGoalRequest { .. }
             | ControlIntent::CompleteGoalRequest { .. }

@@ -1,6 +1,7 @@
 //! Exact file context from already authenticated immutable artifacts, never ambient path reads.
 
 use super::{ControlError, ControlStore, Error, manifest::FileSource};
+use peritus_product_runner::control::MAX_REQUEST_CONTEXT_BYTES;
 
 impl ControlStore {
     pub(super) fn file_context(&self, sources: &[FileSource]) -> Result<String, Error> {
@@ -49,7 +50,9 @@ impl ControlStore {
                 .collect(),
             );
             let encoded = serde_json::to_string(&row).map_err(|_| ControlError::InvalidInput)?;
-            if context.len().saturating_add(encoded.len()).saturating_add(1) > 1024 * 1024 {
+            if context.len().saturating_add(encoded.len()).saturating_add(1)
+                > MAX_REQUEST_CONTEXT_BYTES
+            {
                 return Err(ControlError::Capacity.into());
             }
             context.push_str(&encoded);

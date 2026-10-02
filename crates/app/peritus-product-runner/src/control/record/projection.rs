@@ -171,7 +171,7 @@ impl ConversationRecord {
     pub const fn execution(&self) -> Option<&ControlExecution> {
         self.execution.as_ref()
     }
-    /// Borrows the durable bounded goal and its cumulative accounting, if one was confirmed.
+    /// Borrows the durable goal and its cumulative accounting, if one was confirmed.
     #[must_use]
     pub const fn goal(&self) -> Option<&crate::control::GoalRecord> {
         self.goal.as_ref()
@@ -233,9 +233,6 @@ impl ConversationRecord {
     }
 
     fn validate_replies(&self) -> Result<(), ControlError> {
-        if self.replies.len() > 1024 {
-            return Err(ControlError::Capacity);
-        }
         let mut previous = None;
         let mut operations = std::collections::BTreeSet::new();
         for reply in &self.replies {

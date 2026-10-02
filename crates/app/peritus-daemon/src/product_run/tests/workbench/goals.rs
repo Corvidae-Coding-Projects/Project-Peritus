@@ -53,7 +53,6 @@ fn persistent_goal_starts_real_provider_work_pauses_durably_and_resumes_same_run
                 WorkbenchInputText::new("Strict runner acceptance".to_owned()).expect("criterion"),
                 true,
             )],
-            WorkbenchGoalBudget::new(None, Some(4), Some(4), None).expect("budget"),
         )
         .expect("goal definition");
         let start = command(workspace, 9, 4, WorkbenchIntent::StartGoal { definition, settings });
@@ -78,18 +77,6 @@ fn persistent_goal_starts_real_provider_work_pauses_durably_and_resumes_same_run
         assert_eq!(active.usage().requests(), 1);
         // Simulate human think time while the stalled provider's active-time clock advances.
         tokio::time::sleep(Duration::from_millis(1_100)).await;
-        let budget = command(
-            workspace,
-            90,
-            active.aggregate_revision(),
-            WorkbenchIntent::UpdateGoalBudget {
-                goal: active.goal(),
-                budget: WorkbenchGoalBudget::new(Some(60_000), Some(4), Some(4), None)
-                    .expect("budget"),
-            },
-        );
-        let updated = service.workbench_command(actor(), &budget).await;
-        assert!(matches!(updated, AppResponsePayload::WorkbenchReceipt(_)), "{updated:?}");
         let pause = command(
             workspace,
             10,
@@ -193,27 +180,29 @@ fn persistent_goal_starts_real_provider_work_pauses_durably_and_resumes_same_run
 }
 
 #[test]
-fn configured_goal_request_budget_stops_before_a_second_provider_call() {
+fn goal_continues_after_the_first_provider_request_without_a_budget() {
     interaction::block_on(async {
         let repository = repository();
         let state = tempfile::tempdir().expect("state");
         let writer = scripted(
             0x71,
-            "budget-writer",
-            vec![support::named_tool_response(
-                "workspace_list",
-                br#"{"path":"","depth":1}"#.to_vec(),
-            )],
+            "unbounded-goal-writer",
+            vec![
+                support::named_tool_response(
+                    "workspace_list",
+                    br#"{"path":"","depth":1}"#.to_vec(),
+                ),
+                support::text_response(b"Continued after inspecting the workspace."),
+            ],
         );
-        let reviewer = scripted(0x72, "budget-reviewer", Vec::new());
-        let fixer = scripted(0x73, "budget-fixer", Vec::new());
+        let reviewer = scripted(0x72, "unbounded-goal-reviewer", Vec::new());
+        let fixer = scripted(0x73, "unbounded-goal-fixer", Vec::new());
         let workspace = WorkspaceId::new([0x74; 16]).expect("workspace");
         let run = RunId::new([0x75; 16]).expect("run");
         let service =
             service(state.path(), repository.path(), workspace, [&writer, &reviewer, &fixer]);
         queue(&service, workspace).await;
-        let objective =
-            WorkbenchInputText::new("Stop exactly at the request limit.".to_owned()).unwrap();
+        let objective = WorkbenchInputText::new("Inspect and answer.".to_owned()).unwrap();
         assert!(matches!(
             service
                 .workbench_command(
@@ -238,7 +227,6 @@ fn configured_goal_request_budget_stops_before_a_second_provider_call() {
                 WorkbenchInputText::new("Strict runner acceptance".to_owned()).unwrap(),
                 true,
             )],
-            WorkbenchGoalBudget::new(None, Some(1), Some(4), None).unwrap(),
         )
         .unwrap();
         let settings = WorkbenchExecutionSettings::new(
@@ -259,100 +247,15 @@ fn configured_goal_request_budget_stops_before_a_second_provider_call() {
             .await;
         assert!(matches!(response, AppResponsePayload::WorkbenchReceipt(_)));
         let stopped = wait_for_terminal(&service, run).await;
-        assert_eq!(stopped.phase(), ProductRunPhase::Cancelled);
-        assert!(stopped.status().starts_with("Budget reached"));
+        assert_eq!(stopped.phase(), ProductRunPhase::WaitingForUser);
         let goal = match service.workbench_goal(actor(), query(workspace)) {
             AppResponsePayload::WorkbenchGoal(goal) => goal,
-            response => panic!("expected budget-reached goal, got {response:?}"),
+            response => panic!("expected waiting goal, got {response:?}"),
         };
-        assert_eq!(goal.state(), WorkbenchGoalState::BudgetReached);
-        assert_eq!(goal.usage().requests(), 1);
+        assert_eq!(goal.state(), WorkbenchGoalState::WaitingForUser);
+        assert_eq!(goal.usage().requests(), 2);
         assert_eq!(goal.usage().tool_calls(), 1);
-        assert_eq!(writer.requests.lock().expect("requests").len(), 1);
-        assert!(goal.reason().contains("no new operation"));
-        service.shutdown(Duration::from_secs(5)).await;
-    });
-}
-
-#[test]
-fn active_time_budget_interrupts_a_silent_provider_and_records_elapsed_usage() {
-    interaction::block_on(async {
-        let repository = repository();
-        let state = tempfile::tempdir().expect("state");
-        let writer = support::stalled_then(
-            0x71,
-            "budget-writer",
-            vec![support::named_tool_response(
-                "workspace_list",
-                br#"{"path":"","depth":1}"#.to_vec(),
-            )],
-        );
-        let reviewer = scripted(0x72, "budget-reviewer", Vec::new());
-        let fixer = scripted(0x73, "budget-fixer", Vec::new());
-        let workspace = WorkspaceId::new([0x74; 16]).expect("workspace");
-        let run = RunId::new([0x75; 16]).expect("run");
-        let service =
-            service(state.path(), repository.path(), workspace, [&writer, &reviewer, &fixer]);
-        queue(&service, workspace).await;
-        let objective =
-            WorkbenchInputText::new("Stop exactly at the request limit.".to_owned()).unwrap();
-        assert!(matches!(
-            service
-                .workbench_command(
-                    actor(),
-                    &command(
-                        workspace,
-                        8,
-                        3,
-                        WorkbenchIntent::SetBrief {
-                            field: WorkbenchBriefField::Objective,
-                            text: objective.clone(),
-                        },
-                    ),
-                )
-                .await,
-            AppResponsePayload::WorkbenchReceipt(_)
-        ));
-        let definition = WorkbenchGoalDefinition::new(
-            objective,
-            vec![WorkbenchGoalCriterionDefinition::new(
-                WorkbenchGoalCriterionKind::RunnerAcceptance,
-                WorkbenchInputText::new("Strict runner acceptance".to_owned()).unwrap(),
-                true,
-            )],
-            WorkbenchGoalBudget::new(Some(100), Some(4), Some(4), None).unwrap(),
-        )
-        .unwrap();
-        let settings = WorkbenchExecutionSettings::new(
-            run,
-            ProductProviderSelection::new(
-                writer.profile.profile_id(),
-                reviewer.profile.profile_id(),
-                fixer.profile.profile_id(),
-            ),
-            ProductInteractionMode::Chat,
-            ProductRoleModels::default(),
-        );
-        let response = service
-            .workbench_command(
-                actor(),
-                &command(workspace, 9, 4, WorkbenchIntent::StartGoal { definition, settings }),
-            )
-            .await;
-        assert!(matches!(response, AppResponsePayload::WorkbenchReceipt(_)));
-        let stopped = wait_for_terminal(&service, run).await;
-        assert_eq!(stopped.phase(), ProductRunPhase::Cancelled);
-        assert!(stopped.status().starts_with("Budget reached"));
-        let goal = match service.workbench_goal(actor(), query(workspace)) {
-            AppResponsePayload::WorkbenchGoal(goal) => goal,
-            response => panic!("expected budget-reached goal, got {response:?}"),
-        };
-        assert_eq!(goal.state(), WorkbenchGoalState::BudgetReached);
-        assert_eq!(goal.usage().requests(), 1);
-        assert_eq!(goal.usage().tool_calls(), 0);
-        assert!(goal.usage().active_millis() >= 100);
-        assert_eq!(writer.requests.lock().expect("requests").len(), 1);
-        assert!(goal.reason().contains("no new operation"));
+        assert_eq!(writer.requests.lock().expect("requests").len(), 2);
         service.shutdown(Duration::from_secs(5)).await;
     });
 }

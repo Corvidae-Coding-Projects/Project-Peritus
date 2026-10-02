@@ -1,7 +1,7 @@
 use super::*;
 
 const REQUIRED_WORKFLOW_TERMS: &[&str] = &[
-    "500 lines",
+    "one clear responsibility",
     "module",
     "distinguish ignored authority",
     "Judge the requested outcome",
@@ -200,7 +200,7 @@ const REQUIRED_WORKFLOW_TERMS: &[&str] = &[
 ];
 
 #[test]
-fn embedded_workflow_carries_the_hard_source_limit_for_every_role() {
+fn embedded_workflow_carries_shared_engineering_rules_for_every_role() {
     for instructions in [architect(), developer(), reviewer()] {
         for term in REQUIRED_WORKFLOW_TERMS {
             assert!(instructions.contains(term), "missing required workflow term: {term}");

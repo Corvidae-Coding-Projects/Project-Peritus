@@ -278,7 +278,6 @@ impl AppModel {
             WorkbenchIntent::StartGoal { .. }
                 | WorkbenchIntent::PauseGoal { .. }
                 | WorkbenchIntent::ResumeGoal { .. }
-                | WorkbenchIntent::UpdateGoalBudget { .. }
                 | WorkbenchIntent::ClearGoal { .. }
         ) {
             self.chat.workbench.goal = None;

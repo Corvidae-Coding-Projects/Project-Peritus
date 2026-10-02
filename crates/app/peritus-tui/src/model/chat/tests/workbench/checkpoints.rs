@@ -19,22 +19,18 @@ fn checkpoint_model() -> AppModel {
 }
 
 #[test]
-fn rewind_modes_bind_new_logical_identity_and_visible_budget() {
+fn rewind_modes_bind_a_new_logical_identity() {
     for mode in ["conversation", "combined"] {
         let mut model = checkpoint_model();
         let source = selected(&mut model);
         key(&mut model, KeyCode::Esc);
-        model.chat.buffer = format!(
-            "/rewind {} {mode} time=1000 requests=2 tools=3 tokens=400",
-            crate::model::format_id(&[91; 16])
-        );
+        model.chat.buffer = format!("/rewind {} {mode}", crate::model::format_id(&[91; 16]));
         let sent = request(&enter_with_metadata(&mut model));
         let AppRequestPayload::PreviewWorkbenchRewind(selection) = sent.payload() else {
             panic!("rewind selection")
         };
         assert_eq!(selection.query(), source.query());
         assert_ne!(selection.child().unwrap(), source.query().conversation());
-        assert_eq!(selection.allocation().unwrap().total_tokens(), 400);
         assert_eq!(
             selection.mode(),
             if mode == "combined" {

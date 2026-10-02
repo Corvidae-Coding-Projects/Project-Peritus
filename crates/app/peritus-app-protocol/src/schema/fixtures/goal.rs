@@ -7,11 +7,10 @@ use super::{
 use crate::{
     AppRequestPayload, AppResponseEnvelope, AppResponsePayload, ControlOperationId, ConversationId,
     ProductInteractionMode, ProductProviderSelection, ProductRoleModels, WorkbenchCommand,
-    WorkbenchExecutionSettings, WorkbenchGoalBudget, WorkbenchGoalCriterion,
-    WorkbenchGoalCriterionDefinition, WorkbenchGoalCriterionKind, WorkbenchGoalCriterionState,
-    WorkbenchGoalDefinition, WorkbenchGoalPauseMode, WorkbenchGoalRole, WorkbenchGoalRoleUsage,
-    WorkbenchGoalSnapshot, WorkbenchGoalState, WorkbenchGoalUsage, WorkbenchInputText,
-    WorkbenchIntent, WorkbenchQuery,
+    WorkbenchExecutionSettings, WorkbenchGoalCriterion, WorkbenchGoalCriterionDefinition,
+    WorkbenchGoalCriterionKind, WorkbenchGoalCriterionState, WorkbenchGoalDefinition,
+    WorkbenchGoalPauseMode, WorkbenchGoalRole, WorkbenchGoalRoleUsage, WorkbenchGoalSnapshot,
+    WorkbenchGoalState, WorkbenchGoalUsage, WorkbenchInputText, WorkbenchIntent, WorkbenchQuery,
 };
 use peritus_codec::{CodecError, CodecLimits};
 
@@ -19,8 +18,6 @@ pub(super) fn cases(limits: CodecLimits) -> Result<Vec<GeneratedFixtureCase>, Co
     let scope =
         WorkbenchQuery::new(id(81, ConversationId::new), id(82, peritus_types::WorkspaceId::new));
     let goal = id(83, ControlOperationId::new);
-    let budget =
-        WorkbenchGoalBudget::new(Some(600_000), Some(12), Some(48), Some(200_000)).expect("budget");
     let criterion = runner_criterion();
     let settings = execution_settings();
     let mut cases = vec![encoded(
@@ -29,8 +26,8 @@ pub(super) fn cases(limits: CodecLimits) -> Result<Vec<GeneratedFixtureCase>, Co
         &request(AppRequestPayload::QueryWorkbenchGoal(scope)),
         limits,
     )?];
-    cases.extend(command_cases(limits, scope, goal, budget, criterion.clone(), settings)?);
-    cases.push(snapshot_case(limits, scope, goal, budget, criterion)?);
+    cases.extend(command_cases(limits, scope, goal, criterion.clone(), settings)?);
+    cases.push(snapshot_case(limits, scope, goal, criterion)?);
     Ok(cases)
 }
 
@@ -38,12 +35,11 @@ fn command_cases(
     limits: CodecLimits,
     scope: WorkbenchQuery,
     goal: ControlOperationId,
-    budget: WorkbenchGoalBudget,
     criterion: WorkbenchGoalCriterionDefinition,
     settings: WorkbenchExecutionSettings,
 ) -> Result<Vec<GeneratedFixtureCase>, CodecError> {
     let definition =
-        WorkbenchGoalDefinition::new(objective(), vec![criterion], budget).expect("definition");
+        WorkbenchGoalDefinition::new(objective(), vec![criterion]).expect("definition");
     let commands = [
         ("realistic-workbench-goal-start", WorkbenchIntent::StartGoal { definition, settings }),
         (
@@ -51,14 +47,13 @@ fn command_cases(
             WorkbenchIntent::PauseGoal { goal, mode: WorkbenchGoalPauseMode::BeforeEdit },
         ),
         ("realistic-workbench-goal-resume", WorkbenchIntent::ResumeGoal { goal }),
-        ("realistic-workbench-goal-budget", WorkbenchIntent::UpdateGoalBudget { goal, budget }),
         ("realistic-workbench-goal-clear", WorkbenchIntent::ClearGoal { goal }),
     ];
     commands
         .into_iter()
         .enumerate()
         .map(|(index, (name, intent))| {
-            let byte = 88 + u8::try_from(index).expect("five operations");
+            let byte = 88 + u8::try_from(index).expect("four operations");
             let command =
                 WorkbenchCommand::new(id(byte, ControlOperationId::new), scope, 7, intent);
             encoded(
@@ -75,7 +70,6 @@ fn snapshot_case(
     limits: CodecLimits,
     scope: WorkbenchQuery,
     goal: ControlOperationId,
-    budget: WorkbenchGoalBudget,
     criterion: WorkbenchGoalCriterionDefinition,
 ) -> Result<GeneratedFixtureCase, CodecError> {
     let graphical = WorkbenchGoalCriterionDefinition::new(
@@ -114,7 +108,6 @@ fn snapshot_case(
             WorkbenchGoalCriterion::new(criterion, WorkbenchGoalCriterionState::Pending, None),
             WorkbenchGoalCriterion::new(graphical, WorkbenchGoalCriterionState::Unavailable, None),
         ],
-        budget,
         usage,
     )
     .expect("snapshot");

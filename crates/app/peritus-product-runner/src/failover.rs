@@ -18,10 +18,9 @@ pub struct RoleRecovery {
 }
 
 impl RoleRecovery {
-    /// Whether material progress may start another segment under the shared run budget.
+    /// Whether material progress may start another attempt after a provider failure.
     pub const fn may_continue_after_progress(error: &DeveloperLoopError) -> bool {
-        matches!(error, DeveloperLoopError::LimitExceeded)
-            || same_provider_retry_reason(error).is_some()
+        same_provider_retry_reason(error).is_some()
     }
 
     /// Returns a stable reason when the role may start another grounded invocation.
@@ -38,6 +37,9 @@ impl RoleRecovery {
 
     /// Builds the correction that starts a fresh repository-grounded invocation.
     pub fn correction(reason: &str) -> String {
+        if reason == "segment_boundary" {
+            return "The preceding bounded invocation segment ended before the role produced its terminal result. Start the next segment from the exact current workspace: call `workspace_list`, read the authoritative inputs and current targets needed to resume, preserve completed work and evidence, and continue to the required terminal result without repeating finished effects.".to_owned();
+        }
         let repair = if matches!(reason, "malformed_payload" | "malformed_stream") {
             " The provider output contract was not satisfied. Return one valid response using only the declared host tools and their exact argument schemas. If the adapter requires a structured envelope, put role-specific text or JSON inside its content field, put calls in tool_calls, and encode arguments_json exactly once; do not use native tools, Markdown fences, undeclared fields, or a second structured result. Do not replay prior side effects: inspect the existing results and recover any retained command handle first."
         } else {
@@ -253,10 +255,11 @@ mod tests {
     use super::*;
 
     #[test]
-    fn progress_continues_bounded_segments_but_never_overrides_integrity_or_policy() {
-        assert!(RoleRecovery::may_continue_after_progress(&DeveloperLoopError::LimitExceeded));
+    fn progress_recovers_provider_failures_but_never_overrides_integrity_or_policy() {
         assert!(RoleRecovery::may_continue_after_progress(&DeveloperLoopError::EmptyResponse));
         for error in [
+            DeveloperLoopError::LimitExceeded,
+            DeveloperLoopError::SegmentExhausted,
             DeveloperLoopError::Cancelled,
             DeveloperLoopError::Refused,
             DeveloperLoopError::Trace("fixture".to_owned()),
@@ -283,6 +286,14 @@ mod tests {
                 }
             ));
         }
+    }
+
+    #[test]
+    fn segment_correction_resumes_current_work_without_repeating_effects() {
+        let correction = RoleRecovery::correction("segment_boundary");
+        assert!(correction.contains("bounded invocation segment ended"));
+        assert!(correction.contains("exact current workspace"));
+        assert!(correction.contains("without repeating finished effects"));
     }
 
     #[test]

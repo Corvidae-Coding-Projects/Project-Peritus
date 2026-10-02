@@ -195,8 +195,8 @@ async fn check_case(pending: bool, disconnect: bool) {
         &mut Trace(Arc::clone(&evidence)),
     )
     .await;
-    // A single admitted tool turn intentionally exhausts the fixture's turn budget.
-    assert!(matches!(result, Err(DeveloperLoopError::LimitExceeded)), "{:?}", result.err());
+    // A single admitted tool turn intentionally reaches the fixture's segment boundary.
+    assert!(matches!(result, Err(DeveloperLoopError::SegmentExhausted)), "{:?}", result.err());
     assert!(!caller.is_cancelled());
     assert_counter(&counter, true);
     check_evidence(&evidence.lock().expect("evidence"), pending, disconnect);

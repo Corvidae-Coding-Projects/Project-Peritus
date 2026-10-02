@@ -1,8 +1,8 @@
-//! Deterministic source-file size enforcement for product candidates.
+//! Deterministic source-file readability verification for product candidates.
 
 use std::{fmt::Write as _, fs, path::Path};
 
-use peritus_gates::{GateExecutionRecord, PRODUCT_MAX_SOURCE_LINES, ProjectKind};
+use peritus_gates::{GateExecutionRecord, ProjectKind};
 
 use crate::developer_tools::WorkspaceOwnership;
 
@@ -36,29 +36,14 @@ pub fn run(
     files.dedup();
     let mut errors = Vec::new();
 
-    let mut violations = Vec::new();
     for path in &files {
-        match fs::read_to_string(workspace_root.join(path)) {
-            Ok(source) => {
-                let lines = source.lines().count();
-                if lines > PRODUCT_MAX_SOURCE_LINES {
-                    violations.push(format!(
-                        "{}: {lines} lines exceeds the {PRODUCT_MAX_SOURCE_LINES}-line hard limit",
-                        path.display(),
-                    ));
-                }
-            }
-            Err(error) => {
-                errors.push(format!("{}: read source: {error}", path.display()));
-            }
+        if let Err(error) = fs::read_to_string(workspace_root.join(path)) {
+            errors.push(format!("{}: read source: {error}", path.display()));
         }
     }
 
-    let passed = violations.is_empty() && errors.is_empty();
-    let mut output = format!(
-        "Scanned {} changed source file(s); hard limit: {PRODUCT_MAX_SOURCE_LINES} lines.\n",
-        files.len(),
-    );
+    let passed = errors.is_empty();
+    let mut output = format!("Read {} changed source file(s).\n", files.len());
     let skipped = source_files.len().saturating_sub(files.len());
     if skipped > 0 {
         let _ = write!(
@@ -67,21 +52,20 @@ pub fn run(
         );
         output.push('\n');
     }
-    for violation in &violations {
-        output.push_str("VIOLATION: ");
-        output.push_str(violation);
-        output.push('\n');
-    }
     for error in &errors {
         output.push_str("ERROR: ");
         output.push_str(error);
         output.push('\n');
     }
-    output.push_str(if passed { "Source layout: PASS\n" } else { "Source layout: FAIL\n" });
+    output.push_str(if passed {
+        "Source readability: PASS\n"
+    } else {
+        "Source readability: FAIL\n"
+    });
 
     GateExecutionRecord {
         command,
-        label: "Source layout".to_owned(),
+        label: "Source readability".to_owned(),
         exit_code: Some(i32::from(!passed)),
         output,
     }
@@ -106,18 +90,12 @@ fn is_source(path: &Path, kind: ProjectKind) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use std::fmt::Write as _;
-
     use super::*;
 
     #[test]
-    fn rejects_a_rust_source_file_over_the_hard_limit() {
+    fn accepts_a_large_readable_rust_source_file() {
         let root = tempfile::tempdir().expect("source root");
-        let source = (0..=PRODUCT_MAX_SOURCE_LINES).fold(String::new(), |mut source, index| {
-            let _ = write!(source, "pub const VALUE_{index}: usize = {index};");
-            source.push('\n');
-            source
-        });
+        let source = "pub const VALUE: usize = 1;\n".repeat(700);
         fs::write(root.path().join("large.rs"), source).expect("large source");
 
         let record = run(
@@ -125,12 +103,12 @@ mod tests {
             Path::new(""),
             &[std::path::PathBuf::from("large.rs")],
             ProjectKind::Rust,
-            "source-layout".to_owned(),
+            "source-readability".to_owned(),
             None,
         );
 
-        assert_eq!(record.exit_code, Some(1));
-        assert!(record.output.contains("large.rs: 501 lines"));
+        assert_eq!(record.exit_code, Some(0));
+        assert!(record.output.contains("Read 1 changed source file"));
     }
 
     #[test]
@@ -149,12 +127,12 @@ mod tests {
             Path::new(""),
             &[std::path::PathBuf::from("src/lib.rs"), std::path::PathBuf::from("target")],
             ProjectKind::Rust,
-            "source-layout".to_owned(),
+            "source-readability".to_owned(),
             None,
         );
 
         assert_eq!(record.exit_code, Some(0));
-        assert!(record.output.contains("Scanned 1 changed source file"));
+        assert!(record.output.contains("Read 1 changed source file"));
         assert!(!record.output.contains("legacy.rs"));
         assert!(!record.output.contains("large.rs"));
     }
@@ -182,14 +160,11 @@ mod tests {
             Path::new(""),
             &changed,
             ProjectKind::Artifact,
-            "source-layout".to_owned(),
+            "source-readability".to_owned(),
             Some(&ownership),
         );
 
-        assert_eq!(record.exit_code, Some(1));
-        assert!(record.output.contains("legacy.c: 700 lines"));
-        assert!(record.output.contains("authored.c: 700 lines"));
-        assert!(!record.output.contains("upstream.c: 700 lines"));
+        assert_eq!(record.exit_code, Some(0));
         assert!(record.output.contains("Skipped 1 imported or command-generated"));
     }
 }

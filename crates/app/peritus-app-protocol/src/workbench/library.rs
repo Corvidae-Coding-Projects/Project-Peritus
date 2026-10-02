@@ -157,7 +157,6 @@ pub struct WorkbenchBranchLineage {
     brief_revision: u64,
     goal_revision: u64,
     mode: WorkbenchForkMode,
-    allocation: Option<WorkbenchForkBudget>,
 }
 impl WorkbenchBranchLineage {
     /// Constructs a public projection from validated durable lineage.
@@ -171,7 +170,6 @@ impl WorkbenchBranchLineage {
         brief_revision: u64,
         goal_revision: u64,
         mode: WorkbenchForkMode,
-        allocation: Option<WorkbenchForkBudget>,
     ) -> Self {
         Self {
             parent,
@@ -181,7 +179,6 @@ impl WorkbenchBranchLineage {
             brief_revision,
             goal_revision,
             mode,
-            allocation,
         }
     }
     /// Returns parent conversation/workspace.
@@ -218,11 +215,6 @@ impl WorkbenchBranchLineage {
     #[must_use]
     pub const fn mode(&self) -> WorkbenchForkMode {
         self.mode
-    }
-    /// Returns reserved child allocation.
-    #[must_use]
-    pub const fn allocation(&self) -> Option<WorkbenchForkBudget> {
-        self.allocation
     }
 }
 

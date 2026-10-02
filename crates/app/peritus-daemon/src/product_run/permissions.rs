@@ -350,9 +350,8 @@ mod tests {
             WorkbenchRewindRequest::new(query, 1, ControlOperationId::new([3; 16]).unwrap())
                 .unwrap();
         if mode != WorkbenchRewindMode::FilesOnly {
-            request = request
-                .with_branch(mode, PublicConversationId::new([4; 16]).unwrap(), None)
-                .unwrap();
+            request =
+                request.with_branch(mode, PublicConversationId::new([4; 16]).unwrap()).unwrap();
         }
         WorkbenchIntent::ApplyRewind(
             WorkbenchRewindPreview::new(request, Vec::new(), Vec::new(), Vec::new()).unwrap(),

@@ -1,8 +1,6 @@
 //! Durable restore outcome and exact transaction bindings.
 
-use super::{
-    CheckpointId, ControlError, ControlText, MAX_CHECKPOINT_PATHS, RestoreId, Sha256Digest,
-};
+use super::{CheckpointId, ControlError, ControlText, RestoreId, Sha256Digest};
 use serde::Deserialize;
 use serde::Serialize;
 
@@ -131,7 +129,7 @@ impl RestoreOperation {
         if self.status != RestoreStatus::Prepared || status == RestoreStatus::Prepared {
             return Err(ControlError::InvalidInput);
         }
-        if conflicts.len() > MAX_CHECKPOINT_PATHS
+        if u16::try_from(conflicts.len()).is_err()
             || (status == RestoreStatus::Conflict) == conflicts.is_empty()
             || status == RestoreStatus::Applied && transaction_manifest_digest.is_none()
         {

@@ -1,4 +1,4 @@
-//! Goal lifecycle, accounting, fork-budget, and evidence transitions.
+//! Goal lifecycle, accounting, fork, and evidence transitions.
 
 use crate::control::record::ControlExecution;
 
@@ -17,17 +17,15 @@ impl ConversationRecord {
             ControlIntent::StartGoal { .. }
             | ControlIntent::PauseGoal { .. }
             | ControlIntent::ResumeGoal { .. }
-            | ControlIntent::UpdateGoalBudget { .. }
             | ControlIntent::ClearGoal { .. } => self.apply_goal_lifecycle(operation.id, intent),
             _ => self.apply_goal_accounting(intent),
         }
     }
 
-    pub(super) fn reserve_fork(
-        &mut self,
+    pub(super) fn validate_fork(
+        &self,
         branch: &crate::control::ConversationBranch,
         replayed_checkpoint: Option<&crate::control::UserCheckpoint>,
-        now_unix_millis: u64,
     ) -> Result<(), ControlError> {
         if branch.source() != self.id {
             return Err(ControlError::StaleRevision);
@@ -62,14 +60,10 @@ impl ConversationRecord {
         if saved != requested {
             return Err(ControlError::InvalidInput);
         }
-        match (branch.goal_revision(), branch.allocation()) {
-            (0, None) => {}
-            (0, Some(_)) | (_, None) => return Err(ControlError::InvalidInput),
-            (_, Some(allocation)) => self
-                .goal
-                .as_mut()
-                .ok_or(ControlError::InvalidInput)?
-                .reserve_child_budget(allocation, now_unix_millis)?,
+        if branch.goal_revision() != 0
+            && self.goal.as_ref().is_none_or(|goal| goal.user_revision() != branch.goal_revision())
+        {
+            return Err(ControlError::InvalidInput);
         }
         Ok(())
     }
@@ -85,7 +79,6 @@ impl ConversationRecord {
                 settings_digest,
                 objective,
                 criteria,
-                budget,
                 now_unix_millis,
             } => self.start_goal(
                 operation,
@@ -93,7 +86,6 @@ impl ConversationRecord {
                 *settings_digest,
                 objective,
                 criteria,
-                *budget,
                 *now_unix_millis,
             ),
             ControlIntent::PauseGoal { goal, mode, now_unix_millis } => {
@@ -101,9 +93,6 @@ impl ConversationRecord {
             }
             ControlIntent::ResumeGoal { goal, now_unix_millis } => {
                 self.goal_mut(*goal)?.resume(*now_unix_millis)
-            }
-            ControlIntent::UpdateGoalBudget { goal, budget, now_unix_millis } => {
-                self.goal_mut(*goal)?.update_budget(*budget, *now_unix_millis)
             }
             ControlIntent::ClearGoal { goal, now_unix_millis } => {
                 self.goal_mut(*goal)?.cancel(*now_unix_millis)
@@ -253,7 +242,6 @@ impl ConversationRecord {
         settings_digest: [u8; 32],
         objective: &crate::control::ControlText<8192>,
         criteria: &[crate::control::GoalCriterion],
-        budget: crate::control::GoalBudget,
         now_unix_millis: u64,
     ) -> Result<(), ControlError> {
         if self.goal.is_some()
@@ -270,7 +258,6 @@ impl ConversationRecord {
             run,
             objective.clone(),
             criteria.to_vec(),
-            budget,
             self.inputs.generation(),
             now_unix_millis,
         )?);

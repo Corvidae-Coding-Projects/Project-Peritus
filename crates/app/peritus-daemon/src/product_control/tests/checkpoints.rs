@@ -3,8 +3,10 @@
 use super::*;
 use peritus_product_runner::control::{
     CheckpointFileMode, CheckpointFileVersion, CheckpointId, CheckpointPath, CheckpointReferences,
-    MAX_CHECKPOINTS, UserCheckpoint,
+    UserCheckpoint,
 };
+
+const LEGACY_PROJECTION_SIZE: usize = 64;
 
 #[test]
 fn full_legacy_automatic_projection_accepts_new_paths_and_a_user_checkpoint_after_restart() {
@@ -13,7 +15,7 @@ fn full_legacy_automatic_projection_accepts_new_paths_and_a_user_checkpoint_afte
     journal.accept(&create()).expect("create conversation");
     let run = [9; 16];
 
-    for index in 0..MAX_CHECKPOINTS {
+    for index in 0..LEGACY_PROJECTION_SIZE {
         let index = u32::try_from(index).unwrap() + 10;
         let revision = journal.load(create().conversation()).unwrap().unwrap().revision();
         let checkpoint = automatic(index, revision, run);
@@ -26,11 +28,11 @@ fn full_legacy_automatic_projection_accepts_new_paths_and_a_user_checkpoint_afte
     }
     assert_eq!(
         journal.load(create().conversation()).unwrap().unwrap().checkpoints().len(),
-        MAX_CHECKPOINTS
+        LEGACY_PROJECTION_SIZE
     );
 
     let mut next = None;
-    for offset in 0..=MAX_CHECKPOINTS {
+    for offset in 0..=LEGACY_PROJECTION_SIZE {
         let index = 100 + u32::try_from(offset).unwrap();
         let revision = journal.load(create().conversation()).unwrap().unwrap().revision();
         let checkpoint = automatic(index, revision, run);
@@ -49,7 +51,7 @@ fn full_legacy_automatic_projection_accepts_new_paths_and_a_user_checkpoint_afte
     let next = next.unwrap();
     assert_eq!(
         journal.load(create().conversation()).unwrap().unwrap().checkpoints().len(),
-        MAX_CHECKPOINTS,
+        LEGACY_PROJECTION_SIZE,
         "more than one projection's worth of new automatic paths stays outside the root"
     );
     let postimage =
@@ -109,7 +111,7 @@ fn full_legacy_automatic_projection_accepts_new_paths_and_a_user_checkpoint_afte
 
     let journal = store(root.path());
     let record = journal.load(create().conversation()).unwrap().unwrap();
-    assert_eq!(record.checkpoints().len(), MAX_CHECKPOINTS + 1);
+    assert_eq!(record.checkpoints().len(), LEGACY_PROJECTION_SIZE + 1);
     assert_eq!(record.checkpoints().last(), Some(&user));
     let recovered = journal
         .load_checkpoint(create().conversation(), next.id())

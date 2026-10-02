@@ -285,7 +285,6 @@ const fn required_workbench_intent_feature(
         | Intent::PauseGoal { .. }
         | Intent::ResumeGoal { .. }
         | Intent::ClearGoal { .. } => Feature::WorkbenchGoals,
-        Intent::UpdateGoalBudget { .. } => Feature::WorkbenchBudgets,
         Intent::AddReview { .. } | Intent::RebindReview { .. } | Intent::DismissReview { .. } => {
             Feature::WorkbenchReview
         }

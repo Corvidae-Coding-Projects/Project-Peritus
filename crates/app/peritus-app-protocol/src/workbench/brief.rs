@@ -13,9 +13,6 @@ mod tests;
 pub const MAX_WORKBENCH_BRIEF_FIELDS: usize = 4;
 /// Maximum exact agent reply candidates shown without silent truncation.
 pub const MAX_WORKBENCH_BRIEF_PROPOSALS: usize = 8;
-/// Maximum observed attachment facts shown in one brief projection.
-pub const MAX_WORKBENCH_BRIEF_OBSERVATIONS: usize = 32;
-
 const fn invalid() -> AppProtocolError {
     AppProtocolError::new(AppErrorCode::MalformedFrame, None)
 }
@@ -248,7 +245,7 @@ impl WorkbenchBrief {
     ) -> Result<Self, AppProtocolError> {
         let mut value = Self::new(query, revision, entries)?;
         if proposals.len() > MAX_WORKBENCH_BRIEF_PROPOSALS
-            || observations.len() > MAX_WORKBENCH_BRIEF_OBSERVATIONS
+            || u16::try_from(observations.len()).is_err()
             || proposals.windows(2).any(|pair| pair[0].invocation >= pair[1].invocation)
             || observations.windows(2).any(|pair| pair[0].operation >= pair[1].operation)
         {

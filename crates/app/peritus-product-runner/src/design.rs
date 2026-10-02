@@ -19,7 +19,6 @@ use crate::{ProductRunnerError, ProductRunnerErrorKind};
 
 const MINIMUM_DESIGN_BYTES: usize = 512;
 const MAXIMUM_DESIGN_BYTES: usize = 1024 * 1024;
-const MAX_INVALID_DESIGNS: u8 = 3;
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum DesignScope {
     Artifact,
@@ -70,7 +69,6 @@ pub async fn create(
     }
     let mut providers = crate::failover::ProviderCursor::new(primary, fallbacks);
     let mut invocation = 0_u32;
-    let mut invalid_designs = 0_u8;
     let mut provider_recovery = crate::failover::RoleRecovery::default();
     let mut correction = None;
     loop {
@@ -122,6 +120,12 @@ pub async fn create(
         accounting.check()?;
         let result = match result {
             Ok(result) => result,
+            Err(peritus_agent::DeveloperLoopError::SegmentExhausted) => {
+                accounting.record_role_retry()?;
+                provider_recovery.reset();
+                correction = Some(crate::failover::RoleRecovery::correction("segment_boundary"));
+                continue;
+            }
             Err(error) => {
                 if let Some(reason) = provider_recovery.retry(&error) {
                     accounting.record_role_retry()?;
@@ -140,28 +144,31 @@ pub async fn create(
         crate::failover::record_provider_success(accounting, &providers, &mut provider_recovery);
         check_cancelled(input)?;
         if input.conversation.revision() != revision {
-            invalid_designs = 0;
             correction = None;
             continue;
         }
-        let markdown =
-            tools.grounding().validate().map_err(grounding).and_then(|()| normalize(&result.text));
-        let mut markdown = match markdown {
+        let markdown = match grounded_markdown(&tools, &result.text) {
             Ok(markdown) => markdown,
             Err(error) => {
-                invalid_designs = invalid_designs.saturating_add(1);
-                if invalid_designs < MAX_INVALID_DESIGNS {
-                    correction = Some(correction_prompt(&error));
-                    continue;
-                }
-                return Err(error);
+                accounting.record_role_retry()?;
+                correction = Some(correction_prompt(&error));
+                continue;
             }
         };
-        markdown.push_str(&tools.grounding().markdown());
         let path = input.trace_path.with_extension("design.md");
         publish(&path, markdown.as_bytes())?;
         return Ok(DesignDocument { path, markdown, conversation_revision: revision });
     }
+}
+
+fn grounded_markdown(
+    tools: &WorkspaceDeveloperTools,
+    text: &str,
+) -> Result<String, ProductRunnerError> {
+    tools.grounding().validate().map_err(grounding)?;
+    let mut markdown = normalize(text)?;
+    markdown.push_str(&tools.grounding().markdown());
+    Ok(markdown)
 }
 
 fn system_prompt(remaining: Option<std::time::Duration>) -> String {

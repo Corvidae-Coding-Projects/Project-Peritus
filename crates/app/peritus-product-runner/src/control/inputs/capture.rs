@@ -1,6 +1,7 @@
 //! Read-only request candidates. Capturing never incorporates an input or changes its state.
 
 use super::{ControlError, InputLedger, InputSelection, InputState};
+use crate::control::MAX_REQUEST_CONTEXT_BYTES;
 use std::collections::{BTreeMap, BTreeSet};
 
 /// Exact input view used while preparing a request; it grants no execution authority.
@@ -19,7 +20,7 @@ impl InputCapture {
     /// # Errors
     /// Rejects an oversized combined context; nothing is truncated.
     pub fn with_file_context(mut self, context: &str) -> Result<Self, ControlError> {
-        if self.conversation.len().saturating_add(context.len()) > 1024 * 1024 {
+        if self.conversation.len().saturating_add(context.len()) > MAX_REQUEST_CONTEXT_BYTES {
             return Err(ControlError::Capacity);
         }
         self.conversation.push_str(context);
@@ -66,7 +67,7 @@ impl InputLedger {
     /// from this view. Releasing that prerequisite changes the generation and invalidates it.
     ///
     /// # Errors
-    /// Rejects invalid imported state rather than rendering a partially valid conversation.
+    /// Rejects invalid imported state or a request beyond the wire text resource bound.
     pub fn capture(&self) -> Result<InputCapture, ControlError> {
         self.capture_pending(true)
     }
@@ -116,7 +117,7 @@ impl InputLedger {
                 total.checked_add(text.len()).and_then(|size| size.checked_add(32))
             })
             .ok_or(ControlError::Capacity)?;
-        if total > 1024 * 1024 {
+        if total > MAX_REQUEST_CONTEXT_BYTES {
             return Err(ControlError::Capacity);
         }
         if replies
@@ -138,7 +139,7 @@ impl InputLedger {
                 append(
                     &mut conversation,
                     self.latest(selected.id()).ok_or(ControlError::InvalidInput)?.text(),
-                );
+                )?;
             }
             if (index < through || pinned.contains(&binding.invocation))
                 && !excluded.contains(&binding.invocation)
@@ -155,7 +156,7 @@ impl InputLedger {
             append(
                 &mut conversation,
                 self.latest(selected.id()).ok_or(ControlError::InvalidInput)?.text(),
-            );
+            )?;
         }
         captured.conversation = conversation;
         Ok(captured)
@@ -169,7 +170,7 @@ impl InputLedger {
         for binding in &self.invocations {
             for selected in &binding.items {
                 let item = self.latest(selected.id()).ok_or(ControlError::InvalidInput)?;
-                append(&mut conversation, item.text());
+                append(&mut conversation, item.text())?;
                 included.push(*selected);
                 available.insert(selected.id());
             }
@@ -182,7 +183,7 @@ impl InputLedger {
             {
                 pending.push(item.selection());
                 included.push(item.selection());
-                append(&mut conversation, item.text());
+                append(&mut conversation, item.text())?;
                 available.insert(*id);
             }
         }
@@ -196,10 +197,17 @@ impl InputLedger {
     }
 }
 
-fn append(conversation: &mut String, text: &str) {
+fn append(conversation: &mut String, text: &str) -> Result<(), ControlError> {
+    let separator_bytes = if conversation.is_empty() { 0 } else { 2 };
+    if conversation.len().saturating_add(text.len()).saturating_add(separator_bytes + 6)
+        > MAX_REQUEST_CONTEXT_BYTES
+    {
+        return Err(ControlError::Capacity);
+    }
     if !conversation.is_empty() {
         conversation.push_str("\n\n");
     }
     conversation.push_str("User: ");
     conversation.push_str(text);
+    Ok(())
 }

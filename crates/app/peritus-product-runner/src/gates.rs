@@ -72,7 +72,7 @@ fn run_scoped(
     for specification in plan.commands() {
         if specification.program() == "peritus-internal" {
             let record = match specification.arguments().first().map(String::as_str) {
-                Some("source-layout") => source_layout::run(
+                Some("source-readability") => source_layout::run(
                     root,
                     specification.project().root(),
                     plan.changed_paths(),

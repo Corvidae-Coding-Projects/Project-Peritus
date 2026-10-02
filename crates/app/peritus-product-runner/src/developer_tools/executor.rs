@@ -312,10 +312,6 @@ impl DeveloperToolExecutor for WorkspaceDeveloperTools {
         }
         Some(PROGRESS_FEEDBACK.to_owned())
     }
-
-    fn continuation_blocker(&self) -> Option<String> {
-        self.inspection_progress.blocker()
-    }
 }
 
 mod effects;

@@ -2,9 +2,8 @@
 
 use super::{
     AppModel, Effect, GoalDraft, NoticeLevel, RUNNER_CRITERION, WorkbenchExecutionSettings,
-    WorkbenchGoalBudget, WorkbenchGoalCriterionDefinition, WorkbenchGoalCriterionKind,
-    WorkbenchGoalDefinition, WorkbenchInputState, WorkbenchInputText, WorkbenchIntent,
-    WorkbenchQuery,
+    WorkbenchGoalCriterionDefinition, WorkbenchGoalCriterionKind, WorkbenchGoalDefinition,
+    WorkbenchInputState, WorkbenchInputText, WorkbenchIntent, WorkbenchQuery,
 };
 
 impl AppModel {
@@ -66,8 +65,7 @@ impl AppModel {
             );
             return Vec::new();
         };
-        self.chat.workbench.goal_draft =
-            Some(GoalDraft { objective, budget: WorkbenchGoalBudget::default(), graphical: None });
+        self.chat.workbench.goal_draft = Some(GoalDraft { objective, graphical: None });
         self.chat.workbench.goal_clear_pending = false;
         self.chat.workbench.goal_confirm_pending = None;
         self.chat.workbench.brief = None;
@@ -146,8 +144,7 @@ impl AppModel {
                 true,
             ));
         }
-        let Ok(definition) = WorkbenchGoalDefinition::new(draft.objective, criteria, draft.budget)
-        else {
+        let Ok(definition) = WorkbenchGoalDefinition::new(draft.objective, criteria) else {
             return Vec::new();
         };
         let settings = WorkbenchExecutionSettings::new(

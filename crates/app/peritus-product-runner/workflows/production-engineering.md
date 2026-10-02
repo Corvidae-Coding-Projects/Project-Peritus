@@ -117,8 +117,8 @@ requested behavior.
    When a contract defines empty or null applicable authority as the sentinel for true insufficient
    evidence, preserve that sentinel. Keep a partial source that only points to an absent controlling
    fact in evidence and caveat fields rather than treating it as applicable authority.
-3. Divide implementation into cohesive modules with one clear responsibility. Production source
-   files must never exceed 500 lines. Keep crate, package, library, and binary roots as thin
+3. Divide implementation into cohesive modules with one clear responsibility. Keep source
+   formatting readable and crate, package, library, and binary roots as thin
    composition surfaces; move behavior into named domain modules rather than generic helpers or
    utility collections.
 4. Make independently actionable slices own disjoint files whenever practical. Identify shared

@@ -259,10 +259,9 @@ impl ProductRunService {
                 .transpose()
                 .map(|snapshot| snapshot.into_iter().collect());
         }
-        records
-            .values()
-            .rev()
-            .take(peritus_app_protocol::MAX_PRODUCT_RUNS)
+        recent_records(&records, query.offset())
+            .into_iter()
+            .take(peritus_app_protocol::MAX_PRODUCT_RUN_PAGE)
             .map(|record| live_snapshot(&self.inner.directory, record))
             .collect()
     }
@@ -303,4 +302,21 @@ impl ProductRunService {
         let records = self.inner.records.read().map_err(|_| ProductRunServiceError::Unavailable)?;
         Ok(records.contains_key(&run))
     }
+}
+
+fn recent_records(records: &BTreeMap<RunId, RunRecord>, offset: u64) -> Vec<&RunRecord> {
+    let mut recent = records.values().collect::<Vec<_>>();
+    recent.sort_by(|left, right| {
+        right
+            .progress
+            .last_effect_unix_millis
+            .cmp(&left.progress.last_effect_unix_millis)
+            .then_with(|| {
+                right.progress.started_unix_millis.cmp(&left.progress.started_unix_millis)
+            })
+            .then_with(|| right.snapshot.run_id().cmp(&left.snapshot.run_id()))
+    });
+    let offset = usize::try_from(offset).unwrap_or(usize::MAX).min(recent.len());
+    recent.drain(..offset);
+    recent
 }

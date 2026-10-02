@@ -32,7 +32,8 @@ fn context_pages_reject_false_seals_wrong_views_gaps_and_duplicate_sources() {
         WorkbenchContextSeal::new(id, Sha256Digest::new([6; 32]), Sha256Digest::new([7; 32]), 1);
     let next = query(WorkbenchContextView::Next, 1, 0);
     assert!(WorkbenchContextQuery::new(next.query(), 0, 1, next.view()).is_err());
-    assert!(WorkbenchContextQuery::new(next.query(), 1, 8193, next.view()).is_err());
+    assert!(WorkbenchContextQuery::new(next.query(), 1, 8193, next.view()).is_ok());
+    assert!(WorkbenchContextQuery::new(next.query(), 1, u32::MAX, next.view()).is_ok());
     assert!(WorkbenchContextPage::new(query(next.view(), 0, 0), 0, None, Vec::new()).is_err());
     assert!(WorkbenchContextPage::new(next, 2, None, vec![input()]).is_err());
     assert!(WorkbenchContextPage::new(next, 2, None, vec![input(), input()]).is_err());

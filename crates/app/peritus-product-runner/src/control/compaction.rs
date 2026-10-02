@@ -13,7 +13,6 @@ use serde::Deserialize;
 use serde::Serialize;
 use std::fmt::Write;
 
-const MAX_COMPACTED_REPLIES: usize = 1024;
 const MAX_FOCUS_BYTES: usize = 1024;
 const MAX_SUMMARY_BYTES: usize = 1024;
 const POLICY_LABEL: &[u8] = b"peritus-workbench/deterministic-public-reply-compaction/v1";
@@ -114,7 +113,7 @@ impl PromptView {
         focus: Option<String>,
         sources: &[(PublicReplyReference, String)],
     ) -> Result<Self, ControlError> {
-        if generation == 0 || sources.is_empty() || sources.len() > MAX_COMPACTED_REPLIES {
+        if generation == 0 || sources.is_empty() || u16::try_from(sources.len()).is_err() {
             return Err(ControlError::InvalidInput);
         }
         let focus = focus.map(ControlText::new).transpose()?;
@@ -153,7 +152,7 @@ impl PromptView {
         }
         if self.generation == 0
             || self.entries.is_empty()
-            || self.entries.len() > MAX_COMPACTED_REPLIES
+            || u16::try_from(self.entries.len()).is_err()
             || self.entries.windows(2).any(|pair| pair[0].invocation >= pair[1].invocation)
         {
             return Err(ControlError::InvalidInput);

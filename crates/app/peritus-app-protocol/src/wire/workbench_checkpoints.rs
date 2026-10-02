@@ -2,11 +2,11 @@
 
 use super::primitive::{invalid, read_digest, read_id, unknown, write_digest, write_id};
 use crate::{
-    ControlOperationId, MAX_WORKBENCH_CHECKPOINT_PATHS, WorkbenchCheckpointFileMode as FileMode,
-    WorkbenchCheckpointName, WorkbenchCheckpointPath, WorkbenchCheckpointReceipt,
-    WorkbenchCheckpointReferences, WorkbenchCheckpointVersion as Version, WorkbenchRestoreReceipt,
-    WorkbenchRestoreStatus, WorkbenchRewindDisposition, WorkbenchRewindMode, WorkbenchRewindPath,
-    WorkbenchRewindPreview, WorkbenchRewindRequest,
+    ControlOperationId, WorkbenchCheckpointFileMode as FileMode, WorkbenchCheckpointName,
+    WorkbenchCheckpointPath, WorkbenchCheckpointReceipt, WorkbenchCheckpointReferences,
+    WorkbenchCheckpointVersion as Version, WorkbenchRestoreReceipt, WorkbenchRestoreStatus,
+    WorkbenchRewindDisposition, WorkbenchRewindMode, WorkbenchRewindPath, WorkbenchRewindPreview,
+    WorkbenchRewindRequest,
 };
 use peritus_codec::{CanonicalReader, CanonicalWriter, CodecError, CodecErrorKind, CodecLimits};
 use peritus_types::Sha256Digest;
@@ -62,10 +62,6 @@ pub(super) fn write_request(
     })?;
     if let Some(child) = value.child() {
         write_id(w, child.as_bytes())?;
-        w.write_bool(value.allocation().is_some())?;
-        if let Some(budget) = value.allocation() {
-            super::workbench_library::write_budget(w, budget)?;
-        }
     }
     Ok(())
 }
@@ -89,9 +85,7 @@ pub(super) fn read_request(
         _ => return unknown(offset),
     };
     let child = read_id(r, crate::ConversationId::new)?;
-    let budget =
-        if r.read_bool()? { Some(super::workbench_library::read_budget(r)?) } else { None };
-    invalid(offset, request.with_branch(mode, child, budget))
+    invalid(offset, request.with_branch(mode, child))
 }
 
 pub(super) fn write_preview(
@@ -356,10 +350,6 @@ fn write_count(w: &mut CanonicalWriter, value: usize) -> Result<(), CodecError> 
 }
 
 fn read_count(r: &mut CanonicalReader<'_>, offset: usize) -> Result<usize, CodecError> {
-    let count = usize::from(r.read_u16()?);
-    if count > MAX_WORKBENCH_CHECKPOINT_PATHS {
-        Err(CodecError::at(CodecErrorKind::LimitExceeded, offset))
-    } else {
-        Ok(count)
-    }
+    let _ = offset;
+    r.read_u16().map(usize::from)
 }

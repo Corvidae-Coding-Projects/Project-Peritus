@@ -97,10 +97,6 @@ pub(super) fn goal(
         WorkbenchIntent::ResumeGoal { goal } | WorkbenchIntent::ClearGoal { goal } => {
             write_id(writer, goal.as_bytes())
         }
-        WorkbenchIntent::UpdateGoalBudget { goal, budget } => {
-            write_id(writer, goal.as_bytes())?;
-            workbench_goal::write_budget(writer, *budget)
-        }
         _ => Err(wrong_domain(writer)),
     }
 }

@@ -206,6 +206,40 @@ fn python_requirements_are_verified_without_installing_or_network_access() {
 }
 
 #[test]
+fn locked_uv_project_runs_python_checks_in_its_frozen_environment() {
+    let temporary = tempfile::tempdir().expect("temporary workspace");
+    let project = temporary.path().join("in/service");
+    std::fs::create_dir_all(project.join("tests")).expect("test directory");
+    std::fs::write(
+        project.join("pyproject.toml"),
+        "[project]\nname = \"service\"\nversion = \"0.1.0\"\n\n[tool.pytest.ini_options]\n\n[tool.ruff]\n",
+    )
+    .expect("Python manifest");
+    std::fs::write(project.join("uv.lock"), "version = 1\n").expect("uv lockfile");
+    std::fs::write(project.join("service.py"), "VALUE = 1\n").expect("source");
+    std::fs::write(project.join("tests/test_service.py"), "def test_value():\n    assert True\n")
+        .expect("test");
+
+    let plan = TargetGatePlan::discover(
+        temporary.path(),
+        vec![PathBuf::from("in/service/service.py")],
+        &[],
+    )
+    .expect("locked Python plan");
+
+    for label in ["Python compile", "Python tests", "Python lint"] {
+        let command = plan
+            .commands()
+            .iter()
+            .find(|command| command.label() == label)
+            .unwrap_or_else(|| panic!("missing {label}"));
+        assert_eq!(command.program(), "uv");
+        assert_eq!(&command.arguments()[..3], ["run", "--frozen", "python"]);
+        assert_eq!(command.current_dir(), Path::new("in/service"));
+    }
+}
+
+#[test]
 fn standalone_changed_python_source_gets_syntax_acceptance() {
     let temporary = tempfile::tempdir().expect("temporary workspace");
     std::fs::write(
@@ -232,7 +266,7 @@ fn standalone_changed_python_source_gets_syntax_acceptance() {
     assert_eq!(plan.projects()[0].manifest(), None);
     assert_eq!(
         plan.commands().iter().map(GateCommandSpec::label).collect::<Vec<_>>(),
-        ["Source layout", "Python compile"]
+        ["Source readability", "Python compile"]
     );
 }
 
@@ -259,7 +293,7 @@ fn standalone_python_change_covers_adjacent_supporting_documentation() {
     assert_eq!(plan.projects()[0].root(), Path::new("in/scripts"));
     assert_eq!(
         plan.commands().iter().map(GateCommandSpec::label).collect::<Vec<_>>(),
-        ["Source layout", "Python compile"]
+        ["Source readability", "Python compile"]
     );
 }
 

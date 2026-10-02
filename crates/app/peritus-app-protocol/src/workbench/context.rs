@@ -10,9 +10,6 @@ mod tests;
 
 /// Maximum metadata rows in a response page.
 pub const MAX_WORKBENCH_CONTEXT_PAGE: usize = 32;
-/// Maximum combined message and source rows in one inspected view.
-pub const MAX_WORKBENCH_CONTEXT_ROWS: usize = 8192;
-
 const fn invalid() -> AppProtocolError {
     AppProtocolError::new(AppErrorCode::MalformedFrame, None)
 }
@@ -40,14 +37,14 @@ impl WorkbenchContextQuery {
     /// Validates the first-page/current or subsequent-page/exact-revision fence.
     ///
     /// # Errors
-    /// Rejects unfenced subsequent pages or offsets beyond the bounded view.
+    /// Rejects unfenced subsequent pages.
     pub const fn new(
         query: WorkbenchQuery,
         revision: u64,
         offset: u32,
         view: WorkbenchContextView,
     ) -> Result<Self, AppProtocolError> {
-        if (offset != 0 && revision == 0) || offset as usize > MAX_WORKBENCH_CONTEXT_ROWS {
+        if offset != 0 && revision == 0 {
             return Err(invalid());
         }
         Ok(Self { query, revision, offset, view })
@@ -308,7 +305,6 @@ impl WorkbenchContextPage {
     ) -> Result<Self, AppProtocolError> {
         if query.revision() == 0
             || query.offset() > total
-            || total as usize > MAX_WORKBENCH_CONTEXT_ROWS
             || rows.len()
                 != (total.saturating_sub(query.offset()) as usize).min(MAX_WORKBENCH_CONTEXT_PAGE)
             || rows

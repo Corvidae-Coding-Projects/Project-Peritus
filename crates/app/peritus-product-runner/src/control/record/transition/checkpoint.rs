@@ -9,14 +9,7 @@ impl ConversationRecord {
     ) -> Result<(), ControlError> {
         match &operation.intent {
             ControlIntent::CreateCheckpoint(checkpoint) => {
-                let at_capacity = if checkpoint.automatic_run().is_some() {
-                    self.checkpoints.len() >= crate::control::MAX_CHECKPOINTS
-                } else {
-                    self.checkpoints.iter().filter(|value| value.automatic_run().is_none()).count()
-                        >= crate::control::MAX_CHECKPOINTS
-                };
                 if checkpoint.id().as_bytes() != operation.id.as_bytes()
-                    || at_capacity
                     || self.checkpoints.iter().any(|prior| prior.id() == checkpoint.id())
                 {
                     return Err(ControlError::InvalidInput);
@@ -107,15 +100,12 @@ impl ConversationRecord {
             || restore.recovery_checkpoint() != recovery.id()
             || !source_exact
             || self.checkpoints.iter().any(|value| value.id() == recovery.id())
-            || self.restores.len() >= crate::control::MAX_RESTORES
             || self.restores.iter().any(|value| value.id() == restore.id())
         {
             return Err(ControlError::InvalidInput);
         }
         if let Some(branch) = restore.branch() {
-            let observed =
-                self.goal.as_ref().map_or(0, crate::control::GoalRecord::updated_unix_millis);
-            self.reserve_fork(branch, replayed, observed)?;
+            self.validate_fork(branch, replayed)?;
         }
         self.checkpoints.push(recovery.clone());
         self.restores.push(restore.clone());

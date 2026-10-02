@@ -1,7 +1,6 @@
 //! Scope-filtered deterministic future-request guidance rendering.
 
 use super::{
-    MAX_WORKBENCH_GUIDANCE_PAGE, MAX_WORKBENCH_GUIDANCE_RECORDS,
     MAX_WORKBENCH_GUIDANCE_RENDER_BYTES, WorkbenchGuidanceIdentity, WorkbenchGuidanceRecord,
     WorkbenchGuidanceScope, WorkbenchGuidanceSource, WorkbenchGuidanceTombstone, capacity, invalid,
 };
@@ -66,9 +65,6 @@ pub fn render_guidance_for_request(
     records: &[WorkbenchGuidanceRecord],
     tombstones: &[WorkbenchGuidanceTombstone],
 ) -> Result<WorkbenchGuidanceRender, AppProtocolError> {
-    if records.len().saturating_add(tombstones.len()) > MAX_WORKBENCH_GUIDANCE_RECORDS {
-        return Err(capacity());
-    }
     let mut tombstones_by_id = std::collections::BTreeMap::new();
     for tombstone in tombstones {
         if tombstone.identity().workspace() != workspace
@@ -105,9 +101,6 @@ pub fn render_guidance_for_request(
             .cmp(&left.pinned())
             .then_with(|| left.identity().id().cmp(&right.identity().id()))
     });
-    if selected.len() > MAX_WORKBENCH_GUIDANCE_PAGE {
-        return Err(capacity());
-    }
     let mut text = String::new();
     text.push_str("PERITUS_PROJECT_GUIDANCE_V1\nworkspace=");
     push_hex(&mut text, workspace.as_bytes());

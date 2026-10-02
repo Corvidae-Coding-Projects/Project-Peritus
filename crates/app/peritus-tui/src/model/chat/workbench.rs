@@ -222,7 +222,6 @@ impl AppModel {
             WorkbenchIntent::StartGoal { .. } => self.goal_start_binding(workspace),
             WorkbenchIntent::PauseGoal { .. }
             | WorkbenchIntent::ResumeGoal { .. }
-            | WorkbenchIntent::UpdateGoalBudget { .. }
             | WorkbenchIntent::ClearGoal { .. } => self.goal_command_binding(workspace),
             WorkbenchIntent::ApplyRewind(preview) => self.rewind_binding(preview, workspace),
             WorkbenchIntent::SetPermissions(_) => self.permission_command_binding(workspace),

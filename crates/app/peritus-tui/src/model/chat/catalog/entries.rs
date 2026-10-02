@@ -202,12 +202,6 @@ pub(super) const COMMANDS: &[CommandSpec] = &[
         arguments: Arguments::None,
     },
     CommandSpec {
-        command: Command::Budget,
-        name: "/budget",
-        description: "Inspect or replace cumulative persistent-goal limits",
-        arguments: Arguments::Budget,
-    },
-    CommandSpec {
         command: Command::Preview,
         name: "/preview",
         description: "Launch, exercise, capture, and inspect the retained candidate",

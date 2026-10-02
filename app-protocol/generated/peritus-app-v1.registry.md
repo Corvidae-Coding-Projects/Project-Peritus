@@ -631,7 +631,7 @@ Rust type: `DoctorReport`
 | Field | Required | Canonical wire | Rust | TypeScript | Bounds |
 |---|:---:|---|---|---|---|
 | `query` | yes | `ordered-fields` | `DoctorQuery` | `DoctorQuery` | — |
-| `findings` | yes | `len+items` | `Vec<DoctorFinding>` | `readonly DoctorFinding[]` | `doctor.max-findings (32)` |
+| `findings` | yes | `len+items` | `Vec<DoctorFinding>` | `readonly DoctorFinding[]` | `wire.u16-count` |
 
 ### `WorkbenchReviewRange`
 
@@ -767,7 +767,7 @@ Rust type: `WorkbenchCommand`
 | `operation` | yes | `fixed[16]` | `ControlOperationId` | `ControlOperationId` | `nonzero` |
 | `query` | yes | `ordered-fields` | `WorkbenchQuery` | `WorkbenchQuery` | — |
 | `expectedRevision` | yes | `u64-be` | `u64` | `UInt64` | — |
-| `intent` | yes | `ordered-fields` | `WorkbenchIntent` | `WorkbenchTitleIntent | WorkbenchFlagIntent | WorkbenchForkIntent | WorkbenchQueueControlIntent | WorkbenchStartIntent | WorkbenchBriefIntent | WorkbenchBriefAcceptIntent | WorkbenchSetContextIntent | WorkbenchCreateCheckpointIntent | WorkbenchApplyRewindIntent | WorkbenchApplyCompactionIntent | WorkbenchAttachImageIntent | WorkbenchSelectImageIntent | WorkbenchAttachFileIntent | WorkbenchAttachFileImportIntent | WorkbenchSelectFileIntent | WorkbenchStartGoalIntent | WorkbenchPauseGoalIntent | WorkbenchResumeOrClearGoalIntent | WorkbenchUpdateGoalBudgetIntent | WorkbenchAddReviewIntent | WorkbenchRebindReviewIntent | WorkbenchDismissReviewIntent | WorkbenchStartPreviewIntent | WorkbenchInteractPreviewIntent | WorkbenchCapturePreviewIntent | WorkbenchStopPreviewIntent | WorkbenchCheckPreviewIntent | WorkbenchArtifactFeedbackIntent | WorkbenchPermissionIntent | WorkbenchSaveGuidanceIntent | WorkbenchReviseGuidanceIntent | WorkbenchPinGuidanceIntent | WorkbenchScopeGuidanceIntent | WorkbenchForgetGuidanceIntent | WorkbenchInitApplyIntent` | — |
+| `intent` | yes | `ordered-fields` | `WorkbenchIntent` | `WorkbenchTitleIntent | WorkbenchFlagIntent | WorkbenchForkIntent | WorkbenchQueueControlIntent | WorkbenchStartIntent | WorkbenchBriefIntent | WorkbenchBriefAcceptIntent | WorkbenchSetContextIntent | WorkbenchCreateCheckpointIntent | WorkbenchApplyRewindIntent | WorkbenchApplyCompactionIntent | WorkbenchAttachImageIntent | WorkbenchSelectImageIntent | WorkbenchAttachFileIntent | WorkbenchAttachFileImportIntent | WorkbenchSelectFileIntent | WorkbenchStartGoalIntent | WorkbenchPauseGoalIntent | WorkbenchResumeOrClearGoalIntent | WorkbenchAddReviewIntent | WorkbenchRebindReviewIntent | WorkbenchDismissReviewIntent | WorkbenchStartPreviewIntent | WorkbenchInteractPreviewIntent | WorkbenchCapturePreviewIntent | WorkbenchStopPreviewIntent | WorkbenchCheckPreviewIntent | WorkbenchArtifactFeedbackIntent | WorkbenchPermissionIntent | WorkbenchSaveGuidanceIntent | WorkbenchReviseGuidanceIntent | WorkbenchPinGuidanceIntent | WorkbenchScopeGuidanceIntent | WorkbenchForgetGuidanceIntent | WorkbenchInitApplyIntent` | — |
 
 ### `WorkbenchSnapshot`
 
@@ -1669,7 +1669,6 @@ Rust type: `WorkbenchRewindRequest`
 | `checkpoint` | yes | `fixed[16]` | `ControlOperationId` | `ControlOperationId` | `nonzero` |
 | `mode` | yes | `u16-be` | `WorkbenchRewindMode` | `"files_only" | "conversation_only" | "combined"` | — |
 | `child` | no | `fixed[16]` | `Option<ConversationId>` | `ConversationId` | `nonzero` |
-| `allocation` | no | `option+value` | `Option<WorkbenchForkBudget>` | `WorkbenchForkBudget` | — |
 
 ### `WorkbenchRewindPath`
 
@@ -2128,17 +2127,6 @@ Rust type: `WorkbenchContextSource`
 | `attachment` | yes | `fixed[16]` | `ControlOperationId` | `ControlOperationId` | `nonzero` |
 | `version` | yes | `fixed[16]` | `ControlOperationId` | `ControlOperationId` | `nonzero` |
 
-### `WorkbenchGoalBudget`
-
-Rust type: `WorkbenchGoalBudget`
-
-| Field | Required | Canonical wire | Rust | TypeScript | Bounds |
-|---|:---:|---|---|---|---|
-| `maxActiveMillis` | no | `option+value` | `Option<u64>` | `UInt64` | `nonzero` |
-| `maxRequests` | no | `option+value` | `Option<u32>` | `number` | `nonzero` |
-| `maxToolCalls` | no | `option+value` | `Option<u32>` | `number` | `nonzero` |
-| `maxTotalTokens` | no | `option+value` | `Option<u64>` | `UInt64` | `nonzero` |
-
 ### `WorkbenchGoalCriterionDefinition`
 
 Rust type: `WorkbenchGoalCriterionDefinition`
@@ -2157,7 +2145,6 @@ Rust type: `WorkbenchGoalDefinition`
 |---|:---:|---|---|---|---|
 | `objective` | yes | `len+utf8` | `WorkbenchInputText` | `string` | `workbench.max-input-bytes (8192)` |
 | `criteria` | yes | `len+items` | `Vec<WorkbenchGoalCriterionDefinition>` | `readonly WorkbenchGoalCriterionDefinition[]` | `workbench.max-goal-criteria (16)` |
-| `budget` | yes | `ordered-fields` | `WorkbenchGoalBudget` | `WorkbenchGoalBudget` | — |
 
 ### `WorkbenchStartGoalIntent`
 
@@ -2187,16 +2174,6 @@ Rust type: `WorkbenchIntent`
 |---|:---:|---|---|---|---|
 | `kind` | yes | `u16-be` | `WorkbenchIntent` | `"resumeGoal" | "clearGoal"` | — |
 | `goal` | yes | `fixed[16]` | `ControlOperationId` | `ControlOperationId` | `nonzero` |
-
-### `WorkbenchUpdateGoalBudgetIntent`
-
-Rust type: `WorkbenchIntent`
-
-| Field | Required | Canonical wire | Rust | TypeScript | Bounds |
-|---|:---:|---|---|---|---|
-| `kind` | yes | `u16-be` | `WorkbenchIntent` | `"updateGoalBudget"` | — |
-| `goal` | yes | `fixed[16]` | `ControlOperationId` | `ControlOperationId` | `nonzero` |
-| `budget` | yes | `ordered-fields` | `WorkbenchGoalBudget` | `WorkbenchGoalBudget` | — |
 
 ### `WorkbenchGoalCriterion`
 
@@ -2248,14 +2225,13 @@ Rust type: `WorkbenchGoalSnapshot`
 | `goal` | yes | `fixed[16]` | `ControlOperationId` | `ControlOperationId` | `nonzero` |
 | `run` | yes | `fixed[16]` | `RunId` | `RunId` | `nonzero` |
 | `objective` | yes | `len+utf8` | `WorkbenchInputText` | `string` | `workbench.max-input-bytes (8192)` |
-| `state` | yes | `u16-be` | `WorkbenchGoalState` | `"active" | "waitingForUser" | "pausing" | "paused" | "blocked" | "budgetReached" | "achieved" | "cancelled"` | — |
+| `state` | yes | `u16-be` | `WorkbenchGoalState` | `"active" | "waitingForUser" | "pausing" | "paused" | "blocked" | "achieved" | "cancelled"` | — |
 | `reason` | yes | `len+utf8` | `String` | `string` | `workbench.max-goal-reason-bytes (512)` |
 | `userRevision` | yes | `u64-be` | `u64` | `UInt64` | `nonzero` |
 | `attempt` | yes | `u32-be` | `u32` | `number` | `nonzero` |
 | `restartEligible` | yes | `bool/u8` | `bool` | `boolean` | — |
 | `pauseMode` | no | `option+value` | `Option<WorkbenchGoalPauseMode>` | `"now" | "afterOperation" | "beforeEdit"` | — |
 | `criteria` | yes | `len+items` | `Vec<WorkbenchGoalCriterion>` | `readonly WorkbenchGoalCriterion[]` | `workbench.max-goal-criteria (16)` |
-| `budget` | yes | `ordered-fields` | `WorkbenchGoalBudget` | `WorkbenchGoalBudget` | — |
 | `usage` | yes | `ordered-fields` | `WorkbenchGoalUsage` | `WorkbenchGoalUsage` | — |
 
 ### `ConversationLibraryQuery`
@@ -2269,17 +2245,6 @@ Rust type: `ConversationLibraryQuery`
 | `includeArchived` | yes | `bool/u8` | `bool` | `boolean` | — |
 | `offset` | yes | `u32-be` | `u32` | `number` | — |
 | `limit` | yes | `u16-be` | `u16` | `number` | `nonzero`, `workbench.max-conversation-library-page (64)` |
-
-### `WorkbenchForkBudget`
-
-Rust type: `WorkbenchForkBudget`
-
-| Field | Required | Canonical wire | Rust | TypeScript | Bounds |
-|---|:---:|---|---|---|---|
-| `activeMillis` | yes | `u64-be` | `u64` | `UInt64` | `nonzero` |
-| `requests` | yes | `u32-be` | `u32` | `number` | `nonzero` |
-| `toolCalls` | yes | `u32-be` | `u32` | `number` | `nonzero` |
-| `totalTokens` | yes | `u64-be` | `u64` | `UInt64` | `nonzero` |
 
 ### `WorkbenchForkRequest`
 
@@ -2295,7 +2260,6 @@ Rust type: `WorkbenchForkRequest`
 | `briefRevision` | yes | `u64-be` | `u64` | `UInt64` | — |
 | `goalRevision` | yes | `u64-be` | `u64` | `UInt64` | — |
 | `mode` | yes | `u16-be` | `WorkbenchForkMode` | `"readOnlyCurrentWorkspace" | "isolatedWritableWorkspace"` | — |
-| `allocation` | no | `option+value` | `Option<WorkbenchForkBudget>` | `WorkbenchForkBudget` | — |
 
 ### `WorkbenchForkIntent`
 
@@ -2349,7 +2313,6 @@ Rust type: `WorkbenchBranchLineage`
 | `briefRevision` | yes | `u64-be` | `u64` | `UInt64` | — |
 | `goalRevision` | yes | `u64-be` | `u64` | `UInt64` | — |
 | `mode` | yes | `u16-be` | `WorkbenchForkMode` | `"readOnlyCurrentWorkspace" | "isolatedWritableWorkspace"` | — |
-| `allocation` | no | `option+value` | `Option<WorkbenchForkBudget>` | `WorkbenchForkBudget` | — |
 
 ### `ConversationLibraryItem`
 
@@ -2362,7 +2325,7 @@ Rust type: `ConversationLibraryItem`
 | `pinned` | yes | `bool/u8` | `bool` | `boolean` | — |
 | `archived` | yes | `bool/u8` | `bool` | `boolean` | — |
 | `activityRevision` | yes | `u64-be` | `u64` | `UInt64` | `nonzero` |
-| `goalState` | no | `option+value` | `Option<WorkbenchGoalState>` | `"active" | "waitingForUser" | "pausing" | "paused" | "blocked" | "budgetReached" | "achieved" | "cancelled"` | — |
+| `goalState` | no | `option+value` | `Option<WorkbenchGoalState>` | `"active" | "waitingForUser" | "pausing" | "paused" | "blocked" | "achieved" | "cancelled"` | — |
 | `goalDraft` | yes | `bool/u8` | `bool` | `boolean` | — |
 | `handoff` | yes | `len+utf8` | `String` | `string` | `workbench.max-conversation-handoff-bytes (1024)` |
 | `snippet` | no | `option+value` | `Option<ConversationSearchSnippet>` | `ConversationSearchSnippet` | — |

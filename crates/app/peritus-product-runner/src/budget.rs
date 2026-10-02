@@ -1,4 +1,4 @@
-//! Cumulative accounting and generous hard ceilings for one complete product run.
+//! Cumulative accounting and caller-selected elapsed horizon for one complete product run.
 
 use std::{
     collections::BTreeSet,
@@ -17,15 +17,9 @@ mod resource_probe;
 
 use resource_probe::RunResourceProbe;
 
-/// Maximum wall-clock duration accepted when a caller explicitly selects a run horizon.
-pub const PRODUCT_RUN_MAX_ELAPSED: Duration = Duration::from_hours(8);
+pub use crate::accounting::ProductRunProgress;
 use crate::accounting::{
     AccountingError, AccountingState, BudgetViolation, UsageSnapshot, WorkEvent,
-};
-pub use crate::accounting::{
-    PRODUCT_RUN_MAX_COST_MICROUNITS, PRODUCT_RUN_MAX_MODEL_REQUESTS,
-    PRODUCT_RUN_MAX_PEAK_RSS_BYTES, PRODUCT_RUN_MAX_TOOL_CALLS, PRODUCT_RUN_MAX_TOTAL_TOKENS,
-    PRODUCT_RUN_MAX_WORKSPACE_GROWTH_BYTES, ProductRunProgress,
 };
 
 pub struct RunAccounting {
@@ -74,7 +68,7 @@ impl RunAccounting {
         // Per-event admission is cheap: do not recursively probe the workspace for every token
         // or tool. The ordinary role/settlement boundary still samples host resources.
         self.state.progress.elapsed_millis = millis(self.started.elapsed());
-        budget_violation(self.state.progress, self.started.elapsed(), self.max_elapsed)
+        budget_violation(self.started.elapsed(), self.max_elapsed)
             .map_or(Ok(()), |detail| Err(exhausted(detail)))
     }
 
@@ -132,8 +126,7 @@ impl RunAccounting {
         self.state.progress.workspace_growth_bytes = resources.growth;
         self.state.progress.peak_rss_bytes =
             self.state.progress.peak_rss_bytes.max(resources.peak_rss);
-        let violation =
-            budget_violation(self.state.progress, self.started.elapsed(), self.max_elapsed);
+        let violation = budget_violation(self.started.elapsed(), self.max_elapsed);
         violation.map_or(Ok(()), |detail| Err(exhausted(detail)))
     }
 
@@ -157,35 +150,17 @@ pub fn validate_run_horizon(max_elapsed: Option<Duration>) -> Result<(), Product
     let Some(max_elapsed) = max_elapsed else { return Ok(()) };
     if max_elapsed.is_zero() {
         Err(invalid_horizon("configured run horizon must be greater than zero"))
-    } else if max_elapsed > PRODUCT_RUN_MAX_ELAPSED {
-        Err(invalid_horizon("configured run horizon exceeds the eight-hour hard ceiling"))
     } else {
         Ok(())
     }
 }
 
-fn budget_violation(
-    progress: ProductRunProgress,
-    elapsed: Duration,
-    max_elapsed: Option<Duration>,
-) -> Option<&'static str> {
-    progress.budget_violation(max_elapsed.is_some_and(|limit| elapsed > limit)).map(|violation| {
-        match violation {
+fn budget_violation(elapsed: Duration, max_elapsed: Option<Duration>) -> Option<&'static str> {
+    BudgetViolation::from_elapsed(max_elapsed.is_some_and(|limit| elapsed > limit)).map(
+        |violation| match violation {
             BudgetViolation::Elapsed => "the configured run horizon was exhausted",
-            BudgetViolation::ModelRequests => {
-                "the cumulative provider-request budget was exhausted"
-            }
-            BudgetViolation::ToolCalls => "the cumulative application-tool budget was exhausted",
-            BudgetViolation::TotalTokens => "the cumulative model-token budget was exhausted",
-            BudgetViolation::ProviderCost => {
-                "the cumulative provider-estimated cost budget was exhausted"
-            }
-            BudgetViolation::PeakRss => "the product-run peak resident-memory budget was exhausted",
-            BudgetViolation::WorkspaceGrowth => {
-                "the product-run workspace-growth budget was exhausted"
-            }
-        }
-    })
+        },
+    )
 }
 
 fn millis(duration: Duration) -> u64 {

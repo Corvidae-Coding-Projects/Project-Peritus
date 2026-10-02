@@ -49,9 +49,6 @@ impl ProductRunService {
                 push_exclusion(&mut exclusions, &path, "duplicate reference already covered")?;
             }
         }
-        if selected.len() > peritus_product_runner::control::MAX_CHECKPOINT_PATHS {
-            return Err(ControlError::Capacity.into());
-        }
         let mut paths = Vec::with_capacity(selected.len());
         let mut total = 0_usize;
         for path in &selected {
@@ -340,9 +337,6 @@ pub(super) fn push_exclusion(
     label: &str,
     reason: &str,
 ) -> Result<(), Error> {
-    if values.len() >= peritus_product_runner::control::MAX_CHECKPOINT_PATHS {
-        return Err(ControlError::Capacity.into());
-    }
     values.push(format!("{label}: {reason}"));
     Ok(())
 }

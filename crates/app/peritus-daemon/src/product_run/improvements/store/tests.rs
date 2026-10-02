@@ -163,23 +163,41 @@ fn pre_release_schema_is_quarantined_without_migration() {
 }
 
 #[test]
-fn dismissed_suggestions_release_capacity_and_remain_deduplicated() {
+fn suggestions_grow_past_the_old_ceiling_and_dismissal_remains_deduplicated() {
     let temp = tempfile::tempdir().expect("state");
     let mut store = Store::open(&temp.path().join("inbox.sqlite3")).expect("open");
-    for i in 0..MAX_IMPROVEMENTS {
+    for i in 0..40 {
         store
             .collect(workspace(1), run(2), &format!("Suggestion {i}"), "Evidence")
             .expect("collect");
     }
-    assert!(store.collect(workspace(1), run(2), "Another suggestion", "Evidence").is_err());
+    assert_eq!(store.inbox(workspace(1)).expect("inbox").candidates().len(), 40);
     let id = store.inbox(workspace(1)).expect("inbox").candidates()[0].id().into_bytes();
     let proposal = store.get(workspace(1), id).expect("read").expect("candidate").proposal;
     store.dismiss(workspace(1), id).expect("dismiss");
     store
         .collect(workspace(1), run(2), "Another suggestion", "Evidence")
-        .expect("room after dismissal");
+        .expect("collection after dismissal");
     store.collect(workspace(1), run(3), &proposal, "More evidence").expect("retained tombstone");
     assert!(store.get(workspace(1), id).expect("read").expect("candidate").dismissed);
+    assert_eq!(store.inbox(workspace(1)).expect("inbox").candidates().len(), 41);
+}
+
+#[test]
+fn suggestion_evidence_grows_past_four_runs_and_survives_restart() {
+    let temp = tempfile::tempdir().expect("state");
+    let path = temp.path().join("inbox.sqlite3");
+    let mut store = Store::open(&path).expect("open");
+    for index in 1..=8 {
+        store.collect(workspace(1), run(index), "Suggestion", "Observation").expect("collect");
+    }
+    drop(store);
+
+    let store = Store::open(&path).expect("restart");
+    let inbox = store.inbox(workspace(1)).expect("read");
+    assert_eq!(inbox.candidates()[0].evidence().len(), 8);
+    assert_eq!(inbox.candidates()[0].evidence()[0].run(), run(1));
+    assert_eq!(inbox.candidates()[0].evidence()[7].run(), run(8));
 }
 
 #[test]

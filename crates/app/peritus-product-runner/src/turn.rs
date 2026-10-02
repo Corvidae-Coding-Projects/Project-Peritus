@@ -29,7 +29,6 @@ mod terminal;
 
 pub use evidence::ReviewerPrompt;
 use terminal::TerminalTurn;
-const MAX_UNPRODUCTIVE_TERMINALS: u8 = 3;
 
 pub fn request_name(run_id: RunId, role: &str, cycle: u32) -> String {
     request_name::format(run_id, role, cycle)
@@ -55,7 +54,6 @@ pub async fn complete_developer_turn(
     let memory = input.working_memory(role)?;
     let mut checkpoint = input.checkpoint()?;
     let mut invocation = 0_u32;
-    let mut unproductive_terminals = 0_u8;
     let mut provider_recovery = crate::failover::RoleRecovery::default();
     let mut host = HostTurnEvidence {
         tool_calls: 0,
@@ -120,7 +118,6 @@ pub async fn complete_developer_turn(
                 Err(error) => return Ok(AppliedTurn::Rejected { error, host }),
             };
             provider_recovery.reset();
-            unproductive_terminals = 0;
             (correction, pending_question) = (None, None);
             host.conversation_revision = input.conversation.revision();
             host.successful_commands.clear();
@@ -142,12 +139,8 @@ pub async fn complete_developer_turn(
             Ok(resolution) => resolution,
             Err(error) => return Ok(AppliedTurn::Rejected { error, host }),
         };
-        let Some(result) = provider::apply(
-            resolution,
-            &mut correction,
-            &mut pending_question,
-            &mut unproductive_terminals,
-        ) else {
+        let Some(result) = provider::apply(resolution, &mut correction, &mut pending_question)
+        else {
             continue;
         };
         let terminal = match parse_grounded_terminal(&tools, &result).and_then(|terminal| {
@@ -163,17 +156,11 @@ pub async fn complete_developer_turn(
                 };
                 if current != checkpoint {
                     checkpoint = current;
-                    unproductive_terminals = 0;
-                    correction = Some(correction::rejected_terminal(&error));
-                    pending_question = None;
-                    continue;
                 }
-                unproductive_terminals = unproductive_terminals.saturating_add(1);
-                if unproductive_terminals < MAX_UNPRODUCTIVE_TERMINALS {
-                    correction = Some(correction::rejected_terminal(&error));
-                    continue;
-                }
-                return Ok(AppliedTurn::Rejected { error, host });
+                correction = Some(correction::rejected_terminal(&error));
+                pending_question = None;
+                accounting.record_role_retry()?;
+                continue;
             }
         };
         return match terminal {
@@ -194,7 +181,6 @@ pub async fn complete_developer_turn(
                     &question,
                     current == checkpoint,
                     pending_question.as_deref(),
-                    &mut unproductive_terminals,
                 ) {
                     correction = Some(correction::unverified_question(&question));
                     pending_question = Some(question);
@@ -340,19 +326,16 @@ fn retry_unverified_question(
     question: &str,
     workspace_unchanged: bool,
     pending_question: Option<&str>,
-    unproductive_terminals: &mut u8,
 ) -> bool {
-    if !workspace_unchanged || pending_question == Some(question) {
-        return false;
-    }
-    *unproductive_terminals = unproductive_terminals.saturating_add(1);
-    *unproductive_terminals < MAX_UNPRODUCTIVE_TERMINALS
+    workspace_unchanged && pending_question != Some(question)
 }
 
 pub fn developer_error(error: &DeveloperLoopError) -> ProductRunnerError {
     let kind = match error {
         DeveloperLoopError::Cancelled => ProductRunnerErrorKind::Cancelled,
-        DeveloperLoopError::LimitExceeded => ProductRunnerErrorKind::Budget,
+        DeveloperLoopError::LimitExceeded | DeveloperLoopError::SegmentExhausted => {
+            ProductRunnerErrorKind::Budget
+        }
         DeveloperLoopError::Trace(_) => ProductRunnerErrorKind::Repository,
         DeveloperLoopError::Tool(_) | DeveloperLoopError::RecoveryRequired(_) => {
             ProductRunnerErrorKind::Apply

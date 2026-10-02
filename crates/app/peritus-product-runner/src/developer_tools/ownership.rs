@@ -92,7 +92,7 @@ impl WorkspaceOwnership {
     /// Files produced later by compilers, generators, archive extraction, or other observed
     /// commands retain their upstream/generated structure instead of being misclassified as new
     /// first-party architecture. A file created through the explicit text-write tool remains
-    /// first-party and cannot bypass source-layout policy.
+    /// first-party and remains subject to exact-target source checks.
     #[must_use]
     pub fn source_layout_applies(&self, path: &Path) -> bool {
         self.baseline.contains(path) || self.directly_created.contains(path)

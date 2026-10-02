@@ -1,9 +1,8 @@
 //! Cumulative role accounting and the complete current goal projection.
 
 use super::{
-    AppProtocolError, ControlOperationId, MAX_WORKBENCH_GOAL_CRITERIA, RunId, WorkbenchGoalBudget,
-    WorkbenchGoalCriterion, WorkbenchGoalPauseMode, WorkbenchGoalState, WorkbenchInputText,
-    WorkbenchQuery, invalid,
+    AppProtocolError, ControlOperationId, RunId, WorkbenchGoalCriterion, WorkbenchGoalPauseMode,
+    WorkbenchGoalState, WorkbenchInputText, WorkbenchQuery, invalid,
 };
 
 /// Stable role ordering used by usage projection.
@@ -188,7 +187,7 @@ impl WorkbenchGoalUsage {
     }
 }
 
-/// Complete current goal projection used by `/goal`, `/usage`, and `/budget`.
+/// Complete current goal projection used by `/goal` and `/usage`.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct WorkbenchGoalSnapshot {
     query: WorkbenchQuery,
@@ -203,7 +202,6 @@ pub struct WorkbenchGoalSnapshot {
     restart_eligible: bool,
     pause_mode: Option<WorkbenchGoalPauseMode>,
     criteria: Vec<WorkbenchGoalCriterion>,
-    budget: WorkbenchGoalBudget,
     usage: WorkbenchGoalUsage,
 }
 
@@ -226,7 +224,6 @@ impl WorkbenchGoalSnapshot {
         restart_eligible: bool,
         pause_mode: Option<WorkbenchGoalPauseMode>,
         criteria: Vec<WorkbenchGoalCriterion>,
-        budget: WorkbenchGoalBudget,
         usage: WorkbenchGoalUsage,
     ) -> Result<Self, AppProtocolError> {
         if aggregate_revision == 0
@@ -236,7 +233,7 @@ impl WorkbenchGoalSnapshot {
             || reason.len() > 512
             || reason.chars().any(|ch| ch.is_control() && ch != '\n' && ch != '\t')
             || criteria.is_empty()
-            || criteria.len() > MAX_WORKBENCH_GOAL_CRITERIA
+            || u16::try_from(criteria.len()).is_err()
             || (state == WorkbenchGoalState::Pausing) != pause_mode.is_some()
         {
             return Err(invalid());
@@ -254,7 +251,6 @@ impl WorkbenchGoalSnapshot {
             restart_eligible,
             pause_mode,
             criteria,
-            budget,
             usage,
         })
     }
@@ -317,11 +313,6 @@ impl WorkbenchGoalSnapshot {
     #[must_use]
     pub fn criteria(&self) -> &[WorkbenchGoalCriterion] {
         &self.criteria
-    }
-    /// Current cumulative user limits.
-    #[must_use]
-    pub const fn budget(&self) -> WorkbenchGoalBudget {
-        self.budget
     }
     /// Cumulative usage across all attempts.
     #[must_use]

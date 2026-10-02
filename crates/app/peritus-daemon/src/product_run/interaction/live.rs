@@ -332,9 +332,9 @@ impl DeveloperInteraction for LiveConversation {
                     "Original and repaired values are retained in the private trace. Tool validation and permissions still apply.",
                 )
             }
-            DeveloperActivity::ReviewRetry { next_attempt, max_attempts, reason } => {
+            DeveloperActivity::ReviewRetry { next_attempt, reason } => {
                 progress.mark_event("review retry scheduled");
-                narration::review_retry(options, next_attempt, max_attempts, reason)
+                narration::review_retry(options, next_attempt, reason)
             }
             DeveloperActivity::ToolStarted { name, arguments } => {
                 progress.begin_tool(name);
@@ -376,7 +376,6 @@ const fn control_flow(
     match admission {
         peritus_product_runner::control::GoalAdmission::Accepted => DeveloperControlFlow::Continue,
         peritus_product_runner::control::GoalAdmission::Paused
-        | peritus_product_runner::control::GoalAdmission::BudgetReached
         | peritus_product_runner::control::GoalAdmission::Inactive => DeveloperControlFlow::Stop,
     }
 }

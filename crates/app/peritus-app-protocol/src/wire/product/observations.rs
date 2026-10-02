@@ -1,7 +1,7 @@
 //! Each run carries its own settlement discriminator.
 
 use super::{read_settlement_snapshot, read_snapshot, write_settlement_snapshot, write_snapshot};
-use crate::MAX_PRODUCT_RUNS;
+use crate::MAX_PRODUCT_RUN_PAGE;
 use crate::ProductRunObservation;
 use crate::wire::primitive::invalid;
 use peritus_codec::{CanonicalReader, CanonicalWriter, CodecError, CodecErrorKind};
@@ -10,7 +10,7 @@ pub(in crate::wire) fn write_observations(
     writer: &mut CanonicalWriter,
     values: &[ProductRunObservation],
 ) -> Result<(), CodecError> {
-    if values.len() > MAX_PRODUCT_RUNS {
+    if values.len() > MAX_PRODUCT_RUN_PAGE {
         return Err(CodecError::at(CodecErrorKind::LimitExceeded, writer.len()));
     }
     writer.write_collection_len(values.len())?;
@@ -34,7 +34,7 @@ pub(in crate::wire) fn read_observations(
 ) -> Result<Vec<ProductRunObservation>, CodecError> {
     let offset = reader.offset();
     let count = reader.read_collection_len()?;
-    if count > MAX_PRODUCT_RUNS {
+    if count > MAX_PRODUCT_RUN_PAGE {
         return Err(CodecError::at(CodecErrorKind::LimitExceeded, offset));
     }
     (0..count)

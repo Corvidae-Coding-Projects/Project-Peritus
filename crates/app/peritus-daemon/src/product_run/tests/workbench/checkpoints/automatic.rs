@@ -107,7 +107,7 @@ async fn run() {
         ControlOperationId::new(*checkpoint.as_bytes()).unwrap(),
     )
     .unwrap()
-    .with_branch(WorkbenchRewindMode::Combined, child, None)
+    .with_branch(WorkbenchRewindMode::Combined, child)
     .unwrap();
     let AppResponsePayload::WorkbenchRewindPreview(preview) =
         service.preview_workbench_rewind(actor(), &request).await

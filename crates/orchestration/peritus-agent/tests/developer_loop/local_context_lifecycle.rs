@@ -221,7 +221,7 @@ fn failed_invocation_retains_observations_and_a_new_provider_requires_fresh_grou
             &mut memory,
         )
         .await;
-        assert!(matches!(result, Err(DeveloperLoopError::LimitExceeded)));
+        assert!(matches!(result, Err(DeveloperLoopError::SegmentExhausted)));
         assert_eq!(memory.batches, 1);
         assert!(memory.raw_outputs[0].contains("answer()"));
 

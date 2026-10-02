@@ -3,7 +3,7 @@
 use super::{Error, digest};
 use peritus_app_protocol::{
     ConversationId, ImprovementCandidate, ImprovementEvaluation, ImprovementEvidence,
-    ImprovementInbox, ImprovementText, MAX_IMPROVEMENT_EVIDENCE, MAX_IMPROVEMENTS,
+    ImprovementInbox, ImprovementText,
 };
 use peritus_types::{ActorId, RunId, Sha256Digest, WorkspaceId};
 use rusqlite::{Connection, OptionalExtension, params};
@@ -150,19 +150,6 @@ impl Store {
         let mut item = if let Some(item) = self.get(workspace, id)? {
             item
         } else {
-            let count: u32 = self
-                    .0
-                    .query_row(
-                        "SELECT count(*) FROM improvements WHERE workspace=?1 AND json_extract(record, '$.dismissed')=0",
-                        [workspace.as_bytes()],
-                        |r| r.get(0),
-                    )
-                    .map_err(problem)?;
-            if count as usize >= MAX_IMPROVEMENTS {
-                return Err(Error::Control(
-                    peritus_product_runner::control::ControlError::Capacity,
-                ));
-            }
             Candidate {
                 id,
                 workspace: workspace.into_bytes(),
@@ -173,10 +160,7 @@ impl Store {
             }
         };
         // Once evaluated, its evidence is frozen. Dismissal also survives later observations.
-        if item.evaluation.is_some()
-            || item.evidence.iter().any(|e| e.run == run.into_bytes())
-            || item.evidence.len() == MAX_IMPROVEMENT_EVIDENCE
-        {
+        if item.evaluation.is_some() || item.evidence.iter().any(|e| e.run == run.into_bytes()) {
             return Ok(());
         }
         item.evidence.push(Evidence {
@@ -207,7 +191,7 @@ impl Store {
             .map_err(problem)?;
         value
             .map(|value| {
-                if value.len() > 80_000 {
+                if value.len() > peritus_journal::MAX_STATE_BYTES {
                     return Err(problem("oversized improvement record"));
                 }
                 let item: Candidate = serde_json::from_str(&value).map_err(problem)?;
@@ -223,7 +207,7 @@ impl Store {
     pub(super) fn inbox(&self, workspace: WorkspaceId) -> Result<ImprovementInbox, Error> {
         let mut statement = self
             .0
-            .prepare("SELECT id FROM improvements WHERE workspace=?1 ORDER BY json_extract(record, '$.dismissed'), rowid DESC LIMIT 32")
+            .prepare("SELECT id FROM improvements WHERE workspace=?1 ORDER BY json_extract(record, '$.dismissed'), rowid DESC")
             .map_err(problem)?;
         let ids = statement
             .query_map([workspace.as_bytes()], |row| row.get::<_, [u8; 32]>(0))
@@ -276,6 +260,9 @@ impl Store {
     fn save(&mut self, item: &Candidate) -> Result<(), Error> {
         item.project()?;
         let value = serde_json::to_string(item).map_err(problem)?;
+        if value.len() > peritus_journal::MAX_STATE_BYTES {
+            return Err(problem("oversized improvement record"));
+        }
         let transaction = self.0.transaction().map_err(problem)?;
         transaction.execute("INSERT INTO improvements(workspace,id,record) VALUES (?1,?2,?3) ON CONFLICT(workspace,id) DO UPDATE SET record=excluded.record", params![item.workspace, item.id, value]).map_err(problem)?;
         transaction.commit().map_err(problem)

@@ -1,4 +1,4 @@
-//! Durable bounded-goal state, cumulative accounting, and safe-boundary admission.
+//! Durable goal state, cumulative accounting, and safe-boundary admission.
 
 use super::{ControlError, ControlText, OperationId};
 use serde::Deserialize;
@@ -10,20 +10,16 @@ mod lifecycle;
 mod validation;
 
 use accounting::GoalAttemptProgress;
-pub use accounting::{
-    GoalAdmission, GoalBudget, GoalRoleUsage, GoalSettlement, GoalUsage, GoalUsageReport,
-};
+pub use accounting::{GoalAdmission, GoalRoleUsage, GoalSettlement, GoalUsage, GoalUsageReport};
 
 #[cfg(test)]
 mod tests;
-
-const MAX_CRITERIA: usize = 16;
 
 /// User-visible lifecycle of one logical goal, independent of an individual run attempt.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum GoalState {
-    /// The existing product runner may admit the next bounded operation.
+    /// The existing product runner may admit the next operation.
     Active,
     /// Further progress needs explicit user input or evidence.
     WaitingForUser,
@@ -33,8 +29,6 @@ pub enum GoalState {
     Paused,
     /// Recovery or another concrete prerequisite prevents automatic continuation.
     Blocked,
-    /// A cumulative limit prevents another operation from being admitted.
-    BudgetReached,
     /// Every mandatory current criterion has independently supported evidence.
     Achieved,
     /// Future goal continuation was explicitly cancelled; history is retained.
@@ -170,7 +164,6 @@ pub struct GoalRecord {
     run: [u8; 16],
     objective: ControlText<8192>,
     criteria: Vec<GoalCriterion>,
-    budget: GoalBudget,
     state: GoalState,
     reason: ControlText<512>,
     user_revision: u64,
@@ -178,8 +171,6 @@ pub struct GoalRecord {
     attempt: u32,
     pause_mode: Option<GoalPauseMode>,
     usage: GoalUsage,
-    #[serde(default)]
-    child_budget_reservation: super::ChildBudgetReservation,
     attempt_progress: GoalAttemptProgress,
     created_unix_millis: u64,
     updated_unix_millis: u64,

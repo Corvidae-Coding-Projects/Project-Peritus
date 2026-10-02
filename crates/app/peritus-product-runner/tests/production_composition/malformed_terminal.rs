@@ -1,10 +1,10 @@
-//! Malformed model-report recovery with independently retained host facts.
+//! Malformed model-report recovery without a fixed retry ceiling.
 
 use super::*;
 
 #[test]
 #[allow(clippy::too_many_lines, reason = "one complete malformed-terminal composition fixture")]
-fn malformed_terminal_retains_host_changes_and_verification_without_claiming_acceptance() {
+fn malformed_terminal_retries_past_the_old_ceiling_and_reaches_acceptance() {
     tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()
@@ -28,7 +28,7 @@ fn malformed_terminal_retains_host_changes_and_verification_without_claiming_acc
             git(repository.path(), &["add", "."]);
             git(repository.path(), &["commit", "--quiet", "-m", "initial"]);
 
-            let implemented = "pub fn answer() -> u32 { 42 }\n\n#[cfg(test)]\nmod tests {\n    #[test]\n    fn answer_is_42() { assert_eq!(super::answer(), 42); }\n}\n";
+            let implemented = "pub const fn answer() -> u32 {\n    42\n}\n\n#[cfg(test)]\nmod tests {\n    #[test]\n    fn answer_is_42() {\n        assert_eq!(super::answer(), 42);\n    }\n}\n";
             let writer: Arc<dyn ModelProvider> = Arc::new(ScriptedProvider {
                 profile: profile([0x91; 16], "malformed-terminal-writer"),
                 responses: Mutex::new(VecDeque::from([
@@ -52,6 +52,16 @@ fn malformed_terminal_retains_host_changes_and_verification_without_claiming_acc
                     named_tool_response("workspace_list", list_arguments("", 2)),
                     named_tool_response("workspace_read", read_arguments("src/lib.rs")),
                     text_response(b"final malformed report"),
+                    named_tool_response("workspace_list", list_arguments("", 2)),
+                    named_tool_response("workspace_read", read_arguments("src/lib.rs")),
+                    text_response(
+                        br#"{"kind":"complete","run_instructions":"cargo test","summary":"Added and verified the answer function after correcting malformed terminal reports."}"#,
+                    ),
+                    named_tool_response("workspace_list", list_arguments("", 2)),
+                    named_tool_response("workspace_read", read_arguments("src/lib.rs")),
+                    text_response(
+                        br#"{"findings":[],"summary":"The answer function and focused test satisfy the request."}"#,
+                    ),
                 ])),
             });
             let run = RunId::new([0x92; 16]).expect("run");
@@ -70,7 +80,7 @@ fn malformed_terminal_retains_host_changes_and_verification_without_claiming_acc
                     ),
                     finding_state: String::new(),
                     task: task.clone(),
-                    max_elapsed: Some(PRODUCT_RUN_MAX_ELAPSED),
+                    max_elapsed: Some(std::time::Duration::from_hours(8)),
                     delivery_scope: ProductDeliveryScope::WorkspaceChanges,
                     conversation: Arc::new(FixedConversation(task)),
                     providers: RoleProviders {
@@ -86,34 +96,29 @@ fn malformed_terminal_retains_host_changes_and_verification_without_claiming_acc
                 Arc::new(|_| {}),
             )
             .await
-            .expect("settled malformed terminal");
+            .expect("run recovers from malformed terminals");
 
-            assert_eq!(outcome.settlement().cause(), SettlementCause::Adapter);
-            assert_eq!(outcome.settlement().disposition(), RunDisposition::CandidateAvailable);
+            assert!(outcome.settlement().is_accepted(), "{:?}: {:?}", outcome.settlement(), outcome.detail());
+            assert_eq!(outcome.settlement().cause(), SettlementCause::Completed);
+            assert_eq!(outcome.settlement().disposition(), RunDisposition::Accepted);
             assert_eq!(
-                outcome.settlement().checkpoint().expect("candidate checkpoint").stage(),
-                CandidateStage::SelfChecked,
+                outcome.settlement().checkpoint().expect("accepted checkpoint").stage(),
+                CandidateStage::Qualified,
             );
-            assert!(!outcome.settlement().is_accepted());
-            let candidate = outcome.candidate().expect("retained candidate");
+            let candidate = outcome.candidate().expect("accepted candidate");
             assert_eq!(candidate.changed_paths, vec![Path::new("src/lib.rs").to_owned()]);
             assert!(candidate.diff.contains("answer"));
             assert!(
                 candidate
                     .successful_commands
                     .iter()
-                    .any(|command| command.contains("cargo") && command.contains("verification"))
+                    .any(|command| command.starts_with("cargo test "))
             );
-            assert!(candidate.gates.is_empty());
-            assert!(candidate.review.is_empty());
-            assert!(candidate.summary.contains("retained host-observed work"));
-            assert!(outcome.detail().is_some_and(|detail| detail.contains("developer terminal")));
-            assert!(
-                outcome
-                    .remaining_work()
-                    .iter()
-                    .any(|work| work.contains("valid terminal report"))
-            );
-            assert!(outcome.resume().is_some());
+            assert!(candidate.gates.contains("Exact-target acceptance: PASS"));
+            assert!(candidate.review.contains("No findings"));
+            assert!(candidate.summary.contains("correcting malformed terminal reports"));
+            assert_eq!(candidate.run_instructions, "cargo test");
+            assert!(outcome.detail().is_none());
+            assert!(outcome.remaining_work().is_empty());
         });
 }

@@ -26,7 +26,6 @@ fn rejects_controls_oversized_text_duplicates_and_empty_reports() {
     let query = DoctorQuery::new(WorkspaceId::new([1; 16]).expect("workspace"), None);
     assert!(DoctorReport::new(query, Vec::new()).is_err());
     assert!(DoctorReport::new(query, vec![finding(), finding()]).is_err());
-    assert!(DoctorReport::new(query, vec![finding(); MAX_DOCTOR_FINDINGS + 1]).is_err());
 }
 
 #[test]
@@ -38,7 +37,18 @@ fn report_and_optional_provider_roundtrip_through_public_wire() {
     };
     for provider in [None, Some(ProviderProfileId::new([7; 16]).expect("profile"))] {
         let query = DoctorQuery::new(WorkspaceId::new([1; 16]).expect("workspace"), provider);
-        let report = DoctorReport::new(query, vec![finding()]).expect("report");
+        let findings = (0..40)
+            .map(|index| {
+                DoctorFinding::new(
+                    format!("check-{index}"),
+                    DoctorStatus::Healthy,
+                    "Observed prerequisite is ready.".to_owned(),
+                    String::new(),
+                )
+                .expect("finding")
+            })
+            .collect();
+        let report = DoctorReport::new(query, findings).expect("report past old ceiling");
         let message = AppMessage::Response(AppResponseEnvelope::new(
             ProtocolContext::new(
                 ProtocolId::new([2; 16]).expect("protocol"),

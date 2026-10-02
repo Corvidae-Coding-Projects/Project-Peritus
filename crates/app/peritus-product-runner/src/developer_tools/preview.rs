@@ -7,11 +7,8 @@ use peritus_types::ProcessId;
 use crate::{ProductRunnerError, ProductRunnerErrorKind};
 
 const MAX_PROGRAM_BYTES: usize = 4_096;
-const MAX_ARGUMENTS: usize = 256;
 const MAX_ARGUMENT_BYTES: usize = 64 * 1_024;
-const MAX_ENVIRONMENT: usize = 64;
 const MAX_ENVIRONMENT_VALUE_BYTES: usize = 64 * 1_024;
-const MAX_TIMEOUT: Duration = Duration::from_mins(10);
 
 /// A direct executable launch admitted through the existing command and process gateways.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -47,11 +44,11 @@ impl PreviewCommand {
         let invalid_program = program.is_empty()
             || program.len() > MAX_PROGRAM_BYTES
             || program.as_bytes().contains(&0);
-        let invalid_arguments = arguments.len() > MAX_ARGUMENTS
+        let invalid_arguments = u16::try_from(arguments.len()).is_err()
             || arguments
                 .iter()
                 .any(|value| value.len() > MAX_ARGUMENT_BYTES || value.as_bytes().contains(&0));
-        let invalid_environment = environment.len() > MAX_ENVIRONMENT
+        let invalid_environment = u16::try_from(environment.len()).is_err()
             || environment.iter().any(|(name, value)| {
                 !valid_environment_name(name)
                     || value.len() > MAX_ENVIRONMENT_VALUE_BYTES
@@ -62,7 +59,7 @@ impl PreviewCommand {
             || invalid_environment
             || cwd.as_os_str().is_empty()
             || timeout.is_zero()
-            || timeout > MAX_TIMEOUT
+            || timeout.as_millis() > u128::from(u64::MAX)
             || rows == 0
             || columns == 0
             || idempotency_key.is_empty()
@@ -164,4 +161,50 @@ fn valid_environment_name(name: &str) -> bool {
 
 fn preview_error(detail: impl Into<String>) -> ProductRunnerError {
     ProductRunnerError::new(ProductRunnerErrorKind::Apply, "manage preview process", detail)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn preview_command_accepts_a_positive_timeout_above_ten_minutes() {
+        assert!(
+            PreviewCommand::new(
+                "cargo".to_owned(),
+                vec!["test".to_owned()],
+                PathBuf::from("."),
+                Duration::from_secs(601),
+                false,
+                24,
+                80,
+                "long-preview".to_owned(),
+                Vec::new(),
+            )
+            .is_ok()
+        );
+    }
+
+    #[test]
+    fn preview_command_accepts_collections_beyond_the_old_limits() {
+        let arguments = (0..257).map(|index| format!("argument-{index}")).collect();
+        let environment =
+            (0..65).map(|index| (format!("VARIABLE_{index}"), index.to_string())).collect();
+
+        let command = PreviewCommand::new(
+            "cargo".to_owned(),
+            arguments,
+            PathBuf::from("."),
+            Duration::from_secs(1),
+            false,
+            24,
+            80,
+            "large-preview-profile".to_owned(),
+            environment,
+        )
+        .expect("protocol-representable preview profile");
+
+        assert_eq!(command.arguments.len(), 257);
+        assert_eq!(command.environment.len(), 65);
+    }
 }

@@ -98,10 +98,6 @@ pub(super) fn goal(
             mode: workbench_goal::read_pause(reader)?,
         },
         32 => WorkbenchIntent::ResumeGoal { goal: read_id(reader, ControlOperationId::new)? },
-        33 => WorkbenchIntent::UpdateGoalBudget {
-            goal: read_id(reader, ControlOperationId::new)?,
-            budget: workbench_goal::read_budget(reader)?,
-        },
         34 => WorkbenchIntent::ClearGoal { goal: read_id(reader, ControlOperationId::new)? },
         _ => return unknown(offset),
     })

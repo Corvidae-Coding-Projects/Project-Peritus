@@ -28,7 +28,7 @@ pub enum ControlIntent {
         /// Desired archive state.
         archived: bool,
     },
-    /// Atomically reserves a child branch and its governing budget slice on the source.
+    /// Atomically records an exact child branch binding on the source.
     ReserveFork {
         /// Exact immutable parent/checkpoint/child binding.
         branch: crate::control::ConversationBranch,
@@ -81,7 +81,7 @@ pub enum ControlIntent {
         /// Canonical provider/mode/model selection; this grants no additional tool authority.
         settings_digest: [u8; 32],
     },
-    /// Confirms and starts one bounded persistent goal over the existing runner.
+    /// Confirms and starts one persistent goal over the existing runner.
     StartGoal {
         /// Existing product-run identity; retries retain this identity.
         run: [u8; 16],
@@ -91,8 +91,6 @@ pub enum ControlIntent {
         objective: crate::control::ControlText<8192>,
         /// Typed completion criteria; unsupported kinds remain visibly unavailable.
         criteria: Vec<crate::control::GoalCriterion>,
-        /// Optional cumulative limits within host ceilings.
-        budget: crate::control::GoalBudget,
         /// Host-observed acceptance timestamp.
         now_unix_millis: u64,
     },
@@ -109,15 +107,6 @@ pub enum ControlIntent {
     ResumeGoal {
         /// Exact original goal/start operation.
         goal: crate::control::OperationId,
-        /// Host-observed acceptance timestamp.
-        now_unix_millis: u64,
-    },
-    /// Replaces optional user limits without implicitly resuming work.
-    UpdateGoalBudget {
-        /// Exact original goal/start operation.
-        goal: crate::control::OperationId,
-        /// Complete replacement set of optional user limits.
-        budget: crate::control::GoalBudget,
         /// Host-observed acceptance timestamp.
         now_unix_millis: u64,
     },

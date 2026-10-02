@@ -36,6 +36,7 @@ impl ProductRunner {
             && mode == ConversationMode::Chat
             && input.conversation.permits_pipeline_handoff();
         let memory = if allow_pipeline { input.working_memory("writer")? } else { None };
+        let mut continuing_segment = false;
         loop {
             accounting.check()?;
             let model = if mode == ConversationMode::Review {
@@ -50,6 +51,7 @@ impl ProductRunner {
                 allow_pipeline,
                 model.profile(),
                 accounting.latest_snapshot().model_requests(),
+                continuing_segment,
             )?;
             let remaining = accounting.remaining();
             let invocation = crate::local_context::run_live_invocation(
@@ -94,6 +96,11 @@ impl ProductRunner {
                     }
                     (SettlementCause::UserWait, Some(result.text), None)
                 }
+                Ok(Err(peritus_agent::DeveloperLoopError::SegmentExhausted)) => {
+                    accounting.record_role_retry()?;
+                    continuing_segment = true;
+                    continue;
+                }
                 Ok(Err(error)) => {
                     let error = crate::turn::developer_error(&error);
                     (
@@ -112,21 +119,25 @@ impl ProductRunner {
                     )
                 }
             };
-            observe(ProductRunUpdate {
-                phase: ProductRunPhase::Finalizing,
-                cycle: 1,
-                status: "Finishing conversation turn".to_owned(),
-                diff: String::new(),
-                gates: String::new(),
-                review: String::new(),
-                summary: String::new(),
-                finding_state: String::new(),
-                progress: accounting.latest_snapshot(),
-                checkpoint: None,
-                remaining_work: Vec::new(),
-            });
+            observe(finishing_update(accounting.latest_snapshot()));
             return settle(&input, cause, reply, detail);
         }
+    }
+}
+
+fn finishing_update(progress: crate::ProductRunProgress) -> ProductRunUpdate {
+    ProductRunUpdate {
+        phase: ProductRunPhase::Finalizing,
+        cycle: 1,
+        status: "Finishing conversation turn".to_owned(),
+        diff: String::new(),
+        gates: String::new(),
+        review: String::new(),
+        summary: String::new(),
+        finding_state: String::new(),
+        progress,
+        checkpoint: None,
+        remaining_work: Vec::new(),
     }
 }
 
@@ -202,6 +213,7 @@ fn request(
     allow_pipeline: bool,
     profile: &peritus_model_protocol::ProviderProfile,
     model_requests: u32,
+    continuing_segment: bool,
 ) -> Result<DeveloperLoopRequest, ProductRunnerError> {
     let transcript = input.conversation.stable_request_context();
     let (prompt, attachments) = input.media(&transcript, profile)?.into_parts(transcript);
@@ -215,6 +227,11 @@ fn request(
     if !allow_pipeline {
         policy.push_str(
             "\nThis invocation has read-only authority; pipeline handoff is unavailable.",
+        );
+    }
+    if continuing_segment {
+        policy.push_str(
+            "\n\nThe preceding bounded invocation segment ended before a final reply. Re-ground from the exact current workspace, preserve completed inspection and any retained evidence, and continue to the requested answer without repeating finished work.",
         );
     }
     Ok(DeveloperLoopRequest {

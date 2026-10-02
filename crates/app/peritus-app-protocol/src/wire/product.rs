@@ -10,9 +10,8 @@ use peritus_run_settlement::CandidateStage;
 use peritus_types::{ProviderProfileId, RunId, WorkspaceId};
 
 use crate::{
-    MAX_PRODUCT_DELIVERABLE_COMMANDS, MAX_PRODUCT_DELIVERABLE_PATHS, ProductDeliverable,
-    ProductInteractionQuery, ProductProviderSelection, ProductRunControl, ProductRunControlAction,
-    ProductRunLegalControls, ProductRunOperation, ProductRunOperationKind,
+    ProductDeliverable, ProductInteractionQuery, ProductProviderSelection, ProductRunControl,
+    ProductRunControlAction, ProductRunLegalControls, ProductRunOperation, ProductRunOperationKind,
     ProductRunOperationState, ProductRunPhase, ProductRunQuery, ProductRunSnapshot,
 };
 
@@ -43,6 +42,8 @@ pub(super) fn write_run_query(
     writer.write_option_tag(value.run_id().is_some())?;
     if let Some(run_id) = value.run_id() {
         write_id(writer, run_id.as_bytes())?;
+    } else {
+        writer.write_u64(value.offset())?;
     }
     Ok(())
 }
@@ -53,7 +54,7 @@ pub(super) fn read_run_query(
     if reader.read_option_tag()? {
         Ok(ProductRunQuery::exact(read_id(reader, RunId::new)?))
     } else {
-        Ok(ProductRunQuery::recent())
+        Ok(ProductRunQuery::page(reader.read_u64()?))
     }
 }
 
@@ -231,16 +232,10 @@ fn read_deliverable(
     let offset = reader.offset();
     let workspace_path = reader.read_str()?.to_owned();
     let path_count = reader.read_collection_len()?;
-    if path_count > MAX_PRODUCT_DELIVERABLE_PATHS {
-        return Err(CodecError::at(CodecErrorKind::LimitExceeded, offset));
-    }
     let changed_paths = (0..path_count)
         .map(|_| reader.read_str().map(str::to_owned))
         .collect::<Result<Vec<_>, _>>()?;
     let command_count = reader.read_collection_len()?;
-    if command_count > MAX_PRODUCT_DELIVERABLE_COMMANDS {
-        return Err(CodecError::at(CodecErrorKind::LimitExceeded, offset));
-    }
     let successful_commands = (0..command_count)
         .map(|_| reader.read_str().map(str::to_owned))
         .collect::<Result<Vec<_>, _>>()?;

@@ -26,7 +26,6 @@ pub(super) const fn tag(intent: &WorkbenchIntent) -> u16 {
         WorkbenchIntent::StartGoal { .. } => 30,
         WorkbenchIntent::PauseGoal { .. } => 31,
         WorkbenchIntent::ResumeGoal { .. } => 32,
-        WorkbenchIntent::UpdateGoalBudget { .. } => 33,
         WorkbenchIntent::ClearGoal { .. } => 34,
         WorkbenchIntent::AddReview { .. } => 50,
         WorkbenchIntent::RebindReview { .. } => 51,
@@ -74,7 +73,6 @@ pub(super) fn write(
         WorkbenchIntent::StartGoal { .. }
         | WorkbenchIntent::PauseGoal { .. }
         | WorkbenchIntent::ResumeGoal { .. }
-        | WorkbenchIntent::UpdateGoalBudget { .. }
         | WorkbenchIntent::ClearGoal { .. } => encode::goal(writer, intent),
         WorkbenchIntent::AddReview { .. }
         | WorkbenchIntent::RebindReview { .. }
@@ -106,7 +104,7 @@ pub(super) fn read(
     match tag {
         1..=6 | 110 => decode::control(reader, tag, offset),
         7..=15 => decode::preparation(reader, tag, offset),
-        30..=34 => decode::goal(reader, tag, offset),
+        30..=32 | 34 => decode::goal(reader, tag, offset),
         50..=52 => decode::review(reader, tag, offset),
         70..=75 => decode::preview(reader, tag, offset),
         90..=91 => decode::checkpoint(reader, tag, offset),

@@ -26,13 +26,7 @@ pub use effect_stubs::{
     uncertain_effects,
 };
 
-/// Maximum wall-clock duration accepted when a caller explicitly selects a run horizon.
-pub const PRODUCT_RUN_MAX_ELAPSED: Duration = Duration::from_hours(8);
-pub use crate::accounting::{
-    PRODUCT_RUN_MAX_COST_MICROUNITS, PRODUCT_RUN_MAX_MODEL_REQUESTS,
-    PRODUCT_RUN_MAX_PEAK_RSS_BYTES, PRODUCT_RUN_MAX_TOOL_CALLS, PRODUCT_RUN_MAX_TOTAL_TOKENS,
-    PRODUCT_RUN_MAX_WORKSPACE_GROWTH_BYTES, ProductRunProgress,
-};
+pub use crate::accounting::ProductRunProgress;
 
 /// Concrete product-run phase emitted to the daemon.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

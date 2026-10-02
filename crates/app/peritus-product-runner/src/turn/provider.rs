@@ -31,6 +31,11 @@ pub(super) fn resolve(
         }
         Err(error) => error,
     };
+    if matches!(error, DeveloperLoopError::SegmentExhausted) {
+        recovery.reset();
+        accounting.record_role_retry()?;
+        return Ok(ProviderResolution::Retry(Some("segment_boundary")));
+    }
     if RoleRecovery::may_continue_after_progress(&error) {
         let current = input.checkpoint()?;
         if current != *checkpoint {
@@ -56,7 +61,6 @@ pub(super) fn apply(
     resolution: ProviderResolution,
     correction: &mut Option<String>,
     pending_question: &mut Option<String>,
-    unproductive_terminals: &mut u8,
 ) -> Option<DeveloperLoopOutcome> {
     match resolution {
         ProviderResolution::Outcome(result) => Some(result),
@@ -66,7 +70,6 @@ pub(super) fn apply(
             None
         }
         ProviderResolution::Retry(None) => {
-            *unproductive_terminals = 0;
             (*correction, *pending_question) = (None, None);
             None
         }

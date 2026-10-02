@@ -105,11 +105,10 @@ Use `/build <request>` from the conversation:
    file ownership for parallel slices. An existing file cannot be written or patched until that
    exact file has been read during the current developer turn.
    A model turn is not the lifetime of the run: malformed, empty, timeout, and recoverable
-   transport outcomes receive up to three fresh bounded attempts. A 48-turn developer segment that
-   materially changes the exact Git candidate publishes a content checkpoint and continues in a
-   fresh repository-grounded segment. This keeps memory bounded while allowing productive goals to
-   run for as many segments as required. Exhausting a segment without changing the candidate is a
-   genuine no-progress stop rather than an arbitrary total-work limit. A malformed or ungrounded
+   transport outcomes receive bounded provider retries. Reaching a developer segment boundary
+   continues in a fresh repository-grounded segment with completed effects and evidence retained.
+   This keeps each model invocation bounded while allowing human goals to continue as required.
+   A malformed or ungrounded
    task-level terminal receives its exact harness rejection on the next bounded attempt, so a model
    can correct the contract rather than blindly repeat the same response.
    Ordinary finite commands use `run_command`. A program that needs terminal input or background
@@ -120,8 +119,9 @@ Use `/build <request>` from the conversation:
    artifact-backed. Live-handle recovery does not claim to recreate a lost terminal after a daemon
    process restart; startup instead reconciles C2 state and exposes the product run as recoverable.
 5. D1 maps every exact changed file to its nearest Rust, Node, Python, or Go project manifest and
-   runs its source-layout policy and explicit format/compile/build/test/lint commands. Production
-   source files over 500 lines fail deterministically. Uncovered files, missing commands, failed
+   runs source-readability checks and explicit format/compile/build/test/lint commands. Python checks
+   use the project's locked runner or local virtual environment when present. Uncovered files,
+   missing commands, failed
    commands, or an empty candidate all refuse acceptance; an unrelated root project cannot satisfy
    a nested game or package.
 6. The independent D2 reviewer returns typed findings. Policy derives blocker status, so
@@ -129,7 +129,7 @@ Use `/build <request>` from the conversation:
    regardless of the reviewer's severity wording. Findings remain open across daemon persistence
    until a fixer addresses them and a fresh reviewer confirms their absence.
 7. E0 sends all failed checks and conserved findings to the tool-capable fixer and repeats fresh
-   gates and review within an explicit bounded cycle budget.
+   gates and review until acceptance is complete, the user intervenes, or a concrete failure occurs.
 8. The run completes only when exact-target gates pass and no conserved policy blocker remains.
    Completion retains the original task-level result plus any verified fixer summaries.
 
@@ -155,8 +155,9 @@ compactions, and normalized token/cache/cost counters when the provider supplies
 provider-switch counter appears after an opted-in fallback. A long quiet provider call therefore
 remains visibly alive without inventing progress or forcing a manual retry at an arbitrary elapsed
 time. Normal interactive runs have no product or provider-turn wall-clock cutoff. The generous
-cumulative resource ceilings and progress rules still stop runaway execution across the complete
-designer-writer-reviewer-fixer run without shortening productive work.
+cumulative counters remain visible measurements. Human goals do not expose budget controls, and
+request counts, tool counts, tokens, cost, workspace growth, repeated findings, or unchanged fixes
+do not impose terminal thresholds. Per-operation resource and integrity bounds remain enforced.
 Before a writable filesystem or command tool starts, the runner syncs a bounded receipt containing
 the deterministic role/invocation/effect identity, provider call ID, tool name, and canonical
 request digest. It syncs the bounded result after completion. An exact completed call replays its

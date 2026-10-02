@@ -3,10 +3,6 @@
 use crate::{AppErrorCode, AppProtocolError, ConversationId, ProductProviderSelection};
 use peritus_types::{RunId, Sha256Digest, WorkspaceId};
 
-/// Maximum suggestions returned for one workspace.
-pub const MAX_IMPROVEMENTS: usize = 32;
-/// Maximum retained distinct run references for one suggestion.
-pub const MAX_IMPROVEMENT_EVIDENCE: usize = 4;
 /// Maximum bytes in a proposal or evidence summary.
 pub const MAX_IMPROVEMENT_TEXT: usize = 4096;
 
@@ -203,7 +199,7 @@ impl ImprovementCandidate {
         dismissed: bool,
     ) -> Result<Self, AppProtocolError> {
         if evidence.is_empty()
-            || evidence.len() > MAX_IMPROVEMENT_EVIDENCE
+            || u16::try_from(evidence.len()).is_err()
             || evidence
                 .iter()
                 .enumerate()
@@ -256,7 +252,7 @@ impl ImprovementInbox {
         workspace: WorkspaceId,
         candidates: Vec<ImprovementCandidate>,
     ) -> Result<Self, AppProtocolError> {
-        if candidates.len() > MAX_IMPROVEMENTS
+        if u16::try_from(candidates.len()).is_err()
             || candidates
                 .iter()
                 .enumerate()

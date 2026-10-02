@@ -1,68 +1,9 @@
-//! Bounded persistent-goal, safe-boundary, evidence, usage, and budget DTOs.
+//! Persistent-goal, safe-boundary, evidence, and usage DTOs.
 
 use crate::{
     AppErrorCode, AppProtocolError, ControlOperationId, WorkbenchInputText, WorkbenchQuery,
 };
 use peritus_types::RunId;
-
-/// Maximum typed criteria retained in one goal.
-pub const MAX_WORKBENCH_GOAL_CRITERIA: usize = 16;
-
-/// Optional cumulative user limits. Host ceilings remain independently authoritative.
-#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
-pub struct WorkbenchGoalBudget {
-    active_millis: Option<u64>,
-    requests: Option<u32>,
-    tool_calls: Option<u32>,
-    total_tokens: Option<u64>,
-}
-
-impl WorkbenchGoalBudget {
-    /// Constructs nonzero typed limits. The daemon also checks its current host ceilings.
-    ///
-    /// # Errors
-    /// Rejects a present zero limit.
-    pub fn new(
-        max_active_millis: Option<u64>,
-        max_requests: Option<u32>,
-        max_tool_calls: Option<u32>,
-        max_total_tokens: Option<u64>,
-    ) -> Result<Self, AppProtocolError> {
-        if max_active_millis == Some(0)
-            || max_requests == Some(0)
-            || max_tool_calls == Some(0)
-            || max_total_tokens == Some(0)
-        {
-            return Err(invalid());
-        }
-        Ok(Self {
-            active_millis: max_active_millis,
-            requests: max_requests,
-            tool_calls: max_tool_calls,
-            total_tokens: max_total_tokens,
-        })
-    }
-    /// User-selected active execution milliseconds.
-    #[must_use]
-    pub const fn max_active_millis(self) -> Option<u64> {
-        self.active_millis
-    }
-    /// User-selected admitted provider requests.
-    #[must_use]
-    pub const fn max_requests(self) -> Option<u32> {
-        self.requests
-    }
-    /// User-selected admitted tool operations.
-    #[must_use]
-    pub const fn max_tool_calls(self) -> Option<u32> {
-        self.tool_calls
-    }
-    /// Best-effort stop threshold over reported/derived tokens.
-    #[must_use]
-    pub const fn max_total_tokens(self) -> Option<u64> {
-        self.total_tokens
-    }
-}
 
 /// Typed completion evidence requirement.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -115,21 +56,19 @@ impl WorkbenchGoalCriterionDefinition {
 pub struct WorkbenchGoalDefinition {
     objective: WorkbenchInputText,
     criteria: Vec<WorkbenchGoalCriterionDefinition>,
-    budget: WorkbenchGoalBudget,
 }
 
 impl WorkbenchGoalDefinition {
     /// Validates bounded criteria and requires mandatory strict runner acceptance.
     ///
     /// # Errors
-    /// Rejects empty/excess criteria or a definition with no mandatory runner acceptance.
+    /// Rejects empty/unrepresentable criteria or a definition with no mandatory runner acceptance.
     pub fn new(
         objective: WorkbenchInputText,
         criteria: Vec<WorkbenchGoalCriterionDefinition>,
-        budget: WorkbenchGoalBudget,
     ) -> Result<Self, AppProtocolError> {
         if criteria.is_empty()
-            || criteria.len() > MAX_WORKBENCH_GOAL_CRITERIA
+            || u16::try_from(criteria.len()).is_err()
             || !criteria.iter().any(|criterion| {
                 criterion.mandatory
                     && criterion.kind == WorkbenchGoalCriterionKind::RunnerAcceptance
@@ -137,7 +76,7 @@ impl WorkbenchGoalDefinition {
         {
             return Err(invalid());
         }
-        Ok(Self { objective, criteria, budget })
+        Ok(Self { objective, criteria })
     }
     /// Exact user-confirmed objective.
     #[must_use]
@@ -148,11 +87,6 @@ impl WorkbenchGoalDefinition {
     #[must_use]
     pub fn criteria(&self) -> &[WorkbenchGoalCriterionDefinition] {
         &self.criteria
-    }
-    /// Optional cumulative limits.
-    #[must_use]
-    pub const fn budget(&self) -> WorkbenchGoalBudget {
-        self.budget
     }
 }
 
@@ -169,8 +103,6 @@ pub enum WorkbenchGoalState {
     Paused,
     /// Recovery or another prerequisite prevents continuation.
     Blocked,
-    /// A cumulative goal limit prevents new admission.
-    BudgetReached,
     /// Every mandatory current criterion has admissible evidence.
     Achieved,
     /// Future continuation was explicitly cancelled.

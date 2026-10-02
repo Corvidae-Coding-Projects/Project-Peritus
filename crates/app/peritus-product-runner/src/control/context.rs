@@ -93,9 +93,6 @@ impl ContextSelections {
             },
             Err(index) => {
                 if let Some(value) = preference {
-                    if self.entries.len() >= 1024 {
-                        return Err(ControlError::Capacity);
-                    }
                     self.entries.insert(index, ContextSelection { target, preference: value });
                 }
             }
@@ -104,9 +101,7 @@ impl ContextSelections {
     }
 
     pub(super) fn validate(&self, record: &ConversationRecord) -> Result<(), ControlError> {
-        if self.entries.len() > 1024
-            || self.entries.windows(2).any(|pair| pair[0].target >= pair[1].target)
-        {
+        if self.entries.windows(2).any(|pair| pair[0].target >= pair[1].target) {
             return Err(ControlError::InvalidInput);
         }
         for entry in &self.entries {

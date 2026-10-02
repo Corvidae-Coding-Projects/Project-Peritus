@@ -20,9 +20,6 @@ impl ProductRunService {
         record: &ConversationRecord,
     ) -> Result<Option<ConversationBranch>, Error> {
         let Some(child) = request.child() else { return Ok(None) };
-        if record.goal().is_some() != request.allocation().is_some() {
-            return Err(ControlError::InvalidInput.into());
-        }
         self.with_controls(false, |store| {
             if store.load(ConversationId::new(child.into_bytes())?)?.is_some() {
                 return Err(ControlError::IdempotencyConflict.into());
@@ -44,7 +41,6 @@ impl ProductRunService {
                 refs.brief_revision(),
                 refs.goal_revision().unwrap_or(0),
                 WorkbenchForkMode::ReadOnlyCurrentWorkspace,
-                request.allocation(),
             )
             .map_err(|_| ControlError::InvalidInput)?;
             let operation = ControlOperationId::new(derived_id(

@@ -162,7 +162,6 @@ fn make_branch(index: u32, checkpoint: CheckpointId) -> ConversationBranch {
         "reserved child".to_owned(),
         None,
         Vec::new(),
-        None,
     )
     .unwrap()
 }

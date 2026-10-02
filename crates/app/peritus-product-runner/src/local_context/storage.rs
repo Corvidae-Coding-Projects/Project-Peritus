@@ -28,7 +28,6 @@ const FRAME_FAMILY: u16 = 3401;
 const STATE_NAMESPACE: u16 = 3401;
 const STATE_KEY: &[u8] = b"local-working-memory/checkpoint/v1";
 pub(super) const MAX_ARTIFACT_BYTES: u64 = 64 * 1024 * 1024;
-const MAX_RECORDS: u64 = 262_144;
 
 /// Local artifact handle with exact verified size.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -109,9 +108,6 @@ impl LocalStore {
     }
 
     pub(super) fn records(&self) -> Result<Vec<Vec<u8>>, DeveloperLoopError> {
-        if self.sequence() > MAX_RECORDS {
-            return Err(error("journal record capacity exceeded"));
-        }
         self.journal
             .records_for_aggregate(self.identity.aggregate)
             .map_err(|_| error("verify journal chain"))?

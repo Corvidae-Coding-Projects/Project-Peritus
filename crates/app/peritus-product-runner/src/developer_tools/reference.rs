@@ -19,7 +19,6 @@ use super::{
 };
 use crate::file_metadata;
 
-const MAX_REFERENCE_ROOTS: usize = 16;
 const MAX_LIST_ENTRIES: usize = 512;
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
@@ -36,9 +35,6 @@ impl ExplicitReferences {
                 continue;
             }
             roots.insert(path);
-            if roots.len() == MAX_REFERENCE_ROOTS {
-                break;
-            }
         }
         Self { roots: roots.into_iter().collect() }
     }

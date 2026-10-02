@@ -100,7 +100,6 @@ root.mainloop()
                     true,
                 ),
             ],
-            WorkbenchGoalBudget::new(None, None, None, None).expect("budget"),
         )
         .expect("goal definition");
         let start =

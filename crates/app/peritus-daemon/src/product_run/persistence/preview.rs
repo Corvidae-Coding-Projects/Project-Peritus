@@ -1,8 +1,8 @@
 //! Persistent preview reconstruction and restart-safe process-state projection.
 
 use super::{
-    MAX_PREVIEW_OPERATIONS, MAX_PREVIEW_OUTPUT_BYTES, PersistedPreviewOperation,
-    PersistedPreviewOutput, PreviewAggregate, PreviewOperationRecord, ProductRunServiceError,
+    PersistedPreviewOperation, PersistedPreviewOutput, PreviewAggregate, PreviewOperationRecord,
+    ProductRunServiceError,
 };
 use peritus_app_protocol::{
     ControlOperationId, WorkbenchLaunchResult, WorkbenchLaunchState, WorkbenchResultPage,
@@ -19,15 +19,6 @@ pub(super) fn restore_preview(
     workspace: WorkspaceId,
     interaction: &super::super::interaction::InteractionOptions,
 ) -> Result<PreviewAggregate, ProductRunServiceError> {
-    if operations.len() > MAX_PREVIEW_OPERATIONS
-        || outputs
-            .iter()
-            .map(|value| value.stdout.len().saturating_add(value.stderr.len()))
-            .sum::<usize>()
-            > MAX_PREVIEW_OUTPUT_BYTES
-    {
-        return Err(ProductRunServiceError::InvalidMessage);
-    }
     let page = page
         .map(|bytes| decode_workbench_result_value(&bytes))
         .transpose()

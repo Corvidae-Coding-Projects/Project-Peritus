@@ -5,13 +5,13 @@ use super::{
 };
 use crate::product_run::ProductRunServiceError;
 use peritus_app_protocol::{
-    AppResponsePayload, ControlOperationId, WorkbenchCommand, WorkbenchGoalBudget,
-    WorkbenchGoalCriterion, WorkbenchGoalCriterionDefinition, WorkbenchGoalCriterionKind,
-    WorkbenchGoalCriterionState, WorkbenchGoalPauseMode, WorkbenchGoalRole, WorkbenchGoalRoleUsage,
-    WorkbenchGoalSnapshot, WorkbenchGoalState, WorkbenchGoalUsage, WorkbenchIntent, WorkbenchQuery,
+    AppResponsePayload, ControlOperationId, WorkbenchCommand, WorkbenchGoalCriterion,
+    WorkbenchGoalCriterionDefinition, WorkbenchGoalCriterionKind, WorkbenchGoalCriterionState,
+    WorkbenchGoalPauseMode, WorkbenchGoalRole, WorkbenchGoalRoleUsage, WorkbenchGoalSnapshot,
+    WorkbenchGoalState, WorkbenchGoalUsage, WorkbenchIntent, WorkbenchQuery,
 };
 use peritus_product_runner::control::{
-    ControlError, ControlOperation, ConversationId, GoalBudget, GoalCriterion, GoalCriterionKind,
+    ControlError, ControlOperation, ConversationId, GoalCriterion, GoalCriterionKind,
     GoalCriterionState, GoalPauseMode, GoalRecord, GoalRoleUsage, GoalState,
 };
 use peritus_types::{ActorId, RunId};
@@ -188,15 +188,6 @@ impl ProductRunService {
     }
 }
 
-pub(super) fn domain_budget(value: WorkbenchGoalBudget) -> Result<GoalBudget, ControlError> {
-    GoalBudget::new(
-        value.max_active_millis(),
-        value.max_requests(),
-        value.max_tool_calls(),
-        value.max_total_tokens(),
-    )
-}
-
 pub(super) fn domain_criterion(
     value: &WorkbenchGoalCriterionDefinition,
 ) -> Result<GoalCriterion, ControlError> {
@@ -295,7 +286,6 @@ fn projection(
             GoalState::Pausing => WorkbenchGoalState::Pausing,
             GoalState::Paused => WorkbenchGoalState::Paused,
             GoalState::Blocked => WorkbenchGoalState::Blocked,
-            GoalState::BudgetReached => WorkbenchGoalState::BudgetReached,
             GoalState::Achieved => WorkbenchGoalState::Achieved,
             GoalState::Cancelled => WorkbenchGoalState::Cancelled,
         },
@@ -309,13 +299,6 @@ fn projection(
             GoalPauseMode::BeforeEdit => WorkbenchGoalPauseMode::BeforeEdit,
         }),
         criteria,
-        WorkbenchGoalBudget::new(
-            goal.budget().max_active_millis(),
-            goal.budget().max_requests(),
-            goal.budget().max_tool_calls(),
-            goal.budget().max_total_tokens(),
-        )
-        .map_err(|_| ControlError::InvalidInput)?,
         public_usage,
     )
     .map_err(|_| ControlError::InvalidInput.into())

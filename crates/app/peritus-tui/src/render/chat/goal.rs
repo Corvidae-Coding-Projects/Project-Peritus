@@ -1,9 +1,9 @@
-//! Truthful goal, criterion, usage, and cumulative-budget projection.
+//! Truthful goal, criterion, and usage projection.
 
 use crate::model::{AppModel, format_id};
 use peritus_app_protocol::{
-    WorkbenchGoalBudget, WorkbenchGoalCriterionKind, WorkbenchGoalCriterionState,
-    WorkbenchGoalPauseMode, WorkbenchGoalRole, WorkbenchGoalState,
+    WorkbenchGoalCriterionKind, WorkbenchGoalCriterionState, WorkbenchGoalPauseMode,
+    WorkbenchGoalRole, WorkbenchGoalState,
 };
 use ratatui::{Frame, layout::Rect};
 
@@ -63,7 +63,6 @@ pub(super) fn content(model: &AppModel) -> Vec<String> {
         }
         let usage = goal.usage();
         lines.extend([
-            format!("Budget: {}", budget_text(goal.budget())),
             format!(
                 "Usage: active {} ms · wall {} ms · requests {} · tools {}",
                 usage.active_millis(),
@@ -102,7 +101,7 @@ pub(super) fn content(model: &AppModel) -> Vec<String> {
     }
     lines.extend([
         String::from("/pause [now|after-operation|before-edit] · /resume [goal-id]"),
-        String::from("/usage · /budget [time=30m requests=8 tools=32 tokens=100000]"),
+        String::from("/usage"),
         String::from("Unknown token or cost observations remain unknown, not zero."),
     ]);
     lines
@@ -114,7 +113,6 @@ fn draft_lines(lines: &mut Vec<String>, model: &AppModel) {
             String::from("Unconfirmed draft · no goal authority yet"),
             format!("Objective: {}", draft.objective().as_str()),
             format!("Criterion: mandatory · runner acceptance · {}", criterion_text()),
-            format!("Budget: {}", budget_text(draft.budget())),
             format!(
                 "Execution: {} · writer {} · reviewer {} · fixer {}",
                 model.chat.mode.label(),
@@ -146,20 +144,6 @@ fn model_label(choice: &peritus_app_protocol::ProductModelChoice) -> &str {
     if choice.id().is_empty() { "configured model" } else { choice.id() }
 }
 
-fn budget_text(budget: WorkbenchGoalBudget) -> String {
-    format!(
-        "active {} · requests {} · tools {} · tokens {}",
-        limit(budget.max_active_millis(), "ms"),
-        limit(budget.max_requests(), ""),
-        limit(budget.max_tool_calls(), ""),
-        limit(budget.max_total_tokens(), ""),
-    )
-}
-
-fn limit(value: Option<impl std::fmt::Display>, unit: &str) -> String {
-    value.map_or_else(|| "host ceiling".to_owned(), |value| format!("{value}{unit}"))
-}
-
 fn known(value: Option<u64>) -> String {
     value.map_or_else(|| "unknown".to_owned(), |value| value.to_string())
 }
@@ -171,7 +155,6 @@ const fn state_label(state: WorkbenchGoalState) -> &'static str {
         WorkbenchGoalState::Pausing => "pausing",
         WorkbenchGoalState::Paused => "paused",
         WorkbenchGoalState::Blocked => "blocked",
-        WorkbenchGoalState::BudgetReached => "budget-reached",
         WorkbenchGoalState::Achieved => "achieved",
         WorkbenchGoalState::Cancelled => "cancelled",
     }

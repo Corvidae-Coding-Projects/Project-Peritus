@@ -661,7 +661,7 @@ export interface WorkbenchCommand {
   readonly operation: ControlOperationId;
   readonly query: WorkbenchQuery;
   readonly expectedRevision: UInt64;
-  readonly intent: WorkbenchTitleIntent | WorkbenchFlagIntent | WorkbenchForkIntent | WorkbenchQueueControlIntent | WorkbenchStartIntent | WorkbenchBriefIntent | WorkbenchBriefAcceptIntent | WorkbenchSetContextIntent | WorkbenchCreateCheckpointIntent | WorkbenchApplyRewindIntent | WorkbenchApplyCompactionIntent | WorkbenchAttachImageIntent | WorkbenchSelectImageIntent | WorkbenchAttachFileIntent | WorkbenchAttachFileImportIntent | WorkbenchSelectFileIntent | WorkbenchStartGoalIntent | WorkbenchPauseGoalIntent | WorkbenchResumeOrClearGoalIntent | WorkbenchUpdateGoalBudgetIntent | WorkbenchAddReviewIntent | WorkbenchRebindReviewIntent | WorkbenchDismissReviewIntent | WorkbenchStartPreviewIntent | WorkbenchInteractPreviewIntent | WorkbenchCapturePreviewIntent | WorkbenchStopPreviewIntent | WorkbenchCheckPreviewIntent | WorkbenchArtifactFeedbackIntent | WorkbenchPermissionIntent | WorkbenchSaveGuidanceIntent | WorkbenchReviseGuidanceIntent | WorkbenchPinGuidanceIntent | WorkbenchScopeGuidanceIntent | WorkbenchForgetGuidanceIntent | WorkbenchInitApplyIntent;
+  readonly intent: WorkbenchTitleIntent | WorkbenchFlagIntent | WorkbenchForkIntent | WorkbenchQueueControlIntent | WorkbenchStartIntent | WorkbenchBriefIntent | WorkbenchBriefAcceptIntent | WorkbenchSetContextIntent | WorkbenchCreateCheckpointIntent | WorkbenchApplyRewindIntent | WorkbenchApplyCompactionIntent | WorkbenchAttachImageIntent | WorkbenchSelectImageIntent | WorkbenchAttachFileIntent | WorkbenchAttachFileImportIntent | WorkbenchSelectFileIntent | WorkbenchStartGoalIntent | WorkbenchPauseGoalIntent | WorkbenchResumeOrClearGoalIntent | WorkbenchAddReviewIntent | WorkbenchRebindReviewIntent | WorkbenchDismissReviewIntent | WorkbenchStartPreviewIntent | WorkbenchInteractPreviewIntent | WorkbenchCapturePreviewIntent | WorkbenchStopPreviewIntent | WorkbenchCheckPreviewIntent | WorkbenchArtifactFeedbackIntent | WorkbenchPermissionIntent | WorkbenchSaveGuidanceIntent | WorkbenchReviseGuidanceIntent | WorkbenchPinGuidanceIntent | WorkbenchScopeGuidanceIntent | WorkbenchForgetGuidanceIntent | WorkbenchInitApplyIntent;
 }
 
 export interface WorkbenchSnapshot {
@@ -1223,7 +1223,6 @@ export interface WorkbenchRewindRequest {
   readonly checkpoint: ControlOperationId;
   readonly mode: "files_only" | "conversation_only" | "combined";
   readonly child?: ConversationId;
-  readonly allocation?: WorkbenchForkBudget;
 }
 
 export interface WorkbenchRewindPath {
@@ -1519,13 +1518,6 @@ export interface WorkbenchContextFileSource {
   readonly version: ControlOperationId;
 }
 
-export interface WorkbenchGoalBudget {
-  readonly maxActiveMillis?: UInt64;
-  readonly maxRequests?: number;
-  readonly maxToolCalls?: number;
-  readonly maxTotalTokens?: UInt64;
-}
-
 export interface WorkbenchGoalCriterionDefinition {
   readonly kind: "runnerAcceptance" | "graphicalPlaytest" | "humanValidation";
   readonly description: string;
@@ -1535,7 +1527,6 @@ export interface WorkbenchGoalCriterionDefinition {
 export interface WorkbenchGoalDefinition {
   readonly objective: string;
   readonly criteria: readonly WorkbenchGoalCriterionDefinition[];
-  readonly budget: WorkbenchGoalBudget;
 }
 
 export interface WorkbenchStartGoalIntent {
@@ -1553,12 +1544,6 @@ export interface WorkbenchPauseGoalIntent {
 export interface WorkbenchResumeOrClearGoalIntent {
   readonly kind: "resumeGoal" | "clearGoal";
   readonly goal: ControlOperationId;
-}
-
-export interface WorkbenchUpdateGoalBudgetIntent {
-  readonly kind: "updateGoalBudget";
-  readonly goal: ControlOperationId;
-  readonly budget: WorkbenchGoalBudget;
 }
 
 export interface WorkbenchGoalCriterion {
@@ -1594,14 +1579,13 @@ export interface WorkbenchGoalSnapshot {
   readonly goal: ControlOperationId;
   readonly run: RunId;
   readonly objective: string;
-  readonly state: "active" | "waitingForUser" | "pausing" | "paused" | "blocked" | "budgetReached" | "achieved" | "cancelled";
+  readonly state: "active" | "waitingForUser" | "pausing" | "paused" | "blocked" | "achieved" | "cancelled";
   readonly reason: string;
   readonly userRevision: UInt64;
   readonly attempt: number;
   readonly restartEligible: boolean;
   readonly pauseMode?: "now" | "afterOperation" | "beforeEdit";
   readonly criteria: readonly WorkbenchGoalCriterion[];
-  readonly budget: WorkbenchGoalBudget;
   readonly usage: WorkbenchGoalUsage;
 }
 
@@ -1613,13 +1597,6 @@ export interface ConversationLibraryQuery {
   readonly limit: number;
 }
 
-export interface WorkbenchForkBudget {
-  readonly activeMillis: UInt64;
-  readonly requests: number;
-  readonly toolCalls: number;
-  readonly totalTokens: UInt64;
-}
-
 export interface WorkbenchForkRequest {
   readonly child: WorkbenchQuery;
   readonly title: string;
@@ -1629,7 +1606,6 @@ export interface WorkbenchForkRequest {
   readonly briefRevision: UInt64;
   readonly goalRevision: UInt64;
   readonly mode: "readOnlyCurrentWorkspace" | "isolatedWritableWorkspace";
-  readonly allocation?: WorkbenchForkBudget;
 }
 
 export interface WorkbenchForkIntent {
@@ -1663,7 +1639,6 @@ export interface WorkbenchBranchLineage {
   readonly briefRevision: UInt64;
   readonly goalRevision: UInt64;
   readonly mode: "readOnlyCurrentWorkspace" | "isolatedWritableWorkspace";
-  readonly allocation?: WorkbenchForkBudget;
 }
 
 export interface ConversationLibraryItem {
@@ -1672,7 +1647,7 @@ export interface ConversationLibraryItem {
   readonly pinned: boolean;
   readonly archived: boolean;
   readonly activityRevision: UInt64;
-  readonly goalState?: "active" | "waitingForUser" | "pausing" | "paused" | "blocked" | "budgetReached" | "achieved" | "cancelled";
+  readonly goalState?: "active" | "waitingForUser" | "pausing" | "paused" | "blocked" | "achieved" | "cancelled";
   readonly goalDraft: boolean;
   readonly handoff: string;
   readonly snippet?: ConversationSearchSnippet;

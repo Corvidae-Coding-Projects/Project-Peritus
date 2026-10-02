@@ -24,7 +24,6 @@ pub struct WorkbenchRewindRequest {
     checkpoint: ControlOperationId,
     mode: WorkbenchRewindMode,
     child: Option<crate::ConversationId>,
-    allocation: Option<crate::WorkbenchForkBudget>,
 }
 impl WorkbenchRewindRequest {
     /// Constructs a revision-fenced checkpoint selection.
@@ -45,11 +44,10 @@ impl WorkbenchRewindRequest {
                 checkpoint,
                 mode: WorkbenchRewindMode::FilesOnly,
                 child: None,
-                allocation: None,
             })
         }
     }
-    /// Selects a new logical branch, with a budget slice when the source has a governing goal.
+    /// Selects a new logical branch.
     ///
     /// # Errors
     /// Rejects files-only mode and reusing the source identity.
@@ -57,14 +55,12 @@ impl WorkbenchRewindRequest {
         mut self,
         mode: WorkbenchRewindMode,
         child: crate::ConversationId,
-        allocation: Option<crate::WorkbenchForkBudget>,
     ) -> Result<Self, AppProtocolError> {
         if mode == WorkbenchRewindMode::FilesOnly || child == self.query.conversation() {
             return Err(invalid());
         }
         self.mode = mode;
         self.child = Some(child);
-        self.allocation = allocation;
         Ok(self)
     }
     /// Returns the exact selected scope.
@@ -76,11 +72,6 @@ impl WorkbenchRewindRequest {
     #[must_use]
     pub const fn child(self) -> Option<crate::ConversationId> {
         self.child
-    }
-    /// Returns the visible governing budget reservation for that branch.
-    #[must_use]
-    pub const fn allocation(self) -> Option<crate::WorkbenchForkBudget> {
-        self.allocation
     }
     /// Returns scope.
     #[must_use]

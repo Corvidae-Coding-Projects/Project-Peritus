@@ -6,8 +6,8 @@ use peritus_app_protocol::{
     AppResponsePayload, WorkbenchCommand, WorkbenchForkMode, WorkbenchForkRequest, WorkbenchIntent,
 };
 use peritus_product_runner::control::{
-    ChildBudgetAllocation, ControlError, ControlIntent, ControlOperation, ConversationBranch,
-    ConversationBranchMode, ConversationId, GoalCriterion, OperationId,
+    ControlError, ControlIntent, ControlOperation, ConversationBranch, ConversationBranchMode,
+    ConversationId, GoalCriterion, OperationId,
 };
 use peritus_types::{ActorId, WorkspaceId};
 
@@ -131,9 +131,15 @@ pub(super) fn validate_fork_governance(
     historical: &peritus_product_runner::control::ConversationRecord,
     request: &WorkbenchForkRequest,
 ) -> Result<(), ControlStoreError> {
-    match (current.goal(), historical.goal(), request.allocation()) {
-        (None, None, None) => Ok(()),
-        (Some(current), Some(historical), Some(_)) if current.id() == historical.id() => Ok(()),
+    match (current.goal(), historical.goal(), request.goal_revision()) {
+        (None, None, 0) => Ok(()),
+        (Some(current), Some(historical), revision)
+            if revision != 0
+                && current.id() == historical.id()
+                && historical.user_revision() == revision =>
+        {
+            Ok(())
+        }
         _ => Err(ControlError::InvalidInput.into()),
     }
 }
@@ -183,10 +189,6 @@ pub(super) fn branch(
             .map(|value| value.text().to_owned());
         (objective, Vec::new())
     };
-    let allocation = request.allocation().map(domain_allocation).transpose()?;
-    if source.goal().is_some() != allocation.is_some() {
-        return Err(ControlError::InvalidInput.into());
-    }
     let mode = match request.mode() {
         WorkbenchForkMode::ReadOnlyCurrentWorkspace => {
             ConversationBranchMode::ReadOnlyCurrentWorkspace
@@ -210,7 +212,6 @@ pub(super) fn branch(
         request.title().as_str().to_owned(),
         objective,
         criteria,
-        allocation,
     )?
     .with_seed(source.historical_seed()?)
     .map_err(Into::into)
@@ -229,18 +230,6 @@ pub(super) fn child_operation(
         0,
         ControlIntent::CreateFork { branch: branch.clone() },
     ))
-}
-
-fn domain_allocation(
-    value: peritus_app_protocol::WorkbenchForkBudget,
-) -> Result<ChildBudgetAllocation, ControlStoreError> {
-    ChildBudgetAllocation::new(
-        value.active_millis(),
-        value.requests(),
-        value.tool_calls(),
-        value.total_tokens(),
-    )
-    .map_err(Into::into)
 }
 
 fn same_public_request(
@@ -267,9 +256,4 @@ fn same_public_request(
         && branch.goal_revision() == request.goal_revision()
         && branch.mode() == mode
         && branch.title() == request.title().as_str()
-        && branch.allocation().map(|value| {
-            (value.active_millis(), value.requests(), value.tool_calls(), value.total_tokens())
-        }) == request.allocation().map(|value| {
-            (value.active_millis(), value.requests(), value.tool_calls(), value.total_tokens())
-        })
 }

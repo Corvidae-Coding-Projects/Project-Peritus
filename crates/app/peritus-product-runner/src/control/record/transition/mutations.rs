@@ -19,11 +19,9 @@ impl ConversationRecord {
                 self.archived = *archived;
                 Ok(())
             }
-            ControlIntent::ReserveFork { branch, now_unix_millis } => {
-                self.reserve_fork(branch, None, *now_unix_millis)
-            }
-            ControlIntent::ReserveAutomaticFork { branch, checkpoint, now_unix_millis } => {
-                self.reserve_fork(branch, Some(checkpoint.as_ref()), *now_unix_millis)
+            ControlIntent::ReserveFork { branch, .. } => self.validate_fork(branch, None),
+            ControlIntent::ReserveAutomaticFork { branch, checkpoint, .. } => {
+                self.validate_fork(branch, Some(checkpoint.as_ref()))
             }
             ControlIntent::PublishRestoreBranch { restore, branch } => {
                 let settled = self
@@ -237,7 +235,6 @@ impl ConversationRecord {
             || self.inputs.invocations().last().map(crate::control::InvocationInputs::invocation)
                 != Some(reply.after_invocation())
             || self.replies.iter().any(|prior| prior.after_invocation() == reply.after_invocation())
-            || self.replies.len() >= 1024
         {
             return Err(ControlError::InvalidInput);
         }

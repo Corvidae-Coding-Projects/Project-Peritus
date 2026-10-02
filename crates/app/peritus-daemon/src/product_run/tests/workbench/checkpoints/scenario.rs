@@ -174,7 +174,7 @@ pub(super) async fn checkpoint_scenario(
             .expect("rewind request");
     let child = ConversationId::new([0xef; 16]).unwrap();
     if mode != WorkbenchRewindMode::FilesOnly {
-        rewind_request = rewind_request.with_branch(mode, child, None).unwrap();
+        rewind_request = rewind_request.with_branch(mode, child).unwrap();
     }
     let AppResponsePayload::WorkbenchRewindPreview(rewind_preview) =
         service.preview_workbench_rewind(actor(), &rewind_request).await

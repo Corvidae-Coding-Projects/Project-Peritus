@@ -57,12 +57,10 @@ pub enum DeveloperActivity<'a> {
     ModelWaiting { elapsed_seconds: u64 },
     /// A bounded syntax repair was durably recorded; no response contents are exposed here.
     ResponseHealed,
-    /// A rejected independent review will be retried under the existing bounded allowance.
+    /// A rejected independent review will be retried with fresh repository evidence.
     ReviewRetry {
         /// One-based attempt about to start.
-        next_attempt: u8,
-        /// Maximum number of attempts, including the initial review.
-        max_attempts: u8,
+        next_attempt: u64,
         /// Validated public reason; raw output remains in the private trace.
         reason: DeveloperReviewRetryReason,
     },

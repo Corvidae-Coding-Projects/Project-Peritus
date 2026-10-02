@@ -265,9 +265,7 @@ impl ImageAttachments {
         text: &ControlText<8192>,
     ) -> Result<(), ControlError> {
         image.validate()?;
-        if self.entries.len() >= 256
-            || self.entries.iter().any(|entry| entry.image.operation == image.operation)
-        {
+        if self.entries.iter().any(|entry| entry.image.operation == image.operation) {
             return Err(ControlError::Capacity);
         }
         *inputs = inputs.apply(
@@ -297,9 +295,6 @@ impl ImageAttachments {
         let mut operations = std::collections::BTreeSet::new();
         let mut bytes = 0_u64;
         let mut count = 0_usize;
-        if self.entries.len() > 256 {
-            return Err(ControlError::Capacity);
-        }
         for entry in &self.entries {
             entry.image.validate()?;
             if !operations.insert(entry.image.operation)

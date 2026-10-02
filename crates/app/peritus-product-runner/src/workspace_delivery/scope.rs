@@ -11,7 +11,6 @@ use std::{
     path::{Path, PathBuf},
 };
 
-const MAX_FILES: usize = 256;
 const MAX_JOURNAL_BYTES: u64 = 64 * 1024 * 1024;
 const MAX_PREVIEW_BYTES: usize = 16 * 1024;
 
@@ -88,9 +87,6 @@ impl ScopedBaseline {
         let entries = self.load()?;
         if entries.contains_key(path) {
             return Ok(());
-        }
-        if entries.len() >= MAX_FILES {
-            return Err(failure("in-place scope exceeds 256 exact files"));
         }
         let entry = Entry {
             version: 1,
@@ -208,7 +204,6 @@ impl ScopedBaseline {
             self.checked_path(&entry.path)?;
             if entry.version != 1
                 || entry.scope != *self
-                || entries.len() >= MAX_FILES
                 || entries.insert(entry.path, entry.before).is_some()
             {
                 return Err(failure(

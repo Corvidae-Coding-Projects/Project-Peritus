@@ -1,6 +1,6 @@
-//! Durable conversation-branch lineage and governing child-budget allocation.
+//! Durable conversation-branch lineage.
 
-use super::{ControlError, ControlText, ConversationId, GoalBudget, GoalCriterion, OperationId};
+use super::{ControlError, ControlText, ConversationId, GoalCriterion, OperationId};
 use peritus_types::WorkspaceId;
 use serde::Deserialize;
 use serde::Serialize;
@@ -13,124 +13,6 @@ pub enum ConversationBranchMode {
     ReadOnlyCurrentWorkspace,
     /// Uses a separately registered workspace with independent write ownership.
     IsolatedWritableWorkspace,
-}
-
-/// Exact budget slice reserved from the source goal for one governed child.
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct ChildBudgetAllocation {
-    active_millis: u64,
-    requests: u32,
-    tool_calls: u32,
-    total_tokens: u64,
-}
-
-/// Budget capacity durably removed from a source goal and assigned to children.
-#[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct ChildBudgetReservation {
-    active_millis: u64,
-    requests: u32,
-    tool_calls: u32,
-    total_tokens: u64,
-}
-
-impl ChildBudgetReservation {
-    /// Returns reserved active execution time.
-    #[must_use]
-    pub const fn active_millis(self) -> u64 {
-        self.active_millis
-    }
-    /// Returns reserved provider requests.
-    #[must_use]
-    pub const fn requests(self) -> u32 {
-        self.requests
-    }
-    /// Returns reserved tool calls.
-    #[must_use]
-    pub const fn tool_calls(self) -> u32 {
-        self.tool_calls
-    }
-    /// Returns reserved reported/derived tokens.
-    #[must_use]
-    pub const fn total_tokens(self) -> u64 {
-        self.total_tokens
-    }
-
-    pub(super) fn checked_add(
-        self,
-        allocation: ChildBudgetAllocation,
-    ) -> Result<Self, ControlError> {
-        Ok(Self {
-            active_millis: self
-                .active_millis
-                .checked_add(allocation.active_millis)
-                .ok_or(ControlError::Capacity)?,
-            requests: self
-                .requests
-                .checked_add(allocation.requests)
-                .ok_or(ControlError::Capacity)?,
-            tool_calls: self
-                .tool_calls
-                .checked_add(allocation.tool_calls)
-                .ok_or(ControlError::Capacity)?,
-            total_tokens: self
-                .total_tokens
-                .checked_add(allocation.total_tokens)
-                .ok_or(ControlError::Capacity)?,
-        })
-    }
-}
-
-impl ChildBudgetAllocation {
-    /// Creates a positive fully bounded child allocation under installed hard ceilings.
-    ///
-    /// # Errors
-    /// Rejects zero fields or values outside the existing goal budget contract.
-    pub fn new(
-        active_millis: u64,
-        requests: u32,
-        tool_calls: u32,
-        total_tokens: u64,
-    ) -> Result<Self, ControlError> {
-        GoalBudget::new(Some(active_millis), Some(requests), Some(tool_calls), Some(total_tokens))?;
-        Ok(Self { active_millis, requests, tool_calls, total_tokens })
-    }
-
-    /// Returns the active-execution allocation.
-    #[must_use]
-    pub const fn active_millis(self) -> u64 {
-        self.active_millis
-    }
-    /// Returns the provider-request allocation.
-    #[must_use]
-    pub const fn requests(self) -> u32 {
-        self.requests
-    }
-    /// Returns the tool-call allocation.
-    #[must_use]
-    pub const fn tool_calls(self) -> u32 {
-        self.tool_calls
-    }
-    /// Returns the reported/derived token allocation.
-    #[must_use]
-    pub const fn total_tokens(self) -> u64 {
-        self.total_tokens
-    }
-    /// Converts the reserved slice into the child's ordinary cumulative goal limits.
-    ///
-    /// # Panics
-    /// Cannot panic for a value produced by [`Self::new`]; it repeats the same checked limits.
-    #[must_use]
-    pub fn goal_budget(self) -> GoalBudget {
-        GoalBudget::new(
-            Some(self.active_millis),
-            Some(self.requests),
-            Some(self.tool_calls),
-            Some(self.total_tokens),
-        )
-        .expect("validated child allocation remains a valid goal budget")
-    }
 }
 
 /// Exact immutable source/checkpoint lineage and safe initial child state.
@@ -151,7 +33,6 @@ pub struct ConversationBranch {
     title: ControlText<256>,
     objective: Option<ControlText<8192>>,
     criteria: Vec<GoalCriterion>,
-    allocation: Option<ChildBudgetAllocation>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     seed: Option<Box<super::ConversationSeed>>,
 }
@@ -180,7 +61,6 @@ impl ConversationBranch {
         title: String,
         objective: Option<String>,
         criteria: Vec<GoalCriterion>,
-        allocation: Option<ChildBudgetAllocation>,
     ) -> Result<Self, ControlError> {
         let value = Self {
             operation,
@@ -197,7 +77,6 @@ impl ConversationBranch {
             title: ControlText::new(title)?,
             objective: objective.map(ControlText::new).transpose()?,
             criteria,
-            allocation,
             seed: None,
         };
         value.validate()?;
@@ -292,12 +171,6 @@ impl ConversationBranch {
     pub fn criteria(&self) -> &[GoalCriterion] {
         &self.criteria
     }
-    /// Returns the reserved governing budget slice.
-    #[must_use]
-    pub const fn allocation(&self) -> Option<ChildBudgetAllocation> {
-        self.allocation
-    }
-
     /// Encodes the bounded immutable lineage projection for journal publication.
     ///
     /// # Errors
@@ -338,13 +211,9 @@ impl ConversationBranch {
                 if self.source_workspace == self.child_workspace => {}
             ConversationBranchMode::IsolatedWritableWorkspace
                 if self.source_workspace != self.child_workspace
-                    && self.allocation.is_some()
                     && self.objective.is_some()
                     && !self.criteria.is_empty() => {}
             _ => return Err(ControlError::InvalidInput),
-        }
-        if self.criteria.len() > 16 {
-            return Err(ControlError::Capacity);
         }
         Ok(())
     }

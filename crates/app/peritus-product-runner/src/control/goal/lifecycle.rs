@@ -1,8 +1,8 @@
 //! Goal construction, inspection, and user-controlled lifecycle transitions.
 
 use super::{
-    ControlError, ControlText, GoalAttemptProgress, GoalBudget, GoalCriterion, GoalCriterionKind,
-    GoalCriterionState, GoalPauseMode, GoalRecord, GoalState, GoalUsage, MAX_CRITERIA, OperationId,
+    ControlError, ControlText, GoalAttemptProgress, GoalCriterion, GoalCriterionKind,
+    GoalCriterionState, GoalPauseMode, GoalRecord, GoalState, GoalUsage, OperationId,
 };
 
 impl GoalRecord {
@@ -11,32 +11,24 @@ impl GoalRecord {
         run: [u8; 16],
         objective: ControlText<8192>,
         criteria: Vec<GoalCriterion>,
-        budget: GoalBudget,
         required_input_generation: u64,
         now: u64,
     ) -> Result<Self, ControlError> {
         if run == [0; 16]
             || required_input_generation == 0
             || criteria.is_empty()
-            || criteria.len() > MAX_CRITERIA
+            || u16::try_from(criteria.len()).is_err()
             || !criteria.iter().any(|criterion| {
                 criterion.mandatory && criterion.kind == GoalCriterionKind::RunnerAcceptance
             })
         {
             return Err(ControlError::InvalidInput);
         }
-        GoalBudget::new(
-            budget.active_millis,
-            budget.requests,
-            budget.tool_calls,
-            budget.total_tokens,
-        )?;
         let goal = Self {
             id,
             run,
             objective,
             criteria,
-            budget,
             state: GoalState::Active,
             reason: ControlText::new(
                 "Goal confirmed; awaiting the next admitted operation.".to_owned(),
@@ -46,7 +38,6 @@ impl GoalRecord {
             attempt: 1,
             pause_mode: None,
             usage: GoalUsage::default(),
-            child_budget_reservation: crate::control::ChildBudgetReservation::default(),
             attempt_progress: GoalAttemptProgress::default(),
             created_unix_millis: now,
             updated_unix_millis: now,
@@ -90,20 +81,10 @@ impl GoalRecord {
     pub const fn user_revision(&self) -> u64 {
         self.user_revision
     }
-    /// Current cumulative user limits.
-    #[must_use]
-    pub const fn budget(&self) -> GoalBudget {
-        self.budget
-    }
     /// Current cumulative usage and unresolved-reporting provenance.
     #[must_use]
     pub const fn usage(&self) -> GoalUsage {
         self.usage
-    }
-    /// Capacity assigned to child branches and no longer spendable by this source goal.
-    #[must_use]
-    pub const fn child_budget_reservation(&self) -> crate::control::ChildBudgetReservation {
-        self.child_budget_reservation
     }
     /// One-based current attempt; resume increments without replacing the goal or usage.
     #[must_use]
@@ -133,57 +114,7 @@ impl GoalRecord {
     /// Whether crash recovery may revalidate and continue without explicit user resume.
     #[must_use]
     pub fn restart_eligible(&self) -> bool {
-        self.state == GoalState::Active && self.next_request_budget_available()
-    }
-    /// Remaining active execution time for one new runner attempt.
-    #[must_use]
-    pub const fn remaining_active_millis(&self) -> u64 {
-        self.budget
-            .effective_active_millis()
-            .saturating_sub(self.usage.active_millis)
-            .saturating_sub(self.child_budget_reservation.active_millis())
-    }
-
-    pub(in crate::control) fn reserve_child_budget(
-        &mut self,
-        allocation: crate::control::ChildBudgetAllocation,
-        now: u64,
-    ) -> Result<(), ControlError> {
-        let reserved = self.child_budget_reservation.checked_add(allocation)?;
-        if self
-            .usage
-            .active_millis
-            .checked_add(reserved.active_millis())
-            .is_none_or(|value| value > self.budget.effective_active_millis())
-            || self
-                .usage
-                .requests()
-                .checked_add(reserved.requests())
-                .is_none_or(|value| value > self.budget.effective_requests())
-            || self
-                .usage
-                .tool_calls()
-                .checked_add(reserved.tool_calls())
-                .is_none_or(|value| value > self.budget.effective_tools())
-            || self
-                .usage
-                .total_tokens()
-                .checked_add(reserved.total_tokens())
-                .is_none_or(|value| value > self.budget.effective_tokens())
-        {
-            return Err(ControlError::Capacity);
-        }
-        self.child_budget_reservation = reserved;
-        self.user_revision = self.user_revision.checked_add(1).ok_or(ControlError::Capacity)?;
-        self.reason = ControlText::new(
-            "A child branch budget is reserved under this goal's existing cumulative ceiling."
-                .to_owned(),
-        )?;
-        self.updated_unix_millis = now;
-        if self.state == GoalState::Active && !self.next_request_budget_available() {
-            self.reach_budget(now)?;
-        }
-        Ok(())
+        self.state == GoalState::Active
     }
 
     pub(in crate::control) fn pause(
@@ -216,13 +147,7 @@ impl GoalRecord {
     }
 
     pub(in crate::control) fn resume(&mut self, now: u64) -> Result<(), ControlError> {
-        if !matches!(
-            self.state,
-            GoalState::Paused
-                | GoalState::WaitingForUser
-                | GoalState::Blocked
-                | GoalState::BudgetReached
-        ) || !self.next_request_budget_available()
+        if !matches!(self.state, GoalState::Paused | GoalState::WaitingForUser | GoalState::Blocked)
         {
             return Err(ControlError::InvalidInput);
         }
@@ -233,36 +158,6 @@ impl GoalRecord {
         self.pause_mode = None;
         self.reason =
             ControlText::new("Explicitly resumed with cumulative accounting retained.".to_owned())?;
-        self.updated_unix_millis = now;
-        Ok(())
-    }
-
-    pub(in crate::control) fn update_budget(
-        &mut self,
-        budget: GoalBudget,
-        now: u64,
-    ) -> Result<(), ControlError> {
-        GoalBudget::new(
-            budget.active_millis,
-            budget.requests,
-            budget.tool_calls,
-            budget.total_tokens,
-        )?;
-        if !self.usage_and_reservations_fit(budget) {
-            return Err(ControlError::InvalidInput);
-        }
-        self.user_revision = self.user_revision.checked_add(1).ok_or(ControlError::Capacity)?;
-        self.budget = budget;
-        if self.state == GoalState::Active && !self.next_request_budget_available() {
-            self.state = GoalState::BudgetReached;
-            self.reason = ControlText::new(
-                "Updated limit is already reached; no new operation may start.".to_owned(),
-            )?;
-        } else {
-            self.reason = ControlText::new(
-                "Budget updated; increasing a limit does not resume execution.".to_owned(),
-            )?;
-        }
         self.updated_unix_millis = now;
         Ok(())
     }
