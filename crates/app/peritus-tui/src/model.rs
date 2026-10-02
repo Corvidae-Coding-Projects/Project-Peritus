@@ -205,6 +205,7 @@ enum PendingRequest {
         run: RunId,
     },
     ConversationLibrary(peritus_app_protocol::ConversationLibraryQuery),
+    ResumeConversationLibrary(peritus_app_protocol::ConversationLibraryQuery),
     WorkbenchQueue(peritus_app_protocol::WorkbenchQueueQuery),
     WorkbenchQueueCommand {
         query: peritus_app_protocol::WorkbenchQuery,

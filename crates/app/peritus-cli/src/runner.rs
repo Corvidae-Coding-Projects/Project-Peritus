@@ -61,6 +61,9 @@ fn run(arguments: impl IntoIterator<Item = OsString>) -> ExitCode {
     if let Command::Open { path, run } = &cli.command {
         return run_interactive_at(path.clone(), *run, cli.endpoint.clone());
     }
+    if matches!(&cli.command, Command::Resume) {
+        return run_interactive_resume(cli.endpoint);
+    }
 
     let runtime = match tokio::runtime::Builder::new_current_thread().enable_all().build() {
         Ok(runtime) => runtime,
@@ -143,11 +146,24 @@ fn run_interactive() -> ExitCode {
     run_interactive_at(None, None, None)
 }
 
+enum InteractiveLaunch {
+    Open { repository: Option<std::path::PathBuf>, run: Option<peritus_types::RunId> },
+    Resume,
+}
+
 fn run_interactive_at(
     repository: Option<std::path::PathBuf>,
     run: Option<peritus_types::RunId>,
     endpoint: Option<OsString>,
 ) -> ExitCode {
+    run_interactive_target(InteractiveLaunch::Open { repository, run }, endpoint)
+}
+
+fn run_interactive_resume(endpoint: Option<OsString>) -> ExitCode {
+    run_interactive_target(InteractiveLaunch::Resume, endpoint)
+}
+
+fn run_interactive_target(target: InteractiveLaunch, endpoint: Option<OsString>) -> ExitCode {
     if !std::io::stdin().is_terminal() || !std::io::stdout().is_terminal() {
         return report_error(
             &CliError::usage(
@@ -165,11 +181,19 @@ fn run_interactive_at(
             );
         }
     };
-    match runtime.block_on(peritus_launcher::launch_interactive_run(repository, run, endpoint)) {
+    let (operation, result) = match target {
+        InteractiveLaunch::Open { repository, run } => (
+            "launch interactive product",
+            runtime.block_on(peritus_launcher::launch_interactive_run(repository, run, endpoint)),
+        ),
+        InteractiveLaunch::Resume => (
+            "resume interactive product",
+            runtime.block_on(peritus_launcher::launch_interactive_resume(endpoint)),
+        ),
+    };
+    match result {
         Ok(_) => ExitCode::SUCCESS,
-        Err(error) => {
-            report_error(&CliError::runtime("launch interactive product", error.to_string()), false)
-        }
+        Err(error) => report_error(&CliError::runtime(operation, error.to_string()), false),
     }
 }
 
@@ -232,7 +256,8 @@ async fn execute(cli: Cli) -> Result<(), CliError> {
         | Command::Update(_)
         | Command::Providers
         | Command::Workspaces
-        | Command::Open { .. } => Ok(()),
+        | Command::Open { .. }
+        | Command::Resume => Ok(()),
     }
 }
 

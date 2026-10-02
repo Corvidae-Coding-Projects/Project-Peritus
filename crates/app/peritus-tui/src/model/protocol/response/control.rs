@@ -60,6 +60,10 @@ fn project_setup(
         ) => model.accept_workbench_compaction(&request, preview.clone()),
         (
             AppResponsePayload::ConversationLibrary(page),
+            Some(PendingRequest::ResumeConversationLibrary(query)),
+        ) if page.query() == &query => return model.accept_latest_page(page),
+        (
+            AppResponsePayload::ConversationLibrary(page),
             Some(PendingRequest::ConversationLibrary(query)),
         ) if page.query() == &query => {
             model.accept_library_page(page);

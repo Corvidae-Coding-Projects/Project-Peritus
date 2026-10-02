@@ -227,6 +227,7 @@ Focused settings commands are:
 
 ```text
 peritus open [PATH]     Open an explicit repository, defaulting to the current directory
+peritus resume          Open the current folder's most recently active saved conversation
 peritus update          Check for and install the latest public release
 peritus update --disable-checks
                         Disable automatic startup checks; manual checks still work

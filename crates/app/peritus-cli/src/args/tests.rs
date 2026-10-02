@@ -39,6 +39,9 @@ fn workspace_product_commands_do_not_require_an_endpoint() {
     );
     let cli = parse(&["peritus", "open"]).expect("current workspace");
     assert!(matches!(cli.command, Command::Open { path: None, run: None }));
+    let cli = parse(&["peritus", "resume"]).expect("current workspace history");
+    assert!(matches!(cli.command, Command::Resume));
+    assert!(parse(&["peritus", "resume", "/project"]).is_err());
 }
 
 #[test]

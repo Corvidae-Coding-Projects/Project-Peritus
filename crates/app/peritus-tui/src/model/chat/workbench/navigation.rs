@@ -136,7 +136,7 @@ impl AppModel {
                 feature.as_str() == WellKnownProtocolFeature::WorkbenchControl.as_str()
             })
     }
-    pub(super) fn library_available(&self) -> bool {
+    pub(in crate::model) fn library_available(&self) -> bool {
         self.context.is_some()
             && self.features.iter().any(|feature| {
                 feature.as_str() == WellKnownProtocolFeature::ConversationLibrary.as_str()
@@ -153,6 +153,7 @@ impl AppModel {
                         | PendingRequest::WorkbenchChatContinue { .. }
                         | PendingRequest::WorkbenchQuery(_)
                         | PendingRequest::ConversationLibrary(_)
+                        | PendingRequest::ResumeConversationLibrary(_)
                         | PendingRequest::WorkbenchImagePreview(_)
                         | PendingRequest::WorkbenchImages(_)
                         | PendingRequest::WorkbenchFilePreview(_)

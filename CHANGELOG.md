@@ -2,6 +2,8 @@
 
 ## 0.0.4
 
+- Add `peritus resume` to reopen the current folder's most recently active saved conversation
+  without starting new work.
 - Remove the hidden ten-minute provider-turn and eight-hour product-run cutoffs from normal
   interactive work. Retain explicit cancellation, transport recovery, resource and progress
   ceilings, per-command timeouts, and caller-selected benchmark limits.

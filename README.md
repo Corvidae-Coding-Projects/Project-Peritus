@@ -90,6 +90,16 @@ To open a different folder, run:
 peritus open /path/to/folder
 ```
 
+To reopen the most recently active saved conversation for the current folder, run:
+
+```sh
+peritus resume
+```
+
+This resolves the folder through the normal workspace setup and opens the conversation without
+starting new work. If the folder has no saved conversation, Peritus opens a new conversation and
+says so.
+
 ## Experimental browser workspace
 
 The [harness improvement inbox](docs/harness-improvements.md) collects evidence-backed suggestions for explicit later patch generation and evaluation. Open `/improvements` in the WebUI or use `peritus improvements` in the CLI.

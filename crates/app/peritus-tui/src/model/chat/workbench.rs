@@ -145,6 +145,7 @@ impl AppModel {
         &mut self,
         query: Option<WorkbenchQuery>,
     ) {
+        self.cancel_latest_resume();
         if self.chat.workbench.selected == query {
             return;
         }

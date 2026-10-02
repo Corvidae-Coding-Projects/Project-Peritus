@@ -4,6 +4,7 @@ mod composer;
 mod interaction;
 mod observation;
 mod preview;
+mod resume;
 mod review;
 
 pub use review::{ReviewDraft, ReviewFocus};
@@ -40,6 +41,7 @@ pub struct ProductUi {
     pub preview_query: Option<peritus_app_protocol::WorkbenchResultQuery>,
     pub preview_message: String,
     pub(crate) review: review::DiffReviewUi,
+    resume: Option<resume::LatestConversation>,
     writer: usize,
     reviewer: usize,
     fixer: usize,
@@ -48,6 +50,8 @@ pub struct ProductUi {
 impl ProductUi {
     pub(super) fn new(launch: ProductLaunchContext) -> Self {
         let default = launch.default_provider().unwrap_or(0);
+        let resume =
+            launch.resumes_latest_conversation().then_some(resume::LatestConversation::default());
         Self {
             launch,
             runs: Vec::new(),
@@ -63,6 +67,7 @@ impl ProductUi {
             preview_query: None,
             preview_message: String::new(),
             review: review::DiffReviewUi::default(),
+            resume,
             writer: default,
             reviewer: default,
             fixer: default,
