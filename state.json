@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1978,
-        "tip_oid": "ebde2070b4527de2f2cc9d4b9c782dcc370ce39b",
-        "prefix_sha256": "b17142e0fbb5dbc37e6450fe1dd92536f32cd9e180fc7105a6cfbdd2fda9c207"
+        "sequence": 1979,
+        "tip_oid": "05d2a21042349b65b18d4cbe8ed8af7e15d868e3",
+        "prefix_sha256": "d3635e5261aae8107cb44cbfff94b2e112d171ae809f86b6c8540a79ef247276"
       },
       "NWAR": {
         "sequence": 39,
@@ -54,7 +54,7 @@
       }
     }
   },
-  "next_display_id": 100,
+  "next_display_id": 101,
   "next_comment_id": 2087,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
@@ -137,6 +137,7 @@
     "d232751e-0c18-4e60-a858-6c3cb8ad26f1": 25,
     "d4ee9653-ff6f-4bff-ba69-3a4199648e16": 66,
     "d6d368e3-a54f-4057-adf3-be09ed9a4f6c": 99,
+    "d9215aa5-aa5a-4c94-a9d9-310a44ce857c": 100,
     "d94caf6d-2292-44ca-9393-3c7970c87f4f": 6,
     "da04a6e6-0a78-4db8-a9f8-255fbada5b2d": 41,
     "dfab9d3d-33b2-4c87-aa21-5e886054ba62": 7,
@@ -18652,6 +18653,17 @@
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABArR1HhEAfttyDtIsXh9cMGbHzpffwkmD8M9jfM5Dh5LQJZP9XFXQS6VFd9dLtz/sm9Ig72OFQ+zGFzmJO6SxrAA=="
         }
       }
+    },
+    "d9215aa5-aa5a-4c94-a9d9-310a44ce857c": {
+      "uuid": "d9215aa5-aa5a-4c94-a9d9-310a44ce857c",
+      "display_id": 100,
+      "title": "Remove benchmark-era limits from human workflows",
+      "description": "Audit production Rust, CLI/TUI/WebUI, and generated protocol paths for fixed limits introduced for benchmarks or qualification fixtures. Preserve safety, protocol, resource, and abuse bounds; redesign or remove arbitrary caps that can block ordinary long-lived human use, with migration/recovery behavior and regressions.",
+      "status": "open",
+      "priority": "high",
+      "created_by": "6ME5",
+      "created_at": "2026-10-02T19:33:07.990520286Z",
+      "updated_at": "2026-10-02T19:33:07.990520286Z"
     },
     "d94caf6d-2292-44ca-9393-3c7970c87f4f": {
       "uuid": "d94caf6d-2292-44ca-9393-3c7970c87f4f",
