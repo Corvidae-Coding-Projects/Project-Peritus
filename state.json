@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 1958,
-        "tip_oid": "af05d4ffc82b7dec8e2754cf25086df17bb6407e",
-        "prefix_sha256": "7b625953b9b31e27d39fa43f870e926424775b41e885dbb74133eadfe6ad6f11"
+        "sequence": 1959,
+        "tip_oid": "22e04fe2295080399b3799777c9b09043555805b",
+        "prefix_sha256": "8d7c946bf5b8a267d3d1706447c125c2af9d40e60a3316b201fac4f2bf546cec"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 100,
-  "next_comment_id": 2069,
+  "next_comment_id": 2070,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -10669,7 +10669,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-27T23:40:33.365528994Z",
-      "updated_at": "2026-10-02T16:57:09.052949874Z",
+      "updated_at": "2026-10-02T16:57:33.879624665Z",
       "comments": {
         "0de6566f-5caa-4b10-ae55-f90ec9bc3946": {
           "display_id": 2063,
@@ -10715,6 +10715,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAN0NQ8gWH+ZglHtJLbKhU5UJ4YPvjFiBysObcljIKbEJ0nMeZEOKN5lKqgyhSYd4ErvXXFlvJpGBuF2XnRCj+AA=="
+        },
+        "43d73467-20d4-4208-b3d7-bd8b73605f82": {
+          "display_id": 2069,
+          "author": "6ME5",
+          "content": "Reproduced the wheel gap: crossterm mouse capture delivered ScrollUp/ScrollDown to AppModel, but handle_chat_mouse discarded them. The local unpublished branch now maps wheel movement to the existing transcript scroll state in 3-row bounded steps, clears stale drag anchors, and remains inert behind output selection, overlays, editors, and other views. Render coverage proves wheel-up reaches Activity 01 and wheel-down returns to Activity 30. Verification: peritus-tui 310 passed / 1 intentional ignored; strict all-target/all-feature Clippy; Windows GNU all-target/all-feature check; cargo xtask all (86 packages, 4,852 source files, 3,823 formal-boundary files, 14,964 ordinary-safe entry points, 272 docs, 147 pinned actions). No push or PR.",
+          "created_at": "2026-10-02T16:57:33.876036802Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAHoIorS6BQ3Uy3ozyFmnQJ+0RAeJaJpR+GZTwy4TojGVEmNRyv/YcaEwCtWkwn8Q+SXRXPTHT6cNFERGTtk5WCQ=="
         },
         "44ec4872-5cd9-434a-b11f-0383be259ca5": {
           "display_id": 2066,
