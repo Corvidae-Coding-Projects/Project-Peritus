@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 2017,
-        "tip_oid": "16e4f2d0842f44a8ddfe09b54e75aa45f55ab4ed",
-        "prefix_sha256": "81bee9be9956b47c37a994e93900eaa680901c6b01a31940dea879696ae34fa0"
+        "sequence": 2018,
+        "tip_oid": "ab6164dced9b272039d1e4f61b70645a4d144fb2",
+        "prefix_sha256": "d986442c05b640107a5a680470e7063aa92f34cd57ad7a5bdb419053e58400d5"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 102,
-  "next_comment_id": 2115,
+  "next_comment_id": 2116,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -8781,7 +8781,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-10-02T22:20:34.408394114Z",
-      "updated_at": "2026-10-03T00:55:07.108553955Z",
+      "updated_at": "2026-10-03T01:18:55.348576289Z",
       "labels": [
         "maintenance"
       ],
@@ -8875,6 +8875,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA0OiWWq5Rus07NH9kSSAAFsQWvUon8Ze8L9qmptIVtbWPLPFHSD/MiOfr2eCfBHDwfB4U1hySzExwznqecIoeCQ=="
+        },
+        "7f6f252f-2af9-4be0-8bb9-79097f14975d": {
+          "display_id": 2115,
+          "author": "6ME5",
+          "content": "Confirmed every current skip against workflow source and authority logs. Discovery context-canary, fuzz, and mutation exclude pull_request events. Both Trusted-base validation instances were skipped by existing protected-input classification: checker-to-develop already differs across authority inputs, and this candidate additionally changes Cargo.lock for the Crossterm clipboard feature edge. Classification succeeded but explicitly does not authorize a protected-input transition; trusted-base validation was not executed. No authority policy was changed. Remaining latest-head CI is macOS qualification, with no failed checks.",
+          "created_at": "2026-10-03T01:18:55.344233416Z",
+          "kind": "observation",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAKPd8BUaG8Bt5znw8OgHgQGlVEqmaaP/4G9cS3cJB7bMoGk8hPFhgWq1FBR8DbdaeLw6mF3Hm4RprZgkwCxuIAA=="
         },
         "8f4388fa-8650-4106-8ca9-27c618ca3b63": {
           "display_id": 2102,
