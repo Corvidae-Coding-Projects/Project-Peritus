@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 2024,
-        "tip_oid": "f78daec5d8d29940d2aa9905cbd2d77d0b0a01f4",
-        "prefix_sha256": "326e80e625f46ddfd07c2ed71b34c091e409d979c7d02fa2ddf592041bce7138"
+        "sequence": 2025,
+        "tip_oid": "462c0d0a41c523daab58dbced7c102877fb61662",
+        "prefix_sha256": "384dea3b960573f96e692852a41d71f724db892d81e76c14ae4f05d4b702b941"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 103,
-  "next_comment_id": 2118,
+  "next_comment_id": 2119,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -15798,7 +15798,18 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-10-03T02:18:54.805994693Z",
-      "updated_at": "2026-10-03T02:18:54.805994693Z"
+      "updated_at": "2026-10-03T02:30:26.910108540Z",
+      "comments": {
+        "f9b6b138-a9eb-4b61-a4ee-27f254ca2854": {
+          "display_id": 2118,
+          "author": "6ME5",
+          "content": "Release v0.0.5 preparation starts from merged develop 73bca51ca9ab474a4e190b3bc7ad7a17f7f6206d (PR #110 is merged). Local develop pulled fast-forward and release/v0.0.5 created. Synchronized 86 package versions and 548 exact local dependency pins; offline lockfile regeneration changes only the 86 workspace package versions, retaining all 447 external package entries byte-for-byte semantically. WebUI version and package-lock synchronized. Changelog and installation/recovery notes describe current journal schema 2, preserved historical migration descriptor labels, saved product-run format 6/protocol 2.0 and explicit incompatibility with older run/improvement/browser records. Existing migration descriptors remain unchanged because catalog admission compares their stored release labels. Local formatting and complete xtask policy passed; WebUI check has 0 errors/0 warnings, all 18 unit tests pass and production build succeeds. Full Rust tests, doc-tests, strict Clippy and distribution-tool tests are running. Release-state/evidence retained at /tmp/peritus-release-v0.0.5-nj037igm/state.json. User requested release to main; no unrelated untracked artifacts or live installed state changed.",
+          "created_at": "2026-10-03T02:30:26.903797868Z",
+          "kind": "observation",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAjdzFbRXCgpParivJgQohIaeqOUMvL6ILM+RQ+HAV29TBQt7QjBu4zHZS+U6OCjatQFohDF7ZVoi9h5vUs5G6Cw=="
+        }
+      }
     },
     "b25f016a-c241-4f3e-99a1-d7540e07883e": {
       "uuid": "b25f016a-c241-4f3e-99a1-d7540e07883e",
