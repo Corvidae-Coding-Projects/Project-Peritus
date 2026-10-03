@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 2010,
-        "tip_oid": "6b2caaa829f18f5799b69645ffcf5193395ef06d",
-        "prefix_sha256": "355c5d416a18df111e533137071fb707e20845992380005aff03d58d65cb46b2"
+        "sequence": 2011,
+        "tip_oid": "3d534f91e1a80c84deb1846e270e1a4e90fd8593",
+        "prefix_sha256": "590c9372720912656712d605df8ee0c849b515a906a818e25017681f6bb9730d"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 102,
-  "next_comment_id": 2108,
+  "next_comment_id": 2109,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -8781,7 +8781,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-10-02T22:20:34.408394114Z",
-      "updated_at": "2026-10-02T23:45:10.280125929Z",
+      "updated_at": "2026-10-03T00:01:55.216424469Z",
       "labels": [
         "maintenance"
       ],
@@ -8857,6 +8857,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABADt47tMNRYBirGRHOG3DzYjtXsyiihABbjjjk3BYnHljYQqAX2/xXAzVswIOMPujGIvyqAIkUd7QEU0ys+y1bCw=="
+        },
+        "aea98d6c-3547-4120-baa4-06dd14790e6b": {
+          "display_id": 2108,
+          "author": "6ME5",
+          "content": "Native Windows confirmation on signed head d649c0530: Foundation Rust test app-runner job 111074772349 completed successfully, with 327 tests passed, four intentionally ignored, and zero failures. The exact explicit-reference casing test now passes on Windows with the stronger decoded content/path/reference-root assertions. The previously interrupted Foundation Verus app-shell job 111074765877 also passed on this head. CI monitoring continues until all nine latest-head workflows complete successfully.",
+          "created_at": "2026-10-03T00:01:55.188562527Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAHktKRMnDERGGNVtZgD5x1M0eMbObvjpPCgIB0EleiPBx7TXiWaavdA9RvO8s/HYQEzXS+bkEVwPyyyidtTzWBg=="
         },
         "b49ad523-6ae6-40c8-be2b-45639a393447": {
           "display_id": 2107,
