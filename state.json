@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 2019,
-        "tip_oid": "ee8930994e524acd735a1b59111c16ac8a986b97",
-        "prefix_sha256": "ab2d7d75b56798c46ca599ca44f4a18942f42bda186ecab227875c0d4f7054ab"
+        "sequence": 2020,
+        "tip_oid": "4ce7fc45c9d5c3236e1b9f176e127a081dae88d7",
+        "prefix_sha256": "e74ff609c6f6728c15523d220e42da388b852e8271310405fee218d52bc90f5b"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 102,
-  "next_comment_id": 2117,
+  "next_comment_id": 2118,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -8781,7 +8781,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-10-02T22:20:34.408394114Z",
-      "updated_at": "2026-10-03T01:45:35.117666080Z",
+      "updated_at": "2026-10-03T02:13:23.771940298Z",
       "labels": [
         "maintenance"
       ],
@@ -8839,6 +8839,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAupT+g7ndeOE38yf6b9khTydIKW0d6oy0iP1m3dRcCV1737Kk5kdsTwTNOUAymJPVTSSKRXFy86YzONcA2TWCBQ=="
+        },
+        "4ee5ab31-260c-465f-8a22-7bb84f6f9ef1": {
+          "display_id": 2117,
+          "author": "6ME5",
+          "content": "PR #110 is open against develop: https://github.com/Corvidae-Coding-Projects/Project-Peritus/pull/110. Final signed head 402cdd2e4746329412a4cc37ba793ce0da004680 matches local HEAD, origin/fix/live-blocker-discovery and GitHub; local signature is G and GitHub verification is valid. Fresh final qualification at 2026-10-03 02:12 UTC: GitHub merge state CLEAN; 586 checks total, 581 success, 5 conditional policy skips, zero failed/canceled/timed-out/action-required/queued/running. All 10 current-head workflow instances across 9 workflow types completed successfully, including Foundation, Gate A and native packaging. The repaired native Windows candidate test passes in both Foundation and Gate A (66 passed, 0 failed, 0 ignored in each shard); the slow Git startup canary reproduced the old failure and passes with the bounded barrier/independent post-kill deadline repair. Final local runner validation: 487 top-level tests passed, 5 existing ignores, plus two successful receipt fixture child invocations; full format and strict Linux/Windows-target clippy passed. The earlier Windows contract assertion repair and mouse-click/drag/OSC52 copy plus no-flash steering UI are pushed; the production UI changes are installed. All six installed artifact hashes, owners and modes reverified; active daemon PID 2865220 executable matches the installed binary. The two latest commits modify tests only. Qualification limit: two Trusted-base validation jobs were skipped because protected checker inputs differ (preexisting checker-to-develop baseline differences plus candidate Cargo.lock clipboard dependency); trusted-base validation did not run and requires a reviewed trusted-checker update. Three discovery jobs exclude PR events by existing workflow policy. No merge, policy weakening or unrelated tracked changes. Original four untracked groups preserved. Final evidence: /tmp/peritus-pr-110-final-ci.json and /tmp/peritus-pr-110-final-workflows.json. Completed CI monitor stopped.",
+          "created_at": "2026-10-03T02:13:23.767838338Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAVpXiIdPNG2OYnyUZVw3DA8XY5twexqfP/fl8IqeiK8D/nY1uujRAOaWez0pgGqyova2aM30Thg+BN2xRARAqBA=="
         },
         "51191a1d-e314-4836-b4b2-ec1a3eecf9bf": {
           "display_id": 2105,
