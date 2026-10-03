@@ -1,18 +1,16 @@
-//! Explicit persistent-goal confirmation and revision-fenced pause, resume, usage, and budgets.
+//! Explicit persistent-goal confirmation and revision-fenced pause, resume, and usage.
 
 use super::{AppModel, AppRequestPayload, Effect, NoticeLevel, PendingRequest};
 use crate::model::decode_hex_16;
 use peritus_app_protocol::{
-    ControlOperationId, WellKnownProtocolFeature, WorkbenchExecutionSettings, WorkbenchGoalBudget,
+    ControlOperationId, WellKnownProtocolFeature, WorkbenchExecutionSettings,
     WorkbenchGoalCriterionDefinition, WorkbenchGoalCriterionKind, WorkbenchGoalDefinition,
     WorkbenchGoalPauseMode, WorkbenchGoalSnapshot, WorkbenchInputState, WorkbenchInputText,
     WorkbenchIntent, WorkbenchQuery,
 };
 
-mod budget;
 mod draft;
 mod refresh;
-use budget::parse_budget;
 
 const RUNNER_CRITERION: &str = "Pass the existing strict runner acceptance gate.";
 
@@ -20,7 +18,6 @@ const RUNNER_CRITERION: &str = "Pass the existing strict runner acceptance gate.
 #[derive(Clone, Debug)]
 pub struct GoalDraft {
     objective: WorkbenchInputText,
-    budget: WorkbenchGoalBudget,
     graphical: Option<WorkbenchInputText>,
 }
 
@@ -28,10 +25,6 @@ impl GoalDraft {
     pub(crate) const fn objective(&self) -> &WorkbenchInputText {
         &self.objective
     }
-    pub(crate) const fn budget(&self) -> WorkbenchGoalBudget {
-        self.budget
-    }
-
     pub(crate) const fn graphical(&self) -> Option<&WorkbenchInputText> {
         self.graphical.as_ref()
     }
@@ -152,58 +145,6 @@ impl AppModel {
         "Reading cumulative usage; unavailable provider counters remain unknown."
             .clone_into(&mut self.chat.workbench.message);
         self.refresh_goal()
-    }
-
-    pub(in crate::model::chat) fn budget_command(&mut self, arguments: &str) -> Vec<Effect> {
-        if !self.prepare_goal_inspection() {
-            return Vec::new();
-        }
-        if arguments.is_empty() {
-            self.chat.workbench.goal = None;
-            "Reading cumulative limits and usage; no budget changed."
-                .clone_into(&mut self.chat.workbench.message);
-            return self.refresh_goal();
-        }
-        if self.workbench_request_pending() || self.chat.workbench.unresolved.is_some() {
-            self.notice(
-                NoticeLevel::Warning,
-                "Resolve the pending workbench request before changing the budget; draft retained.",
-            );
-            return Vec::new();
-        }
-        if let Some(refresh) = self.refresh_stale_goal_control() {
-            return refresh;
-        }
-        let current = self
-            .chat
-            .workbench
-            .goal
-            .as_ref()
-            .map(WorkbenchGoalSnapshot::budget)
-            .or_else(|| self.chat.workbench.goal_draft.as_ref().map(GoalDraft::budget));
-        let Some(current) = current else {
-            return self.inspect_goal_before("editing its budget, or draft a new goal first");
-        };
-        let budget = match parse_budget(arguments, current) {
-            Ok(budget) => budget,
-            Err(message) => {
-                self.notice(NoticeLevel::Warning, message);
-                return Vec::new();
-            }
-        };
-        if let Some(draft) = &mut self.chat.workbench.goal_draft
-            && self.chat.workbench.goal.is_none()
-        {
-            draft.budget = budget;
-            "Draft limits updated locally; /goal confirm is still required."
-                .clone_into(&mut self.chat.workbench.message);
-            self.clear_chat_command();
-            return Vec::new();
-        }
-        let Some((goal, workspace)) = self.current_goal_binding() else {
-            return self.inspect_goal_before("editing its budget");
-        };
-        self.submit_workbench(WorkbenchIntent::UpdateGoalBudget { goal, budget }, workspace)
     }
 
     pub(super) fn refresh_goal(&mut self) -> Vec<Effect> {

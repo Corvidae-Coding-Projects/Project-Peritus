@@ -72,7 +72,6 @@ impl ProductRunService {
                 records: RwLock::new(records),
                 providers,
                 automatic_provider_failover: product_policy.automatic_provider_failover(),
-                provider_turn_timeout_seconds: product_policy.provider_turn_timeout_seconds(),
                 local_context,
                 workspaces: workspace_roots,
                 folders: workspaces.folders().clone(),

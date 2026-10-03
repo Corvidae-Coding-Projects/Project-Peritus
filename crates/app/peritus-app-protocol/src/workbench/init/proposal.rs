@@ -2,8 +2,8 @@
 
 use super::{
     AppProtocolError, INIT_INSTRUCTION_PATH, InitCommand, InitDiscoveryRequest, InitFileMode,
-    InitInstructionPatch, InitSourceKind, InitSourceObservation, MAX_INIT_COMMANDS,
-    MAX_INIT_SOURCES, Sha256Digest, WorkbenchQuery, invalid, managed_content, render_exact_diff,
+    InitInstructionPatch, InitSourceKind, InitSourceObservation, Sha256Digest, WorkbenchQuery,
+    invalid, managed_content, render_exact_diff,
 };
 
 /// Complete read-only discovery result and exact approval candidate.
@@ -31,8 +31,8 @@ impl InitProposal {
         commands: Vec<InitCommand>,
     ) -> Result<Self, AppProtocolError> {
         if revision == 0
-            || sources.len() > MAX_INIT_SOURCES
-            || commands.len() > MAX_INIT_COMMANDS
+            || u16::try_from(sources.len()).is_err()
+            || u16::try_from(commands.len()).is_err()
             || !strictly_sorted(&sources)
             || !strictly_sorted(&commands)
             || commands.iter().any(|command| {

@@ -5,8 +5,8 @@ use crate::product_control::{ControlStore, ControlStoreError};
 use peritus_app_protocol::{
     AppResponsePayload, ControlOperationId, ConversationLibraryItem, ConversationLibraryPage,
     ConversationLibraryQuery, ConversationMessageSource, ConversationSearchSnippet,
-    ConversationTitle, WorkbenchBranchLineage, WorkbenchForkBudget, WorkbenchForkMode,
-    WorkbenchGoalState, WorkbenchQuery,
+    ConversationTitle, WorkbenchBranchLineage, WorkbenchForkMode, WorkbenchGoalState,
+    WorkbenchQuery,
 };
 use peritus_product_runner::control::{
     ConversationBranch, ConversationBranchMode, ConversationRecord, GoalState,
@@ -207,18 +207,6 @@ fn public_lineage(value: &ConversationBranch) -> Result<WorkbenchBranchLineage, 
             WorkbenchForkMode::IsolatedWritableWorkspace
         }
     };
-    let allocation = value
-        .allocation()
-        .map(|budget| {
-            WorkbenchForkBudget::new(
-                budget.active_millis(),
-                budget.requests(),
-                budget.tool_calls(),
-                budget.total_tokens(),
-            )
-        })
-        .transpose()
-        .map_err(|_| ControlStoreError::Corrupt("invalid branch allocation"))?;
     Ok(WorkbenchBranchLineage::new(
         parent,
         checkpoint,
@@ -227,7 +215,6 @@ fn public_lineage(value: &ConversationBranch) -> Result<WorkbenchBranchLineage, 
         value.brief_revision(),
         value.goal_revision(),
         mode,
-        allocation,
     ))
 }
 
@@ -238,7 +225,6 @@ const fn public_goal_state(value: GoalState) -> WorkbenchGoalState {
         GoalState::Pausing => WorkbenchGoalState::Pausing,
         GoalState::Paused => WorkbenchGoalState::Paused,
         GoalState::Blocked => WorkbenchGoalState::Blocked,
-        GoalState::BudgetReached => WorkbenchGoalState::BudgetReached,
         GoalState::Achieved => WorkbenchGoalState::Achieved,
         GoalState::Cancelled => WorkbenchGoalState::Cancelled,
     }

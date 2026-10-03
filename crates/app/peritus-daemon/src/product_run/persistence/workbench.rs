@@ -1,9 +1,6 @@
 //! Fenced-generation recovery; opening state never retries an admitted or staged execution.
 
-use super::{
-    DaemonError, PersistedRecord, ProductRunServiceError, RunRecord, quarantine_record,
-    record_path_matches, retire_record,
-};
+use super::{DaemonError, PersistedRecord, RunRecord, quarantine_record, record_path_matches};
 use crate::product_control::ControlStore;
 use peritus_types::RunId;
 use std::{
@@ -14,7 +11,6 @@ use std::{
 };
 
 pub(super) const MAX_RUN_RECORD_BYTES: u64 = 16 * 1024 * 1024;
-const MAX_RUN_RECORDS: usize = 1024;
 
 pub(in crate::product_run) fn load_workbench_records(
     root: &Path,
@@ -178,10 +174,6 @@ pub(in crate::product_run) fn load_workbench_records(
             quarantine_record(&path, "duplicate workbench execution identity", None);
             continue;
         }
-        if records.len() >= MAX_RUN_RECORDS {
-            retire_record(&path, "workbench run projection exceeded retained history");
-            continue;
-        }
         if recovering {
             let Some(parent) = root.parent() else { continue };
             if let Err(error) = super::write_record(&parent.join("product-runs"), &record) {
@@ -219,31 +211,6 @@ fn resume_marker_valid(
                 && controls.resolve(&operation).is_ok_and(|receipt| receipt.is_some())
         })
     })
-}
-
-pub(super) fn make_room_for_record(
-    directory: &Path,
-    current: &Path,
-) -> Result<(), ProductRunServiceError> {
-    if current.exists() {
-        return Ok(());
-    }
-    let paths = projection_paths(directory);
-    if paths.len() < MAX_RUN_RECORDS {
-        return Ok(());
-    }
-    let Some(oldest) = paths.last() else {
-        return Ok(());
-    };
-    let retired = oldest.clone();
-    retire_record(&retired, "workbench run projection exceeded retained history");
-    if retired.exists() {
-        return Err(ProductRunServiceError::persistence(
-            "retire the oldest workbench run record",
-            "the retained run limit was reached and the oldest projection could not be moved",
-        ));
-    }
-    Ok(())
 }
 
 fn projection_paths(directory: &Path) -> Vec<PathBuf> {

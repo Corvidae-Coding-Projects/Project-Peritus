@@ -114,6 +114,7 @@ impl ControlOperation {
         }
         match &self.intent {
             ControlIntent::ReserveFork { branch, .. }
+            | ControlIntent::ReserveAutomaticFork { branch, .. }
             | ControlIntent::PublishRestoreBranch { branch, .. }
                 if branch.operation() == self.id
                     && branch.source() == self.conversation
@@ -123,6 +124,7 @@ impl ControlOperation {
                     && branch.child() == self.conversation
                     && branch.child_workspace_bytes() == &self.workspace => {}
             ControlIntent::ReserveFork { .. }
+            | ControlIntent::ReserveAutomaticFork { .. }
             | ControlIntent::CreateFork { .. }
             | ControlIntent::PublishRestoreBranch { .. } => {
                 return Err(ControlError::InvalidInput);

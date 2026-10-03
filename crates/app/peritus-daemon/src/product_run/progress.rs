@@ -2,7 +2,7 @@
 
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use peritus_product_runner::{PRODUCT_RUN_MAX_ELAPSED, ProductRunProgress};
+use peritus_product_runner::ProductRunProgress;
 
 #[derive(Clone)]
 pub(super) struct RunProgress {
@@ -24,7 +24,6 @@ pub(super) struct RunProgress {
     pub(super) peak_rss_bytes: u64,
     pub(super) last_event: String,
     pub(super) provider_started_unix_millis: Option<u64>,
-    pub(super) provider_deadline_seconds: u64,
     pub(super) attempt_base: AttemptBase,
 }
 
@@ -67,7 +66,6 @@ impl Default for RunProgress {
             peak_rss_bytes: 0,
             last_event: "run started".to_owned(),
             provider_started_unix_millis: None,
-            provider_deadline_seconds: 0,
             attempt_base: AttemptBase::default(),
         }
     }
@@ -94,7 +92,6 @@ impl RunProgress {
         self.last_effect_unix_millis = now_millis();
         "execution attempt started".clone_into(&mut self.last_event);
         self.provider_started_unix_millis = None;
-        self.provider_deadline_seconds = 0;
     }
 
     pub(super) fn observe(&mut self, progress: ProductRunProgress) {
@@ -141,11 +138,10 @@ impl RunProgress {
         self.mark_event("runner progress checkpoint");
     }
 
-    pub(super) fn begin_provider_request(&mut self, deadline_seconds: u64) {
+    pub(super) fn begin_provider_request(&mut self) {
         let now = now_millis();
         self.last_effect_unix_millis = now;
         self.provider_started_unix_millis = Some(now);
-        self.provider_deadline_seconds = deadline_seconds;
         self.model_requests = self.model_requests.saturating_add(1);
         "provider turn started".clone_into(&mut self.last_event);
     }
@@ -156,7 +152,6 @@ impl RunProgress {
     ) {
         self.mark_event("provider turn completed");
         self.provider_started_unix_millis = None;
-        self.provider_deadline_seconds = 0;
         let values = [
             usage.input_tokens(),
             usage.cached_input_tokens(),
@@ -191,17 +186,10 @@ impl RunProgress {
         let now = now_millis();
         let elapsed = now.saturating_sub(self.started_unix_millis);
         let quiet = now.saturating_sub(self.last_effect_unix_millis);
-        let horizon = u64::try_from(PRODUCT_RUN_MAX_ELAPSED.as_millis()).unwrap_or(u64::MAX);
-        let remaining = horizon.saturating_sub(elapsed);
         let mut fields = vec![base.to_owned()];
         if let Some(started) = self.provider_started_unix_millis {
             let provider_elapsed = now.saturating_sub(started);
-            let deadline = self.provider_deadline_seconds.saturating_mul(1_000);
-            fields.push(format!(
-                "provider turn {} · deadline {} remaining",
-                duration(provider_elapsed),
-                duration(deadline.saturating_sub(provider_elapsed)),
-            ));
+            fields.push(format!("provider turn {}", duration(provider_elapsed)));
         }
         fields.push(format!("latest event {} · {} ago", self.last_event, duration(quiet)));
         let mut counters =
@@ -226,7 +214,6 @@ impl RunProgress {
         }
         fields.push(format!("counters {}", counters.join(" · ")));
         fields.push(format!("elapsed {}", duration(elapsed)));
-        fields.push(format!("run horizon {} remaining", duration(remaining)));
         fields.push(format!("{} workspace growth", bytes(self.workspace_growth_bytes)));
         fields.push(format!("{} observed memory", bytes(self.peak_rss_bytes)));
         if self.usage_observations == 0 {
@@ -306,13 +293,14 @@ mod tests {
     #[test]
     fn provider_events_are_live_and_completed_attempt_snapshots_cannot_roll_them_back() {
         let mut progress = RunProgress::default();
-        progress.begin_provider_request(600);
+        progress.begin_provider_request();
         progress.begin_tool("workspace_read");
         let status = progress.live_status("Writer is working");
         assert!(status.contains("counters 1 requests · 1 tools"));
         assert!(status.contains("latest event tool started: workspace_read ·"));
         assert!(status.contains("provider turn"));
-        assert!(status.contains("deadline 10m 0s remaining"));
+        assert!(!status.contains("deadline"));
+        assert!(!status.contains("run horizon"));
 
         progress.observe(ProductRunProgress::default());
         assert_eq!(progress.model_requests, 1);

@@ -3,9 +3,8 @@
 use super::primitive::{invalid, read_digest, unknown, write_digest};
 use crate::{
     InitCommand, InitCommandKind, InitCommandVerification, InitDiscoveryRequest, InitFileMode,
-    InitInstructionPatch, InitProposal, InitSourceKind, InitSourceObservation,
-    MAX_INIT_COMMAND_ARGUMENTS, MAX_INIT_COMMANDS, MAX_INIT_DIFF_BYTES, MAX_INIT_INSTRUCTION_BYTES,
-    MAX_INIT_SOURCES,
+    InitInstructionPatch, InitProposal, InitSourceKind, InitSourceObservation, MAX_INIT_DIFF_BYTES,
+    MAX_INIT_INSTRUCTION_BYTES,
 };
 use peritus_codec::{CanonicalReader, CanonicalWriter, CodecError, CodecErrorKind, CodecLimits};
 
@@ -53,13 +52,13 @@ pub(super) fn read_proposal(reader: &mut CanonicalReader<'_>) -> Result<InitProp
     let query = super::workbench::read_query(reader)?;
     let revision = reader.read_u64()?;
     let folder_digest = read_digest(reader)?;
-    let source_count = bounded_count(reader, MAX_INIT_SOURCES, offset)?;
+    let source_count = reader.read_collection_len()?;
     let mut sources = Vec::with_capacity(source_count);
     for _ in 0..source_count {
         sources.push(read_source(reader)?);
     }
     let patch = read_patch(reader)?;
-    let command_count = bounded_count(reader, MAX_INIT_COMMANDS, offset)?;
+    let command_count = reader.read_collection_len()?;
     let mut commands = Vec::with_capacity(command_count);
     for _ in 0..command_count {
         commands.push(read_command(reader)?);
@@ -180,7 +179,7 @@ fn read_command(reader: &mut CanonicalReader<'_>) -> Result<InitCommand, CodecEr
     };
     let source = bounded_string(reader, 4096, offset)?;
     let executable = bounded_string(reader, 128, offset)?;
-    let argument_count = bounded_count(reader, MAX_INIT_COMMAND_ARGUMENTS, offset)?;
+    let argument_count = reader.read_collection_len()?;
     let mut arguments = Vec::with_capacity(argument_count);
     for _ in 0..argument_count {
         arguments.push(bounded_string(reader, 1024, offset)?);
@@ -190,18 +189,6 @@ fn read_command(reader: &mut CanonicalReader<'_>) -> Result<InitCommand, CodecEr
         _ => return unknown(offset),
     };
     invalid(offset, InitCommand::new(kind, source, executable, arguments, verification))
-}
-
-fn bounded_count(
-    reader: &mut CanonicalReader<'_>,
-    maximum: usize,
-    offset: usize,
-) -> Result<usize, CodecError> {
-    let count = reader.read_collection_len()?;
-    if count > maximum {
-        return Err(CodecError::at(CodecErrorKind::LimitExceeded, offset));
-    }
-    Ok(count)
 }
 
 fn bounded_string(

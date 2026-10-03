@@ -16,20 +16,27 @@ impl super::ProductRunService {
         query: peritus_app_protocol::ProductRunQuery,
     ) -> Result<Vec<ProductRunObservation>, ProductRunServiceError> {
         let records = self.inner.records.read().map_err(|_| ProductRunServiceError::Unavailable)?;
-        records
-            .values()
-            .rev()
-            .filter(|record| query.run_id().is_none_or(|run| record.snapshot.run_id() == run))
-            .take(peritus_app_protocol::MAX_PRODUCT_RUNS)
-            .map(|record| {
-                ProductRunObservation::new(
-                    live_snapshot(&self.inner.directory, record)?,
-                    delivery_settlement(record),
-                )
-                .map_err(|_| ProductRunServiceError::InvalidState)
-            })
+        if let Some(run) = query.run_id() {
+            return records
+                .get(&run)
+                .map(|record| observation(&self.inner.directory, record))
+                .transpose()
+                .map(|value| value.into_iter().collect());
+        }
+        super::recent_records(&records, query.offset())
+            .into_iter()
+            .take(peritus_app_protocol::MAX_PRODUCT_RUN_PAGE)
+            .map(|record| observation(&self.inner.directory, record))
             .collect()
     }
+}
+
+fn observation(
+    directory: &std::path::Path,
+    record: &RunRecord,
+) -> Result<ProductRunObservation, ProductRunServiceError> {
+    ProductRunObservation::new(live_snapshot(directory, record)?, delivery_settlement(record))
+        .map_err(|_| ProductRunServiceError::InvalidState)
 }
 
 pub(super) fn project_snapshot(

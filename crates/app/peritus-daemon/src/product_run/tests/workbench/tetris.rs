@@ -56,7 +56,6 @@ fn v1_image_build_and_controlled_tetris_playtest_preserve_exact_evidence() {
                 criterion(WorkbenchGoalCriterionKind::RunnerAcceptance, "Qualified candidate"),
                 criterion(WorkbenchGoalCriterionKind::GraphicalPlaytest, "Controlled native play"),
             ],
-            WorkbenchGoalBudget::new(None, None, None, None).expect("goal budget"),
         )
         .expect("goal");
         let settings = WorkbenchExecutionSettings::new(

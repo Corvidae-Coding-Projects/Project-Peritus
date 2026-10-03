@@ -18,6 +18,7 @@ use super::{
     ownership::WorkspaceOwnership,
     path::{checked, tool},
     receipt::{EffectReceiptLedger, ReceiptDecision},
+    reference::ExplicitReferences,
     removal,
     resources::CommandResources,
     wire::{object, observation, required_string, string},
@@ -50,6 +51,7 @@ enum WorkspaceToolMode {
 pub struct WorkspaceDeveloperTools {
     pub(super) root: PathBuf,
     pub(super) access_policy: WorkspaceAccessPolicy,
+    pub(super) references: ExplicitReferences,
     grounding: GroundingEvidence,
     ownership: WorkspaceOwnership,
     mode: WorkspaceToolMode,
@@ -309,10 +311,6 @@ impl DeveloperToolExecutor for WorkspaceDeveloperTools {
             return None;
         }
         Some(PROGRESS_FEEDBACK.to_owned())
-    }
-
-    fn continuation_blocker(&self) -> Option<String> {
-        self.inspection_progress.blocker()
     }
 }
 

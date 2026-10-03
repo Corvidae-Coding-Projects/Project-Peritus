@@ -170,8 +170,8 @@ impl CommandRuntime {
 
     fn start_owned(&self, request: StartCommand<'_>) -> Result<StartedCommand, DeveloperLoopError> {
         let cwd = canonical_command_cwd(&self.inner.workspace_root, request.cwd)?;
-        let timeout_millis =
-            u64::try_from(request.timeout.as_millis()).unwrap_or(u64::MAX).clamp(1, 600_000);
+        let timeout_millis = u64::try_from(request.timeout.as_millis())
+            .map_err(|_| tool("command timeout is not representable in milliseconds"))?;
         let mut state = self.inner.state.lock().map_err(|_| tool("command runtime is poisoned"))?;
         let ordinal =
             ordinal::reserve(&self.inner.state_root, self.inner.run_id, state.next_ordinal)

@@ -267,7 +267,6 @@ fn client_hello(
         WellKnownProtocolFeature::WorkbenchImages,
         WellKnownProtocolFeature::WorkbenchFiles,
         WellKnownProtocolFeature::WorkbenchGoals,
-        WellKnownProtocolFeature::WorkbenchBudgets,
         WellKnownProtocolFeature::WorkbenchReview,
         WellKnownProtocolFeature::WorkbenchPreview,
         WellKnownProtocolFeature::WorkbenchPreviewOutput,

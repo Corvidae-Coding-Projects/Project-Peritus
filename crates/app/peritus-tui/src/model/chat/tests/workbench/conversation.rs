@@ -5,6 +5,8 @@ use peritus_app_protocol::{
     WorkbenchQuery, WorkbenchQueueIntent,
 };
 
+mod steering;
+
 fn chat_model() -> AppModel {
     let mut model = enabled_model();
     enable_durable_chat(&mut model);

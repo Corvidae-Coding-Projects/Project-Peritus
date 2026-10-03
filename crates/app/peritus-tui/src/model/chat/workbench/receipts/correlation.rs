@@ -19,7 +19,6 @@ impl AppModel {
                 | WorkbenchIntent::Queue(_)
                 | WorkbenchIntent::SetBrief { .. }
                 | WorkbenchIntent::AcceptBriefProposal { .. }
-                | WorkbenchIntent::UpdateGoalBudget { .. }
                 | WorkbenchIntent::ClearGoal { .. }
                 | WorkbenchIntent::RenameConversation(_)
                 | WorkbenchIntent::PinConversation(_)

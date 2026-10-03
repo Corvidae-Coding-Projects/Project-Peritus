@@ -14,11 +14,11 @@ verification, and explicit risks or non-goals. The adapter then joins:
 - the `peritus-agent` D0 provider/tool loop for real inspect, search, edit, command, test, and retry,
   with unread existing files protected from mutation and recoverable malformed, transport, and
   timeout terminals retried as fresh bounded provider attempts;
-- `peritus-gates` changed-path planning, the deterministic 500-line source ceiling, exact
+- `peritus-gates` changed-path planning, source readability, exact
   per-project format/compile/build/test/lint evidence, and native structural checks for changed
   CSV, JSON, YAML, and conventional SQLite migration artifacts;
 - `peritus-review` typed policy-derived findings conserved through fixer and fresh-review cycles;
-- `peritus-orchestrator` fail-closed E0 accept/fix/exhaust decisions; and
+- `peritus-orchestrator` fail-closed E0 accept/fix decisions; and
 - a durable task candidate, provider/tool trace, synced effect-receipt ledger, task-level summary,
   and explicit deliverable handoff consumed by the daemon.
 
@@ -50,8 +50,9 @@ Continuation state is bound to the exact run, managed-workspace lineage, candida
 conversation revision, and checkpoint sequence. S1 knowledge invalidation selects the first stale
 phase; S2 obligation evidence participates in gates, reviewer input, acceptance, and fixer routing.
 Provider recovery during review repeats review only, candidate changes repeat qualification, and a
-conversation revision returns to design. Phase admission preserves a protected finalization reserve
-so an open-ended model turn cannot consume the time needed to return an honest handoff.
+conversation revision returns to design. When an embedding caller explicitly supplies a run
+horizon, phase admission preserves a protected finalization reserve so an open-ended model turn
+cannot consume the time needed to return an honest handoff.
 The opaque continuation has a versioned durable encoding for the daemon. Restoring it rebuilds
 role knowledge from the current conversation and deliberately reacquires effectful gate reports
 instead of pretending an in-process runtime object survived restart.
@@ -88,12 +89,18 @@ written to the append-only trace before its progress counter advances.
 
 Workspace grounding belongs to a host invocation, not to each provider request. Recovery prompts
 apply their startup sequence once; later steps receive current executor prerequisite state alongside
-the original host policy. Writable roles also detect unchanged inspection cycles using a bounded
-16-entry history of tool-name, argument, and result digests. Three consecutive repeated observations
-produce a specific warning; six stop with `inspection-no-progress` after the complete batch is
-retained. New inspection evidence or a different tool strategy resets the cycle. Command polling
-is not inspection repetition, and read-only reviewer/design tools do not use this delivery guard.
-This stop is nonretryable, so earlier file writes cannot turn it into another recovery loop.
+the original host policy. Roles detect unchanged inspection cycles using a bounded 16-entry history
+of tool-name, argument, and result digests. Repeated identical visible observations produce advisory
+feedback while preserving grounding and continuation. New inspection evidence or a mutation
+boundary resets the warning. Command polling is not inspection repetition.
+
+The developer catalog also exposes bounded read-only reference listing and text reads. Their roots
+come only from normal absolute paths in the current user-authored input, excluding provider replies
+and host guidance. A reference path never enrolls workspace ownership, satisfies workspace mutation
+grounding, or grants process access. Parent traversal and symbolic-link targets fail closed; missing
+path components are matched to a unique case-insensitive sibling and return the actual on-disk
+casing. An exact spelling wins, while case-colliding siblings fail as ambiguous instead of being
+guessed.
 
 Recovery progress is a content change, not a larger inspection scope: enrolling an unchanged or
 absent path does not replenish retry allowances. Policy, cancellation, integrity, and ambiguous
@@ -125,38 +132,39 @@ remove, and process calls even if a provider emits an undeclared tool name, so r
 does not grant mutation authority. Malformed or ungrounded reviews receive their exact rejection
 on a fresh bounded attempt. Each retry is counted and publishes a host recovery notice with the
 reason and next attempt number. The ordinary conversation displays that notice separately from
-provider text; the original response remains in the private trace. The three-attempt limit,
-fresh-read requirement, and typed acceptance checks are unchanged.
+provider text; the original response remains in the private trace. Invalid task-level reports
+continue with corrective context until a valid grounded report, explicit user intervention, or a
+concrete provider or host failure occurs.
 
 The crate consumes already resolved provider and managed-workspace capabilities. It emits bounded
 progress and deliverable evidence; it does not own UI, provider login, workspace trust, or Git
 commit/export/discard authority. `Complete` is impossible for an empty or uncovered candidate, a
 failed or missing exact-target command, or any unresolved policy blocker.
 
-Run lifetime is deliberately separate from model-turn lifetime. The caller supplies the real
-wall-clock horizon, up to the product's eight-hour hard ceiling. Every architect, writer, reviewer,
-and fixer invocation receives the remaining shared time so it can do substantial work without
-spending the complete window on open-ended exploration or optimization. At the horizon, Peritus
-signals the shared provider cancellation token, gives the active operation a short settlement
-period, and returns a typed budget failure that the caller can persist and report.
+Normal interactive runs have no wall-clock product or provider-turn deadline. They continue until
+the work reaches a terminal result, the user cancels it, or a concrete provider, transport,
+resource, or integrity boundary fails. Benchmark and embedding callers may still select an explicit
+positive horizon; only those bounded runs receive countdown prompts, reserve finalization
+time, and return a typed elapsed-budget failure at the selected horizon. Per-command timeouts remain
+independent so a stuck child process cannot consume an unbounded run.
 
-One provider attempt remains wall-clock bounded and one developer segment remains bounded to 48
-logical turns and 512 tool calls. If that segment changed the exact Git candidate, its content
-checkpoint starts another fresh, repository-grounded segment with a compact prompt. Therefore
-substantial work can continue for as many segments as it needs without retaining an ever-growing
-model context. A segment that exhausts its allowance without changing the candidate stops as
-no-progress, and three consecutive malformed or ungrounded task-level terminals receive the exact
-rejection as corrective context; three consecutive failures stop for user correction. Abrupt daemon
-restarts automatically resume interrupted goals from their persisted conversation, finding ledger,
-trace, and unchanged managed worktree.
+One developer segment remains bounded to 48 logical turns and 512 tool calls. Reaching either
+boundary continues in a fresh repository-grounded segment with completed effects and evidence
+preserved. Malformed or ungrounded task-level terminals receive the exact rejection as corrective
+context without a fixed retry ceiling. Fixer/reviewer cycles continue while acceptance remains
+incomplete; repeated findings or unchanged fixes do not impose a terminal cycle count. Abrupt
+daemon restarts resume interrupted goals from their persisted conversation, finding ledger, trace,
+and unchanged managed worktree.
 
 At every completed effect boundary, the runner also measures regular-file bytes beneath the
 managed workspace and the harness process's resident memory through the host's ordinary process
 accounting interface. Git object storage is excluded because it is repository history rather than
 task growth; generated build trees remain included. The daemon persists and displays current
 workspace size, positive growth from the run baseline, and the highest observed resident memory.
-Generous 50 GiB growth and 12 GiB observed-memory ceilings fail with the same distinct budget
-category as token, request, tool, cost, and elapsed-time overruns.
+These measurements are observations, not cumulative stop thresholds. Human goals have no request,
+tool, token, cost, memory, disk-growth, or wall-clock budget control. Explicitly bounded benchmark
+or embedding callers retain their selected elapsed-time deadline. Per-operation protocol, output,
+attachment, process, and concurrency bounds remain enforced.
 
 Provider, filesystem, process, and Git effects remain ordinary Rust host adapters. In
 `verus_only` builds the crate exposes the same daemon-facing boundary as a fail-closed total

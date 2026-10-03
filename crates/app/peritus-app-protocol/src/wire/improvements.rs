@@ -6,8 +6,7 @@ use super::{
 };
 use crate::{
     ImprovementCandidate, ImprovementEvaluation, ImprovementEvaluationRequest, ImprovementEvidence,
-    ImprovementInbox, ImprovementRequest, ImprovementText, MAX_IMPROVEMENT_EVIDENCE,
-    MAX_IMPROVEMENTS,
+    ImprovementInbox, ImprovementRequest, ImprovementText,
 };
 use peritus_codec::{CanonicalReader, CanonicalWriter, CodecError, CodecErrorKind};
 use peritus_types::{RunId, WorkspaceId};
@@ -95,7 +94,7 @@ pub(super) fn write_inbox(
 
 pub(super) fn read_inbox(r: &mut CanonicalReader<'_>) -> Result<ImprovementInbox, CodecError> {
     let workspace = read_id(r, WorkspaceId::new)?;
-    let count = read_count(r, MAX_IMPROVEMENTS)?;
+    let count = read_count(r)?;
     let mut candidates = Vec::with_capacity(count);
     for _ in 0..count {
         let id = read_digest(r)?;
@@ -110,7 +109,7 @@ pub(super) fn read_inbox(r: &mut CanonicalReader<'_>) -> Result<ImprovementInbox
         } else {
             None
         };
-        let count = read_count(r, MAX_IMPROVEMENT_EVIDENCE)?;
+        let count = read_count(r)?;
         let mut evidence = Vec::with_capacity(count);
         for _ in 0..count {
             evidence.push(ImprovementEvidence::new(
@@ -127,12 +126,8 @@ pub(super) fn read_inbox(r: &mut CanonicalReader<'_>) -> Result<ImprovementInbox
     invalid(r.offset(), ImprovementInbox::new(workspace, candidates))
 }
 
-fn read_count(r: &mut CanonicalReader<'_>, maximum: usize) -> Result<usize, CodecError> {
-    let value = usize::from(r.read_u16()?);
-    if value > maximum {
-        return Err(CodecError::at(CodecErrorKind::LimitExceeded, r.offset()));
-    }
-    Ok(value)
+fn read_count(r: &mut CanonicalReader<'_>) -> Result<usize, CodecError> {
+    r.read_u16().map(usize::from)
 }
 
 fn read_text(r: &mut CanonicalReader<'_>) -> Result<ImprovementText, CodecError> {

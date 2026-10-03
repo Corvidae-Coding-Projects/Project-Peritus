@@ -19,7 +19,6 @@ enum Arguments {
     Goal,
     Pause,
     Resume,
-    Budget,
     Permissions,
     Init,
     Memory,
@@ -60,7 +59,6 @@ pub(super) enum Command {
     Pause,
     Resume,
     Usage,
-    Budget,
     Preview,
     Checkpoint,
     Rewind,
@@ -124,7 +122,6 @@ fn argument_completions(text: &str) -> Vec<(String, &'static str)> {
         ["/goal", "criterion"] => &["graphical", "remove-graphical"],
         ["/goal", "clear"] => &["confirm"],
         ["/pause"] => &["now", "after-operation", "before-edit"],
-        ["/budget"] => &["none", "time=", "requests=", "tools=", "tokens="],
         ["/preview"] => {
             &["results", "launch", "play", "terminal", "capture", "stop", "check", "feedback"]
         }

@@ -71,7 +71,7 @@ fn explicit_artifact_workspace_covers_general_outputs() {
     assert!(plan.uncovered_paths().is_empty());
     assert_eq!(plan.projects()[0].kind(), ProjectKind::Artifact);
     assert_eq!(plan.commands().len(), 2);
-    assert_eq!(plan.commands()[0].label(), "Source layout");
+    assert_eq!(plan.commands()[0].label(), "Source readability");
     assert_eq!(plan.commands()[1].label(), "Artifact CSV structure");
 }
 
@@ -91,7 +91,7 @@ fn exact_requested_artifact_does_not_cover_an_unrequested_sibling() {
     assert_eq!(exact.projects()[0].kind(), ProjectKind::Artifact);
     assert_eq!(exact.projects()[0].manifest(), None);
     assert_eq!(exact.commands().len(), 1);
-    assert_eq!(exact.commands()[0].label(), "Source layout");
+    assert_eq!(exact.commands()[0].label(), "Source readability");
 
     let with_sibling = TargetGatePlan::discover(
         temporary.path(),

@@ -1,15 +1,14 @@
 use super::*;
 mod criteria;
 mod recovery;
-mod refresh;
 use peritus_app_protocol::{
     ControlOperationId, ProductInteractionMode, WorkbenchBrief, WorkbenchBriefEntry,
-    WorkbenchBriefField, WorkbenchGoalBudget, WorkbenchGoalCriterion,
-    WorkbenchGoalCriterionDefinition, WorkbenchGoalCriterionKind, WorkbenchGoalCriterionState,
-    WorkbenchGoalPauseMode, WorkbenchGoalRole, WorkbenchGoalRoleUsage, WorkbenchGoalSnapshot,
-    WorkbenchGoalState, WorkbenchGoalUsage, WorkbenchInputId, WorkbenchInputOrder,
-    WorkbenchInputRow, WorkbenchInputSelection, WorkbenchInputState, WorkbenchInputText,
-    WorkbenchIntent, WorkbenchQuery,
+    WorkbenchBriefField, WorkbenchGoalCriterion, WorkbenchGoalCriterionDefinition,
+    WorkbenchGoalCriterionKind, WorkbenchGoalCriterionState, WorkbenchGoalPauseMode,
+    WorkbenchGoalRole, WorkbenchGoalRoleUsage, WorkbenchGoalSnapshot, WorkbenchGoalState,
+    WorkbenchGoalUsage, WorkbenchInputId, WorkbenchInputOrder, WorkbenchInputRow,
+    WorkbenchInputSelection, WorkbenchInputState, WorkbenchInputText, WorkbenchIntent,
+    WorkbenchQuery,
 };
 
 fn goal_model() -> AppModel {
@@ -93,7 +92,6 @@ fn snapshot_with_identity(
         state == WorkbenchGoalState::Active,
         None,
         vec![WorkbenchGoalCriterion::new(runner, WorkbenchGoalCriterionState::Pending, None)],
-        WorkbenchGoalBudget::new(Some(60_000), Some(8), Some(20), Some(100_000)).unwrap(),
         usage(Some(50), Some(10)),
     )
     .unwrap()
@@ -225,13 +223,12 @@ fn goal_drafts_then_confirms_the_exact_brief_and_existing_runner_settings() {
 }
 
 #[test]
-fn pause_resume_and_budget_use_the_goal_identity_and_aggregate_revision() {
+fn pause_and_resume_use_the_goal_identity_and_aggregate_revision() {
     for (text, expected) in [
         ("/pause", "pause-after"),
         ("/pause now", "pause-now"),
         ("/pause before-edit", "pause-edit"),
         ("/resume", "resume"),
-        ("/budget requests=12 tools=none", "budget"),
     ] {
         let mut model = goal_model();
         let query = model.chat.workbench.selected.unwrap();
@@ -256,13 +253,6 @@ fn pause_resume_and_budget_use_the_goal_identity_and_aggregate_revision() {
                 assert_eq!((*exact, *mode), (goal, WorkbenchGoalPauseMode::BeforeEdit));
             }
             ("resume", WorkbenchIntent::ResumeGoal { goal: exact }) => assert_eq!(*exact, goal),
-            ("budget", WorkbenchIntent::UpdateGoalBudget { goal: exact, budget }) => {
-                assert_eq!(*exact, goal);
-                assert_eq!(budget.max_requests(), Some(12));
-                assert_eq!(budget.max_tool_calls(), None);
-                assert_eq!(budget.max_active_millis(), Some(60_000));
-                assert_eq!(budget.max_total_tokens(), Some(100_000));
-            }
             _ => panic!("wrong goal intent for {text}: {:?}", command.intent()),
         }
     }
@@ -270,7 +260,7 @@ fn pause_resume_and_budget_use_the_goal_identity_and_aggregate_revision() {
 
 #[test]
 fn goal_control_receipts_accept_intervening_usage_without_losing_the_user_draft() {
-    for command_text in ["/pause now", "/budget time=2m"] {
+    for command_text in ["/pause now", "/pause before-edit"] {
         let mut model = goal_model();
         let query = model.chat.workbench.selected.unwrap();
         model.chat.workbench.goal = Some(snapshot(query, 17, WorkbenchGoalState::Active));
@@ -323,7 +313,6 @@ fn goal_panel_renders_unknown_usage_and_unavailable_later_phase_evidence() {
             goal.criteria()[0].clone(),
             WorkbenchGoalCriterion::new(graphical, WorkbenchGoalCriterionState::Unavailable, None),
         ],
-        goal.budget(),
         usage(None, None),
     )
     .unwrap();

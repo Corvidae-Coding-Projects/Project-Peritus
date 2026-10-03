@@ -137,7 +137,7 @@ fn recovery_and_reconnected_work_show_durable_daemon_status() {
         ProductRunPhase::Writing,
         current.cycle(),
         current.task().to_owned(),
-        "Inspecting the repository and writing a design; recoverable attempts retry automatically | provider turn 2m 3s · deadline 7m 57s remaining | latest event provider still waiting · 7s ago | counters 30 requests · 101 tools · 2 retries · 1.1M tokens · 37.1k cached input | elapsed 12m 3s | run horizon 7h 47m remaining | 0 B workspace growth | 65.1 MiB observed memory"
+        "Inspecting the repository and writing a design; recoverable attempts retry automatically | provider turn 2m 3s | latest event provider still waiting · 7s ago | counters 30 requests · 101 tools · 2 retries · 1.1M tokens · 37.1k cached input | elapsed 12m 3s | 0 B workspace growth | 65.1 MiB observed memory"
             .to_owned(),
         String::new(),
         String::new(),

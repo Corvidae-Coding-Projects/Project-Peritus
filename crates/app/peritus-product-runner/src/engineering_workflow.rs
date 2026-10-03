@@ -198,8 +198,8 @@ requested behavior.
    threshold, approval, or other controlling fact belongs in evidence and caveat fields; it does not
    become the applicable authority for a decision the available evidence cannot resolve.
    Name concrete modules, ownership boundaries, interfaces, data flow, failure behavior, and exact verification commands.
-3. Divide implementation into cohesive modules with one clear responsibility. Production source
-   files must never exceed 500 lines. Keep crate, package, library, and binary roots as thin
+3. Divide implementation into cohesive modules with one clear responsibility. Keep source
+   formatting readable and crate, package, library, and binary roots as thin
    composition surfaces; move behavior into named domain modules rather than generic helpers or
    utility collections. Match retained implementation to the requested deliverable: when a managed
    workspace is explicitly an artifact workspace and the user asks only for generated outputs, a
@@ -332,8 +332,8 @@ const ARCHITECT_SKILL: &str = r"# Repository architect
 
 Produce an implementation-grade design from observed repository facts. For every substantial
 behavior, name its owning module and interface. Include a file plan with expected responsibilities
-and approximate size, keeping every production source file below the workflow's 500-line hard
-limit. Call out thin root modules, dependency direction, state ownership, effect boundaries, and
+and approximate size, splitting modules when responsibilities or interfaces require it.
+Call out thin root modules, dependency direction, state ownership, effect boundaries, and
 how tests exercise the design. Split slices along file ownership boundaries and identify the few
 integration points that require serialization.
 ";

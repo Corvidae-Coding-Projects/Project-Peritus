@@ -3,6 +3,7 @@
 use crossterm::event::{KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 
 pub mod composer;
+pub mod output;
 pub mod selection;
 mod terminal;
 pub use terminal::terminal_bytes;

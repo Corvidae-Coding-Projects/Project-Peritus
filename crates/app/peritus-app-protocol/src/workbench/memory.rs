@@ -19,8 +19,6 @@ pub const MAX_WORKBENCH_GUIDANCE_BYTES: usize = 8 * 1024;
 pub const MAX_WORKBENCH_GUIDANCE_REASON_BYTES: usize = 1024;
 /// Maximum rows in one guidance inspection page or one future-request rendering.
 pub const MAX_WORKBENCH_GUIDANCE_PAGE: usize = 32;
-/// Maximum active and forgotten guidance identities in one project.
-pub const MAX_WORKBENCH_GUIDANCE_RECORDS: usize = 4096;
 /// Maximum deterministic project-guidance bytes admitted to one future request.
 pub const MAX_WORKBENCH_GUIDANCE_RENDER_BYTES: usize = 64 * 1024;
 

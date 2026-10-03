@@ -31,6 +31,8 @@ mod preview;
 #[cfg(not(verus_only))]
 mod receipt;
 #[cfg(not(verus_only))]
+mod reference;
+#[cfg(not(verus_only))]
 mod removal;
 #[cfg(not(verus_only))]
 mod resources;

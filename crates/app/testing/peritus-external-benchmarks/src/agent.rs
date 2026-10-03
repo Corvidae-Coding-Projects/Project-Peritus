@@ -78,7 +78,7 @@ pub async fn execute(
             command_runtime,
             finding_state: String::new(),
             task: prompt,
-            max_elapsed,
+            max_elapsed: Some(max_elapsed),
             delivery_scope,
             conversation: Arc::new(conversation.clone()),
             providers: authenticated.roles,

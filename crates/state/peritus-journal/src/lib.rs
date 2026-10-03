@@ -58,7 +58,8 @@ pub use outbox::{OutboxAcknowledgement, OutboxDraft, OutboxMessage, OutboxState}
 pub use receipt::{CommittedBatch, CurrentCredentialRegistry};
 pub use record::{
     ArtifactDependency, CommittedRecord, DurableStateRecord, EventDraft, ExactFrame,
-    GlobalEventWindow, MAX_GLOBAL_WINDOW_RECORDS, StateInstall,
+    GlobalEventWindow, MAX_GLOBAL_WINDOW_RECORDS, MAX_STATE_BYTES, MAX_STATE_KEY_BYTES,
+    StateInstall,
 };
 pub use sqlite::query::AggregateCheckpointSnapshot;
 pub use sqlite::{

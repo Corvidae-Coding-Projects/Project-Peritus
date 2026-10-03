@@ -13,6 +13,9 @@ mod rejection;
 
 impl AppModel {
     pub(in crate::model) fn recover_workbench_receipt(&mut self) -> Vec<Effect> {
+        if self.resume_latest_pending() {
+            return self.resume_latest_conversation();
+        }
         if !self.workbench_available() || self.workbench_request_pending() {
             return Vec::new();
         }
@@ -275,7 +278,6 @@ impl AppModel {
             WorkbenchIntent::StartGoal { .. }
                 | WorkbenchIntent::PauseGoal { .. }
                 | WorkbenchIntent::ResumeGoal { .. }
-                | WorkbenchIntent::UpdateGoalBudget { .. }
                 | WorkbenchIntent::ClearGoal { .. }
         ) {
             self.chat.workbench.goal = None;

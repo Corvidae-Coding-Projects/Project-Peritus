@@ -29,7 +29,6 @@ pub(super) async fn start_goal(
             WorkbenchInputText::new("Strict runner acceptance".into()).unwrap(),
             true,
         )],
-        WorkbenchGoalBudget::new(None, Some(4), Some(4), None).unwrap(),
     )
     .unwrap();
     let settings = WorkbenchExecutionSettings::new(
@@ -164,21 +163,7 @@ fn a_goal_paused_at_an_idle_boundary_resumes_after_restart_without_new_input() {
 
         let restored =
             restore(state.path(), repository.path(), workspace, [&writer, &reviewer, &fixer]);
-        let paused = goal(&restored, workspace);
-        let budget = command(
-            workspace,
-            11,
-            paused.aggregate_revision(),
-            WorkbenchIntent::UpdateGoalBudget {
-                goal: paused.goal(),
-                budget: WorkbenchGoalBudget::new(Some(60_000), Some(4), Some(4), None).unwrap(),
-            },
-        );
-        assert!(matches!(
-            restored.workbench_command(actor(), &budget).await,
-            AppResponsePayload::WorkbenchReceipt(_)
-        ));
-        assert!(restored.retry(run).await.is_err(), "budget changes do not resume paused work");
+        assert!(restored.retry(run).await.is_err(), "restart does not resume paused work");
         let resume = resume_command(&restored, workspace);
         let response = restored.workbench_command(actor(), &resume).await;
         assert!(matches!(response, AppResponsePayload::WorkbenchReceipt(_)), "{response:?}");

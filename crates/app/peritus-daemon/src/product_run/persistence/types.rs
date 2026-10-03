@@ -82,8 +82,12 @@ pub(super) struct PersistedProgress {
     pub(super) last_event: String,
     #[serde(default)]
     pub(super) provider_started_unix_millis: Option<u64>,
-    #[serde(default)]
-    pub(super) provider_deadline_seconds: u64,
+    #[serde(
+        default,
+        rename = "provider_deadline_seconds",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub(super) _legacy_provider_deadline_seconds: Option<u64>,
 }
 
 #[derive(Serialize, Deserialize)]

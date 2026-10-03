@@ -30,7 +30,7 @@ pub struct SuccessfulCommand {
 pub(super) struct CommandEvidence {
     records: VecDeque<String>,
     bytes: usize,
-    successful: VecDeque<SuccessfulCommand>,
+    successful: Vec<SuccessfulCommand>,
 }
 
 impl CommandEvidence {
@@ -59,10 +59,7 @@ impl CommandEvidence {
             && let Some(purpose) = CommandPurpose::from_arguments(arguments)
         {
             self.successful
-                .push_back(SuccessfulCommand { command: format!("{tool} {request}"), purpose });
-            while self.successful.len() > MAX_RECORDS {
-                self.successful.pop_front();
-            }
+                .push(SuccessfulCommand { command: format!("{tool} {request}"), purpose });
         }
     }
 
@@ -76,7 +73,7 @@ impl CommandEvidence {
     }
 
     pub(super) fn successful(&self) -> Vec<SuccessfulCommand> {
-        self.successful.iter().cloned().collect()
+        self.successful.clone()
     }
 }
 
@@ -106,12 +103,9 @@ pub(super) fn merge_rendered(retained: &mut String, incoming: &str) {
     }
 }
 
-/// Merges recent successful commands while preserving their execution order and memory bound.
+/// Merges successful commands while preserving their execution order.
 pub fn merge_successful(retained: &mut Vec<SuccessfulCommand>, incoming: &[SuccessfulCommand]) {
     retained.extend_from_slice(incoming);
-    if retained.len() > MAX_RECORDS {
-        retained.drain(..retained.len() - MAX_RECORDS);
-    }
 }
 
 fn preview(value: &str, maximum: usize) -> String {
@@ -169,5 +163,25 @@ mod tests {
         assert_eq!(retained.len(), 1);
         assert_eq!(retained[0].purpose, CommandPurpose::ExternalEffect);
         assert!(retained[0].command.contains("admin"));
+    }
+
+    #[test]
+    fn acceptance_evidence_preserves_commands_beyond_the_observation_window() {
+        let mut evidence = CommandEvidence::default();
+        let success: Value = serde_json::from_str(r#"{"success":true}"#).expect("success");
+        for index in 0..40 {
+            let request: Value = serde_json::from_str(&format!(
+                r#"{{"args":["check-{index}"],"program":"verify","purpose":"verification"}}"#
+            ))
+            .expect("request");
+            evidence.record(&request, &success);
+        }
+
+        let mut retained = Vec::new();
+        merge_successful(&mut retained, &evidence.successful());
+
+        assert_eq!(retained.len(), 40);
+        assert!(retained.first().expect("first command").command.contains("check-0"));
+        assert!(retained.last().expect("last command").command.contains("check-39"));
     }
 }

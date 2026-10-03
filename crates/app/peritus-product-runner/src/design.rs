@@ -19,7 +19,6 @@ use crate::{ProductRunnerError, ProductRunnerErrorKind};
 
 const MINIMUM_DESIGN_BYTES: usize = 512;
 const MAXIMUM_DESIGN_BYTES: usize = 1024 * 1024;
-const MAX_INVALID_DESIGNS: u8 = 3;
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum DesignScope {
     Artifact,
@@ -70,7 +69,6 @@ pub async fn create(
     }
     let mut providers = crate::failover::ProviderCursor::new(primary, fallbacks);
     let mut invocation = 0_u32;
-    let mut invalid_designs = 0_u8;
     let mut provider_recovery = crate::failover::RoleRecovery::default();
     let mut correction = None;
     loop {
@@ -122,6 +120,12 @@ pub async fn create(
         accounting.check()?;
         let result = match result {
             Ok(result) => result,
+            Err(peritus_agent::DeveloperLoopError::SegmentExhausted) => {
+                accounting.record_role_retry()?;
+                provider_recovery.reset();
+                correction = Some(crate::failover::RoleRecovery::correction("segment_boundary"));
+                continue;
+            }
             Err(error) => {
                 if let Some(reason) = provider_recovery.retry(&error) {
                     accounting.record_role_retry()?;
@@ -140,40 +144,47 @@ pub async fn create(
         crate::failover::record_provider_success(accounting, &providers, &mut provider_recovery);
         check_cancelled(input)?;
         if input.conversation.revision() != revision {
-            invalid_designs = 0;
             correction = None;
             continue;
         }
-        let markdown =
-            tools.grounding().validate().map_err(grounding).and_then(|()| normalize(&result.text));
-        let mut markdown = match markdown {
+        let markdown = match grounded_markdown(&tools, &result.text) {
             Ok(markdown) => markdown,
             Err(error) => {
-                invalid_designs = invalid_designs.saturating_add(1);
-                if invalid_designs < MAX_INVALID_DESIGNS {
-                    correction = Some(correction_prompt(&error));
-                    continue;
-                }
-                return Err(error);
+                accounting.record_role_retry()?;
+                correction = Some(correction_prompt(&error));
+                continue;
             }
         };
-        markdown.push_str(&tools.grounding().markdown());
         let path = input.trace_path.with_extension("design.md");
         publish(&path, markdown.as_bytes())?;
         return Ok(DesignDocument { path, markdown, conversation_revision: revision });
     }
 }
 
-fn system_prompt(remaining: std::time::Duration) -> String {
+fn grounded_markdown(
+    tools: &WorkspaceDeveloperTools,
+    text: &str,
+) -> Result<String, ProductRunnerError> {
+    tools.grounding().validate().map_err(grounding)?;
+    let mut markdown = normalize(text)?;
+    markdown.push_str(&tools.grounding().markdown());
+    Ok(markdown)
+}
+
+fn system_prompt(remaining: Option<std::time::Duration>) -> String {
     let proportionality = "Scale the design to the actual change. Keep small changes concise while giving multi-module source work all detail needed for independent implementation. Do not repeat the same requirement across sections merely to make the document longer.";
     let instructions = format!(
         "You are the design architect in a serious coding harness. Inspect the actual repository with the read-only workspace tools before designing. Return only a detailed Markdown design document, not JSON and not a code fence. Preserve the requested ambition and cover the full requested product rather than proposing an MVP. Ground the document in concrete existing paths, manifests, interfaces, conventions, and constraints; for a greenfield repository, specify the exact structure to create. Begin acceptance reasoning from the original request's literal paths, values, operations, and grammatical scope. Do not override an explicit expected value with a model-derived invariant or manufacture a conflict by broadening a narrowly scoped rule. Respect the workspace's declared product kind: for an artifact workspace whose requested deliverables are generated outputs rather than retained code, design a bounded producer and independent artifact/effect verification without inventing package scaffolding. Include sections for Objective and acceptance criteria, Repository findings, Architecture and interfaces, Data and control flow, File and module plan, Implementation slices, Verification, and Risks or explicit non-goals. Make slices independently actionable where practical. Focus on realistic application behavior and avoid speculative adversarial edge cases. Do not edit files, run commands, implement code, or commit.\n\n{}\n\n{proportionality}",
         crate::engineering_workflow::architect(),
     );
-    format!(
-        "The complete run has approximately {} seconds left at this design invocation. Keep enough of that shared window for implementation, gates, independent review, and fixes.\n\n{instructions}",
-        remaining.as_secs()
-    )
+    if let Some(remaining) = remaining {
+        format!(
+            "The complete run has approximately {} seconds left at this design invocation. Keep enough of that shared window for implementation, gates, independent review, and fixes.\n\n{instructions}",
+            remaining.as_secs()
+        )
+    } else {
+        instructions
+    }
 }
 
 fn design_scope(workspace_root: &Path) -> DesignScope {
@@ -295,7 +306,7 @@ mod tests {
 
     #[test]
     fn design_keeps_literal_values_and_scoped_rules_authoritative() {
-        let prompt = system_prompt(std::time::Duration::from_mins(10));
+        let prompt = system_prompt(Some(std::time::Duration::from_mins(10)));
         assert!(prompt.contains("original request's literal paths, values, operations"));
         assert!(prompt.contains("Do not override an explicit expected value"));
         assert!(prompt.contains("broadening a narrowly scoped rule"));
@@ -305,6 +316,10 @@ mod tests {
         assert!(prompt.contains("opaque contract values"));
         assert!(prompt.contains("reversible requested artifact"));
         assert!(prompt.contains("without inventing package scaffolding"));
+
+        let unbounded = system_prompt(None);
+        assert!(!unbounded.contains("seconds left"));
+        assert!(!unbounded.contains("shared window"));
     }
 
     #[test]

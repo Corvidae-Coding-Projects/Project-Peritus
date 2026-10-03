@@ -1,6 +1,7 @@
 //! Ratatui rendering for every G2 interaction view.
 
 mod chat;
+pub use chat::{transcript_area, transcript_rows};
 mod editor;
 mod product;
 mod prompts;

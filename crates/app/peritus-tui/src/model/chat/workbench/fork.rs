@@ -1,9 +1,9 @@
-//! Checkpoint-bound conversation forks and isolated allocation parsing.
+//! Checkpoint-bound conversation forks.
 
 use crate::model::{AppModel, Effect, NoticeLevel, decode_hex_16};
 use peritus_app_protocol::{
-    ControlOperationId, ConversationId, ConversationTitle, WorkbenchForkBudget, WorkbenchForkMode,
-    WorkbenchForkRequest, WorkbenchIntent, WorkbenchQuery,
+    ControlOperationId, ConversationId, ConversationTitle, WorkbenchForkMode, WorkbenchForkRequest,
+    WorkbenchIntent, WorkbenchQuery,
 };
 
 impl AppModel {
@@ -25,7 +25,7 @@ impl AppModel {
             .and_then(|value| decode_hex_16(value))
             .and_then(|bytes| ControlOperationId::new(bytes).ok())
         else {
-            self.notice(NoticeLevel::Warning, "Use /fork <checkpoint-id> read-only [time=<ms> requests=<n> tools=<n> tokens=<n>], or /fork <checkpoint-id> isolated <workspace-id> time=<ms> requests=<n> tools=<n> tokens=<n>.");
+            self.notice(NoticeLevel::Warning, "Use /fork <checkpoint-id> read-only, or /fork <checkpoint-id> isolated <workspace-id>.");
             return Vec::new();
         };
         let Some(references) = self
@@ -44,13 +44,11 @@ impl AppModel {
             );
             return Vec::new();
         };
-        let (mode, workspace, allocation) = match parts.get(1).copied() {
-            Some("read-only") if parts.len() == 2 || parts.len() == 6 => (
-                WorkbenchForkMode::ReadOnlyCurrentWorkspace,
-                source.query().workspace(),
-                if parts.len() == 2 { None } else { parse_fork_budget(&parts[2..]) },
-            ),
-            Some("isolated") if parts.len() == 7 => {
+        let (mode, workspace) = match parts.get(1).copied() {
+            Some("read-only") if parts.len() == 2 => {
+                (WorkbenchForkMode::ReadOnlyCurrentWorkspace, source.query().workspace())
+            }
+            Some("isolated") if parts.len() == 3 => {
                 let Some(workspace) = decode_hex_16(parts[2])
                     .and_then(|bytes| peritus_types::WorkspaceId::new(bytes).ok())
                 else {
@@ -60,26 +58,16 @@ impl AppModel {
                     );
                     return Vec::new();
                 };
-                let Some(allocation) = parse_fork_budget(&parts[3..]) else {
-                    self.notice(
-                        NoticeLevel::Warning,
-                        "Isolated allocation requires time=<ms> requests=<n> tools=<n> tokens=<n>.",
-                    );
-                    return Vec::new();
-                };
-                (WorkbenchForkMode::IsolatedWritableWorkspace, workspace, Some(allocation))
+                (WorkbenchForkMode::IsolatedWritableWorkspace, workspace)
             }
             _ => {
-                self.notice(NoticeLevel::Warning, "Use /fork <checkpoint-id> read-only with zero or all four allocation fields, or isolated <workspace-id> with all four allocation fields.");
+                self.notice(
+                    NoticeLevel::Warning,
+                    "Use /fork <checkpoint-id> read-only, or isolated <workspace-id>.",
+                );
                 return Vec::new();
             }
         };
-        if let Err(message) =
-            validate_fork_allocation(references.goal_revision(), parts.len(), allocation)
-        {
-            self.notice(NoticeLevel::Warning, message);
-            return Vec::new();
-        }
         let Ok(child) = ConversationId::new(self.ids.bytes(b"workbench-fork-conversation")) else {
             return Vec::new();
         };
@@ -95,7 +83,6 @@ impl AppModel {
             references.brief_revision(),
             references.goal_revision().unwrap_or(0),
             mode,
-            allocation,
         ) else {
             return Vec::new();
         };
@@ -104,39 +91,6 @@ impl AppModel {
             source.query().workspace(),
         )
     }
-}
-
-const fn validate_fork_allocation(
-    goal_revision: Option<u64>,
-    argument_count: usize,
-    allocation: Option<WorkbenchForkBudget>,
-) -> Result<(), &'static str> {
-    if argument_count == 6 && allocation.is_none() {
-        return Err("Read-only allocation requires time=<ms> requests=<n> tools=<n> tokens=<n>.");
-    }
-    match (goal_revision, allocation) {
-        (Some(_), None) => Err("A governed checkpoint fork requires all four allocation fields."),
-        (None, Some(_)) => Err("An ungoverned checkpoint fork cannot reserve a goal allocation."),
-        _ => Ok(()),
-    }
-}
-
-pub(super) fn parse_fork_budget(parts: &[&str]) -> Option<WorkbenchForkBudget> {
-    let mut time = None;
-    let mut requests = None;
-    let mut tools = None;
-    let mut tokens = None;
-    for part in parts {
-        let (key, value) = part.split_once('=')?;
-        match key {
-            "time" if time.is_none() => time = value.parse().ok(),
-            "requests" if requests.is_none() => requests = value.parse().ok(),
-            "tools" if tools.is_none() => tools = value.parse().ok(),
-            "tokens" if tokens.is_none() => tokens = value.parse().ok(),
-            _ => return None,
-        }
-    }
-    WorkbenchForkBudget::new(time?, requests?, tools?, tokens?).ok()
 }
 
 fn fork_title(source: &ConversationTitle) -> String {

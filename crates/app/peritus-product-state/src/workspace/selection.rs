@@ -7,7 +7,6 @@ use super::{WorkspaceProfile, WorkspaceTrust};
 use crate::ProductStateError;
 
 const MAX_RECENT_WORKSPACES: usize = 32;
-const MAX_RETAINED_REGISTRATIONS: usize = 4_096;
 
 /// Most-recent-first workspace inventory and active selection.
 #[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
@@ -127,15 +126,11 @@ impl WorkspaceSelection {
                 && existing.repository_root() != profile.repository_root()
         });
         self.retained_registrations.push(profile);
-        if self.retained_registrations.len() > MAX_RETAINED_REGISTRATIONS {
-            self.retained_registrations.remove(0);
-        }
     }
 
     pub(crate) fn validate(&self) -> Result<(), ProductStateError> {
         let registered = self.registered();
         if self.recent.len() > MAX_RECENT_WORKSPACES
-            || self.retained_registrations.len() > MAX_RETAINED_REGISTRATIONS
             || self.recent.iter().any(|profile| profile.validate().is_err())
             || self.retained_registrations.iter().any(|profile| {
                 profile.validate().is_err() || profile.trust_level() != WorkspaceTrust::Trusted
@@ -241,9 +236,9 @@ mod tests {
     }
 
     #[test]
-    fn retained_registration_history_evicts_the_oldest_entry_instead_of_blocking() {
+    fn retained_registration_history_keeps_every_trusted_workspace() {
         let mut selection = WorkspaceSelection::default();
-        for index in 1..=MAX_RETAINED_REGISTRATIONS + 1 {
+        for index in 1..=4_097 {
             let workspace_id = format!("{index:032x}");
             let trusted = WorkspaceProfile::restricted(
                 format!("/repo/{index}"),
@@ -264,16 +259,16 @@ mod tests {
             selection.retain_registration(trusted);
         }
 
-        assert_eq!(selection.retained_registrations.len(), MAX_RETAINED_REGISTRATIONS);
+        assert_eq!(selection.retained_registrations.len(), 4_097);
         assert!(
             selection
                 .retained_registrations
                 .iter()
-                .all(|profile| profile.workspace_id() != "00000000000000000000000000000001")
+                .any(|profile| profile.workspace_id() == "00000000000000000000000000000001")
         );
         assert_eq!(
             selection.retained_registrations.last().expect("newest").workspace_id(),
-            format!("{:032x}", MAX_RETAINED_REGISTRATIONS + 1)
+            format!("{:032x}", 4_097)
         );
     }
 }

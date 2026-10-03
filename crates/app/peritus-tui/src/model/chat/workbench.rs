@@ -145,6 +145,7 @@ impl AppModel {
         &mut self,
         query: Option<WorkbenchQuery>,
     ) {
+        self.cancel_latest_resume();
         if self.chat.workbench.selected == query {
             return;
         }
@@ -185,6 +186,19 @@ impl AppModel {
         query: WorkbenchQuery,
         revision: u64,
     ) -> Vec<Effect> {
+        let effects = self.send_bound_workbench_command(intent, query, revision);
+        if !effects.is_empty() {
+            self.chat.workbench.open = true;
+        }
+        effects
+    }
+
+    fn send_bound_workbench_command(
+        &mut self,
+        intent: WorkbenchIntent,
+        query: WorkbenchQuery,
+        revision: u64,
+    ) -> Vec<Effect> {
         let Ok(operation) = ControlOperationId::new(self.ids.bytes(b"workbench-operation")) else {
             return Vec::new();
         };
@@ -197,7 +211,6 @@ impl AppModel {
         };
         self.chat.workbench.unresolved = Some((command, self.chat.buffer.clone()));
         self.chat.workbench.rejected_control = None;
-        self.chat.workbench.open = true;
         "Awaiting durable receipt; not yet accepted.".clone_into(&mut self.chat.workbench.message);
         vec![effect]
     }
@@ -221,7 +234,6 @@ impl AppModel {
             WorkbenchIntent::StartGoal { .. } => self.goal_start_binding(workspace),
             WorkbenchIntent::PauseGoal { .. }
             | WorkbenchIntent::ResumeGoal { .. }
-            | WorkbenchIntent::UpdateGoalBudget { .. }
             | WorkbenchIntent::ClearGoal { .. } => self.goal_command_binding(workspace),
             WorkbenchIntent::ApplyRewind(preview) => self.rewind_binding(preview, workspace),
             WorkbenchIntent::SetPermissions(_) => self.permission_command_binding(workspace),

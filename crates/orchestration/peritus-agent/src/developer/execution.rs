@@ -261,7 +261,7 @@ impl DeveloperLoop {
                 )
                 .ok_or(DeveloperLoopError::LimitExceeded)?;
             if tool_calls > request.limits.max_tool_calls() {
-                return Err(DeveloperLoopError::LimitExceeded);
+                return Err(DeveloperLoopError::SegmentExhausted);
             }
             let calls_in_batch =
                 u32::try_from(calls.len()).map_err(|_| DeveloperLoopError::LimitExceeded)?;
@@ -390,7 +390,7 @@ impl DeveloperLoop {
                 });
             }
         }
-        Err(DeveloperLoopError::LimitExceeded)
+        Err(DeveloperLoopError::SegmentExhausted)
     }
 }
 

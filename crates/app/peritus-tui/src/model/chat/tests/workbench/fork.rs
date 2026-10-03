@@ -53,8 +53,7 @@ fn fork_command_submits_exact_checkpoint_and_opens_the_non_running_child() {
     let checkpoint = peritus_app_protocol::ControlOperationId::new([0x40; 16]).unwrap();
     model.chat.workbench.checkpoint_receipt =
         Some(checkpoint_receipt(source, 0x40, "Historical branch point", Some(5)));
-    model.chat.buffer =
-        format!("/fork {} read-only time=60000 requests=3 tools=8 tokens=20000", "40".repeat(16));
+    model.chat.buffer = format!("/fork {} read-only", "40".repeat(16));
 
     let sent = request(&enter_with_metadata(&mut model));
     let AppRequestPayload::WorkbenchCommand(command) = sent.payload() else { panic!("fork") };
@@ -67,10 +66,6 @@ fn fork_command_submits_exact_checkpoint_and_opens_the_non_running_child() {
     assert_eq!(fork.brief_revision(), 4);
     assert_eq!(fork.goal_revision(), 5);
     assert_eq!(fork.checkpoint(), checkpoint);
-    assert_eq!(
-        fork.allocation(),
-        Some(peritus_app_protocol::WorkbenchForkBudget::new(60_000, 3, 8, 20_000).unwrap())
-    );
     assert_ne!(fork.child().conversation(), source.conversation());
     let child = fork.child();
     let refresh = request(&respond(&mut model, &sent, receipt(command)));
@@ -103,7 +98,7 @@ fn fork_requires_the_exact_inspected_checkpoint_and_retains_the_draft() {
 }
 
 #[test]
-fn read_only_fork_without_a_governing_goal_has_no_allocation() {
+fn read_only_fork_without_a_governing_goal_preserves_the_absent_revision() {
     let mut model = enabled_model();
     model.features.push(
         ProtocolFeatureName::well_known(WellKnownProtocolFeature::ConversationForks).unwrap(),
@@ -119,11 +114,10 @@ fn read_only_fork_without_a_governing_goal_has_no_allocation() {
         panic!("fork intent")
     };
     assert_eq!(fork.goal_revision(), 0);
-    assert_eq!(fork.allocation(), None);
 }
 
 #[test]
-fn governed_read_only_fork_requires_an_allocation_and_retains_the_draft() {
+fn governed_read_only_fork_uses_the_checkpoint_goal_revision_without_an_allocation() {
     let mut model = enabled_model();
     model.features.push(
         ProtocolFeatureName::well_known(WellKnownProtocolFeature::ConversationForks).unwrap(),
@@ -131,17 +125,13 @@ fn governed_read_only_fork_requires_an_allocation_and_retains_the_draft() {
     let source = selected_source(&mut model, 66);
     model.chat.workbench.checkpoint_receipt =
         Some(checkpoint_receipt(source, 0x43, "Governed branch point", Some(2)));
-    let draft = format!("/fork {} read-only", "43".repeat(16));
-    model.chat.buffer.clone_from(&draft);
-
-    assert!(enter_with_metadata(&mut model).is_empty());
-    assert_eq!(model.chat.buffer, draft);
-    assert!(
-        model
-            .notice
-            .as_ref()
-            .is_some_and(|notice| notice.text.contains("requires all four allocation fields"))
-    );
+    model.chat.buffer = format!("/fork {} read-only", "43".repeat(16));
+    let sent = request(&enter_with_metadata(&mut model));
+    let AppRequestPayload::WorkbenchCommand(command) = sent.payload() else { panic!("fork") };
+    let peritus_app_protocol::WorkbenchIntent::ForkConversation(fork) = command.intent() else {
+        panic!("fork intent")
+    };
+    assert_eq!(fork.goal_revision(), 2);
 }
 
 #[test]
@@ -179,11 +169,7 @@ fn isolated_fork_does_not_open_the_child_under_the_parent_workspace_context() {
     let source = selected_source(&mut model, 68);
     model.chat.workbench.checkpoint_receipt =
         Some(checkpoint_receipt(source, 0x45, "Isolated", Some(2)));
-    model.chat.buffer = format!(
-        "/fork {} isolated {} time=60000 requests=3 tools=8 tokens=20000",
-        "45".repeat(16),
-        "46".repeat(16)
-    );
+    model.chat.buffer = format!("/fork {} isolated {}", "45".repeat(16), "46".repeat(16));
     let sent = request(&enter_with_metadata(&mut model));
     let AppRequestPayload::WorkbenchCommand(command) = sent.payload() else { panic!("fork") };
     let peritus_app_protocol::WorkbenchIntent::ForkConversation(fork) = command.intent() else {
@@ -205,11 +191,7 @@ fn isolated_fork_does_not_open_the_child_under_the_parent_workspace_context() {
     let source = selected_source(&mut model, 69);
     model.chat.workbench.checkpoint_receipt =
         Some(checkpoint_receipt(source, 0x45, "Isolated", Some(2)));
-    model.chat.buffer = format!(
-        "/fork {} isolated {} time=60000 requests=3 tools=8 tokens=20000",
-        "45".repeat(16),
-        "46".repeat(16)
-    );
+    model.chat.buffer = format!("/fork {} isolated {}", "45".repeat(16), "46".repeat(16));
     let sent = request(&enter_with_metadata(&mut model));
     let AppRequestPayload::WorkbenchCommand(command) = sent.payload() else { panic!("fork") };
     model.chat.buffer = "Actually, keep working here first".into();

@@ -2,10 +2,9 @@
 
 use super::primitive::{invalid, read_id, unknown, write_id};
 use crate::{
-    MAX_WORKBENCH_INPUT_BYTES, MAX_WORKBENCH_INPUT_DEPENDENCIES, MAX_WORKBENCH_INPUT_PAGE,
-    MAX_WORKBENCH_PENDING_INPUTS, WorkbenchInputId, WorkbenchInputOrder, WorkbenchInputRow,
-    WorkbenchInputSelection, WorkbenchInputState, WorkbenchInputText, WorkbenchNewInput,
-    WorkbenchQueueIntent, WorkbenchQueuePage, WorkbenchQueueQuery,
+    MAX_WORKBENCH_INPUT_BYTES, MAX_WORKBENCH_INPUT_PAGE, WorkbenchInputId, WorkbenchInputOrder,
+    WorkbenchInputRow, WorkbenchInputSelection, WorkbenchInputState, WorkbenchInputText,
+    WorkbenchNewInput, WorkbenchQueueIntent, WorkbenchQueuePage, WorkbenchQueueQuery,
 };
 use peritus_codec::{CanonicalReader, CanonicalWriter, CodecError, CodecErrorKind};
 
@@ -42,15 +41,9 @@ fn write_order(w: &mut CanonicalWriter, value: &WorkbenchInputOrder) -> Result<(
     }
     Ok(())
 }
-fn read_order(
-    r: &mut CanonicalReader<'_>,
-    bound: usize,
-) -> Result<WorkbenchInputOrder, CodecError> {
+fn read_order(r: &mut CanonicalReader<'_>) -> Result<WorkbenchInputOrder, CodecError> {
     let offset = r.offset();
     let count = usize::from(r.read_u16()?);
-    if count > bound {
-        return Err(CodecError::at(CodecErrorKind::LimitExceeded, offset));
-    }
     let mut ids = Vec::with_capacity(count);
     for _ in 0..count {
         ids.push(read_id(r, WorkbenchInputId::new)?);
@@ -101,7 +94,7 @@ pub(super) fn read_intent(r: &mut CanonicalReader<'_>) -> Result<WorkbenchQueueI
         1 => {
             let id = read_id(r, WorkbenchInputId::new)?;
             let text = read_text(r)?;
-            let dependencies = read_order(r, MAX_WORKBENCH_INPUT_DEPENDENCIES)?;
+            let dependencies = read_order(r)?;
             WorkbenchQueueIntent::Enqueue(invalid(
                 offset,
                 WorkbenchNewInput::new(id, text, dependencies),
@@ -115,7 +108,7 @@ pub(super) fn read_intent(r: &mut CanonicalReader<'_>) -> Result<WorkbenchQueueI
         },
         4 => WorkbenchQueueIntent::Hold { selected: read_selection(r)?, held: r.read_bool()? },
         5 => WorkbenchQueueIntent::Withdraw(read_selection(r)?),
-        6 => WorkbenchQueueIntent::Reorder(read_order(r, MAX_WORKBENCH_PENDING_INPUTS)?),
+        6 => WorkbenchQueueIntent::Reorder(read_order(r)?),
         _ => return unknown(offset),
     })
 }
@@ -195,6 +188,6 @@ pub(super) fn read_row(r: &mut CanonicalReader<'_>) -> Result<WorkbenchInputRow,
         5 => WorkbenchInputState::Withdrawn,
         _ => return unknown(offset),
     };
-    let dependencies = read_order(r, MAX_WORKBENCH_INPUT_DEPENDENCIES)?;
+    let dependencies = read_order(r)?;
     invalid(offset, WorkbenchInputRow::new(selected, text, state, dependencies))
 }

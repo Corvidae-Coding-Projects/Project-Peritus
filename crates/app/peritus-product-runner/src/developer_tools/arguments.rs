@@ -188,13 +188,14 @@ mod tests {
             ("run_command", json!({"program":"cargo", "args":[]})),
             (
                 "run_command",
-                json!({"program":"cargo", "args":[], "purpose":"verification", "timeout_seconds":601}),
+                json!({"program":"cargo", "args":[], "purpose":"verification", "timeout_seconds":0}),
             ),
             ("workspace_scope", json!({"paths":[]})),
         ] {
             assert!(validate(name, &arguments).is_err(), "{name}: {arguments}");
         }
         assert!(validate("workspace_list", &json!({})).is_ok());
+        assert!(validate("run_command", &json!({"program":"cargo", "args":[], "purpose":"verification", "timeout_seconds":601})).is_ok());
         assert!(
             validate("workspace_write", &json!({"path":"a", "content":"é".repeat(100_000)}))
                 .is_ok(),

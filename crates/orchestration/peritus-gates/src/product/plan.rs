@@ -9,9 +9,6 @@ use crate::GateError;
 
 use super::commands::commands_for;
 
-/// Hard source-file ceiling enforced by the built-in production workflow.
-pub const PRODUCT_MAX_SOURCE_LINES: usize = 500;
-
 /// Supported project families with deterministic production checks.
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub enum ProjectKind {

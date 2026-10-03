@@ -16,8 +16,6 @@ use peritus_types::{EventId, EventSequence};
 use std::collections::BTreeMap;
 
 pub(super) const BRANCH_NAMESPACE: u16 = 3520;
-const MAX_LIBRARY_EVENTS: usize = 65_536;
-
 impl ControlStore {
     /// Atomically reserves source budget and publishes the independent non-running child.
     pub fn accept_fork(
@@ -37,6 +35,15 @@ impl ControlStore {
         if let Some(receipt) = self.resolve_fork(source, child, branch)? {
             self.verify_fork(branch)?;
             return Ok(receipt);
+        }
+        if let peritus_product_runner::control::ControlIntent::ReserveAutomaticFork {
+            checkpoint,
+            ..
+        } = source.intent()
+            && self.load_checkpoint(source.conversation(), checkpoint.id())?.as_ref()
+                != Some(checkpoint.as_ref())
+        {
+            return Err(ControlError::IdempotencyConflict.into());
         }
         let source_current = self.load(source.conversation())?.ok_or(ControlError::NotFound)?;
         self.check_reserved_child(child.conversation(), Some(source))?;
@@ -183,10 +190,9 @@ impl ControlStore {
         Ok(Some(branch))
     }
 
-    /// Rebuilds the bounded conversation catalog from authoritative immutable control events.
+    /// Rebuilds the conversation catalog from authoritative immutable control events.
     pub fn conversation_ids(&self) -> Result<BTreeMap<ConversationId, u64>, Error> {
         let mut cursor = 0;
-        let mut seen = 0usize;
         let mut conversations = BTreeMap::new();
         loop {
             let window = self.journal.global_events_after(cursor, 4096)?;
@@ -197,10 +203,6 @@ impl ControlStore {
                 break;
             }
             for record in window.records() {
-                seen = seen.checked_add(1).ok_or(ControlError::Capacity)?;
-                if seen > MAX_LIBRARY_EVENTS {
-                    return Err(ControlError::Capacity.into());
-                }
                 if record.frame_family() != FRAME_FAMILY {
                     return Err(Error::Corrupt("unexpected control history family"));
                 }

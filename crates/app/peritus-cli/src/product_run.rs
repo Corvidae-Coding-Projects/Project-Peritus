@@ -44,7 +44,17 @@ pub async fn execute(
 }
 
 async fn list(client: &mut Client, output: &Output) -> Result<(), CliError> {
-    let runs = query(client, ProductRunQuery::recent()).await?;
+    let mut runs = Vec::new();
+    loop {
+        let offset = u64::try_from(runs.len())
+            .map_err(|_| CliError::protocol("list product runs", "run offset overflowed"))?;
+        let page = query(client, ProductRunQuery::page(offset)).await?;
+        let complete = page.len() < peritus_app_protocol::MAX_PRODUCT_RUN_PAGE;
+        runs.extend(page);
+        if complete {
+            break;
+        }
+    }
     let json = runs.iter().map(observed_json).collect::<Vec<_>>();
     let human = if runs.is_empty() {
         "No product runs.".to_owned()

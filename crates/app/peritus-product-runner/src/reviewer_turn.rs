@@ -8,7 +8,6 @@ use crate::developer_tools::{WorkspaceDeveloperTools, read_only_definitions};
 use crate::execution::{ProductRunInput, check_cancelled};
 use crate::{ProductRunnerError, ProductRunnerErrorKind, review, turn};
 
-const MAX_INVALID_REVIEWS: u8 = 3;
 const MAX_REVIEWER_TURNS: u16 = 32;
 const MAX_REVIEWER_TOOL_CALLS: u32 = 256;
 
@@ -32,7 +31,7 @@ pub async fn complete(
         crate::failover::ProviderCursor::new(&input.providers.reviewer, &input.providers.fallbacks);
     let mut correction = None;
     let memory = input.working_memory("reviewer")?;
-    let mut invalid_reviews = 0_u8;
+    let mut rejected_reviews = 0_u64;
     let mut provider_recovery = crate::failover::RoleRecovery::default();
     let mut invocation = 0_u32;
     loop {
@@ -87,6 +86,12 @@ pub async fn complete(
         accounting.check()?;
         let result = match result {
             Ok(result) => result,
+            Err(peritus_agent::DeveloperLoopError::SegmentExhausted) => {
+                accounting.record_role_retry()?;
+                provider_recovery.reset();
+                correction = Some(crate::failover::RoleRecovery::correction("segment_boundary"));
+                continue;
+            }
             Err(error) => {
                 if let Some(reason) = provider_recovery.retry(&error) {
                     accounting.record_role_retry()?;
@@ -108,12 +113,9 @@ pub async fn complete(
         match submission {
             Ok(submission) => return Ok(submission),
             Err(rejected) => {
-                invalid_reviews = invalid_reviews.saturating_add(1);
-                if invalid_reviews >= MAX_INVALID_REVIEWS {
-                    return Err(rejected.error);
-                }
+                rejected_reviews = rejected_reviews.saturating_add(1);
                 correction =
-                    Some(record_rejected_review(input, invalid_reviews, &rejected, accounting)?);
+                    Some(record_rejected_review(input, rejected_reviews, &rejected, accounting)?);
             }
         }
     }
@@ -130,7 +132,7 @@ fn prepare_request(
     evidence: &ReviewEvidence<'_>,
     max_input_tokens: u64,
     correction: Option<&str>,
-    remaining: std::time::Duration,
+    remaining: Option<std::time::Duration>,
     memory: Option<&crate::local_context::LocalContextHandle>,
 ) -> Result<ReviewRequest, ProductRunnerError> {
     let system = turn::reviewer_system(remaining) + input.delivery_instructions();
@@ -184,15 +186,14 @@ struct RejectedReview {
 
 fn record_rejected_review(
     input: &ProductRunInput,
-    invalid_reviews: u8,
+    rejected_reviews: u64,
     rejected: &RejectedReview,
     accounting: &mut RunAccounting,
 ) -> Result<String, ProductRunnerError> {
     accounting.record_role_retry()?;
     if let Some(port) = input.conversation.interaction() {
         port.observe(peritus_agent::DeveloperActivity::ReviewRetry {
-            next_attempt: invalid_reviews.saturating_add(1),
-            max_attempts: MAX_INVALID_REVIEWS,
+            next_attempt: rejected_reviews.saturating_add(1),
             reason: rejected.reason,
         })
         .map_err(|error| turn::developer_error(&error))?;

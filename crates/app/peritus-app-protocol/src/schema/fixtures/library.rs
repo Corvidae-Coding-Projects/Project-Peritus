@@ -8,8 +8,8 @@ use crate::{
     AppRequestPayload, AppResponseEnvelope, AppResponsePayload, ControlOperationId, ConversationId,
     ConversationLibraryItem, ConversationLibraryPage, ConversationLibraryQuery,
     ConversationMessageSource, ConversationSearchSnippet, ConversationSearchText,
-    ConversationTitle, WorkbenchBranchLineage, WorkbenchCommand, WorkbenchForkBudget,
-    WorkbenchForkMode, WorkbenchForkRequest, WorkbenchIntent, WorkbenchQuery,
+    ConversationTitle, WorkbenchBranchLineage, WorkbenchCommand, WorkbenchForkMode,
+    WorkbenchForkRequest, WorkbenchIntent, WorkbenchQuery,
 };
 use peritus_codec::{CodecError, CodecLimits};
 
@@ -19,7 +19,6 @@ pub(super) fn cases(limits: CodecLimits) -> Result<Vec<GeneratedFixtureCase>, Co
     let child =
         WorkbenchQuery::new(id(143, ConversationId::new), id(144, peritus_types::WorkspaceId::new));
     let checkpoint = id(145, ControlOperationId::new);
-    let allocation = WorkbenchForkBudget::new(60_000, 3, 8, 20_000).expect("allocation");
     let query = ConversationLibraryQuery::new(
         source.workspace(),
         Some(ConversationSearchText::new("older public requirement".to_owned()).expect("search")),
@@ -42,7 +41,6 @@ pub(super) fn cases(limits: CodecLimits) -> Result<Vec<GeneratedFixtureCase>, Co
                 4,
                 2,
                 WorkbenchForkMode::IsolatedWritableWorkspace,
-                Some(allocation),
             )
             .expect("fork"),
         ),
@@ -55,7 +53,6 @@ pub(super) fn cases(limits: CodecLimits) -> Result<Vec<GeneratedFixtureCase>, Co
         4,
         2,
         WorkbenchForkMode::IsolatedWritableWorkspace,
-        Some(allocation),
     );
     let snippet = ConversationSearchSnippet::new(
         ConversationMessageSource::Input {

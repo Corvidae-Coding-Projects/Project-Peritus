@@ -47,15 +47,22 @@ readiness, and resumes the durable application session.
 
 The default screen is a conversation with a persistent multiline composer. Type ordinary text to
 ask a question or request scoped work. Questions and diagnosis do not implicitly authorize changes.
-`/plan` and `/review` expose read-only tools; the latter uses a fresh reviewer invocation.
+`/plan` and `/review` expose read-only tools; the latter uses a fresh reviewer invocation. When the
+request explicitly names an absolute file or directory outside the workspace, Peritus can list and
+read that reference without granting write or command access there. Exact casing is preferred. If a
+path component differs only by case, Peritus uses a single matching sibling and reports its actual
+on-disk spelling; multiple case-insensitive matches fail as ambiguous instead of being guessed.
 `/build <request>` explicitly commissions the checked delivery pipeline described below.
 
 Type `/` to discover commands, use arrows and Tab to complete them, and use Shift-Enter for
 newlines. PageUp/PageDown scroll public activity; `/details` expands bounded tool summaries.
-Press F2 to select and copy the visible output with the terminal's normal mouse selection and
-Copy command (Ctrl-Shift-C in Windows Terminal). This freezes the display and releases mouse
-capture while daemon work continues. Esc or F2 returns to live output. To copy another page,
-return to live output, scroll, then press F2 again.
+Drag across visible conversation text, right-click, then click Copy. The selected page stays
+still while daemon work continues; copying resumes live output. Screen wrapping does not add
+newlines to copied text. Esc, scrolling, typing, or clicking the composer clears the selection.
+Copy uses the desktop clipboard helper when available, then terminal OSC 52 as a fallback.
+If the terminal blocks clipboard writes, press F2 to freeze output and use native terminal
+selection and Copy; Esc, F2, or pasting resumes the live view.
+A paste enters the composer without submitting it.
 Raw tool arguments/results stay in the trace rather than being copied into the public activity
 projection. Provider-supplied display summaries appear as Thinking activity; opaque reasoning
 replay is never displayed. Summaries are requested only when the provider declares support;
@@ -100,11 +107,10 @@ Use `/build <request>` from the conversation:
    file ownership for parallel slices. An existing file cannot be written or patched until that
    exact file has been read during the current developer turn.
    A model turn is not the lifetime of the run: malformed, empty, timeout, and recoverable
-   transport outcomes receive up to three fresh bounded attempts. A 48-turn developer segment that
-   materially changes the exact Git candidate publishes a content checkpoint and continues in a
-   fresh repository-grounded segment. This keeps memory bounded while allowing productive goals to
-   run for as many segments as required. Exhausting a segment without changing the candidate is a
-   genuine no-progress stop rather than an arbitrary total-work limit. A malformed or ungrounded
+   transport outcomes receive bounded provider retries. Reaching a developer segment boundary
+   continues in a fresh repository-grounded segment with completed effects and evidence retained.
+   This keeps each model invocation bounded while allowing human goals to continue as required.
+   A malformed or ungrounded
    task-level terminal receives its exact harness rejection on the next bounded attempt, so a model
    can correct the contract rather than blindly repeat the same response.
    Ordinary finite commands use `run_command`. A program that needs terminal input or background
@@ -115,8 +121,9 @@ Use `/build <request>` from the conversation:
    artifact-backed. Live-handle recovery does not claim to recreate a lost terminal after a daemon
    process restart; startup instead reconciles C2 state and exposes the product run as recoverable.
 5. D1 maps every exact changed file to its nearest Rust, Node, Python, or Go project manifest and
-   runs its source-layout policy and explicit format/compile/build/test/lint commands. Production
-   source files over 500 lines fail deterministically. Uncovered files, missing commands, failed
+   runs source-readability checks and explicit format/compile/build/test/lint commands. Python checks
+   use the project's locked runner or local virtual environment when present. Uncovered files,
+   missing commands, failed
    commands, or an empty candidate all refuse acceptance; an unrelated root project cannot satisfy
    a nested game or package.
 6. The independent D2 reviewer returns typed findings. Policy derives blocker status, so
@@ -124,7 +131,7 @@ Use `/build <request>` from the conversation:
    regardless of the reviewer's severity wording. Findings remain open across daemon persistence
    until a fixer addresses them and a fresh reviewer confirms their absence.
 7. E0 sends all failed checks and conserved findings to the tool-capable fixer and repeats fresh
-   gates and review within an explicit bounded cycle budget.
+   gates and review until acceptance is complete, the user intervenes, or a concrete failure occurs.
 8. The run completes only when exact-target gates pass and no conserved policy blocker remains.
    Completion retains the original task-level result plus any verified fixer summaries.
 
@@ -145,12 +152,14 @@ Verifying, Waiting for user, Complete, Failed, Cancelled, or Recovery required, 
 bounded conversation. The Runs view shows that state as text as well as color, the Diff view shows
 tracked and newly created text files, and the Review view shows the latest review or repository
 checks. While a run is active, its status reports elapsed time, time since the last completed
-durable effect, the remaining eight-hour uninterrupted run horizon, provider requests, tool calls,
-retries, compactions, and normalized token/cache/cost counters when the provider supplies them. A
+durable effect, current provider-turn elapsed time, provider requests, tool calls, retries,
+compactions, and normalized token/cache/cost counters when the provider supplies them. A
 provider-switch counter appears after an opted-in fallback. A long quiet provider call therefore
-remains visibly alive without inventing progress. The generous cumulative ceilings stop runaway
-execution across the entire designer-writer-reviewer-fixer run; they do not shorten productive
-segments or replace the existing progress-based continuation rule.
+remains visibly alive without inventing progress or forcing a manual retry at an arbitrary elapsed
+time. Normal interactive runs have no product or provider-turn wall-clock cutoff. The generous
+cumulative counters remain visible measurements. Human goals do not expose budget controls, and
+request counts, tool counts, tokens, cost, workspace growth, repeated findings, or unchanged fixes
+do not impose terminal thresholds. Per-operation resource and integrity bounds remain enforced.
 Before a writable filesystem or command tool starts, the runner syncs a bounded receipt containing
 the deterministic role/invocation/effect identity, provider call ID, tool name, and canonical
 request digest. It syncs the bounded result after completion. An exact completed call replays its
@@ -221,6 +230,7 @@ Focused settings commands are:
 
 ```text
 peritus open [PATH]     Open an explicit repository, defaulting to the current directory
+peritus resume          Open the current folder's most recently active saved conversation
 peritus update          Check for and install the latest public release
 peritus update --disable-checks
                         Disable automatic startup checks; manual checks still work

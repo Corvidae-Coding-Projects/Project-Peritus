@@ -133,6 +133,7 @@ impl ConversationRecord {
             | ControlIntent::PinConversation { .. }
             | ControlIntent::ArchiveConversation { .. }
             | ControlIntent::ReserveFork { .. }
+            | ControlIntent::ReserveAutomaticFork { .. }
             | ControlIntent::PublishRestoreBranch { .. }) => self.apply_library(intent),
             intent @ (ControlIntent::Queue(_)
             | ControlIntent::SetBrief { .. }
@@ -143,7 +144,6 @@ impl ConversationRecord {
             | ControlIntent::StartGoal { .. }
             | ControlIntent::PauseGoal { .. }
             | ControlIntent::ResumeGoal { .. }
-            | ControlIntent::UpdateGoalBudget { .. }
             | ControlIntent::ClearGoal { .. }
             | ControlIntent::ReserveGoalRequest { .. }
             | ControlIntent::CompleteGoalRequest { .. }
@@ -165,9 +165,13 @@ impl ConversationRecord {
                 Ok(())
             }
             ControlIntent::CreateCheckpoint(_)
+            | ControlIntent::CreateAutomaticCheckpoint(_)
             | ControlIntent::SealCheckpoint { .. }
+            | ControlIntent::SealAutomaticCheckpoint { .. }
             | ControlIntent::PrepareRestore { .. }
-            | ControlIntent::SettleRestore { .. } => self.apply_checkpoint(operation),
+            | ControlIntent::PrepareAutomaticRestore { .. }
+            | ControlIntent::SettleRestore { .. }
+            | ControlIntent::SettleAutomaticRestore { .. } => self.apply_checkpoint(operation),
             ControlIntent::AddReview { .. }
             | ControlIntent::RebindReview { .. }
             | ControlIntent::DismissReview { .. } => self.apply_review(current, operation),

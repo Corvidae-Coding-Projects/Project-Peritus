@@ -1,8 +1,8 @@
 //! Preview output codec.
 
 use super::{
-    CanonicalReader, CanonicalWriter, CodecError, ControlOperationId, MAX_WORKBENCH_LAUNCHES,
-    invalid, read_count, read_id, read_page, write_count, write_id, write_page,
+    CanonicalReader, CanonicalWriter, CodecError, ControlOperationId, invalid, read_count, read_id,
+    read_page, write_count, write_id, write_page,
 };
 use crate::{WorkbenchPreviewOutput, WorkbenchPreviewSnapshot};
 
@@ -25,7 +25,7 @@ pub(in crate::wire) fn read_preview(
 ) -> Result<WorkbenchPreviewSnapshot, CodecError> {
     let offset = r.offset();
     let result = read_page(r)?;
-    let count = read_count(r, MAX_WORKBENCH_LAUNCHES)?;
+    let count = read_count(r, usize::from(u16::MAX))?;
     let mut outputs = Vec::with_capacity(count);
     for _ in 0..count {
         let start = r.offset();

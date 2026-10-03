@@ -23,6 +23,12 @@ own durable flags. A committed candidate runs against its recorded post-commit i
 check and review evidence stays historical after the Git identity changes.
 Ctrl-C can interrupt the foreground candidate without terminating the TUI owner. While the
 interface is active, Ctrl-C or Ctrl-Q requests orderly client exit.
+In conversation view, drag across output, right-click, then click Copy. Selection freezes the
+visible transcript while daemon work continues. Copy uses the desktop clipboard helper when
+available, then terminal OSC 52 as a fallback. Ctrl-C also copies a selection without stopping
+work. Esc, scrolling, typing, or a composer click clears the selection. F2 releases mouse capture for native terminal selection and
+Copy when OSC 52 is blocked. Esc, F2, or pasting resumes that live view; pasting inserts into the
+composer without submitting it. The mouse wheel scrolls the conversation.
 On Unix, the child acquires its own foreground process group before execution; terminal ownership
 returns to the UI after interruption, ordinary exit, or an executable-launch failure. Native PTY
 tests exercise immediate keyboard input and Ctrl-C. Ctrl-Z suspends the owning shell job; `fg`

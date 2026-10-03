@@ -48,6 +48,23 @@ fn launcher_child_selection_loads_metadata_without_starting_or_inheriting_parent
 }
 
 #[test]
+fn latest_conversation_selection_excludes_explicit_run_and_conversation_targets() {
+    let workspace = WorkspaceId::new([0x81; 16]).unwrap();
+    let query = WorkbenchQuery::new(ConversationId::new([0x82; 16]).unwrap(), workspace);
+    let run = peritus_types::RunId::new([0x83; 16]).unwrap();
+
+    let latest = product(workspace).with_run(Some(run)).with_latest_conversation();
+    assert!(latest.resumes_latest_conversation());
+    assert!(latest.run_id().is_none());
+    assert!(latest.conversation().is_none());
+
+    let exact = latest.with_conversation(query).unwrap();
+    assert!(!exact.resumes_latest_conversation());
+    assert_eq!(exact.conversation(), Some(query));
+    assert_eq!(exact.with_latest_conversation().with_run(Some(run)).run_id(), Some(run));
+}
+
+#[test]
 fn failed_child_handoff_retains_the_parent_and_its_unsent_draft_without_recreating_the_fork() {
     let config =
         TuiConfig::new("fixture.sock").with_product(product(WorkspaceId::new([72; 16]).unwrap()));

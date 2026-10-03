@@ -10,7 +10,7 @@ use peritus_product_runner::ConversationView;
 
 pub struct ObservedConversation {
     task: String,
-    pub(super) retries: Mutex<Vec<(u8, u8, DeveloperReviewRetryReason)>>,
+    pub(super) retries: Mutex<Vec<(u64, DeveloperReviewRetryReason)>>,
 }
 
 impl ObservedConversation {
@@ -48,12 +48,8 @@ impl DeveloperInteraction for ObservedConversation {
     }
 
     fn observe(&self, activity: DeveloperActivity<'_>) -> Result<(), DeveloperLoopError> {
-        if let DeveloperActivity::ReviewRetry { next_attempt, max_attempts, reason } = activity {
-            self.retries.lock().expect("retry observations").push((
-                next_attempt,
-                max_attempts,
-                reason,
-            ));
+        if let DeveloperActivity::ReviewRetry { next_attempt, reason } = activity {
+            self.retries.lock().expect("retry observations").push((next_attempt, reason));
         }
         Ok(())
     }

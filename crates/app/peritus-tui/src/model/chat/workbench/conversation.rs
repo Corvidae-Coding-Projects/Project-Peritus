@@ -216,7 +216,7 @@ impl AppModel {
     ) -> Vec<Effect> {
         let draft =
             self.chat.workbench.submission.as_ref().map(|submission| submission.draft.clone());
-        let effects = self.submit_bound_workbench(intent, query, revision);
+        let effects = self.send_bound_workbench_command(intent, query, revision);
         if let Some(draft) = draft
             && let Some((_, saved)) = self.chat.workbench.unresolved.as_mut()
         {

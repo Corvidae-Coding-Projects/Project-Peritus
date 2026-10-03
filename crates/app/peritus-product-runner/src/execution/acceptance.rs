@@ -198,7 +198,7 @@ mod tests {
         };
         let commands =
             [command(CommandPurpose::ExternalEffect), command(CommandPurpose::Verification)];
-        let coordinator = ProductionRunCoordinator::new(2).expect("coordinator");
+        let coordinator = ProductionRunCoordinator::new(2);
         let findings = ProductFindingLedger::new();
 
         assert_eq!(

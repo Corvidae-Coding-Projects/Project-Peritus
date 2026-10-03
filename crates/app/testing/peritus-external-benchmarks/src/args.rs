@@ -3,8 +3,6 @@
 use std::{collections::BTreeMap, ffi::OsString, path::PathBuf, time::Duration};
 
 use crate::BenchmarkError;
-use peritus_product_runner::PRODUCT_RUN_MAX_ELAPSED;
-
 const HARNESSBENCH_USAGE: &str = "peritus-benchmark-agent harnessbench --workspace PATH --sandbox PATH --prompt-file PATH --session-id ID --task-id ID --model-id ID --adapter-schema-version VERSION --suite-revision REVISION";
 const TERMINALBENCH_USAGE: &str = "peritus-benchmark-agent terminalbench --workspace PATH --evidence-dir PATH --prompt-file PATH --session-id ID --task-id ID --model-id ID --max-elapsed-seconds SECONDS --adapter-schema-version VERSION --suite-revision REVISION";
 
@@ -160,11 +158,8 @@ fn required_duration(
     let seconds =
         raw.parse::<u64>().map_err(|_| invalid(format!("{name} must be a positive integer")))?;
     let duration = Duration::from_secs(seconds);
-    if duration.is_zero() || duration > PRODUCT_RUN_MAX_ELAPSED {
-        return Err(invalid(format!(
-            "{name} must be between 1 and {}",
-            PRODUCT_RUN_MAX_ELAPSED.as_secs()
-        )));
+    if duration.is_zero() {
+        return Err(invalid(format!("{name} must be a positive integer")));
     }
     Ok(duration)
 }

@@ -16,8 +16,6 @@ use crate::{
     candidate::CandidateBaseline, design, developer_tools::WorkspaceOwnership, gates, review,
 };
 
-const MAX_FIX_CYCLES: u32 = 8;
-
 pub(super) struct ExecutionContext {
     pub(super) baseline: CandidateBaseline,
     pub(super) recorder: CandidateRecorder,
@@ -80,7 +78,7 @@ impl ExecutionContext {
                     developer_commands: resume.developer_evidence().to_owned(),
                 };
                 let state = (next_phase != ProductRunPhase::Writing)
-                    .then(|| RunState::restore(input, resume, design.clone()))
+                    .then(|| RunState::restore(resume, design.clone()))
                     .transpose()?;
                 (Some(design), state, evidence, resume.gate_report().cloned())
             }
@@ -139,12 +137,12 @@ impl ExecutionContext {
             AppliedTurn::Applied(applied) => applied,
             AppliedTurn::Waiting { question, conversation_revision, host } => {
                 self.state =
-                    Some(RunState::interrupted(input, design.clone(), restored_findings, host)?);
+                    Some(RunState::interrupted(input, design.clone(), restored_findings, host));
                 return Ok(Some((question, conversation_revision)));
             }
             AppliedTurn::Rejected { error, host } => {
                 self.state =
-                    Some(RunState::interrupted(input, design.clone(), restored_findings, host)?);
+                    Some(RunState::interrupted(input, design.clone(), restored_findings, host));
                 return Err(error);
             }
         };
@@ -158,7 +156,7 @@ impl ExecutionContext {
             };
         let _ =
             self.recorder.record(stage, applied.conversation_revision, CheckpointEvidence::None)?;
-        let mut run_state = RunState::new(input, design.clone(), restored_findings, applied)?;
+        let mut run_state = RunState::new(design.clone(), restored_findings, applied);
         if let Some(resume) = &input.resume {
             run_state.merge_resume_host(resume);
         }
@@ -180,7 +178,6 @@ pub(super) struct RunState {
     pub(super) tool_calls: u32,
     pub(super) conversation_revision: u64,
     pub(super) findings: ProductFindingLedger,
-    pub(super) fix_progress: crate::execution::fix_progress::FixProgress,
     pub(super) coordinator: ProductionRunCoordinator,
     pub(super) developer_evidence: String,
     pub(super) successful_commands: Vec<crate::developer_tools::SuccessfulCommand>,
@@ -188,12 +185,11 @@ pub(super) struct RunState {
 
 impl RunState {
     fn new(
-        input: &ProductRunInput,
         design: design::DesignDocument,
         findings: ProductFindingLedger,
         applied: AppliedWrite,
-    ) -> Result<Self, ProductRunnerError> {
-        Ok(Self {
+    ) -> Self {
+        Self {
             task_summary: applied.summary,
             run_instructions: applied.run_instructions,
             design,
@@ -201,15 +197,13 @@ impl RunState {
             tool_calls: applied.tool_calls,
             conversation_revision: applied.conversation_revision,
             findings,
-            fix_progress: crate::execution::fix_progress::FixProgress::new(input.checkpoint()?),
-            coordinator: coordinator(0)?,
+            coordinator: ProductionRunCoordinator::new(0),
             developer_evidence: applied.verification_evidence,
             successful_commands: applied.successful_commands,
-        })
+        }
     }
 
     fn restore(
-        input: &ProductRunInput,
         resume: &ProductRunResume,
         design: design::DesignDocument,
     ) -> Result<Self, ProductRunnerError> {
@@ -221,8 +215,7 @@ impl RunState {
             tool_calls: resume.tool_calls(),
             conversation_revision: resume.checkpoint().identity().requirements_revision(),
             findings: review::restore_ledger(resume.finding_state())?,
-            fix_progress: crate::execution::fix_progress::FixProgress::new(input.checkpoint()?),
-            coordinator: coordinator(resume.fixer_cycles())?,
+            coordinator: ProductionRunCoordinator::new(resume.fixer_cycles()),
             developer_evidence: resume.developer_evidence().to_owned(),
             successful_commands: resume.successful_commands().to_vec(),
         })
@@ -233,7 +226,7 @@ impl RunState {
         design: design::DesignDocument,
         findings: ProductFindingLedger,
         host: super::HostTurnEvidence,
-    ) -> Result<Self, ProductRunnerError> {
+    ) -> Self {
         let mut state = Self {
             task_summary: "Peritus retained host-observed work after the developer's terminal report could not be accepted."
                 .to_owned(),
@@ -244,15 +237,14 @@ impl RunState {
             tool_calls: host.tool_calls,
             conversation_revision: host.conversation_revision,
             findings,
-            fix_progress: crate::execution::fix_progress::FixProgress::new(input.checkpoint()?),
-            coordinator: coordinator(0)?,
+            coordinator: ProductionRunCoordinator::new(0),
             developer_evidence: host.verification_evidence,
             successful_commands: host.successful_commands,
         };
         if let Some(resume) = &input.resume {
             state.merge_resume_host(resume);
         }
-        Ok(state)
+        state
     }
 
     pub(super) fn merge_host(&mut self, host: &super::HostTurnEvidence) {
@@ -281,18 +273,4 @@ impl RunState {
         }
         self.successful_commands = retained;
     }
-}
-
-fn coordinator(completed_cycles: u32) -> Result<ProductionRunCoordinator, ProductRunnerError> {
-    let mut coordinator = ProductionRunCoordinator::new(MAX_FIX_CYCLES).map_err(|detail| {
-        ProductRunnerError::new(
-            ProductRunnerErrorKind::InternalInvariant,
-            "start E0 production coordinator",
-            detail,
-        )
-    })?;
-    for _ in 0..completed_cycles {
-        coordinator.record_fixer_completed();
-    }
-    Ok(coordinator)
 }

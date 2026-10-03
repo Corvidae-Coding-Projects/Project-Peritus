@@ -7,7 +7,6 @@ mod checkpoint;
 mod conversation;
 mod cycle;
 mod deadline;
-mod fix_progress;
 mod folder;
 mod obligations;
 mod resume;
@@ -38,7 +37,6 @@ use checkpoint::CheckpointEvidence;
 use cycle::{
     CycleInspection, GateInspection, apply_fix, create_design, inspect_gates, retained_inspection,
 };
-use fix_progress::FixProgressObservation;
 use state::{ExecutionContext, RunState};
 use summary::completion_summary;
 use terminal_exit::ActiveExit;
@@ -114,7 +112,6 @@ impl ProductRunner {
                             &mut state.successful_commands,
                             &applied.successful_commands,
                         );
-                        state.fix_progress.reset(input.checkpoint()?);
                         execution.next_phase = ProductRunPhase::Checking;
                     }
                     AppliedTurn::Waiting { question, conversation_revision, host } => {
@@ -236,15 +233,6 @@ impl ProductRunner {
                         ));
                     }
                     execution.next_phase = ProductRunPhase::Verifying;
-                    if state.fix_progress.observe(input.checkpoint()?)
-                        == FixProgressObservation::Exhausted
-                    {
-                        return Ok(ActiveExit::stopped(
-                            SettlementCause::Gate,
-                            "two consecutive fixer cycles made no candidate change while exact checks or blocking findings remained".to_owned(),
-                            ProductRunPhase::Fixing,
-                        ));
-                    }
                     continue;
                 }
                 ProductRunPhase::Finalizing => return Ok(ActiveExit::completed()),
@@ -258,21 +246,6 @@ impl ProductRunner {
                     ));
                 }
             };
-            if let Some(finding) = state.fix_progress.observe_findings(&state.findings) {
-                let location = if finding.location.trim().is_empty() {
-                    String::new()
-                } else {
-                    format!(" at {}", finding.location)
-                };
-                return Ok(ActiveExit::stopped(
-                    SettlementCause::Review,
-                    format!(
-                        "blocking review finding remained after two fresh fixer/reviewer cycles: {}{location}",
-                        finding.title,
-                    ),
-                    ProductRunPhase::Fixing,
-                ));
-            }
             let effect_requirement =
                 crate::delivery_requirement::ExternalEffectRequirement::from_task(
                     input.delivery_scope,
@@ -316,13 +289,6 @@ impl ProductRunner {
                         ));
                     }
                     execution.next_phase = ProductRunPhase::Fixing;
-                }
-                ProductionDecision::Exhausted => {
-                    return Ok(ActiveExit::stopped(
-                        SettlementCause::Gate,
-                        "exact-target checks or conserved blocking findings remain after the configured fixer cycles".to_owned(),
-                        ProductRunPhase::Fixing,
-                    ));
                 }
             }
         }

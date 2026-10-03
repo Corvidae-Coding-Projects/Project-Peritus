@@ -248,7 +248,7 @@ impl FieldBound {
             Self::ConversationSnippetBytes => "workbench.max-conversation-snippet-bytes (512)",
             Self::ConversationHandoffBytes => "workbench.max-conversation-handoff-bytes (1024)",
             Self::ConversationLibraryPage => "workbench.max-conversation-library-page (64)",
-            Self::DoctorFindings => "doctor.max-findings (32)",
+            Self::DoctorFindings => "wire.u16-count",
             Self::DoctorCheckBytes => "doctor.max-check-bytes (64)",
             Self::DoctorTextBytes => "doctor.max-text-bytes (1024)",
             Self::NonZero => "nonzero",

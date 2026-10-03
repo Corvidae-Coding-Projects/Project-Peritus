@@ -1,10 +1,6 @@
 //! Bounded inert preview launch profiles and exact source identities.
 
-use super::{
-    MAX_LAUNCH_TEXT_BYTES, MAX_LAUNCH_WALL_MILLIS, MAX_PREVIEW_INPUT_BYTES,
-    MAX_WORKBENCH_LAUNCH_ARGUMENTS, MAX_WORKBENCH_LAUNCH_ENVIRONMENT, invalid,
-    valid_environment_name,
-};
+use super::{MAX_LAUNCH_TEXT_BYTES, MAX_PREVIEW_INPUT_BYTES, invalid, valid_environment_name};
 use crate::AppProtocolError;
 use peritus_types::{RunId, Sha256Digest};
 
@@ -208,13 +204,12 @@ impl WorkbenchLaunchProfile {
         interactive: bool,
     ) -> Result<Self, AppProtocolError> {
         environment.sort_by(|left, right| left.as_str().cmp(right.as_str()));
-        if arguments.len() > MAX_WORKBENCH_LAUNCH_ARGUMENTS
-            || environment.len() > MAX_WORKBENCH_LAUNCH_ENVIRONMENT
+        if u16::try_from(arguments.len()).is_err()
+            || u16::try_from(environment.len()).is_err()
             || environment.windows(2).any(|pair| pair[0] == pair[1])
             || environment.iter().any(|name| !valid_environment_name(name.as_str()))
             || readiness_millis == 0
             || readiness_millis > wall_millis
-            || wall_millis > MAX_LAUNCH_WALL_MILLIS
         {
             return Err(invalid());
         }

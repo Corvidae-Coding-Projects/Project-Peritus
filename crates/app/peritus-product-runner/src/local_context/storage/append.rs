@@ -1,7 +1,7 @@
 //! One C0 transaction binds exact events, finalized artifact roots, and checkpoint CAS.
 
 use super::super::error;
-use super::{FRAME_FAMILY, LocalStore, MAX_RECORDS, STATE_KEY, STATE_NAMESPACE};
+use super::{FRAME_FAMILY, LocalStore, STATE_KEY, STATE_NAMESPACE};
 use peritus_agent::DeveloperLoopError;
 use peritus_codec::{CodecLimits, encode_frame, sha256};
 use peritus_journal::{
@@ -16,11 +16,8 @@ impl LocalStore {
         references: &[Sha256Digest],
         checkpoint: Option<(u64, Vec<u8>)>,
     ) -> Result<(), DeveloperLoopError> {
-        let sequence = self
-            .sequence()
-            .checked_add(1)
-            .filter(|sequence| *sequence <= MAX_RECORDS)
-            .ok_or_else(|| error("journal record capacity exceeded"))?;
+        let sequence =
+            self.sequence().checked_add(1).ok_or_else(|| error("event sequence overflow"))?;
         let event = self.identity.event(sequence)?;
         let frame = ExactFrame::new(
             encode_frame(FRAME_FAMILY, 1, payload, CodecLimits::PRODUCTION)

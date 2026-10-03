@@ -1,6 +1,6 @@
 use super::*;
 use peritus_product_runner::control::{
-    BriefField, GoalAdmission, GoalBudget, GoalCriterion, GoalCriterionKind, GoalRole,
+    BriefField, GoalAdmission, GoalCriterion, GoalCriterionKind, GoalPauseMode, GoalRole,
 };
 
 fn active_goal(journal: &mut ControlStore) -> ControlOperation {
@@ -28,7 +28,6 @@ fn active_goal(journal: &mut ControlStore) -> ControlOperation {
                 )
                 .expect("criterion"),
             ],
-            budget: GoalBudget::new(None, None, Some(8), None).expect("budget"),
             now_unix_millis: 1,
         },
     );
@@ -43,16 +42,16 @@ fn accounting_does_not_invalidate_user_edits_but_competing_edits_do() {
     let start = active_goal(&mut journal);
     let inspected = journal.load(start.conversation()).expect("load").expect("record").revision();
     journal.observe_goal_progress(&start, 100, 0, 0, 0, 0, 0, 0).expect("clock");
-    let budget = operation(
+    let pause = operation(
         4,
         inspected,
-        ControlIntent::UpdateGoalBudget {
+        ControlIntent::PauseGoal {
             goal: start.id(),
-            budget: GoalBudget::new(Some(60_000), None, None, None).expect("budget"),
+            mode: GoalPauseMode::AfterOperation,
             now_unix_millis: 2,
         },
     );
-    let receipt = journal.accept(&budget).expect("budget survives accounting");
+    let receipt = journal.accept(&pause).expect("pause survives accounting");
     let revision = receipt.accepted_revision();
     journal.observe_goal_progress(&start, 200, 0, 0, 0, 0, 0, 0).expect("clock");
     let brief = operation(
@@ -77,7 +76,7 @@ fn accounting_does_not_invalidate_user_edits_but_competing_edits_do() {
     drop(journal);
     let mut journal = store(root.path());
     assert_eq!(journal.load(start.conversation()).expect("replay").expect("record"), expected);
-    assert_eq!(journal.accept(&budget).expect("exact original receipt"), receipt);
+    assert_eq!(journal.accept(&pause).expect("exact original receipt"), receipt);
 }
 
 #[test]

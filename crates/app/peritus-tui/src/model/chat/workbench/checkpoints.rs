@@ -117,22 +117,20 @@ impl AppModel {
             "conversation" => peritus_app_protocol::WorkbenchRewindMode::ConversationOnly,
             "combined" => peritus_app_protocol::WorkbenchRewindMode::Combined,
             _ => {
-                self.notice(NoticeLevel::Warning, "Use /rewind <checkpoint-id> [files|conversation|combined] [time=<ms> requests=<n> tools=<n> tokens=<n>]. Draft retained.");
+                self.notice(
+                    NoticeLevel::Warning,
+                    "Use /rewind <checkpoint-id> [files|conversation|combined]. Draft retained.",
+                );
                 return Vec::new();
             }
         };
-        let allocation = if parts.len() > 2 {
-            let Some(budget) = super::fork::parse_fork_budget(&parts[2..]) else {
-                self.notice(
-                    NoticeLevel::Warning,
-                    "A logical rewind budget requires all four allocation fields; draft retained.",
-                );
-                return Vec::new();
-            };
-            Some(budget)
-        } else {
-            None
-        };
+        if parts.len() > 2 {
+            self.notice(
+                NoticeLevel::Warning,
+                "Use /rewind <checkpoint-id> [files|conversation|combined]. Draft retained.",
+            );
+            return Vec::new();
+        }
         if !self.checkpoints_available() {
             self.notice(
                 NoticeLevel::Warning,
@@ -182,7 +180,7 @@ impl AppModel {
             ) else {
                 return Vec::new();
             };
-            let Ok(request) = request.with_branch(mode, child, allocation) else {
+            let Ok(request) = request.with_branch(mode, child) else {
                 return Vec::new();
             };
             request
@@ -212,19 +210,8 @@ impl AppModel {
             peritus_app_protocol::WorkbenchRewindMode::ConversationOnly => "conversation",
             peritus_app_protocol::WorkbenchRewindMode::Combined => "combined",
         };
-        let mut command =
+        let command =
             format!("/rewind {} {mode}", crate::model::format_id(request.checkpoint().as_bytes()));
-        if let Some(budget) = request.allocation() {
-            use std::fmt::Write as _;
-            let _ = write!(
-                command,
-                " time={} requests={} tools={} tokens={}",
-                budget.active_millis(),
-                budget.requests(),
-                budget.tool_calls(),
-                budget.total_tokens()
-            );
-        }
         self.chat.workbench.rewind_preview = None;
         self.refresh_snapshot_for_command(request.query(), command)
     }

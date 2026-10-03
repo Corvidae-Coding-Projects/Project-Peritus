@@ -86,3 +86,59 @@ fn complete_result_page_round_trips_as_a_persistence_value()
     assert_eq!(decode_workbench_result_value(&encoded)?, page);
     Ok(())
 }
+
+#[test]
+fn result_page_round_trips_beyond_the_old_launch_total() -> Result<(), Box<dyn std::error::Error>> {
+    let run = RunId::new([21; 16]).expect("run");
+    let profile = WorkbenchLaunchProfile::new(
+        run,
+        text("python3"),
+        Vec::new(),
+        text("."),
+        Vec::new(),
+        WorkbenchLaunchSource::new(
+            WorkbenchLaunchSourceKind::PlainFolderFile,
+            text("preview.py"),
+            Sha256Digest::new([22; 32]),
+        ),
+        None,
+        1,
+        2,
+        false,
+    )?;
+    let launches = (1_u8..=17)
+        .map(|index| {
+            WorkbenchLaunchResult::new(
+                ControlOperationId::new([index; 16]).expect("launch"),
+                profile.clone(),
+                None,
+                WorkbenchLaunchState::Accepted,
+                false,
+                Vec::new(),
+                Vec::new(),
+                Vec::new(),
+                0,
+                None,
+                None,
+            )
+            .expect("result")
+        })
+        .collect();
+    let page = WorkbenchResultPage::new(
+        WorkbenchResultQuery::new(
+            WorkbenchQuery::new(
+                ConversationId::new([23; 16]).expect("conversation"),
+                WorkspaceId::new([24; 16]).expect("workspace"),
+            ),
+            run,
+        ),
+        1,
+        17,
+        WorkbenchCaptureCapability::X11SelectedWindow,
+        launches,
+    )?;
+
+    let encoded = encode_workbench_result_value(&page)?;
+    assert_eq!(decode_workbench_result_value(&encoded)?, page);
+    Ok(())
+}

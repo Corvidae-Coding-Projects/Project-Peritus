@@ -47,10 +47,7 @@ impl AppModel {
                 return Vec::new();
             }
         };
-        if !matches!(
-            command,
-            Command::Goal | Command::Pause | Command::Resume | Command::Usage | Command::Budget
-        ) {
+        if !matches!(command, Command::Goal | Command::Pause | Command::Resume | Command::Usage) {
             self.chat.workbench.goal_mode = false;
         }
         if let Some(effects) = self.refresh_stale_command_snapshot(command, rest) {
@@ -171,7 +168,6 @@ impl AppModel {
             Command::Pause => Some(self.pause_goal_command(rest)),
             Command::Resume => Some(self.resume_goal_command(rest)),
             Command::Usage => Some(self.usage_command()),
-            Command::Budget => Some(self.budget_command(rest)),
             Command::Preview => Some(self.preview_command(rest)),
             Command::Checkpoint => Some(self.checkpoint_command(rest)),
             Command::Rewind => Some(self.rewind_command(rest)),

@@ -197,7 +197,7 @@ pub(super) const WORKBENCH_TYPES: &[AppTypeDescriptor] = &[
                 W::Struct,
                 &[],
                 "WorkbenchIntent",
-                "WorkbenchTitleIntent | WorkbenchFlagIntent | WorkbenchForkIntent | WorkbenchQueueControlIntent | WorkbenchStartIntent | WorkbenchBriefIntent | WorkbenchBriefAcceptIntent | WorkbenchSetContextIntent | WorkbenchCreateCheckpointIntent | WorkbenchApplyRewindIntent | WorkbenchApplyCompactionIntent | WorkbenchAttachImageIntent | WorkbenchSelectImageIntent | WorkbenchAttachFileIntent | WorkbenchAttachFileImportIntent | WorkbenchSelectFileIntent | WorkbenchStartGoalIntent | WorkbenchPauseGoalIntent | WorkbenchResumeOrClearGoalIntent | WorkbenchUpdateGoalBudgetIntent | WorkbenchAddReviewIntent | WorkbenchRebindReviewIntent | WorkbenchDismissReviewIntent | WorkbenchStartPreviewIntent | WorkbenchInteractPreviewIntent | WorkbenchCapturePreviewIntent | WorkbenchStopPreviewIntent | WorkbenchCheckPreviewIntent | WorkbenchArtifactFeedbackIntent | WorkbenchPermissionIntent | WorkbenchSaveGuidanceIntent | WorkbenchReviseGuidanceIntent | WorkbenchPinGuidanceIntent | WorkbenchScopeGuidanceIntent | WorkbenchForgetGuidanceIntent | WorkbenchInitApplyIntent",
+                "WorkbenchTitleIntent | WorkbenchFlagIntent | WorkbenchForkIntent | WorkbenchQueueControlIntent | WorkbenchStartIntent | WorkbenchBriefIntent | WorkbenchBriefAcceptIntent | WorkbenchSetContextIntent | WorkbenchCreateCheckpointIntent | WorkbenchApplyRewindIntent | WorkbenchApplyCompactionIntent | WorkbenchAttachImageIntent | WorkbenchSelectImageIntent | WorkbenchAttachFileIntent | WorkbenchAttachFileImportIntent | WorkbenchSelectFileIntent | WorkbenchStartGoalIntent | WorkbenchPauseGoalIntent | WorkbenchResumeOrClearGoalIntent | WorkbenchAddReviewIntent | WorkbenchRebindReviewIntent | WorkbenchDismissReviewIntent | WorkbenchStartPreviewIntent | WorkbenchInteractPreviewIntent | WorkbenchCapturePreviewIntent | WorkbenchStopPreviewIntent | WorkbenchCheckPreviewIntent | WorkbenchArtifactFeedbackIntent | WorkbenchPermissionIntent | WorkbenchSaveGuidanceIntent | WorkbenchReviseGuidanceIntent | WorkbenchPinGuidanceIntent | WorkbenchScopeGuidanceIntent | WorkbenchForgetGuidanceIntent | WorkbenchInitApplyIntent",
                 J::OneOfRef(&[
                     "WorkbenchTitleIntent",
                     "WorkbenchFlagIntent",
@@ -218,7 +218,6 @@ pub(super) const WORKBENCH_TYPES: &[AppTypeDescriptor] = &[
                     "WorkbenchStartGoalIntent",
                     "WorkbenchPauseGoalIntent",
                     "WorkbenchResumeOrClearGoalIntent",
-                    "WorkbenchUpdateGoalBudgetIntent",
                     "WorkbenchAddReviewIntent",
                     "WorkbenchRebindReviewIntent",
                     "WorkbenchDismissReviewIntent",

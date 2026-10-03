@@ -6,8 +6,6 @@ use peritus_types::{ProviderProfileId, WorkspaceId};
 #[cfg(test)]
 mod tests;
 
-/// Maximum independently classified findings in one diagnostic report.
-pub const MAX_DOCTOR_FINDINGS: usize = 32;
 /// Maximum UTF-8 bytes in a finding's summary or suggested action.
 pub const MAX_DOCTOR_TEXT_BYTES: usize = 1024;
 
@@ -129,7 +127,7 @@ impl DoctorReport {
     /// Rejects empty/excessive findings or duplicate labels.
     pub fn new(query: DoctorQuery, findings: Vec<DoctorFinding>) -> Result<Self, AppProtocolError> {
         if findings.is_empty()
-            || findings.len() > MAX_DOCTOR_FINDINGS
+            || u16::try_from(findings.len()).is_err()
             || findings.iter().enumerate().any(|(index, finding)| {
                 findings[..index].iter().any(|other| other.check == finding.check)
             })

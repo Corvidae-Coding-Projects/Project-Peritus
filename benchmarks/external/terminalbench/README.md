@@ -19,9 +19,9 @@ current trial's retained `lock.json` and the exact digest-addressed cached `task
 Harbor's override, cap, and multiplier order, and passes the resulting horizon to native Peritus.
 It reserves ten percent, between 90 and 300 seconds when the task is long enough, for provider
 cancellation, credential checkpointing, the native invocation report, and Harbor process cleanup.
-Peritus tells each role how much of its work window remains and returns a typed budget result before
-the outer runner can kill it. Missing or malformed deadline evidence fails visibly instead of
-silently falling back to the normal eight-hour interactive horizon.
+Peritus tells each role how much of its benchmark work window remains and returns a typed budget
+result before the outer runner can kill it. Missing or malformed deadline evidence fails visibly
+instead of silently starting an unbounded interactive run without an outer-runner reserve.
 
 ## Prepare the runner
 

@@ -5,10 +5,10 @@ use super::*;
 mod search;
 
 #[test]
-fn allocated_isolated_fork_preserves_parent_and_starts_as_an_independent_draft() {
+fn isolated_fork_preserves_parent_and_starts_as_an_independent_draft() {
     interaction::block_on(async {
         use peritus_product_runner::control::{
-            BriefField, ControlIntent, ControlOperation, ControlText, GoalBudget, GoalCriterion,
+            BriefField, ControlIntent, ControlOperation, ControlText, GoalCriterion,
             GoalCriterionKind, InputId, OperationId, QueueIntent,
         };
 
@@ -90,8 +90,6 @@ fn allocated_isolated_fork_preserves_parent_and_starts_as_an_independent_draft()
                             )
                             .unwrap(),
                         ],
-                        budget: GoalBudget::new(Some(100_000), Some(5), Some(5), Some(1_000))
-                            .unwrap(),
                         now_unix_millis: 1,
                     },
                 ))?;
@@ -166,7 +164,6 @@ fn allocated_isolated_fork_preserves_parent_and_starts_as_an_independent_draft()
         let references = checkpoint.references();
         let child_query =
             WorkbenchQuery::new(ConversationId::new([0x27; 16]).unwrap(), child_workspace);
-        let allocation = WorkbenchForkBudget::new(20_000, 2, 2, 400).unwrap();
         let fork = WorkbenchCommand::new(
             ControlOperationId::new([0x28; 16]).unwrap(),
             query(parent_workspace),
@@ -181,7 +178,6 @@ fn allocated_isolated_fork_preserves_parent_and_starts_as_an_independent_draft()
                     references.brief_revision(),
                     references.goal_revision().unwrap_or(0),
                     WorkbenchForkMode::IsolatedWritableWorkspace,
-                    Some(allocation),
                 )
                 .unwrap(),
             ),
@@ -200,16 +196,6 @@ fn allocated_isolated_fork_preserves_parent_and_starts_as_an_independent_draft()
                 let child = store
                     .load(peritus_product_runner::control::ConversationId::new([0x27; 16])?)?
                     .unwrap();
-                let reservation = parent.goal().unwrap().child_budget_reservation();
-                assert_eq!(
-                    (
-                        reservation.active_millis(),
-                        reservation.requests(),
-                        reservation.tool_calls(),
-                        reservation.total_tokens(),
-                    ),
-                    (20_000, 2, 2, 400)
-                );
                 assert_eq!(parent.title(), "Parent conversation");
                 assert_eq!(child.title(), "Isolated child");
                 assert!(child.execution().is_none());
@@ -243,7 +229,6 @@ fn allocated_isolated_fork_preserves_parent_and_starts_as_an_independent_draft()
             .unwrap();
         let read_only_child =
             WorkbenchQuery::new(ConversationId::new([0x36; 16]).unwrap(), parent_workspace);
-        let read_only_allocation = WorkbenchForkBudget::new(10_000, 1, 1, 200).unwrap();
         let read_only_fork = WorkbenchCommand::new(
             ControlOperationId::new([0x35; 16]).unwrap(),
             query(parent_workspace),
@@ -258,7 +243,6 @@ fn allocated_isolated_fork_preserves_parent_and_starts_as_an_independent_draft()
                     references.brief_revision(),
                     references.goal_revision().unwrap_or(0),
                     WorkbenchForkMode::ReadOnlyCurrentWorkspace,
-                    Some(read_only_allocation),
                 )
                 .unwrap(),
             ),
@@ -269,17 +253,6 @@ fn allocated_isolated_fork_preserves_parent_and_starts_as_an_independent_draft()
         ));
         service
             .with_controls(false, |store| {
-                let parent = store.load(source)?.ok_or(ControlError::NotFound)?;
-                let reservation = parent.goal().unwrap().child_budget_reservation();
-                assert_eq!(
-                    (
-                        reservation.active_millis(),
-                        reservation.requests(),
-                        reservation.tool_calls(),
-                        reservation.total_tokens(),
-                    ),
-                    (30_000, 3, 3, 600)
-                );
                 let child = store
                     .load(peritus_product_runner::control::ConversationId::new([0x36; 16])?)?
                     .ok_or(ControlError::NotFound)?;
@@ -289,16 +262,6 @@ fn allocated_isolated_fork_preserves_parent_and_starts_as_an_independent_draft()
                 assert_eq!(
                     branch.mode(),
                     peritus_product_runner::control::ConversationBranchMode::ReadOnlyCurrentWorkspace
-                );
-                let allocation = branch.allocation().ok_or(ControlError::NotFound)?;
-                assert_eq!(
-                    (
-                        allocation.active_millis(),
-                        allocation.requests(),
-                        allocation.tool_calls(),
-                        allocation.total_tokens(),
-                    ),
-                    (10_000, 1, 1, 200)
                 );
                 Ok(())
             })
@@ -343,7 +306,10 @@ fn allocated_isolated_fork_preserves_parent_and_starts_as_an_independent_draft()
         };
         assert_eq!(page.items()[0].title().as_str(), "Independent child title");
         assert!(page.items()[0].goal_draft());
-        assert_eq!(page.items()[0].branch().unwrap().allocation(), Some(allocation));
+        assert_eq!(
+            page.items()[0].branch().unwrap().mode(),
+            WorkbenchForkMode::IsolatedWritableWorkspace
+        );
         assert!(writer.requests.lock().unwrap().is_empty());
         service.shutdown(Duration::from_secs(5)).await;
     });

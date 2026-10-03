@@ -98,6 +98,10 @@ fn parse_command(parser: &mut Parser) -> Result<Command, CliError> {
             Ok(Command::Workspaces)
         }
         "open" => parse_open(parser),
+        "resume" => {
+            parser.finish()?;
+            Ok(Command::Resume)
+        }
         "status" => {
             parser.finish()?;
             Ok(Command::Status)

@@ -24,10 +24,21 @@ pub(super) fn active_window(horizon: Duration) -> Duration {
 
 /// Rejects a new open-ended turn once only the finalization reserve remains.
 pub(super) fn require_phase_window(
-    horizon: Duration,
-    remaining: Duration,
+    horizon: Option<Duration>,
+    remaining: Option<Duration>,
     phase: OpenEndedPhase,
 ) -> Result<(), ProductRunnerError> {
+    let (horizon, remaining) = match (horizon, remaining) {
+        (None, None) => return Ok(()),
+        (Some(horizon), Some(remaining)) => (horizon, remaining),
+        _ => {
+            return Err(ProductRunnerError::new(
+                ProductRunnerErrorKind::InvalidPrecondition,
+                "start open-ended product phase",
+                "the configured run horizon and live accounting deadline disagree",
+            ));
+        }
+    };
     if remaining <= finalization_reserve(horizon) {
         return Err(ProductRunnerError::new(
             ProductRunnerErrorKind::Budget,
@@ -61,10 +72,25 @@ mod tests {
     fn model_turns_stop_before_finalization_time_is_consumed() {
         let horizon = Duration::from_secs(100);
         assert!(
-            require_phase_window(horizon, Duration::from_secs(11), OpenEndedPhase::Writer).is_ok()
+            require_phase_window(
+                Some(horizon),
+                Some(Duration::from_secs(11)),
+                OpenEndedPhase::Writer,
+            )
+            .is_ok()
         );
         assert!(
-            require_phase_window(horizon, Duration::from_secs(10), OpenEndedPhase::Writer).is_err()
+            require_phase_window(
+                Some(horizon),
+                Some(Duration::from_secs(10)),
+                OpenEndedPhase::Writer,
+            )
+            .is_err()
+        );
+        assert!(require_phase_window(None, None, OpenEndedPhase::Writer).is_ok());
+        assert!(
+            require_phase_window(Some(horizon), None, OpenEndedPhase::Writer).is_err(),
+            "a mismatched horizon must fail closed",
         );
     }
 }

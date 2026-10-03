@@ -36,6 +36,7 @@ impl ProductProviderOption {
 pub struct ProductLaunchContext {
     run_id: Option<peritus_types::RunId>,
     conversation: Option<peritus_app_protocol::WorkbenchQuery>,
+    resume_latest_conversation: bool,
     workspace_id: WorkspaceId,
     workspace_label: String,
     providers: Vec<ProductProviderOption>,
@@ -66,6 +67,7 @@ impl ProductLaunchContext {
         Ok(Self {
             run_id: None,
             conversation: None,
+            resume_latest_conversation: false,
             workspace_id,
             workspace_label,
             providers,
@@ -80,6 +82,16 @@ impl ProductLaunchContext {
     pub const fn with_run(mut self, run: Option<peritus_types::RunId>) -> Self {
         self.run_id = run;
         self.conversation = None;
+        self.resume_latest_conversation = false;
+        self
+    }
+
+    /// Requests the most recently active durable conversation in this workspace.
+    #[must_use]
+    pub const fn with_latest_conversation(mut self) -> Self {
+        self.run_id = None;
+        self.conversation = None;
+        self.resume_latest_conversation = true;
         self
     }
 
@@ -96,7 +108,14 @@ impl ProductLaunchContext {
         }
         self.run_id = None;
         self.conversation = Some(query);
+        self.resume_latest_conversation = false;
         Ok(self)
+    }
+
+    /// Whether startup should resolve the workspace's most recently active conversation.
+    #[must_use]
+    pub(crate) const fn resumes_latest_conversation(&self) -> bool {
+        self.resume_latest_conversation
     }
 
     /// Exact initial durable conversation selected by the caller.

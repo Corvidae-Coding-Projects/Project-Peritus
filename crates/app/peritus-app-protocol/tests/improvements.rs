@@ -96,3 +96,36 @@ fn all_inbox_operations_round_trip_and_require_explicit_capability() {
     assert!(ImprovementText::new("\u{1b}[31m".into()).is_err());
     assert!(ImprovementText::new("x".repeat(4097)).is_err());
 }
+
+#[test]
+fn inbox_and_evidence_round_trip_beyond_the_old_retention_limits() {
+    let workspace = WorkspaceId::new([3; 16]).expect("workspace");
+    let evidence = (1..=8)
+        .map(|index| {
+            ImprovementEvidence::new(
+                RunId::new([index; 16]).expect("run"),
+                Sha256Digest::new([index; 32]),
+                text("Observed missing verification"),
+            )
+        })
+        .collect::<Vec<_>>();
+    let candidates = (1..=40)
+        .map(|index| {
+            ImprovementCandidate::new(
+                Sha256Digest::new([index; 32]),
+                text(&format!("Suggestion {index}")),
+                evidence.clone(),
+                None,
+                false,
+            )
+            .expect("candidate beyond the old evidence total")
+        })
+        .collect();
+    let inbox = ImprovementInbox::new(workspace, candidates).expect("inbox beyond old total");
+    roundtrip(&AppMessage::Response(AppResponseEnvelope::new(
+        context(),
+        RequestId::new([7; 16]).expect("request"),
+        CorrelationId::new([8; 16]).expect("correlation"),
+        AppResponsePayload::Improvements(inbox),
+    )));
+}

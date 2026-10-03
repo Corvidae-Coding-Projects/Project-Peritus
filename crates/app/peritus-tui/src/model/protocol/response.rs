@@ -44,6 +44,10 @@ impl AppModel {
         {
             terminal.settle_line_input(false);
         }
+        if matches!(pending, Some(PendingRequest::ResumeConversationLibrary(_))) {
+            self.fail_latest_resume(&error.actionable_message());
+            return Vec::new();
+        }
         let absent_goal = matches!(pending, Some(PendingRequest::WorkbenchGoal(_)))
             && error.code() == peritus_app_protocol::AppErrorCode::InvalidIdentifier;
         if let Some(effects) = self.resolve_rejected_control(pending, error.code()) {

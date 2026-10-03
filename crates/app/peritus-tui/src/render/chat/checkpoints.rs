@@ -127,15 +127,6 @@ fn append_scope(lines: &mut Vec<String>, request: peritus_app_protocol::Workbenc
             format_id(child.as_bytes())
         ));
     }
-    if let Some(budget) = request.allocation() {
-        lines.push(format!(
-            "Reserved child budget: {} ms · {} requests · {} tools · {} tokens",
-            budget.active_millis(),
-            budget.requests(),
-            budget.tool_calls(),
-            budget.total_tokens()
-        ));
-    }
 }
 
 fn append_named(lines: &mut Vec<String>, label: &str, values: &[String]) {

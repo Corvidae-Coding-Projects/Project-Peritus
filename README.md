@@ -90,6 +90,16 @@ To open a different folder, run:
 peritus open /path/to/folder
 ```
 
+To reopen the most recently active saved conversation for the current folder, run:
+
+```sh
+peritus resume
+```
+
+This resolves the folder through the normal workspace setup and opens the conversation without
+starting new work. If the folder has no saved conversation, Peritus opens a new conversation and
+says so.
+
 ## Experimental browser workspace
 
 The [harness improvement inbox](docs/harness-improvements.md) collects evidence-backed suggestions for explicit later patch generation and evaluation. Open `/improvements` in the WebUI or use `peritus improvements` in the CLI.
@@ -126,7 +136,7 @@ Type `/` to discover commands; Tab completes them.
 
 | Command | Action |
 | --- | --- |
-| `/plan` or `/review` | Discuss a plan or perform an independent review with read-only tools. |
+| `/plan` or `/review` | Discuss a plan or perform an independent review with read-only tools, including an exact absolute reference path named in your request. |
 | `/build <request>` | Start checked writer, reviewer, and fixer delivery. |
 | `/model` | Discover provider models; arrows and Enter select, Tab switches roles. |
 | `/effort` | Select per-role reasoning effort; also press `e` in the model picker. |
@@ -135,7 +145,7 @@ Type `/` to discover commands; Tab completes them.
 | `/stop` | Stop the current work and preserve effects already completed. |
 | `/runs` | Open the run and candidate dashboard. |
 
-Use Shift+Enter for a new line and PageUp/PageDown to scroll.
+Use Shift+Enter for a new line. The mouse wheel or PageUp/PageDown scrolls the conversation.
 In the message composer, Ctrl+Left/Right moves by word. Hold Shift with Left/Right,
 Ctrl+Left/Right, or Home/End to select text; typing, pasting, Backspace, and Delete
 replace or remove the selection. Escape clears it. Click to position the cursor,

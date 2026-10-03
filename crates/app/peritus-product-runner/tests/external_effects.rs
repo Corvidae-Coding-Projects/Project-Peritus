@@ -11,9 +11,7 @@ use std::{
     sync::{Arc, Mutex, atomic::AtomicBool},
 };
 
-use peritus_product_runner::{
-    PRODUCT_RUN_MAX_ELAPSED, ProductDeliveryScope, ProductRunInput, ProductRunner, RoleProviders,
-};
+use peritus_product_runner::{ProductDeliveryScope, ProductRunInput, ProductRunner, RoleProviders};
 use peritus_provider_core::{CancellationToken, ModelProvider};
 use peritus_types::{RunId, WorkspaceId};
 
@@ -111,7 +109,7 @@ fn authorized_external_effects_complete_without_a_synthetic_workspace_diff() {
                     command_runtime,
                     finding_state: String::new(),
                     task: task.clone(),
-                    max_elapsed: PRODUCT_RUN_MAX_ELAPSED,
+                    max_elapsed: Some(std::time::Duration::from_hours(8)),
                     delivery_scope: ProductDeliveryScope::AuthorizedExternalEffects,
                     conversation: Arc::new(FixedConversation(task)),
                     providers: RoleProviders {
@@ -249,7 +247,7 @@ fn operational_request_needs_a_live_effect_even_when_supporting_files_change() {
                     command_runtime,
                     finding_state: String::new(),
                     task: task.clone(),
-                    max_elapsed: PRODUCT_RUN_MAX_ELAPSED,
+                    max_elapsed: Some(std::time::Duration::from_hours(8)),
                     delivery_scope: ProductDeliveryScope::AuthorizedExternalEffects,
                     conversation: Arc::new(FixedConversation(task)),
                     providers: RoleProviders {

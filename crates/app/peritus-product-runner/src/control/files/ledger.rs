@@ -91,9 +91,6 @@ impl FileAttachments {
         text: &ControlText<8192>,
     ) -> Result<(), ControlError> {
         file.validate()?;
-        if self.entries.len() >= 256 {
-            return Err(ControlError::Capacity);
-        }
         *inputs = inputs.apply(
             actor,
             &QueueIntent::Enqueue {
@@ -154,7 +151,6 @@ impl FileAttachments {
     }
     pub(in crate::control) fn validate(&self, inputs: &InputLedger) -> Result<(), ControlError> {
         let mut operations = std::collections::BTreeSet::new();
-        let mut versions = 0_usize;
         for entry in &self.entries {
             entry.file.validate()?;
             if inputs.latest(entry.file.input()).is_none()
@@ -164,16 +160,12 @@ impl FileAttachments {
             {
                 return Err(ControlError::InvalidInput);
             }
-            versions = versions.saturating_add(1 + entry.refreshes.len());
             for version in &entry.refreshes {
                 version.validate(entry.file.source())?;
                 if !operations.insert(version.operation()) {
                     return Err(ControlError::InvalidInput);
                 }
             }
-        }
-        if self.entries.len() > 256 || versions > 1024 {
-            return Err(ControlError::Capacity);
         }
         let capture = inputs.capture()?;
         let eligible = self.eligible(capture.included());

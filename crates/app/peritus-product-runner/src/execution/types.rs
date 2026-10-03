@@ -103,6 +103,11 @@ pub trait ConversationView: Send + Sync {
     fn stable_request_context(&self) -> String {
         self.render()
     }
+    /// Exact user-authored text allowed to grant read-only access to explicitly named external
+    /// references. Governed hosts must exclude provider replies, tool output, and host guidance.
+    fn reference_authority_context(&self) -> String {
+        self.render()
+    }
     /// Current hard relative paths narrowed by explicit leave-alone review constraints.
     /// Implementations must fail closed when durable state cannot be read.
     fn protected_paths(&self) -> Vec<PathBuf> {
@@ -198,8 +203,8 @@ pub struct ProductRunInput {
     pub finding_state: String,
     /// Natural-language coding task.
     pub task: String,
-    /// Caller-resolved wall-clock horizon, bounded by the product's eight-hour hard ceiling.
-    pub max_elapsed: Duration,
+    /// Optional caller-selected wall-clock horizon. `None` permits uninterrupted execution.
+    pub max_elapsed: Option<Duration>,
     /// Caller-authorized deliverable boundary. Ordinary product runs use workspace changes.
     pub delivery_scope: ProductDeliveryScope,
     /// Live conversation, including the original task and all follow-ups.

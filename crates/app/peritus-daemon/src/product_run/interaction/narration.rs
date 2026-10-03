@@ -47,8 +47,7 @@ pub(super) fn waiting(
 #[cfg(not(verus_only))]
 pub(super) fn review_retry(
     options: &mut InteractionOptions,
-    next_attempt: u8,
-    max_attempts: u8,
+    next_attempt: u64,
     reason: peritus_agent::DeveloperReviewRetryReason,
 ) -> Result<(), ProductRunServiceError> {
     let reason = match reason {
@@ -63,7 +62,7 @@ pub(super) fn review_retry(
     // from streamed provider text and from the unchanged private response trace.
     options.append(
         ProductActivityKind::Assistant,
-        &format!("{reason} Retrying review (attempt {next_attempt} of {max_attempts}) with fresh repository reads. Your existing work is retained."),
+        &format!("{reason} Retrying review (attempt {next_attempt}) with fresh repository reads. Your existing work is retained."),
         "Host recovery notice",
     )
 }
@@ -79,15 +78,15 @@ mod tests {
         let mut options =
             InteractionOptions::test(ProductInteractionMode::Build, ProductRoleModels::default());
         options.text(b"Original reviewer output").expect("provider text");
-        review_retry(&mut options, 2, 3, MissingGrounding).expect("grounding notice");
+        review_retry(&mut options, 2, MissingGrounding).expect("grounding notice");
         waiting(&mut options, 20).expect("status");
-        review_retry(&mut options, 3, 3, InvalidSubmission).expect("schema notice");
+        review_retry(&mut options, 3, InvalidSubmission).expect("schema notice");
         options.text(b"Corrected reviewer output").expect("provider text");
         assert_eq!(options.activities.len(), 5);
         assert_eq!(options.activities[0].text(), "Original reviewer output");
         assert_eq!(options.activities[4].text(), "Corrected reviewer output");
         for (index, attempt, reason) in
-            [(1, "2 of 3", "repository evidence"), (3, "3 of 3", "invalid review")]
+            [(1, "attempt 2", "repository evidence"), (3, "attempt 3", "invalid review")]
         {
             let notice = &options.activities[index];
             assert_eq!(notice.kind(), ProductActivityKind::Assistant);

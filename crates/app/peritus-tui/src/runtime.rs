@@ -1,6 +1,7 @@
 //! Orderly terminal ownership and asynchronous application runtime.
 
 mod candidate;
+mod clipboard;
 mod connection;
 mod files;
 mod images;
@@ -36,6 +37,7 @@ const CONNECT_TIMEOUT: Duration = Duration::from_secs(8);
 
 #[derive(Default)]
 struct LocalReads {
+    clipboard: clipboard::ClipboardWrites,
     files: files::FileReads,
     images: images::ImageReads,
     interrupts: Option<interrupts::Interrupts>,
@@ -233,6 +235,14 @@ fn apply_effects(
 ) -> ControlFlow {
     for effect in effects {
         match effect {
+            Effect::CopyText { operation, text } => {
+                if !reads.clipboard.start(operation, text) {
+                    let _ = model.update(Action::ClipboardWritten {
+                        operation,
+                        result: Err("Another clipboard write is still finishing".to_owned()),
+                    });
+                }
+            }
             Effect::ReadFile { operation, path, range } => {
                 if !reads.files.start(operation, path, range) {
                     let _ = model.update(Action::FileRead {
@@ -301,6 +311,10 @@ async fn next_effects(
             _ = tick.tick() => Action::Tick(std::time::Instant::now()),
             file = reads.files.next(), if reads.files.active() => file,
             image = reads.images.next(), if reads.images.active() => image,
+            clipboard = reads.clipboard.next(), if reads.clipboard.active() => match clipboard {
+                Some(action) => action,
+                None => continue,
+            },
         };
         return Ok(model.update(action));
     }

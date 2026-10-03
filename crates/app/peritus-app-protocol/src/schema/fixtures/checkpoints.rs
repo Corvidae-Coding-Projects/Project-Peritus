@@ -117,7 +117,6 @@ fn branch_cases(
                     .with_branch(
                         crate::WorkbenchRewindMode::ConversationOnly,
                         id(93, ConversationId::new),
-                        None,
                     )
                     .expect("logical selection"),
             )),
@@ -128,11 +127,7 @@ fn branch_cases(
             FixtureClass::Realistic,
             &request(AppRequestPayload::PreviewWorkbenchRewind(
                 minimal
-                    .with_branch(
-                        crate::WorkbenchRewindMode::Combined,
-                        id(93, ConversationId::new),
-                        Some(crate::WorkbenchForkBudget::new(1000, 2, 3, 400).expect("allocation")),
-                    )
+                    .with_branch(crate::WorkbenchRewindMode::Combined, id(93, ConversationId::new))
                     .expect("combined selection"),
             )),
             limits,

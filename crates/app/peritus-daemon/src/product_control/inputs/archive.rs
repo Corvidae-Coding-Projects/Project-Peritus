@@ -177,7 +177,7 @@ pub(in crate::product_control) fn verify_manifest(
     bytes: &[u8],
     before: Option<&peritus_product_runner::control::ConversationRecord>,
 ) -> Result<(), Error> {
-    if bytes.len() > 1024 * 1024 {
+    if bytes.len() > peritus_journal::MAX_STATE_BYTES {
         return Err(ControlError::Capacity.into());
     }
     let manifest: Manifest =
@@ -200,7 +200,6 @@ pub(in crate::product_control) fn verify_manifest(
         || manifest.request_digest != *request_digest
         || peritus_codec::sha256(bytes).as_bytes() != manifest_digest
         || manifest.newly_incorporated != *items
-        || manifest.included.len() > 1024
         || manifest.request_id.is_empty()
         || !manifest.included.ends_with(items)
         || manifest.sources.len() != manifest.included.len()
@@ -224,7 +223,6 @@ pub(in crate::product_control) fn verify_manifest(
         || manifest.guidance.as_ref().is_some_and(|guidance| {
             guidance.dependency_revision == 0
                 || guidance.identities.is_empty()
-                || guidance.identities.len() > peritus_app_protocol::MAX_WORKBENCH_GUIDANCE_PAGE
                 || guidance.bytes == 0
                 || guidance.bytes > peritus_app_protocol::MAX_WORKBENCH_GUIDANCE_RENDER_BYTES as u64
                 || guidance.identities.contains(&[0; 16])

@@ -205,6 +205,7 @@ enum PendingRequest {
         run: RunId,
     },
     ConversationLibrary(peritus_app_protocol::ConversationLibraryQuery),
+    ResumeConversationLibrary(peritus_app_protocol::ConversationLibraryQuery),
     WorkbenchQueue(peritus_app_protocol::WorkbenchQueueQuery),
     WorkbenchQueueCommand {
         query: peritus_app_protocol::WorkbenchQuery,
@@ -393,8 +394,12 @@ impl AppModel {
     }
 
     pub(crate) fn update(&mut self, action: Action) -> Vec<Effect> {
+        let output_target = (self.chat.run_id, self.chat.workbench.selected);
         let observed_at = if let Action::Tick(now) = &action { Some(*now) } else { None };
         let mut effects = match action {
+            Action::ClipboardWritten { operation, result } => {
+                self.clipboard_written(operation, result)
+            }
             Action::FileRead { operation, result } => self.file_read_complete(operation, result),
             Action::FileReadFailed => {
                 self.file_read_failed();
@@ -462,6 +467,16 @@ impl AppModel {
         let working =
             matches!(self.connection, ConnectionStatus::Online { .. }) && self.chat_work_active();
         self.chat.working.observe(if working { self.chat.run_id } else { None }, observed_at);
+        if output_target != (self.chat.run_id, self.chat.workbench.selected)
+            || !self.output_available()
+            || self.chat.output_selection.as_ref().is_some_and(|selection| {
+                self.chat.viewport.is_none_or(|viewport| {
+                    crate::render::transcript_area(self, viewport) != selection.area
+                })
+            })
+        {
+            self.chat.output_selection = None;
+        }
         effects.extend(self.cancel_abandoned_imports());
         effects
     }

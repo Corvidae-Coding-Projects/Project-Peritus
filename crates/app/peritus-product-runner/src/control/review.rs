@@ -14,7 +14,6 @@ use super::{
     OperationId, QueueIntent,
 };
 
-const MAX_REVIEW_COMMENTS: usize = 512;
 const MAX_REVIEW_PATH_BYTES: usize = 4096;
 
 /// Whether feedback covers the complete file diff or one exact hunk.
@@ -317,7 +316,7 @@ impl ReviewComment {
     }
 }
 
-/// Bounded review ledger embedded in the authoritative conversation root.
+/// Review ledger embedded in the authoritative conversation root.
 #[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ReviewLedger {

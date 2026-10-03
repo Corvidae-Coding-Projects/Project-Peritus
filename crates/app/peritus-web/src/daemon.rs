@@ -375,12 +375,23 @@ pub async fn models(app: &App, profile: &str) -> Result<Value> {
     }
 }
 pub async fn runs(app: &App) -> Result<Value> {
-    match request(app, AppRequestPayload::QueryProductRunObservations(ProductRunQuery::recent()))
+    let mut values = Vec::new();
+    loop {
+        let offset = u64::try_from(values.len()).map_err(|_| problem("Run offset overflowed"))?;
+        match request(
+            app,
+            AppRequestPayload::QueryProductRunObservations(ProductRunQuery::page(offset)),
+        )
         .await?
-    {
-        AppResponsePayload::ProductRunObservations(runs) => {
-            Ok(json!(runs.iter().map(|run| snapshot(run.snapshot())).collect::<Vec<_>>()))
+        {
+            AppResponsePayload::ProductRunObservations(runs) => {
+                let complete = runs.len() < peritus_app_protocol::MAX_PRODUCT_RUN_PAGE;
+                values.extend(runs.iter().map(|run| snapshot(run.snapshot())));
+                if complete {
+                    return Ok(json!(values));
+                }
+            }
+            _ => return Err(problem("Unexpected runs response")),
         }
-        _ => Err(problem("Unexpected runs response")),
     }
 }

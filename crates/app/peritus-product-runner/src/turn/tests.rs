@@ -11,9 +11,9 @@ fn developer_loop_exhaustion_is_a_local_budget_failure() {
 }
 
 #[test]
-fn provider_turn_deadline_requires_recovery_instead_of_provider_retry() {
+fn ambiguous_provider_acceptance_requires_exact_run_recovery() {
     let error = developer_error(&DeveloperLoopError::RecoveryRequired(
-        "provider turn deadline; exact run retry is required".to_owned(),
+        "provider accepted the request ambiguously; exact run retry is required".to_owned(),
     ));
 
     assert_eq!(error.kind(), ProductRunnerErrorKind::Apply);
@@ -68,7 +68,7 @@ fn fresh_provider_recovery_requires_new_repository_grounding() {
 
 #[test]
 fn reviewer_checks_literal_request_independently_of_the_design() {
-    let prompt = reviewer_system(Duration::from_mins(10));
+    let prompt = reviewer_system(Some(Duration::from_mins(10)));
     assert!(prompt.contains("Begin every review by requesting"));
     assert!(prompt.contains("model tool-call interface"));
     assert!(prompt.contains("they are not provider-native tools"));
@@ -142,12 +142,28 @@ fn reviewer_checks_literal_request_independently_of_the_design() {
 }
 
 #[test]
+fn unbounded_roles_do_not_receive_a_fabricated_countdown() {
+    let writer = writer_system(
+        "writer",
+        ProductDeliveryScope::WorkspaceChanges,
+        crate::delivery_requirement::ExternalEffectRequirement::Optional,
+        None,
+    );
+    let reviewer = reviewer_system(None);
+
+    assert!(!writer.contains("seconds left"));
+    assert!(!writer.contains("product-run window"));
+    assert!(!reviewer.contains("seconds left"));
+    assert!(!reviewer.contains("shared caller window"));
+}
+
+#[test]
 fn writer_batches_tools_and_respects_artifact_workspaces() {
     let prompt = writer_system(
         "writer",
         ProductDeliveryScope::WorkspaceChanges,
         crate::delivery_requirement::ExternalEffectRequirement::Optional,
-        Duration::from_mins(10),
+        Some(Duration::from_mins(10)),
     );
     assert!(prompt.contains("Batch independent tool calls"));
     assert!(prompt.contains("Every fresh writer or fixer invocation"));
@@ -241,7 +257,7 @@ fn external_effect_writer_attempts_scoped_prerequisites_before_escalating() {
         "writer",
         ProductDeliveryScope::AuthorizedExternalEffects,
         crate::delivery_requirement::ExternalEffectRequirement::Optional,
-        Duration::from_mins(10),
+        Some(Duration::from_mins(10)),
     );
 
     assert!(prompt.contains("attempt ordinary prerequisites"));
@@ -255,7 +271,7 @@ fn external_effect_writer_attempts_scoped_prerequisites_before_escalating() {
 #[test]
 fn reviewer_rechecks_conserved_finding_locations_after_fixes() {
     let prompt = reviewer_user(&ReviewerPrompt {
-        system: &reviewer_system(Duration::from_secs(235)),
+        system: &reviewer_system(Some(Duration::from_secs(235))),
         tools: &[],
         transcript: "task",
         diff: "diff",
@@ -283,7 +299,7 @@ fn reviewer_rechecks_conserved_finding_locations_after_fixes() {
 fn reviewer_bounds_oversized_initial_evidence_before_provider_compaction() {
     let oversized = "evidence".repeat(100_000);
     let prompt = reviewer_user(&ReviewerPrompt {
-        system: &reviewer_system(Duration::from_secs(235)),
+        system: &reviewer_system(Some(Duration::from_secs(235))),
         tools: &[],
         transcript: "literal task",
         diff: &oversized,
@@ -311,10 +327,10 @@ fn live_operational_delivery_rejects_helper_files_as_the_whole_result() {
         "writer",
         ProductDeliveryScope::AuthorizedExternalEffects,
         requirement,
-        Duration::from_mins(10),
+        Some(Duration::from_mins(10)),
     );
     let reviewer = reviewer_user(&ReviewerPrompt {
-        system: &reviewer_system(Duration::from_secs(235)),
+        system: &reviewer_system(Some(Duration::from_secs(235))),
         tools: &[],
         transcript: "Configure the local service so that I can connect to it.",
         diff: "setup.sh changed",
@@ -341,7 +357,7 @@ fn live_operational_delivery_rejects_helper_files_as_the_whole_result() {
 #[test]
 fn reviewer_rejects_a_profile_that_would_erase_the_authoritative_request() {
     let error = reviewer_user(&ReviewerPrompt {
-        system: &reviewer_system(Duration::from_secs(235)),
+        system: &reviewer_system(Some(Duration::from_secs(235))),
         tools: &[],
         transcript: "Preserve this exact requested behavior.",
         diff: "candidate",

@@ -6,8 +6,8 @@ use peritus_app_protocol::{
     AppResponsePayload, WorkbenchCommand, WorkbenchForkMode, WorkbenchForkRequest, WorkbenchIntent,
 };
 use peritus_product_runner::control::{
-    ChildBudgetAllocation, ControlError, ControlIntent, ControlOperation, ConversationBranch,
-    ConversationBranchMode, ConversationId, GoalCriterion, OperationId,
+    ControlError, ControlIntent, ControlOperation, ConversationBranch, ConversationBranchMode,
+    ConversationId, GoalCriterion, OperationId,
 };
 use peritus_types::{ActorId, WorkspaceId};
 
@@ -32,8 +32,10 @@ impl ProductRunService {
                     if existing.expected_revision() != command.expected_revision() {
                         return Err(ControlError::IdempotencyConflict.into());
                     }
-                    let ControlIntent::ReserveFork { branch, .. } = existing.intent() else {
-                        return Err(ControlError::IdempotencyConflict.into());
+                    let branch = match existing.intent() {
+                        ControlIntent::ReserveFork { branch, .. }
+                        | ControlIntent::ReserveAutomaticFork { branch, .. } => branch,
+                        _ => return Err(ControlError::IdempotencyConflict.into()),
                     };
                     if !same_public_request(command, request, branch) {
                         return Err(ControlError::IdempotencyConflict.into());
@@ -53,23 +55,41 @@ impl ProductRunService {
                 if source.revision() != command.expected_revision() {
                     return Err(ControlError::StaleRevision.into());
                 }
-                validate_checkpoint_reference(&source, request)?;
-                self.validate_fork_coverage(&source, request)?;
+                let checkpoint = store
+                    .load_checkpoint(
+                        source_id,
+                        peritus_product_runner::control::CheckpointId::new(
+                            request.checkpoint().into_bytes(),
+                        )?,
+                    )?
+                    .ok_or(ControlError::NotFound)?;
+                validate_checkpoint_reference(&checkpoint, request)?;
+                self.validate_fork_coverage(&source, request, &checkpoint)?;
                 let historical = store
                     .load_revision(source_id, request.source_revision())?
                     .ok_or(ControlError::NotFound)?;
                 validate_fork_governance(&source, &historical, request)?;
                 let branch = branch(actor, command, request, &historical)?;
+                let intent =
+                    if source.checkpoints().iter().any(|value| value.id() == checkpoint.id()) {
+                        ControlIntent::ReserveFork {
+                            branch: branch.clone(),
+                            now_unix_millis: super::goal::now_millis(),
+                        }
+                    } else {
+                        ControlIntent::ReserveAutomaticFork {
+                            branch: branch.clone(),
+                            checkpoint: Box::new(checkpoint),
+                            now_unix_millis: super::goal::now_millis(),
+                        }
+                    };
                 let source_operation = ControlOperation::new(
                     operation_id,
                     source_id,
                     actor,
                     command.query().workspace(),
                     command.expected_revision(),
-                    ControlIntent::ReserveFork {
-                        branch: branch.clone(),
-                        now_unix_millis: super::goal::now_millis(),
-                    },
+                    intent,
                 );
                 let child_operation = child_operation(actor, &branch)?;
                 let receipt = store.accept_fork(&source_operation, &child_operation, &branch)?;
@@ -111,22 +131,23 @@ pub(super) fn validate_fork_governance(
     historical: &peritus_product_runner::control::ConversationRecord,
     request: &WorkbenchForkRequest,
 ) -> Result<(), ControlStoreError> {
-    match (current.goal(), historical.goal(), request.allocation()) {
-        (None, None, None) => Ok(()),
-        (Some(current), Some(historical), Some(_)) if current.id() == historical.id() => Ok(()),
+    match (current.goal(), historical.goal(), request.goal_revision()) {
+        (None, None, 0) => Ok(()),
+        (Some(current), Some(historical), revision)
+            if revision != 0
+                && current.id() == historical.id()
+                && historical.user_revision() == revision =>
+        {
+            Ok(())
+        }
         _ => Err(ControlError::InvalidInput.into()),
     }
 }
 
 fn validate_checkpoint_reference(
-    source: &peritus_product_runner::control::ConversationRecord,
+    checkpoint: &peritus_product_runner::control::UserCheckpoint,
     request: &WorkbenchForkRequest,
 ) -> Result<(), ControlStoreError> {
-    let checkpoint = source
-        .checkpoints()
-        .iter()
-        .find(|value| value.id().as_bytes() == request.checkpoint().as_bytes())
-        .ok_or(ControlError::NotFound)?;
     let references = checkpoint.references();
     if references.source_conversation_revision() != request.source_revision()
         || references.context_generation() != request.context_generation()
@@ -168,10 +189,6 @@ pub(super) fn branch(
             .map(|value| value.text().to_owned());
         (objective, Vec::new())
     };
-    let allocation = request.allocation().map(domain_allocation).transpose()?;
-    if source.goal().is_some() != allocation.is_some() {
-        return Err(ControlError::InvalidInput.into());
-    }
     let mode = match request.mode() {
         WorkbenchForkMode::ReadOnlyCurrentWorkspace => {
             ConversationBranchMode::ReadOnlyCurrentWorkspace
@@ -195,7 +212,6 @@ pub(super) fn branch(
         request.title().as_str().to_owned(),
         objective,
         criteria,
-        allocation,
     )?
     .with_seed(source.historical_seed()?)
     .map_err(Into::into)
@@ -214,18 +230,6 @@ pub(super) fn child_operation(
         0,
         ControlIntent::CreateFork { branch: branch.clone() },
     ))
-}
-
-fn domain_allocation(
-    value: peritus_app_protocol::WorkbenchForkBudget,
-) -> Result<ChildBudgetAllocation, ControlStoreError> {
-    ChildBudgetAllocation::new(
-        value.active_millis(),
-        value.requests(),
-        value.tool_calls(),
-        value.total_tokens(),
-    )
-    .map_err(Into::into)
 }
 
 fn same_public_request(
@@ -252,9 +256,4 @@ fn same_public_request(
         && branch.goal_revision() == request.goal_revision()
         && branch.mode() == mode
         && branch.title() == request.title().as_str()
-        && branch.allocation().map(|value| {
-            (value.active_millis(), value.requests(), value.tool_calls(), value.total_tokens())
-        }) == request.allocation().map(|value| {
-            (value.active_millis(), value.requests(), value.tool_calls(), value.total_tokens())
-        })
 }

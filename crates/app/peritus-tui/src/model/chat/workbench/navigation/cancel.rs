@@ -55,6 +55,7 @@ const fn is_inspection(pending: &PendingRequest) -> bool {
         PendingRequest::WorkbenchQuery(_)
             | PendingRequest::WorkbenchExecution(_)
             | PendingRequest::ConversationLibrary(_)
+            | PendingRequest::ResumeConversationLibrary(_)
             | PendingRequest::WorkbenchImagePreview(_)
             | PendingRequest::WorkbenchImages(_)
             | PendingRequest::WorkbenchFilePreview(_)

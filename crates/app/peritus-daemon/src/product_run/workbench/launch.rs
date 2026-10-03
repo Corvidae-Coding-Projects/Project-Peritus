@@ -219,9 +219,6 @@ impl ProductRunService {
         let (workspace, direct) = self.verify_profile(command.query(), profile)?;
         let (receipt, admitted) = self.admit_preview(command, profile.run(), |preview| {
             let mut launches = preview_launches(preview);
-            if launches.len() >= peritus_app_protocol::MAX_WORKBENCH_LAUNCHES {
-                return Err(app_error(Code::LimitExceeded));
-            }
             launches.push(
                 WorkbenchLaunchResult::new(
                     command.operation(),

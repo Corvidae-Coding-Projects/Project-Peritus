@@ -50,8 +50,6 @@ impl ProtocolFeatureName {
     pub const WORKBENCH_FILES: &'static str = "app.workbench-files";
     /// Persistent goal lifecycle and safe-boundary pause/resume controls.
     pub const WORKBENCH_GOALS: &'static str = "app.workbench-goals";
-    /// Cumulative goal usage and typed budget controls.
-    pub const WORKBENCH_BUDGETS: &'static str = "app.workbench-budgets";
     /// Structured candidate review with content-bound conversational feedback.
     pub const WORKBENCH_REVIEW: &'static str = "app.workbench-review";
     /// Daemon-owned launch, selected-window capture and artifact feedback.
@@ -151,8 +149,6 @@ pub enum WellKnownProtocolFeature {
     WorkbenchFiles,
     /// Persistent goal lifecycle and safe-boundary pause/resume controls.
     WorkbenchGoals,
-    /// Cumulative goal accounting and typed user limits.
-    WorkbenchBudgets,
     /// Structured candidate review and exact anchored feedback.
     WorkbenchReview,
     /// Daemon-owned launch, selected-window capture and artifact feedback.
@@ -201,7 +197,6 @@ impl WellKnownProtocolFeature {
             Self::WorkbenchImages => ProtocolFeatureName::WORKBENCH_IMAGES,
             Self::WorkbenchFiles => ProtocolFeatureName::WORKBENCH_FILES,
             Self::WorkbenchGoals => ProtocolFeatureName::WORKBENCH_GOALS,
-            Self::WorkbenchBudgets => ProtocolFeatureName::WORKBENCH_BUDGETS,
             Self::WorkbenchReview => ProtocolFeatureName::WORKBENCH_REVIEW,
             Self::WorkbenchPreviewOutput => ProtocolFeatureName::WORKBENCH_PREVIEW_OUTPUT,
             Self::WorkbenchPreview => ProtocolFeatureName::WORKBENCH_PREVIEW,

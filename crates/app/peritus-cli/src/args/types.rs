@@ -28,6 +28,7 @@ COMMANDS:
   providers                    Open provider settings
   workspaces                   Switch, add, trust, repair, or forget workspaces
   open [PATH] [--run ID]        Launch PATH, optionally selecting an exact conversation
+  resume                        Open this folder's most recently active conversation
   status
   shutdown [--wait]
   command submit --actor <ID> --envelope <FILE> --payload <FILE>
@@ -83,6 +84,7 @@ pub enum Command {
     Providers,
     Workspaces,
     Open { path: Option<PathBuf>, run: Option<RunId> },
+    Resume,
     Status,
     Shutdown { wait: bool },
     Submit(SubmitArgs),

@@ -3,8 +3,8 @@
 use super::runtime;
 use crate::product_run::{ProductRunRequest, ProductRunService};
 use peritus_product_runner::{
-    ConversationView, PRODUCT_RUN_MAX_ELAPSED, ProductDeliveryScope, ProductRunInput,
-    ProductRunResume, ProductRunner, RoleProviders, RunObserver,
+    ConversationView, ProductDeliveryScope, ProductRunInput, ProductRunResume, ProductRunner,
+    RoleProviders, RunObserver,
 };
 use peritus_provider_core::CancellationToken;
 use peritus_types::RunId;
@@ -102,7 +102,7 @@ impl ProductRunService {
                     command_runtime,
                     finding_state,
                     task: request.execution_task().to_owned(),
-                    max_elapsed: PRODUCT_RUN_MAX_ELAPSED,
+                    max_elapsed: None,
                     delivery_scope: ProductDeliveryScope::WorkspaceChanges,
                     conversation,
                     providers,

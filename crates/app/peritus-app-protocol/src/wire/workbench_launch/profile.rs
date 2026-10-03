@@ -1,8 +1,8 @@
 //! Canonical launch-profile and launch-source codecs.
 
 use crate::{
-    MAX_WORKBENCH_LAUNCH_ARGUMENTS, MAX_WORKBENCH_LAUNCH_ENVIRONMENT, WorkbenchBuildIdentity,
-    WorkbenchLaunchProfile, WorkbenchLaunchSource, WorkbenchLaunchSourceKind,
+    WorkbenchBuildIdentity, WorkbenchLaunchProfile, WorkbenchLaunchSource,
+    WorkbenchLaunchSourceKind,
 };
 use peritus_codec::{CanonicalReader, CanonicalWriter, CodecError, CodecErrorKind};
 use peritus_types::RunId;
@@ -44,13 +44,13 @@ pub(in crate::wire) fn read_profile(
     let offset = reader.offset();
     let run = read_id(reader, RunId::new)?;
     let executable = read_text(reader)?;
-    let argument_count = read_count(reader, MAX_WORKBENCH_LAUNCH_ARGUMENTS)?;
+    let argument_count = read_count(reader, usize::from(u16::MAX))?;
     let mut arguments = Vec::with_capacity(argument_count);
     for _ in 0..argument_count {
         arguments.push(read_text(reader)?);
     }
     let working_directory = read_text(reader)?;
-    let environment_count = read_count(reader, MAX_WORKBENCH_LAUNCH_ENVIRONMENT)?;
+    let environment_count = read_count(reader, usize::from(u16::MAX))?;
     let mut environment = Vec::with_capacity(environment_count);
     for _ in 0..environment_count {
         environment.push(read_text(reader)?);

@@ -19,6 +19,7 @@ use crate::{
 
 mod handoff;
 mod polling;
+mod resume;
 
 fn with_controls(
     snapshot: ProductRunSnapshot,

@@ -2,6 +2,15 @@
 
 use super::*;
 use serde::{Deserialize, Serialize};
+use std::{
+    process::Child,
+    time::{Duration, Instant},
+};
+
+// Preparation starts multiple native Git processes and flushes retained state. This is a
+// crash-consistency test, so allow slow runner I/O without imposing a startup speed contract.
+const PREPARATION_TIMEOUT: Duration = Duration::from_mins(2);
+const LOCK_RELEASE_TIMEOUT: Duration = Duration::from_secs(15);
 
 #[derive(Deserialize, Serialize)]
 struct KilledRestore {
@@ -62,30 +71,20 @@ fn process_kill_recovers_preparation_and_each_published_effect() {
             .env(CHILD, serde_json::to_string(&argument).unwrap())
             .stdin(std::process::Stdio::piped()).stdout(std::process::Stdio::null()).stderr(std::process::Stdio::inherit())
             .spawn().unwrap();
-        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(15);
-        while !barrier.exists() {
-            if let Some(status) = child.try_wait().unwrap() {
-                panic!("{stage:?} child exited before barrier: {status}");
-            }
-            if std::time::Instant::now() >= deadline {
-                child.kill().unwrap();
-                child.wait().unwrap();
-                panic!("{stage:?} child did not reach publication barrier");
-            }
-            std::thread::sleep(std::time::Duration::from_millis(10));
-        }
+        wait_for_barrier(&mut child, stage, &barrier);
         child.kill().unwrap();
         assert!(!child.wait().unwrap().success());
         if stage == fault::Stage::Prepared {
             // The prepared native Git child sees EOF when its parent dies. Recovery
             // waits for Git itself to release the lock; it never deletes that lock.
             let lock = fixture.repository.path().join("nested/.git/HEAD.lock");
+            let deadline = Instant::now() + LOCK_RELEASE_TIMEOUT;
             while lock.exists() {
                 assert!(
-                    std::time::Instant::now() < deadline,
+                    Instant::now() < deadline,
                     "native Git did not release its own lock after EOF"
                 );
-                std::thread::sleep(std::time::Duration::from_millis(10));
+                std::thread::sleep(Duration::from_millis(10));
             }
         }
         let prior = WorkspaceCheckpoint::capture(fixture.repository.path()).unwrap();
@@ -107,5 +106,33 @@ fn process_kill_recovers_preparation_and_each_published_effect() {
         execute(&fixture.path, fixture.binding, fixture.digest).unwrap();
         assert_eq!(WorkspaceCheckpoint::capture(root).unwrap(), before);
         assert_eq!(fs::read(root.join(".git/index")).unwrap(), index);
+    }
+}
+
+fn wait_for_barrier(child: &mut Child, stage: fault::Stage, barrier: &Path) {
+    let started = Instant::now();
+    let deadline = started + PREPARATION_TIMEOUT;
+    let expected = format!("{stage:?}\n");
+    while match fs::read_to_string(barrier) {
+        Ok(contents) => contents != expected,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => true,
+        Err(error) => {
+            child.kill().unwrap();
+            child.wait().unwrap();
+            panic!("{stage:?} publication barrier could not be read: {error}");
+        }
+    } {
+        if let Some(status) = child.try_wait().unwrap() {
+            panic!("{stage:?} child exited before barrier: {status}");
+        }
+        if Instant::now() >= deadline {
+            child.kill().unwrap();
+            child.wait().unwrap();
+            panic!(
+                "{stage:?} child did not reach publication barrier after {:?}",
+                started.elapsed()
+            );
+        }
+        std::thread::sleep(Duration::from_millis(10));
     }
 }

@@ -42,12 +42,16 @@ impl ProductRunService {
         self.with_controls(false, |store| {
             store.settle_goal(&start, settlement, evidence_input_generation, unresolved_effects)?;
             let record = store.load(start.conversation())?;
-            Ok(record.as_ref().and_then(|record| record.goal()).and_then(|goal| match goal.state() {
-                GoalState::Paused => Some("Paused — completed effects retained; /resume continues"),
-                GoalState::BudgetReached => Some("Budget reached — completed effects retained; review /budget before resuming"),
-                _ => None,
+            Ok(record.as_ref().and_then(|record| record.goal()).and_then(|goal| {
+                match goal.state() {
+                    GoalState::Paused => {
+                        Some("Paused — completed effects retained; /resume continues")
+                    }
+                    _ => None,
+                }
             }))
-        }).map_err(Into::into)
+        })
+        .map_err(Into::into)
     }
 }
 
@@ -83,13 +87,8 @@ impl ProductRunService {
                             let _ = provider_cancellation.cancel();
                             stopped = true;
                         }
-                        Ok(Some(0)) => {
-                            cancelled.store(true, std::sync::atomic::Ordering::Release);
-                            let _ = provider_cancellation.cancel();
-                            stopped = true;
-                        }
-                        Ok(Some(remaining)) => tick_millis = remaining.min(1000),
-                        Ok(None) => stopped = true,
+                        Ok(true) => tick_millis = 1000,
+                        Ok(false) => stopped = true,
                     }
                 }
             }
@@ -113,7 +112,7 @@ impl ProductRunService {
         &self,
         run: peritus_types::RunId,
         elapsed: std::time::Duration,
-    ) -> Result<Option<u64>, ProductRunServiceError> {
+    ) -> Result<bool, ProductRunServiceError> {
         let records = self.inner.records.read().map_err(|_| ProductRunServiceError::Unavailable)?;
         let record = records.get(&run).ok_or(ProductRunServiceError::NotFound)?;
         let start = record.interaction.workbench.clone();
@@ -129,8 +128,7 @@ impl ProductRunService {
                 progress.workspace_bytes,
                 progress.workspace_growth_bytes,
                 progress.peak_rss_bytes,
-            )?;
-            store.goal_remaining_active_millis(&start)
+            )
         })
         .map_err(Into::into)
     }

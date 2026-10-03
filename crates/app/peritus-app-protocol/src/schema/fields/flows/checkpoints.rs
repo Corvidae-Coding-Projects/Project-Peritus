@@ -174,15 +174,6 @@ pub(super) const CHECKPOINT_TYPES: &[AppTypeDescriptor] = &[
                 J::Identifier,
                 false,
             ),
-            field(
-                "allocation",
-                W::Option,
-                &[],
-                "Option<WorkbenchForkBudget>",
-                "WorkbenchForkBudget",
-                J::Ref("WorkbenchForkBudget"),
-                false,
-            ),
         ],
     },
     AppTypeDescriptor {

@@ -33,6 +33,8 @@ pub enum DeveloperLoopError {
     Refused,
     /// The configured turn or tool-call limit was exhausted.
     LimitExceeded,
+    /// One bounded invocation segment ended before the role produced its terminal result.
+    SegmentExhausted,
     /// The request was cancelled.
     Cancelled,
     /// A host deadline or effect boundary requires explicit exact-run recovery.
@@ -62,6 +64,9 @@ impl fmt::Display for DeveloperLoopError {
             Self::Tool(detail) => write!(formatter, "execute developer tool: {detail}"),
             Self::Refused => formatter.write_str("provider refused the developer request"),
             Self::LimitExceeded => formatter.write_str("developer loop limit was exhausted"),
+            Self::SegmentExhausted => {
+                formatter.write_str("developer invocation segment reached its local boundary")
+            }
             Self::Cancelled => formatter.write_str("developer loop was cancelled"),
             Self::RecoveryRequired(detail) => formatter.write_str(detail),
             Self::EmptyResponse => {
@@ -82,6 +87,7 @@ impl std::error::Error for DeveloperLoopError {
             | Self::Tool(_)
             | Self::Refused
             | Self::LimitExceeded
+            | Self::SegmentExhausted
             | Self::Cancelled
             | Self::RecoveryRequired(_)
             | Self::EmptyResponse => None,

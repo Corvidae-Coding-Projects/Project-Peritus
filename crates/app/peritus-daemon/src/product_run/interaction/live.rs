@@ -44,6 +44,23 @@ impl ConversationView for LiveConversation {
             "Governing conversation unavailable; execution must stop.".to_owned()
         })
     }
+    fn reference_authority_context(&self) -> String {
+        let result = (|| {
+            let records = self
+                .service
+                .inner
+                .records
+                .read()
+                .map_err(|_| ProductRunServiceError::Unavailable)?;
+            let record = records.get(&self.run_id).ok_or(ProductRunServiceError::NotFound)?;
+            let start = &record.interaction.workbench;
+            self.service
+                .with_controls(false, |store| store.capture_execution(start))
+                .map(|capture| capture.reference_authority_context().to_owned())
+                .map_err(ProductRunServiceError::from)
+        })();
+        result.unwrap_or_default()
+    }
     fn incorporated_revision(&self) -> u64 {
         self.service
             .inner
@@ -105,10 +122,10 @@ impl ConversationView for LiveConversation {
     ) -> Result<(), String> {
         let start = self
             .workbench_start_record()
-            .map_err(|_| "automatic workspace checkpoint is unavailable".to_owned())?;
+            .map_err(|error| format!("automatic workspace checkpoint is unavailable: {error}. Peritus did not change the workspace"))?;
         self.service
             .capture_automatic_checkpoint(&start, self.run_id, relative_path, kind)
-            .map_err(|_| "automatic workspace checkpoint could not be durably captured".to_owned())
+            .map_err(|error| format!("automatic workspace checkpoint could not be durably captured: {error}. Peritus did not change the workspace"))
     }
     fn seal_workspace_mutation_checkpoint(
         &self,
@@ -118,10 +135,10 @@ impl ConversationView for LiveConversation {
     ) -> Result<(), String> {
         let start = self
             .workbench_start_record()
-            .map_err(|_| "automatic workspace checkpoint is unavailable".to_owned())?;
+            .map_err(|error| format!("automatic workspace checkpoint is unavailable: {error}. Peritus stopped before accepting another workspace mutation"))?;
         self.service
             .seal_automatic_checkpoint(&start, self.run_id, relative_path, kind, owned_postchange)
-            .map_err(|_| "automatic workspace checkpoint could not be durably sealed".to_owned())
+            .map_err(|error| format!("automatic workspace checkpoint could not be durably sealed: {error}. Peritus stopped because the completed mutation could not be recorded durably"))
     }
     #[cfg(not(verus_only))]
     fn interaction(&self) -> Option<&dyn DeveloperInteraction> {
@@ -130,10 +147,6 @@ impl ConversationView for LiveConversation {
 }
 #[cfg(not(verus_only))]
 impl DeveloperInteraction for LiveConversation {
-    fn provider_turn_timeout(&self) -> std::time::Duration {
-        std::time::Duration::from_secs(self.service.inner.provider_turn_timeout_seconds)
-    }
-
     fn allows_semantic_compaction(&self) -> bool {
         false
     }
@@ -291,8 +304,8 @@ impl DeveloperInteraction for LiveConversation {
                 progress.mark_event("provider summary received");
                 options.summary(bytes)
             }
-            DeveloperActivity::ModelStarted { model, reasoning, deadline_seconds } => {
-                progress.begin_provider_request(deadline_seconds);
+            DeveloperActivity::ModelStarted { model, reasoning } => {
+                progress.begin_provider_request();
                 options.streaming_text = false;
                 let effort = match reasoning {
                     peritus_model_protocol::ReasoningPolicy::Disabled => "not requested",
@@ -303,9 +316,7 @@ impl DeveloperInteraction for LiveConversation {
                 };
                 options.append(
                     ProductActivityKind::Status,
-                    &format!(
-                        "Requesting model {model} · effort {effort} · deadline {deadline_seconds}s"
-                    ),
+                    &format!("Requesting model {model} · effort {effort}"),
                     "",
                 )
             }
@@ -321,9 +332,9 @@ impl DeveloperInteraction for LiveConversation {
                     "Original and repaired values are retained in the private trace. Tool validation and permissions still apply.",
                 )
             }
-            DeveloperActivity::ReviewRetry { next_attempt, max_attempts, reason } => {
+            DeveloperActivity::ReviewRetry { next_attempt, reason } => {
                 progress.mark_event("review retry scheduled");
-                narration::review_retry(options, next_attempt, max_attempts, reason)
+                narration::review_retry(options, next_attempt, reason)
             }
             DeveloperActivity::ToolStarted { name, arguments } => {
                 progress.begin_tool(name);
@@ -365,7 +376,6 @@ const fn control_flow(
     match admission {
         peritus_product_runner::control::GoalAdmission::Accepted => DeveloperControlFlow::Continue,
         peritus_product_runner::control::GoalAdmission::Paused
-        | peritus_product_runner::control::GoalAdmission::BudgetReached
         | peritus_product_runner::control::GoalAdmission::Inactive => DeveloperControlFlow::Stop,
     }
 }

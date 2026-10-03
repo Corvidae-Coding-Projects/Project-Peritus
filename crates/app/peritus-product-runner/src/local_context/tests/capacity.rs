@@ -127,7 +127,7 @@ fn reviewer_packet_leaves_room_for_authoritative_tool_observations() {
     use peritus_agent::{DeveloperLoopLimits, DeveloperLoopRequest};
     use peritus_model_protocol::Role;
 
-    let system = reviewer_system(std::time::Duration::from_secs(235));
+    let system = reviewer_system(Some(std::time::Duration::from_secs(235)));
     let diff = "changed source evidence ".repeat(400);
     let developer = "retained command observation ".repeat(4000);
     let mut definitions = crate::developer_tools::read_only_definitions().unwrap();

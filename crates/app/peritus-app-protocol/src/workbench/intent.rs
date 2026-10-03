@@ -5,9 +5,9 @@ use super::{
     WorkbenchBriefField, WorkbenchCaptureRequest, WorkbenchCheckpointName,
     WorkbenchCompactionPreview, WorkbenchContextPreference, WorkbenchContextSource,
     WorkbenchExecutionSettings, WorkbenchFileImportPreview, WorkbenchFilePreview,
-    WorkbenchForkRequest, WorkbenchGoalBudget, WorkbenchGoalDefinition, WorkbenchGoalPauseMode,
-    WorkbenchGuidanceForget, WorkbenchGuidancePin, WorkbenchGuidanceRevision,
-    WorkbenchGuidanceSave, WorkbenchGuidanceScopeChange, WorkbenchImagePreview, WorkbenchInputText,
+    WorkbenchForkRequest, WorkbenchGoalDefinition, WorkbenchGoalPauseMode, WorkbenchGuidanceForget,
+    WorkbenchGuidancePin, WorkbenchGuidanceRevision, WorkbenchGuidanceSave,
+    WorkbenchGuidanceScopeChange, WorkbenchImagePreview, WorkbenchInputText,
     WorkbenchLaunchProfile, WorkbenchLaunchText, WorkbenchPermissionChange, WorkbenchPreviewInput,
     WorkbenchQueueIntent, WorkbenchReviewAnchor, WorkbenchReviewFeedback, WorkbenchRewindPreview,
 };
@@ -91,7 +91,7 @@ pub enum WorkbenchIntent {
     },
     /// Confirms the displayed goal definition and starts the existing product runner.
     StartGoal {
-        /// Exact objective, typed criteria, and cumulative user limits.
+        /// Exact objective and typed criteria.
         definition: WorkbenchGoalDefinition,
         /// Existing runner provider/mode/model binding.
         settings: WorkbenchExecutionSettings,
@@ -107,13 +107,6 @@ pub enum WorkbenchIntent {
     ResumeGoal {
         /// Exact goal identity (the original start operation).
         goal: ControlOperationId,
-    },
-    /// Replaces cumulative user limits without implicitly resuming.
-    UpdateGoalBudget {
-        /// Exact goal identity (the original start operation).
-        goal: ControlOperationId,
-        /// Complete replacement user-limit set.
-        budget: WorkbenchGoalBudget,
     },
     /// Cancels future goal continuation while retaining history and effects.
     ClearGoal {

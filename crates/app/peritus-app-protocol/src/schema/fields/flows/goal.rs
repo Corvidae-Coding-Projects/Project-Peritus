@@ -17,25 +17,7 @@ const fn goal_id() -> AppFieldDescriptor {
     )
 }
 
-const fn optional_u64(name: &'static str) -> AppFieldDescriptor {
-    field(name, W::Option, &[B::NonZero], "Option<u64>", "UInt64", J::U64String, false)
-}
-
-const fn optional_u32(name: &'static str) -> AppFieldDescriptor {
-    field(name, W::Option, &[B::NonZero], "Option<u32>", "number", J::U32, false)
-}
-
 pub(super) const GOAL_TYPES: &[AppTypeDescriptor] = &[
-    AppTypeDescriptor {
-        name: "WorkbenchGoalBudget",
-        rust_type: "WorkbenchGoalBudget",
-        fields: &[
-            optional_u64("maxActiveMillis"),
-            optional_u32("maxRequests"),
-            optional_u32("maxToolCalls"),
-            optional_u64("maxTotalTokens"),
-        ],
-    },
     AppTypeDescriptor {
         name: "WorkbenchGoalCriterionDefinition",
         rust_type: "WorkbenchGoalCriterionDefinition",
@@ -81,15 +63,6 @@ pub(super) const GOAL_TYPES: &[AppTypeDescriptor] = &[
                 "Vec<WorkbenchGoalCriterionDefinition>",
                 "readonly WorkbenchGoalCriterionDefinition[]",
                 J::ArrayRef("WorkbenchGoalCriterionDefinition"),
-                true,
-            ),
-            field(
-                "budget",
-                W::Struct,
-                &[],
-                "WorkbenchGoalBudget",
-                "WorkbenchGoalBudget",
-                J::Ref("WorkbenchGoalBudget"),
                 true,
             ),
         ],
@@ -166,31 +139,6 @@ pub(super) const GOAL_TYPES: &[AppTypeDescriptor] = &[
                 true,
             ),
             goal_id(),
-        ],
-    },
-    AppTypeDescriptor {
-        name: "WorkbenchUpdateGoalBudgetIntent",
-        rust_type: "WorkbenchIntent",
-        fields: &[
-            field(
-                "kind",
-                W::U16,
-                &[],
-                "WorkbenchIntent",
-                "\"updateGoalBudget\"",
-                J::Enum(&["updateGoalBudget"]),
-                true,
-            ),
-            goal_id(),
-            field(
-                "budget",
-                W::Struct,
-                &[],
-                "WorkbenchGoalBudget",
-                "WorkbenchGoalBudget",
-                J::Ref("WorkbenchGoalBudget"),
-                true,
-            ),
         ],
     },
     AppTypeDescriptor {
@@ -299,14 +247,13 @@ pub(super) const GOAL_TYPES: &[AppTypeDescriptor] = &[
                 W::U16,
                 &[],
                 "WorkbenchGoalState",
-                "\"active\" | \"waitingForUser\" | \"pausing\" | \"paused\" | \"blocked\" | \"budgetReached\" | \"achieved\" | \"cancelled\"",
+                "\"active\" | \"waitingForUser\" | \"pausing\" | \"paused\" | \"blocked\" | \"achieved\" | \"cancelled\"",
                 J::Enum(&[
                     "active",
                     "waitingForUser",
                     "pausing",
                     "paused",
                     "blocked",
-                    "budgetReached",
                     "achieved",
                     "cancelled",
                 ]),
@@ -340,15 +287,6 @@ pub(super) const GOAL_TYPES: &[AppTypeDescriptor] = &[
                 "Vec<WorkbenchGoalCriterion>",
                 "readonly WorkbenchGoalCriterion[]",
                 J::ArrayRef("WorkbenchGoalCriterion"),
-                true,
-            ),
-            field(
-                "budget",
-                W::Struct,
-                &[],
-                "WorkbenchGoalBudget",
-                "WorkbenchGoalBudget",
-                J::Ref("WorkbenchGoalBudget"),
                 true,
             ),
             field(

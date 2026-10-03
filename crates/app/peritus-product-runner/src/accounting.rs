@@ -5,11 +5,6 @@ mod usage;
 mod work;
 
 pub use limits::BudgetViolation;
-pub use limits::{
-    PRODUCT_RUN_MAX_COST_MICROUNITS, PRODUCT_RUN_MAX_MODEL_REQUESTS,
-    PRODUCT_RUN_MAX_PEAK_RSS_BYTES, PRODUCT_RUN_MAX_TOOL_CALLS, PRODUCT_RUN_MAX_TOTAL_TOKENS,
-    PRODUCT_RUN_MAX_WORKSPACE_GROWTH_BYTES,
-};
 pub use usage::UsageSnapshot;
 use vstd::prelude::*;
 pub use work::WorkEvent;

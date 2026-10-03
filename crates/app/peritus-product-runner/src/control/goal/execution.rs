@@ -17,11 +17,7 @@ impl GoalRecord {
         if boundary != GoalAdmission::Accepted {
             return Ok(boundary);
         }
-        if attempt != self.attempt || !self.next_request_budget_available() {
-            if attempt == self.attempt {
-                self.reach_budget(now)?;
-                return Ok(GoalAdmission::BudgetReached);
-            }
+        if attempt != self.attempt {
             return Ok(GoalAdmission::Inactive);
         }
         let usage = &mut self.usage.roles[role.index()];
@@ -69,12 +65,6 @@ impl GoalRecord {
         usage.provider_cost_microunits =
             add(usage.provider_cost_microunits, report.provider_cost_microunits)?;
         self.updated_unix_millis = now;
-        if self.usage.total_tokens().saturating_add(self.child_budget_reservation.total_tokens())
-            >= self.budget.effective_tokens()
-        {
-            self.reach_budget(now)?;
-            return Ok(GoalAdmission::BudgetReached);
-        }
         self.boundary(true, now)
     }
 
@@ -96,18 +86,7 @@ impl GoalRecord {
         if boundary != GoalAdmission::Accepted {
             return Ok(boundary);
         }
-        if attempt != self.attempt
-            || self
-                .usage
-                .tool_calls()
-                .checked_add(self.child_budget_reservation.tool_calls())
-                .and_then(|used| used.checked_add(1))
-                .is_none_or(|next| next > self.budget.effective_tools())
-        {
-            if attempt == self.attempt {
-                self.reach_budget(now)?;
-                return Ok(GoalAdmission::BudgetReached);
-            }
+        if attempt != self.attempt {
             return Ok(GoalAdmission::Inactive);
         }
         let usage = &mut self.usage.roles[role.index()];
@@ -179,11 +158,6 @@ impl GoalRecord {
         self.attempt_progress =
             GoalAttemptProgress { elapsed_millis, retries, provider_failovers, compactions };
         self.updated_unix_millis = now;
-        if self.usage.active_millis.saturating_add(self.child_budget_reservation.active_millis())
-            >= self.budget.effective_active_millis()
-        {
-            self.reach_budget(now)?;
-        }
         Ok(())
     }
 
@@ -200,10 +174,6 @@ impl GoalRecord {
         }
         if self.state == GoalState::Pausing {
             self.mark_paused(now)?;
-            return Ok(());
-        }
-        if self.state == GoalState::BudgetReached {
-            self.updated_unix_millis = now;
             return Ok(());
         }
         match settlement {
@@ -282,7 +252,7 @@ impl GoalRecord {
         {
             return Err(ControlError::StaleRevision);
         }
-        if matches!(self.state, GoalState::Cancelled | GoalState::BudgetReached) {
+        if self.state == GoalState::Cancelled {
             return Ok(());
         }
         let criterion =

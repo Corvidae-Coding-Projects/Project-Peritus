@@ -23,13 +23,6 @@ const MAX_INIT_SOURCE_BYTES_U64: u64 = 256 * 1024;
 pub const MAX_INIT_INSTRUCTION_BYTES: usize = 256 * 1024;
 /// Maximum exact rendered diff bytes retained in a proposal.
 pub const MAX_INIT_DIFF_BYTES: usize = 768 * 1024;
-/// Maximum selected sources recorded by discovery.
-pub const MAX_INIT_SOURCES: usize = 16;
-/// Maximum structured command candidates recorded by discovery.
-pub const MAX_INIT_COMMANDS: usize = 32;
-/// Maximum arguments in one command candidate.
-pub const MAX_INIT_COMMAND_ARGUMENTS: usize = 16;
-
 /// Opening marker for the replaceable Peritus-owned instruction section.
 pub const INIT_SECTION_START: &str = "<!-- peritus:init:v1:start -->";
 /// Closing marker for the replaceable Peritus-owned instruction section.
@@ -201,7 +194,7 @@ impl InitCommand {
     ) -> Result<Self, AppProtocolError> {
         if !valid_relative_path(&source)
             || !valid_command_part(&executable, 128)
-            || arguments.len() > MAX_INIT_COMMAND_ARGUMENTS
+            || u16::try_from(arguments.len()).is_err()
             || arguments.iter().any(|argument| !valid_command_part(argument, 1024))
         {
             return Err(invalid());

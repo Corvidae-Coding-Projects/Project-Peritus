@@ -2,6 +2,11 @@
 
 ## 0.0.4
 
+- Add `peritus resume` to reopen the current folder's most recently active saved conversation
+  without starting new work.
+- Remove the hidden ten-minute provider-turn and eight-hour product-run cutoffs from normal
+  interactive work. Retain explicit cancellation, transport recovery, resource and progress
+  ceilings, per-command timeouts, and caller-selected benchmark limits.
 - Add an experimental browser workspace with persistent projects and sessions, file previews,
   live activity, and CLI consoles bound to the selected run. The WebUI remains an optional
   source-built companion; native installers continue to provide the CLI and terminal interface.
@@ -10,6 +15,8 @@
   automatically promote the installed harness.
 - Keep long conversations usable by compacting complete reasoning exchanges, preserving replay
   data, and retrieving bounded prior assistant observations for continuing work.
+- Keep long workspace runs writable after more than 64 distinct paths by replaying automatic
+  before-images outside the bounded user-checkpoint list, while preserving rewind and restart.
 - Show provider thinking summaries when supported, and add terminal copy mode with F2 so output
   can be selected without interrupting background work.
 - Improve credential-store and product-run error messages, preserve interrupted work for explicit

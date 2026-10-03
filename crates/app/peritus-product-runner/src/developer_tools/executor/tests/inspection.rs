@@ -29,7 +29,7 @@ fn inspection_view(call: &CompletedToolCall, result: &DeveloperToolObservation) 
 }
 
 #[test]
-fn evicted_inspections_can_be_refetched_but_visible_cycles_still_stop() {
+fn evicted_inspections_can_be_refetched_and_visible_cycles_remain_advisory() {
     let workspace = tempfile::tempdir().unwrap();
     fs::write(workspace.path().join("README.md"), "grounding\n").unwrap();
     let mut tools = writable_tools(workspace.path());
@@ -46,16 +46,16 @@ fn evicted_inspections_can_be_refetched_but_visible_cycles_still_stop() {
         assert!(tools.continuation_blocker().is_none(), "evicted evidence can be refetched");
         assert!(tools.take_progress_feedback().is_none());
     }
-    for repeat in 1..=2 {
+    for repeat in 1..=32 {
         tools.observe_model_context(&inspection_view(&last_call, &last_result)).unwrap();
         last_call =
             completed_call(&format!("visible-{repeat}"), "workspace_list", r#"{"path":"."}"#);
         last_result = tools.execute(&last_call).unwrap();
-        assert_eq!(tools.continuation_blocker().is_some(), repeat == 2);
+        assert!(tools.continuation_blocker().is_none());
         assert_eq!(
             tools
                 .take_progress_feedback()
-                .is_some_and(|feedback| feedback.contains("inspection-no-progress")),
+                .is_some_and(|feedback| feedback.contains("repeated identical workspace")),
             repeat == 1
         );
         assert!(tools.required_tool_name().is_none());
@@ -86,57 +86,58 @@ fn reused_call_ids_do_not_make_evicted_inspections_visible() {
 }
 
 #[test]
-fn batched_repeated_listings_warn_before_stopping_and_preserve_grounding() {
+fn batched_repeated_listings_warn_and_preserve_grounding_without_stopping() {
     let workspace = tempfile::tempdir().unwrap();
     fs::write(workspace.path().join("README.md"), "grounding\n").unwrap();
     let mut tools = writable_tools(workspace.path());
     execute(&mut tools, "workspace_list", r#"{"depth":1,"path":"."}"#);
     execute(&mut tools, "workspace_read", r#"{"path":"README.md"}"#);
-    for _ in 0..2 {
+    for _ in 0..32 {
         assert!(!execute(&mut tools, "workspace_list", r#"{"depth":1,"path":"."}"#).is_error);
     }
     assert!(tools.required_tool_name().is_none());
     assert!(tools.continuation_blocker().is_none());
-    assert!(tools.take_progress_feedback().unwrap().contains("inspection-no-progress"));
+    assert!(tools.take_progress_feedback().unwrap().contains("repeated identical workspace"));
     execute(&mut tools, "workspace_list", r#"{"depth":1,"path":"."}"#);
-    assert!(tools.continuation_blocker().is_some());
+    assert!(tools.continuation_blocker().is_none());
     assert!(tools.required_tool_name().is_none());
 }
 
 #[test]
-fn repeated_successful_listings_warn_and_block_without_resetting_grounding() {
+fn repeated_successful_listings_warn_without_blocking_or_resetting_grounding() {
     let workspace = tempfile::tempdir().unwrap();
     fs::write(workspace.path().join("README.md"), "grounding\n").unwrap();
     let mut tools = writable_tools(workspace.path());
     execute(&mut tools, "workspace_list", r#"{"depth":1,"path":"."}"#);
     execute(&mut tools, "workspace_read", r#"{"path":"README.md"}"#);
     assert!(tools.required_tool_name().is_none());
-    for repeat in 1..=2 {
+    for _ in 1..=32 {
         let result = execute(&mut tools, "workspace_list", r#"{"depth":1,"path":"."}"#);
         assert!(!result.is_error);
         assert!(tools.required_tool_name().is_none());
-        assert_eq!(tools.continuation_blocker().is_some(), repeat == 2);
+        assert!(tools.continuation_blocker().is_none());
         let warning = tools.take_progress_feedback();
-        assert_eq!(warning.is_some(), repeat == 1);
         if let Some(warning) = warning {
-            assert!(warning.contains("inspection-no-progress"));
+            assert!(
+                warning.contains("repeated identical workspace")
+                    || warning.contains("long inspection sequence")
+            );
         }
     }
-    assert!(tools.continuation_blocker().unwrap().contains("2 consecutive"));
     fs::write(workspace.path().join("new.txt"), "new evidence").unwrap();
     execute(&mut tools, "workspace_list", r#"{"depth":1,"path":"."}"#);
     assert!(tools.continuation_blocker().is_none());
 }
 
 #[test]
-fn read_only_inspection_is_bounded_and_real_delivery_does_not_exhaust_the_nudge_budget() {
+fn read_only_inspection_remains_advisory_and_real_delivery_resets_nudges() {
     let workspace = tempfile::tempdir().unwrap();
     let mut readonly = WorkspaceDeveloperTools::read_only(workspace.path().to_path_buf());
-    for _ in 0..=2 {
+    for _ in 0..32 {
         execute(&mut readonly, "workspace_list", r#"{"depth":1,"path":"."}"#);
         let _ = readonly.take_progress_feedback();
     }
-    assert!(readonly.continuation_blocker().is_some());
+    assert!(readonly.continuation_blocker().is_none());
 
     let mut tools = writable_tools(workspace.path());
     execute(&mut tools, "workspace_list", r#"{"depth":1,"path":"."}"#);
@@ -165,7 +166,7 @@ fn visible_prior_observation_bounds_a_repeat_in_a_fresh_executor() {
     assert!(
         resumed
             .take_progress_feedback()
-            .is_some_and(|feedback| feedback.contains("inspection-no-progress"))
+            .is_some_and(|feedback| feedback.contains("repeated identical workspace"))
     );
 }
 

@@ -20,17 +20,15 @@ impl ProductRunService {
         record: &ConversationRecord,
     ) -> Result<Option<ConversationBranch>, Error> {
         let Some(child) = request.child() else { return Ok(None) };
-        if record.goal().is_some() != request.allocation().is_some() {
-            return Err(ControlError::InvalidInput.into());
-        }
         self.with_controls(false, |store| {
             if store.load(ConversationId::new(child.into_bytes())?)?.is_some() {
                 return Err(ControlError::IdempotencyConflict.into());
             }
-            let checkpoint = record
-                .checkpoints()
-                .iter()
-                .find(|value| value.id().as_bytes() == request.checkpoint().as_bytes())
+            let checkpoint = store
+                .load_checkpoint(
+                    record.id(),
+                    CheckpointId::new(request.checkpoint().into_bytes())?,
+                )?
                 .ok_or(ControlError::NotFound)?;
             let refs = checkpoint.references();
             let fork = WorkbenchForkRequest::new(
@@ -43,7 +41,6 @@ impl ProductRunService {
                 refs.brief_revision(),
                 refs.goal_revision().unwrap_or(0),
                 WorkbenchForkMode::ReadOnlyCurrentWorkspace,
-                request.allocation(),
             )
             .map_err(|_| ControlError::InvalidInput)?;
             let operation = ControlOperationId::new(derived_id(
@@ -63,16 +60,25 @@ impl ProductRunService {
             super::super::fork::validate_fork_governance(record, &source, &fork)?;
             let branch = super::super::fork::branch(actor, &public, &fork, &source)?;
             // Check the complete reservation before admitting any filesystem work.
+            let intent = if record.checkpoints().iter().any(|value| value.id() == checkpoint.id()) {
+                ControlIntent::ReserveFork {
+                    branch: branch.clone(),
+                    now_unix_millis: super::super::goal::now_millis(),
+                }
+            } else {
+                ControlIntent::ReserveAutomaticFork {
+                    branch: branch.clone(),
+                    checkpoint: Box::new(checkpoint),
+                    now_unix_millis: super::super::goal::now_millis(),
+                }
+            };
             let proposal = ControlOperation::new(
                 branch.operation(),
                 record.id(),
                 actor,
                 command.query().workspace(),
                 record.revision(),
-                ControlIntent::ReserveFork {
-                    branch: branch.clone(),
-                    now_unix_millis: super::super::goal::now_millis(),
-                },
+                intent,
             );
             ConversationRecord::apply(Some(record), &proposal)?;
             Ok(Some(branch))

@@ -26,13 +26,7 @@ pub use effect_stubs::{
     uncertain_effects,
 };
 
-/// Maximum wall-clock duration of one uninterrupted product-run attempt.
-pub const PRODUCT_RUN_MAX_ELAPSED: Duration = Duration::from_hours(8);
-pub use crate::accounting::{
-    PRODUCT_RUN_MAX_COST_MICROUNITS, PRODUCT_RUN_MAX_MODEL_REQUESTS,
-    PRODUCT_RUN_MAX_PEAK_RSS_BYTES, PRODUCT_RUN_MAX_TOOL_CALLS, PRODUCT_RUN_MAX_TOTAL_TOKENS,
-    PRODUCT_RUN_MAX_WORKSPACE_GROWTH_BYTES, ProductRunProgress,
-};
+pub use crate::accounting::ProductRunProgress;
 
 /// Concrete product-run phase emitted to the daemon.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -109,6 +103,11 @@ pub trait ConversationView: Send + Sync {
     fn render(&self) -> String;
     /// Stable context safe to copy into a role's fixed prompt.
     fn stable_request_context(&self) -> String {
+        self.render()
+    }
+    /// Exact user-authored text allowed to grant read-only access to explicitly named external
+    /// references. Governed hosts must exclude provider replies, tool output, and host guidance.
+    fn reference_authority_context(&self) -> String {
         self.render()
     }
     /// Current hard relative paths narrowed by explicit leave-alone review constraints.
@@ -197,8 +196,8 @@ pub struct ProductRunInput {
     pub finding_state: String,
     /// Natural-language coding task.
     pub task: String,
-    /// Caller-resolved wall-clock horizon, bounded by the product's eight-hour hard ceiling.
-    pub max_elapsed: Duration,
+    /// Optional caller-selected wall-clock horizon. `None` permits uninterrupted execution.
+    pub max_elapsed: Option<Duration>,
     /// Caller-authorized deliverable boundary. Ordinary product runs use workspace changes.
     pub delivery_scope: ProductDeliveryScope,
     /// Live conversation, including the original task and all follow-ups.

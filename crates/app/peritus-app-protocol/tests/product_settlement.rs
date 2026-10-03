@@ -2,7 +2,7 @@
 
 use peritus_app_protocol::{
     AppMessage, AppProtocolLimits, AppResponseEnvelope, AppResponsePayload, CorrelationId,
-    MAX_PRODUCT_RUNS, ProductDeliverable, ProductProviderSelection, ProductRunLegalControls,
+    MAX_PRODUCT_RUN_PAGE, ProductDeliverable, ProductProviderSelection, ProductRunLegalControls,
     ProductRunMessageError, ProductRunOperation, ProductRunOperationKind, ProductRunOperationState,
     ProductRunPhase, ProductRunSettlementSnapshot, ProductRunSnapshot, ProtocolContext, ProtocolId,
     ProtocolVersion, RequestId, encode_app_message,
@@ -165,11 +165,11 @@ fn mixed_observations_retain_candidate_evidence_without_settling_active_work() {
             .expect("mixed list decodes"),
         message
     );
-    let oversized = response(AppResponsePayload::ProductRunObservations(vec![
-        observations[0]
-            .clone();
-        MAX_PRODUCT_RUNS + 1
-    ]));
+    let oversized =
+        response(AppResponsePayload::ProductRunObservations(vec![
+            observations[0].clone();
+            MAX_PRODUCT_RUN_PAGE + 1
+        ]));
     assert_eq!(
         encode_app_message(&oversized, AppProtocolLimits::PRODUCTION).expect_err("bounded").code(),
         peritus_app_protocol::AppErrorCode::LimitExceeded

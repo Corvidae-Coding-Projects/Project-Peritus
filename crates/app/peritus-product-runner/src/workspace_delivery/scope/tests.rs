@@ -54,6 +54,21 @@ fn exact_file_baseline_survives_reopen_without_inventory_or_rebaselining() {
 }
 
 #[test]
+fn exact_file_scope_can_grow_past_the_old_fixed_file_total() {
+    let root = tempfile::tempdir().expect("root");
+    let state = tempfile::tempdir().expect("state");
+    let scoped = scope(root.path(), state.path());
+
+    for index in 0..300 {
+        scoped.enroll(&format!("generated/file-{index}.txt")).expect("enroll exact file");
+    }
+
+    let paths = scoped.paths().expect("restore all exact paths");
+    assert_eq!(paths.len(), 300);
+    assert!(paths.contains(&PathBuf::from("generated/file-299.txt")));
+}
+
+#[test]
 fn scope_rejects_protected_traversal_torn_and_forged_records() {
     let root = tempfile::tempdir().expect("root");
     let state = tempfile::tempdir().expect("state");

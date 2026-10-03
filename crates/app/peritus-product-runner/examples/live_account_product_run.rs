@@ -13,8 +13,8 @@ use peritus_model_protocol::{
     OutputLimitEnforcement, ProviderName, ProviderProfile, ResumeKind, StateMode, WireDialect,
 };
 use peritus_product_runner::{
-    ConversationView, PRODUCT_RUN_MAX_ELAPSED, ProductDeliveryScope, ProductRunInput,
-    ProductRunner, RoleProviders, RunObserver,
+    ConversationView, ProductDeliveryScope, ProductRunInput, ProductRunner, RoleProviders,
+    RunObserver,
 };
 use peritus_provider_anthropic::{ClaudeExecutable, ClaudeRuntimeConfig, ClaudeRuntimeProvider};
 use peritus_provider_core::{CancellationToken, ModelProvider, ProcessLimits};
@@ -63,7 +63,7 @@ async fn run() -> Result<(), Box<dyn Error>> {
             command_runtime,
             finding_state: String::new(),
             task: task.clone(),
-            max_elapsed: PRODUCT_RUN_MAX_ELAPSED,
+            max_elapsed: None,
             delivery_scope: ProductDeliveryScope::WorkspaceChanges,
             conversation: Arc::new(FixedConversation(task)),
             providers: RoleProviders {

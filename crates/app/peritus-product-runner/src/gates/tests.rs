@@ -35,7 +35,11 @@ fn artifact_layout_checks_candidate_sources_without_rejecting_untouched_vendor_c
     fs::create_dir_all(root.path().join("third_party")).expect("vendor directory");
     fs::write(root.path().join("third_party/legacy.c"), "line\n".repeat(700))
         .expect("legacy source");
-    fs::write(root.path().join("vm.js"), "const ready = true;\n").expect("candidate source");
+    fs::write(
+        root.path().join("vm.js"),
+        format!("const ready = true;\n{}", "// source detail\n".repeat(700)),
+    )
+    .expect("candidate source beyond the former line limit");
 
     let report = run_scoped(
         root.path(),
@@ -47,7 +51,7 @@ fn artifact_layout_checks_candidate_sources_without_rejecting_untouched_vendor_c
     .expect("gate report");
 
     assert!(report.report.passed(), "{}", report.output);
-    assert!(report.output.contains("Scanned 1 changed source file"));
+    assert!(report.output.contains("Read 1 changed source file"));
     assert!(!report.output.contains("legacy.c"));
 }
 
@@ -140,7 +144,7 @@ fn standalone_python_source_and_adjacent_readme_pass_exact_target_gate() {
 
     assert!(report.report.passed(), "{}", report.output);
     assert!(report.report.uncovered_paths().is_empty());
-    assert!(report.output.contains("[Source layout]"));
+    assert!(report.output.contains("[Source readability]"));
     assert!(report.output.contains("[Python compile]"));
     assert!(report.output.contains("Exact-target acceptance: PASS"));
 }

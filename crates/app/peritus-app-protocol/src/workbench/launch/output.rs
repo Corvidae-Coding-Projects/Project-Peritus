@@ -1,6 +1,6 @@
 //! Bounded live output, separate from the stable launch-evidence wire format.
 
-use super::{MAX_WORKBENCH_LAUNCHES, invalid};
+use super::invalid;
 use crate::{AppProtocolError, ControlOperationId, WorkbenchResultPage};
 
 /// Maximum UTF-8 bytes exposed per preview stream in one observation.
@@ -64,18 +64,16 @@ impl WorkbenchPreviewSnapshot {
     /// Binds output to unique launches present in the accompanying result page.
     ///
     /// # Errors
-    /// Rejects duplicate, unbound, or excessive output rows.
+    /// Rejects duplicate or unbound output rows.
     pub fn new(
         result: WorkbenchResultPage,
         outputs: Vec<WorkbenchPreviewOutput>,
     ) -> Result<Self, AppProtocolError> {
         let mut seen = std::collections::BTreeSet::new();
-        if outputs.len() > MAX_WORKBENCH_LAUNCHES
-            || outputs.iter().any(|output| {
-                !seen.insert(output.launch())
-                    || !result.launches().iter().any(|launch| launch.launch() == output.launch())
-            })
-        {
+        if outputs.iter().any(|output| {
+            !seen.insert(output.launch())
+                || !result.launches().iter().any(|launch| launch.launch() == output.launch())
+        }) {
             return Err(invalid());
         }
         Ok(Self { result, outputs })

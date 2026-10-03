@@ -12,6 +12,7 @@ fn help_version_and_completions_are_transport_free() {
     assert!(help.status.success());
     let help = String::from_utf8(help.stdout).expect("UTF-8 help");
     assert!(help.contains("USAGE:"));
+    assert!(help.contains("resume"));
     assert!(help.contains("update"));
     assert!(help.contains("terminal attach"));
 
@@ -25,6 +26,7 @@ fn help_version_and_completions_are_transport_free() {
     let completion = String::from_utf8(completion.stdout).unwrap();
     assert!(completion.contains("_peritus"));
     assert!(completion.contains("artifact"));
+    assert!(completion.contains("resume"));
     assert!(completion.contains("update"));
 }
 

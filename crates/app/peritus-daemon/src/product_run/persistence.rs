@@ -40,9 +40,6 @@ use types::{
     PersistedRecord,
 };
 
-const MAX_PREVIEW_OPERATIONS: usize = 16_384;
-const MAX_PREVIEW_OUTPUT_BYTES: usize = 4 * 1_024 * 1_024;
-
 #[cfg(test)]
 mod fault;
 #[cfg(test)]
@@ -94,7 +91,6 @@ pub(super) fn write_record(
         ));
     }
     let path = directory.join(format!("{}.json", persisted.run_id));
-    workbench::make_room_for_record(directory, &path)?;
     let temporary = path.with_extension("json.new");
     let mut file = fs::File::create(&temporary).map_err(|error| {
         ProductRunServiceError::persistence("create the product-run temporary record", error)

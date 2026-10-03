@@ -2,6 +2,8 @@ use super::*;
 use peritus_product_runner::control::{ControlIntent, ControlText, OperationId};
 use peritus_types::{ActorId, WorkspaceId};
 
+#[path = "tests/checkpoints.rs"]
+mod checkpoints;
 #[path = "tests/context.rs"]
 mod context;
 #[path = "tests/files.rs"]

@@ -11,18 +11,6 @@ const fn query(name: &'static str) -> AppFieldDescriptor {
 const fn revision(name: &'static str) -> AppFieldDescriptor {
     field(name, W::U64, &[], "u64", "UInt64", J::U64String, true)
 }
-const fn optional_budget() -> AppFieldDescriptor {
-    field(
-        "allocation",
-        W::Option,
-        &[],
-        "Option<WorkbenchForkBudget>",
-        "WorkbenchForkBudget",
-        J::Ref("WorkbenchForkBudget"),
-        false,
-    )
-}
-
 pub(super) const LIBRARY_TYPES: &[AppTypeDescriptor] = &[
     AppTypeDescriptor {
         name: "ConversationLibraryQuery",
@@ -57,16 +45,6 @@ pub(super) const LIBRARY_TYPES: &[AppTypeDescriptor] = &[
                 J::U16,
                 true,
             ),
-        ],
-    },
-    AppTypeDescriptor {
-        name: "WorkbenchForkBudget",
-        rust_type: "WorkbenchForkBudget",
-        fields: &[
-            field("activeMillis", W::U64, &[B::NonZero], "u64", "UInt64", J::U64String, true),
-            field("requests", W::U32, &[B::NonZero], "u32", "number", J::U32, true),
-            field("toolCalls", W::U32, &[B::NonZero], "u32", "number", J::U32, true),
-            field("totalTokens", W::U64, &[B::NonZero], "u64", "UInt64", J::U64String, true),
         ],
     },
     AppTypeDescriptor {
@@ -105,7 +83,6 @@ pub(super) const LIBRARY_TYPES: &[AppTypeDescriptor] = &[
                 J::Enum(&["readOnlyCurrentWorkspace", "isolatedWritableWorkspace"]),
                 true,
             ),
-            optional_budget(),
         ],
     },
     AppTypeDescriptor {
@@ -250,7 +227,6 @@ pub(super) const LIBRARY_TYPES: &[AppTypeDescriptor] = &[
                 J::Enum(&["readOnlyCurrentWorkspace", "isolatedWritableWorkspace"]),
                 true,
             ),
-            optional_budget(),
         ],
     },
     AppTypeDescriptor {
@@ -275,14 +251,13 @@ pub(super) const LIBRARY_TYPES: &[AppTypeDescriptor] = &[
                 W::Option,
                 &[],
                 "Option<WorkbenchGoalState>",
-                "\"active\" | \"waitingForUser\" | \"pausing\" | \"paused\" | \"blocked\" | \"budgetReached\" | \"achieved\" | \"cancelled\"",
+                "\"active\" | \"waitingForUser\" | \"pausing\" | \"paused\" | \"blocked\" | \"achieved\" | \"cancelled\"",
                 J::Enum(&[
                     "active",
                     "waitingForUser",
                     "pausing",
                     "paused",
                     "blocked",
-                    "budgetReached",
                     "achieved",
                     "cancelled",
                 ]),
