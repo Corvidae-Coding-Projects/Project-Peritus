@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 2031,
-        "tip_oid": "91470fbb676a74191ab927820288d3e7207097c4",
-        "prefix_sha256": "8dd65ea55ec3e5a9250b13e791d9cd6cd883addea490ad5b3ae1010a3d7cdc87"
+        "sequence": 2032,
+        "tip_oid": "e747245d9a79151c2f4953d845dc53cbae7dc819",
+        "prefix_sha256": "440f6b55b8f5e9aad5dbdb79b9a95010a29efd4f54b32b1a6fa49769242fb083"
       },
       "NWAR": {
         "sequence": 39,
@@ -15794,11 +15794,12 @@
       "display_id": 102,
       "title": "Release develop to main",
       "description": "User requested pulling current develop and performing a release to main. Inspect current tags and release policy; prepare the selected semantic version, changelog and authoritative manifests; validate, publish the release PR, monitor and repair CI, merge to main, create the signed candidate tag, qualify exact staged assets, publish with accurate readiness limits, and reconcile develop. Preserve unrelated untracked files and installed daemon state.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-10-03T02:18:54.805994693Z",
-      "updated_at": "2026-10-03T07:31:20.427871111Z",
+      "updated_at": "2026-10-03T07:31:44.826233363Z",
+      "closed_at": "2026-10-03T07:31:44.824974043Z",
       "comments": {
         "197a2bcb-832e-46a4-9b23-6b5eb4a8e81d": {
           "display_id": 2122,
