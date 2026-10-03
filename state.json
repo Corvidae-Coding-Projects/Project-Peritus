@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 2030,
-        "tip_oid": "634569f887b2fcd03a16b3050d0d5959d676c4b2",
-        "prefix_sha256": "3aeab8fa6b5d1a4fee073d901c36f2a23a0b1d93f4cca2abe32b2b9a4f0396fc"
+        "sequence": 2031,
+        "tip_oid": "91470fbb676a74191ab927820288d3e7207097c4",
+        "prefix_sha256": "8dd65ea55ec3e5a9250b13e791d9cd6cd883addea490ad5b3ae1010a3d7cdc87"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 103,
-  "next_comment_id": 2124,
+  "next_comment_id": 2125,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -15798,7 +15798,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-10-03T02:18:54.805994693Z",
-      "updated_at": "2026-10-03T05:55:11.112270809Z",
+      "updated_at": "2026-10-03T07:31:20.427871111Z",
       "comments": {
         "197a2bcb-832e-46a4-9b23-6b5eb4a8e81d": {
           "display_id": 2122,
@@ -15826,6 +15826,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABApnFEEwo8DJjRoCuoo8ozL9xmG4CEUIzxg3tcn1KcjbuVL8+R6ermRXvJ0LkYJn+ECV5kuO79bxdFmj0PCkqpDg=="
+        },
+        "7e390f81-2ea8-40b1-acc1-a54f09b94436": {
+          "display_id": 2124,
+          "author": "6ME5",
+          "content": "Published Peritus v0.0.5 as the verified latest public development release: https://github.com/Corvidae-Coding-Projects/Project-Peritus/releases/tag/v0.0.5\n\nPR #111 merged to signed/GitHub-verified main commit 90925794845121dd9278d06c5eec92a5bbfd85e9. The signed tag v0.0.5 remains bound to that commit. Local and remote main/develop are synchronized there, with develop checked out and the tracked tree clean. The four pre-existing untracked groups are preserved.\n\nAll ten final workflow runs passed: 811 successful checks and one inapplicable workflow_dispatch-only native-staging diagnostic skip. All 48 native builds, six independent rebuild comparisons, 108 native release scenarios, six bootstraps, and six attestation jobs passed.\n\nIndependently verified all 75 published assets (69 required plus six debug packages), 18 checksum files, four GPG-signed distribution bundles, 12 exact-source/tag provenance and SBOM attestations, both tag-bound installers, and ten standalone packages against their signed source-bound bundles. Publication retained all verified asset IDs and digests.\n\nRelease evidence: /home/doll/peritus-v0.0.5-release-evidence-mkhapcs7/state.json; downloaded assets: /home/doll/peritus-v0.0.5-assets-234rv1tu. The initial private metadata-size probe failure and its evidence-based correction are retained in the logs. Full H4 production qualification is not claimed; upgrade notes require state backups and describe incompatible prior formats.",
+          "created_at": "2026-10-03T07:31:20.423878904Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAADI1icYBG7M/JU6LADxXAM7c4alcBHyRbjoOebfvgWCHVNOo6fbs0S84RGSWlbHJPIsnVXHh5J05KANuLpjPBw=="
         },
         "8e053f98-6d17-45ea-9544-cbf7ada41c7e": {
           "display_id": 2121,
