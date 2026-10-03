@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.0.5
+
+- Use one durable conversation and operation path across the terminal interface, CLI, WebUI,
+  and improvement evaluation. Keep admitted input, observed work, uncertain outcomes, and
+  available recovery actions consistent after interruption and restart.
+- Remove fixed interactive conversation, steering, tool-result, reference, and checkpoint-count
+  ceilings that prematurely stopped ordinary work. Preserve explicit cancellation, caller-selected
+  budgets, resource limits, and bounded command execution.
+- Select transcript text with mouse clicks and dragging, copy through the terminal clipboard,
+  and keep scrolling available during work. Sending steering text stays in the conversation
+  without briefly opening the Sessions metadata panel.
+- Keep model and effort selections stable through disconnects, surface durable input receipts,
+  and preserve host-observed changes and command results when a model's final report is missing.
+- Recover interrupted candidate commit and discard operations through their original identities.
+  Keep candidate content, repository context, requirements, and execution evidence distinct,
+  and expose explicit reconciliation for unknown command outcomes.
+- Preserve executable permissions and adjacent files during edits, release inherited daemon locks
+  at shutdown, and repair native Windows Git paths, file synchronization, and watchdog behavior.
+- Advance the journal to schema 2 for independently owned attachment identities. Saved product-run
+  records now require format 6 and application protocol 2.0; earlier product-run, improvement,
+  and browser-state formats are rejected or quarantined rather than migrated. Back up state and
+  review the release migration notes before upgrading.
+- Harden native Windows test assertions and crash-recovery synchronization while retaining all
+  kill-stage recovery checks. Full production qualification remains governed by the H4 evidence gate.
+
 ## 0.0.4
 
 - Add `peritus resume` to reopen the current folder's most recently active saved conversation

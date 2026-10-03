@@ -14,8 +14,8 @@ bytes.workspace = true
 futures-core.workspace = true
 futures-util.workspace = true
 libc.workspace = true
-peritus-model-protocol = { version = "=0.0.4", path = "../peritus-model-protocol" }
-peritus-types = { version = "=0.0.4", path = "../../foundation/peritus-types" }
+peritus-model-protocol = { version = "=0.0.5", path = "../peritus-model-protocol" }
+peritus-types = { version = "=0.0.5", path = "../../foundation/peritus-types" }
 reqwest.workspace = true
 serde_json.workspace = true
 sha2.workspace = true

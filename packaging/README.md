@@ -124,6 +124,11 @@ It restores the previous package if installation fails.
 
 ## Update
 
+Release `0.0.5` changes the journal schema and saved conversation/run formats. Back up the state
+root and read the [release migration notes](../docs/release-migration-recovery.md) before upgrading
+from an earlier release. Older saved product-run formats are not automatically migrated; update
+the daemon and its clients together.
+
 For an archive/source installation, run `peritus update` to install an available update.
 Startup checks occur at most once every six hours.
 Use `peritus update --disable-checks` to stop automatic checks.
