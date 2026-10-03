@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 2015,
-        "tip_oid": "1db538df1b117bef22263ecf1618da717dc932ca",
-        "prefix_sha256": "b7b02d6184b2ff28bc37fbf6cadb077147b7322ff9e08c8adab34d5f4e43dfea"
+        "sequence": 2016,
+        "tip_oid": "257a6b6a7fc4d5e007ee54759a6d104f04e6f1f2",
+        "prefix_sha256": "a20874816623bc4e48c4521128ef641af497e5b1460262e36ab04aade9c267d0"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 102,
-  "next_comment_id": 2113,
+  "next_comment_id": 2114,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -8781,7 +8781,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-10-02T22:20:34.408394114Z",
-      "updated_at": "2026-10-03T00:22:46.553890287Z",
+      "updated_at": "2026-10-03T00:44:25.107278336Z",
       "labels": [
         "maintenance"
       ],
@@ -8911,6 +8911,15 @@
           "kind": "action",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA8oP6MtO8IZX4dAsZ33IzdFnRp5cYsBS+KjOsanlsFSG0ZFjNd2nsQ0Sgacw0uigo6V0l3fRB4uXSxCHGpW5tAg=="
+        },
+        "ed81e2ad-6e8d-43f0-a97a-8d63a4622dd4": {
+          "display_id": 2113,
+          "author": "6ME5",
+          "content": "Native Windows repair confirmed on signed head 402cdd2e4: Foundation candidate job 111083353119 completed successfully. The exact process-kill crash recovery test that failed on the preceding head passed; candidate shard has 66 passed tests, zero failures and no ignored tests. All six interruption/recovery boundaries remain exercised. Remaining latest-head workflows continue to be monitored until all complete successfully.",
+          "created_at": "2026-10-03T00:44:25.095008072Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAp1X9N8jjOui7CjHFVhDQdmXgtwjNnIqAZ/6aVXKl/cfZ8T5emDUlQzMwZGEIL5AL/IYec//11DVsuRq03mJaBQ=="
         }
       }
     },
