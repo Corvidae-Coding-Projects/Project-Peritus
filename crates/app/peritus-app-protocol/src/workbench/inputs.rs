@@ -4,10 +4,6 @@ use crate::{AppErrorCode, AppProtocolError, WorkbenchInputId, WorkbenchQuery};
 
 /// Maximum inputs in one queue page; full history is paginated, never silently truncated.
 pub const MAX_WORKBENCH_INPUT_PAGE: usize = 32;
-/// Maximum queued identities in a reorder operation.
-pub const MAX_WORKBENCH_PENDING_INPUTS: usize = 1024;
-/// Maximum declared prerequisites for one input.
-pub const MAX_WORKBENCH_INPUT_DEPENDENCIES: usize = 32;
 /// Maximum exact text bytes in a single user input revision.
 pub const MAX_WORKBENCH_INPUT_BYTES: usize = 8192;
 
@@ -73,16 +69,16 @@ impl WorkbenchInputSelection {
     }
 }
 
-/// An ordered duplicate-free bounded identity list; the host checks dependency ordering.
+/// An ordered duplicate-free identity list; the host checks dependency ordering.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct WorkbenchInputOrder(Vec<WorkbenchInputId>);
 impl WorkbenchInputOrder {
-    /// Validates the maximum pending set and uniqueness without sorting away user order.
+    /// Validates wire representability and uniqueness without sorting away user order.
     ///
     /// # Errors
-    /// Rejects duplicates or an oversized list.
+    /// Rejects duplicates or a list that cannot be represented on the wire.
     pub fn new(ids: Vec<WorkbenchInputId>) -> Result<Self, AppProtocolError> {
-        if ids.len() > MAX_WORKBENCH_PENDING_INPUTS
+        if u16::try_from(ids.len()).is_err()
             || ids.iter().collect::<std::collections::BTreeSet<_>>().len() != ids.len()
         {
             return Err(invalid());
@@ -104,18 +100,16 @@ pub struct WorkbenchNewInput {
     dependencies: WorkbenchInputOrder,
 }
 impl WorkbenchNewInput {
-    /// Checks the smaller prerequisite bound and prevents a direct self-dependency.
+    /// Prevents a direct self-dependency.
     ///
     /// # Errors
-    /// Rejects excess or self-referential prerequisites.
+    /// Rejects self-referential prerequisites.
     pub fn new(
         id: WorkbenchInputId,
         text: WorkbenchInputText,
         dependencies: WorkbenchInputOrder,
     ) -> Result<Self, AppProtocolError> {
-        if dependencies.ids().len() > MAX_WORKBENCH_INPUT_DEPENDENCIES
-            || dependencies.ids().contains(&id)
-        {
+        if dependencies.ids().contains(&id) {
             return Err(invalid());
         }
         Ok(Self { id, text, dependencies })
@@ -242,14 +236,14 @@ impl WorkbenchQueueQuery {
     /// Validates a revision fence for noninitial pages. Zero revision selects current page zero.
     ///
     /// # Errors
-    /// Rejects an unfenced noninitial page or an out-of-bound offset.
+    /// Rejects an unfenced noninitial page.
     pub const fn new(
         query: WorkbenchQuery,
         revision: u64,
         offset: u32,
         history: bool,
     ) -> Result<Self, AppProtocolError> {
-        if (offset != 0 && revision == 0) || offset as usize > MAX_WORKBENCH_PENDING_INPUTS {
+        if offset != 0 && revision == 0 {
             return Err(invalid());
         }
         Ok(Self { query, revision, offset, history })
@@ -297,7 +291,6 @@ impl WorkbenchQueuePage {
             (total.saturating_sub(query.offset()) as usize).min(MAX_WORKBENCH_INPUT_PAGE);
         if query.revision() == 0
             || query.offset() > total
-            || total as usize > MAX_WORKBENCH_PENDING_INPUTS
             || rows.len() != expected
             || rows.iter().enumerate().any(|(index, row)| {
                 rows[..index].iter().any(|prior| prior.selected() == row.selected())

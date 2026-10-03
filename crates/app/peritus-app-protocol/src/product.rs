@@ -1,23 +1,29 @@
 //! Product-level coding-run messages exposed to interactive clients.
 
+mod binding;
 mod control;
-mod conversation;
 mod effort;
 mod error;
 mod interaction;
+pub use binding::ProductInteractionBinding;
 mod models;
+mod observation;
+mod operation;
 mod phase;
+mod query;
 mod request;
 mod settlement;
 mod snapshot;
 
 pub use control::*;
-pub use conversation::*;
 pub use effort::ProductModelEffort;
 pub use error::ProductRunMessageError;
 pub use interaction::*;
 pub use models::*;
+pub use observation::ProductRunObservation;
+pub use operation::*;
 pub use phase::*;
+pub use query::*;
 pub use request::*;
 pub use settlement::*;
 pub use snapshot::*;
@@ -33,13 +39,8 @@ use error::{bounded_text, optional_bounded_text};
 pub const MAX_PRODUCT_TASK_BYTES: usize = 64 * 1024;
 /// Maximum UTF-8 bytes retained in one user-facing run field.
 pub const MAX_PRODUCT_DETAIL_BYTES: usize = 1024 * 1024;
-/// Maximum product runs returned by one list operation.
-pub const MAX_PRODUCT_RUNS: usize = 256;
-/// Maximum exact changed paths retained in a completion handoff.
-pub const MAX_PRODUCT_DELIVERABLE_PATHS: usize = 512;
-/// Maximum exact successful commands retained in a completion handoff.
-pub const MAX_PRODUCT_DELIVERABLE_COMMANDS: usize = 256;
-
+/// Maximum product runs returned by one page operation.
+pub const MAX_PRODUCT_RUN_PAGE: usize = 256;
 /// Durable user-facing handoff for one exact E0 candidate.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ProductDeliverable {
@@ -55,26 +56,6 @@ pub struct ProductDeliverable {
 }
 
 impl ProductDeliverable {
-    /// Creates a bounded pending handoff.
-    ///
-    /// # Errors
-    /// Rejects missing paths/instructions, empty candidate paths, or oversized collections.
-    pub fn new(
-        workspace_path: String,
-        changed_paths: Vec<String>,
-        successful_commands: Vec<String>,
-        run_instructions: String,
-    ) -> Result<Self, ProductRunMessageError> {
-        Self::checked(
-            workspace_path,
-            changed_paths,
-            successful_commands,
-            run_instructions,
-            CandidateStage::Qualified,
-            true,
-        )
-    }
-
     fn checked(
         workspace_path: String,
         changed_paths: Vec<String>,
@@ -86,9 +67,9 @@ impl ProductDeliverable {
         bounded_text(&workspace_path, MAX_PRODUCT_DETAIL_BYTES)?;
         bounded_text(&run_instructions, MAX_PRODUCT_DETAIL_BYTES)?;
         if changed_paths.is_empty()
-            || changed_paths.len() > MAX_PRODUCT_DELIVERABLE_PATHS
+            || u16::try_from(changed_paths.len()).is_err()
             || require_successful_command && successful_commands.is_empty()
-            || successful_commands.len() > MAX_PRODUCT_DELIVERABLE_COMMANDS
+            || u16::try_from(successful_commands.len()).is_err()
         {
             return Err(ProductRunMessageError::TooManyDeliverableItems);
         }
@@ -148,12 +129,10 @@ impl ProductDeliverable {
 
     /// Creates a bounded handoff at an explicit automated qualification stage.
     ///
-    /// This constructor is used by the settlement protocol. [`Self::new`] remains the legacy
-    /// accepted-E0 constructor and therefore defaults to [`CandidateStage::Qualified`].
-    ///
     /// # Errors
     ///
-    /// Applies the same path, command, and text validation as [`Self::new`].
+    /// Rejects missing paths or instructions, empty candidate paths, invalid qualification, or
+    /// oversized collections.
     pub fn candidate(
         workspace_path: String,
         changed_paths: Vec<String>,
@@ -313,26 +292,37 @@ impl ProductDeliverable {
     }
 }
 
-/// Query for the most recent runs or one exact run.
+/// Query for one page of recent runs or one exact run.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct ProductRunQuery {
     run_id: Option<RunId>,
+    offset: u64,
 }
 
 impl ProductRunQuery {
     /// Queries the bounded recent-run list.
     #[must_use]
     pub const fn recent() -> Self {
-        Self { run_id: None }
+        Self::page(0)
+    }
+    /// Queries one bounded recent-run page at the zero-based offset.
+    #[must_use]
+    pub const fn page(offset: u64) -> Self {
+        Self { run_id: None, offset }
     }
     /// Queries one exact run.
     #[must_use]
     pub const fn exact(run_id: RunId) -> Self {
-        Self { run_id: Some(run_id) }
+        Self { run_id: Some(run_id), offset: 0 }
     }
     /// Optional exact run filter.
     #[must_use]
     pub const fn run_id(self) -> Option<RunId> {
         self.run_id
+    }
+    /// Zero-based offset for a recent-run page.
+    #[must_use]
+    pub const fn offset(self) -> u64 {
+        self.offset
     }
 }

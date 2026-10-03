@@ -57,28 +57,63 @@ impl ProductStateStore {
         })?;
         let mut generations = Vec::new();
         for entry in entries {
-            let entry = entry.map_err(|error| {
-                LauncherError::filesystem("inspect product-state generation", &self.root, error)
-            })?;
+            let entry = match entry {
+                Ok(entry) => entry,
+                Err(error) => {
+                    eprintln!(
+                        "peritus launcher: skipped an unreadable product-state directory entry: {error}"
+                    );
+                    continue;
+                }
+            };
             if let Some(generation) = parse_generation(&entry.file_name().to_string_lossy()) {
                 generations.push((generation, entry.path()));
             }
         }
-        generations.sort_unstable_by_key(|(generation, _)| *generation);
-        let Some((generation, path)) = generations.pop() else {
+        generations.sort_unstable_by_key(|(generation, _)| std::cmp::Reverse(*generation));
+        if generations.is_empty() {
             return Ok(None);
-        };
-        let bytes = fs::read(&path).map_err(|error| {
-            LauncherError::filesystem("read product-state generation", &path, error)
-        })?;
-        let state = ProductState::parse_json(&bytes)?;
-        if state.generation() != generation {
-            return Err(LauncherError::PlatformPaths(format!(
-                "product-state filename generation {generation} does not match payload generation {}",
-                state.generation()
-            )));
         }
-        Ok(Some(state))
+        let mut rejected = Vec::new();
+        for (generation, path) in generations {
+            let parsed = fs::read(&path)
+                .map_err(|error| error.to_string())
+                .and_then(|bytes| {
+                    ProductState::parse_json(&bytes).map_err(|error| error.to_string())
+                })
+                .and_then(|state| {
+                    let payload_generation = state.generation();
+                    if payload_generation == generation {
+                        Ok(state)
+                    } else {
+                        Err(format!(
+                            "filename generation {generation} does not match payload generation {payload_generation}"
+                        ))
+                    }
+                });
+            match parsed {
+                Ok(state) => {
+                    if !rejected.is_empty() {
+                        eprintln!(
+                            "peritus launcher: recovered product state from generation {generation} after skipping {} newer invalid generation(s)",
+                            rejected.len()
+                        );
+                    }
+                    return Ok(Some(state));
+                }
+                Err(detail) => {
+                    eprintln!(
+                        "peritus launcher: skipped invalid product-state generation {}: {detail}",
+                        path.display()
+                    );
+                    rejected.push(path);
+                }
+            }
+        }
+        Err(LauncherError::PlatformPaths(format!(
+            "no readable valid product-state generation remains under {}",
+            self.root.display()
+        )))
     }
 
     fn generation_path(&self, generation: u64) -> PathBuf {
@@ -191,4 +226,24 @@ fn sync_parent(path: &Path) -> Result<(), LauncherError> {
 )]
 const fn sync_parent(_path: &Path) -> Result<(), LauncherError> {
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn newest_invalid_generation_falls_back_to_last_valid_state() {
+        let root = tempfile::tempdir().expect("state root");
+        let store = ProductStateStore::open(root.path().to_owned()).expect("store");
+        let expected = ProductState::new(crate::identity::generate().expect("identity"));
+        store.commit(&expected).expect("valid generation");
+        fs::write(root.path().join("state-18000000000000000000.json"), b"{broken")
+            .expect("newer corrupt generation");
+
+        let recovered = store.load_or_initialize().expect("fallback state");
+
+        assert_eq!(recovered.generation(), expected.generation());
+        assert_eq!(recovered.identity(), expected.identity());
+    }
 }

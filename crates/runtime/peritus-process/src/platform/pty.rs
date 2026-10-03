@@ -121,6 +121,8 @@ fn launch_native(
     for variable in plan.environment().variables() {
         command.env(variable.name(), variable.value());
     }
+    #[cfg(target_os = "linux")]
+    super::configure_parent_death(&mut command);
     command.env(crate::NATIVE_PTY_SLAVE_ENV, slave_path);
     let child = {
         let _inheritance =

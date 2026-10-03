@@ -3,8 +3,7 @@
 use core::fmt::Write as _;
 
 use peritus_run_settlement::{
-    CandidateStage, EvidenceStatus, QualificationEvidence, RunDisposition, SettlementCause,
-    SettlementReducer,
+    CandidateStage, EvidenceStatus, QualificationEvidence, SettlementCause, SettlementReducer,
 };
 
 use super::{
@@ -71,7 +70,7 @@ pub(super) fn from_initial_error(
                 .collect(),
             run_instructions: resume.run_instructions().to_owned(),
             fixer_cycles: resume.fixer_cycles(),
-            conversation_revision: resume.checkpoint().identity().conversation_revision(),
+            conversation_revision: resume.checkpoint().identity().requirements_revision(),
         })
     } else {
         None
@@ -126,47 +125,41 @@ pub(super) fn finalize(
     };
     let settlement = request.recorder.settle(cause)?;
     let resume = match (checkpoint, request.design) {
-        (Some(checkpoint), Some(design))
-            if settlement.disposition() != RunDisposition::Accepted =>
-        {
-            Some(ProductRunResume::capture(ResumeCapture {
-                checkpoint,
-                baseline: request.baseline.clone(),
-                next_phase: request.next_phase,
-                design_path: design.path().to_owned(),
-                design_markdown: design.markdown().to_owned(),
-                design_revision: design.conversation_revision(),
-                task_summary: request
-                    .state
-                    .map_or_else(String::new, |state| state.task_summary.clone()),
-                run_instructions: request
-                    .state
-                    .map_or_else(default_run_instructions, |state| state.run_instructions.clone()),
-                fix_summaries: request
-                    .state
-                    .map_or_else(Vec::new, |state| state.fix_summaries.clone()),
-                tool_calls: request.state.map_or(0, |state| state.tool_calls),
-                finding_state: request
-                    .state
-                    .map(developer_findings)
-                    .transpose()?
-                    .unwrap_or_else(|| request.input.finding_state.clone()),
-                diff: candidate.as_ref().map_or_else(String::new, |output| output.diff.clone()),
-                gates: request.gates.to_owned(),
-                review: request.review.to_owned(),
-                gate_report: request.gate_report.cloned(),
-                developer_evidence: request
-                    .state
-                    .map_or_else(String::new, |state| state.developer_evidence.clone()),
-                successful_commands: request
-                    .state
-                    .map_or_else(Vec::new, |state| state.successful_commands.clone()),
-                fixer_cycles: request
-                    .state
-                    .map_or(0, |state| state.coordinator.completed_fixer_cycles()),
-                transcript: request.input.conversation.render(),
-            })?)
-        }
+        (Some(checkpoint), Some(design)) => Some(ProductRunResume::capture(ResumeCapture {
+            checkpoint,
+            baseline: request.baseline.clone(),
+            next_phase: request.next_phase,
+            design_path: design.path().to_owned(),
+            design_markdown: design.markdown().to_owned(),
+            design_revision: design.conversation_revision(),
+            task_summary: request
+                .state
+                .map_or_else(String::new, |state| state.task_summary.clone()),
+            run_instructions: request
+                .state
+                .map_or_else(default_run_instructions, |state| state.run_instructions.clone()),
+            fix_summaries: request.state.map_or_else(Vec::new, |state| state.fix_summaries.clone()),
+            tool_calls: request.state.map_or(0, |state| state.tool_calls),
+            finding_state: request
+                .state
+                .map(developer_findings)
+                .transpose()?
+                .unwrap_or_else(|| request.input.finding_state.clone()),
+            diff: candidate.as_ref().map_or_else(String::new, |output| output.diff.clone()),
+            gates: request.gates.to_owned(),
+            review: request.review.to_owned(),
+            gate_report: request.gate_report.cloned(),
+            developer_evidence: request
+                .state
+                .map_or_else(String::new, |state| state.developer_evidence.clone()),
+            successful_commands: request
+                .state
+                .map_or_else(Vec::new, |state| state.successful_commands.clone()),
+            fixer_cycles: request
+                .state
+                .map_or(0, |state| state.coordinator.completed_fixer_cycles()),
+            transcript: request.input.conversation.render(),
+        })?),
         _ => None,
     };
     let question = request
@@ -336,6 +329,11 @@ fn remaining_work(
         }
         SettlementCause::Recovery => {
             remaining.push("reconcile the interrupted command boundary".to_owned());
+        }
+        SettlementCause::Adapter => {
+            remaining.push(
+                "resume the retained host work and return a valid terminal report".to_owned(),
+            );
         }
         _ => {}
     }

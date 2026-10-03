@@ -2,8 +2,7 @@
 
 use super::{
     ControlError, InputId, InputLedger, InputRevision, InputSelection, InputState,
-    InvocationInputs, MAX_DEPENDENCIES, MAX_INPUT_BYTES, MAX_INVOCATIONS, MAX_REVISIONS,
-    QueueIntent,
+    InvocationInputs, QueueIntent,
 };
 use std::collections::BTreeSet;
 
@@ -27,7 +26,7 @@ impl InputLedger {
         Ok(next)
     }
 
-    /// Plans a bounded input transition without accepting it or executing a provider request.
+    /// Plans an input transition without accepting it or executing a provider request.
     ///
     /// # Errors
     /// Rejects stale content, dependencies, malformed state, immutable-history edits, or capacity.
@@ -176,14 +175,6 @@ impl InputLedger {
     }
 
     pub(in crate::control) fn validate(&self) -> Result<(), ControlError> {
-        if self.revisions.len() > MAX_REVISIONS
-            || self.invocations.len() > MAX_INVOCATIONS
-            || self.order.len() > MAX_REVISIONS
-            || self.revisions.iter().map(|item| item.text.as_str().len()).sum::<usize>()
-                > MAX_INPUT_BYTES
-        {
-            return Err(ControlError::Capacity);
-        }
         if self.generation == 0 && !self.is_empty() {
             return Err(ControlError::InvalidInput);
         }
@@ -203,7 +194,7 @@ impl InputLedger {
                     .map_or(Some(1), |prior| prior.selection.revision.checked_add(1))
                     .ok_or(ControlError::Capacity)?
             || previous.is_some_and(|prior| prior.state != InputState::Superseded)
-            || item.dependencies.len() > MAX_DEPENDENCIES
+            || u16::try_from(item.dependencies.len()).is_err()
             || item.dependencies.iter().copied().collect::<BTreeSet<_>>().len()
                 != item.dependencies.len()
             || item.dependencies.iter().any(|id| {
@@ -257,7 +248,9 @@ impl InputLedger {
         let mut invocations = BTreeSet::new();
         let mut incorporated = BTreeSet::new();
         for binding in &self.invocations {
-            if !invocations.insert(binding.invocation) || binding.items.len() > MAX_REVISIONS {
+            if !invocations.insert(binding.invocation)
+                || u16::try_from(binding.items.len()).is_err()
+            {
                 return Err(ControlError::InvalidInput);
             }
             for selected in &binding.items {

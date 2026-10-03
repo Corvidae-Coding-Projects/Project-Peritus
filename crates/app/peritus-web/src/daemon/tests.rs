@@ -1,13 +1,17 @@
 //! Native conversation wire contract against a local protocol fixture; no provider calls.
 
+mod recovery;
 mod sessions;
 
 use super::*;
 use crate::config::Options;
 use peritus_app_protocol::{
     AppMessage, AppProtocolLimits, AppResponseEnvelope, ProductActivity, ProductActivityKind,
-    ProductInteractionSnapshot, ProductRunPhase, ServerCapabilities, VersionRange,
-    decode_app_message, encode_app_message, negotiate,
+    ProductInteractionSnapshot, ProductRunControlAction, ProductRunLegalControls,
+    ProductRunOperation, ProductRunOperationKind, ProductRunOperationState, ProductRunPhase,
+    ServerCapabilities, WorkbenchCommand, WorkbenchExecutionState, WorkbenchIntent,
+    WorkbenchQueueIntent, WorkbenchReceipt, WorkbenchSnapshot, decode_app_message,
+    encode_app_message, negotiate,
 };
 use peritus_codec::HEADER_LEN;
 use peritus_types::SessionId;
@@ -32,12 +36,37 @@ async fn write_message(stream: &mut UnixStream, message: AppMessage) {
     stream.write_all(&bytes).await.unwrap();
 }
 
+fn operation(run: RunId, state: ProductRunOperationState) -> ProductRunOperation {
+    let controls = match state {
+        ProductRunOperationState::Running | ProductRunOperationState::WaitingForUser => {
+            ProductRunLegalControls::none().with(ProductRunControlAction::Cancel)
+        }
+        ProductRunOperationState::Failed
+        | ProductRunOperationState::Cancelled
+        | ProductRunOperationState::RecoveryRequired => {
+            ProductRunLegalControls::none().with(ProductRunControlAction::Retry)
+        }
+        ProductRunOperationState::Succeeded | ProductRunOperationState::OutcomeUnknown => {
+            ProductRunLegalControls::none()
+        }
+    };
+    ProductRunOperation::new(
+        ProductRunOperationKind::Execution,
+        state,
+        format!("run/{}", hex(run.as_bytes())),
+        "The native fixture owns this exact execution observation.".to_owned(),
+        String::new(),
+        controls,
+    )
+    .expect("operation")
+}
+
 #[tokio::test]
 #[expect(
     clippy::too_many_lines,
-    reason = "keeps all four modes, exact wire assertions, and socket fixture lifecycle in one contract test"
+    reason = "keeps the exact socket sequence and its durable identities in one contract"
 )]
-async fn native_messages_preserve_targets_modes_models_and_observed_revisions() {
+async fn native_message_uses_durable_conversation_queue_and_execution_receipts() {
     let temporary = tempfile::tempdir().unwrap();
     let root = temporary.path().canonicalize().unwrap();
     let config = root.join("native-config");
@@ -81,12 +110,16 @@ async fn native_messages_preserve_targets_modes_models_and_observed_revisions() 
         4173,
     )
     .unwrap();
-    let session = app.snapshot().unwrap().sessions[0].id.clone();
+    let session = app.snapshot().unwrap().sessions[0].clone();
     std::fs::write(root.join("attached.txt"), "Immutable attachment snapshot").unwrap();
-    let attachment=crate::files::attachments::stage(&app,&json!({"session":session,"project":app.snapshot().unwrap().projects[0].id,"path":"attached.txt"})).unwrap();
+    let attachment=crate::files::attachments::stage(&app,&json!({"session":session.id,"project":app.snapshot().unwrap().projects[0].id,"path":"attached.txt"})).unwrap();
     std::fs::write(root.join("attached.txt"), "Later disk edits must not leak into this message")
         .unwrap();
-    let expected_run = RunId::new(bytes(&session).unwrap()).unwrap();
+    let expected_run = RunId::new(bytes(&session.run).unwrap()).unwrap();
+    let expected_query = WorkbenchQuery::new(
+        ConversationId::new(bytes(&session.conversation).unwrap()).unwrap(),
+        workspace,
+    );
     let expected_providers = ProductProviderSelection::new(writer, reviewer, writer);
     let expected_models = ProductRoleModels::new(
         ProductModelChoice::new("fixture-writer".into(), true)
@@ -97,71 +130,142 @@ async fn native_messages_preserve_targets_modes_models_and_observed_revisions() 
             .with_effort(ProductModelEffort::Medium),
         ProductModelChoice::default(),
     );
-    let modes = [
-        ProductInteractionMode::Chat,
-        ProductInteractionMode::Plan,
-        ProductInteractionMode::Review,
-        ProductInteractionMode::Build,
-    ];
     let server = tokio::spawn(async move {
-        for mode in modes {
-            loop {
-                let (mut stream, _) = listener.accept().await.unwrap();
-                let AppMessage::ClientHello(hello) = read_message(&mut stream).await else {
-                    panic!("expected client negotiation");
-                };
-                let capabilities = ServerCapabilities::new(
-                    vec![VersionRange::new(1, 0, 0).unwrap()],
-                    vec![
-                        peritus_app_protocol::ProtocolFeatureName::well_known(
-                            peritus_app_protocol::WellKnownProtocolFeature::ProductDiagnostics,
-                        )
-                        .unwrap(),
-                    ],
-                    AppProtocolLimits::PRODUCTION,
-                    "web gateway fixture".into(),
-                )
-                .unwrap();
-                let answer =
-                    negotiate(&hello, &capabilities, SessionId::new([9; 16]).unwrap()).unwrap();
-                write_message(&mut stream, AppMessage::ServerHello(answer)).await;
-                let AppMessage::Request(envelope) = read_message(&mut stream).await else {
-                    panic!("expected request");
-                };
-                let diagnostic = match envelope.payload() {
-                    AppRequestPayload::DaemonStatus => Some(AppResponsePayload::DaemonStatus(
-                        peritus_app_protocol::DaemonStatus::new(
-                            peritus_app_protocol::DaemonReadiness::ReadyReadWrite,
+        let mut execution_queries = 0;
+        loop {
+            let (mut stream, envelope) = receive_request(&listener).await;
+            let payload = match envelope.payload() {
+                AppRequestPayload::DaemonStatus => AppResponsePayload::DaemonStatus(
+                    peritus_app_protocol::DaemonStatus::new(
+                        peritus_app_protocol::DaemonReadiness::ReadyReadWrite,
+                        None,
+                        1024,
+                    )
+                    .unwrap(),
+                ),
+                AppRequestPayload::Doctor(query) => AppResponsePayload::Doctor(
+                    peritus_app_protocol::DoctorReport::new(
+                        *query,
+                        vec![
+                            peritus_app_protocol::DoctorFinding::new(
+                                "workspace-policy".into(),
+                                peritus_app_protocol::DoctorStatus::Healthy,
+                                "Fixture admitted workspace".into(),
+                                String::new(),
+                            )
+                            .unwrap(),
+                            peritus_app_protocol::DoctorFinding::new(
+                                "provider-route".into(),
+                                peritus_app_protocol::DoctorStatus::Healthy,
+                                "Fixture provider".into(),
+                                String::new(),
+                            )
+                            .unwrap(),
+                        ],
+                    )
+                    .unwrap(),
+                ),
+                AppRequestPayload::QueryWorkbenchExecution(query) => {
+                    assert_eq!(*query, expected_query);
+                    execution_queries += 1;
+                    if execution_queries == 1 {
+                        AppResponsePayload::Error(peritus_app_protocol::AppProtocolError::new(
+                            AppErrorCode::InvalidIdentifier,
                             None,
-                            1024,
-                        )
-                        .unwrap(),
-                    )),
-                    AppRequestPayload::Doctor(query) => Some(AppResponsePayload::Doctor(
-                        peritus_app_protocol::DoctorReport::new(
-                            *query,
-                            vec![
-                                peritus_app_protocol::DoctorFinding::new(
-                                    "workspace-policy".into(),
-                                    peritus_app_protocol::DoctorStatus::Healthy,
-                                    "Fixture admitted workspace".into(),
-                                    String::new(),
+                        ))
+                    } else {
+                        AppResponsePayload::WorkbenchExecution(
+                            WorkbenchExecutionState::new(
+                                WorkbenchSnapshot::new(
+                                    expected_query,
+                                    2,
+                                    ConversationTitle::new("New conversation".into()).unwrap(),
+                                    false,
+                                    false,
                                 )
                                 .unwrap(),
-                                peritus_app_protocol::DoctorFinding::new(
-                                    "provider-route".into(),
-                                    peritus_app_protocol::DoctorStatus::Healthy,
-                                    "Fixture provider".into(),
-                                    String::new(),
-                                )
-                                .unwrap(),
-                            ],
+                                None,
+                                false,
+                            )
+                            .unwrap(),
+                        )
+                    }
+                }
+                AppRequestPayload::WorkbenchCommand(command) => {
+                    assert_eq!(command.query(), expected_query);
+                    let revision = match command.intent() {
+                        WorkbenchIntent::CreateConversation(title) => {
+                            assert_eq!(title.as_str(), "New conversation");
+                            assert_eq!(command.expected_revision(), 0);
+                            1
+                        }
+                        WorkbenchIntent::Queue(WorkbenchQueueIntent::Enqueue(input)) => {
+                            assert_eq!(command.expected_revision(), 1);
+                            assert!(
+                                input.text().as_str().starts_with("Fixture message — unchanged")
+                            );
+                            assert!(
+                                input.text().as_str().contains("Immutable attachment snapshot")
+                            );
+                            assert!(!input.text().as_str().contains("Later disk edits"));
+                            2
+                        }
+                        WorkbenchIntent::StartExecution(settings) => {
+                            assert_eq!(command.expected_revision(), 2);
+                            assert_eq!(settings.run(), expected_run);
+                            assert_eq!(settings.providers(), expected_providers);
+                            assert_eq!(settings.mode(), ProductInteractionMode::Build);
+                            assert_eq!(settings.models(), &expected_models);
+                            3
+                        }
+                        intent => panic!("unexpected workbench intent: {intent:?}"),
+                    };
+                    AppResponsePayload::WorkbenchReceipt(
+                        WorkbenchReceipt::new(
+                            command.operation(),
+                            expected_query,
+                            revision,
+                            peritus_types::Sha256Digest::new([u8::try_from(revision).unwrap(); 32]),
                         )
                         .unwrap(),
-                    )),
-                    _ => None,
-                };
-                if let Some(payload) = diagnostic {
+                    )
+                }
+                AppRequestPayload::QueryInteraction(query) => {
+                    assert_eq!(query.run_id(), expected_run);
+                    let snapshot = ProductRunSnapshot::new(
+                        expected_run,
+                        workspace,
+                        expected_providers,
+                        ProductRunPhase::Queued,
+                        0,
+                        "Fixture task".into(),
+                        "Queued by fixture".into(),
+                        String::new(),
+                        String::new(),
+                        String::new(),
+                        String::new(),
+                        operation(expected_run, ProductRunOperationState::Running),
+                    )
+                    .unwrap();
+                    let observation = ProductInteractionSnapshot::new(
+                        snapshot,
+                        ProductInteractionMode::Build,
+                        expected_models.clone(),
+                        1,
+                        0,
+                        vec![
+                            ProductActivity::new(
+                                7,
+                                ProductActivityKind::Status,
+                                "Fixture receipt".into(),
+                                "Not yet incorporated".into(),
+                            )
+                            .unwrap(),
+                        ],
+                        None,
+                    )
+                    .unwrap();
+                    let payload = AppResponsePayload::Interaction(observation);
                     write_message(
                         &mut stream,
                         AppMessage::Response(AppResponseEnvelope::new(
@@ -172,93 +276,45 @@ async fn native_messages_preserve_targets_modes_models_and_observed_revisions() 
                         )),
                     )
                     .await;
-                    continue;
+                    break;
                 }
-                let AppRequestPayload::Interact(interaction) = envelope.payload() else {
-                    panic!("expected conversation interaction");
-                };
-                assert_eq!(interaction.mode(), mode);
-                assert_eq!(interaction.models(), &expected_models);
-                assert_eq!(interaction.request().run_id(), expected_run);
-                assert_eq!(interaction.request().workspace_id(), workspace);
-                assert_eq!(interaction.request().providers(), expected_providers);
-                if mode == ProductInteractionMode::Build {
-                    assert!(interaction.request().task().contains("Immutable attachment snapshot"));
-                    assert!(!interaction.request().task().contains("Later disk edits"));
-                    assert!(
-                        interaction.request().task().starts_with("Fixture message — unchanged")
-                    );
-                } else {
-                    assert_eq!(interaction.request().task(), "Fixture message — unchanged");
-                }
-                let snapshot = ProductRunSnapshot::new(
-                    expected_run,
-                    workspace,
-                    expected_providers,
-                    ProductRunPhase::Queued,
-                    0,
-                    "Fixture task".into(),
-                    "Queued by fixture".into(),
-                    String::new(),
-                    String::new(),
-                    String::new(),
-                    String::new(),
-                )
-                .unwrap();
-                let observation = ProductInteractionSnapshot::new(
-                    snapshot,
-                    mode,
-                    expected_models.clone(),
-                    9_007_199_254_740_993,
-                    9_007_199_254_740_992,
-                    vec![
-                        ProductActivity::new(
-                            7,
-                            ProductActivityKind::Status,
-                            "Fixture receipt".into(),
-                            "Not yet incorporated".into(),
-                        )
-                        .unwrap(),
-                    ],
-                    None,
-                )
-                .unwrap();
-                let response = AppResponseEnvelope::new(
+                payload => panic!("unexpected request: {payload:?}"),
+            };
+            write_message(
+                &mut stream,
+                AppMessage::Response(AppResponseEnvelope::new(
                     envelope.context(),
                     envelope.request_id(),
                     envelope.correlation_id(),
-                    AppResponsePayload::Interaction(observation),
-                );
-                write_message(&mut stream, AppMessage::Response(response)).await;
-                break;
-            }
+                    payload,
+                )),
+            )
+            .await;
         }
     });
-    for mode in ["chat", "plan", "review", "build"] {
-        let input = json!({
-            "operation":crate::state::id().unwrap(),"session":session, "text":"Fixture message — unchanged", "mode":mode,
-            "attachments":if mode=="build"{vec![attachment["id"].clone()]}else{Vec::new()},
-            "providers":{"writer":"","reviewer":hex(reviewer.as_bytes()),"fixer":""},
-            "models":{
-                "writer":{"id":"fixture-writer","manual":true,"effort":"high"},
-                "reviewer":{"id":"fixture-reviewer","manual":false,"effort":"medium"}
-            }
-        });
-        let output = tokio::time::timeout(Duration::from_secs(3), send(&app, &input))
-            .await
-            .unwrap()
-            .unwrap();
-        assert_eq!(output["run"]["id"], session);
-        assert_eq!(output["run"]["workspace"], hex(workspace.as_bytes()));
-        assert_eq!(output["run"]["busy"], true);
-        assert_eq!(output["received"], "9007199254740993");
-        assert_eq!(output["incorporated"], "9007199254740992");
-        assert_eq!(
-            output["activities"][0],
-            json!({"id":"7","kind":"status",
-            "text":"Fixture receipt","detail":"Not yet incorporated"})
-        );
-    }
+    let operation = crate::state::id().unwrap();
+    let input = json!({
+        "operation":operation,"session":session.id, "text":"Fixture message — unchanged", "mode":"build",
+        "attachments":[attachment["id"].clone()],
+        "providers":{"writer":"","reviewer":hex(reviewer.as_bytes()),"fixer":""},
+        "models":{
+            "writer":{"id":"fixture-writer","manual":true,"effort":"high"},
+            "reviewer":{"id":"fixture-reviewer","manual":false,"effort":"medium"}
+        }
+    });
+    app.record_operation(operation, input.clone()).unwrap();
+    let output =
+        tokio::time::timeout(Duration::from_secs(3), send(&app, &input)).await.unwrap().unwrap();
+    assert_eq!(output["run"]["id"], session.run);
+    assert_eq!(output["run"]["workspace"], hex(workspace.as_bytes()));
+    assert_eq!(output["run"]["operation"]["state"], "Running");
+    assert_eq!(output["received"], "1");
+    assert_eq!(output["incorporated"], "0");
+    assert_eq!(
+        output["activities"][0],
+        json!({"id":"7","kind":"status",
+        "text":"Fixture receipt","detail":"Not yet incorporated"})
+    );
     tokio::time::timeout(Duration::from_secs(3), server).await.unwrap().unwrap();
 }
 
@@ -286,8 +342,8 @@ async fn receive_request(
     let (mut stream, _) = listener.accept().await.unwrap();
     let AppMessage::ClientHello(hello) = read_message(&mut stream).await else { panic!("hello") };
     let capabilities = ServerCapabilities::new(
-        vec![VersionRange::new(1, 0, 0).unwrap()],
-        Vec::new(),
+        vec![peritus_app_protocol::CURRENT_PROTOCOL_RANGE],
+        hello.required_features().as_slice().to_vec(),
         AppProtocolLimits::PRODUCTION,
         "recovery fixture".into(),
     )
@@ -296,31 +352,6 @@ async fn receive_request(
     write_message(&mut stream, AppMessage::ServerHello(answer)).await;
     let AppMessage::Request(request) = read_message(&mut stream).await else { panic!("request") };
     (stream, request)
-}
-#[tokio::test]
-async fn lost_response_is_uncertain_and_never_reissued_after_restart() {
-    let temporary = tempfile::tempdir().unwrap();
-    let root = temporary.path();
-    let endpoint = root.join("recovery.sock");
-    let listener = UnixListener::bind(&endpoint).unwrap();
-    let app = isolated_app(root, endpoint.clone());
-    let server = tokio::spawn(async move {
-        let (stream, request) = receive_request(&listener).await;
-        assert!(matches!(request.payload(), AppRequestPayload::ControlProductRun(_)));
-        drop(stream);
-    });
-    let payload = AppRequestPayload::ControlProductRun(ProductRunControl::new(
-        RunId::new([1; 16]).unwrap(),
-        ProductRunControlAction::Cancel,
-    ));
-    let error = receipts::recorded(&app, "original", payload.clone()).await.unwrap_err();
-    assert!(error.1);
-    server.await.unwrap();
-    let reopened = isolated_app(root, endpoint);
-    assert!(receipts::observed(&reopened, "original").unwrap().is_none());
-    let retained = reopened.snapshot().unwrap();
-    assert!(retained.operations["daemon:original"].input["frame"].as_str().unwrap().len() > 64);
-    assert!(receipts::recorded(&reopened, "original", payload).await.unwrap_err().1);
 }
 #[tokio::test]
 async fn read_only_or_draining_connection_is_not_mutation_ready() {

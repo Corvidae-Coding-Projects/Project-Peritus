@@ -1,13 +1,10 @@
 //! Conversation semantics, durable input acknowledgements, and public execution activity.
 
-#[cfg(not(verus_only))]
-use super::persistence::persist_record;
 use super::{ProductRunService, ProductRunServiceError, snapshot::live_snapshot};
 use peritus_agent::DeveloperInput;
 use peritus_app_protocol::{
     MAX_PRODUCT_ACTIVITIES, MAX_PRODUCT_ACTIVITY_BYTES, ProductActivity, ProductActivityKind,
-    ProductInteractionMode, ProductInteractionRequest, ProductInteractionSnapshot,
-    ProductRoleModels, ProductRunContinuation, ProductRunConversationQuery,
+    ProductInteractionMode, ProductInteractionQuery, ProductInteractionSnapshot, ProductRoleModels,
 };
 use peritus_product_runner::ConversationView;
 use peritus_types::RunId;
@@ -15,19 +12,22 @@ use std::sync::Arc;
 
 mod live;
 use live::LiveConversation;
+mod inputs;
 mod models;
 mod narration;
+mod presentation;
 const SUMMARY_DETAIL: &str = "Provider thinking summary";
 mod tool_activity;
 
 #[derive(Clone)]
 pub(super) struct InteractionOptions {
-    pub(super) workbench: Option<peritus_product_runner::control::ControlOperation>,
+    pub(super) workbench: peritus_product_runner::control::ControlOperation,
     pub(super) persistence_failed: Arc<std::sync::atomic::AtomicBool>,
     persistence_error: Arc<std::sync::RwLock<Option<String>>>,
     pub(super) mode: ProductInteractionMode,
     pub(super) models: ProductRoleModels,
     pub(super) incorporated: u64,
+    pub(super) public_input_count: usize,
     pub(super) activities: Vec<ProductActivity>,
     pub(super) next_sequence: u64,
     pub(super) pending_utf8: Vec<u8>,
@@ -37,14 +37,19 @@ pub(super) struct InteractionOptions {
 }
 
 impl InteractionOptions {
-    pub(super) fn new(mode: ProductInteractionMode, models: ProductRoleModels) -> Self {
+    pub(super) fn new(
+        workbench: peritus_product_runner::control::ControlOperation,
+        mode: ProductInteractionMode,
+        models: ProductRoleModels,
+    ) -> Self {
         Self {
-            workbench: None,
+            workbench,
             persistence_failed: Arc::new(std::sync::atomic::AtomicBool::new(false)),
             persistence_error: Arc::new(std::sync::RwLock::new(None)),
             mode,
             models,
             incorporated: 0,
+            public_input_count: 0,
             activities: Vec::new(),
             next_sequence: 1,
             pending_utf8: Vec::new(),
@@ -52,6 +57,40 @@ impl InteractionOptions {
             streaming_text: false,
             pending_tool: None,
         }
+    }
+
+    #[cfg(test)]
+    pub(super) fn test(mode: ProductInteractionMode, models: ProductRoleModels) -> Self {
+        Self::test_for_run(
+            mode,
+            models,
+            RunId::new([5; 16]).expect("run"),
+            peritus_types::WorkspaceId::new([4; 16]).expect("workspace"),
+        )
+    }
+
+    #[cfg(test)]
+    pub(super) fn test_for_run(
+        mode: ProductInteractionMode,
+        models: ProductRoleModels,
+        run: RunId,
+        workspace: peritus_types::WorkspaceId,
+    ) -> Self {
+        use peritus_product_runner::control::{ControlIntent, ConversationId, OperationId};
+        use peritus_types::ActorId;
+
+        Self::new(
+            peritus_product_runner::control::ControlOperation::new(
+                OperationId::new([1; 16]).expect("operation"),
+                ConversationId::new([2; 16]).expect("conversation"),
+                ActorId::new([3; 16]).expect("actor"),
+                workspace,
+                0,
+                ControlIntent::StartExecution { run: run.into_bytes(), settings_digest: [6; 32] },
+            ),
+            mode,
+            models,
+        )
     }
 
     pub(super) fn record_persistence_failure(&self, error: String) {
@@ -202,59 +241,30 @@ impl ProductRunService {
                 records.get(&run_id).map(|record| {
                     record.snapshot.phase() == peritus_app_protocol::ProductRunPhase::WaitingForUser
                         && !record.cancelled.load(std::sync::atomic::Ordering::Acquire)
-                        && record.interaction.as_ref().is_some_and(|options| {
-                            self.pending_record_input(record).unwrap_or(false)
-                                && !options
-                                    .persistence_failed
-                                    .load(std::sync::atomic::Ordering::Acquire)
-                        })
+                        && self.pending_record_input(record).unwrap_or(false)
+                        && !record
+                            .interaction
+                            .persistence_failed
+                            .load(std::sync::atomic::Ordering::Acquire)
                 })
             })
             .unwrap_or(false)
     }
-    pub(crate) async fn interact(
-        &self,
-        request: ProductInteractionRequest,
-    ) -> Result<ProductInteractionSnapshot, ProductRunServiceError> {
-        let run_id = request.request().run_id();
-        let options = InteractionOptions::new(request.mode(), request.models().clone());
-        self.validate_models(request.request().providers(), &options).await?;
-        let exists = {
-            let records =
-                self.inner.records.read().map_err(|_| ProductRunServiceError::Unavailable)?;
-            if let Some(record) = records.get(&run_id) {
-                let _ = record.interaction.as_ref().ok_or(ProductRunServiceError::InvalidState)?;
-                if record.request.workspace_id() != request.request().workspace_id()
-                    || record.request.providers() != request.request().providers()
-                {
-                    return Err(ProductRunServiceError::InvalidState);
-                }
-                true
-            } else {
-                false
-            }
-        };
-        if exists {
-            let continuation =
-                ProductRunContinuation::new(run_id, request.request().task().to_owned())
-                    .map_err(|_| ProductRunServiceError::InvalidMessage)?;
-            self.continue_configured(&continuation, Some(options)).await?;
-        } else {
-            self.start_configured(request.request().clone(), Some(options)).await?;
-        }
-        self.query_interaction(ProductRunConversationQuery::new(run_id))
-    }
-
     pub(crate) fn query_interaction(
         &self,
-        query: ProductRunConversationQuery,
+        query: ProductInteractionQuery,
     ) -> Result<ProductInteractionSnapshot, ProductRunServiceError> {
+        self.synchronize_public_inputs(query.run_id())?;
         let records = self.inner.records.read().map_err(|_| ProductRunServiceError::Unavailable)?;
         let record = records.get(&query.run_id()).ok_or(ProductRunServiceError::NotFound)?;
-        let options = record.interaction.as_ref().ok_or(ProductRunServiceError::InvalidState)?;
+        let options = &record.interaction;
         let persistence_failure = options.persistence_failure();
-        let mut snapshot = live_snapshot(record)?;
-        let mut activities = options.activities.clone();
+        let mut snapshot = live_snapshot(&self.inner.directory, record)?;
+        let mut activities = if record.checkpoint.is_some() {
+            options.activities.iter().map(presentation::pipeline_activity).collect()
+        } else {
+            options.activities.clone()
+        };
         let input_revision = if let Some(detail) = persistence_failure {
             snapshot = super::snapshot::replace_snapshot(
                 &snapshot,
@@ -299,75 +309,50 @@ impl ProductRunService {
         &self,
         record: &super::RunRecord,
     ) -> Result<u64, ProductRunServiceError> {
-        if let Some(start) =
-            record.interaction.as_ref().and_then(|options| options.workbench.as_ref())
-        {
-            return self
-                .with_controls(false, |store| store.capture_execution(start))
-                .map(|capture| capture.inputs().generation())
-                .map_err(Into::into);
-        }
-        Ok(record.conversation.revision())
+        self.with_controls(false, |store| store.capture_execution(&record.interaction.workbench))
+            .map(|capture| capture.inputs().generation())
+            .map_err(Into::into)
     }
 
     pub(super) fn pending_record_input(
         &self,
         record: &super::RunRecord,
     ) -> Result<bool, ProductRunServiceError> {
-        if let Some(start) =
-            record.interaction.as_ref().and_then(|options| options.workbench.as_ref())
-        {
-            return self
-                .with_controls(false, |store| store.capture_execution(start))
-                .map(|capture| !capture.inputs().pending().is_empty())
-                .map_err(Into::into);
-        }
-        Ok(record
-            .interaction
-            .as_ref()
-            .is_some_and(|options| record.conversation.revision() > options.incorporated))
+        self.with_controls(false, |store| store.capture_execution(&record.interaction.workbench))
+            .map(|capture| !capture.inputs().pending().is_empty())
+            .map_err(Into::into)
     }
 
     fn record_input(
         &self,
         record: &super::RunRecord,
     ) -> Result<DeveloperInput, ProductRunServiceError> {
-        if let Some(start) =
-            record.interaction.as_ref().and_then(|options| options.workbench.as_ref())
-        {
-            let captured = self.with_controls(false, |store| store.capture_execution(start))?;
-            return Ok(DeveloperInput {
-                revision: captured.inputs().generation(),
-                conversation: captured.conversation_with_guidance()?,
-                images: captured.images().to_vec(),
-            });
-        }
+        let captured = self
+            .with_controls(false, |store| store.capture_execution(&record.interaction.workbench))?;
         Ok(DeveloperInput {
-            revision: record.conversation.revision(),
-            conversation: record.conversation.render(),
-            images: Vec::new(),
+            revision: captured.inputs().generation(),
+            conversation: captured.conversation_with_guidance()?,
+            images: captured.images().to_vec(),
         })
     }
 }
 
 pub(super) fn terminal_activity(record: &mut super::RunRecord) {
     use peritus_app_protocol::ProductRunPhase;
-    if let Some(options) = record.interaction.as_mut() {
-        let failed = matches!(
-            record.snapshot.phase(),
-            ProductRunPhase::Failed | ProductRunPhase::RecoveryRequired
-        );
-        let detail = if record.snapshot.phase() == ProductRunPhase::WaitingForUser {
-            ""
-        } else {
-            record.snapshot.summary()
-        };
-        let _ = options.append(
-            if failed { ProductActivityKind::Error } else { ProductActivityKind::Status },
-            record.snapshot.status(),
-            detail,
-        );
-    }
+    let failed = matches!(
+        record.snapshot.phase(),
+        ProductRunPhase::Failed | ProductRunPhase::RecoveryRequired
+    );
+    let detail = if record.snapshot.phase() == ProductRunPhase::WaitingForUser {
+        ""
+    } else {
+        record.snapshot.summary()
+    };
+    let _ = record.interaction.append(
+        if failed { ProductActivityKind::Error } else { ProductActivityKind::Status },
+        record.snapshot.status(),
+        detail,
+    );
 }
 fn bounded(text: &str) -> String {
     if text.len() <= MAX_PRODUCT_ACTIVITY_BYTES {

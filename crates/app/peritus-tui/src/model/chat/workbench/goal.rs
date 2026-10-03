@@ -1,17 +1,16 @@
-//! Explicit persistent-goal confirmation and revision-fenced pause, resume, usage, and budgets.
+//! Explicit persistent-goal confirmation and revision-fenced pause, resume, and usage.
 
 use super::{AppModel, AppRequestPayload, Effect, NoticeLevel, PendingRequest};
 use crate::model::decode_hex_16;
 use peritus_app_protocol::{
-    ControlOperationId, WellKnownProtocolFeature, WorkbenchExecutionSettings, WorkbenchGoalBudget,
+    ControlOperationId, WellKnownProtocolFeature, WorkbenchExecutionSettings,
     WorkbenchGoalCriterionDefinition, WorkbenchGoalCriterionKind, WorkbenchGoalDefinition,
     WorkbenchGoalPauseMode, WorkbenchGoalSnapshot, WorkbenchInputState, WorkbenchInputText,
     WorkbenchIntent, WorkbenchQuery,
 };
 
-mod budget;
 mod draft;
-use budget::parse_budget;
+mod refresh;
 
 const RUNNER_CRITERION: &str = "Pass the existing strict runner acceptance gate.";
 
@@ -19,7 +18,6 @@ const RUNNER_CRITERION: &str = "Pass the existing strict runner acceptance gate.
 #[derive(Clone, Debug)]
 pub struct GoalDraft {
     objective: WorkbenchInputText,
-    budget: WorkbenchGoalBudget,
     graphical: Option<WorkbenchInputText>,
 }
 
@@ -27,10 +25,6 @@ impl GoalDraft {
     pub(crate) const fn objective(&self) -> &WorkbenchInputText {
         &self.objective
     }
-    pub(crate) const fn budget(&self) -> WorkbenchGoalBudget {
-        self.budget
-    }
-
     pub(crate) const fn graphical(&self) -> Option<&WorkbenchInputText> {
         self.graphical.as_ref()
     }
@@ -46,11 +40,8 @@ impl AppModel {
             return Vec::new();
         }
         if self.chat.workbench.selected.is_none() {
-            self.notice(
-                NoticeLevel::Warning,
-                "Select a conversation with /sessions first; draft retained.",
-            );
-            return Vec::new();
+            return self
+                .create_command_conversation("New conversation", format!("/goal {arguments}"));
         }
         self.open_goal_panel();
         if self.workbench_request_pending() || self.chat.workbench.unresolved.is_some() {
@@ -82,6 +73,7 @@ impl AppModel {
                     "Clear will cancel future continuation of goal {} at a safe boundary; history and completed effects remain. Run /goal clear confirm.",
                     crate::model::format_id(goal.goal().as_bytes())
                 );
+                self.clear_chat_command();
                 Vec::new()
             }
             "clear confirm" => self.clear_goal(),
@@ -92,6 +84,9 @@ impl AppModel {
     pub(in crate::model::chat) fn pause_goal_command(&mut self, arguments: &str) -> Vec<Effect> {
         if !self.prepare_goal_control() {
             return Vec::new();
+        }
+        if let Some(refresh) = self.refresh_stale_goal_control() {
+            return refresh;
         }
         let mode = match arguments {
             "" | "after-operation" => WorkbenchGoalPauseMode::AfterOperation,
@@ -114,6 +109,9 @@ impl AppModel {
     pub(in crate::model::chat) fn resume_goal_command(&mut self, arguments: &str) -> Vec<Effect> {
         if !self.prepare_goal_control() {
             return Vec::new();
+        }
+        if let Some(refresh) = self.refresh_stale_goal_control() {
+            return refresh;
         }
         let Some((goal, workspace)) = self.current_goal_binding() else {
             return self.inspect_goal_before("resuming it");
@@ -149,54 +147,6 @@ impl AppModel {
         self.refresh_goal()
     }
 
-    pub(in crate::model::chat) fn budget_command(&mut self, arguments: &str) -> Vec<Effect> {
-        if !self.prepare_goal_inspection() {
-            return Vec::new();
-        }
-        if arguments.is_empty() {
-            self.chat.workbench.goal = None;
-            "Reading cumulative limits and usage; no budget changed."
-                .clone_into(&mut self.chat.workbench.message);
-            return self.refresh_goal();
-        }
-        if self.workbench_request_pending() || self.chat.workbench.unresolved.is_some() {
-            self.notice(
-                NoticeLevel::Warning,
-                "Resolve the pending workbench request before changing the budget; draft retained.",
-            );
-            return Vec::new();
-        }
-        let current = self
-            .chat
-            .workbench
-            .goal
-            .as_ref()
-            .map(WorkbenchGoalSnapshot::budget)
-            .or_else(|| self.chat.workbench.goal_draft.as_ref().map(GoalDraft::budget));
-        let Some(current) = current else {
-            return self.inspect_goal_before("editing its budget, or draft a new goal first");
-        };
-        let budget = match parse_budget(arguments, current) {
-            Ok(budget) => budget,
-            Err(message) => {
-                self.notice(NoticeLevel::Warning, message);
-                return Vec::new();
-            }
-        };
-        if let Some(draft) = &mut self.chat.workbench.goal_draft
-            && self.chat.workbench.goal.is_none()
-        {
-            draft.budget = budget;
-            "Draft limits updated locally; /goal confirm is still required."
-                .clone_into(&mut self.chat.workbench.message);
-            return Vec::new();
-        }
-        let Some((goal, workspace)) = self.current_goal_binding() else {
-            return self.inspect_goal_before("editing its budget");
-        };
-        self.submit_workbench(WorkbenchIntent::UpdateGoalBudget { goal, budget }, workspace)
-    }
-
     pub(super) fn refresh_goal(&mut self) -> Vec<Effect> {
         if !self.goal_available() || self.workbench_request_pending() {
             return Vec::new();
@@ -214,17 +164,44 @@ impl AppModel {
         &mut self,
         query: WorkbenchQuery,
         goal: WorkbenchGoalSnapshot,
-    ) {
+    ) -> Vec<Effect> {
         if goal.query() != query
             || self.chat.workbench.selected != Some(query)
             || !self.chat.workbench.goal_mode
         {
-            return;
+            return Vec::new();
         }
+        let run = goal.run();
+        let retain_clear = self.chat.workbench.goal_clear_pending
+            && self
+                .chat
+                .workbench
+                .goal
+                .as_ref()
+                .is_some_and(|current| current.goal() == goal.goal());
         self.chat.workbench.goal = Some(goal);
-        self.chat.workbench.goal_clear_pending = false;
+        if let Some(effects) = self.complete_goal_control_refresh() {
+            return effects;
+        }
+        self.complete_workbench_inspection();
+        self.chat.workbench.goal_clear_pending = retain_clear;
         self.chat.workbench.scroll = 0;
-        self.chat.workbench.message.clear();
+        if !retain_clear && self.chat.workbench.unresolved.is_none() {
+            self.chat.workbench.message.clear();
+        }
+        if self.chat.run_id == Some(run) {
+            return Vec::new();
+        }
+        self.chat.run_id = Some(run);
+        self.chat.snapshot = None;
+        self.request(
+            AppRequestPayload::QueryInteraction(
+                peritus_app_protocol::ProductInteractionQuery::new(run),
+            ),
+            PendingRequest::ChatOpen { run_id: run },
+        )
+        .into_iter()
+        .collect()
     }
 
     fn clear_goal(&mut self) -> Vec<Effect> {

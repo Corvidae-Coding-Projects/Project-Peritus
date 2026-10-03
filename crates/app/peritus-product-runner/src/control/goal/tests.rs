@@ -1,4 +1,4 @@
-//! Focused bounded-goal state-machine tests.
+//! Focused persistent-goal state-machine tests.
 
 use super::*;
 
@@ -6,7 +6,7 @@ fn id(byte: u8) -> OperationId {
     OperationId::new([byte; 16]).expect("nonzero operation")
 }
 
-fn goal(budget: GoalBudget) -> GoalRecord {
+fn goal() -> GoalRecord {
     GoalRecord::start(
         id(1),
         [2; 16],
@@ -19,7 +19,6 @@ fn goal(budget: GoalBudget) -> GoalRecord {
             )
             .expect("criterion"),
         ],
-        budget,
         7,
         10,
     )
@@ -27,26 +26,35 @@ fn goal(budget: GoalBudget) -> GoalRecord {
 }
 
 #[test]
-fn request_budget_is_reserved_before_admission_and_survives_resume() {
-    let budget = GoalBudget::new(None, Some(1), None, None).expect("budget");
-    let mut goal = goal(budget);
-    assert_eq!(goal.reserve_request(GoalRole::Writer, 1, 11), Ok(GoalAdmission::Accepted));
-    assert_eq!(
-        goal.complete_request(GoalRole::Writer, 1, GoalUsageReport::default(), 12),
-        Ok(GoalAdmission::Accepted)
-    );
-    assert_eq!(goal.reserve_request(GoalRole::Reviewer, 1, 13), Ok(GoalAdmission::BudgetReached));
-    assert_eq!(goal.state(), GoalState::BudgetReached);
-    assert!(goal.resume(14).is_err(), "resume cannot reset a reached limit");
-    goal.update_budget(GoalBudget::new(None, Some(2), None, None).unwrap(), 15).unwrap();
-    goal.resume(16).unwrap();
-    assert_eq!(goal.usage().requests(), 1);
-    assert_eq!(goal.attempt(), 2);
+fn accounting_above_former_goal_limits_never_stops_admission() {
+    let mut goal = goal();
+    for request in 0..4_097 {
+        assert_eq!(goal.reserve_request(GoalRole::Writer, 1, 11), Ok(GoalAdmission::Accepted));
+        let report = if request == 0 {
+            GoalUsageReport { total_tokens: Some(100_000_001), ..GoalUsageReport::default() }
+        } else {
+            GoalUsageReport::default()
+        };
+        assert_eq!(
+            goal.complete_request(GoalRole::Writer, 1, report, 12),
+            Ok(GoalAdmission::Accepted)
+        );
+    }
+    for _ in 0..20_001 {
+        assert_eq!(goal.reserve_tool(GoalRole::Writer, 1, true, 13), Ok(GoalAdmission::Accepted));
+        assert_eq!(goal.complete_tool(1, 14), Ok(GoalAdmission::Accepted));
+    }
+    goal.observe_progress(1, 86_400_000, 0, 0, 0, 0, 0, 0, 15).unwrap();
+    assert_eq!(goal.state(), GoalState::Active);
+    assert_eq!(goal.usage().requests(), 4_097);
+    assert_eq!(goal.usage().tool_calls(), 20_001);
+    assert_eq!(goal.usage().total_tokens(), 100_000_001);
+    assert_eq!(goal.usage().active_millis(), 86_400_000);
 }
 
 #[test]
 fn missing_usage_is_unknown_not_zero_and_cost_has_independent_provenance() {
-    let mut goal = goal(GoalBudget::default());
+    let mut goal = goal();
     goal.reserve_request(GoalRole::Writer, 1, 11).unwrap();
     goal.complete_request(
         GoalRole::Writer,
@@ -68,7 +76,7 @@ fn missing_usage_is_unknown_not_zero_and_cost_has_independent_provenance() {
 
 #[test]
 fn pause_boundaries_do_not_admit_mutation_or_complete_from_model_text() {
-    let mut goal = goal(GoalBudget::default());
+    let mut goal = goal();
     goal.pause(GoalPauseMode::BeforeEdit, 11).unwrap();
     assert_eq!(goal.reserve_tool(GoalRole::Writer, 1, false, 12), Ok(GoalAdmission::Accepted));
     assert_eq!(goal.reserve_tool(GoalRole::Writer, 1, true, 13), Ok(GoalAdmission::Paused));
@@ -81,11 +89,27 @@ fn pause_boundaries_do_not_admit_mutation_or_complete_from_model_text() {
 }
 
 #[test]
+fn pausing_an_idle_goal_produces_a_valid_resumable_record() {
+    for mode in [GoalPauseMode::Now, GoalPauseMode::AfterOperation, GoalPauseMode::BeforeEdit] {
+        let mut value = goal();
+        value.settle(1, GoalSettlement::WaitingForUser, Some(7), false, 11).unwrap();
+        assert_eq!(value.state(), GoalState::WaitingForUser);
+        value.pause(mode, 12).unwrap();
+        value.validate().expect("idle pause must persist");
+        assert_eq!(value.state(), GoalState::Paused);
+        assert_eq!(value.pause_mode(), None);
+        value.resume(13).unwrap();
+        value.validate().expect("resumed record");
+        assert_eq!(value.state(), GoalState::Active);
+    }
+}
+
+#[test]
 fn only_fresh_strict_settlement_achieves_goal() {
-    let mut stale = goal(GoalBudget::default());
+    let mut stale = goal();
     stale.settle(1, GoalSettlement::Accepted, Some(6), false, 11).unwrap();
     assert_eq!(stale.state(), GoalState::Blocked);
-    let mut current = goal(GoalBudget::default());
+    let mut current = goal();
     current.settle(1, GoalSettlement::Accepted, Some(7), false, 11).unwrap();
     assert_eq!(current.state(), GoalState::Achieved);
 }
@@ -110,7 +134,6 @@ fn graphical_evidence_is_independent_fresh_and_revision_fenced() {
             )
             .unwrap(),
         ],
-        GoalBudget::default(),
         7,
         10,
     )
@@ -129,17 +152,18 @@ fn graphical_evidence_is_independent_fresh_and_revision_fenced() {
     assert_eq!(goal.criteria()[1].state(), GoalCriterionState::Unavailable);
     assert_eq!(goal.observe_graphical_evidence(1, 1, 1, 6, 12), Err(ControlError::StaleRevision));
     assert_eq!(goal.criteria()[1].state(), GoalCriterionState::Unavailable);
-    goal.update_budget(GoalBudget::default(), 13).unwrap();
-    assert_eq!(goal.observe_graphical_evidence(1, 1, 1, 7, 14), Err(ControlError::StaleRevision));
-    goal.observe_graphical_evidence(1, 1, 2, 7, 15).unwrap();
+    goal.pause(GoalPauseMode::AfterOperation, 13).unwrap();
+    goal.resume(14).unwrap();
+    assert_eq!(goal.observe_graphical_evidence(1, 2, 1, 7, 15), Err(ControlError::StaleRevision));
+    goal.observe_graphical_evidence(1, 2, 3, 7, 16).unwrap();
     assert_eq!(goal.criteria()[0].state(), GoalCriterionState::Satisfied);
     assert_eq!(goal.criteria()[1].state(), GoalCriterionState::Satisfied);
     assert_eq!(goal.criteria()[1].evidence_revision(), Some(7));
     assert_eq!(goal.criteria()[2].state(), GoalCriterionState::Unavailable);
-    assert_eq!(goal.state(), GoalState::WaitingForUser);
-    goal.observe_graphical_evidence(2, 1, 2, 7, 15).unwrap();
+    assert_eq!(goal.state(), GoalState::Active);
+    goal.observe_graphical_evidence(2, 2, 3, 7, 17).unwrap();
     assert_eq!(goal.state(), GoalState::Achieved);
-    goal.requirements_changed(8, false, 16).unwrap();
+    goal.requirements_changed(8, false, 18).unwrap();
     assert!(goal.criteria().iter().all(|criterion| criterion.state() == GoalCriterionState::Stale));
     assert_eq!(goal.state(), GoalState::Blocked);
 }

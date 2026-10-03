@@ -173,6 +173,8 @@ mod tests {
             RunId::new([1; 16]).expect("run"),
             WorkspaceId::new([2; 16]).expect("workspace"),
             Sha256Digest::new([3; 32]),
+            Sha256Digest::new([3; 32]),
+            None,
             3,
             1,
         )
@@ -196,6 +198,8 @@ mod tests {
             RunId::new([1; 16]).expect("run"),
             WorkspaceId::new([2; 16]).expect("workspace"),
             Sha256Digest::new([3; 32]),
+            Sha256Digest::new([3; 32]),
+            None,
             1,
             1,
         )

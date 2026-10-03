@@ -88,6 +88,7 @@ impl<'de> Deserialize<'de> for DaemonConfig {
             product: representation.product.unwrap_or_default(),
             context: representation.context.unwrap_or_default(),
             telemetry: representation.telemetry,
+            process_crash_watchdog: None,
         })
     }
 }

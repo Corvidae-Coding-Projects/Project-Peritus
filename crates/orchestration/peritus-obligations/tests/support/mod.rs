@@ -25,6 +25,8 @@ pub fn candidate(candidate_digest: u8, conversation: u64, sequence: u64) -> Cand
         RunId::new([91; 16]).expect("run id"),
         WorkspaceId::new([92; 16]).expect("workspace id"),
         digest(candidate_digest),
+        digest(candidate_digest),
+        None,
         conversation,
         sequence,
     )

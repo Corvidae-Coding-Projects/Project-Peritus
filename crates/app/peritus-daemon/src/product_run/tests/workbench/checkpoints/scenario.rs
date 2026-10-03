@@ -2,6 +2,8 @@
 
 use super::*;
 
+mod restart;
+
 pub(super) async fn checkpoint_scenario(
     user_conflict: bool,
     crash: Option<crate::product_run::workbench::RewindFaultPoint>,
@@ -123,6 +125,24 @@ pub(super) async fn checkpoint_scenario(
         b"unrelated exact bytes\n"
     );
 
+    // A verification command observes all changed scoped files again without editing them.
+    let start_binding =
+        service.inner.records.read().unwrap().get(&run).unwrap().interaction.workbench.clone();
+    let postimage = peritus_product_runner::control::CheckpointFileVersion::present(
+        peritus_codec::sha256(b"Peritus owned edit\n"),
+        19,
+        peritus_product_runner::control::CheckpointFileMode::Regular,
+    );
+    service
+        .seal_automatic_checkpoint(
+            &start_binding,
+            run,
+            std::path::Path::new("note.txt"),
+            peritus_product_runner::WorkspaceMutationKind::File,
+            postimage,
+        )
+        .expect("repeated unchanged command postimage remains idempotent");
+
     if user_conflict {
         fs::write(folder.join("note.txt"), b"independent user edit\n")
             .expect("independent user edit");
@@ -154,7 +174,7 @@ pub(super) async fn checkpoint_scenario(
             .expect("rewind request");
     let child = ConversationId::new([0xef; 16]).unwrap();
     if mode != WorkbenchRewindMode::FilesOnly {
-        rewind_request = rewind_request.with_branch(mode, child, None).unwrap();
+        rewind_request = rewind_request.with_branch(mode, child).unwrap();
     }
     let AppResponsePayload::WorkbenchRewindPreview(rewind_preview) =
         service.preview_workbench_rewind(actor(), &rewind_request).await
@@ -322,56 +342,38 @@ pub(super) async fn checkpoint_scenario(
         service
             .workbench_folder_command(actor(), SessionId::new([0xd1; 16]).unwrap(), &apply)
             .await,
-        AppResponsePayload::WorkbenchRestore(restore),
+        AppResponsePayload::WorkbenchRestore(restore.clone()),
         "restore retry must not reapply filesystem effects"
     );
 
+    if mode == WorkbenchRewindMode::FilesOnly && expected_status == WorkbenchRestoreStatus::Applied
+    {
+        let current = service
+            .with_controls(false, |store| store.load(DomainConversationId::new([2; 16])?))
+            .unwrap()
+            .unwrap()
+            .revision();
+        let request =
+            WorkbenchRewindRequest::new(query(workspace), current, restore.recovery_checkpoint())
+                .unwrap();
+        let AppResponsePayload::WorkbenchRewindPreview(preview) =
+            service.preview_workbench_rewind(actor(), &request).await
+        else {
+            panic!("recovery checkpoint preview");
+        };
+        assert_eq!(preview.paths()[0].disposition(), WorkbenchRewindDisposition::Restore);
+        let undo = command(workspace, 0xe1, current, WorkbenchIntent::ApplyRewind(preview));
+        let AppResponsePayload::WorkbenchRestore(undone) = service
+            .workbench_folder_command(actor(), SessionId::new([0xd1; 16]).unwrap(), &undo)
+            .await
+        else {
+            panic!("undo rewind receipt");
+        };
+        assert_eq!(undone.status(), WorkbenchRestoreStatus::Applied);
+        assert_eq!(fs::read(folder.join("note.txt")).unwrap(), b"Peritus owned edit\n");
+    }
+
     service.shutdown(Duration::from_secs(5)).await;
     drop(service);
-    let store_id = peritus_journal::StoreId::new([0x7f; 16]).expect("control store");
-    let store = crate::product_control::ControlStore::open(&state.join("workbench-v1"), store_id)
-        .expect("reopen control journal");
-    let durable = store
-        .load(DomainConversationId::new([2; 16]).expect("conversation"))
-        .expect("replay journal")
-        .expect("durable record");
-    let child_record = store.load(DomainConversationId::new(child.into_bytes()).unwrap()).unwrap();
-    if mode != WorkbenchRewindMode::FilesOnly && expected_status == WorkbenchRestoreStatus::Applied
-    {
-        let child_record = child_record.expect("settled logical branch");
-        let historical = store
-            .load_revision(
-                durable.id(),
-                checkpoint_receipt.references().source_conversation_revision(),
-            )
-            .unwrap()
-            .unwrap();
-        assert_eq!(child_record.inputs().order(), historical.inputs().order());
-        assert!(child_record.inputs().capture().unwrap().pending().is_empty());
-        assert!(child_record.execution().is_none());
-        assert!(child_record.goal().is_none());
-    } else {
-        assert!(child_record.is_none());
-    }
-    let original = durable
-        .checkpoints()
-        .iter()
-        .find(|checkpoint| {
-            checkpoint.id()
-                == CheckpointId::new(checkpoint_receipt.checkpoint().into_bytes())
-                    .expect("checkpoint")
-        })
-        .expect("original checkpoint");
-    assert_eq!(
-        original.paths()[0].owned_postchange().expect("sealed").digest(),
-        Some(peritus_codec::sha256(b"Peritus owned edit\n"))
-    );
-    assert_eq!(
-        durable.restores().last().expect("restore journal").status(),
-        if expected_status == WorkbenchRestoreStatus::Conflict {
-            peritus_product_runner::control::RestoreStatus::Conflict
-        } else {
-            peritus_product_runner::control::RestoreStatus::Applied
-        }
-    );
+    restart::verify(&state, child, mode, expected_status, &checkpoint_receipt);
 }

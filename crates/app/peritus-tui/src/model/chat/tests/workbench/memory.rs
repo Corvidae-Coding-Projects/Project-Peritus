@@ -116,6 +116,19 @@ fn assert_content_free_history(model: &AppModel) {
 }
 
 #[test]
+fn navigating_past_empty_memory_consumes_the_command() {
+    let mut model = memory_model();
+    let conversation = open_conversation(&mut model);
+    let inspect = begin_memory_inspection(&mut model, "/memory", conversation.query(), 1);
+    respond(&mut model, &inspect, memory_response(&inspect, 0, Vec::new()));
+    key(&mut model, KeyCode::Esc);
+    model.chat.buffer = "/memory more".to_owned();
+    assert!(key(&mut model, KeyCode::Enter).is_empty());
+    assert!(model.chat.buffer.is_empty(), "last-page navigation consumes the command");
+    assert!(model.chat.workbench.open);
+}
+
+#[test]
 fn memory_save_revise_pin_scope_forget_and_history_are_explicit_roundtrips() {
     let mut model = memory_model();
     let conversation = open_conversation(&mut model);

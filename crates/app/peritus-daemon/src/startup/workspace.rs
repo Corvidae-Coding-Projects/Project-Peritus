@@ -55,17 +55,46 @@ pub(super) fn install_and_reconcile(
     let mut registrations = BTreeMap::new();
     for declaration in config.workspaces() {
         let path = declaration.registration_file();
-        let metadata = fs::symlink_metadata(path)
-            .map_err(|error| filesystem("inspect workspace registration file", error))?;
+        let metadata = match fs::symlink_metadata(path) {
+            Ok(metadata) => metadata,
+            Err(error) => {
+                crate::diagnostic::report(&format!(
+                    "peritusd: workspace registration {} is unavailable; attempting journal recovery: {error}",
+                    path.display()
+                ));
+                continue;
+            }
+        };
         if !metadata.file_type().is_file()
             || metadata.len() == 0
             || metadata.len() > MAX_WORKSPACE_REGISTRATION_BYTES as u64
         {
-            return Err(invalid("workspace registration must be a nonempty bounded regular file"));
+            crate::diagnostic::report(&format!(
+                "peritusd: workspace registration {} is not a bounded regular file; attempting journal recovery",
+                path.display()
+            ));
+            continue;
         }
-        let bytes = fs::read(path)
-            .map_err(|error| filesystem("read workspace registration file", error))?;
-        let registration = WorkspaceRegistration::decode(&bytes).map_err(workspace_error)?;
+        let bytes = match fs::read(path) {
+            Ok(bytes) => bytes,
+            Err(error) => {
+                crate::diagnostic::report(&format!(
+                    "peritusd: workspace registration {} could not be read; attempting journal recovery: {error}",
+                    path.display()
+                ));
+                continue;
+            }
+        };
+        let registration = match WorkspaceRegistration::decode(&bytes) {
+            Ok(registration) => registration,
+            Err(error) => {
+                crate::diagnostic::report(&format!(
+                    "peritusd: workspace registration {} is invalid; attempting journal recovery: {error}",
+                    path.display()
+                ));
+                continue;
+            }
+        };
         if registrations.insert(registration.workspace_id(), registration).is_some() {
             return Err(invalid("workspace identity is configured more than once"));
         }
@@ -79,6 +108,21 @@ pub(super) fn install_and_reconcile(
         .into_iter()
         .flatten()
         .collect::<BTreeSet<_>>();
+    for workspace_id in referenced.iter().copied() {
+        if registrations.contains_key(&workspace_id) {
+            continue;
+        }
+        let Some(durable) = journal.application_workspace(workspace_id).map_err(journal_error)?
+        else {
+            continue;
+        };
+        let registration =
+            WorkspaceRegistration::from_application_workspace(&durable).map_err(workspace_error)?;
+        registrations.insert(workspace_id, registration);
+        crate::diagnostic::report(&format!(
+            "peritusd: recovered configured workspace {workspace_id:?} from the durable journal"
+        ));
+    }
     let configured = registrations.keys().copied().collect::<BTreeSet<_>>();
     if referenced != configured {
         return Err(invalid(
@@ -88,7 +132,26 @@ pub(super) fn install_and_reconcile(
 
     for registration in registrations.values() {
         let durable = registration.durable_registration().map_err(journal_error)?;
-        journal.register_application_workspace(durable).map_err(journal_error)?;
+        let previous =
+            journal.application_workspace(registration.workspace_id()).map_err(journal_error)?;
+        let installed = if let Some(previous) =
+            previous.filter(|old| old.registration_bytes() != registration.canonical_bytes())
+        {
+            let old = WorkspaceRegistration::from_application_workspace(&previous)
+                .map_err(workspace_error)?;
+            validate_baseline_refresh(&old, registration)?;
+            journal.refresh_application_workspace(&previous, &durable).map_err(journal_error)?
+        } else {
+            journal.register_application_workspace(durable).map_err(journal_error)?
+        };
+        if installed.state() != ApplicationWorkspaceState::Registered {
+            journal
+                .set_application_workspace_state(
+                    installed.workspace_id(),
+                    ApplicationWorkspaceState::Registered,
+                )
+                .map_err(journal_error)?;
+        }
     }
 
     let mut after = None;
@@ -99,8 +162,17 @@ pub(super) fn install_and_reconcile(
                 WorkspaceRegistration::from_application_workspace(row).map_err(workspace_error)?;
             match registrations.get(&row.workspace_id()) {
                 Some(configured) if configured == &durable => {}
-                None if row.state() == ApplicationWorkspaceState::Removed => {}
-                Some(_) | None => {
+                None => {
+                    if row.state() != ApplicationWorkspaceState::Removed {
+                        journal
+                            .set_application_workspace_state(
+                                row.workspace_id(),
+                                ApplicationWorkspaceState::Removed,
+                            )
+                            .map_err(journal_error)?;
+                    }
+                }
+                Some(_) => {
                     return Err(invalid(
                         "durable workspace catalog differs from the active configuration",
                     ));
@@ -123,6 +195,32 @@ pub(super) fn install_and_reconcile(
     Ok(WorkspaceCatalog { registrations, folders })
 }
 
+fn validate_baseline_refresh(
+    old: &WorkspaceRegistration,
+    current: &WorkspaceRegistration,
+) -> Result<(), DaemonError> {
+    if old.workspace_id() != current.workspace_id()
+        || old.resource_id() != current.resource_id()
+        || old.environment_id() != current.environment_id()
+        || old.repository_root() != current.repository_root()
+        || old.transaction_root() != current.transaction_root()
+        || old.worktree_manifest().root() != current.worktree_manifest().root()
+        || old.worktree_manifest().repository_digest()
+            != current.worktree_manifest().repository_digest()
+        || old.worktree_manifest().access() != current.worktree_manifest().access()
+    {
+        return Err(invalid("workspace refresh changed a retained authority binding"));
+    }
+    let repository = peritus_git::GitRepository::open(peritus_git::RepositoryOptions::new(
+        current.repository_root(),
+    ))
+    .map_err(|_| invalid("workspace refresh repository is unavailable"))?;
+    repository
+        .reopen_worktree(current.worktree_manifest())
+        .map_err(|_| invalid("workspace refresh does not match its current detached worktree"))?;
+    Ok(())
+}
+
 fn workspace_error(error: peritus_workspace::WorkspaceError) -> DaemonError {
     DaemonError::with_source(
         DaemonErrorCode::CorruptState,
@@ -139,16 +237,6 @@ fn journal_error(error: peritus_journal::JournalError) -> DaemonError {
         DaemonRecovery::Reconcile,
         error.operation(),
         error.to_string(),
-        error,
-    )
-}
-
-fn filesystem(operation: &'static str, error: std::io::Error) -> DaemonError {
-    DaemonError::with_source(
-        DaemonErrorCode::Storage,
-        DaemonRecovery::Operator,
-        operation,
-        "workspace registration file cannot be read safely",
         error,
     )
 }

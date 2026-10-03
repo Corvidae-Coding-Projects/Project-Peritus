@@ -67,6 +67,8 @@ mod tests {
             RunId::new([1; 16]).expect("run"),
             WorkspaceId::new([2; 16]).expect("workspace"),
             digest(3),
+            digest(3),
+            None,
             4,
             1,
         )

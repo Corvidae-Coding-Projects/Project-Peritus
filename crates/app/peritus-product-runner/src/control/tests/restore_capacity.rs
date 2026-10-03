@@ -3,7 +3,7 @@
 use super::*;
 
 #[test]
-fn applied_restore_invalidates_context_with_a_full_input_ledger() {
+fn applied_restore_invalidates_context_after_ledger_grows_past_old_capacity() {
     let (mut record, _) = ConversationRecord::apply(None, &create()).expect("create");
     for byte in 10..74 {
         record = apply(
@@ -17,18 +17,17 @@ fn applied_restore_invalidates_context_with_a_full_input_ledger() {
         )
         .expect("fill ledger");
     }
-    assert_eq!(
-        apply(
-            &record,
-            74,
-            ControlIntent::Queue(QueueIntent::Enqueue {
-                id: InputId::new([74; 16]).expect("input"),
-                text: ControlText::new("one more".to_owned()).expect("text"),
-                dependencies: Vec::new(),
-            })
-        ),
-        Err(ControlError::Capacity)
-    );
+    record = apply(
+        &record,
+        74,
+        ControlIntent::Queue(QueueIntent::Enqueue {
+            id: InputId::new([74; 16]).expect("input"),
+            text: ControlText::new("one more".to_owned()).expect("text"),
+            dependencies: Vec::new(),
+        }),
+    )
+    .expect("input history grows beyond the former total");
+    assert_eq!(record.inputs().revisions().len(), 65);
     let source = checkpoint(80, &record);
     record = apply(&record, 80, ControlIntent::CreateCheckpoint(source.clone())).expect("capture");
     let recovery = checkpoint(81, &record);
@@ -52,9 +51,10 @@ fn applied_restore_invalidates_context_with_a_full_input_ledger() {
             status: RestoreStatus::Applied,
             conflicts: Vec::new(),
             transaction_manifest_digest: Some([3; 32]),
+            seal_recovery: false,
         },
     )
-    .expect("settle despite full message capacity");
+    .expect("settle independently of the retained input history");
     assert_eq!(next.inputs().generation(), generation + 1);
     assert_eq!(next.restores()[0].status(), RestoreStatus::Applied);
     assert_eq!(record.inputs().order(), next.inputs().order());

@@ -123,6 +123,8 @@ fn binding() -> EvidenceBinding {
         RunId::new([7; 16]).expect("run id"),
         WorkspaceId::new([8; 16]).expect("workspace id"),
         digest(9),
+        digest(9),
+        None,
         1,
         1,
     )

@@ -2,7 +2,7 @@
 
 use core::fmt;
 
-use peritus_app_protocol::TerminalError;
+use peritus_app_protocol::{AppErrorCode, AppProtocolError, TerminalError};
 use peritus_process::ProcessError;
 
 /// Stable failure category for live terminal registration and attachment operations.
@@ -50,9 +50,30 @@ pub enum TerminalBridgeError {
     Protocol(TerminalError),
     /// A C2 process-control rejection.
     Process(ProcessError),
+    /// The C4 preview owner could not finish publishing its result.
+    Preview(peritus_product_runner::ProductRunnerError),
 }
 
 impl TerminalBridgeError {
+    pub(crate) const fn protocol_error(&self) -> AppProtocolError {
+        let code = match self.kind() {
+            TerminalBridgeErrorKind::Capacity => AppErrorCode::LimitExceeded,
+            TerminalBridgeErrorKind::Backpressure => AppErrorCode::Backpressure,
+            TerminalBridgeErrorKind::OwnershipMismatch => AppErrorCode::SessionMismatch,
+            TerminalBridgeErrorKind::InvalidLimit => AppErrorCode::Internal,
+            TerminalBridgeErrorKind::ProcessNotRegistered
+            | TerminalBridgeErrorKind::RegistrationConflict
+            | TerminalBridgeErrorKind::NotPty
+            | TerminalBridgeErrorKind::BirthIdentityUnavailable
+            | TerminalBridgeErrorKind::ProcessIdentityMismatch
+            | TerminalBridgeErrorKind::ReplayUnavailable
+            | TerminalBridgeErrorKind::Protocol
+            | TerminalBridgeErrorKind::Process
+            | TerminalBridgeErrorKind::ProcessNotLive => AppErrorCode::TerminalState,
+        };
+        AppProtocolError::new(code, None)
+    }
+
     /// Creates a bridge-owned rejection.
     #[must_use]
     pub(crate) const fn rejected(kind: TerminalBridgeErrorKind, detail: &'static str) -> Self {
@@ -66,16 +87,18 @@ impl TerminalBridgeError {
             Self::Rejected { kind, .. } => *kind,
             Self::Protocol(_) => TerminalBridgeErrorKind::Protocol,
             Self::Process(_) => TerminalBridgeErrorKind::Process,
+            Self::Preview(_) => TerminalBridgeErrorKind::Process,
         }
     }
 
     /// Returns inert diagnostic text.
     #[must_use]
-    pub(crate) const fn detail(&self) -> &str {
+    pub(crate) fn detail(&self) -> &str {
         match self {
             Self::Rejected { detail, .. } => detail,
             Self::Protocol(error) => error.detail(),
             Self::Process(error) => error.detail(),
+            Self::Preview(error) => error.detail(),
         }
     }
 }
@@ -92,6 +115,7 @@ impl std::error::Error for TerminalBridgeError {
             Self::Rejected { .. } => None,
             Self::Protocol(error) => Some(error),
             Self::Process(error) => Some(error),
+            Self::Preview(error) => Some(error),
         }
     }
 }

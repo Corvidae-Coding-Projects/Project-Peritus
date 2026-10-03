@@ -138,6 +138,6 @@ async fn assert_history_and_no_runs(client: &mut (AppFrameStream<UnixStream>, Pr
     assert_eq!(page.rows()[0].state(), S::Superseded);
     assert_eq!(page.rows()[1].state(), S::Held);
     assert!(
-        matches!(request(client, 4, AppRequestPayload::QueryProductRuns(peritus_app_protocol::ProductRunQuery::recent())).await, AppResponsePayload::ProductRunSettlements(runs) if runs.is_empty())
+        matches!(request(client, 4, AppRequestPayload::QueryProductRunObservations(peritus_app_protocol::ProductRunQuery::recent())).await, AppResponsePayload::ProductRunObservations(runs) if runs.is_empty())
     );
 }

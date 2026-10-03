@@ -41,14 +41,14 @@ pub async fn discover_account_models(
         .tempdir()
         .map_err(|_| unavailable("cannot create isolated model-discovery directory"))?;
     let mut command = Command::new(executable);
+    crate::process_containment::configure(&mut command);
     #[cfg(windows)]
     command.creation_flags(0x0800_0000); // CREATE_NO_WINDOW: metadata must not own the host console.
     command
         .current_dir(directory.path())
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
-        .stderr(Stdio::null())
-        .kill_on_drop(true);
+        .stderr(Stdio::null());
     match kind {
         AccountCatalog::Codex => {
             command.arg("app-server");

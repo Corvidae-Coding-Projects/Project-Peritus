@@ -34,11 +34,10 @@ impl AppModel {
             return Vec::new();
         }
         let Some(query) = self.chat.workbench.selected else {
-            self.notice(
-                NoticeLevel::Warning,
-                "Select a conversation with /sessions first; draft retained.",
+            return self.create_command_conversation(
+                "New conversation",
+                format!("/permissions {arguments}"),
             );
-            return Vec::new();
         };
         if self.workbench_request_pending() || self.chat.workbench.unresolved.is_some() {
             self.notice(
@@ -135,6 +134,7 @@ impl AppModel {
             return;
         }
         self.chat.workbench.permissions = Some(permissions);
+        self.complete_workbench_inspection();
         self.chat.workbench.scroll = 0;
         self.chat.workbench.message.clear();
     }

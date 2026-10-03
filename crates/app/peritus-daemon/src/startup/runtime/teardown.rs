@@ -185,7 +185,7 @@ impl DaemonRuntime {
         ShutdownWorkCounts::empty()
             .with_terminal_attachments(terminal_attachments)
             .with_workers(workers)
-            .with_processes(self.processes.recovery_work_count())
+            .with_processes(self.processes.unsettled_ownership_count())
             .with_outbox(outbox)
             .with_indeterminate_effects(indeterminate_effects)
     }

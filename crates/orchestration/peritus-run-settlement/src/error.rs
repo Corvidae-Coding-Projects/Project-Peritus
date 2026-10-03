@@ -13,8 +13,6 @@ pub enum SettlementErrorKind {
     CandidateLineageMismatch,
     /// A checkpoint sequence did not strictly advance.
     CheckpointDidNotAdvance,
-    /// The same candidate regressed to an earlier qualification stage.
-    CandidateStageRegressed,
     /// Evidence marked current or failed did not bind the current candidate.
     CurrentEvidenceBindingMismatch,
     /// Evidence marked stale still binds the current candidate.

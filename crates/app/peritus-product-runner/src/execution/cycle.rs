@@ -253,7 +253,10 @@ pub(super) fn inspect_gates(
     let _ = recorder.record(
         gate_stage,
         state.conversation_revision,
-        CheckpointEvidence::Gates(gates_satisfied),
+        CheckpointEvidence::Gates {
+            satisfied: gates_satisfied,
+            execution_context: gate_report.execution_context(),
+        },
     )?;
     Ok(GateInspection {
         gates: gate_report,
@@ -338,8 +341,13 @@ pub(super) async fn apply_fix(
             )?;
             Ok(None)
         }
-        AppliedTurn::Waiting { question, conversation_revision } => {
+        AppliedTurn::Waiting { question, conversation_revision, host } => {
+            state.merge_host(&host);
             Ok(Some((question, conversation_revision)))
+        }
+        AppliedTurn::Rejected { error, host } => {
+            state.merge_host(&host);
+            Err(error)
         }
     }
 }

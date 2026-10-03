@@ -2,7 +2,7 @@ use super::*;
 use peritus_app_protocol::{MAX_PRODUCT_ACTIVITY_BYTES, ProductInteractionMode, ProductRoleModels};
 
 fn options() -> InteractionOptions {
-    InteractionOptions::new(ProductInteractionMode::Chat, ProductRoleModels::default())
+    InteractionOptions::test(ProductInteractionMode::Chat, ProductRoleModels::default())
 }
 
 #[test]

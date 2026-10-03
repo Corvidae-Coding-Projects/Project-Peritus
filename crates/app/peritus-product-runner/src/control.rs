@@ -22,8 +22,8 @@ mod images;
 pub use images::{ImageAttachment, ImageAttachments, ImageFormat, ImageMetadata, ImageSelection};
 mod goal;
 pub use goal::{
-    GoalAdmission, GoalBudget, GoalCriterion, GoalCriterionKind, GoalCriterionState, GoalPauseMode,
-    GoalRecord, GoalRole, GoalRoleUsage, GoalSettlement, GoalState, GoalUsage, GoalUsageReport,
+    GoalAdmission, GoalCriterion, GoalCriterionKind, GoalCriterionState, GoalPauseMode, GoalRecord,
+    GoalRole, GoalRoleUsage, GoalSettlement, GoalState, GoalUsage, GoalUsageReport,
 };
 mod inputs;
 mod permissions;
@@ -34,14 +34,11 @@ mod review;
 mod tests;
 mod text;
 
-pub use branch::{
-    ChildBudgetAllocation, ChildBudgetReservation, ConversationBranch, ConversationBranchMode,
-};
+pub use branch::{ConversationBranch, ConversationBranchMode};
 pub use brief::{BriefBinding, BriefField, TaskBrief};
 pub use checkpoint::{
     CheckpointFileMode, CheckpointFileVersion, CheckpointPath, CheckpointReferences,
-    MAX_CHECKPOINT_PATHS, MAX_CHECKPOINTS, MAX_RESTORES, RestoreOperation, RestoreStatus,
-    UserCheckpoint,
+    RestoreOperation, RestoreStatus, UserCheckpoint,
 };
 pub use compaction::{CompactedReply, PromptView};
 pub use context::{ContextPreference, ContextSelection, ContextSelections, ContextTarget};
@@ -53,7 +50,7 @@ pub use inputs::{
 pub use permissions::{HostPermissions, PermissionCapability, PermissionPolicy};
 pub use record::{
     ControlExecution, ControlIntent, ControlOperation, ControlReceipt, ConversationRecord,
-    ConversationSeed,
+    ConversationReplay, ConversationSeed,
 };
 pub use reply::PublicReplyReference;
 pub use review::{
@@ -63,7 +60,10 @@ pub use review::{
 pub use text::{ControlText, ControlTextIter};
 
 /// Maximum exact bytes in one control operation or current-state projection.
-pub const MAX_CONTROL_BYTES: usize = 1024 * 1024;
+pub const MAX_CONTROL_BYTES: usize = peritus_journal::MAX_STATE_BYTES;
+/// Maximum combined text admitted to one model request context.
+pub const MAX_REQUEST_CONTEXT_BYTES: usize =
+    peritus_model_protocol::ProtocolLimits::PRODUCTION.max_text_bytes();
 /// Initial explicitly versioned control-state generation; not the legacy run JSON schema.
 pub const CONTROL_SCHEMA: u16 = 1;
 

@@ -3,7 +3,7 @@
 use super::{ControlStore, ControlStoreError as Error};
 use peritus_product_runner::control::{
     ControlError, ControlIntent, ControlOperation, ControlReceipt, ConversationId, InputCapture,
-    InvocationId, OperationId, QueueIntent,
+    InvocationId, MAX_REQUEST_CONTEXT_BYTES, OperationId, QueueIntent,
 };
 use peritus_types::{ActorId, WorkspaceId};
 
@@ -24,6 +24,7 @@ pub struct CapturedConversation {
     workspace: WorkspaceId,
     revision: u64,
     inputs: InputCapture,
+    user_context: String,
     replies: Vec<peritus_product_runner::control::PublicReplyReference>,
     sources: Vec<manifest::InputSource>,
     brief: Vec<peritus_product_runner::control::BriefBinding>,
@@ -44,6 +45,11 @@ impl CapturedConversation {
     pub const fn inputs(&self) -> &InputCapture {
         &self.inputs
     }
+    /// Borrows only current user-authored input, excluding public replies and host guidance.
+    #[must_use]
+    pub fn reference_authority_context(&self) -> &str {
+        &self.user_context
+    }
     /// Borrows the complete explicitly selected immutable image input, in source order.
     #[must_use]
     pub fn images(&self) -> &[peritus_model_protocol::MediaInput] {
@@ -59,7 +65,7 @@ impl CapturedConversation {
             }
             conversation.push_str(self.guidance.text());
         }
-        if conversation.len() > 1024 * 1024 {
+        if conversation.len() > MAX_REQUEST_CONTEXT_BYTES {
             return Err(ControlError::Capacity.into());
         }
         Ok(conversation)
@@ -147,6 +153,7 @@ impl ControlStore {
         {
             return Err(ControlError::ScopeMismatch.into());
         }
+        let user_context = record.inputs().capture()?.conversation().to_owned();
         let metadata = record
             .replies()
             .iter()
@@ -159,7 +166,9 @@ impl ControlStore {
             .filter(|reply| eligible.public_replies().contains(&reply.after_invocation()))
             .collect();
         let bytes: u64 = selected.iter().map(|reply| reply.bytes().saturating_add(32)).sum();
-        if bytes.saturating_add(eligible.conversation().len() as u64) > 1024 * 1024 {
+        if bytes.saturating_add(eligible.conversation().len() as u64)
+            > MAX_REQUEST_CONTEXT_BYTES as u64
+        {
             return Err(ControlError::Capacity.into());
         }
         let replies = selected
@@ -231,7 +240,9 @@ impl ControlStore {
         let app_conversation = peritus_app_protocol::ConversationId::new(*conversation.as_bytes())
             .map_err(|_| ControlError::InvalidInput)?;
         let guidance = self.guidance_for_request(workspace, app_conversation)?;
-        if inputs.conversation().len().saturating_add(guidance.text().len()) > 1024 * 1024 {
+        if inputs.conversation().len().saturating_add(guidance.text().len())
+            > MAX_REQUEST_CONTEXT_BYTES
+        {
             return Err(ControlError::Capacity.into());
         }
         Ok(CapturedConversation {
@@ -240,6 +251,7 @@ impl ControlStore {
             workspace,
             revision: record.revision(),
             inputs,
+            user_context,
             replies,
             sources,
             brief,

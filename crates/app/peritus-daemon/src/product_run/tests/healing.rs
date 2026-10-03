@@ -2,8 +2,7 @@
 
 use super::*;
 use peritus_app_protocol::{
-    ProductActivityKind, ProductInteractionMode, ProductInteractionRequest, ProductRoleModels,
-    ProductRunConversationQuery,
+    ProductActivityKind, ProductInteractionMode, ProductInteractionQuery, ProductRoleModels,
 };
 use peritus_model_protocol::{EventEnvelope, ModelEvent, ProtocolLimits};
 
@@ -57,7 +56,7 @@ fn healed_tool_arguments_keep_schema_validation_and_durable_private_provenance()
             let service =
                 service(state.path(), repository.path(), workspace, [&writer, &reviewer, &fixer]);
             service
-                .interact(ProductInteractionRequest::new(
+                .start_interaction(
                     ProductRunRequest::new(
                         run,
                         workspace,
@@ -71,13 +70,12 @@ fn healed_tool_arguments_keep_schema_validation_and_durable_private_provenance()
                     .unwrap(),
                     ProductInteractionMode::Chat,
                     ProductRoleModels::default(),
-                ))
+                )
                 .await
                 .unwrap();
             let terminal = wait_for_terminal(&service, run).await;
             assert_eq!(terminal.phase(), ProductRunPhase::WaitingForUser, "{}", terminal.summary());
-            let snapshot =
-                service.query_interaction(ProductRunConversationQuery::new(run)).unwrap();
+            let snapshot = service.query_interaction(ProductInteractionQuery::new(run)).unwrap();
             let notice = snapshot
                 .activities()
                 .iter()
@@ -95,12 +93,8 @@ fn healed_tool_arguments_keep_schema_validation_and_durable_private_provenance()
             let requests = writer.requests.lock().unwrap().clone();
             assert!(requests.last().unwrap().messages().iter().flat_map(peritus_model_protocol::Message::content).any(|block| matches!(block, peritus_model_protocol::ContentBlock::ToolResult(result) if result.is_error() == expected_error)));
             assert_eq!(fs::read(repository.path().join("src/lib.rs")).unwrap(), before);
-            let records =
-                super::super::persistence::load_records(&service.inner.directory).unwrap();
-            assert_eq!(
-                records[&run].interaction.as_ref().unwrap().activities,
-                snapshot.activities()
-            );
+            let records = service.load_test_records().unwrap();
+            assert_eq!(records[&run].interaction.activities, snapshot.activities());
             let traces: Vec<_> = fs::read_dir(&service.inner.directory)
                 .unwrap()
                 .map(|entry| entry.unwrap().path())

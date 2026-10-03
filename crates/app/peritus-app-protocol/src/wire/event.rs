@@ -23,7 +23,8 @@ use super::{
         read_backpressure, read_delivery, read_gap, write_backpressure, write_delivery, write_gap,
     },
     terminal::{
-        read_terminal_exit, read_terminal_output, write_terminal_exit, write_terminal_output,
+        read_terminal_binding, read_terminal_exit, read_terminal_output, write_terminal_binding,
+        write_terminal_exit, write_terminal_output,
     },
 };
 
@@ -96,6 +97,10 @@ impl CanonicalEncode for AppEventEnvelope {
                 writer.write_u16(14)?;
                 write_shutdown_complete(writer, value)
             }
+            AppEventPayload::TerminalUnavailable(value) => {
+                writer.write_u16(15)?;
+                write_terminal_binding(writer, *value)
+            }
         }
     }
 }
@@ -142,6 +147,7 @@ pub(super) fn read_event(
         12 => AppEventPayload::Heartbeat(read_heartbeat(reader, limits)?),
         13 => AppEventPayload::ShutdownProgress(read_shutdown_progress(reader, limits)?),
         14 => AppEventPayload::ShutdownComplete(read_shutdown_complete(reader, limits)?),
+        15 => AppEventPayload::TerminalUnavailable(read_terminal_binding(reader)?),
         _ => return unknown(tag_offset),
     };
     if let AppEventPayload::PromptRequested(prompt) = &payload

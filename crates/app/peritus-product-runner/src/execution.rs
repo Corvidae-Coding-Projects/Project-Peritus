@@ -7,7 +7,6 @@ mod checkpoint;
 mod conversation;
 mod cycle;
 mod deadline;
-mod fix_progress;
 mod folder;
 mod obligations;
 mod resume;
@@ -22,7 +21,7 @@ mod types;
 pub use cancellation::check_cancelled;
 pub use checkpoint::CandidateRecorder;
 pub use resume::ProductRunResume;
-pub use turn_result::{AppliedTurn, AppliedWrite};
+pub use turn_result::{AppliedTurn, AppliedWrite, HostTurnEvidence};
 pub use types::{
     ConversationView, ProductDeliveryScope, ProductRunInput, ProductRunOutcome, ProductRunOutput,
     ProductRunPhase, ProductRunQuestion, ProductRunUpdate, ProductRunner, RoleProviders,
@@ -31,11 +30,13 @@ pub use types::{
 
 use peritus_obligations::FailureDisposition;
 use peritus_orchestrator::ProductionDecision;
-use peritus_run_settlement::SettlementCause;
+use peritus_run_settlement::{CandidateStage, SettlementCause};
 
 use crate::{ProductRunnerError, ProductRunnerErrorKind, budget::RunAccounting, review};
-use cycle::{GateInspection, apply_fix, create_design, inspect_gates, retained_inspection};
-use fix_progress::FixProgressObservation;
+use checkpoint::CheckpointEvidence;
+use cycle::{
+    CycleInspection, GateInspection, apply_fix, create_design, inspect_gates, retained_inspection,
+};
 use state::{ExecutionContext, RunState};
 use summary::completion_summary;
 use terminal_exit::ActiveExit;
@@ -111,15 +112,19 @@ impl ProductRunner {
                             &mut state.successful_commands,
                             &applied.successful_commands,
                         );
-                        state.fix_progress.reset(input.checkpoint()?);
                         execution.next_phase = ProductRunPhase::Checking;
                     }
-                    AppliedTurn::Waiting { question, conversation_revision } => {
+                    AppliedTurn::Waiting { question, conversation_revision, host } => {
+                        state.merge_host(&host);
                         return Ok(ActiveExit::waiting(
                             question,
                             conversation_revision,
                             ProductRunPhase::Writing,
                         ));
+                    }
+                    AppliedTurn::Rejected { error, host } => {
+                        state.merge_host(&host);
+                        return Err(error);
                     }
                 }
                 continue;
@@ -140,10 +145,35 @@ impl ProductRunner {
                     execution.evidence = checked.evidence.clone();
                     if checked.conversation_changed {
                         execution.next_phase = ProductRunPhase::Designing;
+                        continue;
+                    }
+                    let checkpoint = execution.recorder.checkpoint()?.ok_or_else(|| {
+                        ProductRunnerError::new(
+                            ProductRunnerErrorKind::InternalInvariant,
+                            "reuse current candidate evidence",
+                            "completed gates did not produce a candidate checkpoint",
+                        )
+                    })?;
+                    let identity = checkpoint.identity();
+                    if checked.gates_satisfied
+                        && checkpoint.obligations().is_current_and_satisfied(identity)
+                        && checkpoint.review().is_current_and_satisfied(identity)
+                    {
+                        let _ = execution.recorder.record(
+                            CandidateStage::Qualified,
+                            state.conversation_revision,
+                            CheckpointEvidence::None,
+                        )?;
+                        CycleInspection {
+                            gates: checked.gates,
+                            evidence: checked.evidence,
+                            conversation_changed: false,
+                            qualification: obligations::QualificationState::new(true, true, true),
+                        }
                     } else {
                         execution.next_phase = ProductRunPhase::Reviewing;
+                        continue;
                     }
-                    continue;
                 }
                 ProductRunPhase::Reviewing => {
                     let checked = GateInspection {
@@ -203,15 +233,6 @@ impl ProductRunner {
                         ));
                     }
                     execution.next_phase = ProductRunPhase::Verifying;
-                    if state.fix_progress.observe(input.checkpoint()?)
-                        == FixProgressObservation::Exhausted
-                    {
-                        return Ok(ActiveExit::stopped(
-                            SettlementCause::Gate,
-                            "two consecutive fixer cycles made no candidate change while exact checks or blocking findings remained".to_owned(),
-                            ProductRunPhase::Fixing,
-                        ));
-                    }
                     continue;
                 }
                 ProductRunPhase::Finalizing => return Ok(ActiveExit::completed()),
@@ -225,21 +246,6 @@ impl ProductRunner {
                     ));
                 }
             };
-            if let Some(finding) = state.fix_progress.observe_findings(&state.findings) {
-                let location = if finding.location.trim().is_empty() {
-                    String::new()
-                } else {
-                    format!(" at {}", finding.location)
-                };
-                return Ok(ActiveExit::stopped(
-                    SettlementCause::Review,
-                    format!(
-                        "blocking review finding remained after two fresh fixer/reviewer cycles: {}{location}",
-                        finding.title,
-                    ),
-                    ProductRunPhase::Fixing,
-                ));
-            }
             let effect_requirement =
                 crate::delivery_requirement::ExternalEffectRequirement::from_task(
                     input.delivery_scope,
@@ -262,7 +268,6 @@ impl ProductRunner {
                         &state.successful_commands,
                     );
                     state.task_summary = completion_summary(
-                        &input.task,
                         &state.task_summary,
                         &state.fix_summaries,
                         &changed_paths,
@@ -284,13 +289,6 @@ impl ProductRunner {
                         ));
                     }
                     execution.next_phase = ProductRunPhase::Fixing;
-                }
-                ProductionDecision::Exhausted => {
-                    return Ok(ActiveExit::stopped(
-                        SettlementCause::Gate,
-                        "exact-target checks or conserved blocking findings remain after the configured fixer cycles".to_owned(),
-                        ProductRunPhase::Fixing,
-                    ));
                 }
             }
         }

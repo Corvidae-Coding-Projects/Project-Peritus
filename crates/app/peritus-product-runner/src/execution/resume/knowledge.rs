@@ -37,7 +37,8 @@ impl RoleKnowledge {
         findings: &str,
         evidence: &str,
     ) -> Result<Self, ProductRunnerError> {
-        let sources = sources(candidate.candidate_digest(), transcript, design, findings)?;
+        let candidate = knowledge_candidate(candidate)?;
+        let sources = sources(candidate.content_digest(), transcript, design, findings)?;
         Ok(Self {
             writer: snapshot(candidate, HarnessRole::Writer, &sources, design, findings, evidence)?,
             reviewer: snapshot(
@@ -59,14 +60,16 @@ impl ProductRunResume {
         current: CandidateIdentity,
         transcript: &str,
     ) -> Result<ProductRunPhase, ProductRunnerError> {
+        let knowledge_identity = knowledge_candidate(current)?;
         let sources = sources(
-            current.candidate_digest(),
+            current.content_digest(),
             transcript,
             &self.design_markdown,
             &self.finding_state,
         )?;
         let change = knowledge_change(self.checkpoint.identity(), &current);
-        let state = CurrentKnowledgeState::new(current, sources, limits()).map_err(invariant)?;
+        let state =
+            CurrentKnowledgeState::new(knowledge_identity, sources, limits()).map_err(invariant)?;
         let request = InvalidationRequest::new(state, change, Vec::new()).map_err(invariant)?;
         let writer = plan_invalidation(&self.knowledge.writer, &request).map_err(invariant)?;
         if !writer.is_reused(section_id(DESIGN_SECTION)?) {
@@ -86,6 +89,21 @@ impl ProductRunResume {
     }
 }
 
+fn knowledge_candidate(
+    candidate: CandidateIdentity,
+) -> Result<CandidateIdentity, ProductRunnerError> {
+    CandidateIdentity::new(
+        candidate.run_id(),
+        candidate.workspace_id(),
+        candidate.content_digest(),
+        candidate.content_digest(),
+        None,
+        candidate.requirements_revision(),
+        candidate.checkpoint_sequence(),
+    )
+    .map_err(invariant)
+}
+
 fn snapshot(
     candidate: CandidateIdentity,
     role: HarnessRole,
@@ -97,7 +115,7 @@ fn snapshot(
     let inventory = section(
         INVENTORY_SECTION,
         KnowledgeSectionKind::RepositoryInventory,
-        candidate.candidate_digest(),
+        candidate.content_digest(),
         candidate,
         role,
         vec![sources[0]],
@@ -108,7 +126,7 @@ fn snapshot(
         KnowledgeSectionKind::RelevantFileMap,
         digest_pair(
             b"file-map",
-            candidate.candidate_digest().as_bytes(),
+            candidate.content_digest().as_bytes(),
             sources[1].content_digest().as_bytes(),
         ),
         candidate,
@@ -195,9 +213,9 @@ fn sources(
 }
 
 fn knowledge_change(previous: &CandidateIdentity, current: &CandidateIdentity) -> KnowledgeChange {
-    if previous.conversation_revision() != current.conversation_revision() {
+    if previous.requirements_revision() != current.requirements_revision() {
         KnowledgeChange::ConversationRevision
-    } else if !previous.same_candidate(current) {
+    } else if previous.content_digest() != current.content_digest() {
         KnowledgeChange::CandidateRevision
     } else {
         KnowledgeChange::ProviderFailure

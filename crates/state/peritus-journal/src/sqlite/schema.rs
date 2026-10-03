@@ -1,6 +1,6 @@
 //! Complete initial release schema. Unshipped development revisions are not migration targets.
 
-pub(super) const SCHEMA_VERSION: i64 = 1;
+pub(super) const SCHEMA_VERSION: i64 = 2;
 
 pub(super) const INSTALL_SCHEMA: &str = r"
 CREATE TABLE IF NOT EXISTS store_meta (
@@ -175,7 +175,7 @@ CREATE TABLE IF NOT EXISTS app_prompt_targets (
 CREATE INDEX IF NOT EXISTS app_prompt_targets_state ON app_prompt_targets(state, prompt_id);
 CREATE TABLE IF NOT EXISTS app_artifacts (
     artifact_id BLOB PRIMARY KEY CHECK (length(artifact_id) = 16),
-    digest BLOB NOT NULL UNIQUE CHECK (length(digest) = 32),
+    digest BLOB NOT NULL CHECK (length(digest) = 32),
     byte_size INTEGER NOT NULL CHECK (byte_size >= 0),
     media_type TEXT NOT NULL CHECK (length(media_type) BETWEEN 1 AND 255),
     state INTEGER NOT NULL CHECK (state BETWEEN 1 AND 3),

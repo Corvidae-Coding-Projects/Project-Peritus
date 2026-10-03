@@ -4,8 +4,7 @@ use crate::model::{AppModel, format_digest, format_id};
 use ratatui::{
     Frame,
     layout::{Constraint, Layout, Rect},
-    text::Line,
-    widgets::{Block, Borders, Paragraph, Wrap},
+    widgets::{Block, Borders, Paragraph},
 };
 
 mod page;
@@ -26,65 +25,14 @@ pub(super) fn draw(frame: &mut Frame<'_>, area: Rect, model: &AppModel) {
         );
         return;
     }
-    let mut lines = vec![Line::from("Explicit local import · no filesystem authority granted")];
-    if let Some(preview) = &image.preview {
-        let metadata = preview.image();
-        let provider = model.product.as_ref().and_then(|product| {
-            product
-                .launch
-                .providers()
-                .iter()
-                .find(|option| option.profile_id() == preview.request().provider())
-        });
-        lines.extend([
-            Line::from(format!("Image: {}", preview.request().label().as_str())),
-            Line::from(format!(
-                "{} · {} bytes · {}×{} · {} frame(s)",
-                metadata.format().media_type(),
-                metadata.bytes(),
-                metadata.dimensions().0,
-                metadata.dimensions().1,
-                metadata.frames()
-            )),
-            Line::from(format!("SHA-256 {}", format_digest(metadata.digest().as_bytes()))),
-            Line::from(format!(
-                "Provider: {} · revision {}",
-                provider.map_or("Selected profile", crate::runtime::ProductProviderOption::label),
-                preview.provider_revision()
-            )),
-            Line::from(format!("Profile {}", format_id(preview.request().provider().as_bytes()))),
-            Line::from(format!(
-                "Model: {} · {:?}",
-                preview.resolved_model(),
-                preview.request().model().effort()
-            )),
-            Line::from(format!("Conversation revision {}", preview.request().revision())),
-            Line::from(
-                "Confirm adds these immutable bytes to eligible context. No inference starts here.",
-            ),
-        ]);
-    } else {
-        lines.push(Line::from("No confirmed preview. Choose a path (i), then read/preview (p)."));
-    }
-    lines.extend([
-        Line::from(format!("Local source: {}", image.path)),
-        Line::from(format!(
-            "Caption: {}",
-            if image.caption.is_empty() { "(required; press t)" } else { &image.caption }
-        )),
-        Line::from(panel.message.clone()),
-        Line::from("l retained images · x discard preview · r refresh · PgUp/PgDn scroll"),
-        Line::from("PNG/JPEG/GIF/WebP · at most 4 MiB · no truncation or clipboard scanning"),
-        Line::from(
-            "Absolute external paths are imported only as this snapshot. Relative/.. paths reject.",
-        ),
-    ]);
-    let paragraph = Paragraph::new(lines)
-        .wrap(Wrap { trim: false })
-        .block(Block::default().borders(Borders::ALL).title(" Attach image · preview / consent "))
-        .scroll((u16::try_from(panel.scroll).unwrap_or(u16::MAX), 0));
-    frame.render_widget(paragraph, sections[0]);
-    frame.render_widget(Paragraph::new("Esc back · i file · t text · p view · c OK"), sections[1]);
+    super::inspector::draw(
+        frame,
+        area,
+        model,
+        content(model),
+        " Attach image · preview / consent ",
+        "Esc back · i file · t text · p view · c OK · Home/End",
+    );
 }
 
 pub(super) fn draw_editor(
@@ -109,4 +57,66 @@ pub(super) fn draw_editor(
             area.y + 1 + u16::try_from(layout.row - offset).unwrap_or(0).min(area.height - 3),
         ));
     }
+}
+
+pub(super) fn content(model: &AppModel) -> Vec<String> {
+    let panel = &model.chat.workbench;
+    let image = &panel.images;
+    if image.list {
+        return page::content(model);
+    }
+    let mut lines = vec![String::from("Explicit local import · no filesystem authority granted")];
+    if let Some(preview) = &image.preview {
+        let metadata = preview.image();
+        let provider = model.product.as_ref().and_then(|product| {
+            product
+                .launch
+                .providers()
+                .iter()
+                .find(|option| option.profile_id() == preview.request().provider())
+        });
+        lines.extend([
+            format!("Image: {}", preview.request().label().as_str()),
+            format!(
+                "{} · {} bytes · {}×{} · {} frame(s)",
+                metadata.format().media_type(),
+                metadata.bytes(),
+                metadata.dimensions().0,
+                metadata.dimensions().1,
+                metadata.frames()
+            ),
+            format!("SHA-256 {}", format_digest(metadata.digest().as_bytes())),
+            format!(
+                "Provider: {} · revision {}",
+                provider.map_or("Selected profile", crate::runtime::ProductProviderOption::label),
+                preview.provider_revision()
+            ),
+            format!("Profile {}", format_id(preview.request().provider().as_bytes())),
+            format!(
+                "Model: {} · {:?}",
+                preview.resolved_model(),
+                preview.request().model().effort()
+            ),
+            format!("Conversation revision {}", preview.request().revision()),
+            String::from(
+                "Confirm adds these immutable bytes to eligible context. No inference starts here.",
+            ),
+        ]);
+    } else {
+        lines.push(String::from("No confirmed preview. Choose a path (i), then read/preview (p)."));
+    }
+    lines.extend([
+        format!("Local source: {}", image.path),
+        format!(
+            "Caption: {}",
+            if image.caption.is_empty() { "(required; press t)" } else { &image.caption }
+        ),
+        panel.message.clone(),
+        String::from("l retained images · x discard preview · r refresh · PgUp/PgDn scroll"),
+        String::from("PNG/JPEG/GIF/WebP · at most 4 MiB · no truncation or clipboard scanning"),
+        String::from(
+            "Absolute external paths are imported only as this snapshot. Relative/.. paths reject.",
+        ),
+    ]);
+    lines
 }

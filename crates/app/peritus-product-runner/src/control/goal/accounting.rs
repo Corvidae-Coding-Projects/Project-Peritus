@@ -1,102 +1,7 @@
-//! Goal budget, usage, admission, and settlement value types.
+//! Goal usage, admission, and settlement value types.
 
 use serde::Deserialize;
 use serde::Serialize;
-
-use crate::{
-    PRODUCT_RUN_MAX_ELAPSED, PRODUCT_RUN_MAX_MODEL_REQUESTS, PRODUCT_RUN_MAX_TOOL_CALLS,
-    PRODUCT_RUN_MAX_TOTAL_TOKENS, control::ControlError,
-};
-
-/// Optional user limits. Effective limits are capped by existing host hard ceilings.
-#[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct GoalBudget {
-    #[serde(rename = "max_active_millis")]
-    pub(super) active_millis: Option<u64>,
-    #[serde(rename = "max_requests")]
-    pub(super) requests: Option<u32>,
-    #[serde(rename = "max_tool_calls")]
-    pub(super) tool_calls: Option<u32>,
-    #[serde(rename = "max_total_tokens")]
-    pub(super) total_tokens: Option<u64>,
-}
-
-impl GoalBudget {
-    /// Constructs checked user limits without claiming a guaranteed monetary cap.
-    ///
-    /// # Errors
-    /// Rejects zero values or limits wider than the installed host ceilings.
-    pub fn new(
-        max_active_millis: Option<u64>,
-        max_requests: Option<u32>,
-        max_tool_calls: Option<u32>,
-        max_total_tokens: Option<u64>,
-    ) -> Result<Self, ControlError> {
-        let hard_millis = u64::try_from(PRODUCT_RUN_MAX_ELAPSED.as_millis()).unwrap_or(u64::MAX);
-        if max_active_millis.is_some_and(|value| value == 0 || value > hard_millis)
-            || max_requests
-                .is_some_and(|value| value == 0 || value > PRODUCT_RUN_MAX_MODEL_REQUESTS)
-            || max_tool_calls.is_some_and(|value| value == 0 || value > PRODUCT_RUN_MAX_TOOL_CALLS)
-            || max_total_tokens
-                .is_some_and(|value| value == 0 || value > PRODUCT_RUN_MAX_TOTAL_TOKENS)
-        {
-            return Err(ControlError::InvalidInput);
-        }
-        Ok(Self {
-            active_millis: max_active_millis,
-            requests: max_requests,
-            tool_calls: max_tool_calls,
-            total_tokens: max_total_tokens,
-        })
-    }
-
-    /// User-selected active execution time limit.
-    #[must_use]
-    pub const fn max_active_millis(self) -> Option<u64> {
-        self.active_millis
-    }
-    /// User-selected admitted provider-request limit.
-    #[must_use]
-    pub const fn max_requests(self) -> Option<u32> {
-        self.requests
-    }
-    /// User-selected admitted tool-call limit.
-    #[must_use]
-    pub const fn max_tool_calls(self) -> Option<u32> {
-        self.tool_calls
-    }
-    /// Best-effort stop threshold over normalized reported/derived token usage.
-    #[must_use]
-    pub const fn max_total_tokens(self) -> Option<u64> {
-        self.total_tokens
-    }
-
-    pub(super) const fn effective_active_millis(self) -> u64 {
-        match self.active_millis {
-            Some(value) => value,
-            None => u64::MAX,
-        }
-    }
-    pub(super) const fn effective_requests(self) -> u32 {
-        match self.requests {
-            Some(value) => value,
-            None => PRODUCT_RUN_MAX_MODEL_REQUESTS,
-        }
-    }
-    pub(super) const fn effective_tools(self) -> u32 {
-        match self.tool_calls {
-            Some(value) => value,
-            None => PRODUCT_RUN_MAX_TOOL_CALLS,
-        }
-    }
-    pub(super) const fn effective_tokens(self) -> u64 {
-        match self.total_tokens {
-            Some(value) => value,
-            None => PRODUCT_RUN_MAX_TOTAL_TOKENS,
-        }
-    }
-}
 
 /// Provider usage attached to one completed reserved request. `None` remains unavailable.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
@@ -302,8 +207,6 @@ pub enum GoalAdmission {
     Accepted,
     /// A durable pause/cancel state prevents the operation.
     Paused,
-    /// A cumulative hard or user limit prevents the operation.
-    BudgetReached,
     /// The goal is waiting, blocked, achieved, cancelled, or otherwise not runnable.
     Inactive,
 }

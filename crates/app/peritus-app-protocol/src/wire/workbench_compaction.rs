@@ -2,9 +2,8 @@
 
 use super::primitive::{invalid, read_digest, read_id, write_digest, write_id};
 use crate::{
-    MAX_WORKBENCH_COMPACTION_ENTRIES, MAX_WORKBENCH_COMPACTION_FOCUS_BYTES,
-    WorkbenchCompactionEntry, WorkbenchCompactionFocus, WorkbenchCompactionPreview,
-    WorkbenchCompactionRequest, WorkbenchInvocationId,
+    MAX_WORKBENCH_COMPACTION_FOCUS_BYTES, WorkbenchCompactionEntry, WorkbenchCompactionFocus,
+    WorkbenchCompactionPreview, WorkbenchCompactionRequest, WorkbenchInvocationId,
 };
 use peritus_codec::{CanonicalReader, CanonicalWriter, CodecError, CodecErrorKind};
 
@@ -74,9 +73,6 @@ pub(super) fn read_preview(
     let unresolved_preserved = reader.read_u32()?;
     let unsavable_preserved = reader.read_u32()?;
     let count = usize::from(reader.read_u16()?);
-    if count > MAX_WORKBENCH_COMPACTION_ENTRIES {
-        return Err(CodecError::at(CodecErrorKind::LimitExceeded, offset));
-    }
     let mut entries = Vec::with_capacity(count);
     for _ in 0..count {
         entries.push(invalid(

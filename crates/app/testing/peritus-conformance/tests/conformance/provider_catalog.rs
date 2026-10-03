@@ -21,6 +21,7 @@ enum Behavior {
     CapabilityLie,
     RetryAmbiguous,
     FinalResultOnly,
+    Unavailable,
 }
 
 struct ReferenceProvider {
@@ -32,6 +33,9 @@ impl ProviderConformanceSubject for ReferenceProvider {
         &mut self,
         fixture: &ProviderConformanceFixture,
     ) -> Result<ProviderConformanceObservation, ProviderConformanceError> {
+        if matches!(self.behavior, Behavior::Unavailable) {
+            return Err(ProviderConformanceError::Infrastructure);
+        }
         Ok(match fixture.scenario() {
             ProviderScenario::CapabilityHonesty => capabilities(self.behavior),
             ProviderScenario::OrderedDeduplication => ordered_stream(self.behavior),
@@ -291,4 +295,17 @@ fn provider_catalog_accepts_explicit_final_result_ordering_without_synthetic_dup
     let factory = Factory::new(Behavior::FinalResultOnly);
     let report = block_on(ConformanceRunner::run(&provider_suite::<ReferenceProvider>(), &factory));
     assert_eq!(report.status(), SuiteStatus::Passed, "{report:?}");
+}
+
+#[test]
+fn unavailable_provider_probes_report_infrastructure_without_claiming_contract_violations() {
+    let factory = Factory::new(Behavior::Unavailable);
+    let report = block_on(ConformanceRunner::run(&provider_suite::<ReferenceProvider>(), &factory));
+    assert_eq!(report.status(), SuiteStatus::Failed);
+    assert!(!report.is_conformant());
+    assert_eq!(report.summary().infrastructure_failure_cases(), 14);
+    assert_eq!(report.summary().contract_violation_cases(), 0);
+    assert!(report.cases().iter().all(|case| case.observations().is_empty()));
+    let counts = *factory.counts.lock().expect("counts lock");
+    assert_eq!((counts.created, counts.torn_down), (14, 14));
 }

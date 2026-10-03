@@ -8,7 +8,7 @@ use std::path::Path;
 use peritus_app_protocol::{
     AppMessage, AppProtocolLimits, AppRequestPayload, AppResponsePayload, ClientHello,
     CommandDisposition, EventCursor, ProtocolId, ShutdownRequest, SubscriptionFilter,
-    SubscriptionId, SubscriptionRequest, VersionRange,
+    SubscriptionId, SubscriptionRequest,
 };
 use peritus_codec::{CodecLimits, HEADER_LEN};
 use peritus_conformance::{
@@ -180,7 +180,7 @@ pub(super) fn bounds(
     let limits = constrained_limits()?;
     let hello = ClientHello::new(
         ProtocolId::new([198; 16]).map_err(super::debug_error)?,
-        vec![VersionRange::new(1, 0, 0).map_err(super::debug_error)?],
+        vec![peritus_app_protocol::CURRENT_PROTOCOL_RANGE],
         Vec::new(),
         Vec::new(),
         limits,

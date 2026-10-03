@@ -137,7 +137,7 @@ fn dependency_order_hold_withdraw_and_incorporation_reject_invalid_plans_without
 }
 
 #[test]
-fn malformed_import_and_capacity_fail_closed() {
+fn malformed_import_fails_closed_and_history_grows_past_old_capacity() {
     let ledger = enqueue(&InputLedger::default(), 1, Vec::new());
     let mut malformed = serde_json::to_value(&ledger).expect("serialize");
     malformed["revisions"][0]["selection"]["revision"] = serde_json::Value::from(0_u64);
@@ -158,18 +158,40 @@ fn malformed_import_and_capacity_fail_closed() {
         )
         .expect("within total bytes");
     }
-    assert_eq!(
-        apply(
-            &full,
-            &QueueIntent::Enqueue {
-                id: id(65),
-                text: text("one more byte"),
-                dependencies: Vec::new()
-            }
-        ),
-        Err(ControlError::Capacity)
-    );
+    let grown = apply(
+        &full,
+        &QueueIntent::Enqueue { id: id(65), text: text("one more byte"), dependencies: Vec::new() },
+    )
+    .expect("history grows beyond the former byte and item totals");
+    assert_eq!(grown.revisions().len(), 65);
+    assert_eq!(grown.capture().expect("wire-representable context").pending().len(), 65);
     assert_eq!(full.revisions().len(), 64);
+}
+
+#[test]
+fn request_capture_obeys_the_wire_text_resource_bound_without_consuming_inputs() {
+    let count = crate::control::MAX_REQUEST_CONTEXT_BYTES / 8192;
+    let mut ledger = InputLedger::default();
+    for index in 1..=count {
+        let id = InputId::new((index as u128).to_be_bytes()).expect("unique input");
+        ledger.order.push(id);
+        ledger.revisions.push(InputRevision {
+            selection: InputSelection::new(id, 1).expect("selection"),
+            author: [21; 16],
+            text: ControlText::new("x".repeat(8192)).expect("bounded text"),
+            dependencies: Vec::new(),
+            state: InputState::Queued,
+            correction_of: None,
+            invocation: None,
+        });
+    }
+    ledger.generation = 1;
+    ledger.validate().expect("valid durable history");
+
+    assert_eq!(ledger.capture(), Err(ControlError::Capacity));
+    assert_eq!(ledger.revisions().len(), count);
+    assert_eq!(ledger.order().len(), count);
+    assert!(ledger.revisions().iter().all(|input| input.state() == InputState::Queued));
 }
 
 #[test]

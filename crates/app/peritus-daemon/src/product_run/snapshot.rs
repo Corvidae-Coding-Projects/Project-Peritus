@@ -3,17 +3,48 @@
 use std::collections::BTreeMap;
 
 use peritus_app_protocol::{
-    AppResponsePayload, ProductRunPhase, ProductRunRequest, ProductRunSettlementSnapshot,
+    AppResponsePayload, ProductRunObservation, ProductRunPhase, ProductRunSettlementSnapshot,
     ProductRunSnapshot,
 };
 use peritus_types::{RunId, WorkspaceId};
 
-use super::{ProductRunServiceError, RunRecord};
+use super::{ProductRunRequest, ProductRunServiceError, RunRecord};
+
+impl super::ProductRunService {
+    pub(crate) fn query_observations(
+        &self,
+        query: peritus_app_protocol::ProductRunQuery,
+    ) -> Result<Vec<ProductRunObservation>, ProductRunServiceError> {
+        let records = self.inner.records.read().map_err(|_| ProductRunServiceError::Unavailable)?;
+        if let Some(run) = query.run_id() {
+            return records
+                .get(&run)
+                .map(|record| observation(&self.inner.directory, record))
+                .transpose()
+                .map(|value| value.into_iter().collect());
+        }
+        super::recent_records(&records, query.offset())
+            .into_iter()
+            .take(peritus_app_protocol::MAX_PRODUCT_RUN_PAGE)
+            .map(|record| observation(&self.inner.directory, record))
+            .collect()
+    }
+}
+
+fn observation(
+    directory: &std::path::Path,
+    record: &RunRecord,
+) -> Result<ProductRunObservation, ProductRunServiceError> {
+    ProductRunObservation::new(live_snapshot(directory, record)?, delivery_settlement(record))
+        .map_err(|_| ProductRunServiceError::InvalidState)
+}
 
 pub(super) fn project_snapshot(
+    directory: &std::path::Path,
     record: &RunRecord,
     snapshot: ProductRunSnapshot,
 ) -> Result<AppResponsePayload, ProductRunServiceError> {
+    let snapshot = snapshot.with_operation(super::operation::project(directory, record)?);
     match delivery_settlement(record) {
         Some(settlement) => ProductRunSettlementSnapshot::new(snapshot, settlement)
             .map(AppResponsePayload::ProductRunSettled)
@@ -22,31 +53,8 @@ pub(super) fn project_snapshot(
     }
 }
 
-pub(super) fn project_collection(
-    records: &BTreeMap<RunId, RunRecord>,
-    snapshots: Vec<ProductRunSnapshot>,
-) -> Result<AppResponsePayload, ProductRunServiceError> {
-    let settled = snapshots
-        .iter()
-        .map(|snapshot| {
-            records
-                .get(&snapshot.run_id())
-                .and_then(delivery_settlement)
-                .map(|settlement| ProductRunSettlementSnapshot::new(snapshot.clone(), settlement))
-                .transpose()
-        })
-        .collect::<Result<Vec<_>, _>>()
-        .map_err(|_| ProductRunServiceError::InvalidState)?;
-    if settled.iter().all(Option::is_some) {
-        Ok(AppResponsePayload::ProductRunSettlements(settled.into_iter().flatten().collect()))
-    } else {
-        Ok(AppResponsePayload::ProductRuns(snapshots))
-    }
-}
-
-/// The legacy settlement wire shape requires a managed deliverable for every checkpoint.
-/// In-place execution retains that checkpoint internally but publishes its phase and evidence
-/// through the ordinary snapshot, without inventing a Git handoff or changing the wire contract.
+/// Managed candidates expose their exact settlement with the corresponding handoff snapshot.
+/// In-place execution retains its checkpoint internally without inventing a Git handoff.
 pub(super) fn delivery_settlement(
     record: &RunRecord,
 ) -> Option<peritus_run_settlement::RunSettlement> {
@@ -56,21 +64,57 @@ pub(super) fn delivery_settlement(
 }
 
 pub(super) fn live_snapshot(
+    directory: &std::path::Path,
     record: &RunRecord,
 ) -> Result<ProductRunSnapshot, ProductRunServiceError> {
-    if record.snapshot.phase().terminal() {
-        return Ok(record.snapshot.clone());
-    }
-    replace_snapshot(
-        &record.snapshot,
-        record.snapshot.phase(),
-        &record.progress.live_status(record.snapshot.status()),
-        record.snapshot.summary(),
-    )
+    let snapshot = if record.snapshot.phase().terminal() {
+        record.snapshot.clone()
+    } else {
+        replace_snapshot(
+            &record.snapshot,
+            record.snapshot.phase(),
+            &record.progress.live_status(record.snapshot.status()),
+            record.snapshot.summary(),
+        )?
+    };
+    Ok(snapshot.with_operation(super::operation::project(directory, record)?))
 }
 
 pub(super) fn initial_snapshot(
     request: &ProductRunRequest,
+) -> Result<ProductRunSnapshot, ProductRunServiceError> {
+    queued_snapshot(request, "Queued to inspect the workspace and prepare the design")
+}
+
+pub(super) fn retry_snapshot(
+    request: &ProductRunRequest,
+    resume: Option<&peritus_product_runner::ProductRunResume>,
+) -> Result<ProductRunSnapshot, ProductRunServiceError> {
+    let status = match resume.map(peritus_product_runner::ProductRunResume::next_phase) {
+        Some(peritus_product_runner::ProductRunPhase::Designing) => {
+            "Queued to refresh the design for the current request"
+        }
+        Some(peritus_product_runner::ProductRunPhase::Writing) => "Queued to resume implementation",
+        Some(peritus_product_runner::ProductRunPhase::Checking) => {
+            "Queued to reacquire stale checks"
+        }
+        Some(peritus_product_runner::ProductRunPhase::Reviewing) => {
+            "Queued to reacquire independent review"
+        }
+        Some(peritus_product_runner::ProductRunPhase::Fixing) => "Queued to resume fixes",
+        Some(
+            peritus_product_runner::ProductRunPhase::Verifying
+            | peritus_product_runner::ProductRunPhase::Finalizing
+            | peritus_product_runner::ProductRunPhase::Complete,
+        ) => "Queued to refresh terminal evidence",
+        None => "Queued to inspect the workspace and prepare a fresh design",
+    };
+    queued_snapshot(request, status)
+}
+
+fn queued_snapshot(
+    request: &ProductRunRequest,
+    status: &str,
 ) -> Result<ProductRunSnapshot, ProductRunServiceError> {
     ProductRunSnapshot::new(
         request.run_id(),
@@ -78,12 +122,13 @@ pub(super) fn initial_snapshot(
         request.providers(),
         ProductRunPhase::Queued,
         1,
-        request.task().to_owned(),
-        "Queued for the writer".to_owned(),
+        request.display_task().to_owned(),
+        status.to_owned(),
         String::new(),
         String::new(),
         String::new(),
         String::new(),
+        super::operation::retained_execution(request.run_id(), ProductRunPhase::Queued, "")?,
     )
     .map_err(|_| ProductRunServiceError::InvalidMessage)
 }
@@ -106,6 +151,11 @@ pub(super) fn replace_snapshot(
         current.gates().to_owned(),
         current.review().to_owned(),
         summary.to_owned(),
+        super::operation::retained_execution(
+            current.run_id(),
+            phase,
+            current.operation().uncertainty(),
+        )?,
     )
     .map_err(|_| ProductRunServiceError::InvalidMessage)?;
     Ok(match current.deliverable().cloned() {
@@ -128,6 +178,7 @@ pub(super) fn workspace_has_active_run(
             ProductRunPhase::Complete
                 | ProductRunPhase::Failed
                 | ProductRunPhase::Cancelled
+                | ProductRunPhase::WaitingForUser
                 | ProductRunPhase::RecoveryRequired
         );
         let pending_handoff = record.snapshot.phase() == ProductRunPhase::Complete

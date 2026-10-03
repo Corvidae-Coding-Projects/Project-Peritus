@@ -1,10 +1,9 @@
 //! Bounded launch results with independently classified evidence.
 
 use super::{
-    MAX_WORKBENCH_ARTIFACT_FEEDBACK, MAX_WORKBENCH_CAPTURES, MAX_WORKBENCH_INTERACTIONS,
-    MAX_WORKBENCH_LAUNCHES, WorkbenchArtifactFeedback, WorkbenchCaptureCapability,
-    WorkbenchCaptureReceipt, WorkbenchCaptureState, WorkbenchInteractionReceipt,
-    WorkbenchLaunchProfile, WorkbenchLaunchState, WorkbenchResultQuery, invalid,
+    WorkbenchArtifactFeedback, WorkbenchCaptureCapability, WorkbenchCaptureReceipt,
+    WorkbenchCaptureState, WorkbenchInteractionReceipt, WorkbenchLaunchProfile,
+    WorkbenchLaunchState, WorkbenchResultQuery, invalid,
 };
 use crate::{AppProtocolError, ControlOperationId};
 use peritus_types::{ProcessId, Sha256Digest};
@@ -26,10 +25,10 @@ pub struct WorkbenchLaunchResult {
 }
 
 impl WorkbenchLaunchResult {
-    /// Validates bounded evidence collections and process/state consistency.
+    /// Validates wire-representable evidence collections and process/state consistency.
     ///
     /// # Errors
-    /// Rejects excessive collections or a running state without an exact process identity.
+    /// Rejects unrepresentable collections or a running state without an exact process identity.
     #[allow(clippy::too_many_arguments, reason = "independent result evidence remains explicit")]
     pub fn new(
         launch: ControlOperationId,
@@ -44,9 +43,9 @@ impl WorkbenchLaunchResult {
         stdout_digest: Option<Sha256Digest>,
         exit_code: Option<u32>,
     ) -> Result<Self, AppProtocolError> {
-        if interactions.len() > MAX_WORKBENCH_INTERACTIONS
-            || captures.len() > MAX_WORKBENCH_CAPTURES
-            || feedback.len() > MAX_WORKBENCH_ARTIFACT_FEEDBACK
+        if u16::try_from(interactions.len()).is_err()
+            || u16::try_from(captures.len()).is_err()
+            || u16::try_from(feedback.len()).is_err()
             || matches!(state, WorkbenchLaunchState::Running) && process.is_none()
         {
             return Err(invalid());
@@ -176,7 +175,7 @@ impl WorkbenchResultEvidence {
     }
 }
 
-/// Complete bounded result-panel snapshot. Opening it has no execution effect.
+/// Complete result-panel snapshot. Opening it has no execution effect.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct WorkbenchResultPage {
     query: WorkbenchResultQuery,
@@ -187,10 +186,10 @@ pub struct WorkbenchResultPage {
 }
 
 impl WorkbenchResultPage {
-    /// Creates a bounded result page.
+    /// Creates a wire-representable result page.
     ///
     /// # Errors
-    /// Rejects absent control state or excessive launch rows.
+    /// Rejects absent control state or an unrepresentable launch collection.
     pub fn new(
         query: WorkbenchResultQuery,
         control_revision: u64,
@@ -198,7 +197,7 @@ impl WorkbenchResultPage {
         capability: WorkbenchCaptureCapability,
         launches: Vec<WorkbenchLaunchResult>,
     ) -> Result<Self, AppProtocolError> {
-        if control_revision == 0 || launches.len() > MAX_WORKBENCH_LAUNCHES {
+        if control_revision == 0 || u16::try_from(launches.len()).is_err() {
             return Err(invalid());
         }
         Ok(Self { query, control_revision, result_revision, capability, launches })

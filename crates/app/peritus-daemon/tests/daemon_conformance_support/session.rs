@@ -224,7 +224,7 @@ pub(super) fn stale_revision() -> io::Result<DaemonConformanceObservation> {
 pub(super) fn fresh_hello(seed: u8) -> ClientHello {
     ClientHello::new(
         ProtocolId::new([seed; 16]).expect("nonzero protocol identity"),
-        vec![VersionRange::new(1, 0, 0).expect("supported protocol version")],
+        vec![peritus_app_protocol::CURRENT_PROTOCOL_RANGE],
         Vec::new(),
         Vec::new(),
         AppProtocolLimits::PRODUCTION,
@@ -237,7 +237,7 @@ pub(super) fn resume_hello(seed: u8, session: SessionId) -> ClientHello {
     ClientHello::new_with_session(
         ProtocolId::new([seed; 16]).expect("nonzero protocol identity"),
         Some(session),
-        vec![VersionRange::new(1, 0, 0).expect("supported protocol version")],
+        vec![peritus_app_protocol::CURRENT_PROTOCOL_RANGE],
         Vec::new(),
         Vec::new(),
         AppProtocolLimits::PRODUCTION,
@@ -249,7 +249,7 @@ pub(super) fn resume_hello(seed: u8, session: SessionId) -> ClientHello {
 fn incompatible_hello(seed: u8) -> ClientHello {
     ClientHello::new(
         ProtocolId::new([seed; 16]).expect("nonzero protocol identity"),
-        vec![VersionRange::new(2, 0, 0).expect("unsupported protocol version")],
+        vec![VersionRange::new(1, 0, 0).expect("retired protocol version")],
         Vec::new(),
         Vec::new(),
         AppProtocolLimits::PRODUCTION,

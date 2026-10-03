@@ -4,11 +4,10 @@ use super::primitive::{invalid, read_id, unknown, write_id};
 use crate::{
     ControlOperationId, ConversationId, ConversationLibraryItem, ConversationLibraryPage,
     ConversationLibraryQuery, ConversationMessageSource, ConversationSearchSnippet,
-    ConversationSearchText, WorkbenchBranchLineage, WorkbenchForkBudget, WorkbenchForkMode,
-    WorkbenchForkRequest,
+    ConversationSearchText, WorkbenchBranchLineage, WorkbenchForkMode, WorkbenchForkRequest,
 };
 use peritus_codec::{CanonicalReader, CanonicalWriter, CodecError, CodecErrorKind};
-use peritus_types::{RunId, WorkspaceId};
+use peritus_types::WorkspaceId;
 
 pub(super) fn write_query(
     w: &mut CanonicalWriter,
@@ -63,10 +62,6 @@ pub(super) fn write_fork(
     w.write_u64(value.brief_revision())?;
     w.write_u64(value.goal_revision())?;
     write_mode(w, value.mode())?;
-    w.write_bool(value.allocation().is_some())?;
-    if let Some(allocation) = value.allocation() {
-        write_budget(w, allocation)?;
-    }
     Ok(())
 }
 
@@ -80,7 +75,6 @@ pub(super) fn read_fork(r: &mut CanonicalReader<'_>) -> Result<WorkbenchForkRequ
     let brief_revision = r.read_u64()?;
     let goal_revision = r.read_u64()?;
     let mode = read_mode(r)?;
-    let allocation = if r.read_bool()? { Some(read_budget(r)?) } else { None };
     invalid(
         offset,
         WorkbenchForkRequest::new(
@@ -92,7 +86,6 @@ pub(super) fn read_fork(r: &mut CanonicalReader<'_>) -> Result<WorkbenchForkRequ
             brief_revision,
             goal_revision,
             mode,
-            allocation,
         ),
     )
 }
@@ -141,10 +134,6 @@ fn write_item(w: &mut CanonicalWriter, value: &ConversationLibraryItem) -> Resul
     w.write_bool(value.pinned())?;
     w.write_bool(value.archived())?;
     w.write_u64(value.activity_revision())?;
-    w.write_bool(value.legacy_run().is_some())?;
-    if let Some(run) = value.legacy_run() {
-        write_id(w, run.as_bytes())?;
-    }
     w.write_bool(value.goal_state().is_some())?;
     if let Some(state) = value.goal_state() {
         super::workbench_goal::write_state(w, state)?;
@@ -169,7 +158,6 @@ fn read_item(r: &mut CanonicalReader<'_>) -> Result<ConversationLibraryItem, Cod
     let pinned = r.read_bool()?;
     let archived = r.read_bool()?;
     let activity_revision = r.read_u64()?;
-    let legacy_run = if r.read_bool()? { Some(read_id(r, RunId::new)?) } else { None };
     let goal_state =
         if r.read_bool()? { Some(super::workbench_goal::read_state(r)?) } else { None };
     let goal_draft = r.read_bool()?;
@@ -188,7 +176,6 @@ fn read_item(r: &mut CanonicalReader<'_>) -> Result<ConversationLibraryItem, Cod
             pinned,
             archived,
             activity_revision,
-            legacy_run,
             goal_state,
             goal_draft,
             handoff,
@@ -214,11 +201,6 @@ fn write_snippet(
             write_id(w, conversation.as_bytes())?;
             write_id(w, operation.as_bytes())?;
         }
-        ConversationMessageSource::Legacy { run, index } => {
-            w.write_u16(3)?;
-            write_id(w, run.as_bytes())?;
-            w.write_u32(index)?;
-        }
     }
     w.write_str(value.text())
 }
@@ -235,9 +217,6 @@ fn read_snippet(r: &mut CanonicalReader<'_>) -> Result<ConversationSearchSnippet
             conversation: read_id(r, ConversationId::new)?,
             operation: read_id(r, ControlOperationId::new)?,
         },
-        3 => {
-            ConversationMessageSource::Legacy { run: read_id(r, RunId::new)?, index: r.read_u32()? }
-        }
         _ => return unknown(offset),
     };
     let text_offset = r.offset();
@@ -259,10 +238,6 @@ fn write_lineage(
     w.write_u64(value.brief_revision())?;
     w.write_u64(value.goal_revision())?;
     write_mode(w, value.mode())?;
-    w.write_bool(value.allocation().is_some())?;
-    if let Some(allocation) = value.allocation() {
-        write_budget(w, allocation)?;
-    }
     Ok(())
 }
 
@@ -274,7 +249,6 @@ fn read_lineage(r: &mut CanonicalReader<'_>) -> Result<WorkbenchBranchLineage, C
     let brief_revision = r.read_u64()?;
     let goal_revision = r.read_u64()?;
     let mode = read_mode(r)?;
-    let allocation = if r.read_bool()? { Some(read_budget(r)?) } else { None };
     Ok(WorkbenchBranchLineage::new(
         parent,
         checkpoint,
@@ -283,7 +257,6 @@ fn read_lineage(r: &mut CanonicalReader<'_>) -> Result<WorkbenchBranchLineage, C
         brief_revision,
         goal_revision,
         mode,
-        allocation,
     ))
 }
 
@@ -300,20 +273,4 @@ fn read_mode(r: &mut CanonicalReader<'_>) -> Result<WorkbenchForkMode, CodecErro
         2 => Ok(WorkbenchForkMode::IsolatedWritableWorkspace),
         _ => unknown(offset),
     }
-}
-pub(super) fn write_budget(
-    w: &mut CanonicalWriter,
-    value: WorkbenchForkBudget,
-) -> Result<(), CodecError> {
-    w.write_u64(value.active_millis())?;
-    w.write_u32(value.requests())?;
-    w.write_u32(value.tool_calls())?;
-    w.write_u64(value.total_tokens())
-}
-pub(super) fn read_budget(r: &mut CanonicalReader<'_>) -> Result<WorkbenchForkBudget, CodecError> {
-    let offset = r.offset();
-    invalid(
-        offset,
-        WorkbenchForkBudget::new(r.read_u64()?, r.read_u32()?, r.read_u32()?, r.read_u64()?),
-    )
 }

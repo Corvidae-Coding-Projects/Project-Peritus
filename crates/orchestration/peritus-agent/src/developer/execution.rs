@@ -261,7 +261,7 @@ impl DeveloperLoop {
                 )
                 .ok_or(DeveloperLoopError::LimitExceeded)?;
             if tool_calls > request.limits.max_tool_calls() {
-                return Err(DeveloperLoopError::LimitExceeded);
+                return Err(DeveloperLoopError::SegmentExhausted);
             }
             let calls_in_batch =
                 u32::try_from(calls.len()).map_err(|_| DeveloperLoopError::LimitExceeded)?;
@@ -279,9 +279,25 @@ impl DeveloperLoop {
                         u32::try_from(index).map_err(|_| DeveloperLoopError::LimitExceeded)?,
                     )
                     .ok_or(DeveloperLoopError::LimitExceeded)?;
-                let observation = if tools.yields_to_host()
-                    || input_changed(interaction, input_revision)?
-                {
+                let mut yielded =
+                    tools.yields_to_host() || input_changed(interaction, input_revision)?;
+                if !yielded && let Some((port, role)) = live {
+                    match port.admit_tool(
+                        role,
+                        &request.request_prefix,
+                        sequence,
+                        input_revision,
+                        tools.effect(&call),
+                    )? {
+                        crate::DeveloperControlFlow::Continue => {}
+                        crate::DeveloperControlFlow::Yield => yielded = true,
+                        crate::DeveloperControlFlow::Stop => {
+                            port.observe(DeveloperActivity::ToolSkipped { name })?;
+                            return Err(DeveloperLoopError::Cancelled);
+                        }
+                    }
+                }
+                let observation = if yielded {
                     if let Some(port) = interaction {
                         port.observe(DeveloperActivity::ToolSkipped { name })?;
                     }
@@ -293,17 +309,6 @@ impl DeveloperLoop {
                         is_error: true,
                     }
                 } else {
-                    if let Some((port, role)) = live
-                        && port.admit_tool(
-                            role,
-                            &request.request_prefix,
-                            sequence,
-                            tools.effect(&call),
-                        )? == crate::DeveloperControlFlow::Stop
-                    {
-                        port.observe(DeveloperActivity::ToolSkipped { name })?;
-                        return Err(DeveloperLoopError::Cancelled);
-                    }
                     if let Some(port) = interaction {
                         port.observe(DeveloperActivity::ToolStarted {
                             name,
@@ -385,7 +390,7 @@ impl DeveloperLoop {
                 });
             }
         }
-        Err(DeveloperLoopError::LimitExceeded)
+        Err(DeveloperLoopError::SegmentExhausted)
     }
 }
 

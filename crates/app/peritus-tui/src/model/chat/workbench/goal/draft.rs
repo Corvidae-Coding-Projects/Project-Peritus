@@ -2,9 +2,8 @@
 
 use super::{
     AppModel, Effect, GoalDraft, NoticeLevel, RUNNER_CRITERION, WorkbenchExecutionSettings,
-    WorkbenchGoalBudget, WorkbenchGoalCriterionDefinition, WorkbenchGoalCriterionKind,
-    WorkbenchGoalDefinition, WorkbenchInputState, WorkbenchInputText, WorkbenchIntent,
-    WorkbenchQuery,
+    WorkbenchGoalCriterionDefinition, WorkbenchGoalCriterionKind, WorkbenchGoalDefinition,
+    WorkbenchInputState, WorkbenchInputText, WorkbenchIntent, WorkbenchQuery,
 };
 
 impl AppModel {
@@ -66,17 +65,17 @@ impl AppModel {
             );
             return Vec::new();
         };
-        self.chat.workbench.goal_draft =
-            Some(GoalDraft { objective, budget: WorkbenchGoalBudget::default(), graphical: None });
+        self.chat.workbench.goal_draft = Some(GoalDraft { objective, graphical: None });
         self.chat.workbench.goal_clear_pending = false;
+        self.chat.workbench.goal_confirm_pending = None;
         self.chat.workbench.brief = None;
         self.chat.workbench.message = format!(
-            "Goal drafted with criterion: {RUNNER_CRITERION} Confirmed brief objective must match exactly; /goal confirm starts eligible work."
+            "Goal drafted with criterion: {RUNNER_CRITERION} /goal confirm saves this objective in the task brief and starts eligible work."
         );
         self.refresh_brief()
     }
 
-    pub(super) fn confirm_goal(&mut self) -> Vec<Effect> {
+    pub(in crate::model::chat::workbench) fn confirm_goal(&mut self) -> Vec<Effect> {
         let Some(draft) = self.chat.workbench.goal_draft.clone() else {
             self.notice(
                 NoticeLevel::Warning,
@@ -112,11 +111,17 @@ impl AppModel {
                 )
         });
         if !matching_objective {
-            self.notice(
-                NoticeLevel::Warning,
-                "The draft does not exactly match an eligible user-confirmed brief objective. Use /brief objective <exact text>, then inspect and confirm again.",
+            let workspace = brief.query().workspace();
+            let effects = self.submit_workbench(
+                WorkbenchIntent::SetBrief {
+                    field: peritus_app_protocol::WorkbenchBriefField::Objective,
+                    text: draft.objective.clone(),
+                },
+                workspace,
             );
-            return Vec::new();
+            self.chat.workbench.goal_confirm_pending =
+                (!effects.is_empty()).then_some(draft.objective);
+            return effects;
         }
         let Some(providers) = self.chat_providers() else {
             self.notice(
@@ -139,8 +144,7 @@ impl AppModel {
                 true,
             ));
         }
-        let Ok(definition) = WorkbenchGoalDefinition::new(draft.objective, criteria, draft.budget)
-        else {
+        let Ok(definition) = WorkbenchGoalDefinition::new(draft.objective, criteria) else {
             return Vec::new();
         };
         let settings = WorkbenchExecutionSettings::new(

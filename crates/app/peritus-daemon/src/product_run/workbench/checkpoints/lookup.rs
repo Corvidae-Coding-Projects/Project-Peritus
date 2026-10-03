@@ -61,6 +61,16 @@ impl ProductRunService {
                 .find(|checkpoint| checkpoint.id() == restore.recovery_checkpoint())
                 .cloned()
                 .ok_or(Error::Corrupt("restore recovery checkpoint missing"))?;
+            let checkpoint = store
+                .load_checkpoint(conversation, restore.checkpoint())?
+                .ok_or(Error::Corrupt("restore source checkpoint missing"))?;
+            let replay_only =
+                !record.checkpoints().iter().any(|value| value.id() == restore.checkpoint());
+            let checkpoint_versions = checkpoint
+                .paths()
+                .iter()
+                .map(|path| (path.path().to_owned(), path.checkpoint()))
+                .collect::<Vec<_>>();
             let mut prepared = RestoreOperation::prepared(
                 restore.id(),
                 restore.checkpoint(),
@@ -71,16 +81,25 @@ impl ProductRunService {
             if let Some(branch) = restore.branch() {
                 prepared = prepared.with_branch(branch.clone())?;
             }
+            let prepare_intent = if replay_only {
+                ControlIntent::PrepareAutomaticRestore {
+                    restore: prepared,
+                    checkpoint: Box::new(checkpoint.clone()),
+                    recovery: recovery.capture_manifest(),
+                }
+            } else {
+                ControlIntent::PrepareRestore {
+                    restore: prepared,
+                    recovery: recovery.capture_manifest(),
+                }
+            };
             let prepare = ControlOperation::new(
                 OperationId::new(command.operation().into_bytes())?,
                 conversation,
                 actor,
                 command.query().workspace(),
                 command.expected_revision(),
-                ControlIntent::PrepareRestore {
-                    restore: prepared,
-                    recovery: recovery.capture_manifest(),
-                },
+                prepare_intent,
             );
             let _preparation = store.resolve(&prepare)?.ok_or(ControlError::NotFound)?;
             let (status, conflicts, accepted_revision) = if restore.status()
@@ -95,9 +114,33 @@ impl ProductRunService {
                     self.require_folder_write(store, actor, command, record.revision())?;
                 }
                 let recovered = self.recover_prepared_restore(
-                    store, &record, actor, command, &restore, &recovery,
+                    store,
+                    &record,
+                    actor,
+                    command,
+                    &restore,
+                    (&checkpoint, &recovery),
                 )?;
                 let evidence_digest = peritus_codec::sha256(&recovered.evidence).into_bytes();
+                let settle_intent = if replay_only {
+                    ControlIntent::SettleAutomaticRestore {
+                        restore: restore.id(),
+                        checkpoint: checkpoint.id(),
+                        status: recovered.status,
+                        conflicts: recovered.conflicts.clone(),
+                        transaction_manifest_digest: Some(evidence_digest),
+                        seal_recovery: true,
+                        checkpoint_versions,
+                    }
+                } else {
+                    ControlIntent::SettleRestore {
+                        restore: restore.id(),
+                        status: recovered.status,
+                        conflicts: recovered.conflicts.clone(),
+                        transaction_manifest_digest: Some(evidence_digest),
+                        seal_recovery: true,
+                    }
+                };
                 let settle = ControlOperation::new(
                     OperationId::new(derived_id(
                         b"peritus-workbench-rewind-settle-v1\0",
@@ -107,12 +150,7 @@ impl ProductRunService {
                     actor,
                     command.query().workspace(),
                     record.revision(),
-                    ControlIntent::SettleRestore {
-                        restore: restore.id(),
-                        status: recovered.status,
-                        conflicts: recovered.conflicts.clone(),
-                        transaction_manifest_digest: Some(evidence_digest),
-                    },
+                    settle_intent,
                 );
                 let receipt = store.accept_restore_settlement(&settle, Some(recovered.evidence))?;
                 (recovered.status, recovered.conflicts, receipt.accepted_revision())
@@ -124,15 +162,28 @@ impl ProductRunService {
                 let settle = store
                     .operation(conversation, settle_id)?
                     .ok_or(Error::Corrupt("terminal restore settlement operation missing"))?;
-                let ControlIntent::SettleRestore {
-                    restore: settled_restore,
-                    status,
-                    conflicts,
-                    transaction_manifest_digest,
-                } = settle.intent()
-                else {
-                    return Err(Error::Corrupt("restore settlement identity has another intent"));
-                };
+                let (settled_restore, status, conflicts, transaction_manifest_digest) =
+                    match settle.intent() {
+                        ControlIntent::SettleRestore {
+                            restore,
+                            status,
+                            conflicts,
+                            transaction_manifest_digest,
+                            ..
+                        }
+                        | ControlIntent::SettleAutomaticRestore {
+                            restore,
+                            status,
+                            conflicts,
+                            transaction_manifest_digest,
+                            ..
+                        } => (restore, status, conflicts, transaction_manifest_digest),
+                        _ => {
+                            return Err(Error::Corrupt(
+                                "restore settlement identity has another intent",
+                            ));
+                        }
+                    };
                 if *settled_restore != restore.id()
                     || *status != restore.status()
                     || conflicts.iter().map(String::as_str).ne(restore.conflicts())

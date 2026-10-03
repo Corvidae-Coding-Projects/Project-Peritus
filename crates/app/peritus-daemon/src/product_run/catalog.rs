@@ -10,9 +10,25 @@ use peritus_product_runner::RoleProviders;
 use peritus_provider_core::{CancellationToken, ModelProvider};
 use peritus_types::ProviderProfileId;
 use std::{
+    collections::BTreeMap,
     sync::Arc,
     time::{SystemTime, UNIX_EPOCH},
 };
+
+#[derive(Default)]
+pub(super) struct ModelCatalogs(tokio::sync::Mutex<BTreeMap<ProviderProfileId, Arc<CatalogSlot>>>);
+
+#[derive(Default)]
+struct CatalogSlot {
+    latest: tokio::sync::RwLock<Option<ProductModelCatalog>>,
+    discovery: tokio::sync::Mutex<()>,
+}
+
+impl ModelCatalogs {
+    async fn slot(&self, profile: ProviderProfileId) -> Arc<CatalogSlot> {
+        Arc::clone(self.0.lock().await.entry(profile).or_default())
+    }
+}
 
 impl ProductRunService {
     pub(crate) async fn query_models(
@@ -24,19 +40,28 @@ impl ProductRunService {
             .providers
             .get(&query.profile())
             .ok_or(ProductRunServiceError::ProviderUnavailable)?;
-        // Serialize catalog requests, bounding provider metadata process ownership and request load.
-        let mut catalogs = self.inner.model_catalogs.lock().await;
+        let slot = self.inner.model_catalogs.slot(query.profile()).await;
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .map_err(|_| ProductRunServiceError::Unavailable)?
             .as_secs();
-        let previous = catalogs.get(&query.profile());
+        let previous = slot.latest.read().await.clone();
         if !query.refresh()
-            && let Some(previous) = previous
+            && let Some(previous) = &previous
             && now.saturating_sub(previous.fetched_unix_seconds()) < 300
         {
             return catalog_copy(previous, true, String::new());
         }
+        // One lookup per provider; its cache and unrelated routes remain readable. Repeated
+        // refreshes do not queue remote processes behind a stalled metadata request.
+        let Ok(_discovery) = slot.discovery.try_lock() else {
+            return unavailable_catalog(
+                query.profile(),
+                provider.profile().model().as_str(),
+                previous.as_ref(),
+                "Model discovery is already running for this provider. Refresh to retry; any listed models are cached.",
+            );
+        };
         let result = tokio::time::timeout(
             std::time::Duration::from_secs(30),
             provider.discover_models(&CancellationToken::new()),
@@ -63,35 +88,26 @@ impl ProductRunService {
             )
             .map_err(|_| ProductRunServiceError::InvalidMessage)?
         } else {
-            let error = "Model discovery failed for this configured provider. Refresh after checking authentication, or explicitly enter a manual model ID.".to_owned();
-            return previous.map_or_else(
-                || {
-                    ProductModelCatalog::new(
-                        query.profile(),
-                        provider.profile().model().as_str().to_owned(),
-                        Vec::new(),
-                        0,
-                        false,
-                        error.clone(),
-                    )
-                    .map_err(|_| ProductRunServiceError::InvalidMessage)
-                },
-                |previous| catalog_copy(previous, true, error.clone()),
+            return unavailable_catalog(
+                query.profile(),
+                provider.profile().model().as_str(),
+                previous.as_ref(),
+                "Model discovery failed for this configured provider. Refresh after checking authentication, or explicitly enter a manual model ID.",
             );
         };
-        catalogs.insert(query.profile(), catalog.clone());
+        *slot.latest.write().await = Some(catalog.clone());
         Ok(catalog)
     }
 
     pub(super) async fn validate_models(
         &self,
         providers: ProductProviderSelection,
-        options: &InteractionOptions,
+        models: &peritus_app_protocol::ProductRoleModels,
     ) -> Result<(), ProductRunServiceError> {
         for (profile, choice) in [
-            (providers.writer(), options.models.writer()),
-            (providers.reviewer(), options.models.reviewer()),
-            (providers.fixer(), options.models.fixer()),
+            (providers.writer(), models.writer()),
+            (providers.reviewer(), models.reviewer()),
+            (providers.fixer(), models.fixer()),
         ] {
             if choice.id().is_empty() || choice.manual() {
                 continue;
@@ -107,11 +123,8 @@ impl ProductRunService {
     pub(super) fn resolve_selected_providers(
         &self,
         selected: ProductProviderSelection,
-        options: Option<&InteractionOptions>,
+        options: &InteractionOptions,
     ) -> Result<RoleProviders, ProductRunServiceError> {
-        let Some(options) = options else {
-            return self.resolve_providers(selected);
-        };
         Ok(RoleProviders {
             writer: self.select_provider(selected.writer(), options.models.writer())?,
             reviewer: self.select_provider(selected.reviewer(), options.models.reviewer())?,
@@ -153,6 +166,19 @@ impl ProductRunService {
         peritus_provider_core::select_reasoning_effort(selected, effort)
             .map_err(|_| ProductRunServiceError::EffortUnsupported)
     }
+}
+
+fn unavailable_catalog(
+    profile: ProviderProfileId,
+    configured: &str,
+    previous: Option<&ProductModelCatalog>,
+    error: &str,
+) -> Result<ProductModelCatalog, ProductRunServiceError> {
+    if let Some(previous) = previous {
+        return catalog_copy(previous, true, error.to_owned());
+    }
+    ProductModelCatalog::new(profile, configured.to_owned(), Vec::new(), 0, false, error.to_owned())
+        .map_err(|_| ProductRunServiceError::InvalidMessage)
 }
 
 fn catalog_copy(

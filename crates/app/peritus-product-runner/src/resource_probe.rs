@@ -2,7 +2,7 @@
 
 use std::fs;
 use std::path::{Path, PathBuf};
-#[cfg(any(windows, all(unix, not(target_os = "linux"))))]
+#[cfg(all(unix, not(target_os = "linux")))]
 use std::process::Command;
 
 use crate::{ProductRunnerError, ProductRunnerErrorKind};
@@ -39,7 +39,7 @@ impl RunResourceProbe {
         Ok(RunResourceObservation {
             workspace: workspace_bytes,
             growth: workspace_bytes.saturating_sub(self.baseline_workspace_bytes),
-            peak_rss: resident_memory_bytes()?,
+            peak_rss: resident_memory_bytes().unwrap_or(0),
         })
     }
 }
@@ -49,21 +49,26 @@ fn workspace_bytes(root: &Path) -> Result<u64, ProductRunnerError> {
     let mut entries = 0_u64;
     let mut bytes = 0_u64;
     while let Some(directory) = pending.pop() {
-        let children =
-            fs::read_dir(&directory).map_err(|error| resource_error(error.to_string()))?;
+        let children = match fs::read_dir(&directory) {
+            Ok(children) => children,
+            Err(error) if directory == root => return Err(resource_error(error.to_string())),
+            Err(_) => continue,
+        };
         for child in children {
-            let child = child.map_err(|error| resource_error(error.to_string()))?;
+            let Ok(child) = child else { continue };
             entries = entries
                 .checked_add(1)
                 .ok_or_else(|| resource_error("workspace entry accounting overflowed"))?;
             if entries > MAX_WORKSPACE_ENTRIES {
-                return Err(resource_error("workspace entry observation exceeded its hard bound"));
+                // The traversal bound is itself evidence that the workspace is beyond the
+                // product budget. Report a conservative value instead of either aborting the
+                // run as an internal probe failure or silently undercounting the remaining tree.
+                return Ok(u64::MAX);
             }
             if child.file_name() == ".git" {
                 continue;
             }
-            let metadata = fs::symlink_metadata(child.path())
-                .map_err(|error| resource_error(error.to_string()))?;
+            let Ok(metadata) = fs::symlink_metadata(child.path()) else { continue };
             if metadata.file_type().is_dir() {
                 pending.push(child.path());
             } else if metadata.file_type().is_file() {
@@ -80,11 +85,16 @@ fn workspace_bytes(root: &Path) -> Result<u64, ProductRunnerError> {
 fn resident_memory_bytes() -> Result<u64, ProductRunnerError> {
     let status = fs::read_to_string("/proc/self/status")
         .map_err(|error| resource_error(error.to_string()))?;
+    linux_resident_memory_bytes(&status)
+}
+
+#[cfg(target_os = "linux")]
+fn linux_resident_memory_bytes(status: &str) -> Result<u64, ProductRunnerError> {
     let value = status
         .lines()
-        .find_map(|line| line.strip_prefix("VmHWM:"))
+        .find_map(|line| line.strip_prefix("VmRSS:"))
         .and_then(|line| line.split_whitespace().next())
-        .ok_or_else(|| resource_error("Linux did not report VmHWM in /proc/self/status"))?;
+        .ok_or_else(|| resource_error("Linux did not report VmRSS in /proc/self/status"))?;
     parse_memory_text(value, 1024)
 }
 
@@ -99,15 +109,11 @@ fn resident_memory_bytes() -> Result<u64, ProductRunnerError> {
 
 #[cfg(windows)]
 fn resident_memory_bytes() -> Result<u64, ProductRunnerError> {
-    let expression = format!("(Get-Process -Id {}).WorkingSet64", std::process::id());
-    let output = Command::new("powershell")
-        .args(["-NoProfile", "-NonInteractive", "-Command", &expression])
-        .output()
-        .map_err(|error| resource_error(error.to_string()))?;
-    parse_memory_output(&output.stdout, 1, output.status.success())
+    peritus_process::current_process_resident_memory_bytes()
+        .map_err(|error| resource_error(error.to_string()))
 }
 
-#[cfg(any(windows, all(unix, not(target_os = "linux"))))]
+#[cfg(all(unix, not(target_os = "linux")))]
 fn parse_memory_output(
     output: &[u8],
     multiplier: u64,
@@ -121,6 +127,7 @@ fn parse_memory_output(
     parse_memory_text(text.trim(), multiplier)
 }
 
+#[cfg(unix)]
 fn parse_memory_text(text: &str, multiplier: u64) -> Result<u64, ProductRunnerError> {
     let value = text
         .parse::<u64>()
@@ -152,5 +159,13 @@ mod tests {
         assert_eq!(observation.workspace, 67);
         assert_eq!(observation.growth, 64);
         assert!(observation.peak_rss > 0);
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn linux_memory_observation_uses_current_residency_instead_of_lifetime_high_water() {
+        let status = "VmHWM:\t9000 kB\nVmRSS:\t1234 kB\n";
+
+        assert_eq!(linux_resident_memory_bytes(status).expect("resident memory"), 1_263_616);
     }
 }

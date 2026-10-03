@@ -91,8 +91,8 @@ pub(super) fn project_evidence(
     WorkbenchReviewEvidence::new(
         kind,
         state,
-        provenance.map(peritus_run_settlement::CandidateIdentity::candidate_digest),
-        provenance.map(peritus_run_settlement::CandidateIdentity::conversation_revision),
+        provenance.map(peritus_run_settlement::CandidateIdentity::repository_digest),
+        provenance.map(peritus_run_settlement::CandidateIdentity::requirements_revision),
         provenance.map(peritus_run_settlement::CandidateIdentity::checkpoint_sequence),
     )
     .map_err(|_| ControlError::InvalidInput.into())

@@ -299,7 +299,7 @@ struct AttemptCancellation(CancellationToken);
 impl Drop for AttemptCancellation {
     fn drop(&mut self) {
         // This also covers cancellation while provider.start is still pending, before an owned
-        // stream exists, and dropping the entire developer loop at its deadline.
+        // stream exists, and dropping the entire developer loop after explicit cancellation.
         let _ = self.0.cancel();
     }
 }

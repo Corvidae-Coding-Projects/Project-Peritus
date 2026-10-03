@@ -3,7 +3,7 @@
 use super::{
     Arc, BTreeMap, DaemonComponents, DaemonError, Inner, Mutex, Path, PreviewCaptureHost,
     ProcessStore, ProductRunService, RwLock, WorkspaceCatalog, filesystem, fs, invalid,
-    load_records, permissions, persistence, reconcile_restored_candidates,
+    permissions, persistence, reconcile_restored_candidates,
 };
 
 impl ProductRunService {
@@ -12,7 +12,7 @@ impl ProductRunService {
         control_store: peritus_journal::StoreId,
         components: &DaemonComponents,
         workspaces: &WorkspaceCatalog,
-        automatic_provider_failover: bool,
+        product_policy: crate::config::ProductRunPolicy,
         local_context: peritus_product_runner::LocalContextConfig,
         processes: ProcessStore,
     ) -> Result<Self, DaemonError> {
@@ -29,7 +29,7 @@ impl ProductRunService {
                 .ok_or_else(|| invalid("configured product provider could not be resolved"))?;
             providers.insert(key.profile_id(), provider);
         }
-        let mut records = load_records(&directory)?;
+        let mut records = BTreeMap::new();
         let workspace_roots = workspaces.roots();
         let control_root = state_root.join("workbench-v1");
         let controls = if control_root.join("control.sqlite3").exists() {
@@ -49,11 +49,7 @@ impl ProductRunService {
         };
         for (run, record) in persistence::load_workbench_records(&control_root, controls.as_ref())?
         {
-            if records.insert(run, record).is_some() {
-                return Err(invalid(
-                    "run identity exists in both legacy and governed state generations",
-                ));
-            }
+            records.insert(run, record);
         }
         reconcile_restored_candidates(&directory, &mut records, &workspace_roots)?;
         Ok(Self {
@@ -75,13 +71,13 @@ impl ProductRunService {
                 directory,
                 records: RwLock::new(records),
                 providers,
-                automatic_provider_failover,
+                automatic_provider_failover: product_policy.automatic_provider_failover(),
                 local_context,
                 workspaces: workspace_roots,
                 folders: workspaces.folders().clone(),
                 processes,
                 tasks: Mutex::new(Vec::new()),
-                model_catalogs: Mutex::new(BTreeMap::new()),
+                model_catalogs: super::catalog::ModelCatalogs::default(),
                 image_decodes: Arc::new(tokio::sync::Semaphore::new(2)),
                 preview_processes: std::sync::Mutex::new(BTreeMap::new()),
                 preview_capture: PreviewCaptureHost::discover(),

@@ -97,7 +97,7 @@ mod tests {
     #[test]
     fn additional_constraint_participates_in_acceptance_and_evidence() {
         let root = tempfile::tempdir().expect("root");
-        let plan = TargetGatePlan::discover(root.path(), Vec::new()).expect("empty plan");
+        let plan = TargetGatePlan::discover(root.path(), Vec::new(), &[]).expect("empty plan");
         let constraint = GateExecutionRecord {
             command: "peritus-internal explicit-output-paths".to_owned(),
             label: "Explicit output paths".to_owned(),

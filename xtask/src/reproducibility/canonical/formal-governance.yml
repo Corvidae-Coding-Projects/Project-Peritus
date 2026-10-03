@@ -153,6 +153,7 @@ jobs:
           - { os: macos-15, operation: test-runner-product, shard: app-runner }
           - { os: windows-2025, operation: test-runner-recovery, shard: app-runner }
           - { os: windows-2025, operation: test-runner-product, shard: app-runner }
+          - { os: windows-2025, operation: test-runner-candidate, shard: app-runner }
           - { os: ubuntu-24.04, operation: test-daemon, shard: app-shell }
           - { os: macos-15, operation: test-daemon, shard: app-shell }
           - { os: windows-2025, operation: test-daemon, shard: app-shell }
@@ -168,7 +169,7 @@ jobs:
           - { os: windows-2025, operation: test-daemon-review, shard: app-shell }
           - { os: windows-2025, operation: test-daemon-rewinds, shard: app-shell }
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 15
+    timeout-minutes: 30
     steps:
       - name: Check out candidate revision
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

@@ -1,5 +1,8 @@
 //! Canonical schema-v1 application request family.
 
+#[path = "request_inspection.rs"]
+mod inspection;
+
 use crate::{
     APP_SCHEMA_V1, AppProtocolLimits, AppRequestEnvelope, AppRequestPayload, CorrelationId,
     REQUEST_FAMILY, RequestId,
@@ -24,9 +27,8 @@ use super::{
     daemon::{read_shutdown_request, write_shutdown_request},
     primitive::{invalid, read_context, read_id, unknown, write_context, write_id},
     product::{
-        read_conversation_query, read_run_continuation, read_run_control, read_run_query,
-        read_run_request, write_conversation_query, write_run_continuation, write_run_control,
-        write_run_query, write_run_request,
+        read_conversation_query, read_run_control, read_run_query, write_conversation_query,
+        write_run_control, write_run_query,
     },
     prompt::{
         read_prompt_answer, read_prompt_cancellation, write_prompt_answer,
@@ -58,59 +60,39 @@ fn write_payload(
     payload: &AppRequestPayload,
 ) -> Result<(), CodecError> {
     writer.write_u16(payload_tag(payload))?;
+    if let Some(result) = inspection::write(writer, payload) {
+        return result;
+    }
     match payload {
         AppRequestPayload::Improvements(value) => super::improvements::write_request(writer, value),
-        AppRequestPayload::PreviewWorkbenchRewind(value)
-        | AppRequestPayload::InspectWorkbenchCheckpoint(value) => {
-            super::workbench_checkpoints::write_request(writer, *value)
-        }
-        AppRequestPayload::QueryWorkbenchMemory(value) => {
-            super::workbench_memory::write_query(writer, *value)
-        }
-        AppRequestPayload::DiscoverInit(value) => {
-            super::workbench_init::write_discovery_request(writer, *value)
-        }
-        AppRequestPayload::PreviewWorkbenchCompaction(value) => {
-            super::workbench_compaction::write_request(writer, value)
-        }
-        AppRequestPayload::QueryWorkbenchResult(value) => {
-            super::workbench_launch::write_query(writer, *value)
-        }
-        AppRequestPayload::QueryWorkbenchReview(value) => {
-            super::workbench_review::write_query(writer, *value)
-        }
-        AppRequestPayload::QueryConversationLibrary(value) => {
-            super::workbench_library::write_query(writer, value)
-        }
-        AppRequestPayload::BeginWorkbenchFileUpload(value) => {
-            super::workbench_files::write_upload(writer, value)
-        }
-        AppRequestPayload::PreviewWorkbenchFileImport(value) => {
-            super::workbench_files::write_import_request(writer, value)
-        }
-        AppRequestPayload::QueryWorkbenchImages(value) => {
-            super::workbench_image_page::write_query(writer, *value)
-        }
-        AppRequestPayload::BeginWorkbenchImageUpload(value) => {
-            super::workbench_images::write_upload(writer, value)
-        }
-        AppRequestPayload::PreviewWorkbenchImage(value) => {
-            super::workbench_images::write_request(writer, value)
-        }
-        AppRequestPayload::PreviewWorkbenchFile(value) => {
-            super::workbench_files::write_request(writer, value)
-        }
-        AppRequestPayload::QueryWorkbenchFiles(value) => {
-            super::workbench_files::write_query(writer, *value)
-        }
-        AppRequestPayload::QueryWorkbenchContext(value) => {
-            super::workbench_context::write_query(writer, *value)
+        AppRequestPayload::PreviewWorkbenchRewind(_)
+        | AppRequestPayload::InspectWorkbenchCheckpoint(_)
+        | AppRequestPayload::QueryWorkbenchMemory(_)
+        | AppRequestPayload::DiscoverInit(_)
+        | AppRequestPayload::PreviewWorkbenchCompaction(_)
+        | AppRequestPayload::QueryWorkbenchResult(_)
+        | AppRequestPayload::QueryWorkbenchPreview(_)
+        | AppRequestPayload::QueryWorkbenchReview(_)
+        | AppRequestPayload::QueryConversationLibrary(_)
+        | AppRequestPayload::BeginWorkbenchFileUpload(_)
+        | AppRequestPayload::PreviewWorkbenchFileImport(_)
+        | AppRequestPayload::QueryWorkbenchImages(_)
+        | AppRequestPayload::BeginWorkbenchImageUpload(_)
+        | AppRequestPayload::PreviewWorkbenchImage(_)
+        | AppRequestPayload::PreviewWorkbenchFile(_)
+        | AppRequestPayload::QueryWorkbenchFiles(_)
+        | AppRequestPayload::QueryWorkbenchContext(_) => {
+            unreachable!("inspection payload handled above")
         }
         AppRequestPayload::WorkbenchCommand(value)
         | AppRequestPayload::QueryWorkbenchReceipt(value) => {
             super::workbench::write_command(writer, value)
         }
-        AppRequestPayload::QueryWorkbench(value)
+        AppRequestPayload::ContinueWorkbenchExecution(value) => {
+            super::workbench::write_continuation(writer, *value)
+        }
+        AppRequestPayload::QueryWorkbenchExecution(value)
+        | AppRequestPayload::QueryWorkbench(value)
         | AppRequestPayload::QueryWorkbenchPermissions(value)
         | AppRequestPayload::QueryWorkbenchBrief(value)
         | AppRequestPayload::QueryWorkbenchGoal(value) => {
@@ -120,8 +102,8 @@ fn write_payload(
             super::workbench_inputs::write_query(writer, *value)
         }
         AppRequestPayload::Doctor(value) => super::doctor::write_query(writer, *value),
-        AppRequestPayload::Interact(value) => super::interaction::write_request(writer, value),
-        AppRequestPayload::QueryInteraction(value) => write_conversation_query(writer, *value),
+        AppRequestPayload::QueryInteractionBinding(value)
+        | AppRequestPayload::QueryInteraction(value) => write_conversation_query(writer, *value),
         AppRequestPayload::QueryModels(value) => {
             super::interaction::write_model_query(writer, *value)
         }
@@ -143,15 +125,10 @@ fn write_payload(
         AppRequestPayload::CompleteArtifactUpload(value) => {
             write_artifact_completion(writer, *value)
         }
-        AppRequestPayload::StartProductRun(value) => write_run_request(writer, value),
         AppRequestPayload::ControlProductRun(value) => write_run_control(writer, *value),
-        AppRequestPayload::QueryProductRuns(value) => write_run_query(writer, *value),
-        AppRequestPayload::ContinueProductRun(value) => write_run_continuation(writer, value),
+        AppRequestPayload::QueryProductRunObservations(value) => write_run_query(writer, *value),
         AppRequestPayload::UpdateModels(value) => {
             super::interaction::write_model_update(writer, value)
-        }
-        AppRequestPayload::QueryProductRunConversation(value) => {
-            write_conversation_query(writer, *value)
         }
     }
 }
@@ -166,6 +143,7 @@ fn payload_tag(payload: &AppRequestPayload) -> u16 {
         AppRequestPayload::QueryWorkbenchPermissions(_) => 160,
         AppRequestPayload::PreviewWorkbenchCompaction(_) => 42,
         AppRequestPayload::QueryWorkbenchResult(_) => 100,
+        AppRequestPayload::QueryWorkbenchPreview(_) => 101,
         AppRequestPayload::QueryWorkbenchReview(_) => 80,
         AppRequestPayload::QueryConversationLibrary(_) => 140,
         AppRequestPayload::QueryWorkbenchImages(_) => 37,
@@ -178,6 +156,9 @@ fn payload_tag(payload: &AppRequestPayload) -> u16 {
         AppRequestPayload::QueryWorkbenchContext(_) => 33,
         AppRequestPayload::QueryWorkbenchBrief(_) => 34,
         AppRequestPayload::WorkbenchCommand(_) => 29,
+        AppRequestPayload::ContinueWorkbenchExecution(_) => 44,
+        AppRequestPayload::QueryWorkbenchExecution(_) => 43,
+        AppRequestPayload::QueryInteractionBinding(_) => 45,
         AppRequestPayload::QueryWorkbench(_) => 30,
         AppRequestPayload::QueryWorkbenchReceipt(_) => 31,
         AppRequestPayload::QueryWorkbenchQueue(_) => 32,
@@ -197,18 +178,8 @@ fn payload_tag(payload: &AppRequestPayload) -> u16 {
         AppRequestPayload::BeginArtifactUpload(_) => 14,
         AppRequestPayload::UploadArtifactChunk(_) => 15,
         AppRequestPayload::CompleteArtifactUpload(_) => 16,
-        AppRequestPayload::StartProductRun(_) => 17,
         AppRequestPayload::ControlProductRun(_) => 18,
-        AppRequestPayload::QueryProductRuns(_) => 19,
-        AppRequestPayload::ContinueProductRun(_) => 20,
-        AppRequestPayload::QueryProductRunConversation(_) => 21,
-        AppRequestPayload::Interact(value) => {
-            if value.models().has_effort() {
-                26
-            } else {
-                22
-            }
-        }
+        AppRequestPayload::QueryProductRunObservations(_) => 102,
         AppRequestPayload::QueryInteraction(_) => 23,
         AppRequestPayload::QueryModels(_) => 24,
         AppRequestPayload::UpdateModels(value) => {
@@ -240,8 +211,19 @@ pub(super) fn read_request(
     let context = read_context(reader)?;
     let request_id = read_id(reader, RequestId::new)?;
     let correlation_id = read_id(reader, CorrelationId::new)?;
+    let payload = read_payload(reader, limits)?;
+    let request =
+        invalid(offset, AppRequestEnvelope::new(context, request_id, correlation_id, payload))?;
+    validate_request_binding(&request, offset)?;
+    Ok(request)
+}
+
+fn read_payload(
+    reader: &mut CanonicalReader<'_>,
+    limits: AppProtocolLimits,
+) -> Result<AppRequestPayload, CodecError> {
     let tag_offset = reader.offset();
-    let payload = match reader.read_u16()? {
+    Ok(match reader.read_u16()? {
         100 => {
             AppRequestPayload::QueryWorkbenchResult(super::workbench_launch::read_query(reader)?)
         }
@@ -279,22 +261,25 @@ pub(super) fn read_request(
         14 => AppRequestPayload::BeginArtifactUpload(read_artifact_metadata(reader, limits)?),
         15 => AppRequestPayload::UploadArtifactChunk(read_artifact_chunk(reader, limits)?),
         16 => AppRequestPayload::CompleteArtifactUpload(read_artifact_completion(reader)?),
-        17 => AppRequestPayload::StartProductRun(read_run_request(reader)?),
         18 => AppRequestPayload::ControlProductRun(read_run_control(reader)?),
-        19 => AppRequestPayload::QueryProductRuns(read_run_query(reader)?),
-        20 => AppRequestPayload::ContinueProductRun(read_run_continuation(reader)?),
-        21 => AppRequestPayload::QueryProductRunConversation(read_conversation_query(reader)?),
-        22 => AppRequestPayload::Interact(super::interaction::read_request(reader, false)?),
+        102 => AppRequestPayload::QueryProductRunObservations(read_run_query(reader)?),
         23 => AppRequestPayload::QueryInteraction(read_conversation_query(reader)?),
         24 => AppRequestPayload::QueryModels(super::interaction::read_model_query(reader)?),
         25 => {
             AppRequestPayload::UpdateModels(super::interaction::read_model_update(reader, false)?)
         }
-        26 => AppRequestPayload::Interact(super::interaction::read_request(reader, true)?),
         27 => AppRequestPayload::UpdateModels(super::interaction::read_model_update(reader, true)?),
         28 => AppRequestPayload::Doctor(super::doctor::read_query(reader)?),
         60 => AppRequestPayload::QueryWorkbenchGoal(super::workbench::read_query(reader)?),
         29 => AppRequestPayload::WorkbenchCommand(super::workbench::read_command(reader)?),
+        44 => AppRequestPayload::ContinueWorkbenchExecution(super::workbench::read_continuation(
+            reader,
+        )?),
+        101 => {
+            AppRequestPayload::QueryWorkbenchPreview(super::workbench_launch::read_query(reader)?)
+        }
+        43 => AppRequestPayload::QueryWorkbenchExecution(super::workbench::read_query(reader)?),
+        45 => AppRequestPayload::QueryInteractionBinding(read_conversation_query(reader)?),
         30 => AppRequestPayload::QueryWorkbench(super::workbench::read_query(reader)?),
         31 => AppRequestPayload::QueryWorkbenchReceipt(super::workbench::read_command(reader)?),
         32 => AppRequestPayload::QueryWorkbenchQueue(super::workbench_inputs::read_query(reader)?),
@@ -325,11 +310,7 @@ pub(super) fn read_request(
             AppRequestPayload::QueryWorkbenchContext(super::workbench_context::read_query(reader)?)
         }
         _ => return unknown(tag_offset),
-    };
-    let request =
-        invalid(offset, AppRequestEnvelope::new(context, request_id, correlation_id, payload))?;
-    validate_request_binding(&request, offset)?;
-    Ok(request)
+    })
 }
 
 fn validate_request_binding(value: &AppRequestEnvelope, offset: usize) -> Result<(), CodecError> {

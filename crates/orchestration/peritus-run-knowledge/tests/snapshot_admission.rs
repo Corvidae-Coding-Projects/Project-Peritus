@@ -112,6 +112,8 @@ fn snapshot_retains_section_order_then_lineage_role_time_dependency_error_priori
         RunId::new([43; 16]).expect("other run"),
         WorkspaceId::new([42; 16]).expect("workspace"),
         digest(21),
+        digest(21),
+        None,
         1,
         3,
     )

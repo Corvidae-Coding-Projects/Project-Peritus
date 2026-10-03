@@ -24,6 +24,23 @@ the state root. Preserve those application-owned stores with the rest of the sta
 Interrupted product runs require explicit retry after restart; collecting an improvement suggestion
 does not change the installed harness. Full H4 upgrade qualification remains a separate evidence gate.
 
+Release `0.0.5` advances the journal to schema 2 so logical attachments retain independent
+identities even when they share content-addressed bytes. The migration registry preserves its
+original `0.0.1` and `0.0.4` descriptor labels; the second label was introduced on the development
+line and is part of the stored migration history, not the current package version. Changing those
+labels would invalidate existing migration records. Migration-owned journals require the
+application migration owner before normal journal opening.
+
+The saved product-run format and application protocol also change in `0.0.5`: records require
+format 6 and clients negotiate protocol 2.0. Earlier product-run records are rejected without
+compatibility decoding or automatic migration. Earlier improvement schema 1 and incomplete WebUI
+state are likewise rejected or quarantined. Back up the complete state root before upgrading;
+retain older records as evidence and start a new current-format conversation when needed. Update
+the daemon and its clients together. A package rollback does not downgrade schema 2 or convert
+current product-run records for an older binary; use a verified pre-upgrade backup when restoring
+an earlier state format. Native package checks do not establish that the full H4 upgrade,
+long-duration, and independent-review requirements passed.
+
 ## Authority and protected data
 
 The release operator may replace package-owned binaries, helpers, manifests, and supervisor

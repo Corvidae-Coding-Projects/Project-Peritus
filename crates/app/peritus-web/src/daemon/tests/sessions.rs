@@ -1,7 +1,7 @@
 //! Cross-client conversation adoption and durable model updates over the native protocol.
 use super::*;
 use crate::sessions;
-use peritus_app_protocol::ProductModelUpdate;
+use peritus_app_protocol::{ProductInteractionBinding, ProductModelUpdate};
 
 fn observation(
     run: RunId,
@@ -21,6 +21,7 @@ fn observation(
         String::new(),
         String::new(),
         String::new(),
+        operation(run, ProductRunOperationState::Running),
     )
     .unwrap();
     AppResponsePayload::Interaction(
@@ -46,6 +47,7 @@ async fn imports_exact_cli_run_reopens_it_and_rejects_another_workspace() {
     let app = isolated_app(&root, endpoint);
     let workspace = WorkspaceId::new([4; 16]).unwrap();
     let run = RunId::new([5; 16]).unwrap();
+    let conversation = ConversationId::new([7; 16]).unwrap();
     std::fs::write(root.join("peritus-1.toml"), "providers = []\n").unwrap();
     std::fs::write(
         root.join("state-1.json"),
@@ -59,15 +61,26 @@ async fn imports_exact_cli_run_reopens_it_and_rejects_another_workspace() {
         for workspace in [workspace, workspace, WorkspaceId::new([6; 16]).unwrap()] {
             let (mut stream, request) = receive_request(&listener).await;
             assert!(
-                matches!(request.payload(), AppRequestPayload::QueryInteraction(query) if query.run_id() == run)
+                matches!(request.payload(), AppRequestPayload::QueryInteractionBinding(query) if query.run_id() == run)
             );
+            let AppResponsePayload::Interaction(observation) =
+                observation(run, workspace, ProductRoleModels::default())
+            else {
+                unreachable!()
+            };
             write_message(
                 &mut stream,
                 AppMessage::Response(AppResponseEnvelope::new(
                     request.context(),
                     request.request_id(),
                     request.correlation_id(),
-                    observation(run, workspace, ProductRoleModels::default()),
+                    AppResponsePayload::InteractionBinding(
+                        ProductInteractionBinding::new(
+                            observation,
+                            WorkbenchQuery::new(conversation, workspace),
+                        )
+                        .unwrap(),
+                    ),
                 )),
             )
             .await;
@@ -75,10 +88,13 @@ async fn imports_exact_cli_run_reopens_it_and_rejects_another_workspace() {
     });
     let id = hex(run.as_bytes());
     let imported = sessions::open_run(&app, &id).await.unwrap();
-    assert_eq!(imported["id"], id);
+    assert_eq!(imported["run"], id);
+    assert_eq!(imported["conversation"], hex(conversation.as_bytes()));
     assert_eq!(imported["title"], "CLI conversation");
+    let browser_session = imported["id"].as_str().unwrap().to_owned();
+    assert_ne!(browser_session, id);
     app.update(|state| {
-        state.sessions.iter_mut().find(|s| s.id == id).unwrap().closed = true;
+        state.sessions.iter_mut().find(|s| s.id == browser_session).unwrap().closed = true;
         state.projects[0].closed = true;
         Ok(())
     })
@@ -96,8 +112,8 @@ async fn model_update_and_recovered_local_save_retain_the_same_native_selection(
     let endpoint = temporary.path().join("models.sock");
     let listener = UnixListener::bind(&endpoint).unwrap();
     let app = isolated_app(temporary.path(), endpoint);
-    let session = app.snapshot().unwrap().sessions[0].id.clone();
-    let run = RunId::new(bytes(&session).unwrap()).unwrap();
+    let session = app.snapshot().unwrap().sessions[0].clone();
+    let run = RunId::new(bytes(&session.run).unwrap()).unwrap();
     let models = ProductRoleModels::new(
         ProductModelChoice::new("selected".into(), true)
             .unwrap()
@@ -123,7 +139,7 @@ async fn model_update_and_recovered_local_save_retain_the_same_native_selection(
         )
         .await;
     });
-    let input = json!({"command":"session-settings","operation":"models-op","session":session,"existing":true,"settings":{"models":{"writer":{"id":"selected","manual":true,"effort":"high"}},"providers":{"writer":""}}});
+    let input = json!({"command":"session-settings","operation":"models-op","session":session.id,"existing":true,"settings":{"models":{"writer":{"id":"selected","manual":true,"effort":"high"}},"providers":{"writer":""}}});
     let result = sessions::configure(&app, &input).await.unwrap();
     assert_eq!(result["conversation"]["models"], model_values(&models));
     assert_eq!(result["conversation"]["mode"], "plan");
@@ -132,13 +148,13 @@ async fn model_update_and_recovered_local_save_retain_the_same_native_selection(
         state.sessions[0].settings = sessions::Settings::default();
         state.operations.insert(
             "models-op".into(),
-            crate::state::Operation { input: input.clone(), result: None },
+            crate::state::Operation { input: input.clone(), prepared: None, result: None },
         );
         Ok(())
     })
     .unwrap();
-    let recovered = crate::operations::observe(&app, "models-op").unwrap();
+    let recovered = crate::operations::observe(&app, "models-op").await.unwrap();
     assert_eq!(recovered["result"], result);
-    assert_eq!(app.session(&session).unwrap().settings.models["writer"].id, "selected");
+    assert_eq!(app.session(&session.id).unwrap().settings.models["writer"].id, "selected");
     server.await.unwrap();
 }

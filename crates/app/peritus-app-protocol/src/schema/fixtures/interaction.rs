@@ -3,10 +3,9 @@
 use super::{FixtureClass, GeneratedFixtureCase};
 use crate::{
     AppRequestPayload, AppResponseEnvelope, AppResponsePayload, ProductActivity,
-    ProductActivityKind, ProductInteractionMode, ProductInteractionRequest,
-    ProductInteractionSnapshot, ProductModelCatalog, ProductModelInfo, ProductModelQuery,
-    ProductProviderSelection, ProductRoleModels, ProductRunPhase, ProductRunRequest,
-    ProductRunSnapshot,
+    ProductActivityKind, ProductInteractionMode, ProductInteractionSnapshot, ProductModelCatalog,
+    ProductModelInfo, ProductModelQuery, ProductProviderSelection, ProductRoleModels,
+    ProductRunOperationState, ProductRunPhase, ProductRunSnapshot,
 };
 use peritus_codec::{CodecError, CodecLimits};
 use peritus_types::{ProviderProfileId, RunId, WorkspaceId};
@@ -17,9 +16,6 @@ pub(super) fn cases(limits: CodecLimits) -> Result<Vec<GeneratedFixtureCase>, Co
     let run_id = id(31, RunId::new);
     let workspace_id = id(32, WorkspaceId::new);
     let providers = ProductProviderSelection::new(profile, profile, profile);
-    let request_value =
-        ProductRunRequest::new(run_id, workspace_id, providers, "Explain this project".to_owned())
-            .expect("fixture request");
     let snapshot = ProductRunSnapshot::new(
         run_id,
         workspace_id,
@@ -32,6 +28,7 @@ pub(super) fn cases(limits: CodecLimits) -> Result<Vec<GeneratedFixtureCase>, Co
         String::new(),
         String::new(),
         String::new(),
+        super::product::run_operation(run_id, ProductRunOperationState::Running),
     )
     .expect("snapshot");
     let interaction = ProductInteractionSnapshot::new(
@@ -76,19 +73,10 @@ pub(super) fn cases(limits: CodecLimits) -> Result<Vec<GeneratedFixtureCase>, Co
             payload,
         )
     };
-    Ok(vec![
+    let mut cases = binding_cases(interaction.clone(), limits)?;
+    cases.extend([
         model_update(run_id, limits)?,
         model_update_with_effort(run_id, limits)?,
-        encoded(
-            "realistic-interaction-request",
-            FixtureClass::Realistic,
-            &request(AppRequestPayload::Interact(ProductInteractionRequest::new(
-                request_value,
-                ProductInteractionMode::Chat,
-                ProductRoleModels::default(),
-            ))),
-            limits,
-        )?,
         encoded(
             "realistic-interaction-response",
             FixtureClass::Realistic,
@@ -105,6 +93,46 @@ pub(super) fn cases(limits: CodecLimits) -> Result<Vec<GeneratedFixtureCase>, Co
             "realistic-model-catalog-response",
             FixtureClass::Realistic,
             &response(AppResponsePayload::Models(catalog)),
+            limits,
+        )?,
+    ]);
+    Ok(cases)
+}
+
+fn binding_cases(
+    interaction: ProductInteractionSnapshot,
+    limits: CodecLimits,
+) -> Result<Vec<GeneratedFixtureCase>, CodecError> {
+    use super::values::{context, encoded, id, request};
+    let run_id = interaction.snapshot().run_id();
+    let workspace_id = interaction.snapshot().workspace_id();
+    let response = |payload| {
+        AppResponseEnvelope::new(
+            context(),
+            id(10, crate::RequestId::new),
+            id(11, crate::CorrelationId::new),
+            payload,
+        )
+    };
+    Ok(vec![
+        encoded(
+            "minimal-interaction-binding-query",
+            FixtureClass::Minimal,
+            &request(AppRequestPayload::QueryInteractionBinding(
+                crate::ProductInteractionQuery::new(run_id),
+            )),
+            limits,
+        )?,
+        encoded(
+            "realistic-interaction-binding",
+            FixtureClass::Realistic,
+            &response(AppResponsePayload::InteractionBinding(
+                crate::ProductInteractionBinding::new(
+                    interaction,
+                    crate::WorkbenchQuery::new(id(34, crate::ConversationId::new), workspace_id),
+                )
+                .expect("binding"),
+            )),
             limits,
         )?,
     ])

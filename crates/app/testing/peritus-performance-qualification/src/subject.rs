@@ -19,6 +19,7 @@ use crate::{StorageObservation, SubjectConfiguration, SubjectError};
 
 mod event_load;
 mod operations;
+mod product_probe;
 
 pub use event_load::{EventAppendRunner, EventLoadEvidence};
 
@@ -94,7 +95,8 @@ impl IntegratedSubject {
             implementation_revision,
             daemon.executable_digest()?,
         )?;
-        let client = A3Client::connect(daemon.endpoint(), None, &mut identities)?;
+        let mut client = A3Client::connect(daemon.endpoint(), None, &mut identities)?;
+        product_probe::qualify(&mut client, &mut identities)?;
         let subject = Self {
             descriptor,
             authorization,

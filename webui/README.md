@@ -112,7 +112,7 @@ Use the gateway URL to inspect the production build.
   message** in its file-actions menu. A saved UTF-8 snapshot is queued only for
   that native session; remove it before sending if unwanted. Native chat's
   current protocol accepts text, not image/audio payloads: 48 KiB per file,
-  at most 16 files, and 64 KiB for the complete encoded message. Oversized input
+  at most 16 files, and 8 KiB for the complete durable input. Oversized input
   is rejected, never truncated. These context limits are separate from preview
   size. Non-text media remain view/download-only here; the separate Workbench
   console has its own attachment selection. Snapshot bytes and hashes are
@@ -275,14 +275,15 @@ Doctor checks must confirm the workspace/provider route before sending.
 No provider authentication/network probe is run implicitly. A read-only or
 draining daemon remains visible but cannot accept new messages.
 
-The gateway durably retains the exact native request before transmission and
-its exact response when observed. Interrupted requests stay unresolved instead
-of being recorded as definite failures. The recovery banner queries the original
-record and blocks another mutation to its target. Native `Interact` does not yet
-expose an authoritative daemon receipt-query endpoint: a lost daemon response
-therefore requires inspecting the conversation and explicitly acknowledging the
-outcome. That acknowledgement clears the hold; it never resends or labels the
-old action successful. Reconnection renews a rotated gateway token automatically.
+The gateway durably retains the prepared conversation, workspace, run, provider,
+model, mode, and exact message text before the first mutating daemon request. A
+message then uses the daemon-owned create, queue, and start operations. Each
+stage has a stable operation identity and an authoritative receipt query. After
+a disconnect, the recovery banner reconciles those exact stages and retransmits
+only an unchanged domain-idempotent command whose receipt is authoritatively
+absent. Unresolved effects remain held for inspection; acknowledgement clears the
+hold without resending or claiming success. Reconnection renews a rotated gateway
+token automatically.
 
 CLI consoles retain processes while their panel is closed and can be reopened
 with `/consoles`, including after a browser reload. Titles, session bindings, exit
@@ -343,12 +344,12 @@ matching policy update. The reproducibility test suite covers that boundary.
 
 Verified locally on Linux/Chromium:
 
-- Seventeen Rust tests, including bounded binary-safe PDF identification,
+- Gateway Rust checks, including bounded binary-safe PDF identification,
   canonical path/nesting constraints, exact
   50 MiB preview boundaries, safe saves, real Git workflows, immutable text
   attachments, read-only readiness, and lost-response/restart recovery against
   a negotiated socket fixture with exact native targets and revisions.
-- Sixteen frontend unit tests and nineteen integration/browser tests covering
+- Frontend unit and integration/browser checks covering
   command routing, text formats, project isolation, original operation outcomes,
   real Git round trips, editing/conflicts, drag/drop attachments, gateway restart,
   `.gitignore`, file tabs, drafts, configuration, and a real CLI PTY invocation.

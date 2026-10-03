@@ -6,9 +6,9 @@ use std::{
 };
 
 use peritus_run_settlement::{
-    CandidateCheckpoint, CandidateIdentity, CandidateStage, EvidenceRecord, EvidenceStatus,
-    QualificationEvidence, RunDisposition, SettlementCause, SettlementError, SettlementErrorKind,
-    SettlementReducer,
+    CandidateCheckpoint, CandidateIdentity, CandidateStage, EvidenceDependencies, EvidenceRecord,
+    EvidenceStatus, QualificationEvidence, RunDisposition, SettlementCause, SettlementError,
+    SettlementErrorKind, SettlementReducer,
 };
 use peritus_types::{RunId, Sha256Digest, WorkspaceId};
 
@@ -218,12 +218,18 @@ fn verified_settlement(
             seed.run_id,
             seed.workspace_id,
             Sha256Digest::new(snapshot.digest_bytes),
+            Sha256Digest::new(snapshot.digest_bytes),
+            None,
             seed.conversation_turn as u64,
             1,
         )
         .map_err(settlement_error)?;
         let (stage, gates, obligations, review) = if qualified {
-            let satisfied = EvidenceRecord::new(identity, QualificationEvidence::Satisfied);
+            let satisfied = EvidenceRecord::new(
+                identity,
+                EvidenceDependencies::OBLIGATIONS,
+                QualificationEvidence::Satisfied,
+            );
             (
                 CandidateStage::Qualified,
                 EvidenceStatus::Current(satisfied),
@@ -250,7 +256,6 @@ fn settlement_error(error: SettlementError) -> BenchmarkError {
         SettlementErrorKind::ZeroCheckpointSequence => "zero_checkpoint_sequence",
         SettlementErrorKind::CandidateLineageMismatch => "candidate_lineage_mismatch",
         SettlementErrorKind::CheckpointDidNotAdvance => "checkpoint_did_not_advance",
-        SettlementErrorKind::CandidateStageRegressed => "candidate_stage_regressed",
         SettlementErrorKind::CurrentEvidenceBindingMismatch => "current_evidence_binding_mismatch",
         SettlementErrorKind::StaleEvidenceBindingMismatch => "stale_evidence_binding_mismatch",
         SettlementErrorKind::CandidateStageEvidenceMismatch => "candidate_stage_evidence_mismatch",

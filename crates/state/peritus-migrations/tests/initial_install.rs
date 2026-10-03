@@ -20,13 +20,13 @@ fn fresh_schema_is_complete_and_adopted_once_without_upgrade_or_backup() {
         connection
             .pragma_query_value(None, "user_version", |row| row.get::<_, i64>(0))
             .expect("initial version"),
-        1
+        2
     );
     assert_eq!(
         connection
             .query_row("SELECT schema_version FROM store_meta", [], |row| row.get::<_, i64>(0))
             .expect("journal version"),
-        1
+        2
     );
     for name in [
         "aggregate_heads",
@@ -69,8 +69,8 @@ fn fresh_schema_is_complete_and_adopted_once_without_upgrade_or_backup() {
     let mut engine = MigrationEngine::open(configuration.clone(), MigrationRegistry::current())
         .expect("migration engine");
     assert!(engine.adopt_current_install(operation(8)).expect("adopt initial schema"));
-    let plan = engine.preflight(version(1)).expect("initial preflight").into_plan();
-    assert_eq!(plan.current_version(), 1);
+    let plan = engine.preflight(version(2)).expect("initial preflight").into_plan();
+    assert_eq!(plan.current_version(), 2);
     assert!(plan.steps().is_empty());
     assert!(!plan.backup_required());
     assert!(!engine.adopt_current_install(operation(8)).expect("repeated adoption is inert"));
@@ -91,7 +91,7 @@ fn fresh_schema_is_complete_and_adopted_once_without_upgrade_or_backup() {
         connection
             .query_row("SELECT COUNT(*) FROM schema_migrations", [], |row| row.get::<_, i64>(0))
             .expect("marker count"),
-        1
+        2
     );
     assert_eq!(
         connection
@@ -99,6 +99,67 @@ fn fresh_schema_is_complete_and_adopted_once_without_upgrade_or_backup() {
             .expect("operation count"),
         0
     );
+}
+
+#[test]
+fn version_one_installations_upgrade_with_or_without_adopted_history() {
+    for adopted in [false, true] {
+        let temp = tempfile::tempdir().unwrap();
+        let path = create_journal_database(&temp);
+        let connection = rusqlite::Connection::open(&path).unwrap();
+        connection
+            .execute_batch(
+                "CREATE UNIQUE INDEX legacy_artifact_digest ON app_artifacts(digest);
+             UPDATE store_meta SET schema_version = 1;
+             PRAGMA user_version = 1;",
+            )
+            .unwrap();
+        connection
+            .execute(
+                "INSERT INTO app_artifacts VALUES (?1, ?2, 12, 'text/plain', 1, NULL)",
+                rusqlite::params![[3_u8; 16], [4_u8; 32]],
+            )
+            .unwrap();
+        drop(connection);
+        let configuration = config(&temp, path.clone());
+        if adopted {
+            let old = Box::leak(Box::new([MigrationRegistry::current().descriptors()[0]]));
+            let mut engine =
+                MigrationEngine::open(configuration.clone(), MigrationRegistry::from_static(old))
+                    .unwrap();
+            assert!(engine.adopt_current_install(operation(10)).unwrap());
+        }
+        let mut engine =
+            MigrationEngine::open(configuration, MigrationRegistry::current()).unwrap();
+        assert_eq!(engine.adopt_current_install(operation(11)).unwrap(), !adopted);
+        let plan = engine.preflight(version(2)).unwrap().into_plan();
+        assert_eq!(plan.current_version(), 1);
+        assert!(plan.backup_required());
+        engine.apply(&plan, operation(12)).unwrap();
+        drop(engine);
+        let mut journal = SqliteJournal::open(
+            &path,
+            StoreId::new([1; 16]).unwrap(),
+            SqliteJournalOptions::default(),
+        )
+        .unwrap();
+        let original = journal
+            .application_artifact(peritus_types::ArtifactId::new([3; 16]).unwrap())
+            .unwrap()
+            .unwrap();
+        journal
+            .begin_application_artifact(
+                peritus_journal::NewApplicationArtifact::new(
+                    peritus_types::ArtifactId::new([5; 16]).unwrap(),
+                    original.digest(),
+                    original.byte_size(),
+                    original.media_type().to_owned(),
+                )
+                .unwrap(),
+            )
+            .expect("independent attachment after backed-up migration");
+        assert_eq!(journal.application_artifact(original.artifact_id()).unwrap(), Some(original));
+    }
 }
 
 #[test]

@@ -14,7 +14,7 @@ use peritus_app_protocol::{
     AppEventPayload, AppMessage, AppProtocolLimits, AppRequestEnvelope, AppRequestPayload,
     AppResponsePayload, ClientHello, CommandBinding, CommandDisposition, CommandSubmissionFrames,
     CorrelationId, IdempotencyKey, NegotiationOutcome, ProtocolContext, ProtocolId, RequestId,
-    ShutdownComplete, ShutdownCompletionDisposition, ShutdownRequest, VersionRange,
+    ShutdownComplete, ShutdownCompletionDisposition, ShutdownRequest,
 };
 use peritus_codec::{CodecLimits, encode_message};
 use peritus_daemon::{AppFrameStream, DaemonRuntime, LocalEndpointAddress};
@@ -203,7 +203,7 @@ fn run_async_test(test: impl Future<Output = ()>) {
 fn fresh_hello(identity: u8) -> ClientHello {
     ClientHello::new(
         ProtocolId::new([identity; 16]).expect("protocol identity"),
-        vec![VersionRange::new(1, 0, 0).expect("version")],
+        vec![peritus_app_protocol::CURRENT_PROTOCOL_RANGE],
         Vec::new(),
         Vec::new(),
         AppProtocolLimits::PRODUCTION,
@@ -216,7 +216,7 @@ fn resume_hello(identity: u8, session: SessionId) -> ClientHello {
     ClientHello::new_with_session(
         ProtocolId::new([identity; 16]).expect("protocol identity"),
         Some(session),
-        vec![VersionRange::new(1, 0, 0).expect("version")],
+        vec![peritus_app_protocol::CURRENT_PROTOCOL_RANGE],
         Vec::new(),
         Vec::new(),
         AppProtocolLimits::PRODUCTION,

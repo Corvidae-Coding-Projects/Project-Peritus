@@ -2,8 +2,8 @@
 
 use super::{
     ActiveCommandLedger, CommandBudget, CommandEvidence, CommandResources, EffectReceiptLedger,
-    GroundingEvidence, WorkspaceAccessPolicy, WorkspaceDeveloperTools, WorkspaceOwnership,
-    WorkspaceToolMode,
+    ExplicitReferences, GroundingEvidence, WorkspaceAccessPolicy, WorkspaceDeveloperTools,
+    WorkspaceOwnership, WorkspaceToolMode,
 };
 use std::{path::PathBuf, time::Duration};
 
@@ -16,6 +16,7 @@ impl WorkspaceDeveloperTools {
         Self {
             root,
             access_policy: WorkspaceAccessPolicy::default(),
+            references: ExplicitReferences::default(),
             grounding: GroundingEvidence::default(),
             ownership,
             mode: WorkspaceToolMode::ReadOnly,
@@ -41,18 +42,19 @@ impl WorkspaceDeveloperTools {
         ownership: WorkspaceOwnership,
         receipt_path: PathBuf,
         receipt_scope: String,
-        command_horizon: Duration,
+        command_horizon: impl Into<Option<Duration>>,
         command_runtime: crate::CommandRuntime,
     ) -> Self {
         Self {
             root,
             access_policy: WorkspaceAccessPolicy::default(),
+            references: ExplicitReferences::default(),
             grounding: GroundingEvidence::default(),
             ownership,
             mode: WorkspaceToolMode::ReadWrite,
             in_place_scope: None,
             command_evidence: CommandEvidence::default(),
-            command_budget: Some(CommandBudget::new(command_horizon)),
+            command_budget: Some(CommandBudget::new(command_horizon.into())),
             receipts: Some(EffectReceiptLedger::new(receipt_path, receipt_scope)),
             resources: CommandResources::observe(),
             command_runtime: Some(command_runtime),

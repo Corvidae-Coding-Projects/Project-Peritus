@@ -17,11 +17,7 @@ use super::{
     },
     error::{read_app_error, write_app_error},
     primitive::{read_context, read_id, unknown, write_context, write_id},
-    product::{
-        read_conversation, read_settlement_snapshot, read_settlement_snapshots, read_snapshot,
-        read_snapshots, write_conversation, write_settlement_snapshot, write_settlement_snapshots,
-        write_snapshot, write_snapshots,
-    },
+    product::{read_settlement_snapshot, read_snapshot, write_settlement_snapshot, write_snapshot},
     terminal::{read_terminal_binding, write_terminal_binding},
 };
 
@@ -35,99 +31,110 @@ impl CanonicalEncode for AppResponseEnvelope {
         write_id(writer, self.request_id().as_bytes())?;
         write_id(writer, self.correlation_id().as_bytes())?;
         writer.write_u16(payload_tag(self.payload()))?;
-        match self.payload() {
-            AppResponsePayload::Improvements(value) => {
-                super::improvements::write_inbox(writer, value)
-            }
-            AppResponsePayload::WorkbenchCheckpoint(value) => {
-                super::workbench_checkpoints::write_checkpoint_receipt(writer, value)
-            }
-            AppResponsePayload::WorkbenchRewindPreview(value) => {
-                super::workbench_checkpoints::write_preview(writer, value)
-            }
-            AppResponsePayload::WorkbenchRestore(value) => {
-                super::workbench_checkpoints::write_restore_receipt(writer, value)
-            }
-            AppResponsePayload::WorkbenchMemory(value) => {
-                super::workbench_memory::write_memory(writer, value)
-            }
-            AppResponsePayload::InitProposal(value) => {
-                super::workbench_init::write_proposal(writer, value)
-            }
-            AppResponsePayload::WorkbenchPermissions(value) => {
-                super::workbench_permissions::write_permissions(writer, value)
-            }
-            AppResponsePayload::WorkbenchCompactionPreview(value) => {
-                super::workbench_compaction::write_preview(writer, value)
-            }
-            AppResponsePayload::ConversationLibrary(value) => {
-                super::workbench_library::write_page(writer, value)
-            }
-            AppResponsePayload::WorkbenchGoal(value) => {
-                super::workbench_goal::write_snapshot(writer, value)
-            }
-            AppResponsePayload::WorkbenchResult(value) => {
-                super::workbench_launch::write_page(writer, value)
-            }
-            AppResponsePayload::WorkbenchReview(value) => {
-                super::workbench_review::write_page(writer, value)
-            }
-            AppResponsePayload::WorkbenchFileImportPreview(value) => {
-                super::workbench_files::write_import_preview(writer, value)
-            }
-            AppResponsePayload::WorkbenchImages(value) => {
-                super::workbench_image_page::write_page(writer, value)
-            }
-            AppResponsePayload::WorkbenchImagePreview(value) => {
-                super::workbench_images::write_preview(writer, value)
-            }
-            AppResponsePayload::WorkbenchFilePreview(value) => {
-                super::workbench_files::write_preview(writer, value)
-            }
-            AppResponsePayload::WorkbenchFiles(value) => {
-                super::workbench_files::write_page(writer, value)
-            }
-            AppResponsePayload::WorkbenchBrief(value) => {
-                super::workbench_brief::write_brief(writer, value)
-            }
-            AppResponsePayload::WorkbenchContext(value) => {
-                super::workbench_context::write_page(writer, value)
-            }
-            AppResponsePayload::WorkbenchQueue(value) => {
-                super::workbench_inputs::write_page(writer, value)
-            }
-            AppResponsePayload::Workbench(value) => super::workbench::write_snapshot(writer, value),
-            AppResponsePayload::WorkbenchReceipt(value) => {
-                super::workbench::write_receipt(writer, value)
-            }
-            AppResponsePayload::Doctor(value) => super::doctor::write_report(writer, value),
-            AppResponsePayload::Interaction(value) => {
-                super::interaction::write_snapshot(writer, value)
-            }
-            AppResponsePayload::Models(value) => super::interaction::write_catalog(writer, value),
-            AppResponsePayload::CommandResult(value) => write_command_result(writer, value),
-            AppResponsePayload::SubscriptionStarted(value) => {
-                write_subscription_started(writer, *value)
-            }
-            AppResponsePayload::ArtifactOpened(value) => write_artifact_metadata(writer, value),
-            AppResponsePayload::PromptAccepted(value) => write_id(writer, value.as_bytes()),
-            AppResponsePayload::TerminalAttached(value) => write_terminal_binding(writer, *value),
-            AppResponsePayload::Acknowledged(value) => {
-                write_id(writer, value.request_id().as_bytes())
-            }
-            AppResponsePayload::DaemonStatus(value) => write_daemon_status(writer, value),
-            AppResponsePayload::ShutdownAccepted(value) => write_shutdown_accepted(writer, *value),
-            AppResponsePayload::Error(value) => write_app_error(writer, value),
-            AppResponsePayload::ProductRunAccepted(value) => write_snapshot(writer, value),
-            AppResponsePayload::ProductRuns(value) => write_snapshots(writer, value),
-            AppResponsePayload::ProductRunConversation(value) => write_conversation(writer, value),
-            AppResponsePayload::ProductRunSettled(value) => {
-                write_settlement_snapshot(writer, value)
-            }
-            AppResponsePayload::ProductRunSettlements(value) => {
-                write_settlement_snapshots(writer, value)
-            }
+        write_payload(writer, self.payload())
+    }
+}
+
+#[allow(
+    clippy::too_many_lines,
+    reason = "closed payload dispatch keeps every stable response tag in one audited match"
+)]
+fn write_payload(
+    writer: &mut CanonicalWriter,
+    payload: &AppResponsePayload,
+) -> Result<(), CodecError> {
+    match payload {
+        AppResponsePayload::Improvements(value) => super::improvements::write_inbox(writer, value),
+        AppResponsePayload::WorkbenchCheckpoint(value) => {
+            super::workbench_checkpoints::write_checkpoint_receipt(writer, value)
         }
+        AppResponsePayload::WorkbenchRewindPreview(value) => {
+            super::workbench_checkpoints::write_preview(writer, value)
+        }
+        AppResponsePayload::WorkbenchRestore(value) => {
+            super::workbench_checkpoints::write_restore_receipt(writer, value)
+        }
+        AppResponsePayload::WorkbenchMemory(value) => {
+            super::workbench_memory::write_memory(writer, value)
+        }
+        AppResponsePayload::InitProposal(value) => {
+            super::workbench_init::write_proposal(writer, value)
+        }
+        AppResponsePayload::WorkbenchPermissions(value) => {
+            super::workbench_permissions::write_permissions(writer, value)
+        }
+        AppResponsePayload::WorkbenchCompactionPreview(value) => {
+            super::workbench_compaction::write_preview(writer, value)
+        }
+        AppResponsePayload::ConversationLibrary(value) => {
+            super::workbench_library::write_page(writer, value)
+        }
+        AppResponsePayload::WorkbenchGoal(value) => {
+            super::workbench_goal::write_snapshot(writer, value)
+        }
+        AppResponsePayload::WorkbenchPreview(value) => {
+            super::workbench_launch::write_preview(writer, value)
+        }
+        AppResponsePayload::WorkbenchResult(value) => {
+            super::workbench_launch::write_page(writer, value)
+        }
+        AppResponsePayload::WorkbenchReview(value) => {
+            super::workbench_review::write_page(writer, value)
+        }
+        AppResponsePayload::WorkbenchFileImportPreview(value) => {
+            super::workbench_files::write_import_preview(writer, value)
+        }
+        AppResponsePayload::WorkbenchImages(value) => {
+            super::workbench_image_page::write_page(writer, value)
+        }
+        AppResponsePayload::WorkbenchImagePreview(value) => {
+            super::workbench_images::write_preview(writer, value)
+        }
+        AppResponsePayload::WorkbenchFilePreview(value) => {
+            super::workbench_files::write_preview(writer, value)
+        }
+        AppResponsePayload::WorkbenchFiles(value) => {
+            super::workbench_files::write_page(writer, value)
+        }
+        AppResponsePayload::WorkbenchBrief(value) => {
+            super::workbench_brief::write_brief(writer, value)
+        }
+        AppResponsePayload::WorkbenchContext(value) => {
+            super::workbench_context::write_page(writer, value)
+        }
+        AppResponsePayload::WorkbenchQueue(value) => {
+            super::workbench_inputs::write_page(writer, value)
+        }
+        AppResponsePayload::WorkbenchExecution(value) => {
+            super::workbench::write_execution(writer, value)
+        }
+        AppResponsePayload::Workbench(value) => super::workbench::write_snapshot(writer, value),
+        AppResponsePayload::WorkbenchReceipt(value) => {
+            super::workbench::write_receipt(writer, value)
+        }
+        AppResponsePayload::Doctor(value) => super::doctor::write_report(writer, value),
+        AppResponsePayload::Interaction(value) => super::interaction::write_snapshot(writer, value),
+        AppResponsePayload::InteractionBinding(value) => {
+            super::interaction::write_binding(writer, value)
+        }
+        AppResponsePayload::Models(value) => super::interaction::write_catalog(writer, value),
+        AppResponsePayload::CommandResult(value) => write_command_result(writer, value),
+        AppResponsePayload::SubscriptionStarted(value) => {
+            write_subscription_started(writer, *value)
+        }
+        AppResponsePayload::ArtifactOpened(value) => write_artifact_metadata(writer, value),
+        AppResponsePayload::PromptAccepted(value) => write_id(writer, value.as_bytes()),
+        AppResponsePayload::TerminalAttached(value)
+        | AppResponsePayload::TerminalPipeAttached(value) => write_terminal_binding(writer, *value),
+        AppResponsePayload::Acknowledged(value) => write_id(writer, value.request_id().as_bytes()),
+        AppResponsePayload::DaemonStatus(value) => write_daemon_status(writer, value),
+        AppResponsePayload::ShutdownAccepted(value) => write_shutdown_accepted(writer, *value),
+        AppResponsePayload::Error(value) => write_app_error(writer, value),
+        AppResponsePayload::ProductRunAccepted(value) => write_snapshot(writer, value),
+        AppResponsePayload::ProductRunObservations(value) => {
+            super::product::observations::write_observations(writer, value)
+        }
+        AppResponsePayload::ProductRunSettled(value) => write_settlement_snapshot(writer, value),
     }
 }
 
@@ -142,6 +149,7 @@ fn payload_tag(payload: &AppResponsePayload) -> u16 {
         AppResponsePayload::WorkbenchPermissions(_) => 160,
         AppResponsePayload::WorkbenchCompactionPreview(_) => 29,
         AppResponsePayload::WorkbenchResult(_) => 100,
+        AppResponsePayload::WorkbenchPreview(_) => 101,
         AppResponsePayload::WorkbenchReview(_) => 80,
         AppResponsePayload::ConversationLibrary(_) => 140,
         AppResponsePayload::CommandResult(_) => 1,
@@ -149,15 +157,14 @@ fn payload_tag(payload: &AppResponsePayload) -> u16 {
         AppResponsePayload::ArtifactOpened(_) => 3,
         AppResponsePayload::PromptAccepted(_) => 4,
         AppResponsePayload::TerminalAttached(_) => 5,
+        AppResponsePayload::TerminalPipeAttached(_) => 181,
         AppResponsePayload::Acknowledged(_) => 6,
         AppResponsePayload::DaemonStatus(_) => 7,
         AppResponsePayload::ShutdownAccepted(_) => 8,
         AppResponsePayload::Error(_) => 9,
         AppResponsePayload::ProductRunAccepted(_) => 10,
-        AppResponsePayload::ProductRuns(_) => 11,
-        AppResponsePayload::ProductRunConversation(_) => 12,
+        AppResponsePayload::ProductRunObservations(_) => 102,
         AppResponsePayload::ProductRunSettled(_) => 13,
-        AppResponsePayload::ProductRunSettlements(_) => 14,
         AppResponsePayload::Interaction(value) => {
             if value.models().has_effort() {
                 17
@@ -167,6 +174,8 @@ fn payload_tag(payload: &AppResponsePayload) -> u16 {
         }
         AppResponsePayload::Models(_) => 16,
         AppResponsePayload::Doctor(_) => 18,
+        AppResponsePayload::WorkbenchExecution(_) => 43,
+        AppResponsePayload::InteractionBinding(_) => 44,
         AppResponsePayload::Workbench(_) => 19,
         AppResponsePayload::WorkbenchReceipt(_) => 20,
         AppResponsePayload::WorkbenchQueue(_) => 21,
@@ -200,6 +209,7 @@ pub(super) fn read_response(
     let correlation_id = read_id(reader, CorrelationId::new)?;
     let tag_offset = reader.offset();
     let payload = match reader.read_u16()? {
+        101 => AppResponsePayload::WorkbenchPreview(super::workbench_launch::read_preview(reader)?),
         100 => AppResponsePayload::WorkbenchResult(super::workbench_launch::read_page(reader)?),
         80 => AppResponsePayload::WorkbenchReview(super::workbench_review::read_page(reader)?),
         120 => AppResponsePayload::WorkbenchCheckpoint(
@@ -225,6 +235,7 @@ pub(super) fn read_response(
         3 => AppResponsePayload::ArtifactOpened(read_artifact_metadata(reader, limits)?),
         4 => AppResponsePayload::PromptAccepted(read_id(reader, PromptId::new)?),
         5 => AppResponsePayload::TerminalAttached(read_terminal_binding(reader)?),
+        181 => AppResponsePayload::TerminalPipeAttached(read_terminal_binding(reader)?),
         6 => AppResponsePayload::Acknowledged(OperationAcknowledgement::new(read_id(
             reader,
             RequestId::new,
@@ -233,14 +244,16 @@ pub(super) fn read_response(
         8 => AppResponsePayload::ShutdownAccepted(read_shutdown_accepted(reader)?),
         9 => AppResponsePayload::Error(read_app_error(reader, limits)?),
         10 => AppResponsePayload::ProductRunAccepted(read_snapshot(reader)?),
-        11 => AppResponsePayload::ProductRuns(read_snapshots(reader)?),
-        12 => AppResponsePayload::ProductRunConversation(read_conversation(reader)?),
+        102 => AppResponsePayload::ProductRunObservations(
+            super::product::observations::read_observations(reader)?,
+        ),
         13 => AppResponsePayload::ProductRunSettled(read_settlement_snapshot(reader)?),
-        14 => AppResponsePayload::ProductRunSettlements(read_settlement_snapshots(reader)?),
         15 => AppResponsePayload::Interaction(super::interaction::read_snapshot(reader, false)?),
         16 => AppResponsePayload::Models(super::interaction::read_catalog(reader)?),
         17 => AppResponsePayload::Interaction(super::interaction::read_snapshot(reader, true)?),
         18 => AppResponsePayload::Doctor(super::doctor::read_report(reader)?),
+        43 => AppResponsePayload::WorkbenchExecution(super::workbench::read_execution(reader)?),
+        44 => AppResponsePayload::InteractionBinding(super::interaction::read_binding(reader)?),
         19 => AppResponsePayload::Workbench(super::workbench::read_snapshot(reader)?),
         20 => AppResponsePayload::WorkbenchReceipt(super::workbench::read_receipt(reader)?),
         21 => AppResponsePayload::WorkbenchQueue(super::workbench_inputs::read_page(reader)?),
@@ -304,7 +317,8 @@ fn validate_response_binding(
         AppResponsePayload::CommandResult(value) => {
             value.original_request_id() == response.request_id()
         }
-        AppResponsePayload::TerminalAttached(value) => {
+        AppResponsePayload::TerminalAttached(value)
+        | AppResponsePayload::TerminalPipeAttached(value) => {
             value.originating_request_id() == response.request_id()
         }
         AppResponsePayload::Acknowledged(value) => value.request_id() == response.request_id(),

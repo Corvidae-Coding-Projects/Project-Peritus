@@ -15,6 +15,54 @@ pub(super) fn messages(exchange: &Exchange) -> std::iter::Cloned<std::slice::Ite
     exchange.messages.iter().cloned()
 }
 
+pub(super) fn omission_notice(memory: &LocalMemory, exchanges: &[Exchange]) -> Option<String> {
+    if exchanges.is_empty() {
+        return None;
+    }
+    let mut results = Vec::new();
+    let mut total = 0_usize;
+    for exchange in exchanges {
+        for message in &exchange.messages {
+            for block in message.content() {
+                let ContentBlock::ToolResult(result) = block else { continue };
+                total = total.saturating_add(1);
+                if results.len() >= 8 {
+                    continue;
+                }
+                let call_id = result.call_id().expose_for_wire();
+                let Some(source) = memory
+                    .sources
+                    .iter()
+                    .rev()
+                    .find(|source| source.call.as_ref().is_some_and(|call| call.id == call_id))
+                else {
+                    continue;
+                };
+                let tool = source.call.as_ref().map_or("unknown", |call| call.name.as_str());
+                results.push(format!(
+                    "- tool={tool} call={call_id} exact_source={}",
+                    super::super::tools::source_handle(memory, source.sequence)
+                ));
+            }
+        }
+    }
+    let listed = results.len();
+    let mut notice = format!(
+        "COMPLETED TOOL EVIDENCE OMITTED FROM INLINE HISTORY — UNTRUSTED OBSERVATIONS\n{} complete exchange(s), containing {total} tool result(s), did not fit this request. The effects are already settled; do not redispatch them. Retrieve exact outputs with context_read using these handles:\n{}",
+        exchanges.len(),
+        results.join("\n")
+    );
+    if total > listed {
+        use core::fmt::Write as _;
+        let _ = write!(
+            notice,
+            "\n- {} additional result(s) remain in the local archive",
+            total - listed
+        );
+    }
+    Some(notice)
+}
+
 pub(super) fn groups(memory: &LocalMemory) -> Result<Vec<Exchange>, DeveloperLoopError> {
     let requirements = memory
         .state

@@ -97,41 +97,33 @@ fn checkpoint_inspection_request_uses_tag_121_and_round_trips() {
 }
 
 #[test]
-fn rewind_modes_child_and_allocation_are_in_the_exact_preview_fingerprint() {
+fn rewind_modes_and_child_are_in_the_exact_preview_fingerprint() {
     let baseline = preview();
     let child = ConversationId::new([19; 16]).unwrap();
-    let budget = crate::WorkbenchForkBudget::new(1000, 2, 3, 400).unwrap();
     for mode in [WorkbenchRewindMode::ConversationOnly, WorkbenchRewindMode::Combined] {
-        for allocation in [None, Some(budget)] {
-            let request = baseline.request().with_branch(mode, child, allocation).unwrap();
-            let paths = if mode == WorkbenchRewindMode::ConversationOnly {
-                Vec::new()
-            } else {
-                baseline.paths().to_vec()
-            };
-            let expected =
-                WorkbenchRewindPreview::new(request, paths, Vec::new(), Vec::new()).unwrap();
-            assert_ne!(expected.preview_digest(), baseline.preview_digest());
-            let mut writer = CanonicalWriter::new(CodecLimits::PRODUCTION);
-            write_preview(&mut writer, &expected).unwrap();
-            let bytes = writer.into_bytes();
-            let mut reader = CanonicalReader::new(&bytes, CodecLimits::PRODUCTION);
-            assert_eq!(read_preview(&mut reader).unwrap(), expected);
-        }
+        let request = baseline.request().with_branch(mode, child).unwrap();
+        let paths = if mode == WorkbenchRewindMode::ConversationOnly {
+            Vec::new()
+        } else {
+            baseline.paths().to_vec()
+        };
+        let expected = WorkbenchRewindPreview::new(request, paths, Vec::new(), Vec::new()).unwrap();
+        assert_ne!(expected.preview_digest(), baseline.preview_digest());
+        let mut writer = CanonicalWriter::new(CodecLimits::PRODUCTION);
+        write_preview(&mut writer, &expected).unwrap();
+        let bytes = writer.into_bytes();
+        let mut reader = CanonicalReader::new(&bytes, CodecLimits::PRODUCTION);
+        assert_eq!(read_preview(&mut reader).unwrap(), expected);
     }
-    assert!(baseline.request().with_branch(WorkbenchRewindMode::FilesOnly, child, None).is_err());
+    assert!(baseline.request().with_branch(WorkbenchRewindMode::FilesOnly, child).is_err());
     assert!(
         baseline
             .request()
-            .with_branch(
-                WorkbenchRewindMode::Combined,
-                baseline.request().query().conversation(),
-                None
-            )
+            .with_branch(WorkbenchRewindMode::Combined, baseline.request().query().conversation())
             .is_err()
     );
     let request =
-        baseline.request().with_branch(WorkbenchRewindMode::ConversationOnly, child, None).unwrap();
+        baseline.request().with_branch(WorkbenchRewindMode::ConversationOnly, child).unwrap();
     assert!(
         WorkbenchRewindPreview::new(request, baseline.paths().to_vec(), Vec::new(), Vec::new())
             .is_err()

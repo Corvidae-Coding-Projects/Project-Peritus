@@ -31,16 +31,15 @@ impl ProductRunService {
         actor: ActorId,
         command: &WorkbenchCommand,
         restore: &RestoreOperation,
-        recovery: &UserCheckpoint,
+        evidence: (&UserCheckpoint, &UserCheckpoint),
     ) -> Result<RecoveredRestore, Error> {
+        let (checkpoint, recovery) = evidence;
         let WorkbenchIntent::ApplyRewind(confirmed) = command.intent() else {
             return Err(ControlError::InvalidInput.into());
         };
-        let checkpoint = record
-            .checkpoints()
-            .iter()
-            .find(|candidate| candidate.id() == restore.checkpoint())
-            .ok_or(Error::Corrupt("restore source checkpoint missing"))?;
+        if checkpoint.id() != restore.checkpoint() {
+            return Err(Error::Corrupt("restore source checkpoint identity differs"));
+        }
         let branch_exact = match (confirmed.request().child(), restore.branch()) {
             (None, None) => true,
             (Some(child), Some(branch)) => child.as_bytes() == branch.child().as_bytes(),

@@ -5,7 +5,7 @@ use super::*;
 #[test]
 fn thinking_summary_streams_separately_from_answer_with_split_utf8() {
     let mut options =
-        InteractionOptions::new(ProductInteractionMode::Chat, ProductRoleModels::default());
+        InteractionOptions::test(ProductInteractionMode::Chat, ProductRoleModels::default());
     options.summary(b"Checking ").unwrap();
     options.summary(&[0xce]).unwrap();
     options.text(b"Answer ").unwrap();
@@ -32,7 +32,7 @@ fn thinking_summary_streams_separately_from_answer_with_split_utf8() {
 #[test]
 fn standalone_leading_whitespace_waits_for_real_assistant_text() {
     let mut options =
-        InteractionOptions::new(ProductInteractionMode::Chat, ProductRoleModels::default());
+        InteractionOptions::test(ProductInteractionMode::Chat, ProductRoleModels::default());
 
     options.text(b"\n").expect("leading whitespace");
     assert!(options.activities.is_empty());
@@ -46,7 +46,7 @@ fn standalone_leading_whitespace_waits_for_real_assistant_text() {
 #[test]
 fn whitespace_only_stream_is_bounded_without_a_public_empty_activity() {
     let mut options =
-        InteractionOptions::new(ProductInteractionMode::Chat, ProductRoleModels::default());
+        InteractionOptions::test(ProductInteractionMode::Chat, ProductRoleModels::default());
 
     options.text(&vec![b' '; MAX_PRODUCT_ACTIVITY_BYTES * 2]).expect("whitespace stream");
 
@@ -57,7 +57,7 @@ fn whitespace_only_stream_is_bounded_without_a_public_empty_activity() {
 #[test]
 fn invalid_provider_utf8_retains_provider_classification() {
     let mut options =
-        InteractionOptions::new(ProductInteractionMode::Chat, ProductRoleModels::default());
+        InteractionOptions::test(ProductInteractionMode::Chat, ProductRoleModels::default());
 
     let error = options.text(b"valid\xff").unwrap_err();
     let ProductRunServiceError::Context { code, retry, subsystem, operation, detail } = error

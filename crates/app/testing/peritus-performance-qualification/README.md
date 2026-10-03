@@ -10,7 +10,9 @@ matches the profile's declared reference-machine class; accelerated smoke runs a
 non-release evidence and cannot produce an H3 `Ready` verdict.
 
 The integrated subject launches a disposable `peritusd`, negotiates the public A3 protocol, and
-submits real fenced scheduler commands through the same command boundary as an application client.
+must first complete a real read-only product interaction through a hermetic local Codex-runtime
+fixture and a verified direct folder. It then submits real fenced scheduler commands through the
+same command boundary as an application client.
 Terminal, cancellation, artifact, queue, and provider-pressure operations use owned local effects;
 the provider adapter is deterministic and never reads provider credentials. Each subject capability
 is created with its disposable instance and cannot authorize another instance.
@@ -44,8 +46,9 @@ all three public commands, and commit acknowledgement in event latency. Syntheti
 not real reviews, evidence approvals, or release authority. This fixture is not comparable to the
 old scheduler-toggle diagnostic or an old adapter baseline.
 
-This correction covers event payloads and the focused event-append arrival schedule. Other scenario
-adapters still include local pressure effects; it is not full H3 qualification.
+This correction covers event payloads, the focused event-append arrival schedule, and a mandatory
+product/provider admission round trip. Scenario-specific provider pressure remains deterministic
+local accounting rather than paid external traffic.
 
 Long campaigns use deterministic reservoir sampling per workload and metric. Objective metrics
 retain twice their required sample count and diagnostics retain a bounded representative set, then

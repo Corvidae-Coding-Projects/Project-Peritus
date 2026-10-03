@@ -121,7 +121,9 @@ pub fn adopt_current_install(
         connection
             .pragma_query_value(None, "user_version", |row| row.get(0))
             .map_err(|error| MigrationError::sqlite("read SQLite user version", error))?;
-    if u64::try_from(user_version).map_err(|_| corrupt("negative SQLite user version"))? != latest {
+    let installed_version =
+        u64::try_from(user_version).map_err(|_| corrupt("negative SQLite user version"))?;
+    if installed_version == 0 || installed_version > latest {
         return Ok(false);
     }
     let installed: Option<i64> = connection
@@ -130,13 +132,17 @@ pub fn adopt_current_install(
         })
         .optional()
         .map_err(|error| MigrationError::sqlite("observe installed schema version", error))?;
-    if installed.and_then(|value| u64::try_from(value).ok()) != Some(latest) {
+    if installed.and_then(|value| u64::try_from(value).ok()) != Some(installed_version) {
         return Err(corrupt("current SQLite version lacks matching journal schema metadata"));
     }
     let transaction = connection
         .transaction()
         .map_err(|error| MigrationError::sqlite("begin current-schema adoption", error))?;
-    for descriptor in registry.descriptors() {
+    for descriptor in registry
+        .descriptors()
+        .iter()
+        .filter(|descriptor| descriptor.version().get() <= installed_version)
+    {
         record_step(&transaction, operation, *descriptor)?;
     }
     transaction

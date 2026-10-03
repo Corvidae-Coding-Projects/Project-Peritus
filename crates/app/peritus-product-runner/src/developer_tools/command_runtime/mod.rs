@@ -13,6 +13,9 @@ mod lease;
 mod ordinal;
 mod plan;
 mod preview;
+mod preview_terminal;
+pub use preview_terminal::PreviewTerminal;
+mod projections;
 mod result;
 mod sandbox;
 
@@ -66,9 +69,12 @@ struct RuntimeState {
     next_folder_patch_ordinal: u64,
     active: BTreeMap<String, ActiveCommand>,
     terminal: BTreeMap<String, TerminalCommand>,
+    recovered: BTreeMap<String, Value>,
 }
 
 struct ActiveCommand {
+    plan: peritus_process::ExecutionPlan,
+    control: Option<peritus_process::ProcessControl>,
     invocation: InvocationHandle,
     started: Instant,
     interactive: bool,
@@ -137,6 +143,17 @@ impl CommandRuntime {
     }
 
     pub(super) fn run(&self, request: StartCommand<'_>) -> Result<Value, DeveloperLoopError> {
+        if tokio::runtime::Handle::try_current().is_ok_and(|handle| {
+            matches!(handle.runtime_flavor(), tokio::runtime::RuntimeFlavor::MultiThread)
+        }) {
+            // Tool execution is a synchronous interface. Tell Tokio before waiting so this run's
+            // worker can be replaced and the daemon control plane remains schedulable.
+            return tokio::task::block_in_place(|| self.run_to_completion(request));
+        }
+        self.run_to_completion(request)
+    }
+
+    fn run_to_completion(&self, request: StartCommand<'_>) -> Result<Value, DeveloperLoopError> {
         let started = self.start_owned(request)?;
         loop {
             let observation = self.poll(&started.handle)?;
@@ -153,8 +170,8 @@ impl CommandRuntime {
 
     fn start_owned(&self, request: StartCommand<'_>) -> Result<StartedCommand, DeveloperLoopError> {
         let cwd = canonical_command_cwd(&self.inner.workspace_root, request.cwd)?;
-        let timeout_millis =
-            u64::try_from(request.timeout.as_millis()).unwrap_or(u64::MAX).clamp(1, 600_000);
+        let timeout_millis = u64::try_from(request.timeout.as_millis())
+            .map_err(|_| tool("command timeout is not representable in milliseconds"))?;
         let mut state = self.inner.state.lock().map_err(|_| tool("command runtime is poisoned"))?;
         let ordinal =
             ordinal::reserve(&self.inner.state_root, self.inner.run_id, state.next_ordinal)
@@ -202,7 +219,7 @@ impl CommandRuntime {
         let mut dispatcher = RawShellDispatcher::new(
             &self.inner.gateway,
             &process_request,
-            command.execution,
+            command.execution.clone(),
             artifacts,
         )
         .map_err(|error| tool(error.to_string()))?;
@@ -217,16 +234,22 @@ impl CommandRuntime {
                 state.active.insert(
                     handle.clone(),
                     ActiveCommand {
+                        plan: command.execution,
+                        control: dispatcher.process_control(),
                         invocation,
                         started: Instant::now(),
                         interactive: request.interactive,
                     },
                 );
+                retain_projection(&self.inner.state_root, &handle, result::active(&handle, &[]));
             }
             DispatchOutcome::Completed(result) | DispatchOutcome::Replayed(result) => {
+                let projection =
+                    result::terminal(&handle, &result, &self.inner.artifacts, &[]).map_err(tool)?;
                 state
                     .terminal
                     .insert(handle.clone(), TerminalCommand { result, progress: Vec::new() });
+                retain_projection(&self.inner.state_root, &handle, projection);
             }
             DispatchOutcome::PriorOutcome(disposition) => {
                 return Err(tool(format!(
@@ -249,6 +272,9 @@ impl CommandRuntime {
             )
             .map_err(tool);
         }
+        if let Some(recovered) = state.recovered.get(handle) {
+            return Ok(recovered.clone());
+        }
         let (invocation, observed_at) = {
             let active = state
                 .active
@@ -259,7 +285,9 @@ impl CommandRuntime {
         match operation {
             Observation::Recover => match state.router.recover(invocation, observed_at) {
                 Ok(RecoveryOutcome::Active(update)) => {
-                    Ok(result::active(handle, update.progress()))
+                    let value = result::active(handle, update.progress());
+                    retain_projection(&self.inner.state_root, handle, value.clone());
+                    Ok(value)
                 }
                 Ok(RecoveryOutcome::Completed(terminal)) => {
                     state.active.remove(handle);
@@ -269,11 +297,14 @@ impl CommandRuntime {
                         handle.to_owned(),
                         TerminalCommand { result: terminal, progress: Vec::new() },
                     );
+                    retain_projection(&self.inner.state_root, handle, value.clone());
                     Ok(value)
                 }
                 Ok(RecoveryOutcome::Indeterminate(failure)) => {
                     state.active.remove(handle);
-                    Ok(result::indeterminate(handle, failure.failure().detail().as_str()))
+                    let value = result::indeterminate(handle, failure.failure().detail().as_str());
+                    retain_projection(&self.inner.state_root, handle, value.clone());
+                    Ok(value)
                 }
                 Err(error) => Err(tool(error.to_string())),
             },
@@ -304,7 +335,9 @@ impl CommandRuntime {
         terminal: Option<&ToolResult>,
     ) -> Result<Value, DeveloperLoopError> {
         let Some(terminal) = terminal.cloned() else {
-            return Ok(result::active(handle, progress));
+            let value = result::active(handle, progress);
+            retain_projection(&self.inner.state_root, handle, value.clone());
+            return Ok(value);
         };
         let value =
             result::terminal(handle, &terminal, &self.inner.artifacts, progress).map_err(tool)?;
@@ -313,7 +346,18 @@ impl CommandRuntime {
             handle.to_owned(),
             TerminalCommand { result: terminal, progress: progress.to_vec() },
         );
+        retain_projection(&self.inner.state_root, handle, value.clone());
         Ok(value)
+    }
+}
+
+fn retain_projection(root: &Path, handle: &str, value: Value) {
+    if let Err(error) = projections::record(root, handle, value) {
+        // The process/tool stores remain authoritative. A projection failure must not hide a
+        // command that was already dispatched or its terminal result from the current caller.
+        crate::diagnostic::report(&format!(
+            "peritus command runtime: command {handle} completed an in-memory transition, but its reconnect projection could not be retained: {error}"
+        ));
     }
 }
 

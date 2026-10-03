@@ -1,14 +1,78 @@
 //! Evidence-backed suggestions. Only an explicit evaluation request may start inference.
 
-use crate::{AppErrorCode, AppProtocolError, ProductRunRequest};
+use crate::{AppErrorCode, AppProtocolError, ConversationId, ProductProviderSelection};
 use peritus_types::{RunId, Sha256Digest, WorkspaceId};
 
-/// Maximum suggestions returned for one workspace.
-pub const MAX_IMPROVEMENTS: usize = 32;
-/// Maximum retained distinct run references for one suggestion.
-pub const MAX_IMPROVEMENT_EVIDENCE: usize = 4;
 /// Maximum bytes in a proposal or evidence summary.
 pub const MAX_IMPROVEMENT_TEXT: usize = 4096;
+
+/// Exact execution identity and target selected for one explicit evaluation.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct ImprovementEvaluationRequest {
+    run: RunId,
+    target: WorkspaceId,
+    providers: ProductProviderSelection,
+}
+
+impl ImprovementEvaluationRequest {
+    /// Binds the distinct run, target workspace, and provider roles without embedding task text.
+    #[must_use]
+    pub const fn new(run: RunId, target: WorkspaceId, providers: ProductProviderSelection) -> Self {
+        Self { run, target, providers }
+    }
+
+    /// Returns the requested execution lineage.
+    #[must_use]
+    pub const fn run(self) -> RunId {
+        self.run
+    }
+
+    /// Returns the explicitly selected Peritus source workspace.
+    #[must_use]
+    pub const fn target(self) -> WorkspaceId {
+        self.target
+    }
+
+    /// Returns the selected provider roles.
+    #[must_use]
+    pub const fn providers(self) -> ProductProviderSelection {
+        self.providers
+    }
+}
+
+/// Durable route to an evaluation, available before its first run is admitted.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct ImprovementEvaluation {
+    conversation: ConversationId,
+    run: RunId,
+    target: WorkspaceId,
+}
+
+impl ImprovementEvaluation {
+    /// Binds the durable conversation, execution lineage, and target workspace.
+    #[must_use]
+    pub const fn new(conversation: ConversationId, run: RunId, target: WorkspaceId) -> Self {
+        Self { conversation, run, target }
+    }
+
+    /// Returns the durable workbench identity.
+    #[must_use]
+    pub const fn conversation(self) -> ConversationId {
+        self.conversation
+    }
+
+    /// Returns the evaluation run identity, whether or not admission has completed yet.
+    #[must_use]
+    pub const fn run(self) -> RunId {
+        self.run
+    }
+
+    /// Returns the exact Peritus source workspace.
+    #[must_use]
+    pub const fn target(self) -> WorkspaceId {
+        self.target
+    }
+}
 
 /// Checked inert text; evidence does not become an instruction or permission.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -58,14 +122,13 @@ pub enum ImprovementRequest {
         candidate: Sha256Digest,
     },
     /// Generate and test a patch in an explicitly selected harness source workspace.
-    /// The daemon derives the task and ignores the supplied task text.
     Evaluate {
         /// Source workspace.
         workspace: WorkspaceId,
         /// Exact suggestion identity.
         candidate: Sha256Digest,
         /// Proposed evaluation identity, target workspace and configured provider routes.
-        run: ProductRunRequest,
+        evaluation: ImprovementEvaluationRequest,
     },
 }
 
@@ -119,7 +182,7 @@ pub struct ImprovementCandidate {
     id: Sha256Digest,
     proposal: ImprovementText,
     evidence: Vec<ImprovementEvidence>,
-    evaluation: Option<RunId>,
+    evaluation: Option<ImprovementEvaluation>,
     dismissed: bool,
 }
 
@@ -132,11 +195,11 @@ impl ImprovementCandidate {
         id: Sha256Digest,
         proposal: ImprovementText,
         evidence: Vec<ImprovementEvidence>,
-        evaluation: Option<RunId>,
+        evaluation: Option<ImprovementEvaluation>,
         dismissed: bool,
     ) -> Result<Self, AppProtocolError> {
         if evidence.is_empty()
-            || evidence.len() > MAX_IMPROVEMENT_EVIDENCE
+            || u16::try_from(evidence.len()).is_err()
             || evidence
                 .iter()
                 .enumerate()
@@ -161,9 +224,9 @@ impl ImprovementCandidate {
     pub fn evidence(&self) -> &[ImprovementEvidence] {
         &self.evidence
     }
-    /// Returns the explicit patch-generation/evaluation run, if reserved.
+    /// Returns the durable evaluation route, if reserved.
     #[must_use]
-    pub const fn evaluation(&self) -> Option<RunId> {
+    pub const fn evaluation(&self) -> Option<ImprovementEvaluation> {
         self.evaluation
     }
     /// Returns whether the user dismissed this suggestion.
@@ -189,7 +252,7 @@ impl ImprovementInbox {
         workspace: WorkspaceId,
         candidates: Vec<ImprovementCandidate>,
     ) -> Result<Self, AppProtocolError> {
-        if candidates.len() > MAX_IMPROVEMENTS
+        if u16::try_from(candidates.len()).is_err()
             || candidates
                 .iter()
                 .enumerate()

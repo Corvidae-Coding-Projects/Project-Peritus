@@ -37,6 +37,13 @@ pub enum ImageField {
     Caption,
 }
 impl ImageUi {
+    pub(super) fn upload_binding(
+        &self,
+    ) -> Option<(peritus_app_protocol::TransferId, peritus_types::ArtifactId)> {
+        let metadata = &self.upload.as_ref()?.metadata;
+        Some((metadata.transfer_id(), metadata.artifact_id()))
+    }
+
     pub(super) fn discard_preview(&mut self) {
         self.preview = None;
         self.request = None;
@@ -70,19 +77,23 @@ impl AppModel {
             self.notice(NoticeLevel::Warning, "Image import unavailable/offline; reconnect or upgrade the daemon. Draft retained.");
             return Vec::new();
         }
-        if self.chat.workbench.selected.is_none() {
-            self.notice(
-                NoticeLevel::Warning,
-                "Select a conversation with /sessions first. Draft retained.",
-            );
-            return Vec::new();
-        }
         if self.workbench_request_pending() || self.chat.workbench.unresolved.is_some() {
             self.notice(
                 NoticeLevel::Warning,
                 "Resolve the pending request before another import. Draft retained.",
             );
             return Vec::new();
+        }
+        if path.len() > 4096 || path.chars().any(char::is_control) {
+            self.notice(
+                NoticeLevel::Warning,
+                "Path exceeds 4096 bytes or contains control characters; draft retained.",
+            );
+            return Vec::new();
+        }
+        if self.chat.workbench.selected.is_none() {
+            return self
+                .create_command_conversation("Image conversation", format!("/attach {path}"));
         }
         self.chat.workbench.open = true;
         self.chat.workbench.images.open = true;
@@ -92,15 +103,12 @@ impl AppModel {
             self.chat.workbench.images.list = true;
             return self.refresh_workbench();
         }
-        if path.len() > 4096 || path.chars().any(char::is_control) {
-            self.notice(
-                NoticeLevel::Warning,
-                "Path exceeds 4096 bytes or contains control characters; draft retained.",
-            );
-            return Vec::new();
-        }
         path.clone_into(&mut self.chat.workbench.images.path);
         self.chat.workbench.images.list = false;
+        if self.chat.workbench.snapshot.is_none() {
+            let query = self.chat.workbench.selected.expect("selected image conversation");
+            return self.refresh_snapshot_for_command(query, self.chat.buffer.clone());
+        }
         self.begin_image_read()
     }
 

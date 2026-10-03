@@ -37,19 +37,20 @@ impl<'a> ProviderProgress<'a> {
         &mut self,
         operation: impl Future<Output = Result<T, DeveloperLoopError>>,
     ) -> Result<T, DeveloperLoopError> {
-        let Some(interaction) = self.interaction else { return operation.await };
         tokio::pin!(operation);
         loop {
             tokio::select! {
                 biased;
                 result = &mut operation => return result,
                 () = tokio::time::sleep_until(self.next_notice) => {
-                    let elapsed_seconds = self.started.elapsed().as_secs();
-                    if let Err(error) = interaction.observe(DeveloperActivity::ModelWaiting {
-                        elapsed_seconds,
-                    }) {
-                        let _ = self.cancellation.cancel();
-                        return Err(error);
+                    if let Some(interaction) = self.interaction {
+                        let elapsed_seconds = self.started.elapsed().as_secs();
+                        if let Err(error) = interaction.observe(DeveloperActivity::ModelWaiting {
+                            elapsed_seconds,
+                        }) {
+                            let _ = self.cancellation.cancel();
+                            return Err(error);
+                        }
                     }
                     self.next_notice = Instant::now() + NOTICE_INTERVAL;
                 }
@@ -148,5 +149,17 @@ mod tests {
             .await
             .expect("streamed fragment");
         assert_eq!(observer.notices.load(Ordering::SeqCst), 0);
+    }
+
+    #[tokio::test]
+    async fn pending_provider_turn_has_no_wall_clock_deadline() {
+        let observer = Observer { notices: AtomicUsize::new(0), fail: false };
+        let cancellation = CancellationToken::new();
+        let mut progress = ProviderProgress::new(Some(&observer), &cancellation);
+        progress.next_notice = Instant::now();
+        let result = progress.wait(std::future::pending::<Result<(), DeveloperLoopError>>());
+        assert!(tokio::time::timeout(Duration::from_millis(25), result).await.is_err());
+        assert!(observer.notices.load(Ordering::SeqCst) > 0);
+        assert!(!cancellation.is_cancelled());
     }
 }

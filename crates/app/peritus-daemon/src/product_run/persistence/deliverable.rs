@@ -10,7 +10,7 @@ impl PersistedDeliverable {
             changed_paths: value.changed_paths().to_vec(),
             successful_commands: value.successful_commands().to_vec(),
             run_instructions: value.run_instructions().to_owned(),
-            qualification: Some(value.qualification().tag()),
+            qualification: value.qualification().tag(),
             accepted: value.accepted(),
             commit_revision: value.commit_revision().to_owned(),
             export_path: value.export_path().to_owned(),
@@ -19,9 +19,7 @@ impl PersistedDeliverable {
     }
 
     pub(super) fn into_deliverable(self) -> Result<ProductDeliverable, ProductRunServiceError> {
-        let qualification = self
-            .qualification
-            .map_or(Some(CandidateStage::Qualified), CandidateStage::from_tag)
+        let qualification = CandidateStage::from_tag(self.qualification)
             .ok_or(ProductRunServiceError::InvalidMessage)?;
         let mut value = ProductDeliverable::candidate(
             self.workspace_path,

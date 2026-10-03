@@ -1,8 +1,8 @@
 //! Persistent preview reconstruction and restart-safe process-state projection.
 
 use super::{
-    MAX_PREVIEW_OPERATIONS, MAX_PREVIEW_OUTPUT_BYTES, PersistedPreviewOperation,
-    PersistedPreviewOutput, PreviewAggregate, PreviewOperationRecord, ProductRunServiceError,
+    PersistedPreviewOperation, PersistedPreviewOutput, PreviewAggregate, PreviewOperationRecord,
+    ProductRunServiceError,
 };
 use peritus_app_protocol::{
     ControlOperationId, WorkbenchLaunchResult, WorkbenchLaunchState, WorkbenchResultPage,
@@ -17,13 +17,8 @@ pub(super) fn restore_preview(
     outputs: Vec<PersistedPreviewOutput>,
     run: RunId,
     workspace: WorkspaceId,
-    interaction: Option<&super::super::interaction::InteractionOptions>,
+    interaction: &super::super::interaction::InteractionOptions,
 ) -> Result<PreviewAggregate, ProductRunServiceError> {
-    if operations.len() > MAX_PREVIEW_OPERATIONS
-        || outputs.iter().map(|value| value.stdout.len()).sum::<usize>() > MAX_PREVIEW_OUTPUT_BYTES
-    {
-        return Err(ProductRunServiceError::InvalidMessage);
-    }
     let page = page
         .map(|bytes| decode_workbench_result_value(&bytes))
         .transpose()
@@ -32,13 +27,11 @@ pub(super) fn restore_preview(
         .transpose()?;
     if let Some(page) = &page {
         let query = page.query();
-        let binding = interaction.and_then(|options| options.workbench.as_ref());
+        let binding = &interaction.workbench;
         if query.run() != run
             || query.query().workspace() != workspace
-            || binding.is_none_or(|operation| {
-                operation.conversation().as_bytes() != query.query().conversation().as_bytes()
-                    || operation.workspace_bytes() != query.query().workspace().as_bytes()
-            })
+            || binding.conversation().as_bytes() != query.query().conversation().as_bytes()
+            || binding.workspace_bytes() != query.query().workspace().as_bytes()
         {
             return Err(ProductRunServiceError::InvalidMessage);
         }
@@ -72,9 +65,15 @@ pub(super) fn restore_preview(
         .map(|value| value.launches().iter().map(WorkbenchLaunchResult::launch).collect())
         .unwrap_or_default();
     let mut restored_outputs = BTreeMap::new();
+    let mut errors = BTreeMap::new();
+    let mut truncated = std::collections::BTreeSet::new();
     for value in outputs {
         let launch = ControlOperationId::new(value.launch)
             .map_err(|_| ProductRunServiceError::InvalidMessage)?;
+        errors.insert(launch, value.stderr);
+        if value.truncated {
+            truncated.insert(launch);
+        }
         if !launch_ids.contains(&launch) || restored_outputs.insert(launch, value.stdout).is_some()
         {
             return Err(ProductRunServiceError::InvalidMessage);
@@ -83,7 +82,13 @@ pub(super) fn restore_preview(
     if page.is_none() && (!restored_operations.is_empty() || !restored_outputs.is_empty()) {
         return Err(ProductRunServiceError::InvalidMessage);
     }
-    Ok(PreviewAggregate { page, operations: restored_operations, outputs: restored_outputs })
+    Ok(PreviewAggregate {
+        page,
+        operations: restored_operations,
+        outputs: restored_outputs,
+        errors,
+        truncated,
+    })
 }
 
 fn recover_preview_page(

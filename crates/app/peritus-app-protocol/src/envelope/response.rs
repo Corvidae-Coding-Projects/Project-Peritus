@@ -2,8 +2,8 @@
 
 use crate::{
     AppProtocolError, ArtifactMetadata, CommandResult, CorrelationId, EventCursor,
-    ProductRunConversation, ProductRunSettlementSnapshot, ProductRunSnapshot, PromptId, RequestId,
-    ShutdownAccepted, SubscriptionId, TerminalBinding,
+    ProductRunSettlementSnapshot, ProductRunSnapshot, PromptId, RequestId, ShutdownAccepted,
+    SubscriptionId, TerminalBinding,
 };
 
 use super::ProtocolContext;
@@ -87,6 +87,8 @@ pub enum AppResponsePayload {
     WorkbenchGoal(crate::WorkbenchGoalSnapshot),
     /// Result viewer with independent launch, capture, behavior and human-review evidence.
     WorkbenchResult(crate::WorkbenchResultPage),
+    /// Launch evidence with bounded live output.
+    WorkbenchPreview(crate::WorkbenchPreviewSnapshot),
     /// Structured candidate diff, anchored feedback, and mapped qualification evidence.
     WorkbenchReview(crate::WorkbenchReviewPage),
     /// Revision-fenced retained image metadata and selection; no image bytes or inference.
@@ -107,12 +109,16 @@ pub enum AppResponsePayload {
     WorkbenchQueue(crate::WorkbenchQueuePage),
     /// Current revisioned durable conversation metadata.
     Workbench(crate::WorkbenchSnapshot),
+    /// Authorized conversation metadata and optional execution binding.
+    WorkbenchExecution(crate::WorkbenchExecutionState),
     /// Durable original acceptance receipt, distinct from socket acknowledgement.
     WorkbenchReceipt(crate::WorkbenchReceipt),
     /// Scoped read-only diagnostic findings.
     Doctor(crate::DoctorReport),
     /// Conversation status and public activity.
     Interaction(crate::ProductInteractionSnapshot),
+    /// Read-only run observation with an explicit durable input destination, if governed.
+    InteractionBinding(crate::ProductInteractionBinding),
     /// Provider-discovered catalog, including explicit unavailable/cache metadata.
     Models(crate::ProductModelCatalog),
     /// Final command status and exact committed range.
@@ -125,6 +131,8 @@ pub enum AppResponsePayload {
     PromptAccepted(PromptId),
     /// Successful terminal attachment observation.
     TerminalAttached(TerminalBinding),
+    /// Negotiated bounded pipe attachment; input is line-oriented and resize is unavailable.
+    TerminalPipeAttached(TerminalBinding),
     /// Successful exact request acknowledgement.
     Acknowledged(OperationAcknowledgement),
     /// Current daemon status.
@@ -135,14 +143,10 @@ pub enum AppResponsePayload {
     Error(AppProtocolError),
     /// The run was accepted and its initial state is observable.
     ProductRunAccepted(ProductRunSnapshot),
-    /// Bounded recent or exact product-run observations.
-    ProductRuns(Vec<ProductRunSnapshot>),
-    /// Complete bounded conversation for one exact product run.
-    ProductRunConversation(ProductRunConversation),
+    /// Bounded mixed active and settled runs with per-run qualification evidence.
+    ProductRunObservations(Vec<crate::ProductRunObservation>),
     /// One exact product run paired with its verified terminal settlement.
     ProductRunSettled(ProductRunSettlementSnapshot),
-    /// Bounded settled product-run observations.
-    ProductRunSettlements(Vec<ProductRunSettlementSnapshot>),
 }
 
 /// Complete typed terminal response to one request.

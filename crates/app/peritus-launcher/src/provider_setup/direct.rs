@@ -68,7 +68,6 @@ fn settings(
 type DirectSettings = (Option<String>, String, Option<CompatibleProtocol>, Option<String>);
 
 fn compatible_settings(terminal: &mut Terminal<'_>) -> Result<DirectSettings, LauncherError> {
-    let endpoint = required(terminal, "Endpoint URL: ")?;
     terminal.line("Protocol: 1. Responses  2. Chat Completions")?;
     let protocol = loop {
         match terminal.prompt("Protocol: ")?.as_str() {
@@ -77,10 +76,23 @@ fn compatible_settings(terminal: &mut Terminal<'_>) -> Result<DirectSettings, La
             _ => terminal.line("Choose 1 or 2.")?,
         }
     };
+    let endpoint = required(terminal, compatible_endpoint_prompt(protocol))?;
     let header = terminal.prompt(
         "Credential header [Enter for Authorization: Bearer, or type an API-key header]: ",
     )?;
     Ok((Some(endpoint), String::new(), Some(protocol), (!header.is_empty()).then_some(header)))
+}
+
+const fn compatible_endpoint_prompt(protocol: CompatibleProtocol) -> &'static str {
+    match protocol {
+        CompatibleProtocol::Responses => "Exact endpoint URL (usually ending in /v1/responses): ",
+        CompatibleProtocol::ChatCompletions => {
+            "Exact endpoint URL (usually ending in /v1/chat/completions): "
+        }
+        CompatibleProtocol::AnthropicMessages | CompatibleProtocol::GoogleGenerateContent => {
+            "Exact endpoint URL: "
+        }
+    }
 }
 
 fn required(terminal: &mut Terminal<'_>, prompt: &str) -> Result<String, LauncherError> {
@@ -208,5 +220,16 @@ mod tests {
         let mut bytes = "key-🦀".as_bytes().to_vec();
         pop_character(&mut bytes);
         assert_eq!(bytes, b"key-");
+    }
+
+    #[test]
+    fn compatible_endpoint_prompt_names_the_selected_operation_route() {
+        assert!(
+            compatible_endpoint_prompt(CompatibleProtocol::ChatCompletions)
+                .contains("/v1/chat/completions")
+        );
+        assert!(
+            compatible_endpoint_prompt(CompatibleProtocol::Responses).contains("/v1/responses")
+        );
     }
 }

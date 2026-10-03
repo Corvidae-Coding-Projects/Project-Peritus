@@ -1,7 +1,7 @@
 //! Additive local diagnostics codecs with preallocation limits.
 
 use super::primitive::{invalid, read_id, unknown, write_id};
-use crate::{DoctorFinding, DoctorQuery, DoctorReport, DoctorStatus, MAX_DOCTOR_FINDINGS};
+use crate::{DoctorFinding, DoctorQuery, DoctorReport, DoctorStatus};
 use peritus_codec::{CanonicalReader, CanonicalWriter, CodecError, CodecErrorKind};
 use peritus_types::{ProviderProfileId, WorkspaceId};
 
@@ -48,9 +48,6 @@ pub(super) fn read_report(r: &mut CanonicalReader<'_>) -> Result<DoctorReport, C
     let offset = r.offset();
     let query = read_query(r)?;
     let count = usize::from(r.read_u16()?);
-    if count > MAX_DOCTOR_FINDINGS {
-        return Err(CodecError::at(CodecErrorKind::LimitExceeded, offset));
-    }
     let mut findings = Vec::with_capacity(count);
     for _ in 0..count {
         let check = read_text(r, 64)?;

@@ -7,7 +7,6 @@ use super::{WorkspaceProfile, WorkspaceTrust};
 use crate::ProductStateError;
 
 const MAX_RECENT_WORKSPACES: usize = 32;
-const MAX_RETAINED_REGISTRATIONS: usize = 4_096;
 
 /// Most-recent-first workspace inventory and active selection.
 #[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
@@ -132,7 +131,6 @@ impl WorkspaceSelection {
     pub(crate) fn validate(&self) -> Result<(), ProductStateError> {
         let registered = self.registered();
         if self.recent.len() > MAX_RECENT_WORKSPACES
-            || self.retained_registrations.len() > MAX_RETAINED_REGISTRATIONS
             || self.recent.iter().any(|profile| profile.validate().is_err())
             || self.retained_registrations.iter().any(|profile| {
                 profile.validate().is_err() || profile.trust_level() != WorkspaceTrust::Trusted
@@ -235,5 +233,42 @@ mod tests {
         assert_eq!(selection.recent().len(), 1);
         assert_eq!(selection.registered().len(), 1);
         assert_eq!(selection.recent()[0].registration_digest(), Some(&*"07".repeat(32)));
+    }
+
+    #[test]
+    fn retained_registration_history_keeps_every_trusted_workspace() {
+        let mut selection = WorkspaceSelection::default();
+        for index in 1..=4_097 {
+            let workspace_id = format!("{index:032x}");
+            let trusted = WorkspaceProfile::restricted(
+                format!("/repo/{index}"),
+                "01".repeat(32),
+                "02".repeat(16),
+                workspace_id.clone(),
+                "04".repeat(16),
+                "05".repeat(16),
+            )
+            .expect("profile")
+            .trust(
+                format!("/state/{index}/registration.bin"),
+                "06".repeat(32),
+                format!("/state/{index}/worktree"),
+                format!("/state/{index}/transactions"),
+            )
+            .expect("trusted");
+            selection.retain_registration(trusted);
+        }
+
+        assert_eq!(selection.retained_registrations.len(), 4_097);
+        assert!(
+            selection
+                .retained_registrations
+                .iter()
+                .any(|profile| profile.workspace_id() == "00000000000000000000000000000001")
+        );
+        assert_eq!(
+            selection.retained_registrations.last().expect("newest").workspace_id(),
+            format!("{:032x}", 4_097)
+        );
     }
 }

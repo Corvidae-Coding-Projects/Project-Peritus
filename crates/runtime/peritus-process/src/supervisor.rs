@@ -289,7 +289,7 @@ fn run_owner(
         #[cfg(windows)]
         windows_channels: value.windows_helper_channels(),
     });
-    let process = match platform::launch(plan, launch_command, handshake) {
+    let process = match platform::launch(plan, launch_command, handshake, store.crash_watchdog()) {
         Ok(process) => process,
         Err(error) => {
             let cleanup_complete = release_pre_spawn_session(&mut native, plan, sandbox_digest);

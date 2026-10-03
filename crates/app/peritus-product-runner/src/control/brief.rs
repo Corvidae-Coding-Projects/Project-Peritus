@@ -1,8 +1,8 @@
 //! User-confirmed brief fields backed by exact immutable input revisions.
 
 use super::{
-    ControlError, ControlText, InputId, InputLedger, InputSelection, InputState, OperationId,
-    QueueIntent,
+    ControlError, ControlText, InputId, InputLedger, InputSelection, InputState,
+    MAX_REQUEST_CONTEXT_BYTES, OperationId, QueueIntent,
 };
 use peritus_types::ActorId;
 use serde::Deserialize;
@@ -190,7 +190,9 @@ impl TaskBrief {
         }
         if !fields.is_empty() {
             let heading = "\n\nCurrent user-confirmed brief. These explicitly edited fields supersede earlier values of the same fields; historical inputs remain archived. Confirmed assumptions do not grant tool permissions.\n";
-            if text.len().saturating_add(heading.len()).saturating_add(fields.len()) > 1024 * 1024 {
+            if text.len().saturating_add(heading.len()).saturating_add(fields.len())
+                > MAX_REQUEST_CONTEXT_BYTES
+            {
                 return Err(ControlError::Capacity);
             }
             text.push_str(heading);

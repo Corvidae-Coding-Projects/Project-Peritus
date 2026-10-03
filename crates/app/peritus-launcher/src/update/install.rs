@@ -2,9 +2,17 @@
 
 use std::{env, path::PathBuf, process::Command};
 
+#[cfg(not(windows))]
+use std::time::Duration;
+
 use crate::LauncherError;
 
 use super::release::Release;
+
+#[cfg(not(windows))]
+const INSTALL_TIMEOUT: Duration = Duration::from_mins(15);
+#[cfg(not(windows))]
+const VERIFY_TIMEOUT: Duration = Duration::from_secs(30);
 
 pub(super) fn apply(package: &std::path::Path, release: &Release) -> Result<(), LauncherError> {
     let target = installed_command()?;
@@ -23,11 +31,11 @@ fn immediate_unix(
 ) -> Result<(), LauncherError> {
     let script =
         package.join(if target.exists() { "Upgrade-Peritus.sh" } else { "Install-Peritus.sh" });
-    let status = Command::new("sh")
-        .arg(&script)
-        .arg(package)
-        .status()
-        .map_err(|error| LauncherError::Update(format!("start native updater: {error}")))?;
+    let status = super::process::status(
+        Command::new("sh").arg(&script).arg(package),
+        "run native updater",
+        INSTALL_TIMEOUT,
+    )?;
     if !status.success() {
         return Err(LauncherError::Update(format!("native updater failed with status {status}")));
     }
@@ -107,12 +115,13 @@ fn environment(name: &'static str) -> Result<PathBuf, LauncherError> {
 
 #[cfg(not(windows))]
 fn verify(target: &std::path::Path, release: &Release) -> Result<(), LauncherError> {
-    let output = Command::new(target)
-        .arg("--version")
-        .output()
-        .map_err(|error| LauncherError::Update(format!("run installed version check: {error}")))?;
+    let (status, stdout) = super::process::stdout(
+        Command::new(target).arg("--version"),
+        "run installed version check",
+        VERIFY_TIMEOUT,
+    )?;
     let expected = format!("peritus {}\n", release.version());
-    if output.status.success() && output.stdout == expected.as_bytes() {
+    if status.success() && stdout == expected.as_bytes() {
         Ok(())
     } else {
         Err(LauncherError::Update("installed version verification failed".to_owned()))

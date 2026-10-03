@@ -7,7 +7,7 @@ use crate::{
     daemon,
     error::{Result, problem},
     files, git, operations,
-    state::{App, Operation, Session, id, save},
+    state::{App, Session, id, save},
 };
 use axum::{
     Json, Router,
@@ -122,7 +122,7 @@ async fn query(State(app): State<Arc<App>>, Query(args): Query<QueryArgs>) -> Re
         "runs" => daemon::runs(&app).await?,
         "improvements" => daemon::improvements::list(&app, &args.project).await?,
         "consoles" => crate::consoles::list(&app)?,
-        "operation" => operations::observe(&app, &args.operation)?,
+        "operation" => operations::observe(&app, &args.operation).await?,
         _ => return Err(problem("Unknown query")),
     };
     Ok(Json(value))
@@ -147,12 +147,7 @@ async fn action(State(app): State<Arc<App>>, Json(input): Json<Value>) -> Result
         return Ok(Json(prior.result.clone().unwrap_or_else(|| json!({"error":"Outcome uncertain. Inspect the original conversation or repository before submitting another action.","uncertain":true}))));
     }
     let _resource_guard = mutation_guard(&app, &input).await?;
-    app.update(|state| {
-        state
-            .operations
-            .insert(operation.clone(), Operation { input: input.clone(), result: None });
-        Ok(())
-    })?;
+    app.record_operation(operation.clone(), input.clone())?;
     let result = match dispatch(&app, &input).await {
         Ok(value) => value,
         Err(error) if error.1 => {
@@ -181,7 +176,7 @@ async fn operation_review(
     let id = input["operation"].as_str().ok_or_else(|| problem("Choose the original operation"))?;
     let lock = app.lock(format!("operation:{id}"))?;
     let _guard = lock.lock().await;
-    Ok(Json(operations::acknowledge(&app, id)?))
+    Ok(Json(operations::acknowledge(&app, id).await?))
 }
 async fn mutation_guard(app: &Arc<App>, input: &Value) -> Result<tokio::sync::OwnedMutexGuard<()>> {
     let string = |key: &str| input[key].as_str().unwrap_or("");
@@ -230,6 +225,8 @@ async fn dispatch(app: &Arc<App>, input: &Value) -> Result<Value> {
             let session = Session {
                 settings: crate::sessions::Settings::default(),
                 id: id()?,
+                conversation: id()?,
+                run: id()?,
                 project: app.project(string("project"))?.id,
                 parent: input["parent"].as_str().map(String::from),
                 title: if string("title").is_empty() {
@@ -249,6 +246,15 @@ async fn dispatch(app: &Arc<App>, input: &Value) -> Result<Value> {
         "session" => edit_session(app, input),
         "session-settings" => crate::sessions::configure(app, input).await,
         "open-run" => crate::sessions::open_run(app, string("run")).await,
+        "open-workbench" => {
+            crate::sessions::open_workbench(
+                app,
+                string("conversation"),
+                string("run"),
+                string("target"),
+            )
+            .await
+        }
         "workbench" => crate::consoles::workbench(app, input),
         "repository" => {
             let mut project = app.project(string("project"))?;

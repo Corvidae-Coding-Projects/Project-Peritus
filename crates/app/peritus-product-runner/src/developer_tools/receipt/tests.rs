@@ -1,8 +1,15 @@
 //! Effect-receipt replay, conflict, corruption, and capacity tests.
 
+use std::{
+    fs::{self, OpenOptions},
+    io::Write as _,
+};
+
 use peritus_model_protocol::{CanonicalJson, JsonBounds, ProtocolLimits, ToolCallId, ToolName};
 
 use super::*;
+
+mod uncertainty;
 
 #[test]
 fn completed_effect_replays_and_conflicting_request_is_refused() {

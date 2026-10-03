@@ -18,6 +18,71 @@ fn claim_without_manifest_is_an_explicit_indeterminate_recovery_entry() {
     assert_eq!(report.entries()[0].disposition(), RecoveryDisposition::Indeterminate);
     assert!(!report.entries()[0].signal_sent());
     assert!(!report.all_terminal());
+    assert_eq!(store.unsettled_ownership_count(), 1);
+}
+
+#[test]
+fn exact_absence_settles_ownership_without_inventing_a_terminal_result() {
+    let registry = TestRegistry::new();
+    let identity = identity();
+    let process_id = identity.process_id();
+    prepare_closed_manifest(&registry, &identity, digest(31));
+    let store = ProcessStore::open(registry.registry(), registry.workspace()).expect("open store");
+
+    let report = store.reconcile(&mut NoProbe).expect("reconcile closed absent execution");
+
+    assert_eq!(report.entries().len(), 1);
+    assert_eq!(report.entries()[0].process_id(), process_id);
+    assert_eq!(report.entries()[0].disposition(), RecoveryDisposition::AbsentUnobserved);
+    assert!(!report.all_terminal());
+    assert_eq!(store.unsettled_ownership_count(), 0);
+    assert!(store.terminal_result(process_id).is_err());
+}
+
+#[test]
+fn exact_absence_can_settle_ownership_after_an_incomplete_terminal_result() {
+    let registry = TestRegistry::new();
+    let identity = identity();
+    let process_id = identity.process_id();
+    let plan_digest = digest(61);
+    prepare_empty_closed_manifest(&registry, &identity, plan_digest);
+    let manifests = registry.registry().join("manifests-v1");
+    let path =
+        manifests.join(format!("{}.manifest", crate::registry_storage::hex(process_id.as_bytes())));
+    let mut manifest = ExecutionManifest::decode(&std::fs::read(&path).expect("manifest bytes"))
+        .expect("decode manifest");
+    manifest.tree_quiescent = false;
+    manifest.support_tasks_joined = false;
+    write_manifest(&manifests, &manifest).expect("persist incomplete ownership");
+    let store = ProcessStore::open(registry.registry(), registry.workspace()).expect("open store");
+    let terminal = TerminalResult::new(
+        process_id,
+        plan_digest,
+        TerminalDisposition::SupervisorFailed,
+        OsExitObservation::Code(0),
+        None,
+        EscalationRecord::new(false, false, false),
+        None,
+        ProcessInstant::from_millis(0),
+        OutputSummary::new(Vec::new(), 0),
+        Vec::new(),
+        false,
+        false,
+        TerminalRecovery::OriginalOwner,
+    );
+    store.record_terminal(process_id, &terminal).expect("record incomplete terminal result");
+    assert_eq!(store.unsettled_ownership_count(), 1);
+
+    let report = store.reconcile(&mut NoProbe).expect("reconcile exact absence");
+
+    assert_eq!(report.entries()[0].disposition(), RecoveryDisposition::Terminal);
+    assert!(report.all_terminal());
+    assert_eq!(store.unsettled_ownership_count(), 0);
+    assert_eq!(store.terminal_result(process_id).expect("retained terminal result"), terminal);
+    drop(store);
+    let reopened = ProcessStore::open(registry.registry(), registry.workspace()).expect("reopen");
+    assert_eq!(reopened.unsettled_ownership_count(), 0);
+    assert_eq!(reopened.terminal_result(process_id).expect("reopened terminal"), terminal);
 }
 
 #[test]
@@ -164,6 +229,25 @@ fn claim_manifest_digest_mismatch_blocks_probe_and_terminal_classification() {
     assert_eq!(report.entries()[0].process_id(), process_id);
     assert_eq!(report.entries()[0].disposition(), RecoveryDisposition::Indeterminate);
     assert!(!report.all_terminal());
+    {
+        let mut state = store.lock_state();
+        super::super::retention::retire_settled_records(
+            &store.inner.claims,
+            &store.inner.manifests,
+            &store.inner.spools,
+            &mut state,
+            0,
+        )
+        .expect("retention scan");
+    }
+    assert!(store.claim_path(process_id).exists());
+    assert!(
+        store
+            .inner
+            .manifests
+            .join(format!("{}.manifest", crate::registry_storage::hex(process_id.as_bytes())))
+            .exists()
+    );
 }
 
 #[test]

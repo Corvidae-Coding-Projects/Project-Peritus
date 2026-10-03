@@ -1,5 +1,6 @@
 //! Persistent conversational composer, explicit slash commands, and provider catalog selection.
 
+mod binding;
 mod catalog;
 mod commands;
 mod doctor;
@@ -14,9 +15,8 @@ mod working;
 
 use super::{AppModel, Effect, NoticeLevel, PendingRequest};
 use peritus_app_protocol::{
-    AppRequestPayload, ProductInteractionMode, ProductInteractionRequest,
-    ProductInteractionSnapshot, ProductModelCatalog, ProductRoleModels, ProductRunControlAction,
-    ProductRunConversationQuery, ProductRunRequest,
+    AppRequestPayload, ProductInteractionMode, ProductInteractionSnapshot, ProductModelCatalog,
+    ProductRoleModels, ProductRunControlAction, ProductRunOperationState,
 };
 use peritus_types::RunId;
 
@@ -30,12 +30,14 @@ pub struct ChatUi {
     pub(crate) viewport: Option<ratatui::layout::Rect>,
     mouse_anchor: Option<usize>,
     pub(crate) run_id: Option<RunId>,
+    pub(in crate::model) binding_checked: Option<RunId>,
     pub(crate) snapshot: Option<ProductInteractionSnapshot>,
     pub(crate) mode: ProductInteractionMode,
     pub(crate) models: ProductRoleModels,
     pub(crate) scroll: usize,
     pub(crate) expanded: bool,
     pub(crate) output_mode: navigation::OutputMode,
+    pub(crate) output_selection: Option<crate::input::output::OutputSelection>,
     pub(crate) working: WorkingIndicator,
     pub(crate) command_selection: usize,
     pub(crate) catalog: Option<ProductModelCatalog>,
@@ -57,12 +59,14 @@ impl Default for ChatUi {
             viewport: None,
             mouse_anchor: None,
             run_id: None,
+            binding_checked: None,
             snapshot: None,
             mode: ProductInteractionMode::Chat,
             models: ProductRoleModels::default(),
             scroll: 0,
             expanded: false,
             output_mode: navigation::OutputMode::Live,
+            output_selection: None,
             working: WorkingIndicator::default(),
             command_selection: 0,
             catalog: None,
@@ -96,31 +100,15 @@ impl ChatUi {
         )
     }
     pub(crate) fn active(&self) -> bool {
-        self.snapshot.as_ref().is_some_and(|snapshot| !snapshot.snapshot().phase().terminal())
+        self.snapshot.as_ref().is_some_and(|snapshot| {
+            snapshot.snapshot().operation().state() == ProductRunOperationState::Running
+        })
     }
     pub(crate) fn matching_commands(&self) -> Vec<(String, &'static str)> {
         catalog::completions(&self.buffer)
     }
 }
 impl AppModel {
-    pub(super) fn open_selected_conversation(&mut self) -> Vec<Effect> {
-        let Some(run_id) = self
-            .product
-            .as_ref()
-            .and_then(|product| product.selected_run())
-            .map(peritus_app_protocol::ProductRunSnapshot::run_id)
-        else {
-            return Vec::new();
-        };
-        self.chat.run_id = Some(run_id);
-        self.chat.snapshot = None;
-        self.request(
-            AppRequestPayload::QueryInteraction(ProductRunConversationQuery::new(run_id)),
-            PendingRequest::ChatOpen { run_id },
-        )
-        .into_iter()
-        .collect()
-    }
     fn submit_chat(&mut self) -> Vec<Effect> {
         let text = self.chat.buffer.trim().to_owned();
         if text.is_empty() {
@@ -150,66 +138,69 @@ impl AppModel {
         if self.context.is_none() {
             self.notice(
                 NoticeLevel::Warning,
-                "Disconnected; your draft is retained. Use /reconnect.",
+                "Disconnected; draft retained. Ctrl-R reconnects without replacing your message.",
             );
             return Vec::new();
         }
-        let Some(product) = &self.product else {
-            return Vec::new();
-        };
-        let Some(providers) = self.chat_providers() else {
+        if self.needs_chat_binding() {
+            self.notice(
+                NoticeLevel::Info,
+                "Loading this run's conversation; draft retained. Send again after it opens.",
+            );
+            return self
+                .chat
+                .run_id
+                .and_then(|run| self.query_chat_binding(run, true))
+                .into_iter()
+                .collect();
+        }
+        if self.chat.run_id.is_some() && self.chat.workbench.selected.is_none() {
+            self.chat.run_id = None;
+            self.chat.binding_checked = None;
             self.notice(
                 NoticeLevel::Warning,
-                "No provider configured. Run peritus providers first.",
+                "This run has no durable conversation destination and was detached. Press Enter again to start a new conversation; draft retained.",
             );
             return Vec::new();
-        };
-        let workspace = product.launch.workspace_id();
-        let Some(run_id) = self.chat.run_id.or_else(|| self.ids.run()) else {
-            return Vec::new();
-        };
-        let request = match ProductRunRequest::new(run_id, workspace, providers, text.clone()) {
-            Ok(request) => request,
-            Err(error) => {
-                self.notice(NoticeLevel::Error, error.to_string());
-                return Vec::new();
-            }
-        };
-        let effect = self.request(
-            AppRequestPayload::Interact(ProductInteractionRequest::new(
-                request,
-                self.chat.mode,
-                self.chat.models.clone(),
-            )),
-            PendingRequest::ChatSubmit { run_id, text },
-        );
-        if effect.is_some() {
-            self.chat.run_id = Some(run_id);
-            self.chat.buffer.clear();
-            self.chat.cursor = 0;
-            self.chat.selection_anchor = None;
-            self.chat.mouse_anchor = None;
-            self.chat.scroll = 0;
-            self.notice(NoticeLevel::Info, "Sending input; durable receipt not yet confirmed");
         }
-        effect.into_iter().collect()
+        self.send_workbench_chat(text)
     }
     pub(super) fn poll_chat(&mut self) -> Vec<Effect> {
         if self.pending.values().any(|pending| {
-            matches!(pending, PendingRequest::ChatQuery | PendingRequest::ChatSubmit { .. })
+            matches!(
+                pending,
+                PendingRequest::ChatQuery
+                    | PendingRequest::ChatOpen { .. }
+                    | PendingRequest::ChatBinding { .. }
+                    | PendingRequest::ProductMessageBinding { .. }
+            )
         }) {
             return Vec::new();
         }
-        self.chat
+        let mut effects: Vec<_> = self
+            .chat
             .run_id
-            .and_then(|run_id| {
-                self.request(
-                    AppRequestPayload::QueryInteraction(ProductRunConversationQuery::new(run_id)),
-                    PendingRequest::ChatQuery,
-                )
-            })
+            .and_then(|run_id| self.query_chat_binding(run_id, false))
             .into_iter()
-            .collect()
+            .collect();
+        if self.chat.workbench.goal_mode
+            && !self.workbench_request_pending()
+            && let Some(goal) = self.chat.workbench.goal.as_ref()
+            && Some(goal.query()) == self.chat.workbench.selected
+            && Some(goal.run()) == self.chat.run_id
+            && matches!(
+                goal.state(),
+                peritus_app_protocol::WorkbenchGoalState::Active
+                    | peritus_app_protocol::WorkbenchGoalState::Pausing
+            )
+        {
+            let query = goal.query();
+            effects.extend(self.request(
+                AppRequestPayload::QueryWorkbenchGoal(query),
+                PendingRequest::WorkbenchGoal(query),
+            ));
+        }
+        effects
     }
     pub(super) fn accept_chat(&mut self, snapshot: ProductInteractionSnapshot) {
         if self.chat.run_id != Some(snapshot.snapshot().run_id()) {
@@ -244,31 +235,11 @@ impl AppModel {
         }
         self.chat.snapshot = Some(snapshot);
     }
-    pub(super) fn restore_chat_draft(&mut self, text: &str) {
-        self.chat.buffer = if self.chat.buffer.is_empty() {
-            text.to_owned()
-        } else {
-            format!("{text}\n{}", self.chat.buffer)
-        };
-        self.chat.cursor = self.chat.buffer.len();
-        self.chat.selection_anchor = None;
-        self.chat.mouse_anchor = None;
-    }
-    pub(super) fn recover_chat_drafts(&mut self) {
-        let messages = self
-            .pending
-            .values()
-            .filter_map(|pending| match pending {
-                PendingRequest::ChatSubmit { text, .. } => Some(text.clone()),
-                _ => None,
-            })
-            .collect::<Vec<_>>();
-        for text in messages {
-            self.restore_chat_draft(&text);
-        }
-    }
     pub(super) fn chat_control(&mut self, action: ProductRunControlAction) -> Vec<Effect> {
         if action == ProductRunControlAction::Cancel {
+            if let Some(effects) = self.stop_workbench_submission() {
+                return effects;
+            }
             if !self.chat_work_active() {
                 self.notice(NoticeLevel::Info, "No active work to stop.");
                 return Vec::new();
@@ -293,17 +264,16 @@ impl AppModel {
         self.control_selected_product_run(action)
     }
     pub(super) fn chat_work_active(&self) -> bool {
-        self.chat.active() || self.pending.values().any(|pending| {
-            matches!(pending, PendingRequest::ChatSubmit { run_id, .. } if Some(*run_id) == self.chat.run_id)
-        })
+        self.chat.active() || self.workbench_chat_starting()
     }
     pub(super) fn chat_submission_pending(&self) -> bool {
-        self.pending.values().any(|pending| {
-            matches!(
-                pending,
-                PendingRequest::ChatSubmit { .. } | PendingRequest::ModelUpdate { .. }
-            )
-        })
+        self.chat_mutation_pending()
+            || self.pending.values().any(|pending| {
+                matches!(
+                    pending,
+                    PendingRequest::ChatOpen { .. } | PendingRequest::ChatBinding { .. }
+                )
+            })
     }
     pub(crate) fn chat_providers(&self) -> Option<peritus_app_protocol::ProductProviderSelection> {
         self.chat

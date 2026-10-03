@@ -6,6 +6,48 @@ use super::{
 
 pub(in super::super) const RESULT_TYPES: &[AppTypeDescriptor] = &[
     AppTypeDescriptor {
+        name: "WorkbenchPreviewOutput",
+        rust_type: "WorkbenchPreviewOutput",
+        fields: &[
+            id("launch", "ControlOperationId"),
+            field(
+                "stdout",
+                W::Utf8,
+                &[B::ProductActivityBytes],
+                "String",
+                "string",
+                J::String,
+                true,
+            ),
+            field(
+                "stderr",
+                W::Utf8,
+                &[B::ProductActivityBytes],
+                "String",
+                "string",
+                J::String,
+                true,
+            ),
+            field("truncated", W::Boolean, &[], "bool", "boolean", J::Boolean, true),
+        ],
+    },
+    AppTypeDescriptor {
+        name: "WorkbenchPreviewSnapshot",
+        rust_type: "WorkbenchPreviewSnapshot",
+        fields: &[
+            nested("result", "WorkbenchResultPage"),
+            field(
+                "outputs",
+                W::Sequence,
+                &[B::WorkbenchLaunches],
+                "Vec<WorkbenchPreviewOutput>",
+                "readonly WorkbenchPreviewOutput[]",
+                J::ArrayRef("WorkbenchPreviewOutput"),
+                true,
+            ),
+        ],
+    },
+    AppTypeDescriptor {
         name: "WorkbenchInteractionReceipt",
         rust_type: "WorkbenchInteractionReceipt",
         fields: &[

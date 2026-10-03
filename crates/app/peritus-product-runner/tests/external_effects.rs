@@ -11,37 +11,15 @@ use std::{
     sync::{Arc, Mutex, atomic::AtomicBool},
 };
 
-use peritus_product_runner::{
-    PRODUCT_RUN_MAX_ELAPSED, ProductDeliveryScope, ProductRunInput, ProductRunner, RoleProviders,
-};
+use peritus_product_runner::{ProductDeliveryScope, ProductRunInput, ProductRunner, RoleProviders};
 use peritus_provider_core::{CancellationToken, ModelProvider};
 use peritus_types::{RunId, WorkspaceId};
 
 use support::{
-    FixedConversation, ScriptedProvider, design_response, git, list_arguments, named_tool_response,
-    named_tool_response_with_id, profile, read_arguments, text_response, tool_response,
-    write_arguments,
+    FixedConversation, ScriptedProvider, command_arguments, design_response, git, list_arguments,
+    named_tool_response, named_tool_response_with_id, profile, read_arguments, text_response,
+    tool_response, write_arguments,
 };
-
-fn command_arguments(program: &str, args: &[&str], purpose: &str) -> Vec<u8> {
-    let value = serde_json::Value::Object(
-        [
-            ("program".to_owned(), serde_json::Value::String(program.to_owned())),
-            (
-                "args".to_owned(),
-                serde_json::Value::Array(
-                    args.iter()
-                        .map(|argument| serde_json::Value::String((*argument).to_owned()))
-                        .collect(),
-                ),
-            ),
-            ("purpose".to_owned(), serde_json::Value::String(purpose.to_owned())),
-        ]
-        .into_iter()
-        .collect(),
-    );
-    serde_json::to_vec(&value).expect("command arguments")
-}
 
 fn git_output(root: &Path, arguments: &[&str]) -> String {
     let output =
@@ -131,7 +109,7 @@ fn authorized_external_effects_complete_without_a_synthetic_workspace_diff() {
                     command_runtime,
                     finding_state: String::new(),
                     task: task.clone(),
-                    max_elapsed: PRODUCT_RUN_MAX_ELAPSED,
+                    max_elapsed: Some(std::time::Duration::from_hours(8)),
                     delivery_scope: ProductDeliveryScope::AuthorizedExternalEffects,
                     conversation: Arc::new(FixedConversation(task)),
                     providers: RoleProviders {
@@ -269,7 +247,7 @@ fn operational_request_needs_a_live_effect_even_when_supporting_files_change() {
                     command_runtime,
                     finding_state: String::new(),
                     task: task.clone(),
-                    max_elapsed: PRODUCT_RUN_MAX_ELAPSED,
+                    max_elapsed: Some(std::time::Duration::from_hours(8)),
                     delivery_scope: ProductDeliveryScope::AuthorizedExternalEffects,
                     conversation: Arc::new(FixedConversation(task)),
                     providers: RoleProviders {

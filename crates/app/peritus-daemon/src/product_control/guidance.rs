@@ -2,10 +2,10 @@
 
 use super::ControlStoreError as Error;
 use peritus_app_protocol::{
-    AppErrorCode, AppProtocolError, ControlOperationId, MAX_WORKBENCH_GUIDANCE_RECORDS,
-    WorkbenchGuidanceForget, WorkbenchGuidancePin, WorkbenchGuidanceRecord,
-    WorkbenchGuidanceRevision, WorkbenchGuidanceSave, WorkbenchGuidanceScopeChange,
-    WorkbenchGuidanceTombstone, WorkbenchMemoryRow,
+    AppErrorCode, AppProtocolError, ControlOperationId, WorkbenchGuidanceForget,
+    WorkbenchGuidancePin, WorkbenchGuidanceRecord, WorkbenchGuidanceRevision,
+    WorkbenchGuidanceSave, WorkbenchGuidanceScopeChange, WorkbenchGuidanceTombstone,
+    WorkbenchMemoryRow,
 };
 use peritus_journal::{DurableStateRecord, StateInstall};
 use peritus_product_runner::control::ControlError;
@@ -22,7 +22,7 @@ use stored::{StoredCatalog, StoredSlot, StoredSlotState, StoredTombstone};
 pub(super) const GUIDANCE_NAMESPACE: u16 = 3541;
 pub(super) const GUIDANCE_CONTROL_NAMESPACE: u16 = 3542;
 const STORAGE_SCHEMA: u16 = 1;
-const MAX_STORED_BYTES: usize = 256 * 1024;
+const MAX_STORED_BYTES: usize = peritus_journal::MAX_STATE_BYTES;
 
 /// One of the five explicit user-approved guidance mutations.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -102,9 +102,6 @@ impl GuidanceCatalog {
                 Ok(_) => return Err(ControlError::IdempotencyConflict.into()),
                 Err(index) => identities.insert(index, identity),
             }
-        }
-        if identities.len() > MAX_WORKBENCH_GUIDANCE_RECORDS {
-            return Err(ControlError::Capacity.into());
         }
         let revision = self.revision.checked_add(1).ok_or(ControlError::Capacity)?;
         Ok(Self { workspace: self.workspace, revision, identities })
@@ -226,7 +223,6 @@ pub(super) fn replay_catalog(
         || stored.workspace != *workspace.as_bytes()
         || stored.revision == 0
         || stored.revision != record.revision()
-        || stored.identities.len() > MAX_WORKBENCH_GUIDANCE_RECORDS
         || stored.identities.windows(2).any(|pair| pair[0] >= pair[1])
     {
         return Err(Error::Corrupt("invalid guidance catalog"));

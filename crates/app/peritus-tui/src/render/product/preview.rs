@@ -15,23 +15,57 @@ use crate::{
 };
 
 pub(super) fn render(frame: &mut Frame<'_>, area: Rect, model: &AppModel) {
-    let Some(product) = &model.product else { return };
-    let Some(page) = product.preview.as_ref().filter(|page| {
+    let Some(product) = &model.product else {
+        frame.render_widget(
+            Paragraph::new("Preview requires a project workspace. Open Peritus with `peritus`, select a workspace, then use /preview in its conversation.")
+                .block(Block::default().borders(Borders::ALL).title(" Preview "))
+                .wrap(Wrap { trim: false }),
+            area,
+        );
+        return;
+    };
+    if !product.preview.as_ref().is_some_and(|page| {
         product.selected_run().is_some_and(|run| run.run_id() == page.query().run())
-    }) else {
+    }) {
         frame.render_widget(
             Paragraph::new(Text::from(vec![
                 Line::styled("No preview result page loaded.", Style::default().fg(MUTED)),
+                Line::styled(safe(&product.preview_message), Style::default().fg(WARN)),
                 Line::from(
                     "Use /preview results from the selected Workbench conversation and run.",
                 ),
                 Line::from("Launching and inspecting are separate explicit operations."),
             ]))
-            .block(Block::default().borders(Borders::ALL).title(" Preview results "))
+            .block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .title(" Preview results · r refresh · Esc conversation "),
+            )
             .wrap(Wrap { trim: false }),
             area,
         );
         return;
+    }
+    let lines = content(model, area.width);
+    let maximum = super::content_scroll_limit(lines.len(), area);
+    frame.render_widget(
+        Paragraph::new(lines)
+            .block(
+                Block::default().borders(Borders::ALL).title(
+                    " Preview evidence · PgUp/PgDn · Home/End · r refresh · Esc conversation ",
+                ),
+            )
+            .scroll((product.preview_scroll.min(maximum), 0)),
+        area,
+    );
+}
+
+pub(super) fn content(model: &AppModel, width: u16) -> Vec<Line<'static>> {
+    let Some(product) = &model.product else { return Vec::new() };
+    let Some(page) = product.preview.as_ref().filter(|page| {
+        product.selected_run().is_some_and(|run| run.run_id() == page.query().run())
+    }) else {
+        return Vec::new();
     };
     let capability = match page.capability() {
         peritus_app_protocol::WorkbenchCaptureCapability::X11SelectedWindow => {
@@ -48,6 +82,7 @@ pub(super) fn render(frame: &mut Frame<'_>, area: Rect, model: &AppModel) {
         field("Control revision", page.control_revision().to_string()),
         field("Result revision", page.result_revision().to_string()),
         field("Capture capability", capability),
+        Line::styled(safe(&product.preview_message), Style::default().fg(WARN)),
         Line::from(""),
     ];
     if page.launches().is_empty() {
@@ -55,19 +90,14 @@ pub(super) fn render(frame: &mut Frame<'_>, area: Rect, model: &AppModel) {
     } else {
         for (index, launch) in page.launches().iter().enumerate() {
             lines.extend(preview_launch_lines(index, launch));
+            if let Some(output) =
+                product.preview_outputs.iter().find(|output| output.launch() == launch.launch())
+            {
+                append_output_lines(&mut lines, output);
+            }
         }
     }
-    frame.render_widget(
-        Paragraph::new(lines)
-            .block(
-                Block::default()
-                    .borders(Borders::ALL)
-                    .title(" Preview evidence · PgUp/PgDn scroll · r refresh · Esc conversation "),
-            )
-            .scroll((product.preview_scroll, 0))
-            .wrap(Wrap { trim: false }),
-        area,
-    );
+    crate::render::chat::wrapped_lines(lines, usize::from(width.saturating_sub(2)))
 }
 
 fn preview_launch_lines(
@@ -257,5 +287,24 @@ fn phase_style_for_preview(state: peritus_app_protocol::WorkbenchLaunchState) ->
         peritus_app_protocol::WorkbenchLaunchState::Accepted => Style::default().fg(WARN),
         peritus_app_protocol::WorkbenchLaunchState::Stopped => Style::default().fg(MUTED),
         peritus_app_protocol::WorkbenchLaunchState::Failed => Style::default().fg(BAD),
+    }
+}
+
+fn append_output_lines(
+    lines: &mut Vec<Line<'static>>,
+    output: &peritus_app_protocol::WorkbenchPreviewOutput,
+) {
+    for (name, value) in [("Output", output.stdout()), ("Stderr", output.stderr())] {
+        if value.is_empty() {
+            continue;
+        }
+        lines.push(Line::styled(name, Style::default().fg(MUTED)));
+        lines.extend(crate::terminal::preview_lines(value).into_iter().map(Line::from));
+    }
+    if output.truncated() {
+        lines.push(Line::styled(
+            "Earlier output omitted; showing retained tail.",
+            Style::default().fg(WARN),
+        ));
     }
 }

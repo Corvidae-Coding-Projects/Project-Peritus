@@ -1,14 +1,18 @@
 //! Deterministic reconciliation of closed deliverable requests with final changed paths.
 
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use peritus_gates::GateExecutionRecord;
 
 use super::explicit_paths;
 
-pub(super) fn run(root: &Path, transcript: &str, changed_paths: &[PathBuf]) -> GateExecutionRecord {
-    let required_outputs = explicit_paths::required_outputs(root, transcript);
-    let closed_target = explicit_paths::requests_single_file(transcript)
+pub(super) fn run(
+    analysis: &explicit_paths::Analysis,
+    changed_paths: &[PathBuf],
+) -> GateExecutionRecord {
+    let required_outputs = analysis.required_outputs();
+    let closed_target = analysis
+        .requests_single_file()
         .then_some(required_outputs.as_slice())
         .and_then(|paths| match paths {
             [path] => Some(path),
@@ -72,11 +76,9 @@ mod tests {
             root.path().display(),
         );
 
-        let result = run(
-            root.path(),
-            &transcript,
-            &[PathBuf::from("polyglot/main.py.c"), PathBuf::from("polyglot/cmain")],
-        );
+        let analysis = explicit_paths::analyze(root.path(), &transcript);
+        let result =
+            run(&analysis, &[PathBuf::from("polyglot/main.py.c"), PathBuf::from("polyglot/cmain")]);
 
         assert_eq!(result.exit_code, Some(1));
         assert!(result.output.contains("unexpected changed path"));
@@ -88,7 +90,8 @@ mod tests {
         let root = tempfile::tempdir().expect("root");
         let transcript = format!("Create a single file at {}/answer.txt.", root.path().display());
 
-        let result = run(root.path(), &transcript, &[PathBuf::from("answer.txt")]);
+        let analysis = explicit_paths::analyze(root.path(), &transcript);
+        let result = run(&analysis, &[PathBuf::from("answer.txt")]);
 
         assert_eq!(result.exit_code, Some(0));
         assert!(result.output.contains("Final changed-path inventory: PASS"));
@@ -107,7 +110,13 @@ mod tests {
         );
         let changed = [PathBuf::from("answer.txt"), PathBuf::from("notes.txt")];
 
-        assert_eq!(run(root.path(), &negated, &changed).exit_code, Some(0));
-        assert_eq!(run(root.path(), &multiple, &changed).exit_code, Some(0));
+        assert_eq!(
+            run(&explicit_paths::analyze(root.path(), &negated), &changed).exit_code,
+            Some(0),
+        );
+        assert_eq!(
+            run(&explicit_paths::analyze(root.path(), &multiple), &changed).exit_code,
+            Some(0),
+        );
     }
 }

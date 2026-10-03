@@ -9,15 +9,20 @@ mod brief;
 mod checkpoints;
 mod compaction;
 mod context;
+mod conversation;
 mod files;
 mod fork;
 mod goal;
 mod images;
 mod init;
+mod library;
 mod memory;
+mod navigation;
+mod onboarding;
 mod permissions;
 mod preview;
 mod queue;
+mod rejection;
 mod review;
 
 fn enabled_model() -> AppModel {
@@ -46,6 +51,19 @@ fn respond(
         payload,
     ))))
 }
+fn enter_with_metadata(model: &mut AppModel) -> Vec<Effect> {
+    let snapshot = model.chat.workbench.snapshot.clone().expect("selected metadata");
+    let effects = key(model, KeyCode::Enter);
+    if model.chat.workbench.snapshot_refresh_command.is_some()
+        && matches!(effects.as_slice(), [Effect::Send(AppMessage::Request(sent))]
+        if matches!(sent.payload(), AppRequestPayload::QueryWorkbench(_)))
+    {
+        let sent = request(&effects);
+        return respond(model, &sent, AppResponsePayload::Workbench(snapshot));
+    }
+    effects
+}
+
 fn create(model: &mut AppModel) -> (AppRequestEnvelope, WorkbenchCommand) {
     model.chat.buffer = "/sessions new Private fixture".to_owned();
     let request = request(&key(model, KeyCode::Enter));
@@ -65,7 +83,7 @@ fn receipt(command: &WorkbenchCommand) -> AppResponsePayload {
 }
 
 #[test]
-fn metadata_needs_capability_and_receipt_and_never_changes_the_active_run() {
+fn new_conversation_needs_receipt_then_detaches_the_previous_chat_without_cancelling_it() {
     let mut unsupported = model();
     unsupported.chat.buffer = "/sessions new title".to_owned();
     assert!(key(&mut unsupported, KeyCode::Enter).is_empty());
@@ -88,10 +106,10 @@ fn metadata_needs_capability_and_receipt_and_never_changes_the_active_run() {
     .expect("snapshot");
     respond(&mut model, &query, AppResponsePayload::Workbench(snapshot));
     assert_eq!(model.chat.workbench.snapshot.as_ref().expect("metadata").revision(), 1);
-    assert_eq!(model.chat.run_id, Some(active));
+    assert!(model.chat.run_id.is_none());
     key(&mut model, KeyCode::Esc);
     model.chat.buffer = "/sessions pin".to_owned();
-    let pin = request(&key(&mut model, KeyCode::Enter));
+    let pin = request(&enter_with_metadata(&mut model));
     assert!(
         matches!(pin.payload(), AppRequestPayload::WorkbenchCommand(command) if command.expected_revision() == 1 && matches!(command.intent(), peritus_app_protocol::WorkbenchIntent::PinConversation(true)))
     );
@@ -263,7 +281,7 @@ fn normal_slash_navigation_leaves_goal_for_each_other_workbench_panel() {
         key(&mut model, KeyCode::Esc);
         model.chat.buffer = command.to_owned();
         model.chat.cursor = model.chat.buffer.len();
-        assert!(!key(&mut model, KeyCode::Enter).is_empty(), "{command} did not navigate");
+        assert!(!enter_with_metadata(&mut model).is_empty(), "{command} did not navigate");
         assert!(!model.chat.workbench.goal_mode, "{command} left the goal panel sticky");
         assert_eq!(model.chat.buffer, command, "{command} composer was not retained");
         assert_eq!(
@@ -292,12 +310,19 @@ fn normal_slash_navigation_leaves_goal_for_each_other_workbench_panel() {
 fn sessions_literal_query_accepts_exact_source_linked_library_page() {
     use peritus_app_protocol::{
         ConversationLibraryItem, ConversationLibraryPage, ConversationMessageSource,
-        ConversationSearchSnippet, ConversationSearchText,
+        ConversationSearchSnippet, ConversationSearchText, WorkbenchExecutionState,
     };
     let mut model = enabled_model();
     model.features.push(
         ProtocolFeatureName::well_known(WellKnownProtocolFeature::ConversationLibrary).unwrap(),
     );
+    for feature in [
+        WellKnownProtocolFeature::WorkbenchInputs,
+        WellKnownProtocolFeature::WorkbenchExecution,
+        WellKnownProtocolFeature::WorkbenchConversation,
+    ] {
+        model.features.push(ProtocolFeatureName::well_known(feature).unwrap());
+    }
     model.chat.buffer = "/sessions ancient phrase".to_owned();
     let sent = request(&key(&mut model, KeyCode::Enter));
     let AppRequestPayload::QueryConversationLibrary(query) = sent.payload() else {
@@ -309,7 +334,11 @@ fn sessions_literal_query_accepts_exact_source_linked_library_page() {
         query.workspace(),
     );
     let snippet = ConversationSearchSnippet::new(
-        ConversationMessageSource::Legacy { run: RunId::new([62; 16]).unwrap(), index: 0 },
+        ConversationMessageSource::Input {
+            conversation: scope.conversation(),
+            input: peritus_app_protocol::WorkbenchInputId::new([62; 16]).unwrap(),
+            revision: 1,
+        },
         "exact ancient phrase source".to_owned(),
     )
     .unwrap();
@@ -319,7 +348,6 @@ fn sessions_literal_query_accepts_exact_source_linked_library_page() {
         true,
         false,
         7,
-        Some(RunId::new([62; 16]).unwrap()),
         None,
         false,
         "preserved handoff".to_owned(),
@@ -330,4 +358,35 @@ fn sessions_literal_query_accepts_exact_source_linked_library_page() {
     let page = ConversationLibraryPage::new(query.clone(), 1, None, vec![item]).unwrap();
     assert!(respond(&mut model, &sent, AppResponsePayload::ConversationLibrary(page)).is_empty());
     assert_eq!(model.chat.workbench.library.as_ref().unwrap().total(), 1);
+    key(&mut model, KeyCode::Esc);
+    model.chat.buffer =
+        format!("/sessions open {}", crate::model::format_id(scope.conversation().as_bytes()));
+    let opened = request(&key(&mut model, KeyCode::Enter));
+    assert!(
+        matches!(opened.payload(), AppRequestPayload::QueryWorkbenchExecution(query) if *query == scope)
+    );
+    assert_eq!(model.chat.workbench.selected, Some(scope));
+    assert_eq!(
+        model.chat.buffer,
+        format!("/sessions open {}", crate::model::format_id(scope.conversation().as_bytes()))
+    );
+    let snapshot = WorkbenchSnapshot::new(
+        scope,
+        7,
+        ConversationTitle::new("Older work".to_owned()).unwrap(),
+        false,
+        false,
+    )
+    .unwrap();
+    assert!(
+        respond(
+            &mut model,
+            &opened,
+            AppResponsePayload::WorkbenchExecution(
+                WorkbenchExecutionState::new(snapshot, None, false).unwrap(),
+            ),
+        )
+        .is_empty()
+    );
+    assert!(model.chat.buffer.is_empty());
 }

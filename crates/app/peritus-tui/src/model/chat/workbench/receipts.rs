@@ -6,14 +6,29 @@ use super::{
 };
 use peritus_app_protocol::{WorkbenchIntent, WorkbenchReceipt, WorkbenchReviewFeedback};
 
+mod correlation;
 mod error;
+mod recovery;
+mod rejection;
 
 impl AppModel {
     pub(in crate::model) fn recover_workbench_receipt(&mut self) -> Vec<Effect> {
+        if self.resume_latest_pending() {
+            return self.resume_latest_conversation();
+        }
         if !self.workbench_available() || self.workbench_request_pending() {
             return Vec::new();
         }
-        let Some((command, _)) = self.chat.workbench.unresolved.clone() else { return Vec::new() };
+        let Some((command, _)) = self.chat.workbench.unresolved.clone() else {
+            return if self.chat.workbench.submission.is_some()
+                || (self.chat.workbench.selected.is_some()
+                    && self.chat.workbench.snapshot.is_none())
+            {
+                self.discover_workbench_execution()
+            } else {
+                Vec::new()
+            };
+        };
         if !self.control_capability_available(&command) {
             "Original operation unresolved; this connection lacks its required feature. Draft retained.".clone_into(&mut self.chat.workbench.message);
             return Vec::new();
@@ -38,12 +53,17 @@ impl AppModel {
             self.notice(NoticeLevel::Warning, "Cannot retry the original operation on this daemon; required feature unavailable. Draft retained.");
             return Vec::new();
         }
-        self.request(
+        let effect = self.request(
             AppRequestPayload::WorkbenchCommand(command.clone()),
             PendingRequest::WorkbenchControl(command),
-        )
-        .into_iter()
-        .collect()
+        );
+        if effect.is_some()
+            && let Some((_, draft)) = self.chat.workbench.unresolved.as_mut()
+            && matches!(self.chat.buffer.trim(), "/sessions retry" | "/queue retry")
+        {
+            draft.clone_from(&self.chat.buffer);
+        }
+        effect.into_iter().collect()
     }
 
     fn review_receipt_action(&self, intent: &WorkbenchIntent) -> &'static str {
@@ -80,33 +100,47 @@ impl AppModel {
         receipt: &WorkbenchReceipt,
     ) -> Vec<Effect> {
         let preview = preview_intent(command.intent());
-        let accepted_revision = if preview {
-            Some(command.expected_revision())
-        } else {
-            command.expected_revision().checked_add(1)
-        };
-        if receipt.operation() != command.operation()
-            || receipt.query() != command.query()
-            || accepted_revision != Some(receipt.accepted_revision())
-            || !self
-                .chat
-                .workbench
-                .unresolved
-                .as_ref()
-                .is_some_and(|(expected, _)| expected == command)
-        {
+        if !self.workbench_receipt_matches(command, receipt) {
             self.notice(
                 NoticeLevel::Error,
                 "Mismatched control receipt; no control state applied.",
             );
             return Vec::new();
         }
-        if let Some((_, draft)) = self.chat.workbench.unresolved.take()
-            && self.chat.buffer == draft
+        self.complete_receipted_draft(command);
+        self.chat.workbench.rejected_control = None;
+        if let WorkbenchIntent::ForkConversation(fork) = command.intent()
+            && fork.child().workspace() != command.query().workspace()
         {
-            self.clear_chat_command();
+            // Keep the parent usable until the launcher has resolved the child's actual root
+            // and trust. A child selection under the parent's context rejects later controls.
+            self.chat.workbench.snapshot = None;
+            self.chat.workbench.library = None;
+            self.chat.workbench.receipted_revision = receipt.accepted_revision();
+            self.chat.workbench.message = format!(
+                "Fork saved; no inference started. Open it with /sessions open {} {}.",
+                crate::model::format_id(fork.child().conversation().as_bytes()),
+                crate::model::format_id(fork.child().workspace().as_bytes()),
+            );
+            if !self.chat.buffer.is_empty() {
+                self.chat.workbench.message.push_str(" Staying here to preserve your new draft.");
+                return self.refresh_workbench();
+            }
+            return vec![Effect::OpenConversation(fork.child())];
         }
         self.select_receipt_conversation(command, receipt);
+        if self.chat.workbench.selected == Some(receipt.query()) {
+            self.chat.workbench.receipted_revision =
+                self.chat.workbench.receipted_revision.max(receipt.accepted_revision());
+        }
+        if let Some(effects) = self.accept_workbench_chat_receipt(command) {
+            return effects;
+        }
+        if matches!(command.intent(), WorkbenchIntent::CreateConversation(_))
+            && self.chat.workbench.snapshot_refresh_command.is_some()
+        {
+            return self.refresh_selected_snapshot();
+        }
         if preview {
             return self.accept_preview_receipt(command, receipt);
         }
@@ -129,7 +163,22 @@ impl AppModel {
                 receipt.accepted_revision()
             )
         };
+        if self.chat.workbench.goal_confirm_pending.is_some()
+            && matches!(command.intent(), WorkbenchIntent::SetBrief { .. })
+        {
+            return self.refresh_brief();
+        }
         self.refresh_workbench()
+    }
+
+    fn complete_receipted_draft(&mut self, command: &WorkbenchCommand) {
+        if let Some((_, draft)) = self.chat.workbench.unresolved.take()
+            && self.chat.buffer == draft
+            && !(matches!(command.intent(), WorkbenchIntent::CreateConversation(_))
+                && self.chat.workbench.selected == Some(command.query()))
+        {
+            self.clear_chat_command();
+        }
     }
 
     fn accept_preview_receipt(
@@ -148,6 +197,10 @@ impl AppModel {
         self.chat.workbench.message = format!(
             "Preview operation durably accepted at control revision {}. Refreshing observed results.",
             receipt.accepted_revision()
+        );
+        self.notice(
+            NoticeLevel::Info,
+            "Preview operation accepted. Results refresh automatically while running.",
         );
         run.map_or_else(Vec::new, |run| {
             self.refresh_preview(peritus_app_protocol::WorkbenchResultQuery::new(
@@ -225,7 +278,6 @@ impl AppModel {
             WorkbenchIntent::StartGoal { .. }
                 | WorkbenchIntent::PauseGoal { .. }
                 | WorkbenchIntent::ResumeGoal { .. }
-                | WorkbenchIntent::UpdateGoalBudget { .. }
                 | WorkbenchIntent::ClearGoal { .. }
         ) {
             self.chat.workbench.goal = None;
@@ -241,13 +293,14 @@ impl AppModel {
         command: &WorkbenchCommand,
         receipt: &WorkbenchReceipt,
     ) {
-        self.chat.workbench.selected = match command.intent() {
+        let selected = match command.intent() {
             WorkbenchIntent::ForkConversation(request) => {
                 self.chat.workbench.library = None;
                 Some(request.child())
             }
             _ => Some(receipt.query()),
         };
+        self.select_workbench_conversation(selected);
     }
 
     pub(in crate::model) fn accept_workbench_snapshot(
@@ -259,6 +312,9 @@ impl AppModel {
             return false;
         }
         self.chat.workbench.snapshot = Some(snapshot);
+        if self.chat.workbench.snapshot_refresh_command.is_none() {
+            self.complete_workbench_inspection();
+        }
         true
     }
 

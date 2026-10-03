@@ -21,15 +21,16 @@ fn pasted_command_is_not_executed_until_explicit_catalog_selection() {
 
 #[test]
 fn keyboard_command_accepts_pasted_arguments_but_not_pasted_token_edits() {
-    let mut model = model();
+    let mut model = durable_chat_model();
     for character in "/plan ".chars() {
         key(&mut model, KeyCode::Char(character));
     }
     model.update(Action::TerminalEvent(Event::Paste("inspect only".to_owned())));
     let effects = key(&mut model, KeyCode::Enter);
-    assert!(effects.iter().any(|effect| matches!(effect,
-        Effect::Send(AppMessage::Request(request)) if matches!(request.payload(),
-            AppRequestPayload::Interact(value) if value.mode() == ProductInteractionMode::Plan))));
+    assert!(matches!(effects.as_slice(), [Effect::Send(AppMessage::Request(request))]
+        if matches!(request.payload(), AppRequestPayload::WorkbenchCommand(command)
+            if matches!(command.intent(), peritus_app_protocol::WorkbenchIntent::CreateConversation(_)))));
+    assert_eq!(model.chat.mode, ProductInteractionMode::Plan);
 
     let mut model = super::model();
     key(&mut model, KeyCode::Char('/'));

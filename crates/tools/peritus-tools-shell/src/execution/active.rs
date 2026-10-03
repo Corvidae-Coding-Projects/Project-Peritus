@@ -89,7 +89,12 @@ impl ShellExecution {
             let projected = progress::event(&self.prepared, self.next_progress, event, observed_at);
             self.push_progress(&mut updates, projected)?;
         }
-        let result = if events.len() < EVENT_PAGE && self.control.terminal_result().is_some() {
+        let result = if self.control.terminal_result().is_some() {
+            // Historical progress is bounded observation, not a barrier to an authoritative
+            // terminal result. Mark omitted rows instead of reporting an exited process as live.
+            if !self.control.read_events(self.cursor, 1).is_empty() {
+                self.progress_truncated = true;
+            }
             Some(self.finalize(observed_at)?)
         } else {
             None

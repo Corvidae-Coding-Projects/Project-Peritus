@@ -1,10 +1,9 @@
 //! Revision-fenced bounded inspection queries, rows, and pages.
 
 use super::{
-    AppProtocolError, MAX_WORKBENCH_GUIDANCE_PAGE, MAX_WORKBENCH_GUIDANCE_RECORDS,
-    WorkbenchGuidanceIdentity, WorkbenchGuidanceLifecycle, WorkbenchGuidanceRecord,
-    WorkbenchGuidanceScope, WorkbenchGuidanceTombstone, WorkbenchQuery, capacity, invalid,
-    scope_matches,
+    AppProtocolError, MAX_WORKBENCH_GUIDANCE_PAGE, WorkbenchGuidanceIdentity,
+    WorkbenchGuidanceLifecycle, WorkbenchGuidanceRecord, WorkbenchGuidanceScope,
+    WorkbenchGuidanceTombstone, WorkbenchQuery, capacity, invalid, scope_matches,
 };
 
 /// Revision-fenced bounded guidance inspection query.
@@ -27,9 +26,7 @@ impl WorkbenchMemoryQuery {
         offset: u32,
         include_forgotten: bool,
     ) -> Result<Self, AppProtocolError> {
-        if (offset != 0 && dependency_revision == 0)
-            || offset as usize > MAX_WORKBENCH_GUIDANCE_RECORDS
-        {
+        if offset != 0 && dependency_revision == 0 {
             return Err(invalid());
         }
         Ok(Self { query, dependency_revision, offset, include_forgotten })
@@ -128,7 +125,6 @@ impl WorkbenchMemory {
             .and_then(|offset| offset.checked_add(rows.len()))
             .ok_or_else(capacity)?;
         if rows.len() > MAX_WORKBENCH_GUIDANCE_PAGE
-            || total as usize > MAX_WORKBENCH_GUIDANCE_RECORDS
             || end > total as usize
             || (query.dependency_revision() != 0
                 && query.dependency_revision() != dependency_revision)

@@ -97,15 +97,40 @@ impl AppModel {
             ModelRole::Reviewer => providers.reviewer(),
             ModelRole::Fixer => providers.fixer(),
         };
+        if self.pending.values().any(|pending| {
+            matches!(pending, PendingRequest::ModelQuery(query) if query.profile() == profile)
+        }) {
+            self.notice(NoticeLevel::Info, "Model discovery is already pending; Esc returns.");
+            return Vec::new();
+        }
+        self.abandon_model_discovery();
         if self.chat.catalog.as_ref().is_some_and(|catalog| catalog.profile() != profile) {
             self.chat.catalog = None;
         }
-        self.request(
-            AppRequestPayload::QueryModels(ProductModelQuery::new(profile, refresh)),
-            PendingRequest::ModelQuery,
-        )
-        .into_iter()
-        .collect()
+        let query = ProductModelQuery::new(profile, refresh);
+        self.request(AppRequestPayload::QueryModels(query), PendingRequest::ModelQuery(query))
+            .into_iter()
+            .collect()
+    }
+
+    fn abandon_model_discovery(&mut self) {
+        self.pending.retain(|_, pending| !matches!(pending, PendingRequest::ModelQuery(_)));
+        self.pending_started.retain(|id, _| self.pending.contains_key(id));
+    }
+
+    pub(crate) fn model_discovery_pending(&self) -> bool {
+        self.pending.values().any(|pending| matches!(pending, PendingRequest::ModelQuery(_)))
+    }
+
+    pub(in crate::model) fn accept_model_response(
+        &mut self,
+        catalog: &ProductModelCatalog,
+        pending: Option<&PendingRequest>,
+    ) {
+        if matches!(pending, Some(PendingRequest::ModelQuery(query)) if query.profile() == catalog.profile())
+        {
+            self.accept_model_catalog(catalog.clone());
+        }
     }
 
     pub(in crate::model) fn accept_model_catalog(&mut self, catalog: ProductModelCatalog) {
@@ -134,7 +159,10 @@ impl AppModel {
 
     pub(super) fn model_picker_key(&mut self, key: KeyEvent) -> Vec<Effect> {
         match key.code {
-            KeyCode::Esc => self.chat.close_model_picker(),
+            KeyCode::Esc => {
+                self.abandon_model_discovery();
+                self.chat.close_model_picker();
+            }
             KeyCode::Tab => {
                 self.chat.model_role = self.chat.model_role.next();
                 return self.query_chat_models(false);
@@ -241,6 +269,7 @@ impl AppModel {
             }
         };
         self.clear_chat_command();
+        self.abandon_model_discovery();
         self.chat.close_model_picker();
         self.chat.close_effort_picker();
         if let Some(run_id) = self.chat.run_id {

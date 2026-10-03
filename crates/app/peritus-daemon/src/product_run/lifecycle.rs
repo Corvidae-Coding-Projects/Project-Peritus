@@ -8,12 +8,12 @@ use std::{
     time::Duration,
 };
 
-use peritus_app_protocol::{ProductConversationRole, ProductRunPhase, ProductRunSnapshot};
+use peritus_app_protocol::{ProductRunPhase, ProductRunSnapshot};
 use peritus_provider_core::CancellationToken;
 use peritus_types::RunId;
 
-use super::{ProductRunService, ProductRunServiceError, RunProgress};
-use super::{persistence::persist_record, snapshot::initial_snapshot};
+use super::persistence::persist_record;
+use super::{ProductRunService, ProductRunServiceError};
 use super::{snapshot::replace_snapshot, snapshot::workspace_has_active_run};
 
 impl ProductRunService {
@@ -84,10 +84,11 @@ impl ProductRunService {
                 "Run cancelled",
                 "Cancelled while waiting for your reply",
             )?;
-            let _ = record.conversation.append(
-                ProductConversationRole::Agent,
-                "Cancelled while waiting for your reply".to_owned(),
-            );
+            record.interaction.append(
+                peritus_app_protocol::ProductActivityKind::Status,
+                "Run cancelled",
+                "Cancelled while waiting for your reply",
+            )?;
             persist_record(&self.inner.directory, record)?;
             return Ok(record.snapshot.clone());
         }
@@ -111,17 +112,15 @@ impl ProductRunService {
         &self,
         run_id: RunId,
     ) -> Result<ProductRunSnapshot, ProductRunServiceError> {
-        let (
-            request,
-            root,
-            providers,
-            cancelled,
-            token,
-            conversation,
-            finding_state,
-            resume,
-            snapshot,
-        ) = {
+        self.retry_admitted(run_id, None).await
+    }
+
+    pub(super) async fn retry_admitted(
+        &self,
+        run_id: RunId,
+        goal_resume: Option<&peritus_product_runner::control::ControlOperation>,
+    ) -> Result<ProductRunSnapshot, ProductRunServiceError> {
+        let (request, root, providers, cancelled, token, finding_state, resume, snapshot) = {
             let mut records =
                 self.inner.records.write().map_err(|_| ProductRunServiceError::Unavailable)?;
             let workspace_id = records
@@ -129,20 +128,38 @@ impl ProductRunService {
                 .ok_or(ProductRunServiceError::NotFound)?
                 .request
                 .workspace_id();
+            let record = records.get(&run_id).expect("checked product run exists");
+            let explicit_goal = if let Some(operation) = goal_resume {
+                if !self.goal_resume_pending(record, operation)? {
+                    return Ok(record.snapshot.clone());
+                }
+                true
+            } else {
+                false
+            };
             if workspace_has_active_run(&records, workspace_id, Some(run_id)) {
                 return Err(ProductRunServiceError::InvalidState);
             }
+            super::deliverable::discard::workspace_available(
+                &self.inner.directory,
+                &records,
+                workspace_id,
+            )?;
             let record = records.get_mut(&run_id).expect("checked product run exists");
-            let pending_chat = record.snapshot.phase() == ProductRunPhase::WaitingForUser
+            let pending_chat = (record.snapshot.phase() == ProductRunPhase::WaitingForUser
+                || record.snapshot.phase() == ProductRunPhase::Complete)
                 && self.pending_record_input(record)?;
-            if !record.snapshot.phase().retryable() && !pending_chat {
+            let explicit_idle = explicit_goal
+                && matches!(
+                    record.snapshot.phase(),
+                    ProductRunPhase::WaitingForUser | ProductRunPhase::Complete
+                );
+            if !(record.snapshot.phase().retryable() || pending_chat || explicit_idle) {
                 return Err(ProductRunServiceError::InvalidState);
             }
-            self.validate_workspace_mode(workspace_id, record.interaction.as_ref())?;
-            let providers = self.resolve_selected_providers(
-                record.request.providers(),
-                record.interaction.as_ref(),
-            )?;
+            self.validate_workspace_mode(workspace_id, record.interaction.mode)?;
+            let providers =
+                self.resolve_selected_providers(record.request.providers(), &record.interaction)?;
             let root = self
                 .inner
                 .workspaces
@@ -151,28 +168,34 @@ impl ProductRunService {
                 .ok_or(ProductRunServiceError::WorkspaceUnavailable)?;
             let cancelled = Arc::new(AtomicBool::new(false));
             let token = CancellationToken::new();
+            let previous = record.clone();
+            if let Some(operation) = goal_resume {
+                record.goal_resume = Some(operation.id());
+            }
             record.cancelled = Arc::clone(&cancelled);
             record.user_cancelled = false;
             record.provider_cancellation = token.clone();
-            record.snapshot = initial_snapshot(&record.request)?;
-            record.progress = RunProgress::default();
+            record.snapshot =
+                super::snapshot::retry_snapshot(&record.request, record.resume.as_ref())?;
+            record.progress.begin_attempt();
             record.settlement = None;
             record.interruption_cause.clear();
-            persist_record(&self.inner.directory, record)?;
+            if let Err(error) = persist_record(&self.inner.directory, record) {
+                *record = previous;
+                return Err(error);
+            }
             (
                 record.request.clone(),
                 root,
                 providers,
                 cancelled,
                 token,
-                Arc::clone(&record.conversation),
                 record.finding_state.clone(),
                 record.resume.clone(),
                 record.snapshot.clone(),
             )
         };
-        self.spawn(request, root, providers, cancelled, token, conversation, finding_state, resume)
-            .await;
+        self.spawn(request, root, providers, cancelled, token, finding_state, resume).await;
         Ok(snapshot)
     }
 }

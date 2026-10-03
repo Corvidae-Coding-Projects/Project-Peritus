@@ -20,6 +20,7 @@ pub struct DiffReviewUi {
     pub file: usize,
     pub hunk: usize,
     pub comment: usize,
+    pub scroll: u16,
     pub message: String,
 }
 
@@ -29,6 +30,7 @@ impl DiffReviewUi {
         self.file = 0;
         self.hunk = 0;
         self.comment = 0;
+        self.scroll = 0;
         self.message.clear();
     }
 

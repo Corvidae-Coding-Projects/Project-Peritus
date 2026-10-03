@@ -6,6 +6,39 @@ use peritus_app_protocol::{ProductInteractionMode as Mode, ProductRunControlActi
 
 impl AppModel {
     pub(super) fn slash_command(&mut self, text: &str) -> Vec<Effect> {
+        let effects = self.dispatch_slash_command(text);
+        self.track_workbench_inspection(&effects);
+        effects
+    }
+
+    pub(in crate::model::chat) fn track_workbench_inspection(&mut self, effects: &[Effect]) {
+        // Inspection has no durable mutation receipt. Retain the draft until its validated
+        // response arrives, then leave an empty composer for the next command.
+        if effects.iter().any(|effect| {
+            matches!(effect,
+            Effect::Send(peritus_app_protocol::AppMessage::Request(request))
+            if matches!(request.payload(),
+                peritus_app_protocol::AppRequestPayload::QueryConversationLibrary(_)
+                | peritus_app_protocol::AppRequestPayload::QueryWorkbench(_)
+                | peritus_app_protocol::AppRequestPayload::QueryWorkbenchExecution(_)
+                | peritus_app_protocol::AppRequestPayload::QueryWorkbenchBrief(_)
+                | peritus_app_protocol::AppRequestPayload::QueryWorkbenchContext(_)
+                | peritus_app_protocol::AppRequestPayload::QueryWorkbenchFiles(_)
+                | peritus_app_protocol::AppRequestPayload::QueryWorkbenchGoal(_)
+                | peritus_app_protocol::AppRequestPayload::QueryWorkbenchImages(_)
+                | peritus_app_protocol::AppRequestPayload::QueryWorkbenchMemory(_)
+                | peritus_app_protocol::AppRequestPayload::QueryWorkbenchPermissions(_)
+                | peritus_app_protocol::AppRequestPayload::QueryWorkbenchQueue(_)
+                | peritus_app_protocol::AppRequestPayload::PreviewWorkbenchCompaction(_)
+                | peritus_app_protocol::AppRequestPayload::InspectWorkbenchCheckpoint(_)
+                | peritus_app_protocol::AppRequestPayload::PreviewWorkbenchRewind(_)
+            ))
+        }) {
+            self.chat.workbench.inspection_draft = Some(self.chat.buffer.clone());
+        }
+    }
+
+    fn dispatch_slash_command(&mut self, text: &str) -> Vec<Effect> {
         self.chat.workbench.files.open = false;
         let (command, rest) = match catalog::parse(text) {
             Ok(parsed) => parsed,
@@ -14,11 +47,11 @@ impl AppModel {
                 return Vec::new();
             }
         };
-        if !matches!(
-            command,
-            Command::Goal | Command::Pause | Command::Resume | Command::Usage | Command::Budget
-        ) {
+        if !matches!(command, Command::Goal | Command::Pause | Command::Resume | Command::Usage) {
             self.chat.workbench.goal_mode = false;
+        }
+        if let Some(effects) = self.refresh_stale_command_snapshot(command, rest) {
+            return effects;
         }
         if let Some(effects) = self.workbench_slash_command(command, rest) {
             return effects;
@@ -43,7 +76,7 @@ impl AppModel {
             self.notice(NoticeLevel::Info, "This folder uses in-place edits, not Git candidate handoffs. Ask for changes or commands in /chat; /build and candidate actions require a managed Git workspace.");
             return Vec::new();
         }
-        if command == Command::New && self.chat_submission_pending() {
+        if command == Command::New && self.chat_mutation_pending() {
             self.notice(
                 NoticeLevel::Info,
                 "Wait for the pending input receipt before opening a new conversation.",
@@ -62,24 +95,20 @@ impl AppModel {
         }
         self.clear_chat_command();
         match command {
-            Command::New => {
-                self.chat.run_id = None;
-                self.chat.snapshot = None;
-                self.chat.scroll = 0;
-                self.chat.mode = Mode::Chat;
-            }
+            Command::New => self.open_new_chat(),
             Command::Status => self.notice(NoticeLevel::Info, self.chat.status()),
             Command::Diff => {
                 if self.select_chat_run() {
                     return self.open_diff_panel();
                 }
             }
-            Command::Runs => self.view = View::Runs,
+            Command::Runs => self.open_chat_runs(),
             Command::Trace => self.view = View::Trace,
             Command::Terminal => self.view = View::Terminal,
             Command::Approvals => self.view = View::Approvals,
             Command::Details => self.chat.expanded = !self.chat.expanded,
             Command::Stop => return self.chat_control(Control::Cancel),
+            Command::Retry => return self.chat_control(Control::Retry),
             Command::Accept => return self.chat_control(Control::Accept),
             Command::Commit => return self.chat_control(Control::Commit),
             Command::Export => return self.chat_control(Control::Export),
@@ -105,7 +134,29 @@ impl AppModel {
         Vec::new()
     }
 
-    fn workbench_slash_command(&mut self, command: Command, rest: &str) -> Option<Vec<Effect>> {
+    fn open_new_chat(&mut self) {
+        self.abandon_chat_observations();
+        self.abandon_workbench_inspection();
+        self.select_workbench_conversation(None);
+        self.chat.workbench.open = false;
+        self.chat.run_id = None;
+        self.chat.snapshot = None;
+        self.chat.scroll = 0;
+        self.chat.mode = Mode::Chat;
+    }
+
+    fn open_chat_runs(&mut self) {
+        if self.chat.run_id.is_some() {
+            self.select_chat_run();
+        }
+        self.view = View::Runs;
+    }
+
+    pub(in crate::model::chat) fn workbench_slash_command(
+        &mut self,
+        command: Command,
+        rest: &str,
+    ) -> Option<Vec<Effect>> {
         match command {
             Command::Sessions => Some(self.sessions_command(rest)),
             Command::Fork => Some(self.fork_command(rest)),
@@ -117,7 +168,6 @@ impl AppModel {
             Command::Pause => Some(self.pause_goal_command(rest)),
             Command::Resume => Some(self.resume_goal_command(rest)),
             Command::Usage => Some(self.usage_command()),
-            Command::Budget => Some(self.budget_command(rest)),
             Command::Preview => Some(self.preview_command(rest)),
             Command::Checkpoint => Some(self.checkpoint_command(rest)),
             Command::Rewind => Some(self.rewind_command(rest)),

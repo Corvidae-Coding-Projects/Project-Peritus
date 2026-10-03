@@ -9,6 +9,30 @@ use super::{ObservedOutput, TerminalBridge};
 use crate::terminal::{TerminalBridgeError, TerminalBridgeErrorKind, TerminalRegistryLimits};
 
 impl TerminalBridge {
+    /// Native completion can release an unobserved owner even if its bounded output was lost.
+    /// Attached clients still require ordered stream delivery and its exact exit fence.
+    pub(in crate::terminal) fn observe_detached_completion(
+        &mut self,
+    ) -> Result<bool, TerminalBridgeError> {
+        if !self.attachments.is_empty() {
+            return Ok(false);
+        }
+        let Some(result) = self.control.terminal_result() else {
+            return Ok(false);
+        };
+        if result.process_id() != self.process_id
+            || result.plan_digest() != self.plan_digest
+            || self.terminal.as_ref().is_some_and(|observed| *observed != result)
+        {
+            return Err(rejected(
+                TerminalBridgeErrorKind::ProcessIdentityMismatch,
+                "detached process completion differs from its registered terminal identity",
+            ));
+        }
+        self.terminal = Some(result);
+        Ok(true)
+    }
+
     pub(in crate::terminal) fn observe(
         &mut self,
         limits: TerminalRegistryLimits,
@@ -87,10 +111,12 @@ impl TerminalBridge {
         bytes: &[u8],
         limits: TerminalRegistryLimits,
     ) -> Result<(), TerminalBridgeError> {
-        if stream != OutputStream::Terminal {
+        if matches!(self.io_mode, peritus_process::IoMode::Pty(_))
+            != (stream == OutputStream::Terminal)
+        {
             return Err(rejected(
                 TerminalBridgeErrorKind::ProcessIdentityMismatch,
-                "a registered PTY emitted a separated stdout or stderr stream",
+                "output stream differs from the checked pipe or PTY mode",
             ));
         }
         let stream_index = stream_index(stream);

@@ -87,7 +87,7 @@ fn brief_requires_capability_and_inspection_and_rejects_bad_fields_without_losin
     }
     inspect(&mut model);
     assert!(model.chat.run_id.is_none());
-    assert_eq!(model.chat.buffer, "/brief");
+    assert!(model.chat.buffer.is_empty(), "successful inspection consumes its slash command");
     key(&mut model, KeyCode::Esc);
     model.chat.buffer = "/brief acceptance Confirm restart".to_owned();
     let sent = request(&key(&mut model, KeyCode::Enter));

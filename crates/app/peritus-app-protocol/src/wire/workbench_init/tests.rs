@@ -81,18 +81,15 @@ fn proposal_roundtrip_retains_exact_original_patch_and_structured_argv() {
 }
 
 #[test]
-fn decoder_rejects_excessive_source_count_before_reading_sources() {
-    let expected = proposal();
-    let mut writer = CanonicalWriter::new(CodecLimits::PRODUCTION);
-    super::super::workbench::write_query(&mut writer, expected.query()).expect("query");
-    writer.write_u64(expected.revision()).expect("revision");
-    write_digest(&mut writer, expected.folder_digest()).expect("folder");
-    writer.write_collection_len(MAX_INIT_SOURCES + 1).expect("count");
-    let bytes = writer.into_bytes();
-    let mut reader = CanonicalReader::new(&bytes, CodecLimits::PRODUCTION);
+fn command_accepts_more_than_the_old_argument_ceiling() {
+    let command = InitCommand::new(
+        InitCommandKind::Test,
+        "justfile".to_owned(),
+        "just".to_owned(),
+        (0..17).map(|index| format!("argument-{index}")).collect(),
+        InitCommandVerification::Unverified,
+    )
+    .expect("representable command");
 
-    assert_eq!(
-        read_proposal(&mut reader).expect_err("excess count").kind(),
-        CodecErrorKind::LimitExceeded
-    );
+    assert_eq!(command.arguments().len(), 17);
 }

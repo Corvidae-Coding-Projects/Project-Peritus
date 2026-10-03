@@ -25,6 +25,15 @@ struct CheckpointEntry {
     path: PathBuf,
     digest: Option<[u8; 32]>,
     permissions: Option<u32>,
+    kind: ContentKind,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum ContentKind {
+    File = 1,
+    Symlink = 2,
+    Repository = 3,
+    Other = 4,
 }
 
 impl WorkspaceCheckpoint {
@@ -36,18 +45,27 @@ impl WorkspaceCheckpoint {
         Ok(Self { head: "in-place-task-files-v1".to_owned(), entries })
     }
 
-    /// Captures HEAD and streams every changed file into a digest without retaining its contents.
+    /// Captures HEAD and the complete source snapshot, including nested repositories and modes.
+    /// Git's changed-path list omits non-executable permission changes and may hide submodules.
     pub fn capture(root: &Path) -> Result<Self, ProductRunnerError> {
         let baseline = CandidateBaseline::capture(root)?;
-        let entries = baseline
-            .changed_paths(root)?
-            .into_iter()
-            .map(|path| checkpoint_entry(root, path))
-            .collect::<Result<Vec<_>, _>>()?;
-        Ok(Self { head: baseline.head().to_owned(), entries })
+        Ok(Self::managed_snapshot(
+            baseline.head().to_owned(),
+            crate::candidate::managed::ManagedBaseline::repository_fingerprint(root)?,
+        ))
     }
 
-    /// Returns a canonical digest of HEAD, every changed path, its content kind, and permissions.
+    pub(crate) fn managed_snapshot(head: String, repository_digest: [u8; 32]) -> Self {
+        let entries = vec![CheckpointEntry {
+            path: PathBuf::new(),
+            digest: Some(repository_digest),
+            permissions: None,
+            kind: ContentKind::Repository,
+        }];
+        Self { head, entries }
+    }
+
+    /// Returns a canonical digest of HEAD, source contents, file kinds, and permissions.
     #[must_use]
     pub fn digest(&self) -> Sha256Digest {
         let mut hasher = Sha256::new();
@@ -56,7 +74,7 @@ impl WorkspaceCheckpoint {
             hash_bytes(&mut hasher, entry.path.to_string_lossy().as_bytes());
             match entry.digest {
                 Some(digest) => {
-                    hasher.update([1]);
+                    hasher.update([entry.kind as u8]);
                     hasher.update(digest);
                 }
                 None => hasher.update([0]),
@@ -79,19 +97,45 @@ fn hash_bytes(hasher: &mut Sha256, bytes: &[u8]) {
 }
 
 fn checkpoint_entry(root: &Path, path: PathBuf) -> Result<CheckpointEntry, ProductRunnerError> {
+    if !crate::candidate::managed::parent_is_directory(root, &path)? {
+        return Ok(CheckpointEntry {
+            path,
+            digest: None,
+            permissions: None,
+            kind: ContentKind::Other,
+        });
+    }
     let absolute = root.join(&path);
-    let (digest, permissions) = match fs::symlink_metadata(&absolute) {
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => (None, None),
-        Err(error) => return Err(repository(error.to_string())),
-        Ok(metadata) if metadata.is_file() => {
-            (Some(digest_file(&absolute)?), Some(file_metadata::permission_fingerprint(&metadata)))
+    let (digest, permissions, kind) = match fs::symlink_metadata(&absolute) {
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+            (None, None, ContentKind::Other)
         }
+        Err(error) => return Err(repository(error.to_string())),
+        Ok(metadata) if metadata.file_type().is_symlink() => {
+            let target = fs::read_link(&absolute).map_err(|error| repository(error.to_string()))?;
+            (
+                Some(Sha256::digest(target.as_os_str().as_encoded_bytes()).into()),
+                Some(file_metadata::permission_fingerprint(&metadata)),
+                ContentKind::Symlink,
+            )
+        }
+        Ok(metadata) if metadata.is_file() => (
+            Some(digest_file(&absolute)?),
+            Some(file_metadata::permission_fingerprint(&metadata)),
+            ContentKind::File,
+        ),
+        Ok(metadata) if metadata.is_dir() && absolute.join(".git").exists() => (
+            Some(crate::candidate::managed::ManagedBaseline::repository_fingerprint(&absolute)?),
+            Some(file_metadata::permission_fingerprint(&metadata)),
+            ContentKind::Repository,
+        ),
         Ok(metadata) => (
             Some(Sha256::digest(b"non-file").into()),
             Some(file_metadata::permission_fingerprint(&metadata)),
+            ContentKind::Other,
         ),
     };
-    Ok(CheckpointEntry { path, digest, permissions })
+    Ok(CheckpointEntry { path, digest, permissions, kind })
 }
 
 fn digest_file(path: &Path) -> Result<[u8; 32], ProductRunnerError> {
@@ -116,77 +160,4 @@ fn repository(detail: impl Into<String>) -> ProductRunnerError {
 }
 
 #[cfg(test)]
-mod tests {
-    use std::{fs, process::Command};
-
-    use super::*;
-
-    #[test]
-    fn checkpoint_changes_only_when_candidate_content_changes() {
-        let root = tempfile::tempdir().expect("root");
-        run(root.path(), &["init", "--quiet"]);
-        run(root.path(), &["config", "user.email", "peritus@example.invalid"]);
-        run(root.path(), &["config", "user.name", "Peritus Test"]);
-        fs::write(root.path().join("tracked.txt"), "baseline").expect("write baseline");
-        run(root.path(), &["add", "."]);
-        run(root.path(), &["commit", "--quiet", "-m", "fixture"]);
-
-        let clean = WorkspaceCheckpoint::capture(root.path()).expect("clean");
-        let same = WorkspaceCheckpoint::capture(root.path()).expect("same");
-        assert_eq!(clean, same);
-
-        fs::write(root.path().join("tracked.txt"), "changed").expect("write change");
-        let changed = WorkspaceCheckpoint::capture(root.path()).expect("changed");
-        assert_ne!(clean, changed);
-
-        fs::write(root.path().join("new.txt"), "untracked").expect("write untracked");
-        let untracked = WorkspaceCheckpoint::capture(root.path()).expect("untracked");
-        assert_ne!(changed, untracked);
-    }
-
-    #[test]
-    fn checkpoint_changes_when_the_task_creates_a_commit() {
-        let root = tempfile::tempdir().expect("root");
-        run(root.path(), &["init", "--quiet"]);
-        run(root.path(), &["config", "user.email", "peritus@example.invalid"]);
-        run(root.path(), &["config", "user.name", "Peritus Test"]);
-        run(root.path(), &["commit", "--quiet", "--allow-empty", "-m", "fixture"]);
-        let before = WorkspaceCheckpoint::capture(root.path()).expect("before commit");
-
-        run(root.path(), &["commit", "--quiet", "--allow-empty", "-m", "task effect"]);
-        let after = WorkspaceCheckpoint::capture(root.path()).expect("after commit");
-
-        assert_ne!(before, after);
-    }
-
-    #[cfg(unix)]
-    #[test]
-    fn checkpoint_changes_when_candidate_permissions_change() {
-        use std::os::unix::fs::PermissionsExt as _;
-
-        let root = tempfile::tempdir().expect("root");
-        run(root.path(), &["init", "--quiet"]);
-        run(root.path(), &["config", "user.email", "peritus@example.invalid"]);
-        run(root.path(), &["config", "user.name", "Peritus Test"]);
-        fs::write(root.path().join("baseline.txt"), "baseline").expect("write baseline");
-        run(root.path(), &["add", "."]);
-        run(root.path(), &["commit", "--quiet", "-m", "fixture"]);
-        let candidate = root.path().join("private.key");
-        fs::write(&candidate, "secret").expect("write candidate");
-        fs::set_permissions(&candidate, fs::Permissions::from_mode(0o644))
-            .expect("initial permissions");
-        let before = WorkspaceCheckpoint::capture(root.path()).expect("before permissions");
-
-        fs::set_permissions(&candidate, fs::Permissions::from_mode(0o600))
-            .expect("fixed permissions");
-        let after = WorkspaceCheckpoint::capture(root.path()).expect("after permissions");
-
-        assert_ne!(before, after);
-    }
-
-    fn run(root: &Path, arguments: &[&str]) {
-        assert!(
-            Command::new("git").args(arguments).current_dir(root).status().expect("git").success()
-        );
-    }
-}
+mod tests;

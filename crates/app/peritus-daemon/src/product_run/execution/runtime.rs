@@ -1,6 +1,6 @@
 //! Command runtime construction for exact managed and direct-folder capabilities.
 use super::{ProductRunService, launch::run_hex};
-use peritus_app_protocol::ProductRunRequest;
+use crate::product_run::ProductRunRequest;
 use peritus_product_runner::{CommandRuntime, ProductRunnerError};
 use std::path::Path;
 pub(super) fn open(

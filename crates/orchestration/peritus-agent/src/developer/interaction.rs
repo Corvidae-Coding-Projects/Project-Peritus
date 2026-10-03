@@ -19,6 +19,8 @@ pub enum DeveloperModelRole {
 pub enum DeveloperControlFlow {
     /// The next operation may still be considered under current host control.
     Continue,
+    /// Newer host input superseded the prepared operation; return to the next model boundary.
+    Yield,
     /// Return at this safe boundary without admitting another operation.
     Stop,
 }
@@ -30,6 +32,15 @@ pub enum DeveloperToolEffect {
     ReadOnly,
     /// Any operation that can mutate state or whose effect class is not proven read-only.
     MutationCapable,
+}
+
+/// Host-validated reason for repeating an independent review; contains no provider payload.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum DeveloperReviewRetryReason {
+    /// The reviewer did not inspect the required repository evidence.
+    MissingGrounding,
+    /// The completed response did not satisfy the typed review contract.
+    InvalidSubmission,
 }
 
 /// Public execution activity, separate from the raw durable provider trace.
@@ -46,6 +57,13 @@ pub enum DeveloperActivity<'a> {
     ModelWaiting { elapsed_seconds: u64 },
     /// A bounded syntax repair was durably recorded; no response contents are exposed here.
     ResponseHealed,
+    /// A rejected independent review will be retried with fresh repository evidence.
+    ReviewRetry {
+        /// One-based attempt about to start.
+        next_attempt: u64,
+        /// Validated public reason; raw output remains in the private trace.
+        reason: DeveloperReviewRetryReason,
+    },
     /// Public assistant text received from a provider, never a reasoning delta.
     Text(&'a [u8]),
     /// Provider-supplied display summary, never opaque reasoning replay bytes.
@@ -134,6 +152,7 @@ pub trait DeveloperInteraction: Send + Sync {
         _role: DeveloperModelRole,
         _invocation: &str,
         _sequence: u32,
+        _input_revision: u64,
         _effect: DeveloperToolEffect,
     ) -> Result<DeveloperControlFlow, DeveloperLoopError> {
         Ok(DeveloperControlFlow::Continue)

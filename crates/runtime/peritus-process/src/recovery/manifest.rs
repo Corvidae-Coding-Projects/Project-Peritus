@@ -118,7 +118,25 @@ impl ExecutionManifest {
         }
     }
 
-    pub(crate) fn matches_terminal(&self, result: &TerminalResult) -> bool {
+    pub(crate) fn matches_terminal_at_publication(&self, result: &TerminalResult) -> bool {
+        self.matches_terminal_facts(result)
+            && self.tree_quiescent == result.tree_cleanup_complete()
+            && self.support_tasks_joined == result.support_tasks_joined()
+    }
+
+    pub(crate) fn retains_terminal(&self, result: &TerminalResult) -> bool {
+        self.matches_terminal_facts(result)
+            && (!result.tree_cleanup_complete() || self.tree_quiescent)
+            && (!result.support_tasks_joined() || self.support_tasks_joined)
+    }
+
+    pub(crate) const fn ownership_settled(&self) -> bool {
+        matches!(self.phase, LifecyclePhase::Closed | LifecyclePhase::Terminal)
+            && self.tree_quiescent
+            && self.support_tasks_joined
+    }
+
+    fn matches_terminal_facts(&self, result: &TerminalResult) -> bool {
         let Some((observed, retained, dropped)) =
             result.output().streams().iter().try_fold((0_u64, 0_u64, 0_u64), |totals, stream| {
                 Some((
@@ -137,8 +155,6 @@ impl ExecutionManifest {
             && self.observed_output == observed
             && self.retained_output == retained
             && self.dropped_output == dropped
-            && self.tree_quiescent == result.tree_cleanup_complete()
-            && self.support_tasks_joined == result.support_tasks_joined()
     }
 
     pub(crate) fn encode(&self) -> Result<Vec<u8>, ProcessError> {

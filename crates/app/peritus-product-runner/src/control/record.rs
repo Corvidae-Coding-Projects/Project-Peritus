@@ -8,9 +8,11 @@ use serde::Serialize;
 mod codec;
 mod intent;
 mod projection;
+mod replay;
 mod seed;
 use codec::{decode, encode};
 pub use intent::ControlIntent;
+pub use replay::ConversationReplay;
 pub use seed::ConversationSeed;
 
 /// Exact authenticated operation binding; the daemon supplies actor/workspace identity.
@@ -72,6 +74,13 @@ impl ControlOperation {
     pub const fn expected_revision(&self) -> u64 {
         self.expected_revision
     }
+    /// A pause only narrows the named goal; advancing accounting must not prevent it.
+    const fn accepts_revision(&self, revision: u64) -> bool {
+        revision == self.expected_revision
+            || (matches!(self.intent, ControlIntent::PauseGoal { .. })
+                && self.expected_revision > 0
+                && self.expected_revision < revision)
+    }
     /// Borrows the typed intent, not executable prompt text.
     #[must_use]
     pub const fn intent(&self) -> &ControlIntent {
@@ -105,6 +114,7 @@ impl ControlOperation {
         }
         match &self.intent {
             ControlIntent::ReserveFork { branch, .. }
+            | ControlIntent::ReserveAutomaticFork { branch, .. }
             | ControlIntent::PublishRestoreBranch { branch, .. }
                 if branch.operation() == self.id
                     && branch.source() == self.conversation
@@ -114,6 +124,7 @@ impl ControlOperation {
                     && branch.child() == self.conversation
                     && branch.child_workspace_bytes() == &self.workspace => {}
             ControlIntent::ReserveFork { .. }
+            | ControlIntent::ReserveAutomaticFork { .. }
             | ControlIntent::CreateFork { .. }
             | ControlIntent::PublishRestoreBranch { .. } => {
                 return Err(ControlError::InvalidInput);

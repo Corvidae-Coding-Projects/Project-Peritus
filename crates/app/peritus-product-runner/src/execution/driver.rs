@@ -43,28 +43,43 @@ impl ProductRunner {
             Ok(execution) => execution,
             Err(error) => return settlement::from_initial_error(&input, &error),
         };
-        let max_elapsed = accounting.remaining();
         let cancelled = Arc::clone(&input.cancelled);
         let provider_cancellation = input.provider_cancellation.clone();
         let deadline_reached = Arc::new(std::sync::atomic::AtomicBool::new(false));
-        let timer_reached = Arc::clone(&deadline_reached);
-        let timer_cancelled = Arc::clone(&cancelled);
-        let timer_provider_cancellation = provider_cancellation.clone();
-        let timer = tokio::spawn(async move {
-            tokio::time::sleep(deadline::active_window(max_elapsed)).await;
-            timer_reached.store(true, Ordering::SeqCst);
-            timer_cancelled.store(true, Ordering::SeqCst);
-            let _ = timer_provider_cancellation.cancel();
-        });
-        let result = tokio::time::timeout(
-            max_elapsed,
-            // Keep the long-lived role loop out of every caller's async state while retaining
-            // timeout ownership: dropping the timeout still drops the active execution future.
-            Box::pin(Self::run_until_terminal(&input, &observe, &mut execution, &mut accounting)),
-        )
-        .await;
-        timer.abort();
-        let _ = timer.await;
+        let result = if let Some(max_elapsed) = accounting.remaining() {
+            let timer_reached = Arc::clone(&deadline_reached);
+            let timer_cancelled = Arc::clone(&cancelled);
+            let timer_provider_cancellation = provider_cancellation.clone();
+            let timer = tokio::spawn(async move {
+                tokio::time::sleep(deadline::active_window(max_elapsed)).await;
+                timer_reached.store(true, Ordering::SeqCst);
+                timer_cancelled.store(true, Ordering::SeqCst);
+                let _ = timer_provider_cancellation.cancel();
+            });
+            let result = tokio::time::timeout(
+                max_elapsed,
+                // Keep the long-lived role loop out of every caller's async state while retaining
+                // timeout ownership: dropping the timeout still drops the active execution future.
+                Box::pin(Self::run_until_terminal(
+                    &input,
+                    &observe,
+                    &mut execution,
+                    &mut accounting,
+                )),
+            )
+            .await;
+            timer.abort();
+            let _ = timer.await;
+            result
+        } else {
+            Ok(Box::pin(Self::run_until_terminal(
+                &input,
+                &observe,
+                &mut execution,
+                &mut accounting,
+            ))
+            .await)
+        };
         let reached = deadline_reached.load(Ordering::SeqCst);
         let terminal = match result {
             Ok(Ok(exit)) => exit.with_deadline(reached),

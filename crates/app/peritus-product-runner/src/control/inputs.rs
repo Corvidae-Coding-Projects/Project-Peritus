@@ -11,11 +11,6 @@ use super::{ControlError, ControlText, InputId, InvocationId};
 use serde::Deserialize;
 use serde::Serialize;
 
-const MAX_REVISIONS: usize = 1024;
-const MAX_DEPENDENCIES: usize = 32;
-const MAX_INVOCATIONS: usize = 1024;
-const MAX_INPUT_BYTES: usize = 512 * 1024;
-
 /// Lifecycle of one immutable content revision.
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -195,7 +190,7 @@ pub enum QueueIntent {
     },
 }
 
-/// Bounded complete input history plus pending order and immutable request bindings.
+/// Complete input history plus pending order and immutable request bindings.
 #[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct InputLedger {

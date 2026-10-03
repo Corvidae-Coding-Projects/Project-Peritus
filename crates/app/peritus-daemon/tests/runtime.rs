@@ -8,7 +8,7 @@ use peritus_app_protocol::{
     AppEventPayload, AppMessage, AppProtocolLimits, AppRequestEnvelope, AppRequestPayload,
     AppResponsePayload, ArtifactChunk, ArtifactCompletion, ArtifactMetadata, ArtifactOpenRequest,
     CanonicalMediaType, ClientHello, CommandDisposition, CorrelationId, NegotiationOutcome,
-    ProtocolContext, ProtocolId, RequestId, TransferId, VersionRange,
+    ProtocolContext, ProtocolId, RequestId, TransferId,
 };
 use peritus_daemon::{AppFrameStream, DaemonConfig, DaemonRuntime, LocalEndpointAddress};
 use tokio::{net::UnixStream, runtime::Builder};
@@ -24,7 +24,7 @@ mod workbench;
 fn client_hello() -> ClientHello {
     ClientHello::new(
         ProtocolId::new([3; 16]).expect("protocol identity"),
-        vec![VersionRange::new(1, 0, 0).expect("version")],
+        vec![peritus_app_protocol::CURRENT_PROTOCOL_RANGE],
         Vec::new(),
         Vec::new(),
         AppProtocolLimits::PRODUCTION,
@@ -37,7 +37,7 @@ fn resume_hello(session: peritus_types::SessionId) -> ClientHello {
     ClientHello::new_with_session(
         ProtocolId::new([6; 16]).expect("protocol identity"),
         Some(session),
-        vec![VersionRange::new(1, 0, 0).expect("version")],
+        vec![peritus_app_protocol::CURRENT_PROTOCOL_RANGE],
         Vec::new(),
         Vec::new(),
         AppProtocolLimits::PRODUCTION,

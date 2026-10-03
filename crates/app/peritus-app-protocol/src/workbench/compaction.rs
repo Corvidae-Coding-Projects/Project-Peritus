@@ -5,9 +5,6 @@ use peritus_types::Sha256Digest;
 
 /// Maximum UTF-8 bytes in an optional user compaction focus.
 pub const MAX_WORKBENCH_COMPACTION_FOCUS_BYTES: usize = 1024;
-/// Maximum source handles in one bounded deterministic preview.
-pub const MAX_WORKBENCH_COMPACTION_ENTRIES: usize = 1024;
-
 const fn invalid() -> AppProtocolError {
     AppProtocolError::new(AppErrorCode::MalformedFrame, None)
 }
@@ -164,10 +161,7 @@ impl WorkbenchCompactionPreview {
         entries: Vec<WorkbenchCompactionEntry>,
     ) -> Result<Self, AppProtocolError> {
         if generation == 0
-            || entries.len() > MAX_WORKBENCH_COMPACTION_ENTRIES
-            || [recent_preserved, pinned_preserved, unresolved_preserved, unsavable_preserved]
-                .into_iter()
-                .any(|count| count as usize > MAX_WORKBENCH_COMPACTION_ENTRIES)
+            || u16::try_from(entries.len()).is_err()
             || entries
                 .windows(2)
                 .any(|pair| pair[0].invocation().as_bytes() >= pair[1].invocation().as_bytes())

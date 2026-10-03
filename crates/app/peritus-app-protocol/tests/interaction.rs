@@ -3,11 +3,12 @@
 use peritus_app_protocol::{
     AppMessage, AppProtocolLimits, AppRequestEnvelope, AppRequestPayload, AppResponseEnvelope,
     AppResponsePayload, CorrelationId, ProductActivity, ProductActivityKind,
-    ProductInteractionMode, ProductInteractionRequest, ProductInteractionSnapshot,
+    ProductInteractionMode, ProductInteractionQuery, ProductInteractionSnapshot,
     ProductModelCatalog, ProductModelChoice, ProductModelInfo, ProductModelQuery,
-    ProductProviderSelection, ProductRoleModels, ProductRunConversationQuery, ProductRunPhase,
-    ProductRunRequest, ProductRunSnapshot, ProtocolContext, ProtocolId, ProtocolVersion, RequestId,
-    decode_app_message, encode_app_message,
+    ProductProviderSelection, ProductRoleModels, ProductRunLegalControls, ProductRunOperation,
+    ProductRunOperationKind, ProductRunOperationState, ProductRunPhase, ProductRunSnapshot,
+    ProtocolContext, ProtocolId, ProtocolVersion, RequestId, decode_app_message,
+    encode_app_message,
 };
 use peritus_types::{ProviderProfileId, RunId, SessionId, WorkspaceId};
 
@@ -23,6 +24,17 @@ fn profile() -> ProviderProfileId {
 }
 fn run() -> RunId {
     RunId::new([4; 16]).expect("run")
+}
+fn operation() -> ProductRunOperation {
+    ProductRunOperation::new(
+        ProductRunOperationKind::Execution,
+        ProductRunOperationState::Running,
+        "run/04040404040404040404040404040404".to_owned(),
+        "The interaction fixture owns an active execution.".to_owned(),
+        String::new(),
+        ProductRunLegalControls::none(),
+    )
+    .expect("operation")
 }
 fn models() -> ProductRoleModels {
     ProductRoleModels::new(
@@ -44,6 +56,7 @@ fn snapshot() -> ProductRunSnapshot {
         String::new(),
         String::new(),
         String::new(),
+        operation(),
     )
     .expect("snapshot")
 }
@@ -56,7 +69,7 @@ fn roundtrip(message: &AppMessage) {
 }
 
 #[test]
-fn effort_bearing_requests_and_snapshots_roundtrip_every_level_without_changing_legacy_tags() {
+fn effort_bearing_updates_and_snapshots_roundtrip_every_level() {
     use peritus_app_protocol::{ProductModelEffort, ProductModelUpdate};
     for effort in ProductModelEffort::ALL {
         let choices = ProductRoleModels::new(
@@ -66,31 +79,15 @@ fn effort_bearing_requests_and_snapshots_roundtrip_every_level_without_changing_
                 .with_effort(ProductModelEffort::Low),
             ProductModelChoice::default().with_effort(ProductModelEffort::Max),
         );
-        let request = ProductRunRequest::new(
-            run(),
-            snapshot().workspace_id(),
-            snapshot().providers(),
-            "hello".to_owned(),
-        )
-        .expect("request");
-        for payload in [
-            AppRequestPayload::UpdateModels(ProductModelUpdate::new(run(), choices.clone())),
-            AppRequestPayload::Interact(ProductInteractionRequest::new(
-                request,
-                ProductInteractionMode::Chat,
-                choices.clone(),
-            )),
-        ] {
-            roundtrip(&AppMessage::Request(
-                AppRequestEnvelope::new(
-                    context(),
-                    RequestId::new([6; 16]).expect("id"),
-                    CorrelationId::new([7; 16]).expect("id"),
-                    payload,
-                )
-                .expect("request"),
-            ));
-        }
+        roundtrip(&AppMessage::Request(
+            AppRequestEnvelope::new(
+                context(),
+                RequestId::new([6; 16]).expect("id"),
+                CorrelationId::new([7; 16]).expect("id"),
+                AppRequestPayload::UpdateModels(ProductModelUpdate::new(run(), choices.clone())),
+            )
+            .expect("request"),
+        ));
         let interaction = ProductInteractionSnapshot::new(
             snapshot(),
             ProductInteractionMode::Chat,
@@ -139,33 +136,16 @@ fn unknown_effort_and_noncanonical_explicit_default_payload_are_rejected() {
 }
 
 #[test]
-fn every_mode_and_new_query_roundtrips() {
-    let mut payloads = vec![
-        AppRequestPayload::QueryInteraction(ProductRunConversationQuery::new(run())),
+fn every_conversation_query_roundtrips() {
+    let payloads = vec![
+        AppRequestPayload::QueryInteractionBinding(ProductInteractionQuery::new(run())),
+        AppRequestPayload::QueryInteraction(ProductInteractionQuery::new(run())),
         AppRequestPayload::QueryModels(ProductModelQuery::new(profile(), true)),
         AppRequestPayload::UpdateModels(peritus_app_protocol::ProductModelUpdate::new(
             run(),
             models(),
         )),
     ];
-    for mode in [
-        ProductInteractionMode::Chat,
-        ProductInteractionMode::Plan,
-        ProductInteractionMode::Review,
-        ProductInteractionMode::Build,
-    ] {
-        payloads.push(AppRequestPayload::Interact(ProductInteractionRequest::new(
-            ProductRunRequest::new(
-                run(),
-                snapshot().workspace_id(),
-                snapshot().providers(),
-                "hello λ".to_owned(),
-            )
-            .expect("request"),
-            mode,
-            models(),
-        )));
-    }
     for payload in payloads {
         roundtrip(&AppMessage::Request(
             AppRequestEnvelope::new(
@@ -176,6 +156,38 @@ fn every_mode_and_new_query_roundtrips() {
             )
             .expect("envelope"),
         ));
+    }
+}
+
+#[test]
+fn exact_run_bindings_require_durable_inputs_with_all_effort_encodings() {
+    use peritus_app_protocol::{
+        ConversationId, ProductInteractionBinding, ProductModelEffort, WorkbenchQuery,
+    };
+    let conversation =
+        WorkbenchQuery::new(ConversationId::new([90; 16]).unwrap(), snapshot().workspace_id());
+    for effort in ProductModelEffort::ALL {
+        let choice = ProductModelChoice::default().with_effort(effort);
+        let interaction = ProductInteractionSnapshot::new(
+            snapshot(),
+            ProductInteractionMode::Chat,
+            ProductRoleModels::new(choice.clone(), choice.clone(), choice),
+            1,
+            1,
+            Vec::new(),
+            None,
+        )
+        .unwrap();
+        let binding = ProductInteractionBinding::new(interaction.clone(), conversation).unwrap();
+        roundtrip(&AppMessage::Response(AppResponseEnvelope::new(
+            context(),
+            RequestId::new([6; 16]).unwrap(),
+            CorrelationId::new([7; 16]).unwrap(),
+            AppResponsePayload::InteractionBinding(binding),
+        )));
+        let other_workspace =
+            WorkbenchQuery::new(conversation.conversation(), WorkspaceId::new([91; 16]).unwrap());
+        assert!(ProductInteractionBinding::new(interaction, other_workspace).is_err());
     }
 }
 

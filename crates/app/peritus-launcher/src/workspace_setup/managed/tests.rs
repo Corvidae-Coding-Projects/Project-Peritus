@@ -65,7 +65,7 @@ fn interrupted_registration_recovers_and_removed_recent_keeps_daemon_catalog_val
 }
 
 #[test]
-fn trusted_repair_adopts_advanced_detached_head_and_preserves_unfinished_files() {
+fn activation_refreshes_committed_baseline_and_preserves_unfinished_files() {
     let temporary = tempfile::tempdir().expect("temporary root");
     let source = initialized_repository(temporary.path());
     let repository = DiscoveredRepository::open(&source).expect("repository");
@@ -75,15 +75,25 @@ fn trusted_repair_adopts_advanced_detached_head_and_preserves_unfinished_files()
     let trusted = trust(&layout, &repository, new_profile(&repository).expect("profile"))
         .expect("trusted workspace");
     let managed = PathBuf::from(trusted.managed_root().expect("managed root"));
+    let configured = ProductBootstrap::new(layout.clone())
+        .configure_workspace(trusted.clone())
+        .expect("initial configuration");
+    restart_daemon(&configured);
     fs::write(managed.join("file.txt"), "agent result\n").expect("modify tracked file");
     git(&managed, &["add", "--", "file.txt"]);
     git(&managed, &["commit", "--quiet", "-m", "agent result"]);
     fs::write(managed.join("unfinished.txt"), "preserve me\n").expect("write unfinished file");
-    assert_eq!(health(&trusted), WorkspaceHealth::NeedsRepair);
+    assert_eq!(health(&trusted), WorkspaceHealth::Advanced);
+    let prepared = ProductBootstrap::new(layout)
+        .configure_workspace(trusted)
+        .expect("configure committed workspace");
+    let activated = super::super::activate_repository(prepared, repository)
+        .expect("activate without repair prompt");
+    restart_daemon(&activated);
+    restart_daemon(&activated);
+    let repaired = activated.state().workspaces().active().expect("active profile");
 
-    let repaired = trust(&layout, &repository, trusted).expect("repair trusted workspace");
-
-    assert_eq!(health(&repaired), WorkspaceHealth::Dirty);
+    assert_eq!(health(repaired), WorkspaceHealth::Dirty);
     assert_eq!(
         fs::read_to_string(managed.join("file.txt")).expect("read committed result"),
         "agent result\n"
@@ -92,6 +102,15 @@ fn trusted_repair_adopts_advanced_detached_head_and_preserves_unfinished_files()
         fs::read_to_string(managed.join("unfinished.txt")).expect("read unfinished result"),
         "preserve me\n"
     );
+}
+
+fn restart_daemon(prepared: &crate::PreparedProduct) {
+    tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap().block_on(async {
+        let daemon = peritus_daemon::DaemonRuntime::start(prepared.daemon_config().clone())
+            .await
+            .expect("start registered workspace");
+        daemon.shutdown().await.expect("shutdown registered workspace");
+    });
 }
 
 #[test]

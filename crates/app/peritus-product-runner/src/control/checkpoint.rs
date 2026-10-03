@@ -6,13 +6,6 @@ use peritus_types::Sha256Digest;
 use serde::Deserialize;
 use serde::Serialize;
 
-/// Maximum paths covered by one user checkpoint.
-pub const MAX_CHECKPOINT_PATHS: usize = 64;
-/// Maximum retained checkpoints in one conversation projection.
-pub const MAX_CHECKPOINTS: usize = 64;
-/// Maximum restore receipts retained in one conversation projection.
-pub const MAX_RESTORES: usize = 128;
-
 /// Portable file mode bound into checkpoint preconditions.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -182,9 +175,9 @@ impl UserCheckpoint {
         exclusions: Vec<String>,
         external_effects: Vec<String>,
     ) -> Result<Self, ControlError> {
-        if paths.len() > MAX_CHECKPOINT_PATHS
-            || exclusions.len() > MAX_CHECKPOINT_PATHS
-            || external_effects.len() > MAX_CHECKPOINT_PATHS
+        if u16::try_from(paths.len()).is_err()
+            || u16::try_from(exclusions.len()).is_err()
+            || u16::try_from(external_effects.len()).is_err()
         {
             return Err(ControlError::Capacity);
         }
@@ -299,10 +292,28 @@ impl UserCheckpoint {
         self.sealed_by_run = Some(run);
         Ok(())
     }
+    pub(in crate::control) fn seal_restoration(
+        &mut self,
+        versions: &[(String, CheckpointFileVersion)],
+    ) -> Result<(), ControlError> {
+        if self.automatic_run.is_some()
+            || self.sealed_by_run.is_some()
+            || self.paths.len() != versions.len()
+        {
+            return Err(ControlError::InvalidInput);
+        }
+        for (path, (name, version)) in self.paths.iter_mut().zip(versions) {
+            if path.path() != name {
+                return Err(ControlError::InvalidInput);
+            }
+            path.seal(*version);
+        }
+        Ok(())
+    }
     fn validate(&self) -> Result<(), ControlError> {
-        if self.paths.len() > MAX_CHECKPOINT_PATHS
-            || self.exclusions.len() > MAX_CHECKPOINT_PATHS
-            || self.external_effects.len() > MAX_CHECKPOINT_PATHS
+        if u16::try_from(self.paths.len()).is_err()
+            || u16::try_from(self.exclusions.len()).is_err()
+            || u16::try_from(self.external_effects.len()).is_err()
             || self.paths.windows(2).any(|pair| pair[0].path() >= pair[1].path())
         {
             return Err(ControlError::Capacity);

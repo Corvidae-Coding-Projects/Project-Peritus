@@ -1,9 +1,8 @@
-//! Canonical bounded-goal definitions and projections.
+//! Canonical goal definitions and projections.
 
 use super::primitive::{invalid, read_id, unknown, write_id};
 use crate::{
-    MAX_WORKBENCH_GOAL_CRITERIA, WorkbenchGoalBudget, WorkbenchGoalCriterion,
-    WorkbenchGoalCriterionDefinition, WorkbenchGoalCriterionKind as Kind,
+    WorkbenchGoalCriterion, WorkbenchGoalCriterionDefinition, WorkbenchGoalCriterionKind as Kind,
     WorkbenchGoalCriterionState as CriterionState, WorkbenchGoalDefinition,
     WorkbenchGoalPauseMode as Pause, WorkbenchGoalRole as Role, WorkbenchGoalRoleUsage,
     WorkbenchGoalSnapshot, WorkbenchGoalState as State, WorkbenchGoalUsage,
@@ -22,7 +21,7 @@ pub(super) fn write_definition(
     for criterion in value.criteria() {
         write_definition_criterion(w, criterion)?;
     }
-    write_budget(w, value.budget())
+    Ok(())
 }
 
 pub(super) fn read_definition(
@@ -31,34 +30,11 @@ pub(super) fn read_definition(
     let offset = r.offset();
     let objective = super::workbench_inputs::read_text(r)?;
     let count = usize::from(r.read_u16()?);
-    if count > MAX_WORKBENCH_GOAL_CRITERIA {
-        return Err(CodecError::at(CodecErrorKind::LimitExceeded, offset));
-    }
     let mut criteria = Vec::with_capacity(count);
     for _ in 0..count {
         criteria.push(read_definition_criterion(r)?);
     }
-    let budget = read_budget(r)?;
-    invalid(offset, WorkbenchGoalDefinition::new(objective, criteria, budget))
-}
-
-pub(super) fn write_budget(
-    w: &mut CanonicalWriter,
-    value: WorkbenchGoalBudget,
-) -> Result<(), CodecError> {
-    write_option_u64(w, value.max_active_millis())?;
-    write_option_u32(w, value.max_requests())?;
-    write_option_u32(w, value.max_tool_calls())?;
-    write_option_u64(w, value.max_total_tokens())
-}
-
-pub(super) fn read_budget(r: &mut CanonicalReader<'_>) -> Result<WorkbenchGoalBudget, CodecError> {
-    let offset = r.offset();
-    let active = read_option_u64(r)?;
-    let requests = read_option_u32(r)?;
-    let tools = read_option_u32(r)?;
-    let tokens = read_option_u64(r)?;
-    invalid(offset, WorkbenchGoalBudget::new(active, requests, tools, tokens))
+    invalid(offset, WorkbenchGoalDefinition::new(objective, criteria))
 }
 
 pub(super) fn write_pause(w: &mut CanonicalWriter, value: Pause) -> Result<(), CodecError> {
@@ -104,7 +80,6 @@ pub(super) fn write_snapshot(
     for criterion in value.criteria() {
         write_criterion(w, criterion)?;
     }
-    write_budget(w, value.budget())?;
     write_usage(w, value.usage())
 }
 
@@ -124,14 +99,10 @@ pub(super) fn read_snapshot(
     let restart_eligible = r.read_bool()?;
     let pause_mode = if r.read_option_tag()? { Some(read_pause(r)?) } else { None };
     let count = usize::from(r.read_u16()?);
-    if count > MAX_WORKBENCH_GOAL_CRITERIA {
-        return Err(CodecError::at(CodecErrorKind::LimitExceeded, offset));
-    }
     let mut criteria = Vec::with_capacity(count);
     for _ in 0..count {
         criteria.push(read_criterion(r)?);
     }
-    let budget = read_budget(r)?;
     let usage = read_usage(r)?;
     invalid(
         offset,
@@ -148,7 +119,6 @@ pub(super) fn read_snapshot(
             restart_eligible,
             pause_mode,
             criteria,
-            budget,
             usage,
         ),
     )
@@ -225,7 +195,6 @@ pub(super) fn write_state(w: &mut CanonicalWriter, value: State) -> Result<(), C
         State::Pausing => 3,
         State::Paused => 4,
         State::Blocked => 5,
-        State::BudgetReached => 6,
         State::Achieved => 7,
         State::Cancelled => 8,
     })
@@ -239,7 +208,6 @@ pub(super) fn read_state(r: &mut CanonicalReader<'_>) -> Result<State, CodecErro
         3 => Ok(State::Pausing),
         4 => Ok(State::Paused),
         5 => Ok(State::Blocked),
-        6 => Ok(State::BudgetReached),
         7 => Ok(State::Achieved),
         8 => Ok(State::Cancelled),
         _ => unknown(offset),
@@ -312,11 +280,4 @@ fn write_option_u64(w: &mut CanonicalWriter, value: Option<u64>) -> Result<(), C
 }
 fn read_option_u64(r: &mut CanonicalReader<'_>) -> Result<Option<u64>, CodecError> {
     if r.read_option_tag()? { Ok(Some(r.read_u64()?)) } else { Ok(None) }
-}
-fn write_option_u32(w: &mut CanonicalWriter, value: Option<u32>) -> Result<(), CodecError> {
-    w.write_option_tag(value.is_some())?;
-    value.map_or(Ok(()), |value| w.write_u32(value))
-}
-fn read_option_u32(r: &mut CanonicalReader<'_>) -> Result<Option<u32>, CodecError> {
-    if r.read_option_tag()? { Ok(Some(r.read_u32()?)) } else { Ok(None) }
 }

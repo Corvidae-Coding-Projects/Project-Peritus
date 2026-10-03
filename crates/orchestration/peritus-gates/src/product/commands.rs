@@ -5,8 +5,8 @@ use std::path::{Path, PathBuf};
 use crate::{GateError, GateErrorKind, GateRecoveryAction};
 
 use super::plan::{
-    AffectedProject, GateCommandSpec, PRODUCT_MAX_SOURCE_LINES, ProjectKind,
-    directory_has_root_python_tests, is_node_test_file,
+    AffectedProject, GateCommandSpec, ProjectKind, directory_has_root_python_tests,
+    is_node_test_file,
 };
 
 pub(super) fn commands_for(
@@ -14,7 +14,7 @@ pub(super) fn commands_for(
     project: &AffectedProject,
     changed_paths: &[PathBuf],
 ) -> Result<Vec<GateCommandSpec>, GateError> {
-    let mut commands = vec![source_layout(project)];
+    let mut commands = vec![source_readability(project)];
     if changed_paths.iter().any(|path| path.starts_with(project.root()) && is_yaml(path)) {
         commands.push(yaml_structure(project));
     }
@@ -45,17 +45,8 @@ fn is_json(path: &Path) -> bool {
         .is_some_and(|extension| extension.eq_ignore_ascii_case("json"))
 }
 
-fn source_layout(project: &AffectedProject) -> GateCommandSpec {
-    spec(
-        "Source layout",
-        "peritus-internal",
-        vec![
-            "source-layout".to_owned(),
-            "--max-lines".to_owned(),
-            PRODUCT_MAX_SOURCE_LINES.to_string(),
-        ],
-        project,
-    )
+fn source_readability(project: &AffectedProject) -> GateCommandSpec {
+    spec("Source readability", "peritus-internal", vec!["source-readability".to_owned()], project)
 }
 
 fn yaml_structure(project: &AffectedProject) -> GateCommandSpec {
@@ -154,11 +145,12 @@ fn conventional_node_commands(
 
 fn python_commands(workspace_root: &Path, project: &AffectedProject) -> Vec<GateCommandSpec> {
     let root = workspace_root.join(project.root());
+    let runner = python_runner(&root);
     let mut commands = Vec::new();
     if root.join("requirements.txt").is_file() {
-        commands.push(spec(
+        commands.push(python_spec(
             "Python dependencies",
-            "python",
+            &runner,
             vec![
                 "-B".to_owned(),
                 "-m".to_owned(),
@@ -173,9 +165,9 @@ fn python_commands(workspace_root: &Path, project: &AffectedProject) -> Vec<Gate
             project,
         ));
     }
-    commands.push(spec(
+    commands.push(python_spec(
         "Python compile",
-        "python",
+        &runner,
         vec!["-B".to_owned(), "-c".to_owned(), python_syntax_check()],
         project,
     ));
@@ -187,9 +179,9 @@ fn python_commands(workspace_root: &Path, project: &AffectedProject) -> Vec<Gate
         || directory_has_root_python_tests(&root)
         || manifest().is_some_and(|text| text.contains("pytest"))
     {
-        commands.push(spec(
+        commands.push(python_spec(
             "Python tests",
-            "python",
+            &runner,
             vec![
                 "-B".to_owned(),
                 "-m".to_owned(),
@@ -204,9 +196,9 @@ fn python_commands(workspace_root: &Path, project: &AffectedProject) -> Vec<Gate
         || root.join(".ruff.toml").is_file()
         || manifest().is_some_and(|text| text.contains("[tool.ruff"))
     {
-        commands.push(spec(
+        commands.push(python_spec(
             "Python lint",
-            "python",
+            &runner,
             vec![
                 "-B".to_owned(),
                 "-m".to_owned(),
@@ -218,6 +210,54 @@ fn python_commands(workspace_root: &Path, project: &AffectedProject) -> Vec<Gate
         ));
     }
     commands
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+struct PythonRunner {
+    program: String,
+    prefix: Vec<String>,
+}
+
+fn python_runner(root: &Path) -> PythonRunner {
+    for (lockfile, program, prefix) in [
+        ("uv.lock", "uv", &["run", "--frozen", "python"][..]),
+        ("poetry.lock", "poetry", &["run", "python"][..]),
+        ("pdm.lock", "pdm", &["run", "python"][..]),
+        ("Pipfile.lock", "pipenv", &["run", "python"][..]),
+        ("pixi.lock", "pixi", &["run", "python"][..]),
+    ] {
+        if root.join(lockfile).is_file() {
+            return PythonRunner {
+                program: program.to_owned(),
+                prefix: prefix.iter().map(|value| (*value).to_owned()).collect(),
+            };
+        }
+    }
+    for interpreter in [
+        Path::new(".venv/bin/python"),
+        Path::new(".venv/Scripts/python.exe"),
+        Path::new("venv/bin/python"),
+        Path::new("venv/Scripts/python.exe"),
+    ] {
+        if root.join(interpreter).is_file() {
+            return PythonRunner {
+                program: interpreter.to_string_lossy().into_owned(),
+                prefix: Vec::new(),
+            };
+        }
+    }
+    PythonRunner { program: "python".to_owned(), prefix: Vec::new() }
+}
+
+fn python_spec(
+    label: &str,
+    runner: &PythonRunner,
+    arguments: Vec<String>,
+    project: &AffectedProject,
+) -> GateCommandSpec {
+    let mut resolved = runner.prefix.clone();
+    resolved.extend(arguments);
+    spec(label, &runner.program, resolved, project)
 }
 
 fn python_syntax_check() -> String {
@@ -251,7 +291,10 @@ fn artifact_commands(
     workspace_root: &Path,
     project: &AffectedProject,
 ) -> Result<Vec<GateCommandSpec>, GateError> {
-    let path = workspace_root.join(required_manifest(project)?);
+    let Some(manifest) = project.manifest() else {
+        return Ok(Vec::new());
+    };
+    let path = workspace_root.join(manifest);
     let text = std::fs::read_to_string(&path)
         .map_err(|_| planning("artifact workspace manifest is unreadable"))?;
     let value = toml::from_str::<toml::Value>(&text)
@@ -314,7 +357,7 @@ mod tests {
             std::fs::write(root.path().join("peritus-workspace.toml"), manifest)
                 .expect("artifact manifest");
             assert!(
-                TargetGatePlan::discover(root.path(), vec![PathBuf::from("out/result.txt")])
+                TargetGatePlan::discover(root.path(), vec![PathBuf::from("out/result.txt")], &[])
                     .is_err()
             );
         }

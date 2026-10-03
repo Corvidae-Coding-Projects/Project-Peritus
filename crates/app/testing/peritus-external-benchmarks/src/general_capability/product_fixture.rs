@@ -132,7 +132,7 @@ pub(super) fn input(
         task: TASK.to_owned(),
         // Behavioral fixtures run real Git and Cargo subprocesses. Allow slow hosted
         // Windows workers to finish; this deadline bounds hangs, not performance.
-        max_elapsed: Duration::from_mins(3),
+        max_elapsed: Some(Duration::from_mins(3)),
         delivery_scope: ProductDeliveryScope::WorkspaceChanges,
         conversation: Arc::new(FixedConversation(format!("User:\n{TASK}"))),
         providers,

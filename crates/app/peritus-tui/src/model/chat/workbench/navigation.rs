@@ -5,10 +5,17 @@ use crate::model::{AppModel, Effect, PendingRequest};
 use crossterm::event::{KeyCode, KeyEvent};
 use peritus_app_protocol::{AppRequestPayload, WellKnownProtocolFeature};
 
+mod cancel;
+#[cfg(test)]
+mod tests;
+
 impl AppModel {
     pub(in crate::model) fn refresh_workbench(&mut self) -> Vec<Effect> {
         if !self.workbench_available() || self.workbench_request_pending() {
             return Vec::new();
+        }
+        if self.chat.workbench.library_open() {
+            return self.refresh_library_page(None);
         }
         if self.chat.workbench.files.open {
             return self.refresh_file_panel();
@@ -65,6 +72,11 @@ impl AppModel {
     }
 
     pub(in crate::model::chat) fn workbench_key(&mut self, key: KeyEvent) -> Vec<Effect> {
+        if self.chat.workbench.library_open()
+            && let Some(effects) = self.library_key(key.code)
+        {
+            return effects;
+        }
         if self.chat.workbench.files.open
             && let Some(effects) = self.file_key(key)
         {
@@ -82,27 +94,35 @@ impl AppModel {
         {
             return self.confirm_rewind();
         }
+        if matches!(
+            key.code,
+            KeyCode::Up
+                | KeyCode::Down
+                | KeyCode::PageUp
+                | KeyCode::PageDown
+                | KeyCode::Home
+                | KeyCode::End
+        ) {
+            let maximum = crate::render::workbench_scroll_limit(self);
+            let current = self.chat.workbench.scroll.min(maximum);
+            self.chat.workbench.scroll = match key.code {
+                KeyCode::Up => current.saturating_sub(1),
+                KeyCode::Down => current.saturating_add(1).min(maximum),
+                KeyCode::PageUp => current.saturating_sub(5),
+                KeyCode::PageDown => current.saturating_add(5).min(maximum),
+                KeyCode::End => maximum,
+                _ => 0,
+            };
+            return Vec::new();
+        }
         match key.code {
             KeyCode::Esc => {
+                self.abandon_workbench_inspection();
                 if self.chat.workbench.mode == WorkbenchMode::Checkpoints {
                     self.chat.workbench.rewind_request = None;
                     self.chat.workbench.rewind_preview = None;
                 }
                 self.chat.workbench.open = false;
-            }
-            KeyCode::Up => {
-                self.chat.workbench.scroll = self.chat.workbench.scroll.saturating_sub(1);
-            }
-            KeyCode::Down => {
-                self.chat.workbench.scroll =
-                    self.chat.workbench.scroll.saturating_add(1).min(16384);
-            }
-            KeyCode::PageUp => {
-                self.chat.workbench.scroll = self.chat.workbench.scroll.saturating_sub(5);
-            }
-            KeyCode::PageDown => {
-                self.chat.workbench.scroll =
-                    self.chat.workbench.scroll.saturating_add(5).min(16384);
             }
             KeyCode::Char('r') => return self.refresh_workbench(),
             _ => {}
@@ -116,7 +136,7 @@ impl AppModel {
                 feature.as_str() == WellKnownProtocolFeature::WorkbenchControl.as_str()
             })
     }
-    pub(super) fn library_available(&self) -> bool {
+    pub(in crate::model) fn library_available(&self) -> bool {
         self.context.is_some()
             && self.features.iter().any(|feature| {
                 feature.as_str() == WellKnownProtocolFeature::ConversationLibrary.as_str()
@@ -128,8 +148,12 @@ impl AppModel {
             || self.pending.values().any(|request| {
                 matches!(
                     request,
-                    PendingRequest::WorkbenchQuery(_)
+                    PendingRequest::WorkbenchExecution(_)
+                        | PendingRequest::WorkbenchQueueCommand { .. }
+                        | PendingRequest::WorkbenchChatContinue { .. }
+                        | PendingRequest::WorkbenchQuery(_)
                         | PendingRequest::ConversationLibrary(_)
+                        | PendingRequest::ResumeConversationLibrary(_)
                         | PendingRequest::WorkbenchImagePreview(_)
                         | PendingRequest::WorkbenchImages(_)
                         | PendingRequest::WorkbenchFilePreview(_)

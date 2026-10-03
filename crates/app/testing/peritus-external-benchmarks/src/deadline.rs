@@ -6,8 +6,6 @@ use std::{
     time::Duration,
 };
 
-use peritus_product_runner::PRODUCT_RUN_MAX_ELAPSED;
-
 use crate::BenchmarkError;
 
 const TASKS_DIR_ENV: &str = "PERITUS_HARNESSBENCH_TASKS_DIR";
@@ -73,7 +71,7 @@ fn parse_timeout_seconds(text: &str) -> Result<u64, BenchmarkError> {
 fn product_horizon(outer_seconds: u64) -> Result<Duration, BenchmarkError> {
     let desired_reserve = outer_seconds.div_ceil(10).clamp(90, 300);
     let reserve = desired_reserve.min(outer_seconds / 2);
-    let seconds = outer_seconds.saturating_sub(reserve).min(PRODUCT_RUN_MAX_ELAPSED.as_secs());
+    let seconds = outer_seconds.saturating_sub(reserve);
     if seconds == 0 {
         return Err(invalid("HarnessBench deadline leaves no positive Peritus work horizon"));
     }
@@ -106,7 +104,7 @@ mod tests {
         assert_eq!(product_horizon(180).expect("short"), Duration::from_secs(90));
         assert_eq!(product_horizon(900).expect("ordinary"), Duration::from_secs(810));
         assert_eq!(product_horizon(3_600).expect("long"), Duration::from_mins(55));
-        assert_eq!(product_horizon(43_200).expect("capped"), PRODUCT_RUN_MAX_ELAPSED);
+        assert_eq!(product_horizon(43_200).expect("longer"), Duration::from_mins(715));
     }
 
     #[test]

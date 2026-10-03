@@ -18,14 +18,6 @@ impl ControlStore {
         Ok(self.goal_record(start)?.map(|(_, goal)| goal.attempt()))
     }
 
-    /// Returns remaining active time for a governed goal, preserving the runner ceiling otherwise.
-    pub fn goal_remaining_active_millis(
-        &self,
-        start: &ControlOperation,
-    ) -> Result<Option<u64>, Error> {
-        Ok(self.goal_record(start)?.map(|(_, goal)| goal.remaining_active_millis()))
-    }
-
     /// Reserves one exact provider request before the adapter may observe it.
     pub fn reserve_goal_request(
         &mut self,
@@ -175,10 +167,13 @@ impl ControlStore {
         workspace_bytes: u64,
         workspace_growth_bytes: u64,
         peak_rss_bytes: u64,
-    ) -> Result<(), Error> {
+    ) -> Result<bool, Error> {
         let Some((record, goal)) = self.goal_record(start)? else {
-            return Ok(());
+            return Ok(false);
         };
+        if !matches!(goal.state(), GoalState::Active | GoalState::Pausing) {
+            return Ok(true);
+        }
         let attempt = goal.attempt();
         let goal_id = goal.id();
         let mut semantic = Vec::with_capacity(44);
@@ -202,7 +197,7 @@ impl ControlStore {
             now_unix_millis: now_millis(),
         };
         self.apply_host_goal(start, &record, goal_key(b"progress", attempt, &semantic), intent)?;
-        Ok(())
+        Ok(true)
     }
 
     /// Publishes strict runner settlement evidence for the current goal attempt.
@@ -216,7 +211,7 @@ impl ControlStore {
         let Some((record, goal)) = self.goal_record(start)? else {
             return Ok(());
         };
-        if matches!(goal.state(), GoalState::Paused | GoalState::BudgetReached) {
+        if goal.state() == GoalState::Paused {
             return Ok(());
         }
         let attempt = goal.attempt();
@@ -362,7 +357,6 @@ const fn state_admission(state: GoalState) -> GoalAdmission {
     match state {
         GoalState::Active | GoalState::Pausing => GoalAdmission::Accepted,
         GoalState::Paused | GoalState::Cancelled => GoalAdmission::Paused,
-        GoalState::BudgetReached => GoalAdmission::BudgetReached,
         GoalState::WaitingForUser | GoalState::Blocked | GoalState::Achieved => {
             GoalAdmission::Inactive
         }

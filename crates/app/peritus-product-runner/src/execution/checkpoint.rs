@@ -6,10 +6,10 @@ use std::{
 };
 
 use peritus_run_settlement::{
-    CandidateCheckpoint, CandidateIdentity, CandidateStage, EvidenceRecord, EvidenceStatus,
-    QualificationEvidence, RunSettlement, SettlementCause, SettlementReducer,
+    CandidateCheckpoint, CandidateIdentity, CandidateStage, EvidenceDependencies, EvidenceRecord,
+    EvidenceStatus, QualificationEvidence, RunSettlement, SettlementCause, SettlementReducer,
 };
-use peritus_types::{RunId, WorkspaceId};
+use peritus_types::{RunId, Sha256Digest, WorkspaceId};
 
 use super::ConversationView;
 use crate::{
@@ -32,13 +32,14 @@ struct RecorderState {
     reducer: SettlementReducer,
     next_sequence: u64,
     external_effect_observed: bool,
+    execution_context: Option<Sha256Digest>,
 }
 
 /// Evidence acquired at the candidate boundary being recorded.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(super) enum CheckpointEvidence {
     None,
-    Gates(bool),
+    Gates { satisfied: bool, execution_context: Sha256Digest },
     Obligations(bool),
     Review(bool),
     ExternalEffect,
@@ -76,6 +77,11 @@ impl CandidateRecorder {
                 next_sequence: prior
                     .map_or(0, |checkpoint| checkpoint.identity().checkpoint_sequence()),
                 external_effect_observed: retain_external_effect && prior.is_some(),
+                // An in-memory continuation remains in the process that observed this context.
+                // Durable decode clears the context before it reaches this recorder, so a real
+                // process restart still reacquires effectful gate evidence.
+                execution_context: prior
+                    .and_then(|checkpoint| checkpoint.identity().execution_digest()),
             })),
         })
     }
@@ -133,53 +139,64 @@ impl CandidateRecorder {
         conversation_revision: u64,
         acquired: CheckpointEvidence,
     ) -> Result<Option<CandidateCheckpoint>, ProductRunnerError> {
-        let workspace = self.baseline.checkpoint(&self.root)?;
         let has_workspace_candidate = !self.baseline.changed_paths(&self.root)?.is_empty();
         let mut recorder_state = self.lock()?;
         if !has_workspace_candidate && !recorder_state.external_effect_observed {
             // A fresh repository observation is authoritative: a reverted workspace must not
             // retain an older candidate merely because it once contained changes.
             recorder_state.reducer = SettlementReducer::new();
+            drop(recorder_state);
             return Ok(None);
         }
+        drop(recorder_state);
+        let (content, repository) = self.capture_candidate_axes()?;
+        let mut recorder_state = self.lock()?;
         recorder_state.next_sequence =
             recorder_state.next_sequence.checked_add(1).ok_or_else(sequence_overflow)?;
+        if let CheckpointEvidence::Gates { execution_context, .. } = acquired {
+            recorder_state.execution_context = Some(execution_context);
+        }
         let identity = CandidateIdentity::new(
             self.run_id,
             self.workspace_id,
-            workspace.digest(),
+            content,
+            repository,
+            recorder_state.execution_context,
             conversation_revision,
             recorder_state.next_sequence,
         )
         .map_err(invariant)?;
         let previous = recorder_state.reducer.checkpoint().copied();
-        let same_candidate = previous
-            .as_ref()
-            .is_some_and(|checkpoint| checkpoint.identity().same_candidate(&identity));
-        let stage = previous
-            .filter(|_| same_candidate)
-            .map_or(requested_stage, |checkpoint| stronger(checkpoint.stage(), requested_stage));
-        let mut gates = carry(previous.as_ref().map(CandidateCheckpoint::gates), same_candidate);
+        // Preserve the qualification ceiling only while content and public requirements agree.
+        // Repository and execution changes are reconciled by each evidence record's dependencies.
+        let stage = previous.map_or(requested_stage, |checkpoint| {
+            if checkpoint.identity().same_content_and_requirements(&identity) {
+                stronger(checkpoint.stage(), requested_stage)
+            } else {
+                requested_stage
+            }
+        });
+        let mut gates = previous.map_or(EvidenceStatus::Missing, |value| *value.gates());
         let mut obligations =
-            carry(previous.as_ref().map(CandidateCheckpoint::obligations), same_candidate);
-        let mut review = carry(previous.as_ref().map(CandidateCheckpoint::review), same_candidate);
+            previous.map_or(EvidenceStatus::Missing, |value| *value.obligations());
+        let mut review = previous.map_or(EvidenceStatus::Missing, |value| *value.review());
         match acquired {
             CheckpointEvidence::None => {}
-            CheckpointEvidence::Gates(satisfied) => {
-                gates = observed(identity, satisfied);
+            CheckpointEvidence::Gates { satisfied, .. } => {
+                gates = observed(identity, EvidenceDependencies::GATES, satisfied);
             }
             CheckpointEvidence::Obligations(satisfied) => {
-                obligations = observed(identity, satisfied);
+                obligations = observed(identity, EvidenceDependencies::OBLIGATIONS, satisfied);
             }
             CheckpointEvidence::Review(satisfied) => {
-                review = observed(identity, satisfied);
+                review = observed(identity, EvidenceDependencies::REVIEW, satisfied);
             }
             CheckpointEvidence::ExternalEffect => {
                 obligations = EvidenceStatus::Missing;
                 review = EvidenceStatus::Missing;
             }
         }
-        let checkpoint = CandidateCheckpoint::new(identity, stage, gates, obligations, review)
+        let checkpoint = CandidateCheckpoint::observe(identity, stage, gates, obligations, review)
             .map_err(invariant)?;
         recorder_state.reducer.observe(checkpoint).map_err(invariant)?;
         drop(recorder_state);
@@ -224,6 +241,22 @@ impl CandidateRecorder {
         Ok(())
     }
 
+    fn capture_candidate_axes(&self) -> Result<(Sha256Digest, Sha256Digest), ProductRunnerError> {
+        for _ in 0..3 {
+            let before = self.baseline.checkpoint(&self.root)?.digest();
+            let content = self.baseline.content_digest(&self.root)?;
+            let after = self.baseline.checkpoint(&self.root)?.digest();
+            if before == after {
+                return Ok((content, after));
+            }
+        }
+        Err(ProductRunnerError::new(
+            ProductRunnerErrorKind::Repository,
+            "observe candidate identity",
+            "workspace changed repeatedly while capturing content and repository context",
+        ))
+    }
+
     fn lock(&self) -> Result<std::sync::MutexGuard<'_, RecorderState>, ProductRunnerError> {
         self.state.lock().map_err(|_| {
             ProductRunnerError::new(
@@ -235,30 +268,9 @@ impl CandidateRecorder {
     }
 }
 
-const fn carry(
-    status: Option<&EvidenceStatus<QualificationEvidence>>,
-    same_candidate: bool,
-) -> EvidenceStatus<QualificationEvidence> {
-    match status.copied() {
-        None | Some(EvidenceStatus::Missing) => EvidenceStatus::Missing,
-        Some(EvidenceStatus::Current(record) | EvidenceStatus::Failed(record))
-            if same_candidate =>
-        {
-            if record.value().satisfied() {
-                EvidenceStatus::Current(record)
-            } else {
-                EvidenceStatus::Failed(record)
-            }
-        }
-        Some(EvidenceStatus::Current(record) | EvidenceStatus::Failed(record)) => {
-            EvidenceStatus::Stale(record)
-        }
-        Some(EvidenceStatus::Stale(record)) => EvidenceStatus::Stale(record),
-    }
-}
-
 const fn observed(
     identity: CandidateIdentity,
+    dependencies: EvidenceDependencies,
     satisfied: bool,
 ) -> EvidenceStatus<QualificationEvidence> {
     let value = if satisfied {
@@ -266,7 +278,7 @@ const fn observed(
     } else {
         QualificationEvidence::Unsatisfied
     };
-    let record = EvidenceRecord::new(identity, value);
+    let record = EvidenceRecord::new(identity, dependencies, value);
     if satisfied { EvidenceStatus::Current(record) } else { EvidenceStatus::Failed(record) }
 }
 

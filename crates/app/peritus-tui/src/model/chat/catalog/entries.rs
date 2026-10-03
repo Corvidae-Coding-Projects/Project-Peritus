@@ -94,6 +94,12 @@ pub(super) const COMMANDS: &[CommandSpec] = &[
         arguments: Arguments::None,
     },
     CommandSpec {
+        command: Command::Retry,
+        name: "/retry",
+        description: "Retry the exact interrupted run",
+        arguments: Arguments::None,
+    },
+    CommandSpec {
         command: Command::Accept,
         name: "/accept",
         description: "Accept the exact candidate",
@@ -194,12 +200,6 @@ pub(super) const COMMANDS: &[CommandSpec] = &[
         name: "/usage",
         description: "Inspect cumulative persistent-goal accounting",
         arguments: Arguments::None,
-    },
-    CommandSpec {
-        command: Command::Budget,
-        name: "/budget",
-        description: "Inspect or replace cumulative persistent-goal limits",
-        arguments: Arguments::Budget,
     },
     CommandSpec {
         command: Command::Preview,

@@ -21,6 +21,7 @@ pub mod healing;
 pub mod hosted;
 mod http;
 mod process;
+pub(crate) mod process_containment;
 mod qualification;
 mod recovery;
 mod redaction;

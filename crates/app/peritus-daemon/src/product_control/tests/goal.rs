@@ -1,6 +1,6 @@
 use super::*;
 use peritus_product_runner::control::{
-    BriefField, GoalAdmission, GoalBudget, GoalCriterion, GoalCriterionKind, GoalRole,
+    BriefField, GoalAdmission, GoalCriterion, GoalCriterionKind, GoalPauseMode, GoalRole,
 };
 
 fn active_goal(journal: &mut ControlStore) -> ControlOperation {
@@ -28,12 +28,55 @@ fn active_goal(journal: &mut ControlStore) -> ControlOperation {
                 )
                 .expect("criterion"),
             ],
-            budget: GoalBudget::new(None, None, Some(8), None).expect("budget"),
             now_unix_millis: 1,
         },
     );
     journal.accept(&start).expect("start goal");
     start
+}
+
+#[test]
+fn accounting_does_not_invalidate_user_edits_but_competing_edits_do() {
+    let root = tempfile::tempdir().expect("root");
+    let mut journal = store(root.path());
+    let start = active_goal(&mut journal);
+    let inspected = journal.load(start.conversation()).expect("load").expect("record").revision();
+    journal.observe_goal_progress(&start, 100, 0, 0, 0, 0, 0, 0).expect("clock");
+    let pause = operation(
+        4,
+        inspected,
+        ControlIntent::PauseGoal {
+            goal: start.id(),
+            mode: GoalPauseMode::AfterOperation,
+            now_unix_millis: 2,
+        },
+    );
+    let receipt = journal.accept(&pause).expect("pause survives accounting");
+    let revision = receipt.accepted_revision();
+    journal.observe_goal_progress(&start, 200, 0, 0, 0, 0, 0, 0).expect("clock");
+    let brief = operation(
+        5,
+        revision,
+        ControlIntent::SetBrief {
+            field: BriefField::Objective,
+            text: ControlText::new("Updated objective".to_owned()).expect("text"),
+        },
+    );
+    journal.accept(&brief).expect("brief survives accounting");
+    let competing = operation(
+        6,
+        revision,
+        ControlIntent::SetBrief {
+            field: BriefField::Objective,
+            text: ControlText::new("Stale competing objective".to_owned()).expect("text"),
+        },
+    );
+    assert!(matches!(journal.accept(&competing), Err(Error::Control(ControlError::StaleRevision))));
+    let expected = journal.load(start.conversation()).expect("load").expect("record");
+    drop(journal);
+    let mut journal = store(root.path());
+    assert_eq!(journal.load(start.conversation()).expect("replay").expect("record"), expected);
+    assert_eq!(journal.accept(&pause).expect("exact original receipt"), receipt);
 }
 
 #[test]

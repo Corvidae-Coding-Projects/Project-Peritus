@@ -7,9 +7,10 @@ use std::time::Duration;
 
 use peritus_app_protocol::{
     AppEventEnvelope, AppEventPayload, AppMessage, AppProtocolLimits, AppRequestEnvelope,
-    AppRequestPayload, AppResponseEnvelope, ClientHello, ControlEnvelope, ControlPayload,
-    CorrelationId, HeartbeatReply, NegotiationOutcome, ProtocolContext, ProtocolId, RequestId,
-    VersionRange, decode_app_message, encode_app_message,
+    AppRequestPayload, AppResponseEnvelope, CURRENT_PROTOCOL_RANGE, CURRENT_PROTOCOL_VERSION,
+    ClientHello, ControlEnvelope, ControlPayload, CorrelationId, HeartbeatReply,
+    NegotiationOutcome, ProtocolContext, ProtocolFeatureName, ProtocolId, RequestId,
+    WellKnownProtocolFeature, decode_app_message, encode_app_message,
 };
 use peritus_codec::{HEADER_LEN, MAGIC};
 use peritus_types::SessionId;
@@ -34,11 +35,19 @@ impl A3Client {
         stream.set_read_timeout(Some(IO_BOUND))?;
         stream.set_write_timeout(Some(IO_BOUND))?;
         let protocol_id = identities.next(ProtocolId::new)?;
+        let required_features = [
+            WellKnownProtocolFeature::WorkbenchControl,
+            WellKnownProtocolFeature::WorkbenchInputs,
+            WellKnownProtocolFeature::WorkbenchExecution,
+        ]
+        .into_iter()
+        .map(ProtocolFeatureName::well_known)
+        .collect::<Result<Vec<_>, _>>()?;
         let hello = ClientHello::new_with_session(
             protocol_id,
             requested_session,
-            vec![VersionRange::new(1, 0, 0)?],
-            Vec::new(),
+            vec![CURRENT_PROTOCOL_RANGE],
+            required_features,
             Vec::new(),
             AppProtocolLimits::PRODUCTION,
             format!("peritus-performance-qualification/{}", env!("CARGO_PKG_VERSION")),
@@ -64,6 +73,11 @@ impl A3Client {
                 )));
             }
         };
+        if negotiated.version() != CURRENT_PROTOCOL_VERSION {
+            return Err(SubjectError::UnexpectedResponse(
+                "daemon selected a version outside the H3 subject range".to_owned(),
+            ));
+        }
         let session = server.established_session().ok_or_else(|| {
             SubjectError::UnexpectedResponse(
                 "compatible A3 negotiation established no durable session".to_owned(),

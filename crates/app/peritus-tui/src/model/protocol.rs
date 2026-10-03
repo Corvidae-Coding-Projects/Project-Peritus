@@ -1,5 +1,6 @@
 //! Protocol message admission and daemon-derived state projection.
 mod response;
+mod timeout;
 
 use super::{
     Acknowledgement, AppEventEnvelope, AppEventPayload, AppMessage, AppModel, AppRequestEnvelope,
@@ -61,7 +62,7 @@ impl AppModel {
         let correlation = self.ids.correlation()?;
         match AppRequestEnvelope::new(context, request, correlation, payload) {
             Ok(envelope) => {
-                self.pending.insert(request, kind);
+                self.track_request(request, kind);
                 Some(Effect::Send(AppMessage::Request(envelope)))
             }
             Err(error) => {
@@ -69,6 +70,11 @@ impl AppModel {
                 None
             }
         }
+    }
+
+    pub(super) fn track_request(&mut self, request: super::RequestId, kind: PendingRequest) {
+        self.pending.insert(request, kind);
+        self.pending_started.insert(request, self.tick_count);
     }
 
     pub(super) fn handle_message(&mut self, message: AppMessage) -> Vec<Effect> {
@@ -112,6 +118,7 @@ impl AppModel {
                 }
                 self.view = View::Approvals;
                 self.selected_prompt = self.prompts.len().saturating_sub(1);
+                self.prompt_scroll = 0;
                 self.notice(NoticeLevel::Warning, "daemon is waiting for human input");
                 Vec::new()
             }
@@ -133,6 +140,15 @@ impl AppModel {
                             format!("terminal exited: {:?}", exit.disposition()),
                         );
                     }
+                }
+                Vec::new()
+            }
+            AppEventPayload::TerminalUnavailable(binding) => {
+                if let Some(terminal) = &mut self.terminal
+                    && terminal.binding() == *binding
+                {
+                    terminal.output_unavailable();
+                    self.notice(NoticeLevel::Error, "Terminal output is unavailable. The process may still be running; inspect /preview or explicitly cancel it.");
                 }
                 Vec::new()
             }
@@ -231,6 +247,7 @@ impl AppModel {
             AppEventPayload::DomainEvent(_)
             | AppEventPayload::PromptRequested(_)
             | AppEventPayload::TerminalOutput(_)
+            | AppEventPayload::TerminalUnavailable(_)
             | AppEventPayload::TerminalExited(_) => Vec::new(),
         }
     }

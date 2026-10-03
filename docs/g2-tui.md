@@ -31,8 +31,8 @@ only explicitly enrolled task files before effects; it never initializes Git or 
 whole folder. Retry retains the original task baseline, while a follow-up after completion starts
 a new scope. Checks and review use the same qualification machinery. Missing checks or interrupted
 work remain unqualified, with effects retained. The public snapshot shows status, scoped diff,
-gates, and review, but no managed deliverable or accept/discard controls. The legacy candidate
-settlement wire format remains managed-delivery-only; in-place checkpoints stay daemon-owned.
+gates, and review, but no managed deliverable or accept/discard controls. Candidate settlement
+remains managed-delivery-only; in-place checkpoints stay daemon-owned.
 
 ### Conversational progress
 
@@ -84,9 +84,9 @@ adapter; selection neither restarts the run nor adds synthetic user input. Activ
 the model requested at each turn. Idle selection does not start work. New conversations retain
 the client's role choices; reopening a saved conversation restores that conversation's choices.
 
-The additive `UpdateModels` request uses A3 payload tag 25. Older daemons reject the unknown tag;
-they cannot silently acknowledge a model change they do not implement. Deploy matching daemon
-and TUI builds to use this behavior.
+The TUI and daemon ship as one application-protocol 2 unit. `UpdateModels` is part of that current
+protocol; protocol 1 clients and daemons are deliberately unsupported rather than adapted at
+runtime. Deploy matching daemon and TUI builds.
 
 ### Reasoning effort
 
@@ -108,12 +108,11 @@ durable acknowledgement, next-turn boundary, rollback, and saved-conversation re
 The title shows the selected effort; `/details` names the exact outgoing effort per request.
 New-conversation selections are local until first submission validates them with the daemon.
 
-Effort-bearing requests use A3 tags 26 (Interact) and 27 (UpdateModels); snapshots use tag 17.
-Within those tags, every role's model choice adds a u16 effort after the manual flag (0 default,
-1 minimal, 2 low, 3 medium, 4 high, 5 xhigh, 6 max, 7 ultra). At least one role must be explicit.
-All-default selections retain the original tags and exact byte layout. Older daemons reject
-new tags rather than falsely acknowledging them. Durable records omit all-default effort arrays
-and load missing arrays as default; unknown values reject. Use matching client and daemon builds.
+New input is admitted through the durable workbench sequence: create or select the exact
+conversation, enqueue the input, then start or continue its execution. The execution settings
+carry the role models and effort values. Existing-conversation changes use `UpdateModels` and take
+effect at the next logical turn. There is no TUI `Interact` fallback or compatibility encoding for
+earlier application protocols. Unknown effort values reject. Use matching client and daemon builds.
 
 ### State ownership
 
@@ -132,8 +131,12 @@ selection, and typed notices. The Help view describes the live key map.
 - `1` through `7` select Runs, Diff, Review, Trace, Evolution, Terminal, or Approvals.
 - `Tab` and `Shift-Tab` cycle views; `j`/`k` or arrows move the selection.
 - `PageUp` and `PageDown` move by a page; `r` requests a refresh.
-- In conversation view, `F2` freezes output and releases mouse capture for native terminal
-  selection and copy. `Esc` or `F2` resumes the live view; daemon work continues throughout.
+- In conversation view, drag across output, right-click, then click Copy. The selection stays
+  still while daemon work continues. Copy uses a desktop clipboard helper or terminal OSC 52; `Ctrl-C`
+  also copies selected output without stopping work. `Esc`, scrolling, typing, or a composer click
+  clears the selection. If clipboard writes are blocked, `F2` freezes output and releases mouse
+  capture for native terminal selection and Copy. `Esc`, `F2`, or pasting resumes that live view;
+  a paste inserts into the composer without submitting it.
 - `p` and `u` pause and resume the active event subscription.
 - `Enter` opens the selected approval/input editor; `c` cancels a selected prompt.
 - In Terminal, `a` begins attach entry, `i` captures keys for the PTY, `Ctrl-]` releases capture,

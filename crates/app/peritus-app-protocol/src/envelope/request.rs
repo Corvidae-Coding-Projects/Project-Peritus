@@ -2,11 +2,10 @@
 
 use crate::{
     AppErrorCode, AppProtocolError, ArtifactCancellation, ArtifactChunk, ArtifactCompletion,
-    ArtifactMetadata, CommandBinding, CorrelationId, EventCursor, ProductRunContinuation,
-    ProductRunControl, ProductRunConversationQuery, ProductRunQuery, ProductRunRequest,
-    PromptAnswer, PromptCancellation, RequestId, ShutdownRequest, SubscriptionFilter,
-    SubscriptionId, TerminalBinding, TerminalCancellation, TerminalDetach, TerminalInput,
-    TerminalResize, TransferId,
+    ArtifactMetadata, CommandBinding, CorrelationId, EventCursor, ProductInteractionQuery,
+    ProductRunControl, ProductRunQuery, PromptAnswer, PromptCancellation, RequestId,
+    ShutdownRequest, SubscriptionFilter, SubscriptionId, TerminalBinding, TerminalCancellation,
+    TerminalDetach, TerminalInput, TerminalResize, TransferId,
 };
 use peritus_types::ArtifactId;
 
@@ -117,6 +116,8 @@ pub enum AppRequestPayload {
     QueryWorkbenchGoal(crate::WorkbenchQuery),
     /// Inspects source/build/process/capture identities and independent validation evidence.
     QueryWorkbenchResult(crate::WorkbenchResultQuery),
+    /// Observes live retained output for an authorized preview.
+    QueryWorkbenchPreview(crate::WorkbenchResultQuery),
     /// Inspects the exact structured candidate diff, anchored comments, and evidence freshness.
     QueryWorkbenchReview(crate::WorkbenchReviewQuery),
     /// Begins explicit selected-text transfer scoped to the conversation.
@@ -143,16 +144,20 @@ pub enum AppRequestPayload {
     WorkbenchCommand(crate::WorkbenchCommand),
     /// Inspects selected durable conversation metadata without inference.
     QueryWorkbench(crate::WorkbenchQuery),
+    /// Discovers the authorized durable conversation execution without inference.
+    QueryWorkbenchExecution(crate::WorkbenchQuery),
+    /// Reads a run and its exact durable conversation destination without starting work.
+    QueryInteractionBinding(ProductInteractionQuery),
+    /// Incorporates already receipted pending inputs in a non-goal execution.
+    ContinueWorkbenchExecution(crate::WorkbenchContinuation),
     /// Resolves the original receipt for an exact actor-bound operation without reapplying it.
     QueryWorkbenchReceipt(crate::WorkbenchCommand),
     /// Inspects bounded local prerequisites without inference, repair, or network probes.
     Doctor(crate::DoctorQuery),
     /// Durably selects models for subsequent turns of an existing conversation.
     UpdateModels(crate::ProductModelUpdate),
-    /// Starts or steers a conversation with explicit execution semantics.
-    Interact(crate::ProductInteractionRequest),
     /// Reads public activity and exact input incorporation status.
-    QueryInteraction(ProductRunConversationQuery),
+    QueryInteraction(ProductInteractionQuery),
     /// Discovers models from one configured provider route.
     QueryModels(crate::ProductModelQuery),
     /// Submits one exact, idempotent B3 command binding.
@@ -169,16 +174,10 @@ pub enum AppRequestPayload {
     UploadArtifactChunk(ArtifactChunk),
     /// Completes one artifact upload with exact size and digest.
     CompleteArtifactUpload(ArtifactCompletion),
-    /// Starts one daemon-owned writer-reviewer-fixer coding run.
-    StartProductRun(ProductRunRequest),
     /// Cancels or retries one exact product run.
     ControlProductRun(ProductRunControl),
-    /// Queries recent or exact product-run observations.
-    QueryProductRuns(ProductRunQuery),
-    /// Adds user context to an active or resumable product run.
-    ContinueProductRun(ProductRunContinuation),
-    /// Queries the conversation for one exact product run.
-    QueryProductRunConversation(ProductRunConversationQuery),
+    /// Queries recent or exact runs while retaining every candidate's qualification evidence.
+    QueryProductRunObservations(ProductRunQuery),
     /// Answers an approval or user-input prompt.
     AnswerPrompt(PromptAnswer),
     /// Cancels an outstanding prompt.
@@ -200,8 +199,7 @@ pub enum AppRequestPayload {
 }
 
 impl AppRequestPayload {
-    /// Returns the independently negotiated capability required by additive workbench operations.
-    /// Legacy payloads retain their original admission contracts.
+    /// Returns the independently negotiated capability required by workbench operations.
     #[must_use]
     pub const fn required_workbench_feature(&self) -> Option<crate::WellKnownProtocolFeature> {
         match self {
@@ -216,6 +214,9 @@ impl AppRequestPayload {
             }
             Self::PreviewWorkbenchCompaction(_) => {
                 Some(crate::WellKnownProtocolFeature::WorkbenchCompaction)
+            }
+            Self::QueryWorkbenchPreview(_) => {
+                Some(crate::WellKnownProtocolFeature::WorkbenchPreviewOutput)
             }
             Self::QueryWorkbenchResult(_) => {
                 Some(crate::WellKnownProtocolFeature::WorkbenchPreview)
@@ -244,6 +245,12 @@ impl AppRequestPayload {
             Self::Doctor(_) => Some(crate::WellKnownProtocolFeature::ProductDiagnostics),
             Self::WorkbenchCommand(command) | Self::QueryWorkbenchReceipt(command) => {
                 Some(required_workbench_intent_feature(command.intent()))
+            }
+            Self::ContinueWorkbenchExecution(_) | Self::QueryWorkbenchExecution(_) => {
+                Some(crate::WellKnownProtocolFeature::WorkbenchConversation)
+            }
+            Self::QueryInteractionBinding(_) => {
+                Some(crate::WellKnownProtocolFeature::WorkbenchRunBinding)
             }
             Self::QueryWorkbench(_) => Some(crate::WellKnownProtocolFeature::WorkbenchControl),
             _ => None,
@@ -278,7 +285,6 @@ const fn required_workbench_intent_feature(
         | Intent::PauseGoal { .. }
         | Intent::ResumeGoal { .. }
         | Intent::ClearGoal { .. } => Feature::WorkbenchGoals,
-        Intent::UpdateGoalBudget { .. } => Feature::WorkbenchBudgets,
         Intent::AddReview { .. } | Intent::RebindReview { .. } | Intent::DismissReview { .. } => {
             Feature::WorkbenchReview
         }

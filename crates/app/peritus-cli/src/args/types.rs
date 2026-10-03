@@ -28,6 +28,7 @@ COMMANDS:
   providers                    Open provider settings
   workspaces                   Switch, add, trust, repair, or forget workspaces
   open [PATH] [--run ID]        Launch PATH, optionally selecting an exact conversation
+  resume                        Open this folder's most recently active conversation
   status
   shutdown [--wait]
   command submit --actor <ID> --envelope <FILE> --payload <FILE>
@@ -56,10 +57,9 @@ COMMANDS:
                         --provider ID --run NEW-RUN-ID
   runs list
   runs show --run <ID>
-  runs continue --run <ID> --message <TEXT>
   runs execute --run <ID>
   runs <accept|commit> --run <ID> [--confirm-unqualified <CANDIDATE-DIGEST>]
-  runs <export|discard|retry|cancel> --run <ID>
+  runs <export|discard|retry|cancel|acknowledge> --run <ID>
   completions <bash|zsh|fish|powershell>
 
 EXIT CATEGORIES:
@@ -84,6 +84,7 @@ pub enum Command {
     Providers,
     Workspaces,
     Open { path: Option<PathBuf>, run: Option<RunId> },
+    Resume,
     Status,
     Shutdown { wait: bool },
     Submit(SubmitArgs),
@@ -104,7 +105,6 @@ pub enum Command {
 pub enum ProductRunArgs {
     List,
     Show { run_id: RunId },
-    Continue { run_id: RunId, message: String },
     Execute { run_id: RunId },
     Control { run_id: RunId, action: ProductRunControlAction, confirmed_digest: Option<[u8; 32]> },
 }

@@ -3,8 +3,6 @@
 use crate::{AppErrorCode, AppProtocolError, ControlOperationId, WorkbenchQuery};
 use peritus_types::Sha256Digest;
 
-/// Maximum user-visible checkpoint paths and exclusions in one response.
-pub const MAX_WORKBENCH_CHECKPOINT_PATHS: usize = 64;
 /// Maximum checkpoint name length.
 pub const MAX_WORKBENCH_CHECKPOINT_NAME_BYTES: usize = 256;
 
@@ -158,7 +156,7 @@ pub struct WorkbenchCheckpointReceipt {
     external_effects: Vec<String>,
 }
 impl WorkbenchCheckpointReceipt {
-    /// Constructs a bounded receipt.
+    /// Constructs a wire-representable receipt.
     ///
     /// # Errors
     /// Rejects zero revision, duplicate targets, or count/text bounds.
@@ -277,9 +275,9 @@ impl WorkbenchRestoreReceipt {
         external_effects: Vec<String>,
     ) -> Result<Self, AppProtocolError> {
         if accepted_revision == 0
-            || restored.len() > MAX_WORKBENCH_CHECKPOINT_PATHS
-            || conflicts.len() > MAX_WORKBENCH_CHECKPOINT_PATHS
-            || external_effects.len() > MAX_WORKBENCH_CHECKPOINT_PATHS
+            || u16::try_from(restored.len()).is_err()
+            || u16::try_from(conflicts.len()).is_err()
+            || u16::try_from(external_effects.len()).is_err()
             || matches!(status, WorkbenchRestoreStatus::Conflict) == conflicts.is_empty()
             || restored.iter().chain(&conflicts).chain(&external_effects).any(|text| {
                 text.is_empty() || text.len() > 4096 || text.chars().any(char::is_control)
@@ -356,9 +354,9 @@ where
     T: CheckpointPathName,
 {
     if revision == 0
-        || paths.len() > MAX_WORKBENCH_CHECKPOINT_PATHS
-        || exclusions.len() > MAX_WORKBENCH_CHECKPOINT_PATHS
-        || external_effects.len() > MAX_WORKBENCH_CHECKPOINT_PATHS
+        || u16::try_from(paths.len()).is_err()
+        || u16::try_from(exclusions.len()).is_err()
+        || u16::try_from(external_effects.len()).is_err()
         || paths.windows(2).any(|pair| pair[0].path_name() >= pair[1].path_name())
         || exclusions
             .iter()

@@ -18,6 +18,7 @@ use super::{
     ownership::WorkspaceOwnership,
     path::{checked, tool},
     receipt::{EffectReceiptLedger, ReceiptDecision},
+    reference::ExplicitReferences,
     removal,
     resources::CommandResources,
     wire::{object, observation, required_string, string},
@@ -50,6 +51,7 @@ enum WorkspaceToolMode {
 pub struct WorkspaceDeveloperTools {
     pub(super) root: PathBuf,
     pub(super) access_policy: WorkspaceAccessPolicy,
+    pub(super) references: ExplicitReferences,
     grounding: GroundingEvidence,
     ownership: WorkspaceOwnership,
     mode: WorkspaceToolMode,
@@ -108,6 +110,23 @@ impl WorkspaceDeveloperTools {
             )
         })
     }
+
+    fn finish_observation(
+        &mut self,
+        call: &CompletedToolCall,
+        arguments: &Value,
+        value: &Value,
+        is_error: bool,
+        accepted: bool,
+        mutation_boundary: bool,
+    ) -> Result<DeveloperToolObservation, DeveloperLoopError> {
+        if accepted {
+            self.record_success(call.name().as_str(), arguments, value);
+        }
+        self.observe_delivery_progress(call.name().as_str(), arguments, value, accepted);
+        self.inspection_progress.observe(call.name().as_str(), arguments, value, mutation_boundary);
+        observation(value, is_error)
+    }
 }
 
 fn first_missing_permission(
@@ -121,14 +140,14 @@ fn first_missing_permission(
 }
 
 fn required_permissions(tool_name: &str) -> Option<&'static [PermissionCapability]> {
-    use PermissionCapability::{Network, Process, Read, Write};
+    use PermissionCapability::{Process, Read, Write};
     match tool_name {
         "workspace_list" | "workspace_search" | "workspace_read" => Some(&[Read]),
         "workspace_scope" | "workspace_write" | "workspace_patch" | "workspace_remove" => {
             Some(&[Read, Write])
         }
         "run_command" | "command_start" | "command_stdin" | "command_resize" | "command_signal" => {
-            Some(&[Read, Write, Process, Network])
+            Some(&[Read, Write, Process])
         }
         // Observation and cleanup of an already-owned process remain available after revocation.
         "command_poll" | "command_recover" | "command_cancel" => Some(&[]),
@@ -255,22 +274,24 @@ impl DeveloperToolExecutor for WorkspaceDeveloperTools {
             )?;
         }
         if effect {
-            self.receipts
-                .as_mut()
-                .ok_or_else(|| tool("writable tools have no effect receipt ledger"))?
-                .complete(&value, is_error)?;
+            if accepted {
+                self.receipts
+                    .as_mut()
+                    .ok_or_else(|| tool("writable tools have no effect receipt ledger"))?
+                    .applied(&value, is_error)?;
+                self.record_checkpoint(call.name().as_str(), &arguments, &value)?;
+                self.receipts
+                    .as_mut()
+                    .ok_or_else(|| tool("writable tools have no effect receipt ledger"))?
+                    .finalize()?;
+            } else {
+                self.receipts
+                    .as_mut()
+                    .ok_or_else(|| tool("writable tools have no effect receipt ledger"))?
+                    .complete(&value, is_error)?;
+            }
         }
-        if accepted {
-            self.record_checkpoint(call.name().as_str(), &arguments, &value)?;
-        }
-        if accepted {
-            self.record_success(call.name().as_str(), &arguments, &value);
-        }
-        self.observe_delivery_progress(call.name().as_str(), &arguments, &value, accepted);
-        if self.mode == WorkspaceToolMode::ReadWrite {
-            self.inspection_progress.observe(call.name().as_str(), &arguments, &value);
-        }
-        observation(&value, is_error)
+        self.finish_observation(call, &arguments, &value, is_error, accepted, effect && accepted)
     }
 
     fn observe_model_context(&mut self, messages: &[Message]) -> Result<(), DeveloperLoopError> {
@@ -290,10 +311,6 @@ impl DeveloperToolExecutor for WorkspaceDeveloperTools {
             return None;
         }
         Some(PROGRESS_FEEDBACK.to_owned())
-    }
-
-    fn continuation_blocker(&self) -> Option<String> {
-        self.inspection_progress.blocker()
     }
 }
 

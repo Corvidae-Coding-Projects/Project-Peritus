@@ -14,39 +14,42 @@ use std::{
     sync::{Arc, Mutex, Weak},
 };
 
+const MAX_OPERATION_RECORDS: usize = 4_096;
+
 #[derive(Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct Project {
     pub(crate) id: String,
     pub(crate) root: PathBuf,
     pub(crate) name: String,
     pub(crate) repository: PathBuf,
-    #[serde(default)]
     pub(crate) closed: bool,
 }
 #[derive(Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct Session {
-    #[serde(default)]
     pub(crate) settings: crate::sessions::Settings,
     pub(crate) id: String,
+    pub(crate) conversation: String,
+    pub(crate) run: String,
     pub(crate) project: String,
     pub(crate) parent: Option<String>,
     pub(crate) title: String,
     pub(crate) closed: bool,
 }
 #[derive(Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct Operation {
     pub(crate) input: Value,
+    pub(crate) prepared: Option<Value>,
     pub(crate) result: Option<Value>,
 }
 #[derive(Clone, Default, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct Workspace {
     pub(crate) projects: Vec<Project>,
     pub(crate) sessions: Vec<Session>,
-    #[serde(default)]
     pub(crate) operations: BTreeMap<String, Operation>,
-    #[serde(default)]
     pub(crate) attachments: BTreeMap<String, crate::files::attachments::Attachment>,
 }
 pub struct App {
@@ -82,11 +85,26 @@ pub fn save(path: &Path, bytes: &[u8]) -> Result<()> {
 }
 impl App {
     pub(crate) fn open(options: Options, port: u16) -> Result<Self> {
-        let workspace = match std::fs::read(&options.state_file) {
-            Ok(bytes) => serde_json::from_slice(&bytes)?,
+        let mut workspace = match std::fs::read(&options.state_file) {
+            Ok(bytes) => match serde_json::from_slice(&bytes) {
+                Ok(workspace) => workspace,
+                Err(error) => {
+                    quarantine_malformed_state(&options.state_file);
+                    eprintln!(
+                        "peritus web: quarantined malformed workspace state and started with a fresh workspace: {error}"
+                    );
+                    Workspace::default()
+                }
+            },
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => Workspace::default(),
             Err(error) => return Err(error.into()),
         };
+        let recovered_operations = recover_unsubmitted_native_operations(&mut workspace);
+        let original_operation_count = workspace.operations.len();
+        prune_operations(&mut workspace);
+        if recovered_operations || workspace.operations.len() != original_operation_count {
+            save(&options.state_file, &serde_json::to_vec_pretty(&workspace)?)?;
+        }
         if !options.config_file.exists() {
             save(
                 &options.config_file,
@@ -124,10 +142,27 @@ impl App {
         let mut locked = self.workspace.lock().map_err(problem)?;
         let mut next = locked.clone();
         let result = change(&mut next)?;
+        prune_operations(&mut next);
         save(&self.options.state_file, &serde_json::to_vec_pretty(&next)?)?;
         *locked = next;
         drop(locked);
         Ok(result)
+    }
+    pub(crate) fn record_operation(&self, operation: String, input: Value) -> Result<()> {
+        self.update(|workspace| insert_operation(workspace, operation, input))
+    }
+    pub(crate) fn retain_prepared_operation(&self, operation: &str, prepared: Value) -> Result<()> {
+        self.update(|workspace| {
+            let record = workspace
+                .operations
+                .get_mut(operation)
+                .ok_or_else(|| problem("Original operation record missing"))?;
+            if record.prepared.as_ref().is_some_and(|existing| existing != &prepared) {
+                return Err(problem("Original operation execution context changed"));
+            }
+            record.prepared = Some(prepared);
+            Ok(())
+        })
     }
     pub(crate) fn project(&self, id: &str) -> Result<Project> {
         self.snapshot()?
@@ -163,6 +198,8 @@ impl App {
             workspace.sessions.push(Session {
                 settings: crate::sessions::Settings::default(),
                 id: id()?,
+                conversation: id()?,
+                run: id()?,
                 project: project.id.clone(),
                 parent: None,
                 title: "New conversation".into(),
@@ -221,46 +258,97 @@ impl App {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    #[test]
-    fn nesting_rejects_other_roots_and_cycles() {
-        let a = tempfile::tempdir().unwrap();
-        let b = tempfile::tempdir().unwrap();
-        let projects = vec![
-            Project {
-                id: "a".into(),
-                name: "a".into(),
-                root: a.path().into(),
-                repository: a.path().into(),
-                closed: false,
-            },
-            Project {
-                id: "b".into(),
-                name: "b".into(),
-                root: b.path().into(),
-                repository: b.path().into(),
-                closed: false,
-            },
-        ];
-        let one = Session {
-            settings: crate::sessions::Settings::default(),
-            id: "one".into(),
-            project: "a".into(),
-            parent: None,
-            title: "one".into(),
-            closed: false,
+fn prune_operations(workspace: &mut Workspace) {
+    while workspace.operations.len() > MAX_OPERATION_RECORDS {
+        let Some(completed) = removable_completed_operation(workspace) else {
+            break;
         };
-        let two = Session { id: "two".into(), project: "b".into(), ..one.clone() };
-        let child = Session { id: "child".into(), parent: Some("one".into()), ..one.clone() };
-        let workspace = Workspace {
-            projects,
-            sessions: vec![one.clone(), two, child.clone()],
-            ..Workspace::default()
-        };
-        assert!(App::nest(&workspace, &one, Some("two")).is_err());
-        assert!(App::nest(&workspace, &one, Some("child")).is_err());
-        assert!(App::nest(&workspace, &child, Some("one")).is_ok());
+        workspace.operations.remove(&completed);
     }
 }
+
+fn removable_completed_operation(workspace: &Workspace) -> Option<String> {
+    workspace.operations.iter().find_map(|(id, record)| {
+        (record.result.is_some() && !has_unresolved_native_parent(workspace, id))
+            .then(|| id.clone())
+    })
+}
+
+fn has_unresolved_native_parent(workspace: &Workspace, key: &str) -> bool {
+    let Some(native) = key.strip_prefix("daemon:") else { return false };
+    let parent = native.split(':').next().unwrap_or(native);
+    workspace.operations.get(parent).is_some_and(|record| record.result.is_none())
+}
+
+pub fn native_operation_belongs_to(key: &str, operation: &str) -> bool {
+    let transport = format!("daemon:{operation}");
+    key == transport || key.starts_with(&format!("{transport}:"))
+}
+
+fn insert_operation(workspace: &mut Workspace, operation: String, input: Value) -> Result<()> {
+    if workspace.operations.len() >= MAX_OPERATION_RECORDS
+        && removable_completed_operation(workspace).is_none()
+    {
+        return Err(problem(
+            "The operation ledger is full of unresolved actions. Resolve an original operation before starting another action.",
+        ));
+    }
+    workspace.operations.insert(operation, Operation { input, prepared: None, result: None });
+    Ok(())
+}
+
+fn recover_unsubmitted_native_operations(workspace: &mut Workspace) -> bool {
+    let orphaned = workspace
+        .operations
+        .iter()
+        .filter_map(|(id, record)| {
+            let command = record.input["command"].as_str()?;
+            let submitted =
+                workspace.operations.keys().any(|key| native_operation_belongs_to(key, id));
+            (record.result.is_none()
+                && ["send", "control", "session-settings", "improvements"].contains(&command)
+                && !submitted)
+                .then(|| id.clone())
+        })
+        .collect::<Vec<_>>();
+    for id in &orphaned {
+        if let Some(record) = workspace.operations.get_mut(id) {
+            record.result = Some(serde_json::json!({
+                "error":"The operation stopped before native submission. It is safe to retry.",
+                "recovered":true,
+                "retryable":true,
+                "submitted":false
+            }));
+        }
+    }
+    !orphaned.is_empty()
+}
+
+fn quarantine_malformed_state(path: &Path) {
+    let parent = path.parent().unwrap_or_else(|| Path::new("."));
+    let quarantine = parent.join(".quarantine");
+    if let Err(error) = std::fs::create_dir_all(&quarantine) {
+        eprintln!(
+            "peritus web: could not create workspace quarantine {}: {error}",
+            quarantine.display()
+        );
+        return;
+    }
+    let file_name = path.file_name().unwrap_or_default().to_string_lossy();
+    for suffix in 0_u32..=u32::MAX {
+        let candidate = quarantine.join(format!("{file_name}.corrupt-{suffix}"));
+        if candidate.exists() {
+            continue;
+        }
+        if let Err(error) = std::fs::rename(path, &candidate) {
+            eprintln!(
+                "peritus web: could not quarantine malformed workspace state {}: {error}",
+                path.display()
+            );
+        }
+        return;
+    }
+}
+
+#[cfg(test)]
+mod tests;

@@ -2,24 +2,35 @@
 
 use super::{Error, digest};
 use peritus_app_protocol::{
-    ImprovementCandidate, ImprovementEvidence, ImprovementInbox, ImprovementText,
-    MAX_IMPROVEMENT_EVIDENCE, MAX_IMPROVEMENTS,
+    ConversationId, ImprovementCandidate, ImprovementEvaluation, ImprovementEvidence,
+    ImprovementInbox, ImprovementText,
 };
-use peritus_types::{RunId, Sha256Digest, WorkspaceId};
+use peritus_types::{ActorId, RunId, Sha256Digest, WorkspaceId};
 use rusqlite::{Connection, OptionalExtension, params};
 use serde::{Deserialize, Serialize};
-use std::path::Path;
+use std::{
+    fs,
+    path::{Path, PathBuf},
+};
+
+const CURRENT_SCHEMA: u32 = 2;
+const PRE_RELEASE_SCHEMA: u32 = 1;
+const SQLITE_SIDECARS: [&str; 3] = ["-wal", "-shm", "-journal"];
 
 pub(in crate::product_run) struct Store(Connection);
 
 #[derive(Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub(super) struct Evaluation {
+    pub(super) actor: [u8; 16],
+    pub(super) conversation: [u8; 16],
     pub(super) run: [u8; 16],
     pub(super) target: [u8; 16],
     pub(super) providers: [[u8; 16]; 3],
 }
 
 #[derive(Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct Evidence {
     run: [u8; 16],
     digest: [u8; 32],
@@ -27,6 +38,7 @@ struct Evidence {
 }
 
 #[derive(Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub(super) struct Candidate {
     pub(super) id: [u8; 32],
     pub(super) workspace: [u8; 16],
@@ -52,6 +64,27 @@ impl Candidate {
         {
             return Err(problem("improvement evidence or proposal digest mismatch"));
         }
+        let evaluation = self
+            .evaluation
+            .as_ref()
+            .map(|e| {
+                let actor =
+                    ActorId::new(e.actor).map_err(|_| problem("invalid evaluation actor"))?;
+                let conversation = ConversationId::new(e.conversation)
+                    .map_err(|_| problem("invalid evaluation conversation"))?;
+                let run = RunId::new(e.run).map_err(|_| problem("invalid evaluation run"))?;
+                let target = WorkspaceId::new(e.target)
+                    .map_err(|_| problem("invalid evaluation workspace"))?;
+                let source = WorkspaceId::new(self.workspace)
+                    .map_err(|_| problem("invalid source workspace"))?;
+                if super::evaluation::derived_conversation(actor, source, self.id, run)?
+                    != conversation
+                {
+                    return Err(problem("evaluation conversation identity mismatch"));
+                }
+                Ok(ImprovementEvaluation::new(conversation, run, target))
+            })
+            .transpose()?;
         ImprovementCandidate::new(
             Sha256Digest::new(self.id),
             text(&self.proposal)?,
@@ -65,36 +98,42 @@ impl Candidate {
                     ))
                 })
                 .collect::<Result<_, Error>>()?,
-            self.evaluation
-                .as_ref()
-                .map(|e| RunId::new(e.run).map_err(|_| problem("invalid evidence run")))
-                .transpose()?,
+            evaluation,
             self.dismissed,
         )
         .map_err(problem)
     }
-    pub(super) fn evidence_prompt(&self) -> String {
+    pub(super) fn evaluation_evidence_inputs(&self) -> Vec<String> {
         self.evidence
             .iter()
             .map(|e| {
-                format!("Run {} (observation {}):\n{}", hex(&e.run), hex(&e.digest), e.summary)
+                format!(
+                    "UNTRUSTED RUN OBSERVATION\nSource run: {}\nObservation digest: {}\n\n{}",
+                    hex(&e.run),
+                    hex(&e.digest),
+                    e.summary
+                )
             })
-            .collect::<Vec<_>>()
-            .join("\n\n")
+            .collect()
     }
 }
 
 impl Store {
     pub(in crate::product_run) fn open(path: &Path) -> Result<Self, Error> {
-        let conn = Connection::open(path).map_err(problem)?;
-        conn.busy_timeout(std::time::Duration::from_secs(5)).map_err(problem)?;
+        let conn = connection(path)?;
         let version: u32 =
             conn.pragma_query_value(None, "user_version", |row| row.get(0)).map_err(problem)?;
-        if version > 1 {
-            return Err(problem("unsupported improvement inbox schema"));
+        if version == PRE_RELEASE_SCHEMA {
+            drop(conn);
+            quarantine_pre_release(path)?;
+            return initialize(connection(path)?);
         }
-        conn.execute_batch("PRAGMA journal_mode=WAL; PRAGMA synchronous=FULL; CREATE TABLE IF NOT EXISTS improvements (workspace BLOB NOT NULL, id BLOB NOT NULL, record TEXT NOT NULL, PRIMARY KEY(workspace,id)); PRAGMA user_version=1;").map_err(problem)?;
-        Ok(Self(conn))
+        if version != 0 && version != CURRENT_SCHEMA {
+            return Err(problem(
+                "unsupported improvement inbox schema; use the Peritus version that owns this state",
+            ));
+        }
+        initialize(conn)
     }
 
     pub(super) fn collect(
@@ -111,19 +150,6 @@ impl Store {
         let mut item = if let Some(item) = self.get(workspace, id)? {
             item
         } else {
-            let count: u32 = self
-                    .0
-                    .query_row(
-                        "SELECT count(*) FROM improvements WHERE workspace=?1 AND json_extract(record, '$.dismissed')=0",
-                        [workspace.as_bytes()],
-                        |r| r.get(0),
-                    )
-                    .map_err(problem)?;
-            if count as usize >= MAX_IMPROVEMENTS {
-                return Err(Error::Control(
-                    peritus_product_runner::control::ControlError::Capacity,
-                ));
-            }
             Candidate {
                 id,
                 workspace: workspace.into_bytes(),
@@ -134,10 +160,7 @@ impl Store {
             }
         };
         // Once evaluated, its evidence is frozen. Dismissal also survives later observations.
-        if item.evaluation.is_some()
-            || item.evidence.iter().any(|e| e.run == run.into_bytes())
-            || item.evidence.len() == MAX_IMPROVEMENT_EVIDENCE
-        {
+        if item.evaluation.is_some() || item.evidence.iter().any(|e| e.run == run.into_bytes()) {
             return Ok(());
         }
         item.evidence.push(Evidence {
@@ -168,7 +191,7 @@ impl Store {
             .map_err(problem)?;
         value
             .map(|value| {
-                if value.len() > 80_000 {
+                if value.len() > peritus_journal::MAX_STATE_BYTES {
                     return Err(problem("oversized improvement record"));
                 }
                 let item: Candidate = serde_json::from_str(&value).map_err(problem)?;
@@ -184,7 +207,7 @@ impl Store {
     pub(super) fn inbox(&self, workspace: WorkspaceId) -> Result<ImprovementInbox, Error> {
         let mut statement = self
             .0
-            .prepare("SELECT id FROM improvements WHERE workspace=?1 ORDER BY json_extract(record, '$.dismissed'), rowid DESC LIMIT 32")
+            .prepare("SELECT id FROM improvements WHERE workspace=?1 ORDER BY json_extract(record, '$.dismissed'), rowid DESC")
             .map_err(problem)?;
         let ids = statement
             .query_map([workspace.as_bytes()], |row| row.get::<_, [u8; 32]>(0))
@@ -218,10 +241,13 @@ impl Store {
             ));
         }
         if let Some(prior) = &item.evaluation {
-            if prior.target != evaluation.target || prior.providers != evaluation.providers {
+            if prior.actor != evaluation.actor
+                || prior.target != evaluation.target
+                || prior.providers != evaluation.providers
+            {
                 return Err(Error::invalid_data(
                     "evaluate improvement",
-                    "This suggestion already has an evaluation with different workspace or providers. Open its original run",
+                    "This suggestion already has an evaluation owned by another actor, workspace, or provider selection. Open its original durable conversation",
                 ));
             }
         } else {
@@ -234,10 +260,79 @@ impl Store {
     fn save(&mut self, item: &Candidate) -> Result<(), Error> {
         item.project()?;
         let value = serde_json::to_string(item).map_err(problem)?;
+        if value.len() > peritus_journal::MAX_STATE_BYTES {
+            return Err(problem("oversized improvement record"));
+        }
         let transaction = self.0.transaction().map_err(problem)?;
         transaction.execute("INSERT INTO improvements(workspace,id,record) VALUES (?1,?2,?3) ON CONFLICT(workspace,id) DO UPDATE SET record=excluded.record", params![item.workspace, item.id, value]).map_err(problem)?;
         transaction.commit().map_err(problem)
     }
+}
+
+fn connection(path: &Path) -> Result<Connection, Error> {
+    let connection = Connection::open(path).map_err(problem)?;
+    connection.busy_timeout(std::time::Duration::from_secs(5)).map_err(problem)?;
+    Ok(connection)
+}
+
+fn initialize(connection: Connection) -> Result<Store, Error> {
+    connection.execute_batch("PRAGMA journal_mode=WAL; PRAGMA synchronous=FULL; CREATE TABLE IF NOT EXISTS improvements (workspace BLOB NOT NULL, id BLOB NOT NULL, record TEXT NOT NULL, PRIMARY KEY(workspace,id)); PRAGMA user_version=2;").map_err(problem)?;
+    Ok(Store(connection))
+}
+
+fn quarantine_pre_release(path: &Path) -> Result<(), Error> {
+    let parent =
+        path.parent().ok_or_else(|| problem("improvement inbox has no parent directory"))?;
+    let quarantine = parent.join("improvements-quarantine");
+    fs::create_dir_all(&quarantine).map_err(problem)?;
+    sync_directory(parent)?;
+    let destination = available_quarantine_path(&quarantine, path);
+    for suffix in SQLITE_SIDECARS {
+        let source = sqlite_sidecar(path, suffix);
+        if source.exists() {
+            fs::rename(source, sqlite_sidecar(&destination, suffix)).map_err(problem)?;
+        }
+    }
+    fs::rename(path, &destination).map_err(problem)?;
+    sync_directory(&quarantine)?;
+    sync_directory(parent)?;
+    crate::diagnostic::report(&format!(
+        "peritusd: isolated unsupported pre-release improvement inbox {} at {}",
+        path.display(),
+        destination.display()
+    ));
+    Ok(())
+}
+
+fn available_quarantine_path(directory: &Path, source: &Path) -> PathBuf {
+    let name =
+        source.file_name().and_then(|value| value.to_str()).unwrap_or("improvements.sqlite3");
+    for suffix in 0_u32.. {
+        let ending = if suffix == 0 { String::new() } else { format!(".{suffix}") };
+        let candidate = directory.join(format!("{name}.schema-{PRE_RELEASE_SCHEMA}{ending}"));
+        if !candidate.exists()
+            && SQLITE_SIDECARS.iter().all(|suffix| !sqlite_sidecar(&candidate, suffix).exists())
+        {
+            return candidate;
+        }
+    }
+    unreachable!("u32 quarantine suffixes are exhaustive")
+}
+
+fn sqlite_sidecar(path: &Path, suffix: &str) -> PathBuf {
+    let mut value = path.as_os_str().to_os_string();
+    value.push(suffix);
+    value.into()
+}
+
+#[cfg(unix)]
+fn sync_directory(path: &Path) -> Result<(), Error> {
+    fs::File::open(path).and_then(|directory| directory.sync_all()).map_err(problem)
+}
+
+#[cfg(not(unix))]
+const fn sync_directory(_path: &Path) -> Result<(), Error> {
+    Ok(())
 }
 
 fn text(value: &str) -> Result<ImprovementText, Error> {

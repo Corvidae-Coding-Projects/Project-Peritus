@@ -2,9 +2,11 @@
 
 use super::*;
 
+const TEST_RUN_HORIZON: Duration = Duration::from_hours(8);
+
 #[test]
 fn rejected_model_request_preserves_prior_usage_and_every_counter() {
-    let mut accounting = RunAccounting::direct_folder(PRODUCT_RUN_MAX_ELAPSED).unwrap();
+    let mut accounting = RunAccounting::direct_folder(Some(TEST_RUN_HORIZON)).unwrap();
     accounting.state.progress.model_requests = 7;
     accounting.state.progress.retries = u32::MAX;
     accounting.state.progress.input_tokens = 10;
@@ -31,7 +33,7 @@ fn rejected_model_request_preserves_prior_usage_and_every_counter() {
 #[test]
 fn usage_replacement_rejection_preserves_totals_and_the_retained_response() {
     for observation_overflow in [false, true] {
-        let mut accounting = RunAccounting::direct_folder(PRODUCT_RUN_MAX_ELAPSED).unwrap();
+        let mut accounting = RunAccounting::direct_folder(Some(TEST_RUN_HORIZON)).unwrap();
         accounting.state.progress.input_tokens = 10;
         accounting.state.progress.output_tokens = 20;
         if observation_overflow {
@@ -68,7 +70,7 @@ fn usage_replacement_rejection_preserves_totals_and_the_retained_response() {
 
 #[test]
 fn replacement_subtracts_before_adding_and_rejects_missing_prior_contributions() {
-    let mut accounting = RunAccounting::direct_folder(PRODUCT_RUN_MAX_ELAPSED).unwrap();
+    let mut accounting = RunAccounting::direct_folder(Some(TEST_RUN_HORIZON)).unwrap();
     let mut usage = DeveloperUsage::default();
     usage
         .observe(peritus_model_protocol::UsageCounters::new(
@@ -94,17 +96,16 @@ fn replacement_subtracts_before_adding_and_rejects_missing_prior_contributions()
 }
 
 #[test]
-fn completed_work_is_retained_when_a_hard_ceiling_rejects_the_next_boundary() {
-    let mut accounting = RunAccounting::direct_folder(PRODUCT_RUN_MAX_ELAPSED).unwrap();
-    accounting.state.progress.model_requests = PRODUCT_RUN_MAX_MODEL_REQUESTS;
-    let error = accounting
+fn cumulative_work_and_cost_continue_past_former_product_ceilings() {
+    let mut accounting = RunAccounting::direct_folder(Some(TEST_RUN_HORIZON)).unwrap();
+    accounting.state.progress.model_requests = 4_096;
+    accounting
         .record_event(DeveloperAccountingEvent::ModelRequest { retry: true })
-        .expect_err("provider request ceiling");
-    assert_eq!(error.detail(), "the cumulative provider-request budget was exhausted");
-    assert_eq!(accounting.latest_snapshot().model_requests(), PRODUCT_RUN_MAX_MODEL_REQUESTS + 1);
+        .expect("provider request remains observational");
+    assert_eq!(accounting.latest_snapshot().model_requests(), 4_097);
     assert_eq!(accounting.latest_snapshot().retries(), 1);
 
-    let mut accounting = RunAccounting::direct_folder(PRODUCT_RUN_MAX_ELAPSED).unwrap();
+    let mut accounting = RunAccounting::direct_folder(Some(TEST_RUN_HORIZON)).unwrap();
     let event = DeveloperAccountingEvent::Usage(peritus_model_protocol::UsageCounters::new(
         None,
         None,
@@ -113,20 +114,17 @@ fn completed_work_is_retained_when_a_hard_ceiling_rejects_the_next_boundary() {
         None,
         None,
         None,
-        Some(PRODUCT_RUN_MAX_COST_MICROUNITS + 1),
+        Some(500_000_001),
     ));
-    assert!(accounting.record_event(event).is_err());
-    assert!(accounting.record_event(event).is_err());
-    assert_eq!(
-        accounting.latest_snapshot().provider_cost_microunits(),
-        PRODUCT_RUN_MAX_COST_MICROUNITS + 1,
-    );
+    accounting.record_event(event).expect("cost remains observational");
+    accounting.record_event(event).expect("replacement remains observational");
+    assert_eq!(accounting.latest_snapshot().provider_cost_microunits(), 500_000_001);
     assert_eq!(accounting.latest_snapshot().usage_observations(), 1);
 }
 
 #[test]
 fn later_explicit_total_replaces_the_derived_total_without_double_counting() {
-    let mut accounting = RunAccounting::direct_folder(PRODUCT_RUN_MAX_ELAPSED).unwrap();
+    let mut accounting = RunAccounting::direct_folder(Some(TEST_RUN_HORIZON)).unwrap();
     let event = |total| {
         DeveloperAccountingEvent::Usage(peritus_model_protocol::UsageCounters::new(
             Some(10),
@@ -149,7 +147,7 @@ fn later_explicit_total_replaces_the_derived_total_without_double_counting() {
 
 #[test]
 fn streaming_usage_replaces_each_response_snapshot_and_survives_failure() {
-    let mut accounting = RunAccounting::direct_folder(PRODUCT_RUN_MAX_ELAPSED).unwrap();
+    let mut accounting = RunAccounting::direct_folder(Some(TEST_RUN_HORIZON)).unwrap();
     let usage = |output| {
         DeveloperAccountingEvent::Usage(peritus_model_protocol::UsageCounters::new(
             Some(10),
@@ -183,7 +181,7 @@ fn streaming_usage_replaces_each_response_snapshot_and_survives_failure() {
 fn work_events_accumulate_without_a_successful_role_outcome() {
     let temporary = tempfile::tempdir().expect("workspace");
     let mut accounting =
-        RunAccounting::new(temporary.path(), PRODUCT_RUN_MAX_ELAPSED).expect("accounting");
+        RunAccounting::new(temporary.path(), Some(TEST_RUN_HORIZON)).expect("accounting");
     for index in 0..51 {
         accounting
             .record_event(DeveloperAccountingEvent::ModelRequest { retry: index < 3 })
@@ -207,7 +205,7 @@ fn work_events_accumulate_without_a_successful_role_outcome() {
 fn provider_failovers_are_counted_separately_from_same_provider_retries() {
     let temporary = tempfile::tempdir().expect("workspace");
     let mut accounting =
-        RunAccounting::new(temporary.path(), PRODUCT_RUN_MAX_ELAPSED).expect("accounting");
+        RunAccounting::new(temporary.path(), Some(TEST_RUN_HORIZON)).expect("accounting");
     accounting.record_provider_failover().expect("record failover");
     let progress = accounting.snapshot().expect("bounded progress");
     assert_eq!(progress.provider_failovers(), 1);
@@ -218,7 +216,7 @@ fn provider_failovers_are_counted_separately_from_same_provider_retries() {
 fn successful_probe_closes_a_run_scoped_provider_circuit() {
     let temporary = tempfile::tempdir().expect("workspace");
     let mut accounting =
-        RunAccounting::new(temporary.path(), PRODUCT_RUN_MAX_ELAPSED).expect("accounting");
+        RunAccounting::new(temporary.path(), Some(TEST_RUN_HORIZON)).expect("accounting");
     let profile = ProviderProfileId::new([0x51; 16]).expect("profile ID");
 
     accounting.open_provider_circuit(profile);
@@ -231,7 +229,7 @@ fn successful_probe_closes_a_run_scoped_provider_circuit() {
 fn workspace_growth_and_peak_memory_are_observed_at_effect_boundaries() {
     let temporary = tempfile::tempdir().expect("workspace");
     let mut accounting =
-        RunAccounting::new(temporary.path(), PRODUCT_RUN_MAX_ELAPSED).expect("accounting");
+        RunAccounting::new(temporary.path(), Some(TEST_RUN_HORIZON)).expect("accounting");
     std::fs::write(temporary.path().join("candidate.bin"), vec![0_u8; 4096]).expect("candidate");
 
     let progress = accounting.snapshot().expect("resource snapshot");
@@ -242,82 +240,45 @@ fn workspace_growth_and_peak_memory_are_observed_at_effect_boundaries() {
 }
 
 #[test]
-fn memory_and_workspace_growth_have_distinct_hard_failures() {
-    let memory = ProductRunProgress {
-        peak_rss_bytes: PRODUCT_RUN_MAX_PEAK_RSS_BYTES + 1,
+fn cumulative_resource_observations_do_not_create_an_implicit_run_budget() {
+    let progress = ProductRunProgress {
+        model_requests: 4_097,
+        tool_calls: 20_001,
+        total_tokens: 100_000_001,
+        provider_cost_microunits: 500_000_001,
+        peak_rss_bytes: 12 * 1_024 * 1_024 * 1_024 + 1,
+        workspace_growth_bytes: 50 * 1_024 * 1_024 * 1_024 + 1,
         ..ProductRunProgress::default()
     };
+    let mut accounting = RunAccounting::direct_folder(None).expect("accounting");
+    accounting.state.progress = progress;
+    accounting
+        .record_event(DeveloperAccountingEvent::ToolCall)
+        .expect("effect admission accepts cumulative observations beyond the old ceilings");
+    assert_eq!(accounting.latest_snapshot().tool_calls(), 20_002);
     assert_eq!(
-        budget_violation(memory, Duration::ZERO, PRODUCT_RUN_MAX_ELAPSED),
-        Some("the product-run peak resident-memory budget was exhausted")
+        accounting.latest_snapshot().workspace_growth_bytes(),
+        progress.workspace_growth_bytes()
     );
-
-    let workspace = ProductRunProgress {
-        workspace_growth_bytes: PRODUCT_RUN_MAX_WORKSPACE_GROWTH_BYTES + 1,
-        ..ProductRunProgress::default()
-    };
-    assert_eq!(
-        budget_violation(workspace, Duration::ZERO, PRODUCT_RUN_MAX_ELAPSED),
-        Some("the product-run workspace-growth budget was exhausted")
-    );
+    accounting.check().expect("cumulative observations never exhaust a run");
+    assert_eq!(accounting.latest_snapshot().model_requests(), 4_097);
+    assert_eq!(accounting.latest_snapshot().provider_cost_microunits(), 500_000_001);
 }
 
 #[test]
-fn exact_numeric_ceilings_are_admitted_and_rejections_keep_their_priority() {
-    let mut progress = ProductRunProgress {
-        model_requests: PRODUCT_RUN_MAX_MODEL_REQUESTS,
-        tool_calls: PRODUCT_RUN_MAX_TOOL_CALLS,
-        total_tokens: PRODUCT_RUN_MAX_TOTAL_TOKENS,
-        provider_cost_microunits: PRODUCT_RUN_MAX_COST_MICROUNITS,
-        peak_rss_bytes: PRODUCT_RUN_MAX_PEAK_RSS_BYTES,
-        workspace_growth_bytes: PRODUCT_RUN_MAX_WORKSPACE_GROWTH_BYTES,
-        ..ProductRunProgress::default()
-    };
-    assert_eq!(budget_violation(progress, PRODUCT_RUN_MAX_ELAPSED, PRODUCT_RUN_MAX_ELAPSED), None);
-    progress.model_requests += 1;
-    progress.tool_calls += 1;
-    progress.total_tokens += 1;
-    progress.provider_cost_microunits += 1;
-    progress.peak_rss_bytes += 1;
-    progress.workspace_growth_bytes += 1;
+fn any_positive_caller_run_horizon_is_accepted_and_drives_elapsed_budget() {
+    assert!(validate_run_horizon(Some(Duration::ZERO)).is_err());
+    assert!(validate_run_horizon(Some(Duration::from_hours(24))).is_ok());
+    assert!(validate_run_horizon(Some(Duration::from_mins(1))).is_ok());
     assert_eq!(
-        budget_violation(
-            progress,
-            PRODUCT_RUN_MAX_ELAPSED + Duration::from_nanos(1),
-            PRODUCT_RUN_MAX_ELAPSED
-        ),
-        Some("the configured run horizon was exhausted"),
-    );
-    let first = |progress: ProductRunProgress| {
-        budget_violation(progress, Duration::ZERO, PRODUCT_RUN_MAX_ELAPSED)
-    };
-    assert_eq!(first(progress), Some("the cumulative provider-request budget was exhausted"));
-    progress.model_requests -= 1;
-    assert_eq!(first(progress), Some("the cumulative application-tool budget was exhausted"));
-    progress.tool_calls -= 1;
-    assert_eq!(first(progress), Some("the cumulative model-token budget was exhausted"));
-    progress.total_tokens -= 1;
-    assert_eq!(
-        first(progress),
-        Some("the cumulative provider-estimated cost budget was exhausted")
-    );
-    progress.provider_cost_microunits -= 1;
-    assert_eq!(first(progress), Some("the product-run peak resident-memory budget was exhausted"));
-    progress.peak_rss_bytes -= 1;
-    assert_eq!(first(progress), Some("the product-run workspace-growth budget was exhausted"));
-}
-
-#[test]
-fn caller_run_horizon_is_bounded_and_drives_elapsed_budget() {
-    assert!(validate_run_horizon(Duration::ZERO).is_err());
-    assert!(validate_run_horizon(PRODUCT_RUN_MAX_ELAPSED + Duration::from_secs(1)).is_err());
-    assert!(validate_run_horizon(Duration::from_mins(1)).is_ok());
-    assert_eq!(
-        budget_violation(
-            ProductRunProgress::default(),
-            Duration::from_secs(61),
-            Duration::from_mins(1),
-        ),
+        budget_violation(Duration::from_secs(61), Some(Duration::from_mins(1)),),
         Some("the configured run horizon was exhausted")
     );
+}
+
+#[test]
+fn unbounded_run_has_no_elapsed_budget_violation() {
+    assert!(validate_run_horizon(None).is_ok());
+    assert_eq!(budget_violation(Duration::MAX, None), None);
+    assert_eq!(RunAccounting::direct_folder(None).unwrap().remaining(), None);
 }

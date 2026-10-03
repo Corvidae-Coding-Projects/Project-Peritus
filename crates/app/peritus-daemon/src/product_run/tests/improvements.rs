@@ -1,6 +1,10 @@
 //! Collection is passive; explicit selection uses the actual product-run launch boundary.
 use super::*;
-use peritus_app_protocol::{ImprovementRequest, ImprovementText};
+use peritus_app_protocol::{
+    AppResponsePayload, ImprovementEvaluationRequest, ImprovementRequest, ImprovementText,
+    WorkbenchQuery, WorkbenchQueueQuery,
+};
+use peritus_types::ActorId;
 
 #[tokio::test]
 async fn suggestions_require_real_terminal_evidence_and_only_explicit_evaluation_launches() {
@@ -11,21 +15,21 @@ async fn suggestions_require_real_terminal_evidence_and_only_explicit_evaluation
     let fixer = scripted(0x93, "fixer", Vec::new());
     let workspace = WorkspaceId::new([0x94; 16]).expect("workspace");
     let source = RunId::new([0x95; 16]).expect("source");
+    let actor = ActorId::new([0x97; 16]).expect("actor");
     let service = service(state.path(), repo.path(), workspace, [&writer, &reviewer, &fixer]);
     let proposal = ImprovementText::new("Investigate response validation".into()).expect("text");
     assert!(
         service
-            .improvements(&ImprovementRequest::Suggest {
-                workspace,
-                run: source,
-                proposal: proposal.clone()
-            })
+            .improvements(
+                actor,
+                &ImprovementRequest::Suggest { workspace, run: source, proposal: proposal.clone() }
+            )
             .await
             .is_err()
     );
     assert!(
         service
-            .improvements(&ImprovementRequest::List(workspace))
+            .improvements(actor, &ImprovementRequest::List(workspace))
             .await
             .expect("empty")
             .candidates()
@@ -45,7 +49,7 @@ async fn suggestions_require_real_terminal_evidence_and_only_explicit_evaluation
         .expect("source start");
     let _ = wait_for_terminal(&service, source).await;
     let inbox = service
-        .improvements(&ImprovementRequest::Suggest { workspace, run: source, proposal })
+        .improvements(actor, &ImprovementRequest::Suggest { workspace, run: source, proposal })
         .await
         .expect("collect");
     assert!(inbox.candidates().iter().all(|c| c.evaluation().is_none()));
@@ -60,16 +64,10 @@ async fn suggestions_require_real_terminal_evidence_and_only_explicit_evaluation
     let request = ImprovementRequest::Evaluate {
         workspace,
         candidate,
-        run: ProductRunRequest::new(
-            evaluation,
-            workspace,
-            providers,
-            "untrusted task ignored".into(),
-        )
-        .expect("request"),
+        evaluation: ImprovementEvaluationRequest::new(evaluation, workspace, providers),
     };
     assert!(
-        service.improvements(&request).await.is_err(),
+        service.improvements(actor, &request).await.is_err(),
         "ordinary project is not harness source"
     );
     assert_eq!(service.inner.records.read().expect("records").len(), 1);
@@ -78,39 +76,67 @@ async fn suggestions_require_real_terminal_evidence_and_only_explicit_evaluation
     let collision = ImprovementRequest::Evaluate {
         workspace,
         candidate,
-        run: ProductRunRequest::new(source, workspace, providers, "Evaluate".into())
-            .expect("collision request"),
+        evaluation: ImprovementEvaluationRequest::new(source, workspace, providers),
     };
     assert!(
-        service.improvements(&collision).await.is_err(),
+        service.improvements(actor, &collision).await.is_err(),
         "cannot adopt an unrelated existing run"
     );
     assert!(
         service
-            .improvements(&ImprovementRequest::List(workspace))
+            .improvements(actor, &ImprovementRequest::List(workspace))
             .await
             .expect("inbox")
             .candidates()
             .iter()
             .all(|c| c.evaluation().is_none())
     );
-    let first = service.improvements(&request).await.expect("explicit launch");
-    assert_eq!(
-        first.candidates().iter().find(|c| c.id() == candidate).expect("candidate").evaluation(),
-        Some(evaluation)
-    );
-    service.improvements(&request).await.expect("idempotent repeat");
+    let first = service.improvements(actor, &request).await.expect("explicit launch");
+    let route = first
+        .candidates()
+        .iter()
+        .find(|c| c.id() == candidate)
+        .expect("candidate")
+        .evaluation()
+        .expect("evaluation route");
+    assert_eq!(route.run(), evaluation);
+    assert_eq!(route.target(), workspace);
+    service.improvements(actor, &request).await.expect("idempotent repeat");
     assert_eq!(service.inner.records.read().expect("records").len(), 2);
     {
         let records = service.inner.records.read().expect("records");
         let record = records.get(&evaluation).expect("launched record");
-        assert!(
-            record
-                .request
-                .task()
-                .contains("Run the regression against the baseline before the fix")
+        assert_eq!(
+            record.request.execution_task(),
+            "Execute the selected durable workbench inputs."
         );
-        assert!(!record.request.task().contains("untrusted task ignored"));
+        assert!(
+            record.snapshot.task().starts_with("Harness improvement "),
+            "dashboard identity comes from the durable conversation title"
+        );
+        let operation = &record.interaction.workbench;
+        assert_eq!(operation.conversation().as_bytes(), route.conversation().as_bytes());
     }
+    let query = WorkbenchQuery::new(route.conversation(), route.target());
+    let AppResponsePayload::WorkbenchQueue(queue) = service
+        .workbench_queue(actor, WorkbenchQueueQuery::new(query, 0, 0, true).expect("queue query"))
+    else {
+        panic!("durable evaluation queue");
+    };
+    assert_eq!(queue.total(), 3);
+    assert!(queue.rows().iter().any(|row| {
+        row.text().as_str().contains("UNTRUSTED IMPROVEMENT CANDIDATE")
+            && row.text().as_str().contains("Investigate response validation")
+    }));
+    assert!(queue.rows().iter().any(|row| {
+        row.text().as_str().contains("UNTRUSTED RUN OBSERVATION")
+            && row.text().as_str().contains("Peritus")
+    }));
+    let directive = queue
+        .rows()
+        .iter()
+        .find(|row| row.text().as_str().starts_with("PERITUS HARNESS EVALUATION"))
+        .expect("directive");
+    assert_eq!(directive.dependencies().ids().len(), 2);
     service.shutdown(Duration::from_secs(5)).await;
 }

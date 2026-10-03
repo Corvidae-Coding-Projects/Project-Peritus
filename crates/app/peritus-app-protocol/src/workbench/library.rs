@@ -4,7 +4,7 @@ use crate::{
     AppErrorCode, AppProtocolError, ControlOperationId, ConversationId, ConversationTitle,
     WorkbenchGoalState, WorkbenchQuery,
 };
-use peritus_types::{RunId, WorkspaceId};
+use peritus_types::WorkspaceId;
 
 const MAX_QUERY_BYTES: usize = 256;
 const MAX_SNIPPET_BYTES: usize = 512;
@@ -116,13 +116,6 @@ pub enum ConversationMessageSource {
         /// Exact reply-publication operation.
         operation: ControlOperationId,
     },
-    /// Durable message in a legacy run record.
-    Legacy {
-        /// Durable legacy run identity.
-        run: RunId,
-        /// Zero-based message position in the exact stored transcript.
-        index: u32,
-    },
 }
 
 /// Exact bounded source-linked match returned by local literal search.
@@ -164,7 +157,6 @@ pub struct WorkbenchBranchLineage {
     brief_revision: u64,
     goal_revision: u64,
     mode: WorkbenchForkMode,
-    allocation: Option<WorkbenchForkBudget>,
 }
 impl WorkbenchBranchLineage {
     /// Constructs a public projection from validated durable lineage.
@@ -178,7 +170,6 @@ impl WorkbenchBranchLineage {
         brief_revision: u64,
         goal_revision: u64,
         mode: WorkbenchForkMode,
-        allocation: Option<WorkbenchForkBudget>,
     ) -> Self {
         Self {
             parent,
@@ -188,7 +179,6 @@ impl WorkbenchBranchLineage {
             brief_revision,
             goal_revision,
             mode,
-            allocation,
         }
     }
     /// Returns parent conversation/workspace.
@@ -226,11 +216,6 @@ impl WorkbenchBranchLineage {
     pub const fn mode(&self) -> WorkbenchForkMode {
         self.mode
     }
-    /// Returns reserved child allocation.
-    #[must_use]
-    pub const fn allocation(&self) -> Option<WorkbenchForkBudget> {
-        self.allocation
-    }
 }
 
 /// One bounded result in the workspace conversation library.
@@ -241,7 +226,6 @@ pub struct ConversationLibraryItem {
     pinned: bool,
     archived: bool,
     activity_revision: u64,
-    legacy_run: Option<RunId>,
     goal_state: Option<WorkbenchGoalState>,
     goal_draft: bool,
     handoff: String,
@@ -263,7 +247,6 @@ impl ConversationLibraryItem {
         pinned: bool,
         archived: bool,
         activity_revision: u64,
-        legacy_run: Option<RunId>,
         goal_state: Option<WorkbenchGoalState>,
         goal_draft: bool,
         handoff: String,
@@ -279,7 +262,6 @@ impl ConversationLibraryItem {
             pinned,
             archived,
             activity_revision,
-            legacy_run,
             goal_state,
             goal_draft,
             handoff: checked_text(handoff, MAX_HANDOFF_BYTES, true)?,
@@ -311,11 +293,6 @@ impl ConversationLibraryItem {
     #[must_use]
     pub const fn activity_revision(&self) -> u64 {
         self.activity_revision
-    }
-    /// Returns legacy run source when this is a stable legacy mapping.
-    #[must_use]
-    pub const fn legacy_run(&self) -> Option<RunId> {
-        self.legacy_run
     }
     /// Returns current governed goal state.
     #[must_use]

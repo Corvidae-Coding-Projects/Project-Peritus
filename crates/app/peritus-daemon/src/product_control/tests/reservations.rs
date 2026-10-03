@@ -59,6 +59,7 @@ fn prepared_restore_reserves_child_until_exact_publication_even_after_reopen() {
                     status: RestoreStatus::Applied,
                     conflicts: Vec::new(),
                     transaction_manifest_digest: Some(sha256(b"applied").into_bytes()),
+                    seal_recovery: false,
                 },
             ),
             Some(b"applied".to_vec()),
@@ -73,6 +74,59 @@ fn prepared_restore_reserves_child_until_exact_publication_even_after_reopen() {
     let receipt = journal.accept_fork(&publication, &child(&branch), &branch).unwrap();
     assert_eq!(journal.accept_fork(&publication, &child(&branch), &branch).unwrap(), receipt);
     assert!(journal.load(branch.child()).unwrap().is_some());
+}
+
+#[test]
+fn committed_automatic_fork_retry_resolves_after_the_checkpoint_is_later_sealed() {
+    let root = tempfile::tempdir().unwrap();
+    let mut journal = store(root.path());
+    journal.accept(&create()).unwrap();
+    let run = [6; 16];
+    let checkpoint = UserCheckpoint::automatic(
+        CheckpointId::new(
+            *operation(2, 1, ControlIntent::PinConversation { pinned: true }).id().as_bytes(),
+        )
+        .unwrap(),
+        "automatic fork source".to_owned(),
+        CheckpointReferences::new(1, 0, 0, None),
+        Vec::new(),
+        Vec::new(),
+        Vec::new(),
+        run,
+    )
+    .unwrap();
+    let checkpoint_id = checkpoint.id();
+    journal
+        .accept_checkpoint(
+            &operation(2, 1, ControlIntent::CreateAutomaticCheckpoint(checkpoint.clone())),
+            &[],
+        )
+        .unwrap();
+    let branch = make_branch(4, checkpoint.id());
+    let source = operation(
+        4,
+        2,
+        ControlIntent::ReserveAutomaticFork {
+            branch: branch.clone(),
+            checkpoint: Box::new(checkpoint),
+            now_unix_millis: 0,
+        },
+    );
+    let child = child(&branch);
+    let receipt = journal.accept_fork(&source, &child, &branch).unwrap();
+    journal
+        .accept(&operation(
+            5,
+            3,
+            ControlIntent::SealAutomaticCheckpoint {
+                checkpoint: checkpoint_id,
+                run,
+                versions: Vec::new(),
+            },
+        ))
+        .unwrap();
+
+    assert_eq!(journal.accept_fork(&source, &child, &branch).unwrap(), receipt);
 }
 
 fn make_checkpoint(index: u32, revision: u64) -> UserCheckpoint {
@@ -108,7 +162,6 @@ fn make_branch(index: u32, checkpoint: CheckpointId) -> ConversationBranch {
         "reserved child".to_owned(),
         None,
         Vec::new(),
-        None,
     )
     .unwrap()
 }

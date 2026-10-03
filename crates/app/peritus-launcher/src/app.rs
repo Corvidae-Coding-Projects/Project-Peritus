@@ -2,7 +2,7 @@
 
 use std::{path::PathBuf, time::Duration};
 
-use peritus_product_state::ProviderKind;
+use peritus_product_state::{ProviderKind, WorkspaceProfile};
 use peritus_tui::{ExitReason, ProductLaunchContext, ProductProviderOption, TuiConfig};
 use peritus_types::{ProviderProfileId, WorkspaceId};
 
@@ -12,6 +12,7 @@ use crate::{
 };
 
 mod diagnostics;
+mod navigation;
 
 /// Prepares local state, starts or reuses the daemon, and runs the interactive application.
 ///
@@ -44,6 +45,30 @@ pub async fn launch_interactive_run(
     run: Option<peritus_types::RunId>,
     endpoint: Option<std::ffi::OsString>,
 ) -> Result<ExitReason, LauncherError> {
+    launch_interactive_target(repository, InitialConversation::Run(run), endpoint).await
+}
+
+/// Opens the most recently active conversation for the current directory's workspace.
+///
+/// # Errors
+/// Returns a setup failure, mismatched endpoint, or terminal failure without changing targets.
+pub async fn launch_interactive_resume(
+    endpoint: Option<std::ffi::OsString>,
+) -> Result<ExitReason, LauncherError> {
+    launch_interactive_target(None, InitialConversation::Latest, endpoint).await
+}
+
+#[derive(Clone, Copy)]
+enum InitialConversation {
+    Run(Option<peritus_types::RunId>),
+    Latest,
+}
+
+async fn launch_interactive_target(
+    repository: Option<PathBuf>,
+    initial: InitialConversation,
+    endpoint: Option<std::ffi::OsString>,
+) -> Result<ExitReason, LauncherError> {
     let _title = crate::terminal::product_title()?;
     let layout = AppLayout::discover()?.prepare()?;
     if update::offer_on_startup(&layout).await? {
@@ -57,9 +82,12 @@ pub async fn launch_interactive_run(
     if endpoint.as_deref().is_some_and(|endpoint| endpoint != prepared.endpoint_path()) {
         return Err(LauncherError::Interaction("The selected workspace uses a different daemon endpoint. Reconnect the browser to its configured daemon.".into()));
     }
-    let product = product_context(&prepared)?.with_run(run);
+    let product = match initial {
+        InitialConversation::Run(run) => product_context(&prepared)?.with_run(run),
+        InitialConversation::Latest => product_context(&prepared)?.with_latest_conversation(),
+    };
     let report = diagnostics::launcher_report(&prepared, &binaries, product.workspace_id())?;
-    let product = product.with_launcher_report(report).map_err(LauncherError::Tui)?;
+    let mut product = product.with_launcher_report(report).map_err(LauncherError::Tui)?;
     let mut tui_state = peritus_tui::TuiState::default();
     loop {
         supervisor.ensure_ready(&prepared, &binaries).await?;
@@ -72,6 +100,18 @@ pub async fn launch_interactive_run(
         match outcome {
             ExitReason::UserQuit => return Ok(outcome),
             ExitReason::RecoverDaemon => {}
+            ExitReason::OpenRun { run, workspace } => {
+                match navigation::run_context(&prepared, &binaries, run, workspace) {
+                    Ok(context) => product = context,
+                    Err(error) => tui_state.conversation_open_failed(&error.to_string()),
+                }
+            }
+            ExitReason::OpenConversation(query) => {
+                match navigation::conversation_context(&prepared, &binaries, query) {
+                    Ok(context) => product = context,
+                    Err(error) => tui_state.conversation_open_failed(&error.to_string()),
+                }
+            }
         }
     }
 }
@@ -103,6 +143,13 @@ fn product_context(
     let workspace = prepared.state().workspaces().active().ok_or_else(|| {
         LauncherError::WorkspaceSetup("no active workspace is available after setup".to_owned())
     })?;
+    workspace_context(prepared, workspace)
+}
+
+fn workspace_context(
+    prepared: &crate::PreparedProduct,
+    workspace: &WorkspaceProfile,
+) -> Result<ProductLaunchContext, LauncherError> {
     let workspace_id = WorkspaceId::new(decode_id(workspace.workspace_id())?).map_err(|error| {
         LauncherError::WorkspaceSetup(format!("active workspace identity is invalid: {error:?}"))
     })?;

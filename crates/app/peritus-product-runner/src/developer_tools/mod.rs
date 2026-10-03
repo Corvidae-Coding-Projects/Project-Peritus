@@ -31,6 +31,8 @@ mod preview;
 #[cfg(not(verus_only))]
 mod receipt;
 #[cfg(not(verus_only))]
+mod reference;
+#[cfg(not(verus_only))]
 mod removal;
 #[cfg(not(verus_only))]
 mod resources;
@@ -40,7 +42,9 @@ mod wire;
 #[cfg(not(verus_only))]
 pub use catalog::{definitions, in_place_definition, read_only_definitions};
 #[cfg(not(verus_only))]
-pub use command_runtime::{CommandRuntime, FolderPatchAuthority, FolderPatchAuthorityPlan};
+pub use command_runtime::{
+    CommandRuntime, FolderPatchAuthority, FolderPatchAuthorityPlan, PreviewTerminal,
+};
 #[cfg(not(verus_only))]
 pub use evidence::{CommandPurpose, SuccessfulCommand, merge_successful};
 #[cfg(not(verus_only))]
@@ -51,6 +55,10 @@ pub use folder_patch_request::FolderPatchAuthorityPlanRequest;
 #[cfg(not(verus_only))]
 pub use ownership::WorkspaceOwnership;
 pub use preview::{PreviewCommand, PreviewLaunch, PreviewObservation, PreviewProcessState};
+#[cfg(not(verus_only))]
+pub use receipt::{
+    UncertainEffect, UncertainEffectState, acknowledge_uncertain_effect, uncertain_effects,
+};
 
 #[cfg(not(verus_only))]
 pub fn merge_rendered(retained: &mut String, incoming: &str) {

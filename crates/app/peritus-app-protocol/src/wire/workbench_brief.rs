@@ -2,9 +2,9 @@
 
 use super::primitive::{invalid, unknown};
 use crate::{
-    MAX_WORKBENCH_BRIEF_FIELDS, MAX_WORKBENCH_BRIEF_OBSERVATIONS, MAX_WORKBENCH_BRIEF_PROPOSALS,
-    WorkbenchBrief, WorkbenchBriefEntry, WorkbenchBriefField, WorkbenchBriefObservation,
-    WorkbenchBriefObservationKind, WorkbenchBriefProposal,
+    MAX_WORKBENCH_BRIEF_FIELDS, MAX_WORKBENCH_BRIEF_PROPOSALS, WorkbenchBrief, WorkbenchBriefEntry,
+    WorkbenchBriefField, WorkbenchBriefObservation, WorkbenchBriefObservationKind,
+    WorkbenchBriefProposal,
 };
 use peritus_codec::{CanonicalReader, CanonicalWriter, CodecError, CodecErrorKind};
 
@@ -108,9 +108,6 @@ pub(super) fn read_brief(r: &mut CanonicalReader<'_>) -> Result<WorkbenchBrief, 
         )?);
     }
     let observation_count = usize::from(r.read_u16()?);
-    if observation_count > MAX_WORKBENCH_BRIEF_OBSERVATIONS {
-        return Err(CodecError::at(CodecErrorKind::LimitExceeded, offset));
-    }
     let mut observations = Vec::with_capacity(observation_count);
     for _ in 0..observation_count {
         let kind = match r.read_u16()? {

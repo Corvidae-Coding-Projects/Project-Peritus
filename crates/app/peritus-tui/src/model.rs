@@ -29,7 +29,7 @@ use sha2::{Digest, Sha256};
 
 use crate::{
     action::{Action, Effect},
-    input::{is_active_key, terminal_bytes},
+    input::is_active_key,
     runtime::ProductLaunchContext,
     sanitize::inert_preview,
     terminal::TerminalSession,
@@ -165,6 +165,15 @@ pub struct PromptItem {
 
 #[derive(Clone, Debug)]
 enum PendingRequest {
+    ArtifactCancel,
+    ChatBinding {
+        run_id: RunId,
+        opening: bool,
+    },
+    ProductMessageBinding {
+        run_id: RunId,
+        message: String,
+    },
     WorkbenchCheckpointInspect(peritus_app_protocol::WorkbenchRewindRequest),
     WorkbenchRewind(peritus_app_protocol::WorkbenchRewindRequest),
     WorkbenchMemory(peritus_app_protocol::WorkbenchMemoryQuery),
@@ -186,8 +195,23 @@ enum PendingRequest {
         step: crate::image_import::UploadStep,
     },
     WorkbenchQuery(peritus_app_protocol::WorkbenchQuery),
+    WorkbenchExecution(peritus_app_protocol::WorkbenchQuery),
+    WorkbenchChatContinue {
+        run: RunId,
+        goal: bool,
+        mode: peritus_app_protocol::ProductInteractionMode,
+    },
+    WorkbenchChatStarted {
+        run: RunId,
+    },
     ConversationLibrary(peritus_app_protocol::ConversationLibraryQuery),
+    ResumeConversationLibrary(peritus_app_protocol::ConversationLibraryQuery),
     WorkbenchQueue(peritus_app_protocol::WorkbenchQueueQuery),
+    WorkbenchQueueCommand {
+        query: peritus_app_protocol::WorkbenchQuery,
+        intent: peritus_app_protocol::WorkbenchQueueIntent,
+        draft: String,
+    },
     WorkbenchContext(peritus_app_protocol::WorkbenchContextQuery),
     WorkbenchBrief(peritus_app_protocol::WorkbenchQuery),
     WorkbenchGoal(peritus_app_protocol::WorkbenchQuery),
@@ -195,46 +219,48 @@ enum PendingRequest {
     WorkbenchControl(peritus_app_protocol::WorkbenchCommand),
     WorkbenchReceipt(peritus_app_protocol::WorkbenchCommand),
     Doctor(peritus_app_protocol::DoctorQuery),
-    ChatSubmit {
-        run_id: RunId,
-        text: String,
-    },
     ChatQuery,
     ChatOpen {
         run_id: RunId,
     },
-    ModelQuery,
+    ModelQuery(peritus_app_protocol::ProductModelQuery),
     ModelUpdate {
         run_id: RunId,
     },
     Status,
     Subscribe,
     Prompt(PromptId),
-    TerminalAttach,
+    TerminalAttach(TerminalBinding),
     TerminalInput,
+    TerminalLineInput(TerminalBinding),
     TerminalResize,
-    TerminalDetach,
+    TerminalDetach(TerminalBinding),
     TerminalCancel,
-    ProductStart,
     ProductQuery,
     ProductExactQuery(RunId),
     ProductControl,
-    ProductContinue,
-    ProductConversationQuery,
+    ProductInteractionQuery,
+}
+
+impl PendingRequest {
+    const fn editor_outcome_is_ambiguous(&self) -> bool {
+        // Looking up the durable destination cannot submit the retained product
+        // message. Only the later workbench command can make its outcome unknown.
+        !matches!(self, Self::ProductMessageBinding { .. })
+    }
 }
 
 /// The kind of value being collected by the modal editor.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum EditorKind {
     ProcessId,
     ApprovalSignature(PromptId),
     PromptAnswer(PromptId),
-    ProductTask,
     ProductMessage(RunId),
-    ReviewFeedback(peritus_app_protocol::WorkbenchReviewFeedback),
+    ReviewFeedback(Box<product::ReviewDraft>),
 }
 
-/// Modal, single-line input state.
+/// Modal input state with a UTF-8 byte cursor.
 #[derive(Clone, Debug)]
 pub struct Editor {
     pub(crate) kind: EditorKind,
@@ -242,6 +268,7 @@ pub struct Editor {
     pub(crate) hint: &'static str,
     pub(crate) buffer: String,
     pub(crate) cursor: usize,
+    pub(crate) pasted_command: bool,
 }
 
 #[derive(Debug)]
@@ -301,17 +328,25 @@ pub struct AppModel {
     pub(crate) events: VecDeque<EventRecord>,
     seen_events: HashSet<EventId>,
     pub(crate) selected_event: Option<usize>,
+    pub(crate) help_scroll: u16,
     pub(crate) prompts: Vec<PromptItem>,
     pub(crate) selected_prompt: usize,
+    pub(crate) prompt_scroll: u16,
     pub(crate) terminal: Option<TerminalSession>,
     pub(crate) notice: Option<Notice>,
     pub(crate) editor: Option<Editor>,
+    retained_editors: VecDeque<Editor>,
     pub(crate) quitting: bool,
     context: Option<ProtocolContext>,
+    retained_session: Option<SessionId>,
+    connection_generation: u64,
     limits: AppProtocolLimits,
     subscription: Option<SubscriptionId>,
     last_cursor: EventCursor,
     pending: HashMap<RequestId, PendingRequest>,
+    pending_started: HashMap<RequestId, u64>,
+    pending_editor_drafts: HashMap<RequestId, Editor>,
+    cancelled_imports: Vec<(peritus_app_protocol::TransferId, peritus_types::ArtifactId)>,
     ids: IdFactory,
     pub(super) product: Option<ProductUi>,
     tick_count: u64,
@@ -333,17 +368,25 @@ impl AppModel {
             events: VecDeque::new(),
             seen_events: HashSet::new(),
             selected_event: None,
+            help_scroll: 0,
             prompts: Vec::new(),
             selected_prompt: 0,
+            prompt_scroll: 0,
             terminal: None,
             notice: None,
             editor: None,
+            retained_editors: VecDeque::new(),
             quitting: false,
             context: None,
+            retained_session: None,
+            connection_generation: 0,
             limits: AppProtocolLimits::PRODUCTION,
             subscription: None,
             last_cursor: EventCursor::origin(),
             pending: HashMap::new(),
+            pending_started: HashMap::new(),
+            pending_editor_drafts: HashMap::new(),
+            cancelled_imports: Vec::new(),
             ids: IdFactory::new(seed),
             product: product.map(ProductUi::new),
             tick_count: 0,
@@ -351,8 +394,12 @@ impl AppModel {
     }
 
     pub(crate) fn update(&mut self, action: Action) -> Vec<Effect> {
+        let output_target = (self.chat.run_id, self.chat.workbench.selected);
         let observed_at = if let Action::Tick(now) = &action { Some(*now) } else { None };
-        let effects = match action {
+        let mut effects = match action {
+            Action::ClipboardWritten { operation, result } => {
+                self.clipboard_written(operation, result)
+            }
             Action::FileRead { operation, result } => self.file_read_complete(operation, result),
             Action::FileReadFailed => {
                 self.file_read_failed();
@@ -372,21 +419,27 @@ impl AppModel {
                 }
             }
             Action::Connected { context, limits, server, downgraded } => {
+                let reconnected = self.retained_session.is_some();
                 self.features.clear();
                 self.context = Some(context);
+                self.retained_session = Some(context.session_id());
+                self.connection_generation = self.connection_generation.saturating_add(1);
                 self.limits = limits;
                 self.connection = ConnectionStatus::Online { server, downgraded };
-                self.notice(NoticeLevel::Info, "connected to daemon");
+                self.notice(
+                    NoticeLevel::Info,
+                    if reconnected { "reconnected to daemon" } else { "connected to daemon" },
+                );
                 self.start_session()
+            }
+            Action::Connecting => {
+                self.interrupt_connection();
+                self.connection = ConnectionStatus::Connecting;
+                Vec::new()
             }
             Action::ConnectionFailed(error) | Action::Disconnected(error) => {
                 self.connection = ConnectionStatus::Disconnected(error.clone());
-                self.context = None;
-                self.features.clear();
-                self.recover_chat_drafts();
-                self.interrupt_file_import();
-                self.interrupt_image_import();
-                self.pending.clear();
+                self.interrupt_connection();
                 self.notice(NoticeLevel::Error, format!("daemon disconnected: {error}"));
                 Vec::new()
             }
@@ -394,13 +447,17 @@ impl AppModel {
             Action::TerminalEvent(event) => self.handle_terminal_event(event),
             Action::Tick(_) => {
                 self.tick_count = self.tick_count.saturating_add(1);
+                let reconnect = self.expire_pending_requests();
                 if let Some(notice) = &mut self.notice {
                     notice.ticks_remaining = notice.ticks_remaining.saturating_sub(1);
                     if notice.ticks_remaining == 0 {
                         self.notice = None;
                     }
                 }
-                if self.tick_count.is_multiple_of(4) {
+                if reconnect {
+                    self.connection = ConnectionStatus::Connecting;
+                    vec![Effect::Reconnect]
+                } else if self.tick_count.is_multiple_of(4) {
                     self.poll_product_runs()
                 } else {
                     Vec::new()
@@ -410,7 +467,31 @@ impl AppModel {
         let working =
             matches!(self.connection, ConnectionStatus::Online { .. }) && self.chat_work_active();
         self.chat.working.observe(if working { self.chat.run_id } else { None }, observed_at);
+        if output_target != (self.chat.run_id, self.chat.workbench.selected)
+            || !self.output_available()
+            || self.chat.output_selection.as_ref().is_some_and(|selection| {
+                self.chat.viewport.is_none_or(|viewport| {
+                    crate::render::transcript_area(self, viewport) != selection.area
+                })
+            })
+        {
+            self.chat.output_selection = None;
+        }
+        effects.extend(self.cancel_abandoned_imports());
         effects
+    }
+
+    fn interrupt_connection(&mut self) {
+        self.context = None;
+        if let Some(terminal) = &mut self.terminal {
+            terminal.disconnect();
+        }
+        self.features.clear();
+        self.interrupt_pending_requests();
+        self.interrupt_file_import();
+        self.interrupt_image_import();
+        self.pending.clear();
+        self.pending_started.clear();
     }
 
     pub(crate) fn visible_event_indices(&self) -> Vec<usize> {
@@ -422,7 +503,9 @@ impl AppModel {
     }
 
     pub(crate) fn selected_event_record(&self) -> Option<&EventRecord> {
-        self.selected_event.and_then(|index| self.events.get(index))
+        self.selected_event
+            .and_then(|index| self.events.get(index))
+            .filter(|event| event.visible_in(self.view))
     }
 
     pub(crate) fn selected_prompt_item(&self) -> Option<&PromptItem> {
@@ -437,8 +520,16 @@ impl AppModel {
         self.last_cursor
     }
 
-    pub(crate) fn retained_session(&self) -> Option<SessionId> {
-        self.context.map(ProtocolContext::session_id)
+    pub(crate) const fn retained_session(&self) -> Option<SessionId> {
+        self.retained_session
+    }
+
+    pub(crate) const fn connection_generation(&self) -> u64 {
+        self.connection_generation
+    }
+
+    pub(crate) const fn protocol_context(&self) -> Option<ProtocolContext> {
+        self.context
     }
 
     pub(crate) fn cleanup_messages(&mut self) -> Vec<AppMessage> {

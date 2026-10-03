@@ -118,6 +118,20 @@ pub fn read_arguments(path: &str) -> Vec<u8> {
     ])
 }
 
+#[allow(dead_code, reason = "shared integration support is compiled once per test binary")]
+pub fn command_arguments(program: &str, args: &[&str], purpose: &str) -> Vec<u8> {
+    encoded_object(vec![
+        ("program", Value::String(program.to_owned())),
+        (
+            "args",
+            Value::Array(
+                args.iter().map(|argument| Value::String((*argument).to_owned())).collect(),
+            ),
+        ),
+        ("purpose", Value::String(purpose.to_owned())),
+    ])
+}
+
 fn encoded_object(entries: Vec<(&str, Value)>) -> Vec<u8> {
     let object =
         entries.into_iter().map(|(key, value)| (key.to_owned(), value)).collect::<Map<_, _>>();

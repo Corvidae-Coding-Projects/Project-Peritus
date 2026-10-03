@@ -48,34 +48,22 @@ impl AppModel {
             return Vec::new();
         };
         if action == "open" {
-            let Some(id) = decode_hex_16(text).and_then(|bytes| ConversationId::new(bytes).ok())
-            else {
+            let parts: Vec<_> = text.split_whitespace().collect();
+            let Some((id, target)) = parse_open_target(&parts, workspace) else {
                 self.notice(
                     NoticeLevel::Warning,
-                    "Use /sessions open <32 hexadecimal conversation ID>; draft retained.",
+                    "Use /sessions open <conversation-id> [workspace-id], each 32 hexadecimal characters; draft retained.",
                 );
                 return Vec::new();
             };
-            self.chat.workbench.selected = Some(WorkbenchQuery::new(id, workspace));
-            self.chat.workbench.snapshot = None;
-            self.chat.workbench.queue = None;
-            self.chat.workbench.context_page = None;
-            self.chat.workbench.compaction_request = None;
-            self.chat.workbench.compaction_preview = None;
-            self.chat.workbench.brief = None;
-            self.chat.workbench.goal = None;
-            self.chat.workbench.goal_draft = None;
-            self.chat.workbench.goal_clear_pending = false;
-            self.chat.workbench.checkpoint_receipt = None;
-            self.chat.workbench.rewind_request = None;
-            self.chat.workbench.rewind_preview = None;
-            self.chat.workbench.restore_receipt = None;
-            self.chat.workbench.permissions = None;
-            self.chat.workbench.init = None;
-            self.chat.workbench.memory = None;
-            self.chat.workbench.images.page = None;
+            if target != workspace {
+                self.chat.workbench.message = format!("Opening /sessions open {text}");
+                return vec![Effect::OpenConversation(WorkbenchQuery::new(id, target))];
+            }
+            self.select_workbench_conversation(Some(WorkbenchQuery::new(id, workspace)));
+            self.chat.workbench.mode = WorkbenchMode::Sessions;
             self.chat.workbench.open = true;
-            return self.refresh_workbench();
+            return self.discover_workbench_execution();
         }
         let intent = match (action, text) {
             ("new", title) => {
@@ -128,7 +116,12 @@ impl AppModel {
             return Vec::new();
         };
         self.chat.workbench.open = true;
+        self.chat.workbench.mode = WorkbenchMode::Library;
+        self.chat.workbench.library_selected = 0;
+        self.chat.workbench.scroll = 0;
+        self.chat.workbench.message = "Loading conversations…".into();
         self.chat.workbench.library = None;
+        self.chat.workbench.library_query = Some(query.clone());
         self.request(
             AppRequestPayload::QueryConversationLibrary(query.clone()),
             PendingRequest::ConversationLibrary(query),
@@ -136,4 +129,19 @@ impl AppModel {
         .into_iter()
         .collect()
     }
+}
+
+fn parse_open_target(
+    parts: &[&str],
+    current: peritus_types::WorkspaceId,
+) -> Option<(ConversationId, peritus_types::WorkspaceId)> {
+    if !(1..=2).contains(&parts.len()) {
+        return None;
+    }
+    let conversation = ConversationId::new(decode_hex_16(parts[0])?).ok()?;
+    let workspace = match parts.get(1) {
+        Some(value) => peritus_types::WorkspaceId::new(decode_hex_16(value)?).ok()?,
+        None => current,
+    };
+    Some((conversation, workspace))
 }

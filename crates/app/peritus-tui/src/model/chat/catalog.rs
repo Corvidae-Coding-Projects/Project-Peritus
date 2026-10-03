@@ -19,7 +19,6 @@ enum Arguments {
     Goal,
     Pause,
     Resume,
-    Budget,
     Permissions,
     Init,
     Memory,
@@ -42,6 +41,7 @@ pub(super) enum Command {
     Approvals,
     Details,
     Stop,
+    Retry,
     Accept,
     Commit,
     Export,
@@ -59,7 +59,6 @@ pub(super) enum Command {
     Pause,
     Resume,
     Usage,
-    Budget,
     Preview,
     Checkpoint,
     Rewind,
@@ -123,8 +122,9 @@ fn argument_completions(text: &str) -> Vec<(String, &'static str)> {
         ["/goal", "criterion"] => &["graphical", "remove-graphical"],
         ["/goal", "clear"] => &["confirm"],
         ["/pause"] => &["now", "after-operation", "before-edit"],
-        ["/budget"] => &["none", "time=", "requests=", "tools=", "tokens="],
-        ["/preview"] => &["results", "launch", "play", "capture", "stop", "check", "feedback"],
+        ["/preview"] => {
+            &["results", "launch", "play", "terminal", "capture", "stop", "check", "feedback"]
+        }
         ["/context"] => &["next", "history", "show", "more", "previous"],
         ["/queue"] => &[
             "add", "edit", "correct", "hold", "release", "withdraw", "order", "history", "pending",

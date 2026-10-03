@@ -1,10 +1,10 @@
 //! Candidate inbox wire compatibility and input validation.
 use peritus_app_protocol::{
     AppMessage, AppProtocolLimits, AppRequestEnvelope, AppRequestPayload, AppResponseEnvelope,
-    AppResponsePayload, CorrelationId, ImprovementCandidate, ImprovementEvidence, ImprovementInbox,
-    ImprovementRequest, ImprovementText, ProductProviderSelection, ProductRunRequest,
-    ProtocolContext, ProtocolId, ProtocolVersion, RequestId, WellKnownProtocolFeature,
-    decode_app_message, encode_app_message,
+    AppResponsePayload, CorrelationId, ImprovementCandidate, ImprovementEvaluation,
+    ImprovementEvaluationRequest, ImprovementEvidence, ImprovementInbox, ImprovementRequest,
+    ImprovementText, ProductProviderSelection, ProtocolContext, ProtocolId, ProtocolVersion,
+    RequestId, WellKnownProtocolFeature, decode_app_message, encode_app_message,
 };
 use peritus_types::{ProviderProfileId, RunId, SessionId, Sha256Digest, WorkspaceId};
 
@@ -39,13 +39,11 @@ fn all_inbox_operations_round_trip_and_require_explicit_capability() {
         ImprovementRequest::Evaluate {
             workspace,
             candidate,
-            run: ProductRunRequest::new(
+            evaluation: ImprovementEvaluationRequest::new(
                 run,
                 workspace,
                 ProductProviderSelection::new(provider, provider, provider),
-                "Evaluate".into(),
-            )
-            .expect("evaluation"),
+            ),
         },
     ] {
         let payload = AppRequestPayload::Improvements(request);
@@ -69,7 +67,11 @@ fn all_inbox_operations_round_trip_and_require_explicit_capability() {
         candidate,
         text("Investigate verification"),
         vec![evidence.clone()],
-        Some(run),
+        Some(ImprovementEvaluation::new(
+            peritus_app_protocol::ConversationId::new([9; 16]).expect("conversation"),
+            run,
+            workspace,
+        )),
         false,
     )
     .expect("candidate");
@@ -93,4 +95,37 @@ fn all_inbox_operations_round_trip_and_require_explicit_capability() {
     assert!(ImprovementCandidate::new(candidate, text("Suggestion"), vec![], None, false).is_err());
     assert!(ImprovementText::new("\u{1b}[31m".into()).is_err());
     assert!(ImprovementText::new("x".repeat(4097)).is_err());
+}
+
+#[test]
+fn inbox_and_evidence_round_trip_beyond_the_old_retention_limits() {
+    let workspace = WorkspaceId::new([3; 16]).expect("workspace");
+    let evidence = (1..=8)
+        .map(|index| {
+            ImprovementEvidence::new(
+                RunId::new([index; 16]).expect("run"),
+                Sha256Digest::new([index; 32]),
+                text("Observed missing verification"),
+            )
+        })
+        .collect::<Vec<_>>();
+    let candidates = (1..=40)
+        .map(|index| {
+            ImprovementCandidate::new(
+                Sha256Digest::new([index; 32]),
+                text(&format!("Suggestion {index}")),
+                evidence.clone(),
+                None,
+                false,
+            )
+            .expect("candidate beyond the old evidence total")
+        })
+        .collect();
+    let inbox = ImprovementInbox::new(workspace, candidates).expect("inbox beyond old total");
+    roundtrip(&AppMessage::Response(AppResponseEnvelope::new(
+        context(),
+        RequestId::new([7; 16]).expect("request"),
+        CorrelationId::new([8; 16]).expect("correlation"),
+        AppResponsePayload::Improvements(inbox),
+    )));
 }

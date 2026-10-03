@@ -5,6 +5,12 @@ use peritus_app_protocol::{AppMessage, AppProtocolLimits, ProtocolContext};
 use peritus_types::Sha256Digest;
 use std::path::PathBuf;
 
+#[derive(Debug)]
+pub enum ClipboardDestination {
+    Desktop,
+    Terminal,
+}
+
 /// One external observation consumed by the UI reducer.
 #[allow(
     clippy::large_enum_variant,
@@ -12,6 +18,10 @@ use std::path::PathBuf;
 )]
 #[derive(Debug)]
 pub enum Action {
+    ClipboardWritten {
+        operation: peritus_app_protocol::ControlOperationId,
+        result: Result<ClipboardDestination, String>,
+    },
     FileRead {
         operation: peritus_app_protocol::ControlOperationId,
         result: Result<crate::file_import::FileBytes, &'static str>,
@@ -32,6 +42,7 @@ pub enum Action {
         server: String,
         downgraded: bool,
     },
+    Connecting,
     ConnectionFailed(String),
     Disconnected(String),
     Message(AppMessage),
@@ -46,6 +57,10 @@ pub enum Action {
 )]
 #[derive(Clone, Debug)]
 pub enum Effect {
+    CopyText {
+        operation: peritus_app_protocol::ControlOperationId,
+        text: String,
+    },
     ReadFile {
         operation: peritus_app_protocol::ControlOperationId,
         path: PathBuf,
@@ -62,5 +77,10 @@ pub enum Effect {
         candidate_digest: Sha256Digest,
     },
     Reconnect,
+    OpenConversation(peritus_app_protocol::WorkbenchQuery),
+    OpenRun {
+        run: peritus_types::RunId,
+        workspace: peritus_types::WorkspaceId,
+    },
     Quit,
 }

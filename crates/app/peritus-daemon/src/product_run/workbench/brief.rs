@@ -81,7 +81,9 @@ impl ProductRunService {
                         .map_err(|_| ControlError::InvalidInput)?,
                     );
                 }
-                proposals.reverse();
+                // Invocation identities are opaque, not chronological counters. Keep the
+                // most recent bounded selection, then emit the protocol's canonical order.
+                proposals.sort_by_key(WorkbenchBriefProposal::invocation);
 
                 let mut observations = Vec::new();
                 for image in record.images().entries() {

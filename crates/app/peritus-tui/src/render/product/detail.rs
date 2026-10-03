@@ -1,7 +1,8 @@
 //! Run status, deliverable, conversation, phase, and scrollable text rendering.
 
 use peritus_app_protocol::{
-    ProductConversationRole, ProductRunConversation, ProductRunPhase, ProductRunSnapshot,
+    ProductActivityKind, ProductInteractionSnapshot, ProductRunOperationState, ProductRunPhase,
+    ProductRunSnapshot,
 };
 use peritus_run_settlement::{
     CandidateStage, EvidenceStatus, QualificationEvidence, RunSettlement,
@@ -15,7 +16,7 @@ use ratatui::{
 };
 
 use crate::{
-    model::AppModel,
+    model::{AppModel, format_digest},
     render::{ACCENT, BAD, GOOD, MUTED, WARN, field, short_text},
 };
 
@@ -27,6 +28,21 @@ pub(super) fn render_run_text(
     select: impl FnOnce(&ProductRunSnapshot) -> String,
     empty: &str,
 ) {
+    let lines = run_text_lines(model, area.width, select, empty);
+    let maximum = super::content_scroll_limit(lines.len(), area);
+    let paragraph = Paragraph::new(lines).block(
+        Block::default().borders(Borders::ALL).title(format!("{title}· PgUp/PgDn · Home/End ")),
+    );
+    let scroll = model.product.as_ref().map_or(0, |product| product.inspection_scroll).min(maximum);
+    frame.render_widget(paragraph.scroll((scroll, 0)), area);
+}
+
+pub(super) fn run_text_lines(
+    model: &AppModel,
+    width: u16,
+    select: impl FnOnce(&ProductRunSnapshot) -> String,
+    empty: &str,
+) -> Vec<Line<'static>> {
     let text = model.product.as_ref().and_then(|product| product.selected_run()).map_or_else(
         || empty.to_owned(),
         |run| {
@@ -34,16 +50,10 @@ pub(super) fn render_run_text(
             if value.is_empty() { empty.to_owned() } else { safe(&value) }
         },
     );
-    let lines = crate::render::chat::wrapped_lines(
+    crate::render::chat::wrapped_lines(
         text.lines().map(|line| Line::from(line.to_owned())).collect(),
-        usize::from(area.width.saturating_sub(2)),
-    );
-    let maximum = lines.len().saturating_sub(usize::from(area.height.saturating_sub(2)));
-    let paragraph = Paragraph::new(lines)
-        .block(Block::default().borders(Borders::ALL).title(format!("{title}· PgUp/PgDn · Home ")));
-    let scroll = usize::from(model.product.as_ref().map_or(0, |product| product.inspection_scroll))
-        .min(maximum);
-    frame.render_widget(paragraph.scroll((u16::try_from(scroll).unwrap_or(u16::MAX), 0)), area);
+        usize::from(width.saturating_sub(2)),
+    )
 }
 
 pub(super) fn run_detail(
@@ -57,6 +67,25 @@ pub(super) fn run_detail(
         Line::from(timeline(run.phase())),
         Line::from(""),
         field("Current work", safe(run.status())),
+        Line::from(""),
+        Line::styled(
+            "Operation authority",
+            Style::default().fg(Color::White).add_modifier(Modifier::BOLD),
+        ),
+        field("Knowledge", format!("{:?}", run.operation().state())),
+        field(
+            "Uncertain",
+            if run.operation().uncertainty().is_empty() {
+                "nothing material".to_owned()
+            } else {
+                safe(run.operation().uncertainty())
+            },
+        ),
+        field("Known", safe(run.operation().known())),
+        field("Legal controls", legal_controls(run)),
+        field("Identity", safe(run.operation().identity())),
+        field("Kind", format!("{:?}", run.operation().kind())),
+        Line::from(""),
         field("Cycle", run.cycle().to_string()),
         field("Task", safe(run.task())),
         Line::from(""),
@@ -81,9 +110,27 @@ pub(super) fn run_detail(
             qualification_name(deliverable.qualification()).to_owned(),
         ));
         if let Some(checkpoint) = settlement.and_then(RunSettlement::checkpoint) {
-            lines.push(field("Checks", evidence_name(checkpoint.gates()).to_owned()));
-            lines.push(field("Requirements", evidence_name(checkpoint.obligations()).to_owned()));
-            lines.push(field("Review", evidence_name(checkpoint.review()).to_owned()));
+            let identity = checkpoint.identity();
+            lines.push(field(
+                "Content",
+                short_text(&format_digest(identity.content_digest().as_bytes()), 16),
+            ));
+            lines.push(field(
+                "Repository context",
+                short_text(&format_digest(identity.repository_digest().as_bytes()), 16),
+            ));
+            lines
+                .push(field("Requirements revision", identity.requirements_revision().to_string()));
+            lines.push(field(
+                "Execution context",
+                identity.execution_digest().map_or_else(
+                    || "not observed".to_owned(),
+                    |digest| short_text(&format_digest(digest.as_bytes()), 16),
+                ),
+            ));
+            lines.push(field("Checks", evidence_name(checkpoint.gates())));
+            lines.push(field("Requirements", evidence_name(checkpoint.obligations())));
+            lines.push(field("Review", evidence_name(checkpoint.review())));
         }
         lines.push(field("Changed files", deliverable.changed_paths().len().to_string()));
         lines.push(field("Run", safe(deliverable.run_instructions())));
@@ -124,8 +171,17 @@ pub(super) fn inspect_text(run: &ProductRunSnapshot) -> String {
         deliverable.successful_commands().join("\n")
     };
     format!(
-        "Workspace\n{}\n\nExact candidate paths\n{}\n\nSuccessful commands\n{}\n\nRun instructions\n{}\n\nDiff\n{}",
+        "Operation\n{}\nKnown\n{}\nUncertain\n{}\nLegal controls\n{}\n\nWorkspace\n{}\n\nStatus\n{}\n\nExact candidate paths\n{}\n\nSuccessful commands\n{}\n\nRun instructions\n{}\n\nDiff\n{}",
+        run.operation().identity(),
+        run.operation().known(),
+        if run.operation().uncertainty().is_empty() {
+            "nothing material"
+        } else {
+            run.operation().uncertainty()
+        },
+        legal_controls(run),
         deliverable.workspace_path(),
+        run.status(),
         paths,
         commands,
         deliverable.run_instructions(),
@@ -134,8 +190,17 @@ pub(super) fn inspect_text(run: &ProductRunSnapshot) -> String {
 }
 
 pub(super) fn product_state(run: &ProductRunSnapshot) -> String {
+    if run.operation().state() == ProductRunOperationState::OutcomeUnknown {
+        return "Outcome unknown — inspect before recovery".to_owned();
+    }
     match (run.phase(), run.deliverable()) {
-        (ProductRunPhase::Complete, _) => "Accepted".to_owned(),
+        (_, Some(deliverable)) if deliverable.discarded() => "Discarded".to_owned(),
+        (_, Some(deliverable)) if !deliverable.commit_revision().is_empty() => {
+            "Committed".to_owned()
+        }
+        (_, Some(deliverable)) if deliverable.accepted() => "Accepted".to_owned(),
+        (ProductRunPhase::Complete, Some(_)) => "Ready for inspection".to_owned(),
+        (ProductRunPhase::Complete, None) => "Complete".to_owned(),
         (ProductRunPhase::WaitingForUser, _) => "Waiting for you".to_owned(),
         (ProductRunPhase::Cancelled, Some(_)) => "Cancelled — candidate available".to_owned(),
         (ProductRunPhase::Cancelled, None) => "Cancelled".to_owned(),
@@ -147,11 +212,34 @@ pub(super) fn product_state(run: &ProductRunSnapshot) -> String {
 }
 
 fn product_state_style(run: &ProductRunSnapshot) -> Style {
-    if run.phase() == ProductRunPhase::Failed && run.deliverable().is_some() {
+    if run.operation().state() == ProductRunOperationState::OutcomeUnknown {
+        Style::default().fg(WARN)
+    } else if run.deliverable().is_some_and(peritus_app_protocol::ProductDeliverable::discarded) {
+        Style::default().fg(MUTED)
+    } else if run.phase() == ProductRunPhase::Failed && run.deliverable().is_some() {
         Style::default().fg(WARN)
     } else {
         phase_style(run.phase())
     }
+}
+
+fn legal_controls(run: &ProductRunSnapshot) -> String {
+    let controls = run.operation().legal_controls();
+    let mut values = Vec::new();
+    for (allowed, name) in [
+        (controls.cancel(), "cancel"),
+        (controls.retry(), "exact retry"),
+        (controls.accept(), "accept"),
+        (controls.commit(), "commit"),
+        (controls.export(), "export"),
+        (controls.discard(), "discard"),
+        (controls.acknowledge(), "acknowledge uncertainty"),
+    ] {
+        if allowed {
+            values.push(name);
+        }
+    }
+    if values.is_empty() { "none".to_owned() } else { values.join(", ") }
 }
 
 const fn qualification_name(stage: CandidateStage) -> &'static str {
@@ -165,41 +253,59 @@ const fn qualification_name(stage: CandidateStage) -> &'static str {
     }
 }
 
-const fn evidence_name(evidence: &EvidenceStatus<QualificationEvidence>) -> &'static str {
-    if let EvidenceStatus::Current(record) = evidence {
-        return if record.value().satisfied() { "passed" } else { "failed" };
-    }
-    match evidence {
-        EvidenceStatus::Missing => "missing",
-        EvidenceStatus::Failed(_) => "failed",
+fn evidence_name(evidence: &EvidenceStatus<QualificationEvidence>) -> String {
+    let state = match evidence {
+        EvidenceStatus::Missing => return "missing".to_owned(),
         EvidenceStatus::Stale(_) => "stale",
-        EvidenceStatus::Current(_) => unreachable!(),
-    }
+        EvidenceStatus::Current(record) if record.value().satisfied() => "passed",
+        EvidenceStatus::Failed(_) | EvidenceStatus::Current(_) => "failed",
+    };
+    let dependencies = evidence.record().map_or_else(String::new, |record| {
+        let dependency = record.dependencies();
+        if dependency.execution() {
+            "content + requirements + execution".to_owned()
+        } else {
+            "content + requirements".to_owned()
+        }
+    });
+    format!("{state} · {dependencies}")
 }
 
 pub(super) fn empty_detail() -> Text<'static> {
     Text::from(vec![
         Line::from("Ready."),
-        Line::from("Press n and describe a useful coding outcome."),
+        Line::from("Press Esc, then use /build <request> in Conversation."),
     ])
 }
 
-pub(super) fn conversation_text(conversation: Option<&ProductRunConversation>) -> Text<'static> {
+pub(super) fn conversation_text(
+    conversation: Option<&ProductInteractionSnapshot>,
+) -> Text<'static> {
     let Some(conversation) = conversation else {
         return Text::from(vec![
             Line::styled("Select a run to load its conversation.", Style::default().fg(MUTED)),
             Line::from("Press Enter or m to send a message."),
         ]);
     };
-    let start = conversation.messages().len().saturating_sub(12);
+    let start = conversation.activities().len().saturating_sub(12);
     let mut lines = Vec::new();
-    for message in &conversation.messages()[start..] {
-        let (speaker, style) = match message.role() {
-            ProductConversationRole::User => ("You", Style::default().fg(Color::White)),
-            ProductConversationRole::Agent => ("Peritus", Style::default().fg(ACCENT)),
+    for activity in &conversation.activities()[start..] {
+        let (speaker, style) = match activity.kind() {
+            ProductActivityKind::User => ("You", Style::default().fg(Color::White)),
+            ProductActivityKind::Assistant => ("Peritus", Style::default().fg(ACCENT)),
+            ProductActivityKind::Tool => ("Tool", Style::default().fg(Color::Cyan)),
+            ProductActivityKind::Status => ("Status", Style::default().fg(MUTED)),
+            ProductActivityKind::Error => ("Error", Style::default().fg(Color::Red)),
         };
         lines.push(Line::styled(speaker, style.add_modifier(Modifier::BOLD)));
-        lines.extend(safe(message.content()).lines().map(|line| Line::from(line.to_owned())));
+        lines.extend(safe(activity.text()).lines().map(|line| Line::from(line.to_owned())));
+        if !activity.detail().is_empty() {
+            lines.extend(
+                safe(activity.detail())
+                    .lines()
+                    .map(|line| Line::styled(line.to_owned(), Style::default().fg(MUTED))),
+            );
+        }
         lines.push(Line::from(""));
     }
     if lines.is_empty() {

@@ -14,6 +14,7 @@ use super::release::Release;
 const RELEASE_BASE: &str =
     "https://github.com/Corvidae-Coding-Projects/Project-Peritus/releases/download";
 const MAX_ARCHIVE_BYTES: u64 = 1024 * 1024 * 1024;
+const EXTRACTION_TIMEOUT: Duration = Duration::from_mins(5);
 
 pub(super) async fn package(
     layout: &AppLayout,
@@ -127,28 +128,28 @@ fn parse_checksum(bytes: &[u8]) -> Result<[u8; 32], LauncherError> {
 
 #[cfg(not(windows))]
 fn extract(archive: &std::path::Path, root: &std::path::Path) -> Result<(), LauncherError> {
-    let status = Command::new("tar")
-        .args(["-xzf"])
-        .arg(archive)
-        .arg("-C")
-        .arg(root)
-        .status()
-        .map_err(|error| LauncherError::Update(format!("start release extraction: {error}")))?;
+    let status = super::process::status(
+        Command::new("tar").args(["-xzf"]).arg(archive).arg("-C").arg(root),
+        "extract release archive",
+        EXTRACTION_TIMEOUT,
+    )?;
     success(status.success(), "release extraction failed")
 }
 
 #[cfg(windows)]
 fn extract(archive: &std::path::Path, root: &std::path::Path) -> Result<(), LauncherError> {
-    let status = Command::new("powershell")
-        .args([
+    let status = super::process::status(
+        Command::new("powershell")
+            .args([
             "-NoProfile",
             "-Command",
             "$ErrorActionPreference='Stop'; Expand-Archive -LiteralPath $env:PERITUS_ARCHIVE_SOURCE -DestinationPath $env:PERITUS_ARCHIVE_DESTINATION -Force",
-        ])
-        .env("PERITUS_ARCHIVE_SOURCE", archive)
-        .env("PERITUS_ARCHIVE_DESTINATION", root)
-        .status()
-        .map_err(|error| LauncherError::Update(format!("start release extraction: {error}")))?;
+            ])
+            .env("PERITUS_ARCHIVE_SOURCE", archive)
+            .env("PERITUS_ARCHIVE_DESTINATION", root),
+        "extract release archive",
+        EXTRACTION_TIMEOUT,
+    )?;
     success(status.success(), "release extraction failed")
 }
 

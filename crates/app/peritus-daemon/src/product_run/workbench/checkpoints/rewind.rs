@@ -12,6 +12,8 @@ use super::{
     public_restore, public_version,
 };
 
+mod plan;
+
 #[cfg(test)]
 mod faults;
 #[cfg(test)]
@@ -47,15 +49,14 @@ impl ProductRunService {
         self.control_workspace(request.query())?;
         let conversation = ConversationId::new(request.query().conversation().into_bytes())?;
         let checkpoint_id = CheckpointId::new(request.checkpoint().into_bytes())?;
-        let record = self
-            .with_controls(false, |store| store.load(conversation))?
-            .ok_or(ControlError::NotFound)?;
+        let (record, checkpoint) = self.with_controls(false, |store| {
+            let record = store.load(conversation)?.ok_or(ControlError::NotFound)?;
+            let checkpoint = store
+                .load_checkpoint(conversation, checkpoint_id)?
+                .ok_or(ControlError::NotFound)?;
+            Ok((record, checkpoint))
+        })?;
         check_record(&record, actor, request.query(), Some(request.revision()))?;
-        let checkpoint = record
-            .checkpoints()
-            .iter()
-            .find(|value| value.id() == checkpoint_id)
-            .ok_or(ControlError::NotFound)?;
         if record.restores().iter().any(|restore| {
             matches!(restore.status(), RestoreStatus::Prepared | RestoreStatus::RecoveryRequired)
         }) {
@@ -158,12 +159,15 @@ impl ProductRunService {
             .with_controls(false, |store| store.load(conversation))?
             .ok_or(ControlError::NotFound)?;
         check_record(&record, actor, command.query(), Some(command.expected_revision()))?;
-        let checkpoint = record
-            .checkpoints()
-            .iter()
-            .find(|value| value.id() == checkpoint_id)
-            .cloned()
+        let checkpoint = self
+            .with_controls(false, |store| store.load_checkpoint(conversation, checkpoint_id))?
             .ok_or(ControlError::NotFound)?;
+        let replay_only = !record.checkpoints().iter().any(|value| value.id() == checkpoint_id);
+        let checkpoint_versions = checkpoint
+            .paths()
+            .iter()
+            .map(|path| (path.path().to_owned(), path.checkpoint()))
+            .collect::<Vec<_>>();
 
         let conversation_only =
             request.mode() == peritus_app_protocol::WorkbenchRewindMode::ConversationOnly;
@@ -227,13 +231,22 @@ impl ProductRunService {
         if let Some(branch) = branch {
             restore = restore.with_branch(branch)?;
         }
+        let prepare_intent = if replay_only {
+            ControlIntent::PrepareAutomaticRestore {
+                restore,
+                checkpoint: Box::new(checkpoint),
+                recovery,
+            }
+        } else {
+            ControlIntent::PrepareRestore { restore, recovery }
+        };
         let prepare = ControlOperation::new(
             OperationId::new(command.operation().into_bytes())?,
             conversation,
             actor,
             command.query().workspace(),
             command.expected_revision(),
-            ControlIntent::PrepareRestore { restore, recovery },
+            prepare_intent,
         );
         let settle_id = OperationId::new(derived_id(
             b"peritus-workbench-rewind-settle-v1\0",
@@ -291,18 +304,32 @@ impl ProductRunService {
                 let manifest_digest = transaction_manifest
                     .as_ref()
                     .map(|bytes| peritus_codec::sha256(bytes).into_bytes());
+                let settle_intent = if replay_only {
+                    ControlIntent::SettleAutomaticRestore {
+                        restore: restore_id,
+                        checkpoint: checkpoint_id,
+                        status,
+                        conflicts: terminal_conflicts.clone(),
+                        transaction_manifest_digest: manifest_digest,
+                        seal_recovery: true,
+                        checkpoint_versions: checkpoint_versions.clone(),
+                    }
+                } else {
+                    ControlIntent::SettleRestore {
+                        restore: restore_id,
+                        status,
+                        conflicts: terminal_conflicts.clone(),
+                        transaction_manifest_digest: manifest_digest,
+                        seal_recovery: true,
+                    }
+                };
                 let settle = ControlOperation::new(
                     settle_id,
                     conversation,
                     actor,
                     command.query().workspace(),
                     preparation.accepted_revision(),
-                    ControlIntent::SettleRestore {
-                        restore: restore_id,
-                        status,
-                        conflicts: terminal_conflicts.clone(),
-                        transaction_manifest_digest: manifest_digest,
-                    },
+                    settle_intent,
                 );
                 let receipt =
                     store.accept_restore_settlement(&settle, transaction_manifest.clone())?;
@@ -316,71 +343,5 @@ impl ProductRunService {
             restored,
             terminal_conflicts,
         )
-    }
-
-    fn restore_plan(
-        &self,
-        query: peritus_app_protocol::WorkbenchQuery,
-        checkpoint: &UserCheckpoint,
-        preview: &WorkbenchRewindPreview,
-    ) -> Result<Option<PatchSet>, Error> {
-        self.with_controls(false, |store| {
-            self.restore_plan_with_store(store, query, checkpoint, preview)
-        })
-    }
-
-    pub(super) fn restore_plan_with_store(
-        &self,
-        store: &ControlStore,
-        query: peritus_app_protocol::WorkbenchQuery,
-        checkpoint: &UserCheckpoint,
-        preview: &WorkbenchRewindPreview,
-    ) -> Result<Option<PatchSet>, Error> {
-        let mut operations = Vec::new();
-        for (index, (path, preview_path)) in
-            checkpoint.paths().iter().zip(preview.paths()).enumerate()
-        {
-            if preview_path.disposition() != WorkbenchRewindDisposition::Restore {
-                continue;
-            }
-            let workspace_path = patch_input(WorkspacePath::new(path.path()))?;
-            let preimage =
-                patch_preimage(path.owned_postchange().ok_or(ControlError::InvalidInput)?);
-            let operation = match path.checkpoint() {
-                CheckpointFileVersion::Absent => {
-                    patch_input(PatchOperation::delete(workspace_path, preimage))?
-                }
-                target @ CheckpointFileVersion::Present { .. } => {
-                    let body = store
-                        .checkpoint_body(checkpoint.id(), index, target)?
-                        .ok_or(Error::Corrupt("present checkpoint target has no retained bytes"))?;
-                    let final_file = patch_input(FinalFile::new(
-                        body,
-                        patch_mode(target.mode().ok_or(ControlError::InvalidInput)?),
-                        LineEndingPolicy::Preserve,
-                    ))?;
-                    match preimage {
-                        Preimage::Absent => PatchOperation::create(workspace_path, final_file),
-                        Preimage::Present { .. } => patch_input(PatchOperation::replace(
-                            workspace_path,
-                            preimage,
-                            final_file,
-                        ))?,
-                    }
-                }
-            };
-            operations.push(operation);
-        }
-        if operations.is_empty() {
-            return Ok(None);
-        }
-        let patch = patch_input(PatchSet::new(
-            query.workspace(),
-            Generation::first(),
-            RevisionNumber::new(preview.request().revision())
-                .map_err(|_| ControlError::InvalidInput)?,
-            operations,
-        ))?;
-        Ok(Some(patch))
     }
 }

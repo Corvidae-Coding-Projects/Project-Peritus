@@ -20,7 +20,7 @@ impl WorkbenchImageQuery {
     /// Checks pagination bounds and rejects an unfenced continuation page.
     ///
     /// # Errors
-    /// Rejects offsets beyond the retained-image ceiling or a nonzero offset at revision zero.
+    /// Rejects a nonzero offset at revision zero.
     pub const fn new(
         query: WorkbenchQuery,
         revision: u64,

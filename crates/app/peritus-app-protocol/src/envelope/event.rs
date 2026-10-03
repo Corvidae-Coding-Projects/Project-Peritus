@@ -119,6 +119,9 @@ pub enum AppEventPayload {
     TerminalOutput(TerminalOutput),
     /// One final terminal exit observation.
     TerminalExited(TerminalExit),
+    /// This exact attachment can no longer deliver output; the process may still be running.
+    /// Sent only when `app.terminal-failure` was negotiated.
+    TerminalUnavailable(crate::TerminalBinding),
     /// Readiness or read-only diagnostic change.
     ReadinessChanged(crate::DaemonStatus),
     /// Bounded inert diagnostic event.

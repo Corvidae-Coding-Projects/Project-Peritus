@@ -1,18 +1,22 @@
 //! Verified immutable replay and exact historical checkpoint reads.
 
 use super::{
-    ControlStore, Error, FRAME_FAMILY, MANIFEST_NAMESPACE, MAX_RECORDS, REPLY_NAMESPACE,
-    REQUEST_NAMESPACE, ROOT_NAMESPACE, aggregate,
+    ControlStore, Error, FRAME_FAMILY, MANIFEST_NAMESPACE, REPLY_NAMESPACE, REQUEST_NAMESPACE,
+    ROOT_NAMESPACE, aggregate,
 };
 use peritus_codec::{CodecLimits, decode_frame, sha256};
 use peritus_product_runner::control::{
-    ControlError, ControlOperation, ConversationId, ConversationRecord,
+    ControlOperation, ConversationId, ConversationRecord, ConversationReplay,
 };
 
 impl ControlStore {
     /// Verifies bounded immutable history against the current C0 state root without recovery writes.
     pub fn load(&self, id: ConversationId) -> Result<Option<ConversationRecord>, Error> {
-        self.load_at_revision(id, None)
+        Ok(self.load_replay(id)?.current().cloned())
+    }
+
+    pub(super) fn load_replay(&self, id: ConversationId) -> Result<ConversationReplay, Error> {
+        self.load_at_revision(id, None).map(|(replay, _)| replay)
     }
 
     /// Reads an exact historical state while still verifying the complete current archive.
@@ -21,23 +25,20 @@ impl ControlStore {
         id: ConversationId,
         revision: u64,
     ) -> Result<Option<ConversationRecord>, Error> {
-        self.load_at_revision(id, Some(revision))
+        self.load_at_revision(id, Some(revision)).map(|(_, selected)| selected)
     }
 
     fn load_at_revision(
         &self,
         id: ConversationId,
         revision: Option<u64>,
-    ) -> Result<Option<ConversationRecord>, Error> {
+    ) -> Result<(ConversationReplay, Option<ConversationRecord>), Error> {
         let aggregate = aggregate(id)?;
-        if self.journal.head(aggregate)?.is_some_and(|head| head.sequence().get() > MAX_RECORDS) {
-            return Err(ControlError::Capacity.into());
-        }
         let (records, root) = self
             .journal
             .aggregate_checkpoint_snapshot(aggregate, ROOT_NAMESPACE, id.as_bytes())?
             .into_parts();
-        let mut current = None;
+        let mut replay = ConversationReplay::default();
         let mut selected = None;
         for record in &records {
             let frame = decode_frame(record.frame_bytes(), CodecLimits::PRODUCTION)
@@ -51,15 +52,15 @@ impl ControlStore {
             {
                 return Err(Error::Corrupt("control event scope or operation identity mismatch"));
             }
-            let (next, _) = ConversationRecord::apply(current.as_ref(), &operation)?;
-            self.verify_request_archive(&operation, record.global_position(), current.as_ref())?;
+            self.verify_request_archive(&operation, record.global_position(), replay.current())?;
+            replay.apply(&operation)?;
+            let next = replay.current().ok_or(Error::Corrupt("missing replay successor"))?;
             if revision == Some(next.revision()) {
                 selected = Some(next.clone());
             }
-            current = Some(next);
         }
-        match (&current, &root, records.last()) {
-            (None, None, None) => Ok(None),
+        match (replay.current(), &root, records.last()) {
+            (None, None, None) => Ok((replay, selected)),
             (Some(current), Some(root), Some(last))
                 if root.revision() == current.revision()
                     // A fork publishes two aggregate events in one atomic batch. State installs
@@ -68,7 +69,7 @@ impl ControlStore {
                     && root.producing_position() >= last.global_position()
                     && root.bytes() == current.canonical_bytes()? =>
             {
-                Ok(if revision.is_some() { selected } else { Some(current.clone()) })
+                Ok((replay, selected))
             }
             _ => Err(Error::Corrupt("control projection does not match immutable replay")),
         }
@@ -93,8 +94,11 @@ impl ControlStore {
         if matches!(
             operation.intent(),
             ControlIntent::CreateCheckpoint(_)
+                | ControlIntent::CreateAutomaticCheckpoint(_)
                 | ControlIntent::PrepareRestore { .. }
+                | ControlIntent::PrepareAutomaticRestore { .. }
                 | ControlIntent::SettleRestore { .. }
+                | ControlIntent::SettleAutomaticRestore { .. }
         ) {
             return self.verify_checkpoint_archive(operation, position);
         }
@@ -133,5 +137,21 @@ impl ControlStore {
             return Err(Error::Corrupt("request archive differs from atomic incorporation"));
         }
         super::super::inputs::verify_manifest(operation, manifest.bytes(), before)
+    }
+
+    /// Loads one retained or replay-only automatic checkpoint after complete history verification.
+    pub(crate) fn load_checkpoint(
+        &self,
+        conversation: ConversationId,
+        checkpoint: peritus_product_runner::control::CheckpointId,
+    ) -> Result<Option<peritus_product_runner::control::UserCheckpoint>, Error> {
+        let replay = self.load_replay(conversation)?;
+        if let Some(value) = replay
+            .current()
+            .and_then(|record| record.checkpoints().iter().find(|value| value.id() == checkpoint))
+        {
+            return Ok(Some(value.clone()));
+        }
+        Ok(replay.automatic_checkpoint(checkpoint).cloned())
     }
 }

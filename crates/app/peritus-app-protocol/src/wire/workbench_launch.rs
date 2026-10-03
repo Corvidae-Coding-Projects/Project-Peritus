@@ -1,5 +1,7 @@
 //! Canonical bounded launch, capture, result and artifact-feedback codecs.
 
+mod output;
+pub(super) use output::{read_preview, write_preview};
 mod profile;
 #[cfg(test)]
 mod tests;
@@ -8,12 +10,11 @@ pub(super) use profile::{read_profile, write_profile};
 
 use super::primitive::{invalid, read_digest, read_id, write_digest, write_id};
 use crate::{
-    ControlOperationId, MAX_WORKBENCH_ARTIFACT_FEEDBACK, MAX_WORKBENCH_CAPTURES,
-    MAX_WORKBENCH_INTERACTIONS, MAX_WORKBENCH_LAUNCHES, WorkbenchArtifactFeedback,
-    WorkbenchArtifactRegion, WorkbenchCaptureCapability, WorkbenchCaptureConsent,
-    WorkbenchCaptureReceipt, WorkbenchCaptureRequest, WorkbenchCaptureState,
-    WorkbenchCaptureTarget, WorkbenchInteractionReceipt, WorkbenchLaunchResult,
-    WorkbenchLaunchState, WorkbenchLaunchText, WorkbenchResultPage, WorkbenchResultQuery,
+    ControlOperationId, WorkbenchArtifactFeedback, WorkbenchArtifactRegion,
+    WorkbenchCaptureCapability, WorkbenchCaptureConsent, WorkbenchCaptureReceipt,
+    WorkbenchCaptureRequest, WorkbenchCaptureState, WorkbenchCaptureTarget,
+    WorkbenchInteractionReceipt, WorkbenchLaunchResult, WorkbenchLaunchState, WorkbenchLaunchText,
+    WorkbenchResultPage, WorkbenchResultQuery,
 };
 use peritus_codec::{CanonicalReader, CanonicalWriter, CodecError, CodecErrorKind};
 use peritus_types::{ArtifactId, ProcessId, RunId};
@@ -128,7 +129,7 @@ pub(super) fn read_page(r: &mut CanonicalReader<'_>) -> Result<WorkbenchResultPa
         2 => WorkbenchCaptureCapability::Unavailable(read_text(r)?),
         _ => return Err(CodecError::at(CodecErrorKind::UnknownTag, capability_offset)),
     };
-    let count = read_count(r, MAX_WORKBENCH_LAUNCHES)?;
+    let count = read_count(r, usize::from(u16::MAX))?;
     let mut launches = Vec::with_capacity(count);
     for _ in 0..count {
         launches.push(read_launch(r)?);
@@ -180,7 +181,7 @@ fn read_launch(r: &mut CanonicalReader<'_>) -> Result<WorkbenchLaunchResult, Cod
     let state = WorkbenchLaunchState::from_tag(r.read_u16()?)
         .ok_or_else(|| CodecError::at(CodecErrorKind::UnknownTag, state_offset))?;
     let ready = r.read_bool()?;
-    let interaction_count = read_count(r, MAX_WORKBENCH_INTERACTIONS)?;
+    let interaction_count = read_count(r, usize::from(u16::MAX))?;
     let mut interactions = Vec::with_capacity(interaction_count);
     for _ in 0..interaction_count {
         interactions.push(WorkbenchInteractionReceipt::new(
@@ -189,12 +190,12 @@ fn read_launch(r: &mut CanonicalReader<'_>) -> Result<WorkbenchLaunchResult, Cod
             r.read_bool()?,
         ));
     }
-    let capture_count = read_count(r, MAX_WORKBENCH_CAPTURES)?;
+    let capture_count = read_count(r, usize::from(u16::MAX))?;
     let mut captures = Vec::with_capacity(capture_count);
     for _ in 0..capture_count {
         captures.push(read_capture(r)?);
     }
-    let feedback_count = read_count(r, MAX_WORKBENCH_ARTIFACT_FEEDBACK)?;
+    let feedback_count = read_count(r, usize::from(u16::MAX))?;
     let mut feedback = Vec::with_capacity(feedback_count);
     for _ in 0..feedback_count {
         feedback.push(read_feedback(r)?);

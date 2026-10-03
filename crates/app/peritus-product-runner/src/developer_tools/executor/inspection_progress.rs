@@ -7,8 +7,7 @@ use peritus_types::Sha256Digest;
 use serde_json::Value;
 
 const RECENT_OBSERVATIONS: usize = 16;
-const WARN_REPEATS: u8 = 3;
-const STOP_REPEATS: u8 = 6;
+const WARN_REPEATS: u8 = 1;
 
 #[derive(Default)]
 pub(super) struct InspectionProgress {
@@ -48,16 +47,33 @@ impl InspectionProgress {
                 _ => {}
             }
         }
+        for digest in &visible {
+            if self.recent.contains(digest) {
+                continue;
+            }
+            if self.recent.len() == RECENT_OBSERVATIONS {
+                self.recent.pop_front();
+            }
+            self.recent.push_back(*digest);
+        }
         self.visible_observations = Some(visible);
     }
 
-    pub(super) fn observe(&mut self, name: &str, arguments: &Value, result: &Value) {
+    pub(super) fn observe(
+        &mut self,
+        name: &str,
+        arguments: &Value,
+        result: &Value,
+        mutation_boundary: bool,
+    ) {
         if !is_inspection(name) {
-            // Commands (including polling and failed verification), edits, and other tool
-            // strategies end this inspection sequence. Never infer process progress here.
-            self.recent.clear();
-            self.repeats = 0;
-            self.warning_pending = false;
+            // Only a capability that may have changed the workspace invalidates content-bound
+            // observations. Read-only status and polling tools cannot make the same bytes fresh.
+            if mutation_boundary {
+                self.recent.clear();
+                self.repeats = 0;
+                self.warning_pending = false;
+            }
             return;
         }
         let digest = fingerprint(name, arguments, result);
@@ -88,16 +104,7 @@ impl InspectionProgress {
 
     pub(super) fn feedback(&mut self) -> Option<String> {
         std::mem::take(&mut self.warning_pending).then(|| {
-            "The host detected repeated identical workspace inspection arguments AND results with no new evidence. Initial grounding is not reset between provider steps. Use the observations already obtained and take a different task-relevant step, or identify the specific missing evidence. Repeating this unchanged inspection cycle will stop the invocation with an inspection-no-progress error; it will not trigger fresh-invocation recovery.".to_owned()
-        })
-    }
-
-    pub(super) fn blocker(&self) -> Option<String> {
-        (self.repeats >= STOP_REPEATS && !self.warning_pending).then(|| {
-            format!(
-                "inspection-no-progress: {} consecutive workspace inspections repeated previously observed arguments and results without new evidence. Stopped after warning; completed work and tool observations are preserved. Review the last tool results before starting another invocation.",
-                self.repeats,
-            )
+            "The host detected repeated identical workspace inspection arguments AND results with no new evidence. Initial grounding is not reset between provider steps. Use the observations already obtained and take a different task-relevant step, or identify the specific missing evidence.".to_owned()
         })
     }
 }
@@ -119,16 +126,20 @@ mod tests {
     }
 
     #[test]
-    fn identical_and_alternating_inspections_warn_then_stop() {
+    fn identical_and_alternating_inspections_warn_once() {
         for width in [1, 2] {
             let mut progress = InspectionProgress::default();
             for index in 0..width {
-                progress.observe("workspace_read", &path(index), &Value::from("same"));
+                progress.observe("workspace_read", &path(index), &Value::from("same"), false);
             }
-            for index in 1..=STOP_REPEATS {
-                progress.observe("workspace_read", &path(index % width), &Value::from("same"));
+            for index in 1..=32 {
+                progress.observe(
+                    "workspace_read",
+                    &path(index % width),
+                    &Value::from("same"),
+                    false,
+                );
                 assert_eq!(progress.feedback().is_some(), index == WARN_REPEATS);
-                assert_eq!(progress.blocker().is_some(), index == STOP_REPEATS);
             }
             assert!(progress.feedback().is_none());
         }
@@ -138,37 +149,35 @@ mod tests {
     fn new_evidence_and_noninspection_work_reset_the_cycle() {
         let mut progress = InspectionProgress::default();
         for index in 0..32 {
-            progress.observe("workspace_read", &path("state"), &Value::from(index));
-            assert!(progress.blocker().is_none());
+            progress.observe("workspace_read", &path("state"), &Value::from(index), false);
         }
         assert_eq!(progress.recent.len(), RECENT_OBSERVATIONS);
         for name in ["run_command", "command_poll", "workspace_write"] {
-            for _ in 0..=STOP_REPEATS {
-                progress.observe("workspace_list", &path("."), &Value::Array(Vec::new()));
+            for _ in 0..3 {
+                progress.observe("workspace_list", &path("."), &Value::Array(Vec::new()), false);
                 progress.feedback();
             }
-            assert!(progress.blocker().is_some());
+            assert_eq!(progress.repeats, 2);
             progress.observe(
                 name,
                 &Value::Object(serde_json::Map::new()),
                 &Value::from_iter([("success", Value::from(false))]),
+                true,
             );
-            assert!(progress.blocker().is_none());
+            assert_eq!(progress.repeats, 0);
             assert!(progress.feedback().is_none());
         }
     }
 
     #[test]
-    fn a_batch_crossing_both_thresholds_delivers_its_warning_before_stopping() {
+    fn a_repeated_batch_delivers_its_warning_once() {
         let mut progress = InspectionProgress::default();
-        progress.observe("workspace_read", &path("state"), &Value::from("same"));
-        for _ in 0..STOP_REPEATS {
-            progress.observe("workspace_read", &path("state"), &Value::from("same"));
+        progress.observe("workspace_read", &path("state"), &Value::from("same"), false);
+        for _ in 0..3 {
+            progress.observe("workspace_read", &path("state"), &Value::from("same"), false);
         }
-        assert!(progress.blocker().is_none(), "the warning has not reached a provider turn");
         assert!(progress.feedback().is_some());
-        progress.observe("workspace_read", &path("state"), &Value::from("same"));
-        assert!(progress.blocker().is_some(), "continued unchanged inspections still stop");
+        progress.observe("workspace_read", &path("state"), &Value::from("same"), false);
         assert!(progress.feedback().is_none());
     }
 }

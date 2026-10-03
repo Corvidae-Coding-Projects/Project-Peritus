@@ -10,7 +10,7 @@ use super::record::InstanceRecord;
 use crate::{DaemonError, DaemonErrorCode, DaemonIdentity, DaemonRecovery};
 
 pub struct InstanceGuard {
-    _lock: File,
+    lock: File,
     record_path: PathBuf,
     record_bytes: Vec<u8>,
 }
@@ -35,7 +35,7 @@ impl InstanceGuard {
         let record = InstanceRecord::current(identity)?;
         let record_path = state_root.join("daemon.instance");
         publish_record(state_root, &record_path, record.bytes())?;
-        Ok(Self { _lock: lock, record_path, record_bytes: record.bytes().to_vec() })
+        Ok(Self { lock, record_path, record_bytes: record.bytes().to_vec() })
     }
 }
 
@@ -46,6 +46,11 @@ impl Drop for InstanceGuard {
             if let Some(parent) = self.record_path.parent() {
                 let _ = File::open(parent).and_then(|directory| directory.sync_all());
             }
+        }
+        // Closing only this handle can leave the lock held by a duplicate temporarily inherited
+        // by a concurrently spawning child. Ownership ends here, before any successor starts.
+        if let Err(error) = self.lock.unlock() {
+            eprintln!("peritus daemon: could not release its instance lock: {error}");
         }
     }
 }
@@ -151,4 +156,28 @@ fn storage(operation: &'static str, error: std::io::Error) -> DaemonError {
         "daemon instance filesystem operation failed",
         error,
     )
+}
+
+#[cfg(all(test, unix))]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn released_owner_does_not_leave_its_lock_in_a_duplicated_handle() {
+        let root = tempfile::tempdir().expect("state");
+        let identity = DaemonIdentity::new(peritus_journal::StoreId::new([31; 16]).expect("store"));
+        let owner = InstanceGuard::acquire(root.path(), &identity).expect("first owner");
+        // Like a handle temporarily inherited between fork and exec, this duplicate shares the
+        // open file description but has no daemon ownership authority of its own.
+        let inherited = owner.lock.try_clone().expect("duplicate lock handle");
+        assert!(InstanceGuard::acquire(root.path(), &identity).is_err());
+        drop(owner);
+        let successor = InstanceGuard::acquire(root.path(), &identity)
+            .expect("completed owner explicitly releases the native lock");
+        assert!(root.path().join("daemon.instance").is_file());
+        drop(inherited);
+        assert!(InstanceGuard::acquire(root.path(), &identity).is_err());
+        drop(successor);
+        assert!(!root.path().join("daemon.instance").exists());
+    }
 }

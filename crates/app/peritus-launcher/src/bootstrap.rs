@@ -182,6 +182,7 @@ fn finish(
     mut state: ProductState,
 ) -> Result<PreparedProduct, LauncherError> {
     configuration::retain_legacy_models(&layout, store, &mut state)?;
+    configuration::account::refresh_executables(&layout, store, &mut state)?;
     ensure_registry(&layout)?;
     if state.bootstrap_phase() == BootstrapPhase::IdentityReady {
         state.advance(BootstrapPhase::RegistryReady)?;

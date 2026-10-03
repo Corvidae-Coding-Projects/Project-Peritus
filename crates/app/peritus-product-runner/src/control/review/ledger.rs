@@ -2,8 +2,8 @@
 
 use super::{
     BTreeSet, ControlError, ControlText, InputId, InputLedger, InputSelection, InputState,
-    InvocationId, MAX_REVIEW_COMMENTS, OperationId, PathBuf, QueueIntent, ReviewAnchor,
-    ReviewComment, ReviewCommentState, ReviewFeedback, ReviewLedger,
+    InvocationId, OperationId, PathBuf, QueueIntent, ReviewAnchor, ReviewComment,
+    ReviewCommentState, ReviewFeedback, ReviewLedger,
 };
 use std::fmt::Write as _;
 
@@ -56,9 +56,6 @@ impl ReviewLedger {
     ) -> Result<(Self, InputLedger), ControlError> {
         self.validate(inputs)?;
         anchor.validate()?;
-        if self.comments.len() >= MAX_REVIEW_COMMENTS {
-            return Err(ControlError::Capacity);
-        }
         let id = InputId::new(*operation.as_bytes())?;
         let input = InputSelection::new(id, 1)?;
         let text = prompt(&anchor, feedback, message.as_str(), false)?;
@@ -182,9 +179,6 @@ impl ReviewLedger {
     }
 
     pub(in crate::control) fn validate(&self, inputs: &InputLedger) -> Result<(), ControlError> {
-        if self.comments.len() > MAX_REVIEW_COMMENTS {
-            return Err(ControlError::Capacity);
-        }
         let mut ids = BTreeSet::new();
         for comment in &self.comments {
             comment.anchor.validate()?;

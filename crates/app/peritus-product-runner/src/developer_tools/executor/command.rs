@@ -14,7 +14,7 @@ use crate::developer_tools::{
 };
 
 const DEFAULT_COMMAND_TIMEOUT_SECONDS: u64 = 120;
-const MAX_COMMAND_TIMEOUT_SECONDS: u64 = 600;
+const MAX_COMMAND_TIMEOUT_SECONDS: u64 = u64::MAX / 1_000;
 const DEFAULT_TERMINAL_ROWS: u64 = 24;
 const DEFAULT_TERMINAL_COLUMNS: u64 = 80;
 
@@ -164,13 +164,15 @@ impl WorkspaceDeveloperTools {
             })?,
             _ => self.root.clone(),
         };
-        let requested_timeout_seconds = bounded_u64(
-            arguments,
-            "timeout_seconds",
-            DEFAULT_COMMAND_TIMEOUT_SECONDS,
-            1,
-            MAX_COMMAND_TIMEOUT_SECONDS,
-        );
+        let requested_timeout_seconds = match arguments.get("timeout_seconds") {
+            None => DEFAULT_COMMAND_TIMEOUT_SECONDS,
+            Some(value) => value
+                .as_u64()
+                .filter(|seconds| (1..=MAX_COMMAND_TIMEOUT_SECONDS).contains(seconds))
+                .ok_or_else(|| {
+                    tool("timeout_seconds must be a positive integer representable in milliseconds")
+                })?,
+        };
         let allowance = self
             .command_budget
             .as_ref()
@@ -211,13 +213,12 @@ fn annotate_result(
     result.insert("deadline_limited".to_owned(), Value::Bool(command.deadline_limited));
     result.insert(
         "remaining_product_seconds".to_owned(),
-        Value::from(
-            tools
-                .command_budget
-                .as_ref()
-                .ok_or_else(|| tool("writable tools have no command budget"))?
-                .remaining_seconds(),
-        ),
+        tools
+            .command_budget
+            .as_ref()
+            .ok_or_else(|| tool("writable tools have no command budget"))?
+            .remaining_seconds()
+            .map_or(Value::Null, Value::from),
     );
     result.insert(
         "completion_reserve_seconds".to_owned(),

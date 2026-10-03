@@ -6,6 +6,8 @@ use std::{
 };
 
 use peritus_gates::{GateExecutionRecord, TargetGatePlan, TargetGateReport};
+use peritus_types::Sha256Digest;
+use sha2::{Digest as _, Sha256};
 
 mod artifact_csv;
 mod deliverable_inventory;
@@ -25,6 +27,15 @@ use crate::{
 pub struct GateReport {
     pub report: TargetGateReport,
     pub output: String,
+    pub(crate) execution_context: Sha256Digest,
+}
+
+impl GateReport {
+    /// Host-observed inputs that can change how the exact gate plan executes.
+    #[must_use]
+    pub const fn execution_context(&self) -> Sha256Digest {
+        self.execution_context
+    }
 }
 
 pub fn run_with_ownership(
@@ -44,20 +55,24 @@ fn run_scoped(
     delivery_scope: ProductDeliveryScope,
     transcript: &str,
 ) -> Result<GateReport, ProductRunnerError> {
-    let explicit_paths = explicit_paths::run(root, transcript, &changed_paths);
-    let deliverable_inventory = deliverable_inventory::run(root, transcript, &changed_paths);
-    let plan = TargetGatePlan::discover(root, changed_paths).map_err(|error| {
-        ProductRunnerError::new(
-            ProductRunnerErrorKind::Gate,
-            "plan exact-target gates",
-            error.to_string(),
-        )
-    })?;
+    let path_analysis = explicit_paths::analyze(root, transcript);
+    let requested_artifacts = path_analysis.required_outputs();
+    let explicit_paths = explicit_paths::run_analyzed(root, &path_analysis, &changed_paths);
+    let deliverable_inventory = deliverable_inventory::run(&path_analysis, &changed_paths);
+    let plan =
+        TargetGatePlan::discover(root, changed_paths, &requested_artifacts).map_err(|error| {
+            ProductRunnerError::new(
+                ProductRunnerErrorKind::Gate,
+                "plan exact-target gates",
+                error.to_string(),
+            )
+        })?;
+    let execution_context = execution_context(root, &plan);
     let mut records = Vec::new();
     for specification in plan.commands() {
         if specification.program() == "peritus-internal" {
             let record = match specification.arguments().first().map(String::as_str) {
-                Some("source-layout") => source_layout::run(
+                Some("source-readability") => source_layout::run(
                     root,
                     specification.project().root(),
                     plan.changed_paths(),
@@ -131,7 +146,68 @@ fn run_scoped(
         vec![explicit_paths, deliverable_inventory],
     );
     let output = render(&report, delivery_scope);
-    Ok(GateReport { report, output })
+    Ok(GateReport { report, output, execution_context })
+}
+
+fn execution_context(root: &Path, plan: &TargetGatePlan) -> Sha256Digest {
+    let mut hasher = Sha256::new();
+    hasher.update(b"peritus-gate-execution-context-v1\0");
+    hash_bytes(&mut hasher, std::env::consts::OS.as_bytes());
+    hash_bytes(&mut hasher, std::env::consts::ARCH.as_bytes());
+    hash_bytes(&mut hasher, root.as_os_str().as_encoded_bytes());
+    let mut environment = std::env::vars_os().collect::<Vec<_>>();
+    environment.sort_by(|left, right| {
+        left.0
+            .as_encoded_bytes()
+            .cmp(right.0.as_encoded_bytes())
+            .then_with(|| left.1.as_encoded_bytes().cmp(right.1.as_encoded_bytes()))
+    });
+    for (name, value) in environment {
+        hasher.update([0]);
+        hash_bytes(&mut hasher, name.as_encoded_bytes());
+        hash_bytes(&mut hasher, value.as_encoded_bytes());
+    }
+    for command in plan.commands() {
+        hasher.update([1]);
+        hash_bytes(&mut hasher, command.display().as_bytes());
+        hash_bytes(&mut hasher, command.current_dir().as_os_str().as_encoded_bytes());
+        observe_program(&mut hasher, root, command.current_dir(), command.program());
+    }
+    Sha256Digest::new(hasher.finalize().into())
+}
+
+fn observe_program(hasher: &mut Sha256, root: &Path, current_dir: &Path, program: &str) {
+    let resolved = if Path::new(program).components().count() > 1 {
+        Some(root.join(current_dir).join(program))
+    } else {
+        std::env::var_os("PATH").and_then(|path| {
+            std::env::split_paths(&path)
+                .map(|directory| directory.join(program))
+                .find(|candidate| candidate.is_file())
+        })
+    };
+    let Some(path) = resolved else {
+        hasher.update([0]);
+        hash_bytes(hasher, program.as_bytes());
+        return;
+    };
+    hasher.update([1]);
+    hash_bytes(hasher, path.as_os_str().as_encoded_bytes());
+    match std::fs::read(&path) {
+        Ok(bytes) => {
+            hasher.update([1]);
+            hash_bytes(hasher, &bytes);
+        }
+        Err(error) => {
+            hasher.update([0]);
+            hash_bytes(hasher, error.to_string().as_bytes());
+        }
+    }
+}
+
+fn hash_bytes(hasher: &mut Sha256, bytes: &[u8]) {
+    hasher.update(u64::try_from(bytes.len()).unwrap_or(u64::MAX).to_le_bytes());
+    hasher.update(bytes);
 }
 
 #[allow(
@@ -182,108 +258,4 @@ fn render(report: &TargetGateReport, delivery_scope: ProductDeliveryScope) -> St
 }
 
 #[cfg(test)]
-mod tests {
-    use std::fs;
-
-    use super::*;
-
-    #[test]
-    fn artifact_layout_checks_candidate_sources_without_rejecting_untouched_vendor_code() {
-        let root = tempfile::tempdir().expect("root");
-        fs::write(
-            root.path().join("peritus-workspace.toml"),
-            "schema_version = 1\nkind = \"artifact\"\n",
-        )
-        .expect("artifact marker");
-        fs::create_dir_all(root.path().join("third_party")).expect("vendor directory");
-        fs::write(root.path().join("third_party/legacy.c"), "line\n".repeat(700))
-            .expect("legacy source");
-        fs::write(root.path().join("vm.js"), "const ready = true;\n").expect("candidate source");
-
-        let report = run_scoped(
-            root.path(),
-            vec![PathBuf::from("third_party"), PathBuf::from("vm.js")],
-            None,
-            ProductDeliveryScope::WorkspaceChanges,
-            "",
-        )
-        .expect("gate report");
-
-        assert!(report.report.passed(), "{}", report.output);
-        assert!(report.output.contains("Scanned 1 changed source file"));
-        assert!(!report.output.contains("legacy.c"));
-    }
-
-    #[test]
-    fn nested_rust_target_cannot_be_satisfied_by_unrelated_root_tests() {
-        let root = tempfile::tempdir().expect("root");
-        fs::write(
-            root.path().join("Cargo.toml"),
-            "[workspace]\nmembers = [\"root-crate\"]\nresolver = \"2\"\n",
-        )
-        .expect("root manifest");
-        fs::create_dir_all(root.path().join("root-crate/src")).expect("root crate");
-        fs::write(
-            root.path().join("root-crate/Cargo.toml"),
-            "[package]\nname = \"root-crate\"\nversion = \"0.1.0\"\nedition = \"2024\"\n",
-        )
-        .expect("manifest");
-        fs::write(root.path().join("root-crate/src/lib.rs"), "pub fn ok() -> bool { true }\n")
-            .expect("source");
-        fs::create_dir_all(root.path().join("game/src")).expect("game");
-        fs::write(
-            root.path().join("game/Cargo.toml"),
-            "[package]\nname = \"game\"\nversion = \"0.1.0\"\nedition = \"2024\"\n",
-        )
-        .expect("game manifest");
-        fs::write(root.path().join("game/src/main.rs"), "fn main() { assert!(true); }\n")
-            .expect("game source");
-
-        let report = run_scoped(
-            root.path(),
-            vec![PathBuf::from("game/Cargo.toml"), PathBuf::from("game/src/main.rs")],
-            None,
-            ProductDeliveryScope::WorkspaceChanges,
-            "",
-        )
-        .expect("gate report");
-        let nested_manifest =
-            PathBuf::from("game").join("Cargo.toml").to_string_lossy().into_owned();
-        let root_manifest =
-            PathBuf::from("root-crate").join("Cargo.toml").to_string_lossy().into_owned();
-
-        assert!(!report.report.passed());
-        assert!(report.output.contains("--manifest-path"));
-        assert!(report.output.contains(&nested_manifest));
-        assert!(!report.output.contains(&root_manifest));
-    }
-
-    #[test]
-    fn explicit_nested_output_cannot_be_satisfied_at_the_workspace_root() {
-        let root = tempfile::tempdir().expect("root");
-        fs::write(
-            root.path().join("peritus-workspace.toml"),
-            "schema_version = 1\nkind = \"artifact\"\n",
-        )
-        .expect("artifact marker");
-        fs::write(root.path().join("main.py.c"), "int main(void) { return 0; }\n")
-            .expect("misplaced candidate");
-        let transcript =
-            format!("Write a single file in {}/polyglot/main.py.c.", root.path().display());
-
-        let report = run_scoped(
-            root.path(),
-            vec![PathBuf::from("main.py.c")],
-            None,
-            ProductDeliveryScope::WorkspaceChanges,
-            &transcript,
-        )
-        .expect("gate report");
-
-        assert!(!report.report.passed());
-        assert!(report.output.contains("[Explicit output paths]"));
-        assert!(report.output.contains("required explicit output path is missing"));
-        assert!(report.output.contains("candidate main.py.c has the requested basename"));
-        assert!(report.output.contains("Exact-target acceptance: FAIL"));
-    }
-}
+mod tests;

@@ -47,7 +47,7 @@ pub fn input(
         command_runtime: super::support::command_runtime(state.path(), repository.path(), run_id),
         finding_state: String::new(),
         task: TASK.to_owned(),
-        max_elapsed,
+        max_elapsed: Some(max_elapsed),
         delivery_scope: ProductDeliveryScope::WorkspaceChanges,
         conversation: Arc::new(FixedConversation(format!("User:\n{TASK}"))),
         providers,

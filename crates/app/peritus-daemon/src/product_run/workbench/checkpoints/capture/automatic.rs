@@ -50,12 +50,14 @@ impl ProductRunService {
     ) -> Result<u64, Error> {
         let query = public_query(conversation, workspace)?;
         let checkpoint = automatic_checkpoint_id(run, path, kind)?;
-        let record = self
-            .with_controls(false, |store| store.load(conversation))?
-            .ok_or(ControlError::NotFound)?;
+        let (record, existing) = self.with_controls(false, |store| {
+            let record = store.load(conversation)?.ok_or(ControlError::NotFound)?;
+            let existing = store.load_checkpoint(conversation, checkpoint)?;
+            Ok((record, existing))
+        })?;
         check_automatic_record(&record, actor, workspace)?;
-        if let Some(existing) = record.checkpoints().iter().find(|value| value.id() == checkpoint) {
-            validate_automatic_checkpoint(existing, run, path, kind)?;
+        if let Some(existing) = existing {
+            validate_automatic_checkpoint(&existing, run, path, kind)?;
             return Ok(record.revision());
         }
         if expected_revision.is_some_and(|expected| expected != record.revision()) {
@@ -92,7 +94,7 @@ impl ProductRunService {
             actor,
             workspace,
             record.revision(),
-            ControlIntent::CreateCheckpoint(value),
+            ControlIntent::CreateAutomaticCheckpoint(value),
         );
         self.with_controls(false, |store| store.accept_checkpoint(&operation, &bodies))
             .map(|receipt| receipt.accepted_revision())
@@ -117,17 +119,15 @@ impl ProductRunService {
             WorkspaceId::new(*start.workspace_bytes()).map_err(|_| ControlError::InvalidInput)?;
         check_automatic_record(&record, actor, workspace)?;
         let checkpoint_id = automatic_checkpoint_id(run, path, kind)?;
-        let checkpoint = record
-            .checkpoints()
-            .iter()
-            .find(|value| value.id() == checkpoint_id)
+        let checkpoint = self
+            .with_controls(false, |store| store.load_checkpoint(conversation, checkpoint_id))?
             .ok_or(ControlError::NotFound)?;
-        validate_automatic_checkpoint(checkpoint, run, path, kind)?;
+        validate_automatic_checkpoint(&checkpoint, run, path, kind)?;
         let versions = match kind {
             WorkspaceMutationKind::File => vec![(path.to_owned(), owned_postchange)],
             WorkspaceMutationKind::EmptyDirectory => Vec::new(),
         };
-        self.seal_checkpoint_versions(start, run, &record, checkpoint, versions)
+        self.seal_checkpoint_versions(start, run, &checkpoint, versions)
     }
 
     pub(crate) fn seal_latest_checkpoint(
@@ -140,7 +140,9 @@ impl ProductRunService {
             .with_controls(false, |store| store.load(start.conversation()))?
             .ok_or(ControlError::NotFound)?;
         let Some(checkpoint) = record.checkpoints().iter().rev().find(|checkpoint| {
-            checkpoint.sealed_by_run().is_none() && checkpoint.automatic_run().is_none()
+            checkpoint.sealed_by_run().is_none()
+                && checkpoint.automatic_run().is_none()
+                && checkpoint.paths().iter().all(|path| path.owned_postchange().is_none())
         }) else {
             return Ok(());
         };
@@ -162,7 +164,6 @@ impl ProductRunService {
         self.seal_checkpoint_versions(
             start,
             run,
-            record,
             checkpoint,
             captured.into_iter().map(|path| (path.path, path.version)).collect(),
         )
@@ -172,7 +173,6 @@ impl ProductRunService {
         &self,
         start: &ControlOperation,
         run: RunId,
-        record: &ConversationRecord,
         checkpoint: &UserCheckpoint,
         versions: Vec<(String, CheckpointFileVersion)>,
     ) -> Result<(), Error> {
@@ -180,30 +180,65 @@ impl ProductRunService {
         let actor = ActorId::new(*start.actor_bytes()).map_err(|_| ControlError::InvalidInput)?;
         let workspace =
             WorkspaceId::new(*start.workspace_bytes()).map_err(|_| ControlError::InvalidInput)?;
-        let operation = ControlOperation::new(
-            OperationId::new(seal_operation_id(checkpoint.id().as_bytes(), run, &versions))?,
-            conversation,
-            actor,
-            workspace,
-            record.revision(),
-            ControlIntent::SealCheckpoint {
-                checkpoint: checkpoint.id(),
-                run: run.into_bytes(),
-                versions,
-            },
-        );
-        self.with_controls(false, |store| store.accept(&operation)).map(|_| ())
+        self.with_controls(false, |store| {
+            let current = store.load(conversation)?.ok_or(ControlError::NotFound)?;
+            let retained =
+                current.checkpoints().iter().find(|value| value.id() == checkpoint.id()).cloned();
+            let checkpoint = match retained.as_ref() {
+                Some(value) => value.clone(),
+                None => store
+                    .load_checkpoint(conversation, checkpoint.id())?
+                    .ok_or(ControlError::NotFound)?,
+            };
+            if checkpoint.sealed_by_run() == Some(run.into_bytes())
+                && checkpoint.paths().len() == versions.len()
+                && checkpoint.paths().iter().zip(&versions).all(|(path, (name, version))| {
+                    path.path() == name && path.owned_postchange() == Some(*version)
+                })
+            {
+                return Ok(());
+            }
+            let intent = if retained.is_some() {
+                ControlIntent::SealCheckpoint {
+                    checkpoint: checkpoint.id(),
+                    run: run.into_bytes(),
+                    versions: versions.clone(),
+                }
+            } else {
+                ControlIntent::SealAutomaticCheckpoint {
+                    checkpoint: checkpoint.id(),
+                    run: run.into_bytes(),
+                    versions: versions.clone(),
+                }
+            };
+            let operation = ControlOperation::new(
+                OperationId::new(seal_operation_id(
+                    checkpoint.id().as_bytes(),
+                    run,
+                    current.revision(),
+                    &versions,
+                ))?,
+                conversation,
+                actor,
+                workspace,
+                current.revision(),
+                intent,
+            );
+            store.accept(&operation).map(|_| ())
+        })
     }
 }
 
 fn seal_operation_id(
     checkpoint: &[u8; 16],
     run: RunId,
+    revision: u64,
     versions: &[(String, CheckpointFileVersion)],
 ) -> [u8; 16] {
-    let mut bytes = b"peritus-workbench-checkpoint-seal-v2\0".to_vec();
+    let mut bytes = b"peritus-workbench-checkpoint-seal-v3\0".to_vec();
     bytes.extend_from_slice(checkpoint);
     bytes.extend_from_slice(run.as_bytes());
+    bytes.extend_from_slice(&revision.to_le_bytes());
     for (path, version) in versions {
         bytes.extend_from_slice(&(path.len() as u64).to_le_bytes());
         bytes.extend_from_slice(path.as_bytes());

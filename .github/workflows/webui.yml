@@ -63,8 +63,6 @@ jobs:
         run: cargo build --locked --package peritus-web --package peritus-cli
       - name: Install browser and system dependencies
         run: npm --prefix webui exec --offline -- playwright install --with-deps chromium
-      - name: Prepare isolated fixture directory
-        run: mkdir -p /tmp/opencode
       - name: Verify browser, Git, and CLI integration
         env:
           PERITUS_BIN: ${{ github.workspace }}/target/debug/peritus

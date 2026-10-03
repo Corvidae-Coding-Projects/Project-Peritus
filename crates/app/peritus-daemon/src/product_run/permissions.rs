@@ -92,6 +92,9 @@ impl ProductRunService {
         actor: ActorId,
         request: &AppRequestPayload,
     ) -> Result<(), AppProtocolError> {
+        if let AppRequestPayload::TerminalInput(input) = request {
+            self.authorize_preview_terminal_input(actor, input.binding().process_id())?;
+        }
         let Some((query, required)) = request_permissions(request) else {
             return Ok(());
         };
@@ -192,22 +195,19 @@ impl ProductRunService {
             .read()
             .map_err(|_| Error::Corrupt("product run registry lock poisoned"))?;
         let record = records.get(&run).ok_or(ControlError::NotFound)?;
-        let Some(start) =
-            record.interaction.as_ref().and_then(|options| options.workbench.as_ref())
-        else {
-            // Ordinary product runs predate workbench policy and retain the shared
-            // ConversationView default. Only a present governed binding may narrow it.
-            return Ok(HostPermissions::all());
-        };
-        let workspace =
-            WorkspaceId::new(*start.workspace_bytes()).map_err(|_| ControlError::InvalidInput)?;
-        let conversation = start.conversation();
+        let workspace = record.request.workspace_id();
+        let conversation = record.interaction.workbench.conversation();
         let host = self.inner.host_permissions.get(workspace)?.permissions;
         drop(records);
-        self.with_controls(false, |store| {
-            let host = branch_permissions(host, store.branch(conversation)?.as_ref());
-            Ok(store.permission_policy(workspace)?.effective_permissions(host))
-        })
+        let owner = self
+            .inner
+            .controls
+            .lock()
+            .map_err(|_| Error::Corrupt("control owner lock poisoned"))?;
+        let store = owner.as_ref().ok_or(ControlError::NotFound)?;
+        let branch = store.branch(conversation)?;
+        let host = branch_permissions(host, branch.as_ref());
+        Ok(store.permission_policy(workspace)?.effective_permissions(host))
     }
 }
 
@@ -350,9 +350,8 @@ mod tests {
             WorkbenchRewindRequest::new(query, 1, ControlOperationId::new([3; 16]).unwrap())
                 .unwrap();
         if mode != WorkbenchRewindMode::FilesOnly {
-            request = request
-                .with_branch(mode, PublicConversationId::new([4; 16]).unwrap(), None)
-                .unwrap();
+            request =
+                request.with_branch(mode, PublicConversationId::new([4; 16]).unwrap()).unwrap();
         }
         WorkbenchIntent::ApplyRewind(
             WorkbenchRewindPreview::new(request, Vec::new(), Vec::new(), Vec::new()).unwrap(),

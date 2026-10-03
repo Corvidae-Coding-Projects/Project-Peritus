@@ -1,13 +1,66 @@
-//! Exact integration-target partition for the durable product runner's bounded CI jobs.
+//! Exhaustive runner test partitions within the retained hosted-job deadline.
 
+use super::Operation;
 use crate::error::XtaskError;
 use crate::model::{CargoMetadata, CargoTarget};
 use std::collections::BTreeSet;
+use std::{path::Path, process::Command};
 
 pub(super) const PACKAGE: &str = "peritus-product-runner";
 pub(super) const RECOVERY_TESTS: &[&str] =
     &["checkpoint_resume", "in_place_recovery", "provider_failover", "role_recovery"];
 pub(super) const PRODUCT_TESTS: &[&str] = &["external_effects", "production_composition"];
+
+const CANDIDATE: &str = "candidate::";
+const LOCAL_CONTEXT: &str = "local_context::";
+
+pub(super) fn library_filters(operation: Operation, windows: bool) -> Vec<&'static str> {
+    if !windows && operation != Operation::TestRunnerCandidate {
+        return Vec::new();
+    }
+    match operation {
+        Operation::Test => vec!["--skip", CANDIDATE, "--skip", LOCAL_CONTEXT],
+        Operation::TestRunnerCandidate => vec![CANDIDATE, "--skip", LOCAL_CONTEXT],
+        Operation::TestRunnerProduct => vec![LOCAL_CONTEXT],
+        _ => Vec::new(),
+    }
+}
+
+fn library_command(root: &Path, operation: Operation, windows: bool) -> Option<Command> {
+    if !windows || operation != Operation::TestRunnerProduct {
+        return None;
+    }
+    let mut command = Command::new("cargo");
+    command.current_dir(root).args([
+        "test",
+        "--locked",
+        "--package",
+        PACKAGE,
+        "--lib",
+        "--all-features",
+        "--",
+        "--test-threads=1",
+    ]);
+    command.args(library_filters(operation, windows));
+    Some(command)
+}
+
+pub(super) fn run_library_partition(
+    root: &Path,
+    operation: Operation,
+    windows: bool,
+) -> Result<(), XtaskError> {
+    let Some(mut command) = library_command(root, operation, windows) else { return Ok(()) };
+    let status = command
+        .status()
+        .map_err(|error| XtaskError::io("execute runner library partition from", root, error))?;
+    if !status.success() {
+        return Err(XtaskError::metadata(format!(
+            "runner library partition {operation:?} failed with {status}"
+        )));
+    }
+    Ok(())
+}
 
 pub(super) fn validate(cargo: &CargoMetadata) -> Result<(), XtaskError> {
     let package =
@@ -34,11 +87,70 @@ fn validate_targets(targets: &[CargoTarget]) -> Result<(), XtaskError> {
 
 #[cfg(test)]
 mod tests {
-    use super::{PACKAGE, PRODUCT_TESTS, RECOVERY_TESTS, validate_targets};
+    use super::{
+        PACKAGE, PRODUCT_TESTS, RECOVERY_TESTS, library_command, library_filters, validate_targets,
+    };
     use crate::ci_shard::{Operation, cargo_command};
     use crate::model::CargoTarget;
     use std::collections::BTreeSet;
     use std::path::Path;
+
+    #[test]
+    fn windows_library_namespaces_execute_once_across_existing_jobs() {
+        let operations =
+            [Operation::Test, Operation::TestRunnerCandidate, Operation::TestRunnerProduct];
+        for name in [
+            "candidate::managed::tests::restore",
+            "local_context::tests::capacity",
+            "local_context::candidate::future_test",
+            "developer_tools::tests::future_test",
+            "future_module::test",
+        ] {
+            let owners = operations
+                .iter()
+                .filter(|operation| matches_filters(name, &library_filters(**operation, true)))
+                .count();
+            assert_eq!(owners, 1, "test must execute exactly once: {name}");
+        }
+        assert!(library_filters(Operation::Test, false).is_empty());
+        assert!(library_command(Path::new("."), Operation::TestRunnerRecovery, false).is_none());
+        assert!(library_command(Path::new("."), Operation::TestRunnerProduct, false).is_none());
+        assert!(library_command(Path::new("."), Operation::Test, true).is_none());
+        assert!(library_command(Path::new("."), Operation::TestRunnerRecovery, true).is_none());
+        assert!(library_command(Path::new("."), Operation::TestRunnerCandidate, true).is_none());
+        for command in [
+            library_command(Path::new("."), Operation::TestRunnerProduct, true).unwrap(),
+            cargo_command(Path::new("."), Operation::TestRunnerCandidate, &[PACKAGE]),
+        ] {
+            let arguments =
+                command.get_args().map(|value| value.to_string_lossy()).collect::<Vec<_>>();
+            for required in ["--locked", "--lib", "--all-features", "--test-threads=1"] {
+                assert!(arguments.iter().any(|argument| argument == required));
+            }
+            assert!(!arguments.iter().any(|argument| matches!(
+                argument.as_ref(),
+                "--ignored" | "--test" | "--all-targets"
+            )));
+        }
+        assert_eq!(Operation::parse("test-runner-candidate"), Some(Operation::TestRunnerCandidate));
+        let candidate = arguments(Operation::TestRunnerCandidate);
+        assert!(candidate.iter().any(|argument| argument == "candidate::"));
+    }
+
+    fn matches_filters(name: &str, filters: &[&str]) -> bool {
+        let mut positive = None;
+        let mut filters = filters.iter();
+        while let Some(filter) = filters.next() {
+            if *filter == "--skip" {
+                if name.contains(filters.next().unwrap()) {
+                    return false;
+                }
+            } else {
+                positive = Some(*filter);
+            }
+        }
+        positive.is_none_or(|filter| name.contains(filter))
+    }
 
     fn target(name: &str) -> CargoTarget {
         CargoTarget {

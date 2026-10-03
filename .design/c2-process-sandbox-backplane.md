@@ -264,6 +264,11 @@ or unverifiable. Results are already terminal, live-owned, absent-unobserved, or
 Only an exact live owned tree can be signalled during recovery. Absence without a committed
 terminal observation remains non-success. Corrupt or mismatched records are quarantined.
 
+Result knowledge and resource ownership are separate durable facts. An exact-absence observation
+can settle tree and support-task ownership without manufacturing an exit result. That record remains
+absent-unobserved, but it no longer blocks daemon shutdown or holder quiescence. One manifest-owned
+predicate governs shutdown counts, holder inspection, and bounded settled-record retention.
+
 ### R-C2-015 — holder-quiescence refinement
 
 The durable ownership registry indexes every process and support task by exact owner and optional

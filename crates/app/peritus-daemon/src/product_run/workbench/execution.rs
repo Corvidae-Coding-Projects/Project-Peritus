@@ -3,12 +3,17 @@
 use super::{
     ProductRunService, domain_operation, error_response, receipt_projection, resolve_user_operation,
 };
-use crate::product_run::{ProductRunServiceError, interaction::InteractionOptions};
-use peritus_app_protocol::{
-    AppResponsePayload, ProductRunRequest, WorkbenchCommand, WorkbenchIntent,
+use crate::product_run::{
+    ProductRunRequest, ProductRunServiceError, interaction::InteractionOptions,
 };
-use peritus_product_runner::control::{ControlError, ConversationRecord};
+use peritus_app_protocol::{AppResponsePayload, WorkbenchCommand, WorkbenchIntent};
+use peritus_product_runner::control::{ControlError, ControlReceipt, ConversationRecord};
 use peritus_types::ActorId;
+
+enum Admission {
+    Existing(ControlReceipt),
+    Fresh { title: String },
+}
 
 impl ProductRunService {
     pub(super) async fn start_workbench(
@@ -30,7 +35,7 @@ impl ProductRunService {
         };
         let admission = self.with_controls(false, |store| {
             if let Some(receipt) = resolve_user_operation(store, &operation)? {
-                return Ok(Some(receipt));
+                return Ok(Admission::Existing(receipt));
             }
             let current = store.load(operation.conversation())?.ok_or(ControlError::NotFound)?;
             if let Some(branch) = store.branch(operation.conversation())?
@@ -40,34 +45,36 @@ impl ProductRunService {
             }
             // Pure preflight before creating any run record; the actual publication checks CAS again.
             ConversationRecord::apply(Some(&current), &operation)?;
-            Ok(None)
+            Ok(Admission::Fresh { title: current.title().to_owned() })
         });
-        match admission {
-            Ok(Some(receipt)) => {
+        let title = match admission {
+            Ok(Admission::Existing(receipt)) => {
                 return receipt_projection(command, &receipt)
                     .map_or_else(error_response, AppResponsePayload::WorkbenchReceipt);
             }
-            Ok(None) => {}
+            Ok(Admission::Fresh { title }) => title,
             Err(error) => return error_response(error),
-        }
+        };
         // All governing user content comes from the captured ledger at D0's exact request boundary.
-        // Keeping this immutable label inert prevents withdrawn/editable input leaking through the
-        // legacy initial-task path while a request is rebuilt.
+        // The conversation title is presentation metadata; the fixed execution directive prevents
+        // renamed, withdrawn, or edited display text from becoming model input.
         let request = match ProductRunRequest::new(
             settings.run(),
             command.query().workspace(),
             settings.providers(),
             "Execute the selected durable workbench inputs.".to_owned(),
-        ) {
+        )
+        .and_then(|request| request.with_display_task(title))
+        {
             Ok(request) => request,
             Err(_) => return ProductRunServiceError::InvalidMessage.response(),
         };
-        let mut options = InteractionOptions::new(settings.mode(), settings.models().clone());
-        options.workbench = Some(operation.clone());
-        if let Err(error) = self.validate_models(settings.providers(), &options).await {
+        let options =
+            InteractionOptions::new(operation.clone(), settings.mode(), settings.models().clone());
+        if let Err(error) = self.validate_models(settings.providers(), &options.models).await {
             return error.response();
         }
-        match self.start_configured(request, Some(options)).await {
+        match self.start_configured(request, options).await {
             Ok(_) => self
                 .with_controls(false, |store| {
                     resolve_user_operation(store, &operation)?
@@ -87,29 +94,31 @@ fn branch_execution_allowed(
 ) -> bool {
     use peritus_product_runner::control::{ControlIntent, ConversationBranchMode};
 
-    match (branch.mode(), branch.goal_revision(), branch.allocation(), intent) {
+    match (branch.mode(), branch.goal_revision(), intent) {
         (
             ConversationBranchMode::ReadOnlyCurrentWorkspace,
             0,
-            None,
             ControlIntent::StartExecution { .. },
         ) => mode == peritus_app_protocol::ProductInteractionMode::Chat,
         (
             ConversationBranchMode::ReadOnlyCurrentWorkspace,
             goal_revision,
-            Some(allocation),
-            ControlIntent::StartGoal { budget, .. },
+            ControlIntent::StartGoal { objective, criteria, .. },
         ) => {
             goal_revision != 0
                 && mode == peritus_app_protocol::ProductInteractionMode::Chat
-                && allocation.goal_budget() == *budget
+                && branch.objective() == Some(objective.as_str())
+                && branch.criteria() == criteria
         }
         (
             ConversationBranchMode::IsolatedWritableWorkspace,
             goal_revision,
-            Some(allocation),
-            ControlIntent::StartGoal { budget, .. },
-        ) => goal_revision != 0 && allocation.goal_budget() == *budget,
+            ControlIntent::StartGoal { objective, criteria, .. },
+        ) => {
+            goal_revision != 0
+                && branch.objective() == Some(objective.as_str())
+                && branch.criteria() == criteria
+        }
         _ => false,
     }
 }
@@ -119,13 +128,12 @@ mod tests {
     use super::*;
     use peritus_app_protocol::ProductInteractionMode;
     use peritus_product_runner::control::{
-        ChildBudgetAllocation, ControlIntent, ControlText, ConversationBranch,
-        ConversationBranchMode, ConversationId, GoalBudget, GoalCriterion, GoalCriterionKind,
-        OperationId,
+        ControlIntent, ControlText, ConversationBranch, ConversationBranchMode, ConversationId,
+        GoalCriterion, GoalCriterionKind, OperationId,
     };
     use peritus_types::WorkspaceId;
 
-    fn branch(goal_revision: u64, allocation: Option<ChildBudgetAllocation>) -> ConversationBranch {
+    fn branch(goal_revision: u64) -> ConversationBranch {
         ConversationBranch::new(
             OperationId::new([1; 16]).expect("operation"),
             ConversationId::new([2; 16]).expect("source"),
@@ -152,12 +160,11 @@ mod tests {
                     .expect("criterion"),
                 ]
             },
-            allocation,
         )
         .expect("branch")
     }
 
-    fn start_goal(budget: GoalBudget) -> ControlIntent {
+    fn start_goal() -> ControlIntent {
         ControlIntent::StartGoal {
             run: [6; 16],
             settings_digest: [7; 32],
@@ -170,7 +177,6 @@ mod tests {
                 )
                 .expect("criterion"),
             ],
-            budget,
             now_unix_millis: 1,
         }
     }
@@ -178,24 +184,19 @@ mod tests {
     #[test]
     fn read_only_branch_execution_is_exactly_chat_and_governance_shaped() {
         let execution = ControlIntent::StartExecution { run: [8; 16], settings_digest: [9; 32] };
-        let ungoverned = branch(0, None);
+        let ungoverned = branch(0);
         assert!(branch_execution_allowed(&ungoverned, &execution, ProductInteractionMode::Chat));
         assert!(!branch_execution_allowed(&ungoverned, &execution, ProductInteractionMode::Build));
 
-        let allocation = ChildBudgetAllocation::new(10, 2, 3, 40).expect("allocation");
-        let governed = branch(1, Some(allocation));
-        let exact_goal = start_goal(allocation.goal_budget());
+        let governed = branch(1);
+        let exact_goal = start_goal();
         assert!(branch_execution_allowed(&governed, &exact_goal, ProductInteractionMode::Chat));
         assert!(!branch_execution_allowed(&governed, &exact_goal, ProductInteractionMode::Build));
         assert!(!branch_execution_allowed(&governed, &execution, ProductInteractionMode::Chat));
-        let wrong_goal = start_goal(GoalBudget::new(Some(11), Some(2), Some(3), Some(40)).unwrap());
+        let mut wrong_goal = start_goal();
+        if let ControlIntent::StartGoal { objective, .. } = &mut wrong_goal {
+            *objective = ControlText::new("Different objective".to_owned()).unwrap();
+        }
         assert!(!branch_execution_allowed(&governed, &wrong_goal, ProductInteractionMode::Chat));
-
-        let legacy_unallocated_governed = branch(1, None);
-        assert!(!branch_execution_allowed(
-            &legacy_unallocated_governed,
-            &execution,
-            ProductInteractionMode::Chat
-        ));
     }
 }

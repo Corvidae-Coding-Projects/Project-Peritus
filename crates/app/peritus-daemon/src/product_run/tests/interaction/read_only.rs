@@ -47,14 +47,14 @@ async fn read_only_write_attempt(mode: ProductInteractionMode) {
     )
     .expect("request");
     service
-        .interact(ProductInteractionRequest::new(request, mode, ProductRoleModels::default()))
+        .start_interaction(request, mode, ProductRoleModels::default())
         .await
         .expect("start plan");
     let _ = wait_for_terminal(&service, run_id).await;
     assert_eq!(fs::read(repository.path().join("src/lib.rs")).expect("retained source"), original);
     assert!(!repository.path().join(".design").exists());
     let snapshot =
-        service.query_interaction(ProductRunConversationQuery::new(run_id)).expect("activity");
+        service.query_interaction(ProductInteractionQuery::new(run_id)).expect("activity");
     assert!(
         snapshot.activities().iter().all(|activity| !activity.detail().contains("unauthorized"))
     );

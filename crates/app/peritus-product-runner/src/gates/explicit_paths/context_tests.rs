@@ -3,6 +3,33 @@
 use super::*;
 
 #[test]
+fn version_changes_and_decimal_values_are_not_missing_file_deliverables() {
+    let root = tempfile::tempdir().expect("root");
+    for transcript in [
+        "Implement the plan for version 2.0 and run the tests.\nChange of mind: use version 2.1 instead.",
+        "Update the file app.py to version `v2.1.0-rc.1`.",
+        "Write a function that adds 0.5 to -1.25.",
+        "Update the server address to 127.0.0.1.",
+    ] {
+        assert!(
+            required_outputs(root.path(), transcript)
+                .iter()
+                .all(|path| path == Path::new("app.py")),
+            "{transcript}"
+        );
+    }
+    for transcript in ["Create the file 2.0.", "Write a file named `2.0`.", "Output files:\n- 2.0"]
+    {
+        assert_eq!(
+            required_outputs(root.path(), transcript),
+            vec![PathBuf::from("2.0")],
+            "{transcript}"
+        );
+        assert_eq!(run(root.path(), transcript, &[]).exit_code, Some(1));
+    }
+}
+
+#[test]
 fn arithmetic_addition_does_not_make_a_later_example_input_an_output() {
     let root = tempfile::tempdir().expect("root");
     fs::write(root.path().join("eval.scm"), "candidate").expect("candidate");

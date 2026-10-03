@@ -13,15 +13,26 @@ Execution plans project the checked sandbox's terminal permissions, output/event
 environment-value provenance, resource ceilings, and admitted backend identity into the plan
 digest. Linux local execution samples the owned process group for CPU, memory, process count, open
 handles, and disk growth, terminates on observed overruns, and records sampled fidelity honestly.
+Disk sampling tolerates descendant files and directories removed between observations, as happens
+during build cleanup. Missing workspace roots and other observation errors still fail the sample.
 Other platforms may run separately authorized raw-effect/reference plans with unsupported resource
 observations, but a backend that claims supervisor or hard enforcement is rejected before durable
 consumption when that support is unavailable.
+
+Windows host run accounting queries its own current resident working set directly through the
+read-only C2 operating-system boundary. It does not launch PowerShell or depend on executable
+search paths. This host measurement does not claim owned-child or process-tree coverage.
 
 The process store durably binds claims, lifecycle, terminal results, complete eight-dimension
 resource observations, and per-stream artifact-publication progress. `wait_and_publish` returns a
 publication error carrying the latest durable terminal result, while
 `ProcessStore::retry_artifact_publication` resumes only missing streams and is idempotent across
 restart.
+
+Restart recovery keeps result knowledge separate from resource ownership. Exact absence can settle
+the owned tree and support tasks without inventing an exit result; that record remains explicitly
+absent-unobserved while no longer blocking daemon shutdown or lease-holder quiescence. Mismatched or
+unverifiable identities remain unsettled.
 
 ## Focused checks
 

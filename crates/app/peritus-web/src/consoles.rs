@@ -74,7 +74,7 @@ pub fn workbench(app: &App, input: &Value) -> Result<Value> {
         "open".into(),
         project.root.to_string_lossy().into_owned(),
         "--run".into(),
-        session.id.clone(),
+        session.run.clone(),
     ];
     let console = Console {
         id: id()?,

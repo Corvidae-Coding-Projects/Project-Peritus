@@ -154,6 +154,7 @@ impl SubjectFactory<TestSubject> for TestFactory {
 pub(super) enum CaseBehavior {
     Pass(Vec<Observation>),
     Fail,
+    Unavailable(Vec<Observation>),
     PanicConstruction,
     PanicPoll,
     PanicNonString,
@@ -202,6 +203,15 @@ impl ConformanceCase<TestSubject> for TestCase {
             }
             CaseBehavior::Fail => {
                 Box::pin(async { CaseResult::failed(Vec::new(), assertion("case failed")) })
+            }
+            CaseBehavior::Unavailable(observations) => {
+                let observations = observations.clone();
+                Box::pin(async move {
+                    CaseResult::infrastructure(
+                        observations,
+                        SubjectFailure::new(code("TEST-EXERCISE"), text("observation unavailable")),
+                    )
+                })
             }
             CaseBehavior::PanicConstruction => panic!("case construction panic"),
             CaseBehavior::PanicPoll => Box::pin(async { panic!("case poll panic") }),
