@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 2014,
-        "tip_oid": "b92730af48d76dd58bead1022ba1d06703693427",
-        "prefix_sha256": "5b013b05153777146869bf01da755f4e86eda8fbf60a80f8565a08dfcc81c21c"
+        "sequence": 2015,
+        "tip_oid": "1db538df1b117bef22263ecf1618da717dc932ca",
+        "prefix_sha256": "b7b02d6184b2ff28bc37fbf6cadb077147b7322ff9e08c8adab34d5f4e43dfea"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 102,
-  "next_comment_id": 2112,
+  "next_comment_id": 2113,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -8781,7 +8781,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-10-02T22:20:34.408394114Z",
-      "updated_at": "2026-10-03T00:21:19.662443670Z",
+      "updated_at": "2026-10-03T00:22:46.553890287Z",
       "labels": [
         "maintenance"
       ],
@@ -8893,6 +8893,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAHktKRMnDERGGNVtZgD5x1M0eMbObvjpPCgIB0EleiPBx7TXiWaavdA9RvO8s/HYQEzXS+bkEVwPyyyidtTzWBg=="
+        },
+        "b45611a3-2b61-4e06-91bc-e70bfb8190e6": {
+          "display_id": 2112,
+          "author": "6ME5",
+          "content": "Validation count clarification: the runner suite has 487 top-level passed tests and five existing ignores; the earlier aggregate 489 additionally counted two successful receipt-fixture subprocess invocations nested inside that suite. Final slow-Git crash regression passed all six interruption stages in 36.97 seconds, and no fixture processes remained. Updated PR validation wording to distinguish suite and subprocess checks. Signed repair head 402cdd2e4 is pushed and native CI is running.",
+          "created_at": "2026-10-03T00:22:46.549928261Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAG09br6BWwnTUZXC6G4zEeESROjE3HkwjmcIU5nBrmBcaMCgmBqs8G3dE41U3cNHlpaKgn9ec/MCFTxyzokgqCA=="
         },
         "b49ad523-6ae6-40c8-be2b-45639a393447": {
           "display_id": 2107,
