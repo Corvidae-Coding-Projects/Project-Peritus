@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 2026,
-        "tip_oid": "ba942694237f9e599f2fb19f90759f49f369b95c",
-        "prefix_sha256": "99c3376cf64fea2f2e2cf7a254c9055038c424466eeff4c8570f1f637098b269"
+        "sequence": 2027,
+        "tip_oid": "31151afa6f3365df6c9bfff90d9592bdd174b803",
+        "prefix_sha256": "0870def92a134587bf6a499db5b25b7a86a71eba399b001d853620bd32d06a3b"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 103,
-  "next_comment_id": 2120,
+  "next_comment_id": 2121,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -15798,8 +15798,17 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-10-03T02:18:54.805994693Z",
-      "updated_at": "2026-10-03T02:43:28.227195351Z",
+      "updated_at": "2026-10-03T02:55:34.997565697Z",
       "comments": {
+        "43b3a1d3-8d12-4d58-8551-de7fdbca2349": {
+          "display_id": 2120,
+          "author": "6ME5",
+          "content": "Prepared signed commit a8eb3c7b49151dd30948108416e1680c8210aa9c: chore(release): prepare v0.0.5 from develop (#102). Exactly 86 reviewed release files; external dependencies unchanged. Formatting, workspace policy, all-feature tests/doctests, strict Clippy, distribution tools, WebUI checks/18 unit tests/build, and all 12 reviewed Verus verification/strict shards passed. Extra broad non-opt-in workspace invocation failure retained separately. PR/tag/artifact publication still pending.",
+          "created_at": "2026-10-03T02:55:34.993754976Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAMtdiB51dBuAgLz4URNozdyWwqqH+jGUZcyaGmItUIqAFygkcaYa5zSiZbmbAZ77SC1njz3QR2UKyPqtnIis6Dw=="
+        },
         "df674363-654c-45d3-b838-23abf9495ee2": {
           "display_id": 2119,
           "author": "6ME5",
