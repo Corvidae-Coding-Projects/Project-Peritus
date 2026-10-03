@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 2028,
-        "tip_oid": "0b8e51f5419cca87547a85986f94a27666cfbab5",
-        "prefix_sha256": "77cfb476c0f3d99aac382a6a3b4fba0f88bd6513e27786a8b8512a2359623cfc"
+        "sequence": 2029,
+        "tip_oid": "27131cbd874881c42ffe113ef325b48e0c400dee",
+        "prefix_sha256": "6760bd764dbbc2b2bfcf29f7905475033f23da80fed84094defd230ecedc944a"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 103,
-  "next_comment_id": 2122,
+  "next_comment_id": 2123,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -15798,8 +15798,17 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-10-03T02:18:54.805994693Z",
-      "updated_at": "2026-10-03T02:58:11.641390540Z",
+      "updated_at": "2026-10-03T04:59:06.326674995Z",
       "comments": {
+        "197a2bcb-832e-46a4-9b23-6b5eb4a8e81d": {
+          "display_id": 2122,
+          "author": "6ME5",
+          "content": "[action] PR #111 passed all nine workflows (580 passed, four conditional skips) and merged to main 909257948. Signed v0.0.5 tag 756d472 is pushed and GitHub verified. Monitoring seven main workflows plus tagged staging run 37097609625; publication and develop reconciliation pending.",
+          "created_at": "2026-10-03T04:59:06.313834624Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAmUa8Obra/eyW7leXeyOFj5M6VhTHa1Gmc4eOqyy0dulA7ke/SDsppmYh/nwYkoN2Nzaj2JblmfISB//2NJuUDw=="
+        },
         "43b3a1d3-8d12-4d58-8551-de7fdbca2349": {
           "display_id": 2120,
           "author": "6ME5",
