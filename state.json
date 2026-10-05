@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 2033,
-        "tip_oid": "84d70091c795ea10d49bff2f437e475a3ad21010",
-        "prefix_sha256": "9921adbf2ff6d5054620d44981f89b9d2a12f010b825bd166c6c862e207b076b"
+        "sequence": 2034,
+        "tip_oid": "9b211173a436c6dc620418bd5a11a27217a7e298",
+        "prefix_sha256": "a63fb86edb33519f00ff2f113ba1ab14486fa92bf00662856336621c5a499cda"
       },
       "NWAR": {
         "sequence": 39,
@@ -54,7 +54,7 @@
       }
     }
   },
-  "next_display_id": 103,
+  "next_display_id": 104,
   "next_comment_id": 2125,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
@@ -157,6 +157,7 @@
     "f442c009-255b-4800-a118-169b6debf529": 55,
     "f54d84d8-827f-4eec-8d4c-89097b5214a2": 42,
     "f68244a3-b4ed-4597-a8e1-330360aa4bb1": 39,
+    "f89861db-18b8-4237-83e6-344f4e472dd4": 103,
     "ff9ea321-1b6b-4331-9389-9566ca58b586": 51
   },
   "locks": {
@@ -20757,6 +20758,17 @@
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgmuiChqHxrMH8nicBvsKr3z1JEgjcUOEEH/DcxL6kdeEAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAHQVb+KP1yHghG55123e0kAP09+dvokRWkphqqY7HcyhFGa7Gn/qZz8A+GIQH4RFeSnh8Y+ZJyPh7yW7tyw5VBA=="
         }
       }
+    },
+    "f89861db-18b8-4237-83e6-344f4e472dd4": {
+      "uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
+      "display_id": 103,
+      "title": "Remove hidden execution deadlines and retain provider sessions",
+      "description": "Complete the previous human-workflow limit removal across production provider subprocess/HTTP/retry/connection and command execution paths. Remove imposed elapsed cutoffs rather than replacing them with larger maxima. Make Codex sessions persistent; preserve role transcript/evidence across recovery with correct ownership and no duplicate effects. Audit and record every deadline family, exact-root regressions, source checks, and installed behavior. Preserve explicit caller-owned benchmark/command constraints and authority expiry semantics; no fabricated progress or hidden context reset.",
+      "status": "open",
+      "priority": "high",
+      "created_by": "6ME5",
+      "created_at": "2026-10-05T14:30:16.158065741Z",
+      "updated_at": "2026-10-05T14:30:16.158065741Z"
     },
     "ff9ea321-1b6b-4331-9389-9566ca58b586": {
       "uuid": "ff9ea321-1b6b-4331-9389-9566ca58b586",
