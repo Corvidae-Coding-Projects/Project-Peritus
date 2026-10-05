@@ -2,12 +2,7 @@
 
 use peritus_model_protocol::ModelRequest;
 use peritus_provider_core::{ProviderCoreError, RuntimeSession, RuntimeTurnDirectory};
-use std::{
-    fmt::Write as _,
-    fs::{File, OpenOptions},
-    io::Write as _,
-    path::Path,
-};
+use std::{fmt::Write as _, fs::OpenOptions, io::Write as _, path::Path};
 
 pub(super) struct Session {
     namespace: RuntimeSession,
@@ -103,7 +98,7 @@ fn write_new(path: &Path, bytes: &[u8]) -> Result<(), ProviderCoreError> {
         .and_then(|()| file.sync_all())
         .map_err(|_| error("cannot synchronize native session record"))?;
     #[cfg(unix)]
-    File::open(path.parent().ok_or_else(|| error("native record has no parent"))?)
+    std::fs::File::open(path.parent().ok_or_else(|| error("native record has no parent"))?)
         .and_then(|file| file.sync_all())
         .map_err(|_| error("cannot synchronize native session directory"))?;
     Ok(())
