@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 2039,
-        "tip_oid": "a0099022fd36438b31bc73e80b48f0be6d2b11d8",
-        "prefix_sha256": "5c4523b01a2c86390c47080eb2acf7c8bbeb32a1057d708d9c6aba65e3f9ca83"
+        "sequence": 2040,
+        "tip_oid": "fc863a65da547b2683cc274cc5e093ebb4b60635",
+        "prefix_sha256": "f46f9c4f05e0ce5ffea38c38620bca47c24d44eb208f420ab33380d5dde5297f"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 104,
-  "next_comment_id": 2129,
+  "next_comment_id": 2130,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -20772,7 +20772,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-10-05T14:30:16.158065741Z",
-      "updated_at": "2026-10-05T16:31:34.601520679Z",
+      "updated_at": "2026-10-05T16:40:52.831221049Z",
       "comments": {
         "1463c525-a7ad-4542-8550-c6b212c95dfc": {
           "display_id": 2127,
@@ -20782,6 +20782,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABADSJ4pQwYUVYSJ55cDI4zReuf9yhHk5yOcpPiYvXZ66Y24Q109F0keHuGM+JF33ba+RWbdRHYtQivUxjiRkONCQ=="
+        },
+        "2e100fcf-9749-417a-92a9-1c4aeb6d1b10": {
+          "display_id": 2129,
+          "author": "6ME5",
+          "content": "Committed 80534920576970c771f15ff3a996f95b4ffb509c: fix: avoid Unix-only import in Windows session builds. Both failed Windows Clippy shards on PR112 were caused by the unconditional File import in the Claude session module. Local correction references std::fs::File inside the existing Unix-only operation; behavior unchanged. Verified Windows GNU target Clippy with warnings denied, Linux all-feature Clippy, formatting, and 46 affected provider tests (1 live opt-in ignored). Pushed to PR112; monitoring new-head CI.",
+          "created_at": "2026-10-05T16:40:52.818356571Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABApDHGIdlHkqLjYMeJ2xLxbUcS56YBjUSqGf962IQixk47vYKRXDWSevINWKIqvg6WH1j6AjpXa90ALZzkGeYwAA=="
         },
         "6fce2ba4-759e-469b-adc5-6fb728c22837": {
           "display_id": 2128,
