@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 2038,
-        "tip_oid": "33be84e3c94003cfcf900e836fba98db0ccd860e",
-        "prefix_sha256": "6ab97e145a52d2ca8f586a4266a1ab35fe268dc2fbe03ce1875a6e05b069d654"
+        "sequence": 2039,
+        "tip_oid": "a0099022fd36438b31bc73e80b48f0be6d2b11d8",
+        "prefix_sha256": "5c4523b01a2c86390c47080eb2acf7c8bbeb32a1057d708d9c6aba65e3f9ca83"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 104,
-  "next_comment_id": 2128,
+  "next_comment_id": 2129,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -20772,7 +20772,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-10-05T14:30:16.158065741Z",
-      "updated_at": "2026-10-05T16:29:18.124167505Z",
+      "updated_at": "2026-10-05T16:31:34.601520679Z",
       "comments": {
         "1463c525-a7ad-4542-8550-c6b212c95dfc": {
           "display_id": 2127,
@@ -20782,6 +20782,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABADSJ4pQwYUVYSJ55cDI4zReuf9yhHk5yOcpPiYvXZ66Y24Q109F0keHuGM+JF33ba+RWbdRHYtQivUxjiRkONCQ=="
+        },
+        "6fce2ba4-759e-469b-adc5-6fb728c22837": {
+          "display_id": 2128,
+          "author": "6ME5",
+          "content": "Live follow-up: resumed run published a 47,281-byte design and entered Writing using the same retained designer and writer native IDs. A workspace_patch to tests/integration_test.cpp succeeded, proving actual mutation progress. CMake command attempts hit a pre-existing automatic-checkpoint bug: capture.rs observe_path passes peritus_patch::MAX_FILE_BYTES (8 MiB) to FolderInspection::read_file and maps every read failure to StaleRevision. The selected build/corvidae (73,809,264 bytes), corvidae_tests (16,935,016 bytes), and corvidae_integration_tests (52,904,744 bytes) exceed that cap. The checkpoint implementation and cap are unchanged from develop. This is a separate remaining command-admission limitation, not dropped provider context; no live state or binaries were altered during monitoring. PR112 CI monitoring is active.",
+          "created_at": "2026-10-05T16:31:34.597313308Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAQfZuJ9HW80rrL0OsJoDWiiGFr8MJoM4Mwp0/y5HIHx/6UDbnxt/54MBJakI2nDpW7uZWQgVBBDKXSNFelmuaBQ=="
         },
         "7488b5ac-0160-49b3-93b2-54bfad97918b": {
           "display_id": 2126,
