@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 2042,
-        "tip_oid": "92fbc36ea23bb265205d4d54f423e531321aaa73",
-        "prefix_sha256": "3a9697beaaa693203a0be412d3113b31c9ad7308a9a6ee082e172c287937b8cd"
+        "sequence": 2043,
+        "tip_oid": "b280e038624ed1fc853d14b0ba676807a5089436",
+        "prefix_sha256": "b7b31a9c8b6d0ca7d812ddd526081d7fd3bf76e58e7726678b789fef1acfa6c7"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 104,
-  "next_comment_id": 2132,
+  "next_comment_id": 2133,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -20772,7 +20772,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-10-05T14:30:16.158065741Z",
-      "updated_at": "2026-10-05T17:30:57.367420100Z",
+      "updated_at": "2026-10-05T17:54:47.524013970Z",
       "comments": {
         "12f54c4b-bf2c-45ef-ab20-aeff2a433b2c": {
           "display_id": 2131,
@@ -20836,6 +20836,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAC3ShB9rQtFUEYQscWnG6EQZXtULXvr7Lg1MZkwrqmw6z1abNtkRdPQMSqz65CRfl/6flbI5/lI6akpgkbdbpCA=="
+        },
+        "f47ca857-9840-498f-ab42-22a9eee0e894": {
+          "display_id": 2132,
+          "author": "6ME5",
+          "content": "[action] Read-tool root cause verified: installed Codex 0.160.0 includes upstream commit 14c35a1 (PR15773, 2026-03-25) deleting ReadFileHandler, schema, and registration. Native fs/readFile RPC still works. Recorded diagnosis in daily-driving-limiters-audit.md; full-file audit remains paused under dedicated Read requirement. Usage-accounting follow-up remains tested and uncommitted; PR112 is unchanged.",
+          "created_at": "2026-10-05T17:54:47.509650689Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAh/RJJLRr9dTNdec54R+7wdjNc9kHFbYdswPPs8LvyOdX/fPC2E7q1Pk2PyLlrA0A0OLhZCbywaiSjXHhhv1JCQ=="
         }
       }
     },
