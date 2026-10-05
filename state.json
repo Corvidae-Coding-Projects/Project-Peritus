@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 2041,
-        "tip_oid": "0a456485e20d2109033e9dd3450a388f8b18d0f0",
-        "prefix_sha256": "07fc03d44e61bef308a9ab88801fb037f6ee9128c8c495031fe03f503495c21e"
+        "sequence": 2042,
+        "tip_oid": "92fbc36ea23bb265205d4d54f423e531321aaa73",
+        "prefix_sha256": "3a9697beaaa693203a0be412d3113b31c9ad7308a9a6ee082e172c287937b8cd"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 104,
-  "next_comment_id": 2131,
+  "next_comment_id": 2132,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -20772,8 +20772,17 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-10-05T14:30:16.158065741Z",
-      "updated_at": "2026-10-05T16:41:18.606530514Z",
+      "updated_at": "2026-10-05T17:30:57.367420100Z",
       "comments": {
+        "12f54c4b-bf2c-45ef-ab20-aeff2a433b2c": {
+          "display_id": 2131,
+          "author": "6ME5",
+          "content": "[action] PR112 final follow-up corrects cumulative Codex native usage on exact session resume. Affected all-feature tests and Linux/Windows Clippy pass; authenticated reconstruction/usage check running. CI805349205 remains clean; new follow-up will get its own final-head CI watch.",
+          "created_at": "2026-10-05T17:30:57.360982990Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAT+ISknwOsa0PGTlu9EyBIO7FbZ9GNiJ/tqtAslqIYwmBIwqyXT5VWdnxoyKYnvxf9hE4Zuy2NL2xP6sFCnOJBw=="
+        },
         "1463c525-a7ad-4542-8550-c6b212c95dfc": {
           "display_id": 2127,
           "author": "6ME5",
