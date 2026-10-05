@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 2035,
-        "tip_oid": "38e90a49d1832216ab7ca3b91a6604727db17bfe",
-        "prefix_sha256": "425fbb0104127ac8821c82c0ce4ee8bc507cb8b7e7d0d70fb86090116a913caf"
+        "sequence": 2036,
+        "tip_oid": "04958e2ed8aba6f1e6ceabeb492b7bae5ec60cae",
+        "prefix_sha256": "385a0203a16ae742969bc7cfe3d2370de3fcb6ed85dae01e273b6d5fd983073c"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 104,
-  "next_comment_id": 2125,
+  "next_comment_id": 2126,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -20772,7 +20772,18 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-10-05T14:30:16.158065741Z",
-      "updated_at": "2026-10-05T14:30:16.158065741Z"
+      "updated_at": "2026-10-05T14:56:35.514429184Z",
+      "comments": {
+        "828e5c4d-ecef-4981-a864-b3907f4f0733": {
+          "display_id": 2125,
+          "author": "6ME5",
+          "content": "[action] Implementing issue 103: production provider and command execution deadlines absent; task-role journals and exact retained native Codex session resumption; auditing remaining startup, IPC, installation and caller-owned boundaries; verification in progress.",
+          "created_at": "2026-10-05T14:56:35.471986967Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAC3ShB9rQtFUEYQscWnG6EQZXtULXvr7Lg1MZkwrqmw6z1abNtkRdPQMSqz65CRfl/6flbI5/lI6akpgkbdbpCA=="
+        }
+      }
     },
     "ff9ea321-1b6b-4331-9389-9566ca58b586": {
       "uuid": "ff9ea321-1b6b-4331-9389-9566ca58b586",
