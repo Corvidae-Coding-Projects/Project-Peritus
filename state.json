@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 2036,
-        "tip_oid": "04958e2ed8aba6f1e6ceabeb492b7bae5ec60cae",
-        "prefix_sha256": "385a0203a16ae742969bc7cfe3d2370de3fcb6ed85dae01e273b6d5fd983073c"
+        "sequence": 2037,
+        "tip_oid": "71862642a79e68f230c1a6e996d04f3c61da9583",
+        "prefix_sha256": "a93754f819d44ea3e10d83d0195bf0dc533a94f2054b5f800f40c7f041c6725d"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 104,
-  "next_comment_id": 2126,
+  "next_comment_id": 2127,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -20772,8 +20772,17 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-10-05T14:30:16.158065741Z",
-      "updated_at": "2026-10-05T14:56:35.514429184Z",
+      "updated_at": "2026-10-05T16:16:52.199082133Z",
       "comments": {
+        "7488b5ac-0160-49b3-93b2-54bfad97918b": {
+          "display_id": 2126,
+          "author": "6ME5",
+          "content": "[action] Installed and restarted patched v0.0.5; user restored launch in Corvidae-Client. Watching resumed incident run372c08a4ee81696b578943325d2738ac for exact native-thread continuity, design publication and real implementation effects. Config55 preserves original config53 semantically; all three SQLite integrity checks pass.",
+          "created_at": "2026-10-05T16:16:52.193048450Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAFG1Af7/DiE+0UDMfkPC93v9Kiou8cpG5idvB83IdFBvEIfB5j0H3DLg0oxBYqb6VxQ9nIzUo8t4y0rP79xymAQ=="
+        },
         "828e5c4d-ecef-4981-a864-b3907f4f0733": {
           "display_id": 2125,
           "author": "6ME5",
