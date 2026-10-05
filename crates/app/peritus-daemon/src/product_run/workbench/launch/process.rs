@@ -35,7 +35,7 @@ impl ProductRunService {
             profile.executable().as_str().to_owned(),
             profile.arguments().iter().map(|value| value.as_str().to_owned()).collect(),
             cwd,
-            Duration::from_millis(profile.wall_millis()),
+            profile.wall_millis().map(Duration::from_millis),
             profile.interactive(),
             24,
             80,

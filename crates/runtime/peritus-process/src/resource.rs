@@ -5,8 +5,8 @@ use crate::{ProcessError, error::invalid};
 /// Complete supervisor and backend resource ceiling set.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct ProcessResourcePolicy {
-    wall_millis: u64,
-    cpu_millis: u64,
+    wall_millis: Option<u64>,
+    cpu_millis: Option<u64>,
     memory_bytes: u64,
     disk_bytes: u64,
     output_bytes: u64,
@@ -32,8 +32,35 @@ impl ProcessResourcePolicy {
         file_descriptors: u64,
         concurrent_slots: u64,
     ) -> Result<Self, ProcessError> {
-        if wall_millis == 0
-            || cpu_millis == 0
+        Self::with_optional_time(
+            Some(wall_millis),
+            Some(cpu_millis),
+            memory_bytes,
+            disk_bytes,
+            output_bytes,
+            process_count,
+            file_descriptors,
+            concurrent_slots,
+        )
+    }
+
+    /// Creates nonzero resource ceilings with optional wall and CPU time bounds.
+    ///
+    /// # Errors
+    /// Rejects any zero configured ceiling.
+    #[allow(clippy::too_many_arguments)]
+    pub const fn with_optional_time(
+        wall_millis: Option<u64>,
+        cpu_millis: Option<u64>,
+        memory_bytes: u64,
+        disk_bytes: u64,
+        output_bytes: u64,
+        process_count: u64,
+        file_descriptors: u64,
+        concurrent_slots: u64,
+    ) -> Result<Self, ProcessError> {
+        if matches!(wall_millis, Some(0))
+            || matches!(cpu_millis, Some(0))
             || memory_bytes == 0
             || disk_bytes == 0
             || output_bytes == 0
@@ -57,12 +84,12 @@ impl ProcessResourcePolicy {
 
     /// Returns the wall-time ceiling.
     #[must_use]
-    pub const fn wall_millis(self) -> u64 {
+    pub const fn wall_millis(self) -> Option<u64> {
         self.wall_millis
     }
     /// Returns the CPU-time ceiling.
     #[must_use]
-    pub const fn cpu_millis(self) -> u64 {
+    pub const fn cpu_millis(self) -> Option<u64> {
         self.cpu_millis
     }
     /// Returns the memory ceiling.
@@ -140,7 +167,7 @@ pub enum ProcessResourceDimension {
 pub struct ProcessResourceObservation {
     dimension: ProcessResourceDimension,
     value: u64,
-    ceiling: u64,
+    ceiling: Option<u64>,
     fidelity: ResourceFidelity,
 }
 
@@ -151,6 +178,17 @@ impl ProcessResourceObservation {
         dimension: ProcessResourceDimension,
         value: u64,
         ceiling: u64,
+        fidelity: ResourceFidelity,
+    ) -> Self {
+        Self::with_optional_ceiling(dimension, value, Some(ceiling), fidelity)
+    }
+
+    /// Creates an observation whose time ceiling may be absent.
+    #[must_use]
+    pub const fn with_optional_ceiling(
+        dimension: ProcessResourceDimension,
+        value: u64,
+        ceiling: Option<u64>,
         fidelity: ResourceFidelity,
     ) -> Self {
         Self { dimension, value, ceiling, fidelity }
@@ -168,7 +206,7 @@ impl ProcessResourceObservation {
     }
     /// Returns the configured ceiling.
     #[must_use]
-    pub const fn ceiling(self) -> u64 {
+    pub const fn ceiling(self) -> Option<u64> {
         self.ceiling
     }
     /// Returns observation fidelity.

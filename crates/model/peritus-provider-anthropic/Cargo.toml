@@ -13,6 +13,7 @@ readme = "README.md"
 test-runtime-fake = []
 
 [dependencies]
+getrandom.workspace = true
 base64.workspace = true
 peritus-codec = { version = "=0.0.5", path = "../../foundation/peritus-codec" }
 peritus-model-protocol = { version = "=0.0.5", path = "../peritus-model-protocol" }

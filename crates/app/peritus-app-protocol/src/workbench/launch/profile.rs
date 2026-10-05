@@ -179,7 +179,7 @@ pub struct WorkbenchLaunchProfile {
     source: WorkbenchLaunchSource,
     build: Option<WorkbenchBuildIdentity>,
     readiness_millis: u64,
-    wall_millis: u64,
+    wall_millis: Option<u64>,
     interactive: bool,
     network: WorkbenchPreviewNetwork,
     stop_policy: WorkbenchPreviewStopPolicy,
@@ -200,16 +200,17 @@ impl WorkbenchLaunchProfile {
         source: WorkbenchLaunchSource,
         build: Option<WorkbenchBuildIdentity>,
         readiness_millis: u64,
-        wall_millis: u64,
+        wall_millis: impl Into<Option<u64>>,
         interactive: bool,
     ) -> Result<Self, AppProtocolError> {
+        let wall_millis = wall_millis.into();
         environment.sort_by(|left, right| left.as_str().cmp(right.as_str()));
         if u16::try_from(arguments.len()).is_err()
             || u16::try_from(environment.len()).is_err()
             || environment.windows(2).any(|pair| pair[0] == pair[1])
             || environment.iter().any(|name| !valid_environment_name(name.as_str()))
             || readiness_millis == 0
-            || readiness_millis > wall_millis
+            || wall_millis.is_some_and(|wall| wall == 0 || readiness_millis > wall)
         {
             return Err(invalid());
         }
@@ -270,7 +271,7 @@ impl WorkbenchLaunchProfile {
     }
     /// Returns the immutable process wall deadline.
     #[must_use]
-    pub const fn wall_millis(&self) -> u64 {
+    pub const fn wall_millis(&self) -> Option<u64> {
         self.wall_millis
     }
     /// Returns whether bounded process input is enabled.

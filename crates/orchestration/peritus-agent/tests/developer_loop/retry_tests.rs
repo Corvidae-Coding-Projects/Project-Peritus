@@ -28,6 +28,7 @@ fn interrupted_stream_recovers_automatically_without_repeating_completed_tools()
         let outcome = DeveloperLoop::run(
             &provider,
             DeveloperLoopRequest {
+                local_session_directory: None,
                 request_prefix: "interrupted-stream".to_owned(),
                 system: "Complete the task.".to_owned(),
                 prompt: "Inspect and return the result.".to_owned(),
@@ -71,6 +72,7 @@ fn developer_loop_retries_a_recoverable_malformed_provider_turn() {
         let outcome = DeveloperLoop::run(
             &provider,
             DeveloperLoopRequest {
+                local_session_directory: None,
                 request_prefix: "recovery-test".to_owned(),
                 system: "Complete the task.".to_owned(),
                 prompt: "Return the result.".to_owned(),
@@ -127,6 +129,7 @@ fn developer_loop_cancels_during_a_planned_retry_wait() {
         let result = DeveloperLoop::run(
             &provider,
             DeveloperLoopRequest {
+                local_session_directory: None,
                 request_prefix: "cancel-retry-test".to_owned(),
                 system: "Complete the task.".to_owned(),
                 prompt: "Return the result.".to_owned(),
@@ -160,6 +163,7 @@ fn developer_loop_preserves_a_nonretryable_provider_terminal() {
         let result = DeveloperLoop::run(
             &provider,
             DeveloperLoopRequest {
+                local_session_directory: None,
                 request_prefix: "terminal-failure-test".to_owned(),
                 system: "Complete the task.".to_owned(),
                 prompt: "Return the result.".to_owned(),

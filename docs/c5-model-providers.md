@@ -160,7 +160,7 @@ Reviewed sources: [create response](https://developers.openai.com/api/reference/
 ### OpenAI Codex account runtime
 
 The separate `OpenAiCodexRuntime` dialect invokes an already-authenticated official `codex`
-executable for one ephemeral turn. It uses an isolated working/configuration boundary, read-only
+executable for each inert inference turn in a retained task/role/provider/model session. It uses an isolated working/configuration boundary, read-only
 execution policy, disabled ambient instruction and native-tool surfaces, JSONL events, and a private
 output schema. Credential and endpoint-routing environment overrides are removed. The decoder
 rejects native tool activity, malformed or oversized JSONL, and output without a proven completed
@@ -168,12 +168,15 @@ turn, then normalizes validated text, inert tool-call proposals, usage, and term
 
 For image-capable turns, Peritus accepts only bounded inline PNG, JPEG, WebP, or GIF inputs. It
 keeps raw bytes out of the text prompt, records an attachment index, media type, and SHA-256 digest,
-then writes private temporary files for the official executable's `--image` option. The temporary
-directory is removed with the turn. Audio, documents, remote media references, unknown image types,
+then writes private files for the official executable's `--image` option. Host-bound turns retain
+these artifacts and native JSONL for diagnosis and exact thread-ID recovery. Unbound requests use
+temporary turn artifacts. Audio, documents, remote media references, unknown image types,
 and oversized media remain unsupported on this route.
 
 Codex itself owns ChatGPT login, credential persistence, and refresh; Peritus never reads its token
-store. The profile is deliberately narrower than direct Responses: stateless replay, no response
+store. Host-bound requests resume only the exact retained native thread; this does not grant
+response-event cursor continuation or native tool authority. Every current canonical host projection
+supersedes earlier native policies and task projections. The profile is deliberately narrower than direct Responses: stateless replay, no response
 resume or remote cancel, local best-effort child cancellation, and an advisory output limit.
 
 Reviewed sources: [Codex non-interactive mode](https://developers.openai.com/codex/noninteractive),

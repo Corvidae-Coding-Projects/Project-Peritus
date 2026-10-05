@@ -12,7 +12,6 @@ use peritus_model_protocol::{
     RequestedCapabilities, ResponseReducer, Role, SchemaDialect, StructuredOutput, TerminalOutcome,
     ToolChoice, ToolDefinition, ToolName, ToolResult, negotiate,
 };
-use std::time::Duration;
 
 /// The exact connection stage being checked; catalog discovery is deliberately separate.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -67,7 +66,7 @@ impl std::error::Error for ConnectionError {
 /// Runs at most three small model requests, after the caller obtains the user's test choice.
 ///
 /// The sole tool is an in-memory fixture: it cannot access files, the network, or application
-/// tools. A 45-second total deadline cancels the current request and retains the failing stage.
+/// tools. Caller cancellation terminates the current request and retains the failing stage.
 ///
 /// # Errors
 /// Returns the first failed stage. Earlier passes never make an incomplete check successful.
@@ -76,7 +75,7 @@ pub async fn verify_provider_connection(
     cancellation: CancellationToken,
 ) -> Result<ConnectionReport, ConnectionError> {
     let mut stage = ConnectionStage::Generation;
-    let result = tokio::time::timeout(Duration::from_secs(45), async {
+    let result = async {
         verify_live_provider(provider, ProviderRequirement::new(false, 1, false)?, cancellation.clone()).await?;
         stage = ConnectionStage::ToolCalling;
         let messages = vec![message(Role::User, "Call peritus_connection_check once with no arguments. After its result, reply with the exact token from that result.")?];
@@ -99,13 +98,8 @@ pub async fn verify_provider_connection(
             return Err(invalid("provider did not complete a response using the connection-test tool result"));
         }
         Ok(ConnectionReport { completed: [ConnectionStage::Generation, ConnectionStage::ToolCalling, ConnectionStage::ToolResult] })
-    }).await;
-    result
-        .unwrap_or_else(|_| {
-            let _ = cancellation.cancel();
-            Err(invalid("connection test exceeded its 45-second deadline"))
-        })
-        .map_err(|source| ConnectionError { stage, source })
+    }.await;
+    result.map_err(|source| ConnectionError { stage, source })
 }
 
 fn request(

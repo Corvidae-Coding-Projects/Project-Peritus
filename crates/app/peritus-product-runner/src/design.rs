@@ -67,6 +67,7 @@ pub async fn create(
     if scope == DesignScope::Artifact && !input.workspace_kind.is_in_place() {
         return artifact::create(input);
     }
+    let memory = crate::local_context::LocalContextHandle::open(input, "designer")?;
     let mut providers = crate::failover::ProviderCursor::new(primary, fallbacks);
     let mut invocation = 0_u32;
     let mut provider_recovery = crate::failover::RoleRecovery::default();
@@ -95,6 +96,7 @@ pub async fn create(
         let result = crate::local_context::run_live_invocation(
             providers.current(),
             DeveloperLoopRequest {
+                local_session_directory: Some(input.native_session_directory("designer")),
                 request_prefix: format!(
                     "{}-invocation-{invocation}",
                     crate::turn::request_name(input.run_id, "designer", cycle)
@@ -112,7 +114,7 @@ pub async fn create(
                 trace_path: &input.trace_path,
                 accounting,
             },
-            None,
+            memory.as_ref(),
             input.conversation.interaction(),
             peritus_agent::DeveloperModelRole::Writer,
         )

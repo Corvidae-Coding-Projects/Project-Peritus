@@ -324,7 +324,7 @@ fn append_execution(hash: &mut Sha256, plan: GateExecutionPlan) {
             hash.update(reference.digest().as_bytes());
         }
     }
-    hash.update(plan.timeout_ms().to_be_bytes());
+    hash.update(plan.timeout_ms().unwrap_or(0).to_be_bytes());
     hash.update(plan.resources().digest().as_bytes());
     hash.update([plan.freshness() as u8]);
 }

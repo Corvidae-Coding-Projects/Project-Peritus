@@ -21,7 +21,7 @@ use crate::{
 pub async fn attach(
     endpoint: &OsStr,
     session: Option<SessionId>,
-    timeout: Duration,
+    timeout: Option<Duration>,
     arguments: TerminalAttachArgs,
     output: &Output,
 ) -> Result<(), CliError> {
@@ -162,7 +162,7 @@ async fn follow(
 pub async fn input(
     endpoint: &OsStr,
     session: Option<SessionId>,
-    timeout: Duration,
+    timeout: Option<Duration>,
     arguments: TerminalInputArgs,
     output: &Output,
 ) -> Result<(), CliError> {
@@ -239,7 +239,7 @@ async fn send_bytes(
 pub async fn resize(
     endpoint: &OsStr,
     session: Option<SessionId>,
-    timeout: Duration,
+    timeout: Option<Duration>,
     arguments: TerminalResizeArgs,
     output: &Output,
 ) -> Result<(), CliError> {
@@ -270,7 +270,7 @@ pub async fn resize(
 pub async fn detach(
     endpoint: &OsStr,
     session: Option<SessionId>,
-    timeout: Duration,
+    timeout: Option<Duration>,
     arguments: TerminalBindingArgs,
     output: &Output,
 ) -> Result<(), CliError> {
@@ -290,7 +290,7 @@ pub async fn detach(
 pub async fn cancel(
     endpoint: &OsStr,
     session: Option<SessionId>,
-    timeout: Duration,
+    timeout: Option<Duration>,
     arguments: TerminalBindingArgs,
     output: &Output,
 ) -> Result<(), CliError> {
@@ -311,7 +311,7 @@ pub async fn cancel(
 async fn connect(
     endpoint: &OsStr,
     session: Option<SessionId>,
-    timeout: Duration,
+    timeout: Option<Duration>,
 ) -> Result<Client, CliError> {
     Client::connect(endpoint, session, timeout, &[WellKnownProtocolFeature::TerminalStreaming])
         .await

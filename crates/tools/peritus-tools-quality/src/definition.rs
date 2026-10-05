@@ -106,7 +106,7 @@ pub struct CheckDefinition {
     arguments: Vec<String>,
     working_directory: Option<WorkspacePath>,
     environment_profile: EnvironmentProfile,
-    timeout_millis: u64,
+    timeout_millis: Option<u64>,
     output_bytes: u64,
     parser: OutputParser,
     expected_success: ExpectedSuccess,
@@ -129,6 +129,41 @@ impl CheckDefinition {
         working_directory: Option<WorkspacePath>,
         environment_profile: EnvironmentProfile,
         timeout_millis: u64,
+        output_bytes: u64,
+        parser: OutputParser,
+        expected_success: ExpectedSuccess,
+    ) -> Result<Self, QualityError> {
+        Self::with_optional_timeout(
+            gate_name,
+            gate_id,
+            source,
+            requirement,
+            executable,
+            arguments,
+            working_directory,
+            environment_profile,
+            Some(timeout_millis),
+            output_bytes,
+            parser,
+            expected_success,
+        )
+    }
+
+    /// Creates a check with an optional caller-selected execution deadline.
+    ///
+    /// # Errors
+    /// Rejects invalid names, declarations, argv, or zero configured limits.
+    #[allow(clippy::too_many_arguments, reason = "each immutable check binding remains explicit")]
+    pub fn with_optional_timeout(
+        gate_name: impl Into<String>,
+        gate_id: GateId,
+        source: CheckSource,
+        requirement: CheckRequirement,
+        executable: impl Into<String>,
+        arguments: Vec<String>,
+        working_directory: Option<WorkspacePath>,
+        environment_profile: EnvironmentProfile,
+        timeout_millis: Option<u64>,
         output_bytes: u64,
         parser: OutputParser,
         expected_success: ExpectedSuccess,
@@ -202,7 +237,7 @@ impl CheckDefinition {
     }
     /// Returns the wall-time ceiling.
     #[must_use]
-    pub const fn timeout_millis(&self) -> u64 {
+    pub const fn timeout_millis(&self) -> Option<u64> {
         self.timeout_millis
     }
     /// Returns the output/parser byte ceiling.
@@ -230,7 +265,7 @@ fn validate_definition(
     name: &str,
     source: &CheckSource,
     requirement: CheckRequirement,
-    timeout: u64,
+    timeout: Option<u64>,
     output: u64,
     parser: OutputParser,
 ) -> Result<(), QualityError> {
@@ -245,7 +280,10 @@ fn validate_definition(
     if !matches!(source, CheckSource::Explicit(_)) && requirement != CheckRequirement::Discovered {
         return Err(invalid("discovered definitions cannot claim B2 required/optional policy"));
     }
-    if timeout == 0 || output == 0 || parser.maximum_bytes().is_some_and(|bound| bound == 0) {
+    if matches!(timeout, Some(0))
+        || output == 0
+        || parser.maximum_bytes().is_some_and(|bound| bound == 0)
+    {
         return Err(invalid("timeout, output, and selected parser bounds must be nonzero"));
     }
     if parser.maximum_bytes().is_some_and(|bound| u64::from(bound) > output) {

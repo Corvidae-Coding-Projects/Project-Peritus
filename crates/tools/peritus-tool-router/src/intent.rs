@@ -25,7 +25,7 @@ impl ToolIntentPayload {
         bytes.extend_from_slice(prepared.prepared_digest().as_bytes());
         bytes.extend_from_slice(prepared.arguments_digest().as_bytes());
         bytes.push(operation_tag(descriptor.operation().operation_class()));
-        bytes.extend_from_slice(&call.limits().timeout_millis().to_be_bytes());
+        bytes.extend_from_slice(&call.limits().timeout_millis().unwrap_or(0).to_be_bytes());
         bytes.extend_from_slice(&call.limits().output_bytes().to_be_bytes());
         bytes.extend_from_slice(&call.limits().model_bytes().to_be_bytes());
         bytes.extend_from_slice(&call.limits().human_bytes().to_be_bytes());

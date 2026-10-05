@@ -1,7 +1,7 @@
 //! Retain exact native requests before transmission. Never infer acceptance from connectivity.
 use super::{
-    App, AppRequestPayload, AppResponsePayload, Client, Duration, Result, Value, endpoint, json,
-    problem, response,
+    App, AppRequestPayload, AppResponsePayload, Client, Result, Value, endpoint, json, problem,
+    response,
 };
 use crate::error::uncertain;
 use base64::{Engine, engine::general_purpose::STANDARD};
@@ -25,9 +25,7 @@ pub async fn recorded(
     let endpoint = endpoint(app)?;
     let required = payload.required_workbench_feature().into_iter().collect::<Vec<_>>();
     let mut client =
-        Client::connect(endpoint.as_os_str(), None, Duration::from_secs(30), &required)
-            .await
-            .map_err(problem)?;
+        Client::connect(endpoint.as_os_str(), None, None, &required).await.map_err(problem)?;
     let identity = Client::new_request_identity().map_err(problem)?;
     let envelope = AppRequestEnvelope::new(
         client.context(),
@@ -231,9 +229,7 @@ async fn retransmit(
     let endpoint = endpoint(app)?;
     let required = payload.required_workbench_feature().into_iter().collect::<Vec<_>>();
     let mut client =
-        Client::connect(endpoint.as_os_str(), None, Duration::from_secs(30), &required)
-            .await
-            .map_err(problem)?;
+        Client::connect(endpoint.as_os_str(), None, None, &required).await.map_err(problem)?;
     let identity = Client::new_request_identity().map_err(problem)?;
     let response = client.request(identity, payload).await.map_err(|error| {
         uncertain(format!("The exact workbench retry has an unknown outcome: {error}"))

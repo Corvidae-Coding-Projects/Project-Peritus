@@ -111,7 +111,7 @@ fn write_gate_plan(
             write_content_ref(writer, reference)?;
         }
     }
-    writer.write_u64(value.timeout_ms())?;
+    writer.write_u64(value.timeout_ms().unwrap_or(0))?;
     write_content_ref(writer, value.resources())?;
     writer.write_u16(match value.freshness() {
         GateFreshnessScope::ExactRevisionTuple => 1,
@@ -139,13 +139,13 @@ fn read_gate_plan(reader: &mut CanonicalReader<'_>) -> Result<GateExecutionPlan,
         2 => GateFreshnessScope::WorkspaceContent,
         _ => return Err(CodecError::at(CodecErrorKind::UnknownTag, freshness_offset)),
     };
-    GateExecutionPlan::new(
+    GateExecutionPlan::with_optional_timeout(
         action,
         environment,
         inputs,
         parser,
         success,
-        timeout_ms,
+        if timeout_ms == 0 { None } else { Some(timeout_ms) },
         resources,
         freshness,
     )

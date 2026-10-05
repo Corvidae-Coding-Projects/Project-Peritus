@@ -19,13 +19,10 @@ pub(crate) struct ExecStatusOwner {
 pub(crate) fn prepare() -> Result<(ExecStatusOwner, NativeProtectedHandle), MacosError> {
     #[cfg(unix)]
     {
-        use std::{os::fd::OwnedFd, time::Duration};
+        use std::os::fd::OwnedFd;
 
         let (reader, writer) = std::os::unix::net::UnixStream::pair()
             .map_err(|_| status_error("helper exec status channel could not be created"))?;
-        reader
-            .set_read_timeout(Some(Duration::from_secs(5)))
-            .map_err(|_| status_error("helper exec status channel could not be bounded"))?;
         let writer = std::fs::File::from(OwnedFd::from(writer));
         let handle = NativeProtectedHandle::from_file(EXEC_STATUS_LABEL, writer)
             .map_err(|_| status_error("helper exec status handle could not be protected"))?;
@@ -57,7 +54,7 @@ impl ExecStatusOwner {
             .by_ref()
             .take(33)
             .read_to_end(&mut bytes)
-            .map_err(|_| status_error("helper exec status timed out or could not be read"))?;
+            .map_err(|_| status_error("helper exec status could not be read"))?;
         if bytes.is_empty() {
             return Ok(());
         }

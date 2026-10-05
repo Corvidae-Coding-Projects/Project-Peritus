@@ -19,7 +19,7 @@ use crate::{error::ClientError, frame::FrameStream, identity::nonzero_id};
 pub struct Client {
     pub(crate) stream: FrameStream,
     pub(crate) context: ProtocolContext,
-    pub(crate) timeout: Duration,
+    pub(crate) timeout: Option<Duration>,
     pub(crate) usable: bool,
 }
 
@@ -34,10 +34,11 @@ impl Client {
     pub async fn connect(
         endpoint: &OsStr,
         requested_session: Option<SessionId>,
-        timeout: Duration,
+        timeout: impl Into<Option<Duration>>,
         required: &[WellKnownProtocolFeature],
     ) -> Result<Self, ClientError> {
-        tokio::time::timeout(
+        let timeout = timeout.into();
+        crate::optional_timeout(
             timeout,
             Self::negotiate(endpoint, requested_session, timeout, required),
         )
@@ -50,7 +51,7 @@ impl Client {
     async fn negotiate(
         endpoint: &OsStr,
         requested_session: Option<SessionId>,
-        timeout: Duration,
+        timeout: Option<Duration>,
         required: &[WellKnownProtocolFeature],
     ) -> Result<Self, ClientError> {
         let mut stream = FrameStream::connect(endpoint).await?;

@@ -27,3 +27,4 @@ runtime-native-tool.jsonl=forbidden Codex-native execution item
 runtime-auth-error.jsonl=explicit Codex authentication terminal
 runtime-golden-prompt.txt=Codex host transcript and full inert-tool guidance projection
 runtime-golden-schema.json=Codex simple tool-name and arguments-JSON output contract
+runtime-golden-prompt-persistent.txt=complete governing host projection inside an exact retained native thread

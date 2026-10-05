@@ -1,16 +1,17 @@
 //! Bounded owned subprocess requests with a runtime-private Tokio implementation.
 
+mod limits;
 mod tokio_transport;
 
 use core::fmt;
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
-use std::time::Duration;
 
 use zeroize::Zeroizing;
 
 use crate::{BoxFuture, CancellationToken, ProviderCoreError};
 
+pub use limits::ProcessLimits;
 pub use tokio_transport::TokioProcessTransport;
 
 const MAX_ARGUMENTS: usize = 256;
@@ -108,61 +109,6 @@ impl EnvironmentName {
     }
 }
 
-/// Resource ceilings for one subprocess invocation.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub struct ProcessLimits {
-    max_stdin_bytes: usize,
-    max_stdout_bytes: usize,
-    max_stderr_bytes: usize,
-    timeout: Duration,
-}
-
-impl ProcessLimits {
-    /// Production defaults for an account-runtime model turn.
-    pub const PRODUCTION: Self = Self {
-        max_stdin_bytes: 16 * 1024 * 1024,
-        max_stdout_bytes: 16 * 1024 * 1024,
-        max_stderr_bytes: 64 * 1024,
-        timeout: Duration::from_mins(10),
-    };
-
-    /// Creates nonzero byte and wall-clock ceilings.
-    ///
-    /// # Errors
-    ///
-    /// Rejects any zero ceiling.
-    pub const fn new(
-        max_stdin_bytes: usize,
-        max_stdout_bytes: usize,
-        max_stderr_bytes: usize,
-        timeout: Duration,
-    ) -> Result<Self, ProviderCoreError> {
-        if max_stdin_bytes == 0
-            || max_stdout_bytes == 0
-            || max_stderr_bytes == 0
-            || timeout.is_zero()
-        {
-            return Err(ProviderCoreError::configuration(
-                "process_limits",
-                "process limits must be nonzero",
-            ));
-        }
-        Ok(Self { max_stdin_bytes, max_stdout_bytes, max_stderr_bytes, timeout })
-    }
-
-    pub(crate) const fn max_stdout_bytes(self) -> usize {
-        self.max_stdout_bytes
-    }
-
-    pub(crate) const fn max_stderr_bytes(self) -> usize {
-        self.max_stderr_bytes
-    }
-
-    pub(crate) const fn timeout(self) -> Duration {
-        self.timeout
-    }
-}
-
 /// One explicit, redacted subprocess invocation.
 pub struct ProcessRequest {
     executable: ProcessExecutable,
@@ -171,6 +117,7 @@ pub struct ProcessRequest {
     current_dir: Option<PathBuf>,
     environment_removals: Vec<EnvironmentName>,
     limits: ProcessLimits,
+    stdout_journal: Option<PathBuf>,
 }
 
 impl ProcessRequest {
@@ -227,7 +174,19 @@ impl ProcessRequest {
             current_dir,
             environment_removals,
             limits,
+            stdout_journal: None,
         })
+    }
+
+    /// Retains received stdout in host-owned storage, including interrupted invocations.
+    #[must_use]
+    pub fn with_stdout_journal(mut self, path: PathBuf) -> Self {
+        self.stdout_journal = Some(path);
+        self
+    }
+
+    pub(crate) fn stdout_journal(&self) -> Option<&Path> {
+        self.stdout_journal.as_deref()
     }
 
     /// Returns the pinned executable for a process transport implementation.
@@ -277,6 +236,7 @@ impl fmt::Debug for ProcessRequest {
             .field("current_dir", &self.current_dir.as_ref().map(|_| "[configured]"))
             .field("environment_removals", &self.environment_removals)
             .field("limits", &self.limits)
+            .field("stdout_journal", &self.stdout_journal.as_ref().map(|_| "[configured]"))
             .finish()
     }
 }

@@ -62,6 +62,7 @@ pub async fn complete(
         let result = crate::local_context::run_live_invocation(
             providers.current(),
             DeveloperLoopRequest {
+                local_session_directory: Some(input.native_session_directory("reviewer")),
                 request_prefix: format!(
                     "{}-invocation-{invocation}",
                     turn::request_name(input.run_id, "reviewer", cycle),

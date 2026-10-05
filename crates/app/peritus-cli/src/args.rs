@@ -21,7 +21,7 @@ impl Cli {
         let _executable = parser.pop();
         let mut endpoint = None;
         let mut session = None;
-        let mut timeout = Duration::from_secs(30);
+        let mut timeout = None;
         let mut json = false;
         loop {
             match parser.peek_utf8()? {
@@ -43,7 +43,7 @@ impl Cli {
                         &parser.value_utf8("--timeout-seconds")?,
                         "--timeout-seconds",
                     )?;
-                    timeout = Duration::from_secs(value);
+                    timeout = Some(Duration::from_secs(value));
                 }
                 Some("--json") => {
                     parser.pop();

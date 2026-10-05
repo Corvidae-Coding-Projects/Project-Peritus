@@ -20,7 +20,7 @@ fn slow_dashboard_request_does_not_starve_conversation_polling() {
 }
 
 #[test]
-fn expired_exact_reply_does_not_become_a_recent_runs_page() {
+fn delayed_exact_reply_does_not_become_a_recent_runs_page() {
     let (mut model, run, _) = unqualified_model();
     let snapshot = model.product.as_ref().unwrap().runs[0].clone();
     let effect = model
@@ -32,7 +32,8 @@ fn expired_exact_reply_does_not_become_a_recent_runs_page() {
     let Effect::Send(AppMessage::Request(request)) = effect else { panic!("request") };
     model.pending_started.retain(|id, _| *id == request.request_id());
     model.tick_count = 120;
-    assert!(!model.expire_pending_requests());
+    model.update(Action::Tick(std::time::Instant::now()));
+    assert!(model.pending.contains_key(&request.request_id()));
     model.update(Action::Message(AppMessage::Response(AppResponseEnvelope::new(
         request.context(),
         request.request_id(),

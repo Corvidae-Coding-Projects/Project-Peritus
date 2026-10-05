@@ -292,6 +292,7 @@ async fn run_developer_invocation(
     let result = crate::local_context::run_live_invocation(
         model,
         DeveloperLoopRequest {
+            local_session_directory: Some(input.native_session_directory(identity.role)),
             request_prefix,
             system: writer_system(
                 identity.role,

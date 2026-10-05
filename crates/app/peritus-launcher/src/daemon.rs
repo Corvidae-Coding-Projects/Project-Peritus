@@ -121,14 +121,20 @@ pub enum DaemonShutdown {
 /// Bounded singleton daemon startup and readiness supervisor.
 #[derive(Clone, Copy, Debug)]
 pub struct DaemonSupervisor {
-    readiness_timeout: Duration,
+    readiness_timeout: Option<Duration>,
 }
 
 impl DaemonSupervisor {
     /// Creates a supervisor with one explicit startup bound.
     #[must_use]
     pub const fn new(readiness_timeout: Duration) -> Self {
-        Self { readiness_timeout }
+        Self { readiness_timeout: Some(readiness_timeout) }
+    }
+
+    /// Creates a supervisor that waits for readiness or process exit without imposing a deadline.
+    #[must_use]
+    pub const fn without_deadline() -> Self {
+        Self { readiness_timeout: None }
     }
 
     /// Reuses a reachable endpoint or starts the packaged daemon and waits for readiness.
@@ -171,10 +177,12 @@ impl DaemonSupervisor {
                 }
                 return Err(LauncherError::DaemonExited { status, log: log_path });
             }
-            if started.elapsed() >= self.readiness_timeout {
+            if let Some(timeout) = self.readiness_timeout
+                && started.elapsed() >= timeout
+            {
                 stop_child(&mut child);
                 return Err(LauncherError::DaemonTimeout {
-                    seconds: self.readiness_timeout.as_secs(),
+                    seconds: timeout.as_secs(),
                     log: log_path,
                 });
             }
@@ -213,9 +221,11 @@ impl DaemonSupervisor {
             if !endpoint_ready(&endpoint).await && instance_lock_available(product)? {
                 return Ok(DaemonShutdown::Stopped);
             }
-            if started.elapsed() >= self.readiness_timeout {
+            if let Some(timeout) = self.readiness_timeout
+                && started.elapsed() >= timeout
+            {
                 return Err(LauncherError::DaemonTimeout {
-                    seconds: self.readiness_timeout.as_secs(),
+                    seconds: timeout.as_secs(),
                     log: product.layout().daemon_log(),
                 });
             }

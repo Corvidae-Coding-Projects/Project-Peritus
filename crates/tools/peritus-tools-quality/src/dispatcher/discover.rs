@@ -153,7 +153,12 @@ fn catalog_json(
                     serde_json::Value::String(requirement_name(check.requirement()).to_owned()),
                 ),
                 ("source", serde_json::Value::String(source_name(check.source()))),
-                ("timeout_millis", serde_json::Value::String(check.timeout_millis().to_string())),
+                (
+                    "timeout_millis",
+                    check.timeout_millis().map_or(serde_json::Value::Null, |timeout| {
+                        serde_json::Value::String(timeout.to_string())
+                    }),
+                ),
                 (
                     "working_directory",
                     check.working_directory().map_or(serde_json::Value::Null, |path| {

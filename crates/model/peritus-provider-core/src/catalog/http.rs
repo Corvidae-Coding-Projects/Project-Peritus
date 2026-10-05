@@ -1,10 +1,7 @@
 //! Bounded authenticated GET discovery with same-origin token pagination.
 
 use serde_json::Value;
-use std::{
-    collections::{BTreeMap, BTreeSet},
-    time::Duration,
-};
+use std::collections::{BTreeMap, BTreeSet};
 
 use super::{DiscoveredModel, MAX_CATALOG_MODELS, parse, unavailable};
 use crate::{
@@ -46,12 +43,7 @@ pub async fn discover_http_models(
     limits: HttpLimits,
     cancellation: &CancellationToken,
 ) -> Result<Vec<DiscoveredModel>, ProviderCoreError> {
-    tokio::time::timeout(
-        Duration::from_secs(30),
-        discover(transport, endpoint, dialect, headers, limits, cancellation),
-    )
-    .await
-    .map_err(|_| unavailable("model discovery timed out; retry or select an explicit model ID"))?
+    discover(transport, endpoint, dialect, headers, limits, cancellation).await
 }
 
 async fn discover(

@@ -23,6 +23,7 @@ use std::sync::{Arc, Mutex, MutexGuard};
 pub struct LocalContextHandle {
     inner: Arc<Mutex<LocalMemory>>,
     conversation: Arc<dyn ConversationView>,
+    session_directory: std::path::PathBuf,
 }
 
 impl LocalContextHandle {
@@ -42,14 +43,11 @@ impl LocalContextHandle {
         input: &ProductRunInput,
         role: &str,
     ) -> Result<Option<Self>, ProductRunnerError> {
-        Self::open_scoped(input, role, None)
-    }
-
-    pub(crate) fn open_folder(
-        input: &ProductRunInput,
-        protected: &[std::path::PathBuf],
-    ) -> Result<Option<Self>, ProductRunnerError> {
-        Self::open_scoped(input, "writer", Some(protected))
+        Self::open_scoped(
+            input,
+            role,
+            input.workspace_kind.is_in_place().then(|| input.workspace_kind.protected_paths()),
+        )
     }
 
     fn open_scoped(
@@ -62,12 +60,23 @@ impl LocalContextHandle {
             return Ok(None);
         }
         let harness_role = match role {
-            "writer" => HarnessRole::Writer,
+            "writer" | "designer" => HarnessRole::Writer,
             "fixer" => HarnessRole::Fixer,
             "reviewer" => HarnessRole::Reviewer,
             _ => return Err(crate::turn::developer_error(&error("unsupported local memory role"))),
         };
-        let task = ContextNodeId::new(input.run_id.into_bytes())
+        let task_identity = if role == "designer" {
+            let mut label = b"peritus/design-task/v1\0".to_vec();
+            label.extend_from_slice(input.run_id.as_bytes());
+            let digest = peritus_codec::sha256(&label);
+            let mut identity = [0; 16];
+            identity.copy_from_slice(&digest.as_bytes()[..16]);
+            identity[0] |= 1;
+            identity
+        } else {
+            input.run_id.into_bytes()
+        };
+        let task = ContextNodeId::new(task_identity)
             .map_err(|_| crate::turn::developer_error(&error("invalid logical task identity")))?;
         let binding = WorkingBinding::new(
             input.run_id,
@@ -98,6 +107,7 @@ impl LocalContextHandle {
         Ok(Some(Self {
             inner: Arc::new(Mutex::new(memory)),
             conversation: Arc::clone(&input.conversation),
+            session_directory: root.join("provider-sessions"),
         }))
     }
 
@@ -119,6 +129,9 @@ impl LocalContextHandle {
 }
 
 impl DeveloperContextPort for LocalContextHandle {
+    fn local_session_directory(&self) -> Option<std::path::PathBuf> {
+        Some(self.session_directory.clone())
+    }
     fn source_reference(
         &self,
         call: &CompletedToolCall,

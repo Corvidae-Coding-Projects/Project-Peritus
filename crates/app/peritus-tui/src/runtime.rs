@@ -33,7 +33,7 @@ pub use product::{ProductLaunchContext, ProductProviderOption};
 pub use state::TuiState;
 
 const UI_TICK: Duration = Duration::from_millis(250);
-const CONNECT_TIMEOUT: Duration = Duration::from_secs(8);
+const CLOSE_GRACE: Duration = Duration::from_secs(8);
 
 #[derive(Default)]
 struct LocalReads {

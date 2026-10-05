@@ -24,24 +24,6 @@ impl AppModel {
         );
     }
 
-    pub(in crate::model) fn workbench_inspection_timeout(&mut self, pending: &PendingRequest) {
-        self.chat.workbench.snapshot_refresh_command = None;
-        self.chat.workbench.goal_refresh_command = None;
-        self.chat.workbench.goal_confirm_pending = None;
-        self.chat.workbench.inspection_draft = None;
-        self.workbench_primary_inspection_error(pending, "request timed out");
-        self.workbench_secondary_inspection_error(pending, "request timed out", false);
-        if matches!(pending, PendingRequest::WorkbenchExecution(_)) {
-            "Session inspection timed out. Refresh to retry; draft retained."
-                .clone_into(&mut self.chat.workbench.message);
-        }
-        if matches!(pending, PendingRequest::WorkbenchImagePreview(_)) {
-            self.chat.workbench.images.discard_preview();
-            "Image preview timed out. Retry the command; draft retained."
-                .clone_into(&mut self.chat.workbench.message);
-        }
-    }
-
     fn workbench_primary_inspection_error(&mut self, pending: &PendingRequest, detail: &str) {
         match pending {
             PendingRequest::ConversationLibrary(_) => {

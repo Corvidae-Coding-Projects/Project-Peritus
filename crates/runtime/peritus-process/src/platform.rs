@@ -10,12 +10,7 @@ mod self_memory;
 #[cfg(target_os = "linux")]
 mod watchdog;
 
-use std::{
-    io::{Read, Write},
-    sync::mpsc,
-    thread,
-    time::Duration,
-};
+use std::io::{Read, Write};
 
 use peritus_types::Sha256Digest;
 
@@ -127,39 +122,17 @@ pub(crate) fn verify_helper_record<F>(
 where
     F: FnOnce(),
 {
-    let (sender, receiver) = mpsc::sync_channel(1);
-    let task = thread::Builder::new()
-        .name("peritus-native-handshake".to_owned())
-        .spawn(move || {
-            let mut reader = reader;
-            let mut record = [0_u8; Sha256Digest::LENGTH];
-            let result = reader.read_exact(&mut record).map(|()| record);
-            let _ = sender.send((reader, result));
-        })
-        .map_err(|_| helper_protocol_error("native helper handshake task cannot be started"))?;
-    match receiver.recv_timeout(Duration::from_secs(5)) {
-        Ok((reader, Ok(record))) => {
-            task.join()
-                .map_err(|_| helper_protocol_error("native helper handshake task panicked"))?;
-            if record != expected.into_bytes() {
-                return Err(helper_protocol_error("native helper handshake record mismatched"));
-            }
-            Ok(reader)
-        }
-        Ok((_reader, Err(_))) => {
-            let _ = task.join();
-            Err(helper_protocol_error("native helper handshake stream closed"))
-        }
-        Err(mpsc::RecvTimeoutError::Timeout) => {
-            terminate();
-            drop(task);
-            Err(helper_protocol_error("native helper handshake timed out"))
-        }
-        Err(mpsc::RecvTimeoutError::Disconnected) => {
-            let _ = task.join();
-            Err(helper_protocol_error("native helper handshake task disconnected"))
-        }
+    let mut reader = reader;
+    let mut record = [0_u8; Sha256Digest::LENGTH];
+    if reader.read_exact(&mut record).is_err() {
+        terminate();
+        return Err(helper_protocol_error("native helper handshake stream closed"));
     }
+    if record != expected.into_bytes() {
+        terminate();
+        return Err(helper_protocol_error("native helper handshake record mismatched"));
+    }
+    Ok(reader)
 }
 
 pub(crate) fn write_helper_manifest(

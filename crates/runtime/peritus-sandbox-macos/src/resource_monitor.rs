@@ -118,7 +118,7 @@ impl ResourceUsage {
 const fn exceeds(usage: &ResourceUsage, controls: &ResourceControlPlan) -> bool {
     let cpu_nanos =
         controls.control(SandboxResourceKind::CpuTime).ceiling().saturating_mul(1_000_000);
-    usage.cpu_nanos > cpu_nanos
+    (controls.control(SandboxResourceKind::CpuTime).ceiling() != 0 && usage.cpu_nanos > cpu_nanos)
         || usage.memory_bytes > controls.control(SandboxResourceKind::Memory).ceiling()
         || usage.disk_bytes > controls.control(SandboxResourceKind::Disk).ceiling()
         || usage.open_handles > controls.control(SandboxResourceKind::OpenHandles).ceiling()

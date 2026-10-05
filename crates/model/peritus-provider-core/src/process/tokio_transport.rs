@@ -6,7 +6,7 @@ use std::process::{ExitStatus, Stdio};
 use std::task::Poll;
 
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWriteExt};
-use tokio::process::{Child, ChildStderr, ChildStdout, Command};
+use tokio::process::{Child, ChildStderr, ChildStdin, ChildStdout, Command};
 use tokio::time::Instant;
 
 use super::{ProcessExit, ProcessOutput, ProcessRequest, ProcessTransport};
@@ -34,11 +34,53 @@ async fn run(
         return Err(ProviderCoreError::cancelled("process_run"));
     }
     let limits = request.limits();
-    let deadline = Instant::now() + limits.timeout();
+    let journal = match request.stdout_journal() {
+        Some(path) => Some(
+            tokio::fs::OpenOptions::new().write(true).create_new(true).open(path).await.map_err(
+                |_| {
+                    ProviderCoreError::configuration(
+                        "process_journal",
+                        "owned subprocess journal could not be created",
+                    )
+                },
+            )?,
+        ),
+        None => None,
+    };
+    let deadline = limits.timeout().map(|timeout| Instant::now() + timeout);
     let mut child = spawn(&request)?;
-    write_stdin(&mut child, request.stdin(), cancellation, deadline).await?;
+    let Some(stdin) = child.stdin.take() else {
+        terminate(&mut child).await;
+        return Err(ProviderCoreError::transport(
+            "process_spawn",
+            "owned subprocess stdin was unavailable",
+        ));
+    };
     let (stdout, stderr) = take_output(&mut child).await?;
-    collect(child, stdout, stderr, limits, cancellation, deadline).await
+    let operation =
+        collect_output(&mut child, stdin, request.stdin(), (stdout, stderr), limits, journal);
+    let timed = async {
+        match deadline {
+            Some(deadline) => {
+                tokio::time::timeout_at(deadline, operation).await.map_err(|_| timeout_error())?
+            }
+            None => operation.await,
+        }
+    };
+    let result = match crate::cancellation::first(cancellation, timed).await {
+        None => Err(ProviderCoreError::cancelled("process_run")),
+        Some(Err(error)) => Err(error),
+        Some(Ok((status, stdout, stderr))) => ProcessOutput::new(
+            ProcessExit::new(status.success(), status.code()),
+            stdout,
+            stderr,
+            limits,
+        ),
+    };
+    if result.is_err() {
+        terminate(&mut child).await;
+    }
+    result
 }
 
 fn spawn(request: &ProcessRequest) -> Result<Child, ProviderCoreError> {
@@ -62,39 +104,15 @@ fn spawn(request: &ProcessRequest) -> Result<Child, ProviderCoreError> {
     })
 }
 
-async fn write_stdin(
-    child: &mut Child,
-    input: &[u8],
-    cancellation: &CancellationToken,
-    deadline: Instant,
-) -> Result<(), ProviderCoreError> {
-    let Some(mut stdin) = child.stdin.take() else {
-        terminate(child).await;
-        return Err(ProviderCoreError::transport(
-            "process_spawn",
-            "owned subprocess stdin was unavailable",
-        ));
-    };
-    let write = async {
+async fn write_stdin(mut stdin: ChildStdin, input: &[u8]) -> Result<(), ProviderCoreError> {
+    async {
         stdin.write_all(input).await?;
         stdin.shutdown().await
-    };
-    let timed = tokio::time::timeout_at(deadline, write);
-    let outcome = crate::cancellation::first(cancellation, timed).await;
-    let result = match outcome {
-        None => Err(ProviderCoreError::cancelled("process_stdin")),
-        Some(Err(_)) => Err(timeout_error()),
-        Some(Ok(Err(_))) => Err(ProviderCoreError::transport(
-            "process_stdin",
-            "owned subprocess stdin write failed",
-        )),
-        Some(Ok(Ok(()))) => Ok(()),
-    };
-    drop(stdin);
-    if result.is_err() {
-        terminate(child).await;
     }
-    result
+    .await
+    .map_err(|_: std::io::Error| {
+        ProviderCoreError::transport("process_stdin", "owned subprocess stdin write failed")
+    })
 }
 
 async fn take_output(child: &mut Child) -> Result<(ChildStdout, ChildStderr), ProviderCoreError> {
@@ -115,47 +133,31 @@ async fn take_output(child: &mut Child) -> Result<(ChildStdout, ChildStderr), Pr
     Ok((stdout, stderr))
 }
 
-async fn collect(
-    mut child: Child,
-    stdout: ChildStdout,
-    stderr: ChildStderr,
-    limits: super::ProcessLimits,
-    cancellation: &CancellationToken,
-    deadline: Instant,
-) -> Result<ProcessOutput, ProviderCoreError> {
-    let operation = collect_output(&mut child, stdout, stderr, limits);
-    let timed = tokio::time::timeout_at(deadline, operation);
-    let outcome = crate::cancellation::first(cancellation, timed).await;
-    let result = match outcome {
-        None => Err(ProviderCoreError::cancelled("process_run")),
-        Some(Err(_)) => Err(timeout_error()),
-        Some(Ok(Err(error))) => Err(error),
-        Some(Ok(Ok((status, stdout, stderr)))) => ProcessOutput::new(
-            ProcessExit::new(status.success(), status.code()),
-            stdout,
-            stderr,
-            limits,
-        ),
-    };
-    if result.is_err() {
-        terminate(&mut child).await;
-    }
-    result
-}
-
 async fn collect_output(
     child: &mut Child,
-    stdout: ChildStdout,
-    stderr: ChildStderr,
+    stdin: ChildStdin,
+    input: &[u8],
+    output: (ChildStdout, ChildStderr),
     limits: super::ProcessLimits,
+    journal: Option<tokio::fs::File>,
 ) -> Result<(ExitStatus, Vec<u8>, Vec<u8>), ProviderCoreError> {
+    let (stdout, stderr) = output;
     let mut wait = Box::pin(child.wait());
-    let mut stdout = Box::pin(read_bounded(stdout, limits.max_stdout_bytes(), "stdout"));
-    let mut stderr = Box::pin(read_bounded(stderr, limits.max_stderr_bytes(), "stderr"));
+    let mut write = Box::pin(write_stdin(stdin, input));
+    let mut written = false;
+    let mut stdout = Box::pin(read_bounded(stdout, limits.max_stdout_bytes(), "stdout", journal));
+    let mut stderr = Box::pin(read_bounded(stderr, limits.max_stderr_bytes(), "stderr", None));
     let mut status = None;
     let mut stdout_bytes = None;
     let mut stderr_bytes = None;
     poll_fn(|context| {
+        if !written {
+            match write.as_mut().poll(context) {
+                Poll::Ready(Ok(())) => written = true,
+                Poll::Ready(Err(error)) => return Poll::Ready(Err(error)),
+                Poll::Pending => {}
+            }
+        }
         if status.is_none() {
             match wait.as_mut().poll(context) {
                 Poll::Ready(Ok(value)) => status = Some(value),
@@ -178,7 +180,9 @@ async fn collect_output(
             }
         }
         match (status.take(), stdout_bytes.take(), stderr_bytes.take()) {
-            (Some(status), Some(stdout), Some(stderr)) => Poll::Ready(Ok((status, stdout, stderr))),
+            (Some(status), Some(stdout), Some(stderr)) if written => {
+                Poll::Ready(Ok((status, stdout, stderr)))
+            }
             (pending_status, pending_stdout, pending_stderr) => {
                 status = pending_status;
                 stdout_bytes = pending_stdout;
@@ -194,6 +198,7 @@ async fn read_bounded(
     mut input: impl AsyncRead + Unpin,
     limit: usize,
     operation: &'static str,
+    mut journal: Option<tokio::fs::File>,
 ) -> Result<Vec<u8>, ProviderCoreError> {
     let mut output = Vec::new();
     let mut buffer = [0_u8; 8 * 1024];
@@ -217,6 +222,20 @@ async fn read_bounded(
             ));
         }
         output.extend_from_slice(&buffer[..count]);
+        if let Some(journal) = journal.as_mut() {
+            journal.write_all(&buffer[..count]).await.map_err(|_| {
+                ProviderCoreError::transport(
+                    "process_journal",
+                    "owned subprocess journal write failed",
+                )
+            })?;
+            journal.sync_data().await.map_err(|_| {
+                ProviderCoreError::transport(
+                    "process_journal",
+                    "owned subprocess journal persistence failed",
+                )
+            })?;
+        }
     }
 }
 

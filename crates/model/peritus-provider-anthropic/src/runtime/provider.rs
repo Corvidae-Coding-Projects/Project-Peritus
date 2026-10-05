@@ -1,12 +1,14 @@
 //! Authentication delegation and one-turn Claude executable ownership.
 
 mod result;
+mod session;
+#[cfg(test)]
+mod tests;
 
 use core::fmt;
 use std::io::Write as _;
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::time::Duration;
 
 use peritus_model_protocol::{
     FailureCategory, ModelFailure, ModelRequest, OutcomeCertainty, ProviderName,
@@ -166,13 +168,14 @@ impl ClaudeRuntimeProvider {
         runtime: &RuntimeRequest,
         cancellation: &CancellationToken,
     ) -> Result<peritus_provider_core::ProcessOutput, ProviderCoreError> {
-        let directory = tempfile::tempdir().map_err(|_| temporary_failure())?;
+        let session = session::Session::open(request)?;
+        let directory = session.turn_directory()?;
         let mut system =
             tempfile::NamedTempFile::new_in(directory.path()).map_err(|_| temporary_failure())?;
         system.write_all(&runtime.system).map_err(|_| temporary_failure())?;
         system.flush().map_err(|_| temporary_failure())?;
         let system_path = path_argument(system.path())?;
-        let arguments = vec![
+        let mut arguments = vec![
             "-p".to_owned(),
             "--output-format".to_owned(),
             "json".to_owned(),
@@ -187,7 +190,6 @@ impl ClaudeRuntimeProvider {
             "mcp__*".to_owned(),
             "--disable-slash-commands".to_owned(),
             "--no-chrome".to_owned(),
-            "--no-session-persistence".to_owned(),
             "--strict-mcp-config".to_owned(),
             "--mcp-config".to_owned(),
             EMPTY_MCP_CONFIG.to_owned(),
@@ -198,15 +200,24 @@ impl ClaudeRuntimeProvider {
             "--max-turns".to_owned(),
             "1".to_owned(),
         ];
+        session.arguments(&mut arguments);
         let process = ProcessRequest::new(
             self.config.executable().process_executable().clone(),
             arguments,
             runtime.prompt.clone(),
-            Some(directory.path().to_path_buf()),
+            Some(session.root().unwrap_or_else(|| directory.path()).to_path_buf()),
             credential_environment()?,
             self.config.process_limits(),
         )?;
-        self.transport.run(process, cancellation).await
+        let process = if session.root().is_some() {
+            process.with_stdout_journal(directory.path().join("native.jsonl"))
+        } else {
+            process
+        };
+        session.mark_started()?;
+        let output = self.transport.run(process, cancellation).await?;
+        session.validate_output(output.stdout())?;
+        Ok(output)
     }
 }
 
@@ -290,7 +301,7 @@ fn credential_environment() -> Result<Vec<EnvironmentName>, ProviderCoreError> {
 }
 
 const fn auth_limits() -> Result<ProcessLimits, ProviderCoreError> {
-    ProcessLimits::new(1, 64 * 1024, 64 * 1024, Duration::from_secs(10))
+    ProcessLimits::without_deadline(1, 64 * 1024, 64 * 1024)
 }
 
 fn path_argument(path: &Path) -> Result<String, ProviderCoreError> {

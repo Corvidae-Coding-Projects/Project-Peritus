@@ -63,7 +63,9 @@ not provider-core, decides whether a configured production endpoint must use HTT
 roots, certificate bypass, proxy inheritance, and cross-origin redirect policy are intentionally
 unsupported in this stage.
 
-Account-runtime subprocesses use piped bounded I/O, an explicit wall-clock deadline, and
+Production HTTP requests and account-runtime subprocesses have no imposed elapsed-time deadline.
+Explicit embedding callers may select a positive transport deadline. Account runtimes use
+concurrently pumped, byte-bounded I/O, retained stdout journals for host-bound tasks, and
 `kill_on_drop`. Cancellation, timeout, output-limit, pipe, and wait failures all initiate child
 termination and await reaping before returning. Tests exercise the public fake seam and the real
 Tokio transport with a portable Rust helper, including argv/stdin/cwd/environment removal,

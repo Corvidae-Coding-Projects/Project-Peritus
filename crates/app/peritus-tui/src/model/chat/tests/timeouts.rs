@@ -9,9 +9,9 @@ fn request(effects: &[Effect]) -> AppRequestEnvelope {
     request.clone()
 }
 
-fn expire(model: &mut AppModel, request: &AppRequestEnvelope) -> Vec<Effect> {
+fn wait_without_expiry(model: &mut AppModel, request: &AppRequestEnvelope) -> Vec<Effect> {
     model.pending_started.retain(|id, _| *id == request.request_id());
-    model.tick_count = 119;
+    model.tick_count = 10_000;
     model.update(Action::Tick(std::time::Instant::now()))
 }
 
@@ -63,15 +63,12 @@ fn slow_read_only_panels_remain_retryable_without_reconnecting_the_conversation(
         let old = request(&model.slash_command(command));
         model.chat.buffer = "Keep the next draft 界".into();
         let context = model.context;
-        let effects = expire(&mut model, &old);
+        let effects = wait_without_expiry(&mut model, &old);
         assert!(!effects.iter().any(|effect| matches!(effect, Effect::Reconnect)), "{command}");
         assert_eq!(model.context, context);
         assert!(matches!(model.connection, crate::model::ConnectionStatus::Online { .. }));
-        assert!(!model.pending.contains_key(&old.request_id()));
+        assert!(model.pending.contains_key(&old.request_id()));
         assert_eq!(model.chat.buffer, "Keep the next draft 界");
-        assert!(model.notice.as_ref().unwrap().text.contains("timed out"));
-        let retry = request(&key(&mut model, KeyCode::Char('r')));
-        assert_ne!(retry.request_id(), old.request_id(), "{command} cannot retry");
     }
 }
 
@@ -88,16 +85,15 @@ fn a_slow_diagnostic_does_not_interrupt_an_unexpired_model_update() {
     model
         .pending_started
         .retain(|id, _| *id == diagnostic.request_id() || *id == update.request_id());
-    model.tick_count = 119;
+    model.tick_count = 10_000;
     let effects = model.update(Action::Tick(std::time::Instant::now()));
     assert!(!effects.iter().any(|effect| matches!(effect, Effect::Reconnect)));
     assert!(model.pending.contains_key(&update.request_id()));
     assert!(model.chat_submission_pending());
-    assert!(model.chat.doctor.as_ref().unwrap().error.as_ref().unwrap().contains("timed out"));
+    assert!(model.chat.doctor.as_ref().unwrap().error.is_none());
     model.tick_count = 179;
     let effects = model.update(Action::Tick(std::time::Instant::now()));
-    assert!(
-        effects.iter().any(|effect| matches!(effect, Effect::Reconnect)),
-        "a mutation with unknown outcome still needs reconciliation"
-    );
+    assert!(!effects.iter().any(|effect| matches!(effect, Effect::Reconnect)));
+    assert!(model.pending.contains_key(&diagnostic.request_id()));
+    assert!(model.pending.contains_key(&update.request_id()));
 }

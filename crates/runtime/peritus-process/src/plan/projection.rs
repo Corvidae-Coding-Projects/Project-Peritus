@@ -80,8 +80,16 @@ const fn validate_resources(
     resources: ProcessResourcePolicy,
     expected: &peritus_sandbox::ResourceLimits,
 ) -> Result<(), ProcessError> {
-    let matches = expected.limit(SandboxResourceKind::WallTime).get() == resources.wall_millis()
-        && expected.limit(SandboxResourceKind::CpuTime).get() == resources.cpu_millis()
+    let matches = expected.limit(SandboxResourceKind::WallTime).get()
+        == match resources.wall_millis() {
+            Some(value) => value,
+            None => 0,
+        }
+        && expected.limit(SandboxResourceKind::CpuTime).get()
+            == match resources.cpu_millis() {
+                Some(value) => value,
+                None => 0,
+            }
         && expected.limit(SandboxResourceKind::Memory).get() == resources.memory_bytes()
         && expected.limit(SandboxResourceKind::Disk).get() == resources.disk_bytes()
         && expected.limit(SandboxResourceKind::Output).get() == resources.output_bytes()

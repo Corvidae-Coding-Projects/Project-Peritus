@@ -163,14 +163,9 @@ fn build(
     };
     use peritus_provider_google::{GoogleClient, GoogleConfig};
     let endpoint = Endpoint::new(service.route(profile.dialect())?.endpoint.to_owned())?;
-    let retry = RetryPolicy::new(
+    let retry = RetryPolicy::without_deadline(
         2,
-        [
-            Duration::from_millis(100),
-            Duration::from_secs(2),
-            Duration::from_secs(2),
-            Duration::from_secs(10),
-        ],
+        [Duration::from_millis(100), Duration::from_secs(2), Duration::from_secs(2)],
         64 * 1024 * 1024,
     )?;
     match profile.dialect() {

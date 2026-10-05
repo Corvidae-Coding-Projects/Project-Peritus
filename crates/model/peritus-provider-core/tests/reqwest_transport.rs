@@ -14,6 +14,52 @@ use peritus_provider_core::{
     ProviderCoreErrorKind, ReqwestTransport,
 };
 
+#[tokio::test]
+async fn default_transport_retains_slow_headers_and_body_across_elapsed_hours() {
+    use tokio::io::{AsyncReadExt as _, AsyncWriteExt as _};
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let address = listener.local_addr().unwrap();
+    let (received, accepted) = tokio::sync::oneshot::channel();
+    let (release_headers, headers_ready) = tokio::sync::oneshot::channel();
+    let (release_body, body_ready) = tokio::sync::oneshot::channel();
+    let server = tokio::spawn(async move {
+        let (mut stream, _) = listener.accept().await.unwrap();
+        let mut request = [0; 4096];
+        assert!(stream.read(&mut request).await.unwrap() > 0);
+        received.send(()).unwrap();
+        headers_ready.await.unwrap();
+        stream.write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 1\r\n\r\n").await.unwrap();
+        body_ready.await.unwrap();
+        stream.write_all(b"x").await.unwrap();
+    });
+    let limits = HttpLimits::new([8, 1024, 8, 8, 8]).unwrap();
+    let request = HttpRequest::new(
+        HttpMethod::Get,
+        Endpoint::new(format!("http://{address}/retained")).unwrap(),
+        HttpHeaders::empty(),
+        Vec::new(),
+        limits,
+    )
+    .unwrap();
+    let transport = ReqwestTransport::new(limits).unwrap();
+    let owner =
+        tokio::spawn(async move { transport.send(request, &CancellationToken::new()).await });
+    accepted.await.unwrap();
+    tokio::time::pause();
+    tokio::time::advance(Duration::from_hours(12)).await;
+    assert!(!owner.is_finished(), "elapsed time must not discard a pending request");
+    release_headers.send(()).unwrap();
+    let response = owner.await.unwrap().unwrap();
+    let (_, _, mut body) = response.into_parts();
+    let read = tokio::spawn(async move { body.next(&CancellationToken::new()).await });
+    tokio::task::yield_now().await;
+    tokio::time::advance(Duration::from_hours(12)).await;
+    assert!(!read.is_finished(), "elapsed time must not discard an idle response body");
+    release_body.send(()).unwrap();
+    assert_eq!(read.await.unwrap().unwrap().unwrap(), b"x");
+    server.await.unwrap();
+}
+
 fn serve_once(response: &'static [u8]) -> (Endpoint, thread::JoinHandle<()>) {
     let listener = TcpListener::bind("127.0.0.1:0").expect("bind fake server");
     let address = listener.local_addr().expect("fake server address");

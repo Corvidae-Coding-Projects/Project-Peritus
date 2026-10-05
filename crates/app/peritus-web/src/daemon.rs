@@ -14,10 +14,7 @@ use peritus_app_protocol::{
 use peritus_types::{ProviderProfileId, RunId, WorkspaceId};
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
-use std::{
-    path::{Path, PathBuf},
-    time::Duration,
-};
+use std::path::{Path, PathBuf};
 
 pub fn bytes(text: &str) -> Result<[u8; 16]> {
     if text.len() != 32 || !text.bytes().all(|b| b.is_ascii_hexdigit()) {
@@ -145,9 +142,7 @@ pub async fn raw_request(app: &App, payload: AppRequestPayload) -> Result<AppRes
     let endpoint = endpoint(app)?;
     let required = payload.required_workbench_feature().into_iter().collect::<Vec<_>>();
     let mut client =
-        Client::connect(endpoint.as_os_str(), None, Duration::from_secs(30), &required)
-            .await
-            .map_err(problem)?;
+        Client::connect(endpoint.as_os_str(), None, None, &required).await.map_err(problem)?;
     let identity = Client::new_request_identity().map_err(problem)?;
     let response = client.request(identity, payload).await.map_err(problem)?;
     Ok(response.payload().clone())

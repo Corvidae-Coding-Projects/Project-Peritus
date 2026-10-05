@@ -3056,6 +3056,7 @@ name = "peritus-provider-anthropic"
 version = "0.0.5"
 dependencies = [
  "base64",
+ "getrandom 0.4.3",
  "peritus-codec",
  "peritus-conformance",
  "peritus-model-protocol",

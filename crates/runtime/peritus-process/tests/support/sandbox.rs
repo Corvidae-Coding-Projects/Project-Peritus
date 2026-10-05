@@ -244,8 +244,8 @@ fn terminal(projection: &Projection) -> (TerminalContract, TerminalRequirements)
 
 fn limits(resources: ProcessResourcePolicy) -> ResourceLimits {
     ResourceLimits::new(
-        ResourceQuantity::new(resources.wall_millis()),
-        ResourceQuantity::new(resources.cpu_millis()),
+        ResourceQuantity::new(resources.wall_millis().expect("explicit fixture wall bound")),
+        ResourceQuantity::new(resources.cpu_millis().expect("explicit fixture CPU bound")),
         ResourceQuantity::new(resources.memory_bytes()),
         ResourceQuantity::new(resources.disk_bytes()),
         ResourceQuantity::new(resources.output_bytes()),

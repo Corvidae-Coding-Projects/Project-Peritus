@@ -19,15 +19,9 @@ use crate::{
 pub struct ReqwestTransport {
     client: reqwest::Client,
     limits: HttpLimits,
-    response_headers_timeout: Duration,
-    body_idle_timeout: Duration,
+    response_headers_timeout: Option<Duration>,
+    body_idle_timeout: Option<Duration>,
 }
-
-const CONNECT_TIMEOUT: Duration = Duration::from_secs(15);
-const RESPONSE_HEADERS_TIMEOUT: Duration = Duration::from_mins(2);
-const BODY_IDLE_TIMEOUT: Duration = Duration::from_mins(2);
-const REQUEST_TIMEOUT: Duration = Duration::from_mins(10);
-const MAX_TIMEOUT: Duration = Duration::from_mins(10);
 
 impl ReqwestTransport {
     /// Builds a transport with explicit resource limits.
@@ -40,14 +34,14 @@ impl ReqwestTransport {
     ///
     /// Returns a redaction-safe configuration failure if the client cannot be built.
     pub fn new(limits: HttpLimits) -> Result<Self, ProviderCoreError> {
-        Self::with_timeouts(limits, CONNECT_TIMEOUT, RESPONSE_HEADERS_TIMEOUT, BODY_IDLE_TIMEOUT)
+        Self::build(limits, None, None, None)
     }
 
     /// Builds a transport with explicit connection, response-header, and body-idle deadlines.
     ///
     /// # Errors
     ///
-    /// Rejects zero or excessively wide deadlines and client construction failures.
+    /// Rejects zero deadlines and client construction failures.
     pub fn with_timeouts(
         limits: HttpLimits,
         connect_timeout: Duration,
@@ -56,16 +50,33 @@ impl ReqwestTransport {
     ) -> Result<Self, ProviderCoreError> {
         if [connect_timeout, response_headers_timeout, body_idle_timeout]
             .into_iter()
-            .any(|timeout| timeout.is_zero() || timeout > MAX_TIMEOUT)
+            .any(|timeout| timeout.is_zero())
         {
             return Err(ProviderCoreError::new(
                 ProviderCoreErrorKind::Configuration,
                 "http_client",
-                "HTTP deadlines must be nonzero and no greater than ten minutes",
+                "HTTP deadlines must be nonzero",
             ));
         }
-        let client = reqwest::Client::builder()
-            .connect_timeout(connect_timeout)
+        Self::build(
+            limits,
+            Some(connect_timeout),
+            Some(response_headers_timeout),
+            Some(body_idle_timeout),
+        )
+    }
+
+    fn build(
+        limits: HttpLimits,
+        connect_timeout: Option<Duration>,
+        response_headers_timeout: Option<Duration>,
+        body_idle_timeout: Option<Duration>,
+    ) -> Result<Self, ProviderCoreError> {
+        let mut builder = reqwest::Client::builder();
+        if let Some(timeout) = connect_timeout {
+            builder = builder.connect_timeout(timeout);
+        }
+        let client = builder
             .redirect(reqwest::redirect::Policy::none())
             .retry(reqwest::retry::never())
             .no_proxy()
@@ -120,7 +131,6 @@ impl HttpTransport for ReqwestTransport {
             if cancellation.is_cancelled() {
                 return Err(ProviderCoreError::cancelled("send_request"));
             }
-            let request_deadline = tokio::time::Instant::now() + REQUEST_TIMEOUT;
             let (method, endpoint, headers, body) = request.into_parts();
             let mut request = self.client.request(reqwest_method(method), endpoint.url().clone());
             for header in &headers {
@@ -134,7 +144,7 @@ impl HttpTransport for ReqwestTransport {
                 request = request.header(name, value);
             }
             request = request.body(body);
-            let response = tokio::time::timeout(
+            let response = optional_timeout(
                 self.response_headers_timeout,
                 crate::cancellation::first(cancellation, request.send()),
             )
@@ -156,7 +166,6 @@ impl HttpTransport for ReqwestTransport {
                 max_response_body_bytes: self.limits.max_response_body_bytes(),
                 observed_bytes: 0,
                 idle_timeout: self.body_idle_timeout,
-                request_deadline,
             };
             HttpResponse::new(status, headers, Box::new(stream), self.limits)
         })
@@ -168,8 +177,7 @@ struct ReqwestByteStream {
     max_chunk_bytes: usize,
     max_response_body_bytes: usize,
     observed_bytes: usize,
-    idle_timeout: Duration,
-    request_deadline: tokio::time::Instant,
+    idle_timeout: Option<Duration>,
 }
 
 impl ByteStream for ReqwestByteStream {
@@ -178,26 +186,12 @@ impl ByteStream for ReqwestByteStream {
         cancellation: &'a CancellationToken,
     ) -> BoxFuture<'a, Result<Option<Vec<u8>>, ProviderCoreError>> {
         Box::pin(async move {
-            let remaining =
-                self.request_deadline.saturating_duration_since(tokio::time::Instant::now());
-            if remaining.is_zero() {
-                return Err(transport_timeout(
-                    "read_body",
-                    "provider request exceeded its overall deadline",
-                ));
-            }
-            let next = tokio::time::timeout(
-                self.idle_timeout.min(remaining),
+            let next = optional_timeout(
+                self.idle_timeout,
                 crate::cancellation::first(cancellation, self.stream.next()),
             )
             .await
-            .map_err(|_| {
-                if tokio::time::Instant::now() >= self.request_deadline {
-                    transport_timeout("read_body", "provider request exceeded its overall deadline")
-                } else {
-                    transport_timeout("read_body", "provider response body became idle")
-                }
-            })?;
+            .map_err(|_| transport_timeout("read_body", "provider response body became idle"))?;
             match next {
                 None => Err(ProviderCoreError::cancelled("read_body")),
                 Some(item) => match item {
@@ -305,4 +299,14 @@ const fn invalid_http(detail: &'static str) -> ProviderCoreError {
 
 const fn limit_error(detail: &'static str) -> ProviderCoreError {
     ProviderCoreError::new(ProviderCoreErrorKind::LimitExceeded, "send_request", detail)
+}
+
+async fn optional_timeout<T>(
+    duration: Option<Duration>,
+    operation: impl Future<Output = T>,
+) -> Result<T, tokio::time::error::Elapsed> {
+    match duration {
+        Some(duration) => tokio::time::timeout(duration, operation).await,
+        None => Ok(operation.await),
+    }
 }

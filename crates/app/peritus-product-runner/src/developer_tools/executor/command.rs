@@ -13,7 +13,6 @@ use crate::developer_tools::{
     wire::{bounded_u64, required_string, string},
 };
 
-const DEFAULT_COMMAND_TIMEOUT_SECONDS: u64 = 120;
 const MAX_COMMAND_TIMEOUT_SECONDS: u64 = u64::MAX / 1_000;
 const DEFAULT_TERMINAL_ROWS: u64 = 24;
 const DEFAULT_TERMINAL_COLUMNS: u64 = 80;
@@ -22,15 +21,16 @@ struct ParsedCommand {
     program: String,
     arguments: Vec<String>,
     cwd: PathBuf,
-    timeout: Duration,
-    requested_timeout_seconds: u64,
+    timeout: Option<Duration>,
+    requested_timeout_seconds: Option<u64>,
     deadline_limited: bool,
     completion_reserve_seconds: u64,
 }
 
 impl WorkspaceDeveloperTools {
     pub(super) fn command_has_effect(&self, arguments: &Value) -> Result<bool, DeveloperLoopError> {
-        self.parse_command(arguments).map(|command| !command.timeout.is_zero())
+        self.parse_command(arguments)
+            .map(|command| !command.timeout.is_some_and(|timeout| timeout.is_zero()))
     }
 
     pub(super) fn run_command(
@@ -39,7 +39,7 @@ impl WorkspaceDeveloperTools {
         call_id: &str,
     ) -> Result<Value, DeveloperLoopError> {
         let command = self.parse_command(arguments)?;
-        if command.timeout.is_zero() {
+        if command.timeout.is_some_and(|timeout| timeout.is_zero()) {
             return self.exhausted_result(command.requested_timeout_seconds);
         }
         let unowned_before = self.ownership.unowned_files(&self.root);
@@ -64,7 +64,7 @@ impl WorkspaceDeveloperTools {
         call_id: &str,
     ) -> Result<Value, DeveloperLoopError> {
         let command = self.parse_command(arguments)?;
-        if command.timeout.is_zero() {
+        if command.timeout.is_some_and(|timeout| timeout.is_zero()) {
             return self.exhausted_result(command.requested_timeout_seconds);
         }
         let interactive = arguments.get("interactive").and_then(Value::as_bool).unwrap_or(true);
@@ -131,7 +131,7 @@ impl WorkspaceDeveloperTools {
         self.command_runtime.as_ref().ok_or_else(|| tool("writable tools have no command runtime"))
     }
 
-    fn exhausted_result(&self, requested: u64) -> Result<Value, DeveloperLoopError> {
+    fn exhausted_result(&self, requested: Option<u64>) -> Result<Value, DeveloperLoopError> {
         Ok(self
             .command_budget
             .as_ref()
@@ -165,13 +165,13 @@ impl WorkspaceDeveloperTools {
             _ => self.root.clone(),
         };
         let requested_timeout_seconds = match arguments.get("timeout_seconds") {
-            None => DEFAULT_COMMAND_TIMEOUT_SECONDS,
-            Some(value) => value
+            None => None,
+            Some(value) => Some(value
                 .as_u64()
                 .filter(|seconds| (1..=MAX_COMMAND_TIMEOUT_SECONDS).contains(seconds))
                 .ok_or_else(|| {
                     tool("timeout_seconds must be a positive integer representable in milliseconds")
-                })?,
+                })?),
         };
         let allowance = self
             .command_budget
@@ -182,7 +182,7 @@ impl WorkspaceDeveloperTools {
             program: program.to_owned(),
             arguments: args,
             cwd,
-            timeout: Duration::from_secs(allowance.timeout_seconds),
+            timeout: allowance.timeout_seconds.map(Duration::from_secs),
             requested_timeout_seconds: allowance.requested_seconds,
             deadline_limited: allowance.deadline_limited,
             completion_reserve_seconds: allowance.completion_reserve_seconds,
@@ -207,9 +207,12 @@ fn annotate_result(
     });
     result.insert(
         "requested_timeout_seconds".to_owned(),
-        Value::from(command.requested_timeout_seconds),
+        command.requested_timeout_seconds.map_or(Value::Null, Value::from),
     );
-    result.insert("timeout_seconds".to_owned(), Value::from(command.timeout.as_secs()));
+    result.insert(
+        "timeout_seconds".to_owned(),
+        command.timeout.map_or(Value::Null, |timeout| Value::from(timeout.as_secs())),
+    );
     result.insert("deadline_limited".to_owned(), Value::Bool(command.deadline_limited));
     result.insert(
         "remaining_product_seconds".to_owned(),

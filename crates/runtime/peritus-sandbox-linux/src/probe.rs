@@ -15,11 +15,7 @@ use std::{
     fs::{self, File},
     io::Read,
     process::{Command, Stdio},
-    time::{Duration, Instant},
 };
-
-#[cfg(target_os = "linux")]
-const PROBE_TIMEOUT: Duration = Duration::from_secs(3);
 
 /// Truthful bounded runtime capability result.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -245,10 +241,10 @@ fn finish_probe(
 
 #[cfg(target_os = "linux")]
 fn probe_bubblewrap(path: &Path) -> BubblewrapProbe {
-    let version = run_bounded(path, ["--version"])
+    let version = run_probe(path, ["--version"])
         .filter(|output| output.status.success())
         .and_then(|output| bounded_output(&output.stdout));
-    let functional = run_bounded(
+    let functional = run_probe(
         path,
         [
             "--die-with-parent",
@@ -281,7 +277,7 @@ fn probe_bubblewrap(path: &Path) -> BubblewrapProbe {
 
 #[cfg(target_os = "linux")]
 fn probe_landlock(helper: &Path) -> Option<u8> {
-    let output = run_bounded(helper, ["--probe-landlock"])?;
+    let output = run_probe(helper, ["--probe-landlock"])?;
     if !output.status.success() {
         return None;
     }
@@ -290,14 +286,14 @@ fn probe_landlock(helper: &Path) -> Option<u8> {
 
 #[cfg(target_os = "linux")]
 fn probe_seccomp(helper: &Path) -> bool {
-    run_bounded(helper, ["--probe-seccomp"]).is_some_and(|output| output.status.success())
+    run_probe(helper, ["--probe-seccomp"]).is_some_and(|output| output.status.success())
 }
 
 #[cfg(target_os = "linux")]
 fn probe_proxy_in_namespace(bwrap: &Path, helper: &Path, route: ProxyRoute) -> bool {
     let endpoint = route.endpoint().to_string();
     let helper = helper.to_string_lossy().into_owned();
-    run_bounded(
+    run_probe(
         bwrap,
         [
             "--die-with-parent",
@@ -316,28 +312,14 @@ fn probe_proxy_in_namespace(bwrap: &Path, helper: &Path, route: ProxyRoute) -> b
 }
 
 #[cfg(target_os = "linux")]
-fn run_bounded<const N: usize>(program: &Path, args: [&str; N]) -> Option<std::process::Output> {
-    let mut child = Command::new(program)
+fn run_probe<const N: usize>(program: &Path, args: [&str; N]) -> Option<std::process::Output> {
+    Command::new(program)
         .args(args)
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
-        .spawn()
-        .ok()?;
-    let started = Instant::now();
-    loop {
-        match child.try_wait().ok()? {
-            Some(_) => return child.wait_with_output().ok(),
-            None if started.elapsed() < PROBE_TIMEOUT => {
-                std::thread::sleep(Duration::from_millis(10));
-            }
-            None => {
-                let _ = child.kill();
-                let _ = child.wait();
-                return None;
-            }
-        }
-    }
+        .output()
+        .ok()
 }
 
 #[cfg(target_os = "linux")]

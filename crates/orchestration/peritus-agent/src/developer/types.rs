@@ -98,6 +98,9 @@ impl DeveloperLoopLimits {
 
 /// Fully resolved inputs for one tool-capable developer role.
 pub struct DeveloperLoopRequest {
+    /// Durable native runtime namespace for this host task and role, independent of memory policy.
+    /// Semantic compaction calls never inherit this namespace.
+    pub local_session_directory: Option<std::path::PathBuf>,
     /// Stable provider request prefix.
     pub request_prefix: String,
     /// Developer role policy.

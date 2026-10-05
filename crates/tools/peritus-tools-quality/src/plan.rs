@@ -51,7 +51,7 @@ impl QualityPlanInputs {
         if definition.environment_profile() != &self.environment_profile {
             return Err(invalid("resolved environment profile differs from the check definition"));
         }
-        if self.deadlines.wall_timeout_millis() != Some(definition.timeout_millis()) {
+        if self.deadlines.wall_timeout_millis() != definition.timeout_millis() {
             return Err(invalid("execution deadline differs from the check definition"));
         }
         if self.output.spool_bytes() < definition.output_bytes() {

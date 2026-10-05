@@ -20,7 +20,7 @@ use crate::{
 pub async fn watch(
     endpoint: &OsStr,
     session: Option<SessionId>,
-    timeout: Duration,
+    timeout: Option<Duration>,
     arguments: EventArgs,
     output: &Output,
 ) -> Result<(), CliError> {

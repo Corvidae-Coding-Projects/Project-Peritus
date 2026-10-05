@@ -193,14 +193,9 @@ impl CompatibleConfig {
             fixed_headers: Vec::new(),
             response_headers: CompatibleResponseHeaders::none(),
             retry_statuses: CompatibleRetryStatuses::none(),
-            retry_policy: RetryPolicy::new(
+            retry_policy: RetryPolicy::without_deadline(
                 3,
-                [
-                    Duration::from_millis(100),
-                    Duration::from_secs(2),
-                    Duration::from_secs(2),
-                    Duration::from_secs(10),
-                ],
+                [Duration::from_millis(100), Duration::from_secs(2), Duration::from_secs(2)],
                 64 * 1024 * 1024,
             )?,
             http_limits: HttpLimits::PRODUCTION,

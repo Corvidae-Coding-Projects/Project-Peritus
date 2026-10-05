@@ -25,7 +25,7 @@ use crate::{
 pub async fn cancel(
     endpoint: &OsStr,
     session: Option<SessionId>,
-    timeout: Duration,
+    timeout: Option<Duration>,
     arguments: ArtifactCancelArgs,
     output: &Output,
 ) -> Result<(), CliError> {
@@ -54,7 +54,7 @@ pub async fn cancel(
 pub async fn get(
     endpoint: &OsStr,
     session: Option<SessionId>,
-    timeout: Duration,
+    timeout: Option<Duration>,
     arguments: ArtifactGetArgs,
     output: &Output,
 ) -> Result<(), CliError> {
@@ -201,7 +201,7 @@ async fn receive_download(
 pub async fn put(
     endpoint: &OsStr,
     session: Option<SessionId>,
-    timeout: Duration,
+    timeout: Option<Duration>,
     arguments: ArtifactPutArgs,
     output: &Output,
 ) -> Result<(), CliError> {

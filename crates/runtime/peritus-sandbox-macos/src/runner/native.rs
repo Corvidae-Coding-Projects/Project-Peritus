@@ -231,6 +231,7 @@ pub(super) fn install_resource_controls(controls: &ResourceControlPlan) -> Resul
             continue;
         }
         let (resource, ceiling) = match control.kind() {
+            SandboxResourceKind::CpuTime if control.ceiling() == 0 => continue,
             SandboxResourceKind::CpuTime => {
                 (libc::RLIMIT_CPU, control.ceiling().saturating_add(999) / 1_000)
             }

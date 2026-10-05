@@ -39,7 +39,7 @@ impl ClipboardWrites {
 
 async fn copy(text: &str) -> io::Result<ClipboardDestination> {
     if let Some((program, arguments)) = desktop_helper() {
-        match native_command(program, arguments, text, Duration::from_secs(2)).await {
+        match native_command(program, arguments, text, None).await {
             Ok(()) => return Ok(ClipboardDestination::Desktop),
             Err(error) if error.kind() == io::ErrorKind::NotFound => {}
             Err(error) => return Err(error),
@@ -68,7 +68,7 @@ async fn native_command(
     program: impl AsRef<std::ffi::OsStr>,
     arguments: &[&str],
     text: &str,
-    timeout: Duration,
+    timeout: Option<Duration>,
 ) -> io::Result<()> {
     let mut child = ProcessCommand::new(program)
         .args(arguments)
@@ -90,9 +90,15 @@ async fn native_command(
             Err(io::Error::other(format!("desktop clipboard helper exited with {status}")))
         }
     };
-    tokio::time::timeout(timeout, work).await.map_err(|_| {
-        io::Error::new(io::ErrorKind::TimedOut, "desktop clipboard helper timed out")
-    })?
+    match timeout {
+        Some(timeout) => tokio::time::timeout(timeout, work).await.map_err(|_| {
+            io::Error::new(
+                io::ErrorKind::TimedOut,
+                "desktop clipboard helper reached its caller-selected deadline",
+            )
+        })?,
+        None => work.await,
+    }
 }
 
 fn write(writer: &mut impl Write, text: &str) -> io::Result<()> {
@@ -151,22 +157,33 @@ mod tests {
         std::fs::write(&helper, "#!/bin/sh\ncase \"$1\" in\ncopy) cat > \"$2\";;\nreject) exit 7;;\nwait) exec sleep 10;;\nesac\n").unwrap();
         std::fs::set_permissions(&helper, std::fs::Permissions::from_mode(0o700)).unwrap();
         let text = "λ界\nquoted ' text; $(inert)\n";
-        native_command(&helper, &["copy", output.to_str().unwrap()], text, Duration::from_secs(1))
-            .await
-            .unwrap();
+        native_command(
+            &helper,
+            &["copy", output.to_str().unwrap()],
+            text,
+            Some(Duration::from_secs(1)),
+        )
+        .await
+        .unwrap();
         assert_eq!(std::fs::read(&output).unwrap(), text.as_bytes());
-        let rejected =
-            native_command(&helper, &["reject"], "", Duration::from_secs(1)).await.unwrap_err();
+        let rejected = native_command(&helper, &["reject"], "", Some(Duration::from_secs(1)))
+            .await
+            .unwrap_err();
         assert!(rejected.to_string().contains('7'));
         let started = std::time::Instant::now();
-        let timed_out =
-            native_command(&helper, &["wait"], "", Duration::from_millis(100)).await.unwrap_err();
+        let timed_out = native_command(&helper, &["wait"], "", Some(Duration::from_millis(100)))
+            .await
+            .unwrap_err();
         assert_eq!(timed_out.kind(), io::ErrorKind::TimedOut);
         assert!(started.elapsed() < Duration::from_secs(1));
-        let missing =
-            native_command(temporary.path().join("absent"), &[], text, Duration::from_secs(1))
-                .await
-                .unwrap_err();
+        let missing = native_command(
+            temporary.path().join("absent"),
+            &[],
+            text,
+            Some(Duration::from_secs(1)),
+        )
+        .await
+        .unwrap_err();
         assert_eq!(missing.kind(), io::ErrorKind::NotFound);
     }
 

@@ -74,7 +74,7 @@ fn offline_prompt_submission_does_not_get_stuck_submitting() {
 }
 
 #[test]
-fn prompt_cancellation_has_a_deadline_and_disconnect_releases_pending_prompt_state() {
+fn prompt_cancellation_waits_for_acknowledgement_and_disconnect_releases_pending_prompt_state() {
     for disconnect in [true, false] {
         let mut model = prompted();
         assert_eq!(key(&mut model, KeyCode::Char('c')).len(), 1);
@@ -83,7 +83,10 @@ fn prompt_cancellation_has_a_deadline_and_disconnect_releases_pending_prompt_sta
             let _ = model.update(Action::Disconnected("lost".to_owned()));
         } else {
             model.tick_count = 121;
-            assert!(model.expire_pending_requests());
+            let effects = model.update(Action::Tick(std::time::Instant::now()));
+            assert!(!effects.iter().any(|effect| matches!(effect, Effect::Reconnect)));
+            assert_eq!(model.prompts[0].phase, PromptPhase::Submitting);
+            model.update(Action::Disconnected("lost".to_owned()));
         }
         assert_eq!(model.prompts[0].phase, PromptPhase::Failed);
         key(&mut model, KeyCode::Enter);

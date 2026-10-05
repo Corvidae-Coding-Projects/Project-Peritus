@@ -6,7 +6,6 @@ pub(super) fn valid(arguments: &[String], stdin: &str) -> bool {
     let required = [
         "exec",
         "--json",
-        "--ephemeral",
         "--ignore-user-config",
         "--ignore-rules",
         "--skip-git-repo-check",
@@ -23,6 +22,7 @@ pub(super) fn valid(arguments: &[String], stdin: &str) -> bool {
     let schema = argument_value(arguments, "--output-schema").map(PathBuf::from);
     let isolated_schema = schema.as_deref().is_some_and(is_file_in_working_directory);
     required_present
+        && !arguments.iter().any(|value| value == "--ephemeral")
         && environment_absent()
         && isolated_schema
         && native_tools_disabled(arguments)

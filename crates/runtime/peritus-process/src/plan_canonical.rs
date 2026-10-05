@@ -198,8 +198,8 @@ fn encode_deadlines(writer: &mut PlanWriter, policy: DeadlinePolicy) {
 }
 
 fn encode_resources(writer: &mut PlanWriter, policy: ProcessResourcePolicy) {
-    writer.u64(policy.wall_millis());
-    writer.u64(policy.cpu_millis());
+    writer.u64(policy.wall_millis().unwrap_or(0));
+    writer.u64(policy.cpu_millis().unwrap_or(0));
     writer.u64(policy.memory_bytes());
     writer.u64(policy.disk_bytes());
     writer.u64(policy.output_bytes());

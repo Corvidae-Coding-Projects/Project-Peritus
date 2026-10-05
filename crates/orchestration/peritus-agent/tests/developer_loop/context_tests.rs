@@ -49,18 +49,20 @@ impl DeveloperToolExecutor for OversizedRecentTool {
 }
 
 #[test]
-fn developer_loop_negotiates_automatic_prompt_caching() {
+fn developer_loop_binds_native_session_without_a_context_port_and_negotiates_caching() {
     block_on(async {
         let provider = ScriptedProvider {
             profile: caching_profile(),
             responses: Mutex::new(VecDeque::from([text_response()])),
             requests: Mutex::new(Vec::new()),
         };
+        let native_session = tempfile::tempdir().expect("native session namespace");
         let mut tools = RecordingTool::default();
         let mut trace = RecordingTrace::default();
         DeveloperLoop::run(
             &provider,
             DeveloperLoopRequest {
+                local_session_directory: Some(native_session.path().to_path_buf()),
                 request_prefix: "cache-test".to_owned(),
                 system: "Complete the task.".to_owned(),
                 prompt: "Return the result.".to_owned(),
@@ -78,6 +80,7 @@ fn developer_loop_negotiates_automatic_prompt_caching() {
         let requests = provider.requests.lock().expect("requests");
         assert_eq!(requests.len(), 1);
         assert_eq!(requests[0].options().cache(), &CachePolicy::Automatic);
+        assert_eq!(requests[0].local_session_directory(), Some(native_session.path()));
         drop(requests);
     });
 }
@@ -108,6 +111,7 @@ fn developer_loop_accounts_image_tiles_instead_of_compressed_transfer_bytes() {
         DeveloperLoop::run(
             &provider,
             DeveloperLoopRequest {
+                local_session_directory: None,
                 request_prefix: "image-accounting-test".to_owned(),
                 system: "Inspect the supplied images.".to_owned(),
                 prompt: "Describe both documents.".to_owned(),
@@ -149,11 +153,13 @@ fn developer_loop_compacts_old_complete_tool_exchanges_with_digest_evidence() {
             responses: Mutex::new(responses),
             requests: Mutex::new(Vec::new()),
         };
+        let native_session = tempfile::tempdir().expect("developer namespace");
         let mut tools = VerboseTool::default();
         let mut trace = RecordingTrace::default();
         let outcome = DeveloperLoop::run(
             &provider,
             DeveloperLoopRequest {
+                local_session_directory: Some(native_session.path().to_path_buf()),
                 request_prefix: "compaction-test".to_owned(),
                 system: "Inspect before completing.".to_owned(),
                 prompt: "Read the workspace until the task is complete.".to_owned(),
@@ -177,6 +183,13 @@ fn developer_loop_compacts_old_complete_tool_exchanges_with_digest_evidence() {
             .find(|request| matches!(request.tool_choice(), ToolChoice::None))
             .expect("semantic compaction request");
         assert!(semantic.tools().is_empty());
+        assert!(semantic.local_session_directory().is_none());
+        assert!(
+            requests
+                .iter()
+                .filter(|request| !request.tools().is_empty())
+                .all(|request| request.local_session_directory() == Some(native_session.path()))
+        );
         assert_eq!(semantic.messages()[0].role(), Role::System);
         assert_eq!(semantic.messages()[1].role(), Role::User);
         assert!(semantic.messages().iter().any(|message| {
@@ -210,6 +223,7 @@ fn developer_loop_bounds_an_oversized_tool_result_before_model_history() {
         let outcome = DeveloperLoop::run(
             &provider,
             DeveloperLoopRequest {
+                local_session_directory: None,
                 request_prefix: "recent-compaction-test".to_owned(),
                 system: "Inspect before completing.".to_owned(),
                 prompt: "Read the workspace and complete the task.".to_owned(),
@@ -262,6 +276,7 @@ fn developer_loop_compacts_an_impossible_recent_complete_exchange() {
         let outcome = DeveloperLoop::run(
             &provider,
             DeveloperLoopRequest {
+                local_session_directory: None,
                 request_prefix: "recent-compaction-test".to_owned(),
                 system: "Inspect before completing.".to_owned(),
                 prompt: "Read the workspace and complete the task.".to_owned(),
@@ -308,6 +323,7 @@ fn developer_loop_falls_back_when_semantic_compaction_is_unusable() {
         let outcome = DeveloperLoop::run(
             &provider,
             DeveloperLoopRequest {
+                local_session_directory: None,
                 request_prefix: "fallback-compaction-test".to_owned(),
                 system: "Inspect before completing.".to_owned(),
                 prompt: "Read the workspace and complete the task.".to_owned(),
@@ -349,6 +365,7 @@ fn developer_loop_returns_context_when_compaction_cannot_fit_the_request() {
         let result = DeveloperLoop::run(
             &provider,
             DeveloperLoopRequest {
+                local_session_directory: None,
                 request_prefix: "over-limit-compaction-test".to_owned(),
                 system: "Complete the task.".to_owned(),
                 prompt: "x".repeat(12_000),

@@ -21,7 +21,7 @@ impl Client {
     pub(crate) async fn connect(
         endpoint: &OsStr,
         requested_session: Option<SessionId>,
-        timeout: Duration,
+        timeout: Option<Duration>,
         required: &[WellKnownProtocolFeature],
     ) -> Result<Self, CliError> {
         let inner =
@@ -67,5 +67,15 @@ impl Client {
         event: &AppEventEnvelope,
     ) -> Result<bool, CliError> {
         self.inner.reply_heartbeat(event).await.map_err(Into::into)
+    }
+}
+
+pub async fn optional_timeout<T>(
+    timeout: Option<Duration>,
+    operation: impl Future<Output = T>,
+) -> Result<T, tokio::time::error::Elapsed> {
+    match timeout {
+        Some(duration) => tokio::time::timeout(duration, operation).await,
+        None => Ok(operation.await),
     }
 }

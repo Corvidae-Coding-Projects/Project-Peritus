@@ -19,7 +19,7 @@ use crate::{
 pub async fn answer(
     endpoint: &OsStr,
     session: Option<SessionId>,
-    timeout: Duration,
+    timeout: Option<Duration>,
     arguments: PromptAnswerArgs,
     output: &Output,
 ) -> Result<(), CliError> {
@@ -102,7 +102,7 @@ pub async fn answer(
 pub async fn cancel(
     endpoint: &OsStr,
     session: Option<SessionId>,
-    timeout: Duration,
+    timeout: Option<Duration>,
     arguments: PromptCancelArgs,
     output: &Output,
 ) -> Result<(), CliError> {

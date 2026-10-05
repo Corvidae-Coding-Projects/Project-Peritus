@@ -38,7 +38,7 @@ pub struct GateExecutionPlan {
     inputs: ContentReference,
     parser: ContentReference,
     success: GateSuccessRule,
-    timeout_ms: u64,
+    timeout_ms: Option<u64>,
     resources: ContentReference,
     freshness: GateFreshnessScope,
 }
@@ -60,7 +60,20 @@ impl GateExecutionPlan {
         resources: ContentReference,
         freshness: GateFreshnessScope,
     ) -> Result<Self, SpecError> {
-        if timeout_ms == 0 {
+        Self::with_optional_timeout(action, environment, inputs, parser, success, Some(timeout_ms), resources, freshness)
+    }
+
+    /// Creates a plan with an optional caller-selected execution deadline.
+    ///
+    /// # Errors
+    /// Rejects a zero configured timeout.
+    #[allow(clippy::too_many_arguments, reason = "the frozen gate plan keeps each execution binding explicit")]
+    pub const fn with_optional_timeout(
+        action: ContentReference, environment: EnvironmentId, inputs: ContentReference,
+        parser: ContentReference, success: GateSuccessRule, timeout_ms: Option<u64>,
+        resources: ContentReference, freshness: GateFreshnessScope,
+    ) -> Result<Self, SpecError> {
+        if matches!(timeout_ms, Some(0)) {
             return Err(SpecError::ZeroLimit(LimitKind::GateTimeout));
         }
         Ok(Self { action, environment, inputs, parser, success, timeout_ms, resources, freshness })
@@ -88,7 +101,7 @@ impl GateExecutionPlan {
 
     /// Returns the gate timeout in milliseconds.
     #[must_use]
-    pub const fn timeout_ms(&self) -> u64 { self.timeout_ms }
+    pub const fn timeout_ms(&self) -> Option<u64> { self.timeout_ms }
 
     /// Returns the immutable resource-limit declaration.
     #[must_use]

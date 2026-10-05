@@ -2,8 +2,6 @@
 
 use std::time::Duration;
 
-const MAXIMUM_PROCESS_STARTUP_WAIT: Duration = Duration::from_mins(10);
-
 /// Operational limits for the live terminal registry.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct TerminalRegistryLimits {
@@ -17,7 +15,7 @@ pub struct TerminalRegistryLimits {
     maximum_process_events_per_page: usize,
     maximum_process_pages_per_poll: usize,
     maximum_delivery_events_per_poll: usize,
-    process_startup_wait: Duration,
+    process_startup_wait: Option<Duration>,
 }
 
 impl TerminalRegistryLimits {
@@ -33,7 +31,7 @@ impl TerminalRegistryLimits {
         maximum_process_events_per_page: 256,
         maximum_process_pages_per_poll: 8,
         maximum_delivery_events_per_poll: 128,
-        process_startup_wait: Duration::from_secs(30),
+        process_startup_wait: None,
     };
 
     pub(super) const fn maximum_attachments_per_process(self) -> usize {
@@ -60,7 +58,7 @@ impl TerminalRegistryLimits {
     pub(super) const fn maximum_delivery_events_per_poll(self) -> usize {
         self.maximum_delivery_events_per_poll
     }
-    pub(super) const fn process_startup_wait(self) -> Duration {
+    pub(super) const fn process_startup_wait(self) -> Option<Duration> {
         self.process_startup_wait
     }
 
@@ -77,7 +75,6 @@ impl TerminalRegistryLimits {
             && self.maximum_process_pages_per_poll > 0
             && self.maximum_delivery_events_per_poll > 0
             && self.maximum_delivery_events_per_poll <= self.maximum_pending_events_per_attachment
-            && !self.process_startup_wait.is_zero()
-            && self.process_startup_wait <= MAXIMUM_PROCESS_STARTUP_WAIT
+            && self.process_startup_wait.is_none_or(|timeout| !timeout.is_zero())
     }
 }

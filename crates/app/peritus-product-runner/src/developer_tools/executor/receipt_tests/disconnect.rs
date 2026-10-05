@@ -181,6 +181,7 @@ async fn check_case(pending: bool, disconnect: bool) {
     let result = DeveloperLoop::run(
         &provider,
         DeveloperLoopRequest {
+            local_session_directory: None,
             request_prefix: scope.to_owned(),
             system: "Run the authorized fixture once.".to_owned(),
             prompt: "Continue the interrupted command.".to_owned(),

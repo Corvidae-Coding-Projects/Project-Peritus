@@ -106,9 +106,10 @@ fn unconfirmed_pipe_input_keeps_chat_connected_and_draft_visible() {
     let _sent = terminal_request(key(&mut model, KeyCode::Enter));
     let context = model.context;
     model.tick_count += 121;
-    assert!(!model.expire_pending_requests(), "a lost input ack must not disconnect chat");
+    let effects = model.update(Action::Tick(std::time::Instant::now()));
+    assert!(!effects.iter().any(|effect| matches!(effect, Effect::Reconnect)));
     assert_eq!(model.context, context);
-    assert_eq!(model.terminal.as_ref().unwrap().line_input(), Some(("Ada", 3, false)));
+    assert_eq!(model.terminal.as_ref().unwrap().line_input(), Some(("Ada", 3, true)));
 }
 
 #[test]

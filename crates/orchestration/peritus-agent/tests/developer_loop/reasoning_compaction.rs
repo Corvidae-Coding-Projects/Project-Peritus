@@ -81,6 +81,7 @@ fn reasoning_tool_history_compacts_and_replay_never_becomes_public_text() {
             let outcome = DeveloperLoop::run_interactive(
                 &provider,
                 DeveloperLoopRequest {
+                    local_session_directory: None,
                     request_prefix: "reasoning-compaction".to_owned(),
                     system: "Inspect then finish".to_owned(),
                     prompt: "Read the workspace".to_owned(),

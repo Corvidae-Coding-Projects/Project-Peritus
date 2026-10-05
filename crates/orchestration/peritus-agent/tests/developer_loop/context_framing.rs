@@ -103,6 +103,7 @@ async fn check_case(pressure: bool, malformed: bool) {
     let outcome = DeveloperLoop::run(
         &provider,
         DeveloperLoopRequest {
+            local_session_directory: None,
             request_prefix: "context-framing-pair".to_owned(),
             system: "Inspect before completing.".to_owned(),
             prompt: "Read the workspace and complete the task.".to_owned(),

@@ -112,7 +112,7 @@ fn build_descriptor(spec: &DescriptorSpec) -> Result<ToolDescriptor, FsToolError
         spec.replay,
         ImplementationIdentity::new(format!("peritus.tools.fs.{}/v1", spec.name))
             .map_err(|_| catalog_error())?,
-        ToolLimits::new(30_000, 8 * 1_024 * 1_024, 16_384, 16_384, 1, 1, 1)
+        ToolLimits::with_optional_timeout(None, 8 * 1_024 * 1_024, 16_384, 16_384, 1, 1, 1)
             .map_err(|_| catalog_error())?,
         ControlSet::NONE,
         ProtocolCompatibility::V1,

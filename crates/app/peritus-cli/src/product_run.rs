@@ -28,7 +28,7 @@ struct ObservedRun {
 pub async fn execute(
     endpoint: &OsStr,
     session: Option<SessionId>,
-    timeout: Duration,
+    timeout: Option<Duration>,
     arguments: ProductRunArgs,
     output: &Output,
 ) -> Result<(), CliError> {

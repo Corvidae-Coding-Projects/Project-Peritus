@@ -63,7 +63,7 @@ fn claude_metadata_uses_control_initialization_without_a_user_prompt() {
             &directory,
             r#"#!/bin/sh
 set -eu
-case " $* " in *" --no-session-persistence "*) ;; *) exit 21 ;; esac
+case " $* " in *" --no-session-persistence "*) exit 21 ;; esac
 case " $* " in *"disableAllHooks"*) ;; *) exit 22 ;; esac
 test "$CLAUDE_CODE_DISABLE_TERMINAL_TITLE" = 1
 IFS= read -r line

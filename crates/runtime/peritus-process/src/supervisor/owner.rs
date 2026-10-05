@@ -260,15 +260,17 @@ impl SpawnedOwner {
     }
 
     fn apply_deadline_or_escalation(&mut self) -> Result<(), ProcessError> {
-        let wall_limit = self
-            .plan
-            .deadline_policy()
-            .wall_timeout_millis()
-            .unwrap_or_else(|| self.plan.resource_policy().wall_millis())
-            .min(self.plan.resource_policy().wall_millis());
+        let wall_limit = match (
+            self.plan.deadline_policy().wall_timeout_millis(),
+            self.plan.resource_policy().wall_millis(),
+        ) {
+            (Some(deadline), Some(resource)) => Some(deadline.min(resource)),
+            (deadline, None) => deadline,
+            (None, resource) => resource,
+        };
         if self.os_exit.is_none()
             && self.lifecycle.first_trigger().is_none()
-            && elapsed_millis(self.began) >= wall_limit
+            && wall_limit.is_some_and(|maximum| elapsed_millis(self.began) >= maximum)
         {
             accept_trigger(
                 CancellationReason::Deadline,

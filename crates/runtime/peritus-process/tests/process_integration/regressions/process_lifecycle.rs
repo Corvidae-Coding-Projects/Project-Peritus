@@ -225,14 +225,14 @@ fn process_count_overrun_is_observed_cancelled_and_classified() {
         .iter()
         .find(|value| value.dimension() == ProcessResourceDimension::ProcessCount)
         .expect("process-count observation");
-    assert_eq!(processes.ceiling(), 1);
+    assert_eq!(processes.ceiling(), Some(1));
     assert_eq!(processes.fidelity(), ResourceFidelity::Sampled);
     let handles = terminal
         .resources()
         .iter()
         .find(|value| value.dimension() == ProcessResourceDimension::OpenHandles)
         .expect("open-handle observation");
-    assert_eq!(handles.ceiling(), 32);
+    assert_eq!(handles.ceiling(), Some(32));
     #[cfg(target_os = "linux")]
     assert_eq!(handles.fidelity(), ResourceFidelity::Sampled);
     #[cfg(not(target_os = "linux"))]

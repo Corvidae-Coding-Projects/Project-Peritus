@@ -108,7 +108,7 @@ impl ProductRunService {
                 .get(&active_launch_run(self, run, request.launch())?)
                 .cloned()
                 .ok_or_else(|| app_error(Code::InvalidIdentifier))?,
-            Duration::from_secs(10),
+            None,
             false,
             24,
             80,

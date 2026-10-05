@@ -286,7 +286,7 @@ impl DeadlinePolicy {
         reap_millis: u64,
     ) -> Result<Self, ProcessError> {
         let wall_valid = match wall_timeout_millis {
-            Some(value) => value > 0 && value <= MAX_DURATION_MILLIS,
+            Some(value) => value > 0,
             None => true,
         };
         if !wall_valid

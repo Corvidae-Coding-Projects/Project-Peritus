@@ -37,7 +37,7 @@ impl Client {
             payload,
         )?;
         self.begin_exchange()?;
-        let response = tokio::time::timeout(self.timeout, async {
+        let response = crate::optional_timeout(self.timeout, async {
             self.stream.write(&AppMessage::Request(request)).await?;
             loop {
                 match self.stream.read().await? {

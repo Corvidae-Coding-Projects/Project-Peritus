@@ -58,7 +58,7 @@ fn global_options_and_status_are_parsed_strictly() {
     .expect("status command");
     assert!(matches!(cli.command, Command::Status));
     assert!(cli.json);
-    assert_eq!(cli.timeout.as_secs(), 7);
+    assert_eq!(cli.timeout.expect("explicit timeout").as_secs(), 7);
     assert_eq!(cli.endpoint.as_deref(), Some(std::ffi::OsStr::new("/tmp/peritus.sock")));
 }
 

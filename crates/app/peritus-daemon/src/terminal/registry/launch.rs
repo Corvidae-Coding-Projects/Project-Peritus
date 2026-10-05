@@ -91,7 +91,7 @@ fn wait_for_birth_identity(
     process_id: ProcessId,
     plan_digest: peritus_types::Sha256Digest,
     page_size: usize,
-    timeout: std::time::Duration,
+    timeout: Option<std::time::Duration>,
 ) -> Result<ProcessTreeIdentity, TerminalBridgeError> {
     let began = Instant::now();
     let mut cursor = ProcessCursor::after(0);
@@ -111,15 +111,10 @@ fn wait_for_birth_identity(
                 "process reached a terminal result before publishing a live birth identity",
             ));
         }
-        let Some(remaining) = timeout.checked_sub(began.elapsed()) else {
-            return Err(rejected(
-                TerminalBridgeErrorKind::BirthIdentityUnavailable,
-                "process did not publish its birth identity within the configured bound",
-            ));
+        let remaining = match timeout {
+            Some(timeout) => timeout.checked_sub(began.elapsed()).filter(|remaining| !remaining.is_zero()).ok_or_else(|| rejected(TerminalBridgeErrorKind::BirthIdentityUnavailable, "process did not publish its birth identity within the caller-selected bound"))?,
+            None => std::time::Duration::from_millis(100),
         };
-        if remaining.is_zero() {
-            continue;
-        }
         let events = control.wait_events(cursor, page_size, remaining);
         for event in &events {
             if event.process_id() != process_id || event.plan_digest() != plan_digest {

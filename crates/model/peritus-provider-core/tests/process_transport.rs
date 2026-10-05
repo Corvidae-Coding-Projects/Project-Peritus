@@ -108,6 +108,9 @@ fn process_transport_helper() {
     if !std::path::Path::new("process-helper.marker").is_file() {
         return;
     }
+    if std::path::Path::new("duplex-before-input.marker").is_file() {
+        std::io::stdout().write_all(&vec![b'x'; 1024 * 1024]).expect("output before input");
+    }
     let mut input = String::new();
     std::io::stdin().read_to_string(&mut input).expect("helper stdin");
     let (mode, payload) = input.split_once('\n').unwrap_or((&input, ""));
@@ -189,4 +192,66 @@ fn request_validation_rejects_duplicates_and_invalid_limits() {
     .expect_err("duplicate environment removal");
     assert_eq!(error.kind(), ProviderCoreErrorKind::Configuration);
     assert!(ProcessLimits::new(0, 1, 1, Duration::from_secs(1)).is_err());
+}
+
+#[test]
+fn production_process_survives_elapsed_hours_and_still_cancels() {
+    runtime::block_on(async {
+        tokio::time::pause();
+        let directory = tempfile::tempdir().expect("temporary directory");
+        std::fs::write(directory.path().join("process-helper.marker"), b"owned").expect("marker");
+        let request = ProcessRequest::new(
+            current_test_executable(),
+            helper_arguments(),
+            b"spin".to_vec(),
+            Some(directory.path().to_path_buf()),
+            Vec::new(),
+            ProcessLimits::PRODUCTION,
+        )
+        .expect("request");
+        let cancellation = CancellationToken::new();
+        let signal = cancellation.clone();
+        let task = tokio::spawn(async move { TokioProcessTransport.run(request, &signal).await });
+        tokio::task::yield_now().await;
+        tokio::time::advance(Duration::from_hours(12)).await;
+        assert!(!task.is_finished(), "elapsed time must not terminate production inference");
+        assert!(cancellation.cancel());
+        assert_eq!(
+            task.await.expect("owner").expect_err("cancellation").kind(),
+            ProviderCoreErrorKind::Cancelled
+        );
+    });
+}
+
+#[test]
+fn output_is_drained_while_large_stdin_is_written_and_retained() {
+    runtime::block_on(async {
+        let directory = tempfile::tempdir().expect("temporary directory");
+        for marker in ["process-helper.marker", "duplex-before-input.marker"] {
+            std::fs::write(directory.path().join(marker), b"owned").expect("marker");
+        }
+        let mut input = b"echo\n".to_vec();
+        input.extend(vec![b'y'; 1024 * 1024]);
+        let journal = directory.path().join("stdout.jsonl");
+        let request = ProcessRequest::new(
+            current_test_executable(),
+            helper_arguments(),
+            input,
+            Some(directory.path().to_path_buf()),
+            Vec::new(),
+            ProcessLimits::PRODUCTION,
+        )
+        .expect("request")
+        .with_stdout_journal(journal.clone());
+        let output = tokio::time::timeout(
+            Duration::from_secs(10),
+            TokioProcessTransport.run(request, &CancellationToken::new()),
+        )
+        .await
+        .expect("fixture watchdog: stdin/output deadlock")
+        .expect("output");
+        assert!(output.exit().success());
+        assert_eq!(std::fs::read(journal).expect("durable stdout"), output.stdout());
+        assert!(output.stdout().len() > 2 * 1024 * 1024);
+    });
 }

@@ -25,6 +25,7 @@ pub struct ModelRequest {
     tool_choice: ToolChoice,
     parallel_tools: ParallelToolPolicy,
     options: RequestOptions,
+    local_session_directory: Option<std::path::PathBuf>,
 }
 
 impl ModelRequest {
@@ -68,7 +69,24 @@ impl ModelRequest {
             tool_choice,
             parallel_tools,
             options,
+            local_session_directory: None,
         })
+    }
+
+    /// Binds native runtime storage to a host-owned task and role directory.
+    ///
+    /// This local transport metadata grants no provider continuation or idempotency guarantee.
+    /// The complete canonical request remains the governing conversation projection.
+    #[must_use]
+    pub fn with_local_session_directory(mut self, directory: std::path::PathBuf) -> Self {
+        self.local_session_directory = Some(directory);
+        self
+    }
+
+    /// Returns the host-owned native runtime storage namespace, when supplied.
+    #[must_use]
+    pub fn local_session_directory(&self) -> Option<&std::path::Path> {
+        self.local_session_directory.as_deref()
     }
 
     /// Protocol version.

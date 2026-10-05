@@ -16,8 +16,8 @@ pub(super) struct CommandBudget {
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(super) struct CommandAllowance {
-    pub(super) requested_seconds: u64,
-    pub(super) timeout_seconds: u64,
+    pub(super) requested_seconds: Option<u64>,
+    pub(super) timeout_seconds: Option<u64>,
     pub(super) deadline_limited: bool,
     pub(super) remaining_product_seconds: Option<u64>,
     pub(super) completion_reserve_seconds: u64,
@@ -31,7 +31,7 @@ impl CommandAllowance {
             ("stdout", Value::String(String::new())),
             ("stderr", Value::String(String::new())),
             ("timed_out", Value::Bool(false)),
-            ("requested_timeout_seconds", Value::from(self.requested_seconds)),
+            ("requested_timeout_seconds", self.requested_seconds.map_or(Value::Null, Value::from)),
             ("timeout_seconds", Value::from(0_u64)),
             ("deadline_limited", Value::Bool(true)),
             (
@@ -61,20 +61,28 @@ impl CommandBudget {
         }
     }
 
-    pub(super) fn allowance(&self, requested_seconds: u64) -> CommandAllowance {
+    pub(super) fn allowance(&self, requested_seconds: Option<u64>) -> CommandAllowance {
         self.allowance_after(requested_seconds, self.started.elapsed())
     }
 
-    fn allowance_after(&self, requested_seconds: u64, elapsed: Duration) -> CommandAllowance {
+    fn allowance_after(
+        &self,
+        requested_seconds: Option<u64>,
+        elapsed: Duration,
+    ) -> CommandAllowance {
         let remaining = self.horizon.map(|horizon| horizon.saturating_sub(elapsed));
         let available =
             remaining.map(|remaining| remaining.saturating_sub(self.completion_reserve).as_secs());
-        let timeout_seconds =
-            available.map_or(requested_seconds, |available| requested_seconds.min(available));
+        let timeout_seconds = match (available, requested_seconds) {
+            (Some(available), Some(requested)) => Some(requested.min(available)),
+            (Some(available), None) => Some(available),
+            (None, requested) => requested,
+        };
         CommandAllowance {
             requested_seconds,
             timeout_seconds,
-            deadline_limited: timeout_seconds < requested_seconds,
+            deadline_limited: available.is_some()
+                && (requested_seconds.is_none() || timeout_seconds < requested_seconds),
             remaining_product_seconds: remaining.map(|remaining| remaining.as_secs()),
             completion_reserve_seconds: self.completion_reserve.as_secs(),
         }
@@ -102,9 +110,9 @@ mod tests {
     fn ordinary_command_keeps_its_requested_timeout() {
         let budget = CommandBudget::new(Some(Duration::from_hours(1)));
 
-        let allowance = budget.allowance_after(120, Duration::from_secs(10));
+        let allowance = budget.allowance_after(Some(120), Duration::from_secs(10));
 
-        assert_eq!(allowance.timeout_seconds, 120);
+        assert_eq!(allowance.timeout_seconds, Some(120));
         assert!(!allowance.deadline_limited);
         assert_eq!(allowance.remaining_product_seconds, Some(3_590));
         assert_eq!(allowance.completion_reserve_seconds, 300);
@@ -114,9 +122,9 @@ mod tests {
     fn late_command_is_clamped_before_the_completion_reserve() {
         let budget = CommandBudget::new(Some(Duration::from_mins(27)));
 
-        let allowance = budget.allowance_after(600, Duration::from_secs(1_240));
+        let allowance = budget.allowance_after(Some(600), Duration::from_secs(1_240));
 
-        assert_eq!(allowance.timeout_seconds, 80);
+        assert_eq!(allowance.timeout_seconds, Some(80));
         assert!(allowance.deadline_limited);
         assert_eq!(allowance.remaining_product_seconds, Some(380));
         assert_eq!(allowance.completion_reserve_seconds, 300);
@@ -126,9 +134,9 @@ mod tests {
     fn command_is_refused_once_only_the_completion_reserve_remains() {
         let budget = CommandBudget::new(Some(Duration::from_secs(30)));
 
-        let allowance = budget.allowance_after(10, Duration::from_secs(24));
+        let allowance = budget.allowance_after(Some(10), Duration::from_secs(24));
 
-        assert_eq!(allowance.timeout_seconds, 0);
+        assert_eq!(allowance.timeout_seconds, Some(0));
         assert!(allowance.deadline_limited);
         assert_eq!(allowance.remaining_product_seconds, Some(6));
         assert_eq!(allowance.completion_reserve_seconds, 6);
@@ -138,9 +146,9 @@ mod tests {
     fn unbounded_run_preserves_the_requested_command_timeout() {
         let budget = CommandBudget::new(None);
 
-        let allowance = budget.allowance_after(600, Duration::from_hours(24));
+        let allowance = budget.allowance_after(Some(600), Duration::from_hours(24));
 
-        assert_eq!(allowance.timeout_seconds, 600);
+        assert_eq!(allowance.timeout_seconds, Some(600));
         assert!(!allowance.deadline_limited);
         assert_eq!(allowance.remaining_product_seconds, None);
         assert_eq!(allowance.completion_reserve_seconds, 0);

@@ -325,3 +325,24 @@ fn response_wrapper_enforces_chunk_and_cumulative_body_bounds() {
         assert_eq!(stream.next(&cancellation).await.expect("end"), None);
     });
 }
+
+#[test]
+fn production_retry_policy_does_not_treat_elapsed_hours_as_exhaustion() {
+    let policy = RetryPolicy::without_deadline(
+        3,
+        [Duration::from_millis(10), Duration::from_secs(1), Duration::from_secs(1)],
+        1000,
+    )
+    .expect("policy");
+    let observation = RetryObservation::new(
+        1,
+        Duration::from_hours(1000),
+        0,
+        SubmissionState::NotSent,
+        RetryFailure::Connect,
+    );
+    assert_eq!(
+        policy.plan(observation).expect("elapsed time is an observation, not a stop").action(),
+        RetryAction::RetryFresh
+    );
+}

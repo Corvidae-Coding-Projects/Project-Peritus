@@ -55,7 +55,7 @@ pub struct LocalProcessConfig {
     pub executable: PathBuf,
     /// Absolute path to one preinstalled weights file; directories are not admitted.
     pub model_path: PathBuf,
-    /// Wall-clock deadline in milliseconds, at most 60 seconds.
+    /// Explicit caller-selected wall-clock deadline in milliseconds.
     pub timeout_millis: u64,
     /// Maximum complete input bytes, at most one MiB.
     pub max_input_bytes: usize,
@@ -148,7 +148,7 @@ impl LocalProcessConfig {
         self.sandbox.validate()?;
         if !self.executable.is_absolute()
             || !self.model_path.is_absolute()
-            || !(1..=60_000).contains(&self.timeout_millis)
+            || self.timeout_millis == 0
             || !(1..=1_048_576).contains(&self.max_input_bytes)
             || !(1..=262_144).contains(&self.max_output_bytes)
             || !(16 * 1024 * 1024..=64 * 1024 * 1024 * 1024).contains(&self.memory_bytes)

@@ -24,13 +24,7 @@ async fn execute(directory: &Path, args: &[String], effect: bool) -> Result<Stri
         .args(args)
         .env("GIT_TERMINAL_PROMPT", "0")
         .kill_on_drop(true);
-    let output = tokio::time::timeout(std::time::Duration::from_mins(2), command.output())
-        .await
-        .map_err(|_| {
-        uncertain(
-            "Git timed out; inspect local and remote repository state before another mutation.",
-        )
-    })??;
+    let output = command.output().await?;
     if !output.status.success() {
         let detail = String::from_utf8_lossy(&output.stderr);
         // A remote can accept a push before its acknowledgement is lost. Fetch and

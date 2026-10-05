@@ -22,7 +22,7 @@ pub(super) fn canonical(value: &ToolDescriptor) -> Vec<u8> {
     bytes.push(lease_tag(value.lease));
     bytes.push(idempotency_tag(value.idempotency));
     push_bytes(&mut bytes, value.implementation.as_str().as_bytes());
-    bytes.extend_from_slice(&value.limits.timeout_millis.to_be_bytes());
+    bytes.extend_from_slice(&value.limits.timeout_millis.unwrap_or(0).to_be_bytes());
     bytes.extend_from_slice(&value.limits.output_bytes.to_be_bytes());
     bytes.extend_from_slice(&value.limits.model_bytes.to_be_bytes());
     bytes.extend_from_slice(&value.limits.human_bytes.to_be_bytes());

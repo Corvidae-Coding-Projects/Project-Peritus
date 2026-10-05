@@ -121,8 +121,6 @@ impl ResourcePlan {
             concurrency: reader.u64()?,
         };
         if [
-            plan.wall_millis,
-            plan.cpu_millis,
             plan.memory_bytes,
             plan.disk_bytes,
             plan.output_bytes,

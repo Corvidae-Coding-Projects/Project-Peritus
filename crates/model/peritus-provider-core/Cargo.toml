@@ -26,6 +26,7 @@ zeroize.workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true
+tokio = { workspace = true, features = ["test-util"] }
 
 [package.metadata.peritus]
 owner = "C5"

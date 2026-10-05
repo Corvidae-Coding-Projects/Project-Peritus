@@ -2,7 +2,7 @@ use super::*;
 
 #[test]
 fn abandoned_queue_actions_cannot_mutate_on_late_metadata() {
-    for reason in ["draft", "escape", "selection", "timeout"] {
+    for reason in ["draft", "escape", "selection"] {
         let mut model = opened();
         inspect(&mut model);
         key(&mut model, KeyCode::Esc);
@@ -14,13 +14,6 @@ fn abandoned_queue_actions_cannot_mutate_on_late_metadata() {
                 key(&mut model, KeyCode::Esc);
             }
             "selection" => model.select_workbench_conversation(None),
-            "timeout" => {
-                model.pending_started.retain(|id, _| *id == refresh.request_id());
-                model.tick_count = 119;
-                let effects = model.update(Action::Tick(std::time::Instant::now()));
-                assert!(!effects.iter().any(|effect| matches!(effect, Effect::Reconnect)));
-                assert!(!model.pending.contains_key(&refresh.request_id()));
-            }
             _ => unreachable!(),
         }
         let draft = model.chat.buffer.clone();
@@ -29,6 +22,24 @@ fn abandoned_queue_actions_cannot_mutate_on_late_metadata() {
         assert!(model.chat.workbench.unresolved.is_none(), "{reason}");
         assert!(matches!(model.connection, crate::model::ConnectionStatus::Online { .. }));
     }
+}
+
+#[test]
+fn elapsed_time_does_not_abandon_an_exact_queue_intent() {
+    let mut model = opened();
+    inspect(&mut model);
+    key(&mut model, KeyCode::Esc);
+    model.chat.buffer = "/queue hold 1".into();
+    let refresh = request(&key(&mut model, KeyCode::Enter));
+    let now = std::time::Instant::now();
+    for hour in 1..=120 {
+        let effects = model.update(Action::Tick(now + std::time::Duration::from_hours(hour)));
+        assert!(!effects.iter().any(|effect| matches!(effect, Effect::Reconnect)));
+    }
+    assert!(model.pending.contains_key(&refresh.request_id()));
+    let command = request(&fresh_metadata(&mut model, &refresh, 8));
+    assert!(matches!(command.payload(), AppRequestPayload::WorkbenchCommand(command)
+        if command.expected_revision() == 8));
 }
 
 #[test]

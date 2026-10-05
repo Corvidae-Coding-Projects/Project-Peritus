@@ -82,7 +82,7 @@ pub(super) fn build_model_request(
             request.limits.max_output_tokens().min(8_192),
         ),
     };
-    Ok(ModelRequest::new(
+    let model_request = ModelRequest::new(
         profile,
         negotiated,
         RequestId::new(request_id)?,
@@ -110,5 +110,13 @@ pub(super) fn build_model_request(
             Vec::new(),
         ),
         protocol_limits,
-    )?)
+    )?;
+    Ok(if kind == ModelTurnKind::Developer {
+        match &request.local_session_directory {
+            Some(directory) => model_request.with_local_session_directory(directory.clone()),
+            None => model_request,
+        }
+    } else {
+        model_request
+    })
 }

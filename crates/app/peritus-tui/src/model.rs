@@ -447,17 +447,13 @@ impl AppModel {
             Action::TerminalEvent(event) => self.handle_terminal_event(event),
             Action::Tick(_) => {
                 self.tick_count = self.tick_count.saturating_add(1);
-                let reconnect = self.expire_pending_requests();
                 if let Some(notice) = &mut self.notice {
                     notice.ticks_remaining = notice.ticks_remaining.saturating_sub(1);
                     if notice.ticks_remaining == 0 {
                         self.notice = None;
                     }
                 }
-                if reconnect {
-                    self.connection = ConnectionStatus::Connecting;
-                    vec![Effect::Reconnect]
-                } else if self.tick_count.is_multiple_of(4) {
+                if self.tick_count.is_multiple_of(4) {
                     self.poll_product_runs()
                 } else {
                     Vec::new()

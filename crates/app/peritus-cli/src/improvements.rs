@@ -11,7 +11,7 @@ use std::{ffi::OsStr, time::Duration};
 pub async fn execute(
     endpoint: &OsStr,
     session: Option<SessionId>,
-    timeout: Duration,
+    timeout: Option<Duration>,
     request: ImprovementRequest,
     output: &Output,
 ) -> Result<(), CliError> {

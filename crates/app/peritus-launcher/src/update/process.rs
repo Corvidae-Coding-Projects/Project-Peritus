@@ -18,7 +18,7 @@ const MAX_CAPTURED_STDOUT_BYTES: usize = 64 * 1024;
 pub(super) fn status(
     command: &mut Command,
     operation: &'static str,
-    timeout: Duration,
+    timeout: Option<Duration>,
 ) -> Result<ExitStatus, LauncherError> {
     configure_group(command);
     let mut child =
@@ -30,7 +30,7 @@ pub(super) fn status(
 pub(super) fn stdout(
     command: &mut Command,
     operation: &'static str,
-    timeout: Duration,
+    timeout: Option<Duration>,
 ) -> Result<(ExitStatus, Vec<u8>), LauncherError> {
     command.stdout(Stdio::piped());
     configure_group(command);
@@ -58,26 +58,27 @@ pub(super) fn stdout(
 fn wait(
     child: &mut Child,
     operation: &'static str,
-    timeout: Duration,
+    timeout: Option<Duration>,
 ) -> Result<ExitStatus, LauncherError> {
-    let deadline = Instant::now()
-        .checked_add(timeout)
-        .ok_or_else(|| LauncherError::Update(format!("{operation}: timeout overflowed")))?;
+    let deadline = timeout
+        .map(|duration| {
+            Instant::now()
+                .checked_add(duration)
+                .ok_or_else(|| LauncherError::Update(format!("{operation}: timeout overflowed")))
+        })
+        .transpose()?;
     loop {
         match child.try_wait() {
             Ok(Some(status)) => return Ok(status),
-            Ok(None) if Instant::now() < deadline => {
-                thread::sleep(
-                    POLL_INTERVAL.min(deadline.saturating_duration_since(Instant::now())),
-                );
-            }
             Ok(None) => {
-                terminate(child);
-                let _ = child.wait();
-                return Err(LauncherError::Update(format!(
-                    "{operation}: exceeded its {} second deadline",
-                    timeout.as_secs()
-                )));
+                if deadline.is_some_and(|deadline| Instant::now() >= deadline) {
+                    terminate(child);
+                    let _ = child.wait();
+                    return Err(LauncherError::Update(format!(
+                        "{operation}: exceeded its caller-supplied deadline"
+                    )));
+                }
+                thread::sleep(POLL_INTERVAL);
             }
             Err(error) => {
                 terminate(child);
@@ -143,7 +144,7 @@ mod tests {
         let error = status(
             Command::new("sh").args(["-c", "sleep 30"]),
             "test hung child",
-            Duration::from_millis(50),
+            Some(Duration::from_millis(50)),
         )
         .expect_err("deadline");
         assert!(error.to_string().contains("deadline"));
@@ -155,7 +156,7 @@ mod tests {
         let (status, output) = stdout(
             Command::new("sh").args(["-c", "printf 'peritus 1.2.3\\n'"]),
             "test output",
-            Duration::from_secs(1),
+            Some(Duration::from_secs(1)),
         )
         .expect("output");
         assert!(status.success());

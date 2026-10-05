@@ -17,7 +17,7 @@ use tokio::{
 
 use crate::TuiError;
 
-const WRITE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(8);
+const SHUTDOWN_GRACE: std::time::Duration = std::time::Duration::from_secs(8);
 const CLOSE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(8);
 
 trait LocalIo: AsyncRead + AsyncWrite + Send + Unpin {}
@@ -113,13 +113,9 @@ impl ClientSession {
     ) -> impl Future<Output = Result<(), TuiError>> + Send + 'static {
         let writer = self.writer.clone();
         async move {
-            tokio::time::timeout(WRITE_TIMEOUT, writer.send(WriterCommand::Message(message)))
+            writer
+                .send(WriterCommand::Message(message))
                 .await
-                .map_err(|_| {
-                    TuiError::Task(
-                        "daemon writer queue did not accept the request in time".to_owned(),
-                    )
-                })?
                 .map_err(|_| TuiError::Task("daemon writer is no longer available".to_owned()))
         }
     }
@@ -226,7 +222,7 @@ async fn writer_loop<W>(
                     for message in final_messages {
                         write_frame(&mut writer, &message, limits).await?;
                     }
-                    tokio::time::timeout(WRITE_TIMEOUT, writer.shutdown())
+                    tokio::time::timeout(SHUTDOWN_GRACE, writer.shutdown())
                         .await
                         .map_err(|_| TuiError::Task("daemon socket shutdown timed out".to_owned()))?
                         .map_err(TuiError::from)
@@ -238,7 +234,7 @@ async fn writer_loop<W>(
             }
         }
     }
-    let _ = tokio::time::timeout(WRITE_TIMEOUT, writer.shutdown()).await;
+    let _ = tokio::time::timeout(SHUTDOWN_GRACE, writer.shutdown()).await;
 }
 
 fn client_hello(
@@ -366,14 +362,8 @@ where
     W: AsyncWrite + Unpin + ?Sized,
 {
     let frame = encode_app_message(message, limits)?;
-    tokio::time::timeout(WRITE_TIMEOUT, async {
-        writer.write_all(&frame).await?;
-        writer.flush().await?;
-        Ok::<(), std::io::Error>(())
-    })
-    .await
-    .map_err(|_| TuiError::Task("daemon socket write timed out".to_owned()))?
-    .map_err(TuiError::from)
+    writer.write_all(&frame).await?;
+    writer.flush().await.map_err(TuiError::from)
 }
 
 #[cfg(unix)]

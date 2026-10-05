@@ -96,11 +96,7 @@ impl JobPlan {
         job_memory_bytes: u64,
         cpu_time_millis: u64,
     ) -> Result<Self, WindowsError> {
-        if !kill_on_close
-            || active_process_limit == 0
-            || job_memory_bytes == 0
-            || cpu_time_millis == 0
-        {
+        if !kill_on_close || active_process_limit == 0 || job_memory_bytes == 0 {
             return Err(error::invalid(
                 WindowsOperation::Manifest,
                 "job policy is incomplete or has a zero hard ceiling",

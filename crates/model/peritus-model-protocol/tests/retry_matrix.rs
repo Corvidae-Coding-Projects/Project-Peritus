@@ -34,7 +34,7 @@ const fn input(cause: RetryCause, guarantee: IdempotencyGuarantee) -> RetryInput
         attempt: 0,
         max_attempts: 4,
         elapsed_millis: 0,
-        max_elapsed_millis: 10_000,
+        max_elapsed_millis: Some(10_000),
         base_delay_millis: 100,
         max_delay_millis: 2_000,
         jitter_millionths: 0,

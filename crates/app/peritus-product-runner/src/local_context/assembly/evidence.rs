@@ -14,37 +14,7 @@ pub(super) fn append(
     tools: &[ToolDefinition],
     target: u64,
 ) -> Result<(), DeveloperLoopError> {
-    let mut candidates: Vec<_> = memory
-        .state
-        .entries(memory.state.binding())
-        .map_err(|_| super::super::error("evidence scope mismatch"))?
-        .iter()
-        .flat_map(|entry| entry.links().supports().iter().chain(entry.links().contradicts()))
-        .map(|id| id.get())
-        .collect();
-    candidates.extend(
-        memory
-            .sources
-            .iter()
-            .rev()
-            .filter(|source| source.kind == ArchiveKind::ToolOutput && source.is_error)
-            .take(8)
-            .map(|source| source.sequence),
-    );
-    candidates.extend(
-        memory
-            .sources
-            .iter()
-            .rev()
-            .filter(|source| {
-                source.kind == ArchiveKind::Assistant
-                    && source.invocation < memory.transcript.invocation
-            })
-            .take(8)
-            .map(|source| source.sequence),
-    );
-    candidates.sort_unstable_by(|left, right| right.cmp(left));
-    candidates.dedup();
+    let candidates = candidates(memory)?;
     let mut bytes_left =
         usize::try_from(memory.config.retrieved_evidence_max_tokens.saturating_mul(3))
             .unwrap_or(usize::MAX)
@@ -106,4 +76,51 @@ pub(super) fn append(
         bytes_left = bytes_left.saturating_sub(added);
     }
     Ok(())
+}
+
+fn candidates(memory: &LocalMemory) -> Result<Vec<u64>, DeveloperLoopError> {
+    let mut candidates: Vec<_> = memory
+        .state
+        .entries(memory.state.binding())
+        .map_err(|_| super::super::error("evidence scope mismatch"))?
+        .iter()
+        .flat_map(|entry| entry.links().supports().iter().chain(entry.links().contradicts()))
+        .map(|id| id.get())
+        .collect();
+    candidates.extend(
+        memory
+            .sources
+            .iter()
+            .rev()
+            .filter(|source| {
+                source.kind == ArchiveKind::ToolOutput
+                    && source.invocation < memory.transcript.invocation
+            })
+            .take(8)
+            .map(|source| source.sequence),
+    );
+    candidates.extend(
+        memory
+            .sources
+            .iter()
+            .rev()
+            .filter(|source| source.kind == ArchiveKind::ToolOutput && source.is_error)
+            .take(8)
+            .map(|source| source.sequence),
+    );
+    candidates.extend(
+        memory
+            .sources
+            .iter()
+            .rev()
+            .filter(|source| {
+                source.kind == ArchiveKind::Assistant
+                    && source.invocation < memory.transcript.invocation
+            })
+            .take(8)
+            .map(|source| source.sequence),
+    );
+    candidates.sort_unstable_by(|left, right| right.cmp(left));
+    candidates.dedup();
+    Ok(candidates)
 }

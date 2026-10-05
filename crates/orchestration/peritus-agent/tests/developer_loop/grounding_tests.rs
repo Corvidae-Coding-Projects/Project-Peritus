@@ -19,6 +19,7 @@ fn developer_loop_continues_an_early_terminal_in_the_same_grounding_session() {
         let outcome = DeveloperLoop::run(
             &provider,
             DeveloperLoopRequest {
+                local_session_directory: None,
                 request_prefix: "grounding-recovery-test".to_owned(),
                 system: "Inspect before completing.".to_owned(),
                 prompt: "Read src/lib.rs and report.".to_owned(),
@@ -92,6 +93,7 @@ fn required_tool_retries_restate_the_exact_host_prerequisite() {
         let outcome = DeveloperLoop::run(
             &provider,
             DeveloperLoopRequest {
+                local_session_directory: None,
                 request_prefix: "required-tool-retry-test".to_owned(),
                 system: "Inspect before completing.".to_owned(),
                 prompt: "Read src/lib.rs and report.".to_owned(),

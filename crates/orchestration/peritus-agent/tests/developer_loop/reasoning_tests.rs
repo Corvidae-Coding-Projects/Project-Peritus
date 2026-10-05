@@ -37,6 +37,7 @@ fn developer_loop_preserves_opaque_reasoning_on_the_next_tool_result_request() {
             DeveloperLoop::run(
                 &provider,
                 DeveloperLoopRequest {
+                    local_session_directory: None,
                     request_prefix: "reasoning-replay-test".to_owned(),
                     system: "Complete the task.".to_owned(),
                     prompt: "Inspect the file.".to_owned(),

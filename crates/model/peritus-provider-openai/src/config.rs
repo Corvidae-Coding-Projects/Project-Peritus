@@ -151,14 +151,9 @@ impl OpenAiConfig {
             http_limits: HttpLimits::PRODUCTION,
             framing_limits: FramingLimits::PRODUCTION,
             protocol_limits: ProtocolLimits::PRODUCTION,
-            retry_policy: RetryPolicy::new(
+            retry_policy: RetryPolicy::without_deadline(
                 3,
-                [
-                    Duration::from_millis(100),
-                    Duration::from_secs(2),
-                    Duration::from_secs(2),
-                    Duration::from_secs(10),
-                ],
+                [Duration::from_millis(100), Duration::from_secs(2), Duration::from_secs(2)],
                 64 * 1024 * 1024,
             )?,
         })

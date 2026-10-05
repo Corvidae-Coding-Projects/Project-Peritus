@@ -77,7 +77,7 @@ pub struct RetryInput {
     /// Elapsed time so far.
     pub elapsed_millis: u64,
     /// Maximum elapsed retry horizon.
-    pub max_elapsed_millis: u64,
+    pub max_elapsed_millis: Option<u64>,
     /// Initial backoff delay.
     pub base_delay_millis: u64,
     /// Maximum single delay.
@@ -124,7 +124,7 @@ pub fn plan_retry(input: RetryInput) -> Result<RetryDecision, ProtocolError> {
     if input.attempt.saturating_add(1) >= input.max_attempts {
         return Ok(RetryDecision::Stop(NoRetryReason::AttemptsExhausted));
     }
-    if input.elapsed_millis >= input.max_elapsed_millis {
+    if input.max_elapsed_millis.is_some_and(|maximum| input.elapsed_millis >= maximum) {
         return Ok(RetryDecision::Stop(NoRetryReason::ElapsedExhausted));
     }
     let action = match input.cause {
@@ -171,7 +171,10 @@ pub fn plan_retry(input: RetryInput) -> Result<RetryDecision, ProtocolError> {
         return Ok(RetryDecision::Stop(NoRetryReason::RetryAfterOutOfBounds));
     }
     let delay = delay(input);
-    if input.elapsed_millis.saturating_add(delay) > input.max_elapsed_millis {
+    if input
+        .max_elapsed_millis
+        .is_some_and(|maximum| input.elapsed_millis.saturating_add(delay) > maximum)
+    {
         return Ok(RetryDecision::Stop(NoRetryReason::ElapsedExhausted));
     }
     Ok(match action {
@@ -188,7 +191,7 @@ enum Action {
 
 fn validate(input: RetryInput) -> Result<(), ProtocolError> {
     if input.max_attempts == 0
-        || input.max_elapsed_millis == 0
+        || input.max_elapsed_millis == Some(0)
         || input.base_delay_millis == 0
         || input.max_delay_millis < input.base_delay_millis
         || input.jitter_millionths > 1_000_000
@@ -223,7 +226,7 @@ mod tests {
             attempt: 0,
             max_attempts: 4,
             elapsed_millis: 0,
-            max_elapsed_millis: 10_000,
+            max_elapsed_millis: Some(10_000),
             base_delay_millis: 100,
             max_delay_millis: 2_000,
             jitter_millionths: 0,
@@ -232,6 +235,14 @@ mod tests {
             guarantee,
             cancelled: false,
         }
+    }
+
+    #[test]
+    fn absent_elapsed_bound_preserves_legal_retry_after_a_long_model_call() {
+        let mut request = input(RetryCause::SafeNewRequest, IdempotencyGuarantee::None);
+        request.max_elapsed_millis = None;
+        request.elapsed_millis = 12 * 60 * 60 * 1000;
+        assert!(matches!(plan_retry(request).expect("retry"), RetryDecision::RetryNew { .. }));
     }
 
     #[test]

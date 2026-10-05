@@ -1,6 +1,5 @@
 //! Protocol message admission and daemon-derived state projection.
 mod response;
-mod timeout;
 
 use super::{
     Acknowledgement, AppEventEnvelope, AppEventPayload, AppMessage, AppModel, AppRequestEnvelope,

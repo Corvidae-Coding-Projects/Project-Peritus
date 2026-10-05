@@ -21,6 +21,18 @@ pub(super) struct RetryContext<'a, 'port> {
 }
 
 impl RetryContext<'_, '_> {
+    fn bind_session(
+        owner: Option<&Self>,
+        kind: ModelTurnKind,
+        request: ModelRequest,
+    ) -> ModelRequest {
+        if kind == ModelTurnKind::Developer
+            && let Some(directory) = owner.and_then(|owner| owner.context.local_session_directory())
+        {
+            return request.with_local_session_directory(directory);
+        }
+        request
+    }
     fn prepare(
         owner: Option<&mut Self>,
         request: &DeveloperLoopRequest,
@@ -141,6 +153,7 @@ pub(super) async fn complete_turn(
             required_tool,
             provider.reasoning_effort(),
         )?;
+        let model_request = RetryContext::bind_session(retry_context.as_ref(), kind, model_request);
         if let Some(owner) = retry_context.as_mut() {
             owner.tools.observe_model_context(model_request.messages())?;
         }

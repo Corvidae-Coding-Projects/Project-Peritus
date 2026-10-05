@@ -154,6 +154,7 @@ fn reviewer_packet_leaves_room_for_authoritative_tool_observations() {
         })
         .unwrap();
         let request = DeveloperLoopRequest {
+            local_session_directory: None,
             request_prefix: "review-evidence-headroom".to_owned(),
             system: system.clone(),
             prompt,

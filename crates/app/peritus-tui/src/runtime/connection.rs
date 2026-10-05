@@ -1,6 +1,6 @@
 //! An owned connection attempt is polled beside input, never in front of the UI loop.
 
-use super::{CONNECT_TIMEOUT, TuiConfig, process_seed, protocol_id};
+use super::{CLOSE_GRACE, TuiConfig, process_seed, protocol_id};
 use crate::{
     TuiError,
     action::{Action, Effect},
@@ -49,17 +49,7 @@ impl Connection {
                 // attempt cancels cleanup and drops its reader/writer owner as well.
                 let _ = previous.close(cleanup).await;
             }
-            tokio::time::timeout(
-                CONNECT_TIMEOUT,
-                ClientSession::connect(&endpoint, protocol?, requested, events),
-            )
-            .await
-            .map_err(|_| {
-                TuiError::Task(format!(
-                    "connection timed out after {} seconds",
-                    CONNECT_TIMEOUT.as_secs()
-                ))
-            })?
+            ClientSession::connect(&endpoint, protocol?, requested, events).await
         }));
     }
 
@@ -117,7 +107,7 @@ impl Connection {
             self.cancel();
             return Ok(());
         };
-        let result = tokio::time::timeout(CONNECT_TIMEOUT, async {
+        let result = tokio::time::timeout(CLOSE_GRACE, async {
             while self.outbox.active() {
                 self.outbox.next().await?;
                 self.outbox.advance(&session);

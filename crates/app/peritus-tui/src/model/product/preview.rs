@@ -11,7 +11,6 @@ use peritus_app_protocol::{
 use crate::model::{AppModel, Effect, NoticeLevel, PendingRequest, View};
 
 const PREVIEW_READINESS_MILLIS: u64 = 2_000;
-const PREVIEW_WALL_MILLIS: u64 = 600_000;
 mod profile;
 mod terminal;
 
@@ -168,7 +167,7 @@ impl AppModel {
                 source,
                 build,
                 PREVIEW_READINESS_MILLIS,
-                PREVIEW_WALL_MILLIS,
+                None,
                 true,
             )
         })();

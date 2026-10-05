@@ -32,11 +32,7 @@ pub(super) fn offer(
 }
 
 fn test(terminal: &mut Terminal<'_>, profile: &DirectProviderProfile) -> Result<(), LauncherError> {
-    terminal.line(&format!(
-        "Testing {} / {} (45-second deadline)…",
-        profile.kind().label(),
-        profile.model()
-    ))?;
+    terminal.line(&format!("Testing {} / {}…", profile.kind().label(), profile.model()))?;
     let result = std::thread::scope(|scope| {
         scope
             .spawn(|| {

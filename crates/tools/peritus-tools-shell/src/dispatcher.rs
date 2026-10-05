@@ -266,8 +266,7 @@ fn validate_invocation(
     }
     .map_err(|error| failure::adapter("shell-input", error.detail()))?;
     if &expected_command != plan.command()
-        || plan.deadline_policy().wall_timeout_millis()
-            != Some(prepared.call().limits().timeout_millis())
+        || plan.deadline_policy().wall_timeout_millis() != prepared.call().limits().timeout_millis()
         || plan.output_policy().spool_bytes() > prepared.call().limits().output_bytes()
         || plan.output_policy().stdout_bytes() > prepared.call().limits().output_bytes()
         || plan.output_policy().stderr_bytes() > prepared.call().limits().output_bytes()

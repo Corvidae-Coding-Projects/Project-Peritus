@@ -62,6 +62,11 @@ pub enum DeveloperContextEvent<'a> {
 /// This seam does not itself implement durable storage, working-state reduction, or retrieval.
 /// Those policies belong in C6 with effects supplied by the product host through C0 facilities.
 pub trait DeveloperContextPort: Send {
+    /// Native runtime persistence directory owned by this exact task and role lineage.
+    /// It is independent of invocation prefixes and provider response cursors.
+    fn local_session_directory(&self) -> Option<std::path::PathBuf> {
+        None
+    }
     /// Reopens the bound lineage and durably records the current invocation's exact inputs.
     ///
     /// `initial_messages` contains the current policy and user prompt, including attachments.
@@ -150,6 +155,10 @@ impl ContextSession<'_> {
 
     pub(super) fn is_local(&self) -> bool {
         self.0.is_some()
+    }
+
+    pub(super) fn local_session_directory(&self) -> Option<std::path::PathBuf> {
+        self.0.as_ref().and_then(|port| port.local_session_directory())
     }
 
     pub(super) fn open(

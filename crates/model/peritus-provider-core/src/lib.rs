@@ -27,6 +27,7 @@ mod recovery;
 mod redaction;
 mod reqwest_transport;
 mod retry;
+mod runtime_session;
 mod stream;
 mod transport;
 
@@ -61,5 +62,6 @@ pub use retry::{
     RetryAction, RetryFailure, RetryObservation, RetryPlan, RetryPolicy, RetryProtection,
     SubmissionState,
 };
+pub use runtime_session::{RuntimeSession, RuntimeTurnDirectory};
 pub use stream::{ModelStream, OwnedModelStream};
 pub use transport::{BoxFuture, ByteStream, HttpTransport, MemoryByteStream};

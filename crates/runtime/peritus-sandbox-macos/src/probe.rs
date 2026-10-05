@@ -211,7 +211,7 @@ impl ProbeRequest {
     /// Creates a probe request with exact installed paths and optional proxy route.
     ///
     /// # Errors
-    /// Rejects non-absolute paths or a zero/excessive connection timeout.
+    /// Rejects non-absolute paths or a zero connection timeout.
     pub fn new(
         helper_path: PathBuf,
         seatbelt_path: PathBuf,
@@ -224,10 +224,10 @@ impl ProbeRequest {
                 "probe executable paths must be absolute",
             ));
         }
-        if connect_timeout.is_zero() || connect_timeout > Duration::from_secs(10) {
+        if connect_timeout.is_zero() {
             return Err(crate::error::invalid(
                 MacosOperation::Probe,
-                "proxy probe timeout is zero or excessive",
+                "proxy probe timeout is zero",
             ));
         }
         Ok(Self { helper_path, seatbelt_path, proxy, connect_timeout })

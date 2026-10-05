@@ -21,6 +21,7 @@ fn ordinary_developer_requests_negotiate_usage_when_supported() {
             DeveloperLoop::run(
                 &provider,
                 DeveloperLoopRequest {
+                    local_session_directory: None,
                     request_prefix: "usage-negotiation".to_owned(),
                     system: "Answer the question.".to_owned(),
                     prompt: "Say ok.".to_owned(),
@@ -105,6 +106,7 @@ fn dropping_an_inflight_response_retains_accepted_accounting_without_a_terminal(
         let mut trace = RecordingTrace::default();
         let mut tools = RecordingTool::default();
         let request = DeveloperLoopRequest {
+            local_session_directory: None,
             request_prefix: "dropped-accounting".to_owned(),
             system: "Inspect the workspace".to_owned(),
             prompt: "Read the file".to_owned(),

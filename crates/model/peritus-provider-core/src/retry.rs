@@ -8,7 +8,6 @@ use crate::{ProviderCoreError, ProviderCoreErrorKind};
 
 const MAX_ATTEMPTS: u32 = 16;
 const MAX_DELAY: Duration = Duration::from_hours(24);
-const MAX_ELAPSED: Duration = Duration::from_hours(168);
 const MAX_CUMULATIVE_BYTES: u64 = 1024 * 1024 * 1024;
 
 /// Failure class observed by retry policy.
@@ -71,7 +70,7 @@ pub struct RetryPolicy {
     base_delay: Duration,
     max_delay: Duration,
     max_retry_after: Duration,
-    max_elapsed: Duration,
+    max_elapsed: Option<Duration>,
     max_cumulative_bytes: u64,
 }
 
@@ -87,14 +86,28 @@ impl RetryPolicy {
         max_cumulative_bytes: u64,
     ) -> Result<Self, ProviderCoreError> {
         let [base_delay, max_delay, max_retry_after, max_elapsed] = delays;
+        Self::checked(
+            max_attempts,
+            [base_delay, max_delay, max_retry_after],
+            Some(max_elapsed),
+            max_cumulative_bytes,
+        )
+    }
+
+    fn checked(
+        max_attempts: u32,
+        delays: [Duration; 3],
+        max_elapsed: Option<Duration>,
+        max_cumulative_bytes: u64,
+    ) -> Result<Self, ProviderCoreError> {
+        let [base_delay, max_delay, max_retry_after] = delays;
         if max_attempts == 0
             || max_attempts > MAX_ATTEMPTS
             || base_delay.is_zero()
             || base_delay > max_delay
             || max_delay > MAX_DELAY
             || max_retry_after > max_delay
-            || max_elapsed.is_zero()
-            || max_elapsed > MAX_ELAPSED
+            || max_elapsed.is_some_and(|maximum| maximum.is_zero())
             || max_cumulative_bytes == 0
             || max_cumulative_bytes > MAX_CUMULATIVE_BYTES
         {
@@ -112,6 +125,18 @@ impl RetryPolicy {
         })
     }
 
+    /// Creates a retry policy with byte/attempt protection and no elapsed-time cutoff.
+    ///
+    /// # Errors
+    /// Rejects zero or inconsistent byte, attempt, or backoff limits.
+    pub fn without_deadline(
+        max_attempts: u32,
+        delays: [Duration; 3],
+        max_cumulative_bytes: u64,
+    ) -> Result<Self, ProviderCoreError> {
+        Self::checked(max_attempts, delays, None, max_cumulative_bytes)
+    }
+
     /// Plans the next action from checked deterministic observations.
     ///
     /// # Errors
@@ -126,14 +151,17 @@ impl RetryPolicy {
             return Ok(RetryPlan { action, delay: Duration::ZERO });
         }
         if observation.attempt >= self.max_attempts
-            || observation.elapsed >= self.max_elapsed
+            || self.max_elapsed.is_some_and(|maximum| observation.elapsed >= maximum)
             || observation.cumulative_bytes >= self.max_cumulative_bytes
         {
             return Ok(RetryPlan { action: RetryAction::Stop, delay: Duration::ZERO });
         }
         let delay = self.delay(observation.attempt, observation.jitter_unit)?;
         let delay = observation.retry_after.map_or(delay, |retry_after| delay.max(retry_after));
-        if observation.elapsed.saturating_add(delay) > self.max_elapsed {
+        if self
+            .max_elapsed
+            .is_some_and(|maximum| observation.elapsed.saturating_add(delay) > maximum)
+        {
             return Ok(RetryPlan { action: RetryAction::Stop, delay: Duration::ZERO });
         }
         if !formally_legal_retry(*self, observation, action, delay) {
@@ -178,7 +206,9 @@ fn formally_legal_retry(
     peritus_model_protocol::retry_legality_complete(RetryLegalityFacts {
         bounds_allow: observation.attempt < policy.max_attempts
             && observation.cumulative_bytes < policy.max_cumulative_bytes
-            && observation.elapsed.saturating_add(delay) <= policy.max_elapsed,
+            && policy
+                .max_elapsed
+                .is_none_or(|maximum| observation.elapsed.saturating_add(delay) <= maximum),
         not_cancelled: observation.failure != RetryFailure::Cancelled,
         not_terminal: observation.failure != RetryFailure::Completed
             && observation.submission != SubmissionState::Completed,
@@ -251,7 +281,7 @@ impl RetryObservation {
     fn validate(self, policy: RetryPolicy) -> Result<(), ProviderCoreError> {
         if self.attempt == 0
             || self.attempt > policy.max_attempts
-            || self.elapsed > policy.max_elapsed
+            || policy.max_elapsed.is_some_and(|maximum| self.elapsed > maximum)
             || self.cumulative_bytes > policy.max_cumulative_bytes
             || self.jitter_unit > 10_000
             || self.retry_after.is_some_and(|delay| delay > policy.max_retry_after)

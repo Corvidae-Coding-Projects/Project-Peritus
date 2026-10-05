@@ -25,8 +25,7 @@ pub(super) fn open(
         .into_iter()
         .next()
         .ok_or_else(|| connect_error("no admitted DNS answer is available"))?;
-    let timeout =
-        Duration::from_millis(config.plan.options().bounds().connection_millis().min(30_000));
+    let timeout = Duration::from_millis(config.plan.options().bounds().connection_millis());
     let stream =
         TcpStream::connect_timeout(&SocketAddr::new(selected.address(), request.port()), timeout)
             .map_err(|_| connect_error("admitted upstream connection failed"))?;

@@ -76,6 +76,7 @@ pub(in crate::local_context) fn binding() -> WorkingBinding {
 }
 pub(in crate::local_context) fn begin(memory: &mut LocalMemory, prefix: &str) {
     let request = DeveloperLoopRequest {
+        local_session_directory: None,
         request_prefix: prefix.to_owned(),
         system: "Immutable policy".to_owned(),
         prompt: "Inspect input.txt".to_owned(),

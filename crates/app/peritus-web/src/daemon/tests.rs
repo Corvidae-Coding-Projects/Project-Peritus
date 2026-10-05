@@ -1,4 +1,5 @@
 //! Native conversation wire contract against a local protocol fixture; no provider calls.
+use std::time::Duration;
 
 mod recovery;
 mod sessions;

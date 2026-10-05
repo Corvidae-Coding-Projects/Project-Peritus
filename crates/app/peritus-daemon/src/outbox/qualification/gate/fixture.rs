@@ -34,7 +34,7 @@ pub(super) fn build(store: peritus_journal::StoreId) -> Result<GateFixture, Daem
     let binding = definition
         .acceptance_binding(environment)
         .map_err(|_| invalid("bind gate quality definition"))?;
-    let execution = GateExecutionPlan::new(
+    let execution = GateExecutionPlan::with_optional_timeout(
         binding.action(),
         binding.environment(),
         binding.inputs(),

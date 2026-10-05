@@ -3,7 +3,7 @@
 use super::{DiscoveredModel, MAX_CATALOG_MODELS, parse_runtime_models, unavailable};
 use crate::{CancellationToken, ProviderCoreError};
 use serde_json::Value;
-use std::{collections::BTreeSet, path::Path, process::Stdio, time::Duration};
+use std::{collections::BTreeSet, path::Path, process::Stdio};
 use tokio::{
     io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
     process::{ChildStdin, ChildStdout, Command},
@@ -68,7 +68,6 @@ pub async fn discover_account_models(
                 "--mcp-config",
                 "{\"mcpServers\":{}}",
                 "--disable-slash-commands",
-                "--no-session-persistence",
                 "--settings",
                 "{\"disableAllHooks\":true}",
             ]);
@@ -77,13 +76,10 @@ pub async fn discover_account_models(
     let mut child = command.spawn().map_err(|error| spawn_error(&error))?;
     let result = match (child.stdin.take(), child.stdout.take()) {
         (Some(mut input), Some(output)) => {
-            let operation =
-                tokio::time::timeout(Duration::from_secs(30), query(&mut input, output, kind));
-            match crate::cancel_first(cancellation, operation).await {
-                None => Err(ProviderCoreError::cancelled("model_catalog")),
-                Some(Err(_)) => Err(unavailable("official runtime model discovery timed out")),
-                Some(Ok(result)) => result,
-            }
+            let operation = query(&mut input, output, kind);
+            crate::cancel_first(cancellation, operation)
+                .await
+                .unwrap_or_else(|| Err(ProviderCoreError::cancelled("model_catalog")))
         }
         _ => Err(unavailable("official runtime model-discovery pipes are unavailable")),
     };

@@ -1,9 +1,10 @@
 //! Hardened authentication and isolated one-turn process projections.
 
+mod sessions;
+
 use std::fs::OpenOptions;
 use std::io::{Read as _, Write as _};
 use std::path::Path;
-use std::time::Duration;
 
 use peritus_model_protocol::ModelRequest;
 use peritus_provider_core::{
@@ -72,7 +73,8 @@ pub(super) async fn run_turn(
     runtime: &RuntimeRequest,
     cancellation: &CancellationToken,
 ) -> Result<TurnOutput, ProviderCoreError> {
-    let directory = tempfile::tempdir().map_err(|_| temporary_failure())?;
+    let session = sessions::Session::open(request)?;
+    let directory = session.turn_directory()?;
     let mut schema =
         tempfile::NamedTempFile::new_in(directory.path()).map_err(|_| temporary_failure())?;
     schema.write_all(&runtime.schema).map_err(|_| temporary_failure())?;
@@ -80,21 +82,33 @@ pub(super) async fn run_turn(
     let schema_path = path_argument(schema.path())?;
     let image_paths = write_images(directory.path(), runtime.images())?;
     let final_path = directory.path().join("final-response.json");
+    let mut argv = arguments(
+        request.model().as_str(),
+        runtime.reasoning_effort(),
+        schema_path,
+        path_argument(&final_path)?,
+        &image_paths,
+    );
+    if let Some(thread) = session.thread() {
+        argv.pop();
+        argv.extend(["resume".to_owned(), thread.to_owned(), "-".to_owned()]);
+    }
     let process = ProcessRequest::new(
         config.executable().process_executable().clone(),
-        arguments(
-            request.model().as_str(),
-            runtime.reasoning_effort(),
-            schema_path,
-            path_argument(&final_path)?,
-            &image_paths,
-        ),
+        argv,
         runtime.prompt.clone(),
-        Some(directory.path().to_path_buf()),
+        Some(session.root().unwrap_or_else(|| directory.path()).to_path_buf()),
         isolated_environment()?,
         config.process_limits(),
     )?;
+    let process = if session.persistent() {
+        process.with_stdout_journal(directory.path().join("native.jsonl"))
+    } else {
+        process
+    };
+    session.mark_started()?;
     let process = transport.run(process, cancellation).await?;
+    session.validate_output()?;
     let final_message = read_final(&final_path);
     Ok(TurnOutput { process, final_message })
 }
@@ -127,7 +141,6 @@ fn arguments(
     let mut values = vec![
         "exec".to_owned(),
         "--json".to_owned(),
-        "--ephemeral".to_owned(),
         "--ignore-user-config".to_owned(),
         "--ignore-rules".to_owned(),
         "--skip-git-repo-check".to_owned(),
@@ -207,7 +220,7 @@ pub(super) fn isolated_environment() -> Result<Vec<EnvironmentName>, ProviderCor
 }
 
 const fn authentication_limits() -> Result<ProcessLimits, ProviderCoreError> {
-    ProcessLimits::new(1, 64 * 1024, 64 * 1024, Duration::from_secs(10))
+    ProcessLimits::without_deadline(1, 64 * 1024, 64 * 1024)
 }
 
 fn path_argument(path: &Path) -> Result<String, ProviderCoreError> {

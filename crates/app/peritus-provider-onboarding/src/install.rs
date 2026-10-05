@@ -1,11 +1,6 @@
 //! Explicitly approved provider installation through the vendors' native installers.
 
-use std::{
-    path::Path,
-    process::Command,
-    thread,
-    time::{Duration, Instant},
-};
+use std::{path::Path, process::Command, thread, time::Duration};
 
 use peritus_product_state::ProviderKind;
 
@@ -46,10 +41,6 @@ impl Installer {
                 "=https",
                 "--proto-redir",
                 "=https",
-                "--connect-timeout",
-                "15",
-                "--max-time",
-                "120",
                 "--max-filesize",
                 "1048576",
                 "--output",
@@ -105,7 +96,6 @@ fn run_command(
     command: &mut Command,
 ) -> Result<(), OnboardingError> {
     let mut child = command.spawn().map_err(|error| installation_error(kind, stage, &error))?;
-    let deadline = Instant::now() + Duration::from_mins(15);
     let status = loop {
         match child.try_wait() {
             Ok(Some(status)) => break status,
@@ -115,15 +105,6 @@ fn run_command(
                 let _ = child.wait();
                 return Err(installation_error(kind, stage, &error));
             }
-        }
-        if Instant::now() >= deadline {
-            let _ = child.kill();
-            let _ = child.wait();
-            return Err(installation_error(
-                kind,
-                stage,
-                &"installer exceeded the 15 minute execution deadline",
-            ));
         }
         thread::sleep(Duration::from_millis(100));
     };
@@ -165,7 +146,7 @@ mod tests {
                 .map(|arg| arg.to_string_lossy().into_owned())
                 .collect::<Vec<_>>();
             assert!(args.windows(2).any(|pair| pair == ["--proto", "=https"]));
-            assert!(args.windows(2).any(|pair| pair == ["--max-time", "120"]));
+            assert!(!args.iter().any(|arg| arg == "--max-time" || arg == "--connect-timeout"));
             assert!(args.windows(2).any(|pair| pair == ["--max-filesize", "1048576"]));
             assert_eq!(args.last().expect("URL"), url);
             let execution = installer.execute(path);

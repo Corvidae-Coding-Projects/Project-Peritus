@@ -7,7 +7,7 @@ use peritus_types::{ActionId, CapabilityName, RevisionTuple};
 /// Per-call ceilings that can only narrow an immutable descriptor.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct CallLimits {
-    timeout_millis: u64,
+    timeout_millis: Option<u64>,
     output_bytes: u64,
     model_bytes: u32,
     human_bytes: u32,
@@ -29,7 +29,29 @@ impl CallLimits {
         progress_events: u32,
         artifacts: u16,
     ) -> Result<Self, ProtocolError> {
-        if timeout_millis == 0
+        Self::with_optional_timeout(
+            Some(timeout_millis),
+            output_bytes,
+            model_bytes,
+            human_bytes,
+            progress_events,
+            artifacts,
+        )
+    }
+
+    /// Creates resource ceilings with an optional caller-owned wall deadline.
+    ///
+    /// # Errors
+    /// Rejects zero bounds; absence of a deadline is represented by `None`.
+    pub fn with_optional_timeout(
+        timeout_millis: Option<u64>,
+        output_bytes: u64,
+        model_bytes: u32,
+        human_bytes: u32,
+        progress_events: u32,
+        artifacts: u16,
+    ) -> Result<Self, ProtocolError> {
+        if timeout_millis == Some(0)
             || output_bytes == 0
             || model_bytes == 0
             || human_bytes == 0
@@ -54,7 +76,7 @@ impl CallLimits {
 
     /// Returns the wall-time ceiling.
     #[must_use]
-    pub const fn timeout_millis(self) -> u64 {
+    pub const fn timeout_millis(self) -> Option<u64> {
         self.timeout_millis
     }
     /// Returns the complete output ceiling.
@@ -84,8 +106,11 @@ impl CallLimits {
     }
 
     pub(crate) const fn fits(self, descriptor: crate::ToolLimits) -> bool {
-        self.timeout_millis <= descriptor.timeout_millis()
-            && self.output_bytes <= descriptor.output_bytes()
+        (match (self.timeout_millis, descriptor.timeout_millis()) {
+            (Some(call), Some(maximum)) => call <= maximum,
+            (_, None) => true,
+            (None, Some(_)) => false,
+        }) && self.output_bytes <= descriptor.output_bytes()
             && self.model_bytes <= descriptor.model_bytes()
             && self.human_bytes <= descriptor.human_bytes()
             && self.progress_events <= descriptor.progress_events()
@@ -94,7 +119,7 @@ impl CallLimits {
 
     pub(crate) fn canonical_bytes(self) -> [u8; 30] {
         let mut bytes = [0; 30];
-        bytes[0..8].copy_from_slice(&self.timeout_millis.to_be_bytes());
+        bytes[0..8].copy_from_slice(&self.timeout_millis.unwrap_or(0).to_be_bytes());
         bytes[8..16].copy_from_slice(&self.output_bytes.to_be_bytes());
         bytes[16..20].copy_from_slice(&self.model_bytes.to_be_bytes());
         bytes[20..24].copy_from_slice(&self.human_bytes.to_be_bytes());

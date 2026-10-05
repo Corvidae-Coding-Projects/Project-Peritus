@@ -10,6 +10,31 @@ use peritus_budget::{
 use support::{Fixture, accepted, activate, observe, reference};
 
 #[test]
+fn execution_admission_does_not_require_a_fictitious_capacity_reservation() {
+    for reserve in [BudgetAmounts::zero(), BudgetAmounts::from_units(0, 0, 10, 0, 0)] {
+        let mut fixture = Fixture::new();
+        let ledger = fixture.ledger(BudgetAmounts::from_units(0, 0, 10, 1, 0));
+        let request =
+            fixture.request(fixture.root_id, BudgetAmounts::from_units(0, 0, 0, 1, 0), reserve);
+        let ledger = accepted(&ledger, BudgetCommand::Begin(request));
+        let snapshot = ledger.reservation(request.reservation_id()).expect("admission");
+        assert!(snapshot.is_admission_ready());
+        assert_eq!(snapshot.outstanding(), reserve);
+        assert_eq!(
+            ledger.account(fixture.root_id).expect("account").consumed(),
+            BudgetAmounts::from_units(0, 0, 0, 1, 0)
+        );
+        if !reserve.is_zero() {
+            let active = accepted(&ledger, activate(request, 2));
+            assert!(!active.reservation(request.reservation_id()).unwrap().is_admission_ready());
+            let settled =
+                accepted(&active, observe(request, 3, BudgetAmounts::zero(), UsageFinality::Final));
+            assert!(!settled.reservation(request.reservation_id()).unwrap().is_admission_ready());
+        }
+    }
+}
+
+#[test]
 fn exact_limit_is_accepted_and_one_over_reports_all_limiting_dimensions() {
     let mut fixture = Fixture::new();
     let limits = BudgetAmounts::from_units(10, 20, 30, 1, 0);

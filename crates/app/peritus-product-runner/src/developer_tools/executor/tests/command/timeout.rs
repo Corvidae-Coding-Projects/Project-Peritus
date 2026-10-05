@@ -4,6 +4,38 @@ use super::*;
 use std::time::Instant;
 
 #[test]
+fn omitted_command_deadline_stays_absent_through_router_process_and_receipt() {
+    let workspace = tempfile::tempdir().expect("workspace");
+    let mut tools = WorkspaceDeveloperTools::with_ownership(
+        workspace.path().to_owned(),
+        WorkspaceOwnership::capture(workspace.path()),
+        receipt_path(workspace.path()),
+        "unbounded-command".to_owned(),
+        None,
+        test_command_runtime(workspace.path()),
+    );
+    let _ = execute(&mut tools, "workspace_list", r#"{"depth":1,"path":""}"#);
+    let command = execute(
+        &mut tools,
+        "run_command",
+        r#"{"args":["--version"],"cwd":".","program":"rustc","purpose":"verification"}"#,
+    );
+    assert!(!command.is_error, "{}", wire(&command));
+    let result: Value = serde_json::from_str(&wire(&command)).expect("command receipt");
+    assert!(result["requested_timeout_seconds"].is_null());
+    assert!(result["timeout_seconds"].is_null());
+    assert_eq!(result["timed_out"], false);
+    assert_eq!(result["deadline_limited"], false);
+    for resource in result["tool_result"]["resources"].as_array().expect("resource observations") {
+        if ["WallTimeMilliseconds", "CpuTimeMilliseconds"]
+            .contains(&resource["dimension"].as_str().unwrap_or(""))
+        {
+            assert!(resource["ceiling"].is_null(), "{resource}");
+        }
+    }
+}
+
+#[test]
 fn structured_commands_time_out_without_freezing_the_agent() {
     let workspace = tempfile::tempdir().expect("workspace");
     let mut tools = writable_tools(workspace.path());

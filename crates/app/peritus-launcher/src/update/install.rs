@@ -2,17 +2,9 @@
 
 use std::{env, path::PathBuf, process::Command};
 
-#[cfg(not(windows))]
-use std::time::Duration;
-
 use crate::LauncherError;
 
 use super::release::Release;
-
-#[cfg(not(windows))]
-const INSTALL_TIMEOUT: Duration = Duration::from_mins(15);
-#[cfg(not(windows))]
-const VERIFY_TIMEOUT: Duration = Duration::from_secs(30);
 
 pub(super) fn apply(package: &std::path::Path, release: &Release) -> Result<(), LauncherError> {
     let target = installed_command()?;
@@ -34,7 +26,7 @@ fn immediate_unix(
     let status = super::process::status(
         Command::new("sh").arg(&script).arg(package),
         "run native updater",
-        INSTALL_TIMEOUT,
+        None,
     )?;
     if !status.success() {
         return Err(LauncherError::Update(format!("native updater failed with status {status}")));
@@ -65,7 +57,7 @@ fn deferred_windows(
     let installer =
         package.join(if target.exists() { "Upgrade-Peritus.ps1" } else { "Install-Peritus.ps1" });
     let script = format!(
-        "$ErrorActionPreference='Stop'\nWait-Process -Id {} -Timeout 120 -ErrorAction SilentlyContinue\n& '{}' -BundleRoot '{}'\n$version = & '{}' --version\nif ($version -ne 'peritus {}') {{ throw 'installed version verification failed' }}\nRemove-Item -LiteralPath $MyInvocation.MyCommand.Path -Force -ErrorAction SilentlyContinue\n",
+        "$ErrorActionPreference='Stop'\nWait-Process -Id {} -ErrorAction SilentlyContinue\n& '{}' -BundleRoot '{}'\n$version = & '{}' --version\nif ($version -ne 'peritus {}') {{ throw 'installed version verification failed' }}\nRemove-Item -LiteralPath $MyInvocation.MyCommand.Path -Force -ErrorAction SilentlyContinue\n",
         std::process::id(),
         quote(&installer),
         quote(package),
@@ -118,7 +110,7 @@ fn verify(target: &std::path::Path, release: &Release) -> Result<(), LauncherErr
     let (status, stdout) = super::process::stdout(
         Command::new(target).arg("--version"),
         "run installed version check",
-        VERIFY_TIMEOUT,
+        None,
     )?;
     let expected = format!("peritus {}\n", release.version());
     if status.success() && stdout == expected.as_bytes() {

@@ -19,13 +19,9 @@ pub fn prepare() -> Result<(ExecStatusOwner, NativeProtectedHandle, InheritedHan
     #[cfg(target_os = "linux")]
     {
         use std::os::fd::OwnedFd;
-        use std::time::Duration;
 
         let (reader, writer) = std::os::unix::net::UnixStream::pair().map_err(|error| {
             LinuxError::io(LinuxOperation::Prepare, "create exec status", &error)
-        })?;
-        reader.set_read_timeout(Some(Duration::from_secs(5))).map_err(|error| {
-            LinuxError::io(LinuxOperation::Prepare, "bound exec status", &error)
         })?;
         let writer = std::fs::File::from(OwnedFd::from(writer));
         let handle = NativeProtectedHandle::from_file(EXEC_STATUS_LABEL, writer)
@@ -59,7 +55,7 @@ impl ExecStatusOwner {
             .by_ref()
             .take(33)
             .read_to_end(&mut bytes)
-            .map_err(|_| status_error("helper exec status timed out or could not be read"))?;
+            .map_err(|_| status_error("helper exec status could not be read"))?;
         if bytes.is_empty() {
             return Ok(());
         }

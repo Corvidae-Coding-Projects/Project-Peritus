@@ -12,7 +12,7 @@ use crate::{args::SubmitArgs, client::Client, error::CliError, id::hex, output::
 pub async fn status(
     endpoint: &OsStr,
     session: Option<SessionId>,
-    timeout: Duration,
+    timeout: Option<Duration>,
     output: &Output,
 ) -> Result<(), CliError> {
     let mut client = Client::connect(
@@ -51,7 +51,7 @@ pub async fn status(
 pub async fn shutdown(
     endpoint: &OsStr,
     session: Option<SessionId>,
-    timeout: Duration,
+    timeout: Option<Duration>,
     wait: bool,
     output: &Output,
 ) -> Result<(), CliError> {
@@ -87,20 +87,22 @@ pub async fn shutdown(
 async fn await_shutdown(
     client: &mut Client,
     shutdown: ShutdownRequest,
-    timeout: Duration,
+    timeout: Option<Duration>,
     output: &Output,
 ) -> Result<(), CliError> {
-    let deadline = tokio::time::Instant::now() + timeout;
+    let deadline = timeout.map(|timeout| tokio::time::Instant::now() + timeout);
     loop {
-        let remaining = deadline.saturating_duration_since(tokio::time::Instant::now());
-        if remaining.is_zero() {
+        let remaining = deadline
+            .map(|deadline| deadline.saturating_duration_since(tokio::time::Instant::now()));
+        if remaining.is_some_and(|remaining| remaining.is_zero()) {
             return Err(CliError::connection(
                 "wait for shutdown",
                 "shutdown completion deadline elapsed after acceptance",
             ));
         }
-        let event =
-            tokio::time::timeout(remaining, client.read_event()).await.map_err(|_| {
+        let event = crate::client::optional_timeout(remaining, client.read_event())
+            .await
+            .map_err(|_| {
                 CliError::connection(
                     "wait for shutdown",
                     "shutdown completion deadline elapsed after acceptance",
@@ -175,7 +177,7 @@ async fn await_shutdown(
 pub async fn submit(
     endpoint: &OsStr,
     session: Option<SessionId>,
-    timeout: Duration,
+    timeout: Option<Duration>,
     arguments: SubmitArgs,
     output: &Output,
 ) -> Result<(), CliError> {

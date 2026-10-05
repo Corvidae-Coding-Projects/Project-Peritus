@@ -21,6 +21,27 @@ use support::{
     text_response, tool_response, write_arguments,
 };
 
+struct CapturingProvider {
+    inner: Arc<ScriptedProvider>,
+    requests: Arc<Mutex<Vec<peritus_model_protocol::ModelRequest>>>,
+}
+impl ModelProvider for CapturingProvider {
+    fn profile(&self) -> &peritus_model_protocol::ProviderProfile {
+        self.inner.profile()
+    }
+    fn start(
+        &self,
+        request: peritus_model_protocol::ModelRequest,
+        cancellation: CancellationToken,
+    ) -> peritus_provider_core::BoxFuture<
+        '_,
+        Result<peritus_provider_core::OwnedModelStream, peritus_provider_core::ProviderCoreError>,
+    > {
+        self.requests.lock().unwrap().push(request.clone());
+        self.inner.start(request, cancellation)
+    }
+}
+
 #[test]
 fn roles_restart_after_exhausted_empty_and_interrupted_responses() {
     tokio::runtime::Builder::new_current_thread()
@@ -46,22 +67,7 @@ mod tests {
     }
 }
 ";
-            let mut writer_responses = VecDeque::new();
-            writer_responses.push_back(interrupted_response());
-            writer_responses.extend([
-                named_tool_response("workspace_list", list_arguments("", 3)),
-                named_tool_response("workspace_read", read_arguments("Cargo.toml")),
-                design_response(),
-            ]);
-            writer_responses.extend((0..4).map(|_| empty_response()));
-            writer_responses.extend([
-                named_tool_response("workspace_list", list_arguments("", 3)),
-                named_tool_response("workspace_read", read_arguments("src/lib.rs")),
-                tool_response(write_arguments("src/lib.rs", implemented)),
-                text_response(
-                    br#"{"kind":"complete","run_instructions":"cargo test","summary":"Recovered and implemented the requested answer."}"#,
-                ),
-            ]);
+            let writer_responses = recovering_writer_responses(implemented);
             let writer_provider = Arc::new(ScriptedProvider {
                 profile: profile([0xa1; 16], "recovering-writer"),
                 responses: Mutex::new(writer_responses),
@@ -80,7 +86,10 @@ mod tests {
                 profile: profile([0xa2; 16], "recovering-reviewer"),
                 responses: Mutex::new(reviewer_responses),
             });
-            let writer: Arc<dyn ModelProvider> = writer_provider.clone();
+            let requests = Arc::new(Mutex::new(Vec::new()));
+            let writer: Arc<dyn ModelProvider> = Arc::new(CapturingProvider {
+                inner: writer_provider.clone(), requests: Arc::clone(&requests),
+            });
             let reviewer: Arc<dyn ModelProvider> = reviewer_provider.clone();
             let task = "Add a tested answer function that returns 42.".to_owned();
             let run_id = RunId::new([0xa3; 16]).expect("run ID");
@@ -121,7 +130,64 @@ mod tests {
             assert!(output.review.contains("No findings"));
             assert!(writer_provider.responses.lock().expect("writer responses").is_empty());
             assert!(reviewer_provider.responses.lock().expect("reviewer responses").is_empty());
+            assert_retained_designer(&requests.lock().unwrap());
         });
+}
+
+fn recovering_writer_responses(
+    implemented: &str,
+) -> VecDeque<VecDeque<peritus_model_protocol::EventEnvelope>> {
+    let mut writer_responses = VecDeque::new();
+    writer_responses.push_back(interrupted_response());
+    writer_responses.extend([
+        named_tool_response("workspace_list", list_arguments("", 3)),
+        named_tool_response("workspace_read", read_arguments("Cargo.toml")),
+        interrupted_response(),
+        named_tool_response("workspace_list", list_arguments("", 3)),
+        named_tool_response("workspace_read", read_arguments("Cargo.toml")),
+        design_response(),
+    ]);
+    writer_responses.extend((0..4).map(|_| empty_response()));
+    writer_responses.extend([
+        named_tool_response("workspace_list", list_arguments("", 3)),
+        named_tool_response("workspace_read", read_arguments("src/lib.rs")),
+        tool_response(write_arguments("src/lib.rs", implemented)),
+        text_response(
+            br#"{"kind":"complete","run_instructions":"cargo test","summary":"Recovered and implemented the requested answer."}"#,
+        ),
+    ]);
+    writer_responses
+}
+
+fn assert_retained_designer(requests: &[peritus_model_protocol::ModelRequest]) {
+    let designer = requests
+        .iter()
+        .filter(|request| {
+            request
+                .local_session_directory()
+                .and_then(Path::parent)
+                .and_then(Path::file_name)
+                .is_some_and(|name| name == "designer")
+        })
+        .collect::<Vec<_>>();
+    assert!(designer.len() >= 7, "design recovery must retain its task namespace");
+    assert!(
+        designer
+            .windows(2)
+            .all(|pair| pair[0].local_session_directory() == pair[1].local_session_directory())
+    );
+    let recovered = designer
+        .iter()
+        .find(|request| request.request_id().expose_for_wire().contains("invocation-3"))
+        .expect("third design invocation");
+    assert!(
+        recovered.messages().iter().flat_map(peritus_model_protocol::Message::content).any(
+            |block| matches!(block, peritus_model_protocol::ContentBlock::Text(text)
+            if text.expose_for_wire().contains("UNTRUSTED TOOL EVIDENCE")
+                && text.expose_for_wire().contains("role-recovery-fixture"))
+        ),
+        "completed repository reads must survive as scoped historical evidence"
+    );
 }
 
 fn prepare_repository(root: &Path) {

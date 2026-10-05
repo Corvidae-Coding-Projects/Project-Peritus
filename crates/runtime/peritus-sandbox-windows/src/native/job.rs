@@ -34,8 +34,10 @@ impl OwnedJob {
         let mut limits = JOBOBJECT_EXTENDED_LIMIT_INFORMATION::default();
         limits.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE
             | JOB_OBJECT_LIMIT_ACTIVE_PROCESS
-            | JOB_OBJECT_LIMIT_JOB_MEMORY
-            | JOB_OBJECT_LIMIT_JOB_TIME;
+            | JOB_OBJECT_LIMIT_JOB_MEMORY;
+        if plan.cpu_time_millis() != 0 {
+            limits.BasicLimitInformation.LimitFlags |= JOB_OBJECT_LIMIT_JOB_TIME;
+        }
         limits.BasicLimitInformation.ActiveProcessLimit = plan.active_process_limit();
         limits.BasicLimitInformation.PerJobUserTimeLimit = cpu_100ns;
         limits.JobMemoryLimit = memory;

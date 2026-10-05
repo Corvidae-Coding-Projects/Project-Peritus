@@ -64,8 +64,10 @@ persistence/background execution, continuation, reasoning replay or summaries, s
 and caller-defined strict structured output are rejected before authentication or process
 submission.
 
-Each turn uses an isolated temporary working directory and output schema. The process is invoked in
-JSONL, ephemeral, read-only mode while ignoring user config/rules and Git state; native tools and
+Host-bound tasks retain an isolated working directory and each turn's native JSONL journal.
+The adapter resumes the exact recorded thread ID across requests and provider reconstruction,
+scoped to the task, role, profile revision, and model. It never selects a global most-recent thread.
+Each turn has a private output schema. The process is invoked in JSONL, persistent, read-only mode while ignoring user config/rules and Git state; native tools and
 features are disabled, and OpenAI/Codex credential, endpoint, organization, and project overrides
 are removed from the child environment. The output contract deliberately uses a bounded tool-name
 enum plus an `arguments_json` string. Full host schemas are prompt guidance only; returned names and

@@ -102,7 +102,12 @@ fn structured(
         .iter()
         .map(|resource| {
             object([
-                ("ceiling", serde_json::Value::String(resource.ceiling().to_string())),
+                (
+                    "ceiling",
+                    resource.ceiling().map_or(serde_json::Value::Null, |ceiling| {
+                        serde_json::Value::String(ceiling.to_string())
+                    }),
+                ),
                 ("dimension", serde_json::Value::String(format!("{:?}", resource.dimension()))),
                 ("fidelity", serde_json::Value::String(format!("{:?}", resource.fidelity()))),
                 ("value", serde_json::Value::String(resource.value().to_string())),

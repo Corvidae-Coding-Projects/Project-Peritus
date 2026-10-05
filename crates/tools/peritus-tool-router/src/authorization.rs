@@ -1,6 +1,6 @@
 //! Complete borrowed request and exact committed authority validation.
 
-use peritus_budget::{BudgetDimension, BudgetOperation, BudgetReceiptKind, ReservationPhase};
+use peritus_budget::{BudgetDimension, BudgetOperation, BudgetReceiptKind};
 use peritus_codec::{CodecLimits, decode_message};
 use peritus_journal::{
     CommittedBudgetTransition, CommittedCapabilityUse, CommittedKernelTransition,
@@ -162,7 +162,7 @@ pub fn validate(
         prepared_exact,
     };
     if !tool_authority_complete(facts) {
-        return Err(mismatch("committed tool authority facts are incomplete"));
+        return Err(mismatch(incomplete_fact(facts)));
     }
     Ok(AuthorizationEvidence {
         intent_digest,
@@ -176,6 +176,24 @@ pub fn validate(
             request.session_id,
         ),
     })
+}
+
+fn incomplete_fact(facts: ToolAuthorityFacts) -> &'static str {
+    [
+        (facts.intent_exact, "committed tool intent binding is incomplete"),
+        (facts.lifecycle_exact, "committed tool lifecycle binding is incomplete"),
+        (facts.capability_exact, "committed tool capability binding is incomplete"),
+        (facts.budget_exact, "committed tool budget binding is incomplete"),
+        (facts.lease_exact, "committed tool lease binding is incomplete"),
+        (facts.dispatch_committed, "committed tool dispatch binding is incomplete"),
+        (facts.time_current, "committed tool authority time is not current"),
+        (facts.revision_exact, "committed tool revision binding is incomplete"),
+        (facts.descriptor_exact, "committed tool descriptor binding is incomplete"),
+        (facts.prepared_exact, "committed tool prepared-call binding is incomplete"),
+    ]
+    .into_iter()
+    .find_map(|(valid, detail)| (!valid).then_some(detail))
+    .unwrap_or("committed tool authority facts are incomplete")
 }
 
 fn validate_budget(
@@ -196,13 +214,13 @@ fn validate_budget(
         .reservation_snapshot(reservation_id)
         .map_err(|_| mismatch("budget transition has no exact reservation snapshot"))?;
     let begin = snapshot.request();
-    Ok(snapshot.phase() == ReservationPhase::Held
+    Ok(snapshot.is_admission_ready()
         && begin.reservation_id() == reservation_id
         && begin.action_id() == prepared.call().action_id()
         && begin.action_digest() == intent_digest
         && begin.revision() == prepared.call().revision()
         && begin.reserve().get(BudgetDimension::ActiveEffectMilliseconds).get()
-            >= prepared.call().limits().timeout_millis())
+            >= prepared.call().limits().timeout_millis().unwrap_or(0))
 }
 
 fn validate_lease(

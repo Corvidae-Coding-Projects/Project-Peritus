@@ -226,10 +226,9 @@ impl ExecutionPlan {
                 "restricted execution requires a native admitted backend",
             ));
         }
-        if deadlines
-            .wall_timeout_millis()
-            .is_some_and(|deadline| deadline > resources.wall_millis())
-            || output.spool_bytes() > resources.output_bytes()
+        if deadlines.wall_timeout_millis().is_some_and(|deadline| {
+            resources.wall_millis().is_some_and(|maximum| deadline > maximum)
+        }) || output.spool_bytes() > resources.output_bytes()
             || output.stdout_bytes() > resources.output_bytes()
             || output.stderr_bytes() > resources.output_bytes()
             || output.terminal_bytes() > resources.output_bytes()

@@ -10,7 +10,10 @@ mod events;
 mod frame;
 mod identity;
 mod request;
+mod timeout;
 
 pub use connection::Client;
 pub use error::{ClientError, ClientErrorKind};
 pub use identity::RequestIdentity;
+
+pub(crate) use timeout::optional_timeout;

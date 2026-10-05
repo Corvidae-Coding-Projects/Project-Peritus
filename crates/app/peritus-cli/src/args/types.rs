@@ -17,7 +17,7 @@ USAGE:
 GLOBAL OPTIONS:
   --endpoint <PATH-OR-PIPE>   Protected peritusd local endpoint
   --session <HEX-ID>         Resume a durable 128-bit session
-  --timeout-seconds <N>      Connect/request timeout (default: 30)
+  --timeout-seconds <N>      Connect/request timeout (omitted: no deadline)
   --json                     Emit stable JSON; streams use one object per line
   -h, --help                 Print this help
   -V, --version              Print version
@@ -70,7 +70,7 @@ EXIT CATEGORIES:
 pub struct Cli {
     pub(crate) endpoint: Option<OsString>,
     pub(crate) session: Option<SessionId>,
-    pub(crate) timeout: Duration,
+    pub(crate) timeout: Option<Duration>,
     pub(crate) json: bool,
     pub(crate) command: Command,
 }

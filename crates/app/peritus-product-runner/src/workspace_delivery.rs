@@ -104,15 +104,11 @@ impl ProductRunInput {
         &self,
         role: &str,
     ) -> Result<Option<LocalContextHandle>, ProductRunnerError> {
-        if self.workspace_kind.is_in_place() {
-            if role == "reviewer" {
-                Ok(None)
-            } else {
-                LocalContextHandle::open_folder(self, self.workspace_kind.protected_paths())
-            }
-        } else {
-            LocalContextHandle::open(self, role)
-        }
+        LocalContextHandle::open(self, role)
+    }
+
+    pub(crate) fn native_session_directory(&self, role: &str) -> std::path::PathBuf {
+        self.trace_path.with_extension("context").join(role).join("provider-sessions")
     }
 
     pub(crate) const fn delivery_instructions(&self) -> &'static str {

@@ -228,7 +228,7 @@ fn encode_resources(
     for resource in ordered {
         bytes.push(resource_tag(resource.dimension()));
         u64_value(bytes, resource.value());
-        u64_value(bytes, resource.ceiling());
+        u64_value(bytes, resource.ceiling().unwrap_or(0));
         bytes.push(fidelity_tag(resource.fidelity()));
     }
     Ok(())

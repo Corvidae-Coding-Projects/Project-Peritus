@@ -224,7 +224,7 @@ fn gate(
     dependencies: Vec<GateId>,
 ) -> GateDefinition {
     let binding = definition.acceptance_binding(environment).expect("acceptance binding");
-    let plan = GateExecutionPlan::new(
+    let plan = GateExecutionPlan::with_optional_timeout(
         binding.action(),
         binding.environment(),
         binding.inputs(),

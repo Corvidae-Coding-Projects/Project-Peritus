@@ -78,6 +78,7 @@ async fn pending_attempt(boundary: Boundary, explicit_stop: bool) {
     let mut operation = Box::pin(DeveloperLoop::run(
         &provider,
         DeveloperLoopRequest {
+            local_session_directory: None,
             request_prefix: "pending-attempt-cancellation".to_owned(),
             system: "Complete the task.".to_owned(),
             prompt: "Return the result.".to_owned(),

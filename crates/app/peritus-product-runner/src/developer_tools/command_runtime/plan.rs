@@ -39,7 +39,7 @@ pub(super) struct CommandRequest<'a> {
     pub(super) program: &'a str,
     pub(super) arguments: &'a [String],
     pub(super) cwd: &'a Path,
-    pub(super) timeout_millis: u64,
+    pub(super) timeout_millis: Option<u64>,
     pub(super) interactive: bool,
     pub(super) rows: u16,
     pub(super) columns: u16,
@@ -63,7 +63,7 @@ pub(super) fn compile(
     ]);
     let arguments = BoundedJson::parse(&wire_arguments.to_string(), JsonLimits::PRODUCTION)
         .map_err(|error| format!("encode command tool arguments: {error}"))?;
-    let limits = CallLimits::new(
+    let limits = CallLimits::with_optional_timeout(
         request.timeout_millis,
         OUTPUT_BYTES,
         MODEL_OUTPUT_BYTES,
@@ -82,7 +82,7 @@ pub(super) fn compile(
         ids.revision,
         AuthorityInstant::new(
             peritus_types::Generation::first(),
-            request.timeout_millis.saturating_add(21),
+            request.timeout_millis.map_or(21, |timeout| timeout.saturating_add(21)),
         ),
         IdempotencyKey::new(request.idempotency_key)
             .map_err(|error| format!("construct command idempotency key: {error}"))?,
@@ -123,9 +123,9 @@ pub(super) fn compile(
         OutputOverflowAction::ContinueIncomplete,
     )
     .map_err(|error| format!("construct command output policy: {error}"))?;
-    let resources = ProcessResourcePolicy::new(
+    let resources = ProcessResourcePolicy::with_optional_time(
         request.timeout_millis,
-        request.timeout_millis.saturating_mul(64),
+        request.timeout_millis.map(|timeout| timeout.saturating_mul(64)),
         MEMORY_BYTES,
         DISK_BYTES,
         OUTPUT_BYTES,
@@ -167,7 +167,7 @@ pub(super) fn compile(
         io,
         stdin,
         output,
-        DeadlinePolicy::new(Some(request.timeout_millis), GracefulAction::Terminate, 500, 5_000)
+        DeadlinePolicy::new(request.timeout_millis, GracefulAction::Terminate, 500, 5_000)
             .map_err(|error| format!("construct command deadline policy: {error}"))?,
         resources,
         &checked,

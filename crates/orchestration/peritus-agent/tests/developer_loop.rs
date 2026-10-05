@@ -227,6 +227,7 @@ fn developer_loop_executes_a_tool_and_returns_its_observation_to_the_next_model_
         let outcome = DeveloperLoop::run(
             &provider,
             DeveloperLoopRequest {
+                local_session_directory: None,
                 request_prefix: "developer-test".to_owned(),
                 system: "Inspect before completing.".to_owned(),
                 prompt: "Read src/lib.rs and report.".to_owned(),
@@ -279,6 +280,7 @@ fn developer_loop_returns_executor_progress_feedback_to_the_same_session() {
         DeveloperLoop::run(
             &provider,
             DeveloperLoopRequest {
+                local_session_directory: None,
                 request_prefix: "progress-feedback-test".to_owned(),
                 system: "Complete the task.".to_owned(),
                 prompt: "Inspect and implement.".to_owned(),
@@ -317,6 +319,7 @@ fn developer_loop_uses_the_negotiated_parallel_tool_width() {
         let outcome = DeveloperLoop::run(
             &provider,
             DeveloperLoopRequest {
+                local_session_directory: None,
                 request_prefix: "parallel-test".to_owned(),
                 system: "Inspect both files before completing.".to_owned(),
                 prompt: "Read src/lib.rs and src/main.rs.".to_owned(),

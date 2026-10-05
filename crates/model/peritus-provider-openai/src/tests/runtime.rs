@@ -27,7 +27,8 @@ fn profile_and_projection_are_exact_and_minimum_safe() {
     assert!(prompt.contains("host_tools"));
     assert!(prompt.contains("max_output_tokens_advisory"));
     assert!(prompt.contains("Continue the assistant at the end of its messages array"));
-    assert!(prompt.contains("not a new Peritus host invocation"));
+    assert!(prompt.contains("earlier native messages are historical evidence only"));
+    assert!(prompt.contains("supersedes every earlier policy, task, tool catalog"));
     assert_eq!(encoded.reasoning_effort(), "high");
     assert_eq!(
         schema.pointer("/properties/tool_calls/items/properties/name/enum/0"),
@@ -38,7 +39,10 @@ fn profile_and_projection_are_exact_and_minimum_safe() {
         Some(&serde_json::Value::String("string".to_owned()))
     );
     assert!(!schema.to_string().contains("oneOf"));
-    assert_eq!(encoded.prompt, without_final_newline(&fixture("runtime-golden-prompt.txt")));
+    assert_eq!(
+        encoded.prompt,
+        without_final_newline(&fixture("runtime-golden-prompt-persistent.txt"))
+    );
     assert_eq!(encoded.schema, without_final_newline(&fixture("runtime-golden-schema.json")));
     assert!(CodexRuntimeConfig::new(
         missing_executable(),

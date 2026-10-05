@@ -1,7 +1,6 @@
 //! Authenticated service inventory enriched by `OpenCode`'s live, credential-free metadata.
 
 use serde_json::Value;
-use std::time::Duration;
 
 use super::HostedService;
 use crate::{
@@ -39,10 +38,7 @@ pub async fn discover_hosted_models(
     )
     .await?;
     if service.mixed_protocols() {
-        if let Ok(Ok(metadata)) =
-            tokio::time::timeout(Duration::from_secs(10), metadata(transport, limits, cancellation))
-                .await
-        {
+        if let Ok(metadata) = metadata(transport, limits, cancellation).await {
             enrich(service, &mut models, &metadata)?;
         }
     } else {

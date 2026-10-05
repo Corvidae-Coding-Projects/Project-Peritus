@@ -159,7 +159,6 @@ fn constrained_turn_disables_runtime_authority_and_normalizes_inert_output() {
         "--disallowedTools",
         "--disable-slash-commands",
         "--no-chrome",
-        "--no-session-persistence",
         "--strict-mcp-config",
         "--system-prompt-file",
         "--max-turns",

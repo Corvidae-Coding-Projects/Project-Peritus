@@ -5,7 +5,6 @@ use std::{
     fs, io,
     process::Command,
     sync::{Arc, atomic::AtomicBool},
-    time::Duration,
 };
 
 use peritus_model_protocol::{
@@ -158,7 +157,7 @@ fn profile(
 }
 
 fn process_limits(output_bytes: usize) -> Result<ProcessLimits, Box<dyn Error>> {
-    Ok(ProcessLimits::new(output_bytes, output_bytes, 64 * 1024, Duration::from_mins(5))?)
+    Ok(ProcessLimits::without_deadline(output_bytes, output_bytes, 64 * 1024)?)
 }
 
 fn initialize_repository(root: &std::path::Path) -> Result<(), Box<dyn Error>> {

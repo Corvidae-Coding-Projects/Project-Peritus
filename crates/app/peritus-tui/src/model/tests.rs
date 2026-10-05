@@ -121,7 +121,7 @@ fn disconnect_drops_only_live_connection_state_and_retains_session_and_cursor() 
 }
 
 #[test]
-fn unanswered_requests_expire_instead_of_blocking_the_interface_forever() {
+fn unanswered_requests_remain_pending_without_forcing_a_new_connection() {
     let mut model = AppModel::new([10; 32]);
     let _ = model.update(Action::Connected {
         context: context(),
@@ -134,11 +134,10 @@ fn unanswered_requests_expire_instead_of_blocking_the_interface_forever() {
 
     let mut effects = Vec::new();
     for step in 1..=120 {
-        effects = model.update(Action::Tick(now + std::time::Duration::from_millis(step * 250)));
+        effects = model.update(Action::Tick(now + std::time::Duration::from_hours(step)));
     }
 
-    assert!(original.iter().all(|request| !model.pending.contains_key(request)));
-    assert!(model.notice.as_ref().is_some_and(|notice| notice.text.contains("timed out")));
-    assert!(matches!(effects.as_slice(), [Effect::Reconnect]));
-    assert!(matches!(model.connection, ConnectionStatus::Connecting));
+    assert!(original.iter().all(|request| model.pending.contains_key(request)));
+    assert!(!effects.iter().any(|effect| matches!(effect, Effect::Reconnect)));
+    assert!(matches!(model.connection, ConnectionStatus::Online { .. }));
 }

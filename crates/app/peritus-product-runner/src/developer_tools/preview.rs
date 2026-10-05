@@ -16,7 +16,7 @@ pub struct PreviewCommand {
     pub(in crate::developer_tools) program: String,
     pub(in crate::developer_tools) arguments: Vec<String>,
     pub(in crate::developer_tools) cwd: PathBuf,
-    pub(in crate::developer_tools) timeout: Duration,
+    pub(in crate::developer_tools) timeout: Option<Duration>,
     pub(in crate::developer_tools) interactive: bool,
     pub(in crate::developer_tools) rows: u16,
     pub(in crate::developer_tools) columns: u16,
@@ -34,13 +34,14 @@ impl PreviewCommand {
         program: String,
         arguments: Vec<String>,
         cwd: PathBuf,
-        timeout: Duration,
+        timeout: impl Into<Option<Duration>>,
         interactive: bool,
         rows: u16,
         columns: u16,
         idempotency_key: String,
         environment: Vec<(String, String)>,
     ) -> Result<Self, ProductRunnerError> {
+        let timeout = timeout.into();
         let invalid_program = program.is_empty()
             || program.len() > MAX_PROGRAM_BYTES
             || program.as_bytes().contains(&0);
@@ -58,8 +59,9 @@ impl PreviewCommand {
             || invalid_arguments
             || invalid_environment
             || cwd.as_os_str().is_empty()
-            || timeout.is_zero()
-            || timeout.as_millis() > u128::from(u64::MAX)
+            || timeout.is_some_and(|timeout| {
+                timeout.is_zero() || timeout.as_millis() > u128::from(u64::MAX)
+            })
             || rows == 0
             || columns == 0
             || idempotency_key.is_empty()

@@ -51,7 +51,6 @@ fn valid_turn(arguments: &[String], stdin: &str) -> bool {
         "mcp__*",
         "--disable-slash-commands",
         "--no-chrome",
-        "--no-session-persistence",
         "--strict-mcp-config",
         "--mcp-config",
         r#"{"mcpServers":{}}"#,

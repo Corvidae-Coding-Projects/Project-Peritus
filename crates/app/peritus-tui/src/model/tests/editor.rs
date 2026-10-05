@@ -85,7 +85,14 @@ fn process_id_validation_rejection_and_timeout_preserve_input() {
     let second = request(submit(&mut model));
     assert!(model.pending_started.contains_key(&second.request_id()));
     model.tick_count = 121;
-    assert!(model.expire_pending_requests());
+    assert!(
+        model
+            .update(Action::Tick(std::time::Instant::now()))
+            .iter()
+            .all(|effect| !matches!(effect, Effect::Reconnect))
+    );
+    assert!(model.pending.contains_key(&second.request_id()));
+    model.update(Action::Disconnected("connection lost".to_owned()));
     assert_eq!(model.editor.as_ref().unwrap().buffer, "11111111111111111111111111111111");
 }
 
@@ -149,7 +156,9 @@ fn disconnect_and_binding_timeout_retain_an_unsubmitted_product_message() {
             assert!(effects.is_empty());
         } else {
             model.tick_count = 121;
-            assert!(!model.expire_pending_requests());
+            model.update(Action::Tick(std::time::Instant::now()));
+            assert!(!model.pending.is_empty());
+            model.update(Action::Disconnected("connection lost".to_owned()));
         }
         let editor = model.editor.as_ref().unwrap();
         assert_eq!(editor.buffer, "retain unknown outcome");

@@ -52,7 +52,7 @@ impl Client {
     ) -> Result<(), ClientError> {
         let control = ControlEnvelope::new(self.context, correlation_id, payload);
         self.begin_exchange()?;
-        tokio::time::timeout(self.timeout, self.stream.write(&AppMessage::Control(control)))
+        crate::optional_timeout(self.timeout, self.stream.write(&AppMessage::Control(control)))
             .await
             .map_err(|_| {
                 ClientError::connection("write daemon control", "control write timed out")
@@ -70,7 +70,7 @@ impl Client {
     /// generation failures, timeouts, or an invalidated connection.
     pub async fn reply_heartbeat(&mut self, event: &AppEventEnvelope) -> Result<bool, ClientError> {
         self.begin_exchange()?;
-        let replied = tokio::time::timeout(self.timeout, self.reply_heartbeat_inner(event))
+        let replied = crate::optional_timeout(self.timeout, self.reply_heartbeat_inner(event))
             .await
             .map_err(|_| {
                 ClientError::connection("reply to daemon heartbeat", "heartbeat reply timed out")

@@ -80,6 +80,56 @@ impl ResourceLimits {
         Ok(Self { values })
     }
 
+    /// Creates resource bounds without imposing wall or CPU time limits.
+    ///
+    /// # Errors
+    /// Rejects zero bounds for every non-time dimension.
+    #[allow(clippy::too_many_arguments, reason = "one typed value per closed resource dimension")]
+    pub fn with_optional_time(
+        wall_time: Option<ResourceQuantity>,
+        cpu_time: Option<ResourceQuantity>,
+        memory: ResourceQuantity,
+        disk: ResourceQuantity,
+        output: ResourceQuantity,
+        open_handles: ResourceQuantity,
+        processes: ResourceQuantity,
+        concurrency: ResourceQuantity,
+    ) -> Result<Self, SandboxError> {
+        if wall_time.is_some_and(|value| value.get() == 0)
+            || cpu_time.is_some_and(|value| value.get() == 0)
+            || [memory, disk, output, open_handles, processes, concurrency]
+                .iter()
+                .any(|value| value.get() == 0)
+        {
+            return Err(crate::error::invalid("configured resource limits must be nonzero"));
+        }
+        Ok(Self {
+            values: [
+                wall_time.unwrap_or(ResourceQuantity::zero()),
+                cpu_time.unwrap_or(ResourceQuantity::zero()),
+                memory,
+                disk,
+                output,
+                open_handles,
+                processes,
+                concurrency,
+            ],
+        })
+    }
+
+    /// Returns an optional time bound; zero in the canonical wire denotes its absence.
+    #[must_use]
+    pub const fn time_limit(&self, kind: SandboxResourceKind) -> Option<ResourceQuantity> {
+        match kind {
+            SandboxResourceKind::WallTime | SandboxResourceKind::CpuTime
+                if self.limit(kind).get() == 0 =>
+            {
+                None
+            }
+            _ => Some(self.limit(kind)),
+        }
+    }
+
     /// Returns the bound for one dimension.
     #[must_use]
     pub const fn limit(&self, kind: SandboxResourceKind) -> ResourceQuantity {
@@ -89,7 +139,11 @@ impl ResourceLimits {
     /// Reports the first dimension whose requested bound exceeds this contract.
     #[must_use]
     pub fn first_exceeded_by(&self, requested: &Self) -> Option<SandboxResourceKind> {
-        SandboxResourceKind::ALL.into_iter().find(|kind| requested.limit(*kind) > self.limit(*kind))
+        SandboxResourceKind::ALL.into_iter().find(|kind| {
+            self.time_limit(*kind).is_some_and(|maximum| {
+                requested.time_limit(*kind).is_none_or(|value| value > maximum)
+            })
+        })
     }
 }
 
@@ -121,11 +175,13 @@ impl ResourceUsage {
         quantity: ResourceQuantity,
         limits: &ResourceLimits,
     ) -> Result<(), SandboxError> {
-        if !crate::verified::resource_charge_allowed(
-            self.get(kind).get(),
-            quantity.get(),
-            limits.limit(kind).get(),
-        ) {
+        if limits.time_limit(kind).is_some()
+            && !crate::verified::resource_charge_allowed(
+                self.get(kind).get(),
+                quantity.get(),
+                limits.limit(kind).get(),
+            )
+        {
             return Err(SandboxError::new(
                 SandboxErrorKind::ResourceLimit,
                 SandboxOperation::Account,

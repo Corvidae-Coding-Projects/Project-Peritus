@@ -35,7 +35,11 @@ impl ProductRunner {
         let allow_pipeline = writable
             && mode == ConversationMode::Chat
             && input.conversation.permits_pipeline_handoff();
-        let memory = if allow_pipeline { input.working_memory("writer")? } else { None };
+        let memory = input.working_memory(if mode == ConversationMode::Review {
+            "reviewer"
+        } else {
+            "writer"
+        })?;
         let mut continuing_segment = false;
         loop {
             accounting.check()?;
@@ -235,6 +239,9 @@ fn request(
         );
     }
     Ok(DeveloperLoopRequest {
+        local_session_directory: Some(input.native_session_directory(
+            if mode == ConversationMode::Review { "reviewer" } else { "writer" },
+        )),
         request_prefix: format!(
             "{}-{model_requests}",
             crate::turn::request_name(

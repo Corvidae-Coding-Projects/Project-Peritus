@@ -190,9 +190,9 @@ fn terminal(
 }
 
 fn resource_limits(resources: ProcessResourcePolicy) -> Result<ResourceLimits, String> {
-    ResourceLimits::new(
-        ResourceQuantity::new(resources.wall_millis()),
-        ResourceQuantity::new(resources.cpu_millis()),
+    ResourceLimits::with_optional_time(
+        resources.wall_millis().map(ResourceQuantity::new),
+        resources.cpu_millis().map(ResourceQuantity::new),
         ResourceQuantity::new(resources.memory_bytes()),
         ResourceQuantity::new(resources.disk_bytes()),
         ResourceQuantity::new(resources.output_bytes()),

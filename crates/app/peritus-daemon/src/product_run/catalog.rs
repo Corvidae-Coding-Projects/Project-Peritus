@@ -62,12 +62,8 @@ impl ProductRunService {
                 "Model discovery is already running for this provider. Refresh to retry; any listed models are cached.",
             );
         };
-        let result = tokio::time::timeout(
-            std::time::Duration::from_secs(30),
-            provider.discover_models(&CancellationToken::new()),
-        )
-        .await;
-        let catalog = if let Ok(Ok(models)) = result {
+        let result = provider.discover_models(&CancellationToken::new()).await;
+        let catalog = if let Ok(models) = result {
             ProductModelCatalog::new(
                 query.profile(),
                 provider.profile().model().as_str().to_owned(),

@@ -1,6 +1,5 @@
 //! Bounded streaming release download, checksum verification, and native extraction.
 
-use std::time::Duration;
 use std::{fs, path::PathBuf, process::Command};
 
 use futures_util::StreamExt as _;
@@ -14,15 +13,12 @@ use super::release::Release;
 const RELEASE_BASE: &str =
     "https://github.com/Corvidae-Coding-Projects/Project-Peritus/releases/download";
 const MAX_ARCHIVE_BYTES: u64 = 1024 * 1024 * 1024;
-const EXTRACTION_TIMEOUT: Duration = Duration::from_mins(5);
 
 pub(super) async fn package(
     layout: &AppLayout,
     release: &Release,
 ) -> Result<PathBuf, LauncherError> {
     let client = reqwest::Client::builder()
-        .connect_timeout(Duration::from_secs(10))
-        .timeout(Duration::from_mins(30))
         .build()
         .map_err(|error| network("construct update download client", &error))?;
     let asset = asset_name()?;
@@ -131,7 +127,7 @@ fn extract(archive: &std::path::Path, root: &std::path::Path) -> Result<(), Laun
     let status = super::process::status(
         Command::new("tar").args(["-xzf"]).arg(archive).arg("-C").arg(root),
         "extract release archive",
-        EXTRACTION_TIMEOUT,
+        None,
     )?;
     success(status.success(), "release extraction failed")
 }
@@ -148,7 +144,7 @@ fn extract(archive: &std::path::Path, root: &std::path::Path) -> Result<(), Laun
             .env("PERITUS_ARCHIVE_SOURCE", archive)
             .env("PERITUS_ARCHIVE_DESTINATION", root),
         "extract release archive",
-        EXTRACTION_TIMEOUT,
+        None,
     )?;
     success(status.success(), "release extraction failed")
 }

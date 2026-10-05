@@ -1,9 +1,9 @@
-//! Failure before a first provider response still publishes the exact empty trace.
+//! Failure before a first provider response still publishes the context admission trace without any completed provider response.
 
 use super::*;
 
 #[test]
-fn provider_failure_before_first_response_retains_an_empty_trace() {
+fn provider_failure_before_first_response_retains_context_admission() {
     tokio::runtime::Builder::new_current_thread().enable_all().build().expect("runtime").block_on(
         async {
             let repository = tempfile::tempdir().expect("repository");
@@ -56,7 +56,18 @@ fn provider_failure_before_first_response_retains_an_empty_trace() {
             assert_eq!(outcome.settlement().cause(), SettlementCause::Provider);
             assert!(outcome.candidate().is_none());
             assert!(trace_path.is_file());
-            assert_eq!(fs::metadata(trace_path).expect("trace metadata").len(), 0);
+            let trace = fs::read(&trace_path).expect("context trace");
+            assert_eq!(
+                peritus_product_runner::DeveloperTraceFrameKind::from_tag(trace[0]),
+                Some(peritus_product_runner::DeveloperTraceFrameKind::LocalMemoryCheckpoint)
+            );
+            let payload_bytes =
+                usize::try_from(u64::from_le_bytes(trace[1..9].try_into().unwrap()))
+                    .expect("fixture frame length");
+            assert_eq!(trace.len(), 9 + payload_bytes, "only context admission was recorded");
+            let checkpoint: serde_json::Value = serde_json::from_slice(&trace[9..]).unwrap();
+            assert_eq!(checkpoint["generation"], 1);
+            assert!(trace_path.with_extension("context").join("designer").is_dir());
         },
     );
 }

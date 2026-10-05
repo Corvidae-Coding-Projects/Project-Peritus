@@ -29,14 +29,9 @@ pub(super) fn capability(value: &str) -> Result<Capability, DaemonError> {
 }
 
 pub(super) fn retry_policy() -> Result<RetryPolicy, DaemonError> {
-    RetryPolicy::new(
+    RetryPolicy::without_deadline(
         3,
-        [
-            Duration::from_millis(100),
-            Duration::from_secs(2),
-            Duration::from_secs(2),
-            Duration::from_secs(10),
-        ],
+        [Duration::from_millis(100), Duration::from_secs(2), Duration::from_secs(2)],
         64 * 1024 * 1024,
     )
     .map_err(provider_error)

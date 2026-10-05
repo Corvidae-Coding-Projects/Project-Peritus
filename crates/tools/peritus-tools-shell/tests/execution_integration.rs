@@ -71,7 +71,7 @@ fn shell_exec_runs_literal_argv_accepts_stdin_and_publishes_output_artifacts() {
         &mut journal,
         &setup.process_ids,
         &process_intent,
-        plan.resource_policy().wall_millis(),
+        plan.resource_policy().wall_millis().expect("explicit fixture wall bound"),
     );
     let execution_request =
         execution_request(&setup.process_ids, &plan, &process_intent, &receipts);
@@ -158,7 +158,7 @@ fn run_quality(seed: u8, mode: &str, gate_name: &str) -> ToolResult {
         &mut journal,
         &setup.process_ids,
         &process_intent,
-        plan.resource_policy().wall_millis(),
+        plan.resource_policy().wall_millis().expect("explicit fixture wall bound"),
     );
     let execution_request =
         execution_request(&setup.process_ids, &plan, &process_intent, &receipts);

@@ -2,7 +2,7 @@
 
 mod native;
 
-use peritus_budget::{BudgetDimension, BudgetOperation, BudgetReceiptKind, ReservationPhase};
+use peritus_budget::{BudgetDimension, BudgetOperation, BudgetReceiptKind};
 use peritus_codec::{CodecLimits, decode_message};
 use peritus_kernel::{ActionPhase, KernelEventKind};
 use peritus_leases::{LeaseClaim, LeasePhase, LeaseTransitionKind};
@@ -254,13 +254,13 @@ fn validate_budget(
         )
     })?;
     let begin = snapshot.request();
-    Ok(snapshot.phase() == ReservationPhase::Held
+    Ok(snapshot.is_admission_ready()
         && begin.reservation_id() == reservation_id
         && begin.action_id() == plan.identity().action_id()
         && begin.action_digest() == action_digest
         && begin.revision() == plan.identity().revision()
         && begin.reserve().get(BudgetDimension::ActiveEffectMilliseconds).get()
-            >= plan.resource_policy().wall_millis())
+            >= plan.resource_policy().wall_millis().unwrap_or(0))
 }
 
 fn validate_lease(

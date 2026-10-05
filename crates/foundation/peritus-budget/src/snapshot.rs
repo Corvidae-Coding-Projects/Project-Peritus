@@ -120,6 +120,21 @@ impl ReservationSnapshot {
     /// Returns the reservation lifecycle phase.
     #[must_use]
     pub const fn phase(self) -> ReservationPhase { self.phase }
+    /// Returns whether this snapshot can supply the accounting part of a new execution.
+    ///
+    /// An applied Begin charges the attempt immediately. When it reserves no capacity,
+    /// its accounting is already settled; execution ownership still comes from the
+    /// separate committed, single-use dispatch. Callers must also validate that Begin,
+    /// its exact action binding, and the dispatch before admitting execution.
+    #[must_use]
+    pub fn is_admission_ready(self) -> bool {
+        self.phase == ReservationPhase::Held
+            || (self.phase == ReservationPhase::SettledExact
+                && self.request.reserve().is_zero()
+                && self.request.consume_now().get(crate::BudgetDimension::Attempts).get() == 1
+                && self.activation_evidence.is_none()
+                && self.final_evidence.is_none())
+    }
     /// Returns exact activation evidence when activation was accepted.
     #[must_use]
     pub const fn activation_evidence(self) -> Option<Sha256Digest> {

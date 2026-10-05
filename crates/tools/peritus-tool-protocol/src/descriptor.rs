@@ -83,7 +83,7 @@ impl ProtocolCompatibility {
 /// Immutable resource ceilings advertised by a descriptor.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct ToolLimits {
-    timeout_millis: u64,
+    timeout_millis: Option<u64>,
     output_bytes: u64,
     model_bytes: u32,
     human_bytes: u32,
@@ -108,7 +108,32 @@ impl ToolLimits {
         artifacts: u16,
         control_bytes: u32,
     ) -> Result<Self, ProtocolError> {
-        if timeout_millis == 0
+        Self::with_optional_timeout(
+            Some(timeout_millis),
+            output_bytes,
+            model_bytes,
+            human_bytes,
+            progress_events,
+            artifacts,
+            control_bytes,
+        )
+    }
+
+    /// Creates resource ceilings with an optional caller-owned wall deadline.
+    ///
+    /// # Errors
+    /// Rejects zero bounds; absence of a deadline is represented by `None`.
+    #[allow(clippy::too_many_arguments)]
+    pub fn with_optional_timeout(
+        timeout_millis: Option<u64>,
+        output_bytes: u64,
+        model_bytes: u32,
+        human_bytes: u32,
+        progress_events: u32,
+        artifacts: u16,
+        control_bytes: u32,
+    ) -> Result<Self, ProtocolError> {
+        if timeout_millis == Some(0)
             || output_bytes == 0
             || model_bytes == 0
             || human_bytes == 0
@@ -135,7 +160,7 @@ impl ToolLimits {
 
     /// Returns the wall-time ceiling.
     #[must_use]
-    pub const fn timeout_millis(self) -> u64 {
+    pub const fn timeout_millis(self) -> Option<u64> {
         self.timeout_millis
     }
     /// Returns the complete output ceiling.

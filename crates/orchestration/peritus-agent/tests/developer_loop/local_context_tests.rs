@@ -103,6 +103,7 @@ mod metadata;
 
 fn request(prefix: &str, turns: u16) -> DeveloperLoopRequest {
     DeveloperLoopRequest {
+        local_session_directory: None,
         request_prefix: prefix.to_owned(),
         system: "Inspect before completing.".to_owned(),
         prompt: "Read src/lib.rs and report.".to_owned(),

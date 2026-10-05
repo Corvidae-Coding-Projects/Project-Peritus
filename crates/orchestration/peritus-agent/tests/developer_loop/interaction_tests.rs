@@ -61,6 +61,7 @@ impl DeveloperInteraction for LiveInput {
 
 fn request(cancellation: CancellationToken) -> DeveloperLoopRequest {
     DeveloperLoopRequest {
+        local_session_directory: None,
         request_prefix: "interactive-boundary-test".to_owned(),
         system: "Respect steering".to_owned(),
         prompt: "Inspect both files".to_owned(),

@@ -87,9 +87,9 @@ pub(super) fn compile(
 ) -> Result<CheckedSandboxPlan, String> {
     let filesystem = filesystem(directory, executable, weights)?;
     let executable = path(executable)?;
-    let resources = ResourceLimits::new(
-        ResourceQuantity::new(resources.wall_millis()),
-        ResourceQuantity::new(resources.cpu_millis()),
+    let resources = ResourceLimits::with_optional_time(
+        resources.wall_millis().map(ResourceQuantity::new),
+        resources.cpu_millis().map(ResourceQuantity::new),
         ResourceQuantity::new(resources.memory_bytes()),
         ResourceQuantity::new(resources.disk_bytes()),
         ResourceQuantity::new(resources.output_bytes()),

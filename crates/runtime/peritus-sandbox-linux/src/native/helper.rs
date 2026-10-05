@@ -13,7 +13,6 @@ use std::os::fd::AsRawFd;
 use std::os::unix::ffi::OsStrExt;
 use std::os::unix::process::CommandExt;
 use std::process::Command;
-use std::time::Duration;
 use zeroize::Zeroizing;
 
 const MANIFEST_LIMIT: usize = 1024 * 1024;
@@ -312,7 +311,7 @@ fn probe_proxy(value: &str) -> Result<(), LinuxError> {
             "proxy probe endpoint is invalid",
         )
     })?;
-    TcpStream::connect_timeout(&endpoint, Duration::from_secs(1)).map(|_| ()).map_err(|_| {
+    TcpStream::connect(endpoint).map(|_| ()).map_err(|_| {
         LinuxError::new(
             LinuxErrorKind::Network,
             LinuxOperation::Probe,

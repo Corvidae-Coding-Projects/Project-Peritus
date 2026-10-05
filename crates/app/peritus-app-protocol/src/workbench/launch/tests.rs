@@ -67,7 +67,7 @@ fn launch_profile_accepts_a_wall_horizon_above_ten_minutes() {
     )
     .expect("positive caller-selected wall horizon");
 
-    assert_eq!(profile.wall_millis(), 1_000_000);
+    assert_eq!(profile.wall_millis(), Some(1_000_000));
 }
 
 #[test]

@@ -139,9 +139,9 @@ where
             .command()
             .map_err(|error| adapter_failure("quality-command", error.detail()))?;
         if &command != plan.command()
-            || plan.deadline_policy().wall_timeout_millis() != Some(definition.timeout_millis())
+            || plan.deadline_policy().wall_timeout_millis() != definition.timeout_millis()
             || plan.deadline_policy().wall_timeout_millis()
-                != Some(prepared.call().limits().timeout_millis())
+                != prepared.call().limits().timeout_millis()
             || plan.output_policy().spool_bytes() < definition.output_bytes()
             || plan.output_policy().spool_bytes() > prepared.call().limits().output_bytes()
         {
