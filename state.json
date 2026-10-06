@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3565,
-        "tip_oid": "e7c8d1ad4c7fdd5f3ec0815c3c5932455ab7628a",
-        "prefix_sha256": "eb9f9002c2a5eaba8242c0514d18e818e2f65827246bc4a56f07207212b0be1b"
+        "sequence": 3566,
+        "tip_oid": "68c4a60349214379f0d09803670631e9ef45ed00",
+        "prefix_sha256": "b58fbb142d2f1494692a72aa402d4578660aedbd8aa70f93b943c700783f697f"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 824,
-  "next_comment_id": 2914,
+  "next_comment_id": 2915,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -37269,11 +37269,20 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:07.855919839Z",
-      "updated_at": "2026-10-06T18:48:03.846463455Z",
+      "updated_at": "2026-10-06T18:52:14.313291991Z",
       "labels": [
         "daily-driving-limiter"
       ],
       "comments": {
+        "25b0e7ab-a925-48c0-8638-22e849bd8209": {
+          "display_id": 2914,
+          "author": "6ME5",
+          "content": "Grounded #107 design: remove C1's hard 64MiB source, 8MiB included-buffer and 67,108,864-line admission ceilings. Keep existing read_file signatures and exact small-read observations; its explicit caller-provided buffer capacity remains caller-owned, not a compiled C1 maximum. Share one streaming selection scanner with copy_snapshot, widen scan counters, and add caller-owned retained inspection storage plus source/selection metadata, checksum-protected resumable cursors and physical output pages with actual source intervals and explicit continuation. Pages never reread the ambient source: they consume the exact retained selection, verified against its digest/size on open and checked for storage changes around each read. The owner supplies the backing file and persists the metadata/cursor; no ephemeral session or temporary namespace is substituted. Drop/reopen must resume the same observation and offset, reject mixed cursors or changed retained bytes, and preserve accepted legacy data. Retain no-follow traversal, root/file identity checks, protected paths, original bytes/line endings and original I/O sources. Caller-owned output cannot alias the inspected source. Compare alternative: simply deleting constants would leave whole-allocation and u32-overflow defects; rereading/re-hashing the live source per page would create repeated work and version drift; using artifact-store transfer APIs here would inherit separately tracked storage admission policies. Independent attachment admission (#227), FS inline schemas/transport (#685/#202), and durable context (#111) stay separately open. Verify former thresholds and small-page selection through a large source, wide line counting, exact range/source digests, corruption/foreign cursors, empty selection, publication/storage failure and source changes, durable reopen, real read-only workspace and daemon small attachment flows, strict lint, relevant consumers/native/Windows and local all.",
+          "created_at": "2026-10-06T18:52:14.309055124Z",
+          "kind": "decision",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAcVhOZy46wUBLBn86jRRcm74BuSiuZc6LIP/s6NIh/2DjoAv77R/Xz/d+w8p+MuvqxxHj/MW/mQjC/2MQ7j1VDw=="
+        },
         "56448c44-ab5c-474c-91a2-45ee05821e61": {
           "display_id": 2913,
           "author": "6ME5",
