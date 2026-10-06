@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3525,
-        "tip_oid": "a33596ab573c554a42697cc193b972ef9b2d895a",
-        "prefix_sha256": "c79f931e10e28b624c03f0170c6bdf9d62550b5c7c1ef116967d60fe504de48c"
+        "sequence": 3526,
+        "tip_oid": "91868e2f01faf77d4f49d8b74a658b78c2d2f3c5",
+        "prefix_sha256": "3c9f49f9fa065bca5cb2d277a3233f79938ee5f07bce16688fd5cbbf7388ab95"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 822,
-  "next_comment_id": 2894,
+  "next_comment_id": 2895,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -4249,7 +4249,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:08:34.108185360Z",
-      "updated_at": "2026-10-06T13:09:44.266994620Z",
+      "updated_at": "2026-10-06T14:43:18.812668893Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -4262,6 +4262,15 @@
           "kind": "decision",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAm1BJirKso82mA6F/Fz5dyaBFRcYWqy/BDBvon5SimVqUn29kUx3q8nHVWZWJEIZmtT8LwLoUu79bCuilpvoaDg=="
+        },
+        "9fc4cbf2-47ff-4444-9ecd-a5c6082fb90e": {
+          "display_id": 2894,
+          "author": "6ME5",
+          "content": "[action] Implementing issue #104: streaming checkpoint and restore evidence; validating resource wait, cancellation, restart, and legacy recovery before commit.",
+          "created_at": "2026-10-06T14:43:18.806140335Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAym8JjOxRG0hr0Cht4aB6gh3BiWgT2wCGZuQGw9AAxN3gkOWjEy1zrlOtSEVFy7k5HFzN5K+hOEODe2SfCrhpCA=="
         }
       }
     },
