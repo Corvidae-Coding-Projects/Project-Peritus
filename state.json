@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3632,
-        "tip_oid": "bec73979dbc9598932e114d63447d943642f25be",
-        "prefix_sha256": "7aa7c90a6d438d95d059d344f414a32a64e505660f713622cec101ce2be1e1fc"
+        "sequence": 3633,
+        "tip_oid": "5ac454b3cc0e6b40549855833d5824c94506c9dd",
+        "prefix_sha256": "39417b17c4cb02acc2998d07bb92710129d5bfa2882b3ed44ba257a6cd2a45c6"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 2961,
+  "next_comment_id": 2962,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -22222,7 +22222,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T22:11:51.674351471Z",
-      "updated_at": "2026-10-06T22:46:14.268284853Z",
+      "updated_at": "2026-10-06T22:47:34.321343719Z",
       "labels": [
         "ci"
       ],
@@ -22262,6 +22262,15 @@
           "kind": "observation",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAJLwOelQxi/V3XPIoaAT2TeDj50ppoDe7xsAMVgJ8l0Vv68l7/RJ+GnIRLVmyWHnXP9h6oP40AqDCYPItOor5DQ=="
+        },
+        "65c637a8-27c1-4e02-a499-de348adea6ec": {
+          "display_id": 2961,
+          "author": "6ME5",
+          "content": "The observed process_spawn failure lost a second layer of evidence in provider-core: command.spawn discarded its io::Error before the provider bridge could retain it. Extend ProviderCoreError with private optional redacted I/O cause metadata (ErrorKind and numeric OS code only), additive accessors and a redacted standard Error::source; stable kind/code/operation/Display remain unchanged and no payload/path is retained. Attach this snapshot only at process_spawn, then include it in probe evidence. Deterministic regression pins then removes a private executable and verifies Connect/process_spawn/NotFound plus numeric cause with no path/canary leakage; a core unit test verifies custom I/O text is excluded from source/Debug/Display. Initial expanded isolated core/conformance/OpenAI suites passed after this addition. No root repair is chosen yet: 100 syscall-traced runs did not reproduce the spawn failure; new separate runs will stop at the first failure to capture the OS cause directly. No hidden retry or conformance-verdict replacement.",
+          "created_at": "2026-10-06T22:47:34.316989370Z",
+          "kind": "decision",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAxCGc6giNWdNlW7qE3YGF8LYi7lUyvVtnkRMHQmoO/6QDcizpsqd+vYZEletSJuZ09anw9gxt2+5posyUO+CBDw=="
         },
         "91cac3f0-82c6-491b-86df-0f30b3b07956": {
           "display_id": 2952,
