@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3594,
-        "tip_oid": "3f57131dcebd444db04d3830c4739d2c86197758",
-        "prefix_sha256": "8618d386252e6e8a49813a4d133945a61b5fcb831cf227cedf670e3aef3d3329"
+        "sequence": 3595,
+        "tip_oid": "7e6e2dfac6294e3eaff4314d8d7e5424c448af69",
+        "prefix_sha256": "8ff9307742392600e51dd4f999b084bcfb2fcc64ffcd57a5456d4da51f883b4b"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 825,
-  "next_comment_id": 2934,
+  "next_comment_id": 2935,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -6882,11 +6882,20 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:07.865564519Z",
-      "updated_at": "2026-10-06T20:46:21.554857959Z",
+      "updated_at": "2026-10-06T20:50:39.878220775Z",
       "labels": [
         "daily-driving-limiter"
       ],
       "comments": {
+        "4941f897-d420-40c0-ac17-0df737a522f8": {
+          "display_id": 2934,
+          "author": "6ME5",
+          "content": "Final receive-path review found that propagating allocator pressure could drop the daemon connection despite retained codec bytes. The owned frame stream now schedules cancellable allocation retries without an expiry or attempt count; retry timing itself survives receive-future cancellation. Regression coverage preserves a fragmented frame and the next message through the wait and confirms malformed input, explicit peer limits, and failed transports still reject. The previous global-ceiling integration test now verifies a negotiated legacy ceiling instead. Final qualification remains in progress; the issue stays open.",
+          "created_at": "2026-10-06T20:50:39.869849154Z",
+          "kind": "observation",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAhJSKYKWgSLtoEfcrjRDCuniux50QXfUS4cHY7kqACa5YDLMjXU8v23eFb7/W/hucbBphj1iUUJ7GAynS7jT9Aw=="
+        },
         "6ab6146b-d636-4f52-b83f-99460938bca0": {
           "display_id": 2181,
           "author": "6ME5",
