@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3641,
-        "tip_oid": "9090148709474dad8e7fccfa6b2fb540eda23e65",
-        "prefix_sha256": "3e7b9ee0b4caabf91d9aadf06084cc933513bd23af522174c936def2d38b34d5"
+        "sequence": 3642,
+        "tip_oid": "b1e4c12f6591d7faded123e446ad0201dff2812c",
+        "prefix_sha256": "f53500176dc83a3fb53f97128b8c89c6c1cbf98bd4bea35089ac2a935dccbe76"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 2970,
+  "next_comment_id": 2971,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -22222,7 +22222,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T22:11:51.674351471Z",
-      "updated_at": "2026-10-06T23:08:49.417790063Z",
+      "updated_at": "2026-10-06T23:15:31.252155642Z",
       "labels": [
         "ci"
       ],
@@ -22352,6 +22352,15 @@
           "kind": "observation",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAXXR6JpFzrKEJoLcQpNSw/To5r+tTips4hZO6tKo/WuX0nIjqs6BP2rsbhbuKUSsXXQZFsDqUJNr8xQyAJIopBw=="
+        },
+        "c84700f9-b3e1-454e-881d-5629980f1b52": {
+          "display_id": 2970,
+          "author": "6ME5",
+          "content": "Native Windows shared conformance acceptance verified on exact head d2eb633326654d9d629beb26efa0120c8bdf1677: Foundation testing job112543536649 SUCCESS, completed2026-10-06T23:10:11Z. Actual log confirms failed_provider_exercises_retain_evidence_and_teardown_without_retrying and the existing unavailable-provider classification regression executed and passed, preserving14 single exercises,14 teardowns, ordered observations and infrastructure-vs-contract distinction. URL: https://github.com/Corvidae-Coding-Projects/Project-Peritus/actions/runs/37543905215/job/112543536649 . Metadata/logs retained at /tmp/peritus-issue825-windows-conformance-success.{json,log}. Both Linux shards already accepted; Windows model-orchestration112543536752 remains live in Run reviewed package shard, started23:07:41Z. Both macOS shards112543533469/112543533581 remainqueued with no assigned runner. Issue825 remains OPEN; exacthead observer71117 and fullPRwatch23820 are live, no native failures or CI reruns. Next collect/inspect remaining native logs, record final result and close825 before starting110.",
+          "created_at": "2026-10-06T23:15:31.247671268Z",
+          "kind": "observation",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAB7gW1UAhGyZOg9wM661ksEVKHZuBxD8ybPHXtI40kUe36oprAbcCVbcY9x/kVemhOIIJsufKnFl2a6EDoz47BA=="
         },
         "d7f5731d-65de-4c36-9571-9da1b2cfc172": {
           "display_id": 2967,
