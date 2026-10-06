@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3595,
-        "tip_oid": "7e6e2dfac6294e3eaff4314d8d7e5424c448af69",
-        "prefix_sha256": "8ff9307742392600e51dd4f999b084bcfb2fcc64ffcd57a5456d4da51f883b4b"
+        "sequence": 3596,
+        "tip_oid": "0cff8993a14bbd01956190aadc94b262d0a7d15c",
+        "prefix_sha256": "7b42f0326b828e6c445d92751a5c0534316348c12f95a244395cf347c4e9e102"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 825,
-  "next_comment_id": 2935,
+  "next_comment_id": 2936,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -6882,7 +6882,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:07.865564519Z",
-      "updated_at": "2026-10-06T20:50:39.878220775Z",
+      "updated_at": "2026-10-06T20:53:17.817003127Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -6902,6 +6902,15 @@
           "content": "Systemic repair plan for L009: Canonical codec production ceilings.\n\nOwning contract and implementation boundary: crates/foundation/peritus-codec/src/limits.rs:20-29,52-55; writer.rs:87-125,128-150; reader.rs:106-157. Apply the change through the constructors, live callers, durable writer and restart reader for this boundary, not as an isolated constant increase.\n\nKeep bounded individual decoder allocations, but stop using a single production frame as the representation of an entire growing logical object. Add versioned paged records or digest-bound external artifacts, with shared encoder/decoder admissibility and explicit capability negotiation. Every persisted accepted object must remain decodable under its stored generation; malformed lengths and nesting must still fail before allocation.\n\nPreserve: exact snapshot/preimage identity, protected paths, ancestor and symlink safety, writable-fork coverage, conflict detection, one logical restore transaction and exact effect receipts. Separate a physical allocation/page limit and a genuine authority or integrity check from a cumulative work allowance. Keep transient contention/capacity observable and recoverable under the existing logical task; do not discard accepted state or substitute a fresh session to get around it.\n\nCompatibility/migration: retain decoders and exact receipts for previously accepted records. If representation or lifecycle semantics change, introduce a versioned migration under exclusive ownership; verify a complete replacement frontier before atomic publication and keep the old recovery root until adoption is durable. Rebuild derived projections from authoritative evidence. Update all producers, consumers and invariants together; a rejected new operation must leave the predecessor usable and already owned effects reconcilable.\n\nAcceptance and nonregression: large-file and many-path capture/restore, divergent preimage rejection, interrupted staging/publication/restore, then reopen and continue the same conversation with an exact restored workspace. Exercise the precise source-described failure path and the relevant byte/count/elapsed boundaries listed in this finding, plus ordinary small inputs. Check that legitimate work progresses after the former blocker while malformed input, conflicting identity, stale preimages and unauthorized scope still reject. Add fault injection at the affected acceptance/publication/recovery boundary and run the affected integration and formal checks on the final implementation. Source-derived risks remain distinct from executed reproductions; completion requires this evidence, not a promise that a plan alone cannot break anything.",
           "created_at": "2026-10-06T13:19:07.750Z",
           "kind": "decision"
+        },
+        "78d150f7-bc77-413a-ad51-38785f9d70f1": {
+          "display_id": 2935,
+          "author": "6ME5",
+          "content": "Full affected-suite qualification found a false ordering assumption in the existing real-PTY frame-consumer fixture: pump_terminals can send TerminalUnavailable for the first binding before the healthy sibling output, but the test stopped at that notification. The fixture now closes the writer after pumping, drains the complete canonical stream through clean EOF, and independently requires exactly one failure notification, the complete healthy marker, and a still-live process. This corrects the caller qualification without changing terminal production behavior or weakening the isolation assertions. Historical Hello declarations are isolated as a frozen fixture profile, preserving generated legacy bytes.",
+          "created_at": "2026-10-06T20:53:17.808022986Z",
+          "kind": "decision",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA/NTWjV9KOVwRH9sZ+5t8XGZUjYlD71EhanAL1QNTvkTSyJw3RGQJ2QgBE6obhtPCq1pr6PmGUQzpE1SVqg+/Aw=="
         },
         "833c2d4d-ec93-42d9-b1dd-41dc98ce0c87": {
           "display_id": 2929,
