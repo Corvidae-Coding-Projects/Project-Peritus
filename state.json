@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3550,
-        "tip_oid": "5a5b8907d5fb060a2a14f9122a86808f8246d590",
-        "prefix_sha256": "f6a7f44aef2ac27f98874a0090ad3d0324c5d6232c9c489ab321e7bbc37cdbe6"
+        "sequence": 3551,
+        "tip_oid": "a05981d19b8e7fbeab03543aa0ff224b8afbb01e",
+        "prefix_sha256": "2e95518e078dc8e680739085075a4130d20ca6388016e14883a3cc82d7f6fa2b"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 823,
-  "next_comment_id": 2908,
+  "next_comment_id": 2909,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -15292,7 +15292,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:07.850887080Z",
-      "updated_at": "2026-10-06T18:18:38.529422318Z",
+      "updated_at": "2026-10-06T18:25:02.068535072Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -15321,6 +15321,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA4QzUVCf26rY1Tw+5Fzkuj7wqcAKacF8XGafqRsavSZM9lit0f0Z1JHagHLaCeeFEUutwb9nkLMID9w/QCQcxAg=="
+        },
+        "c0d5de01-9db1-4bc8-889f-75b72cfd2f8d": {
+          "display_id": 2908,
+          "author": "6ME5",
+          "content": "Consumer coordination: E1 HarnessLimits independently applies its eleven compiled ceilings and is already tracked by #394 (L355). Historical public MAX_* symbols remain source-compatible encoding aliases; none is a live PatchSet/FinalFile/FS mutation admission guard. No replacement cap was inserted into a caller. L006 removes the shared patch blockers and inherited FS typed/schema guards; #394 remains open, as do separate JSON transport/content and inspection limits. The old four inline/snapshot authority and receipt digests were captured from HEAD 1ad514009 in an isolated unchanged archive and are now regression fixtures.",
+          "created_at": "2026-10-06T18:25:02.064097282Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA7ciJoNnusqclUCBVcF9xa6x94+nrR3FRE8OMvF7B0YX58e/+KJhU3lwyfnMmP2YEBFtevgc1qAuMFlVukoxuBg=="
         }
       }
     },
