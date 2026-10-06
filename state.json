@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3652,
-        "tip_oid": "ed4981f4fb280d92d72825c84a5f7ac18106c570",
-        "prefix_sha256": "5898de1f2104543409816ab9142018b0c049e926bc62683dd63be6b8497d898e"
+        "sequence": 3653,
+        "tip_oid": "2de24d5ddf0bc45d926d625a4f3a5c50839741f0",
+        "prefix_sha256": "a976d6a89b7d8c78d0a0f2ecabcd6514f5bfe51c0dbb54ecf8352bc609c790dc"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 2981,
+  "next_comment_id": 2982,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -22222,7 +22222,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T22:11:51.674351471Z",
-      "updated_at": "2026-10-06T23:54:54.813060913Z",
+      "updated_at": "2026-10-06T23:55:53.055925030Z",
       "labels": [
         "ci"
       ],
@@ -22406,6 +22406,15 @@
           "kind": "observation",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA9owFG7NGmpIH6U+Sbxz9kf4mKUvK1DFH/Tf0h0ouPHkkzhNAJQqgz/g9ebWg8GUjCwPsoMtYavqth8MSa/dhDg=="
+        },
+        "ab2cf18e-d1e0-40c9-8572-b85b173ffc22": {
+          "display_id": 2981,
+          "author": "6ME5",
+          "content": "[action] 825 followup committed/pushed a26a324558bd592356af9b19fda4458ce54d881a to PR112/develop,10selected files. Scoped capability/recovery receipts and explicit foreign finish repaired; two retained baseline red tests, final298affected tests2existingliveignores17Codex tests. StrictworkspaceClippy/fmt/WindowsGNU/Verus/xtask pass; full1138stageddiff reviewed. Main/isolatedfollowup hashes match /tmp/peritus-issue825-followup-final.sha256; user usage/audit hashes unchanged. Baseline d2 native6/6 accepted; fresh followup Foundation run37549144111 pending6native jobs. New fullPRwatch70938 and native observer started in current turn; nativewatch script/log/state /tmp/peritus-issue825-followup-native-* .825OPEN lock6ME5 pending exacta26 actual native regression logs; no further825 code changes pending. PRbody /tmp/peritus-pr112-body-issue825-followup.md updating with honest baseline/followup status. Next inspect successful required provider+sharedconformance jobs all3OS, record finalresult, close825 --no-changelog and verifylockrelease; then110(no sourcework started). NoCIreruns or synthetic deadlines added; historical discarded auth predicate unrecoverable.824alreadyCLOSED.",
+          "created_at": "2026-10-06T23:55:53.051609643Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAoeH4zUu8A8ys6d+l+qJhozWedk2yxhLROY74+pl92lLhUxyehR+gksNH8XR/tvNmg0YWVy3gqbjlUJwc9wB0AQ=="
         },
         "b8b99062-4539-408b-95d2-5374e3753d34": {
           "display_id": 2955,
