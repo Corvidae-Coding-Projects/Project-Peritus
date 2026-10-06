@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3532,
-        "tip_oid": "3136baabf1884c99b1565eda8582e5a1ab183ee8",
-        "prefix_sha256": "04eb5f9ea11d573dd152ce5f015463729bcb517477e8cf924ccb290682e87874"
+        "sequence": 3533,
+        "tip_oid": "ea96745334dcda7db63dfa6c62143c9bd6fdc632",
+        "prefix_sha256": "0e997a45602a58b8702e2e9470b52fcc9e5c5eca235de19d3a9b90f3e6d8848e"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 822,
-  "next_comment_id": 2898,
+  "next_comment_id": 2899,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -31581,7 +31581,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:16:26.276169548Z",
-      "updated_at": "2026-10-06T16:14:13.806207512Z",
+      "updated_at": "2026-10-06T16:14:49.233253412Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -31610,6 +31610,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAqah1y6Yi1LZIdNHQ6eD/L2BoQXaVgG/Vw97wx/++frzt3qaKcsZjPNEPphO9mhCN0vjN9wM0cSbcsREeE135CA=="
+        },
+        "f03926be-a918-4c11-ad7f-ea9532bedbef": {
+          "display_id": 2898,
+          "author": "6ME5",
+          "content": "[action] Issue #105: C1 file and empty-directory transaction support implemented and verified; checkpoint coverage, capture/readers, client compatibility and selected-range restoration remain before commit.",
+          "created_at": "2026-10-06T16:14:49.228326859Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAR2RIM2peCmZki0l2//5JPek8sCRh9r2qmu7/QlOhDgDyQrS8YiqZ8vViS8gZ+CRLV4G0M6TI7FJyTxok54wLDA=="
         }
       }
     },
