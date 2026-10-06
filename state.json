@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3564,
-        "tip_oid": "2d21c1ba49e547f4190ff4dff525eb004271ea1c",
-        "prefix_sha256": "0461d8991560d6373fa0ec9091cd95105a8a0186c93b2a40bdeba222e4b6cec9"
+        "sequence": 3565,
+        "tip_oid": "e7c8d1ad4c7fdd5f3ec0815c3c5932455ab7628a",
+        "prefix_sha256": "eb9f9002c2a5eaba8242c0514d18e818e2f65827246bc4a56f07207212b0be1b"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 824,
-  "next_comment_id": 2913,
+  "next_comment_id": 2914,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -37269,11 +37269,20 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:07.855919839Z",
-      "updated_at": "2026-10-06T13:19:07.858794664Z",
+      "updated_at": "2026-10-06T18:48:03.846463455Z",
       "labels": [
         "daily-driving-limiter"
       ],
       "comments": {
+        "56448c44-ab5c-474c-91a2-45ee05821e61": {
+          "display_id": 2913,
+          "author": "6ME5",
+          "content": "[action] Started #107 with complete reads of scoped inspection, range scanning/selection, immutable inspection, tests/race checks, daemon file preview/confirmation/refresh/import consumers and retained text/archive contracts. Ordinary source scanning still rejects above 64MiB before small selections; included bytes are coupled to an 8MiB allocation policy and line counting uses u32. Existing no-total-ceiling snapshot streaming provides a grounded starting point. Continuing caller and recovery reads before design or edits; no claim that independent caller limits are removed.",
+          "created_at": "2026-10-06T18:48:03.842490184Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA+4L9DMCd01vItUna62U50ooPouoAIRMiTZigiL5sn8ACrYAR0q6fmkMYl3QY79EBNg0g7DCQOD5I8q6ZdM75Cw=="
+        },
         "82202de9-b05c-4363-b095-61523e3c53d2": {
           "display_id": 2179,
           "author": "6ME5",
