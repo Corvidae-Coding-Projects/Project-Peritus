@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3587,
-        "tip_oid": "f0510d9d6883a3644710a3fcb59f2e5c9ffaa0b4",
-        "prefix_sha256": "266bc7f44b5b9c58a61061f99df82eeaec3f427f0d1a65a74e641dd982ab992b"
+        "sequence": 3588,
+        "tip_oid": "4e734c4d0f3a0b9d6f62c93ebbd7528b1b041f1a",
+        "prefix_sha256": "adeee6d22cc527833c397eaad9a66278ee47d504ba4535a71a8313d743d86b79"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 824,
-  "next_comment_id": 2930,
+  "next_comment_id": 2931,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -6881,7 +6881,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:07.865564519Z",
-      "updated_at": "2026-10-06T20:28:16.754259319Z",
+      "updated_at": "2026-10-06T20:31:30.450457512Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -6910,6 +6910,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA9zKEWe8PzD+FNA1GIIhCwK3be3+xDEau2k7CP1rfYhDBh+dED6GPwalBCHzoXDq8PVE/ogNReFMOLUzBPJV7Cg=="
+        },
+        "ec9652f1-e17e-4d38-acbc-bd0e23b39a16": {
+          "display_id": 2930,
+          "author": "6ME5",
+          "content": "Source-grounded refinement of decision 2181: remove the default logical quotas at the shared codec contract while retaining exact version-one u32 prefixes and all legacy canonical bytes/digests. The old profile becomes explicit LEGACY_V1; existing A3 Hello limit negotiation continues to select a smaller legacy-peer contract when required. The production nesting sentinel means no codec depth quota and uses a host-sized checked traversal counter, rather than replacing 64 with another allowance. Full-header validation and an owned incremental receiver replace declared-payload allocation in both IPC readers; physical input windows repeat without count or elapsed quotas, retain bytes across cancellation, and retain received windows on a typed allocation failure. Every owned collection decoder must validate a schema minimum encoded extent against received bytes before fallible reservation; the coordinated API migration is intentional and compiler diagnostics identify remaining actual callers. Direct reader payload admission is made symmetric with writer admission for explicit constrained contracts. The seven reproduced former-boundary codec tests now pass. Independent logical aggregate/storage representation findings remain under their existing tracker issues, including #117/#120 journal limits, #172 working wire, and #401 harness coupling; the current receiver does not claim durable paged logical storage or journal closure. #109 remains open pending complete caller migration, compatibility/integration tests, strict lint, native/Windows compile and formal/generated policy checks on the final isolated change.",
+          "created_at": "2026-10-06T20:31:30.444611532Z",
+          "kind": "decision",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA+CS0AU80DQ4lD6M/NE55pSyevsOw/hMGWOaRds4obP1O1dUxTH13gBFtPcmAW97phK/k0yKVgVOkfaMueU43BQ=="
         }
       }
     },
