@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3610,
-        "tip_oid": "00aaa56ae797f186ff3c8b854000291f9f51eb6e",
-        "prefix_sha256": "636d5067d7798e6d39e7a2be840104f6addf9a36335edeb0191a2be3f59a7568"
+        "sequence": 3611,
+        "tip_oid": "f3ed3750735022dc45c7d51c2a4cb3ee91436242",
+        "prefix_sha256": "828b1783f29a1f23b4e4bdc0d0bafa83c3b0c25ebf7fa86c3d88c7d262869b0c"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 825,
-  "next_comment_id": 2947,
+  "next_comment_id": 2948,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -26027,7 +26027,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:07.861171552Z",
-      "updated_at": "2026-10-06T21:52:17.117056072Z",
+      "updated_at": "2026-10-06T21:56:14.334882130Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -26094,6 +26094,15 @@
           "kind": "observation",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABApzOwTc7nLlG+GboBo3yGikFIAl5P6hs38feoR+9ddNx2Ebxzd/5CnFShpGIcXo4HVyDVDQr/iABo55TFlsJHDg=="
+        },
+        "4d58ac44-8865-4400-b82e-0f9fb27e7fb8": {
+          "display_id": 2947,
+          "author": "6ME5",
+          "content": "Completed native acceptance for reopened #108 at delivered head 42236bb697be2469a8ce5710f582088cb0bf4ab9. macOS runtime-tools shard job 112512916523 / run 37533431805 succeeded at 2026-10-06T21:54:39Z (https://github.com/Corvidae-Coding-Projects/Project-Peritus/actions/runs/37533431805/job/112512916523). REST metadata confirms the exact SHA; the completed log proves both corrected Unix unsupported-child fixtures actually executed and passed, along with insertion, removal/same-count rename, duplicate/missing/order-independent membership, deep paths, retained replay after source removal, cursor corruption and storage alias checks. Windows Foundation runtime-tools job 112508942507 and Windows shard job 112512922650 also succeeded on this head; the original failing insertion regression is confirmed passed in the Foundation log. This completes the known native Windows acceptance defect and macOS fixture defect rather than treating cross-compilation or a queued job as qualification. Local selected-tree evidence remains result 2942: six scoped files, 902 top-level tests including doctests/11 existing ignored fixtures, strict workspace lint, formatting, full Windows GNU compile, strict two-root no-cheating Verus and rebuilt xtask all. Exact native membership evidence now governs acceptance; timestamps are additional checks, retained formats/receipts and protected/no-follow/alias boundaries remain intact, and no entry/time allowance was introduced. Closing #108 after verified delivery and native acceptance. The duplicate Foundation macOS test and unrelated PR checks still require continued monitoring; overall PR green status is not claimed. #824 remains a separate open Windows provider diagnosis. No unrelated changes were committed.",
+          "created_at": "2026-10-06T21:56:14.330794147Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAZf+pM++bnvOEx7StDUS1AbH4rliLpb0HSJWzxlXRPpKdJJVhWVbosxFpBQMmY5h4vryU4Jg+XUdV5oCl1yHTCA=="
         },
         "52c409ef-f6b9-47c9-9556-61b387f2b7ea": {
           "display_id": 2922,
