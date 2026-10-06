@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3585,
-        "tip_oid": "44b4da03372593b6c9f1edf9490041bb1a121fa2",
-        "prefix_sha256": "5c6a10d25cde8c9ff74492b93b270306b106dfbc8dda79cd0f0b75a4c00b654f"
+        "sequence": 3586,
+        "tip_oid": "7141bfbe642a0d5d4dc40dc6748550d79e9f6a16",
+        "prefix_sha256": "2a35655f41c70f16f869e243bc2a6c27b8f060ca8f84a64a7bd10179a5ea592d"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 824,
-  "next_comment_id": 2928,
+  "next_comment_id": 2929,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -6881,7 +6881,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:07.865564519Z",
-      "updated_at": "2026-10-06T13:19:07.867733093Z",
+      "updated_at": "2026-10-06T20:11:21.627187425Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -6892,6 +6892,15 @@
           "content": "Systemic repair plan for L009: Canonical codec production ceilings.\n\nOwning contract and implementation boundary: crates/foundation/peritus-codec/src/limits.rs:20-29,52-55; writer.rs:87-125,128-150; reader.rs:106-157. Apply the change through the constructors, live callers, durable writer and restart reader for this boundary, not as an isolated constant increase.\n\nKeep bounded individual decoder allocations, but stop using a single production frame as the representation of an entire growing logical object. Add versioned paged records or digest-bound external artifacts, with shared encoder/decoder admissibility and explicit capability negotiation. Every persisted accepted object must remain decodable under its stored generation; malformed lengths and nesting must still fail before allocation.\n\nPreserve: exact snapshot/preimage identity, protected paths, ancestor and symlink safety, writable-fork coverage, conflict detection, one logical restore transaction and exact effect receipts. Separate a physical allocation/page limit and a genuine authority or integrity check from a cumulative work allowance. Keep transient contention/capacity observable and recoverable under the existing logical task; do not discard accepted state or substitute a fresh session to get around it.\n\nCompatibility/migration: retain decoders and exact receipts for previously accepted records. If representation or lifecycle semantics change, introduce a versioned migration under exclusive ownership; verify a complete replacement frontier before atomic publication and keep the old recovery root until adoption is durable. Rebuild derived projections from authoritative evidence. Update all producers, consumers and invariants together; a rejected new operation must leave the predecessor usable and already owned effects reconcilable.\n\nAcceptance and nonregression: large-file and many-path capture/restore, divergent preimage rejection, interrupted staging/publication/restore, then reopen and continue the same conversation with an exact restored workspace. Exercise the precise source-described failure path and the relevant byte/count/elapsed boundaries listed in this finding, plus ordinary small inputs. Check that legitimate work progresses after the former blocker while malformed input, conflicting identity, stale preimages and unauthorized scope still reject. Add fault injection at the affected acceptance/publication/recovery boundary and run the affected integration and formal checks on the final implementation. Source-derived risks remain distinct from executed reproductions; completion requires this evidence, not a promise that a plan alone cannot break anything.",
           "created_at": "2026-10-06T13:19:07.750Z",
           "kind": "decision"
+        },
+        "c37ae485-c5c9-497b-b5a6-7622f3b20362": {
+          "display_id": 2928,
+          "author": "6ME5",
+          "content": "[action] Verified #108 closed at 2026-10-06T20:07:35Z, its lock released and commit eb24bc344cee4d77a86545ea6fcaf49954ac8e40 pushed to PR 112/develop. Result comment 2926 records the final passing eight-package tests, strict lint, native/Windows GNU compile, Verus, generated assets and local policy gates. PR body updated; current-head CI has 33 success, 56 running, 157 queued and no failures, with a persistent watch active. Claimed #109 on the same branch and verified the session/lock. Fully read all 13 peritus-codec source, manifest, README and test files. Codec-wide production/default quotas recur in primitive writers/readers and framing; primitive readers assume an already bounded payload while encoding enforces total bytes, and version-one u32 lengths are a separate representation boundary. Continuing actual consumer/persistence/negotiation reads before choosing a shared streaming or paged repair; no #109 implementation or completion claim yet. Unrelated provider/document edits preserved.",
+          "created_at": "2026-10-06T20:11:21.622812991Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA9zKEWe8PzD+FNA1GIIhCwK3be3+xDEau2k7CP1rfYhDBh+dED6GPwalBCHzoXDq8PVE/ogNReFMOLUzBPJV7Cg=="
         }
       }
     },
