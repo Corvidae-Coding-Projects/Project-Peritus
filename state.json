@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3627,
-        "tip_oid": "f7e1985ce9d2c2d18ac75a8258a8a42ca62f82f4",
-        "prefix_sha256": "638d8691cabdc22c417a758c4eb39a7e8fedbf8bb5a91b7031df67f5247be1d7"
+        "sequence": 3628,
+        "tip_oid": "0f42dcd0af19c83fb1da75e1b538338b4376ef2d",
+        "prefix_sha256": "0f165183398b99d19bb756ec4b3fb6a97db6fd7e984cd525c5c1874611fc170b"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 2956,
+  "next_comment_id": 2957,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -22222,7 +22222,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T22:11:51.674351471Z",
-      "updated_at": "2026-10-06T22:33:12.813285211Z",
+      "updated_at": "2026-10-06T22:35:06.800628265Z",
       "labels": [
         "ci"
       ],
@@ -22244,6 +22244,15 @@
           "kind": "observation",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAXXR6JpFzrKEJoLcQpNSw/To5r+tTips4hZO6tKo/WuX0nIjqs6BP2rsbhbuKUSsXXQZFsDqUJNr8xQyAJIopBw=="
+        },
+        "fca6850f-bdbe-4049-b490-bd7f0f2005f7": {
+          "display_id": 2956,
+          "author": "6ME5",
+          "content": "[action] Issue824 CLOSED after exact-head Windows/macOS/Linux foundation model-orchestration success; result comment2954 and lock release verified. Current focus825, lock6ME5 on fix/persistent-execution. Complete source reads found lossy infrastructure mapping and swallowed fake trace I/O; these explain missing failure evidence, not yet the historical auth cause. No825 code edits yet. Preserve existing OpenAI usage/audit work. PR112 head4ee46822d24da14cc16e809fc6563780631284f4; full CI watch66704 remains active.",
+          "created_at": "2026-10-06T22:35:06.796386776Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAcP/4+rfRPgEF8TGuKy2zzNg05fE1Z1/UOaTunfPrd3NXpf/Z3+MGmbHl6rqd06idUM5LrQiZQOYmuOj3OrOcDA=="
         }
       }
     },
