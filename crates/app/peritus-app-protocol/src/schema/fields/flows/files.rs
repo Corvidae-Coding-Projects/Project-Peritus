@@ -39,7 +39,7 @@ const fn mode() -> AppFieldDescriptor {
     )
 }
 const fn label(name: &'static str) -> AppFieldDescriptor {
-    field(name, W::Utf8, &[B::WorkbenchFilePathBytes], "String", "string", J::String, true)
+    field(name, W::Utf8, &[B::CodecStringBytes], "String", "string", J::String, true)
 }
 pub(super) const FILE_TYPES: &[AppTypeDescriptor] = &[
     AppTypeDescriptor {

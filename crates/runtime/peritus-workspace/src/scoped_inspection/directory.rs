@@ -39,7 +39,7 @@ impl FolderInspection {
         Ok(directory_mode(&after))
     }
 
-    fn open_directory(&self, path: &WorkspacePath) -> Result<Dir, WorkspaceError> {
+    pub(super) fn open_directory(&self, path: &WorkspacePath) -> Result<Dir, WorkspaceError> {
         let mut directory = self.root.try_clone().map_err(snapshot_io)?;
         for component in path.as_str().split('/') {
             directory = directory.open_dir_nofollow(component).map_err(snapshot_io)?;
@@ -49,7 +49,7 @@ impl FolderInspection {
     }
 }
 
-fn same_directory(before: &Metadata, after: &Metadata) -> Result<bool, WorkspaceError> {
+pub(super) fn same_directory(before: &Metadata, after: &Metadata) -> Result<bool, WorkspaceError> {
     let same = before.dev() == after.dev()
         && before.ino() == after.ino()
         && before.modified().map_err(snapshot_io)? == after.modified().map_err(snapshot_io)?

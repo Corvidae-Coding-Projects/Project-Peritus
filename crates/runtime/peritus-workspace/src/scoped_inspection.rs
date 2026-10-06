@@ -8,18 +8,32 @@ use peritus_types::Sha256Digest;
 use std::io;
 
 mod directory;
+mod listing;
+mod native_name;
 mod observation;
 mod read;
 mod retained;
 mod selection;
 #[cfg(test)]
 mod tests;
+pub use listing::{
+    DirectoryCursor, DirectoryExclusionReason, DirectoryItem, DirectoryListing, DirectoryPage,
+    ObservedDirectory, RetainedDirectory,
+};
+pub use native_name::{NativeEntryName, NativeNameEncoding};
 pub use observation::{InspectedSelection, InspectionCursor};
 pub use retained::{InspectionPage, RetainedInspection};
 pub use selection::FileReadSelection;
 
 /// Historical source ceiling retained for source compatibility; inspection does not enforce it.
 pub const MAX_INSPECTION_SOURCE_BYTES: u64 = 64 * 1024 * 1024;
+
+#[cfg(unix)]
+const NATIVE_PLATFORM_TAG: u8 = 1;
+#[cfg(windows)]
+const NATIVE_PLATFORM_TAG: u8 = 2;
+#[cfg(not(any(unix, windows)))]
+const NATIVE_PLATFORM_TAG: u8 = 3;
 
 /// A root-bound read-only capability for explicitly selected relative files.
 ///
@@ -112,6 +126,37 @@ impl FolderInspection {
     #[must_use]
     pub const fn identity(&self) -> &FolderIdentity {
         &self.identity
+    }
+
+    /// Checks existing relative components without following links, using parent handles.
+    /// Optional missing suffixes are inert descriptors. This check grants no reusable read or
+    /// effect authority; a subsequent operation must check its own opened source again.
+    ///
+    /// # Errors
+    /// Rejects links/reparse points, nondirectory ancestors, changed roots and original I/O errors.
+    pub fn check_path(
+        &self,
+        path: &WorkspacePath,
+        allow_missing: bool,
+    ) -> Result<(), WorkspaceError> {
+        let mut components = path.as_str().split('/').peekable();
+        let mut parent = self.root.try_clone().map_err(snapshot_io)?;
+        while let Some(component) = components.next() {
+            let metadata = match parent.symlink_metadata(component) {
+                Ok(metadata) => metadata,
+                Err(error) if allow_missing && error.kind() == io::ErrorKind::NotFound => break,
+                Err(error) => return Err(snapshot_io(error)),
+            };
+            reject_cap_reparse(&metadata)?;
+            if components.peek().is_some() {
+                parent = parent.open_dir_nofollow(component).map_err(snapshot_io)?;
+                reject_cap_reparse(&parent.dir_metadata().map_err(snapshot_io)?)?;
+            }
+        }
+        if FolderIdentity::observe(self.identity.root()).map_err(snapshot_io)? != self.identity {
+            return Err(changed());
+        }
+        Ok(())
     }
 
     fn open_file(&self, path: &WorkspacePath) -> Result<File, WorkspaceError> {

@@ -4,6 +4,7 @@ mod catalog;
 mod decoder;
 mod dispatcher;
 mod error;
+mod exclusion;
 mod input;
 mod mutation;
 mod read;
@@ -15,6 +16,7 @@ mod verified;
 pub use catalog::{descriptor_catalog, descriptor_digest};
 pub use dispatcher::{FsDispatchKind, FsDispatcher};
 pub use error::{FsToolError, FsToolErrorKind, FsToolOperation, RecoveryClass};
+pub use exclusion::DiscoverExclusion;
 pub use input::{
     CreateInput, DiscoverInput, MetadataInput, PatchEdit, PatchInput, ReadInput, RemoveInput,
     ReplaceInput, SearchInput, WriteInput,

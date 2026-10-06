@@ -129,7 +129,12 @@ impl PatchSet {
                     snapshot,
                 )
             }),
-            representation: if snapshot {
+            representation: if operations
+                .iter()
+                .any(|operation| !operation.path().is_legacy_portable())
+            {
+                Representation::Paged
+            } else if snapshot {
                 Representation::Snapshot
             } else if legacy.is_some() {
                 Representation::Inline
@@ -159,6 +164,10 @@ impl PatchSet {
 
     pub(crate) const fn is_paged(&self) -> bool {
         matches!(self.representation, Representation::Paged)
+    }
+
+    pub(crate) fn has_extended_paths(&self) -> bool {
+        self.operations.iter().any(|operation| !operation.path().is_legacy_portable())
     }
 
     /// Returns the bound workspace identity.
@@ -233,7 +242,8 @@ fn legacy_inline_identity(
     if operations.len() > LEGACY_PATCH_OPERATIONS
         || total_bytes > LEGACY_PATCH_BYTES
         || operations.iter().any(|operation| {
-            operation.is_snapshot()
+            !operation.path().is_legacy_portable()
+                || operation.is_snapshot()
                 || matches!(operation.preimage(), Preimage::Present { size, .. } if size > LEGACY_FILE_BYTES as u64)
                 || operation.final_file().is_some_and(|file| file.bytes().len() > LEGACY_FILE_BYTES)
         })
@@ -311,7 +321,10 @@ fn metadata_identity(
 
     let mut digest = Sha256::new();
     let directories = operations.iter().any(PatchOperation::covers_directory);
-    let domain: &[u8] = if !snapshot {
+    let extended = operations.iter().any(|operation| !operation.path().is_legacy_portable());
+    let domain: &[u8] = if extended {
+        if snapshot { b"peritus-snapshot-v5\0" } else { b"peritus-patch-set-v5\0" }
+    } else if !snapshot {
         b"peritus-patch-set-v4\0"
     } else if directories {
         b"peritus-snapshot-v3\0"
@@ -319,6 +332,9 @@ fn metadata_identity(
         b"peritus-snapshot-v2\0"
     };
     digest.update(domain);
+    if extended {
+        digest.update([crate::path::native_platform_tag()]);
+    }
     digest.update(workspace_id.as_bytes());
     digest.update(generation.get().to_be_bytes());
     digest.update(revision.get().to_be_bytes());

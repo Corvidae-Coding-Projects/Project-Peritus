@@ -53,18 +53,19 @@ impl FileRange {
 }
 
 /// Source selected by the user, without a reusable directory handle or ambient read grant.
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct FileSource {
     origin: Origin,
     range: FileRange,
     mode: FileMode,
 }
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 #[serde(deny_unknown_fields)]
 enum Origin {
-    Workspace { folder: [u8; 32], path: ControlText<4096> },
+    Workspace { folder: [u8; 32], path: String },
+    NativeWorkspace { folder: [u8; 32], path: String, platform: u8 },
     Import { label: ControlText<1024> },
 }
 impl FileSource {
@@ -78,14 +79,16 @@ impl FileSource {
         range: FileRange,
         mode: FileMode,
     ) -> Result<Self, ControlError> {
-        let value = Self {
-            origin: Origin::Workspace {
+        let origin = if legacy_source_path(path) {
+            Origin::Workspace { folder: folder.into_bytes(), path: path.as_str().to_owned() }
+        } else {
+            Origin::NativeWorkspace {
                 folder: folder.into_bytes(),
-                path: ControlText::new(path.as_str().to_owned())?,
-            },
-            range,
-            mode,
+                path: path.as_str().to_owned(),
+                platform: native_platform_tag(),
+            }
         };
+        let value = Self { origin, range, mode };
         value.validate()?;
         Ok(value)
     }
@@ -102,15 +105,19 @@ impl FileSource {
     #[must_use]
     pub const fn folder(&self) -> Option<Sha256Digest> {
         match &self.origin {
-            Origin::Workspace { folder, .. } => Some(Sha256Digest::new(*folder)),
+            Origin::Workspace { folder, .. } | Origin::NativeWorkspace { folder, .. } => {
+                Some(Sha256Digest::new(*folder))
+            }
             Origin::Import { .. } => None,
         }
     }
     /// Borrows the exact relative workspace path, never an external-import label.
     #[must_use]
-    pub fn path(&self) -> Option<&str> {
+    pub const fn path(&self) -> Option<&str> {
         match &self.origin {
-            Origin::Workspace { path, .. } => Some(path.as_str()),
+            Origin::Workspace { path, .. } | Origin::NativeWorkspace { path, .. } => {
+                Some(path.as_str())
+            }
             Origin::Import { .. } => None,
         }
     }
@@ -118,7 +125,7 @@ impl FileSource {
     #[must_use]
     pub fn label(&self) -> &str {
         match &self.origin {
-            Origin::Workspace { path, .. } => path.as_str(),
+            Origin::Workspace { path, .. } | Origin::NativeWorkspace { path, .. } => path.as_str(),
             Origin::Import { label } => label.as_str(),
         }
     }
@@ -136,7 +143,18 @@ impl FileSource {
         self.range.validate()?;
         match &self.origin {
             Origin::Workspace { path, .. } => {
-                WorkspacePath::new(path.as_str()).map_err(|_| ControlError::InvalidInput)?;
+                let path =
+                    WorkspacePath::new(path.as_str()).map_err(|_| ControlError::InvalidInput)?;
+                if !legacy_source_path(&path) {
+                    return Err(ControlError::InvalidInput);
+                }
+            }
+            Origin::NativeWorkspace { path, platform, .. } => {
+                let path =
+                    WorkspacePath::new(path.as_str()).map_err(|_| ControlError::InvalidInput)?;
+                if legacy_source_path(&path) || *platform != native_platform_tag() {
+                    return Err(ControlError::InvalidInput);
+                }
             }
             Origin::Import { .. } if self.mode != FileMode::Snapshot => {
                 return Err(ControlError::InvalidInput);
@@ -145,4 +163,52 @@ impl FileSource {
         }
         Ok(())
     }
+}
+
+impl<'de> Deserialize<'de> for FileSource {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        #[derive(Deserialize)]
+        #[serde(deny_unknown_fields)]
+        struct SourceWire {
+            origin: Origin,
+            range: FileRange,
+            mode: FileMode,
+        }
+        let wire = SourceWire::deserialize(deserializer)?;
+        let value = Self { origin: wire.origin, range: wire.range, mode: wire.mode };
+        value.validate().map_err(serde::de::Error::custom)?;
+        Ok(value)
+    }
+}
+
+impl std::fmt::Debug for Origin {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Workspace { path, .. } | Self::NativeWorkspace { path, .. } => formatter
+                .debug_struct("WorkspaceFileSource")
+                .field("path_bytes", &path.len())
+                .finish_non_exhaustive(),
+            Self::Import { label } => {
+                formatter.debug_struct("Import").field("label", label).finish()
+            }
+        }
+    }
+}
+
+// Historical source records also used ControlText, whose Unicode control/blank rules were
+// stricter than WorkspacePath. Classify those old bytes exactly without limiting new sources.
+fn legacy_source_path(path: &WorkspacePath) -> bool {
+    !path.requires_extended_encoding()
+        && !path.as_str().trim().is_empty()
+        && !path.as_str().chars().any(|ch| ch.is_control() && ch != '\n' && ch != '\t')
+}
+
+const fn native_platform_tag() -> u8 {
+    #[cfg(unix)]
+    let tag = 1;
+    #[cfg(windows)]
+    let tag = 2;
+    #[cfg(not(any(unix, windows)))]
+    let tag = 3;
+    tag
 }

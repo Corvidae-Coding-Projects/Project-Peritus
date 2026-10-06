@@ -88,11 +88,8 @@ impl AppModel {
             );
             return Vec::new();
         }
-        if path.len() > 4096 || path.chars().any(char::is_control) {
-            self.notice(
-                NoticeLevel::Warning,
-                "File path is oversized or contains controls; draft unchanged.",
-            );
+        if path.contains('\0') {
+            self.notice(NoticeLevel::Warning, "File paths cannot contain NUL; draft unchanged.");
             return Vec::new();
         }
         if self.workbench_request_pending() || self.chat.workbench.unresolved.is_some() {

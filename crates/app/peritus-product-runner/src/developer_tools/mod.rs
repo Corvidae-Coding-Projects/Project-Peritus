@@ -100,5 +100,12 @@ pub fn checked_protected_file_for_developer(
         .map_err(|_| {
             path::tool("context file dependency is outside the current task's access policy")
         })?;
-    path::checked(root, relative, true)
+    let selected = peritus_patch::WorkspacePath::new(relative)
+        .map_err(|error| path::tool(error.to_string()))?;
+    let identity = peritus_workspace::FolderIdentity::observe(root)
+        .map_err(|error| path::tool(error.to_string()))?;
+    let inspection = peritus_workspace::FolderInspection::open(&identity)
+        .map_err(|error| path::tool(error.to_string()))?;
+    inspection.check_path(&selected, true).map_err(|error| path::tool(error.to_string()))?;
+    Ok(root.join(selected.as_path()))
 }

@@ -69,7 +69,7 @@ pub(super) fn read_request(
     let offset = r.offset();
     let query = super::workbench::read_query(r)?;
     let revision = r.read_u64()?;
-    let path = read_string(r, 4096)?;
+    let path = r.read_str()?.to_owned();
     let range = match r.read_u16()? {
         1 => R::All,
         2 => R::Bytes { start: r.read_u64()?, end: r.read_u64()? },

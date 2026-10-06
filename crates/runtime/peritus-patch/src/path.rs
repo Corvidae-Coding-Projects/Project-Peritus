@@ -1,25 +1,27 @@
-//! Bounded canonical workspace-relative paths.
+//! Authority-safe UTF-8 relative paths with host-native component validation.
 
 use std::{fmt, path::Path};
 
 use crate::{ErrorCode, PatchError, PatchOperationContext, RecoveryClass, RollbackStatus};
 
-/// Maximum UTF-8 bytes in one path component.
+/// Historical portable component capacity, used only to classify legacy representations.
 pub const MAX_COMPONENT_BYTES: usize = 255;
-/// Maximum UTF-8 bytes in one complete workspace-relative path.
+/// Historical portable path capacity, used only to classify legacy representations.
 pub const MAX_PATH_BYTES: usize = 4_096;
-/// Maximum components in one workspace-relative path.
+/// Historical portable depth, used only to classify legacy representations.
 pub const MAX_COMPONENTS: usize = 256;
 
-/// A bounded UTF-8 workspace-relative path in canonical slash-separated form.
+/// A UTF-8 workspace-relative path in canonical slash-separated form.
+/// Host filesystem capacity is checked by filesystem operations, not this representation.
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct WorkspacePath(String);
 
 impl WorkspacePath {
     /// Validates and stores one canonical workspace-relative path.
     ///
-    /// Empty/rooted paths, alternate separators, traversal, control bytes, platform prefixes,
-    /// device names, trailing dot/space aliases, and `.git`/`.peritus` components are rejected.
+    /// Empty/rooted paths, traversal, NUL and protected metadata are rejected on every host.
+    /// Windows separators, prefixes, device names and aliases are rejected on Windows;
+    /// Unix names do not inherit those restrictions. This type does not grant effect authority.
     ///
     /// # Errors
     ///
@@ -29,12 +31,12 @@ impl WorkspacePath {
         if !crate::verified::path_bounds_valid(value.len(), value.split('/').count())
             || value.starts_with('/')
             || value.ends_with('/')
-            || value.bytes().any(forbidden_byte)
+            || value.bytes().any(native_forbidden_byte)
         {
             return Err(invalid_path());
         }
         for component in value.split('/') {
-            if !valid_component(component) {
+            if !native_component(component) {
                 return Err(invalid_path());
             }
             if protected_component(component) {
@@ -69,6 +71,22 @@ impl WorkspacePath {
     pub(crate) fn is_ancestor_of(&self, other: &Self) -> bool {
         other.0.strip_prefix(&self.0).is_some_and(|suffix| suffix.starts_with('/'))
     }
+
+    pub(crate) fn is_legacy_portable(&self) -> bool {
+        self.0.len() <= MAX_PATH_BYTES
+            && self.components().count() <= MAX_COMPONENTS
+            && !self.0.bytes().any(portable_forbidden_byte)
+            && self.components().all(|component| {
+                component.len() <= MAX_COMPONENT_BYTES && portable_component(component)
+            })
+    }
+
+    /// Returns whether this host-native path needs an extended persistence representation.
+    /// Historical portable capacities classify old encodings; they do not limit new paths.
+    #[must_use]
+    pub fn requires_extended_encoding(&self) -> bool {
+        !self.is_legacy_portable()
+    }
 }
 
 impl fmt::Display for WorkspacePath {
@@ -77,17 +95,39 @@ impl fmt::Display for WorkspacePath {
     }
 }
 
-const fn forbidden_byte(byte: u8) -> bool {
+const fn portable_forbidden_byte(byte: u8) -> bool {
     byte == 0 || byte < 0x20 || byte == 0x7f || matches!(byte, b'\\' | b':')
 }
 
-fn valid_component(component: &str) -> bool {
-    !component.is_empty()
-        && component != "."
-        && component != ".."
-        && component.len() <= MAX_COMPONENT_BYTES
-        && !component.ends_with(['.', ' '])
-        && !windows_device_name(component)
+fn native_component(component: &str) -> bool {
+    #[cfg(unix)]
+    let native = true;
+    #[cfg(not(unix))]
+    let native = portable_component(component);
+    !component.is_empty() && component != "." && component != ".." && native
+}
+
+const fn native_forbidden_byte(byte: u8) -> bool {
+    #[cfg(unix)]
+    let forbidden = byte == 0;
+    #[cfg(not(unix))]
+    let forbidden = portable_forbidden_byte(byte);
+    forbidden
+}
+
+fn portable_component(component: &str) -> bool {
+    !component.is_empty() && !component.ends_with(['.', ' ']) && !windows_device_name(component)
+}
+
+/// Tags the host interpretation of newly accepted native paths in internal versioned records.
+pub const fn native_platform_tag() -> u8 {
+    #[cfg(unix)]
+    let tag = 1;
+    #[cfg(windows)]
+    let tag = 2;
+    #[cfg(not(any(unix, windows)))]
+    let tag = 3;
+    tag
 }
 
 fn protected_component(component: &str) -> bool {
@@ -111,7 +151,7 @@ const fn invalid_path() -> PatchError {
         RecoveryClass::CorrectPatch,
         PatchOperationContext::ValidatePath,
         RollbackStatus::NotRequired,
-        "path is not a canonical bounded workspace-relative path",
+        "path is not an authority-safe native workspace-relative path",
     )
 }
 
@@ -133,15 +173,15 @@ mod tests {
             "/etc/passwd",
             "a/../b",
             "a//b",
-            "a\\b",
-            "C:/x",
-            "name.",
-            "NUL",
             ".git/config",
             "nested/.GIT/index",
             ".peritus/state",
             "a\0b",
         ] {
+            assert!(WorkspacePath::new(value).is_err(), "accepted {value:?}");
+        }
+        #[cfg(not(unix))]
+        for value in ["a\\b", "C:/x", "name.", "NUL"] {
             assert!(WorkspacePath::new(value).is_err(), "accepted {value:?}");
         }
     }

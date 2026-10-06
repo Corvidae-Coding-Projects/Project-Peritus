@@ -6,6 +6,7 @@ use peritus_patch::WorkspacePath;
 use peritus_types::Sha256Digest;
 
 const OBSERVATION_FORMAT: &[u8; 8] = b"PINSv001";
+const NATIVE_OBSERVATION_FORMAT: &[u8; 8] = b"PINSv002";
 const CURSOR_FORMAT: &[u8; 8] = b"PINCv001";
 
 /// Exact source and selection identity from one completed inspection.
@@ -67,12 +68,18 @@ impl InspectedSelection {
     pub const fn digest(&self) -> Sha256Digest {
         self.digest
     }
-    /// Encodes version-one metadata with a checksum. Content is stored separately; this small
-    /// record's size depends only on the already representable workspace path.
+    /// Encodes checksummed metadata; extended native paths use platform-bound version two.
+    /// Legacy version-one bytes remain exact. Content is stored separately; record size
+    /// depends on the already owned authority-safe source path, without a total path allowance.
     #[must_use]
     pub fn encode(&self) -> Vec<u8> {
         let mut bytes = Vec::new();
-        bytes.extend_from_slice(OBSERVATION_FORMAT);
+        if self.path.requires_extended_encoding() {
+            bytes.extend_from_slice(NATIVE_OBSERVATION_FORMAT);
+            bytes.push(super::NATIVE_PLATFORM_TAG);
+        } else {
+            bytes.extend_from_slice(OBSERVATION_FORMAT);
+        }
         bytes.extend_from_slice(self.folder.as_bytes());
         bytes.extend_from_slice(&self.source_bytes.to_be_bytes());
         bytes.extend_from_slice(self.source_digest.as_bytes());
@@ -89,8 +96,20 @@ impl InspectedSelection {
     /// # Errors
     /// Rejects unknown versions, incomplete/changed records, invalid paths or impossible ranges.
     pub fn decode(bytes: &[u8]) -> Result<Self, WorkspaceError> {
-        let payload = checked_record(bytes, OBSERVATION_FORMAT)?;
-        let fields = payload.get(8..128).ok_or_else(record_error)?;
+        let native = bytes.starts_with(NATIVE_OBSERVATION_FORMAT);
+        let payload = checked_record(
+            bytes,
+            if native { NATIVE_OBSERVATION_FORMAT } else { OBSERVATION_FORMAT },
+        )?;
+        let start = if native {
+            if payload.get(8) != Some(&super::NATIVE_PLATFORM_TAG) {
+                return Err(record_error());
+            }
+            9
+        } else {
+            8
+        };
+        let fields = payload.get(start..start + 120).ok_or_else(record_error)?;
         let mut reader = CanonicalReader::new(fields, CodecLimits::PRODUCTION);
         let folder = Sha256Digest::new(reader.read_fixed().map_err(|_| record_error())?);
         let source_bytes = reader.read_u64().map_err(|_| record_error())?;
@@ -101,9 +120,12 @@ impl InspectedSelection {
         );
         let digest = Sha256Digest::new(reader.read_fixed().map_err(|_| record_error())?);
         reader.finish().map_err(|_| record_error())?;
-        let path = payload.get(128..).ok_or_else(record_error)?;
+        let path = payload.get(start + 120..).ok_or_else(record_error)?;
         let path = std::str::from_utf8(path).map_err(|_| record_error())?;
         let path = WorkspacePath::new(path).map_err(|_| record_error())?;
+        if native != path.requires_extended_encoding() {
+            return Err(record_error());
+        }
         if range.0 > range.1
             || range.1 > source_bytes
             || (range.0 == range.1 && (range != (0, 0) || digest != sha256(&[])))

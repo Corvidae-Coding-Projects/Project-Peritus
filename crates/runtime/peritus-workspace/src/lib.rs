@@ -68,8 +68,10 @@ pub use rollback::{
     rollback_authorization_payload_for_caller,
 };
 pub use scoped_inspection::{
+    DirectoryCursor, DirectoryExclusionReason, DirectoryItem, DirectoryListing, DirectoryPage,
     FileReadSelection, FolderInspection, InspectedFile, InspectedSelection, InspectionCursor,
-    InspectionPage, MAX_INSPECTION_SOURCE_BYTES, RetainedInspection,
+    InspectionPage, MAX_INSPECTION_SOURCE_BYTES, NativeEntryName, NativeNameEncoding,
+    ObservedDirectory, RetainedDirectory, RetainedInspection,
 };
 pub use state::{WorkspaceCondition, WorkspaceState};
 pub use writable::WritableWorkspace;

@@ -75,10 +75,10 @@ pub struct WorkbenchFileRequest {
     model: ProductModelChoice,
 }
 impl WorkbenchFileRequest {
-    /// Bounds an explicit source descriptor. The host applies canonical-path and policy checks.
+    /// Creates an inert source descriptor. The host applies native canonical-path and policy checks.
     ///
     /// # Errors
-    /// Rejects absent revisions, empty/oversized paths, controls or invalid ranges.
+    /// Rejects absent revisions, empty/NUL-containing paths or invalid ranges.
     pub fn new(
         query: WorkbenchQuery,
         revision: u64,
@@ -89,11 +89,7 @@ impl WorkbenchFileRequest {
         model: ProductModelChoice,
     ) -> Result<Self, AppProtocolError> {
         range.validate()?;
-        if revision == 0
-            || path.is_empty()
-            || path.len() > 4096
-            || path.chars().any(char::is_control)
-        {
+        if revision == 0 || path.is_empty() || path.contains('\0') {
             return Err(invalid());
         }
         Ok(Self { query, revision, path, range, mode, provider, model })

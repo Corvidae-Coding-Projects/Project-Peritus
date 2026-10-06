@@ -2024,7 +2024,7 @@ Rust type: `WorkbenchFileRequest`
 |---|:---:|---|---|---|---|
 | `query` | yes | `ordered-fields` | `WorkbenchQuery` | `WorkbenchQuery` | — |
 | `revision` | yes | `u64-be` | `u64` | `UInt64` | `nonzero` |
-| `path` | yes | `len+utf8` | `String` | `string` | `workbench.max-file-path-bytes (4096)` |
+| `path` | yes | `len+utf8` | `String` | `string` | `codec.max-string-bytes` |
 | `range` | yes | `ordered-fields` | `WorkbenchFileRange` | `WorkbenchFileRangeAll | WorkbenchFileRangeBytes | WorkbenchFileRangeLines` | — |
 | `mode` | yes | `u16-be` | `WorkbenchFileMode` | `"snapshot" | "refreshOnRequest"` | — |
 | `provider` | yes | `fixed[16]` | `ProviderProfileId` | `ProviderProfileId` | `nonzero` |
@@ -2092,7 +2092,7 @@ Rust type: `WorkbenchFileRow`
 |---|:---:|---|---|---|---|
 | `attachment` | yes | `fixed[16]` | `ControlOperationId` | `ControlOperationId` | `nonzero` |
 | `version` | yes | `fixed[16]` | `ControlOperationId` | `ControlOperationId` | `nonzero` |
-| `label` | yes | `len+utf8` | `String` | `string` | `workbench.max-file-path-bytes (4096)` |
+| `label` | yes | `len+utf8` | `String` | `string` | `codec.max-string-bytes` |
 | `mode` | yes | `u16-be` | `WorkbenchFileMode` | `"snapshot" | "refreshOnRequest"` | — |
 | `file` | yes | `ordered-fields` | `WorkbenchFileMetadata` | `WorkbenchFileMetadata` | — |
 | `selected` | yes | `bool/u8` | `bool` | `boolean` | — |

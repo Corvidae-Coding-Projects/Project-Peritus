@@ -207,6 +207,25 @@ fn canonical_json_rejects_duplicate_keys_at_every_depth() {
 }
 
 #[test]
+fn optional_string_maximum_preserves_legacy_bytes_and_has_no_substitute_ceiling() {
+    let bounded = Schema::string(1, 4_096).unwrap();
+    assert_eq!(bounded.canonical_bytes(), br#"{"maxLength":4096,"minLength":1,"type":"string"}"#);
+    let unbounded = Schema::string_with_optional_maximum(1, None).unwrap();
+    assert_eq!(unbounded.canonical_bytes(), br#"{"minLength":1,"type":"string"}"#);
+    let value = BoundedJson::string("é".repeat(2_049), JsonLimits::PRODUCTION).unwrap();
+    assert!(bounded.validate(&value).is_err());
+    unbounded.validate(&value).unwrap();
+    assert!(
+        unbounded
+            .validate(&BoundedJson::string(String::new(), JsonLimits::PRODUCTION).unwrap())
+            .is_err()
+    );
+    assert!(unbounded.validate(&BoundedJson::integer(1)).is_err());
+    assert!(Schema::string_with_optional_maximum(2, Some(1)).is_err());
+    assert_eq!(bounded.compatibility_with(&unbounded), SchemaCompatibility::Breaking);
+}
+
+#[test]
 fn json_limit_construction_can_only_narrow_production_ceilings() {
     assert!(JsonLimits::new(1024, 8, 64, 256).is_ok());
     assert!(

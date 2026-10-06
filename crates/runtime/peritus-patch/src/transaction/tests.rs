@@ -20,6 +20,7 @@ use super::{
 };
 
 mod directories;
+mod native_paths;
 mod pages;
 mod snapshots;
 

@@ -1,7 +1,7 @@
 //! Bounded canonical file pages; row count is checked before allocation.
 use super::{
     CanonicalReader, CanonicalWriter, CodecError, CodecErrorKind, invalid, read_id, read_metadata,
-    read_mode, read_string, write_id, write_metadata, write_mode,
+    read_mode, write_id, write_metadata, write_mode,
 };
 use crate::{ControlOperationId, WorkbenchFilePage, WorkbenchFileQuery, WorkbenchFileRow};
 
@@ -55,7 +55,7 @@ pub(in crate::wire) fn read_page(
     for _ in 0..count {
         let attachment = read_id(r, ControlOperationId::new)?;
         let version = read_id(r, ControlOperationId::new)?;
-        let label = read_string(r, 4096)?;
+        let label = r.read_str()?.to_owned();
         let mode = read_mode(r)?;
         let file = read_metadata(r)?;
         rows.push(invalid(

@@ -148,6 +148,40 @@ fn authorized_preimage_conflict_is_failed_without_effect() {
     assert!(!fixture.gateway.state().binding().root().join("should-not-land").exists());
 }
 
+#[cfg(unix)]
+#[test]
+fn router_dispatches_a_native_unix_name_with_exact_authority_and_receipt() {
+    let temp = TempDir::new().unwrap();
+    let lower = Ids::new();
+    let parent = lower.for_tool_action(82, "fs.create");
+    let mut fixture = workspace_fixture(&temp, &lower, "native-create");
+    let compiled = CompiledMutation::create(
+        support::workspace_version(&lower),
+        CreateInput::new("NUL.", b"native".to_vec(), FileMode::Regular, LineEndingPolicy::Preserve)
+            .unwrap(),
+    )
+    .unwrap();
+    let identity = compiled.patch_set().identity();
+    let (router, prepared) =
+        support::prepare(&parent, "fs.create", support::arguments(&final_json("NUL.", "native")));
+    let (outcome, mutation) = support::dispatch(
+        &temp,
+        &lower,
+        &parent,
+        &mut fixture.gateway,
+        FsDispatchKind::Create,
+        prepared,
+        router,
+        compiled,
+    );
+    support::assert_success(outcome);
+    assert_eq!(mutation.unwrap().patch_identity(), identity);
+    assert_eq!(
+        std::fs::read(fixture.gateway.state().binding().root().join("NUL.")).unwrap(),
+        b"native"
+    );
+}
+
 fn run_create(temp: &TempDir, label: &str, name: &str, kind: FsDispatchKind) {
     let lower = Ids::new();
     let parent = lower.for_tool_action(51, name);

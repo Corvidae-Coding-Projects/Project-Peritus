@@ -115,8 +115,10 @@ fn value_without_enum(
             }
         }
         (SchemaKind::String { min_bytes, max_bytes }, JsonValue::String(value)) => {
-            let length = u32::try_from(value.len()).unwrap_or(u32::MAX);
-            if length < *min_bytes || length > *max_bytes {
+            let length = value.len();
+            if length < *min_bytes as usize
+                || max_bytes.is_some_and(|maximum| length > maximum as usize)
+            {
                 Err(violation(path, "string is outside the allowed byte cardinality"))
             } else {
                 Ok(())

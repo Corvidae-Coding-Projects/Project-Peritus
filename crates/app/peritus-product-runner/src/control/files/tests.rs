@@ -7,6 +7,90 @@ use peritus_patch::WorkspacePath;
 use peritus_types::{ActorId, ArtifactId, WorkspaceId};
 
 #[test]
+fn legacy_file_source_and_conversation_keep_pre108_canonical_bytes() {
+    let (record, file) = attach(FileMode::Snapshot);
+    assert_eq!(serde_json::to_vec(file.source()).unwrap(), br#"{"origin":{"workspace":{"folder":[3,74,0,98,72,130,86,241,76,139,20,208,37,236,57,136,177,72,147,143,127,157,185,76,160,172,115,244,179,97,77,138],"path":"src/main.rs"}},"range":"all","mode":"snapshot"}"#);
+    assert_eq!(
+        peritus_codec::sha256(&record.canonical_bytes().unwrap()).into_bytes(),
+        [
+            202, 27, 247, 112, 144, 245, 167, 187, 99, 173, 129, 189, 81, 131, 211, 75, 253, 215,
+            136, 77, 175, 86, 126, 96, 197, 26, 63, 208, 205, 197, 7, 108
+        ]
+    );
+}
+
+#[test]
+fn extended_file_source_survives_exact_record_reopen_and_rejects_reinterpretation() {
+    let (record, _) = attach(FileMode::Snapshot);
+    let path = WorkspacePath::new(vec!["directory-component"; 257].join("/")).unwrap();
+    assert!(path.as_str().len() > 4_096);
+    let source = FileSource::workspace(
+        peritus_codec::sha256(b"folder"),
+        &path,
+        FileRange::All,
+        FileMode::Snapshot,
+    )
+    .unwrap();
+    assert_eq!(source.path(), Some(path.as_str()));
+    assert!(!format!("{source:?}").contains("directory-component"));
+    let wire = serde_json::to_string(&source).unwrap();
+    assert!(wire.contains("native_workspace"));
+    assert_eq!(serde_json::from_str::<FileSource>(&wire).unwrap(), source);
+    assert!(
+        serde_json::from_str::<FileSource>(&wire.replace("native_workspace", "workspace")).is_err()
+    );
+    let mut foreign: serde_json::Value = serde_json::from_str(&wire).unwrap();
+    foreign["origin"]["native_workspace"]["platform"] = serde_json::json!(255);
+    assert!(serde_json::from_value::<FileSource>(foreign).is_err());
+    let file = FileAttachment::new(source, version(3, "retained")).unwrap();
+    let change = operation(
+        3,
+        2,
+        ControlIntent::AttachFile {
+            file,
+            text: ControlText::new("extended path".to_owned()).unwrap(),
+        },
+    );
+    let predecessor = record.canonical_bytes().unwrap();
+    let (next, _) = ConversationRecord::apply(Some(&record), &change).unwrap();
+    assert_eq!(record.canonical_bytes().unwrap(), predecessor);
+    let bytes = next.canonical_bytes().unwrap();
+    let reopened = ConversationRecord::parse(&bytes).unwrap();
+    assert_eq!(reopened, next);
+    assert_eq!(reopened.canonical_bytes().unwrap(), bytes);
+    assert_eq!(reopened.files().entries()[1].file().source().path(), Some(path.as_str()));
+    assert_eq!(
+        ConversationRecord::apply(Some(&reopened), &change),
+        Err(ControlError::StaleRevision)
+    );
+}
+
+#[cfg(unix)]
+#[test]
+fn native_file_sources_preserve_exact_names_and_reject_unsafe_deserialized_paths() {
+    for name in
+        ["a:b", "a\\b", "name.", "NUL", "line\nbreak", "escape\u{1b}", "control\u{85}", "\u{2003}"]
+    {
+        let path = WorkspacePath::new(name).unwrap();
+        let source = FileSource::workspace(
+            peritus_codec::sha256(b"folder"),
+            &path,
+            FileRange::All,
+            FileMode::Snapshot,
+        )
+        .unwrap();
+        let bytes = serde_json::to_vec(&source).unwrap();
+        assert!(String::from_utf8(bytes.clone()).unwrap().contains("native_workspace"));
+        assert_eq!(serde_json::from_slice::<FileSource>(&bytes).unwrap(), source);
+        for invalid in ["../outside", ".git/config", "NUL\0name"] {
+            let mut forged: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+            forged["origin"]["native_workspace"]["path"] = serde_json::json!(invalid);
+            assert!(serde_json::from_value::<FileSource>(forged).is_err());
+        }
+    }
+}
+
+#[test]
 fn large_source_small_selection_keeps_canonical_replay_and_stale_revision_fencing() {
     let (record, _) = attach(FileMode::Snapshot);
     let text = ValidatedFileText::new(b"retained".to_vec()).unwrap();

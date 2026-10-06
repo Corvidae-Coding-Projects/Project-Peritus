@@ -14,12 +14,15 @@ impl AppModel {
                 return Some(Vec::new());
             }
             let (text, limit) = match field {
-                0 => (&mut file.path, 4096),
-                1 => (&mut file.range, 80),
-                _ => (&mut file.caption, 8192),
+                0 => (&mut file.path, None),
+                1 => (&mut file.range, Some(80)),
+                _ => (&mut file.caption, Some(8192)),
             };
             if let KeyCode::Char(character) = key.code
-                && (character.is_control() || text.len() + character.len_utf8() > limit)
+                && (if field == 0 { character == '\0' } else { character.is_control() }
+                    || limit.is_some_and(|limit| {
+                        text.len().saturating_add(character.len_utf8()) > limit
+                    }))
             {
                 return Some(Vec::new());
             }
@@ -73,14 +76,20 @@ impl AppModel {
         let file = &mut self.chat.workbench.files;
         let Some(field) = file.editing else { return true };
         let (buffer, limit) = match field {
-            0 => (&mut file.path, 4096),
-            1 => (&mut file.range, 80),
-            _ => (&mut file.caption, 8192),
+            0 => (&mut file.path, None),
+            1 => (&mut file.range, Some(80)),
+            _ => (&mut file.caption, Some(8192)),
         };
-        if text.chars().any(char::is_control) || buffer.len().saturating_add(text.len()) > limit {
+        let invalid =
+            if field == 0 { text.contains('\0') } else { text.chars().any(char::is_control) };
+        if invalid || limit.is_some_and(|limit| buffer.len().saturating_add(text.len()) > limit) {
             self.notice(
                 super::NoticeLevel::Warning,
-                "Pasted field is oversized or contains controls; nothing changed.",
+                if field == 0 {
+                    "File paths cannot contain NUL; nothing changed."
+                } else {
+                    "Pasted field is oversized or contains controls; nothing changed."
+                },
             );
             return true;
         }

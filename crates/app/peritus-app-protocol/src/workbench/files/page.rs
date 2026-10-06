@@ -53,7 +53,7 @@ pub struct WorkbenchFileRow {
     eligible: bool,
 }
 impl WorkbenchFileRow {
-    /// Bounds inert labels; eligibility must imply explicit selection.
+    /// Retains exact inert source labels; eligibility must imply explicit selection.
     ///
     /// # Errors
     /// Rejects invalid label or inconsistent selection status.
@@ -66,11 +66,7 @@ impl WorkbenchFileRow {
         selected: bool,
         eligible: bool,
     ) -> Result<Self, AppProtocolError> {
-        if label.is_empty()
-            || label.len() > 4096
-            || label.chars().any(char::is_control)
-            || (eligible && !selected)
-        {
+        if label.is_empty() || label.contains('\0') || (eligible && !selected) {
             return Err(invalid());
         }
         Ok(Self { attachment, version, label, mode, file, selected, eligible })

@@ -290,3 +290,67 @@ fn file_panel_and_inert_editor_preserve_composer_at_required_sizes() {
         .retain(|feature| feature.as_str() != WellKnownProtocolFeature::WorkbenchFiles.as_str());
     assert!(key(&mut model, KeyCode::Char('p')).is_empty());
 }
+
+#[test]
+fn native_and_extended_paths_survive_commands_editing_preview_and_confirmation() {
+    for path in [
+        vec!["directory-component"; 257].join("/") + "/reference.txt",
+        "native:\n\u{1b}λ\\reference. ".to_owned(),
+    ] {
+        let mut model = opened();
+        assert!(model.file_command(&path).is_empty());
+        assert_eq!(model.chat.workbench.files.path, path);
+        assert!(model.file_command("invalid\0path").is_empty());
+        assert_eq!(model.chat.workbench.files.path, path);
+
+        model.chat.workbench.files.path.clear();
+        key(&mut model, KeyCode::Char('i'));
+        model.update(Action::TerminalEvent(Event::Paste(path.clone())));
+        assert_eq!(model.chat.workbench.files.path, path);
+        assert_eq!(model.chat.workbench.files.cursor, path.len());
+        key(&mut model, KeyCode::Char('λ'));
+        assert_eq!(model.chat.workbench.files.path, format!("{path}λ"));
+        key(&mut model, KeyCode::Backspace);
+        assert_eq!(model.chat.workbench.files.path, path);
+        model.update(Action::TerminalEvent(Event::Paste("invalid\0path".to_owned())));
+        assert_eq!(model.chat.workbench.files.path, path);
+        assert_eq!(model.chat.workbench.files.cursor, path.len());
+        key(&mut model, KeyCode::Enter);
+
+        let exact = preview(&mut model);
+        assert_eq!(exact.request().path(), path);
+        let sent = request(&key(&mut model, KeyCode::Char('c')));
+        let AppRequestPayload::WorkbenchCommand(command) = sent.payload() else {
+            panic!("confirm")
+        };
+        assert!(matches!(command.intent(), WorkbenchIntent::AttachFile { preview, .. }
+                if preview == &exact && preview.request().path() == path));
+        assert!(model.chat.run_id.is_none());
+    }
+}
+
+#[test]
+fn native_path_display_and_editor_escape_controls_without_changing_authority_text() {
+    use ratatui::{Terminal, backend::TestBackend};
+    let mut model = opened();
+    let path = "native:\n\u{1b}λ\\reference. ";
+    assert!(model.file_command(path).is_empty());
+    for editing in [false, true] {
+        if editing {
+            key(&mut model, KeyCode::Char('i'));
+        }
+        let mut terminal = Terminal::new(TestBackend::new(120, 38)).unwrap();
+        let frame = terminal.draw(|frame| crate::render::draw(frame, &model)).unwrap();
+        let rendered: String =
+            frame.buffer.content().iter().map(ratatui::buffer::Cell::symbol).collect();
+        assert!(rendered.contains(&path.escape_debug().to_string()), "{rendered}");
+        assert!(!rendered.contains('\u{1b}'));
+        assert_eq!(model.chat.workbench.files.path, path);
+        if editing {
+            assert_eq!(model.chat.workbench.files.cursor, path.len());
+            key(&mut model, KeyCode::Left);
+            key(&mut model, KeyCode::Backspace);
+            assert_eq!(model.chat.workbench.files.path, "native:\n\u{1b}λ\\reference ");
+        }
+    }
+}

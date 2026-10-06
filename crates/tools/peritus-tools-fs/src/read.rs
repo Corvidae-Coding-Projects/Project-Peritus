@@ -1,17 +1,17 @@
 //! Bounded immutable filesystem observations.
 
-use std::collections::VecDeque;
-
 use base64::{Engine as _, engine::general_purpose::STANDARD};
 use peritus_patch::WorkspacePath;
 use peritus_types::Sha256Digest;
 use peritus_workspace::{ReadOnlyWorkspace, WorkspaceEntryKind, WorkspaceError, WorkspaceMetadata};
 
 use crate::{
-    DiscoverInput, FsToolError, FsToolErrorKind, FsToolOperation, MetadataInput, ReadInput,
-    RecoveryClass, SearchInput,
+    DiscoverExclusion, DiscoverInput, FsToolError, FsToolErrorKind, FsToolOperation, MetadataInput,
+    ReadInput, RecoveryClass, SearchInput,
     read_digest::{discover_digest, search_digest},
 };
+
+mod walk;
 
 /// Stable metadata projected for a filesystem tool result.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -70,6 +70,7 @@ impl DiscoverEntry {
 pub struct DiscoverObservation {
     root: Option<WorkspacePath>,
     entries: Vec<DiscoverEntry>,
+    exclusions: Vec<DiscoverExclusion>,
     digest: Sha256Digest,
 }
 
@@ -83,6 +84,11 @@ impl DiscoverObservation {
     #[must_use]
     pub fn entries(&self) -> &[DiscoverEntry] {
         &self.entries
+    }
+    /// Borrows exact native child exclusions rather than silently omitting unsupported entries.
+    #[must_use]
+    pub fn exclusions(&self) -> &[DiscoverExclusion] {
+        &self.exclusions
     }
     /// Returns the digest over the complete structured observation.
     #[must_use]
@@ -162,6 +168,7 @@ impl SearchMatch {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct SearchObservation {
     matches: Vec<SearchMatch>,
+    exclusions: Vec<DiscoverExclusion>,
     scanned_files: u32,
     scanned_bytes: u64,
     digest: Sha256Digest,
@@ -172,6 +179,11 @@ impl SearchObservation {
     #[must_use]
     pub fn matches(&self) -> &[SearchMatch] {
         &self.matches
+    }
+    /// Borrows native children excluded from authority-path traversal or content search.
+    #[must_use]
+    pub fn exclusions(&self) -> &[DiscoverExclusion] {
+        &self.exclusions
     }
     /// Returns the number of UTF-8 regular files searched.
     #[must_use]
@@ -193,6 +205,11 @@ impl SearchObservation {
 /// Read-only filesystem service fixed to one C1 immutable snapshot handle.
 pub struct FsReadService<'a> {
     workspace: &'a ReadOnlyWorkspace,
+}
+
+struct WalkObservation {
+    entries: Vec<(MetadataObservation, u16)>,
+    exclusions: Vec<DiscoverExclusion>,
 }
 
 impl<'a> FsReadService<'a> {
@@ -237,18 +254,24 @@ impl<'a> FsReadService<'a> {
     /// # Errors
     /// Returns a typed C1 failure or rejects a result exceeding caller-selected bounds.
     pub fn discover(&self, input: &DiscoverInput) -> Result<DiscoverObservation, FsToolError> {
-        let entries = self.walk(
+        let observed = self.walk(
             input.root.as_ref(),
             input.maximum_depth,
             input.maximum_entries,
             FsToolOperation::Discover,
         )?;
-        let entries = entries
+        let entries = observed
+            .entries
             .into_iter()
             .map(|(metadata, depth)| DiscoverEntry { metadata, depth })
             .collect::<Vec<_>>();
-        let digest = discover_digest(input.root.as_ref(), &entries);
-        Ok(DiscoverObservation { root: input.root.clone(), entries, digest })
+        let digest = discover_digest(input.root.as_ref(), &entries, &observed.exclusions);
+        Ok(DiscoverObservation {
+            root: input.root.clone(),
+            entries,
+            exclusions: observed.exclusions,
+            digest,
+        })
     }
 
     /// Searches literal UTF-8 content under explicit traversal and byte bounds.
@@ -258,7 +281,7 @@ impl<'a> FsReadService<'a> {
     /// # Errors
     /// Returns typed inspection, traversal, aggregate-byte, or match-bound failure.
     pub fn search(&self, input: &SearchInput) -> Result<SearchObservation, FsToolError> {
-        let entries = self.walk(
+        let observed = self.walk(
             input.root.as_ref(),
             input.maximum_depth,
             input.maximum_entries,
@@ -266,11 +289,12 @@ impl<'a> FsReadService<'a> {
         )?;
         let mut observation = SearchObservation {
             matches: Vec::new(),
+            exclusions: observed.exclusions,
             scanned_files: 0,
             scanned_bytes: 0,
             digest: Sha256Digest::new([0; 32]),
         };
-        for (metadata, _) in entries {
+        for (metadata, _) in observed.entries {
             if metadata.kind != WorkspaceEntryKind::File || metadata.size > input.maximum_file_bytes
             {
                 continue;
@@ -292,35 +316,6 @@ impl<'a> FsReadService<'a> {
         }
         observation.digest = search_digest(&observation);
         Ok(observation)
-    }
-
-    fn walk(
-        &self,
-        root: Option<&WorkspacePath>,
-        maximum_depth: u16,
-        maximum_entries: u32,
-        operation: FsToolOperation,
-    ) -> Result<Vec<(MetadataObservation, u16)>, FsToolError> {
-        let mut pending = VecDeque::from([(root.cloned(), 0_u16)]);
-        let mut observed = Vec::new();
-        while let Some((directory, parent_depth)) = pending.pop_front() {
-            let children = self
-                .workspace
-                .list_directory(directory.as_ref())
-                .map_err(|error| inspection_error(operation, &error))?;
-            for child in children {
-                if observed.len() >= maximum_entries as usize {
-                    return Err(bound_error(operation, "workspace traversal entry bound exceeded"));
-                }
-                let depth = parent_depth.saturating_add(1);
-                let metadata = project_metadata(child.metadata());
-                if metadata.kind == WorkspaceEntryKind::Directory && depth < maximum_depth {
-                    pending.push_back((Some(metadata.path.clone()), depth));
-                }
-                observed.push((metadata, depth));
-            }
-        }
-        Ok(observed)
     }
 }
 

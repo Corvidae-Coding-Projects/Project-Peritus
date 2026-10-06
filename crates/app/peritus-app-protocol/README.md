@@ -33,6 +33,14 @@ flow. Lookup errors retain the selected run for retry rather than implying a dif
 The crate does not open sockets or named pipes, authenticate peers, access storage, supervise
 processes, or grant domain authority. Those effects belong to G0 and its B0/B1/C0/C2 dependencies.
 
+File path descriptors and retained source labels have no separate byte allowance or portable
+control-character restriction. They retain exact non-NUL UTF-8 text; the host's platform-aware
+path validator and handle-relative read own filesystem safety, while display surfaces escape
+labels. Preview and page decoders apply the independent codec transport contract. Historical
+wire bytes remain exact. C0 retains historical file-source JSON exactly and uses a distinct,
+platform-bound native origin for newly accepted paths; older persistence readers must be upgraded
+before those sources are published. Attachment size, history and context policies remain separate.
+
 The complete contract and verification plan is in
 [`../../../.design/a3-app-protocol.md`](../../../.design/a3-app-protocol.md).
 

@@ -2209,7 +2209,7 @@
       "properties": {
         "query": { "$ref": "#/$defs/WorkbenchQuery", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchQuery" },
         "revision": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64", "x-bounds": ["nonzero"] },
-        "path": { "type": "string", "x-canonical-wire": "len+utf8", "x-rust-type": "String", "x-bounds": ["workbench.max-file-path-bytes (4096)"] },
+        "path": { "type": "string", "x-canonical-wire": "len+utf8", "x-rust-type": "String", "x-bounds": ["codec.max-string-bytes"] },
         "range": { "oneOf": [{ "$ref": "#/$defs/WorkbenchFileRangeAll" }, { "$ref": "#/$defs/WorkbenchFileRangeBytes" }, { "$ref": "#/$defs/WorkbenchFileRangeLines" }], "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchFileRange" },
         "mode": { "type": "string", "enum": ["snapshot", "refreshOnRequest"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchFileMode" },
         "provider": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "ProviderProfileId", "x-bounds": ["nonzero"] },
@@ -2283,7 +2283,7 @@
       "properties": {
         "attachment": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "ControlOperationId", "x-bounds": ["nonzero"] },
         "version": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "ControlOperationId", "x-bounds": ["nonzero"] },
-        "label": { "type": "string", "x-canonical-wire": "len+utf8", "x-rust-type": "String", "x-bounds": ["workbench.max-file-path-bytes (4096)"] },
+        "label": { "type": "string", "x-canonical-wire": "len+utf8", "x-rust-type": "String", "x-bounds": ["codec.max-string-bytes"] },
         "mode": { "type": "string", "enum": ["snapshot", "refreshOnRequest"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchFileMode" },
         "file": { "$ref": "#/$defs/WorkbenchFileMetadata", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchFileMetadata" },
         "selected": { "type": "boolean", "x-canonical-wire": "bool/u8", "x-rust-type": "bool" },

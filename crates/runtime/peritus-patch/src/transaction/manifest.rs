@@ -12,6 +12,7 @@ use crate::{
 };
 
 mod codec;
+mod extended;
 mod pages;
 use codec::{
     kind_from_tag, kind_tag, read_count, read_identity, shape_valid, write_count, write_identity,
@@ -27,7 +28,7 @@ const SNAPSHOT_METADATA_LIMITS: CodecLimits = CodecLimits {
     max_frame_bytes: usize::MAX,
     max_payload_bytes: usize::MAX,
     max_collection_items: usize::MAX,
-    max_string_bytes: crate::MAX_PATH_BYTES,
+    max_string_bytes: usize::MAX,
     max_opaque_bytes: usize::MAX,
     max_nesting_depth: 1,
 };
@@ -124,7 +125,9 @@ impl Manifest {
 
     fn from_patch(patch: &crate::PatchSet, created_directories: Vec<WorkspacePath>) -> Self {
         Self {
-            schema: if patch.is_paged() {
+            schema: if patch.has_extended_paths() {
+                5
+            } else if patch.is_paged() {
                 4
             } else if patch.operations().iter().any(PatchOperation::covers_directory) {
                 3
@@ -144,6 +147,11 @@ impl Manifest {
     }
 
     pub(super) fn encode(&self) -> Result<Vec<u8>, PatchError> {
+        if self.schema == 5 {
+            let mut bytes = Vec::new();
+            extended::write(self, &mut bytes)?;
+            return Ok(bytes);
+        }
         if self.schema == 4 {
             let mut bytes = Vec::new();
             pages::write(self, &mut bytes)?;
@@ -195,7 +203,10 @@ impl Manifest {
                 return None;
             }
             let schema = reader.read_u16().ok()?;
-            if schema != 1 && schema != 2 && schema != 3 && schema != 4 {
+            if !(1..=5).contains(&schema) {
+                return None;
+            }
+            if schema == 5 && reader.read_u8().ok()? != crate::path::native_platform_tag() {
                 return None;
             }
             if schema == 1 && bytes.len() > CodecLimits::PRODUCTION.max_payload_bytes {
@@ -212,41 +223,7 @@ impl Manifest {
             {
                 return None;
             }
-            let entries = if schema == 4 {
-                pages::read_entries(&mut reader, entry_count)?
-            } else {
-                let mut entries = Vec::with_capacity(entry_count);
-                for _ in 0..entry_count {
-                    let kind = kind_from_tag(reader.read_u8().ok()?)?;
-                    if schema < 3
-                        && matches!(
-                            kind,
-                            PatchOperationKind::CreateDirectory
-                                | PatchOperationKind::DeleteDirectory
-                        )
-                    {
-                        return None;
-                    }
-                    let path = WorkspacePath::new(reader.read_str().ok()?).ok()?;
-                    let preimage = read_identity(&mut reader, schema).ok()?;
-                    let postimage = read_identity(&mut reader, schema).ok()?;
-                    if !shape_valid(kind, preimage, postimage) {
-                        return None;
-                    }
-                    entries.push(ManifestEntry { kind, path, preimage, postimage });
-                }
-                entries
-            };
-            let directory_count = read_count(&mut reader, schema, 5)?;
-            let created_directories = if schema == 4 {
-                pages::read_directories(&mut reader, directory_count)?
-            } else {
-                let mut directories = Vec::with_capacity(directory_count);
-                for _ in 0..directory_count {
-                    directories.push(WorkspacePath::new(reader.read_str().ok()?).ok()?);
-                }
-                directories
-            };
+            let (entries, created_directories) = read_contents(&mut reader, schema, entry_count)?;
             reader.finish().ok()?;
             let manifest = Self {
                 schema,
@@ -264,7 +241,9 @@ impl Manifest {
     }
 
     pub(super) fn write_to(&self, output: &mut dyn std::io::Write) -> Result<(), PatchError> {
-        if self.schema == 4 {
+        if self.schema == 5 {
+            extended::write(self, output)
+        } else if self.schema == 4 {
             pages::write(self, output)
         } else {
             output.write_all(&self.encode()?).map_err(|error| {
@@ -297,6 +276,58 @@ impl Manifest {
             .iter()
             .all(|directory| self.entries.iter().any(|entry| directory.is_ancestor_of(&entry.path)))
     }
+}
+
+fn read_contents(
+    reader: &mut CanonicalReader<'_>,
+    schema: u16,
+    count: usize,
+) -> Option<(Vec<ManifestEntry>, Vec<WorkspacePath>)> {
+    if schema == 5 {
+        return extended::read(reader, count);
+    }
+    let entries = if schema == 4 {
+        pages::read_entries(reader, count)?
+    } else {
+        let mut entries = Vec::with_capacity(count);
+        for _ in 0..count {
+            let kind = kind_from_tag(reader.read_u8().ok()?)?;
+            if schema < 3
+                && matches!(
+                    kind,
+                    PatchOperationKind::CreateDirectory | PatchOperationKind::DeleteDirectory
+                )
+            {
+                return None;
+            }
+            let path = WorkspacePath::new(reader.read_str().ok()?).ok()?;
+            if !path.is_legacy_portable() {
+                return None;
+            }
+            let preimage = read_identity(reader, schema).ok()?;
+            let postimage = read_identity(reader, schema).ok()?;
+            if !shape_valid(kind, preimage, postimage) {
+                return None;
+            }
+            entries.push(ManifestEntry { kind, path, preimage, postimage });
+        }
+        entries
+    };
+    let count = read_count(reader, schema, 5)?;
+    let directories = if schema == 4 {
+        pages::read_directories(reader, count)?
+    } else {
+        let mut directories = Vec::with_capacity(count);
+        for _ in 0..count {
+            let path = WorkspacePath::new(reader.read_str().ok()?).ok()?;
+            if !path.is_legacy_portable() {
+                return None;
+            }
+            directories.push(path);
+        }
+        directories
+    };
+    Some((entries, directories))
 }
 
 pub(super) fn legacy_manifest_fits(patch: &crate::PatchSet) -> Result<bool, PatchError> {

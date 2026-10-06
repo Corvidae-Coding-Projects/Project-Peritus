@@ -23,13 +23,22 @@ kinds, exact preimage/postimage digests, sizes, modes and inline line-ending int
 version-four identity. Schema-four manifests stream deterministic 64 KiB physical pages with wide
 counts, page checksums and a whole-manifest checksum. There is no page-count allowance. A complete
 replacement is synchronized before atomic publication of the recovery root; pages never authorize
-separate effects. All four decoders remain available for restart recovery.
+separate effects. All legacy decoders remain available for restart recovery.
+
+Workspace paths have no component-byte, total-byte, or depth allowance. Authority paths remain
+UTF-8, canonical relative paths with no traversal, NUL, or protected metadata. Unix paths accept
+native punctuation, controls and trailing characters; Windows keeps alias/device-name safeguards.
+Native or extended paths use a platform-bound version-five identity and recovery manifest whose
+records can span physical byte pages, without a record-size or total-page allowance. Old identities
+and schema-one through schema-four bytes remain exact. Older binaries cannot recover schema-five
+transactions; upgrade recovery readers before using newly accepted paths. Physical filesystem
+constraints are still reported as original I/O failures.
 
 The historical `MAX_FILE_BYTES`, `MAX_PATCH_BYTES` and `MAX_PATCH_OPERATIONS` exports are retained
 for source compatibility and describe the old inline encoding only. They do not reject patches.
 Independent caller policy/transport ceilings remain owned by those callers. This API still owns
 the complete operation metadata and returns complete receipt bytes in memory; physical memory or
-storage failure is not replaced by a synthetic byte/count allowance. Both representations observe
+storage failure is not replaced by a synthetic byte/count allowance. All representations observe
 complete contents; observation errors never become synthetic preimage digests.
 
 Restart recovery requires a `RecoveryBinding` containing the expected workspace identity,

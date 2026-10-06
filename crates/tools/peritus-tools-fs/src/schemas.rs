@@ -4,7 +4,6 @@ use peritus_tool_protocol::{BoundedJson, JsonLimits, Schema, SchemaProperty};
 
 use crate::{FsToolError, FsToolErrorKind, FsToolOperation, RecoveryClass};
 
-const PATH_MAX: u32 = 4_096;
 const CONTENT_MAX: u32 = 65_536;
 
 pub fn discover_schema() -> Result<Schema, FsToolError> {
@@ -115,7 +114,7 @@ fn preimage_schema(allow_absent: bool) -> Result<Schema, FsToolError> {
 }
 
 fn path() -> Result<Schema, FsToolError> {
-    Schema::string(1, PATH_MAX).map_err(|_| schema_error())
+    Schema::string_with_optional_maximum(1, None).map_err(|_| schema_error())
 }
 
 fn mode() -> Result<Schema, FsToolError> {

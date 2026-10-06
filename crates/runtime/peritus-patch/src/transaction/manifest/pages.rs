@@ -108,6 +108,9 @@ pub(super) fn read_entries(
     read_pages(reader, count, 8, |page| {
         let kind = kind_from_tag(page.read_u8().ok()?)?;
         let path = WorkspacePath::new(page.read_str().ok()?).ok()?;
+        if !path.is_legacy_portable() {
+            return None;
+        }
         let preimage = read_identity(page, 4).ok()?;
         let postimage = read_identity(page, 4).ok()?;
         shape_valid(kind, preimage, postimage).then_some(ManifestEntry {
@@ -123,7 +126,10 @@ pub(super) fn read_directories(
     reader: &mut CanonicalReader<'_>,
     count: usize,
 ) -> Option<Vec<WorkspacePath>> {
-    read_pages(reader, count, 5, |page| WorkspacePath::new(page.read_str().ok()?).ok())
+    read_pages(reader, count, 5, |page| {
+        let path = WorkspacePath::new(page.read_str().ok()?).ok()?;
+        path.is_legacy_portable().then_some(path)
+    })
 }
 
 fn read_pages<T>(

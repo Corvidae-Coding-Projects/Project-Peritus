@@ -74,7 +74,8 @@ pub enum FieldBound {
     WorkbenchArtifactFeedback,
     /// Maximum finite wall duration for one preview process.
     WorkbenchLaunchWallMillis,
-    /// Maximum 4096 UTF-8 bytes for an inert workspace-relative path.
+    /// Historical 4096-byte file-path bound, retained for descriptor source compatibility.
+    /// Current file path and label descriptors use the independent codec transport contract.
     WorkbenchFilePathBytes,
     /// Maximum 32 file references per page.
     WorkbenchFilePage,

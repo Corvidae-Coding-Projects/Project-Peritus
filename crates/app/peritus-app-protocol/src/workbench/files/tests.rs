@@ -3,6 +3,95 @@ use crate::{
 };
 
 #[test]
+fn extended_paths_and_native_labels_roundtrip_through_preview_and_file_page_frames() {
+    let cases = crate::schema::generated_fixture_cases().unwrap();
+    let case = cases.iter().find(|case| case.case == "realistic-workbench-file-preview").unwrap();
+    let AppMessage::Response(response) =
+        decode_app_message(&case.payload, AppProtocolLimits::PRODUCTION).unwrap()
+    else {
+        panic!("response")
+    };
+    let crate::AppResponsePayload::WorkbenchFilePreview(original) = response.payload() else {
+        panic!("preview")
+    };
+    let extended = vec!["directory-component"; 257].join("/");
+    assert!(extended.len() > 4_096);
+    for path in [extended.as_str(), "native:reference.\n", "escape\u{1b}"] {
+        let request = crate::WorkbenchFileRequest::new(
+            original.request().query(),
+            original.request().revision(),
+            path.to_owned(),
+            original.request().range(),
+            original.request().mode(),
+            original.request().provider(),
+            original.request().model().clone(),
+        )
+        .unwrap();
+        let preview = crate::WorkbenchFilePreview::new(
+            request,
+            original.folder(),
+            original.file(),
+            original.provider_revision(),
+            original.resolved_model().to_owned(),
+        )
+        .unwrap();
+        let message = AppMessage::Response(crate::AppResponseEnvelope::new(
+            response.context(),
+            response.request_id(),
+            response.correlation_id(),
+            crate::AppResponsePayload::WorkbenchFilePreview(preview),
+        ));
+        let bytes = encode_app_message(&message, AppProtocolLimits::PRODUCTION).unwrap();
+        assert_eq!(decode_app_message(&bytes, AppProtocolLimits::PRODUCTION).unwrap(), message);
+        let row = crate::WorkbenchFileRow::new(
+            crate::ControlOperationId::new([3; 16]).unwrap(),
+            crate::ControlOperationId::new([4; 16]).unwrap(),
+            path.to_owned(),
+            original.request().mode(),
+            original.file(),
+            true,
+            true,
+        )
+        .unwrap();
+        let query = crate::WorkbenchFileQuery::new(
+            original.request().query(),
+            original.request().revision(),
+            0,
+        )
+        .unwrap();
+        let page = crate::WorkbenchFilePage::new(query, vec![row], 1).unwrap();
+        let message = AppMessage::Response(crate::AppResponseEnvelope::new(
+            response.context(),
+            response.request_id(),
+            response.correlation_id(),
+            crate::AppResponsePayload::WorkbenchFiles(page),
+        ));
+        let bytes = encode_app_message(&message, AppProtocolLimits::PRODUCTION).unwrap();
+        assert_eq!(decode_app_message(&bytes, AppProtocolLimits::PRODUCTION).unwrap(), message);
+        assert_eq!(
+            encode_app_message(
+                &decode_app_message(&bytes, AppProtocolLimits::PRODUCTION).unwrap(),
+                AppProtocolLimits::PRODUCTION
+            )
+            .unwrap(),
+            bytes
+        );
+    }
+    assert!(
+        crate::WorkbenchFileRequest::new(
+            original.request().query(),
+            original.request().revision(),
+            "bad\0path".to_owned(),
+            original.request().range(),
+            original.request().mode(),
+            original.request().provider(),
+            original.request().model().clone()
+        )
+        .is_err()
+    );
+}
+
+#[test]
 fn large_source_preview_and_ranges_keep_existing_wire_representation_and_integrity_checks() {
     use crate::{
         ProductModelChoice, WorkbenchFileMetadata, WorkbenchFileMode, WorkbenchFilePreview,

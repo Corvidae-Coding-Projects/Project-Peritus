@@ -16,7 +16,19 @@ pub(super) fn draw(frame: &mut Frame<'_>, area: Rect, model: &AppModel) {
             1 => ("Range: all | lines:1:20 | bytes:0:1024", file.range.as_str()),
             _ => ("Caption / instruction", file.caption.as_str()),
         };
-        super::images::draw_editor(frame, sections[0], label, text, file.cursor);
+        if field == 0 {
+            // Editing offsets refer to the exact native text, never its display escape.
+            let cursor = text[..file.cursor].escape_debug().to_string().len();
+            super::images::draw_editor(
+                frame,
+                sections[0],
+                label,
+                &text.escape_debug().to_string(),
+                cursor,
+            );
+        } else {
+            super::images::draw_editor(frame, sections[0], label, text, file.cursor);
+        }
         frame.render_widget(
             Paragraph::new("Enter/Esc ends editing · p previews · c confirms"),
             sections[1],
@@ -53,7 +65,7 @@ pub(super) fn content_lines(model: &AppModel) -> Vec<String> {
                 lines.push(format!(
                     "{} {} · {:?} · selected={} eligible={}",
                     if index == file.selected { ">" } else { " " },
-                    row.label(),
+                    row.label().escape_debug(),
                     row.mode(),
                     row.selected(),
                     row.eligible()
@@ -73,7 +85,7 @@ pub(super) fn content_lines(model: &AppModel) -> Vec<String> {
         }
     } else {
         lines.extend([
-            format!("Path: {}", file.path),
+            format!("Path: {}", file.path.escape_debug()),
             format!("Range: {}", if file.range.is_empty() { "all" } else { &file.range }),
             format!(
                 "Mode: {}",
@@ -95,7 +107,7 @@ pub(super) fn content_lines(model: &AppModel) -> Vec<String> {
             metadata(&mut lines, preview.request().file());
             lines.push(format!(
                 "External immutable snapshot · label {} · upload {}",
-                preview.request().selection().path(),
+                preview.request().selection().path().escape_debug(),
                 format_id(preview.request().artifact().as_bytes())
             ));
             lines.push(format!(

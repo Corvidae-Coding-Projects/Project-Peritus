@@ -1,10 +1,11 @@
 //! Bounded model, human, and structured filesystem renderings.
 
+use base64::{Engine as _, engine::general_purpose::STANDARD};
 use peritus_tool_protocol::{BoundedJson, BoundedText, JsonLimits};
 
 use crate::{
-    DiscoverObservation, FileContent, FileObservation, FsToolError, FsToolErrorKind,
-    FsToolOperation, MetadataObservation, RecoveryClass, SearchObservation,
+    DiscoverExclusion, DiscoverObservation, FileContent, FileObservation, FsToolError,
+    FsToolErrorKind, FsToolOperation, MetadataObservation, RecoveryClass, SearchObservation,
 };
 
 const MAX_RENDER_ITEMS: usize = 500;
@@ -44,7 +45,7 @@ impl RenderedOutput {
         let structured = metadata_json(value)?;
         let text = format!(
             "{}: {} bytes, {}, executable={}",
-            value.path(),
+            value.path().as_str().escape_debug(),
             value.size(),
             kind_name(value),
             value.executable()
@@ -58,7 +59,9 @@ impl RenderedOutput {
     /// Returns a typed protocol failure if bounded encoding cannot be constructed.
     pub fn discover(value: &DiscoverObservation) -> Result<Self, FsToolError> {
         let retained = value.entries().len().min(MAX_RENDER_ITEMS);
-        let truncated = retained < value.entries().len();
+        let excluded_retained = value.exclusions().len().min(MAX_RENDER_ITEMS - retained);
+        let truncated =
+            retained < value.entries().len() || excluded_retained < value.exclusions().len();
         let entries = value.entries()[..retained]
             .iter()
             .map(|entry| {
@@ -68,7 +71,7 @@ impl RenderedOutput {
                 ])
             })
             .collect::<Result<Vec<_>, _>>()?;
-        let structured = object(vec![
+        let mut fields = vec![
             ("digest", string(digest_hex(value.digest()))),
             ("entries", array(entries)),
             ("observed_count", Ok(integer(usize_integer(value.entries().len())))),
@@ -79,12 +82,15 @@ impl RenderedOutput {
                     .map_or_else(|| Ok(BoundedJson::null()), |path| string(path.to_string())),
             ),
             ("truncated", Ok(BoundedJson::boolean(truncated))),
-        ])?;
+        ];
+        append_exclusions(&mut fields, value.exclusions(), excluded_retained)?;
+        let structured = object(fields)?;
         let text = format!(
             "Discovered {} workspace entries{}.",
             value.entries().len(),
             if truncated { " (rendered window truncated)" } else { "" }
         );
+        let text = with_exclusion_summary(text, value.exclusions());
         finish(structured, text.clone(), text, truncated)
     }
 
@@ -106,7 +112,7 @@ impl RenderedOutput {
         let text = format!(
             "Read {} exact bytes from {} as {encoding}.",
             value.metadata().size(),
-            value.metadata().path()
+            value.metadata().path().as_str().escape_debug()
         );
         finish(structured, text.clone(), text, false)
     }
@@ -117,7 +123,9 @@ impl RenderedOutput {
     /// Returns a typed protocol failure if bounded encoding cannot be constructed.
     pub fn search(value: &SearchObservation) -> Result<Self, FsToolError> {
         let retained = value.matches().len().min(MAX_RENDER_ITEMS);
-        let truncated = retained < value.matches().len();
+        let excluded_retained = value.exclusions().len().min(MAX_RENDER_ITEMS - retained);
+        let truncated =
+            retained < value.matches().len() || excluded_retained < value.exclusions().len();
         let matches = value.matches()[..retained]
             .iter()
             .map(|value| {
@@ -129,14 +137,16 @@ impl RenderedOutput {
                 ])
             })
             .collect::<Result<Vec<_>, _>>()?;
-        let structured = object(vec![
+        let mut fields = vec![
             ("digest", string(digest_hex(value.digest()))),
             ("match_count", Ok(integer(usize_integer(value.matches().len())))),
             ("matches", array(matches)),
             ("scanned_bytes", Ok(integer(u64_integer(value.scanned_bytes())))),
             ("scanned_files", Ok(integer(i64::from(value.scanned_files())))),
             ("truncated", Ok(BoundedJson::boolean(truncated))),
-        ])?;
+        ];
+        append_exclusions(&mut fields, value.exclusions(), excluded_retained)?;
+        let structured = object(fields)?;
         let text = format!(
             "Found {} literal matches across {} UTF-8 files ({} bytes scanned){}.",
             value.matches().len(),
@@ -144,6 +154,7 @@ impl RenderedOutput {
             value.scanned_bytes(),
             if truncated { " Rendered match window is truncated" } else { "" }
         );
+        let text = with_exclusion_summary(text, value.exclusions());
         finish(structured, text.clone(), text, truncated)
     }
 
@@ -167,6 +178,58 @@ impl RenderedOutput {
     pub const fn truncated(&self) -> bool {
         self.truncated
     }
+}
+
+fn append_exclusions(
+    fields: &mut Vec<(&'static str, Result<BoundedJson, FsToolError>)>,
+    exclusions: &[DiscoverExclusion],
+    retained: usize,
+) -> Result<(), FsToolError> {
+    if exclusions.is_empty() {
+        return Ok(());
+    }
+    let values = exclusions[..retained]
+        .iter()
+        .map(|value| {
+            object(vec![
+                ("depth", Ok(integer(i64::from(value.depth())))),
+                (
+                    "directory",
+                    value
+                        .directory()
+                        .map_or_else(|| Ok(BoundedJson::null()), |path| string(path.to_string())),
+                ),
+                ("display_name", string(value.name().display_name())),
+                (
+                    "native_encoding",
+                    string(
+                        match value.name().encoding() {
+                            peritus_workspace::NativeNameEncoding::UnixBytes => "unix-bytes",
+                            peritus_workspace::NativeNameEncoding::WindowsWide => {
+                                "windows-utf16-be"
+                            }
+                            peritus_workspace::NativeNameEncoding::Utf8 => "utf8",
+                        }
+                        .to_owned(),
+                    ),
+                ),
+                ("native_units_base64", string(STANDARD.encode(value.name().encoded_bytes()))),
+                ("reason", string(value.reason().as_str().to_owned())),
+            ])
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    fields.push(("excluded_count", Ok(integer(usize_integer(exclusions.len())))));
+    fields.push(("exclusions", array(values)));
+    Ok(())
+}
+
+fn with_exclusion_summary(mut text: String, exclusions: &[DiscoverExclusion]) -> String {
+    use std::fmt::Write as _;
+    if !exclusions.is_empty() {
+        write!(&mut text, " {} native children have explicit exclusions.", exclusions.len())
+            .expect("string formatting");
+    }
+    text
 }
 
 fn metadata_json(value: &MetadataObservation) -> Result<BoundedJson, FsToolError> {

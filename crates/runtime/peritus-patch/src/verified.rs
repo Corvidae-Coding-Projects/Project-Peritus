@@ -4,14 +4,14 @@ use vstd::prelude::*;
 
 verus! {
 
-/// Checks the complete byte/component bounds of a nonempty path representation.
+/// Checks that a path representation is nonempty, without a byte or depth allowance.
 #[must_use]
 pub const fn path_bounds_valid(bytes: usize, components: usize) -> (valid: bool)
     ensures valid == (
-        bytes > 0 && bytes <= 4_096 && components > 0 && components <= 256
+        bytes > 0 && components > 0
     )
 {
-    bytes > 0 && bytes <= 4_096 && components > 0 && components <= 256
+    bytes > 0 && components > 0
 }
 
 /// Checks the nonempty operation invariant without a cumulative work allowance.

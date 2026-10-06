@@ -7,10 +7,17 @@ use peritus_app_protocol::{
 #[test]
 fn file_snapshot_and_refresh_modes_deliver_the_right_version_through_the_real_runner() {
     for refresh in [false, true] {
-        interaction::block_on(scenario(refresh));
+        interaction::block_on(scenario(refresh, "reference.txt"));
     }
 }
-async fn scenario(refresh: bool) {
+#[cfg(unix)]
+#[test]
+fn native_file_preview_confirm_refresh_and_provider_admission_use_the_exact_source() {
+    for refresh in [false, true] {
+        interaction::block_on(scenario(refresh, "native:reference.\n"));
+    }
+}
+async fn scenario(refresh: bool, name: &str) {
     let state = tempfile::tempdir().expect("state");
     let source = repository();
     let repository =
@@ -24,7 +31,7 @@ async fn scenario(refresh: bool) {
             .expect("clone managed repository")
             .success()
     );
-    let path = repository.path().join("reference.txt");
+    let path = repository.path().join(name);
     fs::write(&path, "UNSELECTED_FIRST\nORIGINAL_REFERENCE\nUNSELECTED_LAST\n").expect("source");
     pad_source_above_former_inspection_ceiling(&path);
     let writer = scripted(0x61, "chat", vec![support::text_response(b"Reference received.")]);
@@ -37,7 +44,7 @@ async fn scenario(refresh: bool) {
     let selection = WorkbenchFileRequest::new(
         query(workspace),
         3,
-        "reference.txt".to_owned(),
+        name.to_owned(),
         WorkbenchFileRange::Lines { first: 2, last: 2 },
         if refresh { WorkbenchFileMode::RefreshOnRequest } else { WorkbenchFileMode::Snapshot },
         writer.profile.profile_id(),
@@ -110,6 +117,11 @@ async fn scenario(refresh: bool) {
         .expect("record");
     assert_eq!(record.files().entries()[0].refreshes().len(), usize::from(refresh));
     assert_eq!(record.inputs().invocations().len(), 1);
+    assert_eq!(record.files().entries()[0].file().source().path(), Some(name));
+    let bytes = record.canonical_bytes().unwrap();
+    let reopened = peritus_product_runner::control::ConversationRecord::parse(&bytes).unwrap();
+    assert_eq!(reopened, record);
+    assert_eq!(reopened.canonical_bytes().unwrap(), bytes);
     service.shutdown(Duration::from_secs(5)).await;
 }
 

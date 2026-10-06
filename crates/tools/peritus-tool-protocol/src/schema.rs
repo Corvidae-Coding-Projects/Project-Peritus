@@ -196,7 +196,7 @@ enum SchemaKind {
     Null,
     Boolean,
     Integer { minimum: Option<i64>, maximum: Option<i64> },
-    String { min_bytes: u32, max_bytes: u32 },
+    String { min_bytes: u32, max_bytes: Option<u32> },
     Array { items: Box<Schema>, min_items: u32, max_items: Option<u32> },
     Object { properties: Vec<SchemaProperty>, additional_properties: bool },
 }
@@ -235,7 +235,22 @@ impl Schema {
     ///
     /// Rejects an inverted byte-cardinality range.
     pub fn string(min_bytes: u32, max_bytes: u32) -> Result<Self, ProtocolError> {
-        validate::cardinality(min_bytes, max_bytes, "string")?;
+        Self::string_with_optional_maximum(min_bytes, Some(max_bytes))
+    }
+
+    /// Creates a UTF-8 byte-cardinality schema without requiring a semantic upper bound.
+    /// An absent maximum emits no `maxLength`; transport capacity remains separately owned.
+    /// Existing bounded string schemas retain their canonical bytes.
+    ///
+    /// # Errors
+    /// Rejects an inverted range when a maximum is supplied.
+    pub fn string_with_optional_maximum(
+        min_bytes: u32,
+        max_bytes: Option<u32>,
+    ) -> Result<Self, ProtocolError> {
+        if let Some(maximum) = max_bytes {
+            validate::cardinality(min_bytes, maximum, "string")?;
+        }
         Ok(Self { kind: SchemaKind::String { min_bytes, max_bytes }, enum_values: Vec::new() })
     }
 

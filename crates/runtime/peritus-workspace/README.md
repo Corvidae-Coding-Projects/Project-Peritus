@@ -53,6 +53,25 @@ Failed capture produces no accepted observation; partial storage remains owned b
 caller. Existing attachment, transport, and filesystem-tool policies remain separate
 from this C1 streaming contract.
 
+Directory inspection separates exact native names, escaped display text and authority-safe paths.
+`inspect_directory` returns supported children and typed exclusions for non-UTF-8 names, links,
+reparse points, special nodes, unavailable metadata or changed children. Protected metadata stays
+hidden; unsupported siblings never discard usable results. `list_directory` remains a compatible
+projection of supported metadata. Inspection opens every ancestor relative to its parent handle,
+without a total path-byte or depth allowance, and checks directory/root changes before acceptance.
+
+`capture_directory` writes to an empty caller-owned regular file. Persist its `ObservedDirectory`
+record and `DirectoryCursor` under the owner's durable publication transaction. Reopen through
+`RetainedDirectory::open` to verify the entire body and exact resume boundary before reading pages.
+Every nonfinal physical window includes continuation; there is no total-entry/page allowance or
+expiration. Accepted history can be resumed after the source directory is changed or removed.
+Changed retained storage rejects without advancing the cursor. Capture failures expose no accepted
+root and preserve original I/O errors; existing accepted storage is never overwritten.
+
+Retained file observations keep exact version-one bytes for historical paths. Native or extended
+paths use platform-bound version two; older readers must be upgraded before those observations
+are published. Display text and observation metadata never grant traversal or mutation authority.
+
 ## Focused checks
 
 From the repository root:
