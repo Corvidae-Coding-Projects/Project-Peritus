@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3527,
-        "tip_oid": "743a7e51beaaeb6af8da0b1d5223af85ebab7a48",
-        "prefix_sha256": "ad6a8cfc1f2197f42b60cbbae3925a90ba9b898d6e71ce9e2f80ba41f5fe7cef"
+        "sequence": 3528,
+        "tip_oid": "b007d0ed38e63b58ad5a22804de0e27f8e9c5aac",
+        "prefix_sha256": "69fa5666abb7ca7b86661fa2a0c77e4663b81579eacbab9671e8cfef8e396ad3"
       },
       "NWAR": {
         "sequence": 39,
@@ -4244,12 +4244,13 @@
       "display_id": 104,
       "title": "[L003] Checkpoint capture inherits patch byte ceilings",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L003.\n\n- `crates/app/peritus-daemon/src/product_run/workbench/checkpoints/capture.rs:246-254` reads each whole file with `peritus_patch::MAX_FILE_BYTES`, then maps **every** inspection error to `ControlError::StaleRevision`.\n- Selected checkpoint capture also rejects aggregate body bytes above `peritus_patch::MAX_PATCH_BYTES` at lines 53-62; checkpoint recapture does the same at lines 79-88.\n- Daily-driving blocker: checkpoints of ordinary build artifacts can fail before a command runs. The per-file bound was implicated by the prior live-run diagnosis. Exact constant definitions, automatic command caller, persistence format, and restore enforcement will be verified by complete reads in this audit.\n- Structural issue: patch payload admission limits are reused as checkpoint file/storage limits, and capacity/I/O failures become a revision-change error. Merely increasing a number would leave that coupling and misleading error path intact.\n- Exact byte declarations are now read in `peritus-patch/src/set.rs:11-16`: both `MAX_FILE_BYTES` and `MAX_PATCH_BYTES` are **8 MiB**. Automatic capture at `checkpoints/capture/automatic.rs:71-75` calls the same capped `observe_path`; manual capture at `checkpoints.rs:148` does too. Sealing a manual checkpoint recaptures every path at `automatic.rs:152-169`, and fork validation at `checkpoints.rs:68-78` likewise recaptures paths.\n- `product_run/interaction/live.rs:118-142` now verifies the live workspace-mutation hook: automatic capture failure returns an error stating that Peritus did not change the workspace. Sealing failures also stop with a durable-recording error. `peritus-product-runner/src/execution/checkpoint.rs:89-133` now verifies the observer forwards BeforeMutation to that ConversationView hook; `turn.rs:280-291` installs it on writer/fixer tools, and `executor.rs:243-257` rejects failed preflight before dispatch. The live precommand capture chain is source-verified. Durable storage and restore have been read and add independent ceilings (L013, L020, L021).\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:08:34.108185360Z",
-      "updated_at": "2026-10-06T15:46:13.147944105Z",
+      "updated_at": "2026-10-06T15:46:47.577318345Z",
+      "closed_at": "2026-10-06T15:46:47.575773549Z",
       "labels": [
         "daily-driving-limiter"
       ],
