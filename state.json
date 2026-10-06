@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3593,
-        "tip_oid": "97cec396411ef6377dc5ee11762d307d33842bf7",
-        "prefix_sha256": "5115aa501c232a8c1b9c8a31f64fc93c9ec04a3f61b45200eb696f37ced6517d"
+        "sequence": 3594,
+        "tip_oid": "3f57131dcebd444db04d3830c4739d2c86197758",
+        "prefix_sha256": "8618d386252e6e8a49813a4d133945a61b5fcb831cf227cedf670e3aef3d3329"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 825,
-  "next_comment_id": 2933,
+  "next_comment_id": 2934,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -6882,7 +6882,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:07.865564519Z",
-      "updated_at": "2026-10-06T20:31:30.450457512Z",
+      "updated_at": "2026-10-06T20:46:21.554857959Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -6920,6 +6920,15 @@
           "kind": "decision",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA+CS0AU80DQ4lD6M/NE55pSyevsOw/hMGWOaRds4obP1O1dUxTH13gBFtPcmAW97phK/k0yKVgVOkfaMueU43BQ=="
+        },
+        "f5f50c63-007b-41a9-8e68-7fd37423da3c": {
+          "display_id": 2933,
+          "author": "6ME5",
+          "content": "Coordinated migration now compiles across the complete native and Windows GNU workspace. Strict Verus verification for all 19 affected packages passes without cheating; legacy-peer negotiation and client cancellation/next-frame tests pass. Broad isolated qualification exposed a historical A3 fixture that advertised moving default codec values; preserve its explicit legacy peer profile rather than rewrite the historical bytes, and test the expanded current profile separately. The final scoped lint/policy/test gate is still in progress, so this issue stays open and uncommitted.",
+          "created_at": "2026-10-06T20:46:21.514393924Z",
+          "kind": "observation",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAWtJnY+GjGeG8hvd5It3ECcoXfCiYWhVHbJ1mz1AfuLv1uSTDQBfaABJQy6RadXMFEAFYY94Mfrf23WMl1yyXAw=="
         }
       }
     },
