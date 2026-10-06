@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3533,
-        "tip_oid": "ea96745334dcda7db63dfa6c62143c9bd6fdc632",
-        "prefix_sha256": "0e997a45602a58b8702e2e9470b52fcc9e5c5eca235de19d3a9b90f3e6d8848e"
+        "sequence": 3534,
+        "tip_oid": "3504d91833b02fd75777aab243244ac50f40755e",
+        "prefix_sha256": "68731408c4034f556eda5bcfdb4cca5fcdde13ed975566f4bbb3b831279a2074"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 822,
-  "next_comment_id": 2899,
+  "next_comment_id": 2900,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -31581,7 +31581,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:16:26.276169548Z",
-      "updated_at": "2026-10-06T16:14:49.233253412Z",
+      "updated_at": "2026-10-06T17:11:47.936086948Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -31601,6 +31601,15 @@
           "content": "Systemic repair plan for L004: Checkpoint coverage omits partial selections and empty directories.\n\nOwning contract and implementation boundary: capture.rs:30-50; checkpoints.rs:42-45. Apply the change through the constructors, live callers, durable writer and restart reader for this boundary, not as an isolated constant increase.\n\nMake checkpoint coverage a typed capability manifest: whole files, selected ranges, absent paths and empty directories have distinct restore operations. Record what is covered and why anything is excluded before promising a writable fork. Restore directory identity and range preimages through the same transaction and conflict rules as files; keep credentials, approvals and external effects outside workspace rewind.\n\nPreserve: exact snapshot/preimage identity, protected paths, ancestor and symlink safety, writable-fork coverage, conflict detection, one logical restore transaction and exact effect receipts. Separate a physical allocation/page limit and a genuine authority or integrity check from a cumulative work allowance. Keep transient contention/capacity observable and recoverable under the existing logical task; do not discard accepted state or substitute a fresh session to get around it.\n\nCompatibility/migration: retain decoders and exact receipts for previously accepted records. If representation or lifecycle semantics change, introduce a versioned migration under exclusive ownership; verify a complete replacement frontier before atomic publication and keep the old recovery root until adoption is durable. Rebuild derived projections from authoritative evidence. Update all producers, consumers and invariants together; a rejected new operation must leave the predecessor usable and already owned effects reconcilable.\n\nAcceptance and nonregression: large-file and many-path capture/restore, divergent preimage rejection, interrupted staging/publication/restore, then reopen and continue the same conversation with an exact restored workspace. Exercise the precise source-described failure path and the relevant byte/count/elapsed boundaries listed in this finding, plus ordinary small inputs. Check that legitimate work progresses after the former blocker while malformed input, conflicting identity, stale preimages and unauthorized scope still reject. Add fault injection at the affected acceptance/publication/recovery boundary and run the affected integration and formal checks on the final implementation. Source-derived risks remain distinct from executed reproductions; completion requires this evidence, not a promise that a plan alone cannot break anything.",
           "created_at": "2026-10-06T13:16:26.167Z",
           "kind": "decision"
+        },
+        "d78e31d4-6561-494f-af45-75024cc03a92": {
+          "display_id": 2899,
+          "author": "6ME5",
+          "content": "[action] Issue #105: typed coverage, selected-range overlays, exact recovery postimages, directory restoration and negotiated client projections implemented. Core suites and partial cold-restart regression pass; final daemon, compatibility and source-boundary verification remain before commit.",
+          "created_at": "2026-10-06T17:11:47.922808139Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAefjJv9Ab0R/f1PW+7C+NdHHdTC1Sl+phQ0vn+LLckRpNXrPekK4IN6yIvzPJq+6w2GPzEQISWEwNmKltbsmaDQ=="
         },
         "dcf1376d-20d2-4c05-81d1-965878a44f18": {
           "display_id": 2897,
