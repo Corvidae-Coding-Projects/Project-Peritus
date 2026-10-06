@@ -111,6 +111,9 @@ fn process_transport_helper() {
     if std::path::Path::new("duplex-before-input.marker").is_file() {
         std::io::stdout().write_all(&vec![b'x'; 1024 * 1024]).expect("output before input");
     }
+    if std::path::Path::new("stderr-before-input.marker").is_file() {
+        std::io::stderr().write_all(&vec![b'z'; 1024 * 1024]).expect("stderr before input");
+    }
     let mut input = String::new();
     std::io::stdin().read_to_string(&mut input).expect("helper stdin");
     let (mode, payload) = input.split_once('\n').unwrap_or((&input, ""));
@@ -130,6 +133,23 @@ fn process_transport_helper() {
             stdout.write_all(b"\n").expect("helper newline");
         }
         "excessive" => std::io::stdout().write_all(b"0123456789").expect("helper output"),
+        "journal-spin" => {
+            let owner = std::fs::OpenOptions::new()
+                .read(true)
+                .write(true)
+                .create_new(true)
+                .open("child-owner.lock")
+                .expect("child owner");
+            owner.try_lock().expect("exclusive child owner");
+            std::io::stdout()
+                .write_all(b"{\"type\":\"thread.started\",\"thread_id\":\"retained-thread\"}\n")
+                .expect("thread prefix");
+            std::io::stdout().flush().expect("prefix flush");
+            std::fs::write("child-ready.marker", b"ready").expect("child ready");
+            loop {
+                std::thread::park();
+            }
+        }
         "spin" => loop {
             std::hint::spin_loop();
         },
@@ -253,5 +273,99 @@ fn output_is_drained_while_large_stdin_is_written_and_retained() {
         assert!(output.exit().success());
         assert_eq!(std::fs::read(journal).expect("durable stdout"), output.stdout());
         assert!(output.stdout().len() > 2 * 1024 * 1024);
+    });
+}
+
+#[test]
+fn both_output_pipes_drain_before_large_stdin_and_retain_exact_stdout() {
+    runtime::block_on(async {
+        let directory = tempfile::tempdir().expect("temporary directory");
+        for marker in
+            ["process-helper.marker", "duplex-before-input.marker", "stderr-before-input.marker"]
+        {
+            std::fs::write(directory.path().join(marker), b"owned").expect("marker");
+        }
+        let mut input = b"echo\n".to_vec();
+        input.extend(vec![b'y'; 1024 * 1024]);
+        let journal = directory.path().join("stdout.jsonl");
+        let request = ProcessRequest::new(
+            current_test_executable(),
+            helper_arguments(),
+            input,
+            Some(directory.path().to_path_buf()),
+            Vec::new(),
+            ProcessLimits::without_deadline(2 * 1024 * 1024, 3 * 1024 * 1024, 2 * 1024 * 1024)
+                .expect("fixture byte capacities"),
+        )
+        .expect("request")
+        .with_stdout_journal(journal.clone());
+        let output = tokio::time::timeout(
+            Duration::from_secs(10),
+            TokioProcessTransport.run(request, &CancellationToken::new()),
+        )
+        .await
+        .expect("fixture watchdog: duplex progress")
+        .expect("output");
+        assert!(output.exit().success());
+        assert_eq!(output.stderr(), vec![b'z'; 1024 * 1024]);
+        assert_eq!(std::fs::read(journal).expect("durable stdout"), output.stdout());
+        assert!(output.stdout().len() > 2 * 1024 * 1024);
+    });
+}
+
+#[test]
+fn quiet_thread_prefix_is_retained_before_cancellation_and_child_ownership_is_released() {
+    runtime::block_on(async {
+        let directory = tempfile::tempdir().expect("temporary directory");
+        std::fs::write(directory.path().join("process-helper.marker"), b"owned").expect("marker");
+        let journal = directory.path().join("stdout.jsonl");
+        let request = ProcessRequest::new(
+            current_test_executable(),
+            helper_arguments(),
+            b"journal-spin".to_vec(),
+            Some(directory.path().to_path_buf()),
+            Vec::new(),
+            ProcessLimits::PRODUCTION,
+        )
+        .expect("request")
+        .with_stdout_journal(journal.clone());
+        let cancellation = CancellationToken::new();
+        let signal = cancellation.clone();
+        let task = tokio::spawn(async move { TokioProcessTransport.run(request, &signal).await });
+        let prefix = b"{\"type\":\"thread.started\",\"thread_id\":\"retained-thread\"}\n";
+        tokio::time::timeout(Duration::from_secs(10), async {
+            loop {
+                if directory.path().join("child-ready.marker").is_file()
+                    && std::fs::read(&journal)
+                        .is_ok_and(|bytes| bytes.windows(prefix.len()).any(|part| part == prefix))
+                {
+                    break;
+                }
+                tokio::task::yield_now().await;
+            }
+        })
+        .await
+        .expect("fixture watchdog: quiet prefix retention");
+        let owner = std::fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .open(directory.path().join("child-owner.lock"))
+            .expect("child owner");
+        assert!(owner.try_lock().is_err(), "helper is still alive and owns its lock");
+        assert!(!task.is_finished(), "prefix is retained during the live inference");
+        assert!(cancellation.cancel());
+        let error = tokio::time::timeout(Duration::from_secs(10), task)
+            .await
+            .expect("fixture watchdog: cancellation cleanup")
+            .expect("owner")
+            .expect_err("cancelled");
+        assert_eq!(error.kind(), ProviderCoreErrorKind::Cancelled);
+        owner.try_lock().expect("child ownership released before cancellation returns");
+        assert!(
+            std::fs::read(journal)
+                .expect("retained prefix")
+                .windows(prefix.len())
+                .any(|part| part == prefix)
+        );
     });
 }

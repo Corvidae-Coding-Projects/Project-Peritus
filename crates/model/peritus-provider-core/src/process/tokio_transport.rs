@@ -1,16 +1,21 @@
 //! Tokio-backed subprocess execution hidden behind Peritus-owned values.
 
+mod journal;
+mod output;
+
 use core::future::Future as _;
 use std::future::poll_fn;
 use std::process::{ExitStatus, Stdio};
 use std::task::Poll;
 
-use tokio::io::{AsyncRead, AsyncReadExt, AsyncWriteExt};
+use tokio::io::AsyncWriteExt;
 use tokio::process::{Child, ChildStderr, ChildStdin, ChildStdout, Command};
 use tokio::time::Instant;
 
 use super::{ProcessExit, ProcessOutput, ProcessRequest, ProcessTransport};
 use crate::{BoxFuture, CancellationToken, ProviderCoreError};
+use journal::{JournalSender, JournalWriter};
+use output::read_bounded;
 
 /// Production subprocess transport backed by Tokio.
 #[derive(Clone, Copy, Debug, Default)]
@@ -47,6 +52,7 @@ async fn run(
         ),
         None => None,
     };
+    let (journal_sender, mut journal) = JournalWriter::new(journal);
     let deadline = limits.timeout().map(|timeout| Instant::now() + timeout);
     let mut child = spawn(&request)?;
     let Some(stdin) = child.stdin.take() else {
@@ -57,8 +63,14 @@ async fn run(
         ));
     };
     let (stdout, stderr) = take_output(&mut child).await?;
-    let operation =
-        collect_output(&mut child, stdin, request.stdin(), (stdout, stderr), limits, journal);
+    let operation = collect_output(
+        &mut child,
+        stdin,
+        request.stdin(),
+        (stdout, stderr),
+        limits,
+        (journal_sender, &mut journal),
+    );
     let timed = async {
         match deadline {
             Some(deadline) => {
@@ -80,6 +92,9 @@ async fn run(
     if result.is_err() {
         terminate(&mut child).await;
     }
+    // Cancellation drops pipe readers, not the accepted journal work. Keep its writer owned
+    // outside the cancellable operation and observe persistence before releasing the lineage.
+    journal.finish().await?;
     result
 }
 
@@ -139,13 +154,15 @@ async fn collect_output(
     input: &[u8],
     output: (ChildStdout, ChildStderr),
     limits: super::ProcessLimits,
-    journal: Option<tokio::fs::File>,
+    journal: (Option<JournalSender>, &mut JournalWriter),
 ) -> Result<(ExitStatus, Vec<u8>, Vec<u8>), ProviderCoreError> {
     let (stdout, stderr) = output;
+    let (journal_sender, journal) = journal;
     let mut wait = Box::pin(child.wait());
     let mut write = Box::pin(write_stdin(stdin, input));
     let mut written = false;
-    let mut stdout = Box::pin(read_bounded(stdout, limits.max_stdout_bytes(), "stdout", journal));
+    let mut stdout =
+        Box::pin(read_bounded(stdout, limits.max_stdout_bytes(), "stdout", journal_sender));
     let mut stderr = Box::pin(read_bounded(stderr, limits.max_stderr_bytes(), "stderr", None));
     let mut status = None;
     let mut stdout_bytes = None;
@@ -179,8 +196,13 @@ async fn collect_output(
                 Poll::Pending => {}
             }
         }
+        let persisted = match journal.poll(context) {
+            Poll::Ready(Ok(())) => true,
+            Poll::Ready(Err(error)) => return Poll::Ready(Err(error)),
+            Poll::Pending => false,
+        };
         match (status.take(), stdout_bytes.take(), stderr_bytes.take()) {
-            (Some(status), Some(stdout), Some(stderr)) if written => {
+            (Some(status), Some(stdout), Some(stderr)) if written && persisted => {
                 Poll::Ready(Ok((status, stdout, stderr)))
             }
             (pending_status, pending_stdout, pending_stderr) => {
@@ -192,51 +214,6 @@ async fn collect_output(
         }
     })
     .await
-}
-
-async fn read_bounded(
-    mut input: impl AsyncRead + Unpin,
-    limit: usize,
-    operation: &'static str,
-    mut journal: Option<tokio::fs::File>,
-) -> Result<Vec<u8>, ProviderCoreError> {
-    let mut output = Vec::new();
-    let mut buffer = [0_u8; 8 * 1024];
-    loop {
-        let count = input.read(&mut buffer).await.map_err(|_| {
-            ProviderCoreError::transport("process_output", "owned subprocess output read failed")
-        })?;
-        if count == 0 {
-            return Ok(output);
-        }
-        let next = output.len().checked_add(count).ok_or_else(|| {
-            ProviderCoreError::limit_exceeded(
-                "process_output",
-                "subprocess output length overflowed",
-            )
-        })?;
-        if next > limit {
-            return Err(ProviderCoreError::limit_exceeded(
-                operation,
-                "owned subprocess output exceeded its byte limit",
-            ));
-        }
-        output.extend_from_slice(&buffer[..count]);
-        if let Some(journal) = journal.as_mut() {
-            journal.write_all(&buffer[..count]).await.map_err(|_| {
-                ProviderCoreError::transport(
-                    "process_journal",
-                    "owned subprocess journal write failed",
-                )
-            })?;
-            journal.sync_data().await.map_err(|_| {
-                ProviderCoreError::transport(
-                    "process_journal",
-                    "owned subprocess journal persistence failed",
-                )
-            })?;
-        }
-    }
 }
 
 const fn wait_error() -> ProviderCoreError {

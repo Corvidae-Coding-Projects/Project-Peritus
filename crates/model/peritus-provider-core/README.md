@@ -71,6 +71,13 @@ termination and await reaping before returning. Tests exercise the public fake s
 Tokio transport with a portable Rust helper, including argv/stdin/cwd/environment removal,
 output bounds, cancellation, and process ownership on Windows and Unix.
 
+Stdout receipt and journal persistence have separate owners. A physical backlog applies
+backpressure without rejecting output; the writer coalesces available chunks into one durable
+write instead of synchronizing after every pipe read. Quiet prefixes are synchronized without
+waiting for more output or process exit. Cancellation and failures settle already received journal
+bytes after child termination, and persistence failures remain visible to the caller. No journal
+worker is detached and no timer or retry quota governs this progress.
+
 On Windows, both runtime transport and model-catalog discovery launch without a console. Piped
 output alone is insufficient: a provider can otherwise rename the caller's shared console through
 native APIs. Claude catalog discovery also disables its automatic title updates.
