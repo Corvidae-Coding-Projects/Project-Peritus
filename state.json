@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3631,
-        "tip_oid": "98c7d39760de60a14a8c64f19c363e63917a7e40",
-        "prefix_sha256": "54c7edb3dcc3b8670a93adad742b804d47ea5d8635209515dacd7b2a53463f60"
+        "sequence": 3632,
+        "tip_oid": "bec73979dbc9598932e114d63447d943642f25be",
+        "prefix_sha256": "7aa7c90a6d438d95d059d344f414a32a64e505660f713622cec101ce2be1e1fc"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 2960,
+  "next_comment_id": 2961,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -22222,7 +22222,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T22:11:51.674351471Z",
-      "updated_at": "2026-10-06T22:44:12.624939117Z",
+      "updated_at": "2026-10-06T22:46:14.268284853Z",
       "labels": [
         "ci"
       ],
@@ -22244,6 +22244,15 @@
           "kind": "observation",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAg2hSCLF91kuCWEUTsKV0TFJqbIJx+64b5dzluu0Uk1xCeDc3zF67fHEBX3vCXNgm3zyqM2hgsGjAQ3nG8SR+Dw=="
+        },
+        "2adbaf47-5048-410d-9819-b2db686fd901": {
+          "display_id": 2960,
+          "author": "6ME5",
+          "content": "[action] 825 scoped diagnostic implementation in progress,13 selected files not staged. Isolated tree /home/doll/.cache/peritus-issue825.5YK8nN. Initial105 tests passed1existingignore; fmt passed; strict OpenAI Verus passed ordinary effect roots0. Loop provenance57 FAILED with provider.start/process_spawn Connect011, missing trace and successfulcleanup, ambiguous case; originalauth predicate still unknown. Preserved /tmp/peritus-issue825-provenance-57.log, stoppedloop. 100 execve-traced runs passed so exactOScause notcaptured yet. Next retain redacted OS cause at spawn boundary before repair; do not assumeETXTBSY, changewatchdogs or rerunfailedexerciseintopass. Clippy1 redundantmust_use corrected; Clippy2 maincwd discarded; isolatedClippy3 session40701 pending. Comment77572 pending. CurrentHEAD4ee PR112noCI failures latest347success. All unrelateduserhashes preserved.",
+          "created_at": "2026-10-06T22:46:14.264154765Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAB4iNMFHuJzpCQW26Z77HYiUp+6VWk4bS4fRo6FFGBZuidrEiC5IE0Sh2bnuVrYUSas+ODqy1SRqU1wzcUv6cDA=="
         },
         "3841d0a3-9adb-46ce-a284-bd6dc8302352": {
           "display_id": 2959,
