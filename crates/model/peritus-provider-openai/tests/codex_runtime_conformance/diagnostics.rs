@@ -47,7 +47,7 @@ impl ProbeError {
         let mut result = Self::stage(stage);
         result.observations.extend(event_evidence(events));
         result.add_trace(Ok(trace));
-        result.observations.push(boolean("probe.directory-removed", directory_removed));
+        result.add_directory_removed(directory_removed);
         result
     }
 
@@ -58,6 +58,11 @@ impl ProbeError {
 
     pub fn with_evidence(mut self, evidence: Vec<Observation>) -> Self {
         self.observations.extend(evidence);
+        self
+    }
+
+    pub fn with_scope(mut self, scope: &'static str) -> Self {
+        self.observations.push(text("probe.scope", scope));
         self
     }
 
@@ -79,10 +84,14 @@ impl ProbeError {
     }
 
     pub fn add_cleanup(&mut self, cleanup: &Result<(), std::io::Error>) {
-        self.observations.push(boolean("probe.directory-removed", cleanup.is_ok()));
+        self.add_directory_removed(cleanup.is_ok());
         if let Err(error) = cleanup {
             self.add_io("probe.cleanup-io-kind", "probe.cleanup-os-code", error);
         }
+    }
+
+    pub fn add_directory_removed(&mut self, removed: bool) {
+        self.observations.push(boolean("probe.directory-removed", removed));
     }
 
     pub fn into_observations(self) -> Vec<Observation> {
@@ -97,6 +106,13 @@ impl ProbeError {
             self.observations.push(observation(code, ObservationValue::Signed(i64::from(raw))));
         }
     }
+}
+
+pub(super) fn scoped_evidence(scope: &'static str, evidence: Vec<Observation>) -> Vec<Observation> {
+    evidence
+        .into_iter()
+        .map(|fact| observation(&format!("{scope}.{}", fact.id()), fact.value().clone()))
+        .collect()
 }
 
 pub(super) fn event_evidence(events: &[EventEnvelope]) -> Vec<Observation> {
@@ -125,11 +141,11 @@ fn text(id: &str, value: impl Into<String>) -> Observation {
     observation(id, ObservationValue::Text(ReportText::new(value).expect("redacted probe fact")))
 }
 
-fn boolean(id: &str, value: bool) -> Observation {
+pub(super) fn boolean(id: &str, value: bool) -> Observation {
     observation(id, ObservationValue::Boolean(value))
 }
 
-fn unsigned(id: &str, value: usize) -> Observation {
+pub(super) fn unsigned(id: &str, value: usize) -> Observation {
     observation(
         id,
         ObservationValue::Unsigned(u64::try_from(value).expect("supported target count fits u64")),

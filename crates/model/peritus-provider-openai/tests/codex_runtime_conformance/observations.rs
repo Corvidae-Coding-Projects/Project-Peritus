@@ -2,24 +2,24 @@
 
 use peritus_conformance::{
     ProviderAttemptObservation, ProviderAttemptOutcome, ProviderCancellationObservation,
-    ProviderCapability, ProviderCapabilityObservation, ProviderConformanceFixture,
-    ProviderConformanceObservation, ProviderEventKind, ProviderEventObservation,
-    ProviderFailureKind, ProviderFailureObservation, ProviderIsolationObservation,
-    ProviderRetryObservation, ProviderScenario, ProviderStreamObservation, ProviderTerminal,
-    ProviderUsageObservation, ProviderUsageSnapshot, ReportText,
+    ProviderConformanceFixture, ProviderConformanceObservation, ProviderEventKind,
+    ProviderEventObservation, ProviderFailureKind, ProviderFailureObservation,
+    ProviderIsolationObservation, ProviderRetryObservation, ProviderScenario,
+    ProviderStreamObservation, ProviderTerminal, ProviderUsageObservation, ProviderUsageSnapshot,
+    ReportText,
 };
-use peritus_model_protocol::{
-    Capability, EventEnvelope, FailureCategory, ModelEvent, RequestedCapabilities, negotiate,
-};
+use peritus_model_protocol::{EventEnvelope, FailureCategory, ModelEvent};
 
 use super::diagnostics::ProbeError;
-use super::support::{ForeignProbe, Probe, RecoveryProbe, is_terminal, profile};
+use super::support::{ForeignProbe, Probe, RecoveryProbe, is_terminal};
+
+pub(super) mod capabilities;
 
 pub(super) fn exercise(
     fixture: &ProviderConformanceFixture,
 ) -> Result<ProviderConformanceObservation, ProbeError> {
     match fixture.scenario() {
-        ProviderScenario::CapabilityHonesty => capabilities(fixture),
+        ProviderScenario::CapabilityHonesty => capabilities::observe(fixture),
         ProviderScenario::RateLimitRetryAfter | ProviderScenario::TransientRetry => {
             recovery(fixture)
         }
@@ -59,39 +59,6 @@ fn observe_once(
         | ProviderScenario::RateLimitRetryAfter
         | ProviderScenario::TransientRetry => Err(ProbeError::stage("observe.scenario")),
     }
-}
-
-fn capabilities(
-    fixture: &ProviderConformanceFixture,
-) -> Result<ProviderConformanceObservation, ProbeError> {
-    let probes = [Probe::run(fixture)?, Probe::run(fixture)?, Probe::run(fixture)?];
-    if let Some(probe) = probes.iter().find(|probe| {
-        !probe.completed()
-            || probe.auth_requests() != 1
-            || probe.turn_requests() != 1
-            || !probe.directory_removed
-    }) {
-        return Err(probe_error(probe, "verify.capability-effects"));
-    }
-    let profile = profile(ProviderScenario::CapabilityHonesty, 0xD5)
-        .map_err(|_| ProbeError::stage("capability.profile"))?;
-    let unsupported = RequestedCapabilities::new(&[Capability::AudioInput], &[], profile.limits())
-        .map_err(|_| ProbeError::stage("capability.request"))?;
-    if negotiate(&profile, unsupported).is_ok() {
-        return Err(ProbeError::stage("verify.unsupported-capability"));
-    }
-    let advertised = vec![
-        ProviderCapability::ToolCalls,
-        ProviderCapability::ParallelToolCalls,
-        ProviderCapability::UsageDetail,
-    ];
-    Ok(ProviderConformanceObservation::Capabilities(ProviderCapabilityObservation::new(
-        advertised.clone(),
-        advertised,
-        vec![ProviderCapability::AudioInput],
-        vec![ProviderCapability::ToolCalls, ProviderCapability::ParallelToolCalls],
-        3,
-    )))
 }
 
 fn ordered(probe: &Probe) -> ProviderConformanceObservation {
@@ -181,6 +148,13 @@ fn recovery(
     fixture: &ProviderConformanceFixture,
 ) -> Result<ProviderConformanceObservation, ProbeError> {
     let probe = RecoveryProbe::run(fixture)?;
+    observe_recovery(&probe, fixture)
+}
+
+pub(super) fn observe_recovery(
+    probe: &RecoveryProbe,
+    fixture: &ProviderConformanceFixture,
+) -> Result<ProviderConformanceObservation, ProbeError> {
     if failure_category(&probe.first) != Some(FailureCategory::Provider)
         || !matches!(
             probe.second.last().map(EventEnvelope::event),
@@ -189,12 +163,7 @@ fn recovery(
         || probe.trace.iter().filter(|entry| entry.as_str() == "turn").count() != 2
         || !probe.directory_removed
     {
-        return Err(ProbeError::observed(
-            "verify.recovery",
-            &probe.first,
-            &probe.trace,
-            probe.directory_removed,
-        ));
+        return Err(probe.error("verify.recovery"));
     }
     let (outcome, delay) = match fixture.scenario() {
         ProviderScenario::RateLimitRetryAfter => {
@@ -203,17 +172,12 @@ fn recovery(
         ProviderScenario::TransientRetry => (
             ProviderAttemptOutcome::TransientFailure,
             u64::try_from(probe.plan.delay().as_millis())
-                .map_err(|_| ProbeError::stage("recovery.delay"))?,
+                .map_err(|_| probe.error("recovery.delay"))?,
         ),
-        _ => return Err(ProbeError::stage("recovery.scenario")),
+        _ => return Err(probe.error("recovery.scenario")),
     };
     if probe.plan.delay().as_millis() != u128::from(delay) {
-        return Err(ProbeError::observed(
-            "verify.recovery-delay",
-            &probe.second,
-            &probe.trace,
-            probe.directory_removed,
-        ));
+        return Err(probe.error("verify.recovery-delay"));
     }
     Ok(ProviderConformanceObservation::Retry(ProviderRetryObservation::new(
         vec![
@@ -258,26 +222,33 @@ fn usage(events: &[EventEnvelope]) -> ProviderConformanceObservation {
     ProviderConformanceObservation::Usage(ProviderUsageObservation::new(snapshots))
 }
 
-fn isolation(
+pub(super) fn isolation(
     probe: &Probe,
     fixture: &ProviderConformanceFixture,
 ) -> Result<ProviderConformanceObservation, ProbeError> {
-    let foreign = ForeignProbe::untouched()?;
-    let untouched = foreign.requests()?;
-    if probe.auth_requests() != 1 || probe.turn_requests() != 1 || !probe.completed() {
-        return Err(probe_error(probe, "verify.isolation"));
-    }
-    let selected = || {
-        ReportText::new(fixture.selected_adapter().to_owned())
-            .map_err(|_| ProbeError::stage("isolation.adapter-name"))
-    };
-    Ok(ProviderConformanceObservation::Isolation(ProviderIsolationObservation::new(
-        selected()?,
-        selected()?,
-        selected()?,
-        selected()?,
-        u64::try_from(untouched).map_err(|_| ProbeError::stage("isolation.request-count"))?,
-    )))
+    let foreign = ForeignProbe::untouched()
+        .and_then(ForeignProbe::finish)
+        .map_err(|failure| failure.with_evidence(probe.evidence("selected")))?;
+    let result = (|| {
+        if probe.auth_requests() != 1 || probe.turn_requests() != 1 || !probe.completed() {
+            return Err(ProbeError::stage("verify.isolation"));
+        }
+        let selected = || {
+            ReportText::new(fixture.selected_adapter().to_owned())
+                .map_err(|_| ProbeError::stage("isolation.adapter-name"))
+        };
+        Ok(ProviderConformanceObservation::Isolation(ProviderIsolationObservation::new(
+            selected()?,
+            selected()?,
+            selected()?,
+            selected()?,
+            u64::try_from(foreign.requests)
+                .map_err(|_| ProbeError::stage("isolation.request-count"))?,
+        )))
+    })();
+    result.map_err(|failure| {
+        failure.with_evidence(probe.evidence("selected")).with_evidence(foreign.evidence())
+    })
 }
 
 fn probe_error(probe: &Probe, stage: &'static str) -> ProbeError {

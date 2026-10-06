@@ -6,16 +6,24 @@ use std::time::Duration;
 use peritus_conformance::{ProviderConformanceFixture, ProviderScenario};
 use peritus_model_protocol::{EventEnvelope, ModelEvent, ModelRequest, ProviderProfile};
 use peritus_provider_core::{
-    CancellationToken, ModelProvider, ProcessLimits, RetryAction, RetryFailure, RetryObservation,
-    RetryPlan, RetryPolicy, SubmissionState, wait_for_backoff,
+    CancellationToken, ModelProvider, ProcessLimits, RetryPlan, wait_for_backoff,
 };
 use peritus_provider_openai::{CodexExecutable, CodexRuntimeConfig, CodexRuntimeProvider};
 
+#[cfg(test)]
+mod fixtures;
+mod foreign;
+#[cfg(test)]
+mod receipt_tests;
+mod recovery;
 mod request;
 #[cfg(test)]
 mod tests;
 
-use super::diagnostics::{ProbeError, event_evidence};
+use super::diagnostics::{ProbeError, event_evidence, scoped_evidence};
+
+pub(super) use foreign::ForeignProbe;
+pub(super) use recovery::RecoveryProbe;
 
 pub(super) use request::{profile, request};
 
@@ -27,76 +35,6 @@ pub(super) struct Probe {
     pub surfaces: Vec<String>,
     pub directory_removed: bool,
     pub sensitive_inputs: usize,
-}
-
-pub(super) struct RecoveryProbe {
-    pub first: Vec<EventEnvelope>,
-    pub second: Vec<EventEnvelope>,
-    pub trace: Vec<String>,
-    pub plan: RetryPlan,
-    pub directory_removed: bool,
-}
-
-impl RecoveryProbe {
-    pub fn run(fixture: &ProviderConformanceFixture) -> Result<Self, ProbeError> {
-        let scenario = fixture.scenario();
-        let profile = profile(scenario, 0xD4).map_err(|_| ProbeError::stage("recovery.profile"))?;
-        let request =
-            request(&profile, false, None).map_err(|_| ProbeError::stage("recovery.request"))?;
-        let request_bytes = u64::try_from(
-            request.canonical_bytes().map_err(|_| ProbeError::stage("request.canonical"))?.len(),
-        )
-        .map_err(|_| ProbeError::stage("request.length"))?;
-        let helper = FakeExecutable::install(scenario)?;
-        let trace_path = helper.trace_path();
-        let result =
-            recovery_attempts(fixture, request, request_bytes, &helper, profile, &trace_path);
-        let evidence =
-            result.as_ref().map_or_else(|_| Vec::new(), |(_, second, _)| event_evidence(second));
-        let ((first, second, plan), trace) = helper.finish(result, evidence)?;
-        Ok(Self { first, second, trace, plan, directory_removed: true })
-    }
-}
-
-fn recovery_attempts(
-    fixture: &ProviderConformanceFixture,
-    request: ModelRequest,
-    request_bytes: u64,
-    helper: &FakeExecutable,
-    profile: ProviderProfile,
-    trace_path: &Path,
-) -> Result<(Vec<EventEnvelope>, Vec<EventEnvelope>, RetryPlan), ProbeError> {
-    let scenario = fixture.scenario();
-    let provider = provider(helper.path(), profile)?;
-    let first = run_provider(&provider, request.clone(), scenario, trace_path)?;
-    let trace = read_trace(trace_path)
-        .map_err(|error| ProbeError::io("recovery.trace", &error).with_events(&first))?;
-    let failure = classified_fixture_failure(scenario, &trace)?;
-    let policy = RetryPolicy::new(
-        2,
-        [
-            Duration::from_millis(1),
-            Duration::from_secs(5),
-            Duration::from_secs(5),
-            Duration::from_secs(10),
-        ],
-        2 * 1024 * 1024,
-    )
-    .map_err(|error| ProbeError::provider("recovery.policy", &error))?;
-    let mut observation =
-        RetryObservation::new(1, Duration::ZERO, request_bytes, SubmissionState::Rejected, failure);
-    if scenario == ProviderScenario::RateLimitRetryAfter {
-        observation =
-            observation.with_retry_after(Duration::from_millis(fixture.retry_after_millis()));
-    }
-    let plan =
-        policy.plan(observation).map_err(|error| ProbeError::provider("recovery.plan", &error))?;
-    if plan.action() != RetryAction::RetryFresh {
-        return Err(ProbeError::stage("recovery.action").with_events(&first));
-    }
-    run_backoff(plan)?;
-    let second = run_provider(&provider, request, scenario, trace_path)?;
-    Ok((first, second, plan))
 }
 
 impl Probe {
@@ -157,31 +95,21 @@ impl Probe {
         count(&self.trace, "turn")
     }
 
+    pub fn evidence(&self, scope: &'static str) -> Vec<peritus_conformance::Observation> {
+        scoped_evidence(
+            scope,
+            ProbeError::observed(
+                "probe.observed",
+                &self.events,
+                &self.trace,
+                self.directory_removed,
+            )
+            .into_observations(),
+        )
+    }
+
     pub fn completed(&self) -> bool {
         matches!(self.events.last().map(EventEnvelope::event), Some(ModelEvent::ResponseCompleted))
-    }
-}
-
-pub(super) struct ForeignProbe {
-    helper: FakeExecutable,
-    _provider: CodexRuntimeProvider,
-}
-
-impl ForeignProbe {
-    pub fn untouched() -> Result<Self, ProbeError> {
-        let helper = FakeExecutable::install(ProviderScenario::AdapterIsolation)?;
-        let profile = profile(ProviderScenario::AdapterIsolation, 0xD3)
-            .map_err(|_| ProbeError::stage("foreign.profile"))?;
-        let provider = provider(helper.path(), profile)?;
-        Ok(Self { helper, _provider: provider })
-    }
-
-    pub fn requests(&self) -> Result<usize, ProbeError> {
-        match read_trace(&self.helper.trace_path()) {
-            Ok(trace) => Ok(trace.len()),
-            Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(0),
-            Err(error) => Err(ProbeError::io("foreign.trace", &error)),
-        }
     }
 }
 
@@ -275,25 +203,6 @@ fn run_backoff(plan: RetryPlan) -> Result<(), ProbeError> {
             .join()
             .map_err(|_| ProbeError::stage("backoff.join"))?
     })
-}
-
-fn classified_fixture_failure(
-    scenario: ProviderScenario,
-    trace: &[String],
-) -> Result<RetryFailure, ProbeError> {
-    match scenario {
-        ProviderScenario::RateLimitRetryAfter
-            if trace.iter().any(|entry| entry == "failure-rate-limited-250") =>
-        {
-            Ok(RetryFailure::RateLimited)
-        }
-        ProviderScenario::TransientRetry
-            if trace.iter().any(|entry| entry == "failure-transient-0") =>
-        {
-            Ok(RetryFailure::Server)
-        }
-        _ => Err(ProbeError::stage("recovery.fixture-classification")),
-    }
 }
 
 fn read_trace(path: &Path) -> Result<Vec<String>, std::io::Error> {

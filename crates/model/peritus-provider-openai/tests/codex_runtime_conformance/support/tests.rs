@@ -7,11 +7,15 @@ use super::super::diagnostics::ProbeError;
 use super::super::observations;
 use super::{FakeExecutable, Probe, profile, request};
 
-fn value<'a>(evidence: &'a [Observation], id: &str) -> &'a ObservationValue {
-    evidence.iter().find(|fact| fact.id().as_str() == id).expect("fact is present").value()
+pub(super) fn value<'a>(evidence: &'a [Observation], id: &str) -> &'a ObservationValue {
+    evidence
+        .iter()
+        .find(|fact| fact.id().as_str() == id)
+        .unwrap_or_else(|| panic!("missing fact {id}: {evidence:?}"))
+        .value()
 }
 
-fn text(evidence: &[Observation], id: &str) -> String {
+pub(super) fn text(evidence: &[Observation], id: &str) -> String {
     let ObservationValue::Text(value) = value(evidence, id) else {
         panic!("expected text fact {id}");
     };
@@ -91,6 +95,52 @@ fn io_and_cleanup_evidence_excludes_untrusted_error_text() {
     assert_eq!(text(&evidence, "probe.cleanup-io-kind"), "PermissionDenied");
     assert_eq!(value(&evidence, "probe.directory-removed"), &ObservationValue::Boolean(false));
     assert!(!format!("{evidence:?}").contains(canary));
+}
+
+#[test]
+fn receipt_foreign_trace_failure_retains_explicit_cleanup() {
+    let scenario = ProviderScenario::AdapterIsolation;
+    let helper = FakeExecutable::install(scenario).unwrap();
+    let directory = helper.directory.path().to_owned();
+    std::fs::create_dir(helper.trace_path()).unwrap();
+    let foreign =
+        super::ForeignProbe::from_helper(helper, profile(scenario, 0xe5).unwrap()).unwrap();
+    let error = foreign.finish().err().expect("blocked foreign trace cannot prove isolation");
+    assert!(!directory.exists(), "consuming finish explicitly cleans up");
+    let evidence = error.into_observations();
+    assert_eq!(text(&evidence, "probe.stage"), "foreign.trace");
+    assert_eq!(value(&evidence, "probe.trace-readable"), &ObservationValue::Boolean(false));
+    assert!(
+        !evidence.iter().any(|fact| fact.id().as_str() == "foreign.requests"),
+        "unreadable trace must not prove zero foreign requests"
+    );
+    assert_eq!(value(&evidence, "probe.directory-removed"), &ObservationValue::Boolean(true));
+    assert!(!format!("{evidence:?}").contains(&directory.to_string_lossy().into_owned()));
+}
+
+#[test]
+fn receipt_recovery_classification_keeps_completed_first_attempt() {
+    let scenario = ProviderScenario::RateLimitRetryAfter;
+    let fixture = super::fixtures::fixture(scenario);
+    let profile = profile(scenario, 0xe4).unwrap();
+    let request = request(&profile, false, None).unwrap();
+    let request_bytes = u64::try_from(request.canonical_bytes().unwrap().len()).unwrap();
+    let helper = FakeExecutable::install(scenario).unwrap();
+    let directory = helper.directory.path().to_owned();
+    let trace_path = helper.trace_path();
+    // A prior trace turn makes this real process complete rather than emit the expected
+    // first-turn rate-limit marker. Classification must reject but retain the observed success.
+    std::fs::write(&trace_path, b"turn\n").unwrap();
+    let Err(error) =
+        super::RecoveryProbe::run_installed(&fixture, request, request_bytes, profile, helper)
+    else {
+        panic!("unexpected first-attempt success cannot qualify as rate-limit recovery");
+    };
+    let evidence = error.into_observations();
+    assert_eq!(text(&evidence, "probe.stage"), "recovery.fixture-classification");
+    assert_eq!(text(&evidence, "recovery.first.probe.terminal"), "completed");
+    assert_eq!(value(&evidence, "probe.directory-removed"), &ObservationValue::Boolean(true));
+    assert!(!directory.exists());
 }
 
 #[cfg(target_os = "linux")]

@@ -133,6 +133,14 @@ readable trace counts, and explicit cleanup result in the A2 case report. Unread
 invent request counts. Fake trace I/O failures exit separately from scripted authentication
 rejection, and no failed exercise is retried into passing qualification.
 
+Exercises with multiple probes retain each completed probe under a distinct capability or
+recovery-attempt scope when a later invocation, validation, trace read, or cleanup fails. Recovery
+trace counts describe the shared fixture; terminal facts identify the individual attempts.
+Isolation explicitly finishes the unstarted foreign provider and reports its cleanup receipt.
+An absent trace proves zero requests only for that never-started private owner; an unreadable
+trace leaves the request count unknown. Earlier successful observations never replace the
+original failed stage or turn an infrastructure failure into a passing exercise.
+
 Direct dependencies are limited to Peritus protocol/core/foundation crates plus Serde, JSON,
 base64 projection, and temporary-directory isolation. Conformance, fake HTTP servers, and the Codex
 fake executable are development-only surfaces.
