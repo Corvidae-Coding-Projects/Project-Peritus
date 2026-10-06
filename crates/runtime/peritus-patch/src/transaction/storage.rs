@@ -25,8 +25,8 @@ pub(super) fn prepare_transaction(
     faults: &dyn FaultInjector,
 ) -> Result<(), PatchError> {
     for (index, operation) in plan.operations().iter().enumerate() {
-        if let Some(final_file) = operation.final_file() {
-            stage_final(workspace, transaction_directory, index, operation, final_file, faults)?;
+        if let crate::Preimage::Present { mode, .. } = operation.postimage() {
+            stage_final(workspace, transaction_directory, index, operation, mode, faults)?;
         }
     }
     sync_directory(transaction_directory, RollbackStatus::NotRequired)?;
@@ -41,7 +41,7 @@ fn stage_final(
     transaction_directory: &Path,
     index: usize,
     operation: &crate::PatchOperation,
-    final_file: &crate::FinalFile,
+    mode: crate::FileMode,
     faults: &dyn FaultInjector,
 ) -> Result<(), PatchError> {
     let staged = staged_path(transaction_directory, index);
@@ -73,11 +73,8 @@ fn stage_final(
         PatchError::io(PatchOperationContext::StageFinal, RollbackStatus::NotRequired, error)
             .at(operation.path().clone())
     })?;
-    file.write_all(final_file.bytes()).map_err(|error| {
-        PatchError::io(PatchOperationContext::StageFinal, RollbackStatus::NotRequired, error)
-            .at(operation.path().clone())
-    })?;
-    set_mode(&staged, final_file.mode())?;
+    operation.write_final_to(&mut file).map_err(|error| error.at(operation.path().clone()))?;
+    set_mode(&staged, mode)?;
     file.sync_all().map_err(|error| {
         PatchError::io(PatchOperationContext::StageFinal, RollbackStatus::NotRequired, error)
             .at(operation.path().clone())

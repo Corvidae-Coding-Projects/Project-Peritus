@@ -9,8 +9,6 @@ use peritus_model_protocol::{
 };
 use peritus_provider_core::ModelProvider;
 
-use super::context::prepare_messages;
-use super::context_port::ContextSession;
 use super::model_request::ModelTurnKind;
 use super::observation::model_visible_tool_output;
 use super::semantic::SemanticCompaction;
@@ -20,6 +18,7 @@ use super::{
     DeveloperToolExecutor, DeveloperToolObservation, DeveloperTrace, DeveloperTraceEvent,
     DeveloperUsage,
 };
+use super::{context::prepare_messages, context_port::ContextSession};
 
 impl DeveloperLoop {
     #[allow(
@@ -315,7 +314,10 @@ impl DeveloperLoop {
                             arguments: &call.arguments().to_wire_string(),
                         })?;
                     }
-                    let observation = tools.execute(&call)?;
+                    let observation = tools.execute_async(&call).await?;
+                    if request.cancellation.is_cancelled() {
+                        return Err(DeveloperLoopError::Cancelled);
+                    }
                     trace.account(DeveloperAccountingEvent::ToolCall)?;
                     if let Some(port) = interaction {
                         port.observe(DeveloperActivity::ToolFinished {

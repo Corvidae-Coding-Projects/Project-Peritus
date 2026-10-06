@@ -116,6 +116,12 @@ fn conversation(view: &dyn ConversationView) {
         std::path::Path::new("candidate.txt"),
         WorkspaceMutationKind::File,
     );
+    let pending: crate::WorkspaceCheckpointFuture<'_> = view
+        .checkpoint_before_workspace_mutation_async(
+            std::path::Path::new("candidate.txt"),
+            WorkspaceMutationKind::File,
+        );
+    drop(pending);
     let _: Result<(), String> = view.seal_workspace_mutation_checkpoint(
         std::path::Path::new("candidate.txt"),
         WorkspaceMutationKind::File,

@@ -41,6 +41,8 @@ mod tests;
 pub struct ControlStore {
     journal: SqliteJournal,
     store: StoreId,
+    checkpoint_artifacts: peritus_artifact_store::ArtifactStore,
+    checkpoint_config: peritus_artifact_store::StoreConfig,
     // Fields are dropped in declaration order: close the journal before releasing ownership.
     _owner: ControlOwner,
 }
@@ -61,6 +63,18 @@ impl Drop for ControlOwner {
 }
 
 impl ControlStore {
+    #[cfg(test)]
+    pub(crate) fn storage_pages_for_test(
+        &self,
+    ) -> Result<peritus_journal::SqliteStoragePages, Error> {
+        self.journal.storage_pages().map_err(Error::from)
+    }
+
+    #[cfg(test)]
+    pub(crate) fn limit_storage_pages_for_test(&mut self, pages: u64) -> Result<(), Error> {
+        self.journal.limit_storage_pages(pages).map(|_| ()).map_err(Error::from)
+    }
+
     /// Opens the caller-validated private control generation; never opens legacy run JSON.
     pub fn open(root: &Path, store: StoreId) -> Result<Self, Error> {
         std::fs::create_dir_all(root)?;
@@ -77,7 +91,19 @@ impl ControlStore {
             store,
             SqliteJournalOptions { busy_timeout: Duration::from_millis(250) },
         )?;
-        Ok(Self { journal, store, _owner: owner })
+        let checkpoint_config = peritus_artifact_store::StoreConfig::new(
+            root.join("checkpoint-artifacts"),
+            checkpoints::snapshot::CHUNK_BYTES as u64,
+            i64::MAX as u64,
+        )
+        .map_err(|error| Error::Io(std::io::Error::other(error)))?;
+        let checkpoint_artifacts =
+            peritus_artifact_store::ArtifactStore::open(checkpoint_config.clone())
+                .map_err(|error| Error::Io(std::io::Error::other(error)))?;
+        let mut control =
+            Self { journal, store, checkpoint_artifacts, checkpoint_config, _owner: owner };
+        control.recover_snapshot_publications()?;
+        Ok(control)
     }
 
     /// Atomically publishes exact intent, successor state and original receipt through C0.

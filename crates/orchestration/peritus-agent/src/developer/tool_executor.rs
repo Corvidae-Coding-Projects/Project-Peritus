@@ -4,6 +4,11 @@ use peritus_model_protocol::{CompletedToolCall, Message};
 
 use super::{DeveloperLoopError, DeveloperToolEffect, DeveloperToolObservation};
 
+/// Awaitable host execution that retains the current tool call and developer context.
+pub type DeveloperToolExecution<'a> = std::pin::Pin<
+    Box<dyn Future<Output = Result<DeveloperToolObservation, DeveloperLoopError>> + Send + 'a>,
+>;
+
 /// Executes already parsed provider tool calls against one explicitly supplied workspace.
 pub trait DeveloperToolExecutor: Send {
     /// Observes the exact model-visible messages after context assembly and protocol validation.
@@ -40,6 +45,15 @@ pub trait DeveloperToolExecutor: Send {
         &mut self,
         call: &CompletedToolCall,
     ) -> Result<DeveloperToolObservation, DeveloperLoopError>;
+
+    /// Executes a tool whose durable prerequisites may wait for external resources.
+    ///
+    /// # Errors
+    /// Has the same dispatch contract as [`Self::execute`]. Waiting must retain the proposal
+    /// and context, honor cancellation, and avoid dispatching effects before prerequisites hold.
+    fn execute_async<'a>(&'a mut self, call: &'a CompletedToolCall) -> DeveloperToolExecution<'a> {
+        Box::pin(async move { self.execute(call) })
+    }
 
     /// Explains why a text-only model response cannot yet complete this tool session.
     ///

@@ -286,10 +286,7 @@ fn completed_outcome(
 fn read_manifest(transaction_directory: &Path) -> io::Result<Vec<u8>> {
     let path = transaction_directory.join(MANIFEST_FILE);
     let metadata = fs::symlink_metadata(&path)?;
-    if metadata.file_type().is_symlink()
-        || !metadata.is_file()
-        || metadata.len() > peritus_codec::CodecLimits::PRODUCTION.max_payload_bytes as u64
-    {
+    if metadata.file_type().is_symlink() || !metadata.is_file() {
         return Err(io::Error::new(io::ErrorKind::InvalidData, "unsafe manifest file"));
     }
     fs::read(path)

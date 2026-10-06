@@ -45,6 +45,10 @@ pub enum ToolCheckpointBoundary {
 pub(super) type ToolCheckpointObserver =
     Arc<dyn Fn(ToolCheckpointBoundary) -> Result<(), String> + Send + Sync>;
 
+mod postimage;
+mod preflight;
+use postimage::exact_file_receipt;
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(super) struct PreparedMutation {
     path: String,
@@ -116,7 +120,26 @@ impl WorkspaceDeveloperTools {
         name: &str,
         arguments: &Value,
     ) -> Result<(), DeveloperLoopError> {
+        self.prepare_checkpoint_targets(name, arguments)?;
+        if let Some(observer) = &self.checkpoint_observer {
+            for (path, kind) in &self.checkpoint_targets {
+                observer(ToolCheckpointBoundary::BeforeMutation {
+                    path: path.clone(),
+                    kind: *kind,
+                })
+                .map_err(tool)?;
+            }
+        }
+        Ok(())
+    }
+
+    fn prepare_checkpoint_targets(
+        &mut self,
+        name: &str,
+        arguments: &Value,
+    ) -> Result<(), DeveloperLoopError> {
         self.prepared_mutations.clear();
+        self.checkpoint_targets.clear();
         match name {
             "workspace_write" => self.prepare_write_checkpoint(arguments),
             "workspace_patch" => self.prepare_patch_checkpoint(arguments),
@@ -140,7 +163,7 @@ impl WorkspaceDeveloperTools {
         {
             return Ok(());
         }
-        self.checkpoint_before_mutation(relative, WorkspaceMutationKind::File)?;
+        self.checkpoint_before_mutation(relative, WorkspaceMutationKind::File);
         self.prepared_mutations.push(prepared_file(relative, content.as_bytes()));
         Ok(())
     }
@@ -165,7 +188,7 @@ impl WorkspaceDeveloperTools {
         if replaced.len() > super::MAX_FILE_BYTES {
             return Err(tool("patched file exceeds the per-file byte bound"));
         }
-        self.checkpoint_before_mutation(relative, WorkspaceMutationKind::File)?;
+        self.checkpoint_before_mutation(relative, WorkspaceMutationKind::File);
         self.prepared_mutations.push(prepared_file(relative, replaced.as_bytes()));
         Ok(())
     }
@@ -188,7 +211,7 @@ impl WorkspaceDeveloperTools {
             {
                 return Err(tool("workspace_remove only removes an empty directory"));
             }
-            self.checkpoint_before_mutation(relative, WorkspaceMutationKind::EmptyDirectory)?;
+            self.checkpoint_before_mutation(relative, WorkspaceMutationKind::EmptyDirectory);
             self.prepared_mutations.push(PreparedMutation {
                 path: relative.to_owned(),
                 kind: WorkspaceMutationKind::EmptyDirectory,
@@ -201,7 +224,7 @@ impl WorkspaceDeveloperTools {
         }
         self.grounding.ensure_mutation_allowed(relative, true).map_err(tool)?;
         self.ownership.ensure_removable(&path)?;
-        self.checkpoint_before_mutation(relative, WorkspaceMutationKind::File)?;
+        self.checkpoint_before_mutation(relative, WorkspaceMutationKind::File);
         self.prepared_mutations.push(PreparedMutation {
             path: relative.to_owned(),
             kind: WorkspaceMutationKind::File,
@@ -210,7 +233,7 @@ impl WorkspaceDeveloperTools {
         Ok(())
     }
 
-    fn prepare_command_checkpoints(&self, arguments: &Value) -> Result<(), DeveloperLoopError> {
+    fn prepare_command_checkpoints(&mut self, arguments: &Value) -> Result<(), DeveloperLoopError> {
         if !self.command_has_effect(arguments)? {
             return Ok(());
         }
@@ -222,24 +245,23 @@ impl WorkspaceDeveloperTools {
             if target.is_dir() {
                 return Err(tool("command scope paths must be regular files or absent"));
             }
-            self.checkpoint_before_mutation(relative, WorkspaceMutationKind::File)?;
+            self.checkpoint_before_mutation(relative, WorkspaceMutationKind::File);
         }
-        if scope.paths().map_err(|error| tool(error.to_string()))? != paths {
+        if self
+            .in_place_scope
+            .as_ref()
+            .ok_or_else(|| tool("command scope disappeared"))?
+            .paths()
+            .map_err(|error| tool(error.to_string()))?
+            != paths
+        {
             return Err(tool("in-place command scope changed during checkpoint capture"));
         }
         Ok(())
     }
 
-    pub(super) fn checkpoint_before_mutation(
-        &self,
-        path: &str,
-        kind: WorkspaceMutationKind,
-    ) -> Result<(), DeveloperLoopError> {
-        if let Some(observer) = &self.checkpoint_observer {
-            observer(ToolCheckpointBoundary::BeforeMutation { path: path.to_owned(), kind })
-                .map_err(tool)?;
-        }
-        Ok(())
+    pub(super) fn checkpoint_before_mutation(&mut self, path: &str, kind: WorkspaceMutationKind) {
+        self.checkpoint_targets.push((path.to_owned(), kind));
     }
 
     pub(super) fn record_checkpoint(
@@ -328,61 +350,4 @@ fn digest_hex(bytes: &[u8]) -> String {
         let _ = write!(value, "{byte:02x}");
     }
     value
-}
-
-fn exact_file_receipt(
-    root: &std::path::Path,
-    path: &str,
-) -> Result<PreparedMutation, DeveloperLoopError> {
-    let target = checked(root, path, true)?;
-    let before = match fs::symlink_metadata(&target) {
-        Ok(metadata) => metadata,
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
-            return Ok(PreparedMutation {
-                path: path.to_owned(),
-                kind: WorkspaceMutationKind::File,
-                owned_postchange: CheckpointFileVersion::Absent,
-            });
-        }
-        Err(error) => return Err(tool(error.to_string())),
-    };
-    if !before.is_file() || before.file_type().is_symlink() {
-        return Err(tool("completed command scope is not a regular file or absent"));
-    }
-    let bytes = fs::read(&target).map_err(|error| tool(error.to_string()))?;
-    if bytes.len() > super::MAX_FILE_BYTES {
-        return Err(tool("completed command scope exceeds the per-file byte bound"));
-    }
-    let after = fs::symlink_metadata(&target).map_err(|error| tool(error.to_string()))?;
-    if !after.is_file()
-        || after.file_type().is_symlink()
-        || before.len() != after.len()
-        || before.modified().ok() != after.modified().ok()
-    {
-        return Err(tool("completed command scope changed while recording its receipt"));
-    }
-    Ok(PreparedMutation {
-        path: path.to_owned(),
-        kind: WorkspaceMutationKind::File,
-        owned_postchange: CheckpointFileVersion::present(
-            Sha256Digest::new(Sha256::digest(&bytes).into()),
-            bytes.len() as u64,
-            file_mode(&after),
-        ),
-    })
-}
-
-#[cfg(unix)]
-fn file_mode(metadata: &fs::Metadata) -> CheckpointFileMode {
-    use std::os::unix::fs::PermissionsExt as _;
-    if metadata.permissions().mode() & 0o111 == 0 {
-        CheckpointFileMode::Regular
-    } else {
-        CheckpointFileMode::Executable
-    }
-}
-
-#[cfg(not(unix))]
-const fn file_mode(_metadata: &fs::Metadata) -> CheckpointFileMode {
-    CheckpointFileMode::Regular
 }

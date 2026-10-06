@@ -23,6 +23,7 @@ pub struct PatchSet {
     expected_revision: RevisionNumber,
     operations: Vec<PatchOperation>,
     identity: PatchIdentity,
+    snapshot: bool,
 }
 
 impl PatchSet {
@@ -35,27 +36,56 @@ impl PatchSet {
         workspace_id: WorkspaceId,
         expected_generation: Generation,
         expected_revision: RevisionNumber,
+        operations: Vec<PatchOperation>,
+    ) -> Result<Self, PatchError> {
+        Self::checked(workspace_id, expected_generation, expected_revision, operations, false)
+    }
+
+    /// Plans restoration of streaming snapshots as one authorized, recoverable transaction.
+    /// Content is identified by digest and size instead of encoded into command payloads.
+    ///
+    /// # Errors
+    /// Rejects empty, duplicate, protected, conflicting or unencodable recovery metadata.
+    pub fn from_snapshot(
+        workspace_id: WorkspaceId,
+        expected_generation: Generation,
+        expected_revision: RevisionNumber,
+        operations: Vec<PatchOperation>,
+    ) -> Result<Self, PatchError> {
+        Self::checked(workspace_id, expected_generation, expected_revision, operations, true)
+    }
+
+    fn checked(
+        workspace_id: WorkspaceId,
+        expected_generation: Generation,
+        expected_revision: RevisionNumber,
         mut operations: Vec<PatchOperation>,
+        snapshot: bool,
     ) -> Result<Self, PatchError> {
         let total_bytes = operations.iter().try_fold(0usize, |total, operation| {
             total
                 .checked_add(operation.final_file().map_or(0, |file| file.bytes().len()))
                 .ok_or_else(arithmetic_error)
         })?;
-        if !crate::verified::patch_bounds_valid(
-            operations.len(),
-            total_bytes,
-            MAX_PATCH_OPERATIONS,
-            MAX_PATCH_BYTES,
-        ) {
+        if operations.is_empty()
+            || (!snapshot
+                && (!crate::verified::patch_bounds_valid(
+                    operations.len(),
+                    total_bytes,
+                    MAX_PATCH_OPERATIONS,
+                    MAX_PATCH_BYTES,
+                ) || operations.iter().any(PatchOperation::is_snapshot)))
+        {
             return Err(bounds_error());
         }
-        if operations.iter().any(|operation| {
-            matches!(
-                operation.preimage(),
-                Preimage::Present { size, .. } if size > MAX_FILE_BYTES as u64
-            )
-        }) {
+        if !snapshot
+            && operations.iter().any(|operation| {
+                matches!(
+                    operation.preimage(),
+                    Preimage::Present { size, .. } if size > MAX_FILE_BYTES as u64
+                )
+            })
+        {
             return Err(bounds_error());
         }
         operations.sort_unstable_by(|left, right| left.path().cmp(right.path()));
@@ -81,12 +111,27 @@ impl PatchSet {
                 .at(pair[0].path().clone()));
             }
         }
-        let identity =
-            canonical_identity(workspace_id, expected_generation, expected_revision, &operations)?;
-        let patch =
-            Self { workspace_id, expected_generation, expected_revision, operations, identity };
+        let identity = canonical_identity(
+            workspace_id,
+            expected_generation,
+            expected_revision,
+            &operations,
+            snapshot,
+        )?;
+        let patch = Self {
+            workspace_id,
+            expected_generation,
+            expected_revision,
+            operations,
+            identity,
+            snapshot,
+        };
         crate::transaction::validate_patch_manifest_capacity(&patch)?;
         Ok(patch)
+    }
+
+    pub(crate) const fn is_snapshot(&self) -> bool {
+        self.snapshot
     }
 
     /// Returns the bound workspace identity.
@@ -154,7 +199,11 @@ fn canonical_identity(
     generation: Generation,
     revision: RevisionNumber,
     operations: &[PatchOperation],
+    snapshot: bool,
 ) -> Result<PatchIdentity, PatchError> {
+    if snapshot {
+        return Ok(snapshot_identity(workspace_id, generation, revision, operations));
+    }
     let mut writer = CanonicalWriter::new(CodecLimits::PRODUCTION);
     let encoded = (|| {
         writer.write_fixed(b"peritus-patch-set-v1")?;
@@ -194,6 +243,43 @@ fn canonical_identity(
     })();
     encoded.map_err(|_| bounds_error())?;
     Ok(PatchIdentity::new(peritus_codec::sha256(writer.as_slice())))
+}
+
+fn snapshot_identity(
+    workspace_id: WorkspaceId,
+    generation: Generation,
+    revision: RevisionNumber,
+    operations: &[PatchOperation],
+) -> PatchIdentity {
+    use sha2::{Digest as _, Sha256};
+
+    let mut digest = Sha256::new();
+    digest.update(b"peritus-snapshot-v2\0");
+    digest.update(workspace_id.as_bytes());
+    digest.update(generation.get().to_be_bytes());
+    digest.update(revision.get().to_be_bytes());
+    digest.update((operations.len() as u64).to_be_bytes());
+    for operation in operations {
+        digest.update([match operation.kind() {
+            crate::PatchOperationKind::Create => 1,
+            crate::PatchOperationKind::Replace => 2,
+            crate::PatchOperationKind::Delete => 3,
+        }]);
+        digest.update((operation.path().as_str().len() as u64).to_be_bytes());
+        digest.update(operation.path().as_str().as_bytes());
+        for identity in [operation.preimage(), operation.postimage()] {
+            match identity {
+                Preimage::Absent => digest.update([0]),
+                Preimage::Present { digest: content, size, mode } => {
+                    digest.update([1]);
+                    digest.update(content.as_bytes());
+                    digest.update(size.to_be_bytes());
+                    digest.update([mode.tag()]);
+                }
+            }
+        }
+    }
+    PatchIdentity::new(peritus_types::Sha256Digest::new(digest.finalize().into()))
 }
 
 const fn bounds_error() -> PatchError {

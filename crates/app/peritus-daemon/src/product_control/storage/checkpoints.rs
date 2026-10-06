@@ -1,6 +1,7 @@
 //! Checkpoint before-images and restore transaction evidence in the control journal.
 
 use super::{ControlError, ControlOperation, ControlReceipt, ControlStore, Error};
+#[cfg(test)]
 use peritus_journal::StateInstall;
 use peritus_product_runner::control::{
     CheckpointFileVersion, CheckpointId, ControlIntent, RestoreStatus, UserCheckpoint,
@@ -9,8 +10,11 @@ use peritus_product_runner::control::{
 const CHECKPOINT_BODY_NAMESPACE: u16 = 3480;
 const RESTORE_TRANSACTION_NAMESPACE: u16 = 3481;
 
+pub(super) mod snapshot;
+
 impl ControlStore {
     /// Atomically publishes a checkpoint manifest and all present before-images.
+    #[cfg(test)]
     pub(crate) fn accept_checkpoint(
         &mut self,
         operation: &ControlOperation,
@@ -29,6 +33,7 @@ impl ControlStore {
     }
 
     /// Atomically records an exact recovery checkpoint before any restore filesystem effect.
+    #[cfg(test)]
     pub(crate) fn accept_restore_preparation(
         &mut self,
         operation: &ControlOperation,
@@ -52,6 +57,9 @@ impl ControlStore {
         operation: &ControlOperation,
         transaction_manifest: Option<Vec<u8>>,
     ) -> Result<ControlReceipt, Error> {
+        if let Some(receipt) = self.resolve(operation)? {
+            return Ok(receipt);
+        }
         let (restore, status, transaction_manifest_digest) = match operation.intent() {
             ControlIntent::SettleRestore {
                 restore, status, transaction_manifest_digest, ..
@@ -70,20 +78,11 @@ impl ControlStore {
                 Some(expected),
                 Some(bytes),
             ) if peritus_codec::sha256(&bytes).as_bytes() == expected => {
-                vec![StateInstall::new(
-                    RESTORE_TRANSACTION_NAMESPACE,
-                    restore.as_bytes().to_vec(),
-                    None,
-                    1,
-                    bytes,
-                )?]
+                return self.accept_restore_evidence(operation, *restore, *expected, &bytes);
             }
             (RestoreStatus::Conflict | RestoreStatus::RecoveryRequired, None, None) => Vec::new(),
             _ => return Err(ControlError::InvalidInput.into()),
         };
-        if let Some(receipt) = self.resolve(operation)? {
-            return Ok(receipt);
-        }
         self.accept_installs(operation, installs)
     }
 
@@ -134,6 +133,9 @@ impl ControlStore {
                 transaction_manifest_digest: Some(expected),
                 ..
             } => {
+                if self.verify_restore_evidence(*restore, expected, position)? {
+                    return Ok(());
+                }
                 let record = self
                     .journal
                     .state_record(RESTORE_TRANSACTION_NAMESPACE, restore.as_bytes())?
@@ -167,6 +169,9 @@ impl ControlStore {
         checkpoint: &UserCheckpoint,
         position: u64,
     ) -> Result<(), Error> {
+        if self.verify_snapshot_bodies(checkpoint, position)? {
+            return Ok(());
+        }
         for (index, path) in checkpoint.paths().iter().enumerate() {
             match path.checkpoint() {
                 CheckpointFileVersion::Absent => {
@@ -211,6 +216,7 @@ impl ControlStore {
     }
 }
 
+#[cfg(test)]
 fn checkpoint_installs(
     checkpoint: &UserCheckpoint,
     bodies: &[Option<Vec<u8>>],

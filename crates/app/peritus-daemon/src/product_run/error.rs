@@ -252,6 +252,13 @@ impl From<crate::product_control::ControlStoreError> for ProductRunServiceError 
                 "validate durable control state",
                 format!("{detail}. Reconcile the stored control state before retrying"),
             ),
+            ControlStoreError::StalePreimage => Self::Context {
+                code: AppErrorCode::NotReady,
+                retry: RetryDisposition::NewRequest,
+                subsystem: ResponsibleSubsystem::Workspace,
+                operation: "inspect checkpoint target",
+                detail: "The workspace target changed during inspection. Reobserve its current contents before mutation.".to_owned(),
+            },
         }
     }
 }

@@ -11,7 +11,38 @@ pub enum ControlStoreError {
     Workspace(peritus_workspace::WorkspaceError),
     Runner(peritus_product_runner::ProductRunnerError),
     PermissionDenied,
+    StalePreimage,
     Corrupt(&'static str),
+}
+
+impl ControlStoreError {
+    pub(crate) fn is_storage_exhausted(&self) -> bool {
+        let mut next: Option<&(dyn std::error::Error + 'static)> = Some(self);
+        while let Some(error) = next {
+            if error.downcast_ref::<JournalError>().is_some_and(JournalError::is_storage_exhausted)
+                || error.downcast_ref::<rusqlite::Error>().is_some_and(|error| {
+                    matches!(error, rusqlite::Error::SqliteFailure(failure, _)
+                        if failure.code == rusqlite::ErrorCode::DiskFull)
+                })
+                || error.downcast_ref::<std::io::Error>().is_some_and(|error| {
+                    matches!(
+                        error.kind(),
+                        std::io::ErrorKind::StorageFull | std::io::ErrorKind::QuotaExceeded
+                    )
+                })
+            {
+                return true;
+            }
+            // io::Error::source forwards to the wrapped error's source, which can skip the
+            // actual SQLite failure. Inspect the owned inner error before following its chain.
+            next = error
+                .downcast_ref::<std::io::Error>()
+                .and_then(std::io::Error::get_ref)
+                .map(|inner| inner as &(dyn std::error::Error + 'static))
+                .or_else(|| error.source());
+        }
+        false
+    }
 }
 
 impl From<ControlError> for ControlStoreError {
@@ -52,6 +83,9 @@ impl std::fmt::Display for ControlStoreError {
             Self::PermissionDenied => {
                 f.write_str("workspace writes are disabled by effective policy")
             }
+            Self::StalePreimage => f.write_str(
+                "workspace target changed during checkpoint inspection; reobserve before mutation",
+            ),
             Self::Corrupt(detail) => write!(f, "control integrity failure: {detail}"),
         }
     }
@@ -64,7 +98,7 @@ impl std::error::Error for ControlStoreError {
             Self::Io(error) => Some(error),
             Self::Workspace(error) => Some(error),
             Self::Runner(error) => Some(error),
-            Self::Corrupt(_) | Self::PermissionDenied => None,
+            Self::Corrupt(_) | Self::PermissionDenied | Self::StalePreimage => None,
         }
     }
 }

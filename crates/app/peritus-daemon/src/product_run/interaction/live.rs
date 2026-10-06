@@ -127,6 +127,14 @@ impl ConversationView for LiveConversation {
             .capture_automatic_checkpoint(&start, self.run_id, relative_path, kind)
             .map_err(|error| format!("automatic workspace checkpoint could not be durably captured: {error}. Peritus did not change the workspace"))
     }
+    #[cfg(not(verus_only))]
+    fn checkpoint_before_workspace_mutation_async<'a>(
+        &'a self,
+        relative_path: &'a std::path::Path,
+        kind: WorkspaceMutationKind,
+    ) -> peritus_product_runner::WorkspaceCheckpointFuture<'a> {
+        Box::pin(self.capture_checkpoint_when_available(relative_path, kind))
+    }
     fn seal_workspace_mutation_checkpoint(
         &self,
         relative_path: &std::path::Path,
@@ -356,6 +364,8 @@ impl DeveloperInteraction for LiveConversation {
         })
     }
 }
+#[cfg(not(verus_only))]
+mod checkpoint_wait;
 #[cfg(not(verus_only))]
 mod request;
 mod review;

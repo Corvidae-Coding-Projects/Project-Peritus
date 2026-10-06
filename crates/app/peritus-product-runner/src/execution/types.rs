@@ -79,6 +79,10 @@ pub enum WorkspaceMutationKind {
     EmptyDirectory,
 }
 
+/// Durable checkpoint preflight that can wait without releasing the pending tool context.
+pub type WorkspaceCheckpointFuture<'a> =
+    std::pin::Pin<Box<dyn Future<Output = Result<(), String>> + Send + 'a>>;
+
 /// Live daemon-owned conversation supplied to every model turn.
 pub trait ConversationView: Send + Sync {
     /// Whether media is supplied only through the revisioned input port. Governed conversations
@@ -137,6 +141,17 @@ pub trait ConversationView: Send + Sync {
         _kind: WorkspaceMutationKind,
     ) -> Result<(), String> {
         Ok(())
+    }
+    /// Awaitable checkpoint preflight for recoverable resource shortages.
+    ///
+    /// # Errors
+    /// Returns an error for cancellation, changed authority or an unrecoverable checkpoint.
+    fn checkpoint_before_workspace_mutation_async<'a>(
+        &'a self,
+        relative_path: &'a Path,
+        kind: WorkspaceMutationKind,
+    ) -> WorkspaceCheckpointFuture<'a> {
+        Box::pin(async move { self.checkpoint_before_workspace_mutation(relative_path, kind) })
     }
     /// Durably seals an automatic checkpoint with the exact postimage produced by an owned tool.
     ///

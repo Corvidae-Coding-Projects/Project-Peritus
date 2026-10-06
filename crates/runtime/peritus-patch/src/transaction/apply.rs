@@ -154,9 +154,10 @@ fn validate_platform_modes(plan: &PatchPlan) -> Result<(), PatchError> {
             operation.preimage(),
             Preimage::Present { mode: crate::FileMode::Executable, .. }
         );
-        let executable_final = operation
-            .final_file()
-            .is_some_and(|final_file| final_file.mode() == crate::FileMode::Executable);
+        let executable_final = matches!(
+            operation.postimage(),
+            Preimage::Present { mode: crate::FileMode::Executable, .. }
+        );
         if executable_preimage || executable_final {
             return Err(PatchError::message(
                 ErrorCode::InvalidContent,
@@ -266,12 +267,12 @@ fn install_operation(
         sync_with_fault(faults, parent, RollbackStatus::Indeterminate)?;
         sync_directory(transaction_directory, RollbackStatus::Indeterminate)?;
     }
-    if let Some(final_file) = operation.final_file() {
+    if let Preimage::Present { mode, .. } = operation.postimage() {
         if operation.kind() == crate::PatchOperationKind::Replace {
             preserve_replacement_permissions(
                 &staged_path(transaction_directory, index),
                 &backup_path(transaction_directory, index),
-                final_file.mode(),
+                mode,
             )?;
         }
         fs::rename(staged_path(transaction_directory, index), &target).map_err(|error| {
@@ -309,7 +310,7 @@ fn verify_plan_preimages(workspace: &Path, plan: &PatchPlan) -> Result<(), Patch
                 (Observation::Absent, Preimage::Present { .. }) => {
                     (ErrorCode::PreimageMissing, "required preimage file is absent")
                 }
-                (Observation::Present(_) | Observation::Oversized, Preimage::Absent) => {
+                (Observation::Present(_), Preimage::Absent) => {
                     (ErrorCode::PreimageUnexpected, "create target already exists")
                 }
                 _ => {

@@ -2,7 +2,7 @@
 
 use crate::{
     ErrorCode, FinalFile, PatchError, PatchOperationContext, Preimage, RecoveryClass,
-    RollbackStatus, WorkspacePath,
+    RollbackStatus, SnapshotFile, WorkspacePath,
 };
 
 /// Kind of one canonical patch operation.
@@ -22,6 +22,7 @@ pub struct PatchOperation {
     path: WorkspacePath,
     preimage: Preimage,
     final_file: Option<FinalFile>,
+    snapshot: Option<SnapshotFile>,
     kind: PatchOperationKind,
 }
 
@@ -33,6 +34,7 @@ impl PatchOperation {
             path,
             preimage: Preimage::Absent,
             final_file: Some(final_file),
+            snapshot: None,
             kind: PatchOperationKind::Create,
         }
     }
@@ -48,7 +50,13 @@ impl PatchOperation {
         final_file: FinalFile,
     ) -> Result<Self, PatchError> {
         require_present(preimage)?;
-        Ok(Self { path, preimage, final_file: Some(final_file), kind: PatchOperationKind::Replace })
+        Ok(Self {
+            path,
+            preimage,
+            final_file: Some(final_file),
+            snapshot: None,
+            kind: PatchOperationKind::Replace,
+        })
     }
 
     /// Constructs a deletion with an exact present-file preimage.
@@ -58,7 +66,75 @@ impl PatchOperation {
     /// Returns invalid-content when `preimage` is absent.
     pub fn delete(path: WorkspacePath, preimage: Preimage) -> Result<Self, PatchError> {
         require_present(preimage)?;
-        Ok(Self { path, preimage, final_file: None, kind: PatchOperationKind::Delete })
+        Ok(Self {
+            path,
+            preimage,
+            final_file: None,
+            snapshot: None,
+            kind: PatchOperationKind::Delete,
+        })
+    }
+
+    /// Creates an absent target from an owned streaming snapshot.
+    #[must_use]
+    pub const fn create_snapshot(path: WorkspacePath, snapshot: SnapshotFile) -> Self {
+        Self {
+            path,
+            preimage: Preimage::Absent,
+            final_file: None,
+            snapshot: Some(snapshot),
+            kind: PatchOperationKind::Create,
+        }
+    }
+
+    /// Replaces an exactly identified target from an owned streaming snapshot.
+    ///
+    /// # Errors
+    /// Rejects an absent preimage.
+    pub fn replace_snapshot(
+        path: WorkspacePath,
+        preimage: Preimage,
+        snapshot: SnapshotFile,
+    ) -> Result<Self, PatchError> {
+        require_present(preimage)?;
+        Ok(Self {
+            path,
+            preimage,
+            final_file: None,
+            snapshot: Some(snapshot),
+            kind: PatchOperationKind::Replace,
+        })
+    }
+
+    /// Returns the exact postimage, regardless of whether content is inline or streamed.
+    #[must_use]
+    pub fn postimage(&self) -> Preimage {
+        if let Some(snapshot) = &self.snapshot {
+            return snapshot.identity();
+        }
+        self.final_file.as_ref().map_or(Preimage::Absent, |file| {
+            Preimage::present(file.digest(), file.size(), file.mode())
+        })
+    }
+
+    pub(crate) const fn is_snapshot(&self) -> bool {
+        self.snapshot.is_some()
+    }
+
+    pub(crate) fn write_final_to(&self, output: &mut dyn std::io::Write) -> Result<(), PatchError> {
+        if let Some(snapshot) = &self.snapshot {
+            return snapshot.write_to(output);
+        }
+        if let Some(file) = &self.final_file {
+            output.write_all(file.bytes()).map_err(|error| {
+                PatchError::io(
+                    PatchOperationContext::StageFinal,
+                    RollbackStatus::NotRequired,
+                    error,
+                )
+            })?;
+        }
+        Ok(())
     }
 
     /// Returns the checked target path.
@@ -79,7 +155,7 @@ impl PatchOperation {
         self.preimage
     }
 
-    /// Returns final file content for create and replace operations.
+    /// Returns inline final content. Streamed operations expose their identity via `postimage`.
     #[must_use]
     pub const fn final_file(&self) -> Option<&FinalFile> {
         self.final_file.as_ref()

@@ -3,7 +3,7 @@
 use super::{
     FileReadSelection, FolderIdentity, FolderInspection, InspectedFile,
     MAX_INSPECTION_SOURCE_BYTES, WorkspaceError, changed, invalid, read_error,
-    selection::Selection,
+    selection::Selection, snapshot_io,
 };
 use cap_fs_ext::MetadataExt as _;
 use cap_std::fs::Metadata;
@@ -13,6 +13,43 @@ use sha2::{Digest as _, Sha256};
 use std::io::Read as _;
 
 impl FolderInspection {
+    /// Streams a complete snapshot into caller-owned storage using fixed working memory.
+    /// Snapshot size is independent of prompt inclusion and inline patch payload limits.
+    ///
+    /// # Errors
+    /// Rejects unsafe paths, changed source/root identity and storage or read failures.
+    pub fn copy_snapshot(
+        &self,
+        path: &WorkspacePath,
+        output: &mut impl std::io::Write,
+    ) -> Result<(Sha256Digest, u64), WorkspaceError> {
+        let mut file = self.open_file(path)?;
+        let before = file.metadata().map_err(snapshot_io)?;
+        let mut hasher = Sha256::new();
+        let mut bytes = 0_u64;
+        let mut chunk = vec![0_u8; 64 * 1024];
+        loop {
+            let count = file.read(&mut chunk).map_err(snapshot_io)?;
+            if count == 0 {
+                break;
+            }
+            bytes = bytes.checked_add(count as u64).ok_or_else(changed)?;
+            if bytes > before.len() {
+                return Err(changed());
+            }
+            output.write_all(&chunk[..count]).map_err(snapshot_io)?;
+            hasher.update(&chunk[..count]);
+        }
+        if bytes != before.len()
+            || !same_version(&before, &file.metadata().map_err(snapshot_io)?)?
+            || !same_version(&before, &self.open_file(path)?.metadata().map_err(snapshot_io)?)?
+            || FolderIdentity::observe(self.identity.root()).map_err(snapshot_io)? != self.identity
+        {
+            return Err(changed());
+        }
+        Ok((Sha256Digest::new(hasher.finalize().into()), bytes))
+    }
+
     /// Reads an exact selection while hashing the complete bounded source.
     ///
     /// `maximum_bytes` bounds included bytes, not total source size. A whole-file selection
@@ -69,8 +106,8 @@ fn same_version(before: &Metadata, after: &Metadata) -> Result<bool, WorkspaceEr
     let matches = before.dev() == after.dev()
         && before.ino() == after.ino()
         && before.len() == after.len()
-        && before.modified().map_err(|error| read_error(&error))?
-            == after.modified().map_err(|error| read_error(&error))?;
+        && before.permissions().readonly() == after.permissions().readonly()
+        && before.modified().map_err(snapshot_io)? == after.modified().map_err(snapshot_io)?;
     #[cfg(unix)]
     let matches = {
         use cap_std::fs::MetadataExt as _;

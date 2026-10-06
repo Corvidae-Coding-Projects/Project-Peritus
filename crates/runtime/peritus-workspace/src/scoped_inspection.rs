@@ -91,12 +91,12 @@ impl FolderInspection {
     /// Rejects root replacement, reparse points, non-directories, and unavailable roots.
     pub fn open(identity: &FolderIdentity) -> Result<Self, WorkspaceError> {
         let directory = Dir::open_ambient_dir(identity.root(), cap_std::ambient_authority())
-            .map_err(|error| read_error(&error))?;
+            .map_err(snapshot_io)?;
         let file = directory.into_std_file();
-        let metadata = file.metadata().map_err(|error| read_error(&error))?;
+        let metadata = file.metadata().map_err(snapshot_io)?;
         reject_reparse(&metadata)?;
         let observed = FolderIdentity::from_metadata(identity.root().to_path_buf(), &metadata)
-            .map_err(|error| read_error(&error))?;
+            .map_err(snapshot_io)?;
         if &observed != identity {
             return Err(changed());
         }
@@ -111,22 +111,21 @@ impl FolderInspection {
 
     fn open_file(&self, path: &WorkspacePath) -> Result<File, WorkspaceError> {
         let mut components = path.as_str().split('/').peekable();
-        let mut parent = self.root.try_clone().map_err(|error| read_error(&error))?;
+        let mut parent = self.root.try_clone().map_err(snapshot_io)?;
         while let Some(component) = components.next() {
             if components.peek().is_none() {
                 let mut options = OpenOptions::new();
                 options.read(true).follow(FollowSymlinks::No).nonblock(true);
-                let file =
-                    parent.open_with(component, &options).map_err(|error| read_error(&error))?;
-                let metadata = file.metadata().map_err(|error| read_error(&error))?;
+                let file = parent.open_with(component, &options).map_err(snapshot_io)?;
+                let metadata = file.metadata().map_err(snapshot_io)?;
                 reject_cap_reparse(&metadata)?;
                 if !metadata.is_file() || metadata.is_symlink() {
                     return Err(invalid("selected source is not a regular file"));
                 }
                 return Ok(file);
             }
-            parent = parent.open_dir_nofollow(component).map_err(|error| read_error(&error))?;
-            reject_cap_reparse(&parent.dir_metadata().map_err(|error| read_error(&error))?)?;
+            parent = parent.open_dir_nofollow(component).map_err(snapshot_io)?;
+            reject_cap_reparse(&parent.dir_metadata().map_err(snapshot_io)?)?;
         }
         Err(invalid("source path is empty"))
     }
@@ -171,6 +170,9 @@ fn read_error(error: &io::Error) -> WorkspaceError {
         recovery,
         "scoped file inspection failed; no content was published",
     )
+}
+fn snapshot_io(error: io::Error) -> WorkspaceError {
+    read_error(&error).with_io_source(error)
 }
 const fn invalid(detail: &'static str) -> WorkspaceError {
     WorkspaceError::new(

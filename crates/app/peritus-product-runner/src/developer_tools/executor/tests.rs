@@ -12,6 +12,7 @@ mod admission;
 mod checkpoint;
 mod command;
 mod removal;
+mod waiting;
 
 static NEXT_CALL_ID: AtomicU64 = AtomicU64::new(1);
 

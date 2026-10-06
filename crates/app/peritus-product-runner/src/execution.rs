@@ -25,7 +25,7 @@ pub use turn_result::{AppliedTurn, AppliedWrite, HostTurnEvidence};
 pub use types::{
     ConversationView, ProductDeliveryScope, ProductRunInput, ProductRunOutcome, ProductRunOutput,
     ProductRunPhase, ProductRunQuestion, ProductRunUpdate, ProductRunner, RoleProviders,
-    RunObserver, WorkspaceMutationKind,
+    RunObserver, WorkspaceCheckpointFuture, WorkspaceMutationKind,
 };
 
 use peritus_obligations::FailureDisposition;

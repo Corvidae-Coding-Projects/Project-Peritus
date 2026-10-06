@@ -18,7 +18,7 @@ use peritus_product_runner::control::{
     RestoreId, RestoreOperation, RestoreStatus, UserCheckpoint,
 };
 use peritus_types::{ActorId, Generation, RevisionNumber, Sha256Digest};
-use peritus_workspace::{FileReadSelection, FolderIdentity, FolderInspection};
+use peritus_workspace::{FolderIdentity, FolderInspection};
 use std::{collections::BTreeSet, fs, io, path::Path};
 
 mod capture;
@@ -27,7 +27,7 @@ mod lookup;
 mod projection;
 mod recovery;
 mod rewind;
-use capture::{check_protected, observe_path};
+use capture::{check_protected, observe_version};
 use projection::{
     app_error, checkpoint_references, derived_id, digest_id, external_effects, noop_manifest,
     patch_input, patch_mode, patch_preimage, public_checkpoint, public_restore, public_version,
@@ -47,7 +47,7 @@ const EXTERNAL_EFFECT: &str =
 struct CapturedPath {
     path: String,
     version: CheckpointFileVersion,
-    body: Option<Vec<u8>>,
+    body: Option<tempfile::TempPath>,
 }
 
 struct CapturedCoverage {
@@ -68,13 +68,13 @@ impl ProductRunService {
         if checkpoint.paths().is_empty() {
             return Err(ControlError::InvalidInput.into());
         }
-        let observed = self.capture_checkpoint_paths(source, request.child(), checkpoint)?;
+        let observed = self.observe_checkpoint_paths(source, request.child(), checkpoint)?;
         if observed
             .iter()
             .zip(checkpoint.paths())
             .any(|(current, expected)| current.version != expected.checkpoint())
         {
-            return Err(ControlError::StaleRevision.into());
+            return Err(Error::StalePreimage);
         }
         Ok(())
     }
@@ -169,8 +169,8 @@ impl ProductRunService {
             ControlIntent::CreateCheckpoint(checkpoint_value.clone()),
         );
         let bodies = coverage.paths.into_iter().map(|path| path.body).collect::<Vec<_>>();
-        let receipt =
-            self.with_controls(false, |store| store.accept_checkpoint(&operation, &bodies))?;
+        let receipt = self
+            .with_controls(false, |store| store.accept_checkpoint_snapshots(&operation, &bodies))?;
         public_checkpoint(command.query(), receipt.accepted_revision(), &checkpoint_value)
     }
 

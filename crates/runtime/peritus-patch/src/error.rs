@@ -159,6 +159,11 @@ impl PatchError {
         self
     }
 
+    pub(crate) fn with_io_source(mut self, source: io::Error) -> Self {
+        self.source = Some(source);
+        self
+    }
+
     pub(crate) fn with_rollback(mut self, rollback: RollbackStatus) -> Self {
         self.rollback = rollback;
         if rollback == RollbackStatus::Indeterminate {

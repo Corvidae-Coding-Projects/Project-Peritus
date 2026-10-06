@@ -63,6 +63,25 @@ progress can recover a lost final acknowledgement without filesystem effects. Co
 are published atomically, and older version-one completion records remain readable. Legacy runs
 without the required preimages and checkpoint retain their previous restoration path.
 
+Workspace checkpoints stream complete before-images into immutable content-addressed chunks.
+One atomic control-journal root publishes the checkpoint and its references; chunk size is a transfer
+buffer, not a file-size or aggregate-content ceiling. Manual and automatic capture, rewind recovery,
+sealing, and fork validation use the same exact path, digest, mode, revision, and ownership contract.
+Restores remain one authorized C1 transaction. Their retained transaction evidence also uses chunks
+so a large restore cannot succeed and then exceed a whole-value journal limit during settlement.
+
+Automatic checkpoint preflight waits asynchronously on actual storage exhaustion. The admitted
+tool, run, and provider-session binding stay alive; public observations report the wait, freeing
+storage resumes the pending tool, and cancellation remains available. Waiting imposes no deadline
+or attempt count. Permissions and proposal targets are revalidated before dispatch. Stale preimages,
+storage failures, integrity errors, and control revision mismatches retain distinct error causes.
+
+New writers use chunk roots and version-two restore transactions. Existing whole-value checkpoint
+bodies, restore receipts, and prepared version-one transactions remain readable with their original
+identities. Publication recovery preserves accepted references and reclaims abandoned ones after
+crashes. Older binaries cannot read newly published chunk roots; reverting a binary requires its
+matching pre-upgrade state, while this version preserves and reads the older evidence in place.
+
 Interactive tool observations retain a bounded command/operation label before execution, then
 update the same activity with the observed result. Command previews include exit status and
 stdout/stderr; rejected calls and active background handles are not presented as completed success.

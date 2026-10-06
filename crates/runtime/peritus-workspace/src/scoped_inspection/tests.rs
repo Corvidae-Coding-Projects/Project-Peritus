@@ -90,6 +90,37 @@ fn empty_files_large_ranged_files_and_invalid_bounds_have_explicit_results() {
     }
 }
 
+#[test]
+fn snapshot_streaming_has_no_prompt_or_patch_file_ceiling_and_retains_storage_errors() {
+    use std::error::Error as _;
+    struct Full;
+    impl io::Write for Full {
+        fn write(&mut self, _: &[u8]) -> io::Result<usize> {
+            Err(io::Error::from(io::ErrorKind::StorageFull))
+        }
+        fn flush(&mut self) -> io::Result<()> {
+            Ok(())
+        }
+    }
+    let (directory, reader) = fixture();
+    let source = vec![9_u8; peritus_patch::MAX_FILE_BYTES + 1];
+    fs::write(directory.path().join("large"), &source).expect("source");
+    let mut destination = tempfile::tempfile().expect("destination");
+    let (digest, size) = reader.copy_snapshot(&path("large"), &mut destination).expect("snapshot");
+    assert_eq!(digest, peritus_codec::sha256(&source));
+    assert_eq!(size, source.len() as u64);
+    let error = reader.copy_snapshot(&path("large"), &mut Full).expect_err("storage full");
+    assert_eq!(
+        error
+            .source()
+            .expect("original source")
+            .downcast_ref::<io::Error>()
+            .expect("I/O error")
+            .kind(),
+        io::ErrorKind::StorageFull
+    );
+}
+
 #[cfg(unix)]
 #[test]
 fn symlinks_at_every_component_and_replaced_roots_cannot_read_an_outside_file() {
@@ -101,6 +132,8 @@ fn symlinks_at_every_component_and_replaced_roots_cannot_read_an_outside_file() 
     symlink(outside.path().join("secret"), directory.path().join("leaf")).expect("file symlink");
     assert!(reader.read_file(&path("alias/secret"), FileReadSelection::all(), 100).is_err());
     assert!(reader.read_file(&path("leaf"), FileReadSelection::all(), 100).is_err());
+    assert!(reader.copy_snapshot(&path("alias/secret"), &mut io::sink()).is_err());
+    assert!(reader.copy_snapshot(&path("leaf"), &mut io::sink()).is_err());
     let child = directory.path().join("selected");
     fs::create_dir(&child).expect("child");
     let identity = FolderIdentity::observe(&child).expect("identity");

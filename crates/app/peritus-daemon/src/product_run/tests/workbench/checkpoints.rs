@@ -74,6 +74,7 @@ mod scenario;
 use scenario::checkpoint_scenario;
 
 mod automatic;
+mod storage_wait;
 
 mod support;
 use support::pipeline_responses;

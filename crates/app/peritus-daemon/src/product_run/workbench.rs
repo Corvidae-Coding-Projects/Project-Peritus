@@ -379,12 +379,12 @@ pub(super) fn error_value(error: Error) -> AppProtocolError {
         Error::Control(ControlError::NotFound) => AppErrorCode::InvalidIdentifier,
         Error::Io(_) | Error::Journal(_) => AppErrorCode::Backpressure,
         Error::PermissionDenied => AppErrorCode::ReadOnly,
-        Error::Workspace(error)
-            if error.recovery() == peritus_workspace::RecoveryClass::Reobserve =>
-        {
-            AppErrorCode::StaleRevision
+        Error::Workspace(error) if std::error::Error::source(&error).is_some() => {
+            AppErrorCode::Backpressure
         }
-        Error::Corrupt(_) | Error::Workspace(_) | Error::Runner(_) => AppErrorCode::NotReady,
+        Error::Corrupt(_) | Error::Workspace(_) | Error::Runner(_) | Error::StalePreimage => {
+            AppErrorCode::NotReady
+        }
     };
     AppProtocolError::new(code, None)
 }

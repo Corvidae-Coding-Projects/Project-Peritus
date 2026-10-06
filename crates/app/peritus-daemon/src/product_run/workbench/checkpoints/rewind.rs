@@ -8,7 +8,7 @@ use super::{
     WorkbenchCommand, WorkbenchIntent, WorkbenchRestoreReceipt, WorkbenchRewindDisposition,
     WorkbenchRewindPath, WorkbenchRewindPreview, WorkbenchRewindRequest, WorkspacePath, app_error,
     check_protected, check_record, checkpoint_references, derived_id, error_response,
-    external_effects, noop_manifest, observe_path, patch_input, patch_mode, patch_preimage,
+    external_effects, noop_manifest, observe_version, patch_input, patch_mode, patch_preimage,
     public_restore, public_version,
 };
 
@@ -77,7 +77,7 @@ impl ProductRunService {
         let mut paths = Vec::with_capacity(checkpoint.paths().len());
         for checkpoint_path in checkpoint.paths() {
             check_protected(root, checkpoint_path.path(), &contract, &protected)?;
-            let observed = observe_path(&identity, checkpoint_path.path())?.version;
+            let observed = observe_version(&identity, checkpoint_path.path())?;
             let disposition = if observed == checkpoint_path.checkpoint() {
                 WorkbenchRewindDisposition::Unchanged
             } else if checkpoint_path.owned_postchange().is_none() {
@@ -151,7 +151,7 @@ impl ProductRunService {
         }
         let current = self.rewind_preview(actor, request)?;
         if &current != confirmed {
-            return Err(ControlError::StaleRevision.into());
+            return Err(Error::StalePreimage);
         }
 
         let checkpoint_id = CheckpointId::new(request.checkpoint().into_bytes())?;
@@ -179,7 +179,7 @@ impl ProductRunService {
         if observed.iter().zip(confirmed.paths()).any(|(captured, preview)| {
             public_version(captured.version) != preview.observed_current()
         }) {
-            return Err(ControlError::StaleRevision.into());
+            return Err(Error::StalePreimage);
         }
         let recovery_id = CheckpointId::new(derived_id(
             b"peritus-workbench-rewind-recovery-v1\0",
@@ -264,7 +264,7 @@ impl ProductRunService {
                 if !conversation_only {
                     self.require_folder_write(store, actor, command, command.expected_revision())?;
                 }
-                let preparation = store.accept_restore_preparation(&prepare, &recovery_bodies)?;
+                let preparation = store.accept_restore_snapshots(&prepare, &recovery_bodies)?;
                 #[cfg(test)]
                 check_rewind_fault(command, RewindFaultPoint::AfterPrepare)?;
                 let (status, terminal_conflicts, transaction_manifest) = if !conflicts.is_empty() {

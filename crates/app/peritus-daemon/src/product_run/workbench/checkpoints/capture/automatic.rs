@@ -96,7 +96,7 @@ impl ProductRunService {
             record.revision(),
             ControlIntent::CreateAutomaticCheckpoint(value),
         );
-        self.with_controls(false, |store| store.accept_checkpoint(&operation, &bodies))
+        self.with_controls(false, |store| store.accept_checkpoint_snapshots(&operation, &bodies))
             .map(|receipt| receipt.accepted_revision())
     }
 
@@ -160,7 +160,7 @@ impl ProductRunService {
         let workspace =
             WorkspaceId::new(*start.workspace_bytes()).map_err(|_| ControlError::InvalidInput)?;
         let query = public_query(conversation, workspace)?;
-        let captured = self.capture_checkpoint_paths(record, query, checkpoint)?;
+        let captured = self.observe_checkpoint_paths(record, query, checkpoint)?;
         self.seal_checkpoint_versions(
             start,
             run,

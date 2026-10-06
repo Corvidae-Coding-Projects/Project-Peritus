@@ -7,6 +7,8 @@ use peritus_product_runner::control::{
 };
 
 const LEGACY_PROJECTION_SIZE: usize = 64;
+#[path = "checkpoints/snapshots.rs"]
+mod snapshots;
 
 #[test]
 fn full_legacy_automatic_projection_accepts_new_paths_and_a_user_checkpoint_after_restart() {

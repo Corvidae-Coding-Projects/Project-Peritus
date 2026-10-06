@@ -33,6 +33,7 @@ mod active;
 mod checkpoint_observer;
 mod command;
 mod construction;
+mod dispatch;
 mod in_place;
 mod inspection_progress;
 
@@ -67,7 +68,9 @@ pub struct WorkspaceDeveloperTools {
     progress_feedback_pending: bool,
     inspection_progress: inspection_progress::InspectionProgress,
     checkpoint_observer: Option<ToolCheckpointObserver>,
+    checkpoint_view: Option<std::sync::Arc<dyn crate::ConversationView>>,
     prepared_mutations: Vec<PreparedMutation>,
+    checkpoint_targets: Vec<(String, crate::WorkspaceMutationKind)>,
     pub(super) protection_view: Option<std::sync::Arc<dyn crate::ConversationView>>,
 }
 
@@ -82,6 +85,14 @@ impl WorkspaceDeveloperTools {
 
     pub(crate) fn with_checkpoint_observer(mut self, observer: ToolCheckpointObserver) -> Self {
         self.checkpoint_observer = Some(observer);
+        self
+    }
+
+    pub(crate) fn with_checkpoint_view(
+        mut self,
+        view: std::sync::Arc<dyn crate::ConversationView>,
+    ) -> Self {
+        self.checkpoint_view = Some(view);
         self
     }
 
@@ -195,103 +206,55 @@ impl DeveloperToolExecutor for WorkspaceDeveloperTools {
         &mut self,
         call: &CompletedToolCall,
     ) -> Result<DeveloperToolObservation, DeveloperLoopError> {
-        let arguments: Value = serde_json::from_slice(call.arguments().canonical_bytes())
-            .map_err(|error| tool(error.to_string()))?;
-        // Live permissions are checked before access-policy refresh, in-place enrollment,
-        // receipts, checkpoints, or any filesystem/process effect.
-        if let Some(detail) = self.permission_denial(call.name().as_str()) {
-            return observation(&object(vec![("error", Value::String(detail))]), true);
-        }
-        self.refresh_hard_constraints();
-        if let Err(detail) = self.access_policy.authorize(call.name().as_str(), &arguments) {
-            return observation(&object(vec![("error", Value::String(detail))]), true);
-        }
-        if self.mode == WorkspaceToolMode::ReadOnly
-            && !matches!(
-                call.name().as_str(),
-                "workspace_list" | "workspace_search" | "workspace_read"
-            )
-        {
-            return observation(
-                &object(vec![(
-                    "error",
-                    Value::String("this role has read-only workspace access".to_owned()),
-                )]),
-                true,
-            );
-        }
-        // Reject malformed proposals before enrolling paths, creating effect receipts, or
-        // allowing optional fields of the wrong type to silently become execution defaults.
-        if let Err(error) = super::arguments::validate(call.name().as_str(), &arguments) {
-            return observation(&object(vec![("error", Value::String(error.to_string()))]), true);
-        }
-        let effect = matches!(
-            call.name().as_str(),
-            "workspace_write"
-                | "workspace_patch"
-                | "workspace_remove"
-                | "run_command"
-                | "command_start"
-                | "command_stdin"
-                | "command_resize"
-                | "command_signal"
-                | "command_cancel"
-        ) && self.mode == WorkspaceToolMode::ReadWrite;
-        if effect && let Some(observation) = self.replay_effect(call, &arguments)? {
-            return Ok(observation);
-        }
-        if let Err(error) = self.prepare_in_place(call.name().as_str(), &arguments) {
-            return observation(&object(vec![("error", Value::String(error.to_string()))]), true);
-        }
-        if effect {
-            if let Err(error) = self.prepare_effect_checkpoint(call.name().as_str(), &arguments) {
-                return observation(
-                    &object(vec![("error", Value::String(error.to_string()))]),
-                    true,
-                );
-            }
-            if let Some(observation) = self.begin_effect(call, &arguments)? {
-                return Ok(observation);
+        match self.prepare_dispatch(call)? {
+            dispatch::PreparedTool::Observed(observation) => Ok(observation),
+            dispatch::PreparedTool::Ready { arguments, effect } => {
+                if effect
+                    && let Err(error) =
+                        self.prepare_effect_checkpoint(call.name().as_str(), &arguments)
+                {
+                    return observation(
+                        &object(vec![("error", Value::String(error.to_string()))]),
+                        true,
+                    );
+                }
+                self.dispatch_prepared(call, &arguments, effect)
             }
         }
-        let result = self.dispatch_tool(call, &arguments);
-        let (mut value, is_error, accepted) = match result {
-            Ok(value) => {
-                let is_error = value.get("success").and_then(Value::as_bool) == Some(false);
-                (value, is_error, true)
+    }
+
+    fn execute_async<'a>(
+        &'a mut self,
+        call: &'a CompletedToolCall,
+    ) -> peritus_agent::DeveloperToolExecution<'a> {
+        Box::pin(async move {
+            match self.prepare_dispatch(call)? {
+                dispatch::PreparedTool::Observed(observation) => Ok(observation),
+                dispatch::PreparedTool::Ready { arguments, effect } => {
+                    if effect
+                        && let Err(error) = self
+                            .prepare_effect_checkpoint_async(call.name().as_str(), &arguments)
+                            .await
+                    {
+                        return observation(
+                            &object(vec![("error", Value::String(error.to_string()))]),
+                            true,
+                        );
+                    }
+                    // Permission and protection changes received while waiting remain authoritative.
+                    if let Some(detail) = self.permission_denial(call.name().as_str()) {
+                        return observation(&object(vec![("error", Value::String(detail))]), true);
+                    }
+                    self.refresh_hard_constraints();
+                    if let Err(detail) =
+                        self.access_policy.authorize(call.name().as_str(), &arguments)
+                    {
+                        return observation(&object(vec![("error", Value::String(detail))]), true);
+                    }
+                    self.dispatch_prepared(call, &arguments, effect)
+                }
             }
-            Err(error) => {
-                let value = object(vec![("error", Value::String(error.to_string()))]);
-                (value, true, false)
-            }
-        };
-        if accepted {
-            self.active_commands.observe(
-                &self.root,
-                &mut value,
-                &mut self.ownership,
-                &mut self.command_evidence,
-            )?;
-        }
-        if effect {
-            if accepted {
-                self.receipts
-                    .as_mut()
-                    .ok_or_else(|| tool("writable tools have no effect receipt ledger"))?
-                    .applied(&value, is_error)?;
-                self.record_checkpoint(call.name().as_str(), &arguments, &value)?;
-                self.receipts
-                    .as_mut()
-                    .ok_or_else(|| tool("writable tools have no effect receipt ledger"))?
-                    .finalize()?;
-            } else {
-                self.receipts
-                    .as_mut()
-                    .ok_or_else(|| tool("writable tools have no effect receipt ledger"))?
-                    .complete(&value, is_error)?;
-            }
-        }
-        self.finish_observation(call, &arguments, &value, is_error, accepted, effect && accepted)
+        })
     }
 
     fn observe_model_context(&mut self, messages: &[Message]) -> Result<(), DeveloperLoopError> {

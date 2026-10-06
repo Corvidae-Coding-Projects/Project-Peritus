@@ -101,6 +101,7 @@ pub struct WorkspaceError {
     operation: WorkspaceOperation,
     recovery: RecoveryClass,
     detail: &'static str,
+    source: Option<std::io::Error>,
 }
 
 impl WorkspaceError {
@@ -110,7 +111,12 @@ impl WorkspaceError {
         recovery: RecoveryClass,
         detail: &'static str,
     ) -> Self {
-        Self { code, operation, recovery, detail }
+        Self { code, operation, recovery, detail, source: None }
+    }
+
+    pub(crate) fn with_io_source(mut self, source: std::io::Error) -> Self {
+        self.source = Some(source);
+        self
     }
 
     /// Returns the stable failure category.
@@ -141,7 +147,11 @@ impl fmt::Display for WorkspaceError {
     }
 }
 
-impl std::error::Error for WorkspaceError {}
+impl std::error::Error for WorkspaceError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        self.source.as_ref().map(|error| error as &(dyn std::error::Error + 'static))
+    }
+}
 
 pub const fn mismatch(detail: &'static str) -> WorkspaceError {
     WorkspaceError::new(

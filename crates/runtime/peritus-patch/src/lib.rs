@@ -12,6 +12,7 @@ mod path;
 mod plan;
 mod preimage;
 mod set;
+mod snapshot;
 mod transaction;
 mod verified;
 
@@ -23,6 +24,7 @@ pub use path::{MAX_COMPONENT_BYTES, MAX_COMPONENTS, MAX_PATH_BYTES, WorkspacePat
 pub use plan::{PatchIdentity, PatchPlan};
 pub use preimage::{FileMode, Preimage};
 pub use set::{MAX_FILE_BYTES, MAX_PATCH_BYTES, MAX_PATCH_OPERATIONS, PatchSet};
+pub use snapshot::{SnapshotFile, SnapshotSource};
 pub use transaction::{
     AppliedPatch, RecoveryBinding, RecoveryOutcome, RecoveryState, TransactionFaultPoint,
     TransactionPhase, apply_patch, recover_transaction,

@@ -10,9 +10,13 @@ reported ordinary failure has restored all original files. If restoration cannot
 transaction remains available to restart recovery and the error is explicitly indeterminate.
 The manifest carries a canonical SHA-256 checksum over every recovery-semantic byte; restart
 decoding verifies it before interpreting paths, preimages, or operation state.
-Patch construction rejects final content, aggregate content, operation counts, present preimages,
-and worst-case recovery manifests that exceed production bounds before filesystem I/O. Files over
-the exact-observation limit never receive a synthetic digest that could match a preimage.
+Inline patch construction rejects final content, aggregate content, operation counts, present
+preimages, and worst-case recovery manifests that exceed its payload policy before filesystem I/O.
+Snapshot restoration uses `SnapshotFile` and `PatchSet::from_snapshot`: it streams exact digest-bound
+contents through the same transaction without inheriting inline patch byte or operation ceilings.
+Both paths observe complete file contents and verify file identity; observation errors never become
+synthetic preimage digests. Version-two snapshot recovery manifests use wide collection counts and
+retain the version-one decoder for already prepared inline transactions.
 
 Restart recovery requires a `RecoveryBinding` containing the expected workspace identity,
 generation, and revision. A decoded manifest with a different binding produces an indeterminate

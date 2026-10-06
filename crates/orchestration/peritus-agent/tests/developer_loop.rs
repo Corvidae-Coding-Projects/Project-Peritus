@@ -16,6 +16,8 @@ mod reasoning_compaction;
 mod reasoning_tests;
 #[path = "developer_loop/retry_tests.rs"]
 mod retry_tests;
+#[path = "developer_loop/tool_wait.rs"]
+mod tool_wait;
 
 use std::{collections::VecDeque, future::Future, sync::Mutex};
 

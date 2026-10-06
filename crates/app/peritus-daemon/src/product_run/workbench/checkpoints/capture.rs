@@ -1,11 +1,11 @@
-//! Bounded selected-path capture and no-follow folder observations.
+//! Streaming selected-path capture and no-follow folder observations.
 
 use super::{
     BTreeSet, CapturedCoverage, CapturedPath, CheckpointFileMode, CheckpointFileVersion,
     CheckpointId, CheckpointPath, ControlError, ControlIntent, ControlOperation, ConversationId,
-    ConversationRecord, Error, FileReadSelection, FolderIdentity, FolderInspection, OperationId,
-    Path, ProductRunService, UserCheckpoint, WorkspacePath, checkpoint_references,
-    external_effects, fs, io, patch_input,
+    ConversationRecord, Error, FolderIdentity, FolderInspection, OperationId, Path,
+    ProductRunService, UserCheckpoint, WorkspacePath, checkpoint_references, external_effects, fs,
+    io, patch_input,
 };
 use peritus_product_runner::WorkspaceMutationKind;
 use peritus_types::{ActorId, RunId, WorkspaceId};
@@ -50,16 +50,9 @@ impl ProductRunService {
             }
         }
         let mut paths = Vec::with_capacity(selected.len());
-        let mut total = 0_usize;
         for path in &selected {
             check_protected(root, path, &contract, &protected)?;
             let captured = observe_path(&identity, path)?;
-            total = total
-                .checked_add(captured.body.as_ref().map_or(0, Vec::len))
-                .ok_or(ControlError::Capacity)?;
-            if total > peritus_patch::MAX_PATCH_BYTES {
-                return Err(ControlError::Capacity.into());
-            }
             paths.push(captured);
         }
         Ok(CapturedCoverage { paths, exclusions })
@@ -71,21 +64,33 @@ impl ProductRunService {
         query: peritus_app_protocol::WorkbenchQuery,
         checkpoint: &UserCheckpoint,
     ) -> Result<Vec<CapturedPath>, Error> {
+        self.inspect_checkpoint_paths(record, query, checkpoint, true)
+    }
+
+    pub(super) fn observe_checkpoint_paths(
+        &self,
+        record: &ConversationRecord,
+        query: peritus_app_protocol::WorkbenchQuery,
+        checkpoint: &UserCheckpoint,
+    ) -> Result<Vec<CapturedPath>, Error> {
+        self.inspect_checkpoint_paths(record, query, checkpoint, false)
+    }
+
+    fn inspect_checkpoint_paths(
+        &self,
+        record: &ConversationRecord,
+        query: peritus_app_protocol::WorkbenchQuery,
+        checkpoint: &UserCheckpoint,
+        retain: bool,
+    ) -> Result<Vec<CapturedPath>, Error> {
         let root = self.workspace_root(query)?;
         let identity = self.checked_folder_identity(query, root)?;
         let protected = self.protected_paths(query)?;
         let contract = record.inputs().capture()?.conversation().to_owned();
         let mut paths = Vec::with_capacity(checkpoint.paths().len());
-        let mut total = 0_usize;
         for path in checkpoint.paths() {
             check_protected(root, path.path(), &contract, &protected)?;
-            let captured = observe_path(&identity, path.path())?;
-            total = total
-                .checked_add(captured.body.as_ref().map_or(0, Vec::len))
-                .ok_or(ControlError::Capacity)?;
-            if total > peritus_patch::MAX_PATCH_BYTES {
-                return Err(ControlError::Capacity.into());
-            }
+            let captured = observe_file(&identity, path.path(), retain)?;
             paths.push(captured);
         }
         Ok(paths)
@@ -217,17 +222,32 @@ fn empty_directory_exclusion(path: &str) -> String {
 
 fn observe_empty_directory(identity: &FolderIdentity, path: &str) -> Result<(), Error> {
     let relative = patch_input(WorkspacePath::new(path))?;
-    let metadata = safe_metadata(identity.root(), &relative)?.ok_or(ControlError::StaleRevision)?;
+    let metadata = safe_metadata(identity.root(), &relative)?.ok_or(Error::StalePreimage)?;
     if !metadata.is_dir() || metadata.file_type().is_symlink() {
         return Err(ControlError::InvalidInput.into());
     }
     if fs::read_dir(identity.root().join(path))?.next().transpose()?.is_some() {
-        return Err(ControlError::StaleRevision.into());
+        return Err(Error::StalePreimage);
     }
     Ok(())
 }
 
 pub(super) fn observe_path(identity: &FolderIdentity, path: &str) -> Result<CapturedPath, Error> {
+    observe_file(identity, path, true)
+}
+
+pub(super) fn observe_version(
+    identity: &FolderIdentity,
+    path: &str,
+) -> Result<CheckpointFileVersion, Error> {
+    observe_file(identity, path, false).map(|captured| captured.version)
+}
+
+fn observe_file(
+    identity: &FolderIdentity,
+    path: &str,
+    retain: bool,
+) -> Result<CapturedPath, Error> {
     let relative = patch_input(WorkspacePath::new(path))?;
     let target = identity.root().join(path);
     let before = match safe_metadata(identity.root(), &relative)? {
@@ -243,27 +263,27 @@ pub(super) fn observe_path(identity: &FolderIdentity, path: &str) -> Result<Capt
     if !before.is_file() || before.file_type().is_symlink() {
         return Err(ControlError::InvalidInput.into());
     }
-    let inspected = FolderInspection::open(identity)
-        .and_then(|reader| {
-            reader.read_file(
-                &relative,
-                FileReadSelection::all(),
-                peritus_patch::MAX_FILE_BYTES as u64,
-            )
-        })
-        .map_err(|_| ControlError::StaleRevision)?;
+    let mut body = retain.then(tempfile::NamedTempFile::new).transpose()?;
+    let inspection = FolderInspection::open(identity)?;
+    let (digest, bytes) = match body.as_mut() {
+        Some(body) => inspection.copy_snapshot(&relative, body)?,
+        None => inspection.copy_snapshot(&relative, &mut io::sink())?,
+    };
     let after = fs::symlink_metadata(&target)?;
     if !after.is_file()
         || after.file_type().is_symlink()
         || !same_metadata(&before, &after)
-        || inspected.source_bytes() != after.len()
+        || bytes != after.len()
     {
-        return Err(ControlError::StaleRevision.into());
+        return Err(Error::StalePreimage);
     }
     let mode = file_mode(&after);
-    let body = inspected.bytes().to_vec();
-    let version = CheckpointFileVersion::present(inspected.source_digest(), after.len(), mode);
-    Ok(CapturedPath { path: path.to_owned(), version, body: Some(body) })
+    let version = CheckpointFileVersion::present(digest, after.len(), mode);
+    Ok(CapturedPath {
+        path: path.to_owned(),
+        version,
+        body: body.map(tempfile::NamedTempFile::into_temp_path),
+    })
 }
 
 fn safe_metadata(root: &Path, path: &WorkspacePath) -> Result<Option<fs::Metadata>, Error> {
@@ -302,7 +322,7 @@ fn same_metadata(left: &fs::Metadata, right: &fs::Metadata) -> bool {
     }
     #[cfg(not(unix))]
     {
-        same
+        same && left.permissions().readonly() == right.permissions().readonly()
     }
 }
 

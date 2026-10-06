@@ -66,7 +66,13 @@ impl ProductRunService {
             .collect::<Vec<_>>();
 
         let (plan_reconstructed, plan) = if structurally_exact && original_conflicts.is_empty() {
-            match self.restore_plan_with_store(store, command.query(), checkpoint, confirmed) {
+            match self.restore_plan_with_store(
+                store,
+                command.query(),
+                checkpoint,
+                confirmed,
+                Some(restore.patch_digest()),
+            ) {
                 Ok(plan) => (true, plan),
                 Err(_) => (false, None),
             }
@@ -115,7 +121,7 @@ impl ProductRunService {
         }
 
         let observed = self
-            .capture_checkpoint_paths(record, command.query(), recovery)
+            .observe_checkpoint_paths(record, command.query(), recovery)
             .ok()
             .filter(|paths| paths.len() == confirmed.paths().len());
         let versions = observed.as_ref().map(|paths| {

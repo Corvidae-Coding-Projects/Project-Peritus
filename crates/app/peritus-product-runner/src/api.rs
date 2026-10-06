@@ -23,7 +23,7 @@ pub use crate::error::{ProductRunnerError, ProductRunnerErrorKind};
 pub use crate::execution::{
     ConversationView, ProductDeliveryScope, ProductRunInput, ProductRunOutcome, ProductRunOutput,
     ProductRunPhase, ProductRunQuestion, ProductRunResume, ProductRunUpdate, ProductRunner,
-    RoleProviders, RunObserver, WorkspaceMutationKind,
+    RoleProviders, RunObserver, WorkspaceCheckpointFuture, WorkspaceMutationKind,
 };
 #[cfg(not(verus_only))]
 pub use crate::local_context::inspect_local_context;
@@ -33,6 +33,7 @@ pub use crate::verified_api::{
     PreviewTerminal, ProductDeliveryScope, ProductRunInput, ProductRunOutcome, ProductRunOutput,
     ProductRunPhase, ProductRunProgress, ProductRunQuestion, ProductRunResume, ProductRunUpdate,
     ProductRunner, RoleProviders, RunObserver, UncertainEffect, UncertainEffectState,
-    WorkspaceMutationKind, acknowledge_uncertain_effect, checked_protected_file, uncertain_effects,
+    WorkspaceCheckpointFuture, WorkspaceMutationKind, acknowledge_uncertain_effect,
+    checked_protected_file, uncertain_effects,
 };
 pub use crate::workspace_kind::ProductWorkspaceKind;

@@ -287,6 +287,7 @@ async fn run_developer_invocation(
             input.command_runtime.clone(),
         )
         .with_checkpoint_observer(context.recorder.tool_observer(Arc::clone(&input.conversation)))
+        .with_checkpoint_view(Arc::clone(&input.conversation))
         .with_task_contract(&transcript),
     );
     let result = crate::local_context::run_live_invocation(

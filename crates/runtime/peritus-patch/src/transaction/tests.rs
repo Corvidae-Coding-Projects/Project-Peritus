@@ -19,6 +19,8 @@ use super::{
     storage::prepare_transaction,
 };
 
+mod snapshots;
+
 struct FailAt {
     remaining: RefCell<Vec<TransactionFaultPoint>>,
 }
@@ -257,7 +259,7 @@ fn oversized_observation_never_matches_a_forged_empty_digest() {
         RollbackStatus::NotRequired,
     )
     .expect("observation");
-    assert_eq!(observed, Observation::Oversized);
+    assert!(matches!(observed, Observation::Present(_)));
     let forged = super::manifest::FileIdentity {
         digest: peritus_codec::sha256(&[]),
         size: (crate::set::MAX_FILE_BYTES + 1) as u64,

@@ -182,6 +182,15 @@ fn service(
     }
 }
 
+pub(super) fn checkpoint_test_service(
+    state: &std::path::Path,
+    workspace: &std::path::Path,
+    workspace_id: WorkspaceId,
+) -> ProductRunService {
+    let provider = scripted(0xe1, "checkpoint-recovery", Vec::new());
+    service(state, workspace, workspace_id, [&provider, &provider, &provider])
+}
+
 async fn wait_for_terminal(
     service: &ProductRunService,
     run_id: RunId,

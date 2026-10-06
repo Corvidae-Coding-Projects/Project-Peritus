@@ -28,7 +28,7 @@ pub use interaction::{
     DeveloperActivity, DeveloperControlFlow, DeveloperInteraction, DeveloperModelRole,
     DeveloperRequestAdmission, DeveloperReviewRetryReason, DeveloperToolEffect,
 };
-pub use tool_executor::DeveloperToolExecutor;
+pub use tool_executor::{DeveloperToolExecution, DeveloperToolExecutor};
 pub use types::{
     DeveloperContextCompaction, DeveloperLoopLimits, DeveloperLoopOutcome, DeveloperLoopRequest,
     DeveloperRetryReason, DeveloperRetryRecord, DeveloperToolObservation, DeveloperTrace,

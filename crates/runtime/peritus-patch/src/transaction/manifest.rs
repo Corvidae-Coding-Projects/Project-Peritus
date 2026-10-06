@@ -1,4 +1,4 @@
-//! Bounded versioned transaction manifest encoding.
+//! Versioned transaction metadata, independent of inline patch payload admission.
 
 use std::collections::BTreeSet;
 
@@ -12,6 +12,18 @@ use crate::{
 
 const MAGIC: &[u8; 20] = b"peritus-patch-txn-v1";
 const SCHEMA_VERSION: u16 = 1;
+
+// Snapshot metadata contains only canonical paths and fixed-width identities. It has no
+// command-payload or collection admission ceiling; decoding checks counts against the actual
+// remaining bytes before allocating. Path validity remains owned by WorkspacePath.
+const SNAPSHOT_METADATA_LIMITS: CodecLimits = CodecLimits {
+    max_frame_bytes: usize::MAX,
+    max_payload_bytes: usize::MAX,
+    max_collection_items: usize::MAX,
+    max_string_bytes: crate::MAX_PATH_BYTES,
+    max_opaque_bytes: usize::MAX,
+    max_nesting_depth: 1,
+};
 
 /// Durable transaction progress phase.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
@@ -69,11 +81,7 @@ pub(super) struct ManifestEntry {
 
 impl ManifestEntry {
     fn from_operation(operation: &PatchOperation) -> Self {
-        let postimage = operation.final_file().map(|file| FileIdentity {
-            digest: file.digest(),
-            size: file.size(),
-            mode: file.mode(),
-        });
+        let postimage = FileIdentity::from_preimage(operation.postimage());
         Self {
             kind: operation.kind(),
             path: operation.path().clone(),
@@ -85,6 +93,7 @@ impl ManifestEntry {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(super) struct Manifest {
+    schema: u16,
     pub(super) phase: TransactionPhase,
     pub(super) workspace_id: WorkspaceId,
     pub(super) generation: Generation,
@@ -108,6 +117,7 @@ impl Manifest {
 
     fn from_patch(patch: &crate::PatchSet, created_directories: Vec<WorkspacePath>) -> Self {
         Self {
+            schema: if patch.is_snapshot() { 2 } else { SCHEMA_VERSION },
             phase: TransactionPhase::Prepared,
             workspace_id: patch.workspace_id(),
             generation: patch.expected_generation(),
@@ -119,23 +129,27 @@ impl Manifest {
     }
 
     pub(super) fn encode(&self) -> Result<Vec<u8>, PatchError> {
-        let mut writer = CanonicalWriter::new(CodecLimits::PRODUCTION);
+        let mut writer = CanonicalWriter::new(if self.schema == 1 {
+            CodecLimits::PRODUCTION
+        } else {
+            SNAPSHOT_METADATA_LIMITS
+        });
         let result = (|| {
             writer.write_fixed(MAGIC)?;
-            writer.write_u16(SCHEMA_VERSION)?;
+            writer.write_u16(self.schema)?;
             writer.write_u8(self.phase.tag())?;
             writer.write_fixed(self.workspace_id.as_bytes())?;
             writer.write_u64(self.generation.get())?;
             writer.write_u64(self.revision.get())?;
             writer.write_fixed(self.identity.as_bytes())?;
-            writer.write_collection_len(self.entries.len())?;
+            write_count(&mut writer, self.entries.len(), self.schema)?;
             for entry in &self.entries {
                 writer.write_u8(kind_tag(entry.kind))?;
                 writer.write_str(entry.path.as_str())?;
                 write_identity(&mut writer, entry.preimage)?;
                 write_identity(&mut writer, entry.postimage)?;
             }
-            writer.write_collection_len(self.created_directories.len())?;
+            write_count(&mut writer, self.created_directories.len(), self.schema)?;
             for directory in &self.created_directories {
                 writer.write_str(directory.as_str())?;
             }
@@ -148,18 +162,23 @@ impl Manifest {
     }
 
     pub(super) fn decode(bytes: &[u8]) -> Result<Self, PatchError> {
-        if bytes.len() > CodecLimits::PRODUCTION.max_payload_bytes || bytes.len() < 32 {
+        if bytes.len() < 32 {
             return Err(corrupt_manifest());
         }
         let (payload, checksum) = bytes.split_at(bytes.len() - 32);
         if peritus_codec::sha256(payload).as_bytes() != checksum {
             return Err(corrupt_manifest());
         }
-        let mut reader = CanonicalReader::new(payload, CodecLimits::PRODUCTION);
+        let mut reader = CanonicalReader::new(payload, SNAPSHOT_METADATA_LIMITS);
         let result = (|| {
-            if &reader.read_fixed::<20>().ok()? != MAGIC
-                || reader.read_u16().ok()? != SCHEMA_VERSION
-            {
+            if &reader.read_fixed::<20>().ok()? != MAGIC {
+                return None;
+            }
+            let schema = reader.read_u16().ok()?;
+            if schema != 1 && schema != 2 {
+                return None;
+            }
+            if schema == 1 && bytes.len() > CodecLimits::PRODUCTION.max_payload_bytes {
                 return None;
             }
             let phase = TransactionPhase::from_tag(reader.read_u8().ok()?)?;
@@ -167,28 +186,29 @@ impl Manifest {
             let generation = Generation::new(reader.read_u64().ok()?).ok()?;
             let revision = RevisionNumber::new(reader.read_u64().ok()?).ok()?;
             let identity = PatchIdentity::new(Sha256Digest::new(reader.read_fixed::<32>().ok()?));
-            let entry_count = reader.read_collection_len().ok()?;
-            if entry_count == 0 || entry_count > crate::MAX_PATCH_OPERATIONS {
+            let entry_count = read_count(&mut reader, schema, 8)?;
+            if entry_count == 0 || (schema == 1 && entry_count > crate::MAX_PATCH_OPERATIONS) {
                 return None;
             }
             let mut entries = Vec::with_capacity(entry_count);
             for _ in 0..entry_count {
                 let kind = kind_from_tag(reader.read_u8().ok()?)?;
                 let path = WorkspacePath::new(reader.read_str().ok()?).ok()?;
-                let preimage = read_identity(&mut reader).ok()?;
-                let postimage = read_identity(&mut reader).ok()?;
+                let preimage = read_identity(&mut reader, schema).ok()?;
+                let postimage = read_identity(&mut reader, schema).ok()?;
                 if !shape_valid(kind, preimage, postimage) {
                     return None;
                 }
                 entries.push(ManifestEntry { kind, path, preimage, postimage });
             }
-            let directory_count = reader.read_collection_len().ok()?;
+            let directory_count = read_count(&mut reader, schema, 5)?;
             let mut created_directories = Vec::with_capacity(directory_count);
             for _ in 0..directory_count {
                 created_directories.push(WorkspacePath::new(reader.read_str().ok()?).ok()?);
             }
             reader.finish().ok()?;
             let manifest = Self {
+                schema,
                 phase,
                 workspace_id,
                 generation,
@@ -224,6 +244,29 @@ impl Manifest {
     }
 }
 
+fn write_count(
+    writer: &mut CanonicalWriter,
+    count: usize,
+    schema: u16,
+) -> Result<(), peritus_codec::CodecError> {
+    if schema == 1 { writer.write_collection_len(count) } else { writer.write_u64(count as u64) }
+}
+
+fn read_count(
+    reader: &mut CanonicalReader<'_>,
+    schema: u16,
+    minimum_bytes: usize,
+) -> Option<usize> {
+    let count = if schema == 1 {
+        reader.read_collection_len().ok()?
+    } else {
+        usize::try_from(reader.read_u64().ok()?).ok()?
+    };
+    (count <= reader.remaining() / minimum_bytes
+        && (schema != 1 || count <= CodecLimits::PRODUCTION.max_collection_items))
+        .then_some(count)
+}
+
 pub(super) fn validate_patch_capacity(patch: &crate::PatchSet) -> Result<(), PatchError> {
     let mut directories = BTreeSet::new();
     for operation in patch.operations() {
@@ -257,13 +300,16 @@ fn write_identity(
     Ok(())
 }
 
-fn read_identity(reader: &mut CanonicalReader<'_>) -> Result<Option<FileIdentity>, ()> {
+fn read_identity(
+    reader: &mut CanonicalReader<'_>,
+    schema: u16,
+) -> Result<Option<FileIdentity>, ()> {
     if !reader.read_option_tag().map_err(|_| ())? {
         return Ok(None);
     }
     let digest = Sha256Digest::new(reader.read_fixed::<32>().map_err(|_| ())?);
     let size = reader.read_u64().map_err(|_| ())?;
-    if size > crate::set::MAX_FILE_BYTES as u64 {
+    if schema == 1 && size > crate::set::MAX_FILE_BYTES as u64 {
         return Err(());
     }
     let mode = FileMode::from_tag(reader.read_u8().map_err(|_| ())?).ok_or(())?;
@@ -309,3 +355,6 @@ const fn corrupt_manifest() -> PatchError {
         "transaction manifest is malformed or unsupported",
     )
 }
+
+#[cfg(test)]
+mod tests;
