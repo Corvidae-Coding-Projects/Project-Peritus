@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3637,
-        "tip_oid": "2b92288624b53aaf2c944329644f5477fa61a3a3",
-        "prefix_sha256": "b7d0785591b145192271dd011810a9337dd36f74f2fd35d1a12a03828202b43b"
+        "sequence": 3638,
+        "tip_oid": "a08a004cb197f65978e2243c2448ecb7d5a99f35",
+        "prefix_sha256": "298345e66e33a4770dadbeeff46df1b010d6ea4af0cc976c1cee36f8eb521bc5"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 2966,
+  "next_comment_id": 2967,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -22222,11 +22222,20 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T22:11:51.674351471Z",
-      "updated_at": "2026-10-06T22:58:14.273866079Z",
+      "updated_at": "2026-10-06T22:58:51.840802069Z",
       "labels": [
         "ci"
       ],
       "comments": {
+        "080d444d-4d8d-481d-bc3e-b0940b4cb63a": {
+          "display_id": 2966,
+          "author": "6ME5",
+          "content": "[action] Issue825 committed d2eb633326654d9d629beb26efa0120c8bdf1677,19 selected files; commit result recorded. Root reproduced Os26 ExecutableFileBusy copied fixture in run33; repaired via immutable private same-filesystem aliases plus owned/redacted failure receipts. Historical auth predicate discarded and unrecoverable. Final exact-tree288tests2existingignores,100separate repaired7testexercises,strictworkspaceClippy6zero,fmt,WindowsGNUcheck2,strictVerus3effectroots0,rebuiltxtaskall3 pass. All unrelated usage/audit hashes preserved. Push session68794 pending to existing PR112; PRbody file updated, publishing after push. Issue825 OPEN/locked6ME5 until exacthead native Windows/macOS/Linux model-orchestration acceptance. Previous824closed2954. Oldhead CIwatch66704 maystillrun; fresh825watch next. No source edits/checks pending.",
+          "created_at": "2026-10-06T22:58:51.829209147Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA7eMBlq5STd+Ja/6dE+RcHYUVU+ycq/7xEX3HSdwovlEOEpK6+UGsCaPllxSlAI8B9R5dw4RyJmNGh+Vgij6rAQ=="
+        },
         "1bac8619-92e9-4686-948c-0aaa498ca8be": {
           "display_id": 2957,
           "author": "6ME5",
