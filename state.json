@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 2089,
-        "tip_oid": "08a7d6cd48d64e87ed1d1b1ac5c776358c46fa7f",
-        "prefix_sha256": "ac2622b8a2e263a187a42e854aa46174f7124094dae8619b66d79e19c75f2a32"
+        "sequence": 2090,
+        "tip_oid": "76edc4e5b24a1ab4f4fe3f1851aae004798bfd59",
+        "prefix_sha256": "0f6376dfa411d060aacbe277e358f8422d082ecab6718beb73f4f690833a094b"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 105,
-  "next_comment_id": 2176,
+  "next_comment_id": 2177,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -1440,10 +1440,21 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:08:34.108185360Z",
-      "updated_at": "2026-10-06T13:08:54.202254780Z",
+      "updated_at": "2026-10-06T13:09:44.266994620Z",
       "labels": [
         "daily-driving-limiter"
-      ]
+      ],
+      "comments": {
+        "42bcef03-27c2-41fe-98fa-1e71200e3727": {
+          "display_id": 2176,
+          "author": "6ME5",
+          "content": "Systemic repair plan for L003: checkpoint storage must be independent of patch-command payload admission.\n\nThe causal coupling is in peritus-daemon checkpoint capture and the product-runner BeforeMutation observer: a recoverable file-size/storage failure becomes StaleRevision and prevents command dispatch. A checkpoint is an immutable recoverable workspace snapshot; a patch is an authorized mutation transaction. They need separate representations and admission rules.\n\nChange capture to stream file content into chunked immutable artifacts and persist a manifest of exact path, kind, content digest, revision and ownership. Align automatic capture, manual capture, sealing, writable fork validation and rewind with that snapshot contract. Preflight must confirm a restorable snapshot before permitting the mutation. Restore large snapshots through one durable transaction with recoverable progress, not unrelated partial patches. A real storage shortage enters an observable recoverable wait under the same task and native-session identity. Return typed storage, contention, stale-preimage and integrity failures; only actual revision mismatch is StaleRevision.\n\nPreserve protected paths, canonical path identity, symlink/ancestor checks, exact preimages, explicit user cancellation and exactly-once effect receipts. Already accepted checkpoint evidence cannot be invalidated by a newer admission policy. Retain old manifest decoders; publish a versioned manifest/artifact representation atomically, verify its recovery roots before switching writers, and keep the prior generation readable during rollback. Coordinate L006, L010, L013 and L020 so capture never promises a restore that downstream encoding cannot perform.\n\nAcceptance requires automatic capture and command execution with files just above 8 MiB; manual capture and restoration across more than 1,024 paths and an aggregate above 8 MiB; fault injection during chunk write, manifest publication and restore; exact saved-workspace restoration after reopen; and retained task/native-thread identity. Changing a preimage, introducing a protected path or an unsafe ancestor must still reject the mutation. Existing small snapshots and commands must retain their behavior. Read the remaining callers and run applicable ordinary and formal checks on the final migration; no source-only plan guarantees nonregression before those checks.",
+          "created_at": "2026-10-06T13:09:44.262904970Z",
+          "kind": "decision",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAm1BJirKso82mA6F/Fz5dyaBFRcYWqy/BDBvon5SimVqUn29kUx3q8nHVWZWJEIZmtT8LwLoUu79bCuilpvoaDg=="
+        }
+      }
     },
     "1df15ea3-f541-41f4-9d1c-9f91f53fafd4": {
       "uuid": "1df15ea3-f541-41f4-9d1c-9f91f53fafd4",
