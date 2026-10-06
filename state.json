@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3597,
-        "tip_oid": "0d25c3ee966cba35d374d358a4bea3c5fb3fb5d0",
-        "prefix_sha256": "706cca73c112f28c8f9527a9bd980700be6da3bd070d818b906709d9c12f40a3"
+        "sequence": 3598,
+        "tip_oid": "d64904467517140c09510b285eb295fadf3c2785",
+        "prefix_sha256": "3b91faf2ee02e3c206ff3b3c3cf7d412f7fbac3f3e8eb817864952960eccad92"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 825,
-  "next_comment_id": 2937,
+  "next_comment_id": 2938,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -6882,7 +6882,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:07.865564519Z",
-      "updated_at": "2026-10-06T20:55:55.233568098Z",
+      "updated_at": "2026-10-06T21:00:08.351206038Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -6920,6 +6920,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAjEg6hsGu1R22wfdmo6gbEPoYpymbYXSfgEAC1gu9gWGFWXpv0nisOsCPDWnuhT/Zf7jUkvWfWMR2nd7phWN3Cw=="
+        },
+        "c0d88594-2750-457a-8e41-9763cd0f6b6e": {
+          "display_id": 2937,
+          "author": "6ME5",
+          "content": "All 19 affected-package suites passed (992 tests, six existing ignored fixtures). Final capacity review found two legacy representation probes that treated any encoder failure as a reason to select paged metadata. The new AllocationUnavailable category must not change canonical identity according to available memory: inline identity construction and manifest-fit selection now propagate retryable OutOfMemory with the typed codec source, while genuine legacy contract overflow still selects the existing paged representation. Manifest encoding also preserves this capacity classification instead of reporting corrupt durable state. A fault-category regression verifies this shared distinction. Rechecking the changed patch surface and final workspace gates before delivery.",
+          "created_at": "2026-10-06T21:00:08.336531409Z",
+          "kind": "decision",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA6egSdpXKJtJ6Eie+Q1NNmqlJMroA/Dfmvz3xKJUZ6Qh4cciVkRv+02Z6m9c0Ci6MxYBcRaVQxcrzOTScW9Z2DQ=="
         },
         "c37ae485-c5c9-497b-b5a6-7622f3b20362": {
           "display_id": 2928,
