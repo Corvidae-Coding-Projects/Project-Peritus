@@ -394,3 +394,5 @@ mod core;
 mod evidence;
 #[path = "manifest_tests/method_owners.rs"]
 mod method_owners;
+#[path = "manifest_tests/source_inventory.rs"]
+mod source_inventory;

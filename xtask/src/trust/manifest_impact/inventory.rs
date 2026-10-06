@@ -1,7 +1,9 @@
-use super::ManifestContext;
+use super::{ManifestContext, sha256_hex};
+use crate::error::XtaskError;
 use crate::trust::manifest_model::ProofImpactPackage;
 use std::collections::BTreeMap;
-use std::path::PathBuf;
+use std::fs;
+use std::path::{Path, PathBuf};
 
 const SHARED_INPUTS: &[&str] = &[
     ".cargo/config.toml",
@@ -81,4 +83,18 @@ pub(super) fn expected_sources(
         expected.insert(PathBuf::from(path), all_formal_packages.clone());
     }
     expected
+}
+
+/// Reads only discovered current inputs; stale declarations are inventory violations.
+pub(super) fn current_sha256(
+    context: &ManifestContext<'_>,
+    relative: &Path,
+    expected: &BTreeMap<PathBuf, Vec<ProofImpactPackage>>,
+) -> Result<Option<String>, XtaskError> {
+    if !expected.contains_key(relative) {
+        return Ok(None);
+    }
+    let absolute = context.root.join(relative);
+    let bytes = fs::read(&absolute).map_err(|error| XtaskError::io("read", &absolute, error))?;
+    Ok(Some(sha256_hex(&bytes)))
 }

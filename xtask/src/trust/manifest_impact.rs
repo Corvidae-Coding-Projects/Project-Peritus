@@ -11,7 +11,6 @@ use inventory::expected_sources;
 use sha2::{Digest, Sha256};
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Write as _;
-use std::fs;
 use std::path::{Path, PathBuf};
 
 const MANIFEST: &str = "verification/proof-impact.toml";
@@ -315,10 +314,9 @@ fn validate_source(
             "record lowercase 64-hex SHA-256 over the exact raw source bytes",
         ));
     }
-    let absolute = context.root.join(relative);
-    let bytes = fs::read(&absolute).map_err(|error| XtaskError::io("read", &absolute, error))?;
-    let actual = sha256_hex(&bytes);
-    if actual != source.sha256 {
+    if let Some(actual) = inventory::current_sha256(context, relative, expected)?
+        && actual != source.sha256
+    {
         diagnostics.push(Diagnostic::at(
             relative,
             "formal source bytes differ from the reviewed proof-impact fingerprint",

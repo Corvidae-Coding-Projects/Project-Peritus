@@ -39,6 +39,13 @@ authorization. Canonical workflow resources live under `xtask/src/reproducibilit
 reviewed checker builds on the unchanged base; candidate workflow bytes must still match them.
 `verify-trust` additionally enforces the externally selected review base and approved transitions.
 
+Use `cargo run --locked --package xtask -- all` for local implementation and pre-commit policy
+validation. It scans the current compilation sources and validates current actors, obligations,
+and trust boundaries. A historical fingerprint inventory does not approve those new source bytes
+or block this local gate. Protected `verify-trust` rejects stale inventory entries as policy
+diagnostics; it does not try to read removed or out-of-scope declared paths. Updating approval
+records still requires the independently reviewed transition described above.
+
 ## Focused checks
 
 `formal-inventory` renders the declared obligation, trust, and exclusion registers alongside
