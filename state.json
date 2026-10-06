@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3623,
-        "tip_oid": "06c5097ef8562688a7778f501fd00e315ba7df25",
-        "prefix_sha256": "c8145081a13ef2c7aef0006b760bcdcc1479c62d3c6a3d62680e5d8781e8499c"
+        "sequence": 3624,
+        "tip_oid": "f2a717fae67773b4dc056eec9f5b0bdddf5df6cb",
+        "prefix_sha256": "c183fd0bfe3a930bc62df25e95a7ea4d04d85490d1e28e05c2930b012deb45f2"
       },
       "NWAR": {
         "sequence": 39,
@@ -20612,12 +20612,13 @@
       "display_id": 824,
       "title": "[CI] Windows provider duplex transport stalls under journaled output",
       "description": "Current PR 112 head eb24bc344cee4d77a86545ea6fcaf49954ac8e40 Windows model-orchestration job 112476220836 (run 37523913667) failed output_is_drained_while_large_stdin_is_written_and_retained at the ten-second fixture deadlock watchdog; six other process transport tests passed. Fully read process/tokio_transport.rs, tests/process_transport.rs and tests/support/runtime.rs. The test drives a child writing 1 MiB before reading 1 MiB stdin, while the owner drains and syncs journaled output on a current-thread runtime. Production elapsed limits were already removed; the observed stall needs a cross-platform pipe ownership/progress diagnosis, with real concurrent stdin/stdout/stderr and child-reap coordination and durable retained output. Do not increase the watchdog or restore a production deadline. Reproduce the Windows path, retain exact journal bytes and cancellation cleanup, then verify native runner evidence before closure. Keep this repair separate from the active codec #109 change.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "1d5342a0-e55e-4413-b2dd-ad4438934bc7",
       "created_by": "6ME5",
       "created_at": "2026-10-06T20:34:09.843493907Z",
-      "updated_at": "2026-10-06T22:25:43.140553902Z",
+      "updated_at": "2026-10-06T22:26:44.474348780Z",
+      "closed_at": "2026-10-06T22:26:44.472883652Z",
       "labels": [
         "daily-driving-limiter"
       ],
